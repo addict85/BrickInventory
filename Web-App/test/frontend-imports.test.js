@@ -2,10 +2,10 @@
  * Frontend-Module: Ruft eine Datei einen Namen auf, den ein ANDERES Modul
  * deklariert, ohne ihn zu importieren?
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { ROOT, ohneKommentare } = require('./helpers/sources');
 const JS_DIR = path.join(ROOT, 'public', 'js');
@@ -29,7 +29,8 @@ function deklarierteOben(src) {
 /** Alle Deklarationen einer Datei, auch verschachtelte — für „ist lokal da?". */
 function deklarierte(src) {
   const namen = new Set();
-  for (const m of src.matchAll(/(?:^|[;{}\s])(?:export\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/g)) namen.add(m[1]);
+  for (const m of src.matchAll(/(?:^|[;{}\s])(?:export\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/g))
+    namen.add(m[1]);
   for (const m of src.matchAll(/(?:^|[;{}\s])(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) namen.add(m[1]);
   for (const m of src.matchAll(/(?:^|[;{}\s])(?:export\s+)?class\s+([A-Za-z_$][\w$]*)/g)) namen.add(m[1]);
   return namen;
@@ -49,7 +50,8 @@ function importierte(src) {
 }
 
 test('jedes Frontend-Modul importiert, was es aufruft', () => {
-  const dateien = fs.readdirSync(JS_DIR)
+  const dateien = fs
+    .readdirSync(JS_DIR)
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')
     // logviewer.js läuft im eigenen Popup-Fenster ohne Modulsystem und bringt
     // seine Helfer selbst mit — es teilt sich keinen Namensraum mit dem Rest.
@@ -60,8 +62,7 @@ test('jedes Frontend-Modul importiert, was es aufruft', () => {
   for (const f of dateien) quellen.set(f, ohneKommentare(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));
 
   // i18n.js gehört dazu
-  quellen.set('../i18n.js', ohneKommentare(
-    fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')));
+  quellen.set('../i18n.js', ohneKommentare(fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')));
 
   // Alle Namen, die IRGENDWO im Frontend deklariert werden. Nur diese werden
   // geprüft — dadurch schlägt der Test nicht bei Browser-Globalen an.
@@ -71,7 +72,7 @@ test('jedes Frontend-Modul importiert, was es aufruft', () => {
   const fehlend = [];
   for (const [f, src] of quellen) {
     const lokal = deklarierte(src);
-    const imp   = importierte(src);
+    const imp = importierte(src);
     for (const [name, herkunft] of bekannt) {
       if (herkunft === f || lokal.has(name) || imp.has(name)) continue;
       // Aufruf des Namens, nicht als Eigenschaft (obj.name) und nicht als
@@ -81,6 +82,5 @@ test('jedes Frontend-Modul importiert, was es aufruft', () => {
     }
   }
 
-  assert.deepEqual(fehlend, [],
-    `Aufrufe über Modulgrenzen ohne Import:\n  ${fehlend.join('\n  ')}`);
+  assert.deepEqual(fehlend, [], `Aufrufe über Modulgrenzen ohne Import:\n  ${fehlend.join('\n  ')}`);
 });

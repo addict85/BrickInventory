@@ -41,7 +41,9 @@ async function tabGang(app, ansicht) {
   await ruhig();
   await b.auswerten(`location.hash = '#/${ansicht}'; true`);
   await ruhig();
-  await app.bis(`!document.querySelector('.tab.active .skelett-zeile, .skelett-raster')`, 'geladen', 60).catch(() => {});
+  await app
+    .bis(`!document.querySelector('.tab.active .skelett-zeile, .skelett-raster')`, 'geladen', 60)
+    .catch(() => {});
   await b.auswerten(`scrollTo(0, 0); document.getElementById('inhalt').focus({ preventScroll: true }); true`);
   const funde = [];
   let gesehen = 0;
@@ -50,20 +52,35 @@ async function tabGang(app, ansicht) {
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
     await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
     const m = await b.auswerten(MESSUNG);
-    if (!m) { if (gesehen && !(await b.auswerten(`!!document.activeElement?.closest('main')`))) break; continue; }
+    if (!m) {
+      if (gesehen && !(await b.auswerten(`!!document.activeElement?.closest('main')`))) break;
+      continue;
+    }
     gesehen++;
     // Was höher als das halbe Fenster ist, passt ohnehin nicht ganz hinein.
-    if (m.anteil > 0.2 && m.hoch < 0.5 * (await b.auswerten('innerHeight'))) funde.push(`${m.name} ${Math.round(m.anteil * 100)} %`);
+    if (m.anteil > 0.2 && m.hoch < 0.5 * (await b.auswerten('innerHeight')))
+      funde.push(`${m.name} ${Math.round(m.anteil * 100)} %`);
   }
   return { funde: [...new Set(funde)], gesehen };
 }
 
-test('Fokus unter festen Leisten', { concurrency: 1, timeout: 400_000 }, async (t) => {
+test('Fokus unter festen Leisten', { concurrency: 1, timeout: 400_000 }, async t => {
   const app = await starteApp(t, { name: `fokl_${process.pid}`, bestand: musterHaushalt });
-  if (app.grund) { t.skip(app.grund); return; }
-  const { b, ruhig } = app;
-  for (const [breite, hoehe, gross] of [[390, 844, false], [320, 640, true]]) {
-    await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 1, mobile: true });
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
+  const { b } = app;
+  for (const [breite, hoehe, gross] of [
+    [390, 844, false],
+    [320, 640, true],
+  ]) {
+    await b.tab('Emulation.setDeviceMetricsOverride', {
+      width: breite,
+      height: hoehe,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
     if (gross) await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
     for (const ansicht of ANSICHTEN) {
       const { funde, gesehen } = await tabGang(app, ansicht);

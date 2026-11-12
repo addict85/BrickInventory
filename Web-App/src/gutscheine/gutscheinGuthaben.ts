@@ -5,19 +5,19 @@ import { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../katalog';
 
 /** Aus dem Prototyp übernommen, nicht geraten — der Teil, den niemand herleiten kann. */
 const ENDPUNKT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';
-const LOGIN    = 'https://www.lego.com/api/graphql/Login';
-
+const LOGIN = 'https://www.lego.com/api/graphql/Login';
 
 /** Hier statt in der Oberfläche, weil auch die Route den gespeicherten Wert prüft. */
-export const LAENDER = [
-  'de-CH', 'de-DE', 'de-AT', 'fr-FR', 'it-IT', 'nl-NL', 'en-GB', 'en-US',
-] as const;
+export const LAENDER = ['de-CH', 'de-DE', 'de-AT', 'fr-FR', 'it-IT', 'nl-NL', 'en-GB', 'en-US'] as const;
 
 export const LAND_STANDARD = 'de-CH';
 
-/** Ohne gespeichertes Ausgabeland das Land zur Kontowährung — dieselbe Regel wie in 05-settings.js. */
+/** Ohne gespeichertes Ausgabeland das Land zur Kontowährung — dieselbe Regel wie in settings.js. */
 export function landFuerWaehrung(waehrung: unknown): string {
-  return ({ CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' } as Record<string, string>)[String(waehrung)] ?? LAND_STANDARD;
+  return (
+    ({ CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' } as Record<string, string>)[String(waehrung)] ??
+    LAND_STANDARD
+  );
 }
 
 export function landErlaubt(land: unknown): boolean {
@@ -26,8 +26,8 @@ export function landErlaubt(land: unknown): boolean {
 
 /** Keine Tarnung, sondern nötig: Ohne Browser-Kennung antwortet der Bot-Schutz
  * gar nicht erst. */
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-         + '(KHTML, like Gecko) Chrome/129.0 Safari/537.36';
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' + '(KHTML, like Gecko) Chrome/129.0 Safari/537.36';
 
 const ABFRAGE = `query giftCardBalanceQuery($cardNumber: String!, $pin: String!) {
   giftCard(cardNumber: $cardNumber, pin: $pin) {
@@ -74,7 +74,11 @@ function kurz(nummer: string): string {
   return nummer.length > 4 ? `…${nummer.slice(-4)}` : '…';
 }
 
-interface Sitzung { token: string; kekse: Map<string, string>; ablauf: number }
+interface Sitzung {
+  token: string;
+  kekse: Map<string, string>;
+  ablauf: number;
+}
 
 /** Im Gedächtnis, nicht in der Datenbank: Der Gast-Token gehört keinem Konto. */
 const sitzungen = new Map<string, Sitzung>();
@@ -86,7 +90,9 @@ function jwtAblauf(token: string): number {
     if (!teil) return 0;
     const nutz = JSON.parse(Buffer.from(teil, 'base64url').toString()) as { exp?: unknown };
     return typeof nutz.exp === 'number' ? nutz.exp * 1000 : 0;
-  } catch { return 0; }
+  } catch {
+    return 0;
+  }
 }
 
 function keksKopf(topf: Map<string, string>): string {
@@ -97,8 +103,7 @@ function landVon(locale: string): string {
   return (locale.split('-')[1] ?? '').toUpperCase();
 }
 
-function kekseAufnehmen(res: { headers: { getSetCookie?: () => string[] } },
-                        topf: Map<string, string>): void {
+function kekseAufnehmen(res: { headers: { getSetCookie?: () => string[] } }, topf: Map<string, string>): void {
   const liste = typeof res.headers.getSetCookie === 'function' ? res.headers.getSetCookie() : [];
   for (const sc of liste) {
     const paar = String(sc).split(';')[0] ?? '';
@@ -155,8 +160,7 @@ async function baueSitzung(abruf: Abruf, locale: string): Promise<Sitzung> {
       referer: seite,
       'user-agent': UA,
     },
-    body: JSON.stringify({ operationName: 'Login', query: 'mutation Login {\n  login\n}',
-                           variables: {} }),
+    body: JSON.stringify({ operationName: 'Login', query: 'mutation Login {\n  login\n}', variables: {} }),
   });
   if (!anmeldung.ok && istBotSchutz(anmeldung.status)) {
     throw new BotSchutz(`Die Anmeldung antwortete mit HTTP ${anmeldung.status} — Bot-Schutz.`);
@@ -167,8 +171,7 @@ async function baueSitzung(abruf: Abruf, locale: string): Promise<Sitzung> {
   if (!token) {
     // Rückfall: Der Token steht manchmal im Rumpf statt im Keks.
     try {
-      const rumpf = await anmeldung.json() as
-        { data?: { login?: unknown }; errors?: { message?: string }[] };
+      const rumpf = (await anmeldung.json()) as { data?: { login?: unknown }; errors?: { message?: string }[] };
       const aus = rumpf?.data?.login;
       if (typeof aus === 'string' && aus.split('.').length === 3) {
         token = aus;
@@ -195,15 +198,17 @@ async function sitzung(abruf: Abruf, locale: string, frisch = false): Promise<Si
   return neu;
 }
 
-export function vergesseSitzungen(): void { sitzungen.clear(); }
+export function vergesseSitzungen(): void {
+  sitzungen.clear();
+}
 
 /** Für Tests der Route, die keinen Abruf durchreichen kann. */
 let ersatz: Abruf | null = null;
-export function _ersetzeAbruf(a: Abruf | null): void { ersatz = a; }
+export function _ersetzeAbruf(a: Abruf | null): void {
+  ersatz = a;
+}
 
-async function frageAb(
-  abruf: Abruf, nummer: string, pin: string, locale: string, s: Sitzung,
-): Promise<Guthaben> {
+async function frageAb(abruf: Abruf, nummer: string, pin: string, locale: string, s: Sitzung): Promise<Guthaben> {
   const topf = new Map(s.kekse);
   // Eine Karte gilt nur im Shop ihres Ausgabelandes.
   topf.set('locale', locale);
@@ -222,8 +227,11 @@ async function frageAb(
       referer: `https://www.lego.com/${locale.toLowerCase()}/gift-cards/balance`,
       'user-agent': UA,
     },
-    body: JSON.stringify({ operationName: 'giftCardBalanceQuery',
-                           variables: { cardNumber: nummer, pin }, query: ABFRAGE }),
+    body: JSON.stringify({
+      operationName: 'giftCardBalanceQuery',
+      variables: { cardNumber: nummer, pin },
+      query: ABFRAGE,
+    }),
   });
 
   if (res.status === 401) throw new NichtAngemeldet('Nicht angemeldet');
@@ -239,10 +247,9 @@ async function frageAb(
     throw new Error(`HTTP ${res.status}: ${sicher}`);
   }
 
-  const json = await res.json() as {
+  const json = (await res.json()) as {
     errors?: { message?: string }[];
-    data?: { giftCard?: { balance?: { centAmount?: unknown; currencyCode?: unknown;
-                                      formattedAmount?: unknown } } };
+    data?: { giftCard?: { balance?: { centAmount?: unknown; currencyCode?: unknown; formattedAmount?: unknown } } };
   };
   if (json.errors?.length) {
     const text = json.errors.map(e => e.message ?? '?').join('; ');
@@ -265,7 +272,9 @@ async function frageAb(
 
 /** Ein Neuversuch nur bei 401 mit Token aus dem Vorrat — der kann abgelaufen sein. */
 export async function holeGuthaben(
-  nummer: string, pin: string, opt: { locale?: string; abruf?: Abruf } = {},
+  nummer: string,
+  pin: string,
+  opt: { locale?: string; abruf?: Abruf } = {},
 ): Promise<Guthaben> {
   const locale = opt.locale || LAND_STANDARD;
   const abruf = opt.abruf ?? ersatz ?? legoAbruf;
@@ -285,8 +294,10 @@ export async function holeGuthaben(
     // Zwei Ebenen: Auch der Aufbau der Sitzung kann 403 vom Bot-Schutz geben.
     if (e instanceof BotSchutz) {
       sitzungen.delete(locale);
-      console.warn(`[guthaben] Bot-Schutz — Sitzung für ${locale} verworfen, `
-                 + 'der nächste Versuch beginnt mit frischem Seitenaufruf');
+      console.warn(
+        `[guthaben] Bot-Schutz — Sitzung für ${locale} verworfen, ` +
+          'der nächste Versuch beginnt mit frischem Seitenaufruf',
+      );
     }
     throw e;
   }

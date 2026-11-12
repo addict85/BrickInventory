@@ -61,7 +61,7 @@ internal data class TeileFilterEintrag(
 
 /**
  * Farbe und Kategorie als zwei aufklappbare Filter — wie die beiden Filterlisten
- * der Webapp (03-parts.js, `loadPartsFilters` → `#color-filter` und
+ * der Webapp (parts.js, `loadPartsFilters` → `#color-filter` und
  * `#cat-filter`), jede mit der Anzahl daneben. `getParts` reicht `color` und
  * `category` an den Server.
  */

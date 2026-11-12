@@ -22,9 +22,9 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Jeder Abruf scheitert sofort — wie ein Rechner ohne Netz.
 const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = _echtesRequire.apply(this, arguments);
-  if (name === 'https')
+Module.prototype.require = function (name, ...rest) {
+  const m = _echtesRequire.call(this, name, ...rest);
+  if (name.replace(/^node:/, '') === 'https')
     return {
       ...m,
       get: () => {

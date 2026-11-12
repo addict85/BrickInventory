@@ -2,14 +2,15 @@
  * Portfolio-Kurve: Rechnet die SQL-Fassung dasselbe wie eine unabhängige
  * JavaScript-Fassung derselben Regel?
  */
-const test   = require('node:test');
+const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const db   = _req('db/database.js');
+const { keineDb } = require('./helpers/db');
+const db = _req('db/database.js');
 
 /** Dieselbe Regel geradeheraus: Tageswerte laden, in JS gruppieren, fortschreiben. */
 async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFilter) {
@@ -22,7 +23,8 @@ async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFi
      WHERE currency_code=$1 AND condition IN ('U','N') AND set_number IN (${platzhalter})
        AND (qty_avg_price>0 OR avg_price>0)
      ${dateFilter} ORDER BY recorded_at ASC, (condition = $2) ASC`,
-    [currency, condition, ...setNumbers]);
+    [currency, condition, ...setNumbers],
+  );
 
   const buckets = {};
   for (const r of rows) {
@@ -38,12 +40,15 @@ async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFi
   const carry = {};
   for (const k of Object.keys(buckets).sort().reverse()) Object.assign(carry, buckets[k].sets);
 
-  let punkte = Object.keys(buckets).sort().map(k => {
-    const b = buckets[k];
-    Object.assign(carry, b.sets);
-    const total = Object.entries(carry).reduce((s, [sn, p]) => s + p * (setQty[sn] || 1), 0);
-    return { day: b.day, fullDay: b.day, month: b.month, total: parseFloat(total.toFixed(2)) };
-  }).filter(p => p.total > 0);
+  let punkte = Object.keys(buckets)
+    .sort()
+    .map(k => {
+      const b = buckets[k];
+      Object.assign(carry, b.sets);
+      const total = Object.entries(carry).reduce((s, [sn, p]) => s + p * (setQty[sn] || 1), 0);
+      return { day: b.day, fullDay: b.day, month: b.month, total: parseFloat(total.toFixed(2)) };
+    })
+    .filter(p => p.total > 0);
 
   // Verdichtung wie früher: erst ab 120 Punkten, letzter Punkt je Monat, der
   // allererste Punkt bleibt exakt erhalten.
@@ -60,13 +65,13 @@ async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFi
   return punkte;
 }
 
-test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
+test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+    keineDb(t, e);
+    return;
   }
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -74,7 +79,11 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   await db.initSchema();
   // Und die Migrationen, nicht nur das Schema
   const c0 = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c0);
+  } finally {
+    c0.release();
+  }
 
   const { getPortfolioHistory } = _req('src/finanzen/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
@@ -89,24 +98,30 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   await db.run(
     `INSERT INTO sets (user_id, set_number)
      SELECT (CASE WHEN g%2=0 THEN $1::int ELSE $2::int END), (10000+g)||'-1'
-       FROM generate_series(1,30) g`, [u1, u2]);
+       FROM generate_series(1,30) g`,
+    [u1, u2],
+  );
   // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
   // Bestand steht dort eine Zeile.
   await db.run(
     `INSERT INTO rb_sets (set_num, name)
      SELECT (10000+g)||'-1', 'Set '||g FROM generate_series(1,30) g
-     ON CONFLICT (set_num) DO NOTHING`);
+     ON CONFLICT (set_num) DO NOTHING`,
+  );
   await db.run(
     `INSERT INTO set_catalog (set_number)
      SELECT (10000+g)||'-1' FROM generate_series(1,30) g
-     ON CONFLICT (set_number) DO NOTHING`);
+     ON CONFLICT (set_number) DO NOTHING`,
+  );
   // Kaufpreis und Menge je Erfassung — seit Migration 0032 der einzige Ort.
   // Die Menge MUSS zur sets-Zeile passen, sonst gewichtet portfolioHistory.ts
   // anders als die Kurve, die dieser Test vergleicht.
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      SELECT (CASE WHEN g%2=0 THEN $1::int ELSE $2::int END), (10000+g)||'-1', 1 + (g%3), 40, 'N'
-       FROM generate_series(1,30) g`, [u1, u2]);
+       FROM generate_series(1,30) g`,
+    [u1, u2],
+  );
 
   // Preisverlauf mit LÜCKEN: Ein Set schreibt nur jeden dritten Tag. Genau
   // dort trennt sich Fortschreibung von einfacher Tagessumme — ohne Lücken
@@ -116,7 +131,8 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
      SELECT (10000+g)||'-1', 'N', 'CHF', 30 + g + d*0.1, 31 + g,
             (CURRENT_DATE - (400 - d))::timestamptz + interval '9 hours'
        FROM generate_series(1,30) g, generate_series(1,400) d
-      WHERE (d + g) % 3 = 0`);
+      WHERE (d + g) % 3 = 0`,
+  );
   // Einzelne Tage zusätzlich mit einem zweiten Zustand und späterer Uhrzeit —
   // prüft, welcher Wert je Tag gewinnt.
   await db.run(
@@ -124,7 +140,8 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
      SELECT (10000+g)||'-1', 'U', 'CHF', 20 + g, 21 + g,
             (CURRENT_DATE - (400 - d))::timestamptz + interval '18 hours'
        FROM generate_series(1,10) g, generate_series(1,400) d
-      WHERE (d + g) % 3 = 0 AND d % 7 = 0`);
+      WHERE (d + g) % 3 = 0 AND d % 7 = 0`,
+  );
 
   // Die Mengen aus den Erfassungen (Migration 0036 hat sets.quantity
   // geloescht). Der JOIN auf `sets` ist dieselbe Einschraenkung wie in
@@ -135,15 +152,16 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
        LEFT JOIN set_acquisitions a
               ON a.user_id = s.user_id AND a.set_number = s.set_number
       GROUP BY s.set_number
-      ORDER BY s.set_number`);
+      ORDER BY s.set_number`,
+  );
   const setNumbers = setsRows.map(r => r.set_number);
   const setQty = Object.fromEntries(setsRows.map(r => [r.set_number, r.quantity]));
 
   const filter = {
-    week:  "AND recorded_at >= NOW() - INTERVAL '7 days'",
+    week: "AND recorded_at >= NOW() - INTERVAL '7 days'",
     month: "AND recorded_at >= NOW() - INTERVAL '30 days'",
-    year:  "AND recorded_at >= NOW() - INTERVAL '365 days'",
-    max:   '',
+    year: "AND recorded_at >= NOW() - INTERVAL '365 days'",
+    max: '',
   };
 
   for (const period of ['week', 'month', 'year', 'max']) {
@@ -151,17 +169,16 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
       const alt = await vergleichsFassung(setNumbers, setQty, 'CHF', 'N', filter[period]);
       const neu = await getPortfolioHistory(u1, [u1, u2], period, db, getSetting);
 
-      assert.equal(neu.points.length, alt.length,
-        `andere Anzahl Punkte: ${neu.points.length} statt ${alt.length}`);
+      assert.equal(neu.points.length, alt.length, `andere Anzahl Punkte: ${neu.points.length} statt ${alt.length}`);
 
       // Die Route liefert {x_label, value, y_frac} — verglichen werden die
       // WERTE in ihrer Reihenfolge.
       for (let i = 0; i < alt.length; i++) {
-        const a = alt[i], n = neu.points[i];
+        const a = alt[i],
+          n = neu.points[i];
         // Rundung: die alte Fassung rechnete in JS-Gleitkomma, die neue in
         // NUMERIC. Ein Rappen Unterschied ist erlaubt, mehr nicht.
-        assert.ok(Math.abs(n.value - a.total) <= 0.01,
-          `Punkt ${i} (${a.day}): ${n.value} statt ${a.total}`);
+        assert.ok(Math.abs(n.value - a.total) <= 0.01, `Punkt ${i} (${a.day}): ${n.value} statt ${a.total}`);
       }
     });
   }
@@ -177,12 +194,13 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   // demselben Schema weiter und schliesst ihn am Ende.
 });
 
-test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, async (t) => {
+test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, async t => {
   const db2 = _req('db/database.js');
-  try { await db2.get('SELECT 1'); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+  try {
+    await db2.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
 
   await t.test('doppelte Einträge desselben Tages werden abgewiesen', async () => {
@@ -216,8 +234,11 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     const weg = await purgeAltePreise();
     assert.ok(weg >= 2, `nicht alles entfernt: ${weg}`);
     for (const sn of ['88888-1', '__portfolio__1'])
-      assert.equal((await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number=$1`, [sn])).c, 0,
-        `alte Zeile ${sn} blieb liegen`);
+      assert.equal(
+        (await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number=$1`, [sn])).c,
+        0,
+        `alte Zeile ${sn} blieb liegen`,
+      );
   });
 
   await t.test('PRICE_HISTORY_KEEP_DAYS=0 schaltet das Aufräumen ab', async () => {
@@ -239,6 +260,9 @@ test('der Mailversand schaltet die Zertifikatsprüfung nirgends ab', () => {
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/mail/transport.ts'), 'utf8'));
-  assert.doesNotMatch(src, /rejectUnauthorized:\s*(false|!)/,
-    'Zertifikatsprüfung abschaltbar — SMTP-Zugangsdaten und Rücksetz-Links gingen über eine ungeprüfte Verbindung');
+  assert.doesNotMatch(
+    src,
+    /rejectUnauthorized:\s*(false|!)/,
+    'Zertifikatsprüfung abschaltbar — SMTP-Zugangsdaten und Rücksetz-Links gingen über eine ungeprüfte Verbindung',
+  );
 });

@@ -1,12 +1,12 @@
 import { konfig } from '../infra/konfig';
 import multer from 'multer';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import type { Request } from 'express';
 import { ausTabelle } from '../infra/validate';
 import { dateiFehler } from '../infra/fehlerTexte';
 import { ohneFehlendeDatei } from '../infra/fehler';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /** Für jedes Formular mit Datei: Ohne Grenzen nähme multer beliebig viele
  * Felder zu je 1 MB und beliebig viele Dateien in den Speicher. */
@@ -44,7 +44,11 @@ export async function inhaltPasstZuTyp(datei: string, mime: string): Promise<boo
   if (!kennung) return false;
   const kopf = Buffer.alloc(kennung.length);
   const fd = await fs.promises.open(datei, 'r');
-  try { await fd.read(kopf, 0, kopf.length, 0); } finally { await fd.close(); }
+  try {
+    await fd.read(kopf, 0, kopf.length, 0);
+  } finally {
+    await fd.close();
+  }
   return kopf.equals(kennung);
 }
 
@@ -55,7 +59,9 @@ export function uploadKontingentBytes(): number {
 }
 
 export async function belegterPlatz(ordner: string): Promise<number> {
-  const eintraege = await fs.promises.readdir(ordner, { withFileTypes: true }).catch(ohneFehlendeDatei('upload:ordner', []));
+  const eintraege = await fs.promises
+    .readdir(ordner, { withFileTypes: true })
+    .catch(ohneFehlendeDatei('upload:ordner', []));
   let summe = 0;
   for (const e of eintraege) if (e.isFile()) summe += (await fs.promises.stat(path.join(ordner, e.name))).size;
   return summe;
@@ -72,11 +78,20 @@ export async function privaterOrdner(wurzel: string, name: string): Promise<stri
 
 /** Eine Datei in den privaten Ordner eines Kontos: Endung aus dem MIME-Typ, nie
  * aus dem Namen des Clients; der Name zufällig, damit er sich nicht erraten lässt. */
-export function privaterEmpfang(o: { ordner: (req: Request) => Promise<string>; praefix: (req: Request) => string;
-                                     typen: Record<string, string>; maxBytes: number }) {
+export function privaterEmpfang(o: {
+  ordner: (req: Request) => Promise<string>;
+  praefix: (req: Request) => string;
+  typen: Record<string, string>;
+  maxBytes: number;
+}) {
   return multer({
     storage: multer.diskStorage({
-      destination: (req, _file, cb) => { o.ordner(req).then(d => cb(null, d), (e: Error) => cb(e, '')); },
+      destination: (req, _file, cb) => {
+        o.ordner(req).then(
+          d => cb(null, d),
+          (e: Error) => cb(e, ''),
+        );
+      },
       filename: (req, file, cb) => {
         const ext = ausTabelle(o.typen, file.mimetype);
         if (!ext) return cb(dateiFehler('falscher_typ', 'datei_typ_falsch'), '');
@@ -84,13 +99,16 @@ export function privaterEmpfang(o: { ordner: (req: Request) => Promise<string>; 
       },
     }),
     limits: { ...FORMULAR_GRENZEN, fileSize: o.maxBytes },
-    fileFilter: (_req, file, cb) => { if (ausTabelle(o.typen, file.mimetype)) cb(null, true); else cb(dateiFehler('falscher_typ', 'datei_typ_falsch')); },
+    fileFilter: (_req, file, cb) => {
+      if (ausTabelle(o.typen, file.mimetype)) cb(null, true);
+      else cb(dateiFehler('falscher_typ', 'datei_typ_falsch'));
+    },
   });
 }
 
 /** Vor dem Schreiben: Content-Length schliesst die Formularhülle ein, ist also nie kleiner. */
 export async function kontingentReichtFuer(ordner: string, laenge: number): Promise<boolean> {
-  return await belegterPlatz(ordner) + laenge <= uploadKontingentBytes();
+  return (await belegterPlatz(ordner)) + laenge <= uploadKontingentBytes();
 }
 
 /** Der Pfad kommt aus der Anfrage (multer); was ausserhalb der Ablage läge, fasst der Dienst nicht an. */
@@ -103,11 +121,18 @@ export function unterWurzel(wurzel: string, datei: string): string {
 
 /** Nach dem Schreiben: nur für den Dienst lesbar, Inhalt passt zum Typ, und das
  * Kontingent hält auch ohne Content-Length (chunked). Sonst ist die Datei wieder weg. */
-export async function pruefeEmpfangeneDatei(wurzel: string, empfangen: string, mime: string): Promise<null | 'datei_inhalt_falsch' | 'upload_kontingent_voll'> {
+export async function pruefeEmpfangeneDatei(
+  wurzel: string,
+  empfangen: string,
+  mime: string,
+): Promise<null | 'datei_inhalt_falsch' | 'upload_kontingent_voll'> {
   const datei = unterWurzel(wurzel, empfangen);
   await fs.promises.chmod(datei, 0o600);
-  const grund = !await inhaltPasstZuTyp(datei, mime) ? 'datei_inhalt_falsch' as const
-    : await belegterPlatz(path.dirname(datei)) > uploadKontingentBytes() ? 'upload_kontingent_voll' as const : null;
+  const grund = !(await inhaltPasstZuTyp(datei, mime))
+    ? ('datei_inhalt_falsch' as const)
+    : (await belegterPlatz(path.dirname(datei))) > uploadKontingentBytes()
+      ? ('upload_kontingent_voll' as const)
+      : null;
   if (grund) await fs.promises.rm(datei, { force: true });
   return grund;
 }

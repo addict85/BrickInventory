@@ -18,30 +18,47 @@ const assert = require('node:assert/strict');
 const { starteApp } = require('./helpers/app-browser');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 
-test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, timeout: 300_000 }, async (t) => {
+test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await starteApp(t, {
     name: `plus_${process.pid}`,
     bestand: async (db, uid) => {
       await katalogSet(db, '21318-1', { name: 'Baumhaus', year: 2019 });
       await haeltSet(db, uid, '21318-1', 1, { preis: 224.99 });
-      await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
-                    VALUES ('21318-1', 'N', 'EUR', 300, 364.32, 400, 364.32, 10, NOW()) ON CONFLICT DO NOTHING`).catch(() => {});
+      await db
+        .run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
+                    VALUES ('21318-1', 'N', 'EUR', 300, 364.32, 400, 364.32, 10, NOW()) ON CONFLICT DO NOTHING`)
+        .catch(() => {});
     },
   });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, db, uid, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
   await b.auswerten(`location.hash = '#/sammlung/set/21318-1'; true`);
-  await bis(`document.getElementById('set-modal')?.classList.contains('open') && !!document.getElementById('m-qty')`, 'Set-Detail');
+  await bis(
+    `document.getElementById('set-modal')?.classList.contains('open') && !!document.getElementById('m-qty')`,
+    'Set-Detail',
+  );
   await b.auswerten(`document.querySelector('#set-modal [data-click="mQtyInc"]').click(); true`);
-  await bis(`[...document.querySelectorAll('#toasts .toast')].some(x => /angelegt/.test(x.textContent))`, 'Toast nach „+“');
+  await bis(
+    `[...document.querySelectorAll('#toasts .toast')].some(x => /angelegt/.test(x.textContent))`,
+    'Toast nach „+“',
+  );
 
   await t.test('Toast nennt den geschätzten Preis', async () => {
     const texte = await b.auswerten(`[...document.querySelectorAll('#toasts .toast')].map(x => x.textContent)`);
-    assert.ok(texte.some(x => /Exemplar mit geschätztem Preis .*364[.,]32.* angelegt/.test(x)), JSON.stringify(texte));
+    assert.ok(
+      texte.some(x => /Exemplar mit geschätztem Preis .*364[.,]32.* angelegt/.test(x)),
+      JSON.stringify(texte),
+    );
     assert.ok(!texte.some(x => /^Gespeichert/.test(x.trim())), `nur „Gespeichert“: ${JSON.stringify(texte)}`);
-    const zeile = await db.get(`SELECT price_estimated, purchase_price FROM set_acquisitions WHERE user_id=$1 ORDER BY id DESC LIMIT 1`, [uid]);
+    const zeile = await db.get(
+      `SELECT price_estimated, purchase_price FROM set_acquisitions WHERE user_id=$1 ORDER BY id DESC LIMIT 1`,
+      [uid],
+    );
     assert.equal(zeile.price_estimated, true, 'Testdaten: der Server schätzt den Preis');
   });
   await t.test('die Kaufpreisliste erklärt ≈', async () => {
@@ -50,7 +67,9 @@ test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, time
     assert.match(legende, /≈ geschätzt/);
   });
   await t.test('Ändern öffnet die Kaufpreise', async () => {
-    const da = await b.auswerten(`(() => { const k = [...document.querySelectorAll('#toasts .toast-aktion')].find(x => x.textContent === 'Ändern'); k?.click(); return !!k; })()`);
+    const da = await b.auswerten(
+      `(() => { const k = [...document.querySelectorAll('#toasts .toast-aktion')].find(x => x.textContent === 'Ändern'); k?.click(); return !!k; })()`,
+    );
     assert.ok(da, 'Knopf „Ändern“ fehlt');
     await bis(`document.getElementById('acq-modal')?.classList.contains('open')`, 'Kaufpreis-Dialog');
   });

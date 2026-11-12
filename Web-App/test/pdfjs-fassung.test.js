@@ -34,33 +34,49 @@ test('Cache-Brecher in pdfjs-boot.js nennt dieselbe Fassung', () => {
   assert.deepEqual(v, [fassung, fassung]);
 });
 
-test('die ausgelieferten Dateien sind die des Pakets', (t) => {
+test('die ausgelieferten Dateien sind die des Pakets', t => {
   if (!fs.existsSync(installiert)) return t.skip('pdfjs-dist nicht installiert (npm ci)');
   for (const d of ['pdf.min.mjs', 'pdf.worker.min.mjs'])
-    assert.ok(fs.readFileSync(path.join(ROOT, 'public', 'vendor', 'pdfjs', d))
-      .equals(fs.readFileSync(path.join(installiert, 'build', d))), `${d} weicht von pdfjs-dist ${fassung} ab`);
+    assert.ok(
+      fs
+        .readFileSync(path.join(ROOT, 'public', 'vendor', 'pdfjs', d))
+        .equals(fs.readFileSync(path.join(installiert, 'build', d))),
+      `${d} weicht von pdfjs-dist ${fassung} ab`,
+    );
 });
 
 // Ab PDF.js 5 gibt es den eval-Pfad für Schriften nicht mehr; eine ältere
 // Fassung brächte ihn zurück (die CSP verböte ihn, isEvalSupported auch).
 // Gegenprobe (02.11.2026 gemessen): `new Function("x")` an eine Kopie gehängt → rot.
 test('die ausgelieferten PDF.js-Dateien enthalten weder eval noch new Function', () => {
-  for (const d of [path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.min.mjs'), path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.worker.min.mjs')]) {
+  for (const d of [
+    path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.min.mjs'),
+    path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.worker.min.mjs'),
+  ]) {
     const text = fs.readFileSync(d, 'utf8');
     assert.ok(text.length > 100_000, `${d} ist leer`);
     assert.doesNotMatch(text, /\beval\s*\(|\bnew\s+Function\s*\(/, d);
   }
 });
 
-test('das Kopierskript legt die Dateien ab und zieht die Fassung nach', (t) => {
+test('das Kopierskript legt die Dateien ab und zieht die Fassung nach', t => {
   if (!fs.existsSync(installiert)) return t.skip('pdfjs-dist nicht installiert (npm ci)');
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-pdfjs-'));
   t.after(() => fs.rmSync(ziel, { recursive: true, force: true }));
   fs.mkdirSync(path.join(ziel, 'public', 'js'), { recursive: true });
-  fs.writeFileSync(path.join(ziel, 'public', 'js', 'pdfjs-boot.js'),
-    "import '/vendor/pdfjs/pdf.min.mjs?v=1.0.0';\nw = '/vendor/pdfjs/pdf.worker.min.mjs?v=1.0.0';\n");
+  fs.writeFileSync(
+    path.join(ziel, 'public', 'js', 'pdfjs-boot.js'),
+    "import '/vendor/pdfjs/pdf.min.mjs?v=1.0.0';\nw = '/vendor/pdfjs/pdf.worker.min.mjs?v=1.0.0';\n",
+  );
   const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'pdfjs-kopieren.js'), ziel], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   assert.ok(fs.existsSync(path.join(ziel, 'public', 'vendor', 'pdfjs', 'pdf.worker.min.mjs')));
-  assert.equal((fs.readFileSync(path.join(ziel, 'public', 'js', 'pdfjs-boot.js'), 'utf8').match(new RegExp(`v=${fassung.replace(/\./g, '\\.')}`, 'g')) || []).length, 2);
+  assert.equal(
+    (
+      fs
+        .readFileSync(path.join(ziel, 'public', 'js', 'pdfjs-boot.js'), 'utf8')
+        .match(new RegExp(`v=${fassung.replace(/\./g, '\\.')}`, 'g')) || []
+    ).length,
+    2,
+  );
 });

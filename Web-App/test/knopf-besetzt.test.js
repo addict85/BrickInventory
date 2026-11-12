@@ -14,18 +14,33 @@ const JS = path.join(__dirname, '..', 'public', 'js');
 
 /** Der Inhalt der Klammergruppe ab `auf` — Zeichenketten und Kommentare respektiert. */
 function gruppe(t, auf) {
-  let tiefe = 0, i = auf;
+  let tiefe = 0,
+    i = auf;
   while (i < t.length) {
     const c = t[i];
-    if (c === '/' && t[i + 1] === '/') { i = t.indexOf('\n', i); continue; }
-    if (c === '/' && t[i + 1] === '*') { i = t.indexOf('*/', i) + 2; continue; }
+    if (c === '/' && t[i + 1] === '/') {
+      i = t.indexOf('\n', i);
+      continue;
+    }
+    if (c === '/' && t[i + 1] === '*') {
+      i = t.indexOf('*/', i) + 2;
+      continue;
+    }
     if (c === '"' || c === "'" || c === '`') {
-      const q = c; i++;
-      while (i < t.length && t[i] !== q) { if (t[i] === '\\') i++; i++; }
-      i++; continue;
+      const q = c;
+      i++;
+      while (i < t.length && t[i] !== q) {
+        if (t[i] === '\\') i++;
+        i++;
+      }
+      i++;
+      continue;
     }
     if (c === '(') tiefe++;
-    else if (c === ')') { tiefe--; if (!tiefe) return t.slice(auf + 1, i); }
+    else if (c === ')') {
+      tiefe--;
+      if (!tiefe) return t.slice(auf + 1, i);
+    }
     i++;
   }
   throw new Error('keine passende Klammer');
@@ -35,7 +50,8 @@ test('knopfBesetzt(): zweites Argument ist eine Beschriftung, kein Rückruf', ()
   const dateien = fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'app.bundle.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
 
-  const falsch = [], ungenutzt = [];
+  const falsch = [],
+    ungenutzt = [];
   let gefunden = 0;
   for (const name of dateien) {
     const src = fs.readFileSync(path.join(JS, name), 'utf8');
@@ -47,29 +63,37 @@ test('knopfBesetzt(): zweites Argument ist eine Beschriftung, kein Rückruf', ()
       const zeile = src.slice(0, m.index).split('\n').length;
       const args = gruppe(src, m.index + m[0].length - 1);
       // Zweites Argument auf oberster Ebene abtrennen.
-      let tiefe = 0, zweites = null;
+      let tiefe = 0,
+        zweites = null;
       for (let i = 0; i < args.length; i++) {
         const c = args[i];
         if ('([{'.includes(c)) tiefe++;
         else if (')]}'.includes(c)) tiefe--;
-        else if (c === ',' && tiefe === 0) { zweites = args.slice(i + 1).trim(); break; }
+        else if (c === ',' && tiefe === 0) {
+          zweites = args.slice(i + 1).trim();
+          break;
+        }
       }
-      if (zweites && /^(async\b|\(|function\b)/.test(zweites))
-        falsch.push(`${name}:${zeile}`);
+      if (zweites && /^(async\b|\(|function\b)/.test(zweites)) falsch.push(`${name}:${zeile}`);
       // Und der Rückgabewert MUSS irgendwo landen — sonst bleibt der Knopf
       // für immer besetzt.
-      if (!/(=|return|\?|:)\s*$/.test(davor.trimEnd() + ' '.repeat(0)) &&
-          !/[=?:]\s*$/.test(davor.trimEnd()))
+      if (!/(=|return|\?|:)\s*$/.test(davor.trimEnd() + ' '.repeat(0)) && !/[=?:]\s*$/.test(davor.trimEnd()))
         ungenutzt.push(`${name}:${zeile}`);
     }
   }
   assert.ok(gefunden >= 5, `Nur ${gefunden} Aufrufe gefunden — greift die Suche noch?`);
-  assert.deepEqual(falsch, [],
+  assert.deepEqual(
+    falsch,
+    [],
     'Hier wird eine FUNKTION als Beschriftung übergeben. Sie landet als Text ' +
-    'auf dem Knopf, und ihr Rumpf läuft nie — genau der Fehler aus Marcos Bild.');
-  assert.deepEqual(ungenutzt, [],
+      'auf dem Knopf, und ihr Rumpf läuft nie — genau der Fehler aus Marcos Bild.',
+  );
+  assert.deepEqual(
+    ungenutzt,
+    [],
     'Hier wird die Freigabe weggeworfen. Der Knopf bleibt dann dauerhaft ' +
-    'deaktiviert und trägt weiter „…" als Beschriftung.');
+      'deaktiviert und trägt weiter „…" als Beschriftung.',
+  );
 });
 
 /**
@@ -85,14 +109,21 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
   const { JSDOM } = require(path.join(__dirname, '..', 'node_modules', 'jsdom'));
 
   // Die echte Funktion aus dem Quelltext holen — nicht nachgebaut.
-  const src = fs.readFileSync(path.join(JS, '01-dom.js'), 'utf8');
+  const src = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
   const auf = src.indexOf('export function knopfBesetzt');
   assert.ok(auf > 0, 'knopfBesetzt() nicht gefunden — umbenannt?');
   const start = src.indexOf('{', src.indexOf(')', auf));
-  let tiefe = 0, ende = start;
+  let tiefe = 0,
+    ende = start;
   for (let i = start; i < src.length; i++) {
     if (src[i] === '{') tiefe++;
-    else if (src[i] === '}') { tiefe--; if (!tiefe) { ende = i; break; } }
+    else if (src[i] === '}') {
+      tiefe--;
+      if (!tiefe) {
+        ende = i;
+        break;
+      }
+    }
   }
   const quelle = src.slice(auf, ende + 1).replace(/^export\s+/, '');
   const knopfBesetzt = new Function(`${quelle}; return knopfBesetzt;`)();
@@ -102,17 +133,20 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
   const btn = dom.window.document.getElementById('b');
   // jsdom rechnet kein Layout; offsetWidth ist dort immer 0. Die gemessene
   // Breite des echten Knopfes kommt deshalb von Hand herein.
-  const breite = (px) => Object.defineProperty(btn, 'offsetWidth', { value: px, configurable: true });
+  const breite = px => Object.defineProperty(btn, 'offsetWidth', { value: px, configurable: true });
   breite(235);
 
   // 1. Besetzt: Beschriftung steht, der Zustand ist trotzdem sichtbar.
   const frei = knopfBesetzt(btn);
-  assert.equal(btn.textContent, BESCHRIFTUNG,
-    'Die Beschriftung darf nicht weichen — genau das meinte Marco mit „man ' +
-    'sieht ganz kurz Punkt".');
-  assert.ok(btn.classList.contains('besetzt'),
-    'Ohne diese Klasse fehlt jedes Zeichen, dass der Knopf arbeitet — ' +
-    'die Regel dazu steht in styles.css.');
+  assert.equal(
+    btn.textContent,
+    BESCHRIFTUNG,
+    'Die Beschriftung darf nicht weichen — genau das meinte Marco mit „man ' + 'sieht ganz kurz Punkt".',
+  );
+  assert.ok(
+    btn.classList.contains('besetzt'),
+    'Ohne diese Klasse fehlt jedes Zeichen, dass der Knopf arbeitet — ' + 'die Regel dazu steht in styles.css.',
+  );
   assert.equal(btn.disabled, true);
 
   // 2. Freigegeben: alles zurück.
@@ -125,8 +159,11 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
   // 3. Ein Knopf mit EIGENER Mindestbreite behält sie.
   btn.style.minWidth = '300px';
   knopfBesetzt(btn)();
-  assert.equal(btn.style.minWidth, '300px',
-    'Die Freigabe darf nicht blind leeren, sonst verliert der Knopf seine eigene Vorgabe.');
+  assert.equal(
+    btn.style.minWidth,
+    '300px',
+    'Die Freigabe darf nicht blind leeren, sonst verliert der Knopf seine eigene Vorgabe.',
+  );
   btn.style.minWidth = '';
 
   // 4. Ein unsichtbarer Knopf (offsetWidth 0) bekommt nichts aufgedrückt.
@@ -141,9 +178,11 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
   breite(235);
   const freiPdf = knopfBesetzt(btn, 'erstelle…');
   assert.equal(btn.textContent, 'erstelle…');
-  assert.equal(btn.style.minWidth, '235px',
-    'Wechselt die Beschriftung doch, schrumpft der Knopf — dann muss die ' +
-    'Breite stehen bleiben.');
+  assert.equal(
+    btn.style.minWidth,
+    '235px',
+    'Wechselt die Beschriftung doch, schrumpft der Knopf — dann muss die ' + 'Breite stehen bleiben.',
+  );
   freiPdf();
   assert.equal(btn.textContent, BESCHRIFTUNG, 'Danach kommt die ursprüngliche Beschriftung zurück.');
 

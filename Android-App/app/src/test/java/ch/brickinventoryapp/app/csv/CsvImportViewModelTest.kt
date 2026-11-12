@@ -15,6 +15,8 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -31,20 +33,25 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.NummernTexte
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.SetDateienRepository
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
 /**
- * Der Balken des CSV-Imports ausgeführt: Strom, Vordergrund-Dienst und Ablage im
- * Speicher, Api ohne Netz, Zeit virtuell. So sind die fünf Sekunden „Balken bleibt
- * stehen“ und der wachsende Abstand der Wiederverbindung ohne Warten prüfbar.
+ * Der Balken des CSV-Imports ausgeführt, ViewModel samt Koordinator: Strom,
+ * Vordergrund-Dienst und Ablage im Speicher, Api ohne Netz, Zeit virtuell. So sind
+ * die fünf Sekunden „Balken bleibt stehen“ und der wachsende Abstand der
+ * Wiederverbindung ohne Warten prüfbar. Das ViewModel startet den Strom selbst,
+ * sobald die Sitzung angemeldet ist; kein Bildschirm stösst ihn an.
  *
  * Gegenproben:
  *   csv-zustand-zuerst  entschieden mit dem schon neuen Zustand → rot „ein laufender Import …“
- *   csv-ohne-nachladen  finishCsvImport() ohne `bestand.melde` → rot „ein laufender Import …“
+ *   csv-ohne-nachladen  NACHLADEN ohne `abgleich.bestand()` → rot „ein laufender Import …“
  *   csv-rueckzug-fest   der Abstand wächst nicht mehr → rot „ein abgerissener Strom …“
  *   csv-abbruch-still   cancelCsvImport() meldet einen Fehler nicht → rot „der Abbruch meldet …“
+ *   csv-folgt-doppelt   folge() ohne die Sperre `folgt` → rot „ein laufender Import …“
+ *                       (zwei Verbindungen, Dienst zweimal gestartet)
+ *   csv-abmelden-laesst-dienst  beim Abmelden kein dienst.stop() → rot „nach dem Abmelden …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CsvImportViewModelTest {
@@ -62,6 +69,9 @@ class CsvImportViewModelTest {
             verbindungen += uhr()
             val folge = rest.removeFirstOrNull() ?: awaitCancellation()
             folge.forEach { emit(it) }
+            // Wie CsvImportSseClient: Er endet nur mit Failed. Ein sauberes Ende hiesse
+            // für den Beobachter „sofort neu verbinden“ und zählte eine Verbindung zu viel.
+            if (folge.lastOrNull() !is CsvImportSseClient.Event.Failed) awaitCancellation()
         }
     }
 
@@ -85,10 +95,15 @@ class CsvImportViewModelTest {
     private fun status(s: String, done: Int = 0) =
         CsvImportSseClient.Event.Status(CsvImportStatus(success = true, status = Laufstatus.aus(s), total = 3, done = done))
 
+    private lateinit var koordinator: CsvImportKoordinator
+
+    /** Angemeldet, wie nach dem Start der App; das ViewModel folgt dem Import von selbst. */
     private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.uhr = { testScheduler.currentTime }
-        val vm = CsvImportViewModel(CsvImportBeobachter(strom, SetsRepository(fake.api, t.cache)), dienst, NummernTexte,
-            t.abgleich, t.meldungen, t.sitzung)
+        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api, t.cache))
+        koordinator = CsvImportKoordinator(beobachter, dienst, t.abgleich)
+        t.sitzung.angemeldet(admin = false)
+        val vm = CsvImportViewModel(koordinator, beobachter, NummernTexte, t.meldungen, t.sitzung)
         try {
             block(vm)
         } finally {
@@ -102,10 +117,11 @@ class CsvImportViewModelTest {
         val strom = Strom(listOf(status("running", 1), status("running", 2), status("done", 3)))
         mitVm(strom, dienst) { vm ->
             val vorher = fake.aufrufeVon("getSets")
-            vm.startCsvImportWatcher()
-            vm.startCsvImportWatcher()
+            // Ein zweiter Folger (etwa ein zweites ViewModel) öffnet keine zweite Verbindung.
+            val zweiter = backgroundScope.launch { koordinator.folge(t.sitzung.state.map { it.isLoggedIn }) }
             runCurrent()
             assertEquals("Mehrfach gestartet: eine Verbindung", 1, strom.verbindungen.size)
+            zweiter.cancel()
             assertEquals("Der Dienst startet beim Anlaufen, nicht je Zeile", 1, dienst.starts)
             assertEquals(3, vm.csvImportState.value.done)
             assertFalse(vm.csvImportState.value.running)
@@ -127,7 +143,6 @@ class CsvImportViewModelTest {
         val strom = Strom(fehler, fehler, fehler)
         mitVm(strom, dienst) { vm ->
             fake.antworten["getCsvImportStatus"] = CsvImportStatus(success = true, status = Laufstatus.LAEUFT, total = 5, done = 2)
-            vm.startCsvImportWatcher()
             runCurrent()
             assertEquals("Nach dem Abriss eine Abfrage", 1, fake.aufrufeVon("getCsvImportStatus"))
             assertEquals("Die Abfrage füllt den Balken", 2, vm.csvImportState.value.done)
@@ -140,19 +155,40 @@ class CsvImportViewModelTest {
     }
 
     @Test
-    fun `nach dem Abmelden ist der Balken leer und die Verbindung zu`() {
+    fun `nach dem Abmelden ist der Balken leer, die Verbindung zu und der Dienst angehalten`() {
         val strom = Strom(listOf(status("running", 1)))
-        mitVm(strom, Dienst()) { vm ->
-            vm.startCsvImportWatcher()
+        val dienst = Dienst()
+        mitVm(strom, dienst) { vm ->
             runCurrent()
             assertTrue(vm.csvImportState.value.running)
+            assertEquals(1, dienst.starts)
             val vorher = strom.verbindungen.size
             t.sitzung.abgemeldet()
             advanceUntilIdle()
             assertFalse(vm.csvImportState.value.running)
             assertEquals(0, vm.csvImportState.value.done)
+            assertEquals("Der Dienst läuft nicht für das abgemeldete Konto weiter", 1, dienst.stops)
             advanceTimeBy(120_000)
             assertEquals("Abgemeldet verbindet niemand neu", vorher, strom.verbindungen.size)
+        }
+    }
+
+    @Test
+    fun `ohne Anmeldung verbindet niemand, die Anmeldung startet den Strom`() = runTest(takt) {
+        val strom = Strom(listOf(status("running", 1)))
+        strom.uhr = { testScheduler.currentTime }
+        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api, t.cache))
+        val vm = CsvImportViewModel(CsvImportKoordinator(beobachter, Dienst(), t.abgleich), beobachter,
+            NummernTexte, t.meldungen, t.sitzung)
+        try {
+            advanceTimeBy(60_000)
+            assertEquals("Abgemeldet öffnet das ViewModel keinen Strom", 0, strom.verbindungen.size)
+            t.sitzung.angemeldet(admin = false)
+            runCurrent()
+            assertEquals(1, strom.verbindungen.size)
+            assertTrue(vm.csvImportState.value.running)
+        } finally {
+            vm.viewModelScope.cancel()
         }
     }
 

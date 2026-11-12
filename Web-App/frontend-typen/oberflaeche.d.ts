@@ -32,24 +32,34 @@ interface Element {
 
 // Was G(id) liefert. Die Kennung bestimmt, ob Eingabe, Auswahl oder Verweis
 // dahintersteht; der Typ deckt die Felder ab, die die Oberfläche daran liest.
-type Feld = HTMLInputElement
-  & Pick<HTMLSelectElement, 'options' | 'selectedIndex' | 'selectedOptions'>
-  & Pick<HTMLAnchorElement, 'href' | 'download'>;
+type Feld = HTMLInputElement &
+  Pick<HTMLSelectElement, 'options' | 'selectedIndex' | 'selectedOptions'> &
+  Pick<HTMLAnchorElement, 'href' | 'download'>;
 
-// Einträge der manuellen Teile- und Figurenlisten: von 03-parts.js, 06-minifigs.js und 13-acquisition-modals.js
+// Einträge der manuellen Teile- und Figurenlisten: von parts.js, minifigs.js und acquisition-modals.js
 // geteilt. Als globale Typen, damit keine Datei der anderen wegen importiert (kein Typkreis).
 type ManuellesTeil = import('./vertrag').ManualPartsResponse['parts'][number];
 type ManuelleFigur = import('./vertrag').ManualFigsResponse['figs'][number];
 
-// Der Teil von PDF.js, den der Betrachter (12-pdfviewer.js) benutzt. PDF.js
+// Der Teil von PDF.js, den der Betrachter (pdfviewer.js) benutzt. PDF.js
 // kommt als eigenes ES-Modul aus public/vendor (pdfjs-boot.js).
-interface PdfAnsicht { width: number; height: number }
+interface PdfAnsicht {
+  width: number;
+  height: number;
+}
 interface PdfSeite {
   getViewport(o: { scale: number }): PdfAnsicht;
-  render(o: { canvasContext: CanvasRenderingContext2D | null; viewport: PdfAnsicht; background?: string }): { promise: Promise<void>; cancel(): void };
+  render(o: { canvasContext: CanvasRenderingContext2D | null; viewport: PdfAnsicht; background?: string }): {
+    promise: Promise<void>;
+    cancel(): void;
+  };
   cleanup(): void;
 }
-interface PdfDokument { numPages: number; getPage(n: number): Promise<PdfSeite>; destroy(): void }
+interface PdfDokument {
+  numPages: number;
+  getPage(n: number): Promise<PdfSeite>;
+  destroy(): void;
+}
 interface PdfJs {
   GlobalWorkerOptions: { workerSrc: string };
   getDocument(quelle: object): { promise: Promise<PdfDokument>; destroy(): void };

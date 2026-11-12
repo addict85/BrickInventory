@@ -27,11 +27,17 @@ const assert = require('node:assert/strict');
 const { starteApp, warte } = require('./helpers/app-browser');
 const { musterSammlung } = require('./helpers/bestand');
 
-test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async (t) => {
+test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
   const app = await starteApp(t, { name: `r11_${process.pid}`, bestand: musterSammlung });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, db } = app;
-  const geh = async (pfad) => { await b.auswerten(`location.hash = '#/${pfad}'; true`); await warte(300); };
+  const geh = async pfad => {
+    await b.auswerten(`location.hash = '#/${pfad}'; true`);
+    await warte(300);
+  };
 
   await t.test('Kaufpreis-Karte nennt ihren Bezug', async () => {
     await geh('finanzen');
@@ -62,13 +68,22 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
         schrift: Math.min(...[...svg.querySelectorAll('text')].map(x => parseFloat(getComputedStyle(x).fontSize) * k)) }; })()`;
     const vorher = await b.auswerten(mass);
     // Das alte Bild weg, damit gemessen wird, was bei 200 % neu gezeichnet ist.
-    await b.auswerten(`document.documentElement.style.fontSize = '200%'; document.getElementById('portfolio-chart').innerHTML = ''; true`);
-    await geh('sammlung'); await geh('finanzen');
+    await b.auswerten(
+      `document.documentElement.style.fontSize = '200%'; document.getElementById('portfolio-chart').innerHTML = ''; true`,
+    );
+    await geh('sammlung');
+    await geh('finanzen');
     await bis(`!!document.querySelector('#portfolio-chart svg polyline')`, 'Wertdiagramm bei 200 %', 200);
     const nachher = await b.auswerten(mass);
     await b.auswerten(`document.documentElement.style.fontSize = ''; true`);
-    assert.ok(nachher.breite >= nachher.behaelter * 0.95, `Diagramm wächst mit der Schrift: ${JSON.stringify(nachher)}`);
-    assert.ok(nachher.schrift >= vorher.schrift * 1.8, `Diagramm wächst mit der Schrift: ${vorher.schrift} → ${nachher.schrift}`);
+    assert.ok(
+      nachher.breite >= nachher.behaelter * 0.95,
+      `Diagramm wächst mit der Schrift: ${JSON.stringify(nachher)}`,
+    );
+    assert.ok(
+      nachher.schrift >= vorher.schrift * 1.8,
+      `Diagramm wächst mit der Schrift: ${vorher.schrift} → ${nachher.schrift}`,
+    );
   });
 
   await t.test('Fusszeile der Teile nennt Einträge', async () => {
@@ -82,46 +97,78 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
   await t.test('unbekanntes Set: Klartext statt „Fehler“', async () => {
     await geh('sammlung');
     await b.auswerten(`location.hash = '#/sammlung/set/99999-9'; true`);
-    await bis(`[...document.querySelectorAll('#toasts .toast')].some(x => /nicht in deiner Sammlung/.test(x.textContent))`, 'unbekanntes Set', 100);
-    assert.equal(await b.auswerten(`!!document.querySelector('#toasts .toast .toast-aktion')`), true, 'mit „Hinzufügen“');
+    await bis(
+      `[...document.querySelectorAll('#toasts .toast')].some(x => /nicht in deiner Sammlung/.test(x.textContent))`,
+      'unbekanntes Set',
+      100,
+    );
+    assert.equal(
+      await b.auswerten(`!!document.querySelector('#toasts .toast .toast-aktion')`),
+      true,
+      'mit „Hinzufügen“',
+    );
   });
 
   await t.test('Weitere Aktionen überlagern den Inhalt', async () => {
     await geh('sammlung');
     await b.auswerten(`location.hash = '#/sammlung/set/10294-1'; true`);
-    await bis(`document.getElementById('set-modal').classList.contains('open') && !!document.getElementById('m-det').querySelector('.dr')`, 'Set-Dialog', 100);
+    await bis(
+      `document.getElementById('set-modal').classList.contains('open') && !!document.getElementById('m-det').querySelector('.dr')`,
+      'Set-Dialog',
+      100,
+    );
     const hoehe = `document.querySelector('#set-modal .mfooter').getBoundingClientRect().height`;
     const vorher = await b.auswerten(hoehe);
     await b.auswerten(`document.querySelector('#set-modal .mehr-menue > summary').click(); true`);
     await bis(`document.querySelector('#set-modal .mehr-menue').open`, 'Menü offen');
-    const lage = await b.auswerten(`({ liste: document.querySelector('#set-modal .mehr-liste').getBoundingClientRect().bottom,
+    const lage =
+      await b.auswerten(`({ liste: document.querySelector('#set-modal .mehr-liste').getBoundingClientRect().bottom,
       fuss: document.querySelector('#set-modal .mehr-menue > summary').getBoundingClientRect().top })`);
-    assert.ok(lage.liste <= lage.fuss + 1, `Weitere Aktionen überlagern den Inhalt (über ihrem Knopf): ${JSON.stringify(lage)}`);
-    assert.ok(Math.abs(await b.auswerten(hoehe) - vorher) < 2, 'die Fusszeile wächst nicht');
+    assert.ok(
+      lage.liste <= lage.fuss + 1,
+      `Weitere Aktionen überlagern den Inhalt (über ihrem Knopf): ${JSON.stringify(lage)}`,
+    );
+    assert.ok(Math.abs((await b.auswerten(hoehe)) - vorher) < 2, 'die Fusszeile wächst nicht');
     await b.auswerten(`document.querySelector('#set-modal [data-dialog-zu]').click(); true`);
   });
 
   await t.test('keine Aktionen gegen das eigene Konto', async () => {
     const ANDERE = `r11_andere_${process.pid}`;
-    await db.run(`INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true)`, [ANDERE, `${ANDERE}@example.org`]);
+    await db.run(
+      `INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true)`,
+      [ANDERE, `${ANDERE}@example.org`],
+    );
     t.after(() => db.run('DELETE FROM users WHERE username = $1', [ANDERE]).catch(() => {}));
     await geh('einstellungen/benutzer');
-    await bis(`[...document.querySelectorAll('#users-tbl tr')].some(r => r.textContent.includes(${JSON.stringify(ANDERE)}))`, 'Benutzerliste', 100);
-    const z = await b.auswerten(`(() => { const zeile = n => [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === n);
+    await bis(
+      `[...document.querySelectorAll('#users-tbl tr')].some(r => r.textContent.includes(${JSON.stringify(ANDERE)}))`,
+      'Benutzerliste',
+      100,
+    );
+    const z =
+      await b.auswerten(`(() => { const zeile = n => [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === n);
       const eigene = zeile(${JSON.stringify(`r11_${process.pid}`)}), andere = zeile(${JSON.stringify(ANDERE)});
       return { eigene: eigene.querySelectorAll('button').length, andereDirekt: andere.querySelectorAll('.nutzer-aktionen > button').length,
         andereMehr: andere.querySelectorAll('.v-mehr .mehr-liste button').length }; })()`);
     assert.equal(z.eigene, 0, 'keine Aktionen gegen das eigene Konto');
-    assert.deepEqual([z.andereDirekt, z.andereMehr], [2, 2], 'Passwort und Rolle direkt, Deaktivieren und Löschen hinter „Weitere“');
+    assert.deepEqual(
+      [z.andereDirekt, z.andereMehr],
+      [2, 2],
+      'Passwort und Rolle direkt, Deaktivieren und Löschen hinter „Weitere“',
+    );
   });
 
   await t.test('Werkbank sperrt die Darstellung', async () => {
     await geh('konto');
     await bis(`document.getElementById('design-wahl')?.options.length > 1`, 'Design-Wahl');
-    await b.auswerten(`(() => { const s = document.getElementById('design-wahl'); s.value = 'werkbank'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+    await b.auswerten(
+      `(() => { const s = document.getElementById('design-wahl'); s.value = 'werkbank'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
+    );
     await bis(`document.getElementById('dunkel-wahl').disabled`, 'Werkbank sperrt die Darstellung', 50);
     assert.equal(await b.auswerten(`document.getElementById('dunkel-hinweis').hidden`), false);
-    await b.auswerten(`(() => { const s = document.getElementById('design-wahl'); s.value = ''; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+    await b.auswerten(
+      `(() => { const s = document.getElementById('design-wahl'); s.value = ''; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
+    );
     await bis(`!document.getElementById('dunkel-wahl').disabled`, 'andere Designs geben sie frei', 50);
   });
 

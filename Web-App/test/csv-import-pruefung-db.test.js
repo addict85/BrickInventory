@@ -24,8 +24,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const gebucht = [];
 const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = _echtesRequire.apply(this, arguments);
+Module.prototype.require = function (name, ...rest) {
+  const m = _echtesRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) => {

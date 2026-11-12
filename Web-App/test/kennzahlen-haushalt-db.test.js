@@ -8,19 +8,25 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 async function erreichbar() {
-  try { await db.get('SELECT 1'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 after(() => db.pool.end());
 
-test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
-  if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
+  if (!(await erreichbar())) {
+    keineDb(t);
+    return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -28,12 +34,17 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
   // Und die MIGRATIONEN, nicht nur das Schema
   {
     const mc = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(mc);
+    } finally {
+      mc.release();
+    }
   }
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
-  const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  const haupt = await id('haupt'), kind = await id('kind');
+  const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
+  const haupt = await id('haupt'),
+    kind = await id('kind');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
   // 75192-1 besitzen BEIDE — ohne diese Überschneidung stimmen Zeilenzahl und
@@ -42,28 +53,36 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async (t) => {
   await haeltSet(db, kind, '75192-1', 1);
   await haeltSet(db, kind, '21318-1', 1);
 
-  const { scopeIds } = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
+  const { blickfeldIds } = {
+    ..._req('src/haushalt/haushalt.js'),
+    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+  };
   const { getStats } = _req('src/bestand/kennzahlen.js');
   const { getSets } = _req('src/sets/index.js');
 
   for (const modus of ['all', 'own']) {
-    const uids = await scopeIds(haupt, modus);
+    const uids = await blickfeldIds(haupt, modus);
     const kopf = await getStats(uids);
     const liste = await getSets(uids, { page_size: 60 });
-    assert.equal(kopf.total_sets, liste.total,
+    assert.equal(
+      kopf.total_sets,
+      liste.total,
       `Blickfeld ${modus}: Die Kopfzeile nennt ${kopf.total_sets} Sets, die Galerie ` +
-      `zeigt ${liste.total}. Beide Zahlen stehen übereinander auf demselben ` +
-      `Bildschirm — zählt eine die Tabellenzeilen und die andere die Kacheln, ` +
-      `widersprechen sie sich im Haushalt.`);
-    assert.equal(kopf.total_sets, (liste.sets || []).length,
-      `Blickfeld ${modus}: total passt, die Anzahl der Kacheln aber nicht`);
+        `zeigt ${liste.total}. Beide Zahlen stehen übereinander auf demselben ` +
+        `Bildschirm — zählt eine die Tabellenzeilen und die andere die Kacheln, ` +
+        `widersprechen sie sich im Haushalt.`,
+    );
+    assert.equal(
+      kopf.total_sets,
+      (liste.sets || []).length,
+      `Blickfeld ${modus}: total passt, die Anzahl der Kacheln aber nicht`,
+    );
   }
 
   // Die andere Lesart bleibt erhalten und steht in der App als eigene Kachel
   // daneben („Einheiten"). Ohne diese Zusicherung wäre die naheliegende
   // „Korrektur" — beide auf DISTINCT — unbemerkt geblieben.
-  const alle = await getStats(await scopeIds(haupt, 'all'));
-  assert.equal(alle.total_quantity, 3,
-    'Exemplare zählen weiterhin einzeln: zwei Konten mit demselben Set plus eines');
+  const alle = await getStats(await blickfeldIds(haupt, 'all'));
+  assert.equal(alle.total_quantity, 3, 'Exemplare zählen weiterhin einzeln: zwei Konten mit demselben Set plus eines');
   assert.equal(alle.total_sets, 2, 'verschiedene Sets im Haushalt');
 });

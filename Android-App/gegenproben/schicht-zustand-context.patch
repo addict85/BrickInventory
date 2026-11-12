@@ -1,13 +1,13 @@
-Gegenprobe: core-zustand importiert Context
+Gegenprobe: core-sitzung importiert Context
 Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
-Rot: core-zustand kennt keinen Context
+Rot: core-zustand und core-sitzung kennen keinen Context
 
-diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
---- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
-+++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Sitzung.kt
+diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
+--- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
++++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
 @@ -1,5 +1,6 @@
- package ch.brickinventoryapp.zustand.ui
+ package ch.brickinventoryapp.sitzung
  
 +import android.content.Context
  import ch.brickinventoryapp.model.fach.Waehrung

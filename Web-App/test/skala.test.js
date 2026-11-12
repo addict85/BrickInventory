@@ -10,24 +10,33 @@
  *   A  in index.html ein `font-size:.78rem` eingesetzt → rot, mit Fundstelle
  *   B  `var(--fs-9)` (gibt es nicht) eingesetzt        → rot: „Stufe fehlt"
  */
-const test   = require('node:test');
+const { istAppModul } = require('../scripts/build-frontend');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const PUB = path.join(__dirname, '..', 'public');
 
 function dateien() {
   const js = path.join(PUB, 'js');
-  return [path.join(PUB, 'styles.css'), path.join(PUB, 'mobile.css'), path.join(PUB, 'index.html'),
-    ...fs.readdirSync(js).filter(n => /^\d\d-.*\.js$/.test(n)).map(n => path.join(js, n))];
+  return [
+    path.join(PUB, 'styles.css'),
+    path.join(PUB, 'mobile.css'),
+    path.join(PUB, 'index.html'),
+    ...fs
+      .readdirSync(js)
+      .filter(n => istAppModul(n))
+      .map(n => path.join(js, n)),
+  ];
 }
 
 test('jede Schriftgrösse nimmt eine Stufe der Skala', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   const stufen = new Set([...css.matchAll(/--fs-(\d+):/g)].map(m => m[1]));
   assert.ok(stufen.size >= 8, `Nur ${stufen.size} Stufen in styles.css gefunden — greift die Suche noch?`);
-  const frei = [], fehlt = [];
+  const frei = [],
+    fehlt = [];
   for (const f of dateien()) {
     const zeilen = fs.readFileSync(f, 'utf8').split('\n');
     zeilen.forEach((z, i) => {
@@ -36,6 +45,10 @@ test('jede Schriftgrösse nimmt eine Stufe der Skala', () => {
       for (const m of z.matchAll(/var\(--fs-(\d+)\)/g)) if (!stufen.has(m[1])) fehlt.push(`${ort}  --fs-${m[1]}`);
     });
   }
-  assert.deepEqual(frei, [], 'Schriftgrössen ausserhalb der Skala — bitte var(--fs-0 … 8) nehmen:\n  ' + frei.join('\n  '));
+  assert.deepEqual(
+    frei,
+    [],
+    'Schriftgrössen ausserhalb der Skala — bitte var(--fs-0 … 8) nehmen:\n  ' + frei.join('\n  '),
+  );
   assert.deepEqual(fehlt, [], 'Stufe fehlt in styles.css:\n  ' + fehlt.join('\n  '));
 });

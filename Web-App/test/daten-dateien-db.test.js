@@ -10,23 +10,23 @@
  *   A  die alte Prüfung (parseInt auf segments[0], NaN = keine Prüfung, Segmente
  *      nur auf '..' geprüft) → rot: „%2F im Segment" (200 statt 404) und
  *      „kein Benutzerordner" (200 statt 404)
- *   B  scopeIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
+ *   B  blickfeldIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
  *   C  (28.10.) die Verwalter-Ausnahme wieder eingebaut → rot: „auch ein
  *      Verwalter liest fremde Uploads nicht"
  *   D  (03.11.) für fremde Konten wieder 403 „Kein Zugriff“ → rot: „fremd und
  *      fehlend antworten gleich“ und die drei Teiltests davor
  *   E  (05.11.) alsAnhang() in beiden Routen entfernt → rot: „als Anhang in
  *      einer Sandbox“ (beide Wege, Kopf fehlt)
- *   F  (08.11.) siehtKonto liest wieder über scopeIds (Gedächtnis) → rot:
+ *   F  (08.11.) siehtKonto liest wieder über blickfeldIds (Gedächtnis) → rot:
  *      „gelöstes Unterkonto ist sofort nicht mehr lesbar“ (200 statt 404)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const os     = require('node:os');
-const path   = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 // Ein eigenes Datenverzeichnis, bevor appPaths geladen wird.
 const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'daten-dateien-'));
@@ -41,14 +41,21 @@ const db = _req('db/database.js');
 
 const NAMEN = ['dd_haupt', 'dd_unter', 'dd_fremd'].map(n => `${n}_${process.pid}`);
 
-test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
   for (const n of NAMEN)
-    ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                            VALUES ($1, 'x', true, true) RETURNING id`, [n])).id);
+    ids.push(
+      (
+        await db.get(
+          `INSERT INTO users (username, password_hash, is_active, email_verified)
+                            VALUES ($1, 'x', true, true) RETURNING id`,
+          [n],
+        )
+      ).id,
+    );
   const [H, U, F] = ids;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [H, U]);
   for (const id of [H, U]) {
@@ -96,7 +103,10 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
   });
 
   await t.test('fremd und fehlend antworten gleich', async () => {
-    const ohneKopf = ({ kopf, ...r }) => { void kopf; return r; };
+    const ohneKopf = ({ kopf, ...r }) => {
+      void kopf;
+      return r;
+    };
     const fremd = await hole(F, `/data/uploads/${H}/a.pdf`);
     const fehlt = await hole(F, `/data/uploads/${F}/gibt-es-nicht.pdf`);
     assert.deepEqual(ohneKopf(fremd), ohneKopf(fehlt));
@@ -114,13 +124,20 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
   await t.test('auch ein Verwalter liest fremde Uploads nicht', async () => {
     await db.run('UPDATE users SET is_admin = true WHERE id = $1', [F]);
     await db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', TRUE)`, [F]);
-    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`, true)).status, 404,
-      'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an');
+    assert.equal(
+      (await hole(F, `/data/uploads/${H}/a.pdf`, true)).status,
+      404,
+      'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an',
+    );
   });
 
   await t.test('%2F im Segment', async () => {
-    for (const weg of [`/data/uploads/x%2F..%2F${H}/a.pdf`, `/data/uploads/${F}%2F..%2F${H}/a.pdf`,
-                       `/data/uploads/..%2F${H}%2Fa.pdf`, `/data/uploads/${H}%5Ca.pdf`]) {
+    for (const weg of [
+      `/data/uploads/x%2F..%2F${H}/a.pdf`,
+      `/data/uploads/${F}%2F..%2F${H}/a.pdf`,
+      `/data/uploads/..%2F${H}%2Fa.pdf`,
+      `/data/uploads/${H}%5Ca.pdf`,
+    ]) {
       const r = await hole(F, weg);
       assert.equal(r.status, 404, `${weg} → ${r.status}: ${r.text}`);
     }

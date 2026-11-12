@@ -23,25 +23,36 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const K = { ..._req('src/konto/konten.js'), ..._req('src/konto/prozess.js').kontoBereich().konten };
-const { hashToken } = _req('src/konto/auth.js');
+const { hashToken } = _req('src/konto/geraeteToken.js');
 
-test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const namen = [];
-  t.after(async () => { await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
+    await db.pool.end().catch(() => {});
+  });
   const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
   /** Ein Konto mit offenem Link; der Wechsel läuft, dann wird der Link eingelöst. */
   const nachWechsel = async (name, wechsel) => {
     namen.push(name);
     await db.run('DELETE FROM users WHERE username = $1', [name]);
-    const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
-      VALUES ($1, $2, 'x', true, true) RETURNING id`, [name, `${name}@example.org`])).id;
+    const uid = (
+      await db.get(
+        `INSERT INTO users (username, email, password_hash, is_active, email_verified)
+      VALUES ($1, $2, 'x', true, true) RETURNING id`,
+        [name, `${name}@example.org`],
+      )
+    ).id;
     const token = crypto.randomBytes(32).toString('hex');
     assert.ok(await K.setzeRuecksetzTokenWennFrei(uid, hashToken(token), 60, 15));
     await wechsel(uid);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
-    const r = await fetch(`${base}/api/v1/auth/reset-password`, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token, password: 'Neu-Sicher-2026x' }) });
+    const r = await fetch(`${base}/api/v1/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token, password: 'Neu-Sicher-2026x' }),
+    });
     return [r.status, (await r.json()).code ?? null];
   };
   const p = process.pid;
@@ -51,28 +62,50 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
   });
 
   await t.test('eigenes Passwort, Verwalter-Reset, neue Adresse: der Link fällt', async () => {
-    assert.deepEqual([
-      await nachWechsel(`link_eigen_${p}`, uid => K.aendereEigenesPasswort(uid, 'Eigenes-Neu-2026')),
-      await nachWechsel(`link_fremd_${p}`, uid => K.setzeFremdesPasswort(uid, 'Verwalter-Neu-2026')),
-      await nachWechsel(`link_mail_${p}`, async (uid) => {
-        await K.merkeEmailNeu(uid, `neu_${p}@example.org`, hashToken(`mail${p}`), new Date(Date.now() + 60_000));
-        assert.equal((await _req('src/konto/prozess.js').kontoBereich().konten.uebernimmEmailNeu(hashToken(`mail${p}`)))?.ok, true);
-      }),
-    ], [[400, 'token_ungueltig'], [400, 'token_ungueltig'], [400, 'token_ungueltig']]);
+    assert.deepEqual(
+      [
+        await nachWechsel(`link_eigen_${p}`, uid => K.aendereEigenesPasswort(uid, 'Eigenes-Neu-2026')),
+        await nachWechsel(`link_fremd_${p}`, uid => K.setzeFremdesPasswort(uid, 'Verwalter-Neu-2026')),
+        await nachWechsel(`link_mail_${p}`, async uid => {
+          await K.merkeEmailNeu(uid, `neu_${p}@example.org`, hashToken(`mail${p}`), new Date(Date.now() + 60_000));
+          assert.equal(
+            (
+              await _req('src/konto/prozess.js')
+                .kontoBereich()
+                .konten.uebernimmEmailNeu(hashToken(`mail${p}`))
+            )?.ok,
+            true,
+          );
+        }),
+      ],
+      [
+        [400, 'token_ungueltig'],
+        [400, 'token_ungueltig'],
+        [400, 'token_ungueltig'],
+      ],
+    );
   });
 
   await t.test('zwei gleichzeitige Anfragen mit demselben Link: nur eine setzt ihr Passwort', async () => {
     const name = `link_doppelt_${p}`;
     namen.push(name);
     await db.run('DELETE FROM users WHERE username = $1', [name]);
-    const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
-      VALUES ($1, $2, 'x', true, true) RETURNING id`, [name, `${name}@example.org`])).id;
+    const uid = (
+      await db.get(
+        `INSERT INTO users (username, email, password_hash, is_active, email_verified)
+      VALUES ($1, $2, 'x', true, true) RETURNING id`,
+        [name, `${name}@example.org`],
+      )
+    ).id;
     const token = crypto.randomBytes(32).toString('hex');
     assert.ok(await K.setzeRuecksetzTokenWennFrei(uid, hashToken(token), 60, 15));
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
-    const setze = (password) => fetch(`${base}/api/v1/auth/reset-password`, { method: 'POST',
-      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, password }) })
-      .then(async r => [r.status, (await r.json()).code ?? null, password]);
+    const setze = password =>
+      fetch(`${base}/api/v1/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token, password }),
+      }).then(async r => [r.status, (await r.json()).code ?? null, password]);
     const antworten = await Promise.all([setze('Erstes-Neu-2026x'), setze('Zweites-Neu-2026x')]);
     assert.deepEqual(antworten.map(a => a[0]).sort(), [200, 400], JSON.stringify(antworten));
     const sieger = antworten.find(a => a[0] === 200)[2];

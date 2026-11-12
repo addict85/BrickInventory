@@ -2,10 +2,21 @@
  * macht src/einstellungen/settings.ts. */
 import type { DbSchnittstelle, Db } from '../../db/database';
 
-export interface Eintrag { key: string; value: string }
+export interface Eintrag {
+  key: string;
+  value: string;
+}
 
-export async function nutzerWert(db: DbSchnittstelle, userId: number, key: string, d: DbSchnittstelle = db): Promise<string | null> {
-  const r = await d.get<{ value: string }>('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
+export async function nutzerWert(
+  db: DbSchnittstelle,
+  userId: number,
+  key: string,
+  d: DbSchnittstelle = db,
+): Promise<string | null> {
+  const r = await d.get<{ value: string }>('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [
+    userId,
+    key,
+  ]);
   return r?.value ?? null;
 }
 
@@ -14,10 +25,17 @@ export async function globalerWert(db: DbSchnittstelle, key: string): Promise<st
   return r?.value ?? null;
 }
 
-export async function schreibeNutzerWert(db: DbSchnittstelle, userId: number, key: string, value: string): Promise<void> {
+export async function schreibeNutzerWert(
+  db: DbSchnittstelle,
+  userId: number,
+  key: string,
+  value: string,
+): Promise<void> {
   await db.run(
     `INSERT INTO user_settings (user_id, key, value, updated_at) VALUES ($1, $2, $3, NOW())
-     ON CONFLICT (user_id, key) DO UPDATE SET value = $3, updated_at = NOW()`, [userId, key, value]);
+     ON CONFLICT (user_id, key) DO UPDATE SET value = $3, updated_at = NOW()`,
+    [userId, key, value],
+  );
 }
 
 export async function loescheNutzerWert(db: DbSchnittstelle, userId: number, key: string): Promise<void> {
@@ -31,7 +49,9 @@ export async function nutzerWerte(db: DbSchnittstelle, userId: number): Promise<
 export async function schreibeGlobalenWert(db: DbSchnittstelle, key: string, value: string | null): Promise<void> {
   await db.run(
     `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, $2, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`, [key, value]);
+     ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+    [key, value],
+  );
 }
 
 export async function loescheGlobaleWerte(db: DbSchnittstelle, keys: string[]): Promise<void> {
@@ -45,9 +65,17 @@ export async function globaleWerte(db: DbSchnittstelle, keys?: readonly string[]
 }
 
 /** Nur, wenn noch der alte Wert dasteht — sonst hat ein anderer Prozess geschrieben. */
-export async function ersetzeGlobalenWert(db: DbSchnittstelle, key: string, alt: string, neu: string | null): Promise<boolean> {
-  const r = await db.run('UPDATE global_settings SET value = $1, updated_at = NOW() WHERE key = $2 AND value = $3',
-    [neu, key, alt]);
+export async function ersetzeGlobalenWert(
+  db: DbSchnittstelle,
+  key: string,
+  alt: string,
+  neu: string | null,
+): Promise<boolean> {
+  const r = await db.run('UPDATE global_settings SET value = $1, updated_at = NOW() WHERE key = $2 AND value = $3', [
+    neu,
+    key,
+    alt,
+  ]);
   return (r.changes ?? 0) > 0;
 }
 

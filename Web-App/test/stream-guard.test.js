@@ -40,8 +40,10 @@ test('eine verschwundene Datei beim Ausliefern beendet den Prozess nicht', async
     try {
       out = execFileSync(process.execPath, [file], { encoding: 'utf8', timeout: 20000 });
     } catch (e) {
-      assert.fail(`Der Kindprozess ist nicht sauber beendet worden (Exitcode ${e.status}). ` +
-                  `Ausgabe: ${(e.stdout || '').toString().trim() || '(leer)'}`);
+      assert.fail(
+        `Der Kindprozess ist nicht sauber beendet worden (Exitcode ${e.status}). ` +
+          `Ausgabe: ${(e.stdout || '').toString().trim() || '(leer)'}`,
+      );
     }
     assert.ok(!out.includes('CRASH:'), `der Lesefehler hat den Prozess abgeschossen: ${out.trim()}`);
     // Solange noch keine Kopfzeilen raus sind, wird der Fehler als 404 gemeldet

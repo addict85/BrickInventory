@@ -31,11 +31,15 @@ const ALT = (name, quelle) => `
     RETURN NULL;
   END $$ LANGUAGE plpgsql`;
 
-test('Teilezähler und Kontolöschung', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('Teilezähler und Kontolöschung', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   const migriere = async () => {
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   };
   await migriere();
 

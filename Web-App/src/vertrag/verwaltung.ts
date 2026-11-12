@@ -159,8 +159,15 @@ export const JobStatus = z.looseObject({
   progress: z.number().int(),
   total: z.number().int(),
   sub: z.string().nullable().optional(),
-  sub_teile: z.array(z.object({ code: z.string(), werte: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
-    vor: z.literal('bestand').optional() })).optional(),
+  sub_teile: z
+    .array(
+      z.object({
+        code: z.string(),
+        werte: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+        vor: z.literal('bestand').optional(),
+      }),
+    )
+    .optional(),
 });
 
 export const JobsResponse = z.looseObject({
@@ -188,19 +195,37 @@ export const ProtokollResponse = z.looseObject({
 
 export const PreisJobStand = z.looseObject({
   success: z.boolean(),
-  job: z.looseObject({ running: z.boolean(), lastRun: zeit.nullable(), nextRun: zeit.nullable(), lastErrors: ganz,
-    log: z.array(z.unknown()), lastDuration: z.number().nullable().optional(), lastUpdated: z.number().nullable().optional(),
-    progress: z.looseObject({ current: z.unknown(), total: z.unknown(), set: z.unknown() }).nullable().optional() }),
+  job: z.looseObject({
+    running: z.boolean(),
+    lastRun: zeit.nullable(),
+    nextRun: zeit.nullable(),
+    lastErrors: ganz,
+    log: z.array(z.unknown()),
+    lastDuration: z.number().nullable().optional(),
+    lastUpdated: z.number().nullable().optional(),
+    progress: z.looseObject({ current: z.unknown(), total: z.unknown(), set: z.unknown() }).nullable().optional(),
+  }),
   rate_limit: z.looseObject({ count: ganz, limit: ganz, remaining: ganz, date: z.string().nullable().optional() }),
 });
 /** Die Einträge zeigt die Verwaltung roh an; ihre Felder sind die Spalten von app_logs. */
-export const ProtokollEintraege = z.looseObject({ success: z.literal(true), eintraege: z.array(z.record(z.string(), z.unknown())) });
+export const ProtokollEintraege = z.looseObject({
+  success: z.literal(true),
+  eintraege: z.array(z.record(z.string(), z.unknown())),
+});
 export const BildDiagnose = z.looseObject({
-  success: z.literal(true), set_number: z.string(), hinweise: z.array(z.string()),
-  datenbank: z.looseObject({ anzahl_konten: ganz, image_local: z.string().nullable(), image_url: z.string().nullable(),
-    katalog_bild: z.string().nullable() }),
-  lokal: z.looseObject({ original: z.looseObject({ vorhanden: z.boolean(), bytes: ganz, geaendert: zeit.nullable().optional() }),
-    vorschau: z.looseObject({ vorhanden: z.boolean(), bytes: ganz, geaendert: zeit.nullable().optional() }) }),
+  success: z.literal(true),
+  set_number: z.string(),
+  hinweise: z.array(z.string()),
+  datenbank: z.looseObject({
+    anzahl_konten: ganz,
+    image_local: z.string().nullable(),
+    image_url: z.string().nullable(),
+    katalog_bild: z.string().nullable(),
+  }),
+  lokal: z.looseObject({
+    original: z.looseObject({ vorhanden: z.boolean(), bytes: ganz, geaendert: zeit.nullable().optional() }),
+    vorschau: z.looseObject({ vorhanden: z.boolean(), bytes: ganz, geaendert: zeit.nullable().optional() }),
+  }),
   proxy: z.looseObject({ gecacht: z.boolean(), adresse: z.string().nullable().optional() }),
   merker: z.looseObject({ seit: zeit.nullable(), grund: z.string().nullable() }).nullable(),
 });
@@ -208,9 +233,12 @@ export const BildMerkerVergessen = z.looseObject({ success: z.literal(true), ent
 
 /** Diagnosen für die Verwaltung: Ihre Felder zeigt die Oberfläche roh an. */
 export const Diagnose = z.record(z.string(), z.unknown());
-export const Endpunkte = z.looseObject({ 
+export const Endpunkte = z.looseObject({
   auth: z.record(z.string(), z.unknown()).optional(),
-  api: z.string(), version: z.string(), endpoints: z.record(z.string(), z.unknown()) });
+  api: z.string(),
+  version: z.string(),
+  endpoints: z.record(z.string(), z.unknown()),
+});
 
 /** Sammelantworten der Verwaltung mit dem, was die einzelne Route dazu sagt. */
 export const VerwaltungMeldung = GenericAdminResponse.extend({ message: z.string().optional() });
@@ -229,16 +257,42 @@ export const routen = {
   'GET /api/v1/admin/cache-stats': { antwort: CacheStatsResponse, klein: true },
   'GET /api/v1/admin/cache-ttl': { antwort: CacheTtlResponse },
   'GET /api/v1/admin/api-limits': { antwort: ApiLimitsResponse },
-  'GET /api/v1/admin/auftraege': { klein: true, antwort: AuftraegeResponse, abfrage: abfrage({ status: Q.text(20), art: Q.text(40) }) },
+  'GET /api/v1/admin/auftraege': {
+    klein: true,
+    antwort: AuftraegeResponse,
+    abfrage: abfrage({ status: Q.text(20), art: Q.text(40) }),
+  },
   'POST /api/v1/sets/import/csv/cancel': { eingabe: OHNE_RUMPF, antwort: GenericAdminResponse },
-  'POST /api/v1/admin/job-schedule': { eingabe: z.strictObject({ name: TEXT(40), time: TEXT(5).nullable().optional(), minutes: GLOBALE_REGELN.price_job_interval_minutes.nullable().optional() }), antwort: GenericAdminResponse },
-  'POST /api/v1/admin/catalog-images': { eingabe: z.strictObject({ alle_erneut: JA_NEIN.optional() }), antwort: GenericAdminResponse },
+  'POST /api/v1/admin/job-schedule': {
+    eingabe: z.strictObject({
+      name: TEXT(40),
+      time: TEXT(5).nullable().optional(),
+      minutes: GLOBALE_REGELN.price_job_interval_minutes.nullable().optional(),
+    }),
+    antwort: GenericAdminResponse,
+  },
+  'POST /api/v1/admin/catalog-images': {
+    eingabe: z.strictObject({ alle_erneut: JA_NEIN.optional() }),
+    antwort: GenericAdminResponse,
+  },
   'POST /api/v1/admin/brickset-queue/:setNumber/retry': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
   'DELETE /api/v1/admin/brickset-queue/:setNumber': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
-  'POST /api/v1/admin/cache-ttl': { eingabe: z.strictObject({ ttl: GLOBALE_REGELN.price_cache_ttl }), antwort: VerwaltungTtl },
-  'POST /api/v1/admin/cache-clear': { eingabe: z.strictObject({ all: JA_NEIN.optional() }), antwort: VerwaltungMeldung },
-  'PUT /api/v1/admin/api-limits': { eingabe: z.strictObject({ rebrickable: GLOBALE_REGELN.api_limit_rebrickable.optional(),
-    bricklink: GLOBALE_REGELN.api_limit_bricklink.optional(), brickset: GLOBALE_REGELN.api_limit_brickset.optional() }), antwort: GenericAdminResponse },
+  'POST /api/v1/admin/cache-ttl': {
+    eingabe: z.strictObject({ ttl: GLOBALE_REGELN.price_cache_ttl }),
+    antwort: VerwaltungTtl,
+  },
+  'POST /api/v1/admin/cache-clear': {
+    eingabe: z.strictObject({ all: JA_NEIN.optional() }),
+    antwort: VerwaltungMeldung,
+  },
+  'PUT /api/v1/admin/api-limits': {
+    eingabe: z.strictObject({
+      rebrickable: GLOBALE_REGELN.api_limit_rebrickable.optional(),
+      bricklink: GLOBALE_REGELN.api_limit_bricklink.optional(),
+      brickset: GLOBALE_REGELN.api_limit_brickset.optional(),
+    }),
+    antwort: GenericAdminResponse,
+  },
   'POST /api/v1/admin/redownload-missing-images': { eingabe: OHNE_RUMPF, antwort: VerwaltungGestartet },
   'POST /api/v1/admin/auftraege/:id/abbrechen': { eingabe: OHNE_RUMPF, antwort: AuftragAenderung },
   'POST /api/v1/admin/auftraege/:id/wiederholen': { eingabe: OHNE_RUMPF, antwort: AuftragAenderung },
@@ -247,12 +301,21 @@ export const routen = {
   'POST /api/v1/admin/trigger-csv-sync': { eingabe: OHNE_RUMPF, antwort: VerwaltungMeldung },
   'POST /api/v1/admin/reimport-instructions': { eingabe: OHNE_RUMPF, antwort: VerwaltungMeldung },
   'POST /api/v1/admin/trigger-price-job': { eingabe: OHNE_RUMPF, antwort: VerwaltungGestartet },
-  'POST /api/v1/admin/default-condition': { eingabe: z.strictObject({ condition: GLOBALE_REGELN.default_price_condition }), antwort: VerwaltungZustand },
+  'POST /api/v1/admin/default-condition': {
+    eingabe: z.strictObject({ condition: GLOBALE_REGELN.default_price_condition }),
+    antwort: VerwaltungZustand,
+  },
   'GET /api/v1/admin/job-status': { antwort: PreisJobStand },
   'GET /api/v1/admin/protokoll': { klein: true, antwort: ProtokollEintraege },
   'GET /api/v1/admin/image-diag/:setNumber': { klein: true, antwort: BildDiagnose },
-  'POST /api/v1/admin/forget-image-misses': { eingabe: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NEIN.optional() }), antwort: BildMerkerVergessen },
+  'POST /api/v1/admin/forget-image-misses': {
+    eingabe: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NEIN.optional() }),
+    antwort: BildMerkerVergessen,
+  },
   'POST /api/v1/admin/img-probe': { antwort: Diagnose, eingabe: z.strictObject({ url: TEXT(2048).optional() }) },
-  'POST /api/v1/admin/price-probe': { antwort: Diagnose, eingabe: z.strictObject({ set: TEXT(64).optional(), live: z.boolean().optional() }) },
+  'POST /api/v1/admin/price-probe': {
+    antwort: Diagnose,
+    eingabe: z.strictObject({ set: TEXT(64).optional(), live: z.boolean().optional() }),
+  },
   'GET /api/v1/': { antwort: Endpunkte },
 } satisfies Record<string, Route>;

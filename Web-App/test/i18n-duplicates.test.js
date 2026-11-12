@@ -4,7 +4,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-
 /**
  * Liest die Schlüssel einer Sprachdatei aus der QUELLE.
  */
@@ -18,16 +17,21 @@ function keysOf(lang) {
 for (const lang of ['de', 'en']) {
   test(`keine doppelten Schlüssel in i18n (${lang})`, () => {
     const keys = keysOf(lang);
-    const seen = new Set(), dupes = new Set();
+    const seen = new Set(),
+      dupes = new Set();
     for (const k of keys) (seen.has(k) ? dupes : seen).add(k);
-    assert.deepEqual([...dupes], [],
-      `Doppelt vergeben — der spätere Eintrag überschreibt den früheren still: ${[...dupes].join(', ')}`);
+    assert.deepEqual(
+      [...dupes],
+      [],
+      `Doppelt vergeben — der spätere Eintrag überschreibt den früheren still: ${[...dupes].join(', ')}`,
+    );
     assert.ok(keys.length > 500, `Nur ${keys.length} Schlüssel gefunden — Blockerkennung kaputt?`);
   });
 }
 
 test('de und en haben denselben Schlüsselvorrat', () => {
-  const de = new Set(keysOf('de')), en = new Set(keysOf('en'));
+  const de = new Set(keysOf('de')),
+    en = new Set(keysOf('en'));
   const onlyDe = [...de].filter(k => !en.has(k));
   const onlyEn = [...en].filter(k => !de.has(k));
   assert.deepEqual(onlyDe, [], `Nur auf Deutsch vorhanden: ${onlyDe.join(', ')}`);

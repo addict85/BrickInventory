@@ -3,23 +3,43 @@ import { auftraegeBereich } from './prozess';
 
 /** Den Katalog lädt der Job-Prozess; der Web-Prozess liest den Stand aus
  * laufzustand nach. */
-export interface StartZustand { ready: boolean; step: string; progress: number; total: number; sub?: string | null }
+export interface StartZustand {
+  ready: boolean;
+  step: string;
+  progress: number;
+  total: number;
+  sub?: string | null;
+}
 
 let _stand: StartZustand = { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 };
 
-export function startZustand(): StartZustand { return _stand; }
+export function startZustand(): StartZustand {
+  return _stand;
+}
 
-export function setzeStartZustand(s: StartZustand): void { _stand = s; }
+export function setzeStartZustand(s: StartZustand): void {
+  _stand = s;
+}
 
 export async function meldeStartZustand(s: StartZustand): Promise<void> {
   _stand = s;
-  await auftraegeBereich().laufzustand.setzeZustand('startup_status', JSON.stringify(s)).catch(logAndContinue('start:zustand schreiben'));
+  await auftraegeBereich()
+    .laufzustand.setzeZustand('startup_status', JSON.stringify(s))
+    .catch(logAndContinue('start:zustand schreiben'));
 }
 
 /** Gekürzt; Schritt und Unterstand nur angemeldet, sonst sieht jeder, woran der Start hängt. */
-export function oeffentlicherStartZustand(s: StartZustand, angemeldet = false): Omit<StartZustand, 'step'> & { step: string | null } {
-  return { ready: s.ready === true, step: angemeldet ? String(s.step ?? '').slice(0, 80) : null, progress: Number(s.progress) || 0,
-    total: Number(s.total) || 0, sub: angemeldet && typeof s.sub === 'string' ? s.sub.slice(0, 40) : null };
+export function oeffentlicherStartZustand(
+  s: StartZustand,
+  angemeldet = false,
+): Omit<StartZustand, 'step'> & { step: string | null } {
+  return {
+    ready: s.ready === true,
+    step: angemeldet ? String(s.step ?? '').slice(0, 80) : null,
+    progress: Number(s.progress) || 0,
+    total: Number(s.total) || 0,
+    sub: angemeldet && typeof s.sub === 'string' ? s.sub.slice(0, 40) : null,
+  };
 }
 
 /** Bereit bleibt bereit — darum endet das Nachlesen danach. */
@@ -28,6 +48,8 @@ export async function aktuellerStartZustand(): Promise<StartZustand> {
   try {
     const roh = await auftraegeBereich().laufzustand.liesZustand('startup_status');
     if (roh) _stand = JSON.parse(roh) as StartZustand;
-  } catch (e) { meldeFehler('start:zustand lesen', e); }
+  } catch (e) {
+    meldeFehler('start:zustand lesen', e);
+  }
   return _stand;
 }

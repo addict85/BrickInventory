@@ -51,58 +51,97 @@ const gesendet = mailAttrappe();
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { warte } = require('./helpers/zeit');
-const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
+const freierPort = () =>
+  new Promise(r => {
+    const s = net.createServer().listen(0, () => {
+      const p = s.address().port;
+      s.close(() => r(p));
+    });
+  });
 
-test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
-  const NAME = `quer_${process.pid}`, PASS = 'Quer-Passwort-1', MAIL = `quer_${process.pid}@example.org`;
+test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
+  const NAME = `quer_${process.pid}`,
+    PASS = 'Quer-Passwort-1',
+    MAIL = `quer_${process.pid}@example.org`;
   const NEU = `quer_neu_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEU]]);
-  await db.run(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
-    VALUES ($1, $2, $3, true, true)`, [NAME, MAIL, bcrypt.hashSync(PASS, 4)]);
+  await db.run(
+    `INSERT INTO users (username, email, password_hash, is_active, email_verified)
+    VALUES ($1, $2, $3, true, true)`,
+    [NAME, MAIL, bcrypt.hashSync(PASS, 4)],
+  );
   const regVorher = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
-  await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'");
+  await db.run(
+    "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'",
+  );
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%' OR key LIKE '%quer_%'");
   const mailZurueck = await mailserverEintragen(db);
   t.after(async () => {
     await mailZurueck();
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
-    if (regVorher) await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regVorher.value]);
+    if (regVorher)
+      await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regVorher.value]);
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEU]]);
     await db.pool.end().catch(() => {});
   });
 
   const port = await freierPort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'querschnitt-test-geheimnis-lang-genug-1234',
-           PORT: String(port), TRUST_PROXY: 'false', ROLLE: 'web' },
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      DATABASE_URL: URL_DB,
+      SESSION_SECRET: 'querschnitt-test-geheimnis-lang-genug-1234',
+      PORT: String(port),
+      TRUST_PROXY: 'false',
+      ROLLE: 'web',
+    },
   });
-  let log = '';
-  srv.stdout.on('data', d => { log += d; });
-  srv.stderr.on('data', d => { log += d; });
+  // Abfliessen lassen: Ein voller Puffer hielte den Server an.
+  srv.stdout.resume();
+  srv.stderr.resume();
   t.after(async () => {
     srv.kill('SIGTERM');
     for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++) await warte(250);
+  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++)
+    await warte(250);
 
   await t.test('jede Antwort trägt die Sicherheitskopfzeilen', async () => {
     for (const pfad of ['/', '/api/v1/health/live', '/api/v1/gibt-es-nicht']) {
       const r = await fetch(basis + pfad);
       await r.arrayBuffer();
-      const k = (n) => r.headers.get(n);
+      const k = n => r.headers.get(n);
       assert.equal(k('x-powered-by'), null, pfad);
       assert.match(k('content-security-policy'), /script-src 'self';/, pfad);
       assert.doesNotMatch(k('content-security-policy'), /unsafe-inline|unsafe-eval/, pfad);
-      assert.deepEqual([k('cross-origin-opener-policy'), k('cross-origin-resource-policy'), k('referrer-policy'),
-        k('x-content-type-options'), k('x-frame-options')], ['same-origin', 'same-origin', 'same-origin', 'nosniff', 'SAMEORIGIN'], pfad);
+      assert.deepEqual(
+        [
+          k('cross-origin-opener-policy'),
+          k('cross-origin-resource-policy'),
+          k('referrer-policy'),
+          k('x-content-type-options'),
+          k('x-frame-options'),
+        ],
+        ['same-origin', 'same-origin', 'same-origin', 'nosniff', 'SAMEORIGIN'],
+        pfad,
+      );
       assert.match(k('permissions-policy'), /camera=\(\).*geolocation=\(\)/, pfad);
       // Bilder nur vom eigenen Server (Bild-Proxy), der PDF.js-Worker gedeckt, kein fremder Host.
-      const csp = Object.fromEntries(k('content-security-policy').split(/;\s*/).map(d => [d.split(' ')[0], d.split(' ').slice(1).join(' ')]));
-      assert.deepEqual([csp['script-src'], csp['img-src'], csp['worker-src']], ["'self'", "'self' data: blob:", "'self' blob:"], pfad);
+      const csp = Object.fromEntries(
+        k('content-security-policy')
+          .split(/;\s*/)
+          .map(d => [d.split(' ')[0], d.split(' ').slice(1).join(' ')]),
+      );
+      assert.deepEqual(
+        [csp['script-src'], csp['img-src'], csp['worker-src']],
+        ["'self'", "'self' data: blob:", "'self' blob:"],
+        pfad,
+      );
       assert.doesNotMatch(k('content-security-policy'), /https?:/, pfad);
     }
   });
@@ -110,14 +149,26 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
   await t.test('die ausgelieferte Seite lädt nichts von fremden Hosts und kein Inline-Skript', async () => {
     const seite = await (await fetch(`${basis}/`)).text();
     assert.match(seite, /<script[^>]+src="[^"]*app\.bundle\.js/, 'nicht die App-Seite');
-    const extern = [...seite.matchAll(/<(?:link|script|img|iframe|source)\b[^>]*?\s(?:href|src)="((?:https?:)?\/\/[^"]+)"/g)].map(m => m[1]);
+    const extern = [
+      ...seite.matchAll(/<(?:link|script|img|iframe|source)\b[^>]*?\s(?:href|src)="((?:https?:)?\/\/[^"]+)"/g),
+    ].map(m => m[1]);
     assert.deepEqual(extern, []);
-    const inline = [...seite.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1].trim()).filter(Boolean);
-    assert.deepEqual(inline.map(b => b.slice(0, 60)), [], 'script-src ohne unsafe-inline blockiert es');
+    const inline = [...seite.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+      .map(m => m[1].trim())
+      .filter(Boolean);
+    assert.deepEqual(
+      inline.map(b => b.slice(0, 60)),
+      [],
+      'script-src ohne unsafe-inline blockiert es',
+    );
   });
 
   await t.test('doppelte Schrägstriche treffen dieselbe Route, nicht die Seite', async () => {
-    for (const pfad of ['//api/v1/health/live', '/api//v1/health/live?x=1', '//api/v1/img-proxy?url=https%3A%2F%2Fcdn.rebrickable.com%2Fa.jpg']) {
+    for (const pfad of [
+      '//api/v1/health/live',
+      '/api//v1/health/live?x=1',
+      '//api/v1/img-proxy?url=https%3A%2F%2Fcdn.rebrickable.com%2Fa.jpg',
+    ]) {
       const r = await fetch(basis + pfad);
       await r.arrayBuffer();
       assert.match(r.headers.get('content-type') ?? '', /application\/json/, `${pfad}: ${r.status}`);
@@ -130,8 +181,11 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
   });
 
   await t.test('das Sitzungscookie ist httpOnly und SameSite=Strict', async () => {
-    const r = await fetch(`${basis}/api/v1/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }) });
+    const r = await fetch(`${basis}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+    });
     assert.equal(r.status, 200, await r.text());
     const keks = r.headers.get('set-cookie');
     assert.match(keks, /HttpOnly/i);
@@ -140,13 +194,19 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
 
   await t.test('eine vergebene Adresse antwortet wie eine neue', async () => {
     const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
-    const registriere = (username, email) => fetch(`${base}/api/v1/auth/register`, { method: 'POST',
-      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }) })
-      .then(async r => ({ status: r.status, body: await r.json() }));
+    const registriere = (username, email) =>
+      fetch(`${base}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }),
+      }).then(async r => ({ status: r.status, body: await r.json() }));
     const vergeben = await registriere(NEU, MAIL.toUpperCase());
     assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
     assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEU]), undefined, 'Konto angelegt');
-    assert.ok(gesendet.some(m => m.to === MAIL), 'Der Inhaber bekommt keinen Hinweis');
+    assert.ok(
+      gesendet.some(m => m.to === MAIL),
+      'Der Inhaber bekommt keinen Hinweis',
+    );
     const neu = await registriere(NEU, `anders_${MAIL}`);
     assert.deepEqual(vergeben.body, neu.body);
   });
@@ -154,14 +214,20 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
   await t.test('ein vergebener Name antwortet wie ein neuer, die Adresse erfährt es per Mail', async () => {
     const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%'");
-    const registriere = (username, email) => fetch(`${base}/api/v1/auth/register`, { method: 'POST',
-      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }) })
-      .then(async r => ({ status: r.status, body: await r.json() }));
+    const registriere = (username, email) =>
+      fetch(`${base}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }),
+      }).then(async r => ({ status: r.status, body: await r.json() }));
     const andere = `name_${MAIL}`;
     const vergeben = await registriere(NAME, andere);
     assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
     assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [andere]), undefined, 'Konto angelegt');
-    assert.ok(gesendet.some(m => m.to === andere && /Benutzername schon vergeben/.test(m.subject)), gesendet.map(m => m.subject).join(' | '));
+    assert.ok(
+      gesendet.some(m => m.to === andere && /Benutzername schon vergeben/.test(m.subject)),
+      gesendet.map(m => m.subject).join(' | '),
+    );
     const NEU2 = `${NEU}_2`;
     const neu = await registriere(NEU2, `neu2_${MAIL}`);
     await db.run('DELETE FROM users WHERE username = $1', [NEU2]);
@@ -174,7 +240,11 @@ test('ein Serverfehler in Produktion nennt keine Interna', () => {
     console.error = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b])); } };
     handleRouteError(res, new Error('relation "geheim" at /app/dist/x.js:1'), undefined, { method: 'GET', originalUrl: '/x' });`;
-  const aus = execFileSync(process.execPath, ['-e', skript], { env: { ...process.env, NODE_ENV: 'production' } }).toString();
-  assert.deepEqual(JSON.parse(aus), [500, { success: false, code: 'interner_fehler',
-    error: 'Interner Fehler — Einzelheiten stehen im Protokoll.' }]);
+  const aus = execFileSync(process.execPath, ['-e', skript], {
+    env: { ...process.env, NODE_ENV: 'production' },
+  }).toString();
+  assert.deepEqual(JSON.parse(aus), [
+    500,
+    { success: false, code: 'interner_fehler', error: 'Interner Fehler — Einzelheiten stehen im Protokoll.' },
+  ]);
 });

@@ -40,7 +40,7 @@ import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.Signature
 import java.util.Base64
-import ch.brickinventoryapp.testing.NummernTexte
+import ch.brickinventoryapp.model.ui.Meldung
 
 /**
  * Die Selbstaktualisierung ausgeführt: signierte Beschreibung, Download, Prüfsumme,
@@ -61,6 +61,8 @@ import ch.brickinventoryapp.testing.NummernTexte
  *   update-start-ohne-schalter   pruefeBeimStart() fragt den Schalter nicht →
  *                                rot „ausgeschaltet fragt der Start nicht bei GitHub“
  *   update-abmelden-behaelt      kein Zurücksetzen beim Abmelden → rot „beim Abmelden verfaellt …“
+ *   update-ohne-anmeldefolge     die Prüfung beim Anmelden aus dem init gestrichen →
+ *                                rot „die Anmeldung prueft still“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdateViewModelTest {
@@ -128,7 +130,7 @@ class UpdateViewModelTest {
         Dispatchers.setMain(takt)
         antworten[UPDATE_VERSION_URL] = 200 to beschreibung()
         antworten[apkAdresse] = 200 to apk
-        vm = UpdateViewModel(UpdateLader(client, AppFassung("2.10", 10), takt), NummernTexte,
+        vm = UpdateViewModel(UpdateLader(client, AppFassung("2.10", 10), takt),
             object : Anmeldestand { override val authTokenState = token }, ablage, geraet, takt)
     }
 
@@ -161,7 +163,7 @@ class UpdateViewModelTest {
         assertNull(zustand().neuereFassung)
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
-        assertEquals("t${R.string.update_beschreibung_unsigniert}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_beschreibung_unsigniert), zustand().fehler)
     }
 
     @Test
@@ -194,7 +196,7 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         vm.ladeUpdate()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_signatur_falsch}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_signatur_falsch), zustand().fehler)
         assertFalse(zustand().bereitZurInstallation)
         assertFalse("Ein APK unbekannter Herkunft bleibt nicht liegen", geraet.datei.exists())
         assertTrue(geraet.installiert.isEmpty())
@@ -207,14 +209,14 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         vm.ladeUpdate()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_pruefsumme_falsch}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_pruefsumme_falsch), zustand().fehler)
         antworten[UPDATE_VERSION_URL] = 200 to beschreibung()
         geraet.fassungImApk = 19
         vm.pruefeAufUpdate(still = false)
         advanceUntilIdle()
         vm.ladeUpdate()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_fassung_falsch}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_fassung_falsch), zustand().fehler)
         assertFalse(geraet.datei.exists())
         assertTrue(geraet.installiert.isEmpty())
     }
@@ -229,7 +231,7 @@ class UpdateViewModelTest {
         advanceUntilIdle()
         vm.ladeUpdate()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_laden_fehlgeschlagen}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_laden_fehlgeschlagen), zustand().fehler)
         assertFalse(geraet.datei.exists())
         assertTrue(geraet.installiert.isEmpty())
     }
@@ -249,7 +251,7 @@ class UpdateViewModelTest {
         geraet.signaturGut = false
         vm.starteInstallation()
         advanceUntilIdle()
-        assertEquals("t${R.string.update_signatur_falsch}", zustand().fehler)
+        assertEquals(Meldung.Ressource(R.string.update_signatur_falsch), zustand().fehler)
         assertFalse(geraet.datei.exists())
         assertTrue(geraet.installiert.isEmpty())
     }
@@ -267,7 +269,32 @@ class UpdateViewModelTest {
     }
 
     @Test
+    fun `die Anmeldung prueft still, ohne Anmeldung fragt niemand`() = runTest(takt) {
+        val anmeldung = MutableStateFlow<String?>(null)
+        val eigenes = UpdateViewModel(UpdateLader(client, AppFassung("2.10", 10), takt),
+            object : Anmeldestand { override val authTokenState = anmeldung }, ablage, geraet, takt)
+        try {
+            advanceUntilIdle()
+            angefragt.clear()
+            advanceUntilIdle()
+            assertEquals("Abgemeldet fragt niemand bei GitHub", emptyList<String>(), angefragt)
+            anmeldung.value = "token"
+            advanceUntilIdle()
+            assertEquals(listOf(UPDATE_VERSION_URL), angefragt)
+            assertEquals("Die Prüfung beim Start ist still", 20, eigenes.updateState.value.neuereFassung?.versionCode)
+            assertNull(eigenes.updateState.value.fehler)
+            assertFalse("kein Ladebalken", eigenes.updateState.value.laedtPruefung)
+        } finally {
+            eigenes.viewModelScope.cancel()
+        }
+    }
+
+    @Test
     fun `ausgeschaltet fragt der Start nicht bei GitHub, eingeschaltet genau einmal`() = runTest(takt) {
+        // Das vm aus auf() ist angemeldet und prüft im init, solange der Schalter noch an
+        // ist; diese Prüfung erst ablaufen lassen, sonst zählt sie hier mit.
+        advanceUntilIdle()
+        angefragt.clear()
         vm.setzeStartpruefung(false)
         assertFalse("Der Schalter steht im Zustand", vm.updateState.value.startpruefung)
         vm.pruefeBeimStart()

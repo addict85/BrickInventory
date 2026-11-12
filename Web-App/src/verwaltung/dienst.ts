@@ -2,12 +2,39 @@
  * damit die Routen keine Schichten überspringen. */
 import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
-import { auftraegeBereich, naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert, stelleAuftragEin, anleitungEinreihen, bricksetJetzt, bricksetTermineVorziehen } from '../auftraege';
+import {
+  auftraegeBereich,
+  naechsteUhrzeit,
+  taeglicheUhrzeit,
+  DAILY_JOBS,
+  ziehePlanVor,
+  zeitplanGeaendert,
+  stelleAuftragEin,
+  anleitungEinreihen,
+  bricksetJetzt,
+  bricksetTermineVorziehen,
+} from '../auftraege';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeFehler, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { leerePreisCache } from '../finanzen';
-import { getRateLimitStatus, setzeKontingentZurueck, clearCatalogCache, clearSubsetsCache, getCacheStats, loescheAnleitungen, vergissFehlend, anfragenJeMinute, bildbedarfAnstossen, katalogBilderVormerken, alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang } from '../katalog';
+import {
+  getRateLimitStatus,
+  setzeKontingentZurueck,
+  clearCatalogCache,
+  clearSubsetsCache,
+  getCacheStats,
+  loescheAnleitungen,
+  vergissFehlend,
+  anfragenJeMinute,
+  bildbedarfAnstossen,
+  katalogBilderVormerken,
+  alsAbrufFehler,
+  pruefeBricklinkZugang,
+  ausRetryWarteschlange,
+  pruefeBricksetZugang,
+  pruefeRebrickableZugang,
+} from '../katalog';
 import { setGlobalSetting } from '../einstellungen';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { verwaltungBereich } from './prozess';
@@ -104,7 +131,13 @@ export async function anleitungenNeuEinreihen() {
 /** Im Format von früher, damit die Oberfläche unverändert bleibt. */
 export async function preisJobStand() {
   const plan = await verwaltungBereich().verwaltung.letzterLaufDerArt();
-  let letzter: Record<string, any> = {};
+  let letzter: {
+    lastRun?: string | null;
+    lastDuration?: number | null;
+    lastUpdated?: number;
+    lastErrors?: number;
+    log?: unknown;
+  } = {};
   try {
     letzter = JSON.parse((await auftraegeBereich().laufzustand.liesZustand('preis_job_stand')) ?? '{}');
   } catch (e) {
@@ -165,7 +198,7 @@ export async function jobZeitplanSetzen(name: unknown, time: unknown, minutes: u
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
     );
   } else if (name === 'priceJob') {
-    await setGlobalSetting('price_job_interval_minutes', String(Math.max(5, parseInt(String(minutes)) || 60)));
+    await setGlobalSetting('price_job_interval_minutes', String(Math.max(5, parseInt(String(minutes), 10) || 60)));
   } else {
     fachfehler('ungueltig', 'unbekannter_job');
   }
@@ -182,10 +215,12 @@ export async function zeitplanNeuPlanen() {
 /** Fertig ist ein Set mit Original UND Vorschau; zurückgenommene Fehlanzeigen
  * werden mitgezählt. */
 export async function katalogBilderEinreihen(alleErneut: boolean) {
-  const zuVergessen = await (alleErneut ? verwaltungBereich().verwaltung.setFehlanzeigen() : verwaltungBereich().verwaltung.setFehlanzeigenOhne404());
+  const zuVergessen = await (alleErneut
+    ? verwaltungBereich().verwaltung.setFehlanzeigen()
+    : verwaltungBereich().verwaltung.setFehlanzeigenOhne404());
   const verworfen = zuVergessen.length ? await vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
   // Was schon fertig ist, wird nicht wieder eingereiht.
-  let vorhanden: Set<string> = new Set();
+  const vorhanden: Set<string> = new Set();
   try {
     const namen = new Set<string>(fs.readdirSync(SET_IMAGES_DIR));
     // Fehlt die Vorschau, bleibt das Set in der Warteschlange; der Job lädt dann

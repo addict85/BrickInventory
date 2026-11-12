@@ -5,20 +5,20 @@
  * Datenbank hier oder in household-db.test.js.
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  createInvite speichert den Code statt seines Hashes → rot „der
+ *   A  einladungAnlegen speichert den Code statt seines Hashes → rot „der
  *      Einladungscode steht nur als Hash …“
- *   B  canWriteFor fragt resolveHousehold() statt der Verknüpfung → rot
+ *   B  darfSchreibenFuer fragt haushaltVon() statt der Verknüpfung → rot
  *      „Schreibrechte kommen nie aus dem Gedächtnis“
  * Gestrichen, weil household-db.test.js dasselbe ausführt (dort je rot):
  *   „der Code wird atomar entwertet …“ (release() bei ungleicher Währung
  *   entfernt → „Verknüpfen braucht beide Seiten …“), „beide Seiten dürfen die
  *   Verknüpfung lösen“ (trenne() je Zweig ohne Wirkung → „ein Konto kann
  *   mehreren Hauptkonten angehören“, „Entkoppeln …“, „die Umstellung trennt
- *   Ketten …“), „der Kontofilter wird am Server in IDs übersetzt“ (scopeIds
+ *   Ketten …“), „der Kontofilter wird am Server in IDs übersetzt“ (blickfeldIds
  *   'own' → alle → „Blickfeld und Kontofilter“), „ein Set erscheint nur
  *   EINMAL“ (setsQuelle ohne Gruppierung → „dasselbe Set in zwei Konten …“),
  *   „Schreiben in ein fremdes Konto verlangt die richtige Richtung“
- *   (resolveWriteTarget ohne canWriteFor → „in ein fremdes Konto schreiben …“),
+ *   (schreibzielOderNull ohne darfSchreibenFuer → „in ein fremdes Konto schreiben …“),
  *   „der Absender eines Eigentümerwechsels kommt aus der ZEILE“ (from = uid →
  *   „der Eigentümerwechsel greift die ZEILE …“).
  */
@@ -28,6 +28,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pruefeParameter } = require('./helpers/sources');
+const kompakt = require('./helpers/sources').kompakt;
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -60,7 +61,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
 
   await t.test('der Einladungscode steht nur als Hash in der Datenbank', async () => {
     // Wie bei API-Tokens: Wer die Datenbank liest, soll keine Einladung einlösen können.
-    const { code } = await hh.createInvite(ids[0]);
+    const { code } = await hh.einladungAnlegen(ids[0]);
     assert.ok(code, 'kein Code erzeugt');
     const zeilen = await db.all('SELECT token_hash FROM account_link_invites WHERE main_user_id = $1', [ids[0]]);
     assert.equal(zeilen.length, 1);
@@ -75,14 +76,22 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     // Schreibzugriff darf nur der Stand der Datenbank entscheiden.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ids[0], ids[1]]);
     hh.leereHaushaltCache();
-    assert.deepEqual((await hh.resolveHousehold(ids[0])).memberIds, ids, 'Vorbedingung: das Unterkonto ist gemerkt');
-    assert.equal(await hh.canWriteFor(ids[0], ids[1]), true);
+    assert.deepEqual((await hh.haushaltVon(ids[0])).memberIds, ids, 'Vorbedingung: das Unterkonto ist gemerkt');
+    assert.equal(await hh.darfSchreibenFuer(ids[0], ids[1]), true);
     // Von aussen gelöst, ohne dass dieser Prozess davon hört.
     await db.run('DELETE FROM account_links WHERE main_user_id = $1', [ids[0]]);
-    assert.deepEqual((await hh.resolveHousehold(ids[0])).memberIds, ids, 'Vorbedingung: das Gedächtnis ist noch alt');
-    assert.equal(await hh.canWriteFor(ids[0], ids[1]), false, 'canWriteFor entscheidet nach dem gemerkten Blickfeld');
-    assert.deepEqual(await hh.writableIds(ids[0]), [ids[0]], 'writableIds entscheidet nach dem gemerkten Blickfeld');
-    assert.equal(await hh.canWriteFor(ids[1], ids[1]), true, 'Eigene Daten immer');
+    assert.deepEqual((await hh.haushaltVon(ids[0])).memberIds, ids, 'Vorbedingung: das Gedächtnis ist noch alt');
+    assert.equal(
+      await hh.darfSchreibenFuer(ids[0], ids[1]),
+      false,
+      'darfSchreibenFuer entscheidet nach dem gemerkten Blickfeld',
+    );
+    assert.deepEqual(
+      await hh.schreibbereich(ids[0]),
+      [ids[0]],
+      'schreibbereich entscheidet nach dem gemerkten Blickfeld',
+    );
+    assert.equal(await hh.darfSchreibenFuer(ids[1], ids[1]), true, 'Eigene Daten immer');
   });
 });
 
@@ -92,7 +101,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   // Ausweise). Vorher stand diese Prüfung über ZWEI Dateien und verlangte,
   // dass beide alles anbieten — die schwächere Fassung derselben Aussage.
   const src = read('routes/api_v1/settings.ts');
-  for (const fn of ['householdStatus', 'createInvite', 'redeemInvite', 'unlink']) {
+  for (const fn of ['haushaltsStand', 'einladungAnlegen', 'einladungEinloesen', 'kontenTrennen']) {
     assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
   }
   // Und die Zweitfassung darf nicht zurückkehren: jede Haushalts-Route genau einmal.
@@ -110,7 +119,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
 test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {
   // Ein Konto kann mehreren Hauptkonten angehören; jedes braucht seine eigene
   // Einladung. Ein ausgeblendetes Eingabefeld verhinderte genau das.
-  const js = require('./helpers/sources').ansichtQuelle('05');
+  const js = require('./helpers/sources').ansichtQuelle('einstellungen');
   assert.match(js, /inviteEl\.style\.display = ''/);
   assert.match(js, /redeemEl\.style\.display = ''/);
   const kt =
@@ -151,8 +160,8 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Tages — genau den Zustand, den der Bearbeiten-Pfad ablehnt.
   // ohneKommentare(): Die BEGRÜNDUNGEN dieser Regeln stehen in setMove.ts als
   // Kommentar, und sie ZITIEREN die Anweisungen, die es nicht mehr geben darf …
-  const mv = require('./helpers/sources').ohneKommentare(
-    require('./helpers/sources').dienstQuelle('src/sets/setMove.ts'),
+  const mv = kompakt(
+    require('./helpers/sources').ohneKommentare(require('./helpers/sources').dienstQuelle('src/sets/setMove.ts')),
   );
   assert.ok(
     mv.includes("recordAcquisitionForDay('set', toId, [sn]"),
@@ -180,7 +189,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // zusammen, nicht eines statt des anderen.
   assert.ok(src.includes('sets.setVerschieben('), 'Die Route ruft den Dienst');
   assert.ok(
-    read('src/sets/dienst.ts').includes('verschiebeSet(sk, sn, fromId'),
+    kompakt(read('src/sets/dienst.ts')).includes('verschiebeSet(sk, sn, fromId'),
     'Das Verschieben läuft über verschiebeSet',
   );
   assert.ok(mv.includes('mitInventarSperre(sk.db, fromId, sn'), 'Serialisiert über das Quellkonto');
@@ -202,11 +211,11 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   // Teil sind zwei Bestände mit eigener Menge und eigenem Kaufpreis, und jeder
   // Bearbeiten-Weg führt auf genau eine Zeile. Ohne Plakette sähe die Liste
   // wie eine doppelte Zeile aus.
-  const h = require('./helpers/sources').handlerQuelle();
+  const h = kompakt(require('./helpers/sources').handlerQuelle());
   // Auf die Parameter geprüft, nicht auf den Wortlaut: `rows: any[]` eines Tages
   // zu `rows: Row[]` zu schärfen ist eine Verbesserung und darf hier nicht als
   // Fehler erscheinen (siehe pruefeParameter() im Helfer).
-  pruefeParameter(h, 'withOwners', ['uids', 'rows']);
+  pruefeParameter(h, 'besitzerAnhaengen', ['uids', 'rows']);
   assert.match(
     h,
     /if \(uids\.length < 2 \|\| !rows\?\.length\) return rows;/,
@@ -222,8 +231,8 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
     'Ohne user_id in der Abfrage gibt es keinen Besitzer',
   );
 
-  const fc = require('./helpers/sources').finanzQuelle();
-  const uses = (fc.match(/await (?:haushaltBereich\(\)\.haushalt\.)?withOwners\(uids,/g) || []).length;
+  const fc = kompakt(require('./helpers/sources').finanzQuelle());
+  const uses = (fc.match(/await (?:haushaltBereich\(\)\.haushalt\.)?besitzerAnhaengen\(uids,/g) || []).length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });
@@ -261,7 +270,7 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
 
 test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   // Im Einzelkonto stünde an jeder Kachel „gehört mir" — reines Rauschen.
-  const gal = require('./helpers/sources').frontendQuelle();
+  const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function ownerBadges/);
   assert.match(gal, /if \(!item\?\.owners\?\.length\) return '';/);
   // Eine Auswahl mit einer einzigen Möglichkeit ist keine Auswahl.
@@ -278,7 +287,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
     );
   }
   assert.match(gal, /\['add-owner', 'ap-owner', 'af-owner'/, 'Die Kontoauswahl gehört in alle drei Erfassen-Formulare');
-  const fig = require('./helpers/sources').frontendQuelle();
+  const fig = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(fig, /owner_user_id: selectedOwner\('ap-owner'\)/);
   assert.match(fig, /owner_user_id: selectedOwner\('af-owner'\)/);
   // Und die Besitzer-Plakette auf den manuellen Kacheln.
@@ -288,7 +297,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   // den KAUFPREIS, Zeile für Zeile. Geprüft wird jetzt, dass die
   // Eigentümer-Spalte im Kaufpreis-Dialog nur im Haushalt erscheint — und
   // zwar in BEIDEN Dialogen (Sets und manuelle Einträge).
-  const adm = require('./helpers/sources').adminQuelle();
+  const adm = kompakt(require('./helpers/sources').adminQuelle());
   assert.doesNotMatch(
     adm,
     /renderMoveBox|moveSetToAccount/,
@@ -316,14 +325,14 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
   assert.match(core, /if \(m && m !== 'all'\) p\.set\('accounts', m\);/);
 
   // Jede der fünf Ansichten hängt ihn an ihre Abfragen.
-  assert.match(read('public/js/02-gallery.js'), /addScopeParam\(p, 'gallery'\)/);
-  assert.match(read('public/js/03-parts.js'), /addScopeParam\(p, 'parts'\)/);
-  assert.match(read('public/js/06-minifigs.js'), /addScopeParam\(p, 'minifigs'\)/);
-  assert.match(read('public/js/16-merkliste.js'), /addScopeParam\(p, 'merkliste'\)/);
+  assert.match(read('public/js/gallery.js'), /addScopeParam\(p, 'gallery'\)/);
+  assert.match(read('public/js/parts.js'), /addScopeParam\(p, 'parts'\)/);
+  assert.match(read('public/js/minifigs.js'), /addScopeParam\(p, 'minifigs'\)/);
+  assert.match(read('public/js/merkliste.js'), /addScopeParam\(p, 'merkliste'\)/);
 
   // Im Finanzreiter ALLE vier Abfragen — sonst stünde eine Summe aus einem
   // Blickfeld neben einer Aufstellung aus einem anderen.
-  const fin = read('public/js/04-finance.js') + read('public/js/04-wertkurve.js');
+  const fin = read('public/js/finance.js') + read('public/js/wertkurve.js');
   // Adressen seit Etappe 5 unter /v1 — die Regel ist unverändert: ALLE vier
   // Abfragen des Reiters tragen denselben Filter.
   for (const ep of [
@@ -347,13 +356,13 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
 test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   // Alle vier gleichzeitig neu zu laden würde drei Ansichten anfassen, die
   // niemand ansieht — und dabei Preisabrufe auslösen.
-  const gal = require('./helpers/sources').frontendQuelle();
+  const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function onScopeChange\(view\)/);
-  assert.match(gal, /if \(view === 'finance'\) {2}loadFinance\(\);/);
+  assert.match(gal, /if \(view === 'finance'\) loadFinance\(\);/);
   // Die Reiter Teile und Minifiguren haben ZWEI Listen — die aus Sets und die
   // manuell erfassten. Der manuelle Bereich lädt über einen eigenen Endpunkt
   // und blieb sonst ungefiltert stehen.
-  assert.match(gal, /if \(view === 'parts'\) {4}\{ loadParts\(\); loadManualParts\(\); \}/);
+  assert.match(gal, /if \(view === 'parts'\) \{ loadParts\(\); loadManualParts\(\); \}/);
   // Und er erscheint nur bei einem Hauptkonto mit Unterkonten.
   assert.match(gal, /if \(!isMain\) \{ el\.style\.display = 'none'; continue; \}/);
   assert.match(gal, /initScopeSelects\(members\);/);
@@ -388,7 +397,7 @@ test('Verschieben geht NUR über den Kaufpreis', async () => {
 test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
   // Inhalt — es wandern nur Menge und Erfassung.
-  const mv = read('src/sets/setMove.ts');
+  const mv = kompakt(read('src/sets/setMove.ts'));
   assert.match(mv, /export async function moveManualAcquisition/);
   assert.match(mv, /recordAcquisitionForDay\(kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
 
@@ -398,7 +407,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Teile und Figuren gehen über denselben Aufruf; die Art kommt aus der Tabelle.
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
   const f = 'src/sammlung/erfassungen.ts';
-  const src = read(f);
+  const src = kompakt(read(f));
   assert.ok(src.includes('moveManualAcquisition(tx, art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,

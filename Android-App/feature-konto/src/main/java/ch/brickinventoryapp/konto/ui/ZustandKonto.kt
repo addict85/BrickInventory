@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui
 
+import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
@@ -130,7 +131,8 @@ data class UpdateUiState(
      * Punkt am Konto-Symbol bleibt stehen.
      */
     val dialogAbgelehnt: Boolean = false,
-    val fehler: String? = null,
+    /** Ein Satz in Bausteinen; die Oberfläche bildet ihn in ihrer Sprache. */
+    val fehler: Meldung? = null,
     /**
      * Wie frisch die zuletzt geprüfte Beschreibung war; null vor der ersten Prüfung.
      * Auch nach der stillen Prüfung gesetzt: Ein Zurückhalten soll man in den

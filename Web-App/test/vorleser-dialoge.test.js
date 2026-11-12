@@ -17,14 +17,22 @@ test('jeder Dialog hat einen Namen', async () => {
   try {
     const dialoge = [...d.querySelectorAll('[role="dialog"]')];
     assert.ok(dialoge.length >= 15, `nur ${dialoge.length} Dialoge gefunden`);
-    const ohne = dialoge.filter(dl => {
-      if ((dl.getAttribute('aria-label') || '').trim()) return false;
-      const ids = (dl.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
-      return !ids.some(id => d.getElementById(id) && dl.contains(d.getElementById(id))
-        && (d.getElementById(id).textContent.trim() || d.getElementById(id).id));
-    }).map(dl => dl.id);
+    const ohne = dialoge
+      .filter(dl => {
+        if ((dl.getAttribute('aria-label') || '').trim()) return false;
+        const ids = (dl.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+        return !ids.some(
+          id =>
+            d.getElementById(id) &&
+            dl.contains(d.getElementById(id)) &&
+            (d.getElementById(id).textContent.trim() || d.getElementById(id).id),
+        );
+      })
+      .map(dl => dl.id);
     assert.deepEqual(ohne, []);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Meldungen werden angesagt', async () => {
@@ -36,5 +44,7 @@ test('Meldungen werden angesagt', async () => {
     d.getElementById('csv-file').dispatchEvent(new w.Event('change', { bubbles: true }));
     await warte(() => behaelter.querySelector('.toast.error'));
     assert.equal(behaelter.querySelector('.toast.error').getAttribute('role'), 'alert');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

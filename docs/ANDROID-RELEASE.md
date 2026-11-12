@@ -68,6 +68,14 @@ Damit setzt nur ein Administrator ein Etikett, und keines lässt sich auf einen
 anderen Commit umhängen oder löschen. Der Workflow signiert ohnehin nur Commits,
 die auf `main` liegen.
 
+`apk-neuste` bleibt im Ruleset, obwohl der Workflow es nicht mehr beschreibt: Die
+Release ist eingefroren (Stand 2.11.2026; *Immutable releases* lässt keinen Anhang
+mehr ersetzen), und ältere installierte Fassungen fragen dort noch nach. Ab dem
+ersten Etikett nach `android-v2026.11.12.1` gilt der feste Link
+<https://github.com/addict85/BrickInventory/releases/latest/download/BrickInventory.apk>:
+Jede Release kommt in einem Schritt mit allen Anhängen und wird „Latest“. Eine vor
+der Umstellung installierte App braucht das Update einmal von Hand.
+
 ## 4. Was bleibt wie bisher
 
 - Ruleset für `main`: *Require a pull request*, *Require status checks*
@@ -92,15 +100,17 @@ setzt, starten keinen Bau, und das Ruleset aus Schritt 3 lässt nur Admins
    - *Generate token* und den Wert kopieren.
 2. *Settings → Environments → New environment* → Name `etikett`.
    - *Deployment branches and tags*: **Selected**, eine Regel: Branch `main`.
-   - *Required reviewers*: du; *Allow administrators to bypass*: **aus**.
+   - *Required reviewers*: **keine**. Der Knopf setzt nur das Etikett; die
+     Freigaben mit den Signierschlüsseln (`release`, `release-beschreibung`)
+     bleiben bei dir.
    - *Environment secrets → Add secret*: Name `ETIKETT_TOKEN`, Wert das Token.
 3. Läuft das Token ab, ein neues anlegen und das Secret ersetzen.
 
 ## Ablauf eines Release
 
 Im Browser: *Actions → Android-Etikett setzen → Run workflow* (Zweig `main`),
-Name eintragen, z. B. `android-v2026.11.12.1`, dann den Lauf in `etikett`
-freigeben. Nur das Etikett setzen, **keine Release von Hand anlegen**: Eine
+Name eintragen, z. B. `android-v2026.11.12.1`. Danach die Läufe in `release`
+und `release-beschreibung` freigeben. Nur das Etikett setzen, **keine Release von Hand anlegen**: Eine
 veröffentlichte Release ist unveränderlich und nimmt das APK nicht mehr an.
 
 Oder mit Git (z. B. im Codespace):

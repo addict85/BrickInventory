@@ -23,18 +23,20 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const H = require('./helpers/sources').handlerModul(_req);
 const PS = _req('src/teile/partsSummary.js');
 
-const U = 990611, U2 = 990612;
+const U = 990611,
+  U2 = 990612;
 
-test('Reihenfolge der Teileliste', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+test('Reihenfolge der Teileliste', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   const aufraeumen = async () => {
     for (const tab of ['parts', 'set_acquisitions', 'sets', 'parts_summary', 'parts_summary_state'])
@@ -46,9 +48,15 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async (t) => {
     await db.run(`DELETE FROM bl_zuordnung WHERE rb_id = ANY($1)`, [['ORD1', 'ORD2', 'ORD3']]);
   };
   await aufraeumen();
-  t.after(async () => { await aufraeumen().catch(() => {}); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await aufraeumen().catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
 
-  for (const [id, name] of [[U, 'ordnung_a'], [U2, 'ordnung_b']])
+  for (const [id, name] of [
+    [U, 'ordnung_a'],
+    [U2, 'ordnung_b'],
+  ])
     await db.run('INSERT INTO users (id, username, password_hash) VALUES ($1, $2, $3)', [id, name, 'x']);
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('ORD1','Brick'),('ORD2','Plate'),('ORD3','Axle')
                 ON CONFLICT (part_number) DO UPDATE SET part_name = EXCLUDED.part_name`);
@@ -63,8 +71,8 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async (t) => {
   await haeltTeil(db, U2, 'ORD3', { setNumber: 'ORD-2', menge: 1, colorId: 3 });
 
   const ERWARTET = { farbe: ['ORD2', 'ORD3', 'ORD1'], name: ['ORD3', 'ORD1', 'ORD2'], menge: ['ORD1', 'ORD3', 'ORD2'] };
-  const abfrage = (ordnung) => ({ exclude_manual: '1', page: 1, page_size: 50, ordnung });
-  const reihe = (r) => r.parts.map(p => p.part_number);
+  const abfrage = ordnung => ({ exclude_manual: '1', page: 1, page_size: 50, ordnung });
+  const reihe = r => r.parts.map(p => p.part_number);
 
   await t.test('der Server sortiert in jedem Weg wie gewählt', async () => {
     const ergebnisse = [];
@@ -73,15 +81,28 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async (t) => {
       await db.run('DELETE FROM parts_summary WHERE user_id = ANY($1)', [[U, U2]]);
       const live = await H.getParts(U, abfrage(ordnung));
       const liveHaushalt = await H.getParts([U, U2], abfrage(ordnung));
-      await PS.rebuildNow(U); await PS.rebuildNow(U2);
+      await PS.rebuildNow(U);
+      await PS.rebuildNow(U2);
       const zsf = await H.getParts(U, abfrage(ordnung));
       const zsfHaushalt = await H.getParts([U, U2], abfrage(ordnung));
-      for (const [weg, r, quelle] of [['Live', live, 'db'], ['Live Haushalt', liveHaushalt, 'db'],
-        ['Zusammenfassung', zsf, 'summary'], ['Zusammenfassung Haushalt', zsfHaushalt, 'summary']])
-        ergebnisse.push({ ordnung, weg, quelle: r.source, reihe: reihe(r), erwartet: { quelle, reihe: ERWARTET[ordnung] } });
+      for (const [weg, r, quelle] of [
+        ['Live', live, 'db'],
+        ['Live Haushalt', liveHaushalt, 'db'],
+        ['Zusammenfassung', zsf, 'summary'],
+        ['Zusammenfassung Haushalt', zsfHaushalt, 'summary'],
+      ])
+        ergebnisse.push({
+          ordnung,
+          weg,
+          quelle: r.source,
+          reihe: reihe(r),
+          erwartet: { quelle, reihe: ERWARTET[ordnung] },
+        });
     }
-    assert.deepEqual(ergebnisse.map(e => `${e.ordnung}/${e.weg}: ${e.quelle} ${e.reihe}`),
-      ergebnisse.map(e => `${e.ordnung}/${e.weg}: ${e.erwartet.quelle} ${e.erwartet.reihe}`));
+    assert.deepEqual(
+      ergebnisse.map(e => `${e.ordnung}/${e.weg}: ${e.quelle} ${e.reihe}`),
+      ergebnisse.map(e => `${e.ordnung}/${e.weg}: ${e.erwartet.quelle} ${e.erwartet.reihe}`),
+    );
   });
 
   await t.test('ein unbekannter Wert gilt als Farbe', async () => {
@@ -101,9 +122,15 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async (t) => {
     const feld = d.getElementById('parts-ordnung');
     feld.value = 'name';
     feld.dispatchEvent(new w.Event('change'));
-    await warte(() => aufrufe.some(a => a.url.includes('ordnung=name')) && d.querySelectorAll('#parts-main .part-card').length === 2);
+    await warte(
+      () =>
+        aufrufe.some(a => a.url.includes('ordnung=name')) && d.querySelectorAll('#parts-main .part-card').length === 2,
+    );
     assert.equal(d.querySelectorAll('#parts-main .group-hd').length, 0);
-    assert.deepEqual([...d.querySelectorAll('#parts-main .part-card .part-num')].map(e => e.textContent), ['3003', '3001']);
+    assert.deepEqual(
+      [...d.querySelectorAll('#parts-main .part-card .part-num')].map(e => e.textContent),
+      ['3003', '3001'],
+    );
     assert.equal(w.localStorage.getItem('bim_teile_ordnung'), 'name', 'die Wahl bleibt im Browser');
     w.close();
   });

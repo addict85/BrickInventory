@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Katalogsortierung
@@ -43,7 +44,7 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.testing.HaushaltRepository
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.zustand.ui.AppUiState
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
 import ch.brickinventoryapp.katalog.ui.CatalogUiState
@@ -171,7 +172,6 @@ class AblaufBefundeTest {
         override fun loadCatalogSets() = Unit
         override fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = Unit
         override fun scrollCatalogTo(nummer: Int) = Unit
-        override fun setCatalogScrollPos(index: Int, offset: Int) = Unit
         override fun catalogScrollConsumed() = Unit
         override fun setCatalogQuery(q: String) = Unit
         override fun setCatalogTheme(themeId: Int?) = Unit
@@ -237,12 +237,12 @@ class AblaufBefundeTest {
     fun `M6 das Katalog-Detail zeigt den Merkposten und oeffnet ihn`() {
         var geoeffnet: Pair<String, Zustand>? = null
         val gemerkt = MerkpostenAnsicht(setNumber = "10305-1", condition = Zustand.NEU, name = "Lion Knights' Castle", waehrung = Waehrung("CHF"),
-            alarm = MerkpostenAlarmAnsicht(richtung = "unter", schwelle = 349.0))
+            alarm = MerkpostenAlarmAnsicht(richtung = Alarmrichtung.UNTER, schwelle = 349.0))
         zeige {
             CatalogDetailScreen(setNumber = "10305-1",
                 detail = KatalogDetailAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022),
                 isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
-                onAddToGallery = {}, onWish = { _, _, _, _, _ -> }, onOpenInGallery = {}, onBack = {},
+                onAddToGallery = {}, onWish = {}, onOpenInGallery = {}, onBack = {},
                 gemerkt = gemerkt, onOeffneMerkposten = { sn, z -> geoeffnet = sn to z })
         }
         compose.onNodeWithText(ctx.getString(R.string.catalog_auf_merkliste)).fetchSemanticsNode("Merkliste nicht genannt")

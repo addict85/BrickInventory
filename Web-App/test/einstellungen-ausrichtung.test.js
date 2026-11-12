@@ -14,7 +14,7 @@ const vm = require('node:vm');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.join(__dirname, '..');
-const QUELLE = require('./helpers/sources').ansichtQuelle('05');
+const QUELLE = require('./helpers/sources').ansichtQuelle('einstellungen');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 /** Wie in test/abgleich-catalog-frontend.test.js: die Modulverpackung weg. */
@@ -23,7 +23,7 @@ function ohneModul(src) {
 }
 
 /**
- * Eine Funktion aus 05-settings.js in einer Sandbox ausführen.
+ * Eine Funktion aus settings.js in einer Sandbox ausführen.
  *
  * Nur die Funktion selbst, nicht die ganze Datei: Sie zieht ein halbes Dutzend
  * andere Module nach sich (Galerie, Teile, Minifiguren), und die hier
@@ -31,7 +31,7 @@ function ohneModul(src) {
  */
 function fuehreAus(funktionsName, umgebung) {
   const start = QUELLE.indexOf(`function ${funktionsName}(`);
-  assert.ok(start > 0, `${funktionsName}() steht nicht mehr in public/js/05-*.js`);
+  assert.ok(start > 0, `${funktionsName}() steht nicht mehr in den Dateien der Ansicht „einstellungen“`);
   // Bis zur Klammer auf Spalte 0 — so sind diese Dateien geschrieben.
   const ende = QUELLE.indexOf('\n}\n', start) + 3;
   const code = ohneModul(QUELLE.slice(start, ende));
@@ -46,11 +46,11 @@ function gestell(dom, zielId) {
   const d = dom.window.document;
   return {
     document: d,
-    G: (id) => d.getElementById(id),
+    G: id => d.getElementById(id),
     ...require('./helpers/markup').markupHelfer(),
     echt: () => '',
-    t:    (k, v) => k + (v ? ' ' + JSON.stringify(v) : ''),
-    tRaw: (k) => k,
+    t: (k, v) => k + (v ? ' ' + JSON.stringify(v) : ''),
+    tRaw: k => k,
     ZIEL: zielId,
   };
 }
@@ -60,20 +60,30 @@ test('Abstand zwischen Einladungscode und Verknüpfen-Knopf', () => {
   const knopf = d.querySelector('[data-click="redeemHouseholdInvite"]');
   assert.ok(knopf, 'Der Verknüpfen-Knopf ist nicht mehr zu finden');
   const stil = knopf.getAttribute('data-stil') || '';
-  assert.match(stil, /margin-top\s*:\s*\.?\d/,
+  assert.match(
+    stil,
+    /margin-top\s*:\s*\.?\d/,
     `Der Knopf trägt keinen oberen Abstand (data-stil="${stil}"). Er klebt dann am ` +
-    'Eingabefeld darüber — Marcos Bild.');
+      'Eingabefeld darüber — Marcos Bild.',
+  );
 });
 
 test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () => {
-  const dom = new JSDOM('<!doctype html><html><body>' +
-    '<div id="household-state"></div><div id="household-invite-box"></div>' +
-    '<div id="household-redeem-box"></div></body></html>');
+  const dom = new JSDOM(
+    '<!doctype html><html><body>' +
+      '<div id="household-state"></div><div id="household-invite-box"></div>' +
+      '<div id="household-redeem-box"></div></body></html>',
+  );
   const umg = gestell(dom);
-  umg.ARG = { is_sub: false, currency: 'CHF',
-              sub_accounts: [{ id: 1, username: 'emily.bigolin' },
-                             { id: 2, username: 'alessio.bigolin' },
-                             { id: 3, username: 'eliano.bigolin' }] };
+  umg.ARG = {
+    is_sub: false,
+    currency: 'CHF',
+    sub_accounts: [
+      { id: 1, username: 'emily.bigolin' },
+      { id: 2, username: 'alessio.bigolin' },
+      { id: 3, username: 'eliano.bigolin' },
+    ],
+  };
   fuehreAus('renderHousehold', umg);
 
   const liste = dom.window.document.querySelector('#household-state ul');
@@ -83,29 +93,43 @@ test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () =>
   assert.ok(liste.classList.contains('haushalt-liste'), 'Die Liste trägt die Klasse haushalt-liste nicht');
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   const stil = (css.match(/\n\.haushalt-liste\{([^}]*)\}/) || [])[1] || '';
-  assert.match(stil, /display\s*:\s*grid/,
+  assert.match(
+    stil,
+    /display\s*:\s*grid/,
     `Die LISTE trägt kein Raster („${stil}“) — dann richtet sich jede Zeile ` +
-    'für sich aus, und die Knöpfe stehen versetzt.');
-  assert.match(stil, /grid-template-columns\s*:\s*minmax\(0,\s*max-content\)\s+minmax\(0,\s*max-content\)/,
-    'Die Liste hat keine zwei Inhaltsspalten — ohne sie teilen sich die Zeilen ' +
-    'keine gemeinsame Breite');
+      'für sich aus, und die Knöpfe stehen versetzt.',
+  );
+  assert.match(
+    stil,
+    /grid-template-columns\s*:\s*minmax\(0,\s*max-content\)\s+minmax\(0,\s*max-content\)/,
+    'Die Liste hat keine zwei Inhaltsspalten — ohne sie teilen sich die Zeilen ' + 'keine gemeinsame Breite',
+  );
 
   const zeilen = [...liste.querySelectorAll('li')];
   assert.equal(zeilen.length, 3, `${zeilen.length} Zeilen statt 3`);
   for (const li of zeilen) {
-    assert.match(li.getAttribute('data-stil') || '', /display\s*:\s*contents/,
+    assert.match(
+      li.getAttribute('data-stil') || '',
+      /display\s*:\s*contents/,
       'Eine Zeile erzeugt einen eigenen Kasten — damit liegen ihre Zellen NICHT ' +
-      'in den Spalten der Liste, und die Ausrichtung ist wieder dahin');
+        'in den Spalten der Liste, und die Ausrichtung ist wieder dahin',
+    );
   }
   // Und jede Zeile liefert genau zwei Zellen — sonst verschieben sich die
   // Spalten ab der ersten Zeile, die anders gebaut ist.
   for (const li of zeilen) {
-    assert.equal(li.children.length, 2,
+    assert.equal(
+      li.children.length,
+      2,
       `Eine Zeile hat ${li.children.length} Zellen statt 2 — bei display:contents ` +
-      'zählt jede Zelle einzeln ins Raster, eine zu viel verschiebt alles danach');
+        'zählt jede Zelle einzeln ins Raster, eine zu viel verschiebt alles danach',
+    );
   }
-  assert.equal(liste.querySelectorAll('[data-click="unlinkHousehold"]').length, 3,
-    'Nicht jede Zeile hat ihren Entfernen-Knopf');
+  assert.equal(
+    liste.querySelectorAll('[data-click="unlinkHousehold"]').length,
+    3,
+    'Nicht jede Zeile hat ihren Entfernen-Knopf',
+  );
 });
 
 test('die Lagerorte stehen wie in einer Tabelle', () => {
@@ -122,53 +146,78 @@ test('die Lagerorte stehen wie in einer Tabelle', () => {
 
   const sandbox = {
     document: d,
-    G: (id) => d.getElementById(id),
+    G: id => d.getElementById(id),
     ...require('./helpers/markup').markupHelfer(),
     echt: () => '',
-    ico: (n) => `<svg class="ico"><use href="#i-${n}"/></svg>`,
+    ico: n => `<svg class="ico"><use href="#i-${n}"/></svg>`,
     t: (k, v) => k + ' ' + JSON.stringify(v || {}),
-    tRaw: (k) => k,
+    tRaw: k => k,
     ladeLagerorte: async () => {},
     // success: true, sonst kehrt die Funktion gleich am Anfang um. Und die
     // Belegung schluesselt auf `ort`, nicht auf `name` — genau Marcos Lage:
     // drei Orte mit Inhalt, einer leer, damit die Spalte „Belegung" wirklich
     // verschieden lange Texte bekommt.
-    api: async (_m, pfad) => pfad.includes('locations')
-      ? { success: true,
-          orte: [{ id: 1, name: 'Büro' }, { id: 2, name: 'Estrich' },
-                 { id: 3, name: 'Zimmer Alessio' }, { id: 4, name: 'Zimmer Emily' }],
-          vorgabe: { id: 2 } }
-      : { success: true,
-          orte: [{ ort: 'Büro', sets: 24, teile: 0, figuren: 0 },
-                 { ort: 'Estrich', sets: 406, teile: 0, figuren: 0 },
-                 { ort: 'Zimmer Alessio', sets: 2, teile: 0, figuren: 0 }] },
+    api: async (_m, pfad) =>
+      pfad.includes('locations')
+        ? {
+            success: true,
+            orte: [
+              { id: 1, name: 'Büro' },
+              { id: 2, name: 'Estrich' },
+              { id: 3, name: 'Zimmer Alessio' },
+              { id: 4, name: 'Zimmer Emily' },
+            ],
+            vorgabe: { id: 2 },
+          }
+        : {
+            success: true,
+            orte: [
+              { ort: 'Büro', sets: 24, teile: 0, figuren: 0 },
+              { ort: 'Estrich', sets: 406, teile: 0, figuren: 0 },
+              { ort: 'Zimmer Alessio', sets: 2, teile: 0, figuren: 0 },
+            ],
+          },
   };
   vm.createContext(sandbox);
   vm.runInContext(rumpf.replace(/^export\s+/, '') + '\nERG = ladeLagerortVerwaltung();', sandbox);
   return sandbox.ERG.then(() => {
     const raster = d.querySelector('#storage-list > div[data-stil*="grid"]');
-    assert.ok(raster, 'Es gibt keinen Rasterbehälter — dann richtet sich jede Zeile ' +
-                      'für sich aus, und die Eingabefelder sind verschieden lang');
+    assert.ok(
+      raster,
+      'Es gibt keinen Rasterbehälter — dann richtet sich jede Zeile ' +
+        'für sich aus, und die Eingabefelder sind verschieden lang',
+    );
     const stil = raster.getAttribute('data-stil');
-    assert.match(stil, /grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s+max-content\s+max-content\s+max-content/,
+    assert.match(
+      stil,
+      /grid-template-columns\s*:\s*minmax\(0,\s*1fr\)\s+max-content\s+max-content\s+max-content/,
       `Das Raster hat nicht die vier erwarteten Spalten (data-stil="${stil}"). minmax(0,1fr) ` +
-      'und nicht 1fr: Ein langer Ortsname sprengte sonst die Spalte.');
+        'und nicht 1fr: Ein langer Ortsname sprengte sonst die Spalte.',
+    );
 
     const zeilen = [...raster.children];
     assert.equal(zeilen.length, 4, `${zeilen.length} Zeilen statt 4`);
     for (const z of zeilen) {
-      assert.match(z.getAttribute('data-stil') || '', /display\s*:\s*contents/,
-        'Eine Lagerortzeile erzeugt einen eigenen Kasten — damit hat sie wieder ' +
-        'ihre eigenen Spaltenbreiten');
-      assert.equal(z.children.length, 4,
-        `Eine Zeile hat ${z.children.length} Zellen statt 4 (Feld, Belegung, Stern, Papierkorb)`);
+      assert.match(
+        z.getAttribute('data-stil') || '',
+        /display\s*:\s*contents/,
+        'Eine Lagerortzeile erzeugt einen eigenen Kasten — damit hat sie wieder ' + 'ihre eigenen Spaltenbreiten',
+      );
+      assert.equal(
+        z.children.length,
+        4,
+        `Eine Zeile hat ${z.children.length} Zellen statt 4 (Feld, Belegung, Stern, Papierkorb)`,
+      );
     }
     // Der Trennstrich sass an der Zeile; ein display:contents-Element kann
     // keinen Rahmen tragen. Er muss an den ZELLEN liegen, sonst ist er weg.
     for (const zelle of zeilen[0].children) {
-      assert.match(zelle.getAttribute('data-stil') || '', /border-bottom/,
+      assert.match(
+        zelle.getAttribute('data-stil') || '',
+        /border-bottom/,
         'Eine Zelle trägt keinen Trennstrich — bei display:contents ist die Linie ' +
-        'sonst verschwunden, weil die Zeile keinen Kasten mehr hat');
+          'sonst verschwunden, weil die Zeile keinen Kasten mehr hat',
+      );
     }
   });
 });

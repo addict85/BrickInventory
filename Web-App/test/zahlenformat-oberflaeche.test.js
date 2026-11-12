@@ -13,16 +13,40 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
-const SET = { set_number: '10300-1', name: 'Zeitmaschine', year: 2022, theme: 'Icons', quantity: 1,
-  added_at: '2026-10-01T00:00:00Z', avg_purchase_price: 272.5, conditions: ['N'] };
+const SET = {
+  set_number: '10300-1',
+  name: 'Zeitmaschine',
+  year: 2022,
+  theme: 'Icons',
+  quantity: 1,
+  added_at: '2026-10-01T00:00:00Z',
+  avg_purchase_price: 272.5,
+  conditions: ['N'],
+};
 const ANTWORTEN = {
   '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
-  '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [
-    { set_number: '10300-1', quantity: 1, current_price: 411.9, pnl_pct: '51.1', baseline_price: 272.5,
-      kachel_preis: 411.9, kachel_pnl_pct: 51.1 }], totals: {} },
+  '/v1/finance/pnl': {
+    success: true,
+    currency: 'EUR',
+    sets: [
+      {
+        set_number: '10300-1',
+        quantity: 1,
+        current_price: 411.9,
+        pnl_pct: '51.1',
+        baseline_price: 272.5,
+        kachel_preis: 411.9,
+        kachel_pnl_pct: 51.1,
+      },
+    ],
+    totals: {},
+  },
 };
 
-for (const [sprache, browser, preis, guv] of [['de', 'de-DE', '411,90 €', '+51,1 %'], ['en', 'en-GB', '€411.90', '+51.1%']]) {
+for (const [sprache, browser, preis, guv] of [
+  ['de', 'de-DE', '411,90 €', '+51,1 %'],
+  ['en', 'en-GB', '€411.90', '+51.1%'],
+]) {
   test(`${browser}: G&V auf der Kachel in der Form der Oberfläche`, async () => {
     const { w, d } = await oeffneOberflaeche(ANTWORTEN, { sprache, browserSprache: browser });
     try {
@@ -32,6 +56,8 @@ for (const [sprache, browser, preis, guv] of [['de', 'de-DE', '411,90 €', '+51
       const text = feld.textContent.replace(/ /g, ' ');
       assert.ok(text.includes(preis), `Preis: „${text}“`);
       assert.equal(feld.querySelector('.pnl-pos').textContent.replace(/ /g, ' '), guv);
-    } finally { w.close(); }
+    } finally {
+      w.close();
+    }
   });
 }

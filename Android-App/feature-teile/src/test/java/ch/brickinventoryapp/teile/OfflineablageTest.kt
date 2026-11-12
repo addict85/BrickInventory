@@ -78,7 +78,7 @@ class OfflineablageTest {
     fun `Merkposten und manuelle Teile werden lokal angelegt und geändert`() = runBlocking {
         ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = Zustand.NEU, userId = 7)))
         ablage.puffere(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("20002-1", Zustand.GEBRAUCHT, 7)))
-        ablage.puffere(Bearbeitung.MerkpostenLoeschen("20001-1", "N", 7))
+        ablage.puffere(Bearbeitung.MerkpostenLoeschen("20001-1", Zustand.NEU, 7))
         assertEquals(listOf("20002-1|U|7"),
             ablage.lies(Faecher.MERKLISTE)!!.liste.map { "${it.setNumber}|${it.condition.kennung}|${it.userId}" })
 

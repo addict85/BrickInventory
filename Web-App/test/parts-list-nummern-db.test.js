@@ -12,6 +12,7 @@ const express = require('express');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 async function seed() {
@@ -19,7 +20,11 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
 
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('bauer','x')`);
 
@@ -38,14 +43,18 @@ async function seed() {
 }
 
 async function dbErreichbar() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, async (t) => {
+test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, async t => {
   if (!(await dbErreichbar())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar.');
-    t.skip('Test-DB nicht erreichbar');
+    keineDb(t);
     return;
   }
   await seed();
@@ -59,21 +68,30 @@ test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, 
   });
   app.use('/api/v1', _req('routes/api_v1/index.js'));
   const srv = app.listen(0);
-  t.after(async () => { srv.close(); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    srv.close();
+    await db.pool.end().catch(() => {});
+  });
 
   const r = await fetch(`http://127.0.0.1:${srv.address().port}/api/v1/sets/60052-1/parts-list`);
   const d = await r.json();
   assert.equal(d.success, true, JSON.stringify(d));
-  const nach = (nr) => d.parts.find(p => p.part_number === nr);
+  const nach = nr => d.parts.find(p => p.part_number === nr);
 
   await t.test('`part_number` ist die Rebrickable-Nummer', () => {
-    assert.ok(nach('3070b'),
+    assert.ok(
+      nach('3070b'),
       'Die Antwort kennt `3070b` nicht. Steht dort die BrickLink-Nummer 3070, ' +
-      'sucht der Bestandsabgleich in `parts` nach einer Nummer, die es dort ' +
-      'nicht gibt — genau Marcos „Teile fehlen".\n' +
-      'Geliefert wurde: ' + d.parts.map(p => p.part_number).join(', '));
-    assert.equal(nach('3070b').bl_part_number, '3070',
-      'Die BrickLink-Nummer muss daneben stehen bleiben — Anzeige und Export leben davon');
+        'sucht der Bestandsabgleich in `parts` nach einer Nummer, die es dort ' +
+        'nicht gibt — genau Marcos „Teile fehlen".\n' +
+        'Geliefert wurde: ' +
+        d.parts.map(p => p.part_number).join(', '),
+    );
+    assert.equal(
+      nach('3070b').bl_part_number,
+      '3070',
+      'Die BrickLink-Nummer muss daneben stehen bleiben — Anzeige und Export leben davon',
+    );
   });
 
   await t.test('zwei Rebrickable-Teile mit EINER BrickLink-Nummer bleiben zwei Zeilen', () => {
@@ -83,8 +101,11 @@ test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, 
     assert.ok(nach('3069b'), 'Die zweite Nummer ist verschluckt worden');
     assert.equal(nach('3070b').total_quantity, 4, 'Der Bedarf von 3070b stimmt nicht mehr');
     assert.equal(nach('3069b').total_quantity, 2, 'Der Bedarf von 3069b stimmt nicht mehr');
-    assert.equal(nach('3069b').bl_part_number, '3070',
-      'Beide tragen dieselbe BrickLink-Nummer — der Export fasst sie dort wieder zusammen');
+    assert.equal(
+      nach('3069b').bl_part_number,
+      '3070',
+      'Beide tragen dieselbe BrickLink-Nummer — der Export fasst sie dort wieder zusammen',
+    );
   });
 
   await t.test('ohne Zuordnung bleibt die Nummer, wie sie ist', () => {

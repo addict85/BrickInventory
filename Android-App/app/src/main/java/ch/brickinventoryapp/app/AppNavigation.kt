@@ -35,9 +35,6 @@ import ch.brickinventoryapp.verwaltung.ui.screens.*
 import coil3.ImageLoader
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
 import ch.brickinventoryapp.netz.util.NetworkPolicy
@@ -48,7 +45,6 @@ import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.app.nav.ZielUmgebung
 import ch.brickinventoryapp.ui.components.UebergangsRahmen
 import ch.brickinventoryapp.konto.ui.dialogs.UpdateRoute
-import ch.brickinventoryapp.zustand.ui.Rollzustaende
 import ch.brickinventoryapp.app.nav.AppZiel
 import ch.brickinventoryapp.app.nav.mehrZiel
 
@@ -68,20 +64,10 @@ fun BrickInventoryRoute(
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
     val selbstUpdate = aktivitaet.update
-    val csvImport = aktivitaet.csvImport
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    // Rollzustände oberhalb des NavHost (siehe Rollzustaende). Der Katalog merkt sich
-    // seine Position im ViewModel, weil seine Plätze beim Zurückkommen noch nicht
-    // geladen sind.
-    val rollen = Rollzustaende(
-        galerie = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
-        teile = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
-        minifiguren = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
-        finanzen = androidx.compose.foundation.lazy.rememberLazyListState(),
-        teileliste = androidx.compose.foundation.lazy.rememberLazyListState(),
-        einstellungen = androidx.compose.foundation.rememberScrollState(),
-    )
+    // Rollpositionen hält allein der ScrollMemory: Jedes Ziel legt seinen Listenzustand
+    // selbst an und stellt die Stelle mit ScrollPositionKeeper wieder her.
 
     // Snackbar aus eigenem Flow — Meldungen rekomponieren so nicht mehr den
     // gesamten Tree über AppUiState.
@@ -94,36 +80,9 @@ fun BrickInventoryRoute(
         }
     }
 
-    // CSV-Import-Überwachung per persistenter SSE-Verbindung.
-    // Wird einmal beim Login gestartet; der ViewModel-Scope hält sie am Leben
-    // und reconnectet automatisch. repeatOnLifecycle ist nicht mehr nötig, weil
-    // die Verbindung im Hintergrund weiterläuft (kein Polling, minimaler Overhead).
-    LaunchedEffect(state.isLoggedIn) {
-        if (state.isLoggedIn) {
-            csvImport.startCsvImportWatcher()
-            // Beim Start still nach einem Update sehen (wenn der Schalter an ist): kein
-            // Ladebalken, keine Meldung ohne Netz. Hier, weil die Frage der ganzen App gilt.
-            selbstUpdate.pruefeBeimStart()
-        }
-    }
-
-    // Beim Zurückkehren in den Vordergrund die Einstellungen neu laden — so
-    // greift ein in der Webapp geänderter Standard-Zustand auch in einer
-    // bereits laufenden App-Sitzung (loadSettings() lief sonst nur bei Login).
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, state.isLoggedIn) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && state.isLoggedIn) {
-                vm.loadSettings()
-                // Die Filterlisten mit: Scheiterte ihr einziger Abruf beim Start,
-                // fehlten Konto- und Lagerortfilter sonst bis zum Neustart.
-                vm.loadHouseholdMembers()
-                vm.loadLagerorte()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
+    // CSV-Strom, Update-Prüfung und das Nachladen im Vordergrund stossen ViewModels und
+    // Activity an (CsvImportViewModel, UpdateViewModel, MainActivity.onResume), nicht
+    // die Komposition.
 
     val startDest = startRoute(startZiel(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung))
     val wurzel: Any = if (startDest == SammlungZiel.Gallery) SammlungZiel.Gallery else AnmeldeZiel.Bereich
@@ -168,7 +127,7 @@ fun BrickInventoryRoute(
         // Kein Zustand hinein: Der NavHost-Builder läuft nur einmal, ein durchgereichter
         // Wert bliebe die Momentaufnahme des ersten Frames. Die Ziele lesen selbst.
         alleZiele(ZielUmgebung(navController, imageLoader, bottomNavItems,
-            snackbarHostState, rollen) { aktivitaet }, anmeldeBeginn)
+            snackbarHostState) { aktivitaet }, anmeldeBeginn)
     }
     }
 }
@@ -218,10 +177,19 @@ internal fun reiterDerLeiste(): List<Reiter> {
     }
 }
 
-/** Den Satz bildet die Oberfläche, in der Sprache der App (LanguageManager). */
-internal fun Meldung.alsSatz(ctx: Context): String = when (this) {
-    is Meldung.Text -> text
-    is Meldung.Ressource -> LanguageManager.localizedContext(ctx).getString(id, *werte.toTypedArray())
+/**
+ * Den Satz der Snackbar bildet die Oberfläche, in der Sprache der App (LanguageManager);
+ * ausserhalb der Komposition, darum nicht über [ch.brickinventoryapp.ui.satz]. Ein Wert,
+ * der selbst eine Meldung ist, wird zuerst gebildet.
+ */
+internal fun Meldung.alsSatz(ctx: Context): String {
+    val c = LanguageManager.localizedContext(ctx)
+    return when (this) {
+        is Meldung.Text -> text
+        is Meldung.Ressource ->
+            if (werte.isEmpty()) c.getString(id) else c.getString(id, *werte.map { w -> if (w is Meldung) w.alsSatz(ctx) else w }.toTypedArray())
+        is Meldung.Menge -> c.resources.getQuantityString(id, anzahl, *werte.map { w -> if (w is Meldung) w.alsSatz(ctx) else w }.toTypedArray())
+    }
 }
 
 /** Dauer eines Seitenwechsels; kurz genug, dass er nicht aufhält. */

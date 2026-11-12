@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.teile
 
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.teile.ui.Teileliste
 import kotlinx.coroutines.runBlocking
@@ -13,7 +12,7 @@ import org.junit.Before
 import org.junit.Test
 import java.net.URLEncoder
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.SetKatalogRepository
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 
@@ -63,7 +62,7 @@ class TeilelisteTest {
             }}""",
         )
         t = TestDienste(pfade.server)
-        liste = Teileliste(SetsRepository(t.api, t.cache), TeileRepository(t.api, t.cache))
+        liste = Teileliste(SetKatalogRepository(t.api, t.cache), TeileRepository(t.api, t.cache))
     }
 
     @After

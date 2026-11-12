@@ -29,7 +29,12 @@ process.env.APP_BASE_URL = 'https://lego.example.org';
 // Der Mailer baut den Transport erst beim Versand: hier abfangen statt senden.
 const nodemailer = require(path.join(__dirname, '..', 'node_modules', 'nodemailer'));
 const gesendet = [];
-nodemailer.createTransport = () => ({ sendMail: async (m) => { gesendet.push(m); return { messageId: 'x' }; } });
+nodemailer.createTransport = () => ({
+  sendMail: async m => {
+    gesendet.push(m);
+    return { messageId: 'x' };
+  },
+});
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
@@ -40,13 +45,17 @@ const mailer = _req('src/mail/mailer.js');
 const P = process.pid;
 const BOESE = 'Gewinn-abholen.example';
 
-test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-  const setze = async (k, v) => db.run(`INSERT INTO global_settings (key, value) VALUES ($1, $2)
-    ON CONFLICT (key) DO UPDATE SET value = $2`, [k, v]);
+  const setze = async (k, v) =>
+    db.run(
+      `INSERT INTO global_settings (key, value) VALUES ($1, $2)
+    ON CONFLICT (key) DO UPDATE SET value = $2`,
+      [k, v],
+    );
   await setze('registration_enabled', '1');
   await setze('smtp_host', '192.0.2.25'); // eine Adresse: Ein Name müsste auflösen (src/infra/zielAdresse.ts)
   await setze('smtp_user', 'versand');
@@ -55,19 +64,22 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
   t.after(async () => {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
-    await db.run("DELETE FROM users WHERE username LIKE $1", [`%_${P}`]);
+    await db.run('DELETE FROM users WHERE username LIKE $1', [`%_${P}`]);
     await leereZaehler();
     await db.pool.end().catch(() => {});
   });
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t, routen: { '/api/v1/auth': 'routes/auth.js' } });
-  const rufe = (methode, pfad, body) => fetch(`${base}/api/v1/auth${pfad}`, { method: methode,
-    headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
-    .then(async r => ({ status: r.status, body: await r.json() }));
+  const rufe = (methode, pfad, body) =>
+    fetch(`${base}/api/v1/auth${pfad}`, {
+      method: methode,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(async r => ({ status: r.status, body: await r.json() }));
   const registriere = (u, email, extra = {}) =>
     rufe('POST', '/register', { username: u, email, password: 'Langes-Passwort-42', ...extra });
-  const warteAufMail = async (an) => {
+  const warteAufMail = async an => {
     for (let i = 0; i < 50; i++) {
       const m = gesendet.find(x => x.to === an);
       if (m) return m;
@@ -77,21 +89,41 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
   };
 
   await t.test('Namen mit Adresse oder Steuerzeichen werden abgewiesen', async () => {
-    for (const [i, extra] of [{ first_name: `Hallo ${BOESE}: https://boese.example/x` },
-                              { last_name: 'Meier\nKlick hier' }, { first_name: 'www.boese.example' }].entries()) {
+    for (const [i, extra] of [
+      { first_name: `Hallo ${BOESE}: https://boese.example/x` },
+      { last_name: 'Meier\nKlick hier' },
+      { first_name: 'www.boese.example' },
+    ].entries()) {
       const r = await registriere(`name${i}_${P}`, `name${i}_${P}@example.org`, extra);
       assert.equal(r.status, 400, JSON.stringify(r.body));
       assert.equal(r.body.code, 'name_ungueltig');
     }
     const lang = await registriere(`lang_${P}`, `lang_${P}@example.org`, { first_name: 'x'.repeat(101) });
     assert.equal(lang.status, 400, 'über 100 Zeichen weist der Eingabevertrag ab');
-    const hash = await require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs')).hash('Profil-Passwort-1', 4);
-    sitzung.userId = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-      VALUES ($1, $2, true, true) RETURNING id`, [`profil_${P}`, hash])).id;
+    const hash = await require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs')).hash(
+      'Profil-Passwort-1',
+      4,
+    );
+    sitzung.userId = (
+      await db.get(
+        `INSERT INTO users (username, password_hash, is_active, email_verified)
+      VALUES ($1, $2, true, true) RETURNING id`,
+        [`profil_${P}`, hash],
+      )
+    ).id;
     const p = await rufe('PUT', '/profile', { first_name: 'Anna\u0007' });
     assert.equal(p.status, 400, JSON.stringify(p.body));
     assert.equal(p.body.code, 'name_ungueltig');
-    assert.equal((await rufe('PUT', '/profile', { first_name: 'Anna-Lena', last_name: "O'Brien", password_current: 'Profil-Passwort-1' })).status, 200);
+    assert.equal(
+      (
+        await rufe('PUT', '/profile', {
+          first_name: 'Anna-Lena',
+          last_name: "O'Brien",
+          password_current: 'Profil-Passwort-1',
+        })
+      ).status,
+      200,
+    );
     await leereZaehler();
   });
 
@@ -120,12 +152,17 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
     await leereZaehler();
     const an = `doppelt_${P}@example.org`;
     for (const n of [`${BOESE.slice(0, 14)}x_${P}`, `echt_${P}`]) assert.equal((await registriere(n, an)).status, 200);
-    for (let i = 0; i < 50 && gesendet.filter(m => m.to === an).length < 2; i++) await new Promise(r => setTimeout(r, 20));
+    for (let i = 0; i < 50 && gesendet.filter(m => m.to === an).length < 2; i++)
+      await new Promise(r => setTimeout(r, 20));
     const [erste, zweite] = gesendet.filter(m => m.to === an);
     assert.ok(zweite, 'keine zweite Mail');
     assert.doesNotMatch(erste.text, /Mehrere Registrierungen/);
     for (const teil of [zweite.text, zweite.html]) {
-      assert.match(teil, /Mehrere Registrierungen nennen diese Adresse/, 'die zweite Mail verweist auf die Bestätigungsseite');
+      assert.match(
+        teil,
+        /Mehrere Registrierungen nennen diese Adresse/,
+        'die zweite Mail verweist auf die Bestätigungsseite',
+      );
       assert.ok(!teil.includes(BOESE.slice(0, 14)) && !teil.includes(`echt_${P}`), 'die Mail nennt keinen Namen');
     }
     await leereZaehler();
@@ -138,15 +175,21 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
     // Verschiedene Namen, damit nur die Adresse gemeinsam ist.
     for (let i = 0; i < 4; i++) status.push((await registriere(`ziel${i}_${P}`, an)).status);
     assert.deepEqual(status, [200, 200, 200, 429]);
-    assert.equal((await registriere(`andere_${P}`, `andere_${P}@example.org`)).status, 200,
-      'eine andere Adresse von derselben IP bleibt offen');
+    assert.equal(
+      (await registriere(`andere_${P}`, `andere_${P}@example.org`)).status,
+      200,
+      'eine andere Adresse von derselben IP bleibt offen',
+    );
     await leereZaehler();
   });
 
   await t.test('der vierte Rücksetzlink an dieselbe Adresse bleibt aus', async () => {
     const an = `vergessen_${P}@example.org`;
-    await db.run(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
-      VALUES ($1, $2, 'x', true, true)`, [`vergessen_${P}`, an]);
+    await db.run(
+      `INSERT INTO users (username, email, password_hash, is_active, email_verified)
+      VALUES ($1, $2, 'x', true, true)`,
+      [`vergessen_${P}`, an],
+    );
     const gesetzt = [];
     for (let i = 0; i < 4; i++) {
       const r = await rufe('POST', '/forgot-password', { email: an });
@@ -164,12 +207,19 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
     await db.run("DELETE FROM global_settings WHERE key = 'smtp_host'");
     const zeilen = [];
     const alt = console.log;
-    console.log = (...a) => { zeilen.push(a.join(' ')); };
+    console.log = (...a) => {
+      zeilen.push(a.join(' '));
+    };
     try {
-      await mailer.sendMail({ to: `k_${P}@example.org`, subject: 'x',
+      await mailer.sendMail({
+        to: `k_${P}@example.org`,
+        subject: 'x',
         text: 'Hallo https://boese.example/gewinn\nhttps://lego.example.org/verify?token=abc123',
-        link: 'https://lego.example.org/verify?token=abc123' });
-    } finally { console.log = alt; }
+        link: 'https://lego.example.org/verify?token=abc123',
+      });
+    } finally {
+      console.log = alt;
+    }
     const link = zeilen.find(z => z.includes('Link:'));
     assert.ok(link, zeilen.join('\n'));
     assert.match(link, /https:\/\/lego\.example\.org\/verify\?token=…/);

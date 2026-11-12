@@ -26,17 +26,19 @@ function alsAbrufFehler(e: unknown): AbrufFehler {
   // geben der Meldung einen Text, mit dem man etwas anfangen kann.
   const roh = (e ?? {}) as Record<string, unknown>;
   const f = new Error(
-    typeof e === 'string' && e ? e
-    : typeof roh.message === 'string' && roh.message ? roh.message
-    : 'Unbekannter Abruffehler'
+    typeof e === 'string' && e
+      ? e
+      : typeof roh.message === 'string' && roh.message
+        ? roh.message
+        : 'Unbekannter Abruffehler',
   ) as AbrufFehler;
-  if (roh.isQuota)      f.isQuota = true;
-  if (roh.isTransient)  f.isTransient = true;
+  if (roh.isQuota) f.isQuota = true;
+  if (roh.isTransient) f.isTransient = true;
   if (roh.isCloudflare) f.isCloudflare = true;
   // NonNullable, weil exactOptionalPropertyTypes zwischen „Feld fehlt" und
   // „Feld ist undefined" unterscheidet — die Zuweisung darunter passiert nur,
   // wenn wirklich etwas da ist.
-  if (roh.detail)       f.detail = roh.detail as NonNullable<AbrufFehler['detail']>;
+  if (roh.detail) f.detail = roh.detail as NonNullable<AbrufFehler['detail']>;
   return f;
 }
 

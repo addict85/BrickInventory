@@ -44,10 +44,19 @@ function beiKonflikt(spalten: string[], k: Konflikt | undefined): string {
   return `ON CONFLICT (${k.join(',')}) DO UPDATE SET ${rest.join(',')}`;
 }
 
-export async function fuegeBlockEin(c: PoolClient, schatten: string, spalten: string[], block: unknown[][], konflikt?: Konflikt): Promise<void> {
+export async function fuegeBlockEin(
+  c: PoolClient,
+  schatten: string,
+  spalten: string[],
+  block: unknown[][],
+  konflikt?: Konflikt,
+): Promise<void> {
   const n = spalten.length;
   const platz = block.map((_, j) => '(' + spalten.map((_, k) => `$${j * n + k + 1}`).join(',') + ')').join(',');
-  await c.query(`INSERT INTO ${schatten} (${spalten.join(',')}) VALUES ${platz} ${beiKonflikt(spalten, konflikt)}`, block.flat());
+  await c.query(
+    `INSERT INTO ${schatten} (${spalten.join(',')}) VALUES ${platz} ${beiKonflikt(spalten, konflikt)}`,
+    block.flat(),
+  );
 }
 
 async function imSchritt(c: PoolClient, schritte: () => Promise<void>): Promise<void> {

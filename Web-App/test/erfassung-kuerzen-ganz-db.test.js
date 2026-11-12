@@ -11,7 +11,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -20,19 +20,33 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { updateManualPart } = _req('src/teile/manuelleTeile.js');
 
-const NAME = `kuerzen_${process.pid}`, TEIL = '3001kz';
+const NAME = `kuerzen_${process.pid}`,
+  TEIL = '3001kz';
 
-test('Kürzen geht ganz oder gar nicht', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Kürzen geht ganz oder gar nicht', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+                             VALUES ($1, 'x', true, true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, TEIL]);
-  const alt = (await db.get(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, created_at)
-                             VALUES ($1, $2, 5, 3, NOW() - INTERVAL '3 days') RETURNING id`, [uid, TEIL])).id;
-  await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, created_at)
-                VALUES ($1, $2, 5, 2, NOW() - INTERVAL '1 day')`, [uid, TEIL]);
+  const alt = (
+    await db.get(
+      `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, created_at)
+                             VALUES ($1, $2, 5, 3, NOW() - INTERVAL '3 days') RETURNING id`,
+      [uid, TEIL],
+    )
+  ).id;
+  await db.run(
+    `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, created_at)
+                VALUES ($1, $2, 5, 2, NOW() - INTERVAL '1 day')`,
+    [uid, TEIL],
+  );
   const fn = `kuerzen_sperre_${process.pid}`;
   await db.run(`CREATE FUNCTION ${fn}() RETURNS trigger LANGUAGE plpgsql AS $$
                 BEGIN IF OLD.id = ${alt} THEN RAISE EXCEPTION 'erzwungener Fehler'; END IF; RETURN NEW; END $$`);
@@ -44,8 +58,10 @@ test('Kürzen geht ganz oder gar nicht', { concurrency: 1 }, async (t) => {
     await db.pool.end().catch(() => {});
   });
 
-  const erfassungen = async () => (await db.all(
-    'SELECT quantity FROM part_acquisitions WHERE user_id = $1 ORDER BY created_at', [uid])).map(r => r.quantity);
+  const erfassungen = async () =>
+    (await db.all('SELECT quantity FROM part_acquisitions WHERE user_id = $1 ORDER BY created_at', [uid])).map(
+      r => r.quantity,
+    );
 
   await t.test('nichts halb gekürzt', async () => {
     assert.deepEqual(await erfassungen(), [3, 2], 'Vorbedingung');

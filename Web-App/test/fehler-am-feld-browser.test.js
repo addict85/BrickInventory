@@ -18,19 +18,23 @@ const assert = require('node:assert/strict');
 const { starteApp } = require('./helpers/app-browser');
 
 /** Zustand eines Feldes: markiert, Meldung darunter, und ob ein Fehler-Toast steht. */
-const FELD = (id) => `(() => { const f = document.getElementById(${JSON.stringify(id)}), m = document.getElementById(${JSON.stringify(id + '-fehler')});
+const FELD =
+  id => `(() => { const f = document.getElementById(${JSON.stringify(id)}), m = document.getElementById(${JSON.stringify(id + '-fehler')});
   return { markiert: f?.getAttribute('aria-invalid') === 'true', meldung: m && !m.hidden ? m.textContent : '',
            beschrieben: (f?.getAttribute('aria-describedby') || '').includes(${JSON.stringify(id + '-fehler')}),
            toasts: [...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent) }; })()`;
 
-test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000 }, async (t) => {
+test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await starteApp(t, {
     name: `feld_${process.pid}`,
     bestand: async (db, uid) => {
       await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Keller'), ($1, 'Vitrine')`, [uid]);
     },
   });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
@@ -38,12 +42,21 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
 
   await t.test('Gutschein: leere Nummer am Feld', async () => {
     await b.auswerten(`location.hash = '#/gutscheine'; true`);
-    await bis(`!!document.querySelector('[data-click="gutscheinSpeichern"]')?.getClientRects().length`, 'Gutscheinformular');
+    await bis(
+      `!!document.querySelector('[data-click="gutscheinSpeichern"]')?.getClientRects().length`,
+      'Gutscheinformular',
+    );
     await toastsWeg();
     await b.auswerten(`document.querySelector('[data-click="gutscheinSpeichern"]').click(); true`);
-    await bis(`document.getElementById('v-number')?.getAttribute('aria-invalid') === 'true' || document.querySelector('#toasts .toast.error')`, 'Rückmeldung');
+    await bis(
+      `document.getElementById('v-number')?.getAttribute('aria-invalid') === 'true' || document.querySelector('#toasts .toast.error')`,
+      'Rückmeldung',
+    );
     const z = await b.auswerten(FELD('v-number'));
-    assert.deepEqual({ markiert: z.markiert, beschrieben: z.beschrieben, toasts: z.toasts }, { markiert: true, beschrieben: true, toasts: [] });
+    assert.deepEqual(
+      { markiert: z.markiert, beschrieben: z.beschrieben, toasts: z.toasts },
+      { markiert: true, beschrieben: true, toasts: [] },
+    );
     assert.match(z.meldung, /Gutscheinnummer/);
   });
 
@@ -61,7 +74,10 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
 
   await t.test('Lagerort: leerer Name am Feld', async () => {
     await b.auswerten(`location.hash = '#/lagerorte'; true`);
-    await bis(`!!document.querySelector('[data-click="legeLagerortAn"]')?.getClientRects().length && document.querySelectorAll('.lager-eingabe').length === 2`, 'Lagerorte');
+    await bis(
+      `!!document.querySelector('[data-click="legeLagerortAn"]')?.getClientRects().length && document.querySelectorAll('.lager-eingabe').length === 2`,
+      'Lagerorte',
+    );
     await toastsWeg();
     await b.auswerten(`document.querySelector('[data-click="legeLagerortAn"]').click(); true`);
     await ruhig();
@@ -77,6 +93,9 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
     await bis(`document.querySelectorAll('#toasts .toast.error').length > 0`, 'Fehler-Toast');
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await ruhig();
-    assert.deepEqual(await b.auswerten(`[...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent)`), []);
+    assert.deepEqual(
+      await b.auswerten(`[...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent)`),
+      [],
+    );
   });
 });

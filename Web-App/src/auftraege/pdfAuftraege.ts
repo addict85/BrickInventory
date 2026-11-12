@@ -1,6 +1,6 @@
-import path from 'path';
-import crypto from 'crypto';
-import fsp from 'fs/promises';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import fsp from 'node:fs/promises';
 import { PDF_JOB_DIR } from '../infra/appPaths';
 import { meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
 import { stelleAuftragEin } from './dienst';
@@ -14,7 +14,9 @@ export const pdfSchluessel = (id: string) => `pdf:${id}`;
 /** Die Kennung wird zum Dateinamen, darum alles andere abgewiesen. Die alte
  * Form bleibt gültig, damit Aufträge über ein Update abrufbar bleiben. */
 const JOB_ID_RE = /^\d{10,16}-[a-z0-9]{4,12}$/;
-export function gueltigeAuftragsKennung(id: string): boolean { return JOB_ID_RE.test(id); }
+export function gueltigeAuftragsKennung(id: string): boolean {
+  return JOB_ID_RE.test(id);
+}
 
 export function pdfDateiPfad(id: string): string | null {
   return gueltigeAuftragsKennung(id) ? path.join(PDF_JOB_DIR, `${id}.pdf`) : null;
@@ -32,9 +34,15 @@ const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft:
 
 export async function liesAuftrag(id: string): Promise<PdfAuftrag | null> {
   const z = await auftraegeBereich().pdfAuftraege.pdfAuftragZeile(pdfSchluessel(id));
-  return z ? { status: STATUS[z.status] ?? 'error', error: z.status === 'erledigt' ? null : z.fehler ?? null,
-               user_id: Number(z.user_id), missingImages: z.fortschritt?.fehlendeBilder ?? null,
-               etaSeconds: z.fortschritt?.etaSekunden ?? null } : null;
+  return z
+    ? {
+        status: STATUS[z.status] ?? 'error',
+        error: z.status === 'erledigt' ? null : (z.fehler ?? null),
+        user_id: Number(z.user_id),
+        missingImages: z.fortschritt?.fehlendeBilder ?? null,
+        etaSeconds: z.fortschritt?.etaSekunden ?? null,
+      }
+    : null;
 }
 
 /** Ein hängengebliebener zählt nach `ttlMs` nicht mehr. */
@@ -67,16 +75,23 @@ export async function cleanOldPdfJobs() {
     const datei = pdfDateiPfad(id);
     if (datei) await fsp.unlink(datei).catch(ohneFehlendeDatei('pdf:datei loeschen'));
   }
-  const files = await fsp.readdir(PDF_JOB_DIR).catch((e: unknown) => { ohneFehlendeDatei('pdf:ordner lesen')(e); return [] as string[]; });
+  const files = await fsp.readdir(PDF_JOB_DIR).catch((e: unknown) => {
+    ohneFehlendeDatei('pdf:ordner lesen')(e);
+    return [] as string[];
+  });
   for (const f of files) {
     const fp = path.join(PDF_JOB_DIR, f);
     const st = await fsp.stat(fp).catch(ohneFehlendeDatei('pdf:datei pruefen'));
-    if (st && Date.now() - st.mtimeMs > PDF_JOB_TTL) await fsp.unlink(fp).catch(ohneFehlendeDatei('pdf:datei loeschen'));
+    if (st && Date.now() - st.mtimeMs > PDF_JOB_TTL)
+      await fsp.unlink(fp).catch(ohneFehlendeDatei('pdf:datei loeschen'));
   }
 }
 
 /** Daran hängt die Wartezeit (etwa ein Bild je Sekunde). */
-async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Array<{ image_local?: string | null | undefined; image_url?: string | null | undefined }>) {
+async function fehlendeBilder(
+  sets: Array<{ set_number?: unknown }>,
+  parts: Array<{ image_local?: string | null | undefined; image_url?: string | null | undefined }>,
+) {
   let fehlend = parts.filter(p => !p.image_local && p.image_url).length;
   const nummern = new Set<string>();
   for (const s of sets || []) {
@@ -89,22 +104,33 @@ async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Arra
     const r = await auftraegeBereich().pdfAuftraege.fehlendeKatalogbilder([...nummern]);
     const c = Number(r?.c);
     if (Number.isFinite(c)) fehlend = c;
-  } catch (e) { meldeFehler('pdf:wartezeit schaetzen', e); }
+  } catch (e) {
+    meldeFehler('pdf:wartezeit schaetzen', e);
+  }
   return fehlend;
 }
 
 /** Laufen schon MAX_JOBS_PRO_BENUTZER, gibt es keine Kennung, sondern deren Zahl. */
-export async function pdfAuftragStarten(uid: number, sets: NutzlastEingabe<'pdf'>['sets'],
-                                        parts: NutzlastEingabe<'pdf'>['parts'])
-  : Promise<{ jobId: string } | { laufend: number }> {
+export async function pdfAuftragStarten(
+  uid: number,
+  sets: NutzlastEingabe<'pdf'>['sets'],
+  parts: NutzlastEingabe<'pdf'>['parts'],
+): Promise<{ jobId: string } | { laufend: number }> {
   const laufend = await laufendeAuftraege(uid, PDF_JOB_TTL);
   if (laufend >= MAX_JOBS_PRO_BENUTZER) return { laufend };
   const jobId = neueJobId();
   // Bildangaben des Clients gehen nicht in den Auftrag: Die Bilder kommen aus dem Katalog.
   const ohneBilder = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));
   const missingImages = await fehlendeBilder(sets, parts);
-  await stelleAuftragEin('pdf', { job_id: jobId, user_id: uid, sets, parts: ohneBilder }, {
-    userId: uid, maxVersuche: 2, schluessel: pdfSchluessel(jobId),
-    fortschritt: { fehlendeBilder: missingImages, etaSekunden: Math.max(3, Math.round(missingImages) + 3) } });
+  await stelleAuftragEin(
+    'pdf',
+    { job_id: jobId, user_id: uid, sets, parts: ohneBilder },
+    {
+      userId: uid,
+      maxVersuche: 2,
+      schluessel: pdfSchluessel(jobId),
+      fortschritt: { fehlendeBilder: missingImages, etaSekunden: Math.max(3, Math.round(missingImages) + 3) },
+    },
+  );
   return { jobId };
 }

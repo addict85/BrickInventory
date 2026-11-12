@@ -20,7 +20,8 @@ function routen() {
   }
   // Und die wenigen, die direkt in server.ts hängen (startup-status, health …).
   const srv = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
-  for (const m of srv.matchAll(/app\.(get|post|put|delete|patch)\(\s*'(\/api\/[^']+)'/g)) raus.add(`${m[1].toUpperCase()} ${m[2]}`);
+  for (const m of srv.matchAll(/app\.(get|post|put|delete|patch)\(\s*'(\/api\/[^']+)'/g))
+    raus.add(`${m[1].toUpperCase()} ${m[2]}`);
 
   function sammle(rel, praefix) {
     const datei = path.join(ROOT, rel + '.ts');
@@ -30,7 +31,10 @@ function routen() {
       raus.add(`${m[1].toUpperCase()} ${(praefix + m[2]).replace(/\/\//g, '/')}`);
     }
   }
-  return [...raus].map(z => { const [me, ...r] = z.split(' '); return [me, r.join(' ')]; });
+  return [...raus].map(z => {
+    const [me, ...r] = z.split(' ');
+    return [me, r.join(' ')];
+  });
 }
 
 const ROUTEN = routen();
@@ -56,18 +60,18 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
   assert.ok(ROUTEN.length > 100, `nur ${ROUTEN.length} Routen gefunden — das Muster greift nicht mehr`);
 
   // Erste Wegsegmente, die der Server unter /api kennt.
-  const segmente = new Set(ROUTEN
-    .map(([, rp]) => rp.replace(/^\//, '').split('/')[1])
-    .filter(Boolean));
+  const segmente = new Set(ROUTEN.map(([, rp]) => rp.replace(/^\//, '').split('/')[1]).filter(Boolean));
 
   // Auch die .js direkt unter public/
   const dateien = [
-    ...fs.readdirSync(path.join(ROOT, 'public'))
-        .filter(x => x.endsWith('.js'))
-        .map(x => [x, path.join(ROOT, 'public', x)]),
-    ...fs.readdirSync(path.join(ROOT, 'public', 'js'))
-        .filter(x => x.endsWith('.js') && x !== 'app.bundle.js')
-        .map(x => [x, path.join(ROOT, 'public', 'js', x)]),
+    ...fs
+      .readdirSync(path.join(ROOT, 'public'))
+      .filter(x => x.endsWith('.js'))
+      .map(x => [x, path.join(ROOT, 'public', x)]),
+    ...fs
+      .readdirSync(path.join(ROOT, 'public', 'js'))
+      .filter(x => x.endsWith('.js') && x !== 'app.bundle.js')
+      .map(x => [x, path.join(ROOT, 'public', 'js', x)]),
   ];
   const fehler = [];
   for (const [f, voll] of dateien) {
@@ -79,7 +83,7 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
     // Inneren ab. GEMESSEN lieferte es für
     for (const m of s.matchAll(/\bapi(?:Roh)?\(\s*'(GET|POST|PUT|DELETE|PATCH)'\s*,\s*/g)) {
       const lit = leseLiteral(s, m.index + m[0].length);
-      if (!lit || !lit.text.startsWith('/')) continue;
+      if (!lit?.text.startsWith('/')) continue;
       const p = normieren(lit.text);
       if (!direkt.has(p)) direkt.set(p, new Set());
       direkt.get(p).add(m[1]);
@@ -105,10 +109,16 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
   // Selbstbeweis: Ohne ihn waere ein umbenanntes public/i18n.js wieder
   // unsichtbar — und die Regel dauerhaft gruen, ohne je hinzusehen. GEMESSEN
   // beim Erweitern: i18n.js ist dabei.
-  assert.ok(dateien.some(([f]) => f === 'i18n.js'),
-    'public/i18n.js wird nicht gelesen — genau die Luecke, die am 25.09. einen 404 durchliess.');
+  assert.ok(
+    dateien.some(([f]) => f === 'i18n.js'),
+    'public/i18n.js wird nicht gelesen — genau die Luecke, die am 25.09. einen 404 durchliess.',
+  );
 
-  assert.deepEqual(fehler, [],
-    'Frontend-Pfade ohne Route:\n  ' + fehler.join('\n  ') +
-    '\nSolche Aufrufe scheitern still, wenn ein .catch() daran hängt.');
+  assert.deepEqual(
+    fehler,
+    [],
+    'Frontend-Pfade ohne Route:\n  ' +
+      fehler.join('\n  ') +
+      '\nSolche Aufrufe scheitern still, wenn ein .catch() daran hängt.',
+  );
 });

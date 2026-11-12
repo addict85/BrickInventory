@@ -31,6 +31,8 @@ function binde<M, N extends keyof M & string>(
 }
 
 export function erzeugeSets(sk: SetsKontext) {
+  const fremd = (['katalog', 'finanzen', 'auftraege'] as const).filter(b => sk[b].db !== sk.db);
+  if (fremd.length) throw new Error(`erzeugeSets: ${fremd.join(', ')} über einen anderen Zugang als db`);
   return {
     ...binde(sk, erfassen, [
       'recordAcquisition',

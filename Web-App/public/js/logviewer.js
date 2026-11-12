@@ -1,12 +1,17 @@
-// Protokollfenster (01-monitor.js öffnet es per window.open). Externe Datei, weil das Fenster die CSP des
+// Protokollfenster (monitor.js öffnet es per window.open). Externe Datei, weil das Fenster die CSP des
 // Öffners erbt und die Inline-Skripte sperrt. Übersetzungen kommen als data-Attribute am <body>, die
 // Anmeldung im Sitzungscookie. Eigene Funktion: Nichts davon soll global werden.
-(function () {
-  'use strict';
+(() => {
   const body = document.body;
   const BASE = body.dataset.base || '';
   /** @type {Record<string, string>} */
-  const L = (() => { try { return JSON.parse(body.dataset.i18n || '{}'); } catch (_) { return {}; } })();
+  const L = (() => {
+    try {
+      return JSON.parse(body.dataset.i18n || '{}');
+    } catch (_) {
+      return {};
+    }
+  })();
 
   /** @type {Array<{ level: string, message: string, logged_at: string }>} */
   let _logs = [];
@@ -15,28 +20,38 @@
   const _levels = new Set(['warn', 'error']);
 
   /** @param {string} id */
-  const el = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
+  const el = id => /** @type {HTMLElement} */ (document.getElementById(id));
   /** @param {string} k */
-  const tx = (k) => L[k] || k;
+  const tx = k => L[k] || k;
   // Das Fenster erbt die CSP samt Trusted Types: eigene Richtlinie für das hier maskierte Markup. Wie in
-  // 00-escapen.js nimmt sie nur den Text an, den alsHtml() ihr gerade freigibt.
-  const tt = /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): string } } }} */ (
-    /** @type {unknown} */ (window)).trustedTypes;
+  // escapen.js nimmt sie nur den Text an, den alsHtml() ihr gerade freigibt.
+  const tt =
+    /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): string } } }} */ (
+      /** @type {unknown} */ (window)
+    ).trustedTypes;
   /** @type {string | null} */
   let freigabe = null;
-  const richtlinie = tt ? tt.createPolicy('app', { createHTML: (/** @type {string} */ s) => {
-    if (freigabe === null || s !== freigabe) throw new TypeError('Trusted Types: Markup nur über alsHtml()');
-    freigabe = null;
-    return s;
-  } }) : null;
+  const richtlinie = tt
+    ? tt.createPolicy('app', {
+        createHTML: (/** @type {string} */ s) => {
+          if (freigabe === null || s !== freigabe) throw new TypeError('Trusted Types: Markup nur über alsHtml()');
+          freigabe = null;
+          return s;
+        },
+      })
+    : null;
   /** @param {string} s @returns {string} */
-  const alsHtml = (s) => {
+  const alsHtml = s => {
     if (!richtlinie) return s;
     freigabe = s;
-    try { return richtlinie.createHTML(s); } finally { freigabe = null; }
+    try {
+      return richtlinie.createHTML(s);
+    } finally {
+      freigabe = null;
+    }
   };
   /** @param {string} s */
-  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   /** @param {string} text @param {string} q */
   function highlight(text, q) {
@@ -49,8 +64,13 @@
   function toggleLevel(stufe) {
     if (!stufe) return;
     const btn = el('btn-' + stufe);
-    if (_levels.has(stufe)) { _levels.delete(stufe); btn.classList.remove('active'); }
-    else { _levels.add(stufe); btn.classList.add('active'); }
+    if (_levels.has(stufe)) {
+      _levels.delete(stufe);
+      btn.classList.remove('active');
+    } else {
+      _levels.add(stufe);
+      btn.classList.add('active');
+    }
     btn.setAttribute('aria-pressed', String(_levels.has(stufe)));
     renderLogs();
   }
@@ -61,8 +81,10 @@
     try {
       const r = await fetch(BASE + '/api/v1/admin/logs?minutes=' + minuten, { credentials: 'same-origin' });
       const d = await r.json();
-      if (d.success) { _logs = d.logs; renderLogs(); }
-      else el('status').textContent = tx('toast.error') + ': ' + d.error;
+      if (d.success) {
+        _logs = d.logs;
+        renderLogs();
+      } else el('status').textContent = tx('toast.error') + ': ' + d.error;
     } catch (_) {
       el('status').textContent = tx('common.network_error');
     }
@@ -73,38 +95,62 @@
     const wrap = el('log-wrap');
     const treffer = _logs.filter(l => _levels.has(l.level) && (!suche || l.message.toLowerCase().includes(suche)));
     el('status').textContent = treffer.length + ' / ' + _logs.length + ' ' + tx('log.entries');
-    if (!treffer.length) { wrap.innerHTML = alsHtml('<div class="leer">' + esc(tx('log.none_found')) + '</div>'); return; }
-    wrap.innerHTML = alsHtml(treffer.map(l => {
-      const zeit = new Date(l.logged_at).toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const stufe = esc(l.level);
-      return `<div class="ll ${stufe}"><span class="ts">${zeit}</span>` +
-        `<span class="lv ${stufe}">${stufe}</span><span class="msg">${highlight(l.message, suche)}</span></div>`;
-    }).join(''));
+    if (!treffer.length) {
+      wrap.innerHTML = alsHtml('<div class="leer">' + esc(tx('log.none_found')) + '</div>');
+      return;
+    }
+    wrap.innerHTML = alsHtml(
+      treffer
+        .map(l => {
+          const zeit = new Date(l.logged_at).toLocaleTimeString('de-CH', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          });
+          const stufe = esc(l.level);
+          return (
+            `<div class="ll ${stufe}"><span class="ts">${zeit}</span>` +
+            `<span class="lv ${stufe}">${stufe}</span><span class="msg">${highlight(l.message, suche)}</span></div>`
+          );
+        })
+        .join(''),
+    );
     wrap.scrollTop = wrap.scrollHeight;
   }
 
   function toggleAuto() {
     const btn = el('btn-auto');
     if (_autoTimer) {
-      clearInterval(_autoTimer); _autoTimer = null;
-      btn.textContent = tx('log.auto'); btn.classList.remove('active'); btn.setAttribute('aria-pressed', 'false');
+      clearInterval(_autoTimer);
+      _autoTimer = null;
+      btn.textContent = tx('log.auto');
+      btn.classList.remove('active');
+      btn.setAttribute('aria-pressed', 'false');
     } else {
       _autoTimer = setInterval(loadLogs, 5000);
-      btn.textContent = tx('log.stop'); btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true');
+      btn.textContent = tx('log.stop');
+      btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
       loadLogs();
     }
   }
 
-  // Wie 00-registry.js in der Anwendung: nur diese Namen sind aus dem Markup erreichbar, nicht jede Funktion
+  // Wie registry.js in der Anwendung: nur diese Namen sind aus dem Markup erreichbar, nicht jede Funktion
   // auf window.
   /** @type {Record<string, (arg?: string) => unknown>} */
   const HANDLER = { loadLogs, renderLogs, toggleAuto, toggleLevel };
-  for (const [attr, ereignis] of [['data-click', 'click'], ['data-change', 'change'], ['data-input', 'input']]) {
+  for (const [attr, ereignis] of [
+    ['data-click', 'click'],
+    ['data-change', 'change'],
+    ['data-input', 'input'],
+  ]) {
     document.querySelectorAll('[' + attr + ']').forEach(knoten => {
       const fn = HANDLER[knoten.getAttribute(attr) || ''];
       if (!fn) return;
       const arg = knoten.getAttribute('data-arg');
-      knoten.addEventListener(ereignis, () => { fn(arg ?? undefined); });
+      knoten.addEventListener(ereignis, () => {
+        fn(arg ?? undefined);
+      });
     });
   }
 

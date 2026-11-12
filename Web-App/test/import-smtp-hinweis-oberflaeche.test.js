@@ -12,7 +12,12 @@ const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
 test('die übergangenen SMTP-Felder stehen in einer Meldung', async () => {
   const { w, d } = await oeffneOberflaeche({
-    '/v1/settings/import': { success: true, imported: 3, note: '', smtp_uebergangen: ['smtp_host', 'smtp_insecure_tls'] },
+    '/v1/settings/import': {
+      success: true,
+      imported: 3,
+      note: '',
+      smtp_uebergangen: ['smtp_host', 'smtp_insecure_tls'],
+    },
   });
   try {
     const feld = d.getElementById('cfg-import-file');
@@ -20,5 +25,7 @@ test('die übergangenen SMTP-Felder stehen in einer Meldung', async () => {
     feld.dispatchEvent(new w.Event('change', { bubbles: true }));
     const gefunden = await warte(() => d.body.textContent.includes('Nicht übernommen: smtp_host, smtp_insecure_tls'));
     assert.ok(gefunden, 'keine Meldung mit den übergangenen Feldern');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

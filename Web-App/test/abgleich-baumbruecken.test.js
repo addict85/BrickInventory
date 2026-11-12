@@ -23,8 +23,16 @@ function ohneKommentare(s) {
   let imBlock = false;
   for (const z of s.split('\n')) {
     const t = z.trim();
-    if (imBlock) { zeilen.push(''); if (t.endsWith('*/')) imBlock = false; continue; }
-    if (t.startsWith('/*')) { zeilen.push(''); if (!t.includes('*/')) imBlock = true; continue; }
+    if (imBlock) {
+      zeilen.push('');
+      if (t.endsWith('*/')) imBlock = false;
+      continue;
+    }
+    if (t.startsWith('/*')) {
+      zeilen.push('');
+      if (!t.includes('*/')) imBlock = true;
+      continue;
+    }
     zeilen.push(t.startsWith('//') || t.startsWith('*') ? '' : z);
   }
   return zeilen.join('\n');
@@ -44,7 +52,10 @@ function basisOrdner(quelle, name, tiefe = 0) {
   if (tiefe > 4) return null;
   const m = new RegExp(`const ${name}\\s*=\\s*path\\.join\\(([^)]*)\\)`, 's').exec(quelle);
   if (!m) return null;
-  const teile = m[1].split(',').map(s => s.trim()).filter(Boolean);
+  const teile = m[1]
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
   const basis = basisOrdner(quelle, teile[0], tiefe + 1);
   if (!basis) return null;
   const segmente = teile.slice(1).map(s => /^'([^']*)'$/.exec(s)?.[1]);
@@ -63,7 +74,7 @@ function androidBasen(quelle) {
   const gefunden = new Map();
   for (const m of quelle.matchAll(/const ([A-Za-z_$][\w$]*)\s*=\s*path\.join\(/g)) {
     const ziel = basisOrdner(quelle, m[1]);
-    if (ziel && ziel.includes(`${path.sep}Android-App${path.sep}`)) gefunden.set(m[1], ziel);
+    if (ziel?.includes(`${path.sep}Android-App${path.sep}`)) gefunden.set(m[1], ziel);
   }
   return gefunden;
 }
@@ -72,7 +83,10 @@ function androidBasen(quelle) {
 function bruecken() {
   const aufgeloest = [];
   const offen = [];
-  for (const datei of fs.readdirSync(TESTORDNER).filter(f => f.endsWith('.test.js')).sort()) {
+  for (const datei of fs
+    .readdirSync(TESTORDNER)
+    .filter(f => f.endsWith('.test.js'))
+    .sort()) {
     // Kommentare raus, BEVOR gemessen wird: Ein Erklaerblock, der einen Pfad
     // als Beispiel zeigt, ist kein Zugriff. Diese Datei selbst ist der beste
     // Beleg — ihr eigener Block darueber nennt zwei, und der erste Entwurf
@@ -87,7 +101,10 @@ function bruecken() {
       const woertlich = m[2].includes("'Android-App'");
       if (!ueberVariable && !woertlich) continue;
       const basis = ueberVariable ? basen.get(m[1]) : basisOrdner(quelle, m[1]);
-      const roh = m[2].split(',').map(s => s.trim()).filter(Boolean);
+      const roh = m[2]
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
       const segmente = roh.map(s => /^'([^']*)'$/.exec(s)?.[1]);
       if (!basis || segmente.some(s => s === undefined)) {
         offen.push({ datei, ausdruck: m[2].replace(/\s+/g, ' ').trim().slice(0, 70) });
@@ -104,15 +121,20 @@ test('keine Bruecke in den Android-Baum zeigt ins Leere', () => {
 
   // Selbstbeweis: Findet das Muster nichts, prueft die Zusicherung darunter
   // nichts und waere still gruen. GEMESSEN sind es sechzehn.
-  assert.ok(aufgeloest.length >= 12,
+  assert.ok(
+    aufgeloest.length >= 12,
     `Nur ${aufgeloest.length} aufloesbare Bruecken gefunden — Muster veraltet? ` +
-    'Ohne Treffer prueft dieser Test nichts und waere trotzdem gruen.');
+      'Ohne Treffer prueft dieser Test nichts und waere trotzdem gruen.',
+  );
 
   const tot = aufgeloest.filter(b => !fs.existsSync(b.pfad));
-  assert.deepStrictEqual(tot.map(b => `${b.datei} -> ${path.relative(WEBAPP, b.pfad)}`), [],
+  assert.deepStrictEqual(
+    tot.map(b => `${b.datei} -> ${path.relative(WEBAPP, b.pfad)}`),
+    [],
     'Diese Web-Tests greifen auf eine Datei im Android-Baum zu, die es nicht ' +
-    'mehr gibt. Je nach Test heisst das Absturz oder — schlimmer — eine ' +
-    'Pruefung, die nichts findet und deshalb schweigt.');
+      'mehr gibt. Je nach Test heisst das Absturz oder — schlimmer — eine ' +
+      'Pruefung, die nichts findet und deshalb schweigt.',
+  );
 });
 
 test('was sich nicht aufloesen laesst, wird benannt', () => {
@@ -123,11 +145,13 @@ test('was sich nicht aufloesen laesst, wird benannt', () => {
   // GEMESSEN: null offene, sechzehn aufgeloeste. Der einzige Fall (abgleich-preis-herkunft.test.js mit einem
   // variablen Ordnernamen) ist ausgeschrieben worden, als diese Pruefung ihn
   // meldete — der Gewinn an Kuerze war einer, den niemand sieht.
-  assert.ok(offen.length <= 1,
+  assert.ok(
+    offen.length <= 1,
     `${offen.length} Bruecken lassen sich nicht aufloesen (erlaubt: 1):\n  ` +
-    offen.map(o => `${o.datei}: ${o.ausdruck}`).join('\n  ') +
-    '\nEin variables Segment im Pfad nimmt dieser Pruefung die Sicht. Wo es ' +
-    'geht, gehoert der Pfad ausgeschrieben.');
+      offen.map(o => `${o.datei}: ${o.ausdruck}`).join('\n  ') +
+      '\nEin variables Segment im Pfad nimmt dieser Pruefung die Sicht. Wo es ' +
+      'geht, gehoert der Pfad ausgeschrieben.',
+  );
 });
 
 test('beide Baeume pruefen einander', () => {
@@ -139,9 +163,15 @@ test('beide Baeume pruefen einander', () => {
   const ordner = require('./helpers/android').quellwurzeln('test');
   assert.ok(ordner.length >= 2, `Nur ${ordner.length} Android-Testordner gefunden`);
   // Rekursiv: Jedes Modul legt seine Tests unter den eigenen Paketstamm (<stamm>/).
-  const rueckwaerts = ordner.flatMap(kt => fs.readdirSync(kt, { recursive: true }).map(String).filter(f =>
-    f.endsWith('.kt') && fs.readFileSync(path.join(kt, f), 'utf8').includes('Web-App')));
-  assert.ok(rueckwaerts.length >= 3,
+  const rueckwaerts = ordner.flatMap(kt =>
+    fs
+      .readdirSync(kt, { recursive: true })
+      .map(String)
+      .filter(f => f.endsWith('.kt') && fs.readFileSync(path.join(kt, f), 'utf8').includes('Web-App')),
+  );
+  assert.ok(
+    rueckwaerts.length >= 3,
     `Nur ${rueckwaerts.length} Android-Tests lesen noch den Web-Baum (erwartet: mindestens 3). ` +
-    'Die Paritaet darf nicht einseitig werden.');
+      'Die Paritaet darf nicht einseitig werden.',
+  );
 });

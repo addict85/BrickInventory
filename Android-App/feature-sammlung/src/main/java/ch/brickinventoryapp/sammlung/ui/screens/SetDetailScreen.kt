@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.sitzung.*
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
@@ -173,7 +174,7 @@ internal fun SetDetailScreen(
             return@Scaffold
         }
 
-        // Volle Auflösung — wie der Detail-Dialog der Webapp (07-admin.js, "m-img",
+        // Volle Auflösung — wie der Detail-Dialog der Webapp (admin.js, "m-img",
         // fullUrl()). Vorschau-Karte und Zoom benutzen dieselbe Adresse.
         val imageUrl = resolveFullUrl(serverUrl, set.imageLocal, set.imageUrl)
         // Einmaliger, verzögerter Wiederholversuch — wie in der Galerie-Kachel: Direkt

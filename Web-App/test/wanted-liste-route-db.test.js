@@ -28,40 +28,44 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 
-test.after(async () => { await db.pool.end().catch(() => {}); });
+test.after(async () => {
+  await db.pool.end().catch(() => {});
+});
 
 let HAUPT = 0;
 
 function item(typ, id, farbe, menge = 1) {
-  return `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n`
-       + (farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`)
-       + `<MAXPRICE>-1.0000</MAXPRICE>\n<MINQTY>${menge}</MINQTY>\n`
-       + `<CONDITION>X</CONDITION>\n<NOTIFY>N</NOTIFY>\n</ITEM>`;
+  return (
+    `<ITEM>\n<ITEMTYPE>${typ}</ITEMTYPE>\n<ITEMID>${id}</ITEMID>\n` +
+    (farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`) +
+    `<MAXPRICE>-1.0000</MAXPRICE>\n<MINQTY>${menge}</MINQTY>\n` +
+    `<CONDITION>X</CONDITION>\n<NOTIFY>N</NOTIFY>\n</ITEM>`
+  );
 }
 const liste = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${i.join('\n')}\n</INVENTORY>\n`;
 
 /** Die Datei des Tests: zwei auflösbare Teile, eines offen. */
 const XML = liste(
-  item('P', '3001', 5, 3),     // bl_zuordnung: NULL-Vermerk → Stufe 2
-  item('P', '4162', 1, 2),     // bl_zuordnung: abweichende Nummer → Stufe 1
-  item('P', '99999', 5, 1),    // nichts → offen
+  item('P', '3001', 5, 3), // bl_zuordnung: NULL-Vermerk → Stufe 2
+  item('P', '4162', 1, 2), // bl_zuordnung: abweichende Nummer → Stufe 1
+  item('P', '99999', 5, 1), // nichts → offen
 );
 
 async function hochladen(base, xml, abfrage = '') {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`,
-    { method: 'POST', body: fd });
+  const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
@@ -69,10 +73,12 @@ async function hochladen(base, xml, abfrage = '') {
 async function hochladenStrom(base, xml, abfrage) {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
-  const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`,
-    { method: 'POST', body: fd });
+  const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
   const roh = await r.text();
-  const zeilen = roh.split('\n').filter(z => z.trim()).map(z => JSON.parse(z));
+  const zeilen = roh
+    .split('\n')
+    .filter(z => z.trim())
+    .map(z => JSON.parse(z));
   return { status: r.status, typ: r.headers.get('content-type') || '', zeilen };
 }
 
@@ -81,7 +87,11 @@ async function aufbau() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c);
+  } finally {
+    c.release();
+  }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x')`);
   HAUPT = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   await db.run(`INSERT INTO part_catalog (part_number, part_name)
@@ -94,27 +104,32 @@ async function aufbau() {
   await db.run(`INSERT INTO rb_colors (id,name,bl_color_id) VALUES (4,'Red',5),(15,'White',1)`);
 }
 
-test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   await aufbau();
 
   importWorker(t, _req);
   const srv = testServer(_req, {
-    sitzung: { userId: HAUPT }, apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t,
+    sitzung: { userId: HAUPT },
+    apiNutzer: { user_id: HAUPT, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
 
   await t.test('1. eine Datei ohne <INVENTORY> wird vorher abgewiesen', async () => {
     const { status, body } = await hochladen(srv.base, '<?xml version="1.0"?>\n<FOO/>\n');
     assert.equal(status, 422, `Erwartet 422, bekam ${status}`);
-    assert.match(String(body.error || ''), /Wanted-Liste/,
+    assert.match(
+      String(body.error || ''),
+      /Wanted-Liste/,
       `Abgelehnt mit „${body.error}" — der Text soll sagen, DASS es keine Liste ist. ` +
-      '„0 Posten gelesen" wäre mehrdeutig: Das kann auch eine leere Liste sein.');
+        '„0 Posten gelesen" wäre mehrdeutig: Das kann auch eine leere Liste sein.',
+    );
   });
 
   await t.test('2. die Vorschau schreibt NICHTS', async () => {
@@ -127,22 +142,29 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     // An der TABELLE geprüft und nicht an der Antwort: Eine Route, die
     // „vorschau: true" meldet und trotzdem schreibt, sähe in der Antwort
     // richtig aus.
-    assert.equal((await db.get('SELECT COUNT(*)::int c FROM parts WHERE user_id=$1',
-      [HAUPT])).c, 0, 'Die Vorschau hat Teile angelegt');
+    assert.equal(
+      (await db.get('SELECT COUNT(*)::int c FROM parts WHERE user_id=$1', [HAUPT])).c,
+      0,
+      'Die Vorschau hat Teile angelegt',
+    );
   });
 
   await t.test('3. die Vorschau nennt die Stufen getrennt und die offenen Posten', async () => {
     const { body } = await hochladen(srv.base, XML);
-    assert.deepEqual(body.stufen, { gleich_vermerkt: 1, zuordnung: 1 },
-      `Stufen: ${JSON.stringify(body.stufen)} — erwartet je eine aus bl_zuordnung`);
+    assert.deepEqual(
+      body.stufen,
+      { gleich_vermerkt: 1, zuordnung: 1 },
+      `Stufen: ${JSON.stringify(body.stufen)} — erwartet je eine aus bl_zuordnung`,
+    );
     assert.equal(body.offen.length, 1, `${body.offen.length} offen statt 1`);
-    assert.equal(body.offen[0].blId, '99999',
-      'Der offene Posten wird nicht mit seiner BrickLink-Nummer genannt — dann kann ' +
-      'ihn niemand nachsehen');
+    assert.equal(
+      body.offen[0].blId,
+      '99999',
+      'Der offene Posten wird nicht mit seiner BrickLink-Nummer genannt — dann kann ' + 'ihn niemand nachsehen',
+    );
     // Rebrickable wurde NICHT gefragt: ohne rebrickable=1 kostet der Import
     // kein Kontingent.
-    assert.equal(body.rebrickable, undefined,
-      'Es wurde bei Rebrickable gefragt, obwohl rebrickable=1 fehlte');
+    assert.equal(body.rebrickable, undefined, 'Es wurde bei Rebrickable gefragt, obwohl rebrickable=1 fehlte');
   });
 
   await t.test('4. mit schreiben=1 entstehen manuelle Teile — mit Menge und Farbe', async () => {
@@ -156,24 +178,31 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
       `SELECT p.color_id, COALESCE(SUM(pa.quantity),0)::int AS menge
          FROM parts p LEFT JOIN part_acquisitions pa
            ON pa.user_id=p.user_id AND pa.part_number=p.part_number AND pa.color_id=p.color_id
-        WHERE p.user_id=$1 AND p.part_number='3001' GROUP BY p.color_id`, [HAUPT]);
+        WHERE p.user_id=$1 AND p.part_number='3001' GROUP BY p.color_id`,
+      [HAUPT],
+    );
     assert.ok(a, '3001 wurde nicht angelegt');
     assert.equal(Number(a.color_id), 4, `Farbe ${a.color_id} statt 4 (BL 5 = Rebrickable 4)`);
     assert.equal(a.menge, 3, `Menge ${a.menge} statt 3 — MINQTY war 3`);
 
     // Stufe 1: die abweichende Nummer muss UMGESETZT sein, nicht übernommen.
-    assert.ok(await db.get(
-      `SELECT 1 FROM parts WHERE user_id=$1 AND part_number='98765'`, [HAUPT]),
-      'Die BrickLink-Nummer 4162 wurde nicht auf 98765 abgebildet');
-    assert.equal((await db.get(
-      `SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='4162'`, [HAUPT])).c, 0,
+    assert.ok(
+      await db.get(`SELECT 1 FROM parts WHERE user_id=$1 AND part_number='98765'`, [HAUPT]),
+      'Die BrickLink-Nummer 4162 wurde nicht auf 98765 abgebildet',
+    );
+    assert.equal(
+      (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='4162'`, [HAUPT])).c,
+      0,
       'Die BrickLink-Nummer 4162 steht roh im Bestand — sie ist KEINE ' +
-      'Rebrickable-Nummer, und ein Teil darunter findet keinen Katalogeintrag');
+        'Rebrickable-Nummer, und ein Teil darunter findet keinen Katalogeintrag',
+    );
 
     // Der offene Posten ist NICHT angelegt worden.
-    assert.equal((await db.get(
-      `SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='99999'`, [HAUPT])).c, 0,
-      'Ein Posten ohne bekannte Rebrickable-Nummer wurde trotzdem angelegt');
+    assert.equal(
+      (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='99999'`, [HAUPT])).c,
+      0,
+      'Ein Posten ohne bekannte Rebrickable-Nummer wurde trotzdem angelegt',
+    );
   });
 
   await t.test('5. kein Kaufpreis aus MAXPRICE', async () => {
@@ -181,21 +210,25 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     // selbst ein echter Wert dürfte nicht als Kaufpreis landen — sonst stünde
     // in der Finanzansicht ein Betrag, den niemand ausgegeben hat.
     // Die Spalte heisst `unit_price`, nicht `price` — nachgesehen, nachdem mein …
-    const preise = await db.all(
-      'SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [HAUPT]);
+    const preise = await db.all('SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [HAUPT]);
     assert.ok(preise.length > 0, 'Vorbedingung: es gibt Erfassungen');
     for (const p of preise) {
-      assert.ok(p.unit_price === null || Number(p.unit_price) >= 0,
-        `Ein Kaufpreis von ${p.unit_price} ist aus MAXPRICE entstanden — MAXPRICE ist `
-        + 'eine Suchgrenze, kein bezahlter Preis');
+      assert.ok(
+        p.unit_price === null || Number(p.unit_price) >= 0,
+        `Ein Kaufpreis von ${p.unit_price} ist aus MAXPRICE entstanden — MAXPRICE ist ` +
+          'eine Suchgrenze, kein bezahlter Preis',
+      );
     }
   });
 
   await t.test('6. fremde Arten stehen im Bericht', async () => {
     const mit = liste(item('P', '3001', 5), item('B', '5002', null), item('G', '6001', null));
     const { body } = await hochladen(srv.base, mit);
-    assert.deepEqual(body.fremdeArten, { B: 1, G: 1 },
-      `fremdeArten: ${JSON.stringify(body.fremdeArten)} — ein Buch und ein Zubehör`);
+    assert.deepEqual(
+      body.fremdeArten,
+      { B: 1, G: 1 },
+      `fremdeArten: ${JSON.stringify(body.fremdeArten)} — ein Buch und ein Zubehör`,
+    );
   });
 
   // Der Fortschritt (Marcos Wunsch vom 20.10.)
@@ -203,16 +236,23 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
   await t.test('7. mit strom=1 kommen Fortschrittszeilen, zuletzt der Bericht', async () => {
     const { status, typ, zeilen } = await hochladenStrom(srv.base, XML, '?schreiben=1&strom=1');
     assert.equal(status, 200);
-    assert.match(typ, /ndjson/,
+    assert.match(
+      typ,
+      /ndjson/,
       `Content-Type „${typ}" — eine Zeilen-Antwort darf nicht als application/json ` +
-      'ausgegeben werden, sonst versucht der Browser sie als EIN Dokument zu lesen');
+        'ausgegeben werden, sonst versucht der Browser sie als EIN Dokument zu lesen',
+    );
 
     // Der Import läuft als Auftrag; die Anfrage liest seinen Stand im Takt,
     // Zwischenstände können darum zusammenfallen. Der letzte kommt immer an.
     const melde = zeilen.filter(z => z.fortschritt);
     assert.ok(melde.length >= 1, 'keine Fortschrittszeile');
     const fertig = melde.map(z => z.fortschritt.fertig);
-    assert.deepEqual(fertig, [...fertig].sort((a, b) => a - b), 'Die Zählung muss aufsteigen');
+    assert.deepEqual(
+      fertig,
+      [...fertig].sort((a, b) => a - b),
+      'Die Zählung muss aufsteigen',
+    );
     assert.equal(fertig.at(-1), 3, 'Der letzte Stand nennt alle Posten (sonst bliebe der Balken vor dem Ende stehen)');
     for (const z of melde) {
       assert.equal(z.fortschritt.gesamt, 3, 'Der Nenner ist die Zahl der Posten');
@@ -234,41 +274,56 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     assert.equal(body.success, true);
 
     const job = await db.get('SELECT * FROM import_stand WHERE user_id=$1', [HAUPT]);
-    assert.ok(job, 'Ohne Auftragszeile zeigt weder die App noch eine zweite ' +
-      'Sitzung etwas an — genau darum geht es');
-    assert.equal(job.status, 'done',
+    assert.ok(
+      job,
+      'Ohne Auftragszeile zeigt weder die App noch eine zweite ' + 'Sitzung etwas an — genau darum geht es',
+    );
+    assert.equal(
+      job.status,
+      'done',
       `Status „${job.status}" — nach dem Import muss der Auftrag ZU sein, sonst ` +
-      'steht der Balken in der App auf „läuft", bis jemand einen neuen startet');
+        'steht der Balken in der App auf „läuft", bis jemand einen neuen startet',
+    );
     assert.equal(Number(job.total), 3, 'Der Nenner ist die Zahl der Posten');
-    assert.equal(Number(job.done), Number(job.total),
-      'Am Ende muss der Balken voll sein');
+    assert.equal(Number(job.done), Number(job.total), 'Am Ende muss der Balken voll sein');
     assert.equal(job.current, null, 'Was „gerade dran" ist, gibt es nicht mehr');
     // ok/warn/err rechnet buildJobStatus aus `results` — ohne die Liste stünde
     // im Balken nach dem Ende „0 ok", obwohl zwei Posten angelegt wurden.
     const results = Array.isArray(job.results) ? job.results : JSON.parse(job.results || '[]');
-    assert.equal(results.filter(r => r.success).length, body.angelegt + body.aufgestockt,
+    assert.equal(
+      results.filter(r => r.success).length,
+      body.angelegt + body.aufgestockt,
       `results zählt ${results.length} Einträge, der Bericht nennt ` +
-      `${body.angelegt} angelegt und ${body.aufgestockt} aufgestockt`);
+        `${body.angelegt} angelegt und ${body.aufgestockt} aufgestockt`,
+    );
 
     // Jede Zeile BENENNT ihren Posten (Marcos Befund vom 21.10.)
     assert.equal(results.length, 3, 'Je Posten eine Zeile, auch für den offenen');
     for (const r of results) {
-      assert.ok(r.set_number,
-        `Ein Eintrag ohne set_number: ${JSON.stringify(r)}. Daraus wird im ` +
-        'Protokoll „undefined – aktualisiert"');
+      assert.ok(
+        r.set_number,
+        `Ein Eintrag ohne set_number: ${JSON.stringify(r)}. Daraus wird im ` + 'Protokoll „undefined – aktualisiert"',
+      );
     }
-    assert.deepEqual(results.map(r => r.set_number).sort(), ['3001', '4162', '99999'],
+    assert.deepEqual(
+      results.map(r => r.set_number).sort(),
+      ['3001', '4162', '99999'],
       'Die BrickLink-Nummern aus der Datei — das sind die Zeilen, die Marco ' +
-      'hochgeladen hat. 4162 trägt bei Rebrickable eine ANDERE Nummer; im ' +
-      'Protokoll steht die aus seiner Datei');
+        'hochgeladen hat. 4162 trägt bei Rebrickable eine ANDERE Nummer; im ' +
+        'Protokoll steht die aus seiner Datei',
+    );
     const angelegt = results.filter(r => r.success);
-    assert.ok(angelegt.every(r => r.action === 'added' || r.action === 'updated'),
+    assert.ok(
+      angelegt.every(r => r.action === 'added' || r.action === 'updated'),
       `action muss 'added' oder 'updated' sein, sonst schreibt die Anzeige ` +
-      `„aktualisiert" für alles: ${JSON.stringify(angelegt)}`);
+        `„aktualisiert" für alles: ${JSON.stringify(angelegt)}`,
+    );
     const offen = results.find(r => r.set_number === '99999');
-    assert.equal(offen.isWarning, true,
-      'Ein offener Posten ist eine Anmerkung, kein Fehler — dieselbe ' +
-      'Einteilung wie bei den Zahlen darüber');
+    assert.equal(
+      offen.isWarning,
+      true,
+      'Ein offener Posten ist eine Anmerkung, kein Fehler — dieselbe ' + 'Einteilung wie bei den Zahlen darüber',
+    );
     assert.ok(offen.error, 'Ohne Grund steht in der Zeile nur die Nummer');
   });
 
@@ -277,9 +332,12 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     const { body } = await hochladen(srv.base, XML);
     assert.equal(body.vorschau, true, 'Vorbedingung: das ist eine Vorschau');
     const job = await db.get('SELECT * FROM import_stand WHERE user_id=$1', [HAUPT]);
-    assert.equal(job, undefined,
+    assert.equal(
+      job,
+      undefined,
       'Eine Vorschau ändert nichts. Ein Balken „Import läuft" dafür wäre eine ' +
-      'Lüge in drei Oberflächen gleichzeitig.');
+        'Lüge in drei Oberflächen gleichzeitig.',
+    );
   });
 
   await t.test('11. ein laufender CSV-Import wird nicht verdrängt', async () => {
@@ -290,15 +348,16 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
       `INSERT INTO import_stand (user_id, status, total, done, current, results, updated_at)
        VALUES ($1,'running',380,42,'10256-1','[]', NOW())
        ON CONFLICT (user_id) DO UPDATE SET status='running', total=380, done=42,
-         current='10256-1', results='[]'`, [HAUPT]);
+         current='10256-1', results='[]'`,
+      [HAUPT],
+    );
 
     const { body } = await hochladen(srv.base, XML, '?schreiben=1');
     assert.equal(body.success, true, 'Der Import selbst läuft weiter');
 
     const job = await db.get('SELECT * FROM import_stand WHERE user_id=$1', [HAUPT]);
     assert.equal(job.status, 'running', 'Der fremde Auftrag muss unberührt bleiben');
-    assert.equal(Number(job.total), 380,
-      `total=${job.total} — der Wanted-Import hat den CSV-Auftrag überschrieben`);
+    assert.equal(Number(job.total), 380, `total=${job.total} — der Wanted-Import hat den CSV-Auftrag überschrieben`);
     assert.equal(Number(job.done), 42, 'auch die Zählung gehört dem anderen Import');
     assert.equal(job.current, '10256-1');
     await db.run('DELETE FROM import_stand WHERE user_id = $1', [HAUPT]);
@@ -314,8 +373,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     })();
     assert.match(r.headers.get('content-type') || '', /application\/json/);
     const roh = await r.text();
-    assert.ok(!roh.includes('"fortschritt"'),
-      'Ohne strom=1 darf keine Fortschrittszeile in der Antwort stehen');
+    assert.ok(!roh.includes('"fortschritt"'), 'Ohne strom=1 darf keine Fortschrittszeile in der Antwort stehen');
     const body = JSON.parse(roh);
     assert.equal(body.success, true);
     assert.equal(body.gelesen, 3);

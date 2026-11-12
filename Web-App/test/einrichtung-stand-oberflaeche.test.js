@@ -66,7 +66,11 @@ test('mit hinterlegter Quelle verschwindet der Prüfknopf', async () => {
   try {
     await ruhig();
     assert.equal(d.getElementById('btn-einrichtung-pruefen').hidden, true, 'mit Quelle verschwindet er');
-    assert.equal(d.getElementById('einrichtung-pruefen-hinweis').hidden, true, 'mit Quelle verschwindet auch der Hinweis');
+    assert.equal(
+      d.getElementById('einrichtung-pruefen-hinweis').hidden,
+      true,
+      'mit Quelle verschwindet auch der Hinweis',
+    );
   } finally {
     w.close();
   }
@@ -86,11 +90,19 @@ test('nach Abschluss bleibt die Meldung, die Prüfliste verschwindet', async () 
 });
 
 test('englisch: Knopf und Hinweis', async () => {
-  const { w, d, ruhig } = await oeffneOberflaeche({ '/v1/einrichtung/stand': ANTWORT }, { angemeldet: false, sprache: 'en' });
+  const { w, d, ruhig } = await oeffneOberflaeche(
+    { '/v1/einrichtung/stand': ANTWORT },
+    { angemeldet: false, sprache: 'en' },
+  );
   try {
     await ruhig();
-    await warte(() => d.getElementById('btn-einrichtung-pruefen').textContent.trim() === 'What is still missing in the setup?');
-    assert.match(d.getElementById('einrichtung-pruefen-hinweis').textContent, /database, HTTPS, first account and Rebrickable key/);
+    await warte(
+      () => d.getElementById('btn-einrichtung-pruefen').textContent.trim() === 'What is still missing in the setup?',
+    );
+    assert.match(
+      d.getElementById('einrichtung-pruefen-hinweis').textContent,
+      /database, HTTPS, first account and Rebrickable key/,
+    );
   } finally {
     w.close();
   }

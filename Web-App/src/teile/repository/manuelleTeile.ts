@@ -4,9 +4,17 @@ import type { ErfassungsZeile } from '../../../db/bestandsmenge';
 /** Preis und Zustand stehen in der NEUESTEN Erfassung, die Stückzahl ist die
  * Summe der Erfassungen — die Bestandszeile trägt nur den Schlüssel. */
 
-export function teilZeileManuell(db: DbSchnittstelle, uid: number, partNumber: string, colorId: number): Promise<{ id: number } | undefined> {
-  return db.get("SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
-    [uid, partNumber, colorId]);
+export function teilZeileManuell(
+  db: DbSchnittstelle,
+  uid: number,
+  partNumber: string,
+  colorId: number,
+): Promise<{ id: number } | undefined> {
+  return db.get("SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'", [
+    uid,
+    partNumber,
+    colorId,
+  ]);
 }
 
 export function teilZeileMitZustand(db: DbSchnittstelle, uid: number, partNumber: string, colorId: number) {
@@ -18,13 +26,22 @@ export function teilZeileMitZustand(db: DbSchnittstelle, uid: number, partNumber
               ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition
        FROM parts p
       WHERE p.user_id=$1 AND p.part_number=$2 AND p.color_id=$3 AND p.source='manual'`,
-    [uid, partNumber, colorId]);
+    [uid, partNumber, colorId],
+  );
 }
 
 /** Ohne Menge: Sie entsteht aus der ersten Erfassung. */
-export async function legeTeilManuellAn(db: DbSchnittstelle, uid: number, partNumber: string, colorId: number): Promise<void> {
-  await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, source)
-                VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`, [uid, partNumber, colorId]);
+export async function legeTeilManuellAn(
+  db: DbSchnittstelle,
+  uid: number,
+  partNumber: string,
+  colorId: number,
+): Promise<void> {
+  await db.run(
+    `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+                VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`,
+    [uid, partNumber, colorId],
+  );
 }
 
 export async function rbFarbcode(db: DbSchnittstelle, colorId: number): Promise<string | null> {
@@ -36,12 +53,28 @@ const NEUESTE = `(SELECT a.id FROM part_acquisitions a
                    ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`;
 
 /** 0 heisst in der Erfassung „für nichts gekauft"; ohne Preis steht NULL. */
-export async function setzeTeilpreisNeueste(db: DbSchnittstelle, uid: number, partNumber: string, colorId: number, preis: number | null): Promise<void> {
-  await db.run(`UPDATE part_acquisitions SET unit_price = NULLIF($1::numeric, 0) WHERE id = ${NEUESTE}`,
-    [preis, uid, partNumber, colorId]);
+export async function setzeTeilpreisNeueste(
+  db: DbSchnittstelle,
+  uid: number,
+  partNumber: string,
+  colorId: number,
+  preis: number | null,
+): Promise<void> {
+  await db.run(`UPDATE part_acquisitions SET unit_price = NULLIF($1::numeric, 0) WHERE id = ${NEUESTE}`, [
+    preis,
+    uid,
+    partNumber,
+    colorId,
+  ]);
 }
 
-export async function setzeTeilzustandNeueste(db: DbSchnittstelle, uid: number, partNumber: string, colorId: number, zustand: string): Promise<void> {
+export async function setzeTeilzustandNeueste(
+  db: DbSchnittstelle,
+  uid: number,
+  partNumber: string,
+  colorId: number,
+  zustand: string,
+): Promise<void> {
   await db.run(`UPDATE part_acquisitions SET condition=$1 WHERE id = ${NEUESTE}`, [zustand, uid, partNumber, colorId]);
 }
 
@@ -52,5 +85,7 @@ export function teilErfassungen(db: DbSchnittstelle, uids: number[], partNumber:
             a.created_at, a.user_id AS owner_user_id
      FROM part_acquisitions a
      WHERE a.user_id = ANY($1) AND a.part_number=$2 AND a.color_id=$3
-     ORDER BY a.created_at ASC, a.id ASC`, [uids, partNumber, colorId]);
+     ORDER BY a.created_at ASC, a.id ASC`,
+    [uids, partNumber, colorId],
+  );
 }

@@ -18,7 +18,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 
 test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
   if (!(await dbOderSkip(t, _req))) return;
@@ -65,7 +66,7 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
   await t.test('mit Token: 503 statt 401', async () => {
     const kopf = { authorization: `Bearer ${token}` };
     assert.equal((await me(kopf)).body.loggedIn, true, 'Vorbedingung: ohne Fehler angemeldet');
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     const r = await mitFehler(() => me(kopf));
     assert.deepEqual([r.status, r.body.code], [503, 'server_ausgelastet']);
   });

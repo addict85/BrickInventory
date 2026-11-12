@@ -38,25 +38,36 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 /** Klartext-SMTP; mit `tlsOpt` bietet er STARTTLS an. Jede Zeile landet mit ihrer Schicht im Mitschnitt. */
 function smtpServer(tlsOpt) {
-  const mitschnitt = [], post = [];
-  const srv = net.createServer((roh) => {
+  const mitschnitt = [],
+    post = [];
+  const srv = net.createServer(roh => {
     roh.on('error', () => {});
     roh.write('220 test ESMTP\r\n');
     const bediene = (s, schicht) => {
-      let puffer = '', daten = null;
-      s.on('data', (b) => {
+      let puffer = '',
+        daten = null;
+      s.on('data', b => {
         puffer += b.toString('latin1');
         for (let i = puffer.indexOf('\r\n'); i >= 0; i = puffer.indexOf('\r\n')) {
-          const zeile = puffer.slice(0, i); puffer = puffer.slice(i + 2);
+          const zeile = puffer.slice(0, i);
+          puffer = puffer.slice(i + 2);
           mitschnitt.push({ schicht, zeile });
           if (daten !== null) {
-            if (zeile === '.') { post.push(daten); daten = null; s.write('250 angenommen\r\n'); } else daten += zeile + '\n';
+            if (zeile === '.') {
+              post.push(daten);
+              daten = null;
+              s.write('250 angenommen\r\n');
+            } else daten += zeile + '\n';
             continue;
           }
           const befehl = zeile.slice(0, 8).toUpperCase();
-          if (befehl.startsWith('EHLO')) s.write(`250-test\r\n${tlsOpt && schicht === 'klar' ? '250-STARTTLS\r\n' : ''}250 AUTH PLAIN\r\n`);
+          if (befehl.startsWith('EHLO'))
+            s.write(`250-test\r\n${tlsOpt && schicht === 'klar' ? '250-STARTTLS\r\n' : ''}250 AUTH PLAIN\r\n`);
           else if (befehl === 'STARTTLS') {
-            if (!tlsOpt) { s.write('502 nicht angeboten\r\n'); continue; }
+            if (!tlsOpt) {
+              s.write('502 nicht angeboten\r\n');
+              continue;
+            }
             s.removeAllListeners('data');
             s.write('220 los\r\n', () => {
               const sicher = new tls.TLSSocket(s, { isServer: true, ...tlsOpt });
@@ -65,8 +76,10 @@ function smtpServer(tlsOpt) {
             });
             return;
           } else if (befehl.startsWith('AUTH')) s.write('235 ok\r\n');
-          else if (befehl.startsWith('DATA')) { daten = ''; s.write('354 weiter\r\n'); }
-          else if (befehl.startsWith('QUIT')) s.end('221 bye\r\n');
+          else if (befehl.startsWith('DATA')) {
+            daten = '';
+            s.write('354 weiter\r\n');
+          } else if (befehl.startsWith('QUIT')) s.end('221 bye\r\n');
           else s.write('250 ok\r\n');
         }
       });
@@ -76,21 +89,60 @@ function smtpServer(tlsOpt) {
   return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, mitschnitt, post, port: srv.address().port })));
 }
 
-test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const SCHLUESSEL = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_secure', 'smtp_from', 'smtp_tls_ca', 'smtp_tls_fingerprint'];
+  const SCHLUESSEL = [
+    'smtp_host',
+    'smtp_port',
+    'smtp_user',
+    'smtp_pass',
+    'smtp_secure',
+    'smtp_from',
+    'smtp_tls_ca',
+    'smtp_tls_fingerprint',
+  ];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-  const CHEF = `starttls_${process.pid}`, PASS = 'Starttls-Pruefung-1';
+  const CHEF = `starttls_${process.pid}`,
+    PASS = 'Starttls-Pruefung-1';
   await db.run('DELETE FROM users WHERE username = $1', [CHEF]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, email)
-    VALUES ($1, $2, true, true, true, 'chef@example.org') RETURNING id`, [CHEF, bcrypt.hashSync(PASS, 4)])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, email)
+    VALUES ($1, $2, true, true, true, 'chef@example.org') RETURNING id`,
+      [CHEF, bcrypt.hashSync(PASS, 4)],
+    )
+  ).id;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smtp-starttls-'));
-  execFileSync('openssl', ['req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:P-256', '-nodes',
-    '-keyout', path.join(dir, 'k.pem'), '-out', path.join(dir, 'c.pem'), '-days', '2', '-subj', '/CN=localhost',
-    '-addext', 'subjectAltName=IP:127.0.0.1'], { stdio: 'ignore' });
-  const zert = { key: fs.readFileSync(path.join(dir, 'k.pem')), cert: fs.readFileSync(path.join(dir, 'c.pem'), 'utf8') };
-  const ohne = await smtpServer(null), mit = await smtpServer(zert);
+  execFileSync(
+    'openssl',
+    [
+      'req',
+      '-x509',
+      '-newkey',
+      'ec',
+      '-pkeyopt',
+      'ec_paramgen_curve:P-256',
+      '-nodes',
+      '-keyout',
+      path.join(dir, 'k.pem'),
+      '-out',
+      path.join(dir, 'c.pem'),
+      '-days',
+      '2',
+      '-subj',
+      '/CN=localhost',
+      '-addext',
+      'subjectAltName=IP:127.0.0.1',
+    ],
+    { stdio: 'ignore' },
+  );
+  const zert = {
+    key: fs.readFileSync(path.join(dir, 'k.pem')),
+    cert: fs.readFileSync(path.join(dir, 'c.pem'), 'utf8'),
+  };
+  const ohne = await smtpServer(null),
+    mit = await smtpServer(zert);
   const alt = await smtpServer({ ...zert, minVersion: 'TLSv1', maxVersion: 'TLSv1.1', ciphers: 'DEFAULT@SECLEVEL=0' });
   t.after(async () => {
     for (const s of [ohne, mit, alt]) s.srv.close();
@@ -101,10 +153,18 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     await db.pool.end().catch(() => {});
   });
 
-  const setze = async (werte) => {
+  const setze = async werte => {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-    const alle = { smtp_host: '127.0.0.1', smtp_user: 'postfach', smtp_pass: 'Geheim-Smtp-9', smtp_secure: '0', smtp_from: 'test@example.org', ...werte };
-    for (const [k, v] of Object.entries(alle)) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
+    const alle = {
+      smtp_host: '127.0.0.1',
+      smtp_user: 'postfach',
+      smtp_pass: 'Geheim-Smtp-9',
+      smtp_secure: '0',
+      smtp_from: 'test@example.org',
+      ...werte,
+    };
+    for (const [k, v] of Object.entries(alle))
+      await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
     await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
   };
   const LINK = 'https://brick.example/reset?token=abcdef0123';
@@ -115,8 +175,14 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     assert.equal(r.success, false);
     assert.match(r.error, /kein STARTTLS/);
     const zeilen = ohne.mitschnitt.map(z => z.zeile);
-    assert.ok(zeilen.some(z => /^EHLO/i.test(z)), 'Der Mailer hat den Server gar nicht erreicht');
-    assert.deepEqual(zeilen.filter(z => /^(AUTH|MAIL FROM|DATA)/i.test(z) || z.includes('token=')), []);
+    assert.ok(
+      zeilen.some(z => /^EHLO/i.test(z)),
+      'Der Mailer hat den Server gar nicht erreicht',
+    );
+    assert.deepEqual(
+      zeilen.filter(z => /^(AUTH|MAIL FROM|DATA)/i.test(z) || z.includes('token=')),
+      [],
+    );
     assert.equal(ohne.post.length, 0);
   });
 
@@ -124,11 +190,22 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     await setze({ smtp_port: ohne.port });
     const vorherZeilen = ohne.mitschnitt.length;
     assert.equal((await mailer.testSmtp()).code, 'smtp_fehler');
-    const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, routen: { '/api/v1': 'routes/api_v1/settings.js' }, t });
-    const r = await fetch(`${base}/api/v1/settings/smtp-test`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    const { base } = testServer(_req, {
+      sitzung: { userId: uid, isAdmin: true },
+      routen: { '/api/v1': 'routes/api_v1/settings.js' },
+      t,
+    });
+    const r = await fetch(`${base}/api/v1/settings/smtp-test`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
     assert.equal(r.status, 400);
     assert.match((await r.json()).error, /kein STARTTLS/);
-    assert.deepEqual(ohne.mitschnitt.slice(vorherZeilen).filter(z => /^AUTH/i.test(z.zeile)), []);
+    assert.deepEqual(
+      ohne.mitschnitt.slice(vorherZeilen).filter(z => /^AUTH/i.test(z.zeile)),
+      [],
+    );
   });
 
   await t.test('mit STARTTLS geht AUTH erst über die verschlüsselte Verbindung', async () => {
@@ -136,20 +213,31 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Rücksetzen', text: LINK });
     assert.equal(r.success, true, r.error);
     assert.equal(mit.post.length, 1);
-    assert.deepEqual(mit.mitschnitt.filter(z => z.schicht === 'klar').map(z => z.zeile.split(' ')[0].toUpperCase()), ['EHLO', 'STARTTLS']);
+    assert.deepEqual(
+      mit.mitschnitt.filter(z => z.schicht === 'klar').map(z => z.zeile.split(' ')[0].toUpperCase()),
+      ['EHLO', 'STARTTLS'],
+    );
     assert.ok(mit.mitschnitt.some(z => z.schicht === 'tls' && /^AUTH PLAIN/i.test(z.zeile)));
   });
 
   await t.test('TLS 1.1 wird abgelehnt, auch wenn der Prozess es zuliesse', async () => {
-    const vorherMin = tls.DEFAULT_MIN_VERSION, vorherChiffren = tls.DEFAULT_CIPHERS;
-    tls.DEFAULT_MIN_VERSION = 'TLSv1'; tls.DEFAULT_CIPHERS = 'DEFAULT@SECLEVEL=0';
+    const vorherMin = tls.DEFAULT_MIN_VERSION,
+      vorherChiffren = tls.DEFAULT_CIPHERS;
+    tls.DEFAULT_MIN_VERSION = 'TLSv1';
+    tls.DEFAULT_CIPHERS = 'DEFAULT@SECLEVEL=0';
     try {
       await setze({ smtp_port: alt.port, smtp_tls_ca: zert.cert });
       const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Alt', text: LINK });
       assert.equal(r.success, false);
       assert.equal(alt.post.length, 0);
-      assert.deepEqual(alt.mitschnitt.filter(z => /^AUTH/i.test(z.zeile)), []);
-    } finally { tls.DEFAULT_MIN_VERSION = vorherMin; tls.DEFAULT_CIPHERS = vorherChiffren; }
+      assert.deepEqual(
+        alt.mitschnitt.filter(z => /^AUTH/i.test(z.zeile)),
+        [],
+      );
+    } finally {
+      tls.DEFAULT_MIN_VERSION = vorherMin;
+      tls.DEFAULT_CIPHERS = vorherChiffren;
+    }
   });
 
   /** Das DNS des Tests: `mail.attrappe.test` löst auf `ziel` auf, alles andere wie gewohnt. */
@@ -163,7 +251,11 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
       const a = { address: ziel, family: 4 };
       setImmediate(() => (opt?.all ? rueckruf(null, [a]) : rueckruf(null, a.address, 4)));
     };
-    try { await arbeit(); } finally { dns.lookup = echt; }
+    try {
+      await arbeit();
+    } finally {
+      dns.lookup = echt;
+    }
     return gefragt;
   };
 
@@ -171,28 +263,37 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     await setze({ smtp_port: ohne.port, smtp_host: 'mail.attrappe.test' });
     const vorherZeilen = ohne.mitschnitt.length;
     let r;
-    const gefragt = await mitDns('169.254.169.254', async () => { r = await mailer.testSmtp(); });
+    const gefragt = await mitDns('169.254.169.254', async () => {
+      r = await mailer.testSmtp();
+    });
     assert.deepEqual(gefragt, ['mail.attrappe.test']);
     assert.equal(r.code, 'smtp_fehler');
     assert.match(r.vars.grund, /keine erlaubte Adresse/);
     assert.equal(ohne.mitschnitt.length, vorherZeilen, 'kein Verbindungsversuch');
   });
 
-  await t.test('ein Name, der auf eine erlaubte Adresse auflöst: verbunden wird mit der geprüften Adresse', async () => {
-    await setze({ smtp_port: ohne.port, smtp_host: 'mail.attrappe.test' });
-    const vorherZeilen = ohne.mitschnitt.length;
-    // Nur der erste Aufruf bekommt 127.0.0.1; ein zweites Nachschlagen landete auf 127.0.0.2.
-    const dns = require('node:dns');
-    const echt = dns.lookup;
-    let n = 0;
-    /** @type {any} */ (dns).lookup = (host, opt, rueckruf) => {
-      if (host !== 'mail.attrappe.test') return echt(host, opt, rueckruf);
-      const a = { address: n++ === 0 ? '127.0.0.1' : '127.0.0.2', family: 4 };
-      setImmediate(() => (opt?.all ? rueckruf(null, [a]) : rueckruf(null, a.address, 4)));
-    };
-    let r;
-    try { r = await mailer.testSmtp(); } finally { dns.lookup = echt; }
-    assert.match(r.vars.grund, /kein STARTTLS/, JSON.stringify(r));
-    assert.ok(ohne.mitschnitt.slice(vorherZeilen).some(z => /^EHLO/i.test(z.zeile)));
-  });
+  await t.test(
+    'ein Name, der auf eine erlaubte Adresse auflöst: verbunden wird mit der geprüften Adresse',
+    async () => {
+      await setze({ smtp_port: ohne.port, smtp_host: 'mail.attrappe.test' });
+      const vorherZeilen = ohne.mitschnitt.length;
+      // Nur der erste Aufruf bekommt 127.0.0.1; ein zweites Nachschlagen landete auf 127.0.0.2.
+      const dns = require('node:dns');
+      const echt = dns.lookup;
+      let n = 0;
+      /** @type {any} */ (dns).lookup = (host, opt, rueckruf) => {
+        if (host !== 'mail.attrappe.test') return echt(host, opt, rueckruf);
+        const a = { address: n++ === 0 ? '127.0.0.1' : '127.0.0.2', family: 4 };
+        setImmediate(() => (opt?.all ? rueckruf(null, [a]) : rueckruf(null, a.address, 4)));
+      };
+      let r;
+      try {
+        r = await mailer.testSmtp();
+      } finally {
+        dns.lookup = echt;
+      }
+      assert.match(r.vars.grund, /kein STARTTLS/, JSON.stringify(r));
+      assert.ok(ohne.mitschnitt.slice(vorherZeilen).some(z => /^EHLO/i.test(z.zeile)));
+    },
+  );
 });

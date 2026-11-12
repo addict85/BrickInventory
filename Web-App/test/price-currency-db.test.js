@@ -18,26 +18,30 @@ const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
-test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
   const USERNAME = 'currency-param-test';
   const SET = '10307-1';
   await db.run(`DELETE FROM users WHERE username=$1`, [USERNAME]);
   await db.run(`INSERT INTO users (username,password_hash,is_admin,is_active) VALUES ($1,'x',false,true)`, [USERNAME]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USERNAME])).id;
-  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
-                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [uid]);
+  await db.run(
+    `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
+                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,
+    [uid],
+  );
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   await haeltSet(db, uid, SET, 1);
   // Preis liegt NUR in der eingestellten Währung vor — wie im Betrieb, wo der
   // Preis-Job genau diese füllt.
-  await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
+  await db.run(
+    `INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
                 VALUES ($1,'N','CHF',500,629.90,800,631,7,NOW())
                 ON CONFLICT (set_number,condition,currency_code)
-                DO UPDATE SET avg_price=629.90, fetched_at=NOW()`, [SET]);
+                DO UPDATE SET avg_price=629.90, fetched_at=NOW()`,
+    [SET],
+  );
 
   const { base, srv } = testServer(_req, {
     sitzung: { userId: uid, username: USERNAME, isAdmin: false },
@@ -46,7 +50,7 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT',
     t,
   });
 
-  const hole = async (query) => {
+  const hole = async query => {
     const r = await fetch(`${base}/api/v1/sets/${SET}/price${query}`);
     assert.equal(r.status, 200);
     return r.json();
@@ -57,13 +61,13 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT',
     // Antwort muss trotzdem der CHF-Preis der Nutzereinstellung sein.
     let j = await hole('?currency=EUR');
     assert.equal(j.currency, 'CHF', 'die Antwortwährung ist die Nutzereinstellung, nicht der Parameter');
-    assert.equal(parseFloat(j.avg_price), 629.90, 'der Preis kommt aus dem Cache der Nutzereinstellung');
+    assert.equal(parseFloat(j.avg_price), 629.9, 'der Preis kommt aus dem Cache der Nutzereinstellung');
     assert.ok(!j.no_price, 'kein no_price — genau das war die leere Kachel');
 
     // Ohne Parameter (Webapp, künftige App-Fassungen): identisches Ergebnis.
     j = await hole('');
     assert.equal(j.currency, 'CHF');
-    assert.equal(parseFloat(j.avg_price), 629.90);
+    assert.equal(parseFloat(j.avg_price), 629.9);
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USERNAME]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]).catch(() => {});

@@ -18,8 +18,16 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
-const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css', 'themes/brick.css', 'themes/werkbank.css',
-  'themes/farbfaecher.css', 'themes/noppe.css', 'themes/hochglanz.css'];
+const STILE = [
+  'vendor/fonts/fonts.css',
+  'tokens.css',
+  'styles.css',
+  'themes/brick.css',
+  'themes/werkbank.css',
+  'themes/farbfaecher.css',
+  'themes/noppe.css',
+  'themes/hochglanz.css',
+];
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
 const { chrome } = require('./helpers/app-browser');
@@ -56,8 +64,11 @@ function abschnitt(n) {
 function testseite() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
   const teile = [];
-  for (const d of DESIGNS) for (const dunkel of d === 'werkbank' ? [true] : [false, true])
-    teile.push(`<section data-theme="${d}"${dunkel ? ' data-dunkel' : ''} style="background:var(--bg);padding:8px"><div id="app" style="display:block">${abschnitt(`${d} ${dunkel ? 'dunkel' : 'hell'}`)}</div></section>`);
+  for (const d of DESIGNS)
+    for (const dunkel of d === 'werkbank' ? [true] : [false, true])
+      teile.push(
+        `<section data-theme="${d}"${dunkel ? ' data-dunkel' : ''} style="background:var(--bg);padding:8px"><div id="app" style="display:block">${abschnitt(`${d} ${dunkel ? 'dunkel' : 'hell'}`)}</div></section>`,
+      );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
 <style>*{transition:none!important;animation:none!important}</style></head><body>${teile.join('\n')}
 <pre id="ergebnis"></pre>
@@ -79,19 +90,36 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
 </script></body></html>`;
 }
 
-test('Kontrast in allen Designs, hell und dunkel', (t) => {
+test('Kontrast in allen Designs, hell und dunkel', t => {
   const bin = chrome();
-  if (!bin) { t.skip('kein Chrome gefunden'); return; }
+  if (!bin) {
+    t.skip('kein Chrome gefunden');
+    return;
+  }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kontrast-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
   fs.writeFileSync(datei, testseite());
-  const dom = execFileSync(bin, ['--headless', '--no-sandbox', '--disable-gpu', '--allow-file-access-from-files',
-    '--window-size=1200,800', '--virtual-time-budget=3000', '--dump-dom', `file://${datei}`],
-    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] });
+  const dom = execFileSync(
+    bin,
+    [
+      '--headless',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--allow-file-access-from-files',
+      '--window-size=1200,800',
+      '--virtual-time-budget=3000',
+      '--dump-dom',
+      `file://${datei}`,
+    ],
+    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
+  );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const werte = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.equal(werte.length, 11 * 30, `${werte.length} Messungen — fehlt ein Design oder ein Baustein?`);
-  assert.deepEqual(werte.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`), []);
+  assert.deepEqual(
+    werte.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
+    [],
+  );
 });

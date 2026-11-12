@@ -9,7 +9,7 @@ object Alarmeingabe {
 
     /**
      * Wie lange Ruhe herrschen muss, bevor gespeichert wird. Dieselbe Zahl wie in der
-     * Webapp (ALARM_RUHE in public/js/07-admin.js), damit sich dasselbe Feld an beiden
+     * Webapp (ALARM_RUHE in public/js/admin.js), damit sich dasselbe Feld an beiden
      * Stellen gleich verhält. 800 ms statt 350 wie bei der Suche: Ein Alarm legt etwas
      * an, und wer zwischen „24“ und „249.90“ kurz überlegt, soll keine Schwelle bei 24
      * bekommen, die sofort meldet.

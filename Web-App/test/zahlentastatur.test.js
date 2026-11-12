@@ -16,11 +16,11 @@ const ROOT = path.join(__dirname, '..');
 
 /** index.html plus alle Frontend-Bausteine — NICHT das gebaute Bündel. */
 function quellen() {
-  const js = fs.readdirSync(path.join(ROOT, 'public/js'))
+  const js = fs
+    .readdirSync(path.join(ROOT, 'public/js'))
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')
     .map(f => 'public/js/' + f);
-  return ['public/index.html', ...js]
-    .map(p => [p, fs.readFileSync(path.join(ROOT, p), 'utf8')]);
+  return ['public/index.html', ...js].map(p => [p, fs.readFileSync(path.join(ROOT, p), 'utf8')]);
 }
 
 function zahlenfelder() {
@@ -39,15 +39,16 @@ test('1. jedes type="number" trägt einen inputmode', () => {
   const felder = zahlenfelder();
   // Selbstnachweis: Findet die Suche überhaupt etwas? Ohne das wäre eine
   // leere Liste für immer grün, ohne je ein Feld angesehen zu haben.
-  assert.ok(felder.length >= 20,
-    `Nur ${felder.length} Zahlenfelder gefunden — Muster veraltet?`);
+  assert.ok(felder.length >= 20, `Nur ${felder.length} Zahlenfelder gefunden — Muster veraltet?`);
 
-  const ohne = felder.filter(f => !/inputmode=/i.test(f.tag))
-    .map(f => `${f.datei}:${f.zeile}`);
-  assert.deepEqual(ohne, [],
+  const ohne = felder.filter(f => !/inputmode=/i.test(f.tag)).map(f => `${f.datei}:${f.zeile}`);
+  assert.deepEqual(
+    ohne,
+    [],
     'Diese Zahlenfelder sagen dem Handy nicht, welche Tastatur es zeigen soll:\n  ' +
-    ohne.join('\n  ') +
-    '\n`numeric` für ganze Zahlen, `decimal` für alles mit Komma.');
+      ohne.join('\n  ') +
+      '\n`numeric` für ganze Zahlen, `decimal` für alles mit Komma.',
+  );
 });
 
 test('2. Preise und Schwellen bekommen `decimal`, nicht `numeric`', () => {
@@ -60,15 +61,20 @@ test('2. Preise und Schwellen bekommen `decimal`, nicht `numeric`', () => {
     const modus = (f.tag.match(/inputmode=["']?(\w+)/i) || [])[1];
     if (kommaFeld && modus !== 'decimal') falsch.push(`${f.datei}:${f.zeile} (${modus})`);
   }
-  assert.deepEqual(falsch, [],
+  assert.deepEqual(
+    falsch,
+    [],
     'Diese Felder erlauben Kommastellen (step=0.01), zeigen aber einen reinen ' +
-    'Ziffernblock:\n  ' + falsch.join('\n  '));
+      'Ziffernblock:\n  ' +
+      falsch.join('\n  '),
+  );
 });
 
 test('3. Geldfelder sind Textfelder: type="number" verwirft „149,95“', () => {
   // Chrome liefert für ein Zahlenfeld mit Komma je nach Sprache "" oder 149;
   // gelesen wird mit leseBetrag() (geldeingabe.test.js prüft das Verhalten).
-  const falsch = zahlenfelder().filter(f => /inputmode=["']?decimal/i.test(f.tag) && /type=["']?number/.test(f.tag))
+  const falsch = zahlenfelder()
+    .filter(f => /inputmode=["']?decimal/i.test(f.tag) && /type=["']?number/.test(f.tag))
     .map(f => `${f.datei}:${f.zeile}`);
   assert.deepEqual(falsch, []);
 });

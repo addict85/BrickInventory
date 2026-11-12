@@ -1,12 +1,12 @@
 /**
- * Der Dispatcher (js/11-actions.js) und die Bildfehler in jsdom am Bündel aus
+ * Der Dispatcher (js/actions.js) und die Bildfehler in jsdom am Bündel aus
  * main.js, das zusätzlich die Registry auf window legt: Jeder Handlername aus
  * Markup und Vorlagen ist zur Laufzeit angemeldet, ein Klick reicht Argumente,
  * Feldwert und `this` durch, ein Bildfehler wird einmal wiederholt, bevor der
  * Rückfall greift, und das Protokollfenster lädt sein Skript als Datei.
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgesetzt):
- *   A  `closePwModal,` aus registerActions() in 11-actions.js gestrichen → rot:
+ *   A  `closePwModal,` aus registerActions() in actions.js gestrichen → rot:
  *      „jeder Handler aus Markup und Vorlagen ist angemeldet“
  *   B  in handle() die Schleife über data-arg… nach data-arg2 abgebrochen
  *      (Liste ohne data-arg3) → rot: „ein Klick reicht Argumente …“
@@ -18,8 +18,9 @@
  *   F  der Zweig für data-onerror="keep" entfernt → rot: „der Zoom behält …“
  *   G  in openLogViewer wieder `'<script>' + …` statt logviewer.js → rot:
  *      „das Protokollfenster lädt sein Skript als Datei“
- *   H  `import './11-actions.js';` aus main.js gestrichen → rot: alle Fälle hier
+ *   H  `import './actions.js';` aus main.js gestrichen → rot: alle Fälle hier
  */
+const { istAppModul } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -28,7 +29,7 @@ const { baueTestbuendel } = require('./helpers/buendel');
 
 process.env.TEST_BUENDEL = baueTestbuendel(
   'aktionen-dispatcher',
-  "import { actionNames, registerActions } from './00-registry.js';\n" +
+  "import { actionNames, registerActions } from './registry.js';\n" +
     'window.__registry = { actionNames, registerActions };\n',
 );
 const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
@@ -41,7 +42,7 @@ function namenImMarkup() {
     fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'),
     ...fs
       .readdirSync(path.join(PUB, 'js'))
-      .filter(f => /^\d\d-.*\.js$/.test(f) && f !== '00-registry.js')
+      .filter(f => istAppModul(f) && f !== 'registry.js')
       .map(f =>
         fs
           .readFileSync(path.join(PUB, 'js', f), 'utf8')

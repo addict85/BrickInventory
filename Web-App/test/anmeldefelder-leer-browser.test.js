@@ -12,7 +12,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { starteApp } = require('./helpers/app-browser');
 const { musterSammlung } = require('./helpers/bestand');
 
 const felder = `({ lu: document.getElementById('lu').value, lp: document.getElementById('lp').value,
@@ -20,9 +20,12 @@ const felder = `({ lu: document.getElementById('lu').value, lp: document.getElem
   hinweis: document.getElementById('login-hinweis').hidden ? '' : document.getElementById('login-hinweis').textContent,
   fehler: [...document.querySelectorAll('#toasts .toast.error')].map(t => t.textContent) })`;
 
-test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }, async (t) => {
+test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }, async t => {
   const app = await starteApp(t, { name: `ablauf_${process.pid}`, bestand: musterSammlung });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const maske = `getComputedStyle(document.getElementById('login-screen')).display !== 'none'`;
 
   await t.test('Sitzungsablauf: Name bleibt, Passwort weg, genau eine Meldung', async () => {
@@ -32,7 +35,8 @@ test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }
     await app.b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click();
       document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await app.bis(maske, 'Anmeldemaske nach 401');
-    await warte(1500);
+    // Auch die zweite 401 ist beantwortet und ihr Hinweis gezeichnet.
+    await app.ruhig();
     const f = await app.b.auswerten(felder);
     assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
     assert.match(f.lu, /^ablauf_/, 'der Name bleibt zum schnellen Wiederanmelden');
@@ -46,7 +50,11 @@ test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }
       document.getElementById('lc').value = ${JSON.stringify(app.weitereCodes[0])};
       document.getElementById('btn-login').click(); true`);
     await app.bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'wieder angemeldet', 300);
-    assert.equal(await app.b.auswerten(`document.getElementById('login-hinweis').hidden`), true, 'Hinweis verschwindet mit der Anmeldung');
+    assert.equal(
+      await app.b.auswerten(`document.getElementById('login-hinweis').hidden`),
+      true,
+      'Hinweis verschwindet mit der Anmeldung',
+    );
     await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('lc').value = '123456';
       document.getElementById('btn-logout').click(); true`);
     await app.bis(maske, 'Anmeldemaske');

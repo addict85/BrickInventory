@@ -115,9 +115,10 @@ class SelbstUpdateTest {
     fun `die Pruefung beim Start ist still`() {
         // Beim Start pruefen, nie von allein laden: Laden ist eine Entscheidung des Nutzers.
         val nav = quelle("app/AppNavigation.kt")
-        // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft.
+        // Der Start fragt über pruefeBeimStart(), das nur bei gesetztem Schalter still prüft; dass
+        // die Anmeldung es auslöst, prüft UpdateViewModelTest am ausgeführten ViewModel.
         val vm = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("konto/ui/viewmodel/UpdateViewModel.kt")), "fun pruefeBeimStart(")
-        assert(nav.contains("selbstUpdate.pruefeBeimStart()") && vm.contains("pruefeAufUpdate(still = true)")) {
+        assert(vm.contains("pruefeAufUpdate(still = true)")) {
             "Beim Start wird nicht (mehr) still nach einem Update gesehen"
         }
         // Und sie laedt nichts: ladeUpdate() hat genau einen Ausloeser, den Knopf.
@@ -172,10 +173,15 @@ class SelbstUpdateTest {
     fun `der Workflow legt die Beschreibung neben das APK`() {
         // Ueber Quellen.workflow(), nicht mit eigener Pfadangabe: Gradle-Tests laufen
         // aus dem Modulordner, und ein eigener relativer Pfad verzählt sich leicht.
+        // Releases sind unveränderlich: Die Beschreibung kommt im selben `gh release create`
+        // wie das APK, und nur `--latest` bringt sie unter UPDATE_VERSION_URL.
+        // Gegenprobe: `"$BESCHREIBUNG"` aus dem Aufruf oder `--latest=false` → rot „Der Workflow legt die Release ohne …“.
         val text = Quellen.workflow("android-release.yml")
-        assert(text.contains("""gh release upload "${'$'}ETIKETT" version.json --clobber""")) {
-            "Der Workflow laedt keine version.json mehr hoch — ohne sie findet die App " +
-                "kein Update, ohne dass irgendwo etwas scheitert"
+        assert(Regex("""BESCHREIBUNG=app/build/outputs/version-signiert\.json\n""").containsMatchIn(text) &&
+            Regex("""gh release create "\${'$'}QUELLE" [^\n]*"\${'$'}APK" "\${'$'}BESCHREIBUNG" [^\n]*\n\s*--verify-tag --latest """)
+                .containsMatchIn(text)) {
+            "Der Workflow legt die Release ohne version-signiert.json oder nicht als „Latest“ an — " +
+                "ohne sie findet die App kein Update, ohne dass irgendwo etwas scheitert"
         }
         // Die Werte kommen aus AGPs output-metadata.json und werden NICHT hier
         // nochmal aus dem Datum erzeugt: Eine zweite Rechnung liefe Minuten
@@ -185,8 +191,8 @@ class SelbstUpdateTest {
         assert(text.contains("output-metadata.json")) {
             "Die Versionswerte werden nicht aus AGPs output-metadata.json gelesen"
         }
-        assert(text.contains("versionCode") && text.contains("versionName")) {
-            "version.json traegt nicht beide Versionsangaben"
+        assert(Quellen.workflow("android-signieren.yml").contains("{versionCode:${'$'}code, versionName:${'$'}name,")) {
+            "Die Beschreibung traegt nicht beide Versionsangaben"
         }
     }
 
@@ -204,9 +210,9 @@ class SelbstUpdateTest {
         // und das Datenmodell, das es liest. Nur eine Seite zu pruefen laesst
         // genau die Sorte Auseinanderlaufen zu, gegen die dieser Baum sonst
         // ueberall angeht.
-        val workflow = Quellen.workflow("android-release.yml")
+        val workflow = Quellen.workflow("android-signieren.yml")
         assert(workflow.contains("commit:${'$'}commit")) {
-            "version.json traegt das Herkunftsfeld nicht mehr als `commit`"
+            "Die Beschreibung traegt das Herkunftsfeld nicht mehr als `commit`"
         }
         assert(!workflow.contains("sha:${'$'}sha")) {
             "Das Feld heisst wieder `sha` — neben apkUrl und apkSize liest sich das " +

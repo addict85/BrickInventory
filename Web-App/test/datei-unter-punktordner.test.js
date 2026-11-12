@@ -20,7 +20,7 @@ const DATEI = path.join(ORDNER, 'gutschein.pdf');
 fs.writeFileSync(DATEI, '%PDF-1.4 probe');
 fs.writeFileSync(path.join(ORDNER, '.geheim'), 'nicht ausliefern');
 
-test('Auslieferung unter einem Punkt-Ordner', async (t) => {
+test('Auslieferung unter einem Punkt-Ordner', async t => {
   const app = express();
   app.get('/datei', (_req, res) => liefereDatei(res, DATEI));
   app.get('/punktdatei', (_req, res) => liefereDatei(res, path.join(ORDNER, '.geheim')));

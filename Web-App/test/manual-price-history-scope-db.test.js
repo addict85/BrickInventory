@@ -1,7 +1,7 @@
 /**
  * Preisverlauf im Haushalt — Set, manuelles Teil UND manuelle Minifigur.
  *
- * Gegenprobe (durchgeführt): scopeIds() in den beiden Minifiguren-Routen
+ * Gegenprobe (durchgeführt): blickfeldIds() in den beiden Minifiguren-Routen
  * zurück auf `uid` → beide Minifiguren-Teilschritte werden rot, Set und Teil
  * bleiben grün.
  *
@@ -20,15 +20,14 @@ const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos',
-  { concurrency: 1 }, async (t) => {
+test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  if (!await dbOderSkip(t, _req)) return;
-
-  const HAUPT = `ph-haupt-${process.pid}`, SUB = `ph-sub-${process.pid}`;
-  const SN  = `98001-${process.pid}`;
-  const PN  = `ph-part-${process.pid}`;
-  const FN  = `ph-fig-${process.pid}`;
+  const HAUPT = `ph-haupt-${process.pid}`,
+    SUB = `ph-sub-${process.pid}`;
+  const SN = `98001-${process.pid}`;
+  const PN = `ph-part-${process.pid}`;
+  const FN = `ph-fig-${process.pid}`;
   const CUR = 'EUR';
 
   const aufraeumen = async () => {
@@ -46,37 +45,60 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos',
   await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
   const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
-  const subId   = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-               [hauptId, subId]);
+  const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
+    hauptId,
+    subId,
+  ]);
   // Beide Konten auf dieselbe Währung — sonst liest der Verlauf einen anderen
   // Cache-Schlüssel als der Seed schreibt.
   for (const id of [hauptId, subId])
-    await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)
-                  ON CONFLICT (user_id,key) DO UPDATE SET value=$2`, [id, CUR]);
+    await db.run(
+      `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)
+                  ON CONFLICT (user_id,key) DO UPDATE SET value=$2`,
+      [id, CUR],
+    );
 
   await aufraeumen();
 
   // ── Bestand ANLEGEN, und zwar durchgehend beim UNTERKONTO ────────────────
-  await haeltSet(db, subId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
-  await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
-                VALUES ($1,$2,10,'N',1)`, [subId, SN]);
-  await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,total_quantity)
-                VALUES ($1,'N',$2,20,1)`, [SN, CUR]);
+  await haeltSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
+                VALUES ($1,$2,10,'N',1)`,
+    [subId, SN],
+  );
+  await db.run(
+    `INSERT INTO price_cache (set_number,condition,currency_code,avg_price,total_quantity)
+                VALUES ($1,'N',$2,20,1)`,
+    [SN, CUR],
+  );
 
-  await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 });  // Menge 0: die Erfassung dahinter traegt sie
-  await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
-                VALUES ($1,$2,4,3,'N',1)`, [subId, PN]);
-  await db.run(`INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price)
-                VALUES ($1,4,'N',$2,6)`, [PN, CUR]);
+  await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
+  await db.run(
+    `INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
+                VALUES ($1,$2,4,3,'N',1)`,
+    [subId, PN],
+  );
+  await db.run(
+    `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price)
+                VALUES ($1,4,'N',$2,6)`,
+    [PN, CUR],
+  );
 
-  await haeltFigur(db, subId, FN, { menge: 0 });  // Menge 0: die Erfassung dahinter traegt sie
-  await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
-                VALUES ($1,$2,4,'N',1)`, [subId, FN]);
-  await db.run(`INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price)
-                VALUES ($1,'N',$2,8)`, [FN, CUR]);
+  await haeltFigur(db, subId, FN, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+  await db.run(
+    `INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
+                VALUES ($1,$2,4,'N',1)`,
+    [subId, FN],
+  );
+  await db.run(
+    `INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price)
+                VALUES ($1,'N',$2,8)`,
+    [FN, CUR],
+  );
 
-  const appFuer = (userId) => {
+  const appFuer = userId => {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
@@ -95,8 +117,8 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos',
   // Regel, nicht der Ausweis — die Gleichwertigkeit der Ausweise steht in
   // api-parity.
   const FAELLE = [
-    ['Set',       `/api/v1/sets/${SN}/price-history`],
-    ['Teil',      `/api/v1/parts/${PN}/4/price-history`],
+    ['Set', `/api/v1/sets/${SN}/price-history`],
+    ['Teil', `/api/v1/parts/${PN}/4/price-history`],
     ['Minifigur', `/api/v1/minifigs/${FN}/price-history`],
   ];
 
@@ -106,9 +128,10 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos',
       assert.equal(r.status, 200, `${art}: ${pfad} -> ${r.status}`);
       const b = await r.json();
       const n = b.by_condition?.N;
-      assert.ok(n,
-        `${art}: keine Zeile für „Neu" — die Erfassung des Unterkontos ` +
-        'wurde nicht gefunden (fehlendes Blickfeld)');
+      assert.ok(
+        n,
+        `${art}: keine Zeile für „Neu" — die Erfassung des Unterkontos ` + 'wurde nicht gefunden (fehlendes Blickfeld)',
+      );
       assert.ok(n.purchase_price > 0, `${art}: der Kaufpreis des Unterkontos fehlt`);
       assert.ok(n.pnl_pct != null, `${art}: ohne Kaufpreis gibt es auch keine Prozentangabe`);
     }
@@ -120,8 +143,11 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos',
     for (const [art, pfad] of FAELLE) {
       const r = await fetch(`${base}${pfad}?accounts=own`);
       const b = await r.json();
-      assert.equal(b.by_condition?.N, undefined,
-        `${art}: mit accounts=own darf die Erfassung des Unterkontos nicht mitzählen`);
+      assert.equal(
+        b.by_condition?.N,
+        undefined,
+        `${art}: mit accounts=own darf die Erfassung des Unterkontos nicht mitzählen`,
+      );
     }
   } finally {
     await aufraeumen();

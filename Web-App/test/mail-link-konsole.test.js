@@ -11,7 +11,7 @@
  *      „mit MAIL_KONSOLE_MIT_TOKEN=1 …“ (der Wert „ja“)
  *   D  wieder NODE_ENV=development/test als Ausnahme → rot: „NODE_ENV öffnet nichts“
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -25,8 +25,10 @@ test('ohne Schalter ohne Token', () => {
   const link = linkFuerKonsole(TEXT, undefined);
   assert.equal(link, 'https://lego.example.org/reset?token=…');
   assert.ok(!link.includes('abcdef'), link);
-  assert.equal(linkFuerKonsole('https://x.example/verify?a=1&token=geheim#oben', undefined),
-    'https://x.example/verify?a=1&token=…#oben');
+  assert.equal(
+    linkFuerKonsole('https://x.example/verify?a=1&token=geheim#oben', undefined),
+    'https://x.example/verify?a=1&token=…#oben',
+  );
 });
 
 test('NODE_ENV öffnet nichts — auch nicht development', () => {
@@ -36,7 +38,10 @@ test('NODE_ENV öffnet nichts — auch nicht development', () => {
       umgebung({ NODE_ENV: art });
       assert.equal(linkFuerKonsole(TEXT), 'https://lego.example.org/reset?token=…', art);
     }
-  } finally { if (alt === undefined) umgebung({ NODE_ENV: undefined }); else umgebung({ NODE_ENV: alt }); }
+  } finally {
+    if (alt === undefined) umgebung({ NODE_ENV: undefined });
+    else umgebung({ NODE_ENV: alt });
+  }
 });
 
 test('mit MAIL_KONSOLE_MIT_TOKEN=1 vollständig — dann ist die Konsole der Postausgang', () => {

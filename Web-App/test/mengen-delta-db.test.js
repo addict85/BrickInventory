@@ -20,16 +20,20 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet, mengeVon } = require('./helpers/bestand');
 
-test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const NAME = `delta-${process.pid}`, SN = `31170-${process.pid % 1000}`;
+  const NAME = `delta-${process.pid}`,
+    SN = `31170-${process.pid % 1000}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
   // Ein Marktpreis im Cache: Der Zugang braucht ihn, und so fragt niemand BrickLink.
   await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
-  await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price, qty_avg_price, total_quantity)
-                VALUES ($1, 'N', 'EUR', 50, 50, 3)`, [SN]);
+  await db.run(
+    `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, qty_avg_price, total_quantity)
+                VALUES ($1, 'N', 'EUR', 50, 50, 3)`,
+    [SN],
+  );
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
@@ -49,6 +53,6 @@ test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async (t) =>
   });
 
   await t.test('ein ungültiger Schritt wird abgewiesen', async () => {
-    await assert.rejects(updateSet(uid, SN, { quantity_delta: 1.5 }), (e) => e.art === 'ungueltig');
+    await assert.rejects(updateSet(uid, SN, { quantity_delta: 1.5 }), e => e.art === 'ungueltig');
   });
 });

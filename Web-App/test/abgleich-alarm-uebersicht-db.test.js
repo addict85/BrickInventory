@@ -26,34 +26,35 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, loadTranslations, ohneKommentare } = require('./helpers/sources');
 const { katalogSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
-  { concurrency: 1 }, async (t) => {
+test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
-
-  const { alleAlarme, setzeAlarm, loescheAlarm } = { ..._req('src/finanzen/preisalarm.js'), ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm };
+  const { alleAlarme, setzeAlarm, loescheAlarm } = {
+    ..._req('src/finanzen/preisalarm.js'),
+    ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm,
+  };
 
   for (const n of ['alarm_ich', 'alarm_fremd', 'alarm_kind'])
     await db.run('DELETE FROM users WHERE username = $1', [n]);
   const ich = await db.get(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id", ['alarm_ich']);
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id",
+    ['alarm_ich'],
+  );
   const fremd = await db.get(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id", ['alarm_fremd']);
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id",
+    ['alarm_fremd'],
+  );
   // Ein Unterkonto im HAUSHALT. Genau daran ist die erste Fassung gescheitert:
   // Sie verband auf `s.user_id = a.user_id`, also streng das eigene Konto —
   // ein Set des Kindes galt damit als „gibt es nicht", obwohl die
-  // Detailansicht es sehr wohl öffnet (sie fragt über scopeIds()).
+  // Detailansicht es sehr wohl öffnet (sie fragt über blickfeldIds()).
   const kind = await db.get(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id", ['alarm_kind']);
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id",
+    ['alarm_kind'],
+  );
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ich.id, kind.id]);
 
   t.after(async () => {
@@ -70,10 +71,17 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
                    SET name = EXCLUDED.name, set_img_url = EXCLUDED.set_img_url`);
   // Dasselbe Set liegt ZUSÄTZLICH in meiner Sammlung — nur dann gibt es einen
   // Detaildialog, und nur dann gibt es das heruntergeladene Bild.
-  await db.run(`INSERT INTO sets (user_id, set_number)
+  await db.run(
+    `INSERT INTO sets (user_id, set_number)
                 VALUES ($1,'70002-1')
-                ON CONFLICT (user_id, set_number) DO NOTHING`, [ich.id]);
-  await katalogSet(db, '70002-1', { name: 'Lennox Feuerwehr', image_local: '/uploads/70002-1_thumb.jpg', image_url: 'https://cdn.example/70002-1.jpg' });
+                ON CONFLICT (user_id, set_number) DO NOTHING`,
+    [ich.id],
+  );
+  await katalogSet(db, '70002-1', {
+    name: 'Lennox Feuerwehr',
+    image_local: '/uploads/70002-1_thumb.jpg',
+    image_url: 'https://cdn.example/70002-1.jpg',
+  });
 
   // Signatur GELESEN, nicht geraten: (userId, setNumber, waehrung, eingabe).
   // Der erste Entwurf dieses Tests hatte sie sich zurechtgelegt und lief
@@ -87,18 +95,24 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
   await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
                 VALUES ('60000-1','Feuerwehreinsatz','https://cdn.example/60000-1.jpg')
                 ON CONFLICT (set_num) DO NOTHING`);
-  await db.run(`INSERT INTO sets (user_id, set_number)
+  await db.run(
+    `INSERT INTO sets (user_id, set_number)
                 VALUES ($1,'60000-1')
-                ON CONFLICT (user_id, set_number) DO NOTHING`, [kind.id]);
+                ON CONFLICT (user_id, set_number) DO NOTHING`,
+    [kind.id],
+  );
   await katalogSet(db, '60000-1', { name: 'Feuerwehreinsatz', image_local: '/uploads/60000-1_thumb.jpg' });
   await setzeAlarm(ich.id, '60000-1', 'CHF', { richtung: 'unter', schwelle: 40, condition: 'N' });
 
   // Dasselbe Set ZWEIMAL im Haushalt — bei mir und beim Kind. Seit die
   // Verbindung über das Blickfeld geht, kann sie mehrere Zeilen treffen;
   // ohne DISTINCT ON stünde der Alarm doppelt in der Liste.
-  await db.run(`INSERT INTO sets (user_id, set_number)
+  await db.run(
+    `INSERT INTO sets (user_id, set_number)
                 VALUES ($1,'70002-1')
-                ON CONFLICT (user_id, set_number) DO NOTHING`, [kind.id]);
+                ON CONFLICT (user_id, set_number) DO NOTHING`,
+    [kind.id],
+  );
 
   await t.test('1. alle eigenen Alarme kommen', async () => {
     const a = await alleAlarme(ich.id);
@@ -110,9 +124,11 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
 
   await t.test('2. und KEIN fremder', async () => {
     const a = await alleAlarme(ich.id);
-    assert.ok(!a.some(x => Number(x.schwelle) === 10),
+    assert.ok(
+      !a.some(x => Number(x.schwelle) === 10),
       'Der Alarm des anderen Kontos steht in meiner Übersicht — das fehlende ' +
-      'user_id-Kriterium sieht im Quelltext harmlos aus und ist der ganze Fehler.');
+        'user_id-Kriterium sieht im Quelltext harmlos aus und ist der ganze Fehler.',
+    );
     assert.equal((await alleAlarme(fremd.id)).length, 1, 'Das andere Konto sieht plötzlich mehr.');
   });
 
@@ -120,10 +136,16 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     const a = await alleAlarme(ich.id);
     const bekannt = a.find(x => x.set_number === '70002-1');
     const unbekannt = a.find(x => x.set_number === '99999-9');
-    assert.equal(bekannt.name, 'Lennox Feuerwehr',
-      'Ohne Namen ist die Liste eine Liste von Nummern — die liest niemand.');
-    assert.ok(unbekannt, 'Ein Alarm auf ein Set, das der Katalog nicht kennt, ist verschwunden. ' +
-      'Genau die Zeile sucht man aber, weil sie sich merkwürdig verhält (INNER statt LEFT JOIN).');
+    assert.equal(
+      bekannt.name,
+      'Lennox Feuerwehr',
+      'Ohne Namen ist die Liste eine Liste von Nummern — die liest niemand.',
+    );
+    assert.ok(
+      unbekannt,
+      'Ein Alarm auf ein Set, das der Katalog nicht kennt, ist verschwunden. ' +
+        'Genau die Zeile sucht man aber, weil sie sich merkwürdig verhält (INNER statt LEFT JOIN).',
+    );
     assert.equal(unbekannt.name, null, 'Unbekannt heisst null, nicht leer geraten.');
   });
 
@@ -131,17 +153,22 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
     assert.match(html, /id="alerts-list"/, 'Die Rubrik fehlt im Markup.');
     assert.match(html, /data-i18n="alerts\.group"/, 'Die Rubrik hat keine Überschrift.');
-    const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/25-navigation.js'), 'utf8'));
-    assert.match(galerie, /ladeAlarmUebersicht\(\)/,
-      'Beim Öffnen der Einstellungen wird die Übersicht nicht geladen — die Rubrik bliebe leer.');
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
+    const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/navigation.js'), 'utf8'));
+    assert.match(
+      galerie,
+      /ladeAlarmUebersicht\(\)/,
+      'Beim Öffnen der Einstellungen wird die Übersicht nicht geladen — die Rubrik bliebe leer.',
+    );
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     // Ändern und Löschen gehen über die BESTEHENDE Route zum Set: zwei
     // Schreibwege zum selben Zustand wären zwei Stellen, an denen die Regeln
     // auseinanderlaufen.
-    assert.match(js, /'PUT', `\/v1\/sets\/\$\{encodeURIComponent\(setNumber\)\}\/alert`/,
-      'Der Wert lässt sich nicht ändern — genau das hat Marco verlangt.');
-    assert.match(js, /'DELETE', `\/v1\/sets\//,
-      'Der Alarm lässt sich nicht löschen — genau das hat Marco verlangt.');
+    assert.match(
+      js,
+      /'PUT', `\/v1\/sets\/\$\{encodeURIComponent\(setNumber\)\}\/alert`/,
+      'Der Wert lässt sich nicht ändern — genau das hat Marco verlangt.',
+    );
+    assert.match(js, /'DELETE', `\/v1\/sets\//, 'Der Alarm lässt sich nicht löschen — genau das hat Marco verlangt.');
   });
 
   await t.test('5. Bild und Besitz kommen mit — für die Kachel und für den Klick', async () => {
@@ -151,34 +178,47 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     // Reihenfolge wie in den Finanzen: heruntergeladene Kopie zuerst. Ohne sie
     // zeigte dieselbe Nummer in der Übersicht ein anderes Bild als in der
     // Galerie daneben.
-    assert.equal(meins.image_local, '/uploads/70002-1_thumb.jpg',
+    assert.equal(
+      meins.image_local,
+      '/uploads/70002-1_thumb.jpg',
       'Das Bild der eigenen Sammlung fehlt — die Zeile bliebe ohne Kachel oder ' +
-      'zeigte eine andere als die Galerie.');
-    assert.equal(meins.set_img_url, 'https://cdn.example/70002-1.jpg',
-      'Das Katalogbild fehlt — es ist der Rückfall für Sets, die man nicht besitzt.');
+        'zeigte eine andere als die Galerie.',
+    );
+    assert.equal(
+      meins.set_img_url,
+      'https://cdn.example/70002-1.jpg',
+      'Das Katalogbild fehlt — es ist der Rückfall für Sets, die man nicht besitzt.',
+    );
     assert.equal(meins.besitzt, true, 'Ein Set in der Sammlung gilt als nicht vorhanden.');
     // Der zweite LEFT JOIN darf keine Zeile vervielfachen: sets ist über
     // (user_id, set_number) eindeutig. Zwei Zeilen wären hier der Beweis.
-    assert.equal(a.filter(x => x.set_number === '70002-1').length, 1,
-      'Die Verbindung zur eigenen Sammlung hat die Zeile vervielfacht.');
+    assert.equal(
+      a.filter(x => x.set_number === '70002-1').length,
+      1,
+      'Die Verbindung zur eigenen Sammlung hat die Zeile vervielfacht.',
+    );
 
-    assert.equal(fremdes.besitzt, false,
+    assert.equal(
+      fremdes.besitzt,
+      false,
       'Ein Alarm auf ein Set, das NICHT in der Sammlung liegt, gilt als vorhanden — ' +
-      'die Zeile wäre anklickbar und der Klick endete in einer Fehlermeldung.');
+        'die Zeile wäre anklickbar und der Klick endete in einer Fehlermeldung.',
+    );
     assert.equal(fremdes.image_local, null, 'Woher sollte das Bild kommen?');
   });
 
   await t.test('6. die Zeile öffnet den Detaildialog, das Zahlenfeld nicht', () => {
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
-    assert.match(js, /data-click="openModal"/,
-      'Die Zeile öffnet den Detaildialog nicht — genau das hat Marco verlangt.');
-    // Der Verteiler in 11-actions.js nimmt das NÄCHSTGELEGENE Element mit
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
+    assert.match(
+      js,
+      /data-click="openModal"/,
+      'Die Zeile öffnet den Detaildialog nicht — genau das hat Marco verlangt.',
+    );
+    // Der Verteiler in actions.js nimmt das NÄCHSTGELEGENE Element mit
     // data-click. Ohne `stopEvent` am Eingabefeld öffnete jeder Klick ins Feld
     // den Dialog über dem Feld, in das man gerade tippen wollte.
-    assert.match(js, /data-click="stopEvent"/,
-      'Das Zahlenfeld hält den Klick nicht auf — Tippen öffnete den Dialog.');
-    assert.match(js, /thumbUrl\(/,
-      'Die Zeile zeigt kein Vorschaubild — analog den Finanzen war das der Auftrag.');
+    assert.match(js, /data-click="stopEvent"/, 'Das Zahlenfeld hält den Klick nicht auf — Tippen öffnete den Dialog.');
+    assert.match(js, /thumbUrl\(/, 'Die Zeile zeigt kein Vorschaubild — analog den Finanzen war das der Auftrag.');
   });
 
   await t.test('7. jedes gelieferte Feld kommt in der App auch an', async () => {
@@ -187,24 +227,45 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
 
-    const kt = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'model', 'data', 'model', 'SetModels.kt'), 'utf8');
+    const kt = fs.readFileSync(
+      path.join(
+        __dirname,
+        '..',
+        '..',
+        'Android-App',
+        'core-model',
+        'src',
+        'main',
+        'java',
+        'ch',
+        'brickinventoryapp',
+        'model',
+        'data',
+        'model',
+        'SetModels.kt',
+      ),
+      'utf8',
+    );
     const klasse = kt.slice(kt.indexOf('data class Preisalarm('));
     const rumpf = klasse.slice(0, klasse.indexOf('\n)'));
     assert.ok(rumpf.includes('setNumber'), 'data class Preisalarm nicht gefunden — Muster veraltet?');
 
     const camel = k => k.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-    const fehlen = felder.filter(k =>
-      !rumpf.includes(`@SerialName("${k}")`) &&
-      !new RegExp(`\\bval ${camel(k)}\\b`).test(rumpf));
-    assert.deepEqual(fehlen, [],
+    const fehlen = felder.filter(
+      k => !rumpf.includes(`@SerialName("${k}")`) && !new RegExp(`\\bval ${camel(k)}\\b`).test(rumpf),
+    );
+    assert.deepEqual(
+      fehlen,
+      [],
       'Diese Felder liefert /v1/alerts, und die App hat keinen Platz dafür:\n  ' +
-      fehlen.join('\n  ') +
-      '\nSie kämen dort als null an, ohne Fehler und ohne Hinweis.');
+        fehlen.join('\n  ') +
+        '\nSie kämen dort als null an, ohne Fehler und ohne Hinweis.',
+    );
   });
 
   await t.test('8. scharf/unscharf ist ohne Farbe zu erkennen', () => {
     // Marcos Befund vom 26.09.
-    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
+    const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 
     // 1. Die Marke kommt aus einer Klasse, nicht aus einer Farbe im Markup.
@@ -212,35 +273,45 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     //    was die beiden Zustände trennt.
     assert.match(js, /alarm-marke-an/, 'Der scharfe Zustand hat keine eigene Klasse.');
     assert.match(js, /alarm-marke-aus/, 'Der unscharfe Zustand hat keine eigene Klasse.');
-    assert.ok(!/alerts\.armed'\)\}<\/span>/.test(js) || !/var\(--ok/.test(js),
-      'Die Marke färbt noch direkt im Markup — dann hängt die Aussage wieder an der Farbe.');
+    assert.ok(
+      !/alerts\.armed'\)\}<\/span>/.test(js) || !/var\(--ok/.test(js),
+      'Die Marke färbt noch direkt im Markup — dann hängt die Aussage wieder an der Farbe.',
+    );
 
     // 2. Die FLÄCHE unterscheidet: gefüllt gegen umrandet. Das ist der
     //    Unterschied, den man auch dann sieht, wenn beide Farben gleich
     //    aussehen.
-    const an  = (css.match(/\.alarm-marke-an\{([^}]*)\}/)  || [])[1] || '';
+    const an = (css.match(/\.alarm-marke-an\{([^}]*)\}/) || [])[1] || '';
     const aus = (css.match(/\.alarm-marke-aus\{([^}]*)\}/) || [])[1] || '';
     assert.ok(an && aus, 'Die beiden Klassen sind nicht gestaltet.');
-    assert.match(an,  /background:var\(--s200\)/, 'Der scharfe Zustand ist nicht gefüllt.');
+    assert.match(an, /background:var\(--s200\)/, 'Der scharfe Zustand ist nicht gefüllt.');
     assert.match(aus, /border-color:var\(--bdr\)/, 'Der unscharfe Zustand ist nicht umrandet.');
-    assert.match(an,  /font-weight:600/,
-      'Auch das Schriftgewicht unterscheidet die beiden nicht — ein Merkmal weniger.');
+    assert.match(
+      an,
+      /font-weight:600/,
+      'Auch das Schriftgewicht unterscheidet die beiden nicht — ein Merkmal weniger.',
+    );
 
     // 3. Das WORT ist ein Paar, in BEIDEN Sprachen. Vorher stand „scharf"
     //    gegen „hat gemeldet" — zwei Aussagen über verschiedene Dinge; wer die
     //    Farbe nicht lesen kann, musste sich den Gegensatz erschliessen.
     const { de, en } = loadTranslations();
-    for (const [name, w] of [['DE', de], ['EN', en]]) {
+    for (const [name, w] of [
+      ['DE', de],
+      ['EN', en],
+    ]) {
       const scharf = String(w['alerts.armed'] || '');
       const unscharf = String(w['alerts.fired'] || '');
       assert.ok(scharf.includes('●'), `${name}: das gefüllte Zeichen fehlt bei „scharf".`);
       assert.ok(unscharf.includes('○'), `${name}: das hohle Zeichen fehlt bei „unscharf".`);
       const a = scharf.replace(/[^\p{L}]/gu, '').toLowerCase();
       const b = unscharf.replace(/[^\p{L}]/gu, '').toLowerCase();
-      assert.ok(a && b.includes(a),
+      assert.ok(
+        a && b.includes(a),
         `${name}: „${scharf}" und „${unscharf}" sind kein erkennbares Gegensatzpaar. ` +
-        'Ohne Farbe ist das der einzige Hinweis darauf, dass der eine Zustand das ' +
-        'Gegenteil des anderen ist.');
+          'Ohne Farbe ist das der einzige Hinweis darauf, dass der eine Zustand das ' +
+          'Gegenteil des anderen ist.',
+      );
     }
   });
 
@@ -250,23 +321,33 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     const a = await alleAlarme(ich.id);
     const vomKind = a.find(x => x.set_number === '60000-1');
     assert.ok(vomKind, 'Der Alarm auf das Set des Kindes fehlt ganz.');
-    assert.equal(vomKind.besitzt, true,
+    assert.equal(
+      vomKind.besitzt,
+      true,
       'Ein Set des Haushalts gilt als nicht vorhanden — die Zeile wäre nicht ' +
-      'anklickbar, obwohl die Detailansicht es öffnet. Genau das war Marcos Befund.');
-    assert.equal(vomKind.image_local, '/uploads/60000-1_thumb.jpg',
-      'Auch das Bild kommt nicht aus dem Haushalt, sondern nur aus dem Katalog.');
+        'anklickbar, obwohl die Detailansicht es öffnet. Genau das war Marcos Befund.',
+    );
+    assert.equal(
+      vomKind.image_local,
+      '/uploads/60000-1_thumb.jpg',
+      'Auch das Bild kommt nicht aus dem Haushalt, sondern nur aus dem Katalog.',
+    );
 
     // Und die Kehrseite derselben Erweiterung: Dasselbe Set liegt bei mir UND
     // beim Kind. Ohne DISTINCT ON stünde der Alarm jetzt zweimal da — ein
     // Fehler, den die enge erste Fassung gar nicht haben konnte.
-    assert.equal(a.filter(x => x.set_number === '70002-1').length, 1,
+    assert.equal(
+      a.filter(x => x.set_number === '70002-1').length,
+      1,
       'Der Alarm steht doppelt: Das Set liegt bei zwei Konten des Haushalts, ' +
-      'und die Verbindung vervielfacht die Zeile.');
+        'und die Verbindung vervielfacht die Zeile.',
+    );
     // Die Zeile MIT heruntergeladenem Bild muss gewinnen, nicht eine beliebige.
-    assert.equal(a.find(x => x.set_number === '70002-1').image_local,
+    assert.equal(
+      a.find(x => x.set_number === '70002-1').image_local,
       '/uploads/70002-1_thumb.jpg',
-      'Von zwei Zeilen hat die ohne Bild gewonnen — dann bliebe die Kachel leer, ' +
-      'obwohl ein Bild da ist.');
+      'Von zwei Zeilen hat die ohne Bild gewonnen — dann bliebe die Kachel leer, ' + 'obwohl ein Bild da ist.',
+    );
   });
 
   await t.test('10. Löschen wirkt', async () => {
@@ -276,9 +357,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar',
     // Gegen die VORHER gemessene Zahl und nicht gegen eine feste: Wer oben
     // einen Alarm dazunimmt, soll nicht hier scheitern. Genau das ist eben
     // passiert, als der Haushalts-Fall dazukam.
-    assert.equal(a.length, vorher - 1,
-      `Nach dem Löschen stehen ${a.length} Alarme da, vorher waren es ${vorher}.`);
-    assert.ok(!a.some(x => x.set_number === '99999-9'),
-      'Der gelöschte Alarm steht noch in der Übersicht.');
+    assert.equal(a.length, vorher - 1, `Nach dem Löschen stehen ${a.length} Alarme da, vorher waren es ${vorher}.`);
+    assert.ok(!a.some(x => x.set_number === '99999-9'), 'Der gelöschte Alarm steht noch in der Übersicht.');
   });
 });

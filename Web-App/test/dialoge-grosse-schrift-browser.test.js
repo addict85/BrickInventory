@@ -24,7 +24,7 @@ const { starteApp } = require('./helpers/app-browser');
 const { musterSammlung } = require('./helpers/bestand');
 
 /** Was ein Prüfer sieht: über den Rand, überlappend, abgeschnitten, zu niedrig. */
-const MESSEN = (wurzelSel) => `(() => {
+const MESSEN = wurzelSel => `(() => {
   const funde = [], breite = document.documentElement.clientWidth, hoehe = innerHeight;
   const wurzel = document.querySelector(${JSON.stringify(wurzelSel)});
   if (!wurzel) return ['nicht offen: ' + ${JSON.stringify(wurzelSel)}];
@@ -62,18 +62,27 @@ const MESSEN = (wurzelSel) => `(() => {
   return funde;
 })()`;
 
-test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async (t) => {
+test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async t => {
   const app = await starteApp(t, { name: `dlg_${process.pid}`, bestand: musterSammlung, telefon: true });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
-  const zu = () => b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
+  const zu = () =>
+    b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
     document.getElementById('confirm-modal').style.display = 'none';
     if (document.getElementById('btn-umenu').getAttribute('aria-expanded') === 'true') document.getElementById('btn-umenu').click(); true`);
 
   for (const breite of [320, 390]) {
-    await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: 700, deviceScaleFactor: 1, mobile: true });
+    await b.tab('Emulation.setDeviceMetricsOverride', {
+      width: breite,
+      height: 700,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
     await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
     await ruhig();
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
@@ -82,7 +91,9 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
     await t.test(`${breite} px: Benutzermenü`, async () => {
       // Ohne Silbentrennungs-Wörterbuch (so im CI-Chrome) bleibt „Hintergrundarbeiten“
       // ein Stück; hyphens: manual (CSSOM, die CSP sperrt <style>) stellt diesen schlechtesten Fall überall her.
-      await b.auswerten(`document.querySelectorAll('.umenu-item').forEach(e => e.style.setProperty('hyphens', 'manual', 'important')); true`);
+      await b.auswerten(
+        `document.querySelectorAll('.umenu-item').forEach(e => e.style.setProperty('hyphens', 'manual', 'important')); true`,
+      );
       await b.auswerten(`document.getElementById('btn-umenu').click(); true`);
       await ruhig();
       assert.deepEqual(await b.auswerten(MESSEN('#umenu-pop')), []);
@@ -108,7 +119,10 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
 
     await t.test(`${breite} px: Kaufpreis`, async () => {
       await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
-      await bis(`document.getElementById('set-modal').classList.contains('open') && document.querySelector('#set-modal [data-click="openAcqModal"]')`, 'Set-Detail');
+      await bis(
+        `document.getElementById('set-modal').classList.contains('open') && document.querySelector('#set-modal [data-click="openAcqModal"]')`,
+        'Set-Detail',
+      );
       await b.auswerten(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
       await bis(`document.querySelector('#acq-modal .acq-preis')`, 'Kaufpreis-Dialog');
       assert.deepEqual(await b.auswerten(MESSEN('#acq-modal .modal')), []);
@@ -122,7 +136,9 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
     await bis(`document.querySelector('#set-modal [data-click="openAcqModal"]')`, 'Set-Detail');
     await b.auswerten(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
     await bis(`document.querySelector('#acq-modal .acq-preis')`, 'Kaufpreis-Dialog');
-    const id = await b.auswerten(`(() => { const f = document.querySelector('#acq-modal .acq-preis'); f.focus(); f.select(); return f.id.replace('acq-preis-', ''); })()`);
+    const id = await b.auswerten(
+      `(() => { const f = document.querySelector('#acq-modal .acq-preis'); f.focus(); f.select(); return f.id.replace('acq-preis-', ''); })()`,
+    );
     await b.tab('Input.insertText', { text: '149,95' });
     await b.auswerten(`document.querySelector('#acq-modal .acq-preis').blur(); true`);
     await bis(`!document.getElementById('acq-ok-${id}')?.hidden`, 'Marke „Gespeichert“');
@@ -137,7 +153,15 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
   await t.test('Anmeldemaske ohne Passkey und „Passwort vergessen?“', async () => {
     await zu();
     await b.auswerten(`document.getElementById('btn-logout').click(); true`);
-    await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none' && document.getElementById('link-forgot').hidden`, 'Anmeldemaske');
-    assert.deepEqual(await b.auswerten(`['btn-passkey', 'link-forgot'].map(id => document.getElementById(id).getClientRects().length)`), [0, 0]);
+    await bis(
+      `getComputedStyle(document.getElementById('login-screen')).display !== 'none' && document.getElementById('link-forgot').hidden`,
+      'Anmeldemaske',
+    );
+    assert.deepEqual(
+      await b.auswerten(
+        `['btn-passkey', 'link-forgot'].map(id => document.getElementById(id).getClientRects().length)`,
+      ),
+      [0, 0],
+    );
   });
 });

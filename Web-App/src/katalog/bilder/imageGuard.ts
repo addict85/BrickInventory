@@ -1,7 +1,7 @@
 /** Jimp dekodiert ohne Grenze; ein kleines Bild mit riesigen Abmessungen wäre
  * eine Dekompressionsbombe. */
 import { logAndContinue } from '../../infra/fehler';
-import fs from 'fs';
+import fs from 'node:fs';
 
 /** Obergrenze in Pixeln (Breite × Höhe). 40 MP ≈ 160 MB Bitmap. */
 export const MAX_PIXELS = 40_000_000;
@@ -25,15 +25,21 @@ export function readDimensions(buf: Buffer) {
   if (buf.length >= 4 && buf[0] === 0xff && buf[1] === 0xd8) {
     let off = 2;
     while (off + 9 < buf.length) {
-      if (buf[off] !== 0xff) { off++; continue; }          // Füllbytes überspringen
+      if (buf[off] !== 0xff) {
+        off++;
+        continue;
+      } // Füllbytes überspringen
       // Die Schleifenbedingung sichert den Zugriff; 0x00 ist kein gültiger Marker
       // und ändert nichts am Ablauf.
       const marker = buf[off + 1] ?? 0x00;
-      if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { off += 2; continue; }
+      if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+        off += 2;
+        continue;
+      }
       const len = buf.readUInt16BE(off + 2);
       const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
       if (isSof) return { height: buf.readUInt16BE(off + 5), width: buf.readUInt16BE(off + 7) };
-      if (len < 2) break;                                   // defekter Header
+      if (len < 2) break; // defekter Header
       off += 2 + len;
     }
   }
@@ -43,7 +49,7 @@ export function readDimensions(buf: Buffer) {
 
 /** @returns false, wenn das Bild zu gross ist */
 export async function isDecodable(filePath: string) {
-  let fh;
+  let fh: fs.promises.FileHandle | undefined;
   try {
     fh = await fs.promises.open(filePath, 'r');
     const buf = Buffer.alloc(HEADER_BYTES);
@@ -51,7 +57,11 @@ export async function isDecodable(filePath: string) {
     // Eine leere oder abgeschnittene Datei ist kein Bild: Sonst liesse der Rückfall
     // „unbekanntes Format" sie durch.
     if (bytesRead < 10) {
-      console.warn(`[image-guard] ${bytesRead} Byte gelesen — keine Bilddatei: ${filePath}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+      console.warn(
+        `[image-guard] ${bytesRead} Byte gelesen — keine Bilddatei: ${filePath}`
+          .replace(/\r?\n/g, ' ⏎ ')
+          .replace(/\n|\r/g, ''),
+      );
       return false;
     }
     const dim = readDimensions(buf.subarray(0, bytesRead));
@@ -61,14 +71,17 @@ export async function isDecodable(filePath: string) {
     if (!dim.width || !dim.height) return true;
     const pixels = dim.width * dim.height;
     if (pixels > MAX_PIXELS) {
-      console.error(`[image-guard] abgelehnt: ${dim.width}×${dim.height} = ${Math.round(pixels / 1e6)} MP > ${MAX_PIXELS / 1e6} MP — ${filePath}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+      console.error(
+        `[image-guard] abgelehnt: ${dim.width}×${dim.height} = ${Math.round(pixels / 1e6)} MP > ${MAX_PIXELS / 1e6} MP — ${filePath}`
+          .replace(/\r?\n/g, ' ⏎ ')
+          .replace(/\n|\r/g, ''),
+      );
       return false;
     }
     return true;
   } catch (_) {
-    return false;   // nicht lesbar → nicht dekodieren
+    return false; // nicht lesbar → nicht dekodieren
   } finally {
     await fh?.close().catch(logAndContinue('bild-wache:close'));
   }
 }
-

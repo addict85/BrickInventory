@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.data.model.*
@@ -31,8 +32,8 @@ interface FigurenRepository {
 
     suspend fun deleteMinifig(figNumber: String, owner: Int? = null): Ergebnis<GenericResponse>
 
-    suspend fun getMinifigStats(accounts: String? = null): Ergebnis<MinifigStatsResponse>
+    suspend fun getMinifigStats(konten: Kontoauswahl? = null): Ergebnis<MinifigStatsResponse>
 
     suspend fun getSetsMitFigur(figNumber: String,
-                                accounts: String? = null): Ergebnis<VerwendendeSetsResponse>
+                                konten: Kontoauswahl? = null): Ergebnis<VerwendendeSetsResponse>
 }

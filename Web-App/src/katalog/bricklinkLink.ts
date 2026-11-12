@@ -34,8 +34,10 @@ export function buildUrl(type: BlType, number: string): string | null {
   if (type === 'NONE') return null;
   const p = PARAM[type];
   // #T=<p> öffnet direkt den "For Sale"-Tab, O={"iconly":0} die Listenansicht.
-  return `https://www.bricklink.com/v2/catalog/catalogitem.page?${p}=${encodeURIComponent(number)}` +
-         `#T=${p}&O={%22iconly%22:0}`;
+  return (
+    `https://www.bricklink.com/v2/catalog/catalogitem.page?${p}=${encodeURIComponent(number)}` +
+    `#T=${p}&O={%22iconly%22:0}`
+  );
 }
 
 // Ohne eindeutige Zuordnung (etwa Sammelfiguren) eine Suche statt eines falschen Links.
@@ -86,20 +88,26 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
   const bare = bareNumber(setNumber);
 
   // Ohne Zugang bei der Annahme bleiben, nichts cachen.
-  if (!await getGlobalSetting('bricklink_consumer_key')) return toLink(n, null);
+  if (!(await getGlobalSetting('bricklink_consumer_key'))) return toLink(n, null);
 
-  const notFound = (e: unknown) => [404, 400].includes((e as { detail?: { meta?: { code?: number } } } | null)?.detail?.meta?.code ?? 0);
+  const notFound = (e: unknown) =>
+    [404, 400].includes((e as { detail?: { meta?: { code?: number } } } | null)?.detail?.meta?.code ?? 0);
 
   const probe = async (type: Exclude<BlType, 'NONE'>, no: string) => {
-    try { await bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`); return true; }
-    catch (e) { if (notFound(e)) return false; throw e; }
+    try {
+      await bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`);
+      return true;
+    } catch (e) {
+      if (notFound(e)) return false;
+      throw e;
+    }
   };
 
   let found: BlType = 'NONE';
   try {
-    if      (await probe('SET',     n))    found = 'SET';
-    else if (await probe('GEAR',    bare)) found = 'GEAR';
-    else if (await probe('BOOK',    bare)) found = 'BOOK';
+    if (await probe('SET', n)) found = 'SET';
+    else if (await probe('GEAR', bare)) found = 'GEAR';
+    else if (await probe('BOOK', bare)) found = 'BOOK';
     // MINIFIG trifft nur, wenn BrickLink zufällig dieselbe Nummer führt; sonst
     // bleibt es bei NONE und der Suchlink greift.
     else if (await probe('MINIFIG', bare)) found = 'MINIFIG';
@@ -108,6 +116,8 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
     return toLink(n, null);
   }
 
-  await katalog().katalogCache.merkeBlTyp(n, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
+  await katalog()
+    .katalogCache.merkeBlTyp(n, found, found === 'NONE')
+    .catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

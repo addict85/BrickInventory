@@ -17,8 +17,7 @@ const ROUTES = path.join(__dirname, '..', 'routes');
  */
 const ERLAUBT = {
   'api_v1/middleware.ts':
-    'requireToken übersetzt die Sitzung IN die gemeinsame Form (req.apiUser). ' +
-    'Hier entsteht sie.',
+    'requireToken übersetzt die Sitzung IN die gemeinsame Form (req.apiUser). ' + 'Hier entsteht sie.',
   'auth/zweiterFaktor.ts':
     'Nach dem Einrichten des Faktors enden alle anderen Zugänge; die eigene ' +
     'Sitzung bleibt und bekommt die neue Version – das geht nur, wenn es eine gibt.',
@@ -41,16 +40,18 @@ function routenDateien(dir, praefix = '') {
 
 test('kein Handler fragt die Sitzung selbst nach der Nutzerkennung', () => {
   const dateien = routenDateien(ROUTES);
-  assert.ok(dateien.length >= 10,
-    `Nur ${dateien.length} Router-Dateien gefunden — dann prüft der Rest nichts.`);
+  assert.ok(dateien.length >= 10, `Nur ${dateien.length} Router-Dateien gefunden — dann prüft der Rest nichts.`);
 
   const verstoesse = [];
   const gebraucht = new Set();
   for (const [rel, voll] of dateien) {
-    const src = fs.readFileSync(voll, 'utf8')
+    const src = fs
+      .readFileSync(voll, 'utf8')
       // Kommentare raus: Ein Erklärtext, der `req.session.userId` NENNT
       // (dieser hier zum Beispiel), ist keine Nutzung.
-      .split('\n').filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*')).join('\n');
+      .split('\n')
+      .filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*'))
+      .join('\n');
     for (const m of src.matchAll(/req\.session\??\.(userId|isAdmin|username)\b/g)) {
       const zeile = src.slice(0, m.index).split('\n').length;
       // Erlaubte Dateien werden trotzdem DURCHSUCHT: Ihr Treffer belegt, dass
@@ -62,23 +63,32 @@ test('kein Handler fragt die Sitzung selbst nach der Nutzerkennung', () => {
     }
   }
 
-  const veraltet = Object.keys(ERLAUBT).filter(k => !gebraucht.has(k)).sort();
-  assert.deepEqual(veraltet, [],
-    'Diese Eintraege in ERLAUBT beschreiben nichts mehr:\n  ' + veraltet.join('\n  ') +
-    '\nDie Datei liest die Sitzung gar nicht (mehr) direkt — raus damit.');
+  const veraltet = Object.keys(ERLAUBT)
+    .filter(k => !gebraucht.has(k))
+    .sort();
+  assert.deepEqual(
+    veraltet,
+    [],
+    'Diese Eintraege in ERLAUBT beschreiben nichts mehr:\n  ' +
+      veraltet.join('\n  ') +
+      '\nDie Datei liest die Sitzung gar nicht (mehr) direkt — raus damit.',
+  );
 
-  assert.deepEqual(verstoesse, [],
+  assert.deepEqual(
+    verstoesse,
+    [],
     'Diese Stellen lesen die Sitzung direkt statt nutzerId()/istVerwalter()/nutzerName():\n  ' +
-    verstoesse.join('\n  ') +
-    '\nMit einem Bearer-Token — dem einzigen Ausweis der App — ist das immer ' +
-    'undefined. Das fällt nicht als Fehler auf: Die Route antwortet mit 401, ' +
-    'oder schlimmer, sie liefert stillschweigend die Ansicht eines ' +
-    'Nicht-Verwalters.');
+      verstoesse.join('\n  ') +
+      '\nMit einem Bearer-Token — dem einzigen Ausweis der App — ist das immer ' +
+      'undefined. Das fällt nicht als Fehler auf: Die Route antwortet mit 401, ' +
+      'oder schlimmer, sie liefert stillschweigend die Ansicht eines ' +
+      'Nicht-Verwalters.',
+  );
 });
 
 test('kein Router bringt einen eigenen Wächter mit', () => {
   // Der zweite Teil desselben Befunds: routes/auth.ts DEFINIERTE requireLogin
-  // und requireAdmin selbst — sitzungsgebunden, während src/konto/auth.ts und
+  // und requireAdmin selbst — sitzungsgebunden, während src/konto/http/anmeldung.ts und
   // routes/api_v1/middleware.ts längst token-fähige Fassungen hatten. Drei
   // Fassungen einer Regel, und die App konnte nur eine erfüllen.
   const dateien = routenDateien(ROUTES);
@@ -91,9 +101,13 @@ test('kein Router bringt einen eigenen Wächter mit', () => {
       eigene.push(`${rel}  function ${m[1]}`);
     }
   }
-  assert.deepEqual(eigene, [],
-    'Diese Router definieren einen eigenen Anmelde-Wächter:\n  ' + eigene.join('\n  ') +
-    '\nEs gibt genau zwei: requireLoginOrToken (src/konto/auth.ts) und ' +
-    'requireApiAdmin (routes/api_v1/middleware.ts). Beide nehmen Sitzung ODER ' +
-    'Token. Eine dritte Fassung sperrt zuverlässig die App aus.');
+  assert.deepEqual(
+    eigene,
+    [],
+    'Diese Router definieren einen eigenen Anmelde-Wächter:\n  ' +
+      eigene.join('\n  ') +
+      '\nEs gibt genau zwei: requireLoginOrToken (src/konto/http/anmeldung.ts) und ' +
+      'requireApiAdmin (routes/api_v1/middleware.ts). Beide nehmen Sitzung ODER ' +
+      'Token. Eine dritte Fassung sperrt zuverlässig die App aus.',
+  );
 });

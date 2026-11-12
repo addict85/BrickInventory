@@ -28,23 +28,40 @@ const KONTRAST = `(vorne, hinten) => { const f = s => (s.match(/[\\d.]+/g) || []
     return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b); };
   const [a, b] = [l(f(vorne)), l(f(hinten))].sort((x, y) => y - x); return (a + 0.05) / (b + 0.05); }`;
 
-test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) => {
+test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await starteApp(t, {
-    name: `mass_${process.pid}`, telefon: true,
+    name: `mass_${process.pid}`,
+    telefon: true,
     bestand: async (db, uid) => {
       await haeltSet(db, uid, '10294-1', 1, { preis: 4894.77 });
-      await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
+      await db
+        .run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                     VALUES ('10294-1', 'N', 'EUR', 4005.5, 5002.2, 6295.5, 5000, 10, NOW())
-                    ON CONFLICT DO NOTHING`).catch(() => {});
+                    ON CONFLICT DO NOTHING`)
+        .catch(() => {});
       await haeltTeil(db, uid, '3001', { colorId: 4, menge: 250, preis: 0.12 });
-      await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '10276-1', 'N') ON CONFLICT DO NOTHING`, [uid]);
+      await db.run(
+        `INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '10276-1', 'N') ON CONFLICT DO NOTHING`,
+        [uid],
+      );
     },
   });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
-  const reiter = async (name) => { await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`); await warte(500); };
+  const reiter = async name => {
+    await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`);
+    await warte(500);
+  };
   const groesse = async (w, h, mobil) => {
-    await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: mobil ? 2 : 1, mobile: mobil });
+    await b.tab('Emulation.setDeviceMetricsOverride', {
+      width: w,
+      height: h,
+      deviceScaleFactor: mobil ? 2 : 1,
+      mobile: mobil,
+    });
     await bis(`innerWidth === ${w}`, 'Fensterbreite');
     await ruhig();
   };
@@ -55,10 +72,16 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
 
   await t.test('Telefon: Beträge in einer Zeile', async () => {
     await reiter('finance');
-    const sichtbar = await b.auswerten(`[...document.querySelectorAll('#fin-sum .fval')].filter(e => e.getClientRects().length && e.getBoundingClientRect().width > 0).length`);
+    const sichtbar = await b.auswerten(
+      `[...document.querySelectorAll('#fin-sum .fval')].filter(e => e.getClientRects().length && e.getBoundingClientRect().width > 0).length`,
+    );
     assert.ok(sichtbar >= 2, `nur ${sichtbar} Kacheln sichtbar`);
-    await bis(`!document.getElementById('fin-sum').hasAttribute('aria-busy') && /\\d/.test(document.getElementById('fin-einstand').textContent)`, 'Finanzkacheln');
-    const fehler = await b.auswerten(`[...document.querySelectorAll('#fin-sum .fval')].filter(e => e.getClientRects().length).map(e => {
+    await bis(
+      `!document.getElementById('fin-sum').hasAttribute('aria-busy') && /\\d/.test(document.getElementById('fin-einstand').textContent)`,
+      'Finanzkacheln',
+    );
+    const fehler =
+      await b.auswerten(`[...document.querySelectorAll('#fin-sum .fval')].filter(e => e.getClientRects().length).map(e => {
       const r = document.createRange(); r.selectNodeContents(e);
       const zeilen = new Set([...r.getClientRects()].map(q => Math.round(q.top))).size;
       const kachel = e.closest('.fstat').getBoundingClientRect(), text = r.getBoundingClientRect();
@@ -73,10 +96,14 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
       return Math.round(x * y); })()`;
     await reiter('parts');
     await bis(`!!document.querySelector('#manual-parts-list .man-tile .delbtn, .man-tile .delbtn')`, 'manuelle Kachel');
-    const teil = await b.auswerten(ueber(`document.querySelector('.man-tile .delbtn')`, `document.querySelector('.man-tile .man-tile-img')`));
+    const teil = await b.auswerten(
+      ueber(`document.querySelector('.man-tile .delbtn')`, `document.querySelector('.man-tile .man-tile-img')`),
+    );
     await reiter('wanted');
     await bis(`!!document.querySelector('.mk-zeile .delbtn')`, 'Merklistenzeile');
-    const merk = await b.auswerten(ueber(`document.querySelector('.mk-zeile .delbtn')`, `document.querySelector('.mk-zeile .mk-preis')`));
+    const merk = await b.auswerten(
+      ueber(`document.querySelector('.mk-zeile .delbtn')`, `document.querySelector('.mk-zeile .mk-preis')`),
+    );
     assert.deepEqual({ teil, merk }, { teil: 0, merk: 0 }, 'überdeckte Fläche in px²');
   });
 
@@ -110,13 +137,17 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
   await t.test('Rechner: Fokusring innen', async () => {
     await reiter('gallery');
     // Der Einrichtungsassistent des neuen Verwalters hielte den Fokus fest.
-    await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+    await b.auswerten(
+      `document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`,
+    );
     await ruhig();
     // Mit der Tastatur bis zum ersten Reiter: Erst dann gilt :focus-visible.
     await b.auswerten(`document.activeElement?.blur(); document.querySelector('.sprunglink').focus(); true`);
     const weg = [];
     for (let i = 0; i < 25; i++) {
-      weg.push(await b.auswerten(`(document.activeElement?.tagName || '') + '.' + (document.activeElement?.className || '')`));
+      weg.push(
+        await b.auswerten(`(document.activeElement?.tagName || '') + '.' + (document.activeElement?.className || '')`),
+      );
       if (await b.auswerten(`!!document.activeElement?.classList.contains('ntab')`)) break;
       await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
       await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
@@ -125,13 +156,17 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
       return { reiter: e.classList.contains('ntab'), breite: parseFloat(s.outlineWidth), abstand: parseFloat(s.outlineOffset), stil: s.outlineStyle }; })()`);
     assert.equal(ring.reiter, true, `Tab erreicht keinen Reiter: ${weg.join(' → ')}`);
     assert.ok(ring.stil !== 'none' && ring.breite >= 2, `kein Ring: ${JSON.stringify(ring)}`);
-    assert.ok(ring.abstand + ring.breite <= 0, `der Ring ragt ${ring.abstand + ring.breite} px hinaus und wird abgeschnitten`);
+    assert.ok(
+      ring.abstand + ring.breite <= 0,
+      `der Ring ragt ${ring.abstand + ring.breite} px hinaus und wird abgeschnitten`,
+    );
   });
 
   await t.test('Rechner: Zahlen rechtsbündig', async () => {
     await reiter('finance');
     await bis(`!!document.querySelector('#fin-tbl .dt-fin td.price-total')`, 'Finanztabelle');
-    const links = await b.auswerten(`[...document.querySelectorAll('#fin-tbl .dt-fin')][0].querySelectorAll('th.zahl, td.zahl').length === 0 ? ['keine Zahlenspalten'] :
+    const links =
+      await b.auswerten(`[...document.querySelectorAll('#fin-tbl .dt-fin')][0].querySelectorAll('th.zahl, td.zahl').length === 0 ? ['keine Zahlenspalten'] :
       [...document.querySelector('#fin-tbl .dt-fin').querySelectorAll('th.zahl, td.zahl')]
         .filter(e => getComputedStyle(e).textAlign !== 'right').map(e => e.tagName + ' ' + e.textContent.trim().slice(0, 15))`);
     assert.deepEqual(links, []);
@@ -157,7 +192,9 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
   await t.test('Rechner: Konto mit begrenzter Breite', async () => {
     await b.auswerten(`document.querySelector('.umenu-item[data-arg="profil"]').click(); true`);
     await ruhig();
-    const breite = await b.auswerten(`Math.round(document.getElementById('profile-settings-card').getBoundingClientRect().width)`);
+    const breite = await b.auswerten(
+      `Math.round(document.getElementById('profile-settings-card').getBoundingClientRect().width)`,
+    );
     assert.ok(breite > 300 && breite <= 52 * 16, `Konto-Karte ${breite} px breit`);
   });
 });

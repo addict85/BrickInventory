@@ -4,8 +4,9 @@ import { konfig } from '../infra/konfig';
 
 /** So steht die App in `clientDataJSON.origin`: base64url des Zertifikat-Hashes. */
 export function androidHerkuenfte(): string[] {
-  return konfig().androidZertifikate.map(hex =>
-    `android:apk-key-hash:${Buffer.from(hex, 'hex').toString('base64url')}`);
+  return konfig().androidZertifikate.map(
+    hex => `android:apk-key-hash:${Buffer.from(hex, 'hex').toString('base64url')}`,
+  );
 }
 
 export interface AssetStatement {
@@ -17,9 +18,14 @@ export interface AssetStatement {
 export function assetlinks(): AssetStatement[] | null {
   const k = konfig();
   if (!k.androidZertifikate.length) return null;
-  return [{
-    relation: ['delegate_permission/common.get_login_creds'],
-    target: { namespace: 'android_app', package_name: k.androidPaket,
-      sha256_cert_fingerprints: k.androidZertifikate.map(hex => hex.match(/../g)!.join(':')) },
-  }];
+  return [
+    {
+      relation: ['delegate_permission/common.get_login_creds'],
+      target: {
+        namespace: 'android_app',
+        package_name: k.androidPaket,
+        sha256_cert_fingerprints: k.androidZertifikate.map(hex => hex.match(/../g)!.join(':')),
+      },
+    },
+  ];
 }

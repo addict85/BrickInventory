@@ -31,6 +31,14 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.KontoRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
+import ch.brickinventoryapp.data.repository.AlarmRepository
+import ch.brickinventoryapp.data.repository.AlarmRepositoryImpl
+import ch.brickinventoryapp.data.repository.MerklisteRepository
+import ch.brickinventoryapp.data.repository.MerklisteRepositoryImpl
+import ch.brickinventoryapp.data.repository.SetDateienRepository
+import ch.brickinventoryapp.data.repository.SetDateienRepositoryImpl
+import ch.brickinventoryapp.data.repository.SetKatalogRepository
+import ch.brickinventoryapp.data.repository.SetKatalogRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
@@ -38,13 +46,12 @@ import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
-import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import java.io.File
-import ch.brickinventoryapp.zustand.ui.SitzungsRepository
+import ch.brickinventoryapp.sitzung.SitzungsRepository
 import kotlinx.coroutines.Job
 
 // Testvorgaben gehören nicht in die @Inject-Konstruktoren: Dort bekäme, wer ohne Hilt
@@ -58,6 +65,18 @@ fun Testablage(bereich: String? = "test", ausgang: Ausgang = SpeicherAusgang(), 
 
 fun SetsRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): SetsRepository =
     SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+
+fun MerklisteRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): MerklisteRepository =
+    MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+
+fun AlarmRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): AlarmRepository =
+    AlarmRepositoryImpl(api, ablage, Wiederholung.EINMAL)
+
+fun SetKatalogRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): SetKatalogRepository =
+    SetKatalogRepositoryImpl(api)
+
+fun SetDateienRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): SetDateienRepository =
+    SetDateienRepositoryImpl(api)
 
 fun TeileRepository(api: TeileApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): TeileRepository =
     TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL)
@@ -90,7 +109,8 @@ fun Kontosicht(api: BrickApiService, ablage: Offlineablage = Testablage()): Kont
 
 /** Sets, Teile und Figuren auf einer gemeinsamen [ablage]. */
 fun Bestandsabgleich(api: BrickApiService, ablage: Offlineablage): Bestandsabgleich =
-    Bestandsabgleich(SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL), TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL),
+    Bestandsabgleich(SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL), MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL),
+        TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL),
         FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL), ablage)
 
 /** Der Antwort-Cache im Wegwerf-Ordner; ohne [io] auf Dispatchers.IO wie im Gerät. */

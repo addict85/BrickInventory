@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
@@ -17,54 +18,69 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
 
   for (const name of ['ich', 'kind', 'fremd']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
-  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)',
-    [U.ich, U.kind]);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [U.ich, U.kind]);
 
   // Dasselbe Teil in ZWEI Sets — daran hängt die wichtigste Aussage.
-  for (const [uid, sn] of [[U.ich, '10179-1'], [U.ich, '75192-1'], [U.kind, '21318-1'],
-                           [U.fremd, '10030-1']]) {
+  for (const [uid, sn] of [
+    [U.ich, '10179-1'],
+    [U.ich, '75192-1'],
+    [U.kind, '21318-1'],
+    [U.fremd, '10030-1'],
+  ]) {
     await haeltSet(db, uid, sn, 1);
   }
   for (const [uid, sn, num, farbe] of [
-    [U.ich, '10179-1', '3001', 4], [U.ich, '75192-1', '3001', 4],
+    [U.ich, '10179-1', '3001', 4],
+    [U.ich, '75192-1', '3001', 4],
     // DASSELBE Teil in einer anderen Farbe. Ohne diese Zeile blieb die
     // Gegenprobe „Farbbedingung wirkungslos" grün: In der Saat gab es 3001
     // nur in einer Farbe, also konnte kein Farbfehler etwas treffen.
     [U.ich, '10179-1', '3001', 5],
-    [U.ich, '10179-1', '3002', 4], [U.fremd, '10030-1', '3001', 4],
+    [U.ich, '10179-1', '3002', 4],
+    [U.fremd, '10030-1', '3001', 4],
   ]) {
     // Der Name steht seit Migration 0034 im Katalog.
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
-       ON CONFLICT (part_number) DO NOTHING`, [num, 'Teil ' + num]);
+       ON CONFLICT (part_number) DO NOTHING`,
+      [num, 'Teil ' + num],
+    );
     await haeltTeil(db, uid, num, { setNumber: sn, menge: 1, colorId: farbe });
   }
 }
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Lagerort gegen echte Datenbank', async (t) => {
+test('Lagerort gegen echte Datenbank', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
   await seed();
   const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
-  const household = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
-  const schreibbar = await household.writableIds(U.ich);
+  const household = {
+    ..._req('src/haushalt/haushalt.js'),
+    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+  };
+  const schreibbar = await household.schreibbereich(U.ich);
 
   await t.test('ein Teil liegt an EINEM Ort, nicht je Set an einem', async () => {
     // Dasselbe Teil steckt in zwei Sets und damit in zwei Zeilen. Träfe das
@@ -75,24 +91,42 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     const rows = await db.all(
       `SELECT t.color_id, l.name AS storage
          FROM parts t LEFT JOIN storage_locations l ON l.id = t.storage_id
-        WHERE t.user_id=$1 AND t.part_number=$2 ORDER BY t.color_id`, [U.ich, '3001']);
-    assert.deepEqual(rows.map(r => [parseInt(r.color_id, 10), r.storage]),
-      [[4, 'Kiste 3'], [4, 'Kiste 3'], [5, null]],
-      'Beide Zeilen der Farbe 4 müssen den Ort haben — und die Farbe 5 keinen');
+        WHERE t.user_id=$1 AND t.part_number=$2 ORDER BY t.color_id`,
+      [U.ich, '3001'],
+    );
+    assert.deepEqual(
+      rows.map(r => [parseInt(r.color_id, 10), r.storage]),
+      [
+        [4, 'Kiste 3'],
+        [4, 'Kiste 3'],
+        [5, null],
+      ],
+      'Beide Zeilen der Farbe 4 müssen den Ort haben — und die Farbe 5 keinen',
+    );
   });
 
   await t.test('das Setzen bleibt im Schreibbereich', async () => {
     // Ohne diese Grenze wäre der Lagerort ein Weg, in fremden Daten zu
     // schreiben — und zwar unauffällig, weil sich sonst nichts ändert.
-    const vorher = (await db.get(
-      `SELECT l.name AS storage FROM parts t
+    const vorher =
+      (
+        await db.get(
+          `SELECT l.name AS storage FROM parts t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
-        WHERE t.user_id=$1`, [U.fremd]))?.storage ?? null;
+        WHERE t.user_id=$1`,
+          [U.fremd],
+        )
+      )?.storage ?? null;
     await L.setzeLagerort('part', schreibbar, ['3001', '4'], 'Kiste 9');
-    const nachher = (await db.get(
-      `SELECT l.name AS storage FROM parts t
+    const nachher =
+      (
+        await db.get(
+          `SELECT l.name AS storage FROM parts t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
-        WHERE t.user_id=$1`, [U.fremd]))?.storage ?? null;
+        WHERE t.user_id=$1`,
+          [U.fremd],
+        )
+      )?.storage ?? null;
     assert.equal(nachher, vorher, 'Eine fremde Zeile wurde verändert');
 
     // Zurücksetzen: Dieselben Zeilen zählt die Übersicht weiter unten. Ohne
@@ -115,24 +149,28 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     const r = await db.get(
       `SELECT l.name AS storage FROM parts t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
-        WHERE t.user_id=$1 AND t.part_number=$2`, [U.ich, '3002']);
+        WHERE t.user_id=$1 AND t.part_number=$2`,
+      [U.ich, '3002'],
+    );
     assert.equal(r.storage, null, 'Das Leeren hat den Ort nicht entfernt');
   });
 
   await t.test('zu lange Namen werden abgelehnt, nicht abgeschnitten', async () => {
     // Abschneiden hiesse: In der Datenbank steht etwas anderes als eingegeben,
     // und niemand erfährt es.
-    assert.throws(() => L.normalisiereLagerort('x'.repeat(L.LAGERORT_MAX_ZEICHEN + 1)),
-      /lagerort_zu_lang|zu lang/i);
-    assert.equal(L.normalisiereLagerort('x'.repeat(L.LAGERORT_MAX_ZEICHEN)).length,
-      L.LAGERORT_MAX_ZEICHEN, 'Die Grenze selbst muss noch durchgehen');
+    assert.throws(() => L.normalisiereLagerort('x'.repeat(L.LAGERORT_MAX_ZEICHEN + 1)), /lagerort_zu_lang|zu lang/i);
+    assert.equal(
+      L.normalisiereLagerort('x'.repeat(L.LAGERORT_MAX_ZEICHEN)).length,
+      L.LAGERORT_MAX_ZEICHEN,
+      'Die Grenze selbst muss noch durchgehen',
+    );
   });
 
   await t.test('die Übersicht führt Sets und Teile zu EINER Liste zusammen', async () => {
     await L.setzeLagerort('set', schreibbar, ['10179-1'], 'Kiste 3');
     await L.setzeLagerort('set', schreibbar, ['75192-1'], 'Regal B');
 
-    const orte = await L.lagerorte(await household.scopeIds(U.ich, 'all'));
+    const orte = await L.lagerorte(await household.blickfeldIds(U.ich, 'all'));
     const karte = Object.fromEntries(orte.map(o => [o.ort, o]));
     // „Kiste 3" hat ein Set UND zwei Teilezeilen — ein Ort, nicht zwei
     // Einträge. Zwei getrennte Listen zu liefern hiesse, dass jede Oberfläche
@@ -141,18 +179,23 @@ test('Lagerort gegen echte Datenbank', async (t) => {
     assert.deepEqual(karte['Kiste 3'], { ort: 'Kiste 3', sets: 1, teile: 2, figuren: 0 });
     assert.deepEqual(karte['Regal B'], { ort: 'Regal B', sets: 1, teile: 0, figuren: 0 });
     // Alphabetisch — die Auswahlliste soll nicht bei jedem Aufruf anders sein.
-    assert.deepEqual(orte.map(o => o.ort), [...orte.map(o => o.ort)].sort());
+    assert.deepEqual(
+      orte.map(o => o.ort),
+      [...orte.map(o => o.ort)].sort(),
+    );
     // Und nichts Fremdes.
     assert.ok(!orte.some(o => o.ort === 'Kiste 9'), 'Ein fremder Ort ist aufgetaucht');
   });
 
   await t.test('die Übersicht folgt dem Blickfeld', async () => {
-    await L.setzeLagerort('set', await household.writableIds(U.kind), ['21318-1'], 'Kinderzimmer');
-    const oben  = (await L.lagerorte(await household.scopeIds(U.ich,  'all'))).map(o => o.ort);
-    const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.ort);
+    await L.setzeLagerort('set', await household.schreibbereich(U.kind), ['21318-1'], 'Kinderzimmer');
+    const oben = (await L.lagerorte(await household.blickfeldIds(U.ich, 'all'))).map(o => o.ort);
+    const unten = (await L.lagerorte(await household.blickfeldIds(U.kind, 'all'))).map(o => o.ort);
     assert.ok(oben.includes('Kinderzimmer'), 'Das Hauptkonto sieht den Ort des Kindes nicht');
-    assert.ok(!unten.includes('Kiste 3'),
-      'Das Unterkonto sieht einen Ort des Hauptkontos — das Blickfeld geht nur nach unten');
+    assert.ok(
+      !unten.includes('Kiste 3'),
+      'Das Unterkonto sieht einen Ort des Hauptkontos — das Blickfeld geht nur nach unten',
+    );
   });
 
   await db.pool.end().catch(() => {});

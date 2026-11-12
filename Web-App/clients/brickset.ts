@@ -74,7 +74,7 @@ function parseResponse<T extends z.ZodType>(body: string, schema: T): z.output<T
 function checkStatus(status: number, body: string, label: string) {
   if (status === 429) {
     // Distinguish Cloudflare 1015 from Brickset daily quota
-    if (body && body.includes('1015')) {
+    if (body?.includes('1015')) {
       console.log(
         `  Brickset Cloudflare rate limit (1015) for ${label} — retry in 5 min`
           .replace(/\r?\n/g, ' ⏎ ')

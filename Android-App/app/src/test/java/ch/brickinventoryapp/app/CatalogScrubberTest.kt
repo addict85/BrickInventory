@@ -94,29 +94,15 @@ class CatalogScrubberTest {
 
     @Test
     fun `die Rollposition ueberlebt den Wechsel zur Detailseite`() {
-        // Die Liste verlässt beim Wechsel ins Detail die Komposition, und Länge wie Inhalt
-        // kommen erst nachträglich; die Stelle liegt deshalb im Zustand des ViewModels.
-        val u = code(read("katalog/ui/ZustandKatalog.kt"))
-        assert(u.contains("val scrollIndex: Int = 0") && u.contains("val scrollOffset: Int = 0")) {
-            "Der Katalog-Zustand merkt sich die Rollposition nicht"
-        }
-
+        // Die Liste verlässt beim Wechsel ins Detail die Komposition, und ihre Länge kommt
+        // erst nachträglich. Die Stelle hält der ScrollMemory wie bei jedem Reiter; bereit
+        // ist die Liste, sobald `total` da ist, denn die Plätze zählen über die Gesamtzahl.
         val s = code(read("katalog/ui/screens/CatalogScreen.kt"))
-        // Laufend melden …
-        assert(s.contains("gridState.firstVisibleItemIndex to gridState.firstVisibleItemScrollOffset")) {
-            "Die Ansicht meldet ihre Rollposition nicht"
-        }
-        assert(s.contains("onScrollPos(index, offset)")) { "Die Meldung erreicht das ViewModel nicht" }
-        // … und beim Betreten EINMAL zurückspringen, sobald die Länge da ist.
-        assert(Regex("""LaunchedEffect\(state\.total\)""").containsMatchIn(s)) {
+        assert(s.contains("ScrollPositionKeeper(KatalogZiel.Catalog.rollSchluessel, gridState, bereit = state.total > 0")) {
             "Die Wiederherstellung hängt nicht an state.total — vor dem Eintreffen " +
                 "der Länge gibt es keine Stelle, an die gesprungen werden könnte"
         }
-        assert(s.contains("wiederhergestellt")) {
-            "Ohne Merker würde bei jeder Änderung von total erneut gesprungen — " +
-                "auch mitten im Scrollen"
-        }
-        // Das Zurücksetzen beim Filterwechsel und „jede Seite einmal“ prüft
-        // CatalogViewModelTest (feature-katalog) am ausgeführten ViewModel.
+        // Wie der Merker zurückspringt, prüft RollstelleTest ausgeführt; das Vergessen
+        // beim Filterwechsel CatalogViewModelTest.
     }
 }

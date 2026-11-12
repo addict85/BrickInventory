@@ -17,30 +17,35 @@
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs/promises');
-const path   = require('node:path');
+const { keineDb } = require('./helpers/db');
+const fs = require('node:fs/promises');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req    = require('./helpers/sources').buildAndRequire();
-const db      = _req('db/database.js');
+const _req = require('./helpers/sources').buildAndRequire();
+const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchema();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
 
   {
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   }
   const pdf = _req('routes/api_v1/pdf.js');
   const auftraege = _req('src/auftraege/pdfAuftraege.js');
@@ -52,15 +57,17 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
   const idA = (await db.get("SELECT id FROM users WHERE username='pdf_a'")).id;
   const idB = (await db.get("SELECT id FROM users WHERE username='pdf_b'")).id;
 
-  // Tokens liegen GEHASHT in der Tabelle (src/konto/auth.ts) — der Klartextpfad
+  // Tokens liegen GEHASHT in der Tabelle (src/konto/geraeteToken.ts) — der Klartextpfad
   // wurde bewusst entfernt. Der Test legt deshalb den Hash ab und schickt den
   // Klartext, genau wie ein echter Client.
-  const { hashToken } = _req('src/konto/auth.js');
+  const { hashToken } = _req('src/konto/geraeteToken.js');
   const tokenFuer = async (uid, label) => {
     const t = require('node:crypto').randomBytes(24).toString('hex');
-    await db.run(
-      "INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL)",
-      [hashToken(t), uid, label]);
+    await db.run('INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL)', [
+      hashToken(t),
+      uid,
+      label,
+    ]);
     return t;
   };
   const tokA = await tokenFuer(idA, 'test-a');
@@ -68,17 +75,19 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
 
   const app = express();
   // Den Rumpf liest wie im Betrieb der Parser des Servers, nicht der Router.
-  app.use(express.json({ limit: '4mb' }));   // wie server.ts für diese Route
+  app.use(express.json({ limit: '4mb' })); // wie server.ts für diese Route
   app.use('/api/v1', pdf.default || pdf);
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
   /** Auftrag direkt anlegen — der Lauf selbst ginge ins Netz. */
   async function auftragLegen(jobId, userId, status = 'done') {
-    await db.run(`INSERT INTO auftraege (art, user_id, schluessel, status, belegt_von, frist_bis)
+    await db.run(
+      `INSERT INTO auftraege (art, user_id, schluessel, status, belegt_von, frist_bis)
                   VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'laeuft' THEN 'test' END,
                           CASE WHEN $3 = 'laeuft' THEN NOW() + INTERVAL '1 hour' END)`,
-      [auftraege.pdfSchluessel(jobId), userId, status === 'done' ? 'erledigt' : 'laeuft']);
+      [auftraege.pdfSchluessel(jobId), userId, status === 'done' ? 'erledigt' : 'laeuft'],
+    );
     await fs.mkdir(PDF_JOB_DIR, { recursive: true });
     if (status === 'done') {
       await fs.writeFile(path.join(PDF_JOB_DIR, `${jobId}.pdf`), '%PDF-1.4 test');
@@ -116,7 +125,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
       await auftragLegen(auftraege.neueJobId(), idA, 'running');
       await auftragLegen(auftraege.neueJobId(), idA, 'running');
-      await auftragLegen(auftraege.neueJobId(), idB, 'running');   // fremder Lauf zählt nicht mit
+      await auftragLegen(auftraege.neueJobId(), idB, 'running'); // fremder Lauf zählt nicht mit
 
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
@@ -136,12 +145,14 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
 
     await t.test('abgelaufene Läufe sperren niemanden dauerhaft aus', async () => {
       await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
-      const alt1 = auftraege.neueJobId(), alt2 = auftraege.neueJobId();
+      const alt1 = auftraege.neueJobId(),
+        alt2 = auftraege.neueJobId();
       await auftragLegen(alt1, idA, 'running');
       await auftragLegen(alt2, idA, 'running');
       // Stürzt ein Worker mitten im Lauf ab, bleibt der Auftrag auf 'running'.
-      await db.run(`UPDATE auftraege SET erstellt = NOW() - INTERVAL '1 day' WHERE schluessel = ANY($1)`,
-        [[alt1, alt2].map(auftraege.pdfSchluessel)]);
+      await db.run(`UPDATE auftraege SET erstellt = NOW() - INTERVAL '1 day' WHERE schluessel = ANY($1)`, [
+        [alt1, alt2].map(auftraege.pdfSchluessel),
+      ]);
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
@@ -155,8 +166,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       const job = auftraege.neueJobId();
       await auftragLegen(job, idA, 'running');
       const ctrl = new AbortController();
-      const r = await fetch(`${basis}/api/v1/sets/partslist-pdf/stream/${job}`,
-        { headers: { Authorization: `Bearer ${tokA}` }, signal: ctrl.signal });
+      const r = await fetch(`${basis}/api/v1/sets/partslist-pdf/stream/${job}`, {
+        headers: { Authorization: `Bearer ${tokA}` },
+        signal: ctrl.signal,
+      });
       assert.equal(r.status, 200);
       const leser = r.body.getReader();
       const dec = new TextDecoder();
@@ -164,10 +177,19 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       const start = Date.now();
       // Der Worker meldet das Ende über erledigt(); der Auftrag gehört hier dem Belegenden 'test'.
       const zeile = await db.get(`SELECT id FROM auftraege WHERE schluessel = $1`, [auftraege.pdfSchluessel(job)]);
-      setTimeout(() => Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege }).erledigt({ id: String(zeile.id), belegt_von: 'test' }), 300);
+      setTimeout(
+        () =>
+          Object.assign({}, _req('src/auftraege/auftraege.js'), {
+            ..._req('src/auftraege/dienst.js'),
+            ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+          }).erledigt({ id: String(zeile.id), belegt_von: 'test' }),
+        300,
+      );
       while (!text.includes('"done"') && Date.now() - start < 8000) {
-        const { value, done } = await Promise.race([leser.read(),
-          new Promise(f => setTimeout(() => f({ done: true }), 8000 - (Date.now() - start)))]);
+        const { value, done } = await Promise.race([
+          leser.read(),
+          new Promise(f => setTimeout(() => f({ done: true }), 8000 - (Date.now() - start))),
+        ]);
         if (done) break;
         text += dec.decode(value);
       }
@@ -178,9 +200,12 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
 
     await t.test('die Teileliste wird geprüft, bevor ein Auftrag entsteht', async () => {
       await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
-      const starte = (rumpf) => fetch(`${basis}/api/v1/sets/partslist-pdf`, { method: 'POST',
-        headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' }, body: JSON.stringify(rumpf) })
-        .then(async r => ({ status: r.status, body: await r.json() }));
+      const starte = rumpf =>
+        fetch(`${basis}/api/v1/sets/partslist-pdf`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' },
+          body: JSON.stringify(rumpf),
+        }).then(async r => ({ status: r.status, body: await r.json() }));
       const teil = (mehr = {}) => ({ part_number: '3001', quantity: 2, color_id: 5, color_hex: 'C91A09', ...mehr });
       const falsch = {
         'zu viele Posten': { parts: Array.from({ length: 5001 }, () => teil()) },
@@ -198,10 +223,16 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
         assert.equal(r.status, 400, `${fall}: ${JSON.stringify(r.body).slice(0, 200)}`);
         assert.equal(r.body.code, 'eingabe_ungueltig', fall);
       }
-      assert.equal((await db.get(`SELECT count(*)::int n FROM auftraege WHERE art = 'pdf'`)).n, 0, 'ein Auftrag trotz 400');
+      assert.equal(
+        (await db.get(`SELECT count(*)::int n FROM auftraege WHERE art = 'pdf'`)).n,
+        0,
+        'ein Auftrag trotz 400',
+      );
 
-      const ok = await starte({ sets: [{ set_number: '10001-1', name: 'Probe' }],
-        parts: [teil({ quantity: '12', boese: 'x'.repeat(10000) }), ...Array.from({ length: 4999 }, () => teil())] });
+      const ok = await starte({
+        sets: [{ set_number: '10001-1', name: 'Probe' }],
+        parts: [teil({ quantity: '12', boese: 'x'.repeat(10000) }), ...Array.from({ length: 4999 }, () => teil())],
+      });
       assert.equal(ok.status, 200, JSON.stringify(ok.body));
       const nutzlast = (await db.get(`SELECT nutzlast FROM auftraege WHERE art = 'pdf'`)).nutzlast;
       assert.equal(nutzlast.parts.length, 5000);
@@ -222,7 +253,10 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
     await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`).catch(() => {});
-    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});
+    await _req('db/database.js')
+      .standardDb()
+      .benachrichtigung.close()
+      .catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

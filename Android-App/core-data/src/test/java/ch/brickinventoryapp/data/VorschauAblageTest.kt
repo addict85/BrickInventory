@@ -5,8 +5,8 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Was an der Vorschau-Ablage nur im Aufbau zu sehen ist: die Reihenfolge im Bild-Client,
- * der Anlauf beim App-Start, die erschöpfende Netzlage, Manifest und Hinweis. Das
- * Verhalten prüfen ausgeführt VorschauSpeicherTest, VorschauVorwaermerTest,
+ * der Anlauf beim App-Start, Manifest und Hinweis. Das Verhalten prüfen ausgeführt
+ * VorschauSpeicherTest, VorschauVorwaermerTest (auch jede Netzlage),
  * VorschauAbgriffTest, VorschauGeraetTest und SammlungVorwaermenTest (core-zustand),
  * die Clients selbst ServerClientsTest.
  */
@@ -48,18 +48,6 @@ class VorschauAblageTest {
         }
         assert(fe.contains("if (!vorwaermer.darfStarten()) return@launch")) {
             "Das Sammeln fragt nicht mehr vorher, ob es ueberhaupt losgehen darf"
-        }
-    }
-
-    @Test
-    fun `jede Netzlage hat ihre eigene Antwort, ohne else`() {
-        val vw = quelle("data/cache/VorschauVorwaermer.kt")
-        for (lage in listOf("KEIN_NETZ", "WLAN", "MOBIL", "ROAMING")) {
-            assert(vw.contains("Netzlage.Art.$lage")) { "Die Netzlage $lage wird nicht mehr beantwortet" }
-        }
-        assert(!Regex("""netzErlaubt\(\)[\s\S]{0,400}?else\s*->""").containsMatchIn(vw)) {
-            "netzErlaubt() hat einen else-Zweig bekommen. Dann faellt eine kuenftige " +
-                "fuenfte Netzlage stillschweigend auf eine der bestehenden Antworten."
         }
     }
 

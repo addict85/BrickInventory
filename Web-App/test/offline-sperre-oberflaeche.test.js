@@ -18,7 +18,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, takt } = require('./helpers/oberflaeche');
 
-test('offline: schreibende Knöpfe gesperrt', async (t) => {
+test('offline: schreibende Knöpfe gesperrt', async t => {
   const { w, d } = await oeffneOberflaeche();
   try {
     const hinzu = d.querySelector('#tab-gallery button[data-click="oeffneErfassen"]');
@@ -39,15 +39,23 @@ test('offline: schreibende Knöpfe gesperrt', async (t) => {
       assert.equal(import_.getAttribute('aria-disabled'), 'true', 'Importieren');
       import_.click();
       assert.equal(import_.parentElement.open, false, 'Importieren öffnet trotzdem');
-      assert.equal(d.querySelector('#rb-hinweis .btn.bp').disabled, false, 'Schlüssel eintragen führt nur zu den Einstellungen');
+      assert.equal(
+        d.querySelector('#rb-hinweis .btn.bp').disabled,
+        false,
+        'Schlüssel eintragen führt nur zu den Einstellungen',
+      );
       assert.equal(d.querySelector('#rb-hinweis .hinweis-zu').disabled, false, 'Hinweis schliessen');
       const dateien = [...d.querySelectorAll('input[type=file]')];
       assert.ok(dateien.length >= 3 && dateien.every(f => f.disabled), 'Datei-Wahl');
       const div = d.createElement('div');
-      div.innerHTML = '<button class="v-btn" data-click="gutscheinBearbeiten">B</button><button class="v-btn" data-click="gutscheinKopieren">K</button>';
+      div.innerHTML =
+        '<button class="v-btn" data-click="gutscheinBearbeiten">B</button><button class="v-btn" data-click="gutscheinKopieren">K</button>';
       d.body.appendChild(div);
       await takt(10);
-      assert.deepEqual([...div.querySelectorAll('button')].map(k => k.disabled), [true, false]);
+      assert.deepEqual(
+        [...div.querySelectorAll('button')].map(k => k.disabled),
+        [true, false],
+      );
       for (const sel of ['.ntab[data-tab="finance"]', '#btn-umenu', '.umenu-item[data-arg="profil"]'])
         assert.equal(d.querySelector(sel).disabled, false, sel);
     });
@@ -67,5 +75,7 @@ test('offline: schreibende Knöpfe gesperrt', async (t) => {
       assert.equal(d.querySelector('#tab-gallery .import-menue > summary').hasAttribute('aria-disabled'), false);
       assert.equal(d.getElementById('offline-band').hidden, true);
     });
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

@@ -21,20 +21,27 @@ const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const { haeltSet, mengeVon } = require('./helpers/bestand');
 
-test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const NAME = `menge-pruef-${process.pid}`, SN = `31150-${process.pid % 1000}`;
+  const NAME = `menge-pruef-${process.pid}`,
+    SN = `31150-${process.pid % 1000}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await haeltSet(db, uid, SN, 2, { preis: 40 });
 
   const { base } = testServer(_req, {
-    sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t,
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
-  const setze = (menge) => fetch(`${base}/api/v1/sets/${SN}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity: menge }) });
+  const setze = menge =>
+    fetch(`${base}/api/v1/sets/${SN}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity: menge }),
+    });
 
   try {
     await t.test('eine kaputte Menge wird abgewiesen', async () => {
@@ -57,7 +64,10 @@ test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, asyn
       const j = await r.json();
       assert.equal(j.quantity, 0);
       assert.ok(j.papierkorb, 'die Antwort nennt den Papierkorb-Eintrag');
-      const eintrag = await db.get('SELECT art, nummer FROM papierkorb WHERE id=$1 AND user_id=$2', [j.papierkorb, uid]);
+      const eintrag = await db.get('SELECT art, nummer FROM papierkorb WHERE id=$1 AND user_id=$2', [
+        j.papierkorb,
+        uid,
+      ]);
       assert.equal(eintrag?.nummer, SN);
       assert.equal(await db.get('SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2', [uid, SN]), undefined);
     });

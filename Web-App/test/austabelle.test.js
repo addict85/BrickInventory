@@ -1,10 +1,10 @@
 /**
  * Nachschlagetabellen mit Schlüssel von aussen.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert');
-const fs     = require('fs');
-const path   = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 // Über buildAndRequire: Ein veraltetes dist/ prüfte sonst den Stand vor der letzten Änderung.
@@ -33,8 +33,8 @@ test('geerbte Eigenschaften zählen NICHT als Treffer', () => {
 test('Gegenprobe: der naive Zugriff FÄLLT bei denselben Schlüsseln durch', () => {
   // Belegt, dass der Test oben etwas prüft und nicht ohnehin grün wäre.
   const naiv = k => TABELLE[k] || 'VORGABE';
-  assert.strictEqual(naiv('gibtsnicht'), 'VORGABE');          // hier gleich
-  assert.notStrictEqual(naiv('constructor'), 'VORGABE');      // hier NICHT
+  assert.strictEqual(naiv('gibtsnicht'), 'VORGABE'); // hier gleich
+  assert.notStrictEqual(naiv('constructor'), 'VORGABE'); // hier NICHT
   assert.notStrictEqual(naiv('__proto__'), 'VORGABE');
 });
 
@@ -56,22 +56,21 @@ test('ohne Vorgabe kommt undefined statt eines geerbten Werts', () => {
 
 const STELLEN = [
   ['src/katalog/repository/katalogSuche.ts', 'ORDNUNGEN', /ORDNUNGEN\s*\[/],
-  ['src/sets/repository/sets.ts', 'SET_SORTS',     /SET_SORTS\s*\[/],
+  ['src/sets/repository/sets.ts', 'SET_SORTS', /SET_SORTS\s*\[/],
   // Die Endungen je MIME-Typ der Uploads stehen seit 05.11.2026 im Empfang.
-  ['src/http/dateiEmpfang.ts', 'o.typen',         /o\.typen\s*\[/],
+  ['src/http/dateiEmpfang.ts', 'o.typen', /o\.typen\s*\[/],
 ];
 
 for (const [datei, name, muster] of STELLEN) {
   test(`${datei}: ${name} wird nicht mehr direkt indiziert`, () => {
     // Kommentarzeilen heraus: Die Begründung ÜBER dem Code nennt das alte
     // Muster absichtlich, und darauf soll dieser Test nicht anspringen.
-    const code = fs.readFileSync(path.join(ROOT, datei), 'utf8')
+    const code = fs
+      .readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n')
       .filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*') && !z.trim().startsWith('/*'))
       .join('\n');
-    assert.ok(!muster.test(code),
-      `${datei} greift noch direkt auf ${name}[…] zu — ausTabelle() verwenden.`);
-    assert.match(code, new RegExp(`ausTabelle\\(\\s*${name}`),
-      `${datei} sollte ausTabelle(${name}, …) benutzen.`);
+    assert.ok(!muster.test(code), `${datei} greift noch direkt auf ${name}[…] zu — ausTabelle() verwenden.`);
+    assert.match(code, new RegExp(`ausTabelle\\(\\s*${name}`), `${datei} sollte ausTabelle(${name}, …) benutzen.`);
   });
 }

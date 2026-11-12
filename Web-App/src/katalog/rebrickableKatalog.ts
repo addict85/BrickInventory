@@ -11,7 +11,11 @@ import { versuche } from '../infra/ergebnis';
 /** Ein kaputter Eintrag zählt als keiner. */
 function ausCache<T>(json: string | undefined): T | undefined {
   if (!json) return undefined;
-  try { return JSON.parse(json) as T; } catch { return undefined; }
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function getSetInfo(setNumber: string) {
@@ -29,9 +33,16 @@ export async function getSetInfo(setNumber: string) {
   // Das Thema ist Beiwerk: Ohne es wird das Set trotzdem gemerkt, die Zeile nennt keins.
   const thema = await versuche('rebrickable:thema', getThemeName(data.theme_id ?? 0));
   const theme = thema.ok ? thema.wert : null;
-  const row = { set_number: n, name: data.name || null, year: data.year || null, theme: theme || null,
-                pieces: data.num_parts || null, image_url: data.set_img_url || null, is_gear: false,
-                theme_id: Number(data.theme_id) || null };
+  const row = {
+    set_number: n,
+    name: data.name || null,
+    year: data.year || null,
+    theme: theme || null,
+    pieces: data.num_parts || null,
+    image_url: data.set_img_url || null,
+    is_gear: false,
+    theme_id: Number(data.theme_id) || null,
+  };
   await katalog().rebrickableCache.merkeSet(row);
   return row;
 }
@@ -43,8 +54,8 @@ async function setTeileAusCsv(setNumber: string) {
   if (!parts.length) return null;
   return parts.map(p => ({
     part: {
-      part_num:     p.part_num,
-      name:         p.name || p.part_num,
+      part_num: p.part_num,
+      name: p.name || p.part_num,
       part_img_url: p.part_img_url || p.img_url || null,
       external_ids: { BrickLink: p.bl_part_num && p.bl_part_num !== p.part_num ? [p.bl_part_num] : [] },
     },
@@ -63,23 +74,33 @@ export async function getAllSetParts(setNumber: string) {
   const csvParts = await setTeileAusCsv(setNumber);
   if (csvParts) return csvParts;
   const n = mitVersion(setNumber);
-  const gemerkt = ausCache<Awaited<ReturnType<typeof holeSetTeile>>['teile']>(await katalog().rebrickableCache.teilelisteAusCache(n));
+  const gemerkt = ausCache<Awaited<ReturnType<typeof holeSetTeile>>['teile']>(
+    await katalog().rebrickableCache.teilelisteAusCache(n),
+  );
   if (gemerkt) return gemerkt;
   if (Date.now() - (_leer.get(n) ?? 0) < LEER_MS) return [];
   const { teile, verweigert } = await holeSetTeile(n);
   // Eine Absage (403) wird als leere Liste gemerkt, damit nicht jeder Import erneut fragt.
   if (teile.length > 0 || verweigert) await katalog().rebrickableCache.merkeTeileliste(n, JSON.stringify(teile));
-  else { if (_leer.size > 5000) _leer.clear(); _leer.set(n, Date.now()); }
+  else {
+    if (_leer.size > 5000) _leer.clear();
+    _leer.set(n, Date.now());
+  }
   return teile;
 }
 
 /** Geteilter Zwischenspeicher: Die Daten ändern sich selten, das Kontingent ist knapp. */
 export async function getMinifigParts(figNumber: string) {
-  const gemerkt = ausCache<NonNullable<Awaited<ReturnType<typeof holeFigurTeile>>>>(await katalog().rebrickableCache.figurenteileAusCache(figNumber));
+  const gemerkt = ausCache<NonNullable<Awaited<ReturnType<typeof holeFigurTeile>>>>(
+    await katalog().rebrickableCache.figurenteileAusCache(figNumber),
+  );
   if (gemerkt) return gemerkt;
   const parts = await holeFigurTeile(figNumber);
   if (!parts) return [];
   // Der Zwischenspeicher spart nur den nächsten Abruf; die Teile gelten auch ohne ihn.
-  await versuche('rebrickable:figurenteile-merken', katalog().rebrickableCache.merkeFigurenteile(figNumber, JSON.stringify(parts)));
+  await versuche(
+    'rebrickable:figurenteile-merken',
+    katalog().rebrickableCache.merkeFigurenteile(figNumber, JSON.stringify(parts)),
+  );
   return parts;
 }

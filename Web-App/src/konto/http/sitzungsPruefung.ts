@@ -8,8 +8,10 @@ export function sitzungsVersionPruefen() {
     const s = req.session;
     if (!s?.userId) return next();
     try {
-      if (await aktuelleSitzungsVersion(s.userId) === (s.sitzungsVersion ?? 0)) return next();
-    } catch (e) { return next(e); }
+      if ((await aktuelleSitzungsVersion(s.userId)) === (s.sitzungsVersion ?? 0)) return next();
+    } catch (e) {
+      return next(e);
+    }
     s.regenerate((e?: unknown) => next(e));
   };
 }

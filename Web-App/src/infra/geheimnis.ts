@@ -8,7 +8,8 @@ import { APP_ROOT, DATA_DIR } from './appPaths';
  * preis: Der Schlüssel liegt in DATA_KEY oder in einer eigenen Datei
  * ausserhalb des Datenordners (DATA_KEY_FILE, Vorgabe schluessel/). */
 /** v2: AES-256-GCM mit Kontext (AAD); v1 ohne, nur noch zum Umschlüsseln lesbar. */
-const V1 = 'v1:', V2 = 'v2:';
+const V1 = 'v1:',
+  V2 = 'v2:';
 let geladen: Buffer | null = null;
 
 export function schluesselDatei(): string {
@@ -22,17 +23,24 @@ export function alteSchluesselDatei(): string {
 
 function liesSchluessel(datei: string): Buffer | null {
   let roh: string;
-  try { roh = fs.readFileSync(datei, 'utf8'); }
-  catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null; throw e; }
+  try {
+    roh = fs.readFileSync(datei, 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw e;
+  }
   const k = Buffer.from(roh.trim(), 'base64');
-  if (k.length !== 32) throw new Error(`${datei} enthält keinen Datenschlüssel (32 Byte als base64, openssl rand -base64 32)`);
+  if (k.length !== 32)
+    throw new Error(`${datei} enthält keinen Datenschlüssel (32 Byte als base64, openssl rand -base64 32)`);
   return k;
 }
 
 function warneAlterOrt(alt: string, neu: string): void {
-  console.warn(`⚠️  [geheimnis] Der Datenschlüssel liegt im Datenordner (${alt}) und damit in jeder Sicherung von data/. ` +
-    `Bitte umziehen: Server anhalten, die Datei nach ${neu} verschieben (compose.yaml: ./schluessel/datenschluessel) ` +
-    'und wieder starten — Schritte in UPGRADE.md, Abschnitt „Datenschlüssel ausserhalb von data/".');
+  console.warn(
+    `⚠️  [geheimnis] Der Datenschlüssel liegt im Datenordner (${alt}) und damit in jeder Sicherung von data/. ` +
+      `Bitte umziehen: Server anhalten, die Datei nach ${neu} verschieben (compose.yaml: ./schluessel/datenschluessel) ` +
+      'und wieder starten — Schritte in UPGRADE.md, Abschnitt „Datenschlüssel ausserhalb von data/".',
+  );
 }
 
 /** Reihenfolge: DATA_KEY, die eigene Datei, die alte Datei im Datenordner
@@ -46,12 +54,19 @@ export function datenSchluessel(): Buffer {
     geladen = k;
     return k;
   }
-  const datei = schluesselDatei(), alt = alteSchluesselDatei();
-  const k = liesSchluessel(datei), altK = liesSchluessel(alt);
+  const datei = schluesselDatei(),
+    alt = alteSchluesselDatei();
+  const k = liesSchluessel(datei),
+    altK = liesSchluessel(alt);
   if (k && altK && !k.equals(altK))
-    throw new Error(`Zwei verschiedene Datenschlüssel: ${datei} und ${alt}. Den gültigen behalten, den anderen entfernen (UPGRADE.md).`);
+    throw new Error(
+      `Zwei verschiedene Datenschlüssel: ${datei} und ${alt}. Den gültigen behalten, den anderen entfernen (UPGRADE.md).`,
+    );
   if (k) {
-    if (altK) console.warn(`⚠️  [geheimnis] ${alt} ist eine Kopie von ${datei} und liegt in jeder Sicherung von data/ — bitte löschen.`);
+    if (altK)
+      console.warn(
+        `⚠️  [geheimnis] ${alt} ist eine Kopie von ${datei} und liegt in jeder Sicherung von data/ — bitte löschen.`,
+      );
     geladen = k;
     return k;
   }
@@ -67,9 +82,13 @@ export function datenSchluessel(): Buffer {
   const tmp = `${datei}.${process.pid}`;
   fs.writeFileSync(tmp, neu.toString('base64'), { mode: 0o600 });
   let ergebnis: Buffer = neu;
-  try { fs.linkSync(tmp, datei); }
-  catch { ergebnis = liesSchluessel(datei) ?? neu; }
-  finally { fs.rmSync(tmp, { force: true }); }
+  try {
+    fs.linkSync(tmp, datei);
+  } catch {
+    ergebnis = liesSchluessel(datei) ?? neu;
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
   geladen = ergebnis;
   return ergebnis;
 }
@@ -80,9 +99,12 @@ let alt: Buffer | null | undefined;
 export function altSchluessel(): Buffer | null {
   if (alt !== undefined) return alt;
   const k = konfig();
-  const roh = k.datenSchluesselAlt ? Buffer.from(k.datenSchluesselAlt, 'base64')
-    : k.datenSchluesselAltDatei ? liesSchluessel(k.datenSchluesselAltDatei) : null;
-  if (roh && roh.equals(datenSchluessel())) {
+  const roh = k.datenSchluesselAlt
+    ? Buffer.from(k.datenSchluesselAlt, 'base64')
+    : k.datenSchluesselAltDatei
+      ? liesSchluessel(k.datenSchluesselAltDatei)
+      : null;
+  if (roh?.equals(datenSchluessel())) {
     console.warn('⚠️ [geheimnis] DATA_KEY_ALT ist derselbe Schlüssel wie der aktuelle — kein Wechsel.');
     alt = null;
     return null;
@@ -128,11 +150,15 @@ function oeffne(schluessel: Buffer, roh: Buffer, aad: Kontext | null): Buffer | 
     if (aad !== null) d.setAAD(Buffer.from(aad, 'utf8'));
     d.setAuthTag(roh.subarray(12, 28));
     return Buffer.concat([d.update(roh.subarray(28)), d.final()]);
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function warne(was: string): void {
-  console.warn(`⚠️ [geheimnis] ${was} passt nicht zum Datenschlüssel (DATA_KEY oder DATA_KEY_FILE) oder gehört an eine andere Stelle.`);
+  console.warn(
+    `⚠️ [geheimnis] ${was} passt nicht zum Datenschlüssel (DATA_KEY oder DATA_KEY_FILE) oder gehört an eine andere Stelle.`,
+  );
 }
 
 export function istVerschluesselt(wert: unknown): boolean {
@@ -148,7 +174,10 @@ export function verschluessele(klartext: string | null | undefined, k: Kontext):
 export function entschluessele(wert: string | null | undefined, k: Kontext): string | null {
   if (wert === null || wert === undefined) return null;
   if (wert === '') return '';
-  if (!istVerschluesselt(wert)) { warne('Ein gespeicherter Wert ohne v2-Verschlüsselung'); return null; }
+  if (!istVerschluesselt(wert)) {
+    warne('Ein gespeicherter Wert ohne v2-Verschlüsselung');
+    return null;
+  }
   const roh = Buffer.from(wert.slice(V2.length), 'base64');
   const klar = oeffne(v2Schluessel(), roh, k) ?? mitAltSchluessel(roh, k);
   if (klar === null) warne('Ein gespeichertes Geheimnis');
@@ -216,7 +245,7 @@ export function verschluesselePuffer(daten: Buffer, k: Kontext): Buffer {
 /** Nur BIENC2 mit passendem Kontext; sonst null. */
 export function entschluesselePuffer(daten: Buffer, k: Kontext): Buffer | null {
   const roh = daten.subarray(KOPF2.length);
-  const klar = istVerschluesselterPuffer(daten) ? oeffne(v2Schluessel(), roh, k) ?? mitAltSchluessel(roh, k) : null;
+  const klar = istVerschluesselterPuffer(daten) ? (oeffne(v2Schluessel(), roh, k) ?? mitAltSchluessel(roh, k)) : null;
   if (klar === null) warne('Eine verschlüsselte Datei');
   return klar;
 }
@@ -239,4 +268,9 @@ export function altenPufferLesen(daten: Buffer, k: Kontext): Buffer | null {
   return klar;
 }
 
-export function _vergissSchluessel() { geladen = null; v2 = null; alt = undefined; altV2 = null; }
+export function _vergissSchluessel() {
+  geladen = null;
+  v2 = null;
+  alt = undefined;
+  altV2 = null;
+}

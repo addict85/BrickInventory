@@ -30,7 +30,7 @@ class GeraeteAblage @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val dataStore: DataStore<Preferences>,
     private val vertrauenschiffre: Vertrauenschiffre,
-) : GeraeteEinstellungen, Darstellungsablage, Netzvertrauen, Alarmablage, Entwertungsprotokoll, Sprachablage {
+) : GeraeteEinstellungen, Darstellungsablage, Netzvertrauen, Alarmablage, Entwertungsprotokoll, Sprachablage, Widgetablage {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -58,6 +58,7 @@ class GeraeteAblage @Inject constructor(
         const val VORSCHAU_VERBERGEN = "vorschau_verbergen"
         const val ENTWERTUNG_GESCHEITERT = "entwertung_gescheitert"
         const val WIDGET_WERTE = "widget_werte"
+        const val WIDGET_STAND = "widget_stand"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -75,7 +76,7 @@ class GeraeteAblage @Inject constructor(
         /**
          * Das zuletzt bekannte Design des Servers. Gemerkt, weil /settings erst nach der
          * Anmeldung kommt und Anmelde- und Einrichtungsbildschirm sonst im Standard-Design
-         * erschienen und umsprangen — Stufe eins wie in public/js/00-theme-boot.js.
+         * erschienen und umsprangen — Stufe eins wie in public/js/theme-boot.js.
          * Global, deshalb überlebt es das Abmelden.
          */
         val APP_THEME    = stringPreferencesKey("app_theme")
@@ -329,6 +330,19 @@ class GeraeteAblage @Inject constructor(
     override fun widgetWerteZeigen(): Boolean = designSpiegel.getBoolean(WIDGET_WERTE, false)
     override fun setzeWidgetWerteZeigen(an: Boolean) {
         designSpiegel.edit { putBoolean(WIDGET_WERTE, an) }
+    }
+
+    // Verschlüsselt wie Pins und Angaben: Ohne Entsperren soll niemand die Zahlen aus der Datei lesen.
+    override fun widgetStand(): String? =
+        designSpiegel.getString(WIDGET_STAND, null)?.let { vertrauenschiffre.entschluessle(it, WIDGET_STAND) }
+
+    override fun setzeWidgetStand(text: String) {
+        val geheim = vertrauenschiffre.verschluessle(text, WIDGET_STAND) ?: return
+        designSpiegel.edit { putString(WIDGET_STAND, geheim) }
+    }
+
+    override fun leereWidgetStand() {
+        designSpiegel.edit { remove(WIDGET_STAND) }
     }
 
     /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */

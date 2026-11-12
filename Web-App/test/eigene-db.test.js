@@ -14,9 +14,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
-test('die Datei hat ihre eigene Kopie der Vorlage', async (t) => {
+test('die Datei hat ihre eigene Kopie der Vorlage', async t => {
   const vorlage = process.env.TEST_DB_VORLAGE;
-  if (!vorlage) { t.skip('kein paralleler Lauf'); return; }
+  if (!vorlage) {
+    t.skip('kein paralleler Lauf');
+    return;
+  }
   const url = new URL(process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest');
   assert.equal(url.pathname, `/${vorlage}_${process.pid}`);
   const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
@@ -27,5 +30,7 @@ test('die Datei hat ihre eigene Kopie der Vorlage', async (t) => {
                                     (SELECT count(*)::int FROM schema_migrations) AS migrationen`);
     assert.equal(r.rows[0].schema, true, 'die Kopie trägt das Schema der Vorlage');
     assert.ok(r.rows[0].migrationen > 50);
-  } finally { await c.end(); }
+  } finally {
+    await c.end();
+  }
 });

@@ -1,16 +1,20 @@
 /** Was unter /images/ liegt, kommt vom eigenen Ursprung — eine SVG- oder
  * HTML-Datei liefe mit den Rechten der App. Deshalb bestimmt nie die fremde
  * Adresse allein Dateiname, Endung oder Ziel. */
-import crypto from 'crypto';
-import fs from 'fs';
-import { pipeline } from 'stream/promises';
-import path from 'path';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+import path from 'node:path';
 import { AbrufFehler } from '../../infra/abruf';
 import { oeffneBild } from '../quellen';
 
 /** Bewusst ohne SVG. */
 const ENDUNG_ZU_TYP: Record<string, string> = {
-  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
 };
 
 export const BILD_MAX_BYTES = 10 * 1024 * 1024;
@@ -18,13 +22,21 @@ export const BILD_MAX_BYTES = 10 * 1024 * 1024;
 /** Sonst jpg. */
 export function bildEndung(adresse: string): string {
   let pfad = '';
-  try { pfad = new URL(adresse).pathname; } catch { return 'jpg'; }
+  try {
+    pfad = new URL(adresse).pathname;
+  } catch {
+    return 'jpg';
+  }
   const e = (pfad.split('.').pop() ?? '').toLowerCase();
   return Object.hasOwn(ENDUNG_ZU_TYP, e) ? e : 'jpg';
 }
 
 export function bildTypErlaubt(contentType: string | undefined): boolean {
-  const typ = String(contentType ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+  const typ =
+    String(contentType ?? '')
+      .split(';')[0]
+      ?.trim()
+      .toLowerCase() ?? '';
   return Object.values(ENDUNG_ZU_TYP).includes(typ);
 }
 
@@ -44,15 +56,28 @@ export function zielImOrdner(ordner: string, datei: string): string | null {
  * als „schon vorhanden" gilt.
  * @returns ob das Bild jetzt unter `ziel` liegt */
 export async function ladeBild(
-  adresse: string, ziel: string, erlaubteHosts: readonly string[],
-  kopfzeilen: Record<string, string> = {}, warnen: (text: string) => void = () => {},
+  adresse: string,
+  ziel: string,
+  erlaubteHosts: readonly string[],
+  kopfzeilen: Record<string, string> = {},
+  warnen: (text: string) => void = () => {},
 ): Promise<boolean> {
-  let a;
-  try { a = await oeffneBild(adresse, { hosts: erlaubteHosts, maxBytes: BILD_MAX_BYTES, zeitlimitMs: 30_000, kopfzeilen }); }
-  catch (e) { warnen(e instanceof Error ? e.message : String(e)); return false; }
-  if (a.status !== 200) { a.verwerfen(); warnen(`HTTP ${a.status}: ${adresse.slice(0, 80)}`); return false; }
+  let a: Awaited<ReturnType<typeof oeffneBild>>;
+  try {
+    a = await oeffneBild(adresse, { hosts: erlaubteHosts, maxBytes: BILD_MAX_BYTES, zeitlimitMs: 30_000, kopfzeilen });
+  } catch (e) {
+    warnen(e instanceof Error ? e.message : String(e));
+    return false;
+  }
+  if (a.status !== 200) {
+    a.verwerfen();
+    warnen(`HTTP ${a.status}: ${adresse.slice(0, 80)}`);
+    return false;
+  }
   if (!bildTypErlaubt(a.kopf['content-type'])) {
-    a.verwerfen(); warnen(`kein Bild (${a.kopf['content-type']}): ${adresse.slice(0, 80)}`); return false;
+    a.verwerfen();
+    warnen(`kein Bild (${a.kopf['content-type']}): ${adresse.slice(0, 80)}`);
+    return false;
   }
   // Eindeutig je Abruf: Zwei gleichzeitige Downloads schrieben sonst in
   // dieselbe Zwischendatei.

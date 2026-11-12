@@ -1,15 +1,33 @@
-
 /** Der Worker kennt für jede Art einen Bearbeiter. */
 export const AUFTRAGS_ARTEN = [
-  'nacharbeit', 'bilder', 'pdf', 'csv_import', 'wechselkurse',
-  'anleitung', 'brickset', 'bildbedarf', 'bilder_neu_laden', 'nachlauf',
-  'csv_sync', 'preise', 'bild_nachlauf', 'aufraeumen', 'aufraeumen_taeglich', 'preise_nachladen', 'konto_dateien',
+  'nacharbeit',
+  'bilder',
+  'pdf',
+  'csv_import',
+  'wechselkurse',
+  'anleitung',
+  'brickset',
+  'bildbedarf',
+  'bilder_neu_laden',
+  'nachlauf',
+  'csv_sync',
+  'preise',
+  'bild_nachlauf',
+  'aufraeumen',
+  'aufraeumen_taeglich',
+  'preise_nachladen',
+  'konto_dateien',
 ] as const;
-export type AuftragsArt = typeof AUFTRAGS_ARTEN[number];
+export type AuftragsArt = (typeof AUFTRAGS_ARTEN)[number];
 
 export type AuftragsStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
 
-export interface Fortschritt { erledigt?: number; gesamt?: number; text?: string | null; [k: string]: unknown }
+export interface Fortschritt {
+  erledigt?: number;
+  gesamt?: number;
+  text?: string | null;
+  [k: string]: unknown;
+}
 
 /** Was ein Dienst vom laufenden Auftrag braucht: Stand melden, am Signal aufhören. */
 export interface AuftragsLauf {
@@ -51,7 +69,12 @@ export type Belegung = Pick<AuftragsZeile, 'id' | 'belegt_von'>;
 // Drosselt eine Gegenseite oder will sie Abstand, wartet die ganze Art, nicht
 // ein Auftrag.
 
-export interface Pause { art: string; bis: Date; grund: string | null; stufe: number }
+export interface Pause {
+  art: string;
+  bis: Date;
+  grund: string | null;
+  stufe: number;
+}
 
 /** Was ein Bearbeiter vom Worker bekommt; die Fachdienste kennen nur dies, nicht den Worker. */
 export interface AuftragsKontext {
@@ -67,16 +90,25 @@ export interface AuftragsKontext {
 
 /** Wird zurückgegeben und später fortgesetzt, ohne als gescheitert zu gelten. */
 export class AuftragUnterbrochen extends Error {
-  constructor() { super('Auftrag unterbrochen'); }
+  constructor() {
+    super('Auftrag unterbrochen');
+  }
 }
 
 export class AuftragVerloren extends Error {
-  constructor() { super('Auftrag gehört nicht mehr diesem Lauf'); }
+  constructor() {
+    super('Auftrag gehört nicht mehr diesem Lauf');
+  }
 }
 
 /** Die Gegenseite drosselt oder ein Kontingent ist erschöpft. `zaehlt`
  * entscheidet, ob es als Versuch gilt (und damit irgendwann endet). */
 export class AuftragVerschieben extends Error {
-  constructor(readonly bis: Date, readonly grund: string, readonly zaehlt = false) { super(grund); }
+  constructor(
+    readonly bis: Date,
+    readonly grund: string,
+    readonly zaehlt = false,
+  ) {
+    super(grund);
+  }
 }
-

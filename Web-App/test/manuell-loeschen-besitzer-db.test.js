@@ -8,12 +8,18 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const { haeltFigur, haeltTeil, teilmengeVon } = require('./helpers/bestand');
 
 async function erreichbar() {
-  try { await db.get('SELECT 1'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // EINMAL fuer die Datei, nicht je Test: Ein t.after(() => db.pool.end()) im
@@ -22,10 +28,10 @@ async function erreichbar() {
 // dem letzten Test, auch wenn eine Zusicherung vorher scheitert.
 after(() => db.pool.end());
 
-test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) => {
-  if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async t => {
+  if (!(await erreichbar())) {
+    keineDb(t);
+    return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -33,12 +39,18 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   // Und die MIGRATIONEN, nicht nur das Schema
   {
     const mc = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(mc);
+    } finally {
+      mc.release();
+    }
   }
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x'),('fremd','x')`);
-  const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  const haupt = await id('haupt'), kind = await id('kind'), fremd = await id('fremd');
+  const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
+  const haupt = await id('haupt'),
+    kind = await id('kind'),
+    fremd = await id('fremd');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
   // Dieselbe Nummer bei beiden — genau der Fall, den die Route nicht
@@ -62,23 +74,24 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   // der Spalte. teilmengeVon() traegt dieselbe Fallunterscheidung wie der
   // Server (test/helpers/bestand.js).
   const teile = async () => {
-    const zeilen = await db.all(
-      `SELECT user_id, color_id FROM parts WHERE part_number='3001' ORDER BY user_id`);
+    const zeilen = await db.all(`SELECT user_id, color_id FROM parts WHERE part_number='3001' ORDER BY user_id`);
     const raus = [];
-    for (const r of zeilen)
-      raus.push(`${r.user_id}:${await teilmengeVon(db, r.user_id, '3001', r.color_id ?? 0)}`);
+    for (const r of zeilen) raus.push(`${r.user_id}:${await teilmengeVon(db, r.user_id, '3001', r.color_id ?? 0)}`);
     return raus;
   };
-  const figuren = async () => (await db.all(
-    `SELECT user_id FROM minifigs WHERE fig_number='sw0001' ORDER BY user_id`)).map(r => r.user_id);
+  const figuren = async () =>
+    (await db.all(`SELECT user_id FROM minifigs WHERE fig_number='sw0001' ORDER BY user_id`)).map(r => r.user_id);
 
   assert.deepEqual(await teile(), [`${haupt}:5`, `${kind}:9`], 'Vorlage');
 
   // Die Karte des KINDES löschen.
   const a = await ruf(`/api/v1/parts/3001/4?owner=${kind}`, 'DELETE');
   assert.equal(a.status, 200, JSON.stringify(a.body));
-  assert.deepEqual(await teile(), [`${haupt}:5`],
-    'Geklickt war die Karte des Unterkontos — genau die muss weg sein, und die eigene bleiben');
+  assert.deepEqual(
+    await teile(),
+    [`${haupt}:5`],
+    'Geklickt war die Karte des Unterkontos — genau die muss weg sein, und die eigene bleiben',
+  );
 
   // Danach die eigene, ohne Parameter (Verhalten wie vorher).
   const b = await ruf('/api/v1/parts/3001/4', 'DELETE');
@@ -102,23 +115,31 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
   // Erfassungen. Der Mengenregler schreibt genau dorthin — deshalb ist das
   // hier auch die Stelle, an der ein Griff auf die falsche Zeile auffaellt.
   const mengen = async () => {
-    const zeilen = await db.all(
-      `SELECT user_id, color_id FROM parts WHERE part_number='3020' ORDER BY user_id`);
+    const zeilen = await db.all(`SELECT user_id, color_id FROM parts WHERE part_number='3020' ORDER BY user_id`);
     const raus = [];
-    for (const r of zeilen)
-      raus.push(`${r.user_id}:${await teilmengeVon(db, r.user_id, '3020', r.color_id ?? 0)}`);
+    for (const r of zeilen) raus.push(`${r.user_id}:${await teilmengeVon(db, r.user_id, '3020', r.color_id ?? 0)}`);
     return raus;
   };
-  const setze = async (pfad, menge) => (await fetch(base + pfad, {
-    method: 'PUT', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ quantity: menge }),
-  })).status;
+  const setze = async (pfad, menge) =>
+    (
+      await fetch(base + pfad, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ quantity: menge }),
+      })
+    ).status;
 
   assert.equal(await setze(`/api/v1/parts/3020/0?owner=${kind}`, 99), 200);
-  assert.deepEqual(await mengen(), [`${haupt}:5`, `${kind}:99`],
-    'Geändert werden muss die Karte des Unterkontos — die eigene bleibt');
-  assert.equal(await setze(`/api/v1/parts/3020/0?owner=${fremd}`, 42), 403,
-    'Ein Konto ausserhalb des Haushalts wird abgelehnt');
+  assert.deepEqual(
+    await mengen(),
+    [`${haupt}:5`, `${kind}:99`],
+    'Geändert werden muss die Karte des Unterkontos — die eigene bleibt',
+  );
+  assert.equal(
+    await setze(`/api/v1/parts/3020/0?owner=${fremd}`, 42),
+    403,
+    'Ein Konto ausserhalb des Haushalts wird abgelehnt',
+  );
   assert.deepEqual(await mengen(), [`${haupt}:5`, `${kind}:99`], 'und nichts angefasst');
 
   // Ein Konto ausserhalb des Haushalts geht nicht — der Parameter ist eine
@@ -131,10 +152,10 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async (t) =>
 /**
  * Damit eine Ansicht den Besitzer MITGEBEN kann, muss sie ihn erst BEKOMMEN.
  */
-test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
-  if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+test('beide Bewertungen fuehren den Besitzer mit', async t => {
+  if (!(await erreichbar())) {
+    keineDb(t);
+    return;
   }
   // KEIN zweites DROP SCHEMA: Der erste Test in dieser Datei hat das Schema
   // schon frisch aufgebaut, und jedes weitere Fallenlassen ist eine Sperre
@@ -144,12 +165,17 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
   // Migrationen auch hier — siehe die Begruendung weiter oben.
   {
     const mc = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(mc);
+    } finally {
+      mc.release();
+    }
   }
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('h2','x'),('k2','x')`);
-  const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  const haupt = await id('h2'), kind = await id('k2');
+  const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
+  const haupt = await id('h2'),
+    kind = await id('k2');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
   // Der Preis steht seit Migration 0035 in der Erfassung, nicht an der
   // Bestandszeile.
@@ -166,7 +192,7 @@ test('beide Bewertungen fuehren den Besitzer mit', async (t) => {
     routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
-  const hole = async (p) => (await fetch(base + p)).json();
+  const hole = async p => (await fetch(base + p)).json();
 
   // Beide Arten in EINER Schleife: Die Zusicherung soll für beide gleich
   // lauten, sonst driften sie wieder auseinander.

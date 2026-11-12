@@ -18,8 +18,10 @@ export function mengeSkalar(bezug: string): string {
  * `= ANY($1)`, filtert schon in der Unterabfrage: Der Planer zieht die
  * Kontobedingung des JOIN nicht hinein und summierte sonst alle Konten. */
 export function mengeJoin(bezug: string, alias = 'sm', konten?: string): string {
-  const filter = konten ? `
-                      WHERE a.user_id ${konten}` : '';
+  const filter = konten
+    ? `
+                      WHERE a.user_id ${konten}`
+    : '';
   return `LEFT JOIN (SELECT a.user_id, a.set_number, ${SUMME} AS menge
                        FROM set_acquisitions a${filter}
                       GROUP BY a.user_id, a.set_number) ${alias}
@@ -54,16 +56,13 @@ type Schreiber = Pick<DbSchnittstelle, 'get'>;
 /**
  * Die Stückzahl EINER Set-Zeile — als Zahl, nicht als SQL-Schnipsel.
  */
-export async function mengeDesSets(
-  userId: number,
-  setNumber: string,
-  dbh: Schreiber,
-): Promise<number | null> {
+export async function mengeDesSets(userId: number, setNumber: string, dbh: Schreiber): Promise<number | null> {
   const zeile = await dbh.get<{ menge: unknown }>(
     `SELECT ${mengeSkalar('s')} AS menge
        FROM sets s WHERE s.user_id = $1 AND s.set_number = $2`,
-    [userId, setNumber]);
-  return zeile ? (parseInt(String(zeile.menge)) || 0) : null;
+    [userId, setNumber],
+  );
+  return zeile ? parseInt(String(zeile.menge), 10) || 0 : null;
 }
 
 // Teile und Figuren haben noch eine Mengenspalte, weil sie zwei Bedeutungen
@@ -71,9 +70,15 @@ export async function mengeDesSets(
 
 /** Welcher Bestand. Sets stehen hier nicht: ihre Spalte ist seit 0036 weg. */
 export interface ErfassungsZeile {
-  id: number; quantity: number; purchase_price?: number | null; unit_price?: number | null;
-  condition: string; price_estimated: boolean; currency: string | null;
-  created_at: Date | null; owner_user_id: number;
+  id: number;
+  quantity: number;
+  purchase_price?: number | null;
+  unit_price?: number | null;
+  condition: string;
+  price_estimated: boolean;
+  currency: string | null;
+  created_at: Date | null;
+  owner_user_id: number;
 }
 
 export type Bestandsart = 'part' | 'fig';
@@ -81,20 +86,20 @@ export type Bestandsart = 'part' | 'fig';
 /** Je Art: Tabellen, Schluessel und Spaltennamen. Einmal, als Tabelle. */
 const ART = {
   part: {
-    bestand:   'parts',
+    bestand: 'parts',
     erfassung: 'part_acquisitions',
-    katalog:   'set_teile',
-    nummer:    'part_number',
+    katalog: 'set_teile',
+    nummer: 'part_number',
     // Die Farbe gehört in beide Schlüssel; „ohne Angabe“ ist in der
     // Erfassung 0, in der Bestandszeile womöglich NULL.
-    farbe:     true,
+    farbe: true,
   },
   fig: {
-    bestand:   'minifigs',
+    bestand: 'minifigs',
     erfassung: 'minifig_acquisitions',
-    katalog:   'set_minifigs_catalog',
-    nummer:    'fig_number',
-    farbe:     false,
+    katalog: 'set_minifigs_catalog',
+    nummer: 'fig_number',
+    farbe: false,
   },
 } as const;
 
@@ -102,16 +107,17 @@ const ART = {
  * die Stückzahl der Bestandszeile `bezug`; `konten` wie bei [mengeJoin]. */
 export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', konten?: string): string {
   const a = ART[art];
-  const farbErf = a.farbe
-    ? `, x.color_id AS fk` : '';
-  const farbVgl = a.farbe
-    ? ` AND ${alias}_e.fk = ${bezug}.color_id` : '';
-  const farbKat = a.farbe
-    ? ` AND ${alias}_k.color_id = ${bezug}.color_id` : '';
+  const farbErf = a.farbe ? `, x.color_id AS fk` : '';
+  const farbVgl = a.farbe ? ` AND ${alias}_e.fk = ${bezug}.color_id` : '';
+  const farbKat = a.farbe ? ` AND ${alias}_k.color_id = ${bezug}.color_id` : '';
   return `LEFT JOIN (SELECT x.user_id, x.${a.nummer}${farbErf},
                              SUM(x.quantity)::int AS menge
-                        FROM ${a.erfassung} x${konten ? `
-                       WHERE x.user_id ${konten}` : ''}
+                        FROM ${a.erfassung} x${
+                          konten
+                            ? `
+                       WHERE x.user_id ${konten}`
+                            : ''
+                        }
                        GROUP BY x.user_id, x.${a.nummer}${a.farbe ? ', x.color_id' : ''}) ${alias}_e
                ON ${alias}_e.user_id = ${bezug}.user_id
               AND ${alias}_e.${a.nummer} = ${bezug}.${a.nummer}${farbVgl}
@@ -148,8 +154,9 @@ export async function mengeDerPosition(
        FROM ${a.bestand} b
       WHERE b.user_id = $1 AND b.${a.nummer} = $2${farbe}
         AND b.source = 'manual'`,
-    params);
-  return zeile ? (parseInt(String(zeile.menge)) || 0) : null;
+    params,
+  );
+  return zeile ? parseInt(String(zeile.menge), 10) || 0 : null;
 }
 
 /** Der Tag einer Erfassung genau wie im eindeutigen Index (0070): `tag`, für
@@ -176,9 +183,9 @@ export function kontowaehrungJoin(tabelle: string, alias = 'kw'): string {
  * über Konto, Element, Tag, Zustand, Preis, Schätzung und Währung. */
 export type ErfassungsArt = 'set' | 'part' | 'fig';
 export const ERFASSUNGS_TABELLEN = {
-  set:  { table: 'set_acquisitions',     price: 'purchase_price', keys: ['set_number'] },
-  part: { table: 'part_acquisitions',    price: 'unit_price',     keys: ['part_number', 'color_id'] },
-  fig:  { table: 'minifig_acquisitions', price: 'unit_price',     keys: ['fig_number'] },
+  set: { table: 'set_acquisitions', price: 'purchase_price', keys: ['set_number'] },
+  part: { table: 'part_acquisitions', price: 'unit_price', keys: ['part_number', 'color_id'] },
+  fig: { table: 'minifig_acquisitions', price: 'unit_price', keys: ['fig_number'] },
 } as const;
 export const preisSpalte = (art: ErfassungsArt): string => ERFASSUNGS_TABELLEN[art].price;
 export const schluesselSpalten = (art: ErfassungsArt): readonly string[] => ERFASSUNGS_TABELLEN[art].keys;

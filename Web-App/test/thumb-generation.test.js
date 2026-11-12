@@ -31,13 +31,20 @@ test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
     const { generateThumb } = _req('src/katalog/bilder/thumbs.js');
     const web = await generateThumb(`/images/sets/${name}.jpg`);
 
-    assert.ok(web, 'generateThumb lieferte null — der Fehler wird im catch verschluckt, ' +
-                   'typischerweise weil der temporäre Dateiname keine Bildendung trägt');
+    assert.ok(
+      web,
+      'generateThumb lieferte null — der Fehler wird im catch verschluckt, ' +
+        'typischerweise weil der temporäre Dateiname keine Bildendung trägt',
+    );
     assert.ok(fs.existsSync(vorschau), 'die Vorschau-Datei fehlt trotz Erfolgsmeldung');
-    assert.ok(fs.statSync(vorschau).size < fs.statSync(original).size,
-      'die Vorschau muss KLEINER sein als das Original — sonst wäre sie nutzlos');
-    assert.ok(fs.readdirSync(ordner).filter(f => f.startsWith(name) && f.includes('.tmp')).length === 0,
-      'es darf keine temporäre Datei zurückbleiben');
+    assert.ok(
+      fs.statSync(vorschau).size < fs.statSync(original).size,
+      'die Vorschau muss KLEINER sein als das Original — sonst wäre sie nutzlos',
+    );
+    assert.ok(
+      fs.readdirSync(ordner).filter(f => f.startsWith(name) && f.includes('.tmp')).length === 0,
+      'es darf keine temporäre Datei zurückbleiben',
+    );
   } finally {
     fs.rmSync(original, { force: true });
     fs.rmSync(vorschau, { force: true });
@@ -49,11 +56,16 @@ test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
   // Endung, deshalb muss der temporäre Name auf .jpg enden.
   // Fundort seit einer früheren Runde: src/katalog/bilder/proxyThumbs.ts.
   for (const datei of ['src/katalog/bilder/thumbs.ts', 'src/katalog/bilder/proxyThumbs.ts']) {
-    const src = fs.readFileSync(path.join(ROOT, datei), 'utf8')
-      .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
-    assert.ok(/tmpThumb = .*\.tmp\.jpg`/.test(src),
+    const src = fs
+      .readFileSync(path.join(ROOT, datei), 'utf8')
+      .split('\n')
+      .filter(l => !l.trim().startsWith('//'))
+      .join('\n');
+    assert.ok(
+      /tmpThumb = .*\.tmp\.jpg`/.test(src),
       `${datei}: der temporäre Vorschau-Name endet nicht auf .jpg — Jimp wirft dann ` +
-      '„Unsupported MIME type" und die Vorschau entsteht still gar nicht');
+        '„Unsupported MIME type" und die Vorschau entsteht still gar nicht',
+    );
   }
 });
 
@@ -64,13 +76,18 @@ test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
   // Die Bildroute (routes/seiten.ts) liefert über src/katalog/http/bildAuslieferung.ts;
   // die Vorschau stösst originalStattVorschau() dort an.
   const src = require('./helpers/sources').ohneKommentare(
-    require('fs').readFileSync(path.join(__dirname, '..', 'src/katalog/http/bildAuslieferung.ts'), 'utf8'));
+    require('node:fs').readFileSync(path.join(__dirname, '..', 'src/katalog/http/bildAuslieferung.ts'), 'utf8'),
+  );
   const start = src.indexOf('function originalStattVorschau(');
-  assert.ok(start > 0 && src.indexOf('originalStattVorschau(', start + 10) > 0, 'die Bildroute ruft den Vorschau-Rückfall nicht');
+  assert.ok(
+    start > 0 && src.indexOf('originalStattVorschau(', start + 10) > 0,
+    'die Bildroute ruft den Vorschau-Rückfall nicht',
+  );
   const block = src.slice(start, start + 4000);
-  assert.ok(/generateThumb/.test(block),
+  assert.ok(
+    /generateThumb/.test(block),
     'ohne diesen Anstoss bleibt eine einmal verpasste Vorschau für immer aus — ' +
-    'der Bilder-Nachlauf deckt sets nicht ab');
-  assert.ok(/setImmediate/.test(block),
-    'die Erzeugung darf die Anfrage nicht aufhalten (rund 150 ms Jimp je Kachel)');
+      'der Bilder-Nachlauf deckt sets nicht ab',
+  );
+  assert.ok(/setImmediate/.test(block), 'die Erzeugung darf die Anfrage nicht aufhalten (rund 150 ms Jimp je Kachel)');
 });

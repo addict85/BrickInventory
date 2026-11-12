@@ -12,21 +12,26 @@ const { importWorker } = require('./helpers/auftraege');
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   importWorker(t, _req);
 
   const name = `imp_${process.pid}`;
   const IMPORTIERT = `imp${String(process.pid).slice(-5)}`;
-  const VON_HAND   = `hnd${String(process.pid).slice(-5)}`;
+  const VON_HAND = `hnd${String(process.pid).slice(-5)}`;
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ($1,'x')
-       ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username RETURNING id`, [name]);
+       ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username RETURNING id`,
+    [name],
+  );
   const uid = u.id;
 
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.session = { userId: uid }; next(); });
+  app.use((req, _res, next) => {
+    req.session = { userId: uid };
+    next();
+  });
   app.use('/api/v1', _req('routes/api_v1/index.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
@@ -48,29 +53,35 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
 
     // Gelesen aus der ERFASSUNG
     const spalten = 'unit_price, condition, quantity';
-    const imp = await db.get(
-      `SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`,
-      [uid, IMPORTIERT]);
-    const hand = await db.get(
-      `SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`,
-      [uid, VON_HAND]);
-    assert.ok(imp,  'Zum importierten Teil wurde keine Erfassung angelegt');
+    const imp = await db.get(`SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
+      uid,
+      IMPORTIERT,
+    ]);
+    const hand = await db.get(`SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
+      uid,
+      VON_HAND,
+    ]);
+    assert.ok(imp, 'Zum importierten Teil wurde keine Erfassung angelegt');
     assert.ok(hand, 'Zum von Hand erfassten Teil wurde keine Erfassung angelegt');
 
     // Der eigentliche Fehler: Ohne Angabe in der Datei darf im Feld
     // „Preis/Stk" nichts stehen.
-    assert.equal(imp.unit_price, null,
+    assert.equal(
+      imp.unit_price,
+      null,
       `Der Import hat ${imp.unit_price} als Preis/Stk eingetragen, obwohl in der ` +
-      'Datei keiner stand. Das Feld bedeutet „was der Mensch bezahlt hat" — ' +
-      'src/bestand/kaufpreisNachtrag.ts liest es genau so.');
+        'Datei keiner stand. Das Feld bedeutet „was der Mensch bezahlt hat" — ' +
+        'src/bestand/kaufpreisNachtrag.ts liest es genau so.',
+    );
 
     // Und die Regel dahinter: BEIDE Wege hinterlassen dasselbe.
     assert.deepEqual(
       { unit_price: imp.unit_price, condition: imp.condition, quantity: imp.quantity },
       { unit_price: hand.unit_price, condition: hand.condition, quantity: hand.quantity },
       'CSV-Import und Erfassen von Hand hinterlassen verschiedene Erfassungen für ' +
-      'denselben Fall. Beide rechnen über resolveManualPartPurchase — weichen ' +
-      'sie ab, rechnet einer der beiden wieder selbst.');
+        'denselben Fall. Beide rechnen über resolveManualPartPurchase — weichen ' +
+        'sie ab, rechnet einer der beiden wieder selbst.',
+    );
   } finally {
     srv.close();
     await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});

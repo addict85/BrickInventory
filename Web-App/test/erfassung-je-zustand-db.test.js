@@ -36,23 +36,26 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const db   = _req('db/database.js');
+const { keineDb } = require('./helpers/db');
+const db = _req('db/database.js');
 const { recordAcquisitionForDay, findSameDayAcquisition } = _req('src/bestand/acquisitions.js');
 
-test.after(async () => { await db.pool.end().catch(() => {}); });
+test.after(async () => {
+  await db.pool.end().catch(() => {});
+});
 
-test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -60,87 +63,153 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
   await db.initSchema();
   {
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   }
 
-  const UID = (await db.get(
-    `INSERT INTO users (username,password_hash) VALUES ('marco','x') RETURNING id`)).id;
+  const UID = (await db.get(`INSERT INTO users (username,password_hash) VALUES ('marco','x') RETURNING id`)).id;
   const TAG = '2026-10-21';
 
   /** Die Erfassungen eines Teils, vergleichbar aufbereitet. */
-  const zeilen = async (nr) => (await db.all(
-    `SELECT quantity, unit_price::float AS preis, COALESCE(condition,'N') AS zustand
+  const zeilen = async nr =>
+    (
+      await db.all(
+        `SELECT quantity, unit_price::float AS preis, COALESCE(condition,'N') AS zustand
        FROM part_acquisitions WHERE user_id=$1 AND part_number=$2
-      ORDER BY zustand`, [UID, nr]))
-    .map(z => ({ menge: Number(z.quantity), preis: z.preis, zustand: z.zustand }));
+      ORDER BY zustand`,
+        [UID, nr],
+      )
+    ).map(z => ({ menge: Number(z.quantity), preis: z.preis, zustand: z.zustand }));
 
   await t.test('zwei Zustände, zwei Zeilen', async () => {
-    await recordAcquisitionForDay('part', UID, ['3001', 4],
-      { quantity: 3, price: 1.5, condition: 'N', createdAt: TAG });
-    await recordAcquisitionForDay('part', UID, ['3001', 4],
-      { quantity: 2, price: 0.5, condition: 'U', createdAt: TAG });
+    await recordAcquisitionForDay('part', UID, ['3001', 4], {
+      quantity: 3,
+      price: 1.5,
+      condition: 'N',
+      createdAt: TAG,
+    });
+    await recordAcquisitionForDay('part', UID, ['3001', 4], {
+      quantity: 2,
+      price: 0.5,
+      condition: 'U',
+      createdAt: TAG,
+    });
     const z = await zeilen('3001');
-    assert.equal(z.length, 2,
+    assert.equal(
+      z.length,
+      2,
       `${z.length} Zeile(n) statt 2: ${JSON.stringify(z)}. Vorher wurde der ` +
-      'gebrauchte Kauf in den neuen gefaltet — Marcos Befund');
+        'gebrauchte Kauf in den neuen gefaltet — Marcos Befund',
+    );
   });
 
   await t.test('jede Zeile behält ihren eigenen Preis', async () => {
-    assert.deepEqual(await zeilen('3001'), [
-      { menge: 3, preis: 1.5, zustand: 'N' },
-      { menge: 2, preis: 0.5, zustand: 'U' },
-    ], 'Der Mischpreis 1.10 wäre die alte Rechnung über zwei verschiedene Käufe');
+    assert.deepEqual(
+      await zeilen('3001'),
+      [
+        { menge: 3, preis: 1.5, zustand: 'N' },
+        { menge: 2, preis: 0.5, zustand: 'U' },
+      ],
+      'Der Mischpreis 1.10 wäre die alte Rechnung über zwei verschiedene Käufe',
+    );
   });
 
   await t.test('gleicher Preis stockt auf, ein anderer Preis bekommt eine eigene Zeile', async () => {
     // Seit Migration 0047: Kein Mischpreis mehr. Gleiche Käufe eines Tages
     // werden addiert (verlustfrei), verschiedene Preise bleiben getrennt.
-    await recordAcquisitionForDay('part', UID, ['3002', 4],
-      { quantity: 2, price: 2.0, condition: 'N', createdAt: TAG });
-    await recordAcquisitionForDay('part', UID, ['3002', 4],
-      { quantity: 1, price: 2.0, condition: 'N', createdAt: TAG });
-    await recordAcquisitionForDay('part', UID, ['3002', 4],
-      { quantity: 2, price: 4.0, condition: 'N', createdAt: TAG });
+    await recordAcquisitionForDay('part', UID, ['3002', 4], {
+      quantity: 2,
+      price: 2.0,
+      condition: 'N',
+      createdAt: TAG,
+    });
+    await recordAcquisitionForDay('part', UID, ['3002', 4], {
+      quantity: 1,
+      price: 2.0,
+      condition: 'N',
+      createdAt: TAG,
+    });
+    await recordAcquisitionForDay('part', UID, ['3002', 4], {
+      quantity: 2,
+      price: 4.0,
+      condition: 'N',
+      createdAt: TAG,
+    });
     assert.deepEqual(
       (await zeilen('3002')).sort((x, y) => x.preis - y.preis),
-      [{ menge: 3, preis: 2, zustand: 'N' }, { menge: 2, preis: 4, zustand: 'N' }],
-      'Die Einzelkäufe müssen rekonstruierbar bleiben — kein Mischpreis 3');
+      [
+        { menge: 3, preis: 2, zustand: 'N' },
+        { menge: 2, preis: 4, zustand: 'N' },
+      ],
+      'Die Einzelkäufe müssen rekonstruierbar bleiben — kein Mischpreis 3',
+    );
   });
 
   await t.test('gleichzeitige Erfassungen gehen nicht verloren', async () => {
     // Web und App erfassen dasselbe Teil im selben Augenblick.
-    await Promise.all(Array.from({ length: 12 }, () =>
-      recordAcquisitionForDay('part', UID, ['3004', 1],
-        { quantity: 1, price: 1.0, condition: 'N', createdAt: TAG })));
+    await Promise.all(
+      Array.from({ length: 12 }, () =>
+        recordAcquisitionForDay('part', UID, ['3004', 1], { quantity: 1, price: 1.0, condition: 'N', createdAt: TAG }),
+      ),
+    );
     const z = await zeilen('3004');
-    assert.deepEqual(z, [{ menge: 12, preis: 1, zustand: 'N' }],
-      `Statt 12 sind ${z.reduce((s, r) => s + r.menge, 0)} angekommen: ${JSON.stringify(z)}`);
+    assert.deepEqual(
+      z,
+      [{ menge: 12, preis: 1, zustand: 'N' }],
+      `Statt 12 sind ${z.reduce((s, r) => s + r.menge, 0)} angekommen: ${JSON.stringify(z)}`,
+    );
   });
 
   await t.test('ein eingesetzter Marktpreis ist als geschätzt gekennzeichnet', async () => {
-    await recordAcquisitionForDay('part', UID, ['3005', 1],
-      { quantity: 1, price: 0.3, condition: 'N', createdAt: TAG, geschaetzt: true });
-    await recordAcquisitionForDay('part', UID, ['3005', 1],
-      { quantity: 1, price: 0.3, condition: 'N', createdAt: TAG });
+    await recordAcquisitionForDay('part', UID, ['3005', 1], {
+      quantity: 1,
+      price: 0.3,
+      condition: 'N',
+      createdAt: TAG,
+      geschaetzt: true,
+    });
+    await recordAcquisitionForDay('part', UID, ['3005', 1], {
+      quantity: 1,
+      price: 0.3,
+      condition: 'N',
+      createdAt: TAG,
+    });
     const z = await db.all(
       `SELECT quantity, price_estimated FROM part_acquisitions
-        WHERE user_id = $1 AND part_number = '3005' ORDER BY price_estimated`, [UID]);
-    assert.deepEqual(z.map(r => [Number(r.quantity), r.price_estimated]), [[1, false], [1, true]],
-      'Ein geschätzter und ein bezahlter Preis gleicher Höhe dürfen nicht verschmelzen');
+        WHERE user_id = $1 AND part_number = '3005' ORDER BY price_estimated`,
+      [UID],
+    );
+    assert.deepEqual(
+      z.map(r => [Number(r.quantity), r.price_estimated]),
+      [
+        [1, false],
+        [1, true],
+      ],
+      'Ein geschätzter und ein bezahlter Preis gleicher Höhe dürfen nicht verschmelzen',
+    );
   });
 
   await t.test('jede Erfassung trägt die Währung ihres Kontos', async () => {
-    await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')
-                  ON CONFLICT (user_id, key) DO UPDATE SET value = 'CHF'`, [UID]);
-    await recordAcquisitionForDay('part', UID, ['3006', 1],
-      { quantity: 1, price: 5, condition: 'N', createdAt: TAG });
+    await db.run(
+      `INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')
+                  ON CONFLICT (user_id, key) DO UPDATE SET value = 'CHF'`,
+      [UID],
+    );
+    await recordAcquisitionForDay('part', UID, ['3006', 1], { quantity: 1, price: 5, condition: 'N', createdAt: TAG });
     await db.run(`UPDATE user_settings SET value = 'EUR' WHERE user_id = $1 AND key = 'currency'`, [UID]);
-    await recordAcquisitionForDay('part', UID, ['3006', 1],
-      { quantity: 1, price: 5, condition: 'N', createdAt: TAG });
+    await recordAcquisitionForDay('part', UID, ['3006', 1], { quantity: 1, price: 5, condition: 'N', createdAt: TAG });
     const z = await db.all(
-      `SELECT currency FROM part_acquisitions WHERE user_id = $1 AND part_number = '3006' ORDER BY currency`, [UID]);
-    assert.deepEqual(z.map(r => r.currency), ['CHF', 'EUR'],
-      'Nach dem Wechsel darf der alte CHF-Preis nicht zum EUR-Preis werden');
+      `SELECT currency FROM part_acquisitions WHERE user_id = $1 AND part_number = '3006' ORDER BY currency`,
+      [UID],
+    );
+    assert.deepEqual(
+      z.map(r => r.currency),
+      ['CHF', 'EUR'],
+      'Nach dem Wechsel darf der alte CHF-Preis nicht zum EUR-Preis werden',
+    );
   });
 
   await t.test('der Unique-Index trägt die Regel, nicht nur der Code', async () => {
@@ -148,16 +217,25 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     // schreibt, freie Bahn — genau dafür gibt es ihn seit 0008.
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, condition, created_at)
-       VALUES ($1,'3003',4,1,'N',$2::date)`, [UID, TAG]);
+       VALUES ($1,'3003',4,1,'N',$2::date)`,
+      [UID, TAG],
+    );
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, condition, created_at)
-       VALUES ($1,'3003',4,1,'U',$2::date)`, [UID, TAG]);
+       VALUES ($1,'3003',4,1,'U',$2::date)`,
+      [UID, TAG],
+    );
     const doppelt = db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, condition, created_at)
-       VALUES ($1,'3003',4,1,'N',$2::date)`, [UID, TAG]);
-    await assert.rejects(doppelt, /duplicate key|unique/i,
+       VALUES ($1,'3003',4,1,'N',$2::date)`,
+      [UID, TAG],
+    );
+    await assert.rejects(
+      doppelt,
+      /duplicate key|unique/i,
       'Eine DRITTE Zeile mit einem schon belegten Zustand muss die Datenbank ' +
-      'abweisen — sonst ist der Index zu weit geraten');
+        'abweisen — sonst ist der Index zu weit geraten',
+    );
   });
 
   await t.test('der Datums-Endpunkt sieht den Zustand an', async () => {
@@ -165,17 +243,25 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     // Der Bearbeiten-Pfad darf nicht ablehnen, was der Anlege-Pfad erlaubt.
     const n = await db.get(
       `SELECT id FROM part_acquisitions WHERE user_id=$1 AND part_number='3001'
-         AND condition='N'`, [UID]);
+         AND condition='N'`,
+      [UID],
+    );
     assert.ok(n, 'Vorbedingung: die N-Zeile von oben');
     assert.equal(
-      await findSameDayAcquisition('part', UID, ['3001', 4], TAG, n.id, 'N', db, { preis: 1.5 }), null,
-      'Gegen den EIGENEN Zustand ist der Tag frei — die eigene Zeile zählt nicht');
+      await findSameDayAcquisition('part', UID, ['3001', 4], TAG, n.id, 'N', db, { preis: 1.5 }),
+      null,
+      'Gegen den EIGENEN Zustand ist der Tag frei — die eigene Zeile zählt nicht',
+    );
     const clash = await findSameDayAcquisition('part', UID, ['3001', 4], TAG, n.id, 'U', db, { preis: 0.5 });
-    assert.ok(clash,
+    assert.ok(
+      clash,
       'Gegen den ANDEREN Zustand mit gleichem Preis liegt dort eine Zeile. Wer sie ' +
-      'übersieht, lässt eine Dublette entstehen — und der Index weist sie ab');
+        'übersieht, lässt eine Dublette entstehen — und der Index weist sie ab',
+    );
     assert.equal(
-      await findSameDayAcquisition('part', UID, ['3001', 4], TAG, n.id, 'U', db, { preis: 0.9 }), null,
-      'Mit anderem Preis ist es seit Migration 0047 eine eigene Zeile, keine Kollision');
+      await findSameDayAcquisition('part', UID, ['3001', 4], TAG, n.id, 'U', db, { preis: 0.9 }),
+      null,
+      'Mit anderem Preis ist es seit Migration 0047 eine eigene Zeile, keine Kollision',
+    );
   });
 });

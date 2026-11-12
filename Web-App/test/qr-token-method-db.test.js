@@ -13,9 +13,9 @@
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -27,23 +27,26 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.APP_BASE_URL = 'https://lego.example.org';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 // Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db   = _req('db/database.js');
+const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 let _srv, _base, _uid;
-test('QR-Nonce nur per POST', async (t) => {
+test('QR-Nonce nur per POST', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
   await db.run('DROP SCHEMA public CASCADE');
@@ -52,24 +55,35 @@ test('QR-Nonce nur per POST', async (t) => {
   // Und die MIGRATIONEN, nicht nur das Schema
   {
     const mc = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(mc);
+    } finally {
+      mc.release();
+    }
   }
   const bcrypt = require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs'));
-  await db.run("INSERT INTO users (username, password_hash) VALUES ('qr', $1)", [await bcrypt.hash('qr-passwort-1', 4)]);
+  await db.run("INSERT INTO users (username, password_hash) VALUES ('qr', $1)", [
+    await bcrypt.hash('qr-passwort-1', 4),
+  ]);
   _uid = (await db.get("SELECT id FROM users WHERE username='qr'")).id;
 
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.session = { userId: _uid }; next(); });
+  app.use((req, _res, next) => {
+    req.session = { userId: _uid };
+    next();
+  });
   app.use(AUTH, _req('routes/auth.js'));
-  _srv  = app.listen(0);
+  _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 
-  const ruf = async (methode) => {
+  const ruf = async methode => {
     const r = await fetch(`${_base}${AUTH}/qr-token`, {
-      method: methode, redirect: 'manual',
-      ...(methode === 'POST' ? { headers: { 'content-type': 'application/json' },
-                                  body: JSON.stringify({ password: 'qr-passwort-1' }) } : {}),
+      method: methode,
+      redirect: 'manual',
+      ...(methode === 'POST'
+        ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'qr-passwort-1' }) }
+        : {}),
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
@@ -88,10 +102,15 @@ test('QR-Nonce nur per POST', async (t) => {
   await t.test('per GET gibt es die Route nicht mehr', async () => {
     const vorher = await nonces();
     const r = await ruf('GET');
-    assert.notEqual(r.status, 200,
-      'GET ' + AUTH + '/qr-token antwortet wieder mit 200 — damit ist die ' +
-      'SameSite=lax-Lücke aus einer früheren Runde zurück: eine Navigation von einer ' +
-      'fremden Seite legt dann wieder eine Anmelde-Nonce an.');
+    assert.notEqual(
+      r.status,
+      200,
+      'GET ' +
+        AUTH +
+        '/qr-token antwortet wieder mit 200 — damit ist die ' +
+        'SameSite=lax-Lücke aus einer früheren Runde zurück: eine Navigation von einer ' +
+        'fremden Seite legt dann wieder eine Anmelde-Nonce an.',
+    );
     assert.equal(await nonces(), vorher, 'Ein GET hat trotzdem etwas angelegt');
   });
 

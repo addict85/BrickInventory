@@ -28,15 +28,20 @@ const db = _req('db/database.js');
 const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0063-laufzustand.sql'), 'utf8');
 const SCHEMA = `probe0063_${process.pid}`;
 
-test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   {
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   }
   const vorher = await db.get(`SELECT wert FROM laufzustand WHERE schluessel = 'imgdl_pending_count'`);
   t.after(async () => {
-    if (vorher) await db.run(`UPDATE laufzustand SET wert = $1 WHERE schluessel = 'imgdl_pending_count'`, [vorher.wert]);
+    if (vorher)
+      await db.run(`UPDATE laufzustand SET wert = $1 WHERE schluessel = 'imgdl_pending_count'`, [vorher.wert]);
     else await db.run(`DELETE FROM laufzustand WHERE schluessel = 'imgdl_pending_count'`);
     await db.run(`DELETE FROM laufzustand WHERE schluessel = 'job_monitor_probe'`);
     await db.pool.end().catch(() => {});
@@ -74,8 +79,11 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async (t)
     // Der nächste geplante Lauf ist jünger, aber nicht der, der gerade arbeitet.
     await db.run(`INSERT INTO auftraege (art, nutzlast, schluessel) VALUES ('preise', '{}', 'plan:preise')`);
     const k = (await jm.all()).priceJob;
-    assert.deepEqual({ status: k.status, progress: k.progress, total: k.total, sub: k.sub },
-      { status: 'running', progress: 3, total: 9, sub: '10001-1' }, 'die Kachel zeigt den laufenden Auftrag');
+    assert.deepEqual(
+      { status: k.status, progress: k.progress, total: k.total, sub: k.sub },
+      { status: 'running', progress: 3, total: 9, sub: '10001-1' },
+      'die Kachel zeigt den laufenden Auftrag',
+    );
     await db.run("DELETE FROM auftraege WHERE art = 'preise'");
   });
 

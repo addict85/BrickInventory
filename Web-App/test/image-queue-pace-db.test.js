@@ -46,28 +46,32 @@ const ladeZeiten = [];
  */
 let ladenSchlaegtFehl = false;
 const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = echtesRequire.apply(this, arguments);
+Module.prototype.require = function (name, ...rest) {
+  const m = echtesRequire.call(this, name, ...rest);
   // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
-    return new Proxy(m, { get: (t, k) => k === 'downloadSetImage'
-      ? (async (_u, sn) => {
-          // Auch der Fehlschlag zählt als Anfrage: Der Roundtrip zum CDN hat
-          // stattgefunden, und genau darum geht es beim Kontingent.
-          ladeZeiten.push(Date.now());
-          return ladenSchlaegtFehl ? null : `/images/sets/${sn}.jpg`;
-        }) : t[k] });
+  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
+    return new Proxy(m, {
+      get: (t, k) =>
+        k === 'downloadSetImage'
+          ? async (_u, sn) => {
+              // Auch der Fehlschlag zählt als Anfrage: Der Roundtrip zum CDN hat
+              // stattgefunden, und genau darum geht es beim Kontingent.
+              ladeZeiten.push(Date.now());
+              return ladenSchlaegtFehl ? null : `/images/sets/${sn}.jpg`;
+            }
+          : t[k],
+    });
   }
-  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m && m.generateThumb) {
-    return new Proxy(m, { get: (t, k) => k === 'generateThumb'
-      ? (async () => true) : t[k] });
+  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m?.generateThumb) {
+    return new Proxy(m, { get: (t, k) => (k === 'generateThumb' ? async () => true : t[k]) });
   }
   return m;
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = _req('db/database.js');
 const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
@@ -81,11 +85,12 @@ const angelegt = [];
 function fertigesBild(sn) {
   for (const f of [`${sn}.jpg`, `${sn}_thumb.jpg`]) {
     const p = path.join(SET_IMAGES_DIR, f);
-    fs.writeFileSync(p, 'x'); angelegt.push(p);
+    fs.writeFileSync(p, 'x');
+    angelegt.push(p);
   }
 }
-const offen = async (p) => (await db.get(
-  `SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [p + '%'])).c;
+const offen = async p =>
+  (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [p + '%'])).c;
 /**
  * Notizen einreihen — mit AUFSTEIGENDEM `requested_at`.
  *
@@ -94,18 +99,21 @@ const offen = async (p) => (await db.get(
  * der auf Stapelgrenzen zielt, misst dann Zufall.
  */
 const einreihen = async (praefix, von, bis) => {
-  await db.run(`INSERT INTO image_wanted (url, set_number, requested_at)
+  await db.run(
+    `INSERT INTO image_wanted (url, set_number, requested_at)
                   SELECT 'https://cdn/'||$1||'_'||g||'.jpg', $1||'_'||g,
                          NOW() - (($3::int - g) || ' seconds')::interval
-                    FROM generate_series($2::int, $3::int) g`, [praefix, von, bis]);
+                    FROM generate_series($2::int, $3::int) g`,
+    [praefix, von, bis],
+  );
 };
 
-test('ein Takt räumt fertige Notizen ab, statt je zwanzig Sekunden zehn',
-  { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+test('ein Takt räumt fertige Notizen ab, statt je zwanzig Sekunden zehn', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -125,30 +133,34 @@ test('ein Takt räumt fertige Notizen ab, statt je zwanzig Sekunden zehn',
     const e = await IQ._taktDurchgang();
     const dauer = Date.now() - t0;
 
-    assert.equal(await offen(P), 0,
+    assert.equal(
+      await offen(P),
+      0,
       `Nach einem Takt liegen noch ${await offen(P)} von ${ANZAHL} Notizen. ` +
-      'Genau das war Marcos Lage: Der Job arbeitete ab, aber mit ' +
-      `${STAPEL} je zwanzig Sekunden — für 1113 fertige Bilder gut 37 Minuten.`);
+        'Genau das war Marcos Lage: Der Job arbeitete ab, aber mit ' +
+        `${STAPEL} je zwanzig Sekunden — für 1113 fertige Bilder gut 37 Minuten.`,
+    );
     assert.equal(e.uebersprungen, ANZAHL, 'Nicht alle wurden als „vorhanden" gezählt');
-    assert.equal(e.arbeit, 0,
-      'Für ein Bild samt Vorschau darf kein Arbeitsschritt anfallen');
+    assert.equal(e.arbeit, 0, 'Für ein Bild samt Vorschau darf kein Arbeitsschritt anfallen');
     assert.equal(ladeZeiten.length, 0, 'Es wurde beim CDN angefragt, obwohl alles dalag');
     // Ohne echte Arbeit darf auch keine Höflichkeitspause anfallen: Sie schützt
     // das CDN, und das wurde hier nicht angefasst.
-    assert.ok(dauer < 2000,
+    assert.ok(
+      dauer < 2000,
       `Der Takt brauchte ${dauer} ms für reine Übersprünge — dann greift die ` +
-      'Pause noch immer an der falschen Stelle');
+        'Pause noch immer an der falschen Stelle',
+    );
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
   }
 });
 
-test('das Kontingent gilt für echte Arbeit, nicht für Notizen',
-  { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+test('das Kontingent gilt für echte Arbeit, nicht für Notizen', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -167,7 +179,8 @@ test('das Kontingent gilt für echte Arbeit, nicht für Notizen',
   const ANZAHL = STAPEL * 4;
   const zuLaden = new Set();
   for (let i = 1; i <= ANZAHL; i++) {
-    if (i % 3 === 0) zuLaden.add(i); else fertigesBild(`${P}_${i}`);
+    if (i % 3 === 0) zuLaden.add(i);
+    else fertigesBild(`${P}_${i}`);
   }
   assert.ok(zuLaden.size > STAPEL, 'Vorbedingung: mehr zu laden als das Kontingent');
   await einreihen(P, 1, ANZAHL);
@@ -177,38 +190,45 @@ test('das Kontingent gilt für echte Arbeit, nicht für Notizen',
     const e = await IQ._taktDurchgang();
 
     await t.test('höchstens STAPEL Anfragen je Takt', async () => {
-      assert.equal(ladeZeiten.length, STAPEL,
+      assert.equal(
+        ladeZeiten.length,
+        STAPEL,
         `${ladeZeiten.length} CDN-Anfragen in einem Takt — erlaubt sind ${STAPEL}. ` +
-        'Die Rate am CDN ist Marcos Vorgabe und darf sich durch das Nachholen ' +
-        'von Stapeln NICHT erhöhen.');
+          'Die Rate am CDN ist Marcos Vorgabe und darf sich durch das Nachholen ' +
+          'von Stapeln NICHT erhöhen.',
+      );
       assert.equal(e.arbeit, STAPEL);
-      assert.ok(await offen(P) > 0, 'Der Rest muss liegenbleiben');
+      assert.ok((await offen(P)) > 0, 'Der Rest muss liegenbleiben');
       // Vorbedingung für den Abstandstest: Die zehn Anfragen lagen wirklich in
       // mehr als einem Stapel.
-      assert.ok(e.gesamt > STAPEL,
+      assert.ok(
+        e.gesamt > STAPEL,
         `alle ${e.arbeit} Anfragen lagen in einem einzigen Stapel — dann prüft ` +
-        'der Abstandstest unten die Stapelgrenze gar nicht');
+          'der Abstandstest unten die Stapelgrenze gar nicht',
+      );
     });
 
     await t.test('zwischen zwei Anfragen liegt eine halbe Sekunde', () => {
       const abst = ladeZeiten.slice(1).map((z, i) => z - ladeZeiten[i]);
       const kleinster = Math.min(...abst);
-      assert.ok(kleinster >= 500,
+      assert.ok(
+        kleinster >= 500,
         `kleinster Abstand ${kleinster} ms. Die Pause hing vorher an einem Zähler ` +
-        'INNERHALB eines Stapels — sobald ein Takt mehrere Stapel nachholt, ' +
-        'liefen sonst zwei Anfragen unmittelbar hintereinander.');
+          'INNERHALB eines Stapels — sobald ein Takt mehrere Stapel nachholt, ' +
+          'liefen sonst zwei Anfragen unmittelbar hintereinander.',
+      );
     });
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
   }
 });
 
-test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlange',
-  { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlange', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -219,7 +239,8 @@ test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlan
   // Der Normalfall nach dem Knopf „Katalogbilder holen": ein paar fehlende
   // Bilder, verstreut zwischen hunderten, die längst dalagen.
   const P = `MX${process.pid}`;
-  const FERTIG = STAPEL * 5, ZU_LADEN = 3;
+  const FERTIG = STAPEL * 5,
+    ZU_LADEN = 3;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
   for (let i = 1; i <= FERTIG; i++) fertigesBild(`${P}_${i}`);
   await einreihen(P, 1, FERTIG + ZU_LADEN);
@@ -227,9 +248,12 @@ test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlan
   try {
     ladeZeiten.length = 0;
     const e = await IQ._taktDurchgang();
-    assert.equal(await offen(P), 0,
+    assert.equal(
+      await offen(P),
+      0,
       'Ein Takt muss die ganze Strecke abräumen — die drei fehlenden Bilder ' +
-      'liegen unter dem Kontingent, die fertigen kosten nichts');
+        'liegen unter dem Kontingent, die fertigen kosten nichts',
+    );
     assert.equal(e.geholt, ZU_LADEN);
     assert.equal(e.uebersprungen, FERTIG);
     assert.equal(ladeZeiten.length, ZU_LADEN, 'Es wurde mehr geladen als nötig');
@@ -238,15 +262,15 @@ test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlan
   }
 });
 
-test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch',
-  { concurrency: 1 }, async (t) => {
+test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch', { concurrency: 1 }, async t => {
   // Der Deckel ist nötig, weil `existsSync` synchron ist: Ohne ihn liefe eine
   // Warteschlange aus 25 000 fertigen Bildern in einem Zug durch und hielte
   // den Event-Loop des Arbeitsprozesses in Schüben auf.
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -262,20 +286,20 @@ test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch',
 
   try {
     const e = await IQ._taktDurchgang();
-    assert.equal(e.gesamt, DECKEL,
-      `${e.gesamt} Notizen in einem Takt — der Deckel liegt bei ${DECKEL}`);
+    assert.equal(e.gesamt, DECKEL, `${e.gesamt} Notizen in einem Takt — der Deckel liegt bei ${DECKEL}`);
     assert.equal(await offen(P), ANZAHL - DECKEL, 'Der Rest muss auf den nächsten Takt warten');
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
   }
 });
 
-test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async (t) => {
+test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async t => {
   // Was der Kommentar behauptete und der Code nicht tat
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -284,11 +308,16 @@ test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async (
 
   const P = `VF${process.pid}`;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
-  await db.run(`INSERT INTO image_wanted (url, set_number, requested_at)
+  await db.run(
+    `INSERT INTO image_wanted (url, set_number, requested_at)
                 VALUES ($1, $2, NOW() - INTERVAL '30 days')`,
-               [`https://cdn/${P}_alt.jpg`, `${P}_alt`]);
-  await db.run(`INSERT INTO image_wanted (url, set_number, requested_at)
-                VALUES ($1, $2, NOW())`, [`https://cdn/${P}_neu.jpg`, `${P}_neu`]);
+    [`https://cdn/${P}_alt.jpg`, `${P}_alt`],
+  );
+  await db.run(
+    `INSERT INTO image_wanted (url, set_number, requested_at)
+                VALUES ($1, $2, NOW())`,
+    [`https://cdn/${P}_neu.jpg`, `${P}_neu`],
+  );
 
   try {
     // Vorbedingung: Der Stapel fasst die alte Notiz gar nicht erst an — genau
@@ -299,24 +328,28 @@ test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async (
 
     const weg = await IQ._loescheVerfallene();
     assert.ok(weg >= 1, 'Es wurde keine verfallene Notiz gelöscht');
-    assert.equal(await offen(P), 0,
+    assert.equal(
+      await offen(P),
+      0,
       'Die verfallene Notiz liegt weiterhin da — sie zählt dann für immer in ' +
-      'der Kachel mit, ohne je bearbeitet zu werden');
+        'der Kachel mit, ohne je bearbeitet zu werden',
+    );
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
   }
 });
 
-test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 }, async (t) => {
+test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 }, async t => {
   // ── Warum als eigener Prozess (Lehre aus einer früheren Runde) ────────────────────
   // Ein Test, der im selben Prozess prüft, kann diesen Fehler nicht sehen: Der
   // Merker liegt ja genau dort. Die Kachel wird aber von einem BELIEBIGEN der
   // vier Arbeitsprozesse beantwortet, und keiner davon führt den Job aus.
   // Deshalb läuft der Job hier im Kindprozess und gefragt wird im Elternteil.
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -324,15 +357,18 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   await leereWarteschlange(db);
 
   await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
-  const vorher = await db.get(
-    `SELECT wert AS value FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
+  const vorher = await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
   assert.equal(vorher, undefined, 'Vorbedingung: noch kein Laufstand abgelegt');
 
   // Der Kindprozess kennt NICHTS aus diesem hier — er baut nicht, sondern nutzt
   // das bereits erzeugte dist/ und legt nur einen Takt hin.
   // ── Warum das Kind die Adresse NICHT selbst setzt ────────────────────────
   // Hier stand als erste Zeile des Kind-Skripts …
-  execFileSync(process.execPath, ['-e', `
+  execFileSync(
+    process.execPath,
+    [
+      '-e',
+      `
     const V = require(${JSON.stringify(path.join(ROOT, 'dist', 'startup', 'verdrahtung.js'))});
     const db = V.verdrahteProzess({ ...V.baueVerdrahtung(), erststart: async () => {} });
     const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/katalog/bilder/bildbedarfLauf.js'))});
@@ -341,14 +377,18 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
       await IQ._taktDurchgang();
       await db.pool.end();
     })().catch(e => { console.error(e); process.exit(1); });
-  `], { env: process.env, stdio: 'pipe' });
+  `,
+    ],
+    { env: process.env, stdio: 'pipe' },
+  );
 
-  const zeile = await db.get(
-    `SELECT wert AS value FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
-  assert.ok(zeile?.value,
+  const zeile = await db.get(`SELECT wert AS value FROM laufzustand WHERE schluessel='imgqueue_last_run'`);
+  assert.ok(
+    zeile?.value,
     'Der Durchgang eines anderen Prozesses ist hier nicht sichtbar. Dann meldet ' +
-    'die Kachel „Job noch nicht gelaufen", während im Log Durchgänge stehen — ' +
-    'genau Marcos Befund.');
+      'die Kachel „Job noch nicht gelaufen", während im Log Durchgänge stehen — ' +
+      'genau Marcos Befund.',
+  );
   const stand = JSON.parse(zeile.value);
   assert.ok(Date.now() - stand.zeit < 60_000, 'Der abgelegte Zeitpunkt ist nicht plausibel');
 
@@ -372,13 +412,14 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   app.use('/api/v1', _req('routes/api_v1/index.js'));
   const srv = app.listen(0);
   try {
-    const kachel = (await (await fetch(
-      `http://localhost:${srv.address().port}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
-    assert.ok(kachel?.queueLastRun,
+    const kachel = (await (await fetch(`http://localhost:${srv.address().port}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
+    assert.ok(
+      kachel?.queueLastRun,
       'Die Kachel kennt den Durchgang des anderen Prozesses nicht. Genau so kam ' +
-      'Marcos „Job noch nicht gelaufen" zustande: Der Merker lag im ' +
-      'Arbeitsspeicher des Prozesses, der den Job ausführt — die Anfrage ' +
-      'beantwortet aber irgendeiner der vier.');
+        'Marcos „Job noch nicht gelaufen" zustande: Der Merker lag im ' +
+        'Arbeitsspeicher des Prozesses, der den Job ausführt — die Anfrage ' +
+        'beantwortet aber irgendeiner der vier.',
+    );
   } finally {
     await new Promise(r => srv.close(r));
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
@@ -387,12 +428,12 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   await db.run(`DELETE FROM laufzustand WHERE schluessel='imgqueue_last_run'`).catch(() => {});
 });
 
-
-test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -404,12 +445,13 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async (
   await t.test('Notiz ohne Setnummer', async () => {
     const P = `ON${process.pid}`;
     await db.run(`DELETE FROM image_wanted WHERE url LIKE $1`, [`%${P}%`]);
-    await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1, NULL)`,
-                 [`https://cdn/${P}.jpg`]);
+    await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1, NULL)`, [`https://cdn/${P}.jpg`]);
     const e = await IQ._arbeiteStapel();
-    assert.equal(e.ohneNummer, 1,
-      'Eine Notiz ohne Setnummer verschwindet spurlos — sie zählte als ' +
-      '„bearbeitet", ohne irgendwo aufzutauchen');
+    assert.equal(
+      e.ohneNummer,
+      1,
+      'Eine Notiz ohne Setnummer verschwindet spurlos — sie zählte als ' + '„bearbeitet", ohne irgendwo aufzutauchen',
+    );
     assert.equal(e.geholt + e.vorschau + e.uebersprungen, 0);
     await db.run(`DELETE FROM image_wanted WHERE url LIKE $1`, [`%${P}%`]).catch(() => {});
   });
@@ -424,12 +466,13 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async (
       await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);
       await einreihen(P, 1, 2);
       const e = await IQ._arbeiteStapel();
-      assert.equal(e.nichtGeladen, 2,
-        'Marcos Fall: zwei Notizen, kein Bild, und kein Zähler nannte den Grund');
+      assert.equal(e.nichtGeladen, 2, 'Marcos Fall: zwei Notizen, kein Bild, und kein Zähler nannte den Grund');
       assert.equal(e.gesamt, 2);
-      assert.match(IQ.meldung(e), /2 Download fehlgeschlagen/,
-        'Die Meldung nennt den Fehlschlag nicht — dann steht dort dreimal null ' +
-        'und die Frage bleibt offen');
+      assert.match(
+        IQ.meldung(e),
+        /2 Download fehlgeschlagen/,
+        'Die Meldung nennt den Fehlschlag nicht — dann steht dort dreimal null ' + 'und die Frage bleibt offen',
+      );
     } finally {
       ladenSchlaegtFehl = false;
       await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
@@ -455,15 +498,22 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async (
       const e = await IQ._taktDurchgang();
       const dauer = Date.now() - t0;
       assert.equal(e.bekanntFehlend, ANZAHL, 'Der Merker wird im Job nicht gelesen');
-      assert.equal(ladeZeiten.length, 0,
-        `${ladeZeiten.length} CDN-Anfragen für Bilder, von denen feststeht, dass ` +
-        'es sie nicht gibt');
-      assert.equal(e.arbeit, 0,
+      assert.equal(
+        ladeZeiten.length,
+        0,
+        `${ladeZeiten.length} CDN-Anfragen für Bilder, von denen feststeht, dass ` + 'es sie nicht gibt',
+      );
+      assert.equal(
+        e.arbeit,
+        0,
         'Ein bekannt fehlendes Bild verbraucht einen Platz im Kontingent — ' +
-        'dann bremsen ausgerechnet die aussichtslosen Notizen die aussichtsreichen');
-      assert.ok(dauer < 2000,
+          'dann bremsen ausgerechnet die aussichtslosen Notizen die aussichtsreichen',
+      );
+      assert.ok(
+        dauer < 2000,
         `${dauer} ms für ${ANZAHL} bekannt fehlende Bilder — die Höflichkeitspause ` +
-        'schützt den CDN, und der wurde hier gar nicht angefasst');
+          'schützt den CDN, und der wurde hier gar nicht angefasst',
+      );
     } finally {
       await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
       await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']).catch(() => {});

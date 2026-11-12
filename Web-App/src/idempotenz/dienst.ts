@@ -2,7 +2,14 @@
  * demselben Schlüssel und bekommt die gespeicherte Antwort — ohne zweite
  * Wirkung. Derselbe Schlüssel mit anderem Inhalt ist ein Fehler des Clients. */
 import { HTTP_FRISTEN } from '../infra/httpFristen';
-import { verschluessele, entschluessele, istVerschluesselt, kontext, umschluesseln, suchwert } from '../infra/geheimnis';
+import {
+  verschluessele,
+  entschluessele,
+  istVerschluesselt,
+  kontext,
+  umschluesseln,
+  suchwert,
+} from '../infra/geheimnis';
 import { idempotenzBereich } from './prozess';
 import { mitWirkungsVermerk as vermerkeWirkung } from './repository';
 
@@ -47,7 +54,10 @@ export async function beginne(uid: number, schluessel: string, abdruck: string):
   if (await idempotenzBereich().repository.belege(uid, schluessel, abdruck, VERWAIST_NACH_S)) return { art: 'neu' };
   const e = await idempotenzBereich().repository.eintrag(uid, schluessel, VERWAIST_NACH_S);
   // Zwischen Belegen und Lesen freigegeben (die erste scheiterte): neu versuchen.
-  if (!e) return await idempotenzBereich().repository.belege(uid, schluessel, abdruck, VERWAIST_NACH_S) ? { art: 'neu' } : { art: 'laeuft' };
+  if (!e)
+    return (await idempotenzBereich().repository.belege(uid, schluessel, abdruck, VERWAIST_NACH_S))
+      ? { art: 'neu' }
+      : { art: 'laeuft' };
   if (e.anfrage !== abdruck) return { art: 'anders' };
   // Verwaist mit Wirkung: Die erste hat gewirkt, ihre Antwort ging verloren.
   if (e.status === null) return e.wirkung && e.verwaist ? { art: 'nicht_wiederholbar' } : { art: 'laeuft' };
@@ -60,7 +70,13 @@ export async function beginne(uid: number, schluessel: string, abdruck: string):
  * eine Wiederholung es noch einmal versuchen dürfen; mit ihr wäre es eine zweite. */
 export async function beende(uid: number, schluessel: string, status: number, antwort: string | null): Promise<void> {
   if (status >= 500) await idempotenzBereich().repository.loescheLaufenden(uid, schluessel, status);
-  else await idempotenzBereich().repository.schliesseAb(uid, schluessel, status, antwort === null ? null : verschluessele(antwort, antwortKontext(uid, schluessel)));
+  else
+    await idempotenzBereich().repository.schliesseAb(
+      uid,
+      schluessel,
+      status,
+      antwort === null ? null : verschluessele(antwort, antwortKontext(uid, schluessel)),
+    );
 }
 
 export function gibFrei(uid: number, schluessel: string, status: number): Promise<void> {

@@ -1,7 +1,7 @@
 /** Der Preislauf holt die Marktpreise ohnehin; hier fehlte nur der Schritt,
  * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto. */
 import { meldeFehler, fehlertext } from '../infra/fehler';
-import { scopeIds } from '../haushalt';
+import { blickfeldIds } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as mailer from '../mail';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
@@ -55,19 +55,27 @@ function pruefeEingabe(richtung: unknown, schwelle: unknown, condition: unknown)
 }
 
 /** Höchstens EIN Alarm je Set und Zustand (Primärschlüssel). */
-export async function setzeAlarm(db: DbSchnittstelle, 
-  userId: number, setNumber: string, waehrung: string,
+export async function setzeAlarm(
+  db: DbSchnittstelle,
+  userId: number,
+  setNumber: string,
+  waehrung: string,
   eingabe: { richtung?: unknown; schwelle?: unknown; condition?: unknown },
 ): Promise<Preisalarm> {
-  const { richtung, schwelle, condition } =
-    pruefeEingabe(eingabe.richtung, eingabe.schwelle, eingabe.condition);
+  const { richtung, schwelle, condition } = pruefeEingabe(eingabe.richtung, eingabe.schwelle, eingabe.condition);
   await repo.schreibeAlarm(db, userId, setNumber, condition, richtung, schwelle, waehrung);
   const alarme = await alarmeFuer(db, userId, setNumber);
   return alarme.find(a => a.condition === condition)!;
 }
 
 /** Der Alarm wandert mit einer Vormerkung ins andere Konto (src/merkliste). */
-export async function alarmUebertragen(db: DbSchnittstelle, zuId: number, vonId: number, setNumber: string, condition: string): Promise<void> {
+export async function alarmUebertragen(
+  db: DbSchnittstelle,
+  zuId: number,
+  vonId: number,
+  setNumber: string,
+  condition: string,
+): Promise<void> {
   await repo.uebertrageAlarm(db, zuId, vonId, setNumber, condition);
 }
 
@@ -79,11 +87,15 @@ export async function loescheAlarm(db: DbSchnittstelle, userId: number, setNumbe
 }
 
 export async function alarmeFuer(db: DbSchnittstelle, userId: number, setNumber: string): Promise<Preisalarm[]> {
-  const rows = await repo.alarmeDesSets(db, userId, setNumber, await scopeIds(db, userId))
-    .catch(e => { meldeFehler('preisalarm:lesen', e); return []; });
-  type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> &
-               { schwelle: string | number; zuletzt_preis: string | number | null };
-  return (rows as Zeile[] || []).map(r => ({
+  const rows = await repo.alarmeDesSets(db, userId, setNumber, await blickfeldIds(db, userId)).catch(e => {
+    meldeFehler('preisalarm:lesen', e);
+    return [];
+  });
+  type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> & {
+    schwelle: string | number;
+    zuletzt_preis: string | number | null;
+  };
+  return ((rows as Zeile[]) || []).map(r => ({
     ...r,
     // numeric kommt als Zeichenkette aus dem Treiber.
     schwelle: parseFloat(String(r.schwelle)),
@@ -106,12 +118,16 @@ export interface AlarmMitName extends Preisalarm {
 export async function alleAlarme(db: DbSchnittstelle, userId: number): Promise<AlarmMitName[]> {
   // Das Blickfeld fragt nur, ob das Set sichtbar ist; der Alarm bleibt beim
   // eigenen Konto.
-  const blickfeld = await scopeIds(db, userId);
-  const rows = await repo.alarmeImBlickfeld(db, userId, blickfeld)
-    .catch(e => { meldeFehler('preisalarm:alle', e); return []; });
-  type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> &
-               { schwelle: string | number; zuletzt_preis: string | number | null };
-  return (rows as Zeile[] || []).map(r => ({
+  const blickfeld = await blickfeldIds(db, userId);
+  const rows = await repo.alarmeImBlickfeld(db, userId, blickfeld).catch(e => {
+    meldeFehler('preisalarm:alle', e);
+    return [];
+  });
+  type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> & {
+    schwelle: string | number;
+    zuletzt_preis: string | number | null;
+  };
+  return ((rows as Zeile[]) || []).map(r => ({
     ...r,
     // numeric kommt als Zeichenkette aus dem Treiber.
     schwelle: parseFloat(String(r.schwelle)),
@@ -128,20 +144,33 @@ export async function ausgeloesteSeit(db: DbSchnittstelle, userId: number, seit:
 
   // `instanceof Date` ZUERST: String(date) verliert die Millisekunden, und eine
   // Meldung aus derselben Sekunde käme ein zweites Mal.
-  const marke = seit instanceof Date ? seit
-    : seit === undefined || seit === null || String(seit).trim() === ''
-      ? null : new Date(String(seit));
+  const marke =
+    seit instanceof Date
+      ? seit
+      : seit === undefined || seit === null || String(seit).trim() === ''
+        ? null
+        : new Date(String(seit));
   // Unlesbar wie fehlend, NICHT „seit Anbeginn": Ein Tippfehler darf keine Flut auslösen.
   if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
 
-  const rows = await repo.alarmeDesKontos(db, userId, marke, await scopeIds(db, userId))
-    .catch(e => { meldeFehler('preisalarm:abholen', e); return []; });
+  const rows = await repo.alarmeDesKontos(db, userId, marke, await blickfeldIds(db, userId)).catch(e => {
+    meldeFehler('preisalarm:abholen', e);
+    return [];
+  });
 
-  type Zeile = { set_number: string; condition: string; richtung: Richtung;
-                 schwelle: string | number; currency_code: string; ausgeloest: boolean; besitzt: boolean;
-                 zuletzt_am: string; zuletzt_preis: string | number | null };
+  type Zeile = {
+    set_number: string;
+    condition: string;
+    richtung: Richtung;
+    schwelle: string | number;
+    currency_code: string;
+    ausgeloest: boolean;
+    besitzt: boolean;
+    zuletzt_am: string;
+    zuletzt_preis: string | number | null;
+  };
   return {
-    alerts: (rows as Zeile[] || []).map(r => ({
+    alerts: ((rows as Zeile[]) || []).map(r => ({
       ...r,
       schwelle: parseFloat(String(r.schwelle)),
       zuletzt_preis: r.zuletzt_preis == null ? null : parseFloat(String(r.zuletzt_preis)),
@@ -157,24 +186,39 @@ export function reisst(richtung: Richtung, preis: number, schwelle: number): boo
 }
 
 /** Gemeldet wird der ÜBERGANG, nicht der Zustand. */
-export type Versender = (mail: { to: string; subject: string; text: string; html?: string; link?: string }) => Promise<unknown>;
+export type Versender = (mail: {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  link?: string;
+}) => Promise<unknown>;
 
 /** Als Parameter, damit ein Test den Versand ersetzen kann. */
 async function standardVersand(mail: { to: string; subject: string; text: string; html?: string; link?: string }) {
   return mailer.sendMail(mail);
 }
 
-export async function pruefeSet(db: DbSchnittstelle, setNumber: string,
-                                versende: Versender = standardVersand): Promise<number> {
-  const alarme = await repo.alleAktivenAlarme(db, setNumber)
+export async function pruefeSet(
+  db: DbSchnittstelle,
+  setNumber: string,
+  versende: Versender = standardVersand,
+): Promise<number> {
+  const alarme = await repo
+    .alleAktivenAlarme(db, setNumber)
     // Gemeldet, nicht verschluckt: Sonst sähe man nur, dass keine Mails kommen,
     // und suchte den Fehler beim SMTP-Server.
-    .catch(e => { meldeFehler('preisalarm:alarme-lesen', e); return []; });
+    .catch(e => {
+      meldeFehler('preisalarm:alarme-lesen', e);
+      return [];
+    });
   if (!alarme?.length) return 0;
   let verschickt = 0;
   for (const a of alarme as AlarmZeile[]) {
-    const preisZeile = await repo.cachePreisFuerAlarm(db, a.set_number, a.condition, a.currency_code)
-      .catch(e => { meldeFehler('preisalarm:preis-lesen', e); return null; });
+    const preisZeile = await repo.cachePreisFuerAlarm(db, a.set_number, a.condition, a.currency_code).catch(e => {
+      meldeFehler('preisalarm:preis-lesen', e);
+      return null;
+    });
     const preis = preisZeile?.avg_price == null ? null : parseFloat(String(preisZeile.avg_price));
     // Kein Preis in DIESER Währung: Der Alarm bleibt, der Merker auch.
     if (preis == null || !(preis > 0)) continue;
@@ -185,12 +229,13 @@ export async function pruefeSet(db: DbSchnittstelle, setNumber: string,
     if (!jetzt) {
       // Zurück auf die andere Seite — der nächste Übergang meldet wieder.
       if (a.ausgeloest) {
-        await repo.setzeAlarmZurueck(db, a.user_id, a.set_number, a.condition)
+        await repo
+          .setzeAlarmZurueck(db, a.user_id, a.set_number, a.condition)
           .catch(e => meldeFehler('preisalarm:merker-loeschen', e));
       }
       continue;
     }
-    if (a.ausgeloest) continue;          // schon gemeldet, nichts Neues
+    if (a.ausgeloest) continue; // schon gemeldet, nichts Neues
 
     if (a.email) {
       try {
@@ -202,7 +247,8 @@ export async function pruefeSet(db: DbSchnittstelle, setNumber: string,
         continue;
       }
     }
-    await repo.loeseAlarmAus(db, a.user_id, a.set_number, a.condition, preis)
+    await repo
+      .loeseAlarmAus(db, a.user_id, a.set_number, a.condition, preis)
       // Ungesetzt meldet der nächste Lauf dieselbe Schwelle noch einmal — lästig,
       // aber besser als stumm.
       .catch(e => meldeFehler('preisalarm:merker-setzen', e));
@@ -216,15 +262,15 @@ async function verschicke(db: DbSchnittstelle, versende: Versender, a: AlarmZeil
   const gelesen = await versuche('preisalarm:name', repo.setNameAusStamm(db, a.set_number));
   const name = gelesen.ok ? gelesen.wert : null;
   const mail = await mailer.baueAlarmMail({
-    username:  a.username,
-    lang:      String(a.sprache),
+    username: a.username,
+    lang: String(a.sprache),
     setNumber: a.set_number,
-    setName:   name?.name ?? null,
+    setName: name?.name ?? null,
     condition: a.condition,
-    richtung:  a.richtung,
+    richtung: a.richtung,
     schwelle,
     preis,
-    waehrung:  a.currency_code,
+    waehrung: a.currency_code,
   });
   await versende({ to: a.email!, ...mail });
 }
@@ -233,48 +279,74 @@ async function verschicke(db: DbSchnittstelle, versende: Versender, a: AlarmZeil
 export async function buildPreisalarmeCsv(db: DbSchnittstelle, uid: number): Promise<string> {
   const rows = await repo.alarmeFuerExport(db, uid);
 
-  return toCsv(['set_number', 'condition', 'richtung', 'schwelle', 'currency_code'],
+  return toCsv(
+    ['set_number', 'condition', 'richtung', 'schwelle', 'currency_code'],
     // Number(): sonst stünde „200.0000" im Export.
-    rows.map(r => ({ ...r, schwelle: Number(r.schwelle) })));
+    rows.map(r => ({ ...r, schwelle: Number(r.schwelle) })),
+  );
 }
 
 /** Schwellen gelten in der Kontowährung; eine andere in der Datei wird
  * genannt statt still umgerechnet — Kurse gibt es keine. */
 export async function alarmeAusCsv(db: DbSchnittstelle, uid: number, waehrung: string, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
-  let added = 0, updated = 0, errors = 0, fremdeWaehrung = 0;
+  let added = 0,
+    updated = 0,
+    errors = 0,
+    fremdeWaehrung = 0;
   const results: Array<Record<string, unknown>> = [];
   for (const row of bereinigt) {
-    const roh = String(row.set_number || row['Setnummer'] || row['set_num'] || Object.values(row)[0] || '').trim();
+    const roh = String(row.set_number || row.Setnummer || row.set_num || Object.values(row)[0] || '').trim();
     if (!roh) continue;
     const sn = normalisiereSetNummer(roh);
     // Vor dem Schreiben fragen: setzeAlarm() legt an oder ändert, ohne es zu sagen.
     const schon = await alarmeFuer(db, uid, sn);
-    const dateiWaehrung = String(row.currency_code || row['waehrung'] || '').trim().toUpperCase();
+    const dateiWaehrung = String(row.currency_code || row.waehrung || '')
+      .trim()
+      .toUpperCase();
     const abweichend = dateiWaehrung !== '' && dateiWaehrung !== waehrung.toUpperCase();
     try {
       const alarm = await setzeAlarm(db, uid, sn, waehrung, {
-        richtung: String(row.richtung || row['Richtung'] || '').trim().toLowerCase(),
-        schwelle: String(row.schwelle || row['Schwelle'] || '').trim().replace(',', '.'),
-        condition: String(row.condition || row['zustand'] || row['Zustand'] || 'N').trim().toUpperCase(),
+        richtung: String(row.richtung || row.Richtung || '')
+          .trim()
+          .toLowerCase(),
+        schwelle: String(row.schwelle || row.Schwelle || '')
+          .trim()
+          .replace(',', '.'),
+        condition: String(row.condition || row.zustand || row.Zustand || 'N')
+          .trim()
+          .toUpperCase(),
       });
       const war = schon.some(a => a.condition === alarm.condition);
-      if (war) updated++; else added++;
+      if (war) updated++;
+      else added++;
       if (abweichend) fremdeWaehrung++;
-      results.push({ set_number: sn, condition: alarm.condition, action: war ? 'updated' : 'added',
-        ...(abweichend ? { waehrung_angepasst: true, waehrung_datei: dateiWaehrung, waehrung_konto: waehrung } : {}) });
+      results.push({
+        set_number: sn,
+        condition: alarm.condition,
+        action: war ? 'updated' : 'added',
+        ...(abweichend ? { waehrung_angepasst: true, waehrung_datei: dateiWaehrung, waehrung_konto: waehrung } : {}),
+      });
     } catch (e) {
       errors++;
       results.push({ set_number: sn, action: 'error', error: fehlertext(e) });
     }
   }
   return {
-    added, updated, errors, total: records.length, results,
+    added,
+    updated,
+    errors,
+    total: records.length,
+    results,
     skipped: uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(uebersprungen) || undefined,
-    ...(fremdeWaehrung ? { waehrung_hinweis:
-      `${fremdeWaehrung} Alarm(e) standen in einer anderen Währung als ${waehrung}. ` +
-      `Die Schwellen wurden unverändert übernommen und gelten jetzt in ${waehrung} — ` +
-      'die Zahlen bitte nachsehen.' } : {}),
+    ...(fremdeWaehrung
+      ? {
+          waehrung_hinweis:
+            `${fremdeWaehrung} Alarm(e) standen in einer anderen Währung als ${waehrung}. ` +
+            `Die Schwellen wurden unverändert übernommen und gelten jetzt in ${waehrung} — ` +
+            'die Zahlen bitte nachsehen.',
+        }
+      : {}),
   };
 }

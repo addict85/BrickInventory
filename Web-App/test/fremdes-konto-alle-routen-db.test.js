@@ -7,7 +7,7 @@
  * Gegenproben (09.11.2026 gemessen, je einzeln):
  *   A  in gutscheinLoeschen() (src/gutscheine/repository) `user_id = $2`
  *      durch `$2::int > 0` ersetzt → rot: „keine Zeile des Opfers ändert sich“
- *   B  in scopeIds() (src/haushalt) eine angefragte Konto-ID ohne Prüfung der
+ *   B  in blickfeldIds() (src/haushalt) eine angefragte Konto-ID ohne Prüfung der
  *      Mitgliedschaft übernommen → rot: „keine Antwort enthält Daten des
  *      Opfers“ und „keine Zeile des Opfers ändert sich“
  *   Grün blieb dagegen das Entfernen der Besitzprüfung nur beim Umbenennen
@@ -32,7 +32,7 @@ const { dbOderSkip } = require('./helpers/db');
 const { mailAttrappe } = require('./helpers/mail-attrappe');
 mailAttrappe();
 const db = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));

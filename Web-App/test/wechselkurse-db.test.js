@@ -30,42 +30,48 @@ const { haeltSet, erfasse, haeltTeil, katalogSet } = require('./helpers/bestand'
 const { ZipArchive } = require(path.join(__dirname, '..', 'node_modules', 'archiver'));
 
 const NAME = `kurse_${process.pid}`;
-const SET = `7${process.pid}1-1`, TEIL = `wk${process.pid}`, FARBE = 4;
+const SET = `7${process.pid}1-1`,
+  TEIL = `wk${process.pid}`,
+  FARBE = 4;
 
 /** Eine ZIP-Datei mit einer CSV, wie die EZB sie ausliefert. */
 function zipMit(name, inhalt) {
   return new Promise((ok, fehler) => {
-    const a = new ZipArchive(), teile = [];
-    a.on('data', d => teile.push(d)).on('end', () => ok(Buffer.concat(teile))).on('error', fehler);
+    const a = new ZipArchive(),
+      teile = [];
+    a.on('data', d => teile.push(d))
+      .on('end', () => ok(Buffer.concat(teile)))
+      .on('error', fehler);
     a.append(inhalt, { name });
     a.finalize();
   });
 }
 
-const HISTORIE = [
-  'Date,USD,JPY,CHF,',
-  '2026-01-06,1.2500,N/A,0.9500,',
-  '2026-01-02,1.2000,160.5,0.9250,',
-].join('\n');
+const HISTORIE = ['Date,USD,JPY,CHF,', '2026-01-06,1.2500,N/A,0.9500,', '2026-01-02,1.2000,160.5,0.9250,'].join('\n');
 const TAG = `<?xml version="1.0" encoding="UTF-8"?>
 <gesmes:Envelope><Cube><Cube time='2026-01-07'>
   <Cube currency='USD' rate='1.2600'/><Cube currency='CHF' rate='0.9600'/>
 </Cube></Cube></gesmes:Envelope>`;
 
-test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const abgerufen = [];
-  const srv = http.createServer((q, a) => {
-    abgerufen.push(q.url);
-    if (q.url.endsWith('/eurofxref-hist.zip')) return a.end(zip);
-    if (q.url.endsWith('/eurofxref-daily.xml')) return a.end(TAG);
-    a.statusCode = 404; a.end();
-  }).listen(0);
+  const srv = http
+    .createServer((q, a) => {
+      abgerufen.push(q.url);
+      if (q.url.endsWith('/eurofxref-hist.zip')) return a.end(zip);
+      if (q.url.endsWith('/eurofxref-daily.xml')) return a.end(TAG);
+      a.statusCode = 404;
+      a.end();
+    })
+    .listen(0);
   t.after(() => srv.close());
   const zip = await zipMit('eurofxref-hist.csv', HISTORIE);
-  const lokal = (url) => fetch(`http://127.0.0.1:${srv.address().port}${new URL(url).pathname}`)
-    .then(async r => Buffer.from(await r.arrayBuffer()));
+  const lokal = url =>
+    fetch(`http://127.0.0.1:${srv.address().port}${new URL(url).pathname}`).then(async r =>
+      Buffer.from(await r.arrayBuffer()),
+    );
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -80,7 +86,11 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async (t)
   const { kurseNachladen } = _req('src/finanzen/wechselkurse.js');
 
   await t.test('erst die Historie, dann die Tageskurse', async () => {
-    assert.deepEqual(await kurseNachladen(lokal), { quelle: 'historie', kurse: 5 }, 'N/A und leere Spalten zählen nicht');
+    assert.deepEqual(
+      await kurseNachladen(lokal),
+      { quelle: 'historie', kurse: 5 },
+      'N/A und leere Spalten zählen nicht',
+    );
     assert.deepEqual(await kurseNachladen(lokal), { quelle: 'tag', kurse: 2 });
     assert.deepEqual(abgerufen, ['/stats/eurofxref/eurofxref-hist.zip', '/stats/eurofxref/eurofxref-daily.xml']);
     const r = await db.get(`SELECT je_eur FROM wechselkurse WHERE waehrung = 'CHF' AND tag = '2026-01-07'`);
@@ -96,11 +106,17 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async (t)
   // Anzeigewährung CHF; gekauft in EUR, USD und JPY.
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
   await katalogSet(db, SET, { name: SET });
-  await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
-                VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`, [SET]);
+  await db.run(
+    `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
+                VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`,
+    [SET],
+  );
   const kauf = async (menge, preis, waehrung, am) => {
     await erfasse(db, uid, SET, menge, { preis, am });
-    await db.run(`UPDATE set_acquisitions SET currency = $1 WHERE id = (SELECT max(id) FROM set_acquisitions WHERE user_id = $2)`, [waehrung, uid]);
+    await db.run(
+      `UPDATE set_acquisitions SET currency = $1 WHERE id = (SELECT max(id) FROM set_acquisitions WHERE user_id = $2)`,
+      [waehrung, uid],
+    );
   };
   await haeltSet(db, uid, SET, 0);
   // Sonntag 4.1.: kein Kurs, es gilt der Freitag (2.1.): 100 / 1 × 0,925 = 92,5.
@@ -124,8 +140,8 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async (t)
   });
 
   await t.test('Preisverlauf', async () => {
-    const { getSetPriceHistory } = _req('src/finanzen/priceHistory.js');
-    const v = await getSetPriceHistory([uid], SET, 'CHF');
+    const { preisverlaufSet } = _req('src/finanzen/priceHistory.js');
+    const v = await preisverlaufSet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 92.5, 'die erste Erfassung, umgerechnet');
     assert.equal(v.by_condition.N.purchase_price, (92.5 + 38) / 2);
   });
@@ -133,8 +149,8 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async (t)
   await t.test('Teil', async () => {
     await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
     await db.run(`UPDATE part_acquisitions SET currency = 'USD' WHERE user_id = $1`, [uid]);
-    const { getPartPriceHistory } = _req('src/finanzen/priceHistory.js');
-    const v = await getPartPriceHistory([uid], TEIL, FARBE, 'CHF');
+    const { preisverlaufTeil } = _req('src/finanzen/priceHistory.js');
+    const v = await preisverlaufTeil([uid], TEIL, FARBE, 'CHF');
     // 2 USD / 1,26 × 0,96 = 1,5238
     assert.equal(v.by_condition.N.purchase_price, 1.5238);
   });

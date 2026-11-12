@@ -21,11 +21,16 @@ const PdfTeil = z.object({
 });
 
 const CsvZeile = z.object({
-  sn: z.string(), qty: z.number().int(), purchasePrice: z.number().nullable(),
-  condition: z.string().nullable(), acquiredAt: z.string().nullable(),
+  sn: z.string(),
+  qty: z.number().int(),
+  purchasePrice: z.number().nullable(),
+  condition: z.string().nullable(),
+  acquiredAt: z.string().nullable(),
   // Zeile der Datei und, wenn sie schon beim Lesen scheiterte, warum: Das Ergebnis nennt sie dann an ihrem Platz.
   zeile: z.number().int().optional(),
-  fehler: z.object({ code: z.enum(['csv_menge_ungueltig', 'csv_keine_setnummer']), wert: z.string().optional() }).optional(),
+  fehler: z
+    .object({ code: z.enum(['csv_menge_ungueltig', 'csv_keine_setnummer']), wert: z.string().optional() })
+    .optional(),
 });
 
 /** Eine Korrektur der Wanted-Vorschau; der Import gleicht `blId` mit dem Posten ab. */
@@ -48,10 +53,22 @@ export const ImportNutzlast = z.discriminatedUnion('quelle', [
   z.object({ user_id: KONTO, quelle: z.literal('teile_csv'), eingabe: z.object({ text }) }),
   z.object({ user_id: KONTO, quelle: z.literal('figuren_csv'), eingabe: z.object({ text }) }),
   z.object({ user_id: KONTO, quelle: z.literal('merkliste_csv'), eingabe: z.object({ text, owner: KONTO }) }),
-  z.object({ user_id: KONTO, quelle: z.literal('alarme_csv'), eingabe: z.object({ text, waehrung: z.string().min(1).max(8) }) }),
-  z.object({ user_id: KONTO, quelle: z.literal('wanted_xml'), eingabe: z.object({
-    xml: text, dateiName: z.string().max(200), schreiben: z.boolean(), ueberRebrickable: z.boolean(),
-    korrekturen: WantedKorrekturen.optional() }) }),
+  z.object({
+    user_id: KONTO,
+    quelle: z.literal('alarme_csv'),
+    eingabe: z.object({ text, waehrung: z.string().min(1).max(8) }),
+  }),
+  z.object({
+    user_id: KONTO,
+    quelle: z.literal('wanted_xml'),
+    eingabe: z.object({
+      xml: text,
+      dateiName: z.string().max(200),
+      schreiben: z.boolean(),
+      ueberRebrickable: z.boolean(),
+      korrekturen: WantedKorrekturen.optional(),
+    }),
+  }),
 ]);
 export const SetCsvNutzlast = z.object({ user_id: KONTO, lauf: z.string().min(1), rows: z.array(CsvZeile) });
 
@@ -62,16 +79,35 @@ export const PreisPosten = z.discriminatedUnion('art', [
   z.object({ art: z.literal('figur'), nummer: SETNR, zustand: z.enum(['N', 'U']) }),
   z.object({ art: z.literal('schaetzung'), nummer: SETNR, zustand: z.enum(['N', 'U']) }),
 ]);
-const PreiseNachladen = z.object({ user_id: KONTO, waehrung: z.string().min(3).max(3), posten: z.array(PreisPosten).max(2000) });
+const PreiseNachladen = z.object({
+  user_id: KONTO,
+  waehrung: z.string().min(3).max(3),
+  posten: z.array(PreisPosten).max(2000),
+});
 
 /** Die Schritte des Nachlaufs nach dem Start; src/verwaltung/startNachlaeufe.ts hält genau diese. */
-export const NACHLAUF_SCHRITTE = ['geheimnisse', 'vorschauen', 'katalog', 'anleitungen', 'set_bilder', 'kaufpreise'] as const;
+export const NACHLAUF_SCHRITTE = [
+  'geheimnisse',
+  'vorschauen',
+  'katalog',
+  'anleitungen',
+  'set_bilder',
+  'kaufpreise',
+] as const;
 
 export const NUTZLASTEN = {
-  nacharbeit: z.object({ set_number: SETNR, user_id: KONTO, art: z.enum(['zweit', 'neu', 'csv', 'ergaenzen']).optional() }),
+  nacharbeit: z.object({
+    set_number: SETNR,
+    user_id: KONTO,
+    art: z.enum(['zweit', 'neu', 'csv', 'ergaenzen']).optional(),
+  }),
   bilder: z.object({ set_number: SETNR, nur_bilder: z.boolean().optional() }),
-  pdf: z.object({ job_id: z.string().min(1), user_id: KONTO,
-    sets: z.array(z.object({ set_number: z.string(), name: z.string().nullish() })), parts: z.array(PdfTeil) }),
+  pdf: z.object({
+    job_id: z.string().min(1),
+    user_id: KONTO,
+    sets: z.array(z.object({ set_number: z.string(), name: z.string().nullish() })),
+    parts: z.array(PdfTeil),
+  }),
   csv_import: z.union([ImportNutzlast, SetCsvNutzlast]),
   wechselkurse: LEER,
   anleitung: z.object({ set_number: SETNR, nur_ausweichquelle: z.boolean().optional() }),

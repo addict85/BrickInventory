@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { logAndContinue } from '../../infra/fehler';
 import { downloadSetImage } from './setImages';
 import { setBildLokalEintragen } from '../bildlage';
@@ -7,7 +7,19 @@ import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
 import { generateThumb } from './thumbs';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { auftraegeBereich, AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege';
-import { STAPEL, TAKT_MS, NOTIZ_GILT_MS, merkeGebraucht, schreibePuffer, notiereBildbedarf, loescheVerfallene, initImageQueue, stoppeBildbedarf, anfragenJeMinute, nimmBildwuensche } from './bildbedarf';
+import {
+  STAPEL,
+  TAKT_MS,
+  NOTIZ_GILT_MS,
+  merkeGebraucht,
+  schreibePuffer,
+  notiereBildbedarf,
+  loescheVerfallene,
+  initImageQueue,
+  stoppeBildbedarf,
+  anfragenJeMinute,
+  nimmBildwuensche,
+} from './bildbedarf';
 import { versuche } from '../../infra/ergebnis';
 
 /** Über den Proxy angefragte Bilder im HINTERGRUND lokal ablegen, samt
@@ -32,8 +44,7 @@ function warte(ms: number): Promise<void> {
 }
 
 function pause(): number {
-  return VERZOEGERUNG_MIN_MS +
-    Math.floor(Math.random() * (VERZOEGERUNG_MAX_MS - VERZOEGERUNG_MIN_MS));
+  return VERZOEGERUNG_MIN_MS + Math.floor(Math.random() * (VERZOEGERUNG_MAX_MS - VERZOEGERUNG_MIN_MS));
 }
 
 /** Modulweit statt je Stapel, damit auch der erste Schritt eines Folgestapels
@@ -64,7 +75,10 @@ async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<bo
 /** Mehrere Zähler statt einer Zahl, damit das Log zeigt, welcher Ausgang
  * genommen wurde. */
 export type StapelErgebnis = {
-  geholt: number; vorschau: number; uebersprungen: number; gesamt: number;
+  geholt: number;
+  vorschau: number;
+  uebersprungen: number;
+  gesamt: number;
   /** Jeder Weg durch die Schleife erhöht einen Zähler, damit die Summe aufgeht. */
   nichtGeladen: number;
   keineVorschau: number;
@@ -79,27 +93,32 @@ export type StapelErgebnis = {
 /** Eine Stelle, damit kein Zähler beim Ergänzen vergessen wird. */
 function leeresErgebnis(): StapelErgebnis {
   return {
-    geholt: 0, vorschau: 0, uebersprungen: 0, gesamt: 0,
-    nichtGeladen: 0, keineVorschau: 0, bekanntFehlend: 0, ohneNummer: 0,
-    zurueckgelegt: 0, arbeit: 0,
+    geholt: 0,
+    vorschau: 0,
+    uebersprungen: 0,
+    gesamt: 0,
+    nichtGeladen: 0,
+    keineVorschau: 0,
+    bekanntFehlend: 0,
+    ohneNummer: 0,
+    zurueckgelegt: 0,
+    arbeit: 0,
   };
 }
 
 /** Nur was NICHT null ist — sonst geht die eine wichtige Zahl in Nullen unter. */
 export function meldung(e: StapelErgebnis): string {
-  const teile = [`${e.geholt} geladen`, `${e.vorschau} Vorschau erzeugt`,
-                 `${e.uebersprungen} bereits vorhanden`];
-  if (e.nichtGeladen)   teile.push(`${e.nichtGeladen} Download fehlgeschlagen`);
-  if (e.keineVorschau)  teile.push(`${e.keineVorschau} Vorschau fehlgeschlagen`);
+  const teile = [`${e.geholt} geladen`, `${e.vorschau} Vorschau erzeugt`, `${e.uebersprungen} bereits vorhanden`];
+  if (e.nichtGeladen) teile.push(`${e.nichtGeladen} Download fehlgeschlagen`);
+  if (e.keineVorschau) teile.push(`${e.keineVorschau} Vorschau fehlgeschlagen`);
   if (e.bekanntFehlend) teile.push(`${e.bekanntFehlend} als fehlend bekannt`);
-  if (e.ohneNummer)     teile.push(`${e.ohneNummer} ohne Setnummer`);
-  if (e.zurueckgelegt)  teile.push(`${e.zurueckgelegt} zurückgelegt`);
+  if (e.ohneNummer) teile.push(`${e.ohneNummer} ohne Setnummer`);
+  if (e.zurueckgelegt) teile.push(`${e.zurueckgelegt} zurückgelegt`);
   return `${e.gesamt} bearbeitet: ${teile.join(', ')}`;
 }
 
 /** Auch in der Datenbank, weil die Kachel in einem anderen Prozess liest. */
-export const letzterLauf: { zeit: number | null; ergebnis: StapelErgebnis | null } =
-  { zeit: null, ergebnis: null };
+export const letzterLauf: { zeit: number | null; ergebnis: StapelErgebnis | null } = { zeit: null, ergebnis: null };
 
 function merkeLauf(erg: StapelErgebnis): void {
   letzterLauf.zeit = Date.now();
@@ -110,7 +129,8 @@ function merkeLauf(erg: StapelErgebnis): void {
 async function speichereLauf(erg: StapelErgebnis): Promise<void> {
   // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne await meldete die Kachel „noch
   // nicht gelaufen".
-  await auftraegeBereich().laufzustand.setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
+  await auftraegeBereich()
+    .laufzustand.setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
     .catch(logAndContinue('bild-job:setzeZustand'));
 }
 
@@ -120,13 +140,23 @@ type StapelStand = { erg: StapelErgebnis; gruende: string[]; etwasZuTun: boolean
 /** Die Datei ist da, höchstens die Vorschau fehlt. Bekannt gescheiterte nicht
  * anfassen: Jedes webp-Bild kostete sonst bei JEDEM Durchgang einen Lauf. */
 async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand): Promise<void> {
-  if (fs.existsSync(vorschau)) { st.erg.uebersprungen++; return; }
-  if (istBekanntFehlend('thumb:' + vorschau)) { st.erg.bekanntFehlend++; return; }
+  if (fs.existsSync(vorschau)) {
+    st.erg.uebersprungen++;
+    return;
+  }
+  if (istBekanntFehlend('thumb:' + vorschau)) {
+    st.erg.bekanntFehlend++;
+    return;
+  }
   // Auch hier warten: Eine Verkleinerung kostet mehr als ein Download.
   await pauseVorArbeit();
   st.arbeit++;
-  if (await vorschauErzeugen(`/images/sets/${setNummer}.jpg`, vorschau)) { st.erg.vorschau++; return; }
-  st.erg.keineVorschau++; st.etwasZuTun = true;
+  if (await vorschauErzeugen(`/images/sets/${setNummer}.jpg`, vorschau)) {
+    st.erg.vorschau++;
+    return;
+  }
+  st.erg.keineVorschau++;
+  st.etwasZuTun = true;
   st.gruende.push(`${setNummer}: Vorschau fehlgeschlagen`);
 }
 
@@ -146,29 +176,38 @@ async function nachFehlschlag(setNummer: string, info: { status?: number }, st: 
   if (hartFehlend) merkeFehlend('set:' + setNummer, `HTTP ${status} vom CDN`);
   else st.etwasZuTun = true;
   st.erg.nichtGeladen++;
-  st.gruende.push(`${setNummer}: Download fehlgeschlagen` +
-               (status ? ` (HTTP ${status})` : ' (kein Statuscode — vorübergehend?)') +
-               (hartFehlend ? '' : ', wird erneut versucht'));
+  st.gruende.push(
+    `${setNummer}: Download fehlgeschlagen` +
+      (status ? ` (HTTP ${status})` : ' (kein Statuscode — vorübergehend?)') +
+      (hartFehlend ? '' : ', wird erneut versucht'),
+  );
   return false;
 }
 
 async function arbeiteStapel(): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
   const pause = await auftraegeBereich().auftraege.liesPause('bildbedarf');
-  if (pause && new Date(pause.bis).getTime() > Date.now()) return erg;   // CDN hat gedrosselt, siehe unten
+  if (pause && new Date(pause.bis).getTime() > Date.now()) return erg; // CDN hat gedrosselt, siehe unten
   const rows = await nimmBildwuensche(NOTIZ_GILT_MS, STAPEL);
-  if (!rows.length) { merkeLauf(erg); return erg; }
+  if (!rows.length) {
+    merkeLauf(erg);
+    return erg;
+  }
 
   const st: StapelStand = { erg, gruende: [], etwasZuTun: false, arbeit: 0 };
   for (let idx = 0; idx < rows.length; idx++) {
     const r = rows[idx]!;
-    if (!r.set_number) { erg.ohneNummer++; continue; }   // ohne Setnummer kein Ablageort
+    if (!r.set_number) {
+      erg.ohneNummer++;
+      continue;
+    } // ohne Setnummer kein Ablageort
 
     // Die Dateiprüfung steht hier und nicht beim Einreihen: 25 000 Dateizugriffe in einer Anfrage blockierten
     // schwache Hardware.
-    const datei  = path.join(SET_IMAGES_DIR, `${r.set_number}.jpg`);
+    const datei = path.join(SET_IMAGES_DIR, `${r.set_number}.jpg`);
     const vorschau = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
-    if (fs.existsSync(datei)) {   // kein zweiter Download
+    if (fs.existsSync(datei)) {
+      // kein zweiter Download
       await nurVorschau(r.set_number, vorschau, st);
       await setBildLokalEintragen(r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
       continue;
@@ -178,8 +217,10 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     if (istBekanntFehlend('set:' + r.set_number)) {
       erg.bekanntFehlend++;
       // Den Namen nennen: Ohne Setnummer führt kein Weg zu image-diag.
-      st.gruende.push(`${r.set_number}: als fehlend bekannt` +
-                   (grundFuer('set:' + r.set_number) ? ` (${grundFuer('set:' + r.set_number)})` : ''));
+      st.gruende.push(
+        `${r.set_number}: als fehlend bekannt` +
+          (grundFuer('set:' + r.set_number) ? ` (${grundFuer('set:' + r.set_number)})` : ''),
+      );
       continue;
     }
 
@@ -197,8 +238,10 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
         // ALLE unbearbeiteten Notizen zurücklegen: Der Stapel kam per DELETE … RETURNING, der Rest wäre sonst
         // still verloren.
         const rest = rows.slice(idx);
-        await notiereBildbedarf(rest.map(x => x.url), rest.map(x => x.set_number))
-          .catch(logAndContinue('bild-job:map'));
+        await notiereBildbedarf(
+          rest.map(x => x.url),
+          rest.map(x => x.set_number),
+        ).catch(logAndContinue('bild-job:map'));
         erg.zurueckgelegt = rest.length;
         break;
       }
@@ -256,9 +299,10 @@ export async function bildbedarfAbarbeiten(k: AuftragsKontext): Promise<void> {
     const e = await taktDurchgang();
     if (e.gesamt || e.zurueckgelegt) console.log(`[image-queue] ${meldung(e)}`);
     const pause = await auftraegeBereich().auftraege.liesPause('bildbedarf');
-    if (pause && new Date(pause.bis).getTime() > Date.now()) throw new AuftragVerschieben(new Date(pause.bis), pause.grund ?? 'CDN drosselt');
+    if (pause && new Date(pause.bis).getTime() > Date.now())
+      throw new AuftragVerschieben(new Date(pause.bis), pause.grund ?? 'CDN drosselt');
     if (!e.gesamt) return;
-    if (!await k.fortschritt({ text: meldung(e) })) return;   // abgebrochen
+    if (!(await k.fortschritt({ text: meldung(e) }))) return; // abgebrochen
     await warte(TAKT_MS);
   }
 }

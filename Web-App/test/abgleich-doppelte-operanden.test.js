@@ -30,7 +30,9 @@ test('kein Ausdruck steht zweimal auf beiden Seiten', () => {
   try {
     execFileSync(process.execPath, [skript], { encoding: 'utf8', stdio: 'pipe' });
   } catch (e) {
-    assert.fail(`${e.stdout || ''}${e.stderr || ''}`.trim() ||
-      'check-doppelte-operanden.js ist fehlgeschlagen, ohne etwas zu melden');
+    assert.fail(
+      `${e.stdout || ''}${e.stderr || ''}`.trim() ||
+        'check-doppelte-operanden.js ist fehlgeschlagen, ohne etwas zu melden',
+    );
   }
 });

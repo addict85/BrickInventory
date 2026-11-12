@@ -24,8 +24,15 @@ function testName(art) {
   return `${stamm()}_${art}_${process.pid}`;
 }
 
-const id = (s) => `"${String(s).replace(/"/g, '""')}"`;
-const lebt = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+const id = s => `"${String(s).replace(/"/g, '""')}"`;
+const lebt = pid => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === 'EPERM';
+  }
+};
 
 /**
  * Reste früherer Läufe derselben Art löschen, deren Prozess nicht mehr lebt:
@@ -33,8 +40,11 @@ const lebt = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { r
  */
 async function raeumeReste(admin, art) {
   const muster = `${stamm()}_${art}_%`.replace(/_/g, '\\_');
-  const pidAus = (name) => Number(name.slice(`${stamm()}_${art}_`.length).match(/^\d+/)?.[0]);
-  const tot = (name) => { const pid = pidAus(name); return pid > 0 && pid !== process.pid && !lebt(pid); };
+  const pidAus = name => Number(name.slice(`${stamm()}_${art}_`.length).match(/^\d+/)?.[0]);
+  const tot = name => {
+    const pid = pidAus(name);
+    return pid > 0 && pid !== process.pid && !lebt(pid);
+  };
   const dbs = (await admin.query('SELECT datname AS n FROM pg_database WHERE datname LIKE $1', [muster])).rows;
   for (const { n } of dbs.filter(r => tot(r.n))) await admin.query(`DROP DATABASE IF EXISTS ${id(n)} WITH (FORCE)`);
   const rollen = (await admin.query('SELECT rolname AS n FROM pg_roles WHERE rolname LIKE $1', [muster])).rows;

@@ -1,7 +1,15 @@
 /** Registrieren, anmelden ohne Passwort und als zweiter Faktor anstelle des
  * TOTP-Codes. */
-import crypto from 'crypto';
-import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse, type AuthenticationResponseJSON, type RegistrationResponseJSON, type WebAuthnCredential } from '@simplewebauthn/server';
+import crypto from 'node:crypto';
+import {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+  type AuthenticationResponseJSON,
+  type RegistrationResponseJSON,
+  type WebAuthnCredential,
+} from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import { basisUrl } from '../infra/basisUrl';
 import { androidHerkuenfte } from './androidApp';
@@ -16,7 +24,7 @@ function abgewiesen(e: unknown): null {
 
 function alsAntwort<T extends RegistrationResponseJSON | AuthenticationResponseJSON>(roh: unknown): T | null {
   const a = roh as { id?: unknown; response?: { clientDataJSON?: unknown } } | null;
-  return a && typeof a.id === 'string' && typeof a.response?.clientDataJSON === 'string' ? roh as T : null;
+  return a && typeof a.id === 'string' && typeof a.response?.clientDataJSON === 'string' ? (roh as T) : null;
 }
 
 type Transporte = NonNullable<WebAuthnCredential['transports']>;
@@ -45,27 +53,47 @@ const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 export const OFFENE_CHALLENGES_HOECHSTENS = 5000;
 
 async function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | null): Promise<void> {
-  if (!await kontoBereich().passkeys.speichereChallenge(hash(challenge), zweck, uid, new Date(Date.now() + CHALLENGE_MS), OFFENE_CHALLENGES_HOECHSTENS))
+  if (
+    !(await kontoBereich().passkeys.speichereChallenge(
+      hash(challenge),
+      zweck,
+      uid,
+      new Date(Date.now() + CHALLENGE_MS),
+      OFFENE_CHALLENGES_HOECHSTENS,
+    ))
+  )
     fachfehler('nicht_verfuegbar', 'server_ausgelastet');
 }
 
 /** Genau einmal: Eine wiederholte Antwort findet ihre Zeile nicht mehr. */
-async function loeseChallengeEin(clientDataJSON: unknown, zweck: PasskeyZweck, uid: number | null): Promise<string | null> {
+async function loeseChallengeEin(
+  clientDataJSON: unknown,
+  zweck: PasskeyZweck,
+  uid: number | null,
+): Promise<string | null> {
   if (typeof clientDataJSON !== 'string') return null;
   let challenge: string;
-  try { challenge = decodeClientDataJSON(clientDataJSON).challenge; } catch (e) { return abgewiesen(e); }
-  return await kontoBereich().passkeys.verbraucheChallenge(hash(challenge), zweck, uid) ? challenge : null;
+  try {
+    challenge = decodeClientDataJSON(clientDataJSON).challenge;
+  } catch (e) {
+    return abgewiesen(e);
+  }
+  return (await kontoBereich().passkeys.verbraucheChallenge(hash(challenge), zweck, uid)) ? challenge : null;
 }
 
 /** Nicht sprechend: Der Authenticator soll keine Konto-ID speichern. */
-const nutzerKennung = (uid: number) => new Uint8Array(crypto.createHash('sha256').update(`bim:${uid}`).digest().subarray(0, 16));
+const nutzerKennung = (uid: number) =>
+  new Uint8Array(crypto.createHash('sha256').update(`bim:${uid}`).digest().subarray(0, 16));
 
 export async function registrierungsOptionen(uid: number, name: string) {
   const rp = vertrauenspartei();
   if (!rp) return null;
   const vorhanden = await kontoBereich().passkeys.kennungenDesKontos(uid);
   const optionen = await generateRegistrationOptions({
-    rpName: rp.rpName, rpID: rp.rpID, userName: name, userID: nutzerKennung(uid),
+    rpName: rp.rpName,
+    rpID: rp.rpID,
+    userName: name,
+    userID: nutzerKennung(uid),
     attestationType: 'none',
     // Auffindbar, damit dieselben Passkeys auch ohne Benutzernamen anmelden.
     authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
@@ -75,19 +103,33 @@ export async function registrierungsOptionen(uid: number, name: string) {
   return optionen;
 }
 
-export async function registrierungPruefen(uid: number, roh: unknown, name: string): Promise<{ id: number; name: string } | null> {
+export async function registrierungPruefen(
+  uid: number,
+  roh: unknown,
+  name: string,
+): Promise<{ id: number; name: string } | null> {
   const rp = vertrauenspartei();
   const antwort = alsAntwort<RegistrationResponseJSON>(roh);
   if (!rp || !antwort) return null;
   const challenge = await loeseChallengeEin(antwort.response.clientDataJSON, 'registrieren', uid);
   if (!challenge) return null;
   const v = await verifyRegistrationResponse({
-    response: antwort, expectedChallenge: challenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID,
+    response: antwort,
+    expectedChallenge: challenge,
+    expectedOrigin: rp.origin,
+    expectedRPID: rp.rpID,
     requireUserVerification: false,
   }).catch(abgewiesen);
   if (!v?.verified) return null;
   const c = v.registrationInfo.credential;
-  return kontoBereich().passkeys.legeAn(uid, c.id, Buffer.from(c.publicKey), c.counter, (c.transports ?? []).join(',') || null, name);
+  return kontoBereich().passkeys.legeAn(
+    uid,
+    c.id,
+    Buffer.from(c.publicKey),
+    c.counter,
+    (c.transports ?? []).join(',') || null,
+    name,
+  );
 }
 
 export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
@@ -96,7 +138,8 @@ export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
   // Leere allowCredentials: Der Browser bietet die auffindbaren Passkeys an,
   // ohne dass der Server verrät, welches Konto welche hat.
   const optionen = await generateAuthenticationOptions({
-    rpID: rp.rpID, userVerification: zweck === 'anmelden' ? 'required' : 'preferred',
+    rpID: rp.rpID,
+    userVerification: zweck === 'anmelden' ? 'required' : 'preferred',
   });
   await merkeChallenge(optionen.challenge, zweck, null);
   return optionen;
@@ -105,7 +148,11 @@ export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
 /** Ohne Passwort verlangt sie User Verification (PIN, Biometrie) — sonst wäre
  * der Passkey allein ein einziger Faktor.
  * @param uid beim zweiten Faktor das Konto, dessen Passwort schon stimmte. */
-export async function anmeldungPruefen(roh: unknown, zweck: 'anmelden' | 'zweiter_faktor', uid: number | null = null): Promise<number | null> {
+export async function anmeldungPruefen(
+  roh: unknown,
+  zweck: 'anmelden' | 'zweiter_faktor',
+  uid: number | null = null,
+): Promise<number | null> {
   const rp = vertrauenspartei();
   const antwort = alsAntwort<AuthenticationResponseJSON>(roh);
   if (!rp || !antwort) return null;
@@ -115,13 +162,22 @@ export async function anmeldungPruefen(roh: unknown, zweck: 'anmelden' | 'zweite
   if (!k) return null;
   const v = await verifyAuthenticationResponse({
     // Registriert wird nur im Browser; anmelden darf auch die eingetragene App.
-    response: antwort, expectedChallenge: challenge, expectedOrigin: [rp.origin, ...androidHerkuenfte()], expectedRPID: rp.rpID,
-    credential: { id: antwort.id, publicKey: new Uint8Array(k.public_key), counter: Number(k.sign_count),
-                  ...transporte(k.transports) },
+    response: antwort,
+    expectedChallenge: challenge,
+    expectedOrigin: [rp.origin, ...androidHerkuenfte()],
+    expectedRPID: rp.rpID,
+    credential: {
+      id: antwort.id,
+      publicKey: new Uint8Array(k.public_key),
+      counter: Number(k.sign_count),
+      ...transporte(k.transports),
+    },
     requireUserVerification: zweck === 'anmelden',
   }).catch(abgewiesen);
   if (!v?.verified) return null;
-  return await kontoBereich().passkeys.zaehlerWeiter(k.id, v.authenticationInfo.newCounter, k.sign_count) ? k.user_id : null;
+  return (await kontoBereich().passkeys.zaehlerWeiter(k.id, v.authenticationInfo.newCounter, k.sign_count))
+    ? k.user_id
+    : null;
 }
 
 export const passkeysDesKontos = (uid: number) => kontoBereich().passkeys.desKontos(uid);

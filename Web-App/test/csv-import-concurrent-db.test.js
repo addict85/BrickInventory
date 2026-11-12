@@ -37,16 +37,15 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('zwei gleichzeitige Importe derselben Tabelle kollidieren nicht',
-  { concurrency: 1 }, async (t) => {
-
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+test('zwei gleichzeitige Importe derselben Tabelle kollidieren nicht', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
 
   const { TASKS } = _req('jobs/csvImportWorker.js');
@@ -70,8 +69,11 @@ test('zwei gleichzeitige Importe derselben Tabelle kollidieren nicht',
     const ergebnisse = await Promise.allSettled([TASKS.colors(), TASKS.colors()]);
 
     const gescheitert = ergebnisse.filter(r => r.status === 'rejected');
-    assert.equal(gescheitert.length, 0,
-      `beide Läufe müssen durchlaufen — gescheitert: ${gescheitert.map(r => r.reason.message).join(' | ')}`);
+    assert.equal(
+      gescheitert.length,
+      0,
+      `beide Läufe müssen durchlaufen — gescheitert: ${gescheitert.map(r => r.reason.message).join(' | ')}`,
+    );
 
     for (const r of ergebnisse) {
       assert.equal(r.value, ZEILEN, 'jeder Lauf muss alle Zeilen gelesen haben');

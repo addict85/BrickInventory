@@ -11,10 +11,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
-const BAUSTEIN = '01-bausteine.js';
+const BAUSTEIN = 'bausteine.js';
 const { baueTestbuendel } = require('./helpers/buendel');
-process.env.TEST_BUENDEL = baueTestbuendel('bausteine',
-  "import { detailZeile, ladeAnzeige } from './01-bausteine.js';\nwindow.__bau = { detailZeile, ladeAnzeige };\n");
+process.env.TEST_BUENDEL = baueTestbuendel(
+  'bausteine',
+  "import { detailZeile, ladeAnzeige } from './bausteine.js';\nwindow.__bau = { detailZeile, ladeAnzeige };\n",
+);
 const { oeffneOberflaeche } = require('./helpers/oberflaeche');
 
 /** Alle Frontend-Module ausser dem Bündel und dem Baustein selbst. */
@@ -23,8 +25,7 @@ function module_() {
   const gefiltert = alle.filter(f => f !== 'app.bundle.js' && f !== BAUSTEIN);
   // Selbstbeweis: Findet die Schleife nichts, wäre jede Prüfung unten
   // stillschweigend grün.
-  assert.ok(gefiltert.length >= 10,
-    `nur ${gefiltert.length} Frontend-Module gefunden — Pfad falsch?`);
+  assert.ok(gefiltert.length >= 10, `nur ${gefiltert.length} Frontend-Module gefunden — Pfad falsch?`);
   return gefiltert;
 }
 
@@ -36,9 +37,13 @@ test('die Detailzeile wird nirgends mehr von Hand gebaut', () => {
       if (z.includes('class="dr"')) treffer.push(`${f}:${i + 1}`);
     });
   }
-  assert.deepEqual(treffer, [],
-    'Diese Stellen bauen die Detailzeile selbst:\n  ' + treffer.join('\n  ') +
-    `\nSie gehört in ${BAUSTEIN} — detailZeile(label, wert, optionen).`);
+  assert.deepEqual(
+    treffer,
+    [],
+    'Diese Stellen bauen die Detailzeile selbst:\n  ' +
+      treffer.join('\n  ') +
+      `\nSie gehört in ${BAUSTEIN} — detailZeile(label, wert, optionen).`,
+  );
 });
 
 test('die Ladeanzeige wird nirgends mehr von Hand gebaut', () => {
@@ -49,9 +54,13 @@ test('die Ladeanzeige wird nirgends mehr von Hand gebaut', () => {
       if (z.includes('class="loading"')) treffer.push(`${f}:${i + 1}`);
     });
   }
-  assert.deepEqual(treffer, [],
-    'Diese Stellen bauen die Ladeanzeige selbst:\n  ' + treffer.join('\n  ') +
-    `\nSie gehört in ${BAUSTEIN} — ladeAnzeige(text, optionen).`);
+  assert.deepEqual(
+    treffer,
+    [],
+    'Diese Stellen bauen die Ladeanzeige selbst:\n  ' +
+      treffer.join('\n  ') +
+      `\nSie gehört in ${BAUSTEIN} — ladeAnzeige(text, optionen).`,
+  );
 });
 
 test('der Baustein erzeugt das Markup, das die Stylesheets erwarten', async () => {
@@ -67,5 +76,7 @@ test('der Baustein erzeugt das Markup, das die Stylesheets erwarten', async () =
     const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
     for (const regel of ['.dr', '.dl', '.dv', '.lade-geruest', '.skelett-zeile'])
       assert.ok(new RegExp('\\' + regel + '[\\s,{:]').test(css), `styles.css kennt ${regel} nicht`);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

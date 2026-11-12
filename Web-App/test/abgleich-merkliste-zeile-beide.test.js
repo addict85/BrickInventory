@@ -5,11 +5,11 @@
  * bleibt Kotlin-Struktur (kein SDK hier).
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  in 16-merkliste.js zeile() den Marktpreis weggelassen → rot: „die Webapp-Zeile …“
+ *   A  in merkliste.js zeile() den Marktpreis weggelassen → rot: „die Webapp-Zeile …“
  *   B  dort den Papierkorb entfernt → rot: ebenda
- *   C  in 03-parts.js den Papierkorb der manuellen Kachel entfernt → rot: „manuelle
+ *   C  in parts.js den Papierkorb der manuellen Kachel entfernt → rot: „manuelle
  *      Einträge …“
- *   D  in 13-manuell-detail.js die Lagerortzeile entfernt → rot: ebenda
+ *   D  in manuell-detail.js die Lagerortzeile entfernt → rot: ebenda
  *   E  in teileListe.ts manuelleTeile `NULL::text AS storage` → rot: „die Abfrage
  *      der manuellen Teile …“
  *   F  in MerklisteZeile.kt `marktpreis` umbenannt → rot: „die App: …“
@@ -26,7 +26,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { haeltTeil } = require('./helpers/bestand');
-test.after(() => _req('db/database.js').pool.end().catch(() => {}));
+test.after(() =>
+  _req('db/database.js')
+    .pool.end()
+    .catch(() => {}),
+);
 
 /** Der Rumpf einer Kotlin-Funktion — ab ihrem Namen bis zur nächsten auf Spaltenanfang. */
 function rumpf(quelle, kopf, ende = /\n(?:@Composable|(?:private |internal )?fun )/) {
@@ -36,11 +40,16 @@ function rumpf(quelle, kopf, ende = /\n(?:@Composable|(?:private |internal )?fun
   const m = rest.search(ende);
   return m >= 0 ? rest.slice(0, m) : rest;
 }
-const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
+const app = rel => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 
 test('die Webapp-Zeile zeigt Marktpreis und Papierkorb, keinen Übernahme-Knopf', async () => {
   const o = await oeffneOberflaeche({
-    '/v1/wanted': { success: true, merkposten: [{ set_number: '10305-1', condition: 'N', user_id: 1, name: 'Burg', marktpreis: 349.99, waehrung: 'EUR' }] },
+    '/v1/wanted': {
+      success: true,
+      merkposten: [
+        { set_number: '10305-1', condition: 'N', user_id: 1, name: 'Burg', marktpreis: 349.99, waehrung: 'EUR' },
+      ],
+    },
   });
   try {
     await reiter(o.w, 'wanted');
@@ -50,12 +59,20 @@ test('die Webapp-Zeile zeigt Marktpreis und Papierkorb, keinen Übernahme-Knopf'
     assert.ok(z.querySelector('.delbtn[data-click="merkpostenLoeschenStop"]'), 'kein Papierkorb');
     assert.equal(z.querySelector('[data-click="merkpostenUebernehmen"]'), null, 'die Zeile übernimmt wieder');
     assert.equal(z.dataset.click, 'oeffneMerkpostenDetail', 'die Zeile öffnet nicht das Detail');
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('manuelle Einträge: Papierkorb auf der Kachel, Lagerort und Löschen im Detail', async () => {
   const o = await oeffneOberflaeche({
-    '/v1/parts/manual': { success: true, parts: [{ part_number: '3001', color_id: 4, quantity: 3, user_id: 1, part_name: 'Stein', storage: 'Kiste 3' }], total: 1, page: 1, page_size: 50 },
+    '/v1/parts/manual': {
+      success: true,
+      parts: [{ part_number: '3001', color_id: 4, quantity: 3, user_id: 1, part_name: 'Stein', storage: 'Kiste 3' }],
+      total: 1,
+      page: 1,
+      page_size: 50,
+    },
   });
   try {
     await reiter(o.w, 'parts');
@@ -67,10 +84,12 @@ test('manuelle Einträge: Papierkorb auf der Kachel, Lagerort und Löschen im De
     assert.ok(o.d.getElementById('man-detail-modal').classList.contains('open'));
     for (const id of ['btn-md', 'mk-m-del', 'man-detail-del'])
       assert.ok(o.d.getElementById(id), `der Papierkorb im Detail fehlt (${id})`);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
-test('die Abfrage der manuellen Teile liefert den Lagerort', async (t) => {
+test('die Abfrage der manuellen Teile liefert den Lagerort', async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   const U = 990900 + (process.pid % 90);
@@ -85,20 +104,32 @@ test('die Abfrage der manuellen Teile liefert den Lagerort', async (t) => {
   const ort = (await db.get("INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id", [U])).id;
   await haeltTeil(db, U, `mz-${U}`, { colorId: 4, menge: 2, storageId: ort });
   const teile = await require('./helpers/sources').handlerModul(_req).getManualParts([U], U);
-  assert.deepEqual(teile.map(p => [p.part_number, p.storage]), [[`mz-${U}`, 'Kiste 3']]);
+  assert.deepEqual(
+    teile.map(p => [p.part_number, p.storage]),
+    [[`mz-${U}`, 'Kiste 3']],
+  );
 });
 
 test('die App: Zeile ohne Übernahme und Papierkorb, mit Marktpreis; Lagerort und Löschen im Detail', () => {
   const zeileApp = rumpf(app('sammlung/ui/screens/MerklisteZeile.kt'), 'internal fun MerkpostenZeile(');
   assert.ok(!/wanted_take/.test(zeileApp), 'Die App-Zeile trägt weiterhin den Knopf „In die Galerie".');
   assert.match(zeileApp, /marktpreis/, 'Die App-Zeile zeigt den Marktpreis nicht.');
-  assert.ok(!/common_delete/.test(zeileApp), 'Die Merklisten-Zeile der App trägt den Löschen-Knopf — „nur in der webapp".');
+  assert.ok(
+    !/common_delete/.test(zeileApp),
+    'Die Merklisten-Zeile der App trägt den Löschen-Knopf — „nur in der webapp".',
+  );
   const kachelApp = rumpf(app('gemeinsam/ui/ManualItemComposables.kt'), 'fun ManuelleKachel(');
-  assert.ok(!/Icons\.Default\.Delete/.test(kachelApp), 'Die Kachel der App trägt einen Papierkorb — „nur in der webapp".');
+  assert.ok(
+    !/Icons\.Default\.Delete/.test(kachelApp),
+    'Die Kachel der App trägt einen Papierkorb — „nur in der webapp".',
+  );
   const appDetail = app('teile/ui/screens/ManualItemDetailScreen.kt');
   assert.match(appDetail, /LagerortFeld\(/, 'Der manuelle Detaildialog der App hat keine Lagerortzeile.');
   assert.match(appDetail, /setzeManuellenLagerort\(/, 'Die Lagerortzeile der App speichert nicht.');
   assert.match(appDetail, /Icons\.Default\.Delete/, 'Der App fehlt der Papierkorb im Detail der manuellen Einträge.');
-  assert.match(app('sammlung/ui/screens/MerkpostenDetailScreen.kt'), /Icons\.Default\.Delete/,
-    'Der App fehlt der Papierkorb im Merkposten-Detail.');
+  assert.match(
+    app('sammlung/ui/screens/MerkpostenDetailScreen.kt'),
+    /Icons\.Default\.Delete/,
+    'Der App fehlt der Papierkorb im Merkposten-Detail.',
+  );
 });

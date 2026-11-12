@@ -49,7 +49,6 @@ function ohnePraefix(eintrag) {
   return eintrag.replace(/ \/api(\/v1)?/, ' ');
 }
 
-
 test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   const web = new Set();
   for (const r of webRouter()) for (const x of routenAus(r.datei, r.mount)) web.add(x);
@@ -72,23 +71,29 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   // Adressen faende gar keine Ueberschneidung mehr — der Test waere gruen,
   // ohne etwas zu pruefen.
   const webN = new Set([...web].map(ohnePraefix));
-  const v1N  = new Set([...v1].map(ohnePraefix));
+  const v1N = new Set([...v1].map(ohnePraefix));
   const doppelt = [...webN].filter(r => v1N.has(r)).sort();
   const unbegruendet = doppelt.filter(r => !ERLAUBT.has(r));
-  assert.deepEqual(unbegruendet, [],
+  assert.deepEqual(
+    unbegruendet,
+    [],
     'Diese Adressen stehen auf BEIDEN Oberflaechen, ohne dass ein Grund ' +
-    'eingetragen waere:\n  ' + unbegruendet.join('\n  ') +
-    '\nZwei Umsetzungen derselben Antwort driften — gemessen bei ' +
-    'GET /settings: Webapp 48, App 24. Entweder die Logik in einem Dienst ' +
-    'zusammenlegen und beide Routen daraus bedienen, oder in ERLAUBT ' +
-    'eintragen, WARUM es zwei sein muessen.');
+      'eingetragen waere:\n  ' +
+      unbegruendet.join('\n  ') +
+      '\nZwei Umsetzungen derselben Antwort driften — gemessen bei ' +
+      'GET /settings: Webapp 48, App 24. Entweder die Logik in einem Dienst ' +
+      'zusammenlegen und beide Routen daraus bedienen, oder in ERLAUBT ' +
+      'eintragen, WARUM es zwei sein muessen.',
+  );
 
   // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
   // prueft — dieselbe Regel wie in scripts/check-global-settings.js.
   const veraltet = [...ERLAUBT.keys()].filter(r => !doppelt.includes(r));
-  assert.deepEqual(veraltet, [],
-    'Diese Eintraege in ERLAUBT beschreiben keine Ueberschneidung mehr — ' +
-    'streichen:\n  ' + veraltet.join('\n  '));
+  assert.deepEqual(
+    veraltet,
+    [],
+    'Diese Eintraege in ERLAUBT beschreiben keine Ueberschneidung mehr — ' + 'streichen:\n  ' + veraltet.join('\n  '),
+  );
 });
 
 test('jeder Router haengt unter /api/v1', () => {
@@ -99,25 +104,32 @@ test('jeder Router haengt unter /api/v1', () => {
   // Selbstbeweis: Findet das Muster keine Einhaengepunkte, prueft alles
   // darunter nichts und waere trotzdem gruen.
   // Einer: auth. Einstellungen, Sets, Teile und Figuren gingen in den v1-Router auf.
-  assert.ok(einhaengungen.length >= 1,
-    `Nur ${einhaengungen.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`);
+  assert.ok(
+    einhaengungen.length >= 1,
+    `Nur ${einhaengungen.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`,
+  );
 
   const daneben = einhaengungen
     .map(r => r.mount)
     .filter(m => !m.startsWith('/api/v1') && !NOCH_NICHT.has(m))
     .sort();
-  assert.deepEqual(daneben, [],
+  assert.deepEqual(
+    daneben,
+    [],
     'Diese Router haengen NICHT unter /api/v1 und stehen auch nicht als ' +
-    'begruendete Ausnahme da:\n  ' + daneben.join('\n  ') +
-    '\nEntweder umhaengen oder in NOCH_NICHT eintragen, WARUM noch nicht.');
+      'begruendete Ausnahme da:\n  ' +
+      daneben.join('\n  ') +
+      '\nEntweder umhaengen oder in NOCH_NICHT eintragen, WARUM noch nicht.',
+  );
 
   // Und die Ausnahme darf nicht liegenbleiben: Steht sie da, obwohl der Router
   // laengst umgezogen ist, sieht die Umstellung unfertiger aus als sie ist.
-  const erledigt = [...NOCH_NICHT.keys()]
-    .filter(m => !einhaengungen.some(r => r.mount === m));
-  assert.deepEqual(erledigt, [],
-    'Diese Ausnahmen beschreiben keinen Einhaengepunkt mehr — streichen:\n  ' +
-    erledigt.join('\n  '));
+  const erledigt = [...NOCH_NICHT.keys()].filter(m => !einhaengungen.some(r => r.mount === m));
+  assert.deepEqual(
+    erledigt,
+    [],
+    'Diese Ausnahmen beschreiben keinen Einhaengepunkt mehr — streichen:\n  ' + erledigt.join('\n  '),
+  );
 });
 
 /**
@@ -128,27 +140,30 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
   // Die EINE Ausnahme — und sie ist eine Auslauf-Adresse, keine zweite
   // gleichrangige.
   const OHNE_VERSION = new Map([
-    ['GET /api/img-proxy',
-     'Auslauf-Adresse. Die kanonische ist /api/v1/img-proxy; alles, was der ' +
-     'Server heute baut, beide Oberflaechen und die gespeicherten Zeilen ' +
-     '(Migration 0014) benutzen sie. Bedient bleibt die alte, weil ' +
-     'INSTALLIERTE App-Fassungen sie selbst zusammenbauen (ImageUrls.kt) — ' +
-     'wer nicht aktualisiert, bekaeme sonst gar keine Teilebilder mehr. Dass ' +
-     'nur noch die neue GEBAUT wird, haelt test/abgleich-img-proxy-v1.test.js fest.'],
+    [
+      'GET /api/img-proxy',
+      'Auslauf-Adresse. Die kanonische ist /api/v1/img-proxy; alles, was der ' +
+        'Server heute baut, beide Oberflaechen und die gespeicherten Zeilen ' +
+        '(Migration 0014) benutzen sie. Bedient bleibt die alte, weil ' +
+        'INSTALLIERTE App-Fassungen sie selbst zusammenbauen (ImageUrls.kt) — ' +
+        'wer nicht aktualisiert, bekaeme sonst gar keine Teilebilder mehr. Dass ' +
+        'nur noch die neue GEBAUT wird, haelt test/abgleich-img-proxy-v1.test.js fest.',
+    ],
   ]);
-
 
   // Alle .ts des Serverbaums, nicht nur server.ts.
   const dateien = [path.join(ROOT, 'server.ts')];
-  const lauf = (d) => {
+  const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) { lauf(p); continue; }
+      if (e.isDirectory()) {
+        lauf(p);
+        continue;
+      }
       if (e.name.endsWith('.ts')) dateien.push(p);
     }
   };
-  for (const ordner of ['routes', 'src', 'jobs'])
-    lauf(path.join(ROOT, ordner));
+  for (const ordner of ['routes', 'src', 'jobs']) lauf(path.join(ROOT, ordner));
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
 
   // Auch Anmeldungen ueber eine KONSTANTE
@@ -164,34 +179,39 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
       gefunden.push(`${m[1].toUpperCase()} ${m[2]}`);
     for (const m of src.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*([A-Z][A-Z0-9_]*)\s*,/g)) {
       const pfad = konstanten.get(m[2]);
-      assert.ok(pfad,
+      assert.ok(
+        pfad,
         `app.${m[1]}(${m[2]}, …) meldet eine Route unter einem Bezeichner an, ` +
-        'dessen Wert hier nicht auffindbar ist. Ohne ihn kann diese Pruefung ' +
-        'nicht sagen, ob die Adresse unter /api/v1 liegt.');
+          'dessen Wert hier nicht auffindbar ist. Ohne ihn kann diese Pruefung ' +
+          'nicht sagen, ob die Adresse unter /api/v1 liegt.',
+      );
       gefunden.push(`${m[1].toUpperCase()} ${pfad}`);
     }
   }
   // Selbstbeweis: Findet das Muster nichts, prueft alles darunter nichts.
   // ZWEI ist der GEMESSENE Stand (die beiden Adressen des Bild-Proxys); health
   // und startup-status hängen im Router routes/gesundheit.ts.
-  assert.ok(gefunden.length >= 2,
-    `Nur ${gefunden.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
+  assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
 
-  const daneben = gefunden
-    .filter(r => !r.split(' ')[1].startsWith('/api/v1') && !OHNE_VERSION.has(r))
-    .sort();
-  assert.deepEqual(daneben, [],
+  const daneben = gefunden.filter(r => !r.split(' ')[1].startsWith('/api/v1') && !OHNE_VERSION.has(r)).sort();
+  assert.deepEqual(
+    daneben,
+    [],
     'Diese Adressen sind direkt an der App angemeldet, stehen nicht unter ' +
-    '/api/v1 und haben keinen eingetragenen Grund:\n  ' + daneben.join('\n  ') +
-    '\nEntweder umziehen oder in OHNE_VERSION eintragen, WARUM sie ' +
-    'versionslos bleiben muss.');
+      '/api/v1 und haben keinen eingetragenen Grund:\n  ' +
+      daneben.join('\n  ') +
+      '\nEntweder umziehen oder in OHNE_VERSION eintragen, WARUM sie ' +
+      'versionslos bleiben muss.',
+  );
 
   // Dieselbe Gegenrichtung wie oben: eine Ausnahme fuer eine Route, die es
   // nicht mehr gibt, laesst die Umstellung unfertiger aussehen als sie ist.
   const veraltet = [...OHNE_VERSION.keys()].filter(r => !gefunden.includes(r));
-  assert.deepEqual(veraltet, [],
-    'Diese Ausnahmen beschreiben keine Route mehr — streichen:\n  ' +
-    veraltet.join('\n  '));
+  assert.deepEqual(
+    veraltet,
+    [],
+    'Diese Ausnahmen beschreiben keine Route mehr — streichen:\n  ' + veraltet.join('\n  '),
+  );
 });
 
 /**
@@ -210,8 +230,10 @@ test('der Gesundheitscheck aus compose.yaml zeigt auf eine echte Adresse', () =>
     for (const m of ohneKommentare(fs.readFileSync(r.datei, 'utf8')).matchAll(/router\.get\(\s*'([^']*)'/g))
       direkt.push(r.mount + m[1]);
   assert.ok(direkt.length >= 2, `Nur ${direkt.length} direkte GET-Routen gefunden — Muster veraltet?`);
-  assert.ok(direkt.includes(adresse),
+  assert.ok(
+    direkt.includes(adresse),
     `compose.yaml prueft ${adresse}; server.ts kennt nur ${direkt.join(', ')}. ` +
-    'Der Container gaelte damit dauerhaft als „unhealthy", ohne dass die ' +
-    'Anwendung selbst etwas davon merkt.');
+      'Der Container gaelte damit dauerhaft als „unhealthy", ohne dass die ' +
+      'Anwendung selbst etwas davon merkt.',
+  );
 });

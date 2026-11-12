@@ -120,6 +120,27 @@ schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
 `docs/openapi.json` (`npm run vertrag:openapi`) und der Abgleich mit dem
 Android-Client (`test/vertrag-kotlin.test.js`).
 
+### Namen
+
+Pfade und Feldnamen der API sind Vertrag: App und Webapp hängen daran, sie
+bleiben, wie sie sind, auch wo sie uneinheitlich sind. Neue Routen und Felder
+folgen der Mehrheit: Pfade englisch im Plural mit Bindestrich, Pfadparameter
+`:setNumber`, `:partNumber`, `:figNumber`, `:id`; Felder `snake_case`.
+Bestand der Abweichungen (Stand 11.11.2026):
+
+| Art | Beispiele |
+|---|---|
+| Sprache gemischt | `/admin/auftraege` neben `/admin/jobs`, `/auth/zweiter-faktor` neben `/auth/change-password`, `/papierkorb`, `/wanted/…/uebernehmen`, `/settings/einrichtung` |
+| gleiche Sache, zwei Namen | Felder `set_number`/`nummer`, `condition`/`zustand`, `currency`/`currency_code`/`waehrung`, `quantity`/`menge`, `storage`/`ort`; „Job“ und „Auftrag“ für die Hintergrundarbeit (`/admin/jobs`, `/admin/job-status` neben `/admin/auftraege`) |
+| Parameter | `:sn` (`/sets/:sn/move`) statt `:setNumber`; Abkürzungen `:acqId`, `:instrId`, `:tokenId`, `:jobId` |
+| Schreibweise | `camelCase` in einigen Antworten (`isAdmin`, `mustChangePassword`, `jobId`, `etaSeconds`) |
+| Form | `/sets/:setNumber/alert` neben `/alerts`; `parts-list`, `minifigs-list`, aber `partslist-pdf`; `/wanted-list/import/xml` neben `/wanted/import/csv`; `/finance/pnl` |
+
+Innen (Funktionen, Typen) heissen die Dinge deutsch und wie im Bereich:
+`haushaltVon`, `schreibbereich`, `blickfeldIds`, `darfSchreibenFuer`,
+`preisverlaufSet`/`…Teil`/`…Figur`. Übrig sind englische Namen in
+Finanzen und Katalog (`fetchPrice`, `resolveSetCondition`, `getCurrentMarketPrice`).
+
 ## Begründungen
 
 Im Code steht das Warum in wenigen Zeilen; lange Begründungen und die
@@ -131,26 +152,30 @@ Geschichte einer Stelle stehen in der Commit-Nachricht (CLAUDE.md).
 (esbuild, `scripts/build-frontend.js`) macht aus `public/js/main.js` und allem,
 was es importiert, `public/js/app.bundle.js` (IIFE, minifiziert; ein Erzeugnis,
 nicht in git — `npm run build`, Dockerfile, CI und `npm test` bauen es). Ausserhalb des Bündels laufen nur
-`public/js/00-theme-boot.js` (Design vor dem ersten Bild), die Wörterbücher
+`public/js/theme-boot.js` (Design vor dem ersten Bild), die Wörterbücher
 `public/locales/de.js` und `public/locales/en.js`, `public/js/pdfjs-boot.js`
 und `public/js/logviewer.js`.
 
+Die Dateien tragen sprechende Namen ohne Zahlpräfix. Die Ladereihenfolge steht
+explizit in `public/js/main.js` (Importliste), die Schichten in
+`scripts/build-frontend.js` (`KERN`, `BAUSTEINE`); alles übrige ist Ansicht.
+
 | Schicht | Dateien | Regel |
 |---|---|---|
-| Kern | `00-*.js`, `public/i18n.js` | kennt keine Ansicht |
-| Bausteine | `01-*.js` | kennt keine Ansicht; `01-api.js` ist der einzige Weg zum Server |
-| Ansichten | `02-*.js` bis `26-*.js` | dürfen Kern und Bausteine importieren |
+| Kern | `KERN` (`zustand.js`, `ereignisse.js`, `escapen.js` …), `public/i18n.js` | kennt keine Ansicht |
+| Bausteine | `BAUSTEINE` (`api.js`, `dom.js`, `format.js` …) | kennt keine Ansicht; `api.js` ist der einzige Weg zum Server |
+| Ansichten | alle übrigen Module unter `public/js/` | dürfen Kern und Bausteine importieren |
 
 - **Handler:** Markup nennt Aktionen nur als `data-click`, `data-change` …;
-  `public/js/00-registry.js` ordnet sie den registrierten Funktionen zu (die CSP
+  `public/js/registry.js` ordnet sie den registrierten Funktionen zu (die CSP
   verbietet Inline-Handler).
 - **Rückwege ohne Importkreis:** Ansichten melden Ereignisse
-  (`public/js/00-ereignisse.js`, `melde`/`abonniere`) statt einander zu importieren.
-- **Geteilter Zustand** steht nur in `public/js/00-zustand.js` (mit Settern).
-- **Markup** entsteht mit dem Tag `html` (`public/js/00-escapen.js`, maskiert jeden
-  Wert) und kommt nur über `setzeHtml()`/`fuegeHtmlEin()` (`public/js/01-dom.js`)
+  (`public/js/ereignisse.js`, `melde`/`abonniere`) statt einander zu importieren.
+- **Geteilter Zustand** steht nur in `public/js/zustand.js` (mit Settern).
+- **Markup** entsteht mit dem Tag `html` (`public/js/escapen.js`, maskiert jeden
+  Wert) und kommt nur über `setzeHtml()`/`fuegeHtmlEin()` (`public/js/dom.js`)
   in die Seite. Inline-Stile heissen `data-stil` und werden von
-  `public/js/00-stile.js` gegen eine beim Bauen erzeugte Freigabeliste gesetzt.
+  `public/js/stile.js` gegen eine beim Bauen erzeugte Freigabeliste gesetzt.
 - **Texte:** `t()` maskiert eingesetzte Werte für Markup, `tRaw()` nicht (für
   `textContent`); beide aus `public/i18n.js`.
 - **Typen:** `tsconfig.frontend.json` prüft die Module streng (JSDoc, `strict`),

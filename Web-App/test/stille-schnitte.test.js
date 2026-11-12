@@ -11,7 +11,10 @@ const path = require('node:path');
 const VERNEINEND = new Set(['doesNotMatch', 'doesNotThrow', 'notMatch']);
 
 test('kein Ausschnitt mit nur verneinenden Zusicherungen ist ungesichert', () => {
-  const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.test.js')).sort();
+  const dateien = fs
+    .readdirSync(__dirname)
+    .filter(f => f.endsWith('.test.js'))
+    .sort();
   assert.ok(dateien.length > 100, `Nur ${dateien.length} Testdateien — Ordner umbenannt?`);
 
   const still = [];
@@ -29,9 +32,8 @@ test('kein Ausschnitt mit nur verneinenden Zusicherungen ist ungesichert', () =>
       if (ende > 0) block = block.slice(0, ende);
 
       // Welche Zusicherungen laufen auf diesem Ausschnitt?
-      const arten = [...block.matchAll(new RegExp(`assert\\.(\\w+)\\(\\s*${ziel}\\b`, 'g'))]
-        .map(a => a[1]);
-      if (!arten.length) continue;                       // wird nur weitergereicht
+      const arten = [...block.matchAll(new RegExp(`assert\\.(\\w+)\\(\\s*${ziel}\\b`, 'g'))].map(a => a[1]);
+      if (!arten.length) continue; // wird nur weitergereicht
       if (arten.some(a => !VERNEINEND.has(a))) continue; // eine positive genuegt
 
       // Doch abgesichert?
@@ -46,12 +48,14 @@ test('kein Ausschnitt mit nur verneinenden Zusicherungen ist ungesichert', () =>
   // Selbstbeweis: Findet die Suche keine Schnitte, waere die Zusicherung
   // darunter still gruen — dieselbe Fehlerart, gegen die dieser Test gebaut
   // ist. GEMESSEN sind es 102.
-  assert.ok(geprueft > 50,
-    `Nur ${geprueft} Schnitte gefunden (gemessen: 102) — das Suchmuster ist veraltet.`);
+  assert.ok(geprueft > 50, `Nur ${geprueft} Schnitte gefunden (gemessen: 102) — das Suchmuster ist veraltet.`);
 
-  assert.deepEqual(still, [],
+  assert.deepEqual(
+    still,
+    [],
     'Auf diesen Ausschnitten stehen NUR verneinende Zusicherungen, und der Schnitt ' +
-    'ist ungesichert. Zeigt der Ankertext eines Tages ins Leere, bleibt der Test ' +
-    'gruen und prueft nichts mehr. Bitte abschnitt() aus test/helpers/sources.js ' +
-    'benutzen — das wirft, wenn der Anker fehlt.');
+      'ist ungesichert. Zeigt der Ankertext eines Tages ins Leere, bleibt der Test ' +
+      'gruen und prueft nichts mehr. Bitte abschnitt() aus test/helpers/sources.js ' +
+      'benutzen — das wirft, wenn der Anker fehlt.',
+  );
 });

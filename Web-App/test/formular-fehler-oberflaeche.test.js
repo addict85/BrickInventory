@@ -5,7 +5,7 @@
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  doLogin ruft formularFehler ohne Felder auf → rot: „falsches Passwort“
- *   B  input-Hörer in 01-formular.js entfernt → rot: „Tippen nimmt die Markierung“
+ *   B  input-Hörer in formular.js entfernt → rot: „Tippen nimmt die Markierung“
  *   C  Registrierung: Feldliste bei fehlenden Pflichtfeldern leer → rot:
  *      „Registrierung: leere Pflichtfelder“
  */
@@ -13,12 +13,21 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
 
-test('Anmeldung: Fehler am Feld', async (t) => {
-  const { w, d } = await oeffneOberflaeche({
-    '/v1/auth/login': { $status: 401, success: false, error: 'Benutzername oder Passwort falsch', code: 'anmeldedaten_ungueltig' },
-  }, { angemeldet: false });
+test('Anmeldung: Fehler am Feld', async t => {
+  const { w, d } = await oeffneOberflaeche(
+    {
+      '/v1/auth/login': {
+        $status: 401,
+        success: false,
+        error: 'Benutzername oder Passwort falsch',
+        code: 'anmeldedaten_ungueltig',
+      },
+    },
+    { angemeldet: false },
+  );
   try {
-    d.getElementById('lu').value = 'anna'; d.getElementById('lp').value = 'falsch';
+    d.getElementById('lu').value = 'anna';
+    d.getElementById('lp').value = 'falsch';
     d.getElementById('btn-login').click();
     await warte(() => d.getElementById('lerr').textContent.length > 0);
     await t.test('falsches Passwort', () => {
@@ -31,11 +40,14 @@ test('Anmeldung: Fehler am Feld', async (t) => {
     });
     await t.test('Tippen nimmt die Markierung', () => {
       const lp = d.getElementById('lp');
-      lp.value = 'neu'; lp.dispatchEvent(new w.Event('input', { bubbles: true }));
+      lp.value = 'neu';
+      lp.dispatchEvent(new w.Event('input', { bubbles: true }));
       assert.equal(lp.hasAttribute('aria-invalid'), false);
       assert.equal(d.getElementById('lu').getAttribute('aria-invalid'), 'true', 'das andere Feld bleibt markiert');
     });
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Registrierung: leere Pflichtfelder', async () => {
@@ -52,5 +64,7 @@ test('Registrierung: leere Pflichtfelder', async () => {
       assert.match(d.getElementById(id).getAttribute('aria-describedby') || '', /\breg-err\b/);
     }
     assert.equal(d.activeElement.id, 'reg-email');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

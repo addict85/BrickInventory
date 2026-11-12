@@ -14,9 +14,18 @@ object Protokoll {
     @Volatile var aktiv: Boolean = BuildConfig.DEBUG
 
     /** Wohin; im Test eine Liste statt des Logcats. */
-    @Volatile var ziel: (stufe: Stufe, tag: String, text: String, fehler: Throwable?) -> Unit =
-        { stufe, tag, text, fehler ->
+    @Volatile var ziel: (stufe: Stufe, tag: String, text: String, fehler: Throwable?) -> Unit = vorgabe()
+
+    /**
+     * Logcat gibt es nur auf dem Gerät (java.vm.name ist dort „Dalvik“, wie OkHttp prüft). In einem
+     * JVM-Test ist android.util.Log eine Attrappe, die wirft; ein Test soll an seiner Regel scheitern,
+     * nicht an einer Protokollzeile. Dort geht die Zeile nach stderr.
+     */
+    internal fun vorgabe(vm: String? = System.getProperty("java.vm.name")): (Stufe, String, String, Throwable?) -> Unit =
+        if (vm == "Dalvik") { stufe, tag, text, fehler ->
             if (stufe == Stufe.WARNUNG) android.util.Log.w(tag, text, fehler) else android.util.Log.i(tag, text)
+        } else { stufe, tag, text, fehler ->
+            System.err.println("$stufe $tag: $text" + fehler?.let { " ($it)" }.orEmpty())
         }
 
     fun notiz(tag: String, text: String) {

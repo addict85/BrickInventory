@@ -26,7 +26,10 @@ function lauf(trust, anfragen) {
   const meldungen = [];
   const mw = proxyHinweis(trust, t => meldungen.push(t));
   let weiter = 0;
-  for (const a of anfragen) mw(a, {}, () => { weiter++; });
+  for (const a of anfragen)
+    mw(a, {}, () => {
+      weiter++;
+    });
   assert.equal(weiter, anfragen.length, 'jede Anfrage geht weiter');
   return meldungen;
 }
@@ -56,5 +59,6 @@ test('kein Hinweis ohne Proxy-Kopf, von anderen Adressen oder mit passendem TRUS
 
 test('Gateway-Erkennung', () => {
   for (const a of ['172.17.0.1', '::ffff:172.31.0.1', 'fd00:dead:beef::1']) assert.equal(istDockerGateway(a), true, a);
-  for (const a of ['172.17.0.2', '10.0.0.1', '192.168.0.1', '127.0.0.1', '::1']) assert.equal(istDockerGateway(a), false, a);
+  for (const a of ['172.17.0.2', '10.0.0.1', '192.168.0.1', '127.0.0.1', '::1'])
+    assert.equal(istDockerGateway(a), false, a);
 });

@@ -2,11 +2,13 @@ package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.ui.theme.DunkelTokens
+import ch.brickinventoryapp.ui.theme.SlateBlueNoppe
 import ch.brickinventoryapp.ui.theme.argb
 import ch.brickinventoryapp.ui.theme.dunkelToken
 import ch.brickinventoryapp.ui.theme.dunkleRollen
 import ch.brickinventoryapp.ui.theme.dunkleSteinDekor
 import ch.brickinventoryapp.ui.theme.hatDunkleFassung
+import androidx.compose.ui.graphics.toArgb
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -107,12 +109,10 @@ class DunkelTokensTest {
      */
     @Test
     fun `die Stein-Dekoration wird im Dunkeln dunkel`() {
-        val hell = JSONObject(File("../../shared/design-tokens.json").readText())
-            .getJSONObject("designs").getJSONObject("brick")
         val d = dunkleSteinDekor()
         assertEquals(argb(dunkelToken(Design.BRICK, "b400")!!), d.noppen)
-        assertTrue("Die Noppen sind im Dunkeln dunkler als hell",
-            Kontrast.luminanz(d.noppen.toInt()) < Kontrast.luminanz(argb(hell.getString("b400")).toInt()))
+        assertTrue("Die Noppen sind im Dunkeln dunkler als hell (SlateBlueNoppe, --b400 von brick)",
+            Kontrast.luminanz(d.noppen.toInt()) < Kontrast.luminanz(SlateBlueNoppe.toArgb()))
         val karte = dunkleRollen(Design.BRICK).surface
         assertTrue("Die Noppen heben sich von der Karte ab", k(d.noppen, karte) >= Kontrast.RAHMEN)
         assertTrue("Schrift auf der Schieferkachel lesbar", k(d.aufSchiefer, d.schiefer) >= 4.5)

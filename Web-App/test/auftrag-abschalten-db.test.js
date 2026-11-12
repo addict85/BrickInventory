@@ -22,8 +22,8 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { warte } = require('./helpers/zeit');
 
-test('Abschalten während einer Belegung', async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Abschalten während einer Belegung', async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const A = { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege };
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const ART = `abschalten-${process.pid}`;
@@ -33,21 +33,35 @@ test('Abschalten während einer Belegung', async (t) => {
   await db.run('INSERT INTO auftrags_arten (art) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
   const sperre = await db.pool.connect();
   let loslassen = () => {};
-  const haengt = new Promise(r => { loslassen = r; });
+  const haengt = new Promise(r => {
+    loslassen = r;
+  });
   t.after(async () => {
     loslassen();
     await sperre.query('ROLLBACK').catch(() => {});
     sperre.release();
     await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]).catch(() => {});
-    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});
+    await _req('db/database.js')
+      .standardDb()
+      .benachrichtigung.close()
+      .catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
   const id = await A.stelleAuftragEin(ART, { marke: MARKE });
   let angefangen = false;
   // Hängt bis zum Testende: Ein angelaufener Auftrag bliebe so auf 'laeuft'.
-  const w = erzeugeWorker({ [ART]: { ausfuehren: () => { angefangen = true; return haengt; } } },
-    { fristSek: 600, taktMs: 60_000 });
+  const w = erzeugeWorker(
+    {
+      [ART]: {
+        ausfuehren: () => {
+          angefangen = true;
+          return haengt;
+        },
+      },
+    },
+    { fristSek: 600, taktMs: 60_000 },
+  );
 
   await sperre.query('BEGIN');
   await sperre.query('LOCK TABLE auftraege IN SHARE MODE');

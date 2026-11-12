@@ -9,11 +9,10 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Der Nachzug nach dem Erfassen (src/sets/nachErfassung.ts) wird abgefangen.
 const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = _echtesRequire.apply(this, arguments);
+Module.prototype.require = function (name, ...rest) {
+  const m = _echtesRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) =>
-      (k === 'zieheNach' || k === 'zieheNachNeuanlage') ? () => {} : t[k] });
+    return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
   return m;
 };
 
@@ -24,14 +23,16 @@ const db = _req('db/database.js');
 const { setUserSetting } = _req('src/konto/nutzerEinstellung.js');
 const { addSet } = _req('src/sets/index.js');
 
-test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
   const name = `zst_${process.pid}`;
   const SET = `90${String(process.pid).slice(-4)}-1`;
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ($1,'x')
-       ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username RETURNING id`, [name]);
+       ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username RETURNING id`,
+    [name],
+  );
   const uid = u.id;
 
   try {
@@ -47,20 +48,28 @@ test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurre
 
     const zeilen = await db.all(
       `SELECT id, quantity, condition FROM set_acquisitions
-        WHERE user_id=$1 AND set_number=$2 ORDER BY id`, [uid, SET]);
-    assert.equal(zeilen.length, 2,
+        WHERE user_id=$1 AND set_number=$2 ORDER BY id`,
+      [uid, SET],
+    );
+    assert.equal(
+      zeilen.length,
+      2,
       `${zeilen.length} Erfassung(en): ${JSON.stringify(zeilen)}. Erwartet sind ` +
-      'ZWEI — die Vorbedingung mit "N" und die des Aufstock-Wegs mit dem ' +
-      'Standard "U". Eine einzige hiesse, dass die beiden Zustände wieder ' +
-      'verschmolzen werden.');
+        'ZWEI — die Vorbedingung mit "N" und die des Aufstock-Wegs mit dem ' +
+        'Standard "U". Eine einzige hiesse, dass die beiden Zustände wieder ' +
+        'verschmolzen werden.',
+    );
     assert.equal(zeilen[0].condition, 'N', 'Vorbedingung: die Zeile des Helfers');
 
     const neue = zeilen[1];
-    assert.equal(neue.condition, 'U',
+    assert.equal(
+      neue.condition,
+      'U',
       `Die Erfassung des Aufstock-Wegs steht als "${neue.condition}" in der ` +
-      'Datenbank, obwohl der Standard des Nutzers "U" ist und der Preis genau ' +
-      'dafür geholt wurde. Preis und Vermerk müssen denselben Zustand meinen — ' +
-      'sonst zählt der Eintrag in der Finanzansicht in der falschen Gruppe.');
+        'Datenbank, obwohl der Standard des Nutzers "U" ist und der Preis genau ' +
+        'dafür geholt wurde. Preis und Vermerk müssen denselben Zustand meinen — ' +
+        'sonst zählt der Eintrag in der Finanzansicht in der falschen Gruppe.',
+    );
   } finally {
     await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE user_id=$1`, [uid]).catch(() => {});

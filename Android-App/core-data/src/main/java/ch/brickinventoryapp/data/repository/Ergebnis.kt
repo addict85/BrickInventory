@@ -67,16 +67,3 @@ sealed class Ergebnis<out T> {
         data class Unbekannt(override val technisch: String? = null) : Error()
     }
 }
-
-/**
- * Seitengrösse der Galerie, wie in der Webapp (public/js/02-gallery.js): Zwei
- * Grössen ergäben zwei Scroll-Erlebnisse für denselben Bestand.
- */
-internal const val GALLERY_PAGE_SIZE = 60
-
-/**
- * Seitengrösse des Katalogs. Muss zur Rechnung des Servers passen: Der
- * Jahres-Sprung liefert `page` für genau diese Grösse, und aus `offset` leitet
- * die Ansicht die Seite selbst ab.
- */
-const val CATALOG_PAGE_SIZE = 60

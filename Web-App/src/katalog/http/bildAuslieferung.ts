@@ -1,6 +1,6 @@
 /** EINE angemeldete Route für alle Bilder unter /images/: Eigene Uploads dürfen
  * nicht ohne Anmeldung hinaus, ein fremdes Set-Bild antwortet wie ein fehlendes. */
-import fs from 'fs';
+import fs from 'node:fs';
 import type { Request, Response } from 'express';
 import { resolveUserId } from '../../konto/http/anmeldung';
 import { safeDataPath } from '../../infra/datenPfad';

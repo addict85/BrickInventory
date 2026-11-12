@@ -334,7 +334,7 @@
        darueber gibt jedem select width:100%.
        Stand bis jetzt viermal gleichlautend im style-Attribut; die Klasse gab
        es schon, sie trug nur nichts. Was DORT bleibt, bleibt mit Grund:
-       display:none schaltet JavaScript um (02-gallery.js setzt style.display
+       display:none schaltet JavaScript um (gallery.js setzt style.display
        leer, was eine CSS-Regel nicht ueberschreiben koennte), margin-left:auto
        gilt nur fuer die Finanzen-Auswahl. */
     .scope-select{width:auto}
@@ -831,7 +831,7 @@
   html::-webkit-scrollbar{width:0;height:0}
 }
 @media (forced-colors: active){#app-scrollbar{display:none !important}}
-/* Fokus nie unter Kopf oder unterer Leiste (WCAG 2.4.11); die Höhen misst js/10-mobile.js. */
+/* Fokus nie unter Kopf oder unterer Leiste (WCAG 2.4.11); die Höhen misst js/mobile.js. */
 html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bottom:calc(var(--leiste-unten,0px) + .5rem)}
 
 #app-scrollbar{
@@ -1099,7 +1099,7 @@ input.suchfeld{width:220px}
 @media(max-width:700px){
   #global-settings-grid{grid-template-columns:minmax(0,1fr)}
   #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;position:static}
-  /* Pfeil am Rand, solange dort noch Abschnitte liegen (data-mehr aus 10-mobile.js): ein runder Knopf mit Rand
+  /* Pfeil am Rand, solange dort noch Abschnitte liegen (data-mehr aus mobile.js): ein runder Knopf mit Rand
      statt eines Schriftzeichens, das neben dem Text nicht auffiel. Ein Verlauf blendete weisse Knöpfe in
      weissen Grund. sticky hält den Pfeil beim Rollen am Rand der Leiste. */
   .einst-nav[data-mehr*="r"]::after,.einst-nav[data-mehr*="l"]::before{position:sticky;flex:none;display:flex;align-items:center;
@@ -1115,7 +1115,7 @@ input.suchfeld{width:220px}
 .kachel-datum{display:flex;flex-wrap:wrap;align-items:center;gap:0 .3em;font-size:var(--fs-1);color:var(--mut);margin-top:.2rem}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}
 .zeiger{cursor:pointer}
-/* Bis js/00-stile.js den Stil gesetzt hat (und data-stil entfernt), bleibt Verborgenes verborgen. */
+/* Bis js/stile.js den Stil gesetzt hat (und data-stil entfernt), bleibt Verborgenes verborgen. */
 [data-stil*="display:none"]{display:none}
 .durchlaessig{display:contents}
 .ohne-rand{margin:0}

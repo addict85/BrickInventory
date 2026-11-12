@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.model.SetAggregate
@@ -52,7 +53,7 @@ class SetDetailViewModelTest {
 
     private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
-    private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(),
+    private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
         FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), keinLeser,
         SavedStateHandle(mapOf("setNumber" to setNumber))))
 
@@ -64,7 +65,8 @@ class SetDetailViewModelTest {
             "/api/v1/sets/75192-1/price" to """{"success":true,"set_number":"75192-1"}""",
             "/api/v1/sets/75192-1/price-history" to """{"success":true,"set_number":"75192-1"}""",
             "/api/v1/sets/75192-1/acquisitions" to """{"success":true,"acquisitions":[{"id":1,"quantity":2}]}""",
-            "/api/v1/sets/75192-1/alert" to """{"success":true,"alerts":[]}""",
+            "/api/v1/alerts" to """{"success":true,"alerts":[]}""",
+            "/api/v1/sets/75192-1/alert" to """{"success":true,"alert":{"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":450.0}}""",
         )
         t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
@@ -93,7 +95,8 @@ class SetDetailViewModelTest {
         assertEquals("75192-1", vm.setNumber)
         vm.ladeAlles()
         geladen(vm)
-        assertTrue("alle fünf Abrufe", listOf("/75192-1/price-history", "/75192-1/price?", "/75192-1/alert").all { p -> pfade.anfragen.any { p.removeSuffix("?") in it } })
+        // Die Alarme kommen über die Übersicht des Kontos in die Ablage, nicht je Set.
+        assertTrue("alle fünf Abrufe", listOf("/75192-1/price-history", "/75192-1/price?", "GET /api/v1/alerts").all { p -> pfade.anfragen.any { p.removeSuffix("?") in it } })
         assertEquals("Falke", vm.setDetailState.value.setDetail?.name)
     }
 
@@ -149,10 +152,14 @@ class SetDetailViewModelTest {
         val vm = vm()
         vm.ladeAlles()
         geladen(vm)
-        val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size
-        vm.setzePreisalarm("75192-1", "unter", "450", Zustand.NEU)
+        assertTrue(vm.setDetailState.value.preisalarme.isEmpty())
+        val vorher = pfade.anfragenAn("GET /api/v1/alerts").size
+        vm.setzePreisalarm("75192-1", Alarmrichtung.UNTER, "450", Zustand.NEU)
+        pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":450.0}]}"""
         uhr.advanceTimeBy(900)
-        assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/alert").size > vorher)
         assertEquals(1, pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").size)
+        // Der Zustand liest die Ablage nur beim Laden: ohne Nachladen bliebe er leer.
+        assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/alerts").size > vorher)
+        assertEquals(listOf(450.0), vm.setDetailState.value.preisalarme.map { it.schwelle })
     }
 }

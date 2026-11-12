@@ -1,6 +1,6 @@
 import type { Client } from 'pg';
 import { logAndContinue, fehlertext } from '../../infra/fehler';
-import fs from 'fs';
+import fs from 'node:fs';
 import { merkeFehlend, istBekanntFehlend } from './imageMisses';
 import { imgProxyFailures } from './imgProxyStats';
 import { isDecodable } from './imageGuard';
@@ -39,7 +39,11 @@ export function drainThumbQueue() {
     _thumbRunning++;
     makeProxyThumb(src, dst)
       .catch(logAndContinue('proxy-vorschau:erzeugen'))
-      .finally(() => { _thumbRunning--; _thumbInFlight.delete(dst); drainThumbQueue(); });
+      .finally(() => {
+        _thumbRunning--;
+        _thumbInFlight.delete(dst);
+        drainThumbQueue();
+      });
   }
 }
 const _thumbInFlight = new Map<string, boolean>();
@@ -50,20 +54,28 @@ const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 let _sperrClient: Client | null = null;
 
 export async function mitVorschauSperre<T>(arbeit: () => Promise<T>): Promise<T | false> {
-    // NICHT aus dem Pool: Eine dort gehaltene Sperre nahm gewöhnlichen Anfragen
-    // die Verbindung.
+  // NICHT aus dem Pool: Eine dort gehaltene Sperre nahm gewöhnlichen Anfragen
+  // die Verbindung.
   if (!_sperrClient) {
-    try { _sperrClient = await katalog().db.eigeneVerbindung(); }
-    catch (_) { return false; }
-    _sperrClient.on('error', () => { _sperrClient = null; });
+    try {
+      _sperrClient = await katalog().db.eigeneVerbindung();
+    } catch (_) {
+      return false;
+    }
+    _sperrClient.on('error', () => {
+      _sperrClient = null;
+    });
   }
   const client = _sperrClient;
   try {
-    if (!await sperre.versucheSperre(client, THUMB_LOCK_KEY)) return false;   // ein anderer Prozess rechnet gerade
-    try { return await arbeit(); }
-    finally { await sperre.gibSperreFrei(client, THUMB_LOCK_KEY).catch(logAndContinue('proxy-vorschau:pg_advisory_unlock')); }
+    if (!(await sperre.versucheSperre(client, THUMB_LOCK_KEY))) return false; // ein anderer Prozess rechnet gerade
+    try {
+      return await arbeit();
+    } finally {
+      await sperre.gibSperreFrei(client, THUMB_LOCK_KEY).catch(logAndContinue('proxy-vorschau:pg_advisory_unlock'));
+    }
   } catch (_) {
-    _sperrClient = null;   // Verbindung hin — beim nächsten Mal neu aufbauen
+    _sperrClient = null; // Verbindung hin — beim nächsten Mal neu aufbauen
     return false;
   }
 }
@@ -80,12 +92,12 @@ export async function makeProxyThumb(srcFile: string, thumbFile: string) {
       }
       // Erst hier geladen: Jimp ist schwer und nur der Rückfall ohne sharp.
       const { Jimp } = require('jimp');
-      const img  = await Jimp.read(srcFile);
-      const bg   = new Jimp({ width: img.bitmap.width, height: img.bitmap.height, color: 0xffffffff });
+      const img = await Jimp.read(srcFile);
+      const bg = new Jimp({ width: img.bitmap.width, height: img.bitmap.height, color: 0xffffffff });
       bg.composite(img, 0, 0);
       bg.cover({ w: PROXY_THUMB_SIZE, h: PROXY_THUMB_SIZE });
       // ATOMAR schreiben: erst daneben, dann umbenennen.
-  const tmpThumb = `${thumbFile}.${process.pid}.${Date.now()}.tmp.jpg`;
+      const tmpThumb = `${thumbFile}.${process.pid}.${Date.now()}.tmp.jpg`;
       await bg.write(tmpThumb as `${string}.${string}`, { quality: 80 });
       await fs.promises.rename(tmpThumb, thumbFile);
       return true;
@@ -97,8 +109,6 @@ export async function makeProxyThumb(srcFile: string, thumbFile: string) {
       imgProxyFailures.lastError = `Vorschau fehlgeschlagen: ${fehlertext(e)}`;
       return false;
     }
-
   });
   return p;
 }
-

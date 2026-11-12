@@ -1,7 +1,16 @@
 import type { DbSchnittstelle } from '../../../db/database';
 
-export function tageswerteAusVerlauf(db: DbSchnittstelle, currency: string, condition: string, setNumbers: string[], mengen: number[], datumsFilter: string, bExpr: string) {
-  return db.all<{ day: string; full_day?: string; first_day?: string; month: string; total: number | string }>(`WITH mengen AS MATERIALIZED (
+export function tageswerteAusVerlauf(
+  db: DbSchnittstelle,
+  currency: string,
+  condition: string,
+  setNumbers: string[],
+  mengen: number[],
+  datumsFilter: string,
+  bExpr: string,
+) {
+  return db.all<{ day: string; full_day?: string; first_day?: string; month: string; total: number | string }>(
+    `WITH mengen AS MATERIALIZED (
        SELECT * FROM unnest($3::text[], $4::int[]) AS m(set_number, qty)
      ),
      roh AS (
@@ -56,21 +65,47 @@ export function tageswerteAusVerlauf(db: DbSchnittstelle, currency: string, cond
      SELECT t.bucket AS day, t.tag AS full_day, t.erster_tag AS first_day, t.monat AS month,
             ROUND(SUM(COALESCE(d.d, 0)) OVER (ORDER BY t.bucket), 2) AS total
        FROM tage t LEFT JOIN delta d ON d.bucket = t.bucket
-      ORDER BY t.bucket`.replace('@BUCKET@', bExpr), [currency, condition, setNumbers, mengen]);
+      ORDER BY t.bucket`.replace('@BUCKET@', bExpr),
+    [currency, condition, setNumbers, mengen],
+  );
 }
 
-export function cachePreiseDerSets(db: DbSchnittstelle, currency: string, condition: string, setNumbers: string[], placeholders: string) {
-  return db.all<{ set_number: string; qty_avg_price: number | null; avg_price: number | null; day: string; month: string }>(`SELECT set_number, qty_avg_price, avg_price,
+export function cachePreiseDerSets(
+  db: DbSchnittstelle,
+  currency: string,
+  condition: string,
+  setNumbers: string[],
+  placeholders: string,
+) {
+  return db.all<{
+    set_number: string;
+    qty_avg_price: number | null;
+    avg_price: number | null;
+    day: string;
+    month: string;
+  }>(
+    `SELECT set_number, qty_avg_price, avg_price,
               to_char(fetched_at,'YYYY-MM-DD') AS day,
               to_char(fetched_at,'YYYY-MM')    AS month
        FROM price_cache
        WHERE currency_code=$1 AND condition IN ('U','N') AND set_number IN (${placeholders})
          AND (qty_avg_price>0 OR avg_price>0)
-       ORDER BY fetched_at ASC, (condition = $2) ASC`, [currency, condition, ...setNumbers]);
+       ORDER BY fetched_at ASC, (condition = $2) ASC`,
+    [currency, condition, ...setNumbers],
+  );
 }
 
-export function letzteWerteVorBeginn(db: DbSchnittstelle, currency: string, condition: string, setNumbers: string[], mengen: number[], ersterTag: string, datumsFilter: string) {
-  return db.all<{ total: number }>(`WITH mengen AS MATERIALIZED (
+export function letzteWerteVorBeginn(
+  db: DbSchnittstelle,
+  currency: string,
+  condition: string,
+  setNumbers: string[],
+  mengen: number[],
+  ersterTag: string,
+  datumsFilter: string,
+) {
+  return db.all<{ total: number }>(
+    `WITH mengen AS MATERIALIZED (
          SELECT * FROM unnest($3::text[], $4::int[]) AS m(set_number, qty)
        ),
        letzte AS (
@@ -96,11 +131,14 @@ export function letzteWerteVorBeginn(db: DbSchnittstelle, currency: string, cond
                    (ph.condition = $2) DESC
        )
        SELECT ROUND(SUM(m.qty * l.preis), 2) AS total
-         FROM letzte l JOIN mengen m ON m.set_number = l.set_number`, [currency, condition, setNumbers, mengen, ersterTag]);
+         FROM letzte l JOIN mengen m ON m.set_number = l.set_number`,
+    [currency, condition, setNumbers, mengen, ersterTag],
+  );
 }
 
 export function setsMitKaufsumme(db: DbSchnittstelle, uids: number[]) {
-  return db.all<{ set_number: string; quantity: number; purchase_price: number | null }>(`SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
+  return db.all<{ set_number: string; quantity: number; purchase_price: number | null }>(
+    `SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             SUM(COALESCE(a.total_price, 0))
               / NULLIF(SUM(a.total_qty), 0) AS purchase_price
      FROM sets s
@@ -111,5 +149,7 @@ export function setsMitKaufsumme(db: DbSchnittstelle, uids: number[]) {
        FROM set_acquisitions GROUP BY user_id, set_number
      ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
      WHERE s.user_id = ANY($1)
-     GROUP BY s.set_number`, [uids]);
+     GROUP BY s.set_number`,
+    [uids],
+  );
 }

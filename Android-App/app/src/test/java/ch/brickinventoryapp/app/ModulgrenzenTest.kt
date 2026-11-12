@@ -5,14 +5,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import ch.brickinventoryapp.buildlogic.kanten.Modulkante
+import ch.brickinventoryapp.buildlogic.kanten.Modulkanten
 import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Die Modulgrenzen, gelesen aus settings.gradle.kts und den build.gradle.kts:
  * app → feature-* → core-*, kein Bereich kennt einen anderen (ohne Ausnahme),
  * feste Schichtung der Kernmodule, core-model ohne Android, core-ui ohne Fachwissen.
- * Gradle bricht bei einem Zyklus ab, aber nicht bei einer Kante, die nur in die
- * falsche Richtung zeigt — die fängt dieser Test.
+ * Die Kantenregel ist build-logic/…/kanten/Modulkanten.kt; dieselbe führt die Aufgabe
+ * modulkantenPruefen in Gradle aus, hier läuft sie gegen die Modulskripte.
  *
  * Gegenproben:
  *   A  feature-sammlung: `implementation(project(":feature-teile"))` → rot
@@ -65,6 +67,8 @@ import ch.brickinventoryapp.testing.Quellen
  *      rot „Modulkanten per api nur zu core-model: [core-data → core-netz]“ (Schichtung …)
  *   X  gegenproben/netz-oeffnet-intent.patch: ExterneAdresse.kt importiert android.content.Intent →
  *      rot „core-netz importiert Ablage, Repositories, DI oder Android-Oberfläche“ (Schichtung …)
+ *   Y  gegenproben/sitzung-haengt-an-ui.patch: core-sitzung bindet core-ui ein →
+ *      rot „Schichtung der Kernmodule: core-sitzung hängt an core-ui“
  *   W  gegenproben/route-im-kern.patch: eine Route in core-model, die Verwaltung öffnet sie →
  *      rot „feature-verwaltung nennt fremde Routentypen: [Zentralziel]“ (kein Bereich hängt …);
  *      lokal mit kotlinc gegen den Baum gemessen, in der CI über Gradle
@@ -77,6 +81,9 @@ class ModulgrenzenTest {
 
     private fun module(): Map<String, String> =
         Quellen.module.filter { it.name != "buildSrc" }.associate { it.name to File(it, "build.gradle.kts").readText() }
+
+    private fun kanten(name: String, bau: String): List<Modulkante> =
+        abhaengigkeiten(bau).map { Modulkante(name, it.konfiguration, it.ziel) }
 
     private fun abhaengigkeiten(bau: String): List<Abhaengigkeit> =
         Regex("""^\s*(\w+)\(project\(":([\w-]+)"\)\)""", RegexOption.MULTILINE).findAll(bau)
@@ -105,6 +112,7 @@ class ModulgrenzenTest {
             "app" to "app", "core-model" to "model", "core-netz" to "netz", "core-data" to "data",
             "core-sicherheit" to "sicherheit", "core-offline" to "offline",
             "core-update" to "update", "core-dienste" to "dienste", "core-ui" to "ui", "core-zustand" to "zustand",
+            "core-sitzung" to "sitzung",
             "core-testing" to "testing", "feature-anmeldung" to "anmeldung", "feature-katalog" to "katalog",
             "feature-sammlung" to "sammlung", "feature-teile" to "teile", "feature-finanzen" to "finanzen",
             "feature-konto" to "konto", "feature-verwaltung" to "verwaltung", "core-ui-bestand" to "gemeinsam",
@@ -137,8 +145,8 @@ class ModulgrenzenTest {
         assertTrue("Nur ${bereiche.size} Bereichsmodule", bereiche.size >= 5)
         for ((name, bau) in bereiche) {
             // Ohne Ausnahme: Was mehrere Bereiche zeigen, liegt in core-ui-bestand.
-            val falsch = hauptAbhaengigkeiten(bau).filter { it.startsWith("feature-") || it == "app" }
-            assertTrue("$name hängt an ${falsch.joinToString()}", falsch.isEmpty())
+            val falsch = Modulkanten.verstoesse(kanten(name, bau))
+            assertTrue(falsch.joinToString("\n"), falsch.isEmpty())
             assertTrue("$name kennt keine Kernmodule — Muster veraltet?", hauptAbhaengigkeiten(bau).any { it.startsWith("core-") })
         }
         // Routen: Ein Bereich registriert und öffnet nur eigene Ziele, fremde über die Rückrufe
@@ -157,41 +165,12 @@ class ModulgrenzenTest {
 
     @Test
     fun `Schichtung der Kernmodule`() {
-        val erlaubt = mapOf(
-            "core-model" to emptySet(),
-            "core-ressourcen" to emptySet(),
-            "core-netz" to setOf("core-model"),
-            // Aus core-data abgespalten, darunter: Tresor und TLS-Vertrauen, dann Room und Offlineablage.
-            "core-sicherheit" to setOf("core-model", "core-netz"),
-            "core-offline" to setOf("core-model", "core-sicherheit"),
-            "core-data" to setOf("core-model", "core-ressourcen", "core-netz", "core-sicherheit", "core-offline"),
-            // Aus core-data abgespalten: Sie hängen an core-data, nie umgekehrt und nie aneinander.
-            "core-update" to setOf("core-ressourcen", "core-data"),
-            "core-dienste" to setOf("core-ressourcen", "core-data"),
-            "core-ui" to setOf("core-model", "core-ressourcen"),
-            // Fachliche Bausteine, nur Darstellung: Mit Daten oder Zustand würde es zum Umweg,
-            // auf dem sich Bereiche doch kennen.
-            "core-ui-bestand" to setOf("core-model", "core-ressourcen", "core-ui"),
-            // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
-            "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit"),
-            "core-testing" to setOf("core-zustand", "core-data", "core-sicherheit", "core-offline"),
-        )
         val kerne = module().filterKeys { it.startsWith("core-") }
-        assertEquals("jedes Kernmodul hat eine Regel", erlaubt.keys, kerne.keys)
-        for ((name, bau) in kerne) {
-            val zuviel = hauptAbhaengigkeiten(bau) - erlaubt.getValue(name)
-            assertTrue("Schichtung der Kernmodule: $name hängt an $zuviel", zuviel.isEmpty())
-        }
-        // Die Testhilfen nur für Tests: Im ausgelieferten Code hätten sie nichts verloren.
-        for ((name, bau) in module()) {
-            val haupt = hauptAbhaengigkeiten(bau)
-            if (name != "core-testing") assertTrue("$name bindet core-testing nicht nur für Tests ein", "core-testing" !in haupt)
-        }
-        // api reicht ein Modul an jeden weiter, der dieses kennt; nur die Modelle sind gemeinsame Sprache.
-        val weitergereicht = module().flatMap { (name, bau) ->
-            abhaengigkeiten(bau).filter { it.konfiguration == "api" && it.ziel != "core-model" }.map { "$name → ${it.ziel}" }
-        }
-        assertTrue("Modulkanten per api nur zu core-model: $weitergereicht", weitergereicht.isEmpty())
+        assertEquals("jedes Kernmodul hat eine Regel", Modulkanten.kerne.keys, kerne.keys)
+        val alle = module().flatMap { (name, bau) -> kanten(name, bau) }
+        assertTrue("Nur ${alle.size} Modulkanten — Muster veraltet?", alle.size >= 60)
+        val verstoesse = Modulkanten.verstoesse(alle)
+        assertTrue(verstoesse.joinToString("\n"), verstoesse.isEmpty())
         // core-netz ist die untere Netz-Schicht: Ablage, Repositories und Hilt bleiben in core-data.
         val netz = kerne.getValue("core-netz")
         val bibliotheken = Regex("""\(libs\.([\w.]+)\)""").findAll(netz).map { it.groupValues[1] }.toList()
@@ -222,6 +201,29 @@ class ModulgrenzenTest {
         // Die Kamera-Bausteine heissen noch ui.screens; neue Bildschirme oder Bausteine kommen nicht dorthin.
         val screens = File(wurzel, "ch/brickinventoryapp/ui/screens").listFiles().orEmpty().map { it.name }.sorted()
         assertEquals("core-ui/ui/screens enthält nur die Kamera-Bausteine", listOf("KameraAufbau.kt", "KameraErlaubnis.kt"), screens)
+    }
+
+    /**
+     * Die Regel selbst, an Kanten, die es im Baum nicht gibt. Gegenproben (mit kotlinc gemessen):
+     *   gegenproben/kantenregel-ohne-testausnahme.patch: Testkonfigurationen zählen mit → rot hier
+     *   die api-Zeile gestrichen → rot hier, „Modulkanten per api …“ fehlt
+     *   core-ui in kerne["core-zustand"] eingetragen → rot hier
+     */
+    @Test
+    fun `die Kantenregel verbietet Bereich an Bereich, falsche Schichtung, api und core-testing im Hauptcode`() {
+        fun pruefe(von: String, konfiguration: String, nach: String) = Modulkanten.verstoesse(listOf(Modulkante(von, konfiguration, nach)))
+        assertEquals(listOf("feature-teile hängt an feature-katalog"), pruefe("feature-teile", "implementation", "feature-katalog"))
+        assertEquals(listOf("feature-teile hängt an app"), pruefe("feature-teile", "implementation", "app"))
+        assertEquals(listOf("Schichtung der Kernmodule: core-zustand hängt an core-ui"), pruefe("core-zustand", "implementation", "core-ui"))
+        assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-netz"), pruefe("core-data", "api", "core-netz"))
+        assertEquals(listOf("feature-konto bindet core-testing nicht nur für Tests ein"), pruefe("feature-konto", "implementation", "core-testing"))
+        assertTrue(pruefe("core-neu", "implementation", "core-model").single().endsWith("(core-neu hat keine Regel in Modulkanten.kerne)"))
+        // Erlaubt: Tests sehen mehr, die App sieht alles ausser den Testhilfen, die Schichtung nach unten.
+        assertEquals(emptyList<String>(), pruefe("feature-teile", "testImplementation", "core-testing"))
+        assertEquals(emptyList<String>(), pruefe("core-zustand", "testImplementation", "core-ui"))
+        assertEquals(emptyList<String>(), pruefe("app", "implementation", "feature-teile"))
+        assertEquals(emptyList<String>(), pruefe("core-data", "api", "core-model"))
+        assertEquals(emptyList<String>(), pruefe("core-zustand", "implementation", "core-data"))
     }
 
     @Test

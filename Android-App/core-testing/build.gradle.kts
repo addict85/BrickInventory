@@ -11,6 +11,7 @@ android {
 dependencies {
     // Nur implementation: Ein Test nennt die Module, deren Typen er selbst benutzt.
     implementation(project(":core-zustand"))
+    implementation(project(":core-sitzung"))
     implementation(project(":core-data"))
     implementation(project(":core-sicherheit"))
     // Testablage: Listen und Ausgang im Speicher.

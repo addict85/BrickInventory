@@ -31,15 +31,6 @@ data class CatalogUiState(
      * dasselbe Jahr kein zweites Mal anspringen.
      */
     val scrollTo: Int? = null,
-    /**
-     * Wo die Liste stand, als man sie verlassen hat. Im ViewModel statt im
-     * `LazyGridState`: Die Detailseite ist ein eigener Navigationspunkt, und bei einer
-     * Liste, deren Länge (`total`) und Inhalt (`loadedPages`) erst nachträglich
-     * eintreffen, gäbe es beim Wiederherstellen noch keine Stelle, an die
-     * zurückgesprungen werden könnte.
-     */
-    val scrollIndex: Int = 0,
-    val scrollOffset: Int = 0,
     // Filter
     val query: String = "",
     val themeId: Int? = null,

@@ -38,22 +38,44 @@ let port = 0;
 const gesehen = [];
 const server = https.createServer({ key, cert }, (req, res) => {
   gesehen.push({ host: req.headers.host, pfad: req.url, auth: req.headers.authorization || null });
-  const umleiten = (ziel) => { res.writeHead(302, { Location: ziel }); res.end(); };
+  const umleiten = ziel => {
+    res.writeHead(302, { Location: ziel });
+    res.end();
+  };
   switch (req.url.split('?')[0]) {
-    case '/relativ': return umleiten('/bild.jpg');
-    case '/http': return umleiten(`http://localhost:${port}/bild.jpg`);
-    case '/fremd': return umleiten(`https://example.org:${port}/bild.jpg`);
-    case '/ohne-ziel': res.writeHead(302); return res.end();
-    case '/kaputt': return umleiten('https://[::1');
-    case '/schleife': return umleiten('/schleife');
-    case '/wechsel': return umleiten(`https://127.0.0.1:${port}/echo`);
-    case '/echo': res.writeHead(200, { 'Content-Type': 'application/json' });
+    case '/relativ':
+      return umleiten('/bild.jpg');
+    case '/http':
+      return umleiten(`http://localhost:${port}/bild.jpg`);
+    case '/fremd':
+      return umleiten(`https://example.org:${port}/bild.jpg`);
+    case '/ohne-ziel':
+      res.writeHead(302);
+      return res.end();
+    case '/kaputt':
+      return umleiten('https://[::1');
+    case '/schleife':
+      return umleiten('/schleife');
+    case '/wechsel':
+      return umleiten(`https://127.0.0.1:${port}/echo`);
+    case '/echo':
+      res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ auth: req.headers.authorization || null }));
-    case '/gross-angesagt': res.writeHead(200, { 'Content-Length': String(5000) }); return res.end(Buffer.alloc(5000));
-    case '/gross-still': res.writeHead(200); res.write(Buffer.alloc(800)); return res.end(Buffer.alloc(800));
-    case '/still': return;
-    case '/bild.jpg': res.writeHead(200, { 'Content-Type': 'image/jpeg' }); return res.end(BILD);
-    default: res.writeHead(404); res.end();
+    case '/gross-angesagt':
+      res.writeHead(200, { 'Content-Length': String(5000) });
+      return res.end(Buffer.alloc(5000));
+    case '/gross-still':
+      res.writeHead(200);
+      res.write(Buffer.alloc(800));
+      return res.end(Buffer.alloc(800));
+    case '/still':
+      return;
+    case '/bild.jpg':
+      res.writeHead(200, { 'Content-Type': 'image/jpeg' });
+      return res.end(BILD);
+    default:
+      res.writeHead(404);
+      res.end();
   }
 });
 
@@ -72,10 +94,15 @@ test.before(async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   port = server.address().port;
 });
-test.after(() => { server.closeAllConnections(); server.close(); });
+test.after(() => {
+  server.closeAllConnections();
+  server.close();
+});
 
 async function grund(versprechen) {
-  try { await versprechen; } catch (e) {
+  try {
+    await versprechen;
+  } catch (e) {
     assert.ok(e instanceof AbrufFehler, `kein AbrufFehler: ${e}`);
     return e.grund;
   }
@@ -95,7 +122,10 @@ test('ein POST folgt keiner Umleitung', async () => {
   const vorher = gesehen.length;
   const r = await holeHttps(`${basis()}/relativ`, opt({ methode: 'POST', rumpf: '{"a":1}' }));
   assert.equal(r.status, 302);
-  assert.deepEqual(gesehen.slice(vorher).map(g => g.pfad), ['/relativ']);
+  assert.deepEqual(
+    gesehen.slice(vorher).map(g => g.pfad),
+    ['/relativ'],
+  );
 });
 
 test('http-Umleitung, fehlendes und unlesbares Ziel werden abgewiesen', async () => {
@@ -106,7 +136,11 @@ test('http-Umleitung, fehlendes und unlesbares Ziel werden abgewiesen', async ()
 test('fremder Host wird abgewiesen', async () => {
   const vorher = gesehen.length;
   assert.equal(await grund(holeHttps(`${basis()}/fremd`, opt())), 'umleitung');
-  assert.equal(gesehen.slice(vorher).filter(g => g.host.startsWith('example.org')).length, 0, 'fremder Host wurde abgerufen');
+  assert.equal(
+    gesehen.slice(vorher).filter(g => g.host.startsWith('example.org')).length,
+    0,
+    'fremder Host wurde abgerufen',
+  );
 });
 
 test('Startadresse ausserhalb der Liste oder ohne https geht nicht hinaus', async () => {
@@ -124,17 +158,31 @@ test('Umleitungsschleife endet an der Grenze', async () => {
 });
 
 test('Authorization bleibt beim Hostwechsel nicht stehen', async () => {
-  const r = await holeHttps(`${basis()}/wechsel`,
-    opt({ hosts: [`localhost:${port}`, `127.0.0.1:${port}`], kopfzeilen: { Authorization: 'key geheim', Cookie: 'a=b' } }));
+  const r = await holeHttps(
+    `${basis()}/wechsel`,
+    opt({
+      hosts: [`localhost:${port}`, `127.0.0.1:${port}`],
+      kopfzeilen: { Authorization: 'key geheim', Cookie: 'a=b' },
+    }),
+  );
   assert.equal(JSON.parse(r.koerper.toString()).auth, null);
   assert.equal(gesehen.find(g => g.pfad === '/wechsel').auth, 'key geheim', 'der erste Sprung trägt den Schlüssel');
 });
 
 test('Körper über der Grenze, angesagt oder ohne Längenangabe', async () => {
   assert.equal(await grund(holeHttps(`${basis()}/gross-angesagt`, opt())), 'zu-gross');
-  assert.equal(await grund(holeHttps(`${basis()}/gross-still`, opt())), 'zu-gross', 'Körper ohne Längenangabe über der Grenze');
+  assert.equal(
+    await grund(holeHttps(`${basis()}/gross-still`, opt())),
+    'zu-gross',
+    'Körper ohne Längenangabe über der Grenze',
+  );
   const a = await oeffneHttps(`${basis()}/gross-still`, opt());
-  const fehler = await new Promise(fertig => { const s = a.strom(); s.resume(); s.on('error', fertig); s.on('end', () => fertig(null)); });
+  const fehler = await new Promise(fertig => {
+    const s = a.strom();
+    s.resume();
+    s.on('error', fertig);
+    s.on('end', () => fertig(null));
+  });
   assert.equal(fehler?.grund, 'zu-gross', 'der Strom endet nicht mit Fehler');
 });
 
@@ -142,13 +190,17 @@ test('ein schweigender Server läuft ins Zeitlimit', async () => {
   assert.equal(await grund(holeHttps(`${basis()}/still`, opt({ zeitlimitMs: 300 }))), 'zeitlimit');
 });
 
-test('downloadSetImage übersteht jede Umleitung', async (t) => {
+test('downloadSetImage übersteht jede Umleitung', async t => {
   const echt = https.globalAgent;
   https.globalAgent = new Umlenker();
   const nr = `abruftest-${process.pid}`;
   const datei = path.join(SET_IMAGES_DIR, `${nr}.jpg`);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
-  t.after(() => { https.globalAgent.destroy(); https.globalAgent = echt; fs.rmSync(datei, { force: true }); });
+  t.after(() => {
+    https.globalAgent.destroy();
+    https.globalAgent = echt;
+    fs.rmSync(datei, { force: true });
+  });
   for (const pfad of ['/http', '/fremd', '/ohne-ziel', '/kaputt', '/schleife'])
     assert.equal(await downloadSetImage(`https://cdn.rebrickable.com${pfad}`, nr), null, pfad);
   assert.equal(fs.existsSync(datei), false);

@@ -68,7 +68,7 @@
        classic und brick identisch, die Regeln gelten daher für beide. -->
   <link rel="stylesheet" href="/mobile.css?v=2026.10.27.1901">
   <!-- Setzt data-theme aus dem localStorage-Cache, bevor Anmeldung oder App … -->
-  <script src="/js/00-theme-boot.js?v=2026.10.27.1901"></script>
+  <script src="/js/theme-boot.js?v=2026.10.27.1901"></script>
 <!-- Die Symbolfamilie: Strichsymbole auf 24er-Raster, Farbe aus dem Text.
      Verwendung: <svg class="ico" aria-hidden="true"><use href="#i-NAME"/></svg> -->
 <svg xmlns="http://www.w3.org/2000/svg" data-stil="display:none" aria-hidden="true">
@@ -510,7 +510,7 @@
       </div>
 
       <!-- Erfassen „analog den Sets": dieselben Felder in derselben Reihenfolge … -->
-      <!-- Aufklappbar: Am Telefon steht die Liste vorn, sobald sie Einträge hat (16-merkliste.js). -->
+      <!-- Aufklappbar: Am Telefon steht die Liste vorn, sobald sie Einträge hat (merkliste.js). -->
       <details class="merk-kasten" id="mk-kasten" open>
         <summary class="merk-kasten-kopf"><h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Zur Merkliste hinzufügen</h2></summary>
         <div class="zeile luecke-8 unten umbruch merk-erfassen">
@@ -1036,14 +1036,14 @@
       </section>
 
 
-      <!-- Zweiter Faktor (TOTP) — Inhalt zeichnet js/21-zweiter-faktor.js -->
+      <!-- Zweiter Faktor (TOTP) — Inhalt zeichnet js/zweiter-faktor.js -->
       <div class="ssec abstand-u-125">
         <h2 class="stit" data-i18n="zf.title" data-ico="schloss">Zweiter Faktor</h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="zf.hint">Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password). Schützt, falls jemand dein Passwort kennt.</p>
         <div id="zf-flaeche"></div>
       </div>
 
-      <!-- Passkeys — Inhalt zeichnet js/23-passkeys.js -->
+      <!-- Passkeys — Inhalt zeichnet js/passkeys.js -->
       <div class="ssec abstand-u-125">
         <h2 class="stit" data-i18n="pk.title" data-ico="schluessel">Passkeys</h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="pk.hint">Anmelden ohne Passwort mit Fingerabdruck, Gesicht oder Geräte-PIN. Mit eingeschaltetem zweitem Faktor ersetzt ein Passkey auch den Code.</p>
@@ -1351,7 +1351,7 @@
       <div class="ssec abstand-u-125">
         <h2 class="stit" data-i18n="apk.title" data-ico="import">App herunterladen</h2>
         <p class="text-mittel abstand-u-1" data-i18n="apk.hint">Immer die neuste Fassung, direkt aus der Ablage auf GitHub. Android fragt beim Öffnen der Datei nach der Erlaubnis, Apps aus dieser Quelle zu installieren.</p>
-        <a class="apk-btn" href="https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk"
+        <a class="apk-btn" href="https://github.com/addict85/BrickInventory/releases/latest/download/BrickInventory.apk"
            rel="noopener" target="_blank">
           <!-- Ein eigener, schlichter Roboter — NICHT Googles Android-Marke. … -->
           <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="currentColor">
@@ -1407,7 +1407,7 @@
         </div>
       </div>
 
-      <!-- Server-Zertifikat: Fingerabdruck der CA-Wurzel zum Abgleich (js/05-settings.js, ladeTls) -->
+      <!-- Server-Zertifikat: Fingerabdruck der CA-Wurzel zum Abgleich (js/settings.js, ladeTls) -->
       <div class="ssec abstand-u-125">
         <h2 class="stit" data-i18n="tls.title" data-ico="schloss">Server-Zertifikat</h2>
         <div id="tls-flaeche"></div>
@@ -1767,7 +1767,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="closeSetItemDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <!-- data-click="openImageLightboxFromEl" ist der Zoom (11-actions.js);
+    <!-- data-click="openImageLightboxFromEl" ist der Zoom (actions.js);
          die Adresse dafuer steht in data-orig und wird beim Oeffnen gesetzt. -->
     <img id="setitem-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-click="openImageLightboxFromEl"
          data-stil="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none;cursor:zoom-in" />
@@ -1854,7 +1854,7 @@
   </div>
 </div>
 
-<!-- Einrichtung: Stand vor der Anmeldung (js/27-einrichtung-stand.js) und Assistent beim ersten Start (js/22-einrichtung.js) -->
+<!-- Einrichtung: Stand vor der Anmeldung (js/einrichtung-stand.js) und Assistent beim ersten Start (js/einrichtung.js) -->
 <div class="ovl" id="einrichtung-modal" role="dialog" aria-modal="true" aria-labelledby="ew-titel">
   <div class="modal max-560">
     <div class="mhd"><h2 class="mtit" id="ew-titel" data-i18n="setup.title">Willkommen — BrickInventory einrichten</h2><button class="btn bs btn-sm" data-click="einrichtungSpaeter" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
@@ -1951,12 +1951,10 @@
 <script type="module" src="/js/pdfjs-boot.js?v=2026.10.27.1901"></script>
 <!-- Ein Bündel statt zwölf Einzeldateien. … -->
 <script src="/js/app.bundle.js?v=2026.10.27.1901"></script>
-<!-- app.js ist in Sektions-Dateien aufgeteilt (public/js/) — Ladereihenfolge
-     ist relevant, die Dateien teilen sich den globalen Scope. -->
 <!-- Bekannte Lagerorte — EINE Liste für alle Eingabefelder (Set-Detail, … -->
 <datalist id="lagerorte"></datalist>
 
-<!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/15-scrollbar.js ERZEUGT, … -->
+<!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/scrollbar.js ERZEUGT, … -->
 </body>
 </html>
 

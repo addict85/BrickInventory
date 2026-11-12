@@ -23,6 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
 const { testServer } = require('./helpers/server');
 
@@ -35,34 +36,42 @@ const ersetze = (rel, zusatz) => {
 const { dateiFehler, fehlerText } = _req('src/infra/fehlerTexte.js');
 // Vor dem Laden der Routen: Die Dienste werfen, was im Betrieb aus der Datenbank käme.
 // Die Merkliste eine Ebene tiefer: Der Import läuft als Auftrag und ruft den Dienst intern.
-ersetze('src/merkliste/repository/merkliste.js', { merkeSetVor: async () => { throw new Error(GEHEIM); } });
+ersetze('src/merkliste/repository/merkliste.js', {
+  merkeSetVor: async () => {
+    throw new Error(GEHEIM);
+  },
+});
 // Angelegt wird ohne Netz; scheitern kann danach nur das Ergänzen im offenen Strom.
 // Die Sets-Dienste des Prozesses mit zwei ersetzten (src/sets/prozess.ts).
 const setsProzess = _req('src/sets/prozess.js');
 const echteSets = setsProzess.sets();
 setsProzess.verdrahteSets(() => ({
   ...echteSets,
-  setErfassen: async (e) => {
+  setErfassen: async e => {
     if (e.setNumber === 'FACH-1') throw dateiFehler('ungueltig', 'setnummer_ungueltig');
-    return { action: 'added', set_number: e.setNumber, name: e.setNumber, katalog_offen: true, ergaenzung: 'ausstehend', besitzer: e.anfragender };
+    return {
+      action: 'added',
+      set_number: e.setNumber,
+      name: e.setNumber,
+      katalog_offen: true,
+      ergaenzung: 'ausstehend',
+      besitzer: e.anfragender,
+    };
   },
-  setErgaenzen: async () => { throw new Error(GEHEIM); },
+  setErgaenzen: async () => {
+    throw new Error(GEHEIM);
+  },
 }));
 
 const db = _req('db/database.js');
 
-test('kein interner Fehlertext an den Client', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const NAME = `fehlertext_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', true) RETURNING id`, [NAME])
+  ).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
@@ -71,12 +80,17 @@ test('kein interner Fehlertext an den Client', { concurrency: 1 }, async (t) => 
   importWorker(t, _req);
   const { base } = testServer(_req, { sitzung: { userId: uid }, t, routen: { '/api/v1': 'routes/api_v1/index.js' } });
   const strom = async (setNumber, sprache = 'de') => {
-    const r = await fetch(`${base}/api/v1/sets/add-stream`, { method: 'POST',
+    const r = await fetch(`${base}/api/v1/sets/add-stream`, {
+      method: 'POST',
       headers: { 'content-type': 'application/json', 'accept-language': sprache },
-      body: JSON.stringify({ set_number: setNumber }) });
+      body: JSON.stringify({ set_number: setNumber }),
+    });
     const text = await r.text();
     if (!r.headers.get('content-type')?.includes('event-stream')) return { status: r.status, ...JSON.parse(text) };
-    const ereignisse = text.split('\n').filter(z => z.startsWith('data: ')).map(z => JSON.parse(z.slice(6)));
+    const ereignisse = text
+      .split('\n')
+      .filter(z => z.startsWith('data: '))
+      .map(z => JSON.parse(z.slice(6)));
     return ereignisse.at(-1);
   };
 

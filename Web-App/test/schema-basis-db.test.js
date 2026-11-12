@@ -30,20 +30,22 @@ const ROOT = path.join(__dirname, '..');
 const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { testName, raeumeReste, id } = require('./helpers/testnamen');
 const NAME = testName('schema_basis');
-const ziel = new URL(BASIS); ziel.pathname = '/' + NAME;
+const ziel = new URL(BASIS);
+ziel.pathname = '/' + NAME;
 process.env.DATABASE_URL = ziel.toString();
 process.env.ADMIN_PASSWORD = 'Basis-Pruefung-2026';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 
-test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async (t) => {
+test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async t => {
   const admin = new Client({ connectionString: BASIS });
-  try { await admin.connect(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+  try {
+    await admin.connect();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   await raeumeReste(admin, 'schema_basis');
   await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
@@ -72,9 +74,16 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
       JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
       WHERE i.indrelid = 'rate_limit_attempts'::regclass AND i.indisprimary`);
     assert.equal(pk?.attname, 'key', 'die Anmeldezähler brauchen ihren Schlüssel als Primärschlüssel');
-    const dateien = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => f.endsWith('.sql')).sort();
+    const dateien = fs
+      .readdirSync(path.join(ROOT, 'db/migrations'))
+      .filter(f => f.endsWith('.sql'))
+      .sort();
     const angewandt = (await db.all('SELECT name FROM schema_migrations')).map(r => r.name);
-    assert.deepEqual(dateien.filter(f => !angewandt.includes(f)), [], 'nicht jede Migration gilt als angewandt');
+    assert.deepEqual(
+      dateien.filter(f => !angewandt.includes(f)),
+      [],
+      'nicht jede Migration gilt als angewandt',
+    );
   });
 
   await t.test('eine bestehende Datenbank bleibt, wie sie ist', async () => {
@@ -82,8 +91,11 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     await db.run(`UPDATE global_settings SET value = '123' WHERE key = 'api_limit_bricklink'`);
     assert.equal(await db.initSchema(), false, 'die Basis wurde erneut eingespielt');
     await db.initSchemaOnce();
-    assert.equal(Number((await db.get(`SELECT is_active FROM users WHERE username = 'admin'`)).is_active), 0,
-      'ein abgeschaltetes Administratorkonto wurde wieder freigeschaltet');
+    assert.equal(
+      Number((await db.get(`SELECT is_active FROM users WHERE username = 'admin'`)).is_active),
+      0,
+      'ein abgeschaltetes Administratorkonto wurde wieder freigeschaltet',
+    );
     assert.equal((await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`)).value, '123');
   });
 
@@ -92,7 +104,11 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     await db.run(`DELETE FROM schema_migrations WHERE name LIKE '0050-%'`);
     assert.equal(await db.initSchema(), false);
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
     assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name LIKE '0050-%'`), '0050 nicht nachgeholt');
   });
 
@@ -103,25 +119,33 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n;
     assert.ok(vorher > 0, 'die Probe braucht Migrationen vor 0050');
     await assert.rejects(db.initSchemaOnce(), /älter als Migration 0050.*UPGRADE\.md/s);
-    assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n, vorher,
-      'auf dem zu alten Stand lief eine Migration');
+    assert.equal(
+      (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n,
+      vorher,
+      'auf dem zu alten Stand lief eine Migration',
+    );
     await db.run('DROP TABLE schema_migrations');
-    await assert.rejects(db.initSchemaOnce(), /älter als Migration 0050/, 'ohne Migrationstabelle gilt die Datenbank als zu alt');
+    await assert.rejects(
+      db.initSchemaOnce(),
+      /älter als Migration 0050/,
+      'ohne Migrationstabelle gilt die Datenbank als zu alt',
+    );
   });
 });
 
-test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 180_000 }, async (t) => {
+test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 180_000 }, async t => {
   const admin = new Client({ connectionString: BASIS });
-  try { await admin.connect(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+  try {
+    await admin.connect();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   const NAME2 = testName('schema_abbild');
   await raeumeReste(admin, 'schema_abbild');
   await admin.query(`CREATE DATABASE ${id(NAME2)}`);
-  const ziel2 = new URL(BASIS); ziel2.pathname = '/' + NAME2;
+  const ziel2 = new URL(BASIS);
+  ziel2.pathname = '/' + NAME2;
   const c = new Client({ connectionString: ziel2.toString() });
   t.after(async () => {
     await c.end().catch(() => {});
@@ -134,19 +158,36 @@ test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 1
 
   await t.test('die Basis nennt eine lückenlose Folge vorhandener Migrationen', async () => {
     const inBasis = (await c.query('SELECT name FROM schema_migrations ORDER BY name')).rows.map(r => r.name);
-    const dateien = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => f.endsWith('.sql')).sort();
+    const dateien = fs
+      .readdirSync(path.join(ROOT, 'db/migrations'))
+      .filter(f => f.endsWith('.sql'))
+      .sort();
     assert.ok(inBasis.length > 50, `nur ${inBasis.length} Migrationen in der Basis`);
-    assert.deepEqual(inBasis, dateien.slice(0, inBasis.length), 'Die Basis ist ein Abbild der ersten N Migrationsdateien');
+    assert.deepEqual(
+      inBasis,
+      dateien.slice(0, inBasis.length),
+      'Die Basis ist ein Abbild der ersten N Migrationsdateien',
+    );
   });
 
-  await t.test('db/basis.sql ist ein unverändertes Abbild der Datenbank, die es erzeugt', async (tt) => {
+  await t.test('db/basis.sql ist ein unverändertes Abbild der Datenbank, die es erzeugt', async tt => {
     const sk = require(path.join(ROOT, 'scripts', 'schema-stand.js'));
     const erzeugtMit = Number((datei.match(/^-- Erzeugt mit pg_dump (\d+)\./m) || [])[1]);
     let jetzt = null;
-    try { jetzt = sk.pgDumpVersion(); } catch { /* kein pg_dump im Pfad */ }
+    try {
+      jetzt = sk.pgDumpVersion();
+    } catch {
+      /* kein pg_dump im Pfad */
+    }
     // pg_dump schreibt je Hauptversion anders; verglichen wird nur mit derselben.
-    if (jetzt !== erzeugtMit) { tt.skip(`pg_dump ${jetzt ?? 'fehlt'}, die Basis ist mit ${erzeugtMit} erzeugt`); return; }
-    assert.equal(sk.basisText(ziel2.toString()), datei,
-      'db/basis.sql weicht vom Erzeugnis ab — nicht von Hand ändern, neu erzeugen: npm run build && npm run schema:stand');
+    if (jetzt !== erzeugtMit) {
+      tt.skip(`pg_dump ${jetzt ?? 'fehlt'}, die Basis ist mit ${erzeugtMit} erzeugt`);
+      return;
+    }
+    assert.equal(
+      sk.basisText(ziel2.toString()),
+      datei,
+      'db/basis.sql weicht vom Erzeugnis ab — nicht von Hand ändern, neu erzeugen: npm run build && npm run schema:stand',
+    );
   });
 });

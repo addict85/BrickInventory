@@ -26,10 +26,16 @@ const sharp = require('sharp');
 const eigene = [];
 const standard = _req('db/database.js').standardDb();
 const verbinde = standard.eigeneVerbindung;
-standard.eigeneVerbindung = async () => { const c = await verbinde(); eigene.push(c); return c; };
+standard.eigeneVerbindung = async () => {
+  const c = await verbinde();
+  eigene.push(c);
+  return c;
+};
 test.after(async () => {
   for (const c of eigene) await c.end().catch(() => {});
-  await _req('db/database.js').pool?.end?.().catch(() => {});
+  await _req('db/database.js')
+    .pool?.end?.()
+    .catch(() => {});
 });
 
 /** Ruft `arbeit` und schreibt jedes rename mit: Quelle, Ziel, gab es das Ziel schon, wie gross war die Quelle. */
@@ -40,7 +46,11 @@ async function mitRenameSpur(arbeit) {
     spur.push({ von: String(von), nach: String(nach), zielDa: fs.existsSync(nach), groesse: fs.statSync(von).size });
     return echt.call(fs.promises, von, nach);
   };
-  try { return { ergebnis: await arbeit(), spur }; } finally { fs.promises.rename = echt; }
+  try {
+    return { ergebnis: await arbeit(), spur };
+  } finally {
+    fs.promises.rename = echt;
+  }
 }
 
 function pruefeAtomar(spur, ziel) {
@@ -51,7 +61,10 @@ function pruefeAtomar(spur, ziel) {
   assert.equal(path.dirname(r.von), path.dirname(ziel), 'temporär in einem anderen Ordner: rename wäre nicht atomar');
   assert.equal(r.zielDa, false, 'die Vorschau lag schon vor dem Umbenennen unter ihrem Namen');
   assert.equal(r.groesse, fs.statSync(ziel).size, 'umbenannt wurde eine unfertige Datei');
-  assert.deepEqual(fs.readdirSync(path.dirname(ziel)).filter(f => f.endsWith('.tmp.jpg')), []);
+  assert.deepEqual(
+    fs.readdirSync(path.dirname(ziel)).filter(f => f.endsWith('.tmp.jpg')),
+    [],
+  );
 }
 
 test('generateThumb schreibt über eine temporäre Datei', async () => {
@@ -59,41 +72,70 @@ test('generateThumb schreibt über eine temporäre Datei', async () => {
   const ordner = path.join(DATA_DIR, 'images', 'sets');
   fs.mkdirSync(ordner, { recursive: true });
   const name = `zz-atomar-${process.pid}`;
-  const original = path.join(ordner, `${name}.jpg`), vorschau = path.join(ordner, `${name}_thumb.jpg`);
-  await sharp({ create: { width: 400, height: 300, channels: 3, background: '#c00' } }).jpeg().toFile(original);
+  const original = path.join(ordner, `${name}.jpg`),
+    vorschau = path.join(ordner, `${name}_thumb.jpg`);
+  await sharp({ create: { width: 400, height: 300, channels: 3, background: '#c00' } })
+    .jpeg()
+    .toFile(original);
   try {
-    const { ergebnis, spur } = await mitRenameSpur(() => _req('src/katalog/bilder/thumbs.js').generateThumb(`/images/sets/${name}.jpg`));
+    const { ergebnis, spur } = await mitRenameSpur(() =>
+      _req('src/katalog/bilder/thumbs.js').generateThumb(`/images/sets/${name}.jpg`),
+    );
     assert.equal(ergebnis, `/images/sets/${name}_thumb.jpg`);
     pruefeAtomar(spur, vorschau);
-  } finally { fs.rmSync(original, { force: true }); fs.rmSync(vorschau, { force: true }); }
+  } finally {
+    fs.rmSync(original, { force: true });
+    fs.rmSync(vorschau, { force: true });
+  }
 });
 
-test('makeProxyThumb schreibt über eine temporäre Datei', async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('makeProxyThumb schreibt über eine temporäre Datei', async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'proxyvorschau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const quelle = path.join(ordner, 'a'.repeat(40)), ziel = quelle + '_thumb.jpg';
-  await sharp({ create: { width: 400, height: 300, channels: 3, background: '#0a0' } }).jpeg().toFile(quelle + '.jpg');
+  const quelle = path.join(ordner, 'a'.repeat(40)),
+    ziel = quelle + '_thumb.jpg';
+  await sharp({ create: { width: 400, height: 300, channels: 3, background: '#0a0' } })
+    .jpeg()
+    .toFile(quelle + '.jpg');
   fs.renameSync(quelle + '.jpg', quelle);
-  const { ergebnis, spur } = await mitRenameSpur(() => _req('src/katalog/bilder/proxyThumbs.js').makeProxyThumb(quelle, ziel));
+  const { ergebnis, spur } = await mitRenameSpur(() =>
+    _req('src/katalog/bilder/proxyThumbs.js').makeProxyThumb(quelle, ziel),
+  );
   assert.equal(ergebnis, true);
   pruefeAtomar(spur, ziel);
   assert.deepEqual([(await sharp(ziel).metadata()).width, (await sharp(ziel).metadata()).height], [200, 200]);
 });
 
-test('eine unbrauchbar kleine Vorschau wird verworfen, ausgeliefert wird das Original', async (t) => {
+test('eine unbrauchbar kleine Vorschau wird verworfen, ausgeliefert wird das Original', async t => {
   const { liefereAusCache } = _req('src/katalog/http/bildCacheAuslieferung.js');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'cachevorschau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const cacheFile = path.join(ordner, 'b'.repeat(40)), thumbFile = cacheFile + '_thumb.jpg';
+  const cacheFile = path.join(ordner, 'b'.repeat(40)),
+    thumbFile = cacheFile + '_thumb.jpg';
   fs.writeFileSync(cacheFile, Buffer.alloc(5000, 1));
   fs.writeFileSync(thumbFile, Buffer.alloc(150, 2));
   const kopf = {};
-  const res = { setHeader: (k, v) => { kopf[k.toLowerCase()] = v; }, status: () => ({ end() {} }) };
+  const res = {
+    setHeader: (k, v) => {
+      kopf[k.toLowerCase()] = v;
+    },
+    status: () => ({ end() {} }),
+  };
   const geliefert = [];
   let notiert = 0;
-  const beantwortet = await liefereAusCache({ res, req: { fresh: false }, cacheFile, thumbFile, wantThumb: true,
-    darfErzeugen: false, notiere: () => { notiert++; }, streamFileToResponse: (_r, datei) => geliefert.push(datei) });
+  const beantwortet = await liefereAusCache({
+    res,
+    req: { fresh: false },
+    cacheFile,
+    thumbFile,
+    wantThumb: true,
+    darfErzeugen: false,
+    notiere: () => {
+      notiert++;
+    },
+    streamFileToResponse: (_r, datei) => geliefert.push(datei),
+  });
   assert.equal(beantwortet, true);
   assert.deepEqual(geliefert, [cacheFile], 'nicht das Original ausgeliefert');
   assert.equal(kopf['content-length'], '5000');

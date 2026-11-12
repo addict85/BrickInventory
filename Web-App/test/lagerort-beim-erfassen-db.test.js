@@ -17,6 +17,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 
 /**
  * Der Lagerort-NAME einer Bestandszeile.
@@ -30,7 +31,9 @@ async function ortVon(db, tabelle, bedingung, params) {
     `SELECT l.name AS storage
        FROM ${tabelle} t
        LEFT JOIN storage_locations l ON l.id = t.storage_id
-      WHERE ${bedingung}`, params);
+      WHERE ${bedingung}`,
+    params,
+  );
   return r?.storage ?? null;
 }
 const db = _req('db/database.js');
@@ -42,93 +45,92 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('ich','x')`);
   U.ich = (await db.get(`SELECT id FROM users WHERE username='ich'`)).id;
 }
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Steht der Ort im VORRAT? Das ist die Hälfte, die ein blosses UPDATE nicht tut. */
 async function imVorrat(uid, name) {
-  const r = await db.get(
-    'SELECT 1 AS da FROM storage_locations WHERE user_id=$1 AND lower(name)=lower($2)',
-    [uid, name]);
+  const r = await db.get('SELECT 1 AS da FROM storage_locations WHERE user_id=$1 AND lower(name)=lower($2)', [
+    uid,
+    name,
+  ]);
   return !!r;
 }
 
-test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
+test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
   await seed();
   const setService = _req('src/sets/index.js');
-  const teile      = _req('src/teile/manuelleTeile.js');
-  const figuren    = _req('src/figuren/manuelleFiguren.js');
-  const merkliste  = _req('src/merkliste/merkliste.js');
-  const L          = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
+  const teile = _req('src/teile/manuelleTeile.js');
+  const figuren = _req('src/figuren/manuelleFiguren.js');
+  const merkliste = _req('src/merkliste/merkliste.js');
+  const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
 
   await t.test('1. Ein Set kommt mit seinem Lagerort in die Galerie', async () => {
     // Ohne Netz: getSetInfo/Brickset scheitern still und addSet legt die Zeile
     // trotzdem an („Set 10179-1"). Genau das ist hier erwünscht — geprüft wird
     // der Lagerort, nicht die Anreicherung.
     await setService.addSet({ setNumber: '10179-1', menge: 1, konto: U.ich, zustand: 'N', lagerort: 'Kiste 3' });
-    const ort = await ortVon(db, 'sets', 't.user_id=$1 AND t.set_number=$2',
-      [U.ich, '10179-1']);
-    assert.equal(ort, 'Kiste 3',
-      'Das Set wurde erfasst, aber ohne den mitgegebenen Lagerort.');
+    const ort = await ortVon(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '10179-1']);
+    assert.equal(ort, 'Kiste 3', 'Das Set wurde erfasst, aber ohne den mitgegebenen Lagerort.');
   });
 
   await t.test('2. Der neu getippte Ort landet im Vorrat', async () => {
     // Sonst stünde er am Set, fehlte aber in der Auswahlliste, aus der er
     // gewählt werden soll — Marcos „man kann auch gleich neue Auswahlwerte
     // erfassen".
-    assert.ok(await imVorrat(U.ich, 'Kiste 3'),
-      'Der Ort steht am Set, aber nicht im Vorrat.');
+    assert.ok(await imVorrat(U.ich, 'Kiste 3'), 'Der Ort steht am Set, aber nicht im Vorrat.');
   });
 
   await t.test('3. Ein manuell erfasstes Teil bekommt seinen Lagerort', async () => {
-    await teile.addManualPart(U.ich,
-      { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
+    await teile.addManualPart(U.ich, { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
     const r = await db.get(
       `SELECT l.name AS storage FROM parts t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
         WHERE t.user_id=$1 AND t.part_number=$2 AND t.source='manual'`,
-      [U.ich, '3001']);
+      [U.ich, '3001'],
+    );
     assert.equal(r?.storage, 'Regal B');
     assert.ok(await imVorrat(U.ich, 'Regal B'), 'Nicht im Vorrat');
   });
 
   await t.test('4. Eine manuell erfasste Minifigur bekommt ihren Lagerort', async () => {
     // Bis Migration 0024 gab es die Spalte gar nicht.
-    await figuren.addManualFig(U.ich,
-      { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
+    await figuren.addManualFig(U.ich, { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
     const r = await db.get(
       `SELECT l.name AS storage FROM minifigs t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
         WHERE t.user_id=$1 AND t.fig_number=$2`,
-      [U.ich, 'sw0001']);
+      [U.ich, 'sw0001'],
+    );
     assert.equal(r?.storage, 'Vitrine');
     assert.ok(await imVorrat(U.ich, 'Vitrine'), 'Nicht im Vorrat');
   });
 
   await t.test('5. Die Übernahme aus der Merkliste reicht ihn durch', async () => {
-    await db.run(
-      `INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,$2,'N')`,
-      [U.ich, '75192-1']);
+    await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,$2,'N')`, [U.ich, '75192-1']);
     await merkliste.uebernimm(U.ich, U.ich, '75192-1', 'N', { quantity: 1, storage: 'Dachboden' });
-    const ort = await ortVon(db, 'sets', 't.user_id=$1 AND t.set_number=$2',
-      [U.ich, '75192-1']);
-    assert.equal(ort, 'Dachboden',
-      'Der Merkposten wurde übernommen, der Lagerort ging dabei verloren.');
+    const ort = await ortVon(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '75192-1']);
+    assert.equal(ort, 'Dachboden', 'Der Merkposten wurde übernommen, der Lagerort ging dabei verloren.');
   });
 
   await t.test('6. Die Übersicht zählt Figuren EIGEN, nicht als Teilesorten', async () => {
@@ -145,24 +147,22 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async (t) => {
   await t.test('7. Ein Ort mit nur einer Figur darin lässt sich nicht löschen', async () => {
     // Sonst zeigte die Zuordnung der Figur danach auf einen Namen, den der
     // Vorrat nicht mehr kennt.
-    const ort = await db.get(
-      'SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
+    const ort = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
     // Geprüft wird `code`, nicht der Text: fachfehler() legt die deutsche
     // Fassung in `message` und den Code daneben (src/infra/fehlerTexte.ts). Auf
     // den Text zu prüfen hiesse, die Regel an eine Übersetzung zu hängen.
-    await assert.rejects(() => L.loescheOrt(U.ich, parseInt(ort.id, 10)),
-      (e) => e?.code === 'lagerort_in_benutzung',
-      'Der Ort liess sich löschen, obwohl eine Figur darin liegt.');
+    await assert.rejects(
+      () => L.loescheOrt(U.ich, parseInt(ort.id, 10)),
+      e => e?.code === 'lagerort_in_benutzung',
+      'Der Ort liess sich löschen, obwohl eine Figur darin liegt.',
+    );
   });
 
   await t.test('8. Umbenennen nimmt die Figuren mit', async () => {
-    const ort = await db.get(
-      'SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
+    const ort = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
     await L.benenneOrtUm(U.ich, parseInt(ort.id, 10), 'Vitrine Wohnzimmer');
-    const figurOrt = await ortVon(db, 'minifigs', 't.user_id=$1 AND t.fig_number=$2',
-      [U.ich, 'sw0001']);
-    assert.equal(figurOrt, 'Vitrine Wohnzimmer',
-      'Der Vorrat wurde umbenannt, die Figur zeigt auf den alten Namen.');
+    const figurOrt = await ortVon(db, 'minifigs', 't.user_id=$1 AND t.fig_number=$2', [U.ich, 'sw0001']);
+    assert.equal(figurOrt, 'Vitrine Wohnzimmer', 'Der Vorrat wurde umbenannt, die Figur zeigt auf den alten Namen.');
   });
 
   await db.pool.end().catch(() => {});

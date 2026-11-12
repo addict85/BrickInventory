@@ -14,10 +14,10 @@ export type GeplanteArt = 'csv_sync' | 'preise' | 'bild_nachlauf' | 'aufraeumen'
 type PlanNutzlast = NutzlastEingabe<GeplanteArt>;
 
 export const ZEITPLAENE: Record<GeplanteArt, Zeitplan> = {
-  csv_sync:            { taeglich: { einstellung: 'job_time_csv_sync', vorgabe: '03:00' } },
-  preise:              { minuten: { einstellung: 'price_job_interval_minutes', vorgabe: 60, mindestens: 5 } },
-  bild_nachlauf:       { minuten: { vorgabe: 60 } },
-  aufraeumen:          { minuten: { vorgabe: 60 } },
+  csv_sync: { taeglich: { einstellung: 'job_time_csv_sync', vorgabe: '03:00' } },
+  preise: { minuten: { einstellung: 'price_job_interval_minutes', vorgabe: 60, mindestens: 5 } },
+  bild_nachlauf: { minuten: { vorgabe: 60 } },
+  aufraeumen: { minuten: { vorgabe: 60 } },
   aufraeumen_taeglich: { minuten: { vorgabe: 24 * 60 } },
 };
 
@@ -25,7 +25,7 @@ export const ZEITPLAENE: Record<GeplanteArt, Zeitplan> = {
  * fällig zur eingestellten Uhrzeit. */
 export const DAILY_JOBS = [
   { name: 'brickset_retry', monitorKey: 'bricksetRetry', default: '04:00' },
-  { name: 'csv_sync',       monitorKey: 'csvImport',     default: '03:00' },
+  { name: 'csv_sync', monitorKey: 'csvImport', default: '03:00' },
 ] as const;
 
 export const planSchluessel = (art: AuftragsArt) => `plan:${art}`;
@@ -33,7 +33,8 @@ export const hatZeitplan = (art: AuftragsArt): art is GeplanteArt => Object.hasO
 
 export function leseUhrzeit(s: string | null | undefined, vorgabe: string): { h: number; min: number } {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? '').trim()) ?? /^(\d{1,2}):(\d{2})$/.exec(vorgabe);
-  const h = Number(m?.[1] ?? 4), min = Number(m?.[2] ?? 0);
+  const h = Number(m?.[1] ?? 4),
+    min = Number(m?.[2] ?? 0);
   return h > 23 || min > 59 ? leseUhrzeit(vorgabe, '04:00') : { h, min };
 }
 
@@ -45,7 +46,7 @@ export function naechsteUhrzeit(zeit: { h: number; min: number }, jetzt = new Da
   return z;
 }
 
-export async function taeglicheUhrzeit(name: typeof DAILY_JOBS[number]['name']): Promise<{ h: number; min: number }> {
+export async function taeglicheUhrzeit(name: (typeof DAILY_JOBS)[number]['name']): Promise<{ h: number; min: number }> {
   const meta = DAILY_JOBS.find(j => j.name === name)!;
   return leseUhrzeit(await getGlobalSetting(`job_time_${name}`), meta.default);
 }
@@ -53,15 +54,22 @@ export async function taeglicheUhrzeit(name: typeof DAILY_JOBS[number]['name']):
 export async function naechsterLauf(art: GeplanteArt, jetzt = new Date()): Promise<Date> {
   const plan = ZEITPLAENE[art];
   if ('taeglich' in plan) {
-    return naechsteUhrzeit(leseUhrzeit(await getGlobalSetting(plan.taeglich.einstellung), plan.taeglich.vorgabe), jetzt);
+    return naechsteUhrzeit(
+      leseUhrzeit(await getGlobalSetting(plan.taeglich.einstellung), plan.taeglich.vorgabe),
+      jetzt,
+    );
   }
   const roh = plan.minuten.einstellung ? await getGlobalSetting(plan.minuten.einstellung) : null;
-  const min = Math.max(plan.minuten.mindestens ?? 1, parseInt(String(roh ?? '')) || plan.minuten.vorgabe);
+  const min = Math.max(plan.minuten.mindestens ?? 1, parseInt(String(roh ?? ''), 10) || plan.minuten.vorgabe);
   return new Date(jetzt.getTime() + min * 60_000);
 }
 
 export async function planeNaechsten(art: GeplanteArt, nutzlast: PlanNutzlast = {}): Promise<string | null> {
-  return stelleAuftragEin(art, nutzlast, { schluessel: planSchluessel(art), faelligAb: await naechsterLauf(art), maxVersuche: 3 });
+  return stelleAuftragEin(art, nutzlast, {
+    schluessel: planSchluessel(art),
+    faelligAb: await naechsterLauf(art),
+    maxVersuche: 3,
+  });
 }
 
 export async function planeAlle(): Promise<void> {
@@ -75,7 +83,10 @@ export async function zeitplanGeaendert(art: GeplanteArt): Promise<void> {
 
 /** @returns false, wenn er gerade läuft */
 export async function ziehePlanVor(art: GeplanteArt, sekunden = 0, nutzlast: PlanNutzlast = {}): Promise<boolean> {
-  if (await auftraegeBereich().auftraege.zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) { await auftraegeBereich().db.benachrichtigung.notify(AUFTRAG_KANAL, art); return true; }
+  if (await auftraegeBereich().auftraege.zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) {
+    await auftraegeBereich().db.benachrichtigung.notify(AUFTRAG_KANAL, art);
+    return true;
+  }
   if (await auftraegeBereich().auftraege.laeuftArt(art)) return false;
   await stelleAuftragEin(art, nutzlast, { schluessel: planSchluessel(art), nachSekunden: sekunden, maxVersuche: 3 });
   return true;

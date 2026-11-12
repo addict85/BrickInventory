@@ -2,7 +2,7 @@
  * ALLE Erfassungs-Wege im Haushalt — Sets, Teile, Minifiguren, je Ändern und
  * Löschen.
  *
- * Gegenprobe (durchgeführt): writableIds in src/sammlung/erfassungen.ts durch die eigene ID
+ * Gegenprobe (durchgeführt): schreibbereich in src/sammlung/erfassungen.ts durch die eigene ID
  * ersetzt → „Set-Erfassung löschen" endet wieder in 404.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
@@ -20,20 +20,23 @@ const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementarten',
-  { concurrency: 1 }, async (t) => {
+test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementarten', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  if (!await dbOderSkip(t, _req)) return;
-
-  const HAUPT = `acq6-h-${process.pid}`, SUB = `acq6-s-${process.pid}`;
-  const SN = `77001-${process.pid}`, PN = `3001x${process.pid}`, FN = `sw${process.pid}`;
+  const HAUPT = `acq6-h-${process.pid}`,
+    SUB = `acq6-s-${process.pid}`;
+  const SN = `77001-${process.pid}`,
+    PN = `3001x${process.pid}`,
+    FN = `sw${process.pid}`;
 
   await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
   const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
-  const subId   = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-               [hauptId, subId]);
+  const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
+    hauptId,
+    subId,
+  ]);
 
   const app = express();
   app.use(express.json());
@@ -56,26 +59,65 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     await db.run(`DELETE FROM parts WHERE part_number=$1`, [PN]);
     await db.run(`DELETE FROM minifig_acquisitions WHERE fig_number=$1`, [FN]);
     await db.run(`DELETE FROM minifigs WHERE fig_number=$1`, [FN]);
-    await haeltSet(db, subId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
-    await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
-                  VALUES ($1,$2,10,'N',1)`, [subId, SN]);
-    await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 });  // Menge 0: die Erfassung dahinter traegt sie
-    await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
-                  VALUES ($1,$2,4,5,'N',1)`, [subId, PN]);
-    await haeltFigur(db, subId, FN, { menge: 0 });  // Menge 0: die Erfassung dahinter traegt sie
-    await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
-                  VALUES ($1,$2,7,'N',1)`, [subId, FN]);
+    await haeltSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await db.run(
+      `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
+                  VALUES ($1,$2,10,'N',1)`,
+      [subId, SN],
+    );
+    await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
+    await db.run(
+      `INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
+                  VALUES ($1,$2,4,5,'N',1)`,
+      [subId, PN],
+    );
+    await haeltFigur(db, subId, FN, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+    await db.run(
+      `INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
+                  VALUES ($1,$2,7,'N',1)`,
+      [subId, FN],
+    );
   };
   const acqId = async (tabelle, spalte, wert) =>
     (await db.get(`SELECT id FROM ${tabelle} WHERE user_id=$1 AND ${spalte}=$2`, [subId, wert])).id;
 
   const faelle = [
-    ['Set-Erfassung ändern',      'PUT',    async () => `/api/v1/sets/${SN}/acquisitions/${await acqId('set_acquisitions','set_number',SN)}`,        { purchase_price: 20 }],
-    ['Set-Erfassung löschen',     'DELETE', async () => `/api/v1/sets/${SN}/acquisitions/${await acqId('set_acquisitions','set_number',SN)}`,        null],
-    ['Teil-Erfassung ändern',     'PUT',    async () => `/api/v1/parts/${PN}/4/acquisitions/${await acqId('part_acquisitions','part_number',PN)}`,   { unit_price: 9 }],
-    ['Teil-Erfassung löschen',    'DELETE', async () => `/api/v1/parts/${PN}/4/acquisitions/${await acqId('part_acquisitions','part_number',PN)}`,   null],
-    ['Figur-Erfassung ändern',    'PUT',    async () => `/api/v1/minifigs/${FN}/acquisitions/${await acqId('minifig_acquisitions','fig_number',FN)}`, { unit_price: 9 }],
-    ['Figur-Erfassung löschen',   'DELETE', async () => `/api/v1/minifigs/${FN}/acquisitions/${await acqId('minifig_acquisitions','fig_number',FN)}`, null],
+    [
+      'Set-Erfassung ändern',
+      'PUT',
+      async () => `/api/v1/sets/${SN}/acquisitions/${await acqId('set_acquisitions', 'set_number', SN)}`,
+      { purchase_price: 20 },
+    ],
+    [
+      'Set-Erfassung löschen',
+      'DELETE',
+      async () => `/api/v1/sets/${SN}/acquisitions/${await acqId('set_acquisitions', 'set_number', SN)}`,
+      null,
+    ],
+    [
+      'Teil-Erfassung ändern',
+      'PUT',
+      async () => `/api/v1/parts/${PN}/4/acquisitions/${await acqId('part_acquisitions', 'part_number', PN)}`,
+      { unit_price: 9 },
+    ],
+    [
+      'Teil-Erfassung löschen',
+      'DELETE',
+      async () => `/api/v1/parts/${PN}/4/acquisitions/${await acqId('part_acquisitions', 'part_number', PN)}`,
+      null,
+    ],
+    [
+      'Figur-Erfassung ändern',
+      'PUT',
+      async () => `/api/v1/minifigs/${FN}/acquisitions/${await acqId('minifig_acquisitions', 'fig_number', FN)}`,
+      { unit_price: 9 },
+    ],
+    [
+      'Figur-Erfassung löschen',
+      'DELETE',
+      async () => `/api/v1/minifigs/${FN}/acquisitions/${await acqId('minifig_acquisitions', 'fig_number', FN)}`,
+      null,
+    ],
   ];
 
   try {
@@ -87,9 +129,11 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
         headers: { 'content-type': 'application/json' },
         body: body ? JSON.stringify(body) : undefined,
       });
-      assert.equal(r.status, 200,
-        `${name}: darf nicht in 404 enden — die Zeile gehört dem Unterkonto, ` +
-        'das Hauptkonto darf sie verwalten');
+      assert.equal(
+        r.status,
+        200,
+        `${name}: darf nicht in 404 enden — die Zeile gehört dem Unterkonto, ` + 'das Hauptkonto darf sie verwalten',
+      );
     }
 
     // Löschen muss WIRKLICH löschen. Zwei der Wege prüften früher gar nicht,
@@ -98,16 +142,19 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     await aufbauen();
     const figId = await acqId('minifig_acquisitions', 'fig_number', FN);
     await fetch(`${base}/api/v1/minifigs/${FN}/acquisitions/${figId}`, { method: 'DELETE' });
-    const rest = await db.get(
-      `SELECT COUNT(*)::int AS c FROM minifig_acquisitions WHERE id=$1`, [figId]);
+    const rest = await db.get(`SELECT COUNT(*)::int AS c FROM minifig_acquisitions WHERE id=$1`, [figId]);
     assert.equal(rest.c, 0, 'die Erfassung muss nach dem Löschen wirklich weg sein');
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
     for (const [tab, sp, wert] of [
-      ['set_acquisitions', 'set_number', SN], ['sets', 'set_number', SN],
-      ['part_acquisitions', 'part_number', PN], ['parts', 'part_number', PN],
-      ['minifig_acquisitions', 'fig_number', FN], ['minifigs', 'fig_number', FN],
-    ]) await db.run(`DELETE FROM ${tab} WHERE ${sp}=$1`, [wert]).catch(() => {});
+      ['set_acquisitions', 'set_number', SN],
+      ['sets', 'set_number', SN],
+      ['part_acquisitions', 'part_number', PN],
+      ['parts', 'part_number', PN],
+      ['minifig_acquisitions', 'fig_number', FN],
+      ['minifigs', 'fig_number', FN],
+    ])
+      await db.run(`DELETE FROM ${tab} WHERE ${sp}=$1`, [wert]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

@@ -22,12 +22,12 @@
  * Voraussetzung für 7 und 8: Test-DB via TEST_DATABASE_URL. Ohne DB: skip,
  * ausser REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const os     = require('node:os');
-const path   = require('node:path');
-const zlib   = require('node:zlib');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const zlib = require('node:zlib');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 // Vor dem Laden: appPaths rechnet DATA_DIR aus APP_ROOT beim Einlesen aus.
@@ -37,9 +37,11 @@ fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}')
 process.env.APP_ROOT = SANDKASTEN;
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
-const { pdfText, werteAusPdf, PdfZuGross, STROM_MAX_BYTES, ENTPACKT_MAX_BYTES, STROEME_MAX } =
-  _req('src/gutscheine/gutscheinPdf.js');
+const { pdfText, werteAusPdf, PdfZuGross, STROM_MAX_BYTES, ENTPACKT_MAX_BYTES, STROEME_MAX } = _req(
+  'src/gutscheine/gutscheinPdf.js',
+);
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
@@ -51,8 +53,11 @@ test.after(async () => {
 function pdfAus(stroeme) {
   const teile = [Buffer.from('%PDF-1.4\n')];
   stroeme.forEach((s, i) => {
-    teile.push(Buffer.from(`${i + 1} 0 obj\n<< /Length ${s.length} /Filter /FlateDecode >>\nstream\n`),
-      s, Buffer.from('\nendstream\nendobj\n'));
+    teile.push(
+      Buffer.from(`${i + 1} 0 obj\n<< /Length ${s.length} /Filter /FlateDecode >>\nstream\n`),
+      s,
+      Buffer.from('\nendstream\nendobj\n'),
+    );
   });
   teile.push(Buffer.from('%%EOF\n'));
   return Buffer.concat(teile);
@@ -61,7 +66,11 @@ function pdfAus(stroeme) {
 function dauer(f) {
   const t = process.hrtime.bigint();
   let fehler = null;
-  try { f(); } catch (e) { fehler = e; }
+  try {
+    f();
+  } catch (e) {
+    fehler = e;
+  }
   return { fehler, ms: Number(process.hrtime.bigint() - t) / 1e6 };
 }
 
@@ -85,17 +94,20 @@ test('3. mehr Ströme als erlaubt werden abgewiesen', () => {
   const klein = zlib.deflateSync(Buffer.from('BT (x) Tj ET'));
   const { fehler } = dauer(() => pdfText(pdfAus(Array(STROEME_MAX + 1).fill(klein))));
   assert.ok(fehler instanceof PdfZuGross, `Erwartet PdfZuGross, bekam ${fehler}`);
-  assert.equal(pdfText(pdfAus(Array(10).fill(klein))).split('\n').length, 10,
-    'Zehn kleine Ströme sind erlaubt und werden gelesen');
+  assert.equal(
+    pdfText(pdfAus(Array(10).fill(klein))).split('\n').length,
+    10,
+    'Zehn kleine Ströme sind erlaubt und werden gelesen',
+  );
 });
 
 test('4. offene Anfänge kosten keine quadratische Rechenzeit', () => {
   const n = 80000;
   const faelle = {
-    'stream ohne Ende':  Buffer.from('%PDF-1.4\n' + 'stream\n'.repeat(n)),
+    'stream ohne Ende': Buffer.from('%PDF-1.4\n' + 'stream\n'.repeat(n)),
     'Literal ohne Ende': Buffer.from('%PDF-1.4\nstream\n(' + '\\('.repeat(n) + '\nendstream'),
-    'Feld ohne Ende':    Buffer.from('%PDF-1.4\nstream\n[(' + '\\('.repeat(n) + ')\nendstream'),
-    'Leerraum im Text':  pdfAus([Buffer.from('(im Wert von 1' + ' '.repeat(n) + ') Tj')]),
+    'Feld ohne Ende': Buffer.from('%PDF-1.4\nstream\n[(' + '\\('.repeat(n) + ')\nendstream'),
+    'Leerraum im Text': pdfAus([Buffer.from('(im Wert von 1' + ' '.repeat(n) + ') Tj')]),
   };
   for (const [name, pdf] of Object.entries(faelle)) {
     const { fehler, ms } = dauer(() => werteAusPdf(pdf));
@@ -105,17 +117,23 @@ test('4. offene Anfänge kosten keine quadratische Rechenzeit', () => {
 });
 
 test('5. gültige Textoperatoren werden weiter gelesen', () => {
-  const inhalt = 'BT /F1 14 Tf 60 700 Td [(Ihre LEGO-Geschenkkarte im Wert von )-20(400 CHF:)] TJ\n'
-    + '0 -20 Td (5045076374450011166) Tj <50494E3A2035323235> Tj\n'
-    + '(Karte \\(neu\\) \\061) \' (Geschenk (Ostern)) Tj <</MCID 0>> BDC ET';
+  const inhalt =
+    'BT /F1 14 Tf 60 700 Td [(Ihre LEGO-Geschenkkarte im Wert von )-20(400 CHF:)] TJ\n' +
+    '0 -20 Td (5045076374450011166) Tj <50494E3A2035323235> Tj\n' +
+    "(Karte \\(neu\\) \\061) ' (Geschenk (Ostern)) Tj <</MCID 0>> BDC ET";
   const text = pdfText(pdfAus([zlib.deflateSync(Buffer.from(inhalt, 'latin1'))]));
   assert.deepEqual(text.split('\n'), [
-    'Ihre LEGO-Geschenkkarte im Wert von 400 CHF:', '5045076374450011166', 'PIN: 5225',
-    'Karte (neu) 1', 'Geschenk (Ostern)',
+    'Ihre LEGO-Geschenkkarte im Wert von 400 CHF:',
+    '5045076374450011166',
+    'PIN: 5225',
+    'Karte (neu) 1',
+    'Geschenk (Ostern)',
   ]);
-  assert.deepEqual(werteAusPdf(pdfAus([Buffer.from(inhalt, 'latin1')])),
+  assert.deepEqual(
+    werteAusPdf(pdfAus([Buffer.from(inhalt, 'latin1')])),
     { nummer: '5045076374450011166', pin: '5225', betrag: 400, waehrung: 'CHF' },
-    'Auch unkomprimiert');
+    'Auch unkomprimiert',
+  );
 });
 
 /** Zwei Schriften, eine mit eigener Kodierung; `inhalt` wählt sie per Tf. */
@@ -124,55 +142,77 @@ async function zweiSchriften(inhalt) {
   const doc = await PL.PDFDocument.create();
   const seite = doc.addPage([595, 842]);
   const ctx = doc.context;
-  const eigen = ctx.obj({ Type: 'Font', Subtype: 'TrueType', BaseFont: 'Sonderbar',
-    Encoding: ctx.obj({ Type: 'Encoding', Differences: ctx.obj([48, PL.PDFName.of('five')]) }) });
+  const eigen = ctx.obj({
+    Type: 'Font',
+    Subtype: 'TrueType',
+    BaseFont: 'Sonderbar',
+    Encoding: ctx.obj({ Type: 'Encoding', Differences: ctx.obj([48, PL.PDFName.of('five')]) }),
+  });
   const sicher = ctx.obj({ Type: 'Font', Subtype: 'Type1', BaseFont: 'Helvetica', Encoding: 'WinAnsiEncoding' });
-  seite.node.set(PL.PDFName.of('Resources'), ctx.obj({
-    Font: ctx.obj({ F1: ctx.register(sicher), F9: ctx.register(eigen) }) }));
-  seite.node.set(PL.PDFName.of('Contents'), ctx.register(
-    PL.PDFRawStream.of(ctx.obj({ Length: inhalt.length }), Buffer.from(inhalt, 'latin1'))));
+  seite.node.set(
+    PL.PDFName.of('Resources'),
+    ctx.obj({
+      Font: ctx.obj({ F1: ctx.register(sicher), F9: ctx.register(eigen) }),
+    }),
+  );
+  seite.node.set(
+    PL.PDFName.of('Contents'),
+    ctx.register(PL.PDFRawStream.of(ctx.obj({ Length: inhalt.length }), Buffer.from(inhalt, 'latin1'))),
+  );
   return Buffer.from(await doc.save());
 }
 
 test('6. beim Ersetzen zählt die letzte Schrift VOR dem Operator', async () => {
   const { ersetzeBetrag } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
   const rest = 'BT /F1 12 Tf (5045076374450011166) Tj (PIN: 5225) Tj ET\n';
-  const unsicher = await ersetzeBetrag(await zweiSchriften(
-    'BT /F1 12 Tf (Karte) Tj /F9 14 Tf (im Wert von 400 CHF:) Tj ET\n' + rest), 250);
+  const unsicher = await ersetzeBetrag(
+    await zweiSchriften('BT /F1 12 Tf (Karte) Tj /F9 14 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
+    250,
+  );
   assert.equal(unsicher.daten, null, 'Der Betrag in der eigenen Kodierung wurde ersetzt');
   assert.equal(unsicher.abgelehnt, 1);
 
-  const sicher = await ersetzeBetrag(await zweiSchriften(
-    'BT /F9 14 Tf (Karte) Tj /F1 12 Tf (im Wert von 400 CHF:) Tj ET\n' + rest), 250);
+  const sicher = await ersetzeBetrag(
+    await zweiSchriften('BT /F9 14 Tf (Karte) Tj /F1 12 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
+    250,
+  );
   assert.ok(sicher.daten, `WinAnsi abgelehnt: ${sicher.grund}`);
   assert.equal(werteAusPdf(sicher.daten).betrag, 250);
 });
 
-test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c);
+  } finally {
+    c.release();
+  }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   const srv = testServer(_req, {
-    sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t,
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
 
   // Mit getippten Werten: Die Route legt dann auch ein unlesbares PDF ab.
   async function hochladen(pdf, nummer) {
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutschein.pdf');
-    fd.append('number', nummer); fd.append('pin', '1234');
-    fd.append('amount', '50'); fd.append('currency', 'CHF');
+    fd.append('number', nummer);
+    fd.append('pin', '1234');
+    fd.append('amount', '50');
+    fd.append('currency', 'CHF');
     const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
     const nummer_suche = _req('src/gutscheine/repository/gutscheine.js').nummerSuche(uid, nummer);
     const zeile = await db.get('SELECT id FROM vouchers WHERE user_id=$1 AND nummer_suche=$2', [uid, nummer_suche]);
@@ -187,8 +227,11 @@ test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { co
   });
 
   await t.test('8. ein PDF über 2 MB wird nicht angenommen', async () => {
-    const gross = Buffer.concat([Buffer.from('%PDF-1.4\n%'), Buffer.alloc(2.5 * 1024 * 1024, 0x41),
-      Buffer.from('\n%%EOF\n')]);
+    const gross = Buffer.concat([
+      Buffer.from('%PDF-1.4\n%'),
+      Buffer.alloc(2.5 * 1024 * 1024, 0x41),
+      Buffer.from('\n%%EOF\n'),
+    ]);
     const r = await hochladen(gross, '5045076374450099992');
     assert.ok(r.status >= 400, `Status ${r.status}: ${JSON.stringify(r.body)}`);
     assert.equal(r.zeile, undefined, 'Der Gutschein wurde trotzdem angelegt');

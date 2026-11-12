@@ -17,11 +17,11 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
@@ -32,15 +32,21 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
 const db = _req('db/database.js');
-const SET = '99073-1', NAME = `anl_hoch_${process.pid}`;
+const SET = '99073-1',
+  NAME = `anl_hoch_${process.pid}`;
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
 
-test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Anleitung hochladen', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+                             VALUES ($1, 'x', true, true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   await katalogSet(db, SET, { name: 'Hochladeprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);
   const ordner = path.join(DATA_DIR, 'uploads', String(uid));
@@ -48,7 +54,8 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
   fs.rmSync(ordner, { recursive: true, force: true });
   const altKontingent = process.env.UPLOAD_KONTINGENT_MB;
   t.after(async () => {
-    if (altKontingent === undefined) umgebung({ UPLOAD_KONTINGENT_MB: undefined }); else umgebung({ UPLOAD_KONTINGENT_MB: altKontingent });
+    if (altKontingent === undefined) umgebung({ UPLOAD_KONTINGENT_MB: undefined });
+    else umgebung({ UPLOAD_KONTINGENT_MB: altKontingent });
     fs.rmSync(ordner, { recursive: true, force: true });
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SET]).catch(() => {});
@@ -74,7 +81,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
     for (const o of [path.dirname(ordner), ordner]) fs.chmodSync(o, 0o755);
     const r = await hochladen(PDF, 'application/pdf', 'zweite.pdf');
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const rechte = (p) => (fs.statSync(p).mode & 0o777).toString(8);
+    const rechte = p => (fs.statSync(p).mode & 0o777).toString(8);
     const datei = path.join(ordner, path.basename(r.body.instruction.url));
     assert.deepEqual([rechte(datei), rechte(ordner), rechte(path.dirname(ordner))], ['600', '700', '700']);
     fs.rmSync(datei);
@@ -94,7 +101,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('über dem Kontingent', async () => {
-    umgebung({ UPLOAD_KONTINGENT_MB: String(1 / 1024) });   // 1 KB
+    umgebung({ UPLOAD_KONTINGENT_MB: String(1 / 1024) }); // 1 KB
     const gross = Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]);
     const vorher = dateien().length;
     const r = await hochladen(gross, 'application/pdf', 'gross.pdf');
@@ -109,12 +116,24 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
     umgebung({ UPLOAD_KONTINGENT_MB: '1' });
     const http = require('node:http');
     const status = await new Promise((fertig, fehl) => {
-      const anfrage = http.request(`${base}/api/v1/sets/${SET}/instructions/upload`, { method: 'POST',
-        headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': String(10 * 1024 * 1024) } },
-        (antwort) => { antwort.resume(); fertig(antwort.statusCode); anfrage.destroy(); });
+      const anfrage = http.request(
+        `${base}/api/v1/sets/${SET}/instructions/upload`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': String(10 * 1024 * 1024) },
+        },
+        antwort => {
+          antwort.resume();
+          fertig(antwort.statusCode);
+          anfrage.destroy();
+        },
+      );
       anfrage.on('error', () => {});
       anfrage.write('--x\r\n');
-      setTimeout(() => { anfrage.destroy(); fehl(new Error('keine Antwort, solange der Inhalt fehlt')); }, 3000);
+      setTimeout(() => {
+        anfrage.destroy();
+        fehl(new Error('keine Antwort, solange der Inhalt fehlt'));
+      }, 3000);
     });
     assert.equal(status, 413);
   });

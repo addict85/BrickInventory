@@ -82,10 +82,23 @@ export const BricklinkVerweise = z.looseObject({ success: z.literal(true), links
 
 export const routen = {
   'GET /api/v1/catalog/meta': { klein: true, antwort: CatalogMetaResponse },
-  'GET /api/v1/catalog/sets': { antwort: CatalogSetsResponse, abfrage: abfrage({ q: Q.text(), theme_id: Q.zahlOderLeer,
-    year_from: Q.zahlOderLeer, year_to: Q.zahlOderLeer, sort: Q.text(40), ...SEITE, limit: veraltet(Q.zahl(), 'page_size') }) },
+  'GET /api/v1/catalog/sets': {
+    antwort: CatalogSetsResponse,
+    abfrage: abfrage({
+      q: Q.text(),
+      theme_id: Q.zahlOderLeer,
+      year_from: Q.zahlOderLeer,
+      year_to: Q.zahlOderLeer,
+      sort: Q.text(40),
+      ...SEITE,
+      limit: veraltet(Q.zahl(), 'page_size'),
+    }),
+  },
   'GET /api/v1/catalog/sets/:setNumber': { antwort: CatalogSetDetailResponse },
-  'GET /api/v1/catalog/year-verteilung': { klein: true, antwort: CatalogYearVerteilungResponse,
-    abfrage: abfrage({ q: Q.text(), theme_id: Q.zahlOderLeer, sort: Q.text(40) }) },
+  'GET /api/v1/catalog/year-verteilung': {
+    klein: true,
+    antwort: CatalogYearVerteilungResponse,
+    abfrage: abfrage({ q: Q.text(), theme_id: Q.zahlOderLeer, sort: Q.text(40) }),
+  },
   'GET /api/v1/catalog/bricklink': { antwort: BricklinkVerweise, abfrage: abfrage({ sets: Q.text(4000) }) },
 } satisfies Record<string, Route>;

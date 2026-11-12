@@ -23,7 +23,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 
-test('Dienste lösen die Sicht auf', { concurrency: 1 }, async (t) => {
+test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -38,21 +38,30 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async (t) => {
   H.leereHaushaltCache();
   await haeltSet(db, haupt, '10179-1');
   await haeltSet(db, sub, '75192-1');
-  const nummern = async (sicht) => (await getSets(sicht, {})).sets.map(s => s.set_number).sort();
+  const nummern = async sicht => (await getSets(sicht, {})).sets.map(s => s.set_number).sort();
 
   await t.test('eine Sicht wählt die Konten im Dienst', async () => {
     assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1', '75192-1']);
     assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
     assert.deepEqual(await nummern({ nutzer: haupt, konten: 'subs' }), ['75192-1']);
-    assert.deepEqual(await nummern({ nutzer: sub, konten: String(haupt) }), ['75192-1'],
-      'ein Unterkonto sieht über eine fremde ID nicht ins Hauptkonto');
+    assert.deepEqual(
+      await nummern({ nutzer: sub, konten: String(haupt) }),
+      ['75192-1'],
+      'ein Unterkonto sieht über eine fremde ID nicht ins Hauptkonto',
+    );
   });
 
   await t.test('Löschen folgt der Kontenwahl, im Schreibbereich', async () => {
-    assert.equal(await loescheSetFuer({ nutzer: sub, konten: String(haupt) }, '10179-1'), null,
-      'das Unterkonto löschte ein Set des Hauptkontos');
-    assert.equal(await loescheSetFuer({ nutzer: haupt, konten: 'subs' }, '10179-1'), null,
-      'mit „Unterkonten“ gewählt traf das Löschen das eigene Set');
+    assert.equal(
+      await loescheSetFuer({ nutzer: sub, konten: String(haupt) }, '10179-1'),
+      null,
+      'das Unterkonto löschte ein Set des Hauptkontos',
+    );
+    assert.equal(
+      await loescheSetFuer({ nutzer: haupt, konten: 'subs' }, '10179-1'),
+      null,
+      'mit „Unterkonten“ gewählt traf das Löschen das eigene Set',
+    );
     assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
     assert.ok(await loescheSetFuer({ nutzer: haupt, konten: 'subs' }, '75192-1'));
     assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1']);
@@ -61,6 +70,6 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async (t) => {
   await t.test('ein Unterkonto schreibt nicht für sein Hauptkonto', async () => {
     assert.equal(await H.schreibziel(haupt, sub), sub);
     assert.equal(await H.schreibziel(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
-    await assert.rejects(H.schreibziel(sub, haupt), (e) => e.code === 'kein_schreibrecht' && e.art === 'verboten');
+    await assert.rejects(H.schreibziel(sub, haupt), e => e.code === 'kein_schreibrecht' && e.art === 'verboten');
   });
 });

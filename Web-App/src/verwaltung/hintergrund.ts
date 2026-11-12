@@ -12,5 +12,5 @@ export async function auftragsUebersicht(filter: { status?: string | undefined; 
 /** Beim Bildbedarf gehen auch die Notizen. */
 export async function auftragsArtLeeren(artRoh: string) {
   const r = await auftraege.leereAuftragsArt(artRoh);
-  return r.art === 'bildbedarf' ? { ...r, entfernt: r.entfernt + await leereBildbedarf() } : r;
+  return r.art === 'bildbedarf' ? { ...r, entfernt: r.entfernt + (await leereBildbedarf()) } : r;
 }

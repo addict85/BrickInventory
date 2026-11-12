@@ -13,15 +13,16 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
-const express   = require(path.join(ROOT, 'node_modules', 'express'));
-const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
+const express = require(path.join(ROOT, 'node_modules', 'express'));
+const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
-const bcrypt    = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const NAME = 'eine_anmeldung', PASS = 'richtigesPasswort1';
+const NAME = 'eine_anmeldung',
+  PASS = 'richtigesPasswort1';
 
-test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   // Wenige Runden: Hier wird die VERDRAHTUNG geprüft, nicht die Laufzeit —
@@ -29,15 +30,20 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
   // Kosten Teil der Aussage.
   await db.run(
     'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
-    [NAME, await bcrypt.hash(PASS, 4)]);
+    [NAME, await bcrypt.hash(PASS, 4)],
+  );
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
 
   const app = express();
   app.use(express.json());
-  app.use(session({
-    store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false,
-  }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
   app.use(AUTH, _req('routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}${AUTH}`;
@@ -50,9 +56,8 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     });
     return { status: r.status, cookie: r.headers.get('set-cookie'), body: await r.json().catch(() => null) };
   };
-  const ablauf = async (token) => db.get(
-    'SELECT expires_at FROM api_tokens WHERE token = $1',
-    [_req('src/konto/auth.js').hashToken(token)]);
+  const ablauf = async token =>
+    db.get('SELECT expires_at FROM api_tokens WHERE token = $1', [_req('src/konto/geraeteToken.js').hashToken(token)]);
 
   try {
     // ── 1. Ohne never_expires: ein Token mit sieben festen Tagen, kein Keks ──
@@ -72,24 +77,36 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     const webCookie = web.cookie.split(';')[0];
 
     // 2. Die App: gleitende Frist statt gar keiner
-    const app1 = await ruf('/login', { method: 'POST',
+    const app1 = await ruf('/login', {
+      method: 'POST',
       // Scope `voll`: Verwalterrechte bekommt ein Token nur auf ausdrücklichen Wunsch.
-      body: { username: NAME, password: PASS, label: 'Android App', never_expires: true, scope: 'voll' } });
+      body: { username: NAME, password: PASS, label: 'Android App', never_expires: true, scope: 'voll' },
+    });
     assert.equal(app1.status, 200, `Anmeldung der App scheiterte: ${JSON.stringify(app1.body)}`);
-    assert.equal(app1.body.never_expires, false,
-      'Bei eingeschalteter Gleitfrist ist kein Token „ohne Ablauf" — die Antwort darf das nicht behaupten');
+    assert.equal(
+      app1.body.never_expires,
+      false,
+      'Bei eingeschalteter Gleitfrist ist kein Token „ohne Ablauf" — die Antwort darf das nicht behaupten',
+    );
     const appToken = app1.body.token;
-    const appZeile = await db.get(
-      'SELECT expires_at, sliding FROM api_tokens WHERE token = $1',
-      [_req('src/konto/auth.js').hashToken(appToken)]);
-    assert.ok(appZeile.expires_at,
-      'Der Token der App braucht ein echtes Ablaufdatum — sonst haengt die Frist an einem Hintergrundjob');
-    assert.equal(appZeile.sliding, true,
-      'Ohne sliding rueckt das Datum bei Benutzung nicht nach — dann muesste man alle 90 Tage neu tippen');
+    const appZeile = await db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [
+      _req('src/konto/geraeteToken.js').hashToken(appToken),
+    ]);
+    assert.ok(
+      appZeile.expires_at,
+      'Der Token der App braucht ein echtes Ablaufdatum — sonst haengt die Frist an einem Hintergrundjob',
+    );
+    assert.equal(
+      appZeile.sliding,
+      true,
+      'Ohne sliding rueckt das Datum bei Benutzung nicht nach — dann muesste man alle 90 Tage neu tippen',
+    );
     // Und er ist deutlich laenger gueltig als der des Browsers: Wer die App
     // oeffnet, soll nicht woechentlich sein Passwort eintippen.
-    assert.ok(new Date(appZeile.expires_at) > new Date((await ablauf(webToken)).expires_at),
-      'Der App-Token muss laenger laufen als die sieben festen Tage');
+    assert.ok(
+      new Date(appZeile.expires_at) > new Date((await ablauf(webToken)).expires_at),
+      'Der App-Token muss laenger laufen als die sieben festen Tage',
+    );
     // Vorbedingung: Es sind zwei VERSCHIEDENE Token, sonst prüft der Rest nichts.
     assert.notEqual(webToken, appToken);
 
@@ -114,21 +131,24 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     // daraus „Sitzung abgelaufen" und führt zurück zur Anmeldung
     // (RepoBasis.kt). Bei 200 bliebe sie mit einem toten Token stehen.
     const falsch = await ruf('/me', { headers: { authorization: 'Bearer ' + 'f'.repeat(64) } });
-    assert.equal(falsch.status, 401,
-      'Ein vorgelegter, ungültiger Token muss 401 ergeben — sonst merkt die App den Ablauf nicht');
+    assert.equal(
+      falsch.status,
+      401,
+      'Ein vorgelegter, ungültiger Token muss 401 ergeben — sonst merkt die App den Ablauf nicht',
+    );
 
     // ── 4. Abmelden entwertet BEIDES ────────────────────────────────────────
-    const ab = await ruf('/logout', { method: 'POST',
-      headers: { cookie: webCookie, authorization: `Bearer ${webToken}` } });
+    const ab = await ruf('/logout', {
+      method: 'POST',
+      headers: { cookie: webCookie, authorization: `Bearer ${webToken}` },
+    });
     assert.equal(ab.status, 200);
-    assert.equal(await ablauf(webToken), undefined,
-      'Der Token muss beim Abmelden verschwinden');
+    assert.equal(await ablauf(webToken), undefined, 'Der Token muss beim Abmelden verschwinden');
     const danach = await ruf('/me', { headers: { cookie: webCookie } });
     assert.equal(danach.body.loggedIn, false, 'Die Sitzung muss beim Abmelden enden');
     // Der Token der App ist davon NICHT betroffen — abgemeldet hat sich der Browser.
     const appNoch = await ruf('/me', { headers: { authorization: `Bearer ${appToken}` } });
-    assert.equal(appNoch.body.loggedIn, true,
-      'Das Abmelden im Browser darf das Telefon nicht mit abmelden');
+    assert.equal(appNoch.body.loggedIn, true, 'Das Abmelden im Browser darf das Telefon nicht mit abmelden');
 
     // ── 5. Falsches Passwort bleibt falsch ──────────────────────────────────
     const daneben = await ruf('/login', { method: 'POST', body: { username: NAME, password: 'falsch' } });

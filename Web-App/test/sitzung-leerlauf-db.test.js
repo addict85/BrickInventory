@@ -13,16 +13,8 @@
  *      (30.10.2026 mit den heutigen Zahlen erneut gemessen, ebenso A)
  *      → nur Fall 2 rot. Der Ablauf wird nicht nachgeführt, die TÄTIGE
  *        Sitzung stirbt mitten im Betrieb.
- *   C  `ttl` aus server.ts entfernt
- *      → nur Fall 4 rot. Die Fälle 1 und 2 bauen ihren Speicher selbst und
- *        merken davon nichts — genau deshalb gibt es Fall 4.
- *
- * Bei der ERSTEN Messung legte C zwei Fälle um (1 und 4), und der Rücklauf
- * nach dem Zurücksetzen war ebenfalls rot. Das war kein zweiter Mangel,
- * sondern der Wackler aus dem Abschnitt oben: Fall 1 hing an der Rundung auf
- * ganze Sekunden. Mit den berichtigten Zahlen trifft C nur noch Fall 4 —
- * und das ist die Probe darauf, dass die Reparatur wirklich die Ursache traf
- * und nicht blos den Symptomlauf glättete.
+ *   C  `ttl` aus startup/app.ts entfernt → rot in sitzung-app-db.test.js; die
+ *      Fälle hier bauen ihren Speicher selbst und merken davon nichts.
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  * Ohne DB: skip. Ausführen: REQUIRE_DB=1 npm test
@@ -31,19 +23,18 @@ const test = require('node:test');
 const { after } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const fs = require('node:fs');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
 const { drossleBeruehren, BERUEHREN_MS } = _req('src/konto/sitzungsBeruehrung.js');
 const { SITZUNG_LEERLAUF_MS, SITZUNG_LEERLAUF_SEK, LEERLAUF_VORGABE_MIN } = _req('src/konto/sitzungsFrist.js');
-const express   = require(path.join(ROOT, 'node_modules', 'express'));
-const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
+const express = require(path.join(ROOT, 'node_modules', 'express'));
+const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 
 /** Eine eigene Kennung je Lauf, damit das Aufräumen nichts Fremdes trifft. */
@@ -57,29 +48,39 @@ const UID = 990717;
  */
 async function starteServer(ttlSek, drosselMs) {
   const speicher = new pgSession({
-    pool: db.pool, tableName: 'user_sessions', createTableIfMissing: false,
+    pool: db.pool,
+    tableName: 'user_sessions',
+    createTableIfMissing: false,
     ...(ttlSek === null ? {} : { ttl: ttlSek }),
   });
   if (drosselMs !== null) drossleBeruehren(speicher, drosselMs);
   const app = express();
-  app.use(session({
-    store: speicher, secret: process.env.SESSION_SECRET,
-    resave: false, saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: 'strict' },   // kein maxAge — wie in server.ts
-  }));
-  app.get('/anmelden', (req, res) => { req.session.userId = UID; res.json({ ok: true }); });
-  app.get('/wer',      (req, res) => { res.json({ uid: req.session?.userId ?? null }); });
+  app.use(
+    session({
+      store: speicher,
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      cookie: { httpOnly: true, sameSite: 'strict' }, // kein maxAge — wie in server.ts
+    }),
+  );
+  app.get('/anmelden', (req, res) => {
+    req.session.userId = UID;
+    res.json({ ok: true });
+  });
+  app.get('/wer', (req, res) => {
+    res.json({ uid: req.session?.userId ?? null });
+  });
   const srv = app.listen(0);
   return { srv, base: `http://localhost:${srv.address().port}` };
 }
 
 const anmelden = async base => {
   const r = await fetch(base + '/anmelden');
-  await r.text();   // die Sitzung steht erst nach dem letzten Byte im Speicher
+  await r.text(); // die Sitzung steht erst nach dem letzten Byte im Speicher
   return (r.headers.get('set-cookie') || '').split(';')[0];
 };
-const wer = async (base, keks) =>
-  (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).uid;
+const wer = async (base, keks) => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).uid;
 const { warte: schlafe } = require('./helpers/zeit');
 
 /**
@@ -90,30 +91,42 @@ after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('ohne Betrieb verfällt die Sitzung', async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch { return t.skip('keine Test-Datenbank erreichbar'); }
+test('ohne Betrieb verfällt die Sitzung', async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch {
+    return t.skip('keine Test-Datenbank erreichbar');
+  }
 
   // 5 s statt 2 s: Unter Last (paralleler Volllauf) lagen zwischen Anmelden
   // und erstem Lesen schon über 2 s, und die Vorbedingung kippte.
   const { srv, base } = await starteServer(5, null);
   try {
     const keks = await anmelden(base);
-    assert.equal(await wer(base, keks), UID,
-      'direkt nach dem Anmelden muss die Sitzung gelten — sonst misst der Rest nichts');
+    assert.equal(
+      await wer(base, keks),
+      UID,
+      'direkt nach dem Anmelden muss die Sitzung gelten — sonst misst der Rest nichts',
+    );
 
-    await schlafe(7000);                       // 5 s Frist, 2 s Reserve — siehe Kopf
-    assert.equal(await wer(base, keks), null,
-      'nach der Leerlauf-Frist darf die Sitzung nicht mehr gelten — '
-      + 'fehlt dem Sitzungsspeicher das `ttl`, gilt wieder der Tag von connect-pg-simple');
+    await schlafe(7000); // 5 s Frist, 2 s Reserve — siehe Kopf
+    assert.equal(
+      await wer(base, keks),
+      null,
+      'nach der Leerlauf-Frist darf die Sitzung nicht mehr gelten — ' +
+        'fehlt dem Sitzungsspeicher das `ttl`, gilt wieder der Tag von connect-pg-simple',
+    );
   } finally {
     await new Promise(r => srv.close(r));
   }
 });
 
-test('mit Betrieb bleibt die Sitzung', async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch { return t.skip('keine Test-Datenbank erreichbar'); }
+test('mit Betrieb bleibt die Sitzung', async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch {
+    return t.skip('keine Test-Datenbank erreichbar');
+  }
 
   // Dasselbe Verhältnis wie im Betrieb: Die Drosselung ist ein Fünftel der
   // Frist, nicht länger. Mit einer Drosselung länger als die Frist wird
@@ -125,9 +138,12 @@ test('mit Betrieb bleibt die Sitzung', async (t) => {
     // Frist. Ohne Nachführen wäre die Sitzung nach etwa Anfrage 13 tot.
     for (let i = 0; i < 20; i++) {
       await schlafe(400);
-      assert.equal(await wer(base, keks), UID,
-        `die tätige Sitzung ist bei Anfrage ${i + 1} von 20 gestorben — `
-        + 'der Ablauf wird nicht nachgeführt (drosselt die Berührung länger als die Frist?)');
+      assert.equal(
+        await wer(base, keks),
+        UID,
+        `die tätige Sitzung ist bei Anfrage ${i + 1} von 20 gestorben — ` +
+          'der Ablauf wird nicht nachgeführt (drosselt die Berührung länger als die Frist?)',
+      );
     }
   } finally {
     await new Promise(r => srv.close(r));
@@ -137,37 +153,22 @@ test('mit Betrieb bleibt die Sitzung', async (t) => {
 test('die Drosselung ist kürzer als die Frist', () => {
   // Der Kern der Kopplung, ohne Server: Wäre sie länger, flöge der ARBEITENDE
   // Benutzer heraus statt des untätigen.
-  assert.ok(BERUEHREN_MS * 2 <= SITZUNG_LEERLAUF_MS,
-    `Die Drosselung (${BERUEHREN_MS} ms) ist nicht deutlich kürzer als die `
-    + `Leerlauf-Frist (${SITZUNG_LEERLAUF_MS} ms) — dann wird der Ablauf nicht `
-    + 'rechtzeitig nachgeführt und eine tätige Sitzung stirbt mitten im Betrieb.');
+  assert.ok(
+    BERUEHREN_MS * 2 <= SITZUNG_LEERLAUF_MS,
+    `Die Drosselung (${BERUEHREN_MS} ms) ist nicht deutlich kürzer als die ` +
+      `Leerlauf-Frist (${SITZUNG_LEERLAUF_MS} ms) — dann wird der Ablauf nicht ` +
+      'rechtzeitig nachgeführt und eine tätige Sitzung stirbt mitten im Betrieb.',
+  );
 
   // Und die Vorgabe ist die, die im README steht.
   assert.equal(SITZUNG_LEERLAUF_MS, LEERLAUF_VORGABE_MIN * 60_000);
   assert.equal(SITZUNG_LEERLAUF_SEK, LEERLAUF_VORGABE_MIN * 60);
   // Bei vier Stunden bleibt die Drosselung bei den bisherigen fünf Minuten:
   // ein Viertel davon wäre eine Stunde, es gewinnt das Minimum.
-  assert.equal(BERUEHREN_MS, 5 * 60 * 1000,
-    'Bei der Vorgabe von vier Stunden sollen es weiter fünf Minuten sein — '
-    + 'sonst schreibt die Webapp wieder mehr als nötig');
-});
-
-test('die App gibt dem Speicher eine Frist', () => {
-  // Eine Frist, die niemand übergibt, ist die teuerste Art, nichts zu tun —
-  // und die Fälle oben blieben dabei grün, weil sie ihren Speicher selbst
-  // bauen. Dieselbe Lücke wie in test/sitzung-beruehrung-db.test.js, dort mit
-  // derselben Begründung geschlossen.
-  const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
-  assert.match(quelle, /ttl:\s*SITZUNG_LEERLAUF_SEK/,
-    'startup/app.ts übergibt dem Sitzungsspeicher kein `ttl` — dann gilt wieder der '
-    + 'Tag von connect-pg-simple, und Marcos Frist gibt es nur auf dem Papier');
-
-  // Und das Cookie bleibt ohne `maxAge`: Sonst würde es zu einem dauerhaften
-  // Cookie, das den Neustart des Browsers überlebt — die Frist hätte dann
-  // eine Eigenschaft hinzugefügt und eine andere weggenommen.
-  const keksBlock = quelle.slice(quelle.indexOf('app.use(session({'));
-  const bis = keksBlock.indexOf('}));');
-  assert.ok(!/maxAge/.test(keksBlock.slice(0, bis)),
-    'Das Sitzungs-Cookie hat ein `maxAge` bekommen — dann überlebt es das '
-    + 'Schliessen des Browsers, was es vorher nicht tat');
+  assert.equal(
+    BERUEHREN_MS,
+    5 * 60 * 1000,
+    'Bei der Vorgabe von vier Stunden sollen es weiter fünf Minuten sein — ' +
+      'sonst schreibt die Webapp wieder mehr als nötig',
+  );
 });

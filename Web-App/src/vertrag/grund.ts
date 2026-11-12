@@ -41,13 +41,20 @@ export const PROZENT_TEXT = veraltet(z.string().nullable().optional(), 'pnl_proz
 const imPfad = (muster: RegExp) => z.string().regex(muster);
 /** Eine Zeilenkennung im Pfad; aus Ziffern wird eine Zahl. Die Obergrenze (int4
  * oder bigint der Aufträge) setzt vertragsRouter je Router. */
-const kennungImPfad = imPfad(/^\d{1,15}$/).transform(Number).pipe(z.number().int().min(1));
+const kennungImPfad = imPfad(/^\d{1,15}$/)
+  .transform(Number)
+  .pipe(z.number().int().min(1));
 const nummerImPfad = imPfad(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/);
 /** Jeder Pfadparameter, nach Namen: eingabePruefen prüft ihn, die Route liest `req.pfad`. */
 export const PFAD = {
-  setNumber: nummerImPfad, sn: nummerImPfad, partNumber: nummerImPfad, figNumber: nummerImPfad,
+  setNumber: nummerImPfad,
+  sn: nummerImPfad,
+  partNumber: nummerImPfad,
+  figNumber: nummerImPfad,
   colorId: imPfad(/^\d{1,6}$/).transform(Number),
-  id: kennungImPfad, acqId: kennungImPfad, instrId: kennungImPfad,
+  id: kennungImPfad,
+  acqId: kennungImPfad,
+  instrId: kennungImPfad,
   jobId: imPfad(/^\d{10,16}-[a-z0-9]{4,12}$/),
   condition: imPfad(/^[NUnu]$/).transform(v => v.toUpperCase() as 'N' | 'U'),
   art: imPfad(/^[a-z_]{1,40}$/),
@@ -55,8 +62,11 @@ export const PFAD = {
   tokenId: imPfad(/^[0-9a-f]{16}$/),
   barcode: imPfad(/^[A-Za-z0-9-]{1,64}$/),
 } as const;
-type Namen<P extends string> = P extends `${string}/:${infer N}/${infer R}` ? N | Namen<`/${R}`>
-  : P extends `${string}/:${infer N}` ? N : never;
+type Namen<P extends string> = P extends `${string}/:${infer N}/${infer R}`
+  ? N | Namen<`/${R}`>
+  : P extends `${string}/:${infer N}`
+    ? N
+    : never;
 export type PfadVon<K extends string> = { [N in Namen<K> & keyof typeof PFAD]: z.output<(typeof PFAD)[N]> };
 /** Ein Zeitpunkt als ISO-Text. Die Marke trägt nur der TS-Typ: In der Route
  * darf dort noch ein Date stehen, res.json schreibt es als Text (Draht). */
@@ -64,9 +74,13 @@ export const zeit = z.string().brand<'Zeit'>();
 type Zeit = z.output<typeof zeit>;
 /** Ohne die Indexsignatur der offenen Objekte: Sonst passte kein Interface
  * (ihm fehlt sie), und ein vertippter Feldname fiele nicht auf. */
-export type Draht<T> = T extends Zeit ? string | Date
-  : T extends readonly (infer E)[] ? Draht<E>[]
-  : T extends object ? { [K in keyof T as string extends K ? never : K]: Draht<T[K]> } : T;
+export type Draht<T> = T extends Zeit
+  ? string | Date
+  : T extends readonly (infer E)[]
+    ? Draht<E>[]
+    : T extends object
+      ? { [K in keyof T as string extends K ? never : K]: Draht<T[K]> }
+      : T;
 
 /** Jede Fehlerantwort (src/infra/fehlerTexte.ts): Die Apps entscheiden am
  * Code, der Satz ist nur für Menschen. */
@@ -84,17 +98,32 @@ export const Fehlercode = z.enum(Object.keys(FEHLER) as [FehlerCode, ...FehlerCo
 
 export const Erfolg = z.looseObject({ success: z.literal(true) });
 
-const faktorFelder = { code: z.union([z.string().max(64), z.number()]).nullable().optional(),
-  passkey: z.record(z.string(), z.unknown()).nullable().optional() };
-type Bestaetigung<P extends string, C extends string> = { [K in P]: z.ZodOptional<z.ZodNullable<z.ZodString>> }
-  & { [K in C]: typeof faktorFelder.code } & { passkey: typeof faktorFelder.passkey };
+const faktorFelder = {
+  code: z
+    .union([z.string().max(64), z.number()])
+    .nullable()
+    .optional(),
+  passkey: z.record(z.string(), z.unknown()).nullable().optional(),
+};
+type Bestaetigung<P extends string, C extends string> = { [K in P]: z.ZodOptional<z.ZodNullable<z.ZodString>> } & {
+  [K in C]: typeof faktorFelder.code;
+} & { passkey: typeof faktorFelder.passkey };
 /** Marke und Eingabe aus einer Hand: Der Wächtertest schickt genau diese Felder. */
-export function bestaetigt<F extends z.ZodRawShape = Record<never, z.ZodType>, const P extends string = 'password', const C extends string = 'code'>(
-  felder: F = {} as F, passwort: P = 'password' as P, code: C = 'code' as C) {
+export function bestaetigt<
+  F extends z.ZodRawShape = Record<never, z.ZodType>,
+  const P extends string = 'password',
+  const C extends string = 'code',
+>(felder: F = {} as F, passwort: P = 'password' as P, code: C = 'code' as C) {
   // null wie fehlend: Die App schickt jedes Feld ihrer Anfrage, auch ein leeres.
-  const zusatz = { [passwort]: z.string().max(1024).nullable().optional(), [code]: faktorFelder.code, passkey: faktorFelder.passkey };
-  return { bestaetigung: { passwort: passwort as NoInfer<P>, code: code as NoInfer<C> },
-    eingabe: z.strictObject({ ...felder, ...(zusatz as Bestaetigung<P, C>) }) };
+  const zusatz = {
+    [passwort]: z.string().max(1024).nullable().optional(),
+    [code]: faktorFelder.code,
+    passkey: faktorFelder.passkey,
+  };
+  return {
+    bestaetigung: { passwort: passwort as NoInfer<P>, code: code as NoInfer<C> },
+    eingabe: z.strictObject({ ...felder, ...(zusatz as Bestaetigung<P, C>) }),
+  };
 }
 
 export const EINFACH = z.union([z.string(), z.number(), z.boolean(), z.null()]);
@@ -108,14 +137,25 @@ export const OHNE_RUMPF = z.strictObject({});
 
 /** Eine Abfrage: Jeder Wert ist ein einzelner Text und darf fehlen. */
 export function abfrage<T extends Record<string, z.ZodType<unknown, string>>>(felder: T) {
-  return z.strictObject(Object.fromEntries(Object.entries(felder).map(([k, s]) => [k, s.optional()])) as
-    { [K in keyof T]: z.ZodOptional<T[K]> });
+  return z.strictObject(
+    Object.fromEntries(Object.entries(felder).map(([k, s]) => [k, s.optional()])) as {
+      [K in keyof T]: z.ZodOptional<T[K]>;
+    },
+  );
 }
 /** Bausteine der Abfragen; eine Zahl kommt als Ziffern an und geht als Zahl weiter. */
 export const Q = {
-  zahl: (max = 1_000_000_000) => z.string().regex(/^\d{1,10}$/).transform(Number).pipe(z.number().int().max(max)),
+  zahl: (max = 1_000_000_000) =>
+    z
+      .string()
+      .regex(/^\d{1,10}$/)
+      .transform(Number)
+      .pipe(z.number().int().max(max)),
   /** Ein leerer Wert ist keine Angabe (null), wie ihn ein leeres Auswahlfeld schickt. */
-  zahlOderLeer: z.string().regex(/^\d{0,10}$/).transform(v => v === '' ? null : Number(v)),
+  zahlOderLeer: z
+    .string()
+    .regex(/^\d{0,10}$/)
+    .transform(v => (v === '' ? null : Number(v))),
   text: (max = 200) => z.string().max(max),
   /** '1' oder 'true' ist ja — so schicken es Oberfläche und App. */
   schalter: z.enum(['0', '1', 'true', 'false']).transform(v => v === '1' || v === 'true'),

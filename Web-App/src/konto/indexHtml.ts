@@ -2,10 +2,10 @@
  * Standarddesign aufblitzt. */
 import { konfig } from '../infra/konfig';
 
-import fs from 'fs';
-import { createHash } from 'crypto';
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { PUBLIC_DIR } from '../infra/appPaths';
-import path from 'path';
+import path from 'node:path';
 import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';

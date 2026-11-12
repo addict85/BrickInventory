@@ -30,21 +30,26 @@ const gesehen = [];
 let zaehlen = false;
 const altQuery = db.pool.query.bind(db.pool);
 db.pool.query = (text, ...rest) => {
-  if (zaehlen) gesehen.push(String(typeof text === 'string' ? text : (text && text.text) || '').replace(/\s+/g, ' '));
+  if (zaehlen) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
   return altQuery(text, ...rest);
 };
 /** Die Abfragen während fn, gefiltert auf ein Muster. */
 async function abfragen(muster, fn) {
-  gesehen.length = 0; zaehlen = true;
-  try { return { ergebnis: await fn(), treffer: () => gesehen.filter(q => muster.test(q)).length }; }
-  finally { zaehlen = false; }
+  gesehen.length = 0;
+  zaehlen = true;
+  try {
+    return { ergebnis: await fn(), treffer: () => gesehen.filter(q => muster.test(q)).length };
+  } finally {
+    zaehlen = false;
+  }
 }
 
-test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const ID = process.pid;
-  const NAME = `bewertung-${ID}`, FREMD = `bewertung-fremd-${ID}`;
+  const NAME = `bewertung-${ID}`,
+    FREMD = `bewertung-fremd-${ID}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, FREMD]]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
   const fremd = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [FREMD])).id;
@@ -61,28 +66,40 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
 
   for (const nr of teile) {
     await haeltTeil(db, uid, nr, { menge: 2, preis: 1 });
-    await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
-                  VALUES ($1, 0, 'N', 'EUR', 1.5, 1.4)`, [nr]);
+    await db.run(
+      `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
+                  VALUES ($1, 0, 'N', 'EUR', 1.5, 1.4)`,
+      [nr],
+    );
   }
   for (const nr of figuren) {
     await haeltFigur(db, uid, nr, { menge: 1, preis: 3 });
     await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('fig', $1, $2)`, [nr, nr + 'bl']);
-    await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
-                  VALUES ($1, 'N', 'EUR', 4, 4)`, [nr + 'bl']);
+    await db.run(
+      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
+                  VALUES ($1, 'N', 'EUR', 4, 4)`,
+      [nr + 'bl'],
+    );
   }
   const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
 
   await t.test('zwölf Teile, eine Abfrage auf den Teile-Cache', async () => {
     const m = await abfragen(/FROM part_price_cache/, () => computePartsValuation(uid, [uid]));
     assert.equal(m.ergebnis.parts.length, 12);
-    assert.ok(m.ergebnis.parts.every(p => Number(p.avg_price) === 1.5), 'nicht jedes Teil kam aus dem Cache');
+    assert.ok(
+      m.ergebnis.parts.every(p => Number(p.avg_price) === 1.5),
+      'nicht jedes Teil kam aus dem Cache',
+    );
     assert.equal(m.treffer(), 1, `${m.treffer()} Abfragen auf part_price_cache`);
   });
 
   await t.test('sechs Figuren, eine Abfrage auf den Figuren-Cache', async () => {
     const m = await abfragen(/FROM minifig_price_cache/, () => computeMinifigsValuation(uid, [uid]));
     assert.equal(m.ergebnis.figs.length, 6);
-    assert.ok(m.ergebnis.figs.every(f => Number(f.avg_price) === 4), 'nicht jede Figur kam aus dem Cache');
+    assert.ok(
+      m.ergebnis.figs.every(f => Number(f.avg_price) === 4),
+      'nicht jede Figur kam aus dem Cache',
+    );
     assert.equal(m.treffer(), 1, `${m.treffer()} Abfragen auf minifig_price_cache`);
   });
 
@@ -94,7 +111,9 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
       `EXPLAIN (ANALYZE, FORMAT JSON)
        SELECT s.set_number, ${mengeAus('sm', 0)} AS menge
          FROM sets s ${mengeJoin('s', 'sm', '= ANY($1)')}
-        WHERE s.user_id = ANY($1)`, [[uid]]);
+        WHERE s.user_id = ANY($1)`,
+      [[uid]],
+    );
     /** Alle Knoten, die set_acquisitions lesen, und ihre gelieferten Zeilen. */
     const zeilen = [];
     (function lauf(k) {
@@ -102,17 +121,29 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
       for (const u of k.Plans || []) lauf(u);
     })(plan['QUERY PLAN'][0].Plan);
     assert.ok(zeilen.length > 0, 'kein Scan auf set_acquisitions im Plan');
-    assert.ok(zeilen.every(n => n <= 1), `gelesene Erfassungen: ${zeilen.join(', ')}`);
+    assert.ok(
+      zeilen.every(n => n <= 1),
+      `gelesene Erfassungen: ${zeilen.join(', ')}`,
+    );
   });
 
   await t.test('der Durchschnittskaufpreis der Galerie zählt nur die Kontowährung', async () => {
     const SN = `bw${ID}w-1`;
-    await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')
-                  ON CONFLICT (user_id, key) DO UPDATE SET value = 'CHF'`, [uid]);
+    await db.run(
+      `INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')
+                  ON CONFLICT (user_id, key) DO UPDATE SET value = 'CHF'`,
+      [uid],
+    );
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
-    for (const [preis, waehrung] of [[100, 'CHF'], [300, 'EUR']])
-      await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)
-                    VALUES ($1, $2, 1, $3, 'N', $4)`, [uid, SN, preis, waehrung]);
+    for (const [preis, waehrung] of [
+      [100, 'CHF'],
+      [300, 'EUR'],
+    ])
+      await db.run(
+        `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)
+                    VALUES ($1, $2, 1, $3, 'N', $4)`,
+        [uid, SN, preis, waehrung],
+      );
     const { getSets } = _req('src/sets/index.js');
     const r = await getSets([uid], {});
     const zeile = (r.sets || r).find(z => z.set_number === SN);

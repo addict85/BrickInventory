@@ -12,7 +12,10 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 const { baueTestbuendel } = require('./helpers/buendel');
-process.env.TEST_BUENDEL = baueTestbuendel('geldformat', "import { fmtN } from './01-format.js';\nwindow.__fmtN = fmtN;\n");
+process.env.TEST_BUENDEL = baueTestbuendel(
+  'geldformat',
+  "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n",
+);
 const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche');
 
 /**
@@ -27,17 +30,25 @@ function hatZweitesArgument(src, ab) {
   for (let i = ab; i < src.length; i++) {
     const c = src[i];
     if (c === '(' || c === '[' || c === '{') tiefe++;
-    else if (c === ')' || c === ']' || c === '}') { tiefe--; if (tiefe === 0) return false; }
-    else if (c === ',' && tiefe === 1) return true;
+    else if (c === ')' || c === ']' || c === '}') {
+      tiefe--;
+      if (tiefe === 0) return false;
+    } else if (c === ',' && tiefe === 1) return true;
   }
   return false;
 }
 
 test('jeder fmtN-Aufruf nennt die Währung', () => {
-  const dateien = fs.readdirSync(JS)
+  const dateien = fs
+    .readdirSync(JS)
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')
-    .map(f => [f, fs.readFileSync(path.join(JS, f), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')]);
+    .map(f => [
+      f,
+      fs
+        .readFileSync(path.join(JS, f), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, ''),
+    ]);
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skriptdateien gefunden`);
 
   let gefunden = 0;
@@ -56,11 +67,15 @@ test('jeder fmtN-Aufruf nennt die Währung', () => {
   // grün, ohne etwas geprüft zu haben. GEMESSEN sind es 30 Aufrufe.
   assert.ok(gefunden >= 20, `Nur ${gefunden} fmtN-Aufrufe gefunden — Muster veraltet?`);
 
-  assert.deepEqual(ohne.sort(), [],
-    'Diese fmtN-Aufrufe nennen keine Währung:\n  ' + ohne.join('\n  ') +
-    '\nEntweder fehlt sie (dann steht dort die Währung eines anderen Nutzers), ' +
-    'oder es ist gar kein Geldbetrag — dann gehört dorthin ' +
-    '`(n||0).toLocaleString(locale())`, wie auf der Teilekachel.');
+  assert.deepEqual(
+    ohne.sort(),
+    [],
+    'Diese fmtN-Aufrufe nennen keine Währung:\n  ' +
+      ohne.join('\n  ') +
+      '\nEntweder fehlt sie (dann steht dort die Währung eines anderen Nutzers), ' +
+      'oder es ist gar kein Geldbetrag — dann gehört dorthin ' +
+      '`(n||0).toLocaleString(locale())`, wie auf der Teilekachel.',
+  );
 });
 
 /**
@@ -75,5 +90,7 @@ test('der Rückfall von fmtN ist die eingestellte Währung', async () => {
   try {
     assert.ok(await warte(() => /CHF/.test(w.__fmtN(12.5))), `ohne Währung: ${w.__fmtN(12.5)}`);
     assert.match(w.__fmtN(12.5, 'USD'), /\$|USD/, 'Die genannte Währung gewinnt');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

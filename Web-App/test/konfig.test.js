@@ -26,43 +26,55 @@
  *   H  (11.11.2026) in attestationWurzeln() die Prüfung auf entwicklungsUmgebung
  *      gestrichen → rot: „eigene Attestierungswurzeln nur in Entwicklung und Test“
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenbankVerbindung, standardPasswortInBenutzung, ladeKonfig, KonfigFehler, VARIABLEN } = _req('src/infra/konfig.js');
+const { datenbankVerbindung, standardPasswortInBenutzung, ladeKonfig, KonfigFehler, VARIABLEN } =
+  _req('src/infra/konfig.js');
 const { ohneKommentare } = require('./helpers/sources');
 const { spawnSync } = require('node:child_process');
 
 test('ohne Angaben dieselben Standardwerte wie compose.yaml', () => {
   assert.deepEqual(datenbankVerbindung({}), {
-    host: 'postgres', port: 5432, user: 'brickinventory',
-    password: 'brickinventory_secret', database: 'brickinventory' });
+    host: 'postgres',
+    port: 5432,
+    user: 'brickinventory',
+    password: 'brickinventory_secret',
+    database: 'brickinventory',
+  });
 });
 
 test('das Beispielpasswort wird erkannt — einzeln und in DATABASE_URL', () => {
   assert.equal(standardPasswortInBenutzung({}), true);
   assert.equal(standardPasswortInBenutzung({ PGPASSWORD: 'eigenes' }), false);
-  assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@db/x' }), true);
+  assert.equal(
+    standardPasswortInBenutzung({ DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@db/x' }),
+    true,
+  );
   assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'postgres://brickinventory:anderes@db/x' }), false);
   assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'kaputt' }), false);
 });
 
 test('DATABASE_URL geht vor', () => {
-  assert.deepEqual(datenbankVerbindung({ DATABASE_URL: 'postgres://a:b@c/d', PGUSER: 'x' }),
-    { connectionString: 'postgres://a:b@c/d' });
+  assert.deepEqual(datenbankVerbindung({ DATABASE_URL: 'postgres://a:b@c/d', PGUSER: 'x' }), {
+    connectionString: 'postgres://a:b@c/d',
+  });
   assert.equal(datenbankVerbindung({ PGPORT: '6543', PGUSER: 'u' }).port, 6543);
 });
 
 test('niemand sonst liest die Verbindungsvariablen', () => {
   const funde = [];
-  const durch = (dir) => {
+  const durch = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
-      if (e.isDirectory()) { if (!['node_modules', 'dist', 'test', 'public', '.git'].includes(e.name)) durch(p); continue; }
+      if (e.isDirectory()) {
+        if (!['node_modules', 'dist', 'test', 'public', '.git'].includes(e.name)) durch(p);
+        continue;
+      }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
       if (rel === path.join('src/infra/konfig.ts')) continue;
@@ -77,15 +89,20 @@ test('niemand sonst liest die Verbindungsvariablen', () => {
 
 test('niemand ausser der Konfiguration liest process.env', () => {
   const funde = [];
-  const durch = (dir) => {
+  const durch = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
-      if (e.isDirectory()) { if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(e.name)) durch(p); continue; }
+      if (e.isDirectory()) {
+        if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(e.name)) durch(p);
+        continue;
+      }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
       if (rel === path.join('src/infra/konfig.ts')) continue;
       const zeilen = ohneKommentare(fs.readFileSync(p, 'utf8')).split('\n');
-      zeilen.forEach((z, i) => { if (/process\.env\b/.test(z.replace(/\/\/.*$/, ''))) funde.push(`${rel}:${i + 1}`); });
+      zeilen.forEach((z, i) => {
+        if (/process\.env\b/.test(z.replace(/\/\/.*$/, ''))) funde.push(`${rel}:${i + 1}`);
+      });
     }
   };
   durch(ROOT);
@@ -93,14 +110,26 @@ test('niemand ausser der Konfiguration liest process.env', () => {
 });
 
 test('ungültige Werte: alle auf einmal, mit Namen', () => {
-  assert.throws(() => ladeKonfig({ PORT: '0', SESSION_IDLE_MINUTES: 'viel', COOKIE_SECURE: 'ja', APP_BASE_URL: 'lego.example.org' }),
-    (e) => {
+  assert.throws(
+    () =>
+      ladeKonfig({ PORT: '0', SESSION_IDLE_MINUTES: 'viel', COOKIE_SECURE: 'ja', APP_BASE_URL: 'lego.example.org' }),
+    e => {
       assert.ok(e instanceof KonfigFehler);
-      assert.deepEqual(e.fehler.map(f => f.split('=')[0]), ['APP_BASE_URL', 'PORT', 'COOKIE_SECURE', 'SESSION_IDLE_MINUTES']);
+      assert.deepEqual(
+        e.fehler.map(f => f.split('=')[0]),
+        ['APP_BASE_URL', 'PORT', 'COOKIE_SECURE', 'SESSION_IDLE_MINUTES'],
+      );
       assert.match(e.message, /PORT="0" ist keine ganze Zahl von 1 bis 65535/);
       return true;
-    });
-  const k = ladeKonfig({ PORT: '8080', ROLLE: 'Jobs', WEB_WORKERS: '3', COOKIE_SECURE: '0', APP_BASE_URL: 'https://lego.example.org//' });
+    },
+  );
+  const k = ladeKonfig({
+    PORT: '8080',
+    ROLLE: 'Jobs',
+    WEB_WORKERS: '3',
+    COOKIE_SECURE: '0',
+    APP_BASE_URL: 'https://lego.example.org//',
+  });
   assert.equal(k.port, 8080);
   assert.equal(k.rolle, 'jobs');
   assert.deepEqual(k.veraltet, ['WEB_WORKERS'], 'WEB_WORKERS wirkt nicht mehr, der Start nennt es');
@@ -123,8 +152,15 @@ test('eigene Attestierungswurzeln nur in Entwicklung und Test; der Stichtag ist 
 
 test('der Server startet mit falschem Wert nicht', () => {
   const r = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-    env: { PATH: process.env.PATH, SESSION_IDLE_MINUTES: '-5', PORT: 'achtzig', DATABASE_URL: 'postgres://niemand@127.0.0.1:1/x' },
-    encoding: 'utf8', timeout: 20_000 });
+    env: {
+      PATH: process.env.PATH,
+      SESSION_IDLE_MINUTES: '-5',
+      PORT: 'achtzig',
+      DATABASE_URL: 'postgres://niemand@127.0.0.1:1/x',
+    },
+    encoding: 'utf8',
+    timeout: 20_000,
+  });
   assert.equal(r.status, 1, r.stdout + r.stderr);
   assert.match(r.stderr, /Ungültige Konfiguration:\n {2}- PORT="achtzig"[^\n]*\n {2}- SESSION_IDLE_MINUTES="-5"/);
 });

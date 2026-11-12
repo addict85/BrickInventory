@@ -7,26 +7,29 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip (ausser
  * REQUIRE_DB=1).
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const db     = _req('db/database.js');
+const { keineDb } = require('./helpers/db');
+const db = _req('db/database.js');
 const { LOCKS } = _req('src/infra/lockNamespaces.js');
 
 async function dbReachable() {
-  try { await db.get('SELECT 1'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
+test('Sperr-Namensräume gegen echte Datenbank', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
 
@@ -34,7 +37,10 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
   async function halten(ns, zweiter = 0) {
     const c = await db.pool.connect();
     const { rows } = await c.query('SELECT pg_try_advisory_lock($1, $2) AS ok', [ns, zweiter]);
-    if (!rows[0].ok) { c.release(); throw new Error(`Namensraum ${ns} war schon belegt`); }
+    if (!rows[0].ok) {
+      c.release();
+      throw new Error(`Namensraum ${ns} war schon belegt`);
+    }
     return async () => {
       await c.query('SELECT pg_advisory_unlock($1, $2)', [ns, zweiter]).catch(() => {});
       c.release();
@@ -48,13 +54,17 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
       const { rows } = await c.query('SELECT pg_try_advisory_lock($1, $2) AS ok', [ns, zweiter]);
       if (rows[0].ok) await c.query('SELECT pg_advisory_unlock($1, $2)', [ns, zweiter]);
       return rows[0].ok;
-    } finally { c.release(); }
+    } finally {
+      c.release();
+    }
   }
 
   await t.test('alle Namensräume sind paarweise verschieden', () => {
     const eintraege = Object.entries(LOCKS);
-    assert.ok(eintraege.length >= 8,
-      `Nur ${eintraege.length} Namensräume gefunden — ist LOCKS noch die vollständige Liste?`);
+    assert.ok(
+      eintraege.length >= 8,
+      `Nur ${eintraege.length} Namensräume gefunden — ist LOCKS noch die vollständige Liste?`,
+    );
 
     const gesehen = new Map();
     for (const [name, zahl] of eintraege) {
@@ -62,11 +72,15 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
       // Beratungssperren sind 64-Bit; die einwertige Form nimmt bigint, die
       // zweiwertige zwei int4. Alle Einträge hier werden zweiwertig ODER
       // einwertig benutzt — int4 ist die engere Grenze und gilt deshalb.
-      assert.ok(Number.isInteger(zahl) && zahl > 0 && zahl <= 2147483647,
-        `${name} = ${zahl} passt nicht in einen int4-Namensraum`);
+      assert.ok(
+        Number.isInteger(zahl) && zahl > 0 && zahl <= 2147483647,
+        `${name} = ${zahl} passt nicht in einen int4-Namensraum`,
+      );
       if (gesehen.has(zahl)) {
-        assert.fail(`${name} und ${gesehen.get(zahl)} teilen sich den Namensraum ${zahl} — ` +
-                    'die beiden Vorgänge sperren sich gegenseitig aus');
+        assert.fail(
+          `${name} und ${gesehen.get(zahl)} teilen sich den Namensraum ${zahl} — ` +
+            'die beiden Vorgänge sperren sich gegenseitig aus',
+        );
       }
       gesehen.set(zahl, name);
     }
@@ -78,8 +92,11 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
     const freigeben = [];
     try {
       for (const [name, zahl] of Object.entries(LOCKS)) {
-        try { freigeben.push(await halten(zahl)); }
-        catch (e) { assert.fail(`${name} (${zahl}) liess sich nicht belegen: ${e.message}`); }
+        try {
+          freigeben.push(await halten(zahl));
+        } catch (e) {
+          assert.fail(`${name} (${zahl}) liess sich nicht belegen: ${e.message}`);
+        }
       }
       assert.equal(freigeben.length, Object.keys(LOCKS).length);
     } finally {
@@ -92,11 +109,15 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
     // erfolgreich, sagte „alle gleichzeitig belegbar" gar nichts.
     const frei = await halten(LOCKS.PREIS_JOB);
     try {
-      assert.equal(await nochFrei(LOCKS.PREIS_JOB), false,
-        'Eine zweite Verbindung bekam dieselbe Sperre — dann schützt sie nichts');
-    } finally { await frei(); }
-    assert.equal(await nochFrei(LOCKS.PREIS_JOB), true,
-      'Nach dem Freigeben muss die Sperre wieder zu haben sein');
+      assert.equal(
+        await nochFrei(LOCKS.PREIS_JOB),
+        false,
+        'Eine zweite Verbindung bekam dieselbe Sperre — dann schützt sie nichts',
+      );
+    } finally {
+      await frei();
+    }
+    assert.equal(await nochFrei(LOCKS.PREIS_JOB), true, 'Nach dem Freigeben muss die Sperre wieder zu haben sein');
   });
 
   await t.test('der zweite Wert unterteilt den Namensraum', async () => {
@@ -105,11 +126,19 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
     // liefen sie nacheinander statt nebeneinander.
     const frei = await halten(LOCKS.BILD_DOWNLOAD, 111);
     try {
-      assert.equal(await nochFrei(LOCKS.BILD_DOWNLOAD, 222), true,
-        'Zwei verschiedene Sets müssen parallel laden dürfen');
-      assert.equal(await nochFrei(LOCKS.BILD_DOWNLOAD, 111), false,
-        'Dasselbe Set darf NICHT zweimal gleichzeitig laden');
-    } finally { await frei(); }
+      assert.equal(
+        await nochFrei(LOCKS.BILD_DOWNLOAD, 222),
+        true,
+        'Zwei verschiedene Sets müssen parallel laden dürfen',
+      );
+      assert.equal(
+        await nochFrei(LOCKS.BILD_DOWNLOAD, 111),
+        false,
+        'Dasselbe Set darf NICHT zweimal gleichzeitig laden',
+      );
+    } finally {
+      await frei();
+    }
   });
 
   await t.test('die Bestandssperre eines Kontos trifft keinen Job', async () => {
@@ -122,10 +151,17 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
     await mitInventarSperre(db.standardDb(), LOCKS.BILD_DOWNLOAD, SET, async () => {
       frei.bild = await nochFrei(LOCKS.BILD_DOWNLOAD, zweiter);
       // Auf eigener Verbindung: db.get liefe hier über die Transaktion, die die Sperre schon hält.
-      frei.selbst = await nochFrei(LOCKS.INVENTAR, (await db.pool.query('SELECT hashtext($1) AS h', [`${LOCKS.BILD_DOWNLOAD}|${SET}`])).rows[0].h);
+      frei.selbst = await nochFrei(
+        LOCKS.INVENTAR,
+        (await db.pool.query('SELECT hashtext($1) AS h', [`${LOCKS.BILD_DOWNLOAD}|${SET}`])).rows[0].h,
+      );
     });
     assert.equal(frei.bild, true, 'Die Bestandssperre von Konto 42 hält den Bild-Download des Sets auf');
-    assert.equal(frei.selbst, false, 'Die Bestandssperre liegt nicht unter LOCKS.INVENTAR — dann prüft der Fall oben nichts');
+    assert.equal(
+      frei.selbst,
+      false,
+      'Die Bestandssperre liegt nicht unter LOCKS.INVENTAR — dann prüft der Fall oben nichts',
+    );
   });
 
   await t.test('keine blanke Zahl mehr in einem Sperr-Aufruf', () => {
@@ -150,21 +186,22 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
     const treffer = [];
     let geprueft = 0;
     for (const p of dateien) {
-      if (p.endsWith(path.join('src/infra/lockNamespaces.ts'))) continue;   // die Liste selbst
+      if (p.endsWith(path.join('src/infra/lockNamespaces.ts'))) continue; // die Liste selbst
       for (const zeile of fs.readFileSync(p, 'utf8').split('\n')) {
         if (!/pg_(try_)?advisory(_xact)?(_)?lock|pg_advisory_unlock/.test(zeile)) continue;
-        if (/^\s*[*/]/.test(zeile)) continue;                               // Kommentar
+        if (/^\s*[*/]/.test(zeile)) continue; // Kommentar
         geprueft++;
         if (/advisory[a-z_]*\(\s*\d/.test(zeile)) {
           treffer.push(`${path.relative(ROOT, p)}: ${zeile.trim().slice(0, 90)}`);
         }
       }
     }
-    assert.ok(geprueft >= 10,
-      `Nur ${geprueft} Sperr-Aufrufe gefunden — greift das Suchmuster noch?`);
-    assert.deepEqual(treffer, [],
-      'Sperr-Namensraum als eingetippte Zahl statt aus src/infra/lockNamespaces.ts:\n  ' +
-      treffer.join('\n  '));
+    assert.ok(geprueft >= 10, `Nur ${geprueft} Sperr-Aufrufe gefunden — greift das Suchmuster noch?`);
+    assert.deepEqual(
+      treffer,
+      [],
+      'Sperr-Namensraum als eingetippte Zahl statt aus src/infra/lockNamespaces.ts:\n  ' + treffer.join('\n  '),
+    );
   });
 
   await db.pool.end().catch(() => {});

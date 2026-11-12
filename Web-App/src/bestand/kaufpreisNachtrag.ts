@@ -8,11 +8,9 @@ import { bestandBereich } from './prozess';
 // Idempotent: Erfassungen ohne Kaufpreis bekommen den Marktpreis, wie beim
 // Erfassen ohne Kaufpreis.
 
-
 function log(msg: string) {
   console.log(`  [purchase-price-backfill] ${msg}`);
 }
-
 
 // Scheitert BrickLink beim CSV-Import am Tageslimit, bleibt die Erfassung ohne Preis; hier wird nachgetragen.
 async function backfillAcquisitions() {
@@ -44,12 +42,13 @@ async function backfillTeileErfassungen() {
   let done = 0;
   for (const row of rows) {
     try {
-      const price = await getCurrentPartMarketPrice(
-        row.part_number, row.color_id, row.user_id, row.condition || null);
+      const price = await getCurrentPartMarketPrice(row.part_number, row.color_id, row.user_id, row.condition || null);
       if (price) {
         if (await setzeGeschaetztenPreis('part', row.id, price)) done++;
       }
-    } catch (e) { meldeFehler('kaufpreis-nachtrag:teil-erfassung', e); }
+    } catch (e) {
+      meldeFehler('kaufpreis-nachtrag:teil-erfassung', e);
+    }
     await warte(1500);
   }
   log(`Teile-Erfassungen nachgetragen: ${done}/${rows.length}`);
@@ -64,12 +63,17 @@ async function backfillFigurenErfassungen() {
     try {
       // Die eigene BrickLink-Nummer des Kontos vor der gemeinsamen.
       const price = await getCurrentFigMarketPrice(
-        row.fig_number, row.user_id,
-        await blAbrufNummer('fig', row.fig_number, row.user_id), row.condition || null);
+        row.fig_number,
+        row.user_id,
+        await blAbrufNummer('fig', row.fig_number, row.user_id),
+        row.condition || null,
+      );
       if (price) {
         if (await setzeGeschaetztenPreis('fig', row.id, price)) done++;
       }
-    } catch (e) { meldeFehler('kaufpreis-nachtrag:figur-erfassung', e); }
+    } catch (e) {
+      meldeFehler('kaufpreis-nachtrag:figur-erfassung', e);
+    }
     await warte(1500);
   }
   log(`Figuren-Erfassungen nachgetragen: ${done}/${rows.length}`);

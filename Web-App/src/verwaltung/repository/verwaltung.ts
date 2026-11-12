@@ -18,43 +18,38 @@ export function veraltetePreise(db: DbSchnittstelle): Promise<number> {
   return anzahl(db, "SELECT COUNT(*)::int AS c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
 }
 
-
 /** Nur die Zahl der Konten: Welches ein Set führt, geht auch den Verwalter nichts an. */
 export async function bildZeilenDerKonten(db: DbSchnittstelle, sn: string): Promise<KontoBildzeile> {
   const z = await db.get<KontoBildzeile>(
     `SELECT COUNT(DISTINCT s.user_id)::int AS anzahl_konten, MAX(c.image_local) AS image_local, MAX(c.image_url) AS image_url
        FROM sets s LEFT JOIN set_catalog c ON c.set_number = s.set_number
-      WHERE s.set_number = $1`, [sn]);
+      WHERE s.set_number = $1`,
+    [sn],
+  );
   return z ?? { anzahl_konten: 0, image_local: null, image_url: null };
 }
 
 export function katalogBild(db: DbSchnittstelle, sn: string): Promise<Bildzeile | undefined> {
-  return db.get(
-    `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`, [sn]
-  );
+  return db.get(`SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`, [sn]);
 }
 
 export function fehlanzeigeDesSets(db: DbSchnittstelle, sn: string): Promise<Fehlanzeige | undefined> {
-  return db.get(
-    `SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`,
-    ['set:' + sn]);
+  return db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
 }
 
 /** @param datei der Dateiname ohne Endung, wie ihn die Bildablage bildet */
 export function fehlanzeigeDerVorschau(db: DbSchnittstelle, datei: string): Promise<Fehlanzeige | undefined> {
-  return db.get(
-    `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`,
-    ['thumb:%' + likeWoertlich(datei + '_thumb.jpg')]);
+  return db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`, [
+    'thumb:%' + likeWoertlich(datei + '_thumb.jpg'),
+  ]);
 }
 
 export function setFehlanzeigen(db: DbSchnittstelle): Promise<Schluessel[]> {
-  return db.all(
-    `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`);
+  return db.all(`SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`);
 }
 
 export function vorschauFehlanzeigen(db: DbSchnittstelle): Promise<Schluessel[]> {
-  return db.all(
-    `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`);
+  return db.all(`SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`);
 }
 
 /** Ein 404 vom CDN bleibt vermerkt: Ein neuer Versuch ändert daran nichts. */
@@ -62,7 +57,7 @@ export function setFehlanzeigenOhne404(db: DbSchnittstelle): Promise<Schluessel[
   return db.all(
     `SELECT cache_key FROM image_misses
             WHERE cache_key LIKE 'set:%'
-              AND (reason IS NULL OR reason NOT LIKE '%404%')`
+              AND (reason IS NULL OR reason NOT LIKE '%404%')`,
   );
 }
 
@@ -71,9 +66,9 @@ export function katalogBildKandidaten(db: DbSchnittstelle): Promise<{ set_num: s
     `SELECT rb.set_num, rb.set_img_url FROM rb_sets rb
         WHERE rb.set_img_url IS NOT NULL AND rb.set_img_url <> ''
           AND NOT EXISTS (SELECT 1 FROM image_misses m
-                           WHERE m.cache_key = 'set:' || rb.set_num)`);
+                           WHERE m.cache_key = 'set:' || rb.set_num)`,
+  );
 }
-
 
 export function offeneBildauftraege(db: DbSchnittstelle): Promise<{ n: number } | undefined> {
   return db.get(`SELECT COUNT(*)::int AS n FROM image_wanted`);
@@ -94,7 +89,10 @@ export function setsOhneAnleitung(db: DbSchnittstelle): Promise<{ set_number: st
     `);
 }
 
-export function protokollSeit(db: DbSchnittstelle, minuten: number): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
+export function protokollSeit(
+  db: DbSchnittstelle,
+  minuten: number,
+): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
   return db.all(
     // bigint käme als Text; der Vertrag (und das Protokollfenster) nennt eine Zahl.
     `SELECT id::float8 AS id, level, message, logged_at
@@ -102,7 +100,7 @@ export function protokollSeit(db: DbSchnittstelle, minuten: number): Promise<{ i
        WHERE logged_at >= NOW() - ($1 || ' minutes')::INTERVAL
        ORDER BY logged_at ASC
        LIMIT 5000`,
-    [minuten]
+    [minuten],
   );
 }
 
@@ -124,7 +122,10 @@ export function rbInventarTeile(db: DbSchnittstelle): Promise<number> {
 }
 
 export function teilbilderOffen(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(*)::int AS c FROM set_parts_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`);
+  return anzahl(
+    db,
+    `SELECT COUNT(*)::int AS c FROM set_parts_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`,
+  );
 }
 
 export function teilbilderFertig(db: DbSchnittstelle): Promise<number> {
@@ -132,36 +133,58 @@ export function teilbilderFertig(db: DbSchnittstelle): Promise<number> {
 }
 
 export function setFigurenbilderOffen(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(*)::int AS c FROM set_minifigs_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`);
+  return anzahl(
+    db,
+    `SELECT COUNT(*)::int AS c FROM set_minifigs_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`,
+  );
 }
 
 /** Das EXISTS hält die Menge bei dem, was der Hintergrundlauf wirklich holt,
  * sonst passt die offene Zahl nicht zum Fortschritt. */
 export function bestandsFigurenbilderOffen(db: DbSchnittstelle): Promise<number> {
-  return anzahl(db, `SELECT COUNT(*)::int AS c FROM minifigs_catalog mc
+  return anzahl(
+    db,
+    `SELECT COUNT(*)::int AS c FROM minifigs_catalog mc
              WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
-               AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)`);
+               AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)`,
+  );
 }
 
 /** Die Menge aus den Erfassungen — dieselbe Summe, die die Bewertung sieht. */
 export function probeSet(db: DbSchnittstelle, uid: number, setNumber: string) {
-  return db.get<{ set_number: string; quantity: number }>(`SELECT s.set_number, ${mengeSkalar('s')} AS quantity
-              FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`, [uid, setNumber]);
+  return db.get<{ set_number: string; quantity: number }>(
+    `SELECT s.set_number, ${mengeSkalar('s')} AS quantity
+              FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`,
+    [uid, setNumber],
+  );
 }
 
-export function probeErfassungen(db: DbSchnittstelle, uid: number, setNumber: string): Promise<{ quantity: number; condition: string; purchase_price: number | null; created_at: Date }[]> {
-  return db.all('SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at', [uid, setNumber]);
+export function probeErfassungen(
+  db: DbSchnittstelle,
+  uid: number,
+  setNumber: string,
+): Promise<{ quantity: number; condition: string; purchase_price: number | null; created_at: Date }[]> {
+  return db.all(
+    'SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at',
+    [uid, setNumber],
+  );
 }
 
 export function probePreisCache(db: DbSchnittstelle, setNumber: string) {
-  return db.all<Record<string, unknown>>(`SELECT condition, currency_code, avg_price, qty_avg_price, min_price, max_price, fetched_at,
+  return db.all<Record<string, unknown>>(
+    `SELECT condition, currency_code, avg_price, qty_avg_price, min_price, max_price, fetched_at,
                    EXTRACT(EPOCH FROM (NOW() - fetched_at))/3600 AS age_hours
-              FROM price_cache WHERE set_number=$1 ORDER BY condition, currency_code`, [setNumber]);
+              FROM price_cache WHERE set_number=$1 ORDER BY condition, currency_code`,
+    [setNumber],
+  );
 }
 
 export function probePreisVerlauf(db: DbSchnittstelle, setNumber: string) {
-  return db.all<Record<string, unknown>>(`SELECT condition, avg_price, qty_avg_price, recorded_at FROM price_history
-             WHERE set_number=$1 ORDER BY recorded_at DESC LIMIT 5`, [setNumber]);
+  return db.all<Record<string, unknown>>(
+    `SELECT condition, avg_price, qty_avg_price, recorded_at FROM price_history
+             WHERE set_number=$1 ORDER BY recorded_at DESC LIMIT 5`,
+    [setNumber],
+  );
 }
 
 export function probeWaehrung(db: DbSchnittstelle, uid: number): Promise<{ value: string } | undefined> {
@@ -169,7 +192,10 @@ export function probeWaehrung(db: DbSchnittstelle, uid: number): Promise<{ value
 }
 
 export function letzterLaufDerArt(db: DbSchnittstelle) {
-  return db.get<{ status: string; faellig_ab: Date; fortschritt: Record<string, unknown> | null }>(`SELECT status, faellig_ab, fortschritt FROM auftraege
+  return db.get<{
+    status: string;
+    faellig_ab: Date;
+    fortschritt: Record<string, unknown> | null;
+  }>(`SELECT status, faellig_ab, fortschritt FROM auftraege
       WHERE art = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, faellig_ab LIMIT 1`);
 }
-

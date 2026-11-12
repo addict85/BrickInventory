@@ -33,15 +33,69 @@ const lies = p => fs.readFileSync(p, 'utf8');
  * Die ZUORDNUNG — die einzige Stelle, an der sie steht.
  */
 const ZUORDNUNG = [
-  { web: 'settings.group.profile', app: 'konto_title',          sinnbild: 'Person',       symbol: 'i-profil',        vektor: 'Icons.Outlined.AccountCircle' },
-  { web: 'vouchers.group',         app: 'vouchers_title',       sinnbild: 'Gutschein',    symbol: 'i-gutschein',     vektor: 'Icons.Outlined.Redeem' },
-  { web: 'alerts.group',           app: 'alerts_group',         sinnbild: 'Glocke',       symbol: 'i-alarm',         vektor: 'Icons.Outlined.NotificationsActive' },
-  { web: 'storage.group',          app: 'storage_manage',       sinnbild: 'Kiste',        symbol: 'i-lagerort',      vektor: 'Icons.Outlined.Inventory2' },
-  { web: 'household.group',        app: 'household_title',      sinnbild: 'Gruppe',       symbol: 'i-haushalt',      vektor: 'Icons.Outlined.Group' },
-  { web: 'settings.data_export',   app: 'csv_upload_title',     sinnbild: 'Datei+Pfeil',  symbol: 'i-daten',         vektor: 'Icons.Outlined.UploadFile' },
-  { web: 'nav.settings',           app: 'nav_settings',         sinnbild: 'Zahnrad',      symbol: 'i-einstellungen', vektor: 'Icons.Outlined.Settings' },
-  { web: 'nav.monitoring',         app: 'main_menu_monitoring', sinnbild: 'Diagramm',     symbol: 'i-monitoring',    vektor: 'Icons.Outlined.Assessment' },
-  { web: 'settings.logout',        app: 'main_menu_logout',     sinnbild: 'Hinausgehen',  symbol: 'i-abmelden',      vektor: 'Icons.AutoMirrored.Outlined.Logout' },
+  {
+    web: 'settings.group.profile',
+    app: 'konto_title',
+    sinnbild: 'Person',
+    symbol: 'i-profil',
+    vektor: 'Icons.Outlined.AccountCircle',
+  },
+  {
+    web: 'vouchers.group',
+    app: 'vouchers_title',
+    sinnbild: 'Gutschein',
+    symbol: 'i-gutschein',
+    vektor: 'Icons.Outlined.Redeem',
+  },
+  {
+    web: 'alerts.group',
+    app: 'alerts_group',
+    sinnbild: 'Glocke',
+    symbol: 'i-alarm',
+    vektor: 'Icons.Outlined.NotificationsActive',
+  },
+  {
+    web: 'storage.group',
+    app: 'storage_manage',
+    sinnbild: 'Kiste',
+    symbol: 'i-lagerort',
+    vektor: 'Icons.Outlined.Inventory2',
+  },
+  {
+    web: 'household.group',
+    app: 'household_title',
+    sinnbild: 'Gruppe',
+    symbol: 'i-haushalt',
+    vektor: 'Icons.Outlined.Group',
+  },
+  {
+    web: 'settings.data_export',
+    app: 'csv_upload_title',
+    sinnbild: 'Datei+Pfeil',
+    symbol: 'i-daten',
+    vektor: 'Icons.Outlined.UploadFile',
+  },
+  {
+    web: 'nav.settings',
+    app: 'nav_settings',
+    sinnbild: 'Zahnrad',
+    symbol: 'i-einstellungen',
+    vektor: 'Icons.Outlined.Settings',
+  },
+  {
+    web: 'nav.monitoring',
+    app: 'main_menu_monitoring',
+    sinnbild: 'Diagramm',
+    symbol: 'i-monitoring',
+    vektor: 'Icons.Outlined.Assessment',
+  },
+  {
+    web: 'settings.logout',
+    app: 'main_menu_logout',
+    sinnbild: 'Hinausgehen',
+    symbol: 'i-abmelden',
+    vektor: 'Icons.AutoMirrored.Outlined.Logout',
+  },
 ];
 
 /** Einträge, die es nur auf EINER Seite gibt — ausdrücklich, mit Grund. */
@@ -49,8 +103,8 @@ const NUR_WEB = {
   'menu.app': 'Der Verweis auf die Android-App. In der App selbst wäre er sinnlos.',
 };
 const NUR_APP = {
-  'nav_comparison': 'In der Webapp ein eigener Reiter; die untere Leiste der App hat nur Platz für fünf.',
-  'nav_partslist': 'In der Webapp ein eigener Reiter; in der App steht die Bauliste auf „Mehr“.',
+  nav_comparison: 'In der Webapp ein eigener Reiter; die untere Leiste der App hat nur Platz für fünf.',
+  nav_partslist: 'In der Webapp ein eigener Reiter; in der App steht die Bauliste auf „Mehr“.',
 };
 
 /** Webapp: Schlüssel → Symbol-ID jedes Menüeintrags, aus dem Markup. */
@@ -67,11 +121,14 @@ function webMenue() {
 
 /** App: R.string-Schlüssel → Symbol, in der Reihenfolge der Seite „Mehr“. */
 function appMenue() {
-  const kt = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'app', 'MehrBildschirm.kt'))
-    .split('fun MehrBildschirm(')[1];
+  const kt = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'app', 'MehrBildschirm.kt')).split(
+    'fun MehrBildschirm(',
+  )[1];
   assert.ok(kt, 'Die Seite „Mehr“ ist nicht mehr zu finden.');
-  return [...kt.matchAll(/MehrEintrag\(R\.string\.(\w+),\s*([\w.]+)[,)]/g)]
-    .map(m => ({ schluessel: m[1], symbol: m[2] }));
+  return [...kt.matchAll(/MehrEintrag\(R\.string\.(\w+),\s*([\w.]+)[,)]/g)].map(m => ({
+    schluessel: m[1],
+    symbol: m[2],
+  }));
 }
 
 test('jeder Menüeintrag ist zugeordnet — auf beiden Seiten', () => {
@@ -85,11 +142,17 @@ test('jeder Menüeintrag ist zugeordnet — auf beiden Seiten', () => {
   const appZu = new Set(ZUORDNUNG.map(z => z.app));
   const offenWeb = web.filter(e => !webZu.has(e.schluessel) && !(e.schluessel in NUR_WEB));
   const offenApp = app.filter(e => !appZu.has(e.schluessel) && !(e.schluessel in NUR_APP));
-  assert.deepEqual(offenWeb.map(e => e.schluessel), [],
+  assert.deepEqual(
+    offenWeb.map(e => e.schluessel),
+    [],
     'Diese Web-Einträge sind weder zugeordnet noch als „nur Web" begründet. ' +
-    'Ein neuer Eintrag ohne Gegenstück ist eine Entscheidung — sie gehört in die Tabelle.');
-  assert.deepEqual(offenApp.map(e => e.schluessel), [],
-    'Diese App-Einträge sind weder zugeordnet noch als „nur App" begründet.');
+      'Ein neuer Eintrag ohne Gegenstück ist eine Entscheidung — sie gehört in die Tabelle.',
+  );
+  assert.deepEqual(
+    offenApp.map(e => e.schluessel),
+    [],
+    'Diese App-Einträge sind weder zugeordnet noch als „nur App" begründet.',
+  );
 });
 
 test('jeder Eintrag trägt beiderseits dasselbe Sinnbild', () => {
@@ -97,17 +160,27 @@ test('jeder Eintrag trägt beiderseits dasselbe Sinnbild', () => {
   const app = new Map(appMenue().map(e => [e.schluessel, e.symbol]));
   const falsch = [];
   for (const z of ZUORDNUNG) {
-    if (!web.has(z.web)) { falsch.push(`${z.web}: fehlt im Web-Menü`); continue; }
+    if (!web.has(z.web)) {
+      falsch.push(`${z.web}: fehlt im Web-Menü`);
+      continue;
+    }
     const symbol = web.get(z.web);
     if (symbol !== z.symbol) falsch.push(`${z.web} (${z.sinnbild}): Web zeigt #${symbol} statt #${z.symbol}`);
     const sym = app.get(z.app);
-    if (sym === undefined) { falsch.push(`${z.app}: fehlt im App-Menü`); continue; }
+    if (sym === undefined) {
+      falsch.push(`${z.app}: fehlt im App-Menü`);
+      continue;
+    }
     if (sym !== z.vektor) falsch.push(`${z.app} (${z.sinnbild}): App zeigt ${sym} statt ${z.vektor}`);
   }
-  assert.deepEqual(falsch, [],
-    'Die beiden Menüs zeigen nicht mehr dasselbe:\n  ' + falsch.join('\n  ') +
-    '\n\nBuchstäblich gleich können Web- und Material-Symbol nie sein — gleich ' +
-    'ist das GEMEINTE. Wer eines ändert, ändert beide, oder die Tabelle.');
+  assert.deepEqual(
+    falsch,
+    [],
+    'Die beiden Menüs zeigen nicht mehr dasselbe:\n  ' +
+      falsch.join('\n  ') +
+      '\n\nBuchstäblich gleich können Web- und Material-Symbol nie sein — gleich ' +
+      'ist das GEMEINTE. Wer eines ändert, ändert beide, oder die Tabelle.',
+  );
 });
 
 test('kein Sinnbild steht für zwei Dinge', () => {
@@ -121,10 +194,19 @@ test('kein Sinnbild steht für zwei Dinge', () => {
     }
     return null;
   };
-  const w = doppelt(webMenue().map(e => [e.schluessel, e.symbol]), 'Webapp');
-  const a = doppelt(appMenue().map(e => [e.schluessel, e.symbol]), 'App');
-  assert.deepEqual([w, a].filter(Boolean), [],
+  const w = doppelt(
+    webMenue().map(e => [e.schluessel, e.symbol]),
+    'Webapp',
+  );
+  const a = doppelt(
+    appMenue().map(e => [e.schluessel, e.symbol]),
+    'App',
+  );
+  assert.deepEqual(
+    [w, a].filter(Boolean),
+    [],
     'Ein Sinnbild steht für zwei verschiedene Dinge. Wer es sieht, kann die ' +
-    'beiden Einträge nicht auseinanderhalten — und die andere Oberfläche ' +
-    'unterscheidet sie sehr wohl.');
+      'beiden Einträge nicht auseinanderhalten — und die andere Oberfläche ' +
+      'unterscheidet sie sehr wohl.',
+  );
 });

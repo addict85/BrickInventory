@@ -1,9 +1,9 @@
 /** Die täglichen Katalogdateien von Rebrickable (gzip-CSV). Über abruf.ts wie
  * jeder andere Abruf: Host-Liste, Grössendeckel, Gesamtfrist und Abbruch. */
-import fs from 'fs';
-import { createGunzip } from 'zlib';
-import { Transform } from 'stream';
-import { pipeline } from 'stream/promises';
+import fs from 'node:fs';
+import { createGunzip } from 'node:zlib';
+import { Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { oeffneHttps, AbrufFehler } from '../src/infra/abruf';
 
 const CSV_BASIS = 'https://cdn.rebrickable.com/media/downloads/';

@@ -10,7 +10,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -18,29 +18,42 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const NAME = `erfbest_${process.pid}`, SET = '99074-1';
+const NAME = `erfbest_${process.pid}`,
+  SET = '99074-1';
 
-test('Erfassung und Bestand', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Erfassung und Bestand', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+                             VALUES ($1, 'x', true, true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   t.after(async () => {
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const erfassung = (tx, menge = 1) => tx.run(
-    `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1, $2, $3, 'N')`, [uid, SET, menge]);
+  const erfassung = (tx, menge = 1) =>
+    tx.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1, $2, $3, 'N')`, [
+      uid,
+      SET,
+      menge,
+    ]);
 
   await t.test('eine Erfassung ohne Bestandszeile scheitert beim COMMIT', async () => {
-    await assert.rejects(db.transaction(tx => erfassung(tx)), /set_acquisitions_bestand_fkey/);
+    await assert.rejects(
+      db.transaction(tx => erfassung(tx)),
+      /set_acquisitions_bestand_fkey/,
+    );
     assert.equal((await db.get('SELECT count(*)::int AS n FROM set_acquisitions WHERE user_id = $1', [uid])).n, 0);
   });
 
   await t.test('innerhalb einer Transaktion darf die Erfassung vor dem Bestand kommen', async () => {
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       await erfassung(tx);
       await tx.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);
     });
@@ -48,14 +61,23 @@ test('Erfassung und Bestand', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('Menge null oder unbekannter Zustand werden abgewiesen', async () => {
-    await assert.rejects(db.transaction(tx => erfassung(tx, 0)), /set_acquisitions_menge_positiv/);
-    await assert.rejects(db.run(
-      `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1, $2, 1, 'X')`, [uid, SET]),
-      /set_acquisitions_zustand/);
+    await assert.rejects(
+      db.transaction(tx => erfassung(tx, 0)),
+      /set_acquisitions_menge_positiv/,
+    );
+    await assert.rejects(
+      db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1, $2, 1, 'X')`, [
+        uid,
+        SET,
+      ]),
+      /set_acquisitions_zustand/,
+    );
   });
 
   await t.test('den Bestand löschen, solange Erfassungen da sind, scheitert', async () => {
-    await assert.rejects(db.run('DELETE FROM sets WHERE user_id = $1 AND set_number = $2', [uid, SET]),
-      /set_acquisitions_bestand_fkey/);
+    await assert.rejects(
+      db.run('DELETE FROM sets WHERE user_id = $1 AND set_number = $2', [uid, SET]),
+      /set_acquisitions_bestand_fkey/,
+    );
   });
 });

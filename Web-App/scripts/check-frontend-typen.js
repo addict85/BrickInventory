@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+
 /**
  * Typprüfung der Oberfläche: tsc über tsconfig.frontend.json (ES-Module) und
  * tsconfig.frontend-skripte.json (die zwei klassischen Skripte). Beide müssen
@@ -8,8 +9,8 @@
  *
  *   npm run typecheck:frontend
  */
-const { spawnSync } = require('child_process');
-const path = require('path');
+const { spawnSync } = require('node:child_process');
+const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const TSC = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');

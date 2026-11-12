@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { eingabe } from '../infra/validate';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 
-/** Dieselbe Liste wie ALLOWED in public/js/00-theme-boot.js (theme.test.js). */
+/** Dieselbe Liste wie ALLOWED in public/js/theme-boot.js (theme.test.js). */
 export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
 /** Ein globaler Wert wird als Text gespeichert, auch wenn er als Zahl kommt. */
@@ -18,6 +18,7 @@ const ganzzahl = (min: number, max: number, code?: FehlerCode) =>
     code,
   );
 const text = (max: number) =>
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen herauszufiltern ist der Zweck dieser Stelle.
   wert(v => v.length <= max && !/[\u0000-\u001f\u007f]/.test(v), { type: 'string', maxLength: max });
 const auswahl = (werte: readonly string[], code?: FehlerCode) =>
   wert(v => werte.includes(v), { enum: [...werte] }, code);

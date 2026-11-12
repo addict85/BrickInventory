@@ -8,6 +8,7 @@
  * „die Webapp ruft nie direkt ein CDN auf“ → bilder-proxy-oberflaeche.test.js
  * (imgUrl() bzw. fullUrl() geben eine CDN-Adresse roh zurück → dort rot, H bzw. D).
  */
+const { istAppModul } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -111,7 +112,7 @@ test('data-self-Handler nehmen das Element als ERSTES Argument', () => {
   // Woher dieser Test kommt
   const fs2 = require('node:fs');
   const jsDir = path.join(ROOT, 'public', 'js');
-  const files = fs2.readdirSync(jsDir).filter(f => /^\d\d-/.test(f) && f !== '00-registry.js');
+  const files = fs2.readdirSync(jsDir).filter(f => istAppModul(f) && f !== 'registry.js');
   const withSelfAndArg = new Set();
   for (const f of files) {
     const src = fs2.readFileSync(path.join(jsDir, f), 'utf8');

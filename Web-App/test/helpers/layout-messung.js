@@ -6,9 +6,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const AXE = fs.readFileSync(require.resolve('axe-core/axe.min.js', { paths: [path.join(__dirname, '..', '..')] }), 'utf8');
+const AXE = fs.readFileSync(
+  require.resolve('axe-core/axe.min.js', { paths: [path.join(__dirname, '..', '..')] }),
+  'utf8',
+);
 
-/** Der oberste offene Dialog (wie obersterDialog in 01-dialoge.js), sonst null. */
+/** Der oberste offene Dialog (wie obersterDialog in dialoge.js), sonst null. */
 const OBERSTER = `(() => { let d = null, z = -Infinity;
   for (const el of document.querySelectorAll('.ovl[role=dialog]')) {
     const offen = el.style.display ? el.style.display !== 'none' : el.classList.contains('open');
@@ -33,7 +36,7 @@ const AXE_LAUF = `(async () => {
  * Text und Platzhaltern (4,5:1, gross 3:1) und von Feldgrenzen und
  * Sinnbild-Knöpfen (3:1). Gemessen wird im offenen Dialog, sonst auf der Seite.
  */
-const LAYOUT = (telefon) => `(() => {
+const LAYOUT = telefon => `(() => {
   const telefon = ${telefon ? 'true' : 'false'};
   const wurzel = ${OBERSTER} || document.body;
   const rgba = (s) => { const c = String(s).match(/color\\(srgb ([^)]+)\\)/);
@@ -299,7 +302,7 @@ const TAB_VORBEREITEN = `(() => {
 const TAB_STAND = `(() => { const a = document.activeElement, d = ${OBERSTER};
   return { id: a?.dataset?.tabprobe ?? null, drin: !!d && d.contains(a),
            wo: a ? a.tagName.toLowerCase() + (a.id ? '#' + a.id : '') : '' }; })()`;
-const TAB_FEHLT = (besucht) => `(() => { const b = new Set(${JSON.stringify(besucht)}); const raus = [];
+const TAB_FEHLT = besucht => `(() => { const b = new Set(${JSON.stringify(besucht)}); const raus = [];
   for (const e of document.querySelectorAll('[data-tabprobe]')) { if (!b.has(e.dataset.tabprobe)) raus.push(e.dataset.tabname); delete e.dataset.tabprobe; delete e.dataset.tabname; }
   return [...new Set(raus)]; })()`;
 
@@ -307,7 +310,8 @@ const TAB_FEHLT = (besucht) => `(() => { const b = new Set(${JSON.stringify(besu
 async function tabPruefung(b) {
   const v = await b.auswerten(TAB_VORBEREITEN);
   if (!v) return [];
-  const funde = [...v.funde], besucht = [];
+  const funde = [...v.funde],
+    besucht = [];
   for (let i = 0; i < 3 * v.n + 6 && new Set(besucht).size < v.n; i++) {
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });

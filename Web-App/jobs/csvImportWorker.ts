@@ -20,7 +20,7 @@ process.on('message', async (msg: { task?: string } | null) => {
   const task = String(msg?.task);
   // Was per IPC ankommt, prüft kein Übersetzer: Ohne diese Prüfung wäre
   // TASKS['constructor']() ein leerer „Erfolg“, der den Tagesmarker setzt.
-  if (!Object.prototype.hasOwnProperty.call(TASKS, task)) {
+  if (!Object.hasOwn(TASKS, task)) {
     // Geht ins Serverprotokoll, keine Nutzermeldung — deshalb unübersetzt.
     send({ type: 'error', task, error: `Unbekannte Aufgabe: ${task}` });
     await pool.end().catch(logAndContinue('csv-worker:end'));
@@ -33,7 +33,7 @@ process.on('message', async (msg: { task?: string } | null) => {
     send({ type: 'complete', task });
     await pool.end();
     process.exit(0);
-  } catch(e) {
+  } catch (e) {
     send({ type: 'error', task, error: fehlertext(e) });
     await pool.end().catch(logAndContinue('csv-worker:end'));
     process.exit(1);

@@ -22,7 +22,8 @@ for (const sprache of ['de', 'en']) {
       assert.deepEqual(mitPlus, []);
       const pl = d.querySelector('[data-click="plAddSet"]');
       assert.equal(pl.querySelector('use')?.getAttribute('href'), '#i-plus', 'Teileliste: Knopf ohne Plus-Symbol');
-    } finally { w.close(); }
+    } finally {
+      w.close();
+    }
   });
 }
-

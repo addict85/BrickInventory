@@ -24,12 +24,20 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const NAME = `spray_${process.pid}`;
 const IP = '203.0.113.77';
 
-test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-    VALUES ($1, $2, true, true) RETURNING id`, [NAME, bcrypt.hashSync('richtig-geheim', 4)])).id;
-  const aufraeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE 'probe-alt|%' OR key = 'probe-neu|x'`, [`%${IP}%`]);
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+    VALUES ($1, $2, true, true) RETURNING id`,
+      [NAME, bcrypt.hashSync('richtig-geheim', 4)],
+    )
+  ).id;
+  const aufraeumen = () =>
+    db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE 'probe-alt|%' OR key = 'probe-neu|x'`, [
+      `%${IP}%`,
+    ]);
   await aufraeumen();
   t.after(async () => {
     await aufraeumen();
@@ -37,7 +45,7 @@ test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async (t) => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { pruefeAnmeldedaten } = _req('src/konto/auth.js');
+  const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
   const lim = _req('src/konto/loginLimiter.js');
 
   await t.test('nach 30 Fehlversuchen gegen verschiedene Namen ist die Adresse gesperrt', async () => {
@@ -55,7 +63,9 @@ test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async (t) => {
       ('probe-alt|1', 3, NOW() - interval '3 days', NOW() - interval '2 days'),
       ('probe-neu|x', 1, NOW(), NOW())`);
     await lim.raeumeAnmeldezaehlerAuf();
-    const da = (await db.all(`SELECT key FROM rate_limit_attempts WHERE key IN ('probe-alt|1','probe-neu|x')`)).map(z => z.key);
+    const da = (await db.all(`SELECT key FROM rate_limit_attempts WHERE key IN ('probe-alt|1','probe-neu|x')`)).map(
+      z => z.key,
+    );
     assert.deepEqual(da, ['probe-neu|x']);
   });
 });

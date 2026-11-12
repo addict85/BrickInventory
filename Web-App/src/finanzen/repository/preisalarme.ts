@@ -4,20 +4,33 @@ import type { DbSchnittstelle } from '../../../db/database';
 /** Hat das Ziel schon einen Alarm (etwa an einem besessenen Set), gilt seiner;
  * sonst bräche der Primärschlüssel das Umhängen samt Merkposten ab. */
 export async function uebertrageAlarm(db: DbSchnittstelle, zuId: number, vonId: number, sn: string, c: string) {
-  await db.run(`UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4
+  await db.run(
+    `UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4
                    AND NOT EXISTS (SELECT 1 FROM price_alerts z WHERE z.user_id=$1 AND z.set_number=$3 AND z.condition=$4)`,
-               [zuId, vonId, sn, c]);
+    [zuId, vonId, sn, c],
+  );
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [vonId, sn, c]);
 }
 
 const BESITZT = 'EXISTS (SELECT 1 FROM sets s WHERE s.user_id = ANY($3) AND s.set_number = a.set_number) AS besitzt';
 
-export function schreibeAlarm(db: DbSchnittstelle, userId: number, setNumber: string, condition: string, richtung: 'unter' | 'ueber', schwelle: number, waehrung: string) {
-  return db.run(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
+export function schreibeAlarm(
+  db: DbSchnittstelle,
+  userId: number,
+  setNumber: string,
+  condition: string,
+  richtung: 'unter' | 'ueber',
+  schwelle: number,
+  waehrung: string,
+) {
+  return db.run(
+    `INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
      VALUES ($1,$2,$3,$4,$5,$6)
      ON CONFLICT (user_id, set_number, condition) DO UPDATE
         SET richtung = $4, schwelle = $5, currency_code = $6,
-            ausgeloest = FALSE`, [userId, setNumber, condition, richtung, schwelle, waehrung]);
+            ausgeloest = FALSE`,
+    [userId, setNumber, condition, richtung, schwelle, waehrung],
+  );
 }
 
 export function entferneAlarm(db: DbSchnittstelle, userId: number, setNumber: string, c: string) {
@@ -25,13 +38,17 @@ export function entferneAlarm(db: DbSchnittstelle, userId: number, setNumber: st
 }
 
 export function alarmeDesSets(db: DbSchnittstelle, userId: number, setNumber: string, blickfeld: number[]) {
-  return db.all(`SELECT set_number, condition, richtung, schwelle, currency_code,
+  return db.all(
+    `SELECT set_number, condition, richtung, schwelle, currency_code,
             ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT}
-       FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`, [userId, setNumber, blickfeld]);
+       FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
+    [userId, setNumber, blickfeld],
+  );
 }
 
 export function alarmeImBlickfeld(db: DbSchnittstelle, userId: number, blickfeld: number[]) {
-  return db.all(`SELECT DISTINCT ON (a.set_number, a.condition)
+  return db.all(
+    `SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
             rb.name, rb.set_img_url, c.image_local, c.image_url,
@@ -43,7 +60,9 @@ export function alarmeImBlickfeld(db: DbSchnittstelle, userId: number, blickfeld
        LEFT JOIN sets s ON s.user_id = ANY($2) AND s.set_number = a.set_number
        LEFT JOIN set_catalog c ON c.set_number = a.set_number
       WHERE a.user_id = $1
-      ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`, [userId, blickfeld]);
+      ORDER BY a.set_number, a.condition, c.image_local NULLS LAST, s.id`,
+    [userId, blickfeld],
+  );
 }
 
 export function datenbankJetzt(db: DbSchnittstelle) {
@@ -51,39 +70,60 @@ export function datenbankJetzt(db: DbSchnittstelle) {
 }
 
 export function alarmeDesKontos(db: DbSchnittstelle, userId: number, marke: Date, blickfeld: number[]) {
-  return db.all(`SELECT set_number, condition, richtung, schwelle, currency_code,
+  return db.all(
+    `SELECT set_number, condition, richtung, schwelle, currency_code,
             ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT}
        FROM price_alerts a
       WHERE user_id = $1 AND ausgeloest = TRUE
         -- Auch die SPALTE auf Millisekunden: Zeilen, die vor dieser Aenderung
         -- geschrieben wurden, tragen noch Mikrosekunden.
         AND zuletzt_am IS NOT NULL AND date_trunc('milliseconds', zuletzt_am) > $2
-      ORDER BY zuletzt_am`, [userId, marke, blickfeld]);
+      ORDER BY zuletzt_am`,
+    [userId, marke, blickfeld],
+  );
 }
 
 export function alleAktivenAlarme(db: DbSchnittstelle, setNumber: string) {
-  return db.all(`SELECT a.user_id, a.set_number, a.condition, a.richtung, a.schwelle,
+  return db.all(
+    `SELECT a.user_id, a.set_number, a.condition, a.richtung, a.schwelle,
             a.currency_code, a.ausgeloest, u.email, u.username,
             COALESCE(us.value, 'de') AS sprache
        FROM price_alerts a
        JOIN users u ON u.id = a.user_id
        LEFT JOIN user_settings us ON us.user_id = a.user_id AND us.key = 'language'
-      WHERE a.set_number = $1`, [setNumber]);
+      WHERE a.set_number = $1`,
+    [setNumber],
+  );
 }
 
 export function cachePreisFuerAlarm(db: DbSchnittstelle, set_number: string, condition: string, currency_code: string) {
-  return db.get<{ avg_price: number | null }>(`SELECT avg_price FROM price_cache
-        WHERE set_number=$1 AND condition=$2 AND currency_code=$3`, [set_number, condition, currency_code]);
+  return db.get<{ avg_price: number | null }>(
+    `SELECT avg_price FROM price_cache
+        WHERE set_number=$1 AND condition=$2 AND currency_code=$3`,
+    [set_number, condition, currency_code],
+  );
 }
 
 export function setzeAlarmZurueck(db: DbSchnittstelle, user_id: number, set_number: string, condition: string) {
-  return db.run(`UPDATE price_alerts SET ausgeloest = FALSE
-                       WHERE user_id=$1 AND set_number=$2 AND condition=$3`, [user_id, set_number, condition]);
+  return db.run(
+    `UPDATE price_alerts SET ausgeloest = FALSE
+                       WHERE user_id=$1 AND set_number=$2 AND condition=$3`,
+    [user_id, set_number, condition],
+  );
 }
 
-export function loeseAlarmAus(db: DbSchnittstelle, user_id: number, set_number: string, condition: string, preis: number) {
-  return db.run(`UPDATE price_alerts SET ausgeloest = TRUE, zuletzt_am = NOW(), zuletzt_preis = $4
-        WHERE user_id=$1 AND set_number=$2 AND condition=$3`, [user_id, set_number, condition, preis]);
+export function loeseAlarmAus(
+  db: DbSchnittstelle,
+  user_id: number,
+  set_number: string,
+  condition: string,
+  preis: number,
+) {
+  return db.run(
+    `UPDATE price_alerts SET ausgeloest = TRUE, zuletzt_am = NOW(), zuletzt_preis = $4
+        WHERE user_id=$1 AND set_number=$2 AND condition=$3`,
+    [user_id, set_number, condition, preis],
+  );
 }
 
 export function setNameAusStamm(db: DbSchnittstelle, set_number: string) {
@@ -91,8 +131,17 @@ export function setNameAusStamm(db: DbSchnittstelle, set_number: string) {
 }
 
 export function alarmeFuerExport(db: DbSchnittstelle, uid: number) {
-  return db.all<{ set_number: string; condition: string; richtung: string; schwelle: number | string; currency_code: string }>(`SELECT set_number, condition, richtung, schwelle, currency_code
+  return db.all<{
+    set_number: string;
+    condition: string;
+    richtung: string;
+    schwelle: number | string;
+    currency_code: string;
+  }>(
+    `SELECT set_number, condition, richtung, schwelle, currency_code
        FROM price_alerts
       WHERE user_id = $1
-      ORDER BY set_number, condition`, [uid]);
+      ORDER BY set_number, condition`,
+    [uid],
+  );
 }

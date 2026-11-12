@@ -22,12 +22,15 @@ const { haeltSet, erfasse } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
-test('getSets liefert den letzten Kauf', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('getSets liefert den letzten Kauf', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const NAME = `kaufdatum_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
-  t.after(async () => { await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
   await haeltSet(db, uid, '10300-1', 1, { preis: 199, am: '2024-03-02T10:00:00Z' });
   await erfasse(db, uid, '10300-1', 1, { preis: 210, am: '2025-07-14T10:00:00Z' });
   const { getSets } = _req('src/sets/index.js');
@@ -38,15 +41,34 @@ test('getSets liefert den letzten Kauf', { concurrency: 1 }, async (t) => {
 });
 
 test('die Kachel zeigt das Kaufdatum', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/sets': { success: true, total: 1, themes: [], sets: [
-    { set_number: '10300-1', name: 'Zeitmaschine', quantity: 2, conditions: ['N'],
-      added_at: '2026-10-28T08:00:00Z', letzter_kauf: '2025-07-14T10:00:00Z' }] } }, { browserSprache: 'de-DE' });
+  const { w, d } = await oeffneOberflaeche(
+    {
+      '/v1/sets': {
+        success: true,
+        total: 1,
+        themes: [],
+        sets: [
+          {
+            set_number: '10300-1',
+            name: 'Zeitmaschine',
+            quantity: 2,
+            conditions: ['N'],
+            added_at: '2026-10-28T08:00:00Z',
+            letzter_kauf: '2025-07-14T10:00:00Z',
+          },
+        ],
+      },
+    },
+    { browserSprache: 'de-DE' },
+  );
   try {
     await warte(() => d.querySelector('.sc .kachel-datum'));
     const datum = d.querySelector('.sc .kachel-datum');
     assert.ok(datum, 'Kein Datum auf der Kachel');
     // Eine Schreibweise für alle Daten (fmtDatum): zweistellig, seit dem 29.10.
     assert.match(datum.textContent, /14\.07\.2025/);
-    assert.match(datum.textContent, /Gekauft/);   // sichtbar beschriftet (L3), „Gekauft am“ im title
-  } finally { w.close(); }
+    assert.match(datum.textContent, /Gekauft/); // sichtbar beschriftet (L3), „Gekauft am“ im title
+  } finally {
+    w.close();
+  }
 });

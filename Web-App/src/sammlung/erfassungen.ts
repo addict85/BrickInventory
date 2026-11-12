@@ -46,23 +46,42 @@ const ARTEN: Record<ErfassungsArt, Art> = {
   },
 };
 
-interface Zeile { id: number; user_id: number; condition: string | null; preis: number | null; price_estimated: boolean; currency: string; tag: string }
+interface Zeile {
+  id: number;
+  user_id: number;
+  condition: string | null;
+  preis: number | null;
+  price_estimated: boolean;
+  currency: string;
+  tag: string;
+}
 
 /** Nur für den Sperrschlüssel; die Rechte prüft danach die Abfrage im Schreib-Blickfeld. */
 async function besitzerDerZeile(art: ErfassungsArt, id: number, fallback: number): Promise<number> {
-  return await sammlungBereich().erfassungen.kontoDerErfassung(art, id) ?? fallback;
+  return (await sammlungBereich().erfassungen.kontoDerErfassung(art, id)) ?? fallback;
 }
 
 /** 0 heisst „leer", null „keine Zeile"; beides räumt auf. Ein Lesefehler ist
  * keins von beiden und geht weiter: In der Transaktion ist danach jeder Befehl
  * verloren (25P02), ein Ersatz hätte die Ursache verdeckt. */
-function mengeDesBestands(tx: DbSchnittstelle, art: ErfassungsArt, ownerId: number, keys: Schluessel): Promise<number | null> {
+function mengeDesBestands(
+  tx: DbSchnittstelle,
+  art: ErfassungsArt,
+  ownerId: number,
+  keys: Schluessel,
+): Promise<number | null> {
   return art === 'set' ? mengeDesSets(ownerId, String(keys[0]), tx) : mengeDerPosition(art, ownerId, keys, tx);
 }
 const leer = (q: number | null) => q === null || q <= 0;
 
 /** Schreib-Blickfeld: Ein Unterkonto darf nicht rückwärts schreiben. */
-async function zeileImSchreibfeld(tx: DbSchnittstelle, art: ErfassungsArt, wids: number[], id: number, keys: Schluessel): Promise<Zeile> {
+async function zeileImSchreibfeld(
+  tx: DbSchnittstelle,
+  art: ErfassungsArt,
+  wids: number[],
+  id: number,
+  keys: Schluessel,
+): Promise<Zeile> {
   const a = ARTEN[art];
   const z = await repo.erfassungImSchreibfeld(tx, art, id, wids, keys);
   if (!z) fachfehler('nicht_gefunden', a.notFound);
@@ -73,7 +92,13 @@ async function antwort(art: ErfassungsArt, uid: number, keys: Schluessel, payloa
   return art === 'set' ? withSetAggregate(uid, String(keys[0]), payload) : payload;
 }
 
-export interface Aenderung { quantity?: unknown; condition?: unknown; date?: unknown; owner_user_id?: unknown; [preis: string]: unknown }
+export interface Aenderung {
+  quantity?: unknown;
+  condition?: unknown;
+  date?: unknown;
+  owner_user_id?: unknown;
+  [preis: string]: unknown;
+}
 
 export async function erfassungAendern(art: ErfassungsArt, uid: number, id: number, keys: Schluessel, body: Aenderung) {
   const a = ARTEN[art];
@@ -82,14 +107,21 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 
   const ownerReq = body.owner_user_id;
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
-    const from = await haushaltBereich().haushalt.acquisitionMoveSource(uid, art, id);
-    const to = await haushaltBereich().haushalt.resolveWriteTarget(uid, ownerReq);
+    const from = await haushaltBereich().haushalt.umzugsQuelle(uid, art, id);
+    const to = await haushaltBereich().haushalt.schreibzielOderNull(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
-    const moved = await mitInventarSperre(sammlungBereich().db, from, bestandsSchluessel(art, keys), (tx) =>
-      art === 'set' ? moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id]) : moveManualAcquisition(tx, art, keys, id, from, to),
-      { wiederholeBeiKonflikt: true });
+    const moved = await mitInventarSperre(
+      sammlungBereich().db,
+      from,
+      bestandsSchluessel(art, keys),
+      tx =>
+        art === 'set'
+          ? moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id])
+          : moveManualAcquisition(tx, art, keys, id, from, to),
+      { wiederholeBeiKonflikt: true },
+    );
     return { from_user_id: from, to_user_id: to, ...moved };
   }
 
@@ -110,8 +142,8 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
   }
 
   const besitzer = await besitzerDerZeile(art, id, uid);
-  await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const wids = await haushaltBereich().haushalt.writableIds(uid);
+  await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async tx => {
+    const wids = await haushaltBereich().haushalt.schreibbereich(uid);
     const acq = await zeileImSchreibfeld(tx, art, wids, id, keys);
     // Ab hier zählt der Besitzer der Zeile, nicht der Betrachter.
     const ownerId = Number(acq.user_id);
@@ -121,12 +153,15 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
       neuesDatum = String(date);
     }
     const hatZustand = condition !== undefined && condition !== null;
-    const zielZustand = hatZustand ? zustand(condition) : (acq.condition || 'N');
-    const zielGeschaetzt = rawPrice !== undefined ? (preisGeschaetzt && priceVal != null) : !!acq.price_estimated;
+    const zielZustand = hatZustand ? zustand(condition) : acq.condition || 'N';
+    const zielGeschaetzt = rawPrice !== undefined ? preisGeschaetzt && priceVal != null : !!acq.price_estimated;
     // Geprüft gegen die Werte NACH dieser Änderung.
     if (neuesDatum || rawPrice !== undefined || hatZustand) {
-      const clash = await findSameDayAcquisition(art, ownerId, keys, neuesDatum || acq.tag, id, zielZustand, tx,
-        { preis: rawPrice !== undefined ? priceVal : acq.preis, geschaetzt: zielGeschaetzt, waehrung: acq.currency });
+      const clash = await findSameDayAcquisition(art, ownerId, keys, neuesDatum || acq.tag, id, zielZustand, tx, {
+        preis: rawPrice !== undefined ? priceVal : acq.preis,
+        geschaetzt: zielGeschaetzt,
+        waehrung: acq.currency,
+      });
       if (clash) fachfehler('konflikt', 'datum_belegt');
     }
     if (quantity !== undefined && quantity !== null) {
@@ -134,12 +169,9 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
       const q = await mengeDesBestands(tx, art, ownerId, keys);
       if (leer(q)) await a.cleanupWhenEmpty(tx, ownerId, keys);
     }
-    if (rawPrice !== undefined)
-      await repo.setzeErfassungsPreis(tx, art, id, priceVal, zielGeschaetzt, wids);
-    if (hatZustand)
-      await repo.setzeErfassungsZustand(tx, art, id, zielZustand, wids);
-    if (neuesDatum)
-      await repo.setzeErfassungsDatum(tx, art, id, neuesDatum, wids);
+    if (rawPrice !== undefined) await repo.setzeErfassungsPreis(tx, art, id, priceVal, zielGeschaetzt, wids);
+    if (hatZustand) await repo.setzeErfassungsZustand(tx, art, id, zielZustand, wids);
+    if (neuesDatum) await repo.setzeErfassungsDatum(tx, art, id, neuesDatum, wids);
   });
   return antwort(art, uid, keys, { ...ab.angabe() });
 }
@@ -148,8 +180,8 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
 export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: number, keys: Schluessel) {
   const a = ARTEN[art];
   const besitzer = await besitzerDerZeile(art, id, uid);
-  const menge = await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async (tx) => {
-    const acq = await zeileImSchreibfeld(tx, art, await haushaltBereich().haushalt.writableIds(uid), id, keys);
+  const menge = await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async tx => {
+    const acq = await zeileImSchreibfeld(tx, art, await haushaltBereich().haushalt.schreibbereich(uid), id, keys);
     const ownerId = Number(acq.user_id);
     await repo.loescheErfassung(tx, art, id, ownerId);
     const q = await mengeDesBestands(tx, art, ownerId, keys);
@@ -160,5 +192,8 @@ export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: num
 }
 
 export async function setErfassungen(sicht: Sicht | number[], setNumber: string) {
-  return sammlungBereich().erfassungen.setErfassungenImBlickfeld(await haushaltBereich().haushalt.blickfeldAus(sicht), setNumber);
+  return sammlungBereich().erfassungen.setErfassungenImBlickfeld(
+    await haushaltBereich().haushalt.blickfeldAus(sicht),
+    setNumber,
+  );
 }

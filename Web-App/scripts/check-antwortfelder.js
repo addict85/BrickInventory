@@ -2,8 +2,8 @@
 /**
  * Kein Antwortfeld ohne Verbraucher.
  */
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { quellwurzeln } = require('../test/helpers/android');

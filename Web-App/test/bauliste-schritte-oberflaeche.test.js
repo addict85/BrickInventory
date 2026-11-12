@@ -20,8 +20,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-const text = (el) => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-const TEIL = { part_number: '3001', part_name: 'Brick 2 x 4', color_id: 4, color_name: 'Red', color_hex: 'C91A09', quantity: 6 };
+const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
+const TEIL = {
+  part_number: '3001',
+  part_name: 'Brick 2 x 4',
+  color_id: 4,
+  color_name: 'Red',
+  color_hex: 'C91A09',
+  quantity: 6,
+};
 
 async function erstelle(teile, nummern = '10294') {
   const o = await oeffneOberflaeche({
@@ -38,7 +45,10 @@ async function erstelle(teile, nummern = '10294') {
   o.d.querySelector('[data-click="plAddSet"]').click();
   await warte(() => o.d.querySelector('#pl-sets .pl-chip-name')?.textContent.trim(), 3000);
   o.d.getElementById('btn-pl-gen').click();
-  assert.ok(await warte(() => / aus \d+ Set/.test(o.d.getElementById('pl-status').textContent), 3000), 'Liste erstellt');
+  assert.ok(
+    await warte(() => / aus \d+ Set/.test(o.d.getElementById('pl-status').textContent), 3000),
+    'Liste erstellt',
+  );
   return o;
 }
 
@@ -51,7 +61,9 @@ test('Aufbau: Hauptknopf, Beschriftungen, Zurücksetzen nicht rot', async () => 
     assert.equal(text(d.getElementById('btn-pl-gen')), 'Bauliste erstellen');
     assert.equal(d.getElementById('btn-pl-reset').classList.contains('bd'), false, 'Zurücksetzen ist rot');
     assert.equal(d.getElementById('pl-export').hidden, true, 'Exportieren vor dem ersten Ergebnis');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('leeres Ergebnis: Grund, keine Exporte', async () => {
@@ -61,16 +73,29 @@ test('leeres Ergebnis: Grund, keine Exporte', async () => {
     assert.equal(d.getElementById('btn-pl-pdf').disabled, true, 'PDF bei 0 Teilen');
     assert.match(text(d.getElementById('pl-result')), /noch keine Teileliste vor.*Rebrickable/);
     assert.equal(text(d.getElementById('pl-status')), '0 Sorten (0 Teile) aus 1 Set');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('unbekannte Nummer: im Chip genannt, nicht mitgezählt', async () => {
   const { w, d } = await erstelle([TEIL], '10294, 99999-1');
   try {
-    const chips = [...d.querySelectorAll('#pl-sets .pl-chip')].map(c => ({ text: text(c), unbekannt: c.classList.contains('unbekannt') }));
-    assert.deepEqual(chips, [{ text: '10294-1 — Titanic', unbekannt: false }, { text: '99999-1 — nicht im Katalog', unbekannt: true }]);
-    assert.equal(text(d.getElementById('pl-status')), '1 Sorte (6 Teile) aus 1 Set · 1 Nummer nicht im Katalog: 99999-1');
-  } finally { w.close(); }
+    const chips = [...d.querySelectorAll('#pl-sets .pl-chip')].map(c => ({
+      text: text(c),
+      unbekannt: c.classList.contains('unbekannt'),
+    }));
+    assert.deepEqual(chips, [
+      { text: '10294-1 — Titanic', unbekannt: false },
+      { text: '99999-1 — nicht im Katalog', unbekannt: true },
+    ]);
+    assert.equal(
+      text(d.getElementById('pl-status')),
+      '1 Sorte (6 Teile) aus 1 Set · 1 Nummer nicht im Katalog: 99999-1',
+    );
+  } finally {
+    w.close();
+  }
 });
 
 test('Ergebnis mit Teilen: Exporte frei, Eingabefelder beschriftet', async () => {
@@ -80,7 +105,9 @@ test('Ergebnis mit Teilen: Exporte frei, Eingabefelder beschriftet', async () =>
     assert.equal(d.getElementById('btn-pl-pdf').disabled, false);
     assert.equal(text(d.getElementById('pl-status')), '1 Sorte (6 Teile) aus 1 Set');
     assert.equal(d.querySelector('.pl-have-input').getAttribute('aria-label'), 'Vorhanden: 3001 Red');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Farbgruppen deutsch, Zusammenfassung nennt Sorten', async () => {
@@ -89,5 +116,7 @@ test('Farbgruppen deutsch, Zusammenfassung nennt Sorten', async () => {
     assert.match(text(d.getElementById('pl-result')), /^Rot \(2 Sorten\)/, 'Farbgruppe in der Sprache der Oberfläche');
     assert.doesNotMatch(text(d.getElementById('pl-result')), /\bRed\b/);
     assert.equal(text(d.getElementById('pl-status')), '2 Sorten (16 Teile) aus 1 Set');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

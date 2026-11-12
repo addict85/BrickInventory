@@ -3,7 +3,7 @@
  *
  * Aggregat, Zustand beim Anlegen und im Marktpreis: set-zustand-aggregat-db.test.js.
  *
- * Gegenprobe (08.11.2026): in 00-theme-boot.js apply() ohne ALLOWED-Prüfung →
+ * Gegenprobe (08.11.2026): in theme-boot.js apply() ohne ALLOWED-Prüfung →
  * rot „ein unbekannter Theme-Wert setzt nichts zurück“.
  * Gegenprobe (08.11.2026): in acqSave `applySetAggregate(d.set)` gestrichen
  * bzw. applySetAggregate ohne renderGallery() → rot „die Kachel übernimmt den
@@ -16,6 +16,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { pruefeParameter } = require('./helpers/sources');
+const kompakt = require('./helpers/sources').kompakt;
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
@@ -52,7 +53,7 @@ test('ein unbekannter Theme-Wert setzt nichts zurück', () => {
   });
   const w = dom.window;
   w.fetch = () => new Promise(() => {});
-  w.eval(fs.readFileSync(path.join(ROOT, 'public', 'js', '00-theme-boot.js'), 'utf8'));
+  w.eval(fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), 'utf8'));
   for (const wert of [undefined, null, '', 'gibtsnicht']) {
     assert.equal(w.__bimApplyTheme(wert), null, `${wert} wurde als Design angenommen`);
     assert.equal(
@@ -323,7 +324,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   // der Graph zeigt trotzdem einen Abfall am selben Tag. Ursache:
   // `const condition = DEFAULT_PRICE_CONDITION` — fest 'U', unabhängig vom
   // tatsächlichen Zustand des Sets. Für ein als „Neu" geführtes Set bevorzugte …
-  const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
+  const src = kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
   const i = src.indexOf("router.get('/sets/:setNumber/price-history'");
   assert.ok(i > 0, 'Die Preisverlauf-Route ist nicht mehr auffindbar');
   const fn = src.slice(i, i + 1200);
@@ -345,14 +346,14 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   );
 
   assert.match(
-    fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8'),
-    /getSetPriceHistory\(sicht, sn, await waehrungVon\((?:sk, )?uid\)\)/,
+    kompakt(fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8')),
+    /preisverlaufSet\(sicht, sn, await waehrungVon\((?:sk, )?uid\), sk\.finanzen\)/,
     'Der Dienst nutzt den gemeinsamen Helfer',
   );
-  const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
+  const helper = kompakt(fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8'));
   assert.match(
     helper,
-    /const condition = await resolveSetCondition\(uids, setNumber\);/,
+    /const condition = await resolveSetCondition\(uids, setNumber, undefined, f\);/,
     'Der Helfer muss den Zustand über resolveSetCondition() auflösen',
   );
 });
@@ -362,7 +363,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // für ein als „Neu" geführtes Set mit Kaufpreis 162.42 CHF — „-32.0%
   // Entwicklung", obwohl sich der Preis nie bewegt hatte. Ursache identisch zur
   // Webapp-Route: `fetchPrice(sn, DEFAULT_PRICE_CONDITION, …)` — fest 'U'.
-  const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
+  const src = kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
   // Die Route ruft setPreis() im Dienst; dort wird der Zustand aufgelöst.
   const dienst = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
   const priceRoute = dienst.slice(
@@ -375,10 +376,10 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
     /fetchPrice\(sn, DEFAULT_PRICE_CONDITION/,
     'Der globale Standard darf nicht mehr direkt an fetchPrice gehen',
   );
-  // seit einer früheren Runde mit Blickfeld (uids aus scopeIds) — sonst 404 im Haushalt
+  // seit einer früheren Runde mit Blickfeld (uids aus blickfeldIds) — sonst 404 im Haushalt
   assert.match(
     priceRoute,
-    /fetchPrice\(sn, await resolveSetCondition\(blickfeld, sn\), /,
+    /fetchPrice\(\s*sn,\s*await resolveSetCondition\(blickfeld, sn, undefined, sk\.finanzen\),/,
     'Der Zustand muss über den gemeinsamen Helfer aufgelöst werden',
   );
 
@@ -434,7 +435,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
-  const uses = (apiV1.match(/resolveSetCondition\(blickfeld, sn\)/g) || []).length;
+  const uses = (apiV1.match(/resolveSetCondition\(blickfeld, sn, undefined, sk\.finanzen\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
@@ -550,12 +551,12 @@ test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
 });
 
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-bausteine.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'bausteine.js'), 'utf8');
   assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
   // Vorher stand dieselbe Plakette viermal im Code, dreimal mit fest
   // eingetragenen Farben statt der CSS-Klassen. Geprüft wird genau das:
   // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
-  for (const f of ['public/js/03-parts.js', 'public/js/06-minifigs.js', 'public/js/04-finance.js']) {
+  for (const f of ['public/js/parts.js', 'public/js/minifigs.js', 'public/js/finance.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l => /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
     assert.equal(inline.length, 0, `${f}: Zustandsfarben gehören in die CSS-Klassen cond-new/cond-used`);
@@ -566,7 +567,7 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
   // MAX(purchase_price) zeigte bei 2x100 und 1x160 den Wert 160.
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /avg_purchase_price/, 'Der gewichtete Kaufpreis fehlt im Aggregat');
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'gallery.js'), 'utf8');
   assert.match(
     gal,
     /s\.avg_purchase_price \?\? s\.max_purchase_price/,
@@ -577,7 +578,7 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
 // ═══════════════════════════════════════════════════════════════════════════
 // Anmelden mit E-Mail (hardened-100)
 // ═══════════════════════════════════════════════════════════════════════════
-const authModul = buildAndRequire()('src/konto/auth.js');
+const authModul = buildAndRequire()('src/konto/namensRegeln.js');
 const { isValidLoginIdentifier, USERNAME_RE, EMAIL_RE } = authModul;
 
 test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
@@ -613,27 +614,20 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
   // Spalten.
   assert.equal(USERNAME_RE.test('marco@example.com'), false);
   assert.ok(EMAIL_RE.test('marco@example.com'));
-
-  const src = require('./helpers/sources').anmeldeQuelle();
-  const register = src.slice(src.indexOf("router.post('/register'"));
-  assert.match(register, /USERNAME_RE\.test\(username\)/, 'Registrieren muss beim Benutzernamen-Muster bleiben');
-  assert.doesNotMatch(
-    register,
-    /isValidLoginIdentifier/,
-    'Beim Registrieren darf keine E-Mail als Benutzername durchgehen',
-  );
+  // Dass /register diese Regel anwendet, prüft passwort-regel-db.test.js.
 });
 
-test('beide Login-Wege prüfen gleich', () => {
-  // Webapp und Android-API müssen dieselbe Regel haben — sonst funktioniert
-  // die Anmeldung per E-Mail nur auf einem der beiden Wege.
-  const zentral = fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8');
-  const rumpf = zentral.slice(zentral.indexOf('async function pruefeAnmeldedaten'));
-  assert.match(
-    rumpf.slice(0, rumpf.indexOf('\n}\n')),
-    /isValidLoginIdentifier\(username\)/,
-    'pruefeAnmeldedaten() prüft die Form des Anmeldenamens nicht',
-  );
+test('beide Login-Wege prüfen gleich', async () => {
+  // Webapp und Android-API gehen durch pruefeAnmeldedaten(); dort fällt ein
+  // unbrauchbarer Name ab, bevor Zähler oder Datenbank ihn sehen.
+  // Gegenprobe (11.11.2026): die Formprüfung in pruefeAnmeldedaten() gestrichen → rot hier.
+  const { pruefeAnmeldedaten } = buildAndRequire()('src/konto/anmeldepruefung.js');
+  for (const name of ['a b', "' OR 1=1 --", '@example.com'])
+    assert.deepEqual(
+      await pruefeAnmeldedaten({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),
+      { ok: false, absage: { art: 'ungueltig', code: 'name_oder_email_eingeben' } },
+      name,
+    );
 
   const dateien = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {

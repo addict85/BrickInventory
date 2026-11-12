@@ -1,4 +1,3 @@
-
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fachfehler, dateiFehler } from '../infra/fehlerTexte';
 import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
@@ -14,7 +13,12 @@ export async function getSetting(userId: number, key: string, fallback?: unknown
 }
 
 /** getSetting über einen übergebenen Zugang, für Bereiche mit eigenem Kontext (src/sets). */
-export async function einstellungMitZugang(db: DbSchnittstelle, userId: number, key: string, fallback?: string): Promise<string | null | undefined> {
+export async function einstellungMitZugang(
+  db: DbSchnittstelle,
+  userId: number,
+  key: string,
+  fallback?: string,
+): Promise<string | null | undefined> {
   const eigen = await repo.nutzerWert(db, userId, key);
   if (eigen) return eigen;
   return klar(key, await repo.globalerWert(db, key)) || fallback;
@@ -92,7 +96,8 @@ export async function globalDefaultCondition(): Promise<'N' | 'U'> {
   return g === 'U' ? 'U' : 'N';
 }
 
-const regelFuer = (key: string) => Object.hasOwn(GLOBALE_REGELN, key) ? GLOBALE_REGELN[key as GlobalerSchluessel] : undefined;
+const regelFuer = (key: string) =>
+  Object.hasOwn(GLOBALE_REGELN, key) ? GLOBALE_REGELN[key as GlobalerSchluessel] : undefined;
 
 export function globalerWertGueltig(key: string, value: unknown): boolean {
   return regelFuer(key)?.safeParse(value).success ?? false;
@@ -108,11 +113,17 @@ export function beiGlobalerAenderung(fn: () => void): void {
 /** Die EINE Schreibstelle; jeder Schlüssel braucht eine Regel in GLOBALE_REGELN. */
 export async function setGlobalSetting(key: string, value: unknown) {
   const r = regelFuer(key)?.safeParse(value);
-  if (!r?.success) throw (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ?? dateiFehler('ungueltig', 'wert_ungueltig');
-  await einstellungenBereich().repository.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data);
+  if (!r?.success)
+    throw (
+      (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ??
+      dateiFehler('ungueltig', 'wert_ungueltig')
+    );
+  await einstellungenBereich().repository.schreibeGlobalenWert(
+    key,
+    SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data,
+  );
   meldeGlobaleAenderung();
 }
-
 
 /** Auch nach dem COMMIT einer Transaktion: Ein Zwischenspeicher, der dazwischen las, hielte den alten Wert. */
 export function meldeGlobaleAenderung(): void {
@@ -121,7 +132,7 @@ export function meldeGlobaleAenderung(): void {
 
 /** Offen nur bei genau '1'; fehlt die Zeile, bleibt sie zu. */
 export async function registrierungOffen(): Promise<boolean> {
-  return await getGlobalSetting('registration_enabled') === '1';
+  return (await getGlobalSetting('registration_enabled')) === '1';
 }
 
 /** `AND value = $3`: Hat ein anderer Prozess die Zeile inzwischen neu
@@ -130,7 +141,7 @@ export async function verschluesseleGlobaleAltwerte(): Promise<number> {
   let n = 0;
   for (const z of await einstellungenBereich().repository.globaleWerte([...SECRET_KEYS])) {
     const neu = umschluesseln(z.value, globalerKontext(z.key));
-    if (neu && await einstellungenBereich().repository.ersetzeGlobalenWert(z.key, z.value, neu)) n++;
+    if (neu && (await einstellungenBereich().repository.ersetzeGlobalenWert(z.key, z.value, neu))) n++;
   }
   return n;
 }
@@ -151,9 +162,12 @@ export async function deleteUserSetting(userId: number, key: string) {
 
 /** Werden nie im Klartext ausgeliefert. */
 export const SECRET_KEYS = new Set([
-  'bricklink_consumer_key', 'bricklink_consumer_secret',
-  'bricklink_token', 'bricklink_token_secret',
-  'brickset_api_key', 'rebrickable_api_key',
+  'bricklink_consumer_key',
+  'bricklink_consumer_secret',
+  'bricklink_token',
+  'bricklink_token_secret',
+  'brickset_api_key',
+  'rebrickable_api_key',
   'smtp_pass',
 ]);
 
@@ -193,8 +207,10 @@ export async function nutzerEinstellungen(userId: number) {
 }
 
 export async function readSettings(userId: number, isAdmin: boolean) {
-  const raw = Object.fromEntries((await einstellungenBereich().repository.globaleWerte()).map(r => [r.key, klar(r.key, r.value)]));
-  return { ...sanitizeGlobal(raw, !!isAdmin), ...await nutzerEinstellungen(userId) };
+  const raw = Object.fromEntries(
+    (await einstellungenBereich().repository.globaleWerte()).map(r => [r.key, klar(r.key, r.value)]),
+  );
+  return { ...sanitizeGlobal(raw, !!isAdmin), ...(await nutzerEinstellungen(userId)) };
 }
 
 /** Ohne Geheimnisse: Die Datei wird weitergegeben; Schlüssel trägt man beim
@@ -209,7 +225,9 @@ export async function globaleWerteOhneGeheimnisse(): Promise<Record<string, stri
 // ── Design je Konto ─────────────────────────────────────────────────────────
 // Ohne eigene Zeile gilt die Vorgabe des Verwalters — so folgen alle, die
 // nichts gewählt haben, einem Wechsel.
-export async function designFuer(userId?: number | null): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
+export async function designFuer(
+  userId?: number | null,
+): Promise<{ theme: string; vorgabe: string; eigenes: string | null }> {
   const g = await getGlobalSetting('app_theme');
   const vorgabe = g && DESIGNS.includes(g) ? g : 'classic';
   const u = userId ? await einstellungenBereich().repository.nutzerWert(userId, 'app_theme') : null;

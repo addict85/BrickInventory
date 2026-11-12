@@ -35,8 +35,7 @@ test('buildUrl verwendet je Item-Typ den richtigen Parameter', () => {
 
   const gear = buildUrl('GEAR', '5005358');
   assert.match(gear, /\?G=5005358/);
-  assert.match(gear, /#T=G/,
-    'Der For-Sale-Tab muss zum Item-Typ passen, sonst öffnet BrickLink den falschen Reiter');
+  assert.match(gear, /#T=G/, 'Der For-Sale-Tab muss zum Item-Typ passen, sonst öffnet BrickLink den falschen Reiter');
 
   const book = buildUrl('BOOK', 'b12ab');
   assert.match(book, /\?B=b12ab/);
@@ -71,7 +70,7 @@ test('buildUrl kodiert Sonderzeichen in der Nummer', () => {
 test('Set-Links behalten den Suffix, Gear-Links nicht', () => {
   // Das ist der eigentliche Fehler, der behoben wurde: dieselbe
   // Rebrickable-Nummer ergibt je nach BrickLink-Typ zwei verschiedene URLs.
-  assert.match(buildUrl('SET',  withVariant('5005358')), /\?S=5005358-1/);
+  assert.match(buildUrl('SET', withVariant('5005358')), /\?S=5005358-1/);
   assert.match(buildUrl('GEAR', bareNumber('5005358-1')), /\?G=5005358(?!-)/);
 });
 
@@ -81,8 +80,14 @@ test('der Kauf-Knopf nimmt die Adresse des Servers und wird nie ausgeblendet', a
   const set = (nr, bricklink) => ({ set_number: nr, name: `Artikel ${nr}`, year: 2020, num_parts: 1, bricklink });
   const { w, d } = await oeffneOberflaeche({
     '/v1/catalog/sets': { success: true, total: 3, sets: [set('col001-1'), set('5005358-1'), set('99999-1')] },
-    '/v1/catalog/sets/col001-1': { success: true, set: set('col001-1', { url: SUCHE, exact: false, type: 'MINIFIG', number: 'col001' }) },
-    '/v1/catalog/sets/5005358-1': { success: true, set: set('5005358-1', { url: GEAR, exact: true, type: 'GEAR', number: '5005358' }) },
+    '/v1/catalog/sets/col001-1': {
+      success: true,
+      set: set('col001-1', { url: SUCHE, exact: false, type: 'MINIFIG', number: 'col001' }),
+    },
+    '/v1/catalog/sets/5005358-1': {
+      success: true,
+      set: set('5005358-1', { url: GEAR, exact: true, type: 'GEAR', number: '5005358' }),
+    },
     '/v1/catalog/sets/99999-1': { success: true, set: set('99999-1', null) },
   });
   try {
@@ -97,7 +102,13 @@ test('der Kauf-Knopf nimmt die Adresse des Servers und wird nie ausgeblendet', a
       assert.ok(await warte(() => d.querySelector(`[data-click="openCatModal"][data-arg="${nr}"]`)), `Kachel ${nr}`);
       d.querySelector(`[data-click="openCatModal"][data-arg="${nr}"]`).click();
       assert.ok(await warte(() => d.getElementById('cat-m-sub').textContent === nr), `Dialog ${nr}`);
-      assert.deepEqual([knopf().style.display, knopf().getAttribute('href'), knopf().textContent.trim()], ['', href, text], nr);
+      assert.deepEqual(
+        [knopf().style.display, knopf().getAttribute('href'), knopf().textContent.trim()],
+        ['', href, text],
+        nr,
+      );
     }
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

@@ -30,7 +30,7 @@ const { z } = require('zod');
 const enthaeltSchluessel = (wert, name) =>
   wert &&
   typeof wert === 'object' &&
-  (Object.prototype.hasOwnProperty.call(wert, name) || Object.values(wert).some(v => enthaeltSchluessel(v, name)));
+  (Object.hasOwn(wert, name) || Object.values(wert).some(v => enthaeltSchluessel(v, name)));
 
 test('kein Antwortschema der Verwaltung nennt user_id', () => {
   for (const r of ['GET /api/v1/admin/auftraege', 'GET /api/v1/admin/image-diag/:setNumber']) {

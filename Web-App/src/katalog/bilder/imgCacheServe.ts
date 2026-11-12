@@ -1,8 +1,8 @@
-import fs from 'fs';
+import fs from 'node:fs';
 import { queueThumb } from './proxyThumbs';
 import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/fehler';
 import { konfig } from '../../infra/konfig';
-import path from 'path';
+import path from 'node:path';
 import { APP_ROOT } from '../../infra/appPaths';
 
 const BILDTYPEN = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']);
@@ -43,8 +43,15 @@ export async function cacheTreffer(opts: {
         await fs.promises.unlink(thumbFile).catch(ohneFehlendeDatei('bild-cache:unlink'));
         throw new Error('unbrauchbare Vorschau verworfen');
       }
-      return { datei: thumbFile, typ: 'image/jpeg', groesse: tst.size, etag: `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"` };
-    } catch (_) { /* noch nicht erzeugt */ }
+      return {
+        datei: thumbFile,
+        typ: 'image/jpeg',
+        groesse: tst.size,
+        etag: `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"`,
+      };
+    } catch (_) {
+      /* noch nicht erzeugt */
+    }
   }
 
   try {
@@ -55,18 +62,29 @@ export async function cacheTreffer(opts: {
     if (wantThumb) {
       // NICHT auf die Verkleinerung warten: Das Original geht sofort hinaus, sonst
       // reihten sich bei einer Kachelwand Sekunden Jimp aneinander.
-      if (darfErzeugen) queueThumb(cacheFile, thumbFile); else notiere();
+      if (darfErzeugen) queueThumb(cacheFile, thumbFile);
+      else notiere();
     }
 
     // Auch aus dem Cache nur Bilder; im Zweifel JPEG — mit nosniff die harmlose
     // Auslegung.
-    const ctRaw = await fs.promises.readFile(cacheFile + '.ct', 'utf8').catch(ohneFehlendeDatei('bild-cache:typ', 'image/jpeg'));
+    const ctRaw = await fs.promises
+      .readFile(cacheFile + '.ct', 'utf8')
+      .catch(ohneFehlendeDatei('bild-cache:typ', 'image/jpeg'));
     const cst = await fs.promises.stat(cacheFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
     // Der Deckel löscht nach letzter Nutzung; unter noatime merkt sich das
     // sonst niemand. mtime bleibt, sie steckt im ETag.
-    if (cst && Date.now() - cst.atimeMs > 86_400_000) fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(logAndContinue('bild-cache:utimes'));
-    return { datei: cacheFile, typ: bildTyp(ctRaw), groesse: cst?.size ?? null, etag: cst ? `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"` : null };
-  } catch (_) { /* Cache-Miss oder Fehler — normal weiterladen */ }
+    if (cst && Date.now() - cst.atimeMs > 86_400_000)
+      fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(logAndContinue('bild-cache:utimes'));
+    return {
+      datei: cacheFile,
+      typ: bildTyp(ctRaw),
+      groesse: cst?.size ?? null,
+      etag: cst ? `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"` : null,
+    };
+  } catch (_) {
+    /* Cache-Miss oder Fehler — normal weiterladen */
+  }
 
   return null;
 }
@@ -80,15 +98,28 @@ export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 10
   const files = await fs.promises.readdir(cacheDir).catch(ohneFehlendeDatei('bildcache:lesen', [] as string[]));
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const gruppen = new Map<string, { dateien: string[]; bytes: number; zuletzt: number }>();
-  let weg = 0, summe = 0;
+  let weg = 0,
+    summe = 0;
   for (const f of files) {
     const p = path.join(cacheDir, f);
     const st = await fs.promises.stat(p).catch(ohneFehlendeDatei('img-cache:stat', null));
     if (!st?.isFile()) continue;
     // atime UND mtime: Unter noatime bleibt atime auf dem Erstellungszeitpunkt.
-    if (st.atimeMs < cutoff && st.mtimeMs < cutoff && await fs.promises.unlink(p).then(() => true, () => false)) { weg++; continue; }
+    if (
+      st.atimeMs < cutoff &&
+      st.mtimeMs < cutoff &&
+      (await fs.promises.unlink(p).then(
+        () => true,
+        () => false,
+      ))
+    ) {
+      weg++;
+      continue;
+    }
     const g = gruppen.get(f.slice(0, 40)) ?? { dateien: [], bytes: 0, zuletzt: 0 };
-    g.dateien.push(p); g.bytes += st.size; g.zuletzt = Math.max(g.zuletzt, st.atimeMs, st.mtimeMs);
+    g.dateien.push(p);
+    g.bytes += st.size;
+    g.zuletzt = Math.max(g.zuletzt, st.atimeMs, st.mtimeMs);
     gruppen.set(f.slice(0, 40), g);
     summe += st.size;
   }
@@ -96,13 +127,21 @@ export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 10
   // Auf 90 % statt knapp unter die Grenze: sonst liefe das gleich wieder an.
   for (const g of [...gruppen.values()].sort((a, b) => a.zuletzt - b.zuletzt)) {
     if (summe <= maxBytes * 0.9) break;
-    for (const d of g.dateien) if (await fs.promises.unlink(d).then(() => true, () => false)) weg++;
+    for (const d of g.dateien)
+      if (
+        await fs.promises.unlink(d).then(
+          () => true,
+          () => false,
+        )
+      )
+        weg++;
     summe -= g.bytes;
   }
   return weg;
 }
 
-let _zuwachs = 0, _deckelLaeuft = false;
+let _zuwachs = 0,
+  _deckelLaeuft = false;
 
 /** Zwischen zwei Tagesläufen kann der Cache schnell wachsen; nach je einem
  * Zehntel der Grenze an neuen Bytes wird deshalb sofort gedeckelt. */
@@ -110,6 +149,11 @@ export function merkeCacheZuwachs(bytes: number): void {
   _zuwachs += bytes;
   const max = konfig().bildCacheMaxMb * 1024 * 1024;
   if (_deckelLaeuft || _zuwachs < max / 10) return;
-  _zuwachs = 0; _deckelLaeuft = true;
-  raeumeBildCacheAuf(max).catch(logAndContinue('bild-cache:deckel')).finally(() => { _deckelLaeuft = false; });
+  _zuwachs = 0;
+  _deckelLaeuft = true;
+  raeumeBildCacheAuf(max)
+    .catch(logAndContinue('bild-cache:deckel'))
+    .finally(() => {
+      _deckelLaeuft = false;
+    });
 }

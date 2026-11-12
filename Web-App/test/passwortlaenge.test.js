@@ -1,6 +1,10 @@
 /**
- * Die Mindestlaenge eines Passworts — an allen Stellen dieselbe, und nirgends
- * vergessen.
+ * Die Mindestlaenge eines Passworts — an allen Stellen dieselbe. Dass jeder
+ * Weg, der ein Passwort setzt, sie prüft, zeigt passwort-regel-db.test.js
+ * („zu kurze Passwörter werden auf allen fünf Wegen abgewiesen“).
+ *
+ * Gegenprobe (11.11.2026 gemessen): `passwort_zu_kurz` in src/infra/fehlerTexte.ts
+ * auf „mindestens 8 Zeichen“ → rot „die Fehlermeldung nennt dieselbe Zahl …“.
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -12,7 +16,7 @@ const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/auth.js');
+const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/anmeldepruefung.js');
 
 // Ausgeschrieben statt ueber eine Schleifenvariable zusammengesetzt — siehe
 // test/abgleich-baumbruecken.test.js, das diese Bruecken statisch aufloest.
@@ -37,68 +41,52 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
   assert.equal(passwortZuKurz(123456789012), false);
 });
 
-test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
-  const quelle = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
-
-  // Gezaehlt wird ueber das SETZEN: Gehasht wird nur im Kontodienst
-  // (src/konto/konten.ts), jede Route, die ein Passwort setzt, ruft ihn.
-  assert.doesNotMatch(quelle, /bcrypt\.hash\(/, 'Eine Route hasht selbst — das gehört in den Kontodienst');
-  const hashes = (quelle.match(/K\.(setzeFremdesPasswort|aendereEigenesPasswort|setzePasswortZurueck|legeKontoAn|registriere)\(/g) || []).length;
-  // Seit dem 01.11.2026 über passwortMangel(): Länge, 72 Byte, häufige Passwörter.
-  const pruefungen = (quelle.match(/passwortMangel\(/g) || []).length;
-  assert.equal(hashes, 5,   // PUT /profile setzt seit dem 27.10. keines mehr
-    `${hashes} Stellen setzen ein Passwort — die Zahl hat sich geaendert, der Test muss mit`);
-  // Mehr Prüfungen als Stellen sind erlaubt: /reset-password prüft zweimal, erst ohne, dann mit Namen.
-  assert.ok(pruefungen >= hashes,
-    `Nur ${pruefungen} von ${hashes} Stellen pruefen die Laenge. Genau so entstand die ` +
-    'Luecke: PUT /profile und POST /change-password prueften nicht, und damit war ' +
-    'die Regel wirkungslos.');
-
-  // Und keine handgetippte Fassung mehr — die war die Ursache.
-  assert.doesNotMatch(quelle, /length < 8/,
-    'Eine Laengenpruefung von Hand ist zurueck; sie gehoert in passwortZuKurz()');
-});
-
 test('Server, Webapp und App nennen dieselbe Zahl', () => {
-  const web = ohneKommentare(read('public/js/01-formular.js'));
+  const web = ohneKommentare(read('public/js/formular.js'));
   const webZahl = /export const PASSWORT_MIN_ZEICHEN = (\d+)/.exec(web);
   assert.ok(webZahl, 'Die Webapp fuehrt keine Konstante mehr — dann steht die Zahl wieder verstreut');
-  assert.equal(Number(webZahl[1]), PASSWORT_MIN_ZEICHEN,
-    'Webapp und Server verlangen verschiedene Laengen');
+  assert.equal(Number(webZahl[1]), PASSWORT_MIN_ZEICHEN, 'Webapp und Server verlangen verschiedene Laengen');
 
-  const kotlinDatei = path.join(__dirname, '..', '..', 'Android-App', 'core-sicherheit', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sicherheit', 'Passwort.kt');
+  const kotlinDatei = path.join(
+    __dirname,
+    '..',
+    '..',
+    'Android-App',
+    'core-sicherheit',
+    'src',
+    'main',
+    'java',
+    'ch',
+    'brickinventoryapp',
+    'sicherheit',
+    'Passwort.kt',
+  );
   assert.ok(fs.existsSync(kotlinDatei), 'sicherheit/Passwort.kt fehlt — Pfad im Test veraltet?');
   // `const val`, nicht bloss der Name: Der erste Entwurf dieser Datei schrieb
   // `const PASSWORT_MIN_ZEICHEN = 8` — ohne `val`, und das ist kein gueltiges
   // Kotlin. Dieser Regex traf die Zeichenkette trotzdem, der Test blieb gruen,
   // und der Fehler fiel erst im Android-Lauf auf (Lauf 140, nach 83 Sekunden …
   const appZahl = /const val PASSWORT_MIN_ZEICHEN = (\d+)\b/.exec(fs.readFileSync(kotlinDatei, 'utf8'));
-  assert.ok(appZahl,
+  assert.ok(
+    appZahl,
     'Die App fuehrt keine Konstante mehr — oder nicht als `const val` (ohne `val` ' +
-    'uebersetzt Kotlin die Datei nicht)');
-  assert.equal(Number(appZahl[1]), PASSWORT_MIN_ZEICHEN,
-    'App und Server verlangen verschiedene Laengen');
+      'uebersetzt Kotlin die Datei nicht)',
+  );
+  assert.equal(Number(appZahl[1]), PASSWORT_MIN_ZEICHEN, 'App und Server verlangen verschiedene Laengen');
 });
 
 test('die Fehlermeldung nennt dieselbe Zahl wie die Regel', () => {
-  // Der Text steht in drei Sprachdateien und kann der Konstante nicht folgen —
-  // also wird er hier an sie gebunden. Ein Text, der acht verspricht, waehrend
-  // der Server zwoelf verlangt, ist eine eigene Art von Fehler: Der Nutzer
-  // probiert, was dort steht, und bekommt trotzdem eine Absage.
-  const serverText = read('src/infra/fehlerTexte.ts');
-  const eintrag = serverText.slice(serverText.indexOf('passwort_zu_kurz:'),
-                                  serverText.indexOf('aktuelles_passwort_erforderlich'));
-  assert.ok(eintrag.includes(String(PASSWORT_MIN_ZEICHEN)),
-    `Der Fehlertext nennt nicht ${PASSWORT_MIN_ZEICHEN} Zeichen`);
-
-  // Die Webapp fuellt die Zahl zur Laufzeit ein — dort muss der Platzhalter
-  // stehen, keine ausgeschriebene Zahl.
+  // Die Texte können der Konstante nicht folgen; ein Text, der weniger
+  // verspricht, als der Server verlangt, führt den Nutzer in eine Absage.
+  const { fehlerText } = _req('src/infra/fehlerTexte.js');
+  for (const sprache of ['de', 'en'])
+    assert.match(fehlerText('passwort_zu_kurz', sprache), new RegExp(`\\b${PASSWORT_MIN_ZEICHEN}\\b`), sprache);
+  // Die Webapp füllt die Zahl zur Laufzeit ein: dort ein Platzhalter, keine Zahl.
+  const texte = require('./helpers/sources').loadTranslations();
   for (const sprache of ['de', 'en']) {
-    const zeile = read(`public/locales/${sprache}.js`)
-      .split('\n').find(z => z.includes('settings.password.too_short'));
-    assert.ok(zeile, `settings.password.too_short fehlt in ${sprache}.js`);
-    assert.ok(zeile.includes('{n}'),
-      `${sprache}.js schreibt die Zahl aus statt {n} zu benutzen — dann laeuft sie auseinander`);
+    const text = texte[sprache]['settings.password.too_short'];
+    assert.ok(text, `settings.password.too_short fehlt in ${sprache}.js`);
+    assert.ok(text.includes('{n}'), `${sprache}.js schreibt die Zahl aus statt {n} zu benutzen`);
   }
 });
 
@@ -106,18 +94,18 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   // Ohne diese Haelfte waere die Webapp weiterhin die unbequemere von beiden:
   // Sie schickte ab und zeigte den Serverfehler, waehrend die App den Knopf
   // gar nicht erst freigibt.
-  const core = ohneKommentare(read('public/js/01-formular.js'));
-  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('05'));
-  // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in 26-sitzung.js.
-  const sitzung = ohneKommentare(read('public/js/26-sitzung.js'));
-  const webAufrufe = (core.match(/passwortRegelText\(/g) || []).length
-                   + (settings.match(/passwortRegelText\(/g) || []).length
-                   + (sitzung.match(/passwortRegelText\(/g) || []).length;
+  const core = ohneKommentare(read('public/js/formular.js'));
+  const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
+  // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in sitzung.js.
+  const sitzung = ohneKommentare(read('public/js/sitzung.js'));
+  const webAufrufe =
+    (core.match(/passwortRegelText\(/g) || []).length +
+    (settings.match(/passwortRegelText\(/g) || []).length +
+    (sitzung.match(/passwortRegelText\(/g) || []).length;
   // Fuenf Stellen setzen in der Webapp ein Passwort: Registrieren,
   // Zuruecksetzen, Aendern, Konto anlegen, Konto-Passwort zuruecksetzen.
-  // Dazu die Definition selbst in 01-formular.js.
-  assert.ok(webAufrufe >= 6,
-    `Nur ${webAufrufe} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
+  // Dazu die Definition selbst in formular.js.
+  assert.ok(webAufrufe >= 6, `Nur ${webAufrufe} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
 
   // Gezaehlt, nicht bloss gesucht
   //
@@ -130,16 +118,76 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   for (const [voll, anzahl, name] of [
     // Seit dem 16.10. steht die Kontokarte auf ihrer eigenen Seite: Der
     // Einstellungsbildschirm traegt nur noch die Liste dorthin.
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'EinstellungenKonto.kt'), 2, 'Passwort aendern'],
+    [
+      path.join(
+        __dirname,
+        '..',
+        '..',
+        'Android-App',
+        'feature-konto',
+        'src',
+        'main',
+        'java',
+        'ch',
+        'brickinventoryapp',
+        'konto',
+        'ui',
+        'screens',
+        'EinstellungenKonto.kt',
+      ),
+      2,
+      'Passwort aendern',
+    ],
     // Hinweis und Fehlermarkierung teilen sich seit dem PasswortFeld einen Wert.
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'konto', 'ui', 'screens', 'StartpasswortMaske.kt'), 1, 'Startpasswort'],
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-anmeldung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'anmeldung', 'ui', 'screens', 'LoginRegistrieren.kt'), 1, 'Registrieren'],
+    [
+      path.join(
+        __dirname,
+        '..',
+        '..',
+        'Android-App',
+        'feature-konto',
+        'src',
+        'main',
+        'java',
+        'ch',
+        'brickinventoryapp',
+        'konto',
+        'ui',
+        'screens',
+        'StartpasswortMaske.kt',
+      ),
+      1,
+      'Startpasswort',
+    ],
+    [
+      path.join(
+        __dirname,
+        '..',
+        '..',
+        'Android-App',
+        'feature-anmeldung',
+        'src',
+        'main',
+        'java',
+        'ch',
+        'brickinventoryapp',
+        'anmeldung',
+        'ui',
+        'screens',
+        'LoginRegistrieren.kt',
+      ),
+      1,
+      'Registrieren',
+    ],
   ]) {
     const kurz = path.basename(voll);
     assert.ok(fs.existsSync(voll), `${kurz} steht nicht mehr dort — Pfad im Test veraltet`);
     const treffer = (fs.readFileSync(voll, 'utf8').match(/passwortZuKurz\(/g) || []).length;
-    assert.equal(treffer, anzahl,
+    assert.equal(
+      treffer,
+      anzahl,
       `${kurz}: ${treffer} statt ${anzahl} Pruefungen. Die App prueft bei „${name}" ` +
-      'nicht mehr ueberall ueber die gemeinsame Regel.');
+        'nicht mehr ueberall ueber die gemeinsame Regel.',
+    );
   }
 });

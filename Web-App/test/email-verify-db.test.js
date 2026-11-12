@@ -14,18 +14,25 @@
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip — ausser REQUIRE_DB=1, dann Fehler.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const db   = _req('db/database.js');
-const { verifiziereEmailToken, hashToken } = _req('src/konto/auth.js');
+const { keineDb } = require('./helpers/db');
+const db = _req('db/database.js');
+const { verifiziereEmailToken } = _req('src/konto/anmeldepruefung.js');
+const { hashToken } = _req('src/konto/geraeteToken.js');
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function seed() {
@@ -35,7 +42,11 @@ async function seed() {
   // Und die MIGRATIONEN, nicht nur das Schema
   {
     const mc = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(mc);
+    } finally {
+      mc.release();
+    }
   }
 }
 
@@ -46,20 +57,21 @@ async function neuerNutzer(name, { minutenGueltig = 60, email = `${name}@example
   const { id } = await db.get(
     `INSERT INTO users (username, password_hash, email_neu, email_neu_token, email_neu_bis, registrierung_offen)
      VALUES ($1, 'x', $2, $3, NOW() + ($4 || ' minutes')::interval, true) RETURNING id`,
-    [name, email, hashToken(token), String(minutenGueltig)]);
+    [name, email, hashToken(token), String(minutenGueltig)],
+  );
   return { id, token };
 }
 
-const zustand = (id) =>
-  db.get('SELECT email, email_verified, registrierung_offen, email_neu, email_neu_token, email_neu_bis FROM users WHERE id=$1', [id]);
+const zustand = id =>
+  db.get(
+    'SELECT email, email_verified, registrierung_offen, email_neu, email_neu_token, email_neu_bis FROM users WHERE id=$1',
+    [id],
+  );
 
-test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
+test('E-Mail-Verifikation gegen echte Datenbank', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
   await seed();
@@ -68,8 +80,14 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
     const u = await neuerNutzer('gueltig');
     const e = await verifiziereEmailToken(u.token);
     assert.equal(e.ok, true, 'Ein frischer Token muss eingelöst werden können');
-    assert.deepEqual(await zustand(u.id), { email: 'gueltig@example.ch', email_verified: true, registrierung_offen: false,
-      email_neu: null, email_neu_token: null, email_neu_bis: null });
+    assert.deepEqual(await zustand(u.id), {
+      email: 'gueltig@example.ch',
+      email_verified: true,
+      registrierung_offen: false,
+      email_neu: null,
+      email_neu_token: null,
+      email_neu_bis: null,
+    });
   });
 
   await t.test('abgelaufener Token wird abgelehnt und ändert nichts', async () => {
@@ -78,7 +96,11 @@ test('E-Mail-Verifikation gegen echte Datenbank', async (t) => {
     assert.equal(e.ok, false);
     assert.equal(e.grund, 'ungueltig');
     const z = await zustand(u.id);
-    assert.deepEqual([z.email, z.email_verified, z.registrierung_offen], [null, false, true], 'Ein abgelaufener Token hat bestätigt');
+    assert.deepEqual(
+      [z.email, z.email_verified, z.registrierung_offen],
+      [null, false, true],
+      'Ein abgelaufener Token hat bestätigt',
+    );
     assert.notEqual(z.email_neu_token, null, 'Die Felder wurden fälschlich abgeräumt');
   });
 

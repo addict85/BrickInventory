@@ -1,17 +1,23 @@
 /** Der Betrag wird IM Original ersetzt, damit der Export aussieht wie die
  * Karte von LEGO; geht das nicht sicher, bleibt das Original unverändert. */
 import {
-  PDFDocument as PdfLibDocument, PDFArray, PDFDict, PDFName, PDFRawStream,
-  decodePDFRawStream, PDFPage, PDFObject, StandardFonts, rgb,
+  PDFDocument as PdfLibDocument,
+  PDFArray,
+  PDFDict,
+  PDFName,
+  PDFRawStream,
+  decodePDFRawStream,
+  type PDFPage,
+  type PDFObject,
+  StandardFonts,
+  rgb,
 } from '@cantoo/pdf-lib';
 import { werteAusPdf, pdfText, textOperatoren, type GutscheinWerte } from './gutscheinPdf';
 import { meldeUndLiefere } from '../infra/fehler';
 
 /** Nur hier druckt eine literale ASCII-Kette, was sie sagt. Ohne /Encoding ist
  * es eine Standardschrift mit StandardEncoding — dort gilt dasselbe. */
-const SICHERE_KODIERUNGEN = new Set([
-  'WinAnsiEncoding', 'MacRomanEncoding', 'StandardEncoding', 'PDFDocEncoding',
-]);
+const SICHERE_KODIERUNGEN = new Set(['WinAnsiEncoding', 'MacRomanEncoding', 'StandardEncoding', 'PDFDocEncoding']);
 
 function alsLiteral(text: string): string {
   return '(' + text.replace(/([()\\])/g, '\\$1') + ')';
@@ -19,8 +25,7 @@ function alsLiteral(text: string): string {
 
 /** Unbekannt heisst NEIN: Eine Schrift, die sich nicht nachsehen lässt, wird
  * nicht angefasst. */
-function schriftIstSicher(doc: PdfLibDocument, resources: PDFDict | undefined,
-                          name: string): boolean {
+function schriftIstSicher(doc: PdfLibDocument, resources: PDFDict | undefined, name: string): boolean {
   if (!resources) return false;
   const fonts = resources.lookupMaybe(PDFName.of('Font'), PDFDict);
   if (!fonts) return false;
@@ -34,34 +39,46 @@ function schriftIstSicher(doc: PdfLibDocument, resources: PDFDict | undefined,
   if (subtype !== undefined && String(subtype) === '/Type0') return false;
 
   const enc = font.get(PDFName.of('Encoding'));
-  if (enc === undefined) return true;                        // Standardschrift
+  if (enc === undefined) return true; // Standardschrift
   const roh = String(enc);
-  if (!roh.startsWith('/')) return false;                    // Wörterbuch mit /Differences
+  if (!roh.startsWith('/')) return false; // Wörterbuch mit /Differences
   return SICHERE_KODIERUNGEN.has(roh.slice(1));
 }
 
 /** Das Kerning eines TJ-Feldes geht verloren; der Betrag steht aber vollständig da. */
-function ersetzeImStrom(inhalt: string, suchen: string, ersetzen: string,
-                        sicher: (schrift: string) => boolean):
-                        { aus: string; treffer: number; abgelehnt: number } {
-  let treffer = 0, abgelehnt = 0;
+function ersetzeImStrom(
+  inhalt: string,
+  suchen: string,
+  ersetzen: string,
+  sicher: (schrift: string) => boolean,
+): { aus: string; treffer: number; abgelehnt: number } {
+  let treffer = 0,
+    abgelehnt = 0;
   // Die AKTIVE Schrift ist das letzte `/Name <grösse> Tf` vor dem Operator;
   // unbekannt heisst: nicht anfassen.
   const tfs = [...inhalt.matchAll(/\bTf\b/g)].map(m => m.index ?? 0);
   const namen = new Map<number, string>();
   for (const m of inhalt.matchAll(/\/([^\s/<>\][(){}]+)\s+[\d.+-]+\s+Tf/g))
     namen.set((m.index ?? 0) + m[0].length - 2, m[1] ?? '');
-  let aus = '', bisher = 0, n = 0;
+  let aus = '',
+    bisher = 0,
+    n = 0;
   for (const t of textOperatoren(inhalt)) {
     if (!t.text.includes(suchen)) continue;
     while (n < tfs.length && (tfs[n] ?? 0) < t.von) n++;
     const schrift = n > 0 ? namen.get(tfs[n - 1] ?? -1) : undefined;
-    if (schrift === undefined || !sicher(schrift)) { abgelehnt++; continue; }
+    if (schrift === undefined || !sicher(schrift)) {
+      abgelehnt++;
+      continue;
+    }
 
     treffer++;
     // TJ wird zu Tj: Ein einzelnes Argument ist kein Feld mehr.
-    aus += inhalt.slice(bisher, t.von)
-      + alsLiteral(t.text.split(suchen).join(ersetzen)) + ' ' + (t.op === 'TJ' ? 'Tj' : t.op);
+    aus +=
+      inhalt.slice(bisher, t.von) +
+      alsLiteral(t.text.split(suchen).join(ersetzen)) +
+      ' ' +
+      (t.op === 'TJ' ? 'Tj' : t.op);
     bisher = t.bis;
   }
   aus += inhalt.slice(bisher);
@@ -71,9 +88,7 @@ function ersetzeImStrom(inhalt: string, suchen: string, ersetzen: string,
 function stroemeVon(doc: PdfLibDocument, seite: PDFPage): PDFRawStream[] {
   const c = seite.node.Contents();
   if (c === undefined) return [];
-  const liste: unknown[] = c instanceof PDFArray
-    ? c.asArray().map((r: PDFObject) => doc.context.lookup(r))
-    : [c];
+  const liste: unknown[] = c instanceof PDFArray ? c.asArray().map((r: PDFObject) => doc.context.lookup(r)) : [c];
   return liste.filter((s): s is PDFRawStream => s instanceof PDFRawStream);
 }
 
@@ -89,8 +104,7 @@ export interface ErsetzBefund {
 export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise<ErsetzBefund> {
   const vorher = werteAusPdf(daten);
   if (vorher.betrag === null) {
-    return { daten: null, treffer: 0, abgelehnt: 0,
-             grund: 'Im PDF ist kein Betrag zu finden' };
+    return { daten: null, treffer: 0, abgelehnt: 0, grund: 'Im PDF ist kein Betrag zu finden' };
   }
   // Nichts zu tun ist Erfolg: Das Original stimmt schon.
   if (Math.abs(vorher.betrag - neuerBetrag) < 0.005) {
@@ -100,24 +114,32 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
   // Gesucht wird, wie der Betrag GESCHRIEBEN steht („1'234.50", „1.234,50"),
   // denn das steht im Strom.
   const text = pdfText(daten);
-  const geschrieben = text.match(/[\d'’.,]{1,30}(?=\s{0,9}(?:CHF|EUR|USD|GBP|SEK|NOK|AUD|CAD|DKK)\b)/i)?.[0]
-    ?? String(vorher.betrag);
-  const neuGeschrieben = neuerBetrag.toLocaleString('de-CH', {
-    minimumFractionDigits: Number.isInteger(neuerBetrag) ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).replace(/’/g, "'");
+  const geschrieben =
+    text.match(/[\d'’.,]{1,30}(?=\s{0,9}(?:CHF|EUR|USD|GBP|SEK|NOK|AUD|CAD|DKK)\b)/i)?.[0] ?? String(vorher.betrag);
+  const neuGeschrieben = neuerBetrag
+    .toLocaleString('de-CH', {
+      minimumFractionDigits: Number.isInteger(neuerBetrag) ? 0 : 2,
+      maximumFractionDigits: 2,
+    })
+    .replace(/’/g, "'");
 
   const doc = await PdfLibDocument.load(daten);
-  let treffer = 0, abgelehnt = 0;
+  let treffer = 0,
+    abgelehnt = 0;
   for (const seite of doc.getPages()) {
     const resources = seite.node.Resources();
     const sicher = (name: string) => schriftIstSicher(doc, resources, name);
     for (const strom of stroemeVon(doc, seite)) {
       let roh: Uint8Array;
-      try { roh = decodePDFRawStream(strom).decode(); } catch { continue; }
+      try {
+        roh = decodePDFRawStream(strom).decode();
+      } catch {
+        continue;
+      }
       const inhalt = Buffer.from(roh).toString('latin1');
       const r = ersetzeImStrom(inhalt, geschrieben, neuGeschrieben, sicher);
-      treffer += r.treffer; abgelehnt += r.abgelehnt;
+      treffer += r.treffer;
+      abgelehnt += r.abgelehnt;
       if (!r.treffer) continue;
       strom.contents = Buffer.from(r.aus, 'latin1');
       strom.dict.set(PDFName.of('Length'), doc.context.obj(strom.contents.length));
@@ -129,11 +151,15 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
   }
 
   if (!treffer) {
-    return { daten: null, treffer: 0, abgelehnt,
-             grund: abgelehnt
-               ? `Der Betrag steht in einer Schrift mit eigener Kodierung (${abgelehnt}×) — `
-                 + 'eine ersetzte Zeichenkette würde dort als Zeichensalat gedruckt'
-               : `Die Schreibweise „${geschrieben}" ist im Inhaltsstrom nicht zu finden` };
+    return {
+      daten: null,
+      treffer: 0,
+      abgelehnt,
+      grund: abgelehnt
+        ? `Der Betrag steht in einer Schrift mit eigener Kodierung (${abgelehnt}×) — ` +
+          'eine ersetzte Zeichenkette würde dort als Zeichensalat gedruckt'
+        : `Die Schreibweise „${geschrieben}" ist im Inhaltsstrom nicht zu finden`,
+    };
   }
 
   const ergebnis = Buffer.from(await doc.save());
@@ -141,13 +167,15 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
   // Nachprüfen: Erst was der Leser findet, zählt als ersetzt.
   const nachher = werteAusPdf(ergebnis);
   if (nachher.betrag === null || Math.abs(nachher.betrag - neuerBetrag) >= 0.005) {
-    return { daten: null, treffer, abgelehnt,
-             grund: `Nach dem Ersetzen liest sich der Betrag als ${nachher.betrag} `
-                  + `statt ${neuerBetrag}` };
+    return {
+      daten: null,
+      treffer,
+      abgelehnt,
+      grund: `Nach dem Ersetzen liest sich der Betrag als ${nachher.betrag} ` + `statt ${neuerBetrag}`,
+    };
   }
   if (nachher.nummer !== vorher.nummer || nachher.pin !== vorher.pin) {
-    return { daten: null, treffer, abgelehnt,
-             grund: 'Nummer oder PIN haben sich beim Ersetzen verändert' };
+    return { daten: null, treffer, abgelehnt, grund: 'Nummer oder PIN haben sich beim Ersetzen verändert' };
   }
   return { daten: ergebnis, treffer, abgelehnt, grund: null };
 }
@@ -156,16 +184,15 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
 const MARKE_KOPF = 'BIM-GUTSCHEIN v1';
 
 /** Semikolon als Trennzeichen, weil Notizen Kommas haben. */
-export function markeText(w: { nummer: string; pin: string | null; betrag: number;
-                               waehrung: string }): string {
-  return `${MARKE_KOPF} nummer=${w.nummer}; pin=${w.pin ?? ''}; `
-       + `betrag=${w.betrag.toFixed(2)}; waehrung=${w.waehrung}`;
+export function markeText(w: { nummer: string; pin: string | null; betrag: number; waehrung: string }): string {
+  return (
+    `${MARKE_KOPF} nummer=${w.nummer}; pin=${w.pin ?? ''}; ` + `betrag=${w.betrag.toFixed(2)}; waehrung=${w.waehrung}`
+  );
 }
 
 export function markeLesen(zeile: string): GutscheinWerte | null {
   if (!zeile.includes(MARKE_KOPF)) return null;
-  const feld = (name: string) =>
-    zeile.match(new RegExp(`${name}=([^;]*)`))?.[1]?.trim() ?? '';
+  const feld = (name: string) => zeile.match(new RegExp(`${name}=([^;]*)`))?.[1]?.trim() ?? '';
   const nummer = feld('nummer');
   if (!nummer) return null;
   const betrag = parseFloat(feld('betrag'));
@@ -208,21 +235,30 @@ async function erzeugeSeite(g: ExportGutschein): Promise<Buffer> {
   seite.drawText('Geschenkkarte', { x: 60, y: 760, size: 22, font: fett });
   // WÖRTLICH der Satz des Originals, damit seitenweiseLesen ihn genauso findet
   // wie auf einer echten Karte.
-  seite.drawText(`Ihre LEGO-Geschenkkarte im Wert von `
-    + `${g.amount.toLocaleString('de-CH', { minimumFractionDigits: Number.isInteger(g.amount) ? 0 : 2 })
-         .replace(/’/g, "'")} ${g.currency}:`,
-    { x: 60, y: 700, size: 14, font: normal });
+  seite.drawText(
+    `Ihre LEGO-Geschenkkarte im Wert von ` +
+      `${g.amount
+        .toLocaleString('de-CH', { minimumFractionDigits: Number.isInteger(g.amount) ? 0 : 2 })
+        .replace(/’/g, "'")} ${g.currency}:`,
+    { x: 60, y: 700, size: 14, font: normal },
+  );
   seite.drawText(g.number, { x: 60, y: 660, size: 16, font: fett });
   if (g.pin) seite.drawText(`PIN: ${g.pin}`, { x: 60, y: 630, size: 14, font: normal });
-  seite.drawText('Von Hand erfasst — zu diesem Gutschein liegt kein Original-PDF vor.',
-    { x: 60, y: 590, size: 9, font: normal, color: grau });
+  seite.drawText('Von Hand erfasst — zu diesem Gutschein liegt kein Original-PDF vor.', {
+    x: 60,
+    y: 590,
+    size: 9,
+    font: normal,
+    color: grau,
+  });
   return Buffer.from(await doc.save());
 }
 
 /** Ein nicht ersetzter Gutschein kommt unverändert hinein, mit Grund im Befund:
  * eine Auskunft, kein Abbruch. */
-export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
-    Promise<{ daten: Buffer; befunde: ExportBefund[] }> {
+export async function verbindeGutscheine(
+  gutscheine: ExportGutschein[],
+): Promise<{ daten: Buffer; befunde: ExportBefund[] }> {
   const ziel = await PdfLibDocument.create();
   const marke = await ziel.embedFont(StandardFonts.Helvetica);
   const befunde: ExportBefund[] = [];
@@ -234,8 +270,7 @@ export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
       if (r.daten) {
         quelle = r.daten;
         // Kein Treffer heisst hier NICHT „gescheitert": Der Betrag stand schon drin.
-        befunde.push({ id: g.id, number: g.number,
-                       art: r.treffer ? 'ersetzt' : 'stimmte_schon', grund: null });
+        befunde.push({ id: g.id, number: g.number, art: r.treffer ? 'ersetzt' : 'stimmte_schon', grund: null });
       } else {
         quelle = g.pdf;
         befunde.push({ id: g.id, number: g.number, art: 'unveraendert', grund: r.grund });
@@ -251,9 +286,13 @@ export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
       ziel.addPage(s);
       // Die Marke nur auf die ERSTE Seite eines Gutscheins.
       if (i === 0) {
-        s.drawText(markeText({ nummer: g.number, pin: g.pin, betrag: g.amount,
-                               waehrung: g.currency }),
-          { x: 28, y: 18, size: 6, font: marke, color: rgb(0.45, 0.45, 0.45) });
+        s.drawText(markeText({ nummer: g.number, pin: g.pin, betrag: g.amount, waehrung: g.currency }), {
+          x: 28,
+          y: 18,
+          size: 6,
+          font: marke,
+          color: rgb(0.45, 0.45, 0.45),
+        });
       }
     });
   }
@@ -274,7 +313,10 @@ export async function seitenweiseLesen(daten: Buffer): Promise<GutscheinWerte[]>
 
   for (const zeile of pdfText(daten).split('\n')) {
     const w = markeLesen(zeile);
-    if (w?.nummer && !gesehen.has(w.nummer)) { gesehen.add(w.nummer); gefunden.push(w); }
+    if (w?.nummer && !gesehen.has(w.nummer)) {
+      gesehen.add(w.nummer);
+      gefunden.push(w);
+    }
   }
   if (gefunden.length) return gefunden;
 
@@ -284,7 +326,10 @@ export async function seitenweiseLesen(daten: Buffer): Promise<GutscheinWerte[]>
     const [seite] = await einzel.copyPages(doc, [i]);
     einzel.addPage(seite);
     const w = werteAusPdf(Buffer.from(await einzel.save()));
-    if (w.nummer && !gesehen.has(w.nummer)) { gesehen.add(w.nummer); gefunden.push(w); }
+    if (w.nummer && !gesehen.has(w.nummer)) {
+      gesehen.add(w.nummer);
+      gefunden.push(w);
+    }
   }
   return gefunden;
 }

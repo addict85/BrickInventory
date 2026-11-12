@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.sitzung.*
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
@@ -245,7 +246,7 @@ internal fun ManualFinanceRow(
     /**
      * Kaufpreis dieser Erfassung, schon formatiert; null = keiner hinterlegt. Wie in
      * der Set-Zeile (FinanceSections.kt) und in beiden Tabellen der Webapp
-     * (public/js/04-finance.js, pmRow, `detail.purchase_price`), damit die Zeilen
+     * (public/js/finance.js, pmRow, `detail.purchase_price`), damit die Zeilen
      * gleich viel sagen.
      */
     purchaseStr: String? = null,

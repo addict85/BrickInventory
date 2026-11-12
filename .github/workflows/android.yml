@@ -187,6 +187,11 @@ jobs:
             echo "::warning title=Foto weicht ab::$name: $pixel Pixel verschieden, Bereich $feld (Bild $(identify -format '%wx%h' "$ref"))"
           done
 
+      # Gradle bricht nur bei einem Zyklus ab, nicht bei einer Kante in die falsche
+      # Richtung; die Regel steht in build-logic (kanten/Modulkanten.kt).
+      - name: Modulkanten prüfen
+        run: ./gradlew --no-daemon modulkantenPruefen
+
       # Room schreibt das Schema beim Übersetzen nach core-offline/schemas und lässt eine
       # Datei stehen, solange ihr Aufbau gleich bleibt. Steht danach etwas
       # anderes da als eingecheckt, fehlt eine Fassung samt Migration.

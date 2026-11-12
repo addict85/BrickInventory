@@ -18,7 +18,13 @@ if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL &&
   process.env.TEST_DATABASE_URL = url.toString();
   process.env.TEST_DB_EIGEN = name;
   process.on('exit', () => {
-    try { execFileSync(process.execPath, [werkzeug, 'loeschen', name], { stdio: 'ignore', env: { ...process.env, TEST_DATABASE_URL: process.env.TEST_DB_BASIS } }); }
-    catch { /* der Lauf räumt Reste am Ende ab (scripts/test-lauf.js) */ }
+    try {
+      execFileSync(process.execPath, [werkzeug, 'loeschen', name], {
+        stdio: 'ignore',
+        env: { ...process.env, TEST_DATABASE_URL: process.env.TEST_DB_BASIS },
+      });
+    } catch {
+      /* der Lauf räumt Reste am Ende ab (scripts/test-lauf.js) */
+    }
   });
 }

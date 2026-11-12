@@ -6,12 +6,12 @@ Rot: eine unsignierte Beschreibung meldet sich nur auf Knopfdruck
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
-@@ -104,7 +104,7 @@ class UpdateViewModel @Inject constructor(
+@@ -109,7 +109,7 @@
                  if (beschreibung == null || !istErlaubteApkAdresse(beschreibung.apkUrl)) {
                      _state.update {
                          it.copy(laedtPruefung = false, geprueft = true, neuereFassung = null,
--                            fehler = if (still) null else texte.text(
-+                            fehler = texte.text(
+-                            fehler = if (still) null else Meldung.Ressource(
++                            fehler = Meldung.Ressource(
                                  if (beschreibung == null) R.string.update_beschreibung_unsigniert else R.string.update_fremde_adresse))
                      }
                      return@launch

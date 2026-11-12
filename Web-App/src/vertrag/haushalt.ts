@@ -51,8 +51,23 @@ export const routen = {
   'GET /api/v1/settings/household': { klein: true, antwort: HouseholdStatusResponse },
   'GET /api/v1/sets/household-members': { klein: true, antwort: HouseholdMembersResponse },
   'POST /api/v1/settings/household/invite': { eingabe: OHNE_RUMPF, antwort: HouseholdInviteResponse, geheim: true },
-  'POST /api/v1/settings/household/redeem/pruefen': { antwort: HouseholdInviteCheckResponse, eingabe: z.strictObject({ code: z.string().max(64).nullable().optional() }) },
-  'POST /api/v1/settings/household/redeem': { antwort: GenericResponse, ...bestaetigt({ code: z.string().max(64).nullable().optional() }, 'password', 'faktor_code') },
-  'POST /api/v1/settings/household/unlink': { eingabe: z.strictObject({ sub_user_id: KENNUNG.nullable().optional(), main_user_id: KENNUNG.nullable().optional() }), antwort: GenericResponse },
-  'POST /api/v1/settings/household/former/dismiss': { eingabe: z.strictObject({ sub_user_id: KENNUNG }), antwort: GenericResponse },
+  'POST /api/v1/settings/household/redeem/pruefen': {
+    antwort: HouseholdInviteCheckResponse,
+    eingabe: z.strictObject({ code: z.string().max(64).nullable().optional() }),
+  },
+  'POST /api/v1/settings/household/redeem': {
+    antwort: GenericResponse,
+    ...bestaetigt({ code: z.string().max(64).nullable().optional() }, 'password', 'faktor_code'),
+  },
+  'POST /api/v1/settings/household/unlink': {
+    eingabe: z.strictObject({
+      sub_user_id: KENNUNG.nullable().optional(),
+      main_user_id: KENNUNG.nullable().optional(),
+    }),
+    antwort: GenericResponse,
+  },
+  'POST /api/v1/settings/household/former/dismiss': {
+    eingabe: z.strictObject({ sub_user_id: KENNUNG }),
+    antwort: GenericResponse,
+  },
 } satisfies Record<string, Route>;

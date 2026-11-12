@@ -2,10 +2,10 @@
 /**
  * Bild-Diagnose für EIN Set — wo bricht die Kette?
  */
-const path = require('path');
-const fs = require('fs');
-const https = require('https');
-const http = require('http');
+const path = require('node:path');
+const fs = require('node:fs');
+const https = require('node:https');
+const http = require('node:http');
 
 const setNumber = (process.argv[2] || '').trim();
 if (!setNumber) {
@@ -24,18 +24,31 @@ const zeile = (/** @type {string} */ k, /** @type {any} */ v) => console.log(`  
 function hole(url) {
   return new Promise(r => {
     const mod = url.startsWith('https') ? https : http;
-    const req = mod.get(url, { timeout: 10000, headers: {
-      // Dieselben Kopfzeilen wie der Bild-Proxy — sonst misst man die
-      // Bot-Erkennung des CDN statt der Verfügbarkeit des Bildes.
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-      'Referer': 'https://rebrickable.com/',
-      'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-    } }, res => {
-      let n = 0;
-      res.on('data', c => { n += c.length; });
-      res.on('end', () => r({ status: res.statusCode, typ: res.headers['content-type'], bytes: n }));
+    const req = mod.get(
+      url,
+      {
+        timeout: 10000,
+        headers: {
+          // Dieselben Kopfzeilen wie der Bild-Proxy — sonst misst man die
+          // Bot-Erkennung des CDN statt der Verfügbarkeit des Bildes.
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+          Referer: 'https://rebrickable.com/',
+          Accept: 'image/webp,image/apng,image/*,*/*;q=0.8',
+        },
+      },
+      res => {
+        let n = 0;
+        res.on('data', c => {
+          n += c.length;
+        });
+        res.on('end', () => r({ status: res.statusCode, typ: res.headers['content-type'], bytes: n }));
+      },
+    );
+    req.on('timeout', () => {
+      req.destroy();
+      r({ status: 'Zeitüberschreitung' });
     });
-    req.on('timeout', () => { req.destroy(); r({ status: 'Zeitüberschreitung' }); });
     req.on('error', e => r({ status: 'Fehler: ' + e.message }));
   });
 }
@@ -54,7 +67,9 @@ function hole(url) {
        FROM sets s
        LEFT JOIN set_catalog c ON c.set_number = s.set_number
        LEFT JOIN users u ON u.id = s.user_id
-      WHERE s.set_number = $1 ORDER BY s.user_id`, [setNumber]);
+      WHERE s.set_number = $1 ORDER BY s.user_id`,
+    [setNumber],
+  );
   console.log('1. Bestand je Konto (Bildfelder aus dem Katalog):');
   if (!rows.length) console.log('   ⚠️  Kein Konto besitzt dieses Set.');
   for (const r of rows) {
@@ -66,14 +81,20 @@ function hole(url) {
   // ── 2. Der gemeinsame Katalog ─────────────────────────────────────────────
   const cat = await db.get(
     `SELECT rs.name, c.image_url, c.image_local
-       FROM set_catalog c JOIN rb_sets rs ON rs.set_num = c.set_number WHERE c.set_number = $1`, [setNumber]);
+       FROM set_catalog c JOIN rb_sets rs ON rs.set_num = c.set_number WHERE c.set_number = $1`,
+    [setNumber],
+  );
   console.log('\n2. set_catalog (kontoübergreifend):');
   if (!cat) console.log('   ⚠️  Kein Katalogeintrag — dann kann auch der Rückfall nichts liefern.');
-  else { zeile('name', cat.name || '∅'); zeile('image_url', cat.image_url || '∅ leer'); zeile('image_local', cat.image_local || '∅ leer'); }
+  else {
+    zeile('name', cat.name || '∅');
+    zeile('image_url', cat.image_url || '∅ leer');
+    zeile('image_local', cat.image_local || '∅ leer');
+  }
 
   // ── 3. Was die API daraus macht ───────────────────────────────────────────
   const effektiv = rows[0]?.image_url || cat?.image_url || null;
-  const lokal    = rows[0]?.image_local || cat?.image_local || null;
+  const lokal = rows[0]?.image_local || cat?.image_local || null;
   console.log('\n3. Was die API ausliefert (COALESCE seither):');
   zeile('image_local', lokal || '∅ leer');
   zeile('image_url', effektiv || '∅ leer');
@@ -89,7 +110,10 @@ function hole(url) {
     const orig = abs.replace(/_thumb(\.[^.]+)$/, '$1');
     const thumb = orig.replace(/(\.[^.]+)$/, '_thumb$1');
     /** @type {Array<[string, string]>} */
-    const paare = [['Original', orig], ['Vorschau', thumb]];
+    const paare = [
+      ['Original', orig],
+      ['Vorschau', thumb],
+    ];
     for (const [was, p] of paare) {
       const st = fs.existsSync(p) ? fs.statSync(p) : null;
       zeile(was, st ? `${p}  (${st.size} Bytes)` : `FEHLT: ${p}`);
@@ -117,4 +141,7 @@ function hole(url) {
 
   console.log('');
   await db.pool.end();
-})().catch(e => { console.error('Abbruch:', e.message); process.exit(1); });
+})().catch(e => {
+  console.error('Abbruch:', e.message);
+  process.exit(1);
+});

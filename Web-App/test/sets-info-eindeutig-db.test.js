@@ -30,12 +30,14 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const NAME = `setinfo-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}-f`]]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const fremdId = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`${NAME}-f`])).id;
+  const fremdId = (
+    await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`${NAME}-f`])
+  ).id;
   const [fremd, eigen, nie] = [`${process.pid}7-1`, `${process.pid}8-1`, `${process.pid}9-1`];
   const nummern = ['price-history-1', `${process.pid}-1`, fremd, eigen];
   for (const [i, name] of ['Pfadwort', 'Gewöhnlich', null, null].entries())
@@ -44,7 +46,9 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
   const { base } = testServer(_req, {
     sitzung: { userId: uid, username: NAME, isAdmin: false },
     apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
 
   try {
     await t.test('eine gewöhnliche Nummer', async () => {
@@ -56,7 +60,7 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
       assert.equal(r.set_number, 'price-history-1', JSON.stringify(r));
       assert.equal(r.name, 'Pfadwort');
     });
-    const info = async (sn) => (await fetch(`${base}/api/v1/sets/info/${sn}`)).json();
+    const info = async sn => (await fetch(`${base}/api/v1/sets/info/${sn}`)).json();
     await t.test('ein fremder Platzhalter antwortet wie eine nie erfasste Nummer', async () => {
       assert.deepEqual(await info(nie), { success: true, set_number: nie, name: nie, im_katalog: false });
       assert.deepEqual(await info(fremd), { success: true, set_number: fremd, name: fremd, im_katalog: false });

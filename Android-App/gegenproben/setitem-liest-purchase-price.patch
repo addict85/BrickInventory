@@ -6,11 +6,13 @@ Rot: die Anzeigeregel steht im Modell
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
 +++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
-@@ -60,6 +60,7 @@
-     val owners: List<KontoName> = emptyList(),
-     @SerialName("max_purchase_price") val maxPurchasePrice: Double? = null,
-     /** Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn). */
+@@ -125,7 +125,8 @@
+      * die Adresse statt einer je Bildschirm. Leer heisst: kein Knopf statt eines
+      * Knopfs ins Leere.
+      */
+-    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null
++    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
 +    @SerialName("purchase_price") val purchasePrice: Double? = null,
-     @SerialName("avg_purchase_price") val avgPurchasePrice: Double? = null,
-     @SerialName("used_count") val usedCount: Int? = null,
-     val instructions: List<Instruction> = emptyList(),
+ ) {
+     /**
+      * Der angezeigte Kaufpreis, mengengewichtet. Die eine Stelle, an der Kachel und

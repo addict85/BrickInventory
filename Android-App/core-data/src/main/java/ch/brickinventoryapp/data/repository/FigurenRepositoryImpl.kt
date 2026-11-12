@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.api.FigurenApi
@@ -80,10 +81,10 @@ class FigurenRepositoryImpl @Inject constructor(
             sicherAufrufen { api.deleteMinifig(figNumber, owner, schluessel) }
         }
 
-    override suspend fun getMinifigStats(accounts: String?): Ergebnis<MinifigStatsResponse> =
-        sicherAufrufen { api.getMinifigStats(accounts) }
+    override suspend fun getMinifigStats(konten: Kontoauswahl?): Ergebnis<MinifigStatsResponse> =
+        sicherAufrufen { api.getMinifigStats(konten?.anfrage) }
 
     override suspend fun getSetsMitFigur(figNumber: String,
-                                accounts: String?): Ergebnis<VerwendendeSetsResponse> =
-        sicherAufrufen { api.getSetsMitFigur(figNumber, accounts) }
+                                konten: Kontoauswahl?): Ergebnis<VerwendendeSetsResponse> =
+        sicherAufrufen { api.getSetsMitFigur(figNumber, konten?.anfrage) }
 }

@@ -118,6 +118,23 @@ class VorschauVorwaermerTest {
         assertFalse("Bei voller Ablage startet nichts", vorwaermer.darfStarten())
     }
 
+    /**
+     * Jede Lage fragt ihre eigene Erlaubnis. Eine neue Lage fehlt in der Zuordnung und macht
+     * den Test rot, statt still unter eine bestehende Antwort zu fallen.
+     * Gegenprobe (Patch vorwaermen-roaming-wie-mobil): ROAMING fragt die Erlaubnis von MOBIL → rot hier.
+     */
+    @Test
+    fun `jede Netzlage folgt ihrer eigenen Erlaubnis`() = runTest {
+        val zuordnung = mapOf(VorwaermNetz.WLAN to Netzlage.Art.WLAN, VorwaermNetz.MOBIL to Netzlage.Art.MOBIL,
+            VorwaermNetz.ROAMING to Netzlage.Art.ROAMING)
+        assertEquals("jede Erlaubnis hat ihre Lage", VorwaermNetz.entries.toSet(), zuordnung.keys)
+        for (netz in VorwaermNetz.entries) {
+            VorwaermNetz.entries.forEach { erlaubt[it] = it == netz }
+            val gestartet = Netzlage.Art.entries.filter { lage = it; vorwaermer.darfStarten() }
+            assertEquals("nur $netz erlaubt", listOf(zuordnung.getValue(netz)), gestartet)
+        }
+    }
+
     @Test
     fun `zwischen den Schueben wird pausiert`() = runTest {
         vorwaermer.vorwaermen((20..23).map(::vorschau))

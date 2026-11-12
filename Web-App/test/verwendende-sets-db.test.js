@@ -8,20 +8,26 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 const { verwendendeSets } = _req('src/bestand/gemeinsam.js');
 
 async function erreichbar() {
-  try { await db.get('SELECT 1'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 after(() => db.pool.end());
 
-test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
-  if (!await erreichbar()) {
-    if (process.env.REQUIRE_DB === '1') assert.fail('Test-DB nicht erreichbar, REQUIRE_DB=1');
-    t.skip('keine Test-DB'); return;
+test('die Liste der verwendenden Sets folgt dem Blickfeld', async t => {
+  if (!(await erreichbar())) {
+    keineDb(t);
+    return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -29,12 +35,17 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   // Und die MIGRATIONEN, nicht nur das Schema
   {
     const mc = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(mc);
+    } finally {
+      mc.release();
+    }
   }
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
-  const id = async (n) => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  const haupt = await id('haupt'), kind = await id('kind');
+  const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
+  const haupt = await id('haupt'),
+    kind = await id('kind');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
   await haeltSet(db, haupt, '75192-1', 1);
@@ -42,7 +53,11 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await haeltSet(db, kind, '21058-1', 1);
   // Der Setname steht seit Migration 0033 im Katalog; die Liste der
   // verwendenden Sets holt ihn mit einem eigenen JOIN darauf.
-  for (const [nr, name] of [['75192-1', 'Millennium Falcon'], ['10305-1', 'Lion Knights Castle'], ['21058-1', 'Cheops-Pyramide']])
+  for (const [nr, name] of [
+    ['75192-1', 'Millennium Falcon'],
+    ['10305-1', 'Lion Knights Castle'],
+    ['21058-1', 'Cheops-Pyramide'],
+  ])
     await katalogSet(db, nr, { name });
 
   // Name, Farbbezeichnung und Ersatzteilkennzeichen stehen seit Migration
@@ -68,10 +83,15 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   await haeltFigur(db, haupt, 'sw0001', { menge: 9 });
 
   // ── Teil, Blickfeld des Hauptkontos (Haushalt) ───────────────────────────
-  const { item, sets: imHaushalt } = await verwendendeSets([haupt, kind], 'parts',
-    { part_number: '3001', color_id: 4 });
-  assert.deepEqual(imHaushalt.map(s => s.set_number), ['10305-1', '21058-1', '75192-1'],
-    `Erwartet drei Sets in Nummernfolge, bekam ${JSON.stringify(imHaushalt.map(s => s.set_number))}`);
+  const { item, sets: imHaushalt } = await verwendendeSets([haupt, kind], 'parts', {
+    part_number: '3001',
+    color_id: 4,
+  });
+  assert.deepEqual(
+    imHaushalt.map(s => s.set_number),
+    ['10305-1', '21058-1', '75192-1'],
+    `Erwartet drei Sets in Nummernfolge, bekam ${JSON.stringify(imHaushalt.map(s => s.set_number))}`,
+  );
 
   // ── Eine zweite Zeile fuer denselben Schluessel wird abgewiesen ──────────
   //
@@ -80,21 +100,27 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   // weg, kaeme die alte Doppelung zurueck — und mit ihr zwei Stueckzahlen fuer
   // dieselbe Position, von denen eine falsch ist.
   await assert.rejects(
-    () => db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id, source)
-                  VALUES ($1,'75192-1','3001',4,'set')`, [haupt]),
+    () =>
+      db.run(
+        `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+                  VALUES ($1,'75192-1','3001',4,'set')`,
+        [haupt],
+      ),
     /idx_parts_eindeutig|duplicate key/,
     'Eine zweite parts-Zeile fuer dasselbe Konto, Set, Teil und dieselbe Farbe ' +
-    'wurde angenommen — dann gibt es die Stueckzahl wieder zweimal');
+      'wurde angenommen — dann gibt es die Stueckzahl wieder zweimal',
+  );
 
   const nach = Object.fromEntries(imHaushalt.map(s => [s.set_number, s]));
-  assert.equal(nach['75192-1'].quantity, 15,
-    'Die Stückzahl eines Set-Teils ist die Katalogzahl des Sets');
+  assert.equal(nach['75192-1'].quantity, 15, 'Die Stückzahl eines Set-Teils ist die Katalogzahl des Sets');
   assert.equal(nach['10305-1'].quantity, 7);
   assert.equal(nach['21058-1'].quantity, 3);
-  assert.equal(nach['21058-1'].owner_user_id, kind,
-    'Der Besitzer muss mitkommen — im Haushalt steht sonst nicht da, wem das Set gehört');
-  assert.equal(nach['75192-1'].set_name, 'Millennium Falcon',
-    'Ohne den Namen steht im Dialog nur eine Nummer');
+  assert.equal(
+    nach['21058-1'].owner_user_id,
+    kind,
+    'Der Besitzer muss mitkommen — im Haushalt steht sonst nicht da, wem das Set gehört',
+  );
+  assert.equal(nach['75192-1'].set_name, 'Millennium Falcon', 'Ohne den Namen steht im Dialog nur eine Nummer');
 
   // Die manuelle Position (42 Stück, ohne Set) darf in keiner Summe stecken.
   const summe = imHaushalt.reduce((n, s) => n + s.quantity, 0);
@@ -102,19 +128,30 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
 
   // ── Die FARBE trennt ─────────────────────────────────────────────────────
   const blau = (await verwendendeSets([haupt, kind], 'parts', { part_number: '3001', color_id: 1 })).sets;
-  assert.deepEqual(blau.map(s => [s.set_number, s.quantity]), [['75192-1', 99]],
-    'Die Farbe wird nicht unterschieden — dann zeigt der Dialog fremde Bestände');
+  assert.deepEqual(
+    blau.map(s => [s.set_number, s.quantity]),
+    [['75192-1', 99]],
+    'Die Farbe wird nicht unterschieden — dann zeigt der Dialog fremde Bestände',
+  );
 
   // ── Einzelkonto sieht nur sein eigenes Set ───────────────────────────────
   const nurKind = (await verwendendeSets([kind], 'parts', { part_number: '3001', color_id: 4 })).sets;
-  assert.deepEqual(nurKind.map(s => s.set_number), ['21058-1'],
-    'Ohne Haushalt darf nur das eigene Set erscheinen');
+  assert.deepEqual(
+    nurKind.map(s => s.set_number),
+    ['21058-1'],
+    'Ohne Haushalt darf nur das eigene Set erscheinen',
+  );
 
   // ── Figuren: dieselbe Funktion, dieselben Regeln ─────────────────────────
   const { item: figItem, sets: figuren } = await verwendendeSets([haupt, kind], 'minifigs', { fig_number: 'sw0001' });
-  assert.deepEqual(figuren.map(s => [s.set_number, s.quantity]),
-    [['21058-1', 1], ['75192-1', 2]],
-    'Für Figuren gilt dasselbe — inklusive: die manuell erfasste zählt nicht mit');
+  assert.deepEqual(
+    figuren.map(s => [s.set_number, s.quantity]),
+    [
+      ['21058-1', 1],
+      ['75192-1', 2],
+    ],
+    'Für Figuren gilt dasselbe — inklusive: die manuell erfasste zählt nicht mit',
+  );
 
   // ── Der Kopf des Dialogs kommt aus DENSELBEN Zeilen ─────────────────────
   //
@@ -124,26 +161,37 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async (t) => {
   assert.equal(item.nummer, '3001');
   assert.equal(item.name, 'Brick 2x4');
   assert.equal(item.color_name, 'Rot');
-  assert.equal(item.total_quantity, 25,
-    'Die Gesamtmenge muss die Summe der Sets sein — und die manuelle Zeile NICHT enthalten');
-  assert.equal(item.is_spare, false,
-    'is_spare kommt als INTEGER; "0" ist in JavaScript WAHR — hier muss ein echter Wahrheitswert stehen');
+  assert.equal(
+    item.total_quantity,
+    25,
+    'Die Gesamtmenge muss die Summe der Sets sein — und die manuelle Zeile NICHT enthalten',
+  );
+  assert.equal(
+    item.is_spare,
+    false,
+    'is_spare kommt als INTEGER; "0" ist in JavaScript WAHR — hier muss ein echter Wahrheitswert stehen',
+  );
 
   assert.equal(figItem.nummer, 'sw0001');
   assert.equal(figItem.name, 'Han Solo');
-  assert.equal(figItem.color_name, null,
-    'Figuren haben keine Farbe — das Feld muss trotzdem dastehen, damit beide Antworten dieselbe Form haben');
+  assert.equal(
+    figItem.color_name,
+    null,
+    'Figuren haben keine Farbe — das Feld muss trotzdem dastehen, damit beide Antworten dieselbe Form haben',
+  );
   assert.equal(figItem.total_quantity, 3);
 
   // Selbstbeweis: Wäre die Abfrage kaputt und lieferte gar nichts, wären alle
   // deepEqual oben gegen leere Listen gelaufen — die erste hätte es gemeldet.
   // Diese Zeile hält zusätzlich fest, dass BEIDE Seiten etwas geliefert haben.
-  assert.ok(imHaushalt.length >= 3 && figuren.length >= 2,
-    'Eine der beiden Abfragen hat nichts geliefert');
+  assert.ok(imHaushalt.length >= 3 && figuren.length >= 2, 'Eine der beiden Abfragen hat nichts geliefert');
 });
 
-test('eine unerlaubte Spalte wird abgewiesen', async (t) => {
-  if (!await erreichbar()) { t.skip('keine Test-DB'); return; }
+test('eine unerlaubte Spalte wird abgewiesen', async t => {
+  if (!(await erreichbar())) {
+    t.skip('keine Test-DB');
+    return;
+  }
   // Der Spaltenname wird in den Abfragetext eingefügt — als Parameter geht das
   // nicht. Die Namen kommen aus Literalen der beiden Routen, nie aus einer
   // Anfrage; die Schranke steht trotzdem, damit ein künftiger Aufrufer nichts
@@ -151,5 +199,6 @@ test('eine unerlaubte Spalte wird abgewiesen', async (t) => {
   await assert.rejects(
     () => verwendendeSets([1], 'parts', { 'part_number; DROP TABLE parts': 'x' }),
     /unerlaubte Spalte/,
-    'Ein beliebiger Spaltenname ging durch');
+    'Ein beliebiger Spaltenname ging durch',
+  );
 });

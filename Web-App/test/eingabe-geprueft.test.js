@@ -25,22 +25,29 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { vertragsRouter } = _req('src/http/vertragsRouter.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 
-test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async (t) => {
+test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
   let aufrufe = 0;
   const router = vertragsRouter();
   // An res.json vorbei: Die Prüfung der Antwort (Testmodus) gilt dem echten Rumpf.
-  const zeige = (req, res) => { aufrufe++; res.type('json').send(JSON.stringify({ eingabe: req.eingabe, abfrage: req.abfrage })); };
+  const zeige = (req, res) => {
+    aufrufe++;
+    res.type('json').send(JSON.stringify({ eingabe: req.eingabe, abfrage: req.abfrage }));
+  };
   router.post('/sets', zeige);
   router.get('/catalog/sets', zeige);
   const app = express();
   app.use(express.json());
   app.use('/api/v1', router);
   const srv = app.listen(0);
-  t.after(() => new Promise((r) => srv.close(r)));
+  t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${srv.address().port}/api/v1`;
   const sende = async (pfad, rumpf) => {
-    const r = await fetch(basis + pfad, rumpf === undefined ? {}
-      : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(rumpf) });
+    const r = await fetch(
+      basis + pfad,
+      rumpf === undefined
+        ? {}
+        : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(rumpf) },
+    );
     return { status: r.status, body: await r.json() };
   };
 
@@ -86,15 +93,25 @@ test('jede Eingabe und Abfrage ist geschlossen', () => {
     }
   }
   assert.deepEqual(offen, []);
-  assert.ok(Object.values(VERTRAG).filter((r) => r.abfrage).length >= 40, 'zu wenige Routen mit Abfrage');
+  assert.ok(Object.values(VERTRAG).filter(r => r.abfrage).length >= 40, 'zu wenige Routen mit Abfrage');
 });
 
 test('die Abfrage steht in der OpenAPI-Beschreibung', () => {
   const dok = _req('src/vertrag/openapi.js').openapi();
-  const abfrage = dok.paths['/api/v1/sets'].get.parameters.filter((p) => p.in === 'query');
-  assert.deepEqual(abfrage.map((p) => p.name).sort(), ['accounts', 'page', 'page_size', 'search', 'sort', 'storage', 'theme']);
-  assert.equal(abfrage.find((p) => p.name === 'page').schema.type, 'string');
-  const alle = Object.values(dok.paths).flatMap((o) => Object.values(o)).flatMap((op) => op.parameters ?? [])
-    .filter((p) => p.in === 'query');
+  const abfrage = dok.paths['/api/v1/sets'].get.parameters.filter(p => p.in === 'query');
+  assert.deepEqual(abfrage.map(p => p.name).sort(), [
+    'accounts',
+    'page',
+    'page_size',
+    'search',
+    'sort',
+    'storage',
+    'theme',
+  ]);
+  assert.equal(abfrage.find(p => p.name === 'page').schema.type, 'string');
+  const alle = Object.values(dok.paths)
+    .flatMap(o => Object.values(o))
+    .flatMap(op => op.parameters ?? [])
+    .filter(p => p.in === 'query');
   assert.ok(alle.length >= 80, `nur ${alle.length} Abfrageparameter in der OpenAPI-Beschreibung`);
 });

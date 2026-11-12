@@ -5,9 +5,9 @@
  * vorgegebenen Serverantworten (test/helpers/oberflaeche.js).
  *
  * Gegenproben (am 28.10. gemessen):
- *   A  in 03-parts.js den alten Leerzustand der Set-Teile wieder unbedingt
+ *   A  in parts.js den alten Leerzustand der Set-Teile wieder unbedingt
  *      gezeichnet → rot: „Teile: manuelle da, aus Sets leer" und „beide leer"
- *   B  in figurenLeerAbgleichen() (06-minifigs.js) die Ausnahme für vorhandene
+ *   B  in figurenLeerAbgleichen() (minifigs.js) die Ausnahme für vorhandene
  *      manuelle Figuren entfernt → rot: „Figuren: manuelle da, aus Sets leer"
  *   C  teilPasstZumFilter() immer wahr → rot: „Farbfilter … wirkt auf beide Listen"
  */
@@ -15,10 +15,35 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-const ROT = { part_number: '3001', part_name: 'Brick 2 x 4', color_id: 4, color_name: 'Red', color_hex: 'C91A09', quantity: 2, conditions: ['U'], category_name: '11' };
-const BLAU = { part_number: '3002', part_name: 'Brick 2 x 2', color_id: 1, color_name: 'Blue', color_hex: '0055BF', quantity: 1, conditions: ['N'], category_name: '11' };
+const ROT = {
+  part_number: '3001',
+  part_name: 'Brick 2 x 4',
+  color_id: 4,
+  color_name: 'Red',
+  color_hex: 'C91A09',
+  quantity: 2,
+  conditions: ['U'],
+  category_name: '11',
+};
+const BLAU = {
+  part_number: '3002',
+  part_name: 'Brick 2 x 2',
+  color_id: 1,
+  color_name: 'Blue',
+  color_hex: '0055BF',
+  quantity: 1,
+  conditions: ['N'],
+  category_name: '11',
+};
 const FIGUR = { fig_number: 'fig-000123', fig_name: 'Chewbacca', quantity: 1, conditions: ['N'] };
-const SETTEIL = { part_number: '3020', part_name: 'Plate 2 x 4', color_name: 'Red', color_hex: 'C91A09', color_id: 4, total_quantity: 3 };
+const SETTEIL = {
+  part_number: '3020',
+  part_name: 'Plate 2 x 4',
+  color_name: 'Red',
+  color_hex: 'C91A09',
+  color_id: 4,
+  total_quantity: 3,
+};
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ');
 const sichtbar = el => !!el && el.style.display !== 'none';
@@ -36,9 +61,13 @@ test('Teile: manuelle da, aus Sets leer — kein Leerzustand', async () => {
   try {
     assert.equal(d.querySelectorAll('#manual-parts-list .man-tile').length, 1);
     assert.ok(sichtbar(d.getElementById('manual-parts-box')));
-    assert.ok(!text(d.getElementById('tab-parts')).includes('Noch keine Teile'),
-      'Unter einer Liste mit Einträgen steht „Noch keine Teile"');
-  } finally { w.close(); }
+    assert.ok(
+      !text(d.getElementById('tab-parts')).includes('Noch keine Teile'),
+      'Unter einer Liste mit Einträgen steht „Noch keine Teile"',
+    );
+  } finally {
+    w.close();
+  }
 });
 
 test('Teile: beide leer — genau ein Leerzustand, der leere Kasten verschwindet', async () => {
@@ -47,12 +76,19 @@ test('Teile: beide leer — genau ein Leerzustand, der leere Kasten verschwindet
     const leer = d.querySelectorAll('#tab-parts .leer');
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
     assert.ok(text(leer[0]).includes('Noch keine Teile'));
-    assert.ok(d.querySelector('#tab-parts .erfassen-leiste [data-click="oeffneErfassen"][data-arg="part"]'), 'Die Leiste bietet das Erfassen an');
+    assert.ok(
+      d.querySelector('#tab-parts .erfassen-leiste [data-click="oeffneErfassen"][data-arg="part"]'),
+      'Die Leiste bietet das Erfassen an',
+    );
     // Dasselbe Symbol wie der Reiter „Teile" — kein Puzzleteil.
-    assert.equal(leer[0].querySelector('.leer-ico use')?.getAttribute('href'),
-      d.querySelector('.sammlung-wahl [data-arg="parts"] use')?.getAttribute('href'));
+    assert.equal(
+      leer[0].querySelector('.leer-ico use')?.getAttribute('href'),
+      d.querySelector('.sammlung-wahl [data-arg="parts"] use')?.getAttribute('href'),
+    );
     assert.equal(sichtbar(d.getElementById('manual-parts-box')), false);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Teile: nur aus Sets — kein leerer Kasten für manuelle', async () => {
@@ -61,7 +97,9 @@ test('Teile: nur aus Sets — kein leerer Kasten für manuelle', async () => {
     assert.equal(d.querySelectorAll('#parts-main .part-card').length, 1);
     assert.equal(sichtbar(d.getElementById('manual-parts-box')), false);
     assert.equal(d.querySelectorAll('#tab-parts .leer').length, 0);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Farbfilter steht über den Listen und wirkt auf beide Listen', async () => {
@@ -69,19 +107,31 @@ test('Farbfilter steht über den Listen und wirkt auf beide Listen', async () =>
   try {
     const wahl = d.getElementById('parts-color');
     assert.ok(sichtbar(wahl), 'Das Farbfeld ist verborgen, obwohl es zwei Farben gibt');
-    assert.ok(wahl.compareDocumentPosition(d.getElementById('manual-parts-box')) & w.Node.DOCUMENT_POSITION_FOLLOWING,
-      'Der Farbfilter steht nicht über den Listen');
+    assert.ok(
+      wahl.compareDocumentPosition(d.getElementById('manual-parts-box')) & w.Node.DOCUMENT_POSITION_FOLLOWING,
+      'Der Farbfilter steht nicht über den Listen',
+    );
     // Der Wert bleibt englisch (so steht er in den Daten), die Beschriftung ist übersetzt.
-    assert.deepEqual([...wahl.options].map(o => o.value), ['', 'Red', 'Blue']);
-    assert.deepEqual([...wahl.options].map(o => o.textContent), ['Alle Farben', 'Rot', 'Blau']);
+    assert.deepEqual(
+      [...wahl.options].map(o => o.value),
+      ['', 'Red', 'Blue'],
+    );
+    assert.deepEqual(
+      [...wahl.options].map(o => o.textContent),
+      ['Alle Farben', 'Rot', 'Blau'],
+    );
     wahl.value = 'Blue';
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
     await ruhig();
     const namen = [...d.querySelectorAll('#manual-parts-list .man-tile-name')].map(text);
     assert.deepEqual(namen, ['Brick 2 x 2'], 'Farbfilter wirkt auf beide Listen');
-    assert.ok(aufrufe.some(a => a.url.includes('/v1/parts?') && a.url.includes('color=Blue')),
-      'Die Teile aus Sets werden nicht nach der Farbe gefragt');
-  } finally { w.close(); }
+    assert.ok(
+      aufrufe.some(a => a.url.includes('/v1/parts?') && a.url.includes('color=Blue')),
+      'Die Teile aus Sets werden nicht nach der Farbe gefragt',
+    );
+  } finally {
+    w.close();
+  }
 });
 
 async function figuren(antworten) {
@@ -95,9 +145,13 @@ test('Figuren: manuelle da, aus Sets leer — kein Leerzustand', async () => {
   const { w, d } = await figuren({ '/v1/minifigs/manual': { success: true, figs: [FIGUR] } });
   try {
     assert.equal(d.querySelectorAll('#manual-figs-list .man-tile').length, 1);
-    assert.ok(!text(d.getElementById('tab-minifigs')).includes('Noch keine Minifiguren'),
-      'Unter einer Liste mit Einträgen steht „Noch keine Minifiguren"');
-  } finally { w.close(); }
+    assert.ok(
+      !text(d.getElementById('tab-minifigs')).includes('Noch keine Minifiguren'),
+      'Unter einer Liste mit Einträgen steht „Noch keine Minifiguren"',
+    );
+  } finally {
+    w.close();
+  }
 });
 
 test('Figuren: beide leer — genau ein Leerzustand', async () => {
@@ -107,5 +161,7 @@ test('Figuren: beide leer — genau ein Leerzustand', async () => {
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
     assert.ok(text(leer[0]).includes('Noch keine Minifiguren'));
     assert.equal(sichtbar(d.getElementById('manual-figs-box')), false);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

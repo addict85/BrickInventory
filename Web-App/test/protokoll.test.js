@@ -22,10 +22,10 @@ const P = _req('src/infra/protokoll.js');
 /** Eine Ausgabe zum Mitlesen, mit stellbarer Uhr. */
 function mitschrift() {
   const m = { out: [], err: [], uhr: Date.parse('2026-10-30T12:00:00Z') };
-  return { m, ausgabe: { out: (z) => m.out.push(z), err: (z) => m.err.push(z), jetzt: () => m.uhr } };
+  return { m, ausgabe: { out: z => m.out.push(z), err: z => m.err.push(z), jetzt: () => m.uhr } };
 }
 
-test('eine Zeile ist JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext', (t) => {
+test('eine Zeile ist JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext', t => {
   const { m, ausgabe } = mitschrift();
   t.after(P.installiereProtokoll(ausgabe));
   P.anfrageKontext.run({ rid: 'ab12' }, () => console.warn('Preis fehlt für', '10294-1', { zustand: 'N' }));
@@ -33,8 +33,17 @@ test('eine Zeile ist JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext', (t) 
   console.error('kaputt', new Error('Verbindung weg'));
   assert.equal(m.err.length, 2);
   const warn = JSON.parse(m.err[0]);
-  assert.deepEqual({ ...warn, pid: 0 }, { zeit: '2026-10-30T12:00:00.000Z', stufe: 'warn',
-    nachricht: 'Preis fehlt für 10294-1', pid: 0, rid: 'ab12', kontext: { zustand: 'N' } });
+  assert.deepEqual(
+    { ...warn, pid: 0 },
+    {
+      zeit: '2026-10-30T12:00:00.000Z',
+      stufe: 'warn',
+      nachricht: 'Preis fehlt für 10294-1',
+      pid: 0,
+      rid: 'ab12',
+      kontext: { zustand: 'N' },
+    },
+  );
   assert.equal(warn.pid, process.pid);
   const info = JSON.parse(m.out[0]);
   assert.equal(info.stufe, 'info');
@@ -45,11 +54,15 @@ test('eine Zeile ist JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext', (t) 
   assert.match(fehler.kontext.fehler.stack, /protokoll\.test\.js/);
 });
 
-test('app_logs bekommt die Zeilen im bisherigen Textformat', async (t) => {
+test('app_logs bekommt die Zeilen im bisherigen Textformat', async t => {
   const { ausgabe } = mitschrift();
   t.after(P.installiereProtokoll(ausgabe));
   const geschrieben = [];
-  P.protokollInDieDatenbank({ query: async (sql, werte) => { if (sql.startsWith('INSERT')) geschrieben.push(werte); } });
+  P.protokollInDieDatenbank({
+    query: async (sql, werte) => {
+      if (sql.startsWith('INSERT')) geschrieben.push(werte);
+    },
+  });
   P.anfrageKontext.run({ rid: 'cd34' }, () => console.info('Set angelegt', { set: '42115-1' }));
   await P.leereProtokoll();
   assert.equal(geschrieben.length, 1);
@@ -57,25 +70,40 @@ test('app_logs bekommt die Zeilen im bisherigen Textformat', async (t) => {
   assert.match(geschrieben[0][1], /^\[\d{1,4}\/cd34\] Set angelegt \{"set":"42115-1"\}$/);
 });
 
-test('Schreibfehler: sofort, dann je Minute gesammelt', async (t) => {
+test('Schreibfehler: sofort, dann je Minute gesammelt', async t => {
   const { m, ausgabe } = mitschrift();
   t.after(P.installiereProtokoll(ausgabe));
-  P.protokollInDieDatenbank({ query: async () => { throw new Error('Datenbank weg'); } });
-  const zeile = async (n) => { for (let i = 0; i < n; i++) console.log('Zeile', i); await P.leereProtokoll(); };
+  P.protokollInDieDatenbank({
+    query: async () => {
+      throw new Error('Datenbank weg');
+    },
+  });
+  const zeile = async n => {
+    for (let i = 0; i < n; i++) console.log('Zeile', i);
+    await P.leereProtokoll();
+  };
   await zeile(3);
-  m.uhr += 10_000; await zeile(2);
-  m.uhr += 10_000; await zeile(4);
+  m.uhr += 10_000;
+  await zeile(2);
+  m.uhr += 10_000;
+  await zeile(4);
   const meldungen = () => m.err.map(z => JSON.parse(z)).filter(z => z.nachricht.startsWith('app_logs:'));
   assert.equal(meldungen().length, 1, 'innerhalb der Minute nur die erste Meldung');
   assert.equal(meldungen()[0].nachricht, 'app_logs: 3 Zeile(n) nicht geschrieben');
   assert.equal(meldungen()[0].kontext.letzter_fehler, 'Datenbank weg');
-  m.uhr += 60_000; P.meldeSchreibfehler();
+  m.uhr += 60_000;
+  P.meldeSchreibfehler();
   assert.equal(meldungen().length, 2);
-  assert.equal(meldungen()[1].nachricht, 'app_logs: 6 Zeile(n) nicht geschrieben', 'der Rest der Minute in einer Zeile');
+  assert.equal(
+    meldungen()[1].nachricht,
+    'app_logs: 6 Zeile(n) nicht geschrieben',
+    'der Rest der Minute in einer Zeile',
+  );
 });
 
 test('X-Request-Id: nur harmlose Kennungen, sonst eine eigene', () => {
-  for (const gut of ['ab12', '3f6c1a2e-6e1b-4c55-9a5d-1b2c3d4e5f60', 'proxy.1:2_x']) assert.equal(P.anfrageKennung(gut), gut);
+  for (const gut of ['ab12', '3f6c1a2e-6e1b-4c55-9a5d-1b2c3d4e5f60', 'proxy.1:2_x'])
+    assert.equal(P.anfrageKennung(gut), gut);
   for (const boese of ['a\nwarn gefälscht', 'x'.repeat(65), '', 'a b', '"};', ['liste'], undefined]) {
     const k = P.anfrageKennung(boese);
     assert.notEqual(k, boese);

@@ -11,44 +11,47 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 /** Antwort des abgefangenen Downloads: null plus ein Statuscode nach Wunsch. */
 let antwortStatus = null;
-let versuche = 0;
 const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = echtesRequire.apply(this, arguments);
+Module.prototype.require = function (name, ...rest) {
+  const m = echtesRequire.call(this, name, ...rest);
   // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
-    return new Proxy(m, { get: (t, k) => k === 'downloadSetImage'
-      ? (async (_u, _sn, info) => {
-          versuche++;
-          if (antwortStatus && info) info.status = antwortStatus;
-          return null;   // Fehlschlag — der Statuscode entscheidet über den Rest
-        }) : t[k] });
+  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
+    return new Proxy(m, {
+      get: (t, k) =>
+        k === 'downloadSetImage'
+          ? async (_u, _sn, info) => {
+              if (antwortStatus && info) info.status = antwortStatus;
+              return null; // Fehlschlag — der Statuscode entscheidet über den Rest
+            }
+          : t[k],
+    });
   }
   return m;
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
 const IM = _req('src/katalog/bilder/imageMisses.js');
 
-const einreihen = async (sn) => {
+const einreihen = async sn => {
   await db.run(`DELETE FROM image_wanted WHERE set_number = $1`, [sn]);
-  await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1, $2)`,
-               [`https://cdn/${sn}.jpg`, sn]);
+  await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1, $2)`, [`https://cdn/${sn}.jpg`, sn]);
 };
-const merker = async (sn) => db.get(
-  `SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
+const merker = async sn => db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
 
-test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); await db.runMigrations?.(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+    await db.runMigrations?.();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -66,10 +69,11 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     await IM._schreibePuffer();
     assert.equal(e.nichtGeladen, 1);
     const m = await merker(sn);
-    assert.ok(m, 'Ein 404 muss gemerkt werden — sonst wird jedes alte Set bei ' +
-                 'jedem Blättern erneut beim CDN gesucht');
-    assert.match(m.reason || '', /404/,
-      'Der Grund fehlt — dann steht in image-diag wieder nur „gilt als fehlend"');
+    assert.ok(
+      m,
+      'Ein 404 muss gemerkt werden — sonst wird jedes alte Set bei ' + 'jedem Blättern erneut beim CDN gesucht',
+    );
+    assert.match(m.reason || '', /404/, 'Der Grund fehlt — dann steht in image-diag wieder nur „gilt als fehlend"');
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
 
@@ -81,22 +85,30 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     antwortStatus = 404;
     await einreihen(sn);
 
-    const echtErr = console.error, echtWarn = console.warn;
-    const alsError = [], alsWarn = [];
+    const echtErr = console.error,
+      echtWarn = console.warn;
+    const alsError = [],
+      alsWarn = [];
     console.error = (...a) => alsError.push(a.map(String).join(' '));
-    console.warn  = (...a) => alsWarn.push(a.map(String).join(' '));
-    try { await IQ._arbeiteStapel(); }
-    finally { console.error = echtErr; console.warn = echtWarn; }
+    console.warn = (...a) => alsWarn.push(a.map(String).join(' '));
+    try {
+      await IQ._arbeiteStapel();
+    } finally {
+      console.error = echtErr;
+      console.warn = echtWarn;
+    }
     await IM._schreibePuffer();
 
-    const queueErr  = alsError.filter(z => z.startsWith('[image-queue]'));
+    const queueErr = alsError.filter(z => z.startsWith('[image-queue]'));
     const queueWarn = alsWarn.filter(z => z.startsWith('[image-queue]'));
-    assert.deepEqual(queueErr, [],
-      `Ein reiner 404-Stapel wurde als error gemeldet: ${queueErr.join(' | ')}`);
-    assert.equal(queueWarn.length, 1,
+    assert.deepEqual(queueErr, [], `Ein reiner 404-Stapel wurde als error gemeldet: ${queueErr.join(' | ')}`);
+    assert.equal(
+      queueWarn.length,
+      1,
       `Erwartet GENAU eine warn-Zeile, bekam ${queueWarn.length}: ${queueWarn.join(' | ')}. ` +
-      'Keine hiesse, der Stapel schweigt jetzt ganz — und dann faellt auch nicht ' +
-      'mehr auf, WELCHE Sets kein Bild haben.');
+        'Keine hiesse, der Stapel schweigt jetzt ganz — und dann faellt auch nicht ' +
+        'mehr auf, WELCHE Sets kein Bild haben.',
+    );
     assert.match(queueWarn[0], new RegExp(sn), 'Die Setnummer fehlt in der Meldung');
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
@@ -112,20 +124,31 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     antwortStatus = null;
     await einreihen(sn);
 
-    const echtErr = console.error, echtWarn = console.warn;
-    const alsError = [], alsWarn = [];
+    const echtErr = console.error,
+      echtWarn = console.warn;
+    const alsError = [],
+      alsWarn = [];
     console.error = (...a) => alsError.push(a.map(String).join(' '));
-    console.warn  = (...a) => alsWarn.push(a.map(String).join(' '));
-    try { await IQ._arbeiteStapel(); }
-    finally { console.error = echtErr; console.warn = echtWarn; }
+    console.warn = (...a) => alsWarn.push(a.map(String).join(' '));
+    try {
+      await IQ._arbeiteStapel();
+    } finally {
+      console.error = echtErr;
+      console.warn = echtWarn;
+    }
 
     const queueErr = alsError.filter(z => z.startsWith('[image-queue]'));
-    assert.equal(queueErr.length, 1,
+    assert.equal(
+      queueErr.length,
+      1,
       `Ein wiederholbarer Fehler muss als error gemeldet werden, bekam ` +
-      `${queueErr.length} error- und ${alsWarn.filter(z => z.startsWith('[image-queue]')).length} warn-Zeilen`);
-    assert.match(queueErr[0], /wird erneut versucht/,
-      'Die Meldung sagt nicht, dass es wiederholt wird — genau das unterscheidet ' +
-      'sie vom 404, der endgueltig ist');
+        `${queueErr.length} error- und ${alsWarn.filter(z => z.startsWith('[image-queue]')).length} warn-Zeilen`,
+    );
+    assert.match(
+      queueErr[0],
+      /wird erneut versucht/,
+      'Die Meldung sagt nicht, dass es wiederholt wird — genau das unterscheidet ' + 'sie vom 404, der endgueltig ist',
+    );
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
 
@@ -141,10 +164,13 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     const e = await IQ._arbeiteStapel();
     await IM._schreibePuffer();
     assert.equal(e.nichtGeladen, 1, 'Der Fehlschlag muss trotzdem gezählt werden');
-    assert.equal(await merker(sn), undefined,
+    assert.equal(
+      await merker(sn),
+      undefined,
       'Ein vorübergehender Fehler wurde als „Bild existiert nicht" vermerkt. ' +
-      'Genau so verschwinden Bilder für sieben Tage, ohne dass je etwas ' +
-      'daran war — und niemand sieht, dass es überhaupt einen Versuch gab.');
+        'Genau so verschwinden Bilder für sieben Tage, ohne dass je etwas ' +
+        'daran war — und niemand sieht, dass es überhaupt einen Versuch gab.',
+    );
     assert.match(IQ.meldung(e), /Download fehlgeschlagen/);
   });
 
@@ -155,14 +181,18 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
     const proxy = ohneKommentare(require('./helpers/sources').proxyThumbQuelle());
-    const job   = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarfLauf.ts'), 'utf8'));
-    assert.match(proxy, /status === 404[\s\S]{0,200}merkeFehlend/,
-      'Im Proxy hängt die Fehlanzeige nicht mehr am 404');
-    assert.match(job, /info\.status === 404/,
-      'Der Job unterscheidet den 404 nicht — dann sperrt wieder jeder ' +
-      'Netzwerkfehler das Bild für sieben Tage aus');
-    assert.doesNotMatch(job, /\n\s*merkeFehlend\('set:' \+ r\.set_number\);/,
-      'Es gibt wieder einen unbedingten Vermerk für Sets');
+    const job = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarfLauf.ts'), 'utf8'));
+    assert.match(proxy, /status === 404[\s\S]{0,200}merkeFehlend/, 'Im Proxy hängt die Fehlanzeige nicht mehr am 404');
+    assert.match(
+      job,
+      /info\.status === 404/,
+      'Der Job unterscheidet den 404 nicht — dann sperrt wieder jeder ' + 'Netzwerkfehler das Bild für sieben Tage aus',
+    );
+    assert.doesNotMatch(
+      job,
+      /\n\s*merkeFehlend\('set:' \+ r\.set_number\);/,
+      'Es gibt wieder einen unbedingten Vermerk für Sets',
+    );
   });
 
   antwortStatus = null;
@@ -170,12 +200,12 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']).catch(() => {});
 });
 
-test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar',
-  { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw e;
-    t.skip('Test-DB nicht erreichbar'); return;
+test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -203,37 +233,49 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar',
 
     await t.test('image-diag nennt den Merker und den Grund', async () => {
       const a = await (await fetch(`${base}/api/v1/admin/image-diag/${P}_1`)).json();
-      assert.ok(a.merker, 'Ausgerechnet die Tabelle, die den Abruf verhindert, ' +
-                          'kam in der Diagnose nicht vor');
+      assert.ok(a.merker, 'Ausgerechnet die Tabelle, die den Abruf verhindert, ' + 'kam in der Diagnose nicht vor');
       assert.match(a.merker.grund || '', /404/);
-      assert.ok(a.hinweise.some(h => /als fehlend/.test(h)),
-        'Der Klartext-Hinweis fehlt — dann muss man die Antwort erst deuten');
+      assert.ok(
+        a.hinweise.some(h => /als fehlend/.test(h)),
+        'Der Klartext-Hinweis fehlt — dann muss man die Antwort erst deuten',
+      );
     });
 
     await t.test('zurücknehmen wirkt', async () => {
-      const r = await (await fetch(`${base}/api/v1/admin/forget-image-misses`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ set_numbers: [`${P}_1`] }),
-      })).json();
+      const r = await (
+        await fetch(`${base}/api/v1/admin/forget-image-misses`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ set_numbers: [`${P}_1`] }),
+        })
+      ).json();
       assert.equal(r.entfernt, 1);
       assert.equal(await merker(`${P}_1`), undefined, 'Der Eintrag steht noch');
-      assert.equal(IM.istBekanntFehlend(`set:${P}_1`), false,
+      assert.equal(
+        IM.istBekanntFehlend(`set:${P}_1`),
+        false,
         'Im Arbeitsspeicher gilt das Bild weiter als fehlend — dann ändert ' +
-        'sich bis zum nächsten Auffrischen nichts');
+          'sich bis zum nächsten Auffrischen nichts',
+      );
     });
 
     await t.test('Vorschau-Vermerke bleiben unangetastet', async () => {
       IM.merkeFehlend('thumb:/irgendwo/xyz_thumb.jpg', 'Vorschau konnte nicht erzeugt werden');
       await IM._schreibePuffer();
-      await (await fetch(`${base}/api/v1/admin/forget-image-misses`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
-      })).json();
-      const t2 = await db.get(`SELECT 1 FROM image_misses WHERE cache_key = $1`,
-                              ['thumb:/irgendwo/xyz_thumb.jpg']);
-      assert.ok(t2, 'Ein Lauf ohne Angabe hat die Vorschau-Vermerke mitgenommen — ' +
-                    'die haben einen anderen Zweck als „Bild gibt es nicht"');
-      await db.run(`DELETE FROM image_misses WHERE cache_key = $1`,
-                   ['thumb:/irgendwo/xyz_thumb.jpg']);
+      await (
+        await fetch(`${base}/api/v1/admin/forget-image-misses`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        })
+      ).json();
+      const t2 = await db.get(`SELECT 1 FROM image_misses WHERE cache_key = $1`, ['thumb:/irgendwo/xyz_thumb.jpg']);
+      assert.ok(
+        t2,
+        'Ein Lauf ohne Angabe hat die Vorschau-Vermerke mitgenommen — ' +
+          'die haben einen anderen Zweck als „Bild gibt es nicht"',
+      );
+      await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['thumb:/irgendwo/xyz_thumb.jpg']);
     });
   } finally {
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']).catch(() => {});

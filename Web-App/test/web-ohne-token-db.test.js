@@ -16,9 +16,9 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -27,28 +27,37 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const express   = require(path.join(ROOT, 'node_modules', 'express'));
-const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
+const express = require(path.join(ROOT, 'node_modules', 'express'));
+const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
-const bcrypt    = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const NAME = `ohnetoken_${process.pid}`, PASS = 'richtigesPasswort1';
+const NAME = `ohnetoken_${process.pid}`,
+  PASS = 'richtigesPasswort1';
 
-test('Browser ohne Token', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Browser ohne Token', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(
-    `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
-    [NAME, await bcrypt.hash(PASS, 4)])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
+      [NAME, await bcrypt.hash(PASS, 4)],
+    )
+  ).id;
 
   const KEKS = _req('src/http/sitzungsKeks.js').sitzungsKeksName();
   const app = express();
   app.use(express.json());
-  app.use(session({
-    store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false, name: KEKS,
-  }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      name: KEKS,
+    }),
+  );
   app.use('/api/v1/auth', _req('routes/auth.js'));
   app.use('/api/v1', _req('routes/api_v1/settings.js'));
   const srv = app.listen(0);
@@ -61,15 +70,24 @@ test('Browser ohne Token', { concurrency: 1 }, async (t) => {
   });
 
   const ruf = async (weg, { method = 'GET', body, cookie } = {}) => {
-    const r = await fetch(basis + weg, { method,
+    const r = await fetch(basis + weg, {
+      method,
       headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
-      ...(body ? { body: JSON.stringify(body) } : {}) });
-    return { status: r.status, cookie: (r.headers.get('set-cookie') || '').split(';')[0], body: await r.json().catch(() => null) };
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    return {
+      status: r.status,
+      cookie: (r.headers.get('set-cookie') || '').split(';')[0],
+      body: await r.json().catch(() => null),
+    };
   };
-  const anmelden = (zusatz) => ruf('/auth/login', { method: 'POST', body: { username: NAME, password: PASS, ...zusatz } });
+  const anmelden = zusatz =>
+    ruf('/auth/login', { method: 'POST', body: { username: NAME, password: PASS, ...zusatz } });
   const tokens = async () => Number((await db.get('SELECT COUNT(*) AS n FROM api_tokens WHERE user_id = $1', [uid])).n);
-  const sitzungen = async () => Number((await db.get(
-    "SELECT COUNT(*) AS n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])).n);
+  const sitzungen = async () =>
+    Number(
+      (await db.get("SELECT COUNT(*) AS n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])).n,
+    );
 
   let eigene;
   await t.test('kein Token für den Browser', async () => {
@@ -94,12 +112,20 @@ test('Browser ohne Token', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('die eigene Sitzung bleibt', async () => {
-    await anmelden({ ohne_token: true });            // ein zweiter Browser
+    await anmelden({ ohne_token: true }); // ein zweiter Browser
     assert.equal(await sitzungen(), 2, 'Vorbedingung: zwei Sitzungen (zwei Browser; die App hat keine)');
-    const ohne = await ruf('/settings/sessions/andere-beenden', { method: 'POST', cookie: eigene, body: { password: 'falsch-1234' } });
+    const ohne = await ruf('/settings/sessions/andere-beenden', {
+      method: 'POST',
+      cookie: eigene,
+      body: { password: 'falsch-1234' },
+    });
     assert.deepEqual([ohne.status, ohne.body?.code], [400, 'aktuelles_passwort_falsch']);
     assert.equal(await sitzungen(), 2, 'ohne richtiges Passwort wurden Sitzungen beendet');
-    const r = await ruf('/settings/sessions/andere-beenden', { method: 'POST', cookie: eigene, body: { password: PASS } });
+    const r = await ruf('/settings/sessions/andere-beenden', {
+      method: 'POST',
+      cookie: eigene,
+      body: { password: PASS },
+    });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.deleted, 1);
     assert.equal(await sitzungen(), 1);

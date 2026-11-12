@@ -41,20 +41,33 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
 </script></body></html>`;
 }
 
-test('Finanzkacheln am Telefon', (t) => {
+test('Finanzkacheln am Telefon', t => {
   const bin = chrome();
-  if (!bin) { t.skip('kein Chrome gefunden'); return; }
+  if (!bin) {
+    t.skip('kein Chrome gefunden');
+    return;
+  }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'telefon-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
   fs.writeFileSync(datei, testseite());
-  const dom = execFileSync(bin, ['--headless', '--no-sandbox', '--disable-gpu', '--allow-file-access-from-files',
-    '--window-size=500,800', '--virtual-time-budget=3000', '--dump-dom', `file://${datei}`],
-    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] });
+  const dom = execFileSync(
+    bin,
+    [
+      '--headless',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--allow-file-access-from-files',
+      '--window-size=500,800',
+      '--virtual-time-budget=3000',
+      '--dump-dom',
+      `file://${datei}`,
+    ],
+    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
+  );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
   assert.equal(e.ueber.length, 3);
-  for (const k of e.ueber)
-    assert.ok(k.rechts <= e.breite, `${k.name} ragt ${k.rechts - e.breite} px über den Rand`);
+  for (const k of e.ueber) assert.ok(k.rechts <= e.breite, `${k.name} ragt ${k.rechts - e.breite} px über den Rand`);
 });

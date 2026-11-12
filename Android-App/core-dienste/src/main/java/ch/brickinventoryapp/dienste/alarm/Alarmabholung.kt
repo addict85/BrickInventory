@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.dienste.alarm
 
+import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.data.model.PendingAlertsResponse
 import ch.brickinventoryapp.model.data.model.Preisalarm
 import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
@@ -15,7 +16,7 @@ typealias Frage = suspend (String?) -> Abrufergebnis<PendingAlertsResponse>
  * Workers, weil sich ein ListenableWorker nur mit laufendem Android prüfen lässt.
  * Der Worker beschafft den Kontext, ruft hier an und zeigt an, was zurückkommt.
  */
-object Alarmabholung {
+internal object Alarmabholung {
 
     /** Was ein Durchgang ergeben hat. */
     sealed interface Ergebnis {
@@ -67,7 +68,7 @@ object Alarmabholung {
      * sind nicht 200 EUR.
      */
     fun text(a: Preisalarm, unter: String, ueber: String): String {
-        val richtung = if (a.richtung == "unter") unter else ueber
+        val richtung = if (a.richtung == Alarmrichtung.UNTER) unter else ueber
         val preis = a.zuletztPreis
         val schwelle = String.format(java.util.Locale.US, "%.2f", a.schwelle)
         return if (preis == null)

@@ -46,7 +46,7 @@ class ScopeFilterSpeicher @Inject constructor(private val dataStore: DataStore<P
     // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter ═══
     //
     // In dieser Datei, weil er derselbe Gegenstand ist und dieselben Regeln teilt:
-    // gefiltert am Server, zurückgesetzt beim Anmelden. Wie in public/js/14-scope.js.
+    // gefiltert am Server, zurückgesetzt beim Anmelden. Wie in public/js/scope.js.
 
     /** Ansichten mit einem Lagerortfilter. Nur Sets und Teile haben einen. */
     private fun lagerKey(view: ScopeFilter.View) = stringPreferencesKey("lager_${view.key}")

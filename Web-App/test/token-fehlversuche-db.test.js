@@ -30,7 +30,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const auth = _req('src/konto/auth.js');
+const auth = _req('src/konto/geraeteToken.js');
+const tokenCache = _req('src/konto/tokenCache.js');
 const bremse = _req('src/konto/tokenFehlversuche.js');
 const { anmeldungAmEingang } = _req('routes/api_v1/middleware.js');
 const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
@@ -45,7 +46,7 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   server.app.use('/api/v1', anmeldungAmEingang);
   server.app.get('/api/v1/probe', (_req2, res) => res.json({ ok: true }));
   // Den Cache gibt es nur mit stehender Horch-Verbindung für Widerrufe (fail closed).
-  auth.horcheAufTokenWiderruf();
+  tokenCache.horcheAufTokenWiderruf();
   assert.ok(await bis(() => pgNotify.hoertZu('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
   t.after(async () => {
     await pgNotify.close();
@@ -112,7 +113,7 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
     await db.run(`UPDATE api_tokens_verbraucht SET verbraucht_am = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [
       uid,
     ]);
-    auth.leereTokenCache();
+    tokenCache.leereTokenCache();
     for (let i = 0; i < bremse.FEHLVERSUCH_MAX; i++) await ruf(zufall(i));
     assert.equal((await ruf(alt)).status, 401);
     // Wäre der Familien-Treffer mitgezählt, läge die Adresse jetzt über dem Limit.

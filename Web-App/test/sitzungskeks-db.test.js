@@ -30,57 +30,94 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { warte } = require('./helpers/zeit');
-const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
+const freierPort = () =>
+  new Promise(r => {
+    const s = net.createServer().listen(0, () => {
+      const p = s.address().port;
+      s.close(() => r(p));
+    });
+  });
 
-const NAME = `keks_${process.pid}`, PASS = 'Keks-Passwort-1';
+const NAME = `keks_${process.pid}`,
+  PASS = 'Keks-Passwort-1';
 
 /** Der echte Server aus dist/, in Produktion; `env` entscheidet über TLS. */
 async function starteServer(t, env) {
   const port = await freierPort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'keks-test-geheimnis-lang-genug-1234',
-           PORT: String(port), ROLLE: 'web', NODE_ENV: 'production', DB_SUPERUSER_ERLAUBT: '1', APP_BASE_URL_FEHLT_OK: '1', ...env },
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      DATABASE_URL: URL_DB,
+      SESSION_SECRET: 'keks-test-geheimnis-lang-genug-1234',
+      PORT: String(port),
+      ROLLE: 'web',
+      NODE_ENV: 'production',
+      DB_SUPERUSER_ERLAUBT: '1',
+      APP_BASE_URL_FEHLT_OK: '1',
+      ...env,
+    },
   });
   let log = '';
-  srv.stdout.on('data', d => { log += d; });
-  srv.stderr.on('data', d => { log += d; });
+  srv.stdout.on('data', d => {
+    log += d;
+  });
+  srv.stderr.on('data', d => {
+    log += d;
+  });
   t.after(async () => {
     srv.kill('SIGTERM');
     for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   const basis = `http://127.0.0.1:${port}`;
-  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++) await warte(250);
+  for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++)
+    await warte(250);
   return { basis, log: () => log };
 }
 
 /** Anmelden, mit dem Cookie fragen, wer man ist, abmelden. */
 async function durchlauf(server, kopf) {
-  const login = await fetch(`${server.basis}/api/v1/auth/login`, { method: 'POST',
+  const login = await fetch(`${server.basis}/api/v1/auth/login`, {
+    method: 'POST',
     headers: { 'content-type': 'application/json', ...kopf },
-    body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }) });
+    body: JSON.stringify({ username: NAME, password: PASS, ohne_token: true }),
+  });
   assert.equal(login.status, 200, `${await login.text()}\n${server.log()}`);
   const setzen = login.headers.get('set-cookie');
   const cookie = setzen.split(';')[0];
   const ich = async () => (await fetch(`${server.basis}/api/v1/auth/me`, { headers: { cookie, ...kopf } })).json();
   const angemeldet = await ich();
   // Ein Bearer-Kopf daneben darf die Herkunftsprüfung nicht abschalten.
-  const fremd = await fetch(`${server.basis}/api/v1/auth/logout`, { method: 'POST',
-    headers: { cookie, ...kopf, authorization: 'Bearer x', 'sec-fetch-site': 'cross-site' } });
+  const fremd = await fetch(`${server.basis}/api/v1/auth/logout`, {
+    method: 'POST',
+    headers: { cookie, ...kopf, authorization: 'Bearer x', 'sec-fetch-site': 'cross-site' },
+  });
   await fremd.arrayBuffer();
-  const ab = await fetch(`${server.basis}/api/v1/auth/logout`, { method: 'POST',
-    headers: { cookie, ...kopf, 'sec-fetch-site': 'same-origin' } });
+  const ab = await fetch(`${server.basis}/api/v1/auth/logout`, {
+    method: 'POST',
+    headers: { cookie, ...kopf, 'sec-fetch-site': 'same-origin' },
+  });
   await ab.arrayBuffer();
-  return { setzen, cookie, angemeldet, fremd: fremd.status, loeschen: ab.headers.get('set-cookie'), danach: await ich() };
+  return {
+    setzen,
+    cookie,
+    angemeldet,
+    fremd: fremd.status,
+    loeschen: ab.headers.get('set-cookie'),
+    danach: await ich(),
+  };
 }
 
-test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  await db.run(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true)`,
-    [NAME, bcrypt.hashSync(PASS, 4)]);
-  await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE $1", [`%${NAME}%`]);
+  await db.run(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true)`, [
+    NAME,
+    bcrypt.hashSync(PASS, 4),
+  ]);
+  await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%${NAME}%`]);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]);
     await db.pool.end().catch(() => {});

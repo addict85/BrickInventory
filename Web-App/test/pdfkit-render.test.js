@@ -17,7 +17,12 @@ function rendern(bauen) {
     doc.on('data', c => teile.push(c));
     doc.on('error', fehler);
     doc.on('end', () => fertig(Buffer.concat(teile)));
-    try { bauen(doc); doc.end(); } catch (e) { fehler(e); }
+    try {
+      bauen(doc);
+      doc.end();
+    } catch (e) {
+      fehler(e);
+    }
   });
 }
 
@@ -52,14 +57,22 @@ test('Bilder werden eingebettet — JPEG und PNG', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdfkit-'));
   const jpg = path.join(dir, 'p.jpg');
   const png = path.join(dir, 'p.png');
-  fs.writeFileSync(jpg, Buffer.from(
-    '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRof' +
-    'Hh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAAB' +
-    'AAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==',
-    'base64'));
-  fs.writeFileSync(png, Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGA' +
-    'hKmMIQAAAABJRU5ErkJggg==', 'base64'));
+  fs.writeFileSync(
+    jpg,
+    Buffer.from(
+      '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRof' +
+        'Hh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAAB' +
+        'AAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==',
+      'base64',
+    ),
+  );
+  fs.writeFileSync(
+    png,
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGA' + 'hKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  );
 
   try {
     const b = await rendern(doc => {
@@ -84,7 +97,10 @@ test('jpeg-exif ist nicht mehr im Abhängigkeitsbaum', () => {
   // liest niemand zuverlässig.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
   const treffer = Object.keys(lock.packages || {}).filter(p => p.includes('jpeg-exif'));
-  assert.deepEqual(treffer, [],
+  assert.deepEqual(
+    treffer,
+    [],
     'jpeg-exif ist zurück. Es wird nicht mehr gepflegt und kam zuletzt über ' +
-    'pdfkit < 0.20 herein — dort ist es seither entfallen.');
+      'pdfkit < 0.20 herein — dort ist es seither entfallen.',
+  );
 });

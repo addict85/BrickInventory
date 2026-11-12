@@ -2,13 +2,27 @@
 /**
  * Erzeugt aus shared/design-tokens.json die Design-Dateien BEIDER Oberflaechen.
  */
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const WURZEL = path.join(__dirname, '..', '..');
 const QUELLE = path.join(WURZEL, 'shared', 'design-tokens.json');
 const ZIEL_CSS = path.join(WURZEL, 'Web-App', 'public', 'tokens.css');
-const ZIEL_KT = path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'theme', 'DesignTokens.kt');
+const ZIEL_KT = path.join(
+  __dirname,
+  '..',
+  '..',
+  'Android-App',
+  'core-ui',
+  'src',
+  'main',
+  'java',
+  'ch',
+  'brickinventoryapp',
+  'ui',
+  'theme',
+  'DesignTokens.kt',
+);
 const ZIEL_DUNKEL_KT = path.join(path.dirname(ZIEL_KT), 'DunkelTokens.kt');
 
 const HINWEIS = 'ERZEUGT aus shared/design-tokens.json — NICHT von Hand aendern.';
@@ -26,8 +40,10 @@ function umbruch(text, breite = 72) {
   const zeilen = [];
   let z = '';
   for (const wort of text.split(/\s+/)) {
-    if ((z + ' ' + wort).trim().length > breite) { zeilen.push(z.trim()); z = wort; }
-    else z += ' ' + wort;
+    if ((z + ' ' + wort).trim().length > breite) {
+      zeilen.push(z.trim());
+      z = wort;
+    } else z += ' ' + wort;
   }
   if (z.trim()) zeilen.push(z.trim());
   return zeilen;
@@ -45,18 +61,22 @@ function baueCss(daten) {
   // Gebraucht-Linie Sand ist und nicht blau.
   /** @param {string} wahl @param {Record<string,string>} tokens @param {boolean} [mitNotiz] */
   const block = (wahl, tokens, mitNotiz = true) => {
-    const zeilen = Object.entries(tokens).flatMap(([name, wert]) => {
-      const notiz = mitNotiz ? (daten._notizen || {})[name] : undefined;
-      // Nur die ERSTE Zeile oeffnet den Kommentar, nur die letzte schliesst
-      // ihn. CSS-Kommentare schachteln nicht: Ein `/*` auf jeder Zeile waere
-      // zwar zufaellig gueltig (alles bis zum ersten `*/` gehoert dazu), laese
-      // sich aber falsch und zerbraeche, sobald jemand eine Zeile umstellt.
-      const vor = notiz
-        ? ['', ...umbruch(notiz).map((z, i, a) =>
-            `  ${i === 0 ? '/* ' : '   '}${z}${i === a.length - 1 ? ' */' : ''}`)]
-        : [];
-      return [...vor, `  --${name}: ${wert};`];
-    }).join('\n');
+    const zeilen = Object.entries(tokens)
+      .flatMap(([name, wert]) => {
+        const notiz = mitNotiz ? daten._notizen?.[name] : undefined;
+        // Nur die ERSTE Zeile oeffnet den Kommentar, nur die letzte schliesst
+        // ihn. CSS-Kommentare schachteln nicht: Ein `/*` auf jeder Zeile waere
+        // zwar zufaellig gueltig (alles bis zum ersten `*/` gehoert dazu), laese
+        // sich aber falsch und zerbraeche, sobald jemand eine Zeile umstellt.
+        const vor = notiz
+          ? [
+              '',
+              ...umbruch(notiz).map((z, i, a) => `  ${i === 0 ? '/* ' : '   '}${z}${i === a.length - 1 ? ' */' : ''}`),
+            ]
+          : [];
+        return [...vor, `  --${name}: ${wert};`];
+      })
+      .join('\n');
     return `${wahl} {\n${zeilen}\n}`;
   };
   const teile = [];
@@ -71,13 +91,21 @@ function baueCss(daten) {
   // ZWEI Attribute, damit sie die themes/*.css (ein Attribut) schlagen, die
   // nach tokens.css geladen werden.
   if (daten.dunkel) {
-    teile.push(`/* Dunkle Variante — siehe _dunkel_warum in shared/design-tokens.json. */\n` +
-      block('[data-dunkel]:is([data-theme], :not([data-theme]))', daten.dunkel.basis, false));
+    teile.push(
+      `/* Dunkle Variante — siehe _dunkel_warum in shared/design-tokens.json. */\n` +
+        block('[data-dunkel]:is([data-theme], :not([data-theme]))', daten.dunkel.basis, false),
+    );
     for (const [design, roh] of Object.entries(daten.dunkel.designs || {})) {
       const tokens = aufgeloest({ designs: daten.dunkel.designs }, design, roh);
-      teile.push(block(design === 'classic'
-        ? '[data-dunkel]:is([data-theme="classic"], :not([data-theme]))'
-        : `[data-dunkel][data-theme="${design}"]`, tokens, false));
+      teile.push(
+        block(
+          design === 'classic'
+            ? '[data-dunkel]:is([data-theme="classic"], :not([data-theme]))'
+            : `[data-dunkel][data-theme="${design}"]`,
+          tokens,
+          false,
+        ),
+      );
     }
   }
   // Durchgezaehlte Farbreihen. Frueher stand hier EIN fest verdrahteter
@@ -86,11 +114,11 @@ function baueCss(daten) {
   // zaehlt die Schleife auf, was in `listen` steht.
   for (const [name, liste] of Object.entries(daten.listen || {})) {
     const zeilen = liste.werte
-      .map((/** @type {string} */ wert, /** @type {number} */ i) => `  --${liste.praefix}-${i}: ${wert};`).join('\n');
-    teile.push([
-      `/* ${name} — siehe listen.${name}.warum in shared/design-tokens.json. */`,
-      ':root {', zeilen, '}',
-    ].join('\n'));
+      .map((/** @type {string} */ wert, /** @type {number} */ i) => `  --${liste.praefix}-${i}: ${wert};`)
+      .join('\n');
+    teile.push(
+      [`/* ${name} — siehe listen.${name}.warum in shared/design-tokens.json. */`, ':root {', zeilen, '}'].join('\n'),
+    );
   }
   return `/* ${HINWEIS}\n\n   ${daten._warum} */\n\n${teile.join('\n\n')}\n`;
 }
@@ -107,7 +135,8 @@ function aufgeloest(daten, name, roh) {
   if (!quelle) return roh;
   const geerbt = daten.designs[quelle];
   if (!geerbt) throw new Error(`design-tokens.json: "${name}" erbt von "${quelle}", das es nicht gibt`);
-  if (geerbt.erbt) throw new Error(`design-tokens.json: "${name}" erbt von "${quelle}", das selbst erbt — eine Stufe, keine Kette`);
+  if (geerbt.erbt)
+    throw new Error(`design-tokens.json: "${name}" erbt von "${quelle}", das selbst erbt — eine Stufe, keine Kette`);
   const { erbt, ...eigene } = roh;
   return { ...geerbt, ...eigene };
 }
@@ -122,27 +151,33 @@ function baueKotlin(daten) {
     const wert = aufgeloest(daten, design, daten.designs[design])[token];
     if (!wert) throw new Error(`design-tokens.json: --${token} gibt es im Design "${design}" nicht`);
     const hex = wert.replace('#', '').toUpperCase();
-    const notiz = (daten._notizen || {})[token];
+    const notiz = daten._notizen?.[token];
     const kdoc = notiz
-      ? ['/**', ` * --${token} im Design "${design}".`, ' *',
-         ...umbruch(notiz, 68).map(z => ` * ${z}`), ' */'].join('\n')
+      ? ['/**', ` * --${token} im Design "${design}".`, ' *', ...umbruch(notiz, 68).map(z => ` * ${z}`), ' */'].join(
+          '\n',
+        )
       : `/** --${token} im Design "${design}". */`;
     return `${kdoc}\nval ${name} = Color(0xFF${hex})`;
   });
   // Dieselbe Verallgemeinerung wie im CSS darueber.
-  const faecherBlock = Object.values(daten.listen || {}).map((/** @type {any} */ liste) => {
-    const farben = liste.werte
-      .map((/** @type {string} */ w) => `    Color(0xFF${w.replace('#', '').toUpperCase()}),`).join('\n');
-    return `
+  const faecherBlock = Object.values(daten.listen || {})
+    .map((/** @type {any} */ liste) => {
+      const farben = liste.werte
+        .map((/** @type {string} */ w) => `    Color(0xFF${w.replace('#', '').toUpperCase()}),`)
+        .join('\n');
+      return `
 
 /**
-${umbruch(liste.warum, 68).map((/** @type {string} */ z) => ` * ${z}`).join('\n')}
+${umbruch(liste.warum, 68)
+  .map((/** @type {string} */ z) => ` * ${z}`)
+  .join('\n')}
  */
 val ${liste.kotlin} = listOf(
 ${farben}
 )
 `;
-  }).join('');
+    })
+    .join('');
 
   return `package ch.brickinventoryapp.ui.theme
 
@@ -172,16 +207,21 @@ ${faecherBlock}`;
 function baueKotlinDunkel(daten) {
   if (!daten.dunkel) throw new Error('design-tokens.json: Abschnitt "dunkel" fehlt');
   /** @param {Record<string,string>} t @param {string} einzug */
-  const paare = (t, einzug) => Object.entries(t)
-    .map(([k, v]) => `${einzug}${JSON.stringify(k)} to ${JSON.stringify(v)},`).join('\n');
+  const paare = (t, einzug) =>
+    Object.entries(t)
+      .map(([k, v]) => `${einzug}${JSON.stringify(k)} to ${JSON.stringify(v)},`)
+      .join('\n');
   const designs = Object.entries(daten.dunkel.designs || {})
-    .map(([name, t]) => `        ${JSON.stringify(name)} to mapOf(\n${paare(t, '            ')}\n        ),`).join('\n');
+    .map(([name, t]) => `        ${JSON.stringify(name)} to mapOf(\n${paare(t, '            ')}\n        ),`)
+    .join('\n');
   return `package ch.brickinventoryapp.ui.theme
 
 /**
  * ${HINWEIS}
  *
-${umbruch(daten._dunkel_warum, 72).map((/** @type {string} */ z) => ` * ${z}`).join('\n')}
+${umbruch(daten._dunkel_warum, 72)
+  .map((/** @type {string} */ z) => ` * ${z}`)
+  .join('\n')}
  *
  * Erzeugt von Web-App/scripts/generate-design-tokens.js. Die Regeln dazu
  * (erbt, Material-Rollen) stehen in DunkleRollen.kt.

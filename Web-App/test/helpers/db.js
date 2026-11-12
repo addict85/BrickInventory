@@ -13,23 +13,38 @@
  */
 async function dbOderSkip(t, _req, { migrieren = true } = {}) {
   const db = _req('db/database.js');
-  try { await db.initSchema(); }
-  catch (e) {
+  try {
+    await db.initSchema();
+  } catch (e) {
     keineDb(t, e);
     return null;
   }
   if (migrieren) {
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   }
   return db;
 }
 
-/** Für Tests, die die Erreichbarkeit selbst prüfen. @param {any} t @param {unknown} e */
+/** Für Tests, die die Erreichbarkeit selbst prüfen. @param {any} t @param {unknown} [e] */
 function keineDb(t, e) {
-  if (process.env.REQUIRE_DB === '1')
-    throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e instanceof Error ? e.message : e}`);
-  t.skip('Test-DB nicht erreichbar');
+  const grund = e === undefined ? '' : `: ${e instanceof Error ? e.message : e}`;
+  fehltVoraussetzung(t, 'Test-DB nicht erreichbar', `die Test-DB ist nicht erreichbar${grund}`);
 }
 
-module.exports = { dbOderSkip, keineDb };
+/**
+ * Was ohne Datenbank (oder pg_dump, Superuser …) nicht prüfbar ist, wird
+ * übersprungen — unter REQUIRE_DB=1 ist es ein Fehler, damit die CI nicht
+ * dort grün ist, wo sie nichts geprüft hat.
+ * @param {any} t @param {string} grund @param {string} [meldung]
+ */
+function fehltVoraussetzung(t, grund, meldung = grund) {
+  if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber ${meldung}`);
+  t.skip(grund);
+}
+
+module.exports = { dbOderSkip, keineDb, fehltVoraussetzung };

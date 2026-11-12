@@ -88,7 +88,7 @@ den Commits, nicht hier.
   `src/konto/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
 - Sitzung: `httpOnly`, `sameSite=lax`, `secure` hinter TLS, Leerlauf- und
   Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/konto/sitzungsFrist.ts`,
-  `src/konto/auth.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `auth-sessions-db`.
+  `src/konto/zugangsende.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `sitzung-app-db`, `auth-sessions-db`.
 - Passwortwechsel und Kontolöschung beenden Sitzungen und Tokens —
   `auth-sessions-db`, `token-laufzeit-db`.
 - Beendete Sitzungen bleiben beendet: Jede Sitzung trägt
@@ -105,7 +105,7 @@ den Commits, nicht hier.
   Verwalterrouten verlangen Sitzung oder Scope `voll`. Gleitender Ablauf
   (90 Tage), Tausch über `/auth/token-rotieren` mit 5 min Überlappung;
   „unbegrenzt“ nur über HTTPS und mit Tauschpflicht nach 60 Tagen;
-  Geräteliste mit Scope, Netz und Ablauf: `src/konto/auth.ts` —
+  Geräteliste mit Scope, Netz und Ablauf: `src/konto/geraeteToken.ts` —
   `token-scope-rotation-db`, `token-gleitfrist-db`.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
   einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/konto/passkeys.ts` —
@@ -259,7 +259,7 @@ den Commits, nicht hier.
   die genutzten Handler, kein Rückfall auf `window`; Löschen, Konto, Tokens
   und Verwaltung nur von Elementen aus dem Markup beim Laden oder aus
   Vorlagen mit `echt()` (Zufallsmarke je Seitenladung):
-  `public/js/11-actions.js`, `public/js/00-registry.js` — `aktionen-schutz`.
+  `public/js/actions.js`, `public/js/registry.js` — `aktionen-schutz`.
 
 ### Protokoll und Kontingente
 - Guthaben-Abfrage bei lego.com: zuerst höchstens 20 je Konto und Stunde

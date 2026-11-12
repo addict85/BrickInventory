@@ -27,14 +27,19 @@ const aufrufe = [];
 let dauer = 0;
 const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = _echtesRequire.apply(this, arguments);
+Module.prototype.require = function (name, ...rest) {
+  const m = _echtesRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => k !== 'addSetWithDate' ? t[k] : async (_sk, sn) => {
-      aufrufe.push(sn);
-      await new Promise(r => setTimeout(r, dauer));
-      return { action: 'added', set_number: sn };
-    } });
+    return new Proxy(m, {
+      get: (t, k) =>
+        k !== 'addSetWithDate'
+          ? t[k]
+          : async (_sk, sn) => {
+              aufrufe.push(sn);
+              await new Promise(r => setTimeout(r, dauer));
+              return { action: 'added', set_number: sn };
+            },
+    });
   return m;
 };
 
@@ -42,17 +47,17 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const { warte } = require('./helpers/zeit');
+const { warte, bis } = require('./helpers/zeit');
 
-test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const NAME = `csvlauf-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
 
-  const importiere = async (zeilen) => {
+  const importiere = async zeilen => {
     const fd = new FormData();
     fd.append('file', new Blob(['set_number,quantity\n' + zeilen.map(z => `${z},1`).join('\n')]), 'import.csv');
     const r = await fetch(`${base}/api/v1/sets/import/csv`, { method: 'POST', body: fd });
@@ -60,13 +65,18 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
   };
   const auftrag = () => db.get('SELECT status, done, results FROM import_stand WHERE user_id=$1', [uid]);
   const bisFertig = async () => {
-    for (let i = 0; i < 100; i++) { const a = await auftrag(); if (a?.status !== 'running') return a; await warte(50); }
+    for (let i = 0; i < 100; i++) {
+      const a = await auftrag();
+      if (a?.status !== 'running') return a;
+      await warte(50);
+    }
     return auftrag();
   };
 
   try {
     await t.test('nach einer Zeitüberschreitung kein zweiter Versuch', async () => {
-      aufrufe.length = 0; dauer = 400;
+      aufrufe.length = 0;
+      dauer = 400;
       await importiere(['70001-1']);
       const a = await bisFertig();
       await warte(800);
@@ -75,9 +85,10 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
     });
 
     await t.test('ein abgelöster Lauf hört auf', async () => {
-      aufrufe.length = 0; dauer = 100;
+      aufrufe.length = 0;
+      dauer = 100;
       await importiere(['71001-1', '71002-1', '71003-1', '71004-1', '71005-1']);
-      await warte(130);
+      assert.ok(await bis(() => aufrufe.length > 0), 'der erste Lauf bucht schon');
       await importiere(['72001-1']);
       const a = await bisFertig();
       await warte(700);
@@ -85,7 +96,11 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async (t) => {
       assert.ok(alte.length <= 2, `der alte Lauf buchte weiter: ${alte.join(', ')}`);
       const ende = await auftrag();
       assert.equal(ende.status, 'done');
-      assert.deepEqual(ende.results.map(r => r.set_number), ['72001-1'], 'die Zeile gehört dem neuen Lauf');
+      assert.deepEqual(
+        ende.results.map(r => r.set_number),
+        ['72001-1'],
+        'die Zeile gehört dem neuen Lauf',
+      );
       assert.equal(a.done, 1);
     });
   } finally {

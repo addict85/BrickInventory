@@ -23,7 +23,7 @@ const fehlerAm = (d, id) => {
 };
 
 async function setErfassen(o, { qty, datum = null }) {
-  const { d, w, aufrufe } = o;
+  const { d, aufrufe } = o;
   d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
   await takt(10);
   d.getElementById('add-num').value = '10294-1';
@@ -133,7 +133,7 @@ async function kaufpreisDialog(puts) {
         ],
         totals: { quantity: 2, amount: 259.98 },
       }),
-      '/v1/sets/10294-1/acquisitions/7': (url, opt) => {
+      '/v1/sets/10294-1/acquisitions/7': (_url, opt) => {
         puts.push(JSON.parse(opt.body));
         return { success: true };
       },

@@ -8,7 +8,7 @@
  *   A  die Invite-Route entscheidet an `'code' in r` statt `'fehler' in r` →
  *      rot: „Einladen liefert den Code als Nutzlast“ (der Erfolg wird zur
  *      Absage, 500 statt 200)
- *   B  redeemInvite() meldet `konto_mit_sich_selbst` unter `code` statt
+ *   B  einladungEinloesen() meldet `konto_mit_sich_selbst` unter `code` statt
  *      `fehler` → rot: „jede Absage beim Einlösen …“ (200 statt 409)
  *   C  in fehlerText() die Prüfung `if (!eintrag)` gestrichen → rot:
  *      „fehlerText fällt bei unbekanntem Code nicht um“ (TypeError)
@@ -25,12 +25,13 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
 
-test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async (t) => {
+test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   const namen = [`absage_a_${process.pid}`, `absage_b_${process.pid}`, `absage_c_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
-  const PASS = 'absage-Passwort-1', hash = require('../node_modules/bcryptjs').hashSync(PASS, 4);
+  const PASS = 'absage-Passwort-1',
+    hash = require('../node_modules/bcryptjs').hashSync(PASS, 4);
   const ids = [];
   for (const n of namen)
     ids.push((await db.get('INSERT INTO users (username, password_hash) VALUES ($1,$2) RETURNING id', [n, hash])).id);
@@ -42,14 +43,21 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async (t) => {
     await db.pool.end().catch(() => {});
   });
   const routen = { '/api/v1': 'routes/api_v1/index.js' };
-  const server = Object.fromEntries(ids.map(id => [id,
-    testServer(_req, { sitzung: { userId: id }, apiNutzer: { user_id: id, is_admin: 0 }, routen, t }).base]));
+  const server = Object.fromEntries(
+    ids.map(id => [
+      id,
+      testServer(_req, { sitzung: { userId: id }, apiNutzer: { user_id: id, is_admin: 0 }, routen, t }).base,
+    ]),
+  );
   const post = async (id, pfad, rumpf = {}) => {
     const r = await fetch(`${server[id]}/api/v1/settings/household/${pfad}`, {
-      method: 'POST', headers: { 'content-type': 'application/json', 'accept-language': 'de' }, body: JSON.stringify(rumpf) });
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'accept-language': 'de' },
+      body: JSON.stringify(rumpf),
+    });
     return { status: r.status, body: await r.json() };
   };
-  const einladung = async (id) => {
+  const einladung = async id => {
     const r = await post(id, 'invite');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return r.body.code;
@@ -105,8 +113,14 @@ test('fehlerText fällt bei unbekanntem Code nicht um', () => {
   try {
     assert.equal(fehlerText('gibt_es_nicht', 'de'), 'gibt_es_nicht');
     assert.equal(fehlerText('gibt_es_nicht', 'en'), 'gibt_es_nicht');
-  } finally { console.error = fehler; }
-  assert.notEqual(fehlerText('einladungscode_abgelaufen', 'de'), 'einladungscode_abgelaufen', 'Vorbedingung: ein bekannter Code hat einen Satz');
+  } finally {
+    console.error = fehler;
+  }
+  assert.notEqual(
+    fehlerText('einladungscode_abgelaufen', 'de'),
+    'einladungscode_abgelaufen',
+    'Vorbedingung: ein bekannter Code hat einen Satz',
+  );
 });
 
 test('nach dem Währungswechsel wird die Haushaltskarte neu gezeichnet', async () => {
@@ -117,7 +131,13 @@ test('nach dem Währungswechsel wird die Haushaltskarte neu gezeichnet', async (
       if (o.method === 'POST') waehrung = JSON.parse(o.body).currency;
       return { success: true };
     },
-    '/v1/settings/household': () => ({ success: true, currency: waehrung, parents: [], sub_accounts: [], former_links: [] }),
+    '/v1/settings/household': () => ({
+      success: true,
+      currency: waehrung,
+      parents: [],
+      sub_accounts: [],
+      former_links: [],
+    }),
   });
   try {
     await sicht(w, 'profil');
@@ -126,9 +146,17 @@ test('nach dem Währungswechsel wird die Haushaltskarte neu gezeichnet', async (
     const feld = d.getElementById('s-cur');
     feld.value = 'CHF';
     feld.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Rückfrage vor dem Wechsel');
+    assert.ok(
+      await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
+      'Rückfrage vor dem Wechsel',
+    );
     d.getElementById('cd-confirm').click();
-    assert.ok(await warte(() => aufrufe.some(x => x.method === 'POST' && x.url.endsWith('/v1/settings'))), 'nicht gespeichert');
+    assert.ok(
+      await warte(() => aufrufe.some(x => x.method === 'POST' && x.url.endsWith('/v1/settings'))),
+      'nicht gespeichert',
+    );
     assert.ok(await warte(() => /Währung: CHF/.test(karte())), `Karte nachher: ${karte()}`);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

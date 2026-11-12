@@ -45,8 +45,12 @@ function archiv(name, bauen, tarArgs = ['data']) {
 function restore(tar) {
   const lauf = path.join(tmp, `lauf-${path.basename(tar)}`);
   fs.mkdirSync(lauf, { recursive: true });
-  const r = spawnSync('sh', [RESTORE, DUMP, tar], { cwd: lauf, input: 'nein\n', encoding: 'utf8',
-    env: { ...process.env, PATH: '/usr/bin:/bin' } });
+  const r = spawnSync('sh', [RESTORE, DUMP, tar], {
+    cwd: lauf,
+    input: 'nein\n',
+    encoding: 'utf8',
+    env: { ...process.env, PATH: '/usr/bin:/bin' },
+  });
   return { status: r.status, aus: r.stdout + r.stderr };
 }
 
@@ -58,12 +62,20 @@ test('ein gutes Archiv kommt bis zur Rückfrage', () => {
 
 const BOESE = {
   'Verknüpfung nach aussen': () => archiv('link', o => fs.symlinkSync('/etc', path.join(o, 'data', 'aussen'))),
-  'harter Link': () => archiv('hart', o => fs.linkSync(path.join(o, 'data', 'bild.jpg'), path.join(o, 'data', 'zwilling.jpg'))),
+  'harter Link': () =>
+    archiv('hart', o => fs.linkSync(path.join(o, 'data', 'bild.jpg'), path.join(o, 'data', 'zwilling.jpg'))),
   'Pfad mit ..': () => archiv('punkte', () => {}, ['--transform', 's,^data/bild.jpg,data/../../boese.jpg,', 'data']),
-  'absoluter Pfad': () => archiv('absolut', () => {}, ['-P', '--transform', 's,^data/bild.jpg,/tmp/boese.jpg,', 'data']),
-  'anderer Ordner': () => archiv('anderer', o => {
-    fs.mkdirSync(path.join(o, 'schluessel')); fs.writeFileSync(path.join(o, 'schluessel', 'datenschluessel'), 'k');
-  }, ['data', 'schluessel']),
+  'absoluter Pfad': () =>
+    archiv('absolut', () => {}, ['-P', '--transform', 's,^data/bild.jpg,/tmp/boese.jpg,', 'data']),
+  'anderer Ordner': () =>
+    archiv(
+      'anderer',
+      o => {
+        fs.mkdirSync(path.join(o, 'schluessel'));
+        fs.writeFileSync(path.join(o, 'schluessel', 'datenschluessel'), 'k');
+      },
+      ['data', 'schluessel'],
+    ),
 };
 
 // db-rolle vorher (Rollen und Besitz für das Einspielen als Migrationsrolle) und danach.
@@ -76,13 +88,28 @@ test('nach dem Einspielen richtet db-rolle die Rollen nach, migration läuft, da
   const bin = path.join(tmp, 'bin-rolle');
   fs.mkdirSync(bin);
   const protokoll = path.join(tmp, 'docker.log');
-  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "$*" >> '${protokoll}'\ncat > /dev/null\n`, { mode: 0o755 });
-  const r = spawnSync('sh', [RESTORE, DUMP], { cwd: lauf, input: 'ja\n', encoding: 'utf8',
-    env: { ...process.env, PATH: `${bin}:/usr/bin:/bin` } });
+  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "$*" >> '${protokoll}'\ncat > /dev/null\n`, {
+    mode: 0o755,
+  });
+  const r = spawnSync('sh', [RESTORE, DUMP], {
+    cwd: lauf,
+    input: 'ja\n',
+    encoding: 'utf8',
+    env: { ...process.env, PATH: `${bin}:/usr/bin:/bin` },
+  });
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  const aufrufe = fs.readFileSync(protokoll, 'utf8').trim().split('\n').map(z => z.split(' ').slice(0, 4).join(' '));
-  assert.deepEqual(aufrufe, ['compose run --rm db-rolle', 'compose exec -T postgres', 'compose run --rm db-rolle',
-    'compose run --rm migration', 'compose restart app jobs']);
+  const aufrufe = fs
+    .readFileSync(protokoll, 'utf8')
+    .trim()
+    .split('\n')
+    .map(z => z.split(' ').slice(0, 4).join(' '));
+  assert.deepEqual(aufrufe, [
+    'compose run --rm db-rolle',
+    'compose exec -T postgres',
+    'compose run --rm db-rolle',
+    'compose run --rm migration',
+    'compose restart app jobs',
+  ]);
 });
 
 for (const [fall, bauen] of Object.entries(BOESE)) {
@@ -90,7 +117,11 @@ for (const [fall, bauen] of Object.entries(BOESE)) {
     const tar = bauen();
     const r = restore(tar);
     assert.notEqual(r.status, 0);
-    assert.match(r.aus, /FEHLER: .*Abbruch, nichts verändert/, `${fall}: erreicht die Rückfrage nicht — Ausgabe: ${r.aus}`);
+    assert.match(
+      r.aus,
+      /FEHLER: .*Abbruch, nichts verändert/,
+      `${fall}: erreicht die Rückfrage nicht — Ausgabe: ${r.aus}`,
+    );
     assert.doesNotMatch(r.aus, /Fortfahren\?/, `${fall}: erreicht die Rückfrage nicht`);
   });
 }

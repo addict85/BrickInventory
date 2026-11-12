@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
@@ -57,7 +58,7 @@ class KontosichtTest {
     @After
     fun zu() = pfade.server.shutdown()
 
-    private fun abfrage(konten: String = "7") =
+    private fun abfrage(konten: Kontoauswahl = Kontoauswahl.Konto(7)) =
         Kontosicht.SetsAbfrage(konten, "falcon", "Star Wars", Setsortierung.PREIS_ABSTEIGEND, "Regal 2")
 
     @Test

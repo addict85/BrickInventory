@@ -28,9 +28,18 @@ export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20):
   const lauf = (s: z.ZodType | undefined, w: unknown, pfad: string): void => {
     if (!s || w === null || w === undefined || funde.size >= grenze) return;
     const d = defVon(s);
-    if (HUELLE.has(d.type)) return lauf(d.innerType, w, pfad);
-    if (d.type === 'lazy') return lauf(d.getter?.(), w, pfad);
-    if (d.type === 'pipe') return lauf(d.in, w, pfad);
+    if (HUELLE.has(d.type)) {
+      lauf(d.innerType, w, pfad);
+      return;
+    }
+    if (d.type === 'lazy') {
+      lauf(d.getter?.(), w, pfad);
+      return;
+    }
+    if (d.type === 'pipe') {
+      lauf(d.in, w, pfad);
+      return;
+    }
     if (d.type === 'intersection') {
       // Zusammen bekannt ist, was eine der beiden Seiten nennt.
       const links = unbekannteFelder(d.left as z.ZodType, w, grenze);
@@ -40,14 +49,19 @@ export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20):
     }
     if (d.type === 'union') {
       const passt = d.options?.find(o => o.safeParse(w).success);
-      return lauf(passt, w, pfad);
+      lauf(passt, w, pfad);
+      return;
     }
     if (d.type === 'array' && Array.isArray(w)) {
-      w.forEach((x, i) => lauf(d.element, x, `${pfad}${i}.`));
+      w.forEach((x, i) => {
+        lauf(d.element, x, `${pfad}${i}.`);
+      });
       return;
     }
     if (d.type === 'tuple' && Array.isArray(w)) {
-      w.forEach((x, i) => lauf(d.items?.[i], x, `${pfad}${i}.`));
+      w.forEach((x, i) => {
+        lauf(d.items?.[i], x, `${pfad}${i}.`);
+      });
       return;
     }
     if (d.type === 'record' && typeof w === 'object') {

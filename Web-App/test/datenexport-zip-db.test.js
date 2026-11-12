@@ -25,15 +25,26 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-test('der Datenexport liefert ein entpackbares ZIP mit den Daten des Kontos', { concurrency: 1, timeout: 60_000 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('der Datenexport liefert ein entpackbares ZIP mit den Daten des Kontos', {
+  concurrency: 1,
+  timeout: 60_000,
+}, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const NAME = `export_zip_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-    VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+    VALUES ($1, 'x', true, true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, '3001zip', 5, 'manual')`, [uid]);
-  await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, '3001zip', 5, 7)`, [uid]);
+  await db.run(
+    `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, '3001zip', 5, 7)`,
+    [uid],
+  );
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'export-zip-'));
   t.after(async () => {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -41,7 +52,11 @@ test('der Datenexport liefert ein entpackbares ZIP mit den Daten des Kontos', { 
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/v1': 'routes/api_v1/settings.js' }, t });
+  const { base } = testServer(_req, {
+    sitzung: { userId: uid },
+    routen: { '/api/v1': 'routes/api_v1/settings.js' },
+    t,
+  });
   const r = await fetch(`${base}/api/v1/settings/export/data`);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('content-type'), 'application/zip');
@@ -49,8 +64,15 @@ test('der Datenexport liefert ein entpackbares ZIP mit den Daten des Kontos', { 
   fs.writeFileSync(zip, Buffer.from(await r.arrayBuffer()));
 
   execFileSync('unzip', ['-q', '-o', zip, '-d', dir]);
-  const dateien = fs.readdirSync(dir).filter(n => n.endsWith('.csv')).sort();
-  assert.deepEqual(dateien, ['merkliste.csv', 'minifiguren.csv', 'preisalarme.csv', 'sets.csv', 'teile.csv'], 'alle fünf Dateien');
+  const dateien = fs
+    .readdirSync(dir)
+    .filter(n => n.endsWith('.csv'))
+    .sort();
+  assert.deepEqual(
+    dateien,
+    ['merkliste.csv', 'minifiguren.csv', 'preisalarme.csv', 'sets.csv', 'teile.csv'],
+    'alle fünf Dateien',
+  );
   const teile = fs.readFileSync(path.join(dir, 'teile.csv'), 'utf8');
   assert.ok(teile.startsWith('﻿'), 'BOM fehlt');
   assert.match(teile, /3001zip/);

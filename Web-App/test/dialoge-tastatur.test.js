@@ -1,7 +1,7 @@
 /**
  * Dialoge lassen sich mit der Tastatur bedienen: Escape schliesst den
  * obersten, der Fokus springt hinein, Tab bleibt darin, und beim Schliessen
- * kehrt der Fokus zurück (public/js/01-dialoge.js).
+ * kehrt der Fokus zurück (public/js/dialoge.js).
  *
  * Geprüft am echten Bündel und am echten Markup in jsdom.
  *
@@ -29,17 +29,22 @@ const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
 async function fenster() {
   const dom = new jsdom.JSDOM(HTML, { runScripts: 'outside-only', url: 'http://localhost/' });
   const w = dom.window;
-  w.fetch = async () => ({ ok: true, status: 200, headers: { get: () => 'application/json' },
-                           json: async () => ({ success: true }) });
+  w.fetch = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json' },
+    json: async () => ({ success: true }),
+  });
   w.eval(BUNDLE);
   // Das Bündel hängt sich bei readyState 'loading' an DOMContentLoaded.
-  if (w.document.readyState === 'loading')
-    await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
+  if (w.document.readyState === 'loading') await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
   return w;
 }
 
 /** MutationObserver nachlaufen lassen. */
-function takt() { return warte(0); }
+function takt() {
+  return warte(0);
+}
 const taste = (w, key, shiftKey = false) =>
   w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key, shiftKey, bubbles: true }));
 
@@ -55,13 +60,17 @@ test('jeder Dialog hat genau einen Schliessen-Knopf für Escape', async () => {
       if (n !== 1) fehler.push(`#${el.id}: ${n}× data-dialog-zu`);
     }
     assert.deepEqual(fehler, []);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Escape schliesst, und der Fokus kehrt zurück', async () => {
   const w = await fenster();
   try {
-    const d = w.document, modal = d.getElementById('set-modal'), ausloeser = d.getElementById('btn-add');
+    const d = w.document,
+      modal = d.getElementById('set-modal'),
+      ausloeser = d.getElementById('btn-add');
     ausloeser.focus();
     modal.classList.add('open');
     await takt();
@@ -71,16 +80,22 @@ test('Escape schliesst, und der Fokus kehrt zurück', async () => {
     await takt();
     assert.equal(modal.classList.contains('open'), false, 'Escape schliesst den Dialog nicht');
     assert.equal(d.activeElement, ausloeser, 'Fokus kehrt nicht zurück');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Escape schliesst nur den obersten — die Rückfrage über dem Detail', async () => {
   const w = await fenster();
   try {
-    const d = w.document, set = d.getElementById('set-modal'), frage = d.getElementById('confirm-modal');
+    const d = w.document,
+      set = d.getElementById('set-modal'),
+      frage = d.getElementById('confirm-modal');
     set.classList.add('open');
     frage.style.display = 'flex';
-    d.getElementById('cd-cancel').onclick = () => { frage.style.display = 'none'; };
+    d.getElementById('cd-cancel').onclick = () => {
+      frage.style.display = 'none';
+    };
     await takt();
     assert.equal(d.activeElement, d.getElementById('cd-cancel'), 'Erstfokus der Rückfrage ist „Abbrechen"');
 
@@ -88,16 +103,20 @@ test('Escape schliesst nur den obersten — die Rückfrage über dem Detail', as
     await takt();
     assert.equal(frage.style.display, 'none', 'Die Rückfrage bleibt offen');
     assert.ok(set.classList.contains('open'), 'Der Detail-Dialog darunter wurde mitgeschlossen');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Tab bleibt im Dialog', async () => {
   const w = await fenster();
   try {
-    const d = w.document, frage = d.getElementById('confirm-modal');
+    const d = w.document,
+      frage = d.getElementById('confirm-modal');
     frage.style.display = 'flex';
     await takt();
-    const ab = d.getElementById('cd-cancel'), ja = d.getElementById('cd-confirm');
+    const ab = d.getElementById('cd-cancel'),
+      ja = d.getElementById('cd-confirm');
     ja.focus();
     taste(w, 'Tab');
     assert.equal(d.activeElement, ab, 'Tab verlässt den Dialog nach dem letzten Knopf');
@@ -106,17 +125,21 @@ test('Tab bleibt im Dialog', async () => {
     d.getElementById('btn-add').focus();
     taste(w, 'Tab');
     assert.ok(frage.contains(d.activeElement), 'Tab von ausserhalb holt den Fokus nicht zurück');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Escape in einem Eingabefeld verlässt zuerst nur das Feld', async () => {
   const w = await fenster();
   try {
-    const d = w.document, modal = d.getElementById('wanted-xml-modal');
+    const d = w.document,
+      modal = d.getElementById('wanted-xml-modal');
     modal.classList.add('open');
     await takt();
     // Wie in der Vorschau: das Korrekturfeld steht in einer Tabellenzelle.
-    d.getElementById('wanted-xml-tabelle').innerHTML = '<table><tbody><tr><td><input id="zelle"></td></tr></tbody></table>';
+    d.getElementById('wanted-xml-tabelle').innerHTML =
+      '<table><tbody><tr><td><input id="zelle"></td></tr></tbody></table>';
     const feld = d.getElementById('zelle');
     feld.focus();
     taste(w, 'Escape');
@@ -126,7 +149,9 @@ test('Escape in einem Eingabefeld verlässt zuerst nur das Feld', async () => {
     taste(w, 'Escape');
     await takt();
     assert.equal(modal.classList.contains('open'), false, 'Das zweite Escape schliesst nicht');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Escape schliesst beim ersten Druck, auch wenn der Fokus in einem Feld steht', async () => {
@@ -134,12 +159,15 @@ test('Escape schliesst beim ersten Druck, auch wenn der Fokus in einem Feld steh
   // es zwei Escape — das erste verliess nur das Feld (Befund der UI-Prüfung).
   const w = await fenster();
   try {
-    const d = w.document, modal = d.getElementById('add-set-modal');
+    const d = w.document,
+      modal = d.getElementById('add-set-modal');
     modal.classList.add('open');
     await takt();
     assert.equal(d.activeElement?.id, 'add-num', 'Der Erstfokus liegt nicht auf der Set-Nummer');
     taste(w, 'Escape');
     await takt();
     assert.equal(modal.classList.contains('open'), false, 'Das erste Escape schliesst nicht');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

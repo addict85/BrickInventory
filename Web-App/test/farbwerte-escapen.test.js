@@ -28,10 +28,13 @@ test('Farbwerte kommen nur über escHex ins Markup', () => {
   }
   // Selbstbeweis: Ohne Fundstellen sagt eine leere Liste nichts — die Regel
   // wäre auch dann grün, wenn niemand mehr Farben anzeigte.
-  assert.ok(gepruefte >= 5,
-    `nur ${gepruefte} interpolierte Farbwerte gefunden — Feldname geändert?`);
-  assert.deepEqual(treffer, [],
-    'Diese Stellen schreiben einen Farbwert roh ins Markup:\n  ' + treffer.join('\n  ') +
-    '\nescHex(wert, rückfall) prüft auf sechs Hexziffern und liefert sonst den ' +
-    'Rückfall — siehe den Hinweis in 00-escapen.js.');
+  assert.ok(gepruefte >= 5, `nur ${gepruefte} interpolierte Farbwerte gefunden — Feldname geändert?`);
+  assert.deepEqual(
+    treffer,
+    [],
+    'Diese Stellen schreiben einen Farbwert roh ins Markup:\n  ' +
+      treffer.join('\n  ') +
+      '\nescHex(wert, rückfall) prüft auf sechs Hexziffern und liefert sonst den ' +
+      'Rückfall — siehe den Hinweis in escapen.js.',
+  );
 });

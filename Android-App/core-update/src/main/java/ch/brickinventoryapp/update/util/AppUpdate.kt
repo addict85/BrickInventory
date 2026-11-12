@@ -30,13 +30,16 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 /** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */
 internal const val UPDATE_RELEASE_WURZEL = "https://github.com/addict85/BrickInventory/releases/download"
 
-/** Die Release-Ablage der neusten Fassung — EIN Ort, aus dem die Adressen entstehen. */
-const val UPDATE_RELEASE_BASIS = "$UPDATE_RELEASE_WURZEL/apk-neuste"
+/**
+ * Die Anhänge der als „Latest“ markierten Release; Releases sind unveränderlich,
+ * ein fester Ort darin also nur über diese Umleitung. GitHub leitet auf
+ * `…/download/<etikett>/…` weiter; folgen darf nur UpdateUmleitungen (core-data).
+ */
+const val UPDATE_RELEASE_BASIS = "https://github.com/addict85/BrickInventory/releases/latest/download"
 
 /**
- * Die signierte Beschreibung der neusten Fassung; geschrieben vom Signierjob. Die
- * unsignierte version.json daneben liest diese App nie; sie bleibt bis zu einem
- * Stichtag nur für ältere installierte Fassungen (android-release.yml, Job `release`).
+ * Die signierte Beschreibung der neusten Fassung; geschrieben vom Signierjob. Wem
+ * sie trauen darf, entscheidet allein ihre Signatur, nicht der Ort, der sie lieferte.
  */
 const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version-signiert.json"
 
@@ -94,7 +97,7 @@ data class UpdateBeschreibung(
  * zurückgenommenen Build ein Downgrade an, das Android mit
  * INSTALL_FAILED_VERSION_DOWNGRADE ablehnt.
  */
-fun istNeuer(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
+internal fun istNeuer(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
 
 /**
  * Zeigt die Adresse in unsere Release-Ablage — die neuste oder das Etikett einer

@@ -11,10 +11,12 @@ const _cache = new Map<number, Stand>();
 beiHaushaltsaenderung(() => _cache.clear());
 // Ein Treffer gilt eine Minute; eine Absage wird nach zwei Sekunden neu
 // gefragt, damit ein eben erfasstes Set sein Bild sofort zeigt.
-const TREFFER_MS = 60_000, ABSAGE_MS = 2_000, KONTEN_HOECHSTENS = 1000;
+const TREFFER_MS = 60_000,
+  ABSAGE_MS = 2_000,
+  KONTEN_HOECHSTENS = 1000;
 
 async function lade(uid: number): Promise<Stand> {
-  const zeilen = await katalog().bildBlickfeld.setsImBlickfeld(await haushaltBereich().haushalt.scopeIds(uid));
+  const zeilen = await katalog().bildBlickfeld.setsImBlickfeld(await haushaltBereich().haushalt.blickfeldIds(uid));
   const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: Date.now() };
   for (const z of zeilen) {
     s.nummern.add(dateiStamm(z.set_number));

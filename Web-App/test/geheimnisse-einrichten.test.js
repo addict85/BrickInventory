@@ -28,13 +28,17 @@ const NAMEN = ['db_app_password', 'db_migration_password', 'db_password', 'pgweb
 function sandkasten(t) {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnisse-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
-  const lauf = (mehr = {}) => spawnSync('sh', ['-c', 'umask 022; exec sh "$0"', SKRIPT],
-    { cwd: ort, encoding: 'utf8', env: { PATH: process.env.PATH, ...mehr } });
-  const lies = (n) => fs.readFileSync(path.join(ort, 'geheimnisse', n), 'utf8');
+  const lauf = (mehr = {}) =>
+    spawnSync('sh', ['-c', 'umask 022; exec sh "$0"', SKRIPT], {
+      cwd: ort,
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH, ...mehr },
+    });
+  const lies = n => fs.readFileSync(path.join(ort, 'geheimnisse', n), 'utf8');
   return { ort, lauf, lies };
 }
 
-test('eine neue Installation bekommt zufällige Geheimnisse, nur für den Besitzer erreichbar', (t) => {
+test('eine neue Installation bekommt zufällige Geheimnisse, nur für den Besitzer erreichbar', t => {
   const s = sandkasten(t);
   const r = s.lauf();
   assert.equal(r.status, 0, r.stderr);
@@ -51,12 +55,20 @@ test('eine neue Installation bekommt zufällige Geheimnisse, nur für den Besitz
   assert.equal(s.lies('pgweb_db_password'), '');
 });
 
-test('eine bestehende Installation übernimmt die Werte aus .env', (t) => {
+test('eine bestehende Installation übernimmt die Werte aus .env', t => {
   const s = sandkasten(t);
   fs.mkdirSync(path.join(s.ort, 'pgdata18'));
-  fs.writeFileSync(path.join(s.ort, '.env'), [
-    'BRICK_HOST=nas.example.lan', 'SESSION_SECRET="alt-sitzung-mindestens-zweiunddreissig-zeichen"',
-    'DB_PASSWORD=su+/=pw', "DB_APP_PASSWORD='app pw'", 'PGWEB_PASSWORD=browser', ''].join('\n'));
+  fs.writeFileSync(
+    path.join(s.ort, '.env'),
+    [
+      'BRICK_HOST=nas.example.lan',
+      'SESSION_SECRET="alt-sitzung-mindestens-zweiunddreissig-zeichen"',
+      'DB_PASSWORD=su+/=pw',
+      "DB_APP_PASSWORD='app pw'",
+      'PGWEB_PASSWORD=browser',
+      '',
+    ].join('\n'),
+  );
   const r = s.lauf({ PGWEB: 'ja' });
   assert.equal(r.status, 0, r.stderr);
   assert.equal(s.lies('session_secret'), 'alt-sitzung-mindestens-zweiunddreissig-zeichen');
@@ -68,7 +80,7 @@ test('eine bestehende Installation übernimmt die Werte aus .env', (t) => {
   assert.match(r.stderr, /aus \.env löschen.*SESSION_SECRET DB_PASSWORD DB_APP_PASSWORD PGWEB_PASSWORD/);
 });
 
-test('eine bestehende Datenbank ohne DB_PASSWORD bekommt kein neues', (t) => {
+test('eine bestehende Datenbank ohne DB_PASSWORD bekommt kein neues', t => {
   const s = sandkasten(t);
   fs.mkdirSync(path.join(s.ort, 'pgdata18'));
   const r = s.lauf();
@@ -77,14 +89,15 @@ test('eine bestehende Datenbank ohne DB_PASSWORD bekommt kein neues', (t) => {
   assert.equal(fs.existsSync(path.join(s.ort, 'geheimnisse', 'db_password')), false);
 });
 
-test('ein zweiter Lauf ändert nichts, PGWEB=ja füllt nur die leeren', (t) => {
+test('ein zweiter Lauf ändert nichts, PGWEB=ja füllt nur die leeren', t => {
   const s = sandkasten(t);
   assert.equal(s.lauf().status, 0);
   const vorher = Object.fromEntries(NAMEN.map(n => [n, s.lies(n)]));
   fs.chmodSync(path.join(s.ort, 'geheimnisse'), 0o755);
   const r = s.lauf({ PGWEB: 'ja' });
   assert.equal(r.status, 0, r.stderr);
-  for (const n of ['session_secret', 'db_password', 'db_app_password', 'db_migration_password']) assert.equal(s.lies(n), vorher[n], `${n} neu erzeugt`);
+  for (const n of ['session_secret', 'db_password', 'db_app_password', 'db_migration_password'])
+    assert.equal(s.lies(n), vorher[n], `${n} neu erzeugt`);
   assert.match(s.lies('pgweb_db_password'), /^[0-9a-f]{48}$/);
   assert.equal(fs.statSync(path.join(s.ort, 'geheimnisse')).mode & 0o777, 0o700, 'ein offener Ordner bleibt offen');
   const pw = s.lies('pgweb_db_password');

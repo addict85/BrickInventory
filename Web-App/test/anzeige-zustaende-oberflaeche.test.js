@@ -24,73 +24,138 @@ const { oeffneOberflaeche, reiter, sicht, warte, takt } = require('./helpers/obe
 
 test('Kennzahlen ohne k: 1300 Teile stehen als volle Zahl da', async () => {
   const { w, d } = await oeffneOberflaeche({
-    '/v1/stats': { success: true, stats: { total_sets: 14, total_parts: 1300, total_minifigs: 19, total_instructions: 0 } } });
+    '/v1/stats': {
+      success: true,
+      stats: { total_sets: 14, total_parts: 1300, total_minifigs: 19, total_instructions: 0 },
+    },
+  });
   try {
     await warte(() => d.getElementById('bstat-parts').textContent !== '—');
     const text = d.getElementById('bstat-parts').textContent;
     assert.doesNotMatch(text, /k$/i);
     assert.match(text, /^1.300$/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 /** Zwölf Monate, dazwischen ein einzelner Tag — wie period=max sie liefert. */
 const VERLAUF = (() => {
-  const tage = ['2025-10-29', '2025-11-29', '2025-12-29', '2026-01-29', '2026-02-28', '2026-03-29', '2026-04-29',
-                '2026-05-29', '2026-06-29', '2026-07-29', '2026-08-29', '2026-09-29', '2026-10-28', '2026-10-29'];
+  const tage = [
+    '2025-10-29',
+    '2025-11-29',
+    '2025-12-29',
+    '2026-01-29',
+    '2026-02-28',
+    '2026-03-29',
+    '2026-04-29',
+    '2026-05-29',
+    '2026-06-29',
+    '2026-07-29',
+    '2026-08-29',
+    '2026-09-29',
+    '2026-10-28',
+    '2026-10-29',
+  ];
   const werte = tage.map((_, i) => 4219 + i * 63.7);
-  return { success: true, currency: 'EUR', messpunkte: tage.length, period_change_pct: 15,
-    points: werte.map((value, i) => ({ x_label: i % 3 ? '' : 'x', value, y_frac: 0.5 })), y_axis: [],
-    chart: { x: tage, values: [{ name: 'total', firstRealIndex: 0, values: tage.map((x, i) => ({ x, y: werte[i] })) }] } };
+  return {
+    success: true,
+    currency: 'EUR',
+    messpunkte: tage.length,
+    period_change_pct: 15,
+    points: werte.map((value, i) => ({ x_label: i % 3 ? '' : 'x', value, y_frac: 0.5 })),
+    y_axis: [],
+    chart: {
+      x: tage,
+      values: [{ name: 'total', firstRealIndex: 0, values: tage.map((x, i) => ({ x, y: werte[i] })) }],
+    },
+  };
 })();
 
 test('Wertdiagramm: Teilung nach 1-2-5, echte Zeitachse, Monatsnamen', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/finance/portfolio-history': VERLAUF,
-    '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: String(4219 + 13 * 63.7) } } });
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/finance/portfolio-history': VERLAUF,
+    '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: String(4219 + 13 * 63.7) } },
+  });
   try {
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#portfolio-chart svg'));
     const svg = d.querySelector('#portfolio-chart svg');
     const texte = [...svg.querySelectorAll('text')];
-    const y = texte.filter(x => x.getAttribute('text-anchor') === 'end' && +x.getAttribute('x') < 80)
+    const y = texte
+      .filter(x => x.getAttribute('text-anchor') === 'end' && +x.getAttribute('x') < 80)
       .map(x => Number(x.textContent.replace(/\D/g, '')));
     assert.ok(y.length >= 3, `nur ${y.length} Werte an der Achse`);
     const schritt = y[1] - y[0];
-    assert.ok(y.every((v, i) => i === 0 || v - y[i - 1] === schritt), `ungleiche Schritte: ${y}`);
+    assert.ok(
+      y.every((v, i) => i === 0 || v - y[i - 1] === schritt),
+      `ungleiche Schritte: ${y}`,
+    );
     assert.match(String(schritt), /^[125]0*$/, `Schritt ${schritt} ist nicht 1, 2 oder 5 mal 10^k`);
-    assert.ok(y.every(v => v % schritt === 0), `krumme Werte: ${y}`);
+    assert.ok(
+      y.every(v => v % schritt === 0),
+      `krumme Werte: ${y}`,
+    );
     const x = texte.filter(t => +t.getAttribute('y') > 160).map(t => t.textContent);
     assert.ok(x.length >= 3, `nur ${x.length} Beschriftungen an der Zeitachse`);
     // Ganzes Jahr: „Juli 26“ las sich auch als 26. Juli.
-    assert.ok(x.every(t => /^[A-Za-zäÄ]{3,5}\.? \d{4}$/.test(t)), `uneinheitlich: ${x.join(' | ')}`);
+    assert.ok(
+      x.every(t => /^[A-Za-zäÄ]{3,5}\.? \d{4}$/.test(t)),
+      `uneinheitlich: ${x.join(' | ')}`,
+    );
     // Zwischen den letzten beiden Punkten liegt ein Tag, davor ein Monat.
     const cx = JSON.parse(svg.dataset.punkte).map(p => p.x);
-    const tag = cx[13] - cx[12], monat = cx[12] - cx[11];
+    const tag = cx[13] - cx[12],
+      monat = cx[12] - cx[11];
     assert.ok(monat > 10 * tag, `Zeitachse: ein Tag ${tag.toFixed(1)}, ein Monat ${monat.toFixed(1)}`);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Finanzen: Platzhalter beim Laden statt „—“', async () => {
   let freigeben;
-  const spaeter = new Promise(r => { freigeben = r; });
-  const { w, d } = await oeffneOberflaeche({ '/v1/finance/valuation': () => spaeter.then(() => (
-    { success: true, currency: 'EUR', sets: [], totals: { min: '0', avg: '0', max: '0', qty_avg: '0' } })) });
+  const spaeter = new Promise(r => {
+    freigeben = r;
+  });
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/finance/valuation': () =>
+      spaeter.then(() => ({
+        success: true,
+        currency: 'EUR',
+        sets: [],
+        totals: { min: '0', avg: '0', max: '0', qty_avg: '0' },
+      })),
+  });
   try {
     await reiter(w, 'finance');
     await takt(30);
     assert.equal(d.getElementById('fin-sum').getAttribute('aria-busy'), 'true');
-    assert.ok(d.querySelector('#fin-einstand .skelett-wert'), `Einstand: „${d.getElementById('fin-einstand').textContent}“`);
+    assert.ok(
+      d.querySelector('#fin-einstand .skelett-wert'),
+      `Einstand: „${d.getElementById('fin-einstand').textContent}“`,
+    );
     assert.ok(d.querySelector('#fin-wert .skelett-wert'), 'Gesamtwert ohne Platzhalter');
     freigeben();
     await warte(() => !d.getElementById('fin-sum').hasAttribute('aria-busy'));
     assert.equal(d.querySelector('#fin-sum .skelett-wert'), null, 'der Platzhalter bleibt stehen');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Teile: Solange sie laden, keine leere Box „Manuell erfasste Teile“', async () => {
   let freigeben;
-  const spaeter = new Promise(r => { freigeben = r; });
-  const { w, d } = await oeffneOberflaeche({ '/v1/parts/manual': () => spaeter.then(() => ({ success: true, parts: [
-    { part_number: '3001', part_name: 'Brick 2 x 4', color_name: 'Red', color_id: 4, quantity: 3 }] })) });
+  const spaeter = new Promise(r => {
+    freigeben = r;
+  });
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/parts/manual': () =>
+      spaeter.then(() => ({
+        success: true,
+        parts: [{ part_number: '3001', part_name: 'Brick 2 x 4', color_name: 'Red', color_id: 4, quantity: 3 }],
+      })),
+  });
   try {
     await reiter(w, 'parts');
     await takt(30);
@@ -99,43 +164,73 @@ test('Teile: Solange sie laden, keine leere Box „Manuell erfasste Teile“', a
     freigeben();
     await warte(() => box.style.display !== 'none');
     assert.equal(box.style.display, '', 'mit manuellen Teilen erscheint die Box nicht');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/auth/profile': { success: true,
-    user: { username: 'anna', email: '', email_verified: true, first_name: '', last_name: '' } } });
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/auth/profile': {
+      success: true,
+      user: { username: 'anna', email: '', email_verified: true, first_name: '', last_name: '' },
+    },
+  });
   try {
     await sicht(w, 'profil');
     await warte(() => d.getElementById('prof-user').value === 'anna');
     assert.equal(d.getElementById('prof-email-verified').textContent.trim(), '');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Konto: eine ausstehende Adresse steht unter dem Feld, im Feld die geltende', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/auth/profile': { success: true, user: { username: 'anna',
-    email: 'alt@example.org', email_verified: true, email_neu: 'neu@example.org', first_name: '', last_name: '' } } });
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/auth/profile': {
+      success: true,
+      user: {
+        username: 'anna',
+        email: 'alt@example.org',
+        email_verified: true,
+        email_neu: 'neu@example.org',
+        first_name: '',
+        last_name: '',
+      },
+    },
+  });
   try {
     await sicht(w, 'profil');
     await warte(() => d.getElementById('prof-user').value === 'anna');
     assert.equal(d.getElementById('prof-email').value, 'alt@example.org');
     assert.match(d.getElementById('prof-email-hint').textContent, /^Ausstehend: neu@example\.org\. Sie gilt erst/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('kein Hinweis zum Rebrickable-Schlüssel über dem Einrichtungsassistenten', async () => {
   const { w, d, ruhig } = await oeffneOberflaeche({
     '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
-    '/v1/settings/einrichtung': { success: true, offen: true, passwort_aendern: false, quellen: { rebrickable: false } },
+    '/v1/settings/einrichtung': {
+      success: true,
+      offen: true,
+      passwort_aendern: false,
+      quellen: { rebrickable: false },
+    },
   });
   try {
     await warte(() => d.getElementById('einrichtung-modal').classList.contains('open'));
     await ruhig();
     assert.ok(d.getElementById('einrichtung-modal').classList.contains('open'), 'der Assistent ist zu');
-    const hinweise = [...d.querySelectorAll('#toasts .toast')].map(t => t.textContent).filter(t => /Rebrickable/.test(t));
+    const hinweise = [...d.querySelectorAll('#toasts .toast')]
+      .map(t => t.textContent)
+      .filter(t => /Rebrickable/.test(t));
     assert.deepEqual(hinweise, []);
     assert.equal(d.getElementById('rb-hinweis').hidden, true, 'Hinweisband über dem Assistenten');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Konto: eigenes Design oder Vorgabe des Verwalters', async () => {
@@ -144,12 +239,20 @@ test('Konto: eigenes Design oder Vorgabe des Verwalters', async () => {
   const { w, d } = await oeffneOberflaeche({
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
     '/v1/settings/theme': () => ({ success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes }),
-    '/v1/settings/user/theme': (_url, o) => { aufrufe.push(JSON.parse(o.body)); eigenes = JSON.parse(o.body).theme || null;
-      return { success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes }; },
+    '/v1/settings/user/theme': (_url, o) => {
+      aufrufe.push(JSON.parse(o.body));
+      eigenes = JSON.parse(o.body).theme || null;
+      return { success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes };
+    },
   });
   try {
     // Das Boot-Skript steht im <head>, das der Helfer nicht ausführt; es stellt applyTheme bereit.
-    w.eval(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'js', '00-theme-boot.js'), 'utf8'));
+    w.eval(
+      require('node:fs').readFileSync(
+        require('node:path').join(__dirname, '..', 'public', 'js', 'theme-boot.js'),
+        'utf8',
+      ),
+    );
     await sicht(w, 'profil');
     const sel = d.getElementById('design-wahl');
     await warte(() => /Noppe/.test(sel.options[0].textContent));
@@ -164,5 +267,7 @@ test('Konto: eigenes Design oder Vorgabe des Verwalters', async () => {
     sel.dispatchEvent(new w.Event('change', { bubbles: true }));
     await warte(() => d.documentElement.getAttribute('data-theme') === 'noppe');
     assert.deepEqual(aufrufe.at(-1), { theme: '' });
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

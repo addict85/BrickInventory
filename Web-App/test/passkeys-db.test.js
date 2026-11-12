@@ -50,12 +50,15 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { isoCBOR } = require(path.join(ROOT, 'node_modules', '@simplewebauthn', 'server', 'script', 'helpers', 'index.js'));
+const { isoCBOR } = require(
+  path.join(ROOT, 'node_modules', '@simplewebauthn', 'server', 'script', 'helpers', 'index.js'),
+);
 
 const PASS = 'richtigesPasswort1';
-const ORIGIN = 'https://lego.test', RP = 'lego.test';
-const b64u = (b) => Buffer.from(b).toString('base64url');
-const sha = (b) => crypto.createHash('sha256').update(b).digest();
+const ORIGIN = 'https://lego.test',
+  RP = 'lego.test';
+const b64u = b => Buffer.from(b).toString('base64url');
+const sha = b => crypto.createHash('sha256').update(b).digest();
 
 /** Ein Authenticator aus einem Schlüsselpaar: erzeugt Attestation und Assertions. */
 function authenticator() {
@@ -63,18 +66,49 @@ function authenticator() {
   const jwk = publicKey.export({ format: 'jwk' });
   const id = crypto.randomBytes(16);
   let zaehler = 0;
-  const cose = isoCBOR.encode(new Map([[1, 2], [3, -7], [-1, 1],
-    [-2, Buffer.from(jwk.x, 'base64url')], [-3, Buffer.from(jwk.y, 'base64url')]]));
-  const zahl = (n) => { const b = Buffer.alloc(4); b.writeUInt32BE(n); return b; };
+  const cose = isoCBOR.encode(
+    new Map([
+      [1, 2],
+      [3, -7],
+      [-1, 1],
+      [-2, Buffer.from(jwk.x, 'base64url')],
+      [-3, Buffer.from(jwk.y, 'base64url')],
+    ]),
+  );
+  const zahl = n => {
+    const b = Buffer.alloc(4);
+    b.writeUInt32BE(n);
+    return b;
+  };
   return {
     id: b64u(id),
     registrieren(challenge, origin = ORIGIN) {
       const client = Buffer.from(JSON.stringify({ type: 'webauthn.create', challenge, origin, crossOrigin: false }));
-      const len = Buffer.alloc(2); len.writeUInt16BE(id.length);
-      const authData = Buffer.concat([sha(RP), Buffer.from([0x45]), zahl(0), Buffer.alloc(16), len, id, Buffer.from(cose)]);
-      const att = isoCBOR.encode(new Map([['fmt', 'none'], ['attStmt', new Map()], ['authData', authData]]));
-      return { id: b64u(id), rawId: b64u(id), type: 'public-key', clientExtensionResults: {},
-        response: { clientDataJSON: b64u(client), attestationObject: b64u(att), transports: ['internal'] } };
+      const len = Buffer.alloc(2);
+      len.writeUInt16BE(id.length);
+      const authData = Buffer.concat([
+        sha(RP),
+        Buffer.from([0x45]),
+        zahl(0),
+        Buffer.alloc(16),
+        len,
+        id,
+        Buffer.from(cose),
+      ]);
+      const att = isoCBOR.encode(
+        new Map([
+          ['fmt', 'none'],
+          ['attStmt', new Map()],
+          ['authData', authData],
+        ]),
+      );
+      return {
+        id: b64u(id),
+        rawId: b64u(id),
+        type: 'public-key',
+        clientExtensionResults: {},
+        response: { clientDataJSON: b64u(client), attestationObject: b64u(att), transports: ['internal'] },
+      };
     },
     /** @param challenge @param {object} [o] @param [o.uv] User Verification gesetzt @param [o.zaehler] fester Zählerstand */
     anmelden(challenge, o = {}) {
@@ -83,29 +117,41 @@ function authenticator() {
       const client = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin, crossOrigin: false }));
       const authData = Buffer.concat([sha(RP), Buffer.from([o.uv === false ? 0x01 : 0x05]), zahl(stand)]);
       const sig = crypto.sign('sha256', Buffer.concat([authData, sha(client)]), privateKey);
-      return { id: b64u(id), rawId: b64u(id), type: 'public-key', clientExtensionResults: {},
-        response: { clientDataJSON: b64u(client), authenticatorData: b64u(authData), signature: b64u(sig) } };
+      return {
+        id: b64u(id),
+        rawId: b64u(id),
+        type: 'public-key',
+        clientExtensionResults: {},
+        response: { clientDataJSON: b64u(client), authenticatorData: b64u(authData), signature: b64u(sig) },
+      };
     },
   };
 }
 
-test('Passkeys', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Passkeys', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const hash = await bcrypt.hash(PASS, 4);
   const ids = {};
   for (const n of ['pk_anna', 'pk_bert']) {
     await db.run('DELETE FROM users WHERE username = $1', [n]);
-    await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)', [n, hash]);
+    await db.run(
+      'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
+      [n, hash],
+    );
     ids[n] = (await db.get('SELECT id FROM users WHERE username=$1', [n])).id;
   }
 
   const app = express();
   app.use(express.json());
-  app.use(session({
-    store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false,
-  }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1/auth', _req('routes/auth.js'));
   app.use('/api/v1/auth', _req('routes/auth.js'));
@@ -118,24 +164,36 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
   });
 
   const ruf = async (weg, body, cookie) => {
-    const r = await fetch(basis + weg, { method: body === undefined ? 'GET' : 'POST',
+    const r = await fetch(basis + weg, {
+      method: body === undefined ? 'GET' : 'POST',
       headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
-    return { status: r.status, cookie: r.headers.get('set-cookie')?.split(';')[0], body: await r.json().catch(() => null) };
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+    return {
+      status: r.status,
+      cookie: r.headers.get('set-cookie')?.split(';')[0],
+      body: await r.json().catch(() => null),
+    };
   };
-  const sitzung = async (name) => (await ruf('/login', { username: name, password: PASS, ohne_token: true })).cookie;
+  const sitzung = async name => (await ruf('/login', { username: name, password: PASS, ohne_token: true })).cookie;
   const registriere = async (name, schluessel) => {
     const c = await sitzung(name);
     const o = await ruf('/passkey/registrieren/optionen', { password: PASS }, c);
     assert.equal(o.status, 200, JSON.stringify(o.body));
     assert.equal(o.body.optionen.rp.id, RP);
-    const r = await ruf('/passkey/registrieren', { antwort: schluessel.registrieren(o.body.optionen.challenge), name: 'Laptop' }, c);
+    const r = await ruf(
+      '/passkey/registrieren',
+      { antwort: schluessel.registrieren(o.body.optionen.challenge), name: 'Laptop' },
+      c,
+    );
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return c;
   };
-  const optionen = async (zweck) => (await ruf('/passkey/anmelden/optionen', { zweck })).body.optionen.challenge;
+  const optionen = async zweck => (await ruf('/passkey/anmelden/optionen', { zweck })).body.optionen.challenge;
 
-  const anna = authenticator(), bert = authenticator(), ohneZaehler = authenticator();
+  const anna = authenticator(),
+    bert = authenticator(),
+    ohneZaehler = authenticator();
   let annaCodes = [];
 
   await t.test('registrieren und ohne Passwort anmelden', async () => {
@@ -156,7 +214,9 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     assert.equal((await ruf('/passkey/anmelden', { antwort })).status, 200);
     assert.equal((await ruf('/passkey/anmelden', { antwort })).status, 401, 'Wiederholte Antwort');
     // Neue Challenge, aber der Zählerstand von eben: ein geklonter Authenticator.
-    const stand = Number((await db.get('SELECT sign_count FROM passkeys WHERE user_id = $1', [ids.pk_anna])).sign_count);
+    const stand = Number(
+      (await db.get('SELECT sign_count FROM passkeys WHERE user_id = $1', [ids.pk_anna])).sign_count,
+    );
     assert.ok(stand > 0);
     const klon = anna.anmelden(await optionen(), { zaehler: stand });
     assert.equal((await ruf('/passkey/anmelden', { antwort: klon })).status, 401, 'Zähler nicht gestiegen');
@@ -173,8 +233,11 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     assert.equal((await ruf('/passkey/anmelden', { antwort: fremd })).status, 401);
     const c = await sitzung('pk_bert');
     const o = await ruf('/passkey/registrieren/optionen', { password: PASS }, c);
-    const r = await ruf('/passkey/registrieren',
-      { antwort: authenticator().registrieren(o.body.optionen.challenge, 'https://boese.test') }, c);
+    const r = await ruf(
+      '/passkey/registrieren',
+      { antwort: authenticator().registrieren(o.body.optionen.challenge, 'https://boese.test') },
+      c,
+    );
     assert.equal(r.status, 400);
   });
 
@@ -193,23 +256,37 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     assert.equal(ohne.body.zweiter_faktor, true);
     assert.equal(ohne.body.passkey, true, 'Der Client erfährt, dass ein Passkey geht');
 
-    const fremd = await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true,
-      passkey: bert.anmelden(await optionen('zweiter_faktor')) });
+    const fremd = await ruf('/login', {
+      username: 'pk_anna',
+      password: PASS,
+      ohne_token: true,
+      passkey: bert.anmelden(await optionen('zweiter_faktor')),
+    });
     assert.equal(fremd.status, 401, 'Der Passkey eines anderen Kontos öffnet nichts');
 
-    const ok = await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true,
-      passkey: anna.anmelden(await optionen('zweiter_faktor'), { uv: false }) });
+    const ok = await ruf('/login', {
+      username: 'pk_anna',
+      password: PASS,
+      ohne_token: true,
+      passkey: anna.anmelden(await optionen('zweiter_faktor'), { uv: false }),
+    });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
   });
 
   const APP_HASH = crypto.createHash('sha256').update('app-zertifikat').digest();
-  const appHerkunft = (h) => `android:apk-key-hash:${b64u(h)}`;
+  const appHerkunft = h => `android:apk-key-hash:${b64u(h)}`;
 
-  await t.test('die eingetragene App meldet sich an und bekommt einen Token', async (tt) => {
+  await t.test('die eingetragene App meldet sich an und bekommt einen Token', async tt => {
     umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex').match(/../g).join(':') });
-    tt.after(() => { umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined }); });
-    const a = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }),
-      mit_token: true, scope: 'app', label: 'Pixel' });
+    tt.after(() => {
+      umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
+    });
+    const a = await ruf('/passkey/anmelden', {
+      antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }),
+      mit_token: true,
+      scope: 'app',
+      label: 'Pixel',
+    });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.match(a.body.token, /^[0-9a-f]{64}$/);
     assert.equal(a.body.token_info.scope, 'app');
@@ -220,19 +297,31 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     assert.equal(ohne.status, 200);
     assert.equal(ohne.body.token, undefined, 'Der Browser bekommt keinen Token');
 
-    const zweiter = await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true,
-      passkey: anna.anmelden(await optionen('zweiter_faktor'), { origin: appHerkunft(APP_HASH) }) });
+    const zweiter = await ruf('/login', {
+      username: 'pk_anna',
+      password: PASS,
+      ohne_token: true,
+      passkey: anna.anmelden(await optionen('zweiter_faktor'), { origin: appHerkunft(APP_HASH) }),
+    });
     assert.equal(zweiter.status, 200, 'Auch als zweiter Faktor gilt die App');
   });
 
-  await t.test('eine App mit anderem oder ohne eingetragenes Zertifikat wird abgewiesen', async (tt) => {
+  await t.test('eine App mit anderem oder ohne eingetragenes Zertifikat wird abgewiesen', async tt => {
     const fremd = crypto.createHash('sha256').update('fremdes-zertifikat').digest();
     umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex') });
-    tt.after(() => { umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined }); });
-    const r = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen(), { origin: appHerkunft(fremd) }), mit_token: true });
+    tt.after(() => {
+      umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
+    });
+    const r = await ruf('/passkey/anmelden', {
+      antwort: anna.anmelden(await optionen(), { origin: appHerkunft(fremd) }),
+      mit_token: true,
+    });
     assert.equal(r.status, 401);
     umgebung({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
-    const ohne = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }), mit_token: true });
+    const ohne = await ruf('/passkey/anmelden', {
+      antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }),
+      mit_token: true,
+    });
     assert.equal(ohne.status, 401, 'Ohne Eintrag nimmt der Server keine App an');
   });
 
@@ -240,30 +329,40 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     const c = await sitzung('pk_bert');
     const liste = (await ruf('/passkeys', undefined, c)).body.passkeys;
     assert.equal(liste.length, 2);
-    const loesche = (id, body) => fetch(`${basis}/passkeys/${id}`, { method: 'DELETE',
-      headers: { 'content-type': 'application/json', cookie: c }, body: JSON.stringify(body) });
+    const loesche = (id, body) =>
+      fetch(`${basis}/passkeys/${id}`, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json', cookie: c },
+        body: JSON.stringify(body),
+      });
     assert.equal((await loesche(liste[0].id, { password: 'falsch' })).status, 400);
     for (const p of liste) assert.equal((await (await loesche(p.id, { password: PASS })).json()).deleted, 1);
     assert.equal((await ruf('/passkey/anmelden', { antwort: bert.anmelden(await optionen()) })).status, 401);
   });
 
-  const anzahl = async (uid) => (await db.get('SELECT COUNT(*)::int n FROM passkeys WHERE user_id = $1', [uid])).n;
+  const anzahl = async uid => (await db.get('SELECT COUNT(*)::int n FROM passkeys WHERE user_id = $1', [uid])).n;
 
   await t.test('mit zweitem Faktor verlangt ein neuer Passkey auch den Code', async () => {
-    const c = (await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true, code: annaCodes[0] })).cookie;
+    const c = (await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true, code: annaCodes[0] }))
+      .cookie;
     const ohne = await ruf('/passkey/registrieren/optionen', { password: PASS }, c);
     assert.equal(ohne.status, 400, 'Passwort allein prägt einen Passkey am zweiten Faktor vorbei');
     assert.equal(ohne.body.code, 'zweiter_faktor_noetig');
     const mit = await ruf('/passkey/registrieren/optionen', { password: PASS, code: annaCodes[1] }, c);
     assert.equal(mit.status, 200, JSON.stringify(mit.body));
-    const r = await ruf('/passkey/registrieren', { antwort: authenticator().registrieren(mit.body.optionen.challenge) }, c);
+    const r = await ruf(
+      '/passkey/registrieren',
+      { antwort: authenticator().registrieren(mit.body.optionen.challenge) },
+      c,
+    );
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await anzahl(ids.pk_anna), 2);
   });
 
   await t.test('ein Passwortwechsel widerruft Passkeys nur auf Wunsch', async () => {
     const c = await registriere('pk_bert', authenticator());
-    const wechsel = (cookie, alt, neu, mehr = {}) => ruf('/change-password', { current: alt, newPassword: neu, ...mehr }, cookie);
+    const wechsel = (cookie, alt, neu, mehr = {}) =>
+      ruf('/change-password', { current: alt, newPassword: neu, ...mehr }, cookie);
     assert.equal((await wechsel(c, PASS, 'zwischenPasswort-9')).status, 200);
     assert.equal(await anzahl(ids.pk_bert), 1, 'ohne Wunsch bleiben die Passkeys');
     const c2 = (await ruf('/login', { username: 'pk_bert', password: 'zwischenPasswort-9', ohne_token: true })).cookie;
@@ -271,40 +370,54 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     assert.equal(await anzahl(ids.pk_bert), 0, 'passkeys_widerrufen wirkt nicht');
   });
 
-  await t.test('Zurücksetzen per Mail widerruft alle Passkeys und meldet es', async (tt) => {
-    assert.ok(await anzahl(ids.pk_anna) > 0);
+  await t.test('Zurücksetzen per Mail widerruft alle Passkeys und meldet es', async tt => {
+    assert.ok((await anzahl(ids.pk_anna)) > 0);
     // Ein Mailserver, der nicht antwortet: Der Versuch steht dann im Fehlerprotokoll.
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', '127.0.0.1'), ('smtp_port', '1'), ('smtp_user', 'x')
                   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
     await db.run("UPDATE users SET email = 'pk_anna@example.org' WHERE id = $1", [ids.pk_anna]);
     tt.after(() => db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_port', 'smtp_user')"));
     const roh = crypto.randomBytes(16).toString('hex');
-    await db.run("UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '1 hour' WHERE id = $2",
-      [crypto.createHash('sha256').update(roh).digest('hex'), ids.pk_anna]);
-    const zeilen = [], echt = console.error;
-    console.error = (...a) => { zeilen.push(a.join(' ')); };
+    await db.run("UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '1 hour' WHERE id = $2", [
+      crypto.createHash('sha256').update(roh).digest('hex'),
+      ids.pk_anna,
+    ]);
+    const zeilen = [],
+      echt = console.error;
+    console.error = (...a) => {
+      zeilen.push(a.join(' '));
+    };
     try {
       const r = await ruf('/reset-password', { token: roh, password: 'ganzNeuesPasswort-7' });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       for (let i = 0; i < 100 && !zeilen.some(z => z.includes('SMTP')); i++) await new Promise(f => setTimeout(f, 50));
-    } finally { console.error = echt; }
+    } finally {
+      console.error = echt;
+    }
     assert.equal(await anzahl(ids.pk_anna), 0, 'ein untergeschobener Passkey überlebt das Zurücksetzen');
     assert.equal((await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen()) })).status, 401);
-    assert.ok(zeilen.some(z => z.includes('SMTP') && z.includes('example.org')), `kein Hinweis verschickt: ${zeilen.join('\n')}`);
+    assert.ok(
+      zeilen.some(z => z.includes('SMTP') && z.includes('example.org')),
+      `kein Hinweis verschickt: ${zeilen.join('\n')}`,
+    );
   });
 
-  await t.test('über der Obergrenze offener Challenges gibt es 503', async (tt) => {
+  await t.test('über der Obergrenze offener Challenges gibt es 503', async tt => {
     const { OFFENE_CHALLENGES_HOECHSTENS } = _req('src/konto/passkeys.js');
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'passkey-optionen|%'");
     await db.run('DELETE FROM webauthn_challenges');
     tt.after(() => db.run("DELETE FROM webauthn_challenges WHERE challenge LIKE 'voll%'"));
-    await db.run(`INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
+    await db.run(
+      `INSERT INTO webauthn_challenges (challenge, user_id, zweck, expires_at)
       SELECT 'voll' || g, NULL, 'anmelden', NOW() + INTERVAL '5 minutes' FROM generate_series(1, $1::int - 1) g`,
-      [OFFENE_CHALLENGES_HOECHSTENS]);
+      [OFFENE_CHALLENGES_HOECHSTENS],
+    );
     assert.equal((await ruf('/passkey/anmelden/optionen', {})).status, 200, 'die letzte freie Stelle');
     const r = await ruf('/passkey/anmelden/optionen', {});
     assert.deepEqual([r.status, r.body?.code], [503, 'server_ausgelastet']);
-    await db.run(`UPDATE webauthn_challenges SET expires_at = NOW() - INTERVAL '1 minute' WHERE challenge LIKE 'voll%'`);
+    await db.run(
+      `UPDATE webauthn_challenges SET expires_at = NOW() - INTERVAL '1 minute' WHERE challenge LIKE 'voll%'`,
+    );
     assert.equal((await ruf('/passkey/anmelden/optionen', {})).status, 200, 'abgelaufene räumt der nächste Aufruf ab');
   });
 });

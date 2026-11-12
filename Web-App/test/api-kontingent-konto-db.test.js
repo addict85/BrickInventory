@@ -26,8 +26,8 @@ const db = _req('db/database.js');
 const k = _req('src/katalog/apiKontingent.js');
 const { imNamenVon } = _req('src/infra/kontoKontext.js');
 
-test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const vorher = await db.get("SELECT value FROM global_settings WHERE key = 'api_limit_brickset'");
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('api_limit_brickset', '8')
                 ON CONFLICT (key) DO UPDATE SET value = '8'`);
@@ -40,7 +40,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
   });
   const kind = { apiUser: { user_id: 990101, is_admin: 0 } };
   const chef = { apiUser: { user_id: 990102, is_admin: 1 } };
-  const zaehle = (req) => imNamenVon(req, () => k.checkAndIncrementRateLimit('brickset'));
+  const zaehle = req => imNamenVon(req, () => k.checkAndIncrementRateLimit('brickset'));
 
   await t.test('ein Konto bekommt ein Viertel, und der abgewiesene Aufruf zählt gesamt nicht', async () => {
     assert.equal((await zaehle(kind)).allowed, true);
@@ -67,16 +67,30 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async (t) => {
   await t.test('ein Auftrag zählt beim Konto, das ihn eingestellt hat', async () => {
     await k.setzeKontingentZurueck('brickset');
     await db.run("DELETE FROM users WHERE username = 'kontingent_kind'");
-    await db.run("INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('kontingent_kind','x',false,true,true)");
+    await db.run(
+      "INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('kontingent_kind','x',false,true,true)",
+    );
     const uid = (await db.get("SELECT id FROM users WHERE username = 'kontingent_kind'")).id;
     const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
-    const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege });
+    const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), {
+      ..._req('src/auftraege/dienst.js'),
+      ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+    });
     const ergebnisse = [];
-    const w = erzeugeWorker({ wechselkurse: { ausfuehren: async () => {
-      for (let i = 0; i < 3; i++) ergebnisse.push((await k.checkAndIncrementRateLimit('brickset')).allowed);
-    } } }, { parallel: 1 });
+    const w = erzeugeWorker(
+      {
+        wechselkurse: {
+          ausfuehren: async () => {
+            for (let i = 0; i < 3; i++) ergebnisse.push((await k.checkAndIncrementRateLimit('brickset')).allowed);
+          },
+        },
+      },
+      { parallel: 1 },
+    );
     await stelleAuftragEin('wechselkurse', {}, { userId: uid });
-    while (await w.verarbeiteEinen()) { /* bis die Tabelle leer ist */ }
+    while (await w.verarbeiteEinen()) {
+      /* bis die Tabelle leer ist */
+    }
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     assert.deepEqual(ergebnisse, [true, true, false], 'Im Auftrag gilt das Viertel des Kontos');
   });

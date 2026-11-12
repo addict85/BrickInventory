@@ -18,22 +18,25 @@ export interface Gesperrt {
   wartenSek: number;
 }
 
-export type Abfrage =
-  | { art: 'guthaben'; guthaben: Guthaben }
-  | ({ art: 'gesperrt' } & Gesperrt);
+export type Abfrage = { art: 'guthaben'; guthaben: Guthaben } | ({ art: 'gesperrt' } & Gesperrt);
 
 /** In der Datenbank, damit die Grenze über alle Prozesse gilt. */
 export async function belegePlatz(uid: number): Promise<{ frei: true } | ({ frei: false } & Gesperrt)> {
-  return gutscheineBereich().db.transaction(async (tx) => {
+  return gutscheineBereich().db.transaction(async tx => {
     // Falls eine ältere Sicherung die Zeile nicht hat. NULL heisst „noch nie" —
     // ein Datum wäre eine Behauptung.
     await repo.legeSchrankeAn(tx);
 
     // In SQL: EINE Zeile, EINE Sperre, EINE Uhr.
-    const z = await repo.schrankenStand(tx, ABSTAND_SEK) as { sperre_sek?: unknown; abstand_sek?: unknown } | undefined;
+    const z = (await repo.schrankenStand(tx, ABSTAND_SEK)) as
+      | { sperre_sek?: unknown; abstand_sek?: unknown }
+      | undefined;
 
     // NULL (= noch nie) kommt als NaN zurück und bedeutet „kein Rest".
-    const rest = (w: unknown) => { const n = Number(w); return Number.isFinite(n) ? n : 0; };
+    const rest = (w: unknown) => {
+      const n = Number(w);
+      return Number.isFinite(n) ? n : 0;
+    };
 
     const konto = await repo.kontoStand(tx, uid);
     if (rest(konto?.anzahl) >= KONTO_JE_STUNDE)
@@ -65,7 +68,10 @@ export async function vergesseSchranke(): Promise<void> {
 
 // Der einzige Weg zur Abfrage, damit niemand die Schranke umgeht.
 export async function frageGuthabenAb(
-  uid: number, nummer: string, pin: string, opt: { locale?: string; abruf?: Abruf } = {},
+  uid: number,
+  nummer: string,
+  pin: string,
+  opt: { locale?: string; abruf?: Abruf } = {},
 ): Promise<Abfrage> {
   const platz = await belegePlatz(uid);
   if (!platz.frei) {
@@ -81,7 +87,11 @@ export async function frageGuthabenAb(
   } catch (e) {
     if (e instanceof BotSchutz) {
       const wartenSek = await sperreWegenBotschutz();
-      console.warn(`[guthaben] Bot-Schutz — ${BOTSCHUTZ_PAUSE_MIN} Minuten Pause: ${e.message}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+      console.warn(
+        `[guthaben] Bot-Schutz — ${BOTSCHUTZ_PAUSE_MIN} Minuten Pause: ${e.message}`
+          .replace(/\r?\n/g, ' ⏎ ')
+          .replace(/\n|\r/g, ''),
+      );
       return { art: 'gesperrt', grund: 'botschutz', wartenSek };
     }
     // Ein Fehler der Gegenseite ist kein Serverfehler: Wer gefragt hat, soll den Grund lesen.

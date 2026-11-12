@@ -27,22 +27,43 @@ async function suche(sprache) {
 
 test('Suche ohne Treffer: de', async () => {
   const { o, text } = await suche('de');
-  try { assert.equal(text, 'Keine Treffer für „xyzxyz“'); } finally { o.w.close(); }
+  try {
+    assert.equal(text, 'Keine Treffer für „xyzxyz“');
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Suche ohne Treffer: en', async () => {
   const { o, text } = await suche('en');
-  try { assert.equal(text, 'No results for “xyzxyz”'); } finally { o.w.close(); }
+  try {
+    assert.equal(text, 'No results for “xyzxyz”');
+  } finally {
+    o.w.close();
+  }
 });
 
 test('jedes „ hat sein “, und englisch keine geraden Anführungszeichen um Wörter', async () => {
   const { w } = await oeffneOberflaeche({}, { angemeldet: false });
   try {
-    const de = Object.entries(w.I18N_DE), en = Object.entries(w.I18N_EN);
+    const de = Object.entries(w.I18N_DE),
+      en = Object.entries(w.I18N_EN);
     assert.ok(de.length > 500 && en.length > 500, 'Wörterbücher nicht geladen');
-    const deFalsch = de.filter(([, v]) => (v.match(/„/g) || []).length !== (v.match(/“/g) || []).length || /„[^“]*"/.test(v));
-    assert.deepEqual(deFalsch.map(([k]) => k), [], 'de: „ ohne passendes “');
-    const enFalsch = en.filter(([, v]) => /"[^"<>=]*"/.test(v) && !/<|=/.test(v) || /„/.test(v));
-    assert.deepEqual(enFalsch.map(([k]) => k), [], 'en: gerade oder deutsche Anführungszeichen');
-  } finally { w.close(); }
+    const deFalsch = de.filter(
+      ([, v]) => (v.match(/„/g) || []).length !== (v.match(/“/g) || []).length || /„[^“]*"/.test(v),
+    );
+    assert.deepEqual(
+      deFalsch.map(([k]) => k),
+      [],
+      'de: „ ohne passendes “',
+    );
+    const enFalsch = en.filter(([, v]) => (/"[^"<>=]*"/.test(v) && !/<|=/.test(v)) || /„/.test(v));
+    assert.deepEqual(
+      enFalsch.map(([k]) => k),
+      [],
+      'en: gerade oder deutsche Anführungszeichen',
+    );
+  } finally {
+    w.close();
+  }
 });

@@ -1,8 +1,8 @@
 // sharp rechnet ausserhalb des Event-Loops.
 
 import { meldeFehler, fehlertext } from '../../infra/fehler';
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 import { resolveWebPath } from '../../infra/appPaths';
 import { isDecodable } from './imageGuard';
 
@@ -12,8 +12,9 @@ const THUMB_SIZE = 200;
  * defektes Bild soll scheitern und gemerkt werden, nicht zweimal gerechnet. */
 async function verkleinern(quelle: string, ziel: string): Promise<void> {
   let sharp: typeof import('sharp') | null = null;
-  try { sharp = require('sharp'); }
-  catch (e) {
+  try {
+    sharp = require('sharp');
+  } catch (e) {
     console.warn(`[thumb] sharp nicht verfügbar (${fehlertext(e)}) — nutze Jimp`);
   }
 
@@ -45,8 +46,8 @@ export async function generateThumb(localPath: string) {
 
   if (!fs.existsSync(fsPath)) return null;
 
-  const ext      = path.extname(fsPath);
-  const thumbFs  = fsPath.replace(ext, '_thumb.jpg');
+  const ext = path.extname(fsPath);
+  const thumbFs = fsPath.replace(ext, '_thumb.jpg');
   const thumbWeb = localPath.replace(ext, '_thumb.jpg');
 
   if (fs.existsSync(thumbFs)) return thumbWeb;
@@ -64,13 +65,19 @@ export async function generateThumb(localPath: string) {
     return thumbWeb;
   } catch (e) {
     // NICHT still scheitern.
-    console.error(`[thumb] Vorschau fehlgeschlagen für ${localPath}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    console.error(
+      `[thumb] Vorschau fehlgeschlagen für ${localPath}: ${fehlertext(e)}`
+        .replace(/\r?\n/g, ' ⏎ ')
+        .replace(/\n|\r/g, ''),
+    );
     try {
-      const reste = fs.readdirSync(path.dirname(fsPath))
+      const reste = fs
+        .readdirSync(path.dirname(fsPath))
         .filter(f => f.startsWith(path.basename(thumbFs)) && f.endsWith('.tmp.jpg'));
       for (const r of reste) fs.unlinkSync(path.join(path.dirname(fsPath), r));
-    } catch (e) { meldeFehler('vorschau:reste', e); }
+    } catch (e) {
+      meldeFehler('vorschau:reste', e);
+    }
     return null;
   }
 }
-

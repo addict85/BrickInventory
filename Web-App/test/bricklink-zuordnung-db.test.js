@@ -8,15 +8,16 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 
@@ -28,32 +29,35 @@ test.after(async () => {
     await db.run('CREATE SCHEMA public');
     await db.initSchema();
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   } catch (e) {
     console.error('[bricklink-zuordnung] Aufraeumen fehlgeschlagen:', e.message);
   }
   await db.pool.end().catch(() => {});
 });
 
-const spaltenVon = async (tabelle) => (await db.all(
-  `SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
-  .map(r => r.column_name).sort();
+const spaltenVon = async tabelle =>
+  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
+    .map(r => r.column_name)
+    .sort();
 
-const tabelleDa = async (name) => !!(await db.get(
-  `SELECT to_regclass($1) AS t`, [name]))?.t;
+const tabelleDa = async name => !!(await db.get(`SELECT to_regclass($1) AS t`, [name]))?.t;
 
-const dbDa = async (t) => {
-  try { await db.run('SELECT 1'); return true; }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return false;
+const dbDa = async t => {
+  try {
+    await db.run('SELECT 1');
+    return true;
+  } catch (e) {
+    keineDb(t, e);
+    return false;
   }
 };
 
-
-test('nach der ganzen Kette stehen die Nummern nur in bl_zuordnung',
-  { concurrency: 1 }, async (t) => {
+test('nach der ganzen Kette stehen die Nummern nur in bl_zuordnung', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -63,59 +67,74 @@ test('nach der ganzen Kette stehen die Nummern nur in bl_zuordnung',
   // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
   // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
 
   // ── Danach: die Abschriften sind weg ─────────────────────────────────────
-  assert.ok(!(await spaltenVon('parts')).includes('bl_part_number'),
-    'parts.bl_part_number ist nach allen Migrationen noch da');
-  assert.ok(!(await spaltenVon('set_parts_catalog')).includes('bl_part_number'),
-    'set_parts_catalog.bl_part_number ist nach allen Migrationen noch da');
-  assert.ok(!(await spaltenVon('minifigs')).includes('bl_fig_number'),
-    'minifigs.bl_fig_number ist nach allen Migrationen noch da');
-  assert.ok(!(await tabelleDa('rb_bl_mapping')),
-    'rb_bl_mapping gibt es noch — ihr Inhalt steht als Art part in bl_zuordnung');
+  assert.ok(
+    !(await spaltenVon('parts')).includes('bl_part_number'),
+    'parts.bl_part_number ist nach allen Migrationen noch da',
+  );
+  assert.ok(
+    !(await spaltenVon('set_parts_catalog')).includes('bl_part_number'),
+    'set_parts_catalog.bl_part_number ist nach allen Migrationen noch da',
+  );
+  assert.ok(
+    !(await spaltenVon('minifigs')).includes('bl_fig_number'),
+    'minifigs.bl_fig_number ist nach allen Migrationen noch da',
+  );
+  assert.ok(
+    !(await tabelleDa('rb_bl_mapping')),
+    'rb_bl_mapping gibt es noch — ihr Inhalt steht als Art part in bl_zuordnung',
+  );
 
   // ── Und die Zuordnung steht ──────────────────────────────────────────────
   const z = await spaltenVon('bl_zuordnung');
-  assert.deepEqual(z, ['art', 'bl_id', 'fetched_at', 'rb_id'],
-    `bl_zuordnung hat nicht die vorgesehenen Spalten: ${z.join(', ')}`);
+  assert.deepEqual(
+    z,
+    ['art', 'bl_id', 'fetched_at', 'rb_id'],
+    `bl_zuordnung hat nicht die vorgesehenen Spalten: ${z.join(', ')}`,
+  );
 
   // Die Art ist eingeschränkt — ein Tippfehler soll nicht als vierte Art
   // durchgehen und dort still unsichtbare Zeilen anlegen.
   await assert.rejects(
     () => db.run(`INSERT INTO bl_zuordnung (art, rb_id) VALUES ('teil','x')`),
     /bl_zuordnung_art|check constraint/,
-    'Eine erfundene Art wird angenommen — dann liegen Zeilen da, die keine ' +
-    'Leseabfrage je findet');
+    'Eine erfundene Art wird angenommen — dann liegen Zeilen da, die keine ' + 'Leseabfrage je findet',
+  );
   for (const art of ['part', 'fig', 'set']) {
-    await db.run(`INSERT INTO bl_zuordnung (art, rb_id) VALUES ($1,'x') ` +
-                 `ON CONFLICT DO NOTHING`, [art]);
+    await db.run(`INSERT INTO bl_zuordnung (art, rb_id) VALUES ($1,'x') ` + `ON CONFLICT DO NOTHING`, [art]);
   }
-  assert.equal((await db.get(
-    `SELECT COUNT(*)::int AS c FROM bl_zuordnung WHERE rb_id='x'`)).c, 3,
-    'Nicht alle drei Arten sind erlaubt — Marcos Vorgabe nennt Minifiguren, ' +
-    'Parts UND Sets');
+  assert.equal(
+    (await db.get(`SELECT COUNT(*)::int AS c FROM bl_zuordnung WHERE rb_id='x'`)).c,
+    3,
+    'Nicht alle drei Arten sind erlaubt — Marcos Vorgabe nennt Minifiguren, ' + 'Parts UND Sets',
+  );
   await db.run(`DELETE FROM bl_zuordnung WHERE rb_id='x'`);
 
   // Der Index fuer die Eindeutigkeitspruefung des Riegels.
-  const idx = (await db.all(
-    `SELECT indexname FROM pg_indexes WHERE tablename='bl_zuordnung'`)).map(r => r.indexname);
-  assert.ok(idx.includes('idx_bl_zuordnung_bl'),
-    `idx_bl_zuordnung_bl fehlt — gefunden: ${idx.join(', ')}`);
+  const idx = (await db.all(`SELECT indexname FROM pg_indexes WHERE tablename='bl_zuordnung'`)).map(r => r.indexname);
+  assert.ok(idx.includes('idx_bl_zuordnung_bl'), `idx_bl_zuordnung_bl fehlt — gefunden: ${idx.join(', ')}`);
 });
 
-test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung',
-  { concurrency: 1 }, async (t) => {
+test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const c0 = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c0);
+  } finally {
+    c0.release();
+  }
 
-  const u = await db.get(
-    `INSERT INTO users (username,password_hash) VALUES ('blleser','x') RETURNING id`);
+  const u = await db.get(`INSERT INTO users (username,password_hash) VALUES ('blleser','x') RETURNING id`);
   const uid = u.id;
 
   // Ein manuelles Teil und eine manuelle Figur, beide mit ABWEICHENDER
@@ -128,8 +147,8 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung',
                 ON CONFLICT (fig_number) DO NOTHING`);
   // Bestandszeile UND Erfassung in einem — die Stückzahl steht seit
   // Migration 0038 nur noch dort.
-  await haeltTeil(db, uid, '3070b', { menge: 5, colorId: 0, preis: 1.00 });
-  await haeltFigur(db, uid, 'fig-9', { menge: 2, preis: 5.00 });
+  await haeltTeil(db, uid, '3070b', { menge: 5, colorId: 0, preis: 1.0 });
+  await haeltFigur(db, uid, 'fig-9', { menge: 2, preis: 5.0 });
   await db.run(`INSERT INTO bl_zuordnung (art,rb_id,bl_id) VALUES
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 
@@ -139,15 +158,16 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung',
   const teile = await H.getManualParts([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3070b');
   assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(teile).slice(0, 300)}`);
-  assert.equal(teil.bl_part_number, '3070',
-    `bl_part_number kam als ${teil.bl_part_number} statt 3070 — die Liste liest die ` +
-    'Nummer nicht aus bl_zuordnung');
+  assert.equal(
+    teil.bl_part_number,
+    '3070',
+    `bl_part_number kam als ${teil.bl_part_number} statt 3070 — die Liste liest die ` + 'Nummer nicht aus bl_zuordnung',
+  );
 
   const figs = await M.getManualMinifigs([uid], uid);
   const fig = (Array.isArray(figs) ? figs : figs.minifigs || []).find(f => f.fig_number === 'fig-9');
   assert.ok(fig, `Die Figur fehlt in der Antwort: ${JSON.stringify(figs).slice(0, 300)}`);
-  assert.equal(fig.bl_fig_number, 'sw9999',
-    `bl_fig_number kam als ${fig.bl_fig_number} statt sw9999`);
+  assert.equal(fig.bl_fig_number, 'sw9999', `bl_fig_number kam als ${fig.bl_fig_number} statt sw9999`);
 
   // ── GEGENPROBE: die Zuordnung ändern ─────────────────────────────────────
   //
@@ -159,13 +179,19 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung',
 
   const teile2 = await H.getManualParts([uid], uid);
   const teil2 = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3070b');
-  assert.equal(teil2.bl_part_number, '3070neu',
-    `Die Teileliste folgt der Zuordnung nicht: ${teil2.bl_part_number} statt 3070neu`);
+  assert.equal(
+    teil2.bl_part_number,
+    '3070neu',
+    `Die Teileliste folgt der Zuordnung nicht: ${teil2.bl_part_number} statt 3070neu`,
+  );
 
   const figs2 = await M.getManualMinifigs([uid], uid);
   const fig2 = (Array.isArray(figs2) ? figs2 : figs2.minifigs || []).find(f => f.fig_number === 'fig-9');
-  assert.equal(fig2.bl_fig_number, 'sw0000',
-    `Die Figurenliste folgt der Zuordnung nicht: ${fig2.bl_fig_number} statt sw0000`);
+  assert.equal(
+    fig2.bl_fig_number,
+    'sw0000',
+    `Die Figurenliste folgt der Zuordnung nicht: ${fig2.bl_fig_number} statt sw0000`,
+  );
 
   // ── Und OHNE Zuordnung gilt die Rebrickable-Nummer ───────────────────────
   //
@@ -176,8 +202,11 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung',
   await db.run(`DELETE FROM bl_zuordnung WHERE art='part' AND rb_id='3070b'`);
   const teile3 = await H.getManualParts([uid], uid);
   const teil3 = (Array.isArray(teile3) ? teile3 : teile3.parts || []).find(p => p.part_number === '3070b');
-  assert.equal(teil3.bl_part_number, '3070b',
-    `Ohne Zuordnung muss die Rebrickable-Nummer herauskommen, nicht ${teil3.bl_part_number}`);
+  assert.equal(
+    teil3.bl_part_number,
+    '3070b',
+    `Ohne Zuordnung muss die Rebrickable-Nummer herauskommen, nicht ${teil3.bl_part_number}`,
+  );
 });
 
 test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => {
@@ -186,10 +215,13 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   // Lesestelle ist ein harter Fehler — und genau deshalb laufen die Lesewege
   // oben gegen eine migrierte Datenbank.
   const dateien = [];
-  const lauf = (verz) => {
+  const lauf = verz => {
     for (const e of fs.readdirSync(verz, { withFileTypes: true })) {
       const p = path.join(verz, e.name);
-      if (e.isDirectory()) { lauf(p); continue; }
+      if (e.isDirectory()) {
+        lauf(p);
+        continue;
+      }
       if (/\.(ts|js)$/.test(e.name)) dateien.push(p);
     }
   };
@@ -200,19 +232,24 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   dateien.push(path.join(ROOT, 'server.ts'));
   assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden`);
 
-  const codeZeilen = (txt) => txt.split('\n')
-    .filter(z => { const t = z.trim(); return !(t.startsWith('//') || t.startsWith('*')
-                                             || t.startsWith('/*') || t.startsWith('--')); });
+  const codeZeilen = txt =>
+    txt.split('\n').filter(z => {
+      const t = z.trim();
+      return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('--'));
+    });
 
   // Die drei Abschriften, und die alte Tabelle. parts_summary.bl_part_number
   // ist ausgenommen: Diese Tabelle ist ein Zwischenspeicher, sie hält den
   // Gruppenschlüssel als fertige Spalte (src/teile/partsSummary.ts).
   const muster = [
-    ['setzt parts.bl_part_number',    /UPDATE\s+parts\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
-    ['setzt minifigs.bl_fig_number',  /UPDATE\s+minifigs\s+SET\s+[^;`']*\bbl_fig_number\s*=/i],
-    ['setzt den Set-Teile-Katalog',   /UPDATE\s+set_parts_catalog\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
-    ['legt die Spalte wieder an',     /ALTER\s+TABLE\s+(?:parts|minifigs|set_parts_catalog)\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?bl_(?:part|fig)_number/i],
-    ['benutzt rb_bl_mapping',         /\brb_bl_mapping\b/i],
+    ['setzt parts.bl_part_number', /UPDATE\s+parts\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
+    ['setzt minifigs.bl_fig_number', /UPDATE\s+minifigs\s+SET\s+[^;`']*\bbl_fig_number\s*=/i],
+    ['setzt den Set-Teile-Katalog', /UPDATE\s+set_parts_catalog\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
+    [
+      'legt die Spalte wieder an',
+      /ALTER\s+TABLE\s+(?:parts|minifigs|set_parts_catalog)\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?bl_(?:part|fig)_number/i,
+    ],
+    ['benutzt rb_bl_mapping', /\brb_bl_mapping\b/i],
   ];
 
   const stellen = [];
@@ -224,10 +261,14 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
       for (const [was, m] of muster) if (m.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 80)}`);
     }
   }
-  assert.deepEqual(stellen, [],
+  assert.deepEqual(
+    stellen,
+    [],
     'Diese Stellen schreiben eine BrickLink-Nummer an eine Bestandszeile oder ' +
-    'benutzen die alte Tabelle:\n  ' + stellen.join('\n  ') +
-    '\nSie steht seit Migration 0037 in bl_zuordnung, einmal je Gegenstand.');
+      'benutzen die alte Tabelle:\n  ' +
+      stellen.join('\n  ') +
+      '\nSie steht seit Migration 0037 in bl_zuordnung, einmal je Gegenstand.',
+  );
 
   // ── Selbstbeweis ─────────────────────────────────────────────────────────
   //
@@ -237,20 +278,22 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   // standen vor Migration 0037 so im Teile-Import und in den Figurenrouten).
   const proben = [
     'UPDATE parts SET bl_part_number = m.bl_part_num FROM x',
-    "UPDATE minifigs SET bl_fig_number=$1 WHERE id=$2",
+    'UPDATE minifigs SET bl_fig_number=$1 WHERE id=$2',
     'UPDATE set_parts_catalog SET bl_part_number = m.bl_part_num FROM x',
     'ALTER TABLE parts ADD COLUMN IF NOT EXISTS bl_part_number TEXT',
     'SELECT bl_part_num FROM rb_bl_mapping WHERE part_num=$1',
   ];
   for (const zeile of proben) {
-    assert.ok(muster.some(([, m]) => m.test(zeile)),
-      `Kein Muster greift auf seine eigene Probe: ${zeile.slice(0, 60)}`);
+    assert.ok(
+      muster.some(([, m]) => m.test(zeile)),
+      `Kein Muster greift auf seine eigene Probe: ${zeile.slice(0, 60)}`,
+    );
   }
   // Und die Gegenrichtung: Was erlaubt ist, darf NICHT greifen.
   for (const zeile of [
-    "INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2))",
+    'INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2))',
     'INSERT INTO parts_summary (user_id, part_key, bl_part_number) SELECT 1,2,3',
-    "UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2",
+    'UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2',
   ]) {
     for (const [was, m] of muster) {
       assert.ok(!m.test(zeile), `Das Muster „${was}" meldet eine erlaubte Zeile: ${zeile.slice(0, 70)}`);

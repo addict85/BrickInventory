@@ -47,7 +47,7 @@ zurücksetzen, sonst bleibt der Knopf nach einem Fehler dauerhaft gesperrt.
 ## Abgelaufene Sitzung (HTTP 401)
 
 **Dateien:** `data/repository/Abruf.kt`, `app/di/AppModule.kt`,
-`data/SessionExpiredSignal.kt`, `zustand/ui/SitzungsDienst.kt`
+`data/SessionExpiredSignal.kt`, `sitzung/SitzungsDienst.kt`
 **Test:** `SessionAndLifecycleTest`
 
 Ein 401 ist kein gewöhnlicher Serverfehler. Drei Regeln:
@@ -211,7 +211,7 @@ Ein `else`-Zweig verschluckte sie still; deshalb keinen nachrüsten.
 
 ## Zustand ist nach Domänen getrennt
 
-**Dateien:** `*/ui/Zustand*.kt`, `zustand/ui/AbgeleiteterZustand.kt`
+**Dateien:** `*/ui/Zustand*.kt`, `sitzung/AppUiState.kt`, `sitzung/AbgeleiteterZustand.kt`
 **Tests:** `ZustandsflussBreiteTest`, `AbgeleiteterZustandTest`, `TeileViewModelTest` u. a. („nach dem Abmelden …“)
 
 `AppUiState` hält nur die Sitzung; jeder Bereich hat seinen eigenen Fluss. Ein
@@ -661,7 +661,7 @@ Handlungsmacht.
 |---|---|---|
 | geheim | Token | nur AES-GCM mit Keystore-Schlüssel (`TokenTresor`) |
 | geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), ein Gutschein-PDF liegt nur im Speicher (memfd, `PdfViewerScreen`) |
-| vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
+| vertraulich | Sets, Teile, Figuren, Merkliste, Preisalarme, Lagerorte, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
 | vertraulich | API-Antworten, Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt); Anleitungen angezeigt aus memfd oder namenloser Datei |
 | vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
 | Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre` (AES-GCM, eigener Ablageschlüssel, überlebt das Abmelden); unlesbar heisst „nicht vertraut“ (`VertrauenVerschluesseltTest`) |

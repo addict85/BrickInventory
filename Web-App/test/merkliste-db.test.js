@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { haeltSet, mengeVon, haltZeile, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
@@ -17,8 +18,11 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
   for (const name of ['opa', 'enkel']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
@@ -27,22 +31,25 @@ async function seed() {
   // NUR einer: Der zweite Merkposten prüft den Fall „Set nicht im Katalog".
   await db.run(
     `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)
-     VALUES ('75192-1', 'Millennium Falcon', 2017, 158, 7541, 'http://x/75192.jpg')`);
+     VALUES ('75192-1', 'Millennium Falcon', 2017, 158, 7541, 'http://x/75192.jpg')`,
+  );
   // Das Bild liest die Merkliste nur aus set_catalog (0108).
   await db.run(`INSERT INTO set_catalog (set_number, image_url) VALUES ('75192-1', 'http://x/75192.jpg')`);
 }
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
+test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
   await seed();
@@ -69,8 +76,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // ihn die Merkliste mit. Genau dafür steht in 0021 keine name-Spalte.
     await db.run(`UPDATE rb_sets SET name='Millennium Falcon (UCS)' WHERE set_num='75192-1'`);
     const [nachher] = await W.merkpostenVon([U.opa]);
-    assert.equal(nachher.name, 'Millennium Falcon (UCS)',
-      'Der Name stammt aus einer Kopie und veraltet');
+    assert.equal(nachher.name, 'Millennium Falcon (UCS)', 'Der Name stammt aus einer Kopie und veraltet');
     await db.run(`UPDATE rb_sets SET name='Millennium Falcon' WHERE set_num='75192-1'`);
   });
 
@@ -93,8 +99,10 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     assert.equal(w.year, 2023);
     assert.equal(w.num_parts, 6167);
     assert.equal(w.image_url, 'http://x/10316.jpg');
-    assert.ok((await W.merkpostenVon([U.opa], undefined, 'EUR', { suche: 'riven' })).some(x => x.set_number === '10316-1'),
-      'Die Suche findet den Namen aus set_catalog nicht');
+    assert.ok(
+      (await W.merkpostenVon([U.opa], undefined, 'EUR', { suche: 'riven' })).some(x => x.set_number === '10316-1'),
+      'Die Suche findet den Namen aus set_catalog nicht',
+    );
     await db.run(`DELETE FROM wanted WHERE set_number = '10316-1'`);
   });
 
@@ -111,8 +119,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
   await t.test('denselben Merkposten zweimal eintragen ist kein zweiter Eintrag', async () => {
     const wieder = await W.legeMerkpostenAn(U.opa, '75192-1', 'N');
     assert.equal(wieder.war_neu, false, 'war_neu meldet einen Neuzugang, den es nicht gab');
-    const n = await db.get(
-      `SELECT COUNT(*)::int AS n FROM wanted WHERE user_id=$1 AND set_number='75192-1'`, [U.opa]);
+    const n = await db.get(`SELECT COUNT(*)::int AS n FROM wanted WHERE user_id=$1 AND set_number='75192-1'`, [U.opa]);
     assert.equal(n.n, 2, 'N und U — nicht mehr');
   });
 
@@ -136,7 +143,10 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const alleinOpa = await W.merkpostenVon([U.opa], '75192-1');
     assert.equal(alleinOpa[0].owned, false);
     const imBlickfeld = await W.merkpostenVon([U.opa, U.enkel], '75192-1');
-    assert.ok(imBlickfeld.every(w => w.owned === true), 'owned sieht nur das eigene Konto an');
+    assert.ok(
+      imBlickfeld.every(w => w.owned === true),
+      'owned sieht nur das eigene Konto an',
+    );
     await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1`, [U.enkel]);
     await db.run(`DELETE FROM sets WHERE user_id=$1`, [U.enkel]);
   });
@@ -160,14 +170,14 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const r = await W.uebernimm(U.opa, U.opa, '75192-1', 'N', { quantity: 2 });
     assert.equal(r.action, 'added');
 
-    assert.ok(await haltZeile(db, U.opa, '75192-1'),
-      'Das Set ist nicht in der Galerie gelandet');
+    assert.ok(await haltZeile(db, U.opa, '75192-1'), 'Das Set ist nicht in der Galerie gelandet');
     // Die Menge aus den Erfassungen (Migration 0036).
     assert.equal(await mengeVon(db, U.opa, '75192-1'), 2);
 
-    const erf = await db.get(
-      `SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
-      [U.opa, '75192-1']);
+    const erf = await db.get(`SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [
+      U.opa,
+      '75192-1',
+    ]);
     assert.equal(erf.n, 1, 'Keine Erfassungszeile — die Übernahme ruft setErfassen() nicht');
   });
 
@@ -178,9 +188,11 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // eigentliche Aussage unten. Er stand frueher im Notiz-Test, den es seit
     // dem Ausbau des Feldes (Migration 0022) nicht mehr gibt.
     await W.legeMerkpostenAn(U.enkel, '10276-1', 'N');
-    const P = { ..._req('src/finanzen/preisalarm.js'), ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm };
-    await P.setzeAlarm(U.enkel, '10276-1', 'EUR',
-      { richtung: 'unter', schwelle: 249, condition: 'U' });
+    const P = {
+      ..._req('src/finanzen/preisalarm.js'),
+      ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm,
+    };
+    await P.setzeAlarm(U.enkel, '10276-1', 'EUR', { richtung: 'unter', schwelle: 249, condition: 'U' });
     assert.equal((await P.alarmeFuer(U.enkel, '10276-1')).length, 1, 'Aufbau: Alarm fehlt');
 
     await W.uebernimm(U.enkel, U.enkel, '10276-1', 'U', {});
@@ -212,20 +224,18 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // Marcos Nachtrag: „gewisse Inhalte wie zB. Preis und Zustand, Anzahl
     // müssen beim Übernehmen angepasst werden."
     await W.legeMerkpostenAn(U.opa, '10497-1', 'N');
-    await W.uebernimm(U.opa, U.opa, '10497-1', 'N',
-      { quantity: 3, purchase_price: 88.5, condition: 'U' });
+    await W.uebernimm(U.opa, U.opa, '10497-1', 'N', { quantity: 3, purchase_price: 88.5, condition: 'U' });
 
-    assert.equal(await mengeVon(db, U.opa, '10497-1'), 3,
-      'Die Anzahl wurde nicht übernommen');
+    assert.equal(await mengeVon(db, U.opa, '10497-1'), 3, 'Die Anzahl wurde nicht übernommen');
 
     // Kaufpreis und Zustand stehen seit Migration 0032 nur in der Erfassung —
     // vorher prüfte diese Stelle den Preis an der sets-Zeile.
     const erf = await db.get(
       `SELECT purchase_price, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
-      [U.opa, '10497-1']);
+      [U.opa, '10497-1'],
+    );
     assert.equal(parseFloat(erf.purchase_price), 88.5, 'Der Kaufpreis wurde nicht übernommen');
-    assert.equal(erf.condition, 'U',
-      'Die Erfassung steht im Zustand des MERKPOSTENS statt in dem, was gekauft wurde');
+    assert.equal(erf.condition, 'U', 'Die Erfassung steht im Zustand des MERKPOSTENS statt in dem, was gekauft wurde');
   });
 
   await t.test('der Merkposten verschwindet nach SEINEM Zustand, nicht nach dem gekauften', async () => {
@@ -238,8 +248,11 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     await W.uebernimm(U.enkel, U.enkel, '21034-1', 'U', { condition: 'N' });
 
     const uebrig = (await W.merkpostenVon([U.enkel], '21034-1')).map(w => w.condition);
-    assert.deepEqual(uebrig, ['N'],
-      'Geräumt wurde nach dem GEKAUFTEN Zustand — damit trifft es den falschen Merkposten');
+    assert.deepEqual(
+      uebrig,
+      ['N'],
+      'Geräumt wurde nach dem GEKAUFTEN Zustand — damit trifft es den falschen Merkposten',
+    );
   });
 
   await t.test('der Preisvergleich haengt am Merkposten, nicht am Katalog', async () => {
@@ -261,9 +274,11 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const url = decodeURIComponent(mitKatalog.preisvergleich_url || '');
     assert.ok(url.startsWith('http'), 'Ohne Adresse führt der Knopf ins Leere');
     assert.ok(url.includes('75192'), `Die Setnummer fehlt in der Adresse: ${url}`);
-    assert.ok(url.includes('Millennium Falcon'),
+    assert.ok(
+      url.includes('Millennium Falcon'),
       `Der Name macht die Suche brauchbar — "LEGO 75192 Millennium Falcon" findet, ` +
-      `die blosse Nummer oft nicht: ${url}`);
+        `die blosse Nummer oft nicht: ${url}`,
+    );
 
     // Und der Fall, der den Knopf bisher verschwinden liess: ein Set, das im
     // Katalog gar nicht steht. Der Name fehlt dann — die Adresse nicht.
@@ -271,9 +286,10 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const [ohneKatalog] = await W.merkpostenVon([U.opa], '99999-1');
     assert.equal(ohneKatalog.name, null, 'Vorbedingung: dieses Set kennt der Katalog nicht');
     const url2 = decodeURIComponent(ohneKatalog.preisvergleich_url || '');
-    assert.ok(url2.includes('99999'),
-      `Gerade hier muss die Adresse stehen — der Katalog liefert für dieses Set ` +
-      `nichts: ${url2}`);
+    assert.ok(
+      url2.includes('99999'),
+      `Gerade hier muss die Adresse stehen — der Katalog liefert für dieses Set ` + `nichts: ${url2}`,
+    );
   });
 
   await t.test('das Bild kommt lokal — und fehlt es, wird es bestellt', async () => {
@@ -291,7 +307,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // ein „gibt es nicht" zehn Minuten lang (src/katalog/bilder/images.ts). Dieselbe Nummer
     // erst ohne und dann mit Datei zu prüfen, prüfte den Cache statt die Regel.
     const ohneDatei = `wlimg${process.pid}a-1`;
-    const mitDatei  = `wlimg${process.pid}b-1`;
+    const mitDatei = `wlimg${process.pid}b-1`;
     const datei = path.join(ORDNER, `${mitDatei}.jpg`);
     // Die Datei VOR dem Anlegen des Merkpostens: legeMerkpostenAn() liest die Liste
     // selbst noch einmal, und dieser Blick würde das „gibt es nicht" für die
@@ -302,8 +318,12 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       await db.run(
         `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)
          VALUES ($1,'Testset',2024,158,100,$2)`,
-        [sn, `http://cdn.example/media/sets/${sn}.jpg`]);
-      await db.run('INSERT INTO set_catalog (set_number, image_url) VALUES ($1,$2)', [sn, `http://cdn.example/media/sets/${sn}.jpg`]);
+        [sn, `http://cdn.example/media/sets/${sn}.jpg`],
+      );
+      await db.run('INSERT INTO set_catalog (set_number, image_url) VALUES ($1,$2)', [
+        sn,
+        `http://cdn.example/media/sets/${sn}.jpg`,
+      ]);
       await W.legeMerkpostenAn(U.opa, sn, 'N');
     }
 
@@ -312,21 +332,27 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const [a] = await W.merkpostenVon([U.opa], ohneDatei);
       assert.equal(a.image_local, null, 'Vorbedingung: für dieses Set liegt keine Datei');
       await IQ._schreibePuffer();
-      const notiz = await db.get(
-        'SELECT set_number FROM image_wanted WHERE url=$1',
-        [`http://cdn.example/media/sets/${ohneDatei}.jpg`]);
-      assert.ok(notiz, 'Das fehlende Bild wurde nicht bestellt — dann holt es der ' +
-        'Hintergrundjob nie, und die Anzeige bleibt für immer am Proxy hängen');
+      const notiz = await db.get('SELECT set_number FROM image_wanted WHERE url=$1', [
+        `http://cdn.example/media/sets/${ohneDatei}.jpg`,
+      ]);
+      assert.ok(
+        notiz,
+        'Das fehlende Bild wurde nicht bestellt — dann holt es der ' +
+          'Hintergrundjob nie, und die Anzeige bleibt für immer am Proxy hängen',
+      );
       assert.equal(notiz.set_number, ohneDatei);
 
       // ── Mit Datei: die lokale gewinnt ────────────────────────────────────
       const [b] = await W.merkpostenVon([U.opa], mitDatei);
-      assert.ok(String(b.image_local || '').startsWith('/images/sets/'),
-        `image_local fehlt oder zeigt woandershin: ${b.image_local}`);
+      assert.ok(
+        String(b.image_local || '').startsWith('/images/sets/'),
+        `image_local fehlt oder zeigt woandershin: ${b.image_local}`,
+      );
     } finally {
       fs.rmSync(datei, { force: true });
-      await db.run('DELETE FROM image_wanted WHERE url LIKE $1',
-        ['http://cdn.example/media/sets/wlimg%']).catch(() => {});
+      await db
+        .run('DELETE FROM image_wanted WHERE url LIKE $1', ['http://cdn.example/media/sets/wlimg%'])
+        .catch(() => {});
     }
   });
 
@@ -341,11 +367,16 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     //      bleibt" wird rot.
     //   c) Den `schon`-Zweig entfernt → „ein Merkposten, den das Ziel schon hat"
     //      wird rot (UNIQUE-Verletzung statt Zusammenführen).
-    const P = { ..._req('src/finanzen/preisalarm.js'), ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm };
+    const P = {
+      ..._req('src/finanzen/preisalarm.js'),
+      ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm,
+    };
     const sn = `wlmv${process.pid}-1`;
     await db.run(
       `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, set_img_url)
-       VALUES ($1,'Umzugsset',2024,158,100,NULL)`, [sn]);
+       VALUES ($1,'Umzugsset',2024,158,100,NULL)`,
+      [sn],
+    );
 
     await W.legeMerkpostenAn(U.opa, sn, 'N');
     await P.setzeAlarm(U.opa, sn, 'EUR', { richtung: 'unter', schwelle: 99, condition: 'N' });
@@ -368,13 +399,17 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
     // Das Aufnahmedatum ist die einzige Angabe, die ein Merkposten über sich
     // selbst trägt — ein Neuanlegen setzte sie auf heute.
-    assert.equal(new Date(nachher.created_at).getTime(),
-                 new Date(vorher.created_at).getTime(),
-      'Das Aufnahmedatum wurde neu gesetzt — dann ist es nicht derselbe Merkposten');
+    assert.equal(
+      new Date(nachher.created_at).getTime(),
+      new Date(vorher.created_at).getTime(),
+      'Das Aufnahmedatum wurde neu gesetzt — dann ist es nicht derselbe Merkposten',
+    );
 
-    assert.equal((await P.alarmeFuer(U.opa, sn)).length, 0,
-      'Der Alarm blieb beim alten Konto — es bekäme Meldungen für etwas, ' +
-      'das nicht mehr auf seiner Liste steht');
+    assert.equal(
+      (await P.alarmeFuer(U.opa, sn)).length,
+      0,
+      'Der Alarm blieb beim alten Konto — es bekäme Meldungen für etwas, ' + 'das nicht mehr auf seiner Liste steht',
+    );
     const alarm = (await P.alarmeFuer(U.enkel, sn)).find(a => a.condition === 'N');
     assert.ok(alarm, 'Der Alarm ist nicht mitgezogen');
     assert.equal(parseFloat(alarm.schwelle), 99);
@@ -382,14 +417,13 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // ── Und wenn das Ziel den Merkposten schon hat ──────────────────────────
     await W.legeMerkpostenAn(U.opa, sn, 'N');
     const r2 = await W.verschiebeMerkposten(U.opa, sn, 'N', U.enkel);
-    assert.equal(r2.zusammengefuehrt, true,
-      'Ein Merkposten, den das Ziel schon hat, muss zusammengeführt werden');
-    assert.deepEqual(await W.merkpostenVon([U.opa], sn), [],
-      'Die Quelle steht noch da');
+    assert.equal(r2.zusammengefuehrt, true, 'Ein Merkposten, den das Ziel schon hat, muss zusammengeführt werden');
+    assert.deepEqual(await W.merkpostenVon([U.opa], sn), [], 'Die Quelle steht noch da');
     const nachMerge = (await P.alarmeFuer(U.enkel, sn)).find(a => a.condition === 'N');
-    assert.equal(parseFloat(nachMerge.schwelle), 99,
-      'Die Schwelle des ZIELS wurde überschrieben');
+    assert.equal(parseFloat(nachMerge.schwelle), 99, 'Die Schwelle des ZIELS wurde überschrieben');
   });
 
-  await t.test('Verbindungen schliessen', async () => { await db.pool.end(); });
+  await t.test('Verbindungen schliessen', async () => {
+    await db.pool.end();
+  });
 });

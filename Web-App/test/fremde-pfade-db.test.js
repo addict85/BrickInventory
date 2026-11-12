@@ -16,14 +16,15 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const https  = require('node:https');
+const https = require('node:https');
 const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
@@ -35,13 +36,21 @@ test('pfadSegment', () => {
   assert.equal(nummernListe(['3001', 'a&b=c', '3,4']), '3001,a%26b%3Dc,3%2C4');
 });
 
-test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
+test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchema();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
-  { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
+  {
+    const c = await db.pool.connect();
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
+  }
   const S = _req('src/einstellungen/settings.js');
   const vorher = await S.getGlobalSetting('rebrickable_api_key');
   await S.setGlobalSetting('rebrickable_api_key', 'testschluessel-pfade');
@@ -52,11 +61,17 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
     abgerufen.push(typeof url === 'string' ? url : `https://${url.hostname}${url.path}`);
     const fertig = typeof opt === 'function' ? opt : cb;
     const req = new EventEmitter();
-    req.setTimeout = () => req; req.destroy = () => {}; req.end = () => {};
+    req.setTimeout = () => req;
+    req.destroy = () => {};
+    req.end = () => {};
     setImmediate(() => {
-      const r = new EventEmitter(); r.statusCode = 404; r.headers = {}; r.resume = () => {};
+      const r = new EventEmitter();
+      r.statusCode = 404;
+      r.headers = {};
+      r.resume = () => {};
       r.setEncoding = () => {};
-      fertig(r); setImmediate(() => r.emit('end'));
+      fertig(r);
+      setImmediate(() => r.emit('end'));
     });
     return req;
   };
@@ -67,8 +82,12 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: { userId: 1 }, apiNutzer: { user_id: 1, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, {
+    sitzung: { userId: 1 },
+    apiNutzer: { user_id: 1, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
   let geprueft = 0;
   const { holeSetTeile } = _req('src/katalog/quellen.js');
   for (const roh of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {

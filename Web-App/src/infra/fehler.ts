@@ -19,7 +19,10 @@ function protokolliereWarnung(kontext: string, e: unknown) {
 
 /** Mit Ersatzwert, wo der Aufrufer weiterrechnet. */
 export function meldeUndLiefere<T>(kontext: string, ersatz: T) {
-  return (e: unknown): T => { logAndContinue(kontext)(e); return ersatz; };
+  return (e: unknown): T => {
+    logAndContinue(kontext)(e);
+    return ersatz;
+  };
 }
 
 /** Was db/ über die laufende Transaktion weiss; fachfrei, damit infra/ nicht von db/ abhängt. */
@@ -31,7 +34,9 @@ export interface TransaktionsWaechter {
   streng(): boolean;
 }
 let _waechter: TransaktionsWaechter | null = null;
-export function setzeTransaktionsWaechter(w: TransaktionsWaechter | null): void { _waechter = w; }
+export function setzeTransaktionsWaechter(w: TransaktionsWaechter | null): void {
+  _waechter = w;
+}
 
 /** PostgreSQL nimmt nach einem Fehler in der Transaktion keinen Befehl mehr an
  * (25P02); ein Ersatzwert verdeckte die Ursache hinter diesem Folgefehler. Ein
@@ -40,7 +45,8 @@ export function setzeTransaktionsWaechter(w: TransaktionsWaechter | null): void 
 export function pruefeErsatzInTransaktion(kontext: string, e: unknown): void {
   if (!_waechter?.verdirbt(e)) return;
   if (istDatenbankFehler(e)) throw e;
-  if (_waechter.streng()) throw new Error(`Ersatzwert in einer Transaktion (${kontext}): ${fehlertext(e)}`, { cause: e });
+  if (_waechter.streng())
+    throw new Error(`Ersatzwert in einer Transaktion (${kontext}): ${fehlertext(e)}`, { cause: e });
   console.error(`[ersatz-in-transaktion] ${kontext}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 
@@ -54,7 +60,10 @@ export function istDatenbankFehler(e: unknown): boolean {
 export function ohneFehlendeDatei(kontext: string): (e: unknown) => void;
 export function ohneFehlendeDatei<T>(kontext: string, ersatz: T): (e: unknown) => T;
 export function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
-  return (e: unknown): T | undefined => { if (fehlerCode(e) !== 'ENOENT') logAndContinue(kontext)(e); return ersatz; };
+  return (e: unknown): T | undefined => {
+    if (fehlerCode(e) !== 'ENOENT') logAndContinue(kontext)(e);
+    return ersatz;
+  };
 }
 
 /** Nur das Protokoll: Wer meldet und dann selbst entscheidet, liefert keinen Ersatz. */
@@ -85,10 +94,21 @@ export function vorDem(s: string, trenner: string): string {
 
 /** Für Ströme und Sammelberichte ohne Statuscode: Ein Fachfehler nennt Code und
  * Satz, alles andere (SQL, Dateipfade, Fremd-APIs) nur das Protokoll. */
-export function oeffentlicherFehler(e: unknown, kontext: string, req?: { headers?: Record<string, unknown> }): { error: string; code: FehlerCode } {
+export function oeffentlicherFehler(
+  e: unknown,
+  kontext: string,
+  req?: { headers?: Record<string, unknown> },
+): { error: string; code: FehlerCode } {
   const code = fehlerCode(e);
   if (code && code in FEHLER) {
-    return { code: code as FehlerCode, error: fehlerText(code as FehlerCode, antwortSprache(req), (e as { vars?: Record<string, string | number> }).vars) };
+    return {
+      code: code as FehlerCode,
+      error: fehlerText(
+        code as FehlerCode,
+        antwortSprache(req),
+        (e as { vars?: Record<string, string | number> }).vars,
+      ),
+    };
   }
   meldeFehler(kontext, e);
   return { code: 'interner_fehler', error: fehlerText('interner_fehler', antwortSprache(req)) };

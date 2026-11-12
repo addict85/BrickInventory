@@ -9,8 +9,7 @@ export function mitVersion(setNumber: string | number): string {
 
 // Eine Fassung für Barcode, Feld, CSV.
 export function normalisiereSetNummer(input: unknown): string {
-  let s = ((String(input).trim().split(';')[0] ?? '').trim().split(' ')[0] ?? '')
-    .trim().replace(/[^a-zA-Z0-9-]/g, '');
+  let s = ((String(input).trim().split(';')[0] ?? '').trim().split(' ')[0] ?? '').trim().replace(/[^a-zA-Z0-9-]/g, '');
   if (!/-\d+$/.test(s)) s = s + '-1';
   return s;
 }
@@ -27,8 +26,11 @@ export function ohneVersion(setNumber: string | number): string {
 
 // Der Leser steht hier, weil die Markierung unter der Nummer MIT Anhang liegt
 // (src/katalog/bricklinkPreise.ts) und drei Stellen verschieden fragten.
-interface KatalogEintrag { is_gear?: boolean | null; bl_type?: string | null; fetched_at?: string | Date | null; }
-
+interface KatalogEintrag {
+  is_gear?: boolean | null;
+  bl_type?: string | null;
+  fetched_at?: string | Date | null;
+}
 
 /** Dann braucht es den Abruf nicht: Er kostet Kontingent und endet ohnehin im Fehler. */
 export function ohneBricklinkPreis(eintrag: KatalogEintrag | null | undefined, jetzt = Date.now()): boolean {

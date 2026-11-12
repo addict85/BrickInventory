@@ -1,7 +1,7 @@
 /** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
 import { fehlerAntwort, pfadSegmente } from '../src/http/httpAntwort';
 import express, { type Request, type Response } from 'express';
-import path from 'path';
+import path from 'node:path';
 import { liefereDatei, FREMDE_DATEI_CSP } from '../src/http/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
@@ -32,20 +32,27 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, eingangsSperre, async (re
   const besitzer = Number(segments[0]);
   // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
   // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
-  if (!await haushaltBereich().haushalt.siehtKonto(userId, besitzer)) return res.status(404).send('Datei nicht gefunden');
+  if (!(await haushaltBereich().haushalt.siehtKonto(userId, besitzer)))
+    return res.status(404).send('Datei nicht gefunden');
   alsAnhang(res, filePath);
   liefereDatei(res, filePath);
 });
 
 // Geteilt abgelegt, aber unter der Setnummer: nur zu Sets im eigenen Blickfeld,
 // sonst dieselbe 404 wie für eine fehlende Datei.
-router.get('/data/instructions/*pfad', requireLoginOrToken, eingangsSperre, async (req: WildcardRequest, res: Response) => {
-  const segmente = pfadSegmente(req, 'pfad');
-  const filePath = safeDataPath('instructions', segmente);
-  if (!filePath || !await anleitungFreigegeben(angemeldeteNutzerId(req), segmente)) return res.status(404).send('Datei nicht gefunden');
-  alsAnhang(res, filePath);
-  liefereDatei(res, filePath);
-});
+router.get(
+  '/data/instructions/*pfad',
+  requireLoginOrToken,
+  eingangsSperre,
+  async (req: WildcardRequest, res: Response) => {
+    const segmente = pfadSegmente(req, 'pfad');
+    const filePath = safeDataPath('instructions', segmente);
+    if (!filePath || !(await anleitungFreigegeben(angemeldeteNutzerId(req), segmente)))
+      return res.status(404).send('Datei nicht gefunden');
+    alsAnhang(res, filePath);
+    liefereDatei(res, filePath);
+  },
+);
 
 router.use(fehlerAntwort);
 

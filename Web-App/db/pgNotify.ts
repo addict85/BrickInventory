@@ -38,8 +38,12 @@ export class Benachrichtigung {
     this._connecting = true;
     try {
       const c = new Client({ ...this.verbindung, keepAlive: true });
-      c.on('error', () => { this.retire(c); });
-      c.on('end',   () => { this.retire(c); });
+      c.on('error', () => {
+        this.retire(c);
+      });
+      c.on('end', () => {
+        this.retire(c);
+      });
       c.on('notification', (msg: import('pg').Notification) => {
         for (const h of this._handlers.get(msg.channel) || []) {
           Promise.resolve(h(msg.payload)).catch(e => console.error(`[notify:${msg.channel}]`, e.message));
@@ -75,7 +79,7 @@ export class Benachrichtigung {
     c.removeAllListeners();
     // Ersatz-Zuhörer zuerst: Sonst wirft der nächste 'error' und beendet den Prozess.
     c.on('error', () => {});
-    if (this._client !== c) return;   // Nachzügler desselben Abrisses
+    if (this._client !== c) return; // Nachzügler desselben Abrisses
     this._client = null;
     this._lauscht.clear();
     this.scheduleReconnect();
@@ -84,7 +88,7 @@ export class Benachrichtigung {
   private scheduleReconnect() {
     if (this._closed || this._reconnectTimer) return;
     const wait = this._retryMs;
-    this._retryMs = Math.min(30_000, this._retryMs * 2);   // exponentiell, gedeckelt
+    this._retryMs = Math.min(30_000, this._retryMs * 2); // exponentiell, gedeckelt
     this._reconnectTimer = setTimeout(() => {
       this._reconnectTimer = null;
       this.connect().catch(logAndContinue('notify:connect'));
@@ -131,14 +135,20 @@ export class Benachrichtigung {
     if (!hs) return;
     const i = hs.indexOf(handler);
     if (i !== -1) hs.splice(i, 1);
-    if (!hs.length) { this._handlers.delete(channel); this._lauscht.delete(channel); }
+    if (!hs.length) {
+      this._handlers.delete(channel);
+      this._lauscht.delete(channel);
+    }
   }
 
   /** Erst die Absicht setzen, dann abräumen: Sonst stellt das 'end' von c.end()
    * einen neuen Reconnect-Timer, und es verbindet sich nach dem Herunterfahren wieder. */
   async close() {
     this._closed = true;
-    if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
     const c = this._client;
     this._client = null;
     this._lauscht.clear();

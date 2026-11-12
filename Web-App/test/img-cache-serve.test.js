@@ -7,11 +7,11 @@
  * (11.11.2026) in cacheTreffer() die ETag-Angabe weggelassen (`etag: null`) →
  * rot: „der Dienst nennt Datei, Typ, Länge und ETag, ohne zu senden“.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const os     = require('node:os');
-const path   = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { liefereAusCache } = _req('src/katalog/http/bildCacheAuslieferung.js');
@@ -19,13 +19,31 @@ const { liefereAusCache } = _req('src/katalog/http/bildCacheAuslieferung.js');
 /** Ein res, das nur festhält, was mit ihm geschehen ist. */
 function attrappeRes() {
   const r = {
-    kopf: {}, status: 200, beendet: false, gestreamt: null,
-    setHeader(k, v) { this.kopf[k.toLowerCase()] = String(v); },
-    status_(c) { this.status = c; return this; },
-    end() { this.beendet = true; return this; },
+    kopf: {},
+    status: 200,
+    beendet: false,
+    gestreamt: null,
+    setHeader(k, v) {
+      this.kopf[k.toLowerCase()] = String(v);
+    },
+    status_(c) {
+      this.status = c;
+      return this;
+    },
+    end() {
+      this.beendet = true;
+      return this;
+    },
   };
-  r.status = function (c) { this._code = c; return this; };
-  Object.defineProperty(r, 'code', { get() { return this._code ?? 200; } });
+  r.status = function (c) {
+    this._code = c;
+    return this;
+  };
+  Object.defineProperty(r, 'code', {
+    get() {
+      return this._code ?? 200;
+    },
+  });
   return r;
 }
 
@@ -33,7 +51,7 @@ function attrappeRes() {
 async function ruf(dir, { wantThumb, darfErzeugen = true, fresh = false }) {
   const res = attrappeRes();
   const gestreamt = [];
-  const notiert   = [];
+  const notiert = [];
   const erledigt = await liefereAusCache({
     res,
     req: { fresh },
@@ -48,13 +66,17 @@ async function ruf(dir, { wantThumb, darfErzeugen = true, fresh = false }) {
 }
 
 /** Eine Datei mit `n` Bytes anlegen. */
-function datei(p, n) { fs.writeFileSync(p, Buffer.alloc(n, 0x41)); }
+function datei(p, n) {
+  fs.writeFileSync(p, Buffer.alloc(n, 0x41));
+}
 
-test('Auslieferungsreihenfolge des Bild-Caches', async (t) => {
+test('Auslieferungsreihenfolge des Bild-Caches', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'imgcache-'));
-  const orig  = path.join(dir, 'bild');
+  const orig = path.join(dir, 'bild');
   const thumb = path.join(dir, 'bild_thumb.jpg');
-  const aufraeumen = () => { for (const f of fs.readdirSync(dir)) fs.unlinkSync(path.join(dir, f)); };
+  const aufraeumen = () => {
+    for (const f of fs.readdirSync(dir)) fs.unlinkSync(path.join(dir, f));
+  };
 
   await t.test('nichts im Cache → der Aufrufer muss beim CDN holen', async () => {
     aufraeumen();
@@ -68,9 +90,12 @@ test('Auslieferungsreihenfolge des Bild-Caches', async (t) => {
     datei(orig, 5000);
     const { erledigt, gestreamt, res } = await ruf(dir, { wantThumb: true });
     assert.equal(erledigt, true);
-    assert.deepEqual(gestreamt, [orig],
+    assert.deepEqual(
+      gestreamt,
+      [orig],
       'Es darf NICHT auf die Verkleinerung gewartet werden — das war einmal ' +
-      'rund 150 ms je Bild und bei einer Kachelwand Sekunden');
+        'rund 150 ms je Bild und bei einer Kachelwand Sekunden',
+    );
     assert.equal(res.kopf['content-length'], '5000');
     assert.match(res.kopf['cache-control'] || '', /max-age=86400/);
   });
@@ -90,8 +115,7 @@ test('Auslieferungsreihenfolge des Bild-Caches', async (t) => {
     datei(orig, 5000);
     datei(thumb, 900);
     const { gestreamt } = await ruf(dir, { wantThumb: false });
-    assert.deepEqual(gestreamt, [orig],
-      'Ohne ?thumb=1 gehört das Original raus, auch wenn eine Vorschau daliegt');
+    assert.deepEqual(gestreamt, [orig], 'Ohne ?thumb=1 gehört das Original raus, auch wenn eine Vorschau daliegt');
   });
 
   await t.test('Rumpf-Vorschau wird verworfen und das Original geliefert', async () => {
@@ -103,8 +127,11 @@ test('Auslieferungsreihenfolge des Bild-Caches', async (t) => {
     datei(thumb, 50);
     const { gestreamt } = await ruf(dir, { wantThumb: true });
     assert.deepEqual(gestreamt, [orig], 'Die unbrauchbare Vorschau wurde ausgeliefert');
-    assert.equal(fs.existsSync(thumb), false,
-      'Die unbrauchbare Vorschau muss gelöscht werden, sonst bleibt sie ewig liegen');
+    assert.equal(
+      fs.existsSync(thumb),
+      false,
+      'Die unbrauchbare Vorschau muss gelöscht werden, sonst bleibt sie ewig liegen',
+    );
   });
 
   await t.test('gen=0 rechnet nichts, sondern hinterlässt nur eine Notiz', async () => {
@@ -144,20 +171,23 @@ test('Auslieferungsreihenfolge des Bild-Caches', async (t) => {
     // aktiv wird — es darf nicht unter der eigenen Herkunft ausgeliefert
     // werden, auch wenn ein alter Cache-Eintrag es behauptet.
     for (const [abgelegt, erwartet] of [
-      ['image/png',      'image/png'],
-      ['image/svg+xml',  'image/jpeg'],
-      ['text/html',      'image/jpeg'],
-      ['application/pdf','image/jpeg'],
+      ['image/png', 'image/png'],
+      ['image/svg+xml', 'image/jpeg'],
+      ['text/html', 'image/jpeg'],
+      ['application/pdf', 'image/jpeg'],
       ['image/png, text/html', 'image/jpeg'],
       ['image/webp; charset=binary', 'image/webp'],
-      ['image/x-icon',   'image/jpeg'],
+      ['image/x-icon', 'image/jpeg'],
     ]) {
       aufraeumen();
       datei(orig, 5000);
       fs.writeFileSync(orig + '.ct', abgelegt);
       const { res } = await ruf(dir, { wantThumb: false });
-      assert.equal(res.kopf['content-type'], erwartet,
-        `Abgelegt als ${abgelegt} → ausgeliefert werden muss ${erwartet}`);
+      assert.equal(
+        res.kopf['content-type'],
+        erwartet,
+        `Abgelegt als ${abgelegt} → ausgeliefert werden muss ${erwartet}`,
+      );
     }
   });
 
@@ -167,13 +197,22 @@ test('Auslieferungsreihenfolge des Bild-Caches', async (t) => {
     datei(orig, 5000);
     fs.writeFileSync(orig + '.ct', 'image/png');
     const { cacheTreffer } = _req('src/katalog/bilder/imgCacheServe.js');
-    const treffer = await cacheTreffer({ cacheFile: orig, thumbFile: thumb, wantThumb: false, darfErzeugen: false, notiere() {} });
+    const treffer = await cacheTreffer({
+      cacheFile: orig,
+      thumbFile: thumb,
+      wantThumb: false,
+      darfErzeugen: false,
+      notiere() {},
+    });
     assert.equal(treffer.datei, orig);
     assert.equal(treffer.typ, 'image/png');
     assert.equal(treffer.groesse, 5000);
     assert.match(String(treffer.etag), /^"c-5000-\d+"$/);
     aufraeumen();
-    assert.equal(await cacheTreffer({ cacheFile: orig, thumbFile: thumb, wantThumb: false, darfErzeugen: false, notiere() {} }), null);
+    assert.equal(
+      await cacheTreffer({ cacheFile: orig, thumbFile: thumb, wantThumb: false, darfErzeugen: false, notiere() {} }),
+      null,
+    );
   });
 
   fs.rmSync(dir, { recursive: true, force: true });

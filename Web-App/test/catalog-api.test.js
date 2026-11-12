@@ -23,6 +23,7 @@ process.env.DATABASE_URL = DB_URL;
 // .ts -> .js bauen (esbuild, in-place) — idempotent und schnell
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 
 // requireToken stubben, BEVOR der Router geladen wird
 // Der Pfad muss auf das GEBAUTE Modul in dist/ zeigen — dort lädt der Router
@@ -31,15 +32,27 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { DIST } = require('./helpers/sources');
 const mwPath = require.resolve(path.join(DIST, 'routes/api_v1', 'middleware.js'));
 require.cache[mwPath] = {
-  id: mwPath, filename: mwPath, loaded: true,
-  exports: { requireToken: (req, _res, next) => { req.apiUser = { user_id: 1 }; next(); } },
+  id: mwPath,
+  filename: mwPath,
+  loaded: true,
+  exports: {
+    requireToken: (req, _res, next) => {
+      req.apiUser = { user_id: 1 };
+      next();
+    },
+  },
 };
 
 const db = _req('db/database.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -50,7 +63,11 @@ async function schemaWiederherstellen() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c);
+  } finally {
+    c.release();
+  }
 }
 
 async function seed() {
@@ -65,23 +82,41 @@ async function seed() {
                                      herkunft TEXT NOT NULL DEFAULT 'csv')`);
   await db.run(`CREATE TABLE rb_themes (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER)`);
   await db.run(`CREATE TABLE rb_inventories (id INTEGER PRIMARY KEY, version INTEGER, set_num TEXT)`);
-  await db.run(`CREATE TABLE rb_inventory_minifigs (id SERIAL PRIMARY KEY, inventory_id INTEGER, fig_num TEXT, quantity INTEGER)`);
+  await db.run(
+    `CREATE TABLE rb_inventory_minifigs (id SERIAL PRIMARY KEY, inventory_id INTEGER, fig_num TEXT, quantity INTEGER)`,
+  );
   // `sets` bleibt die einzige Attrappe. Die Setmenge steht seit Migration
   // 0036 in set_acquisitions, und die Katalogliste liest sie von dort
   // (owned_quantity ueber db/bestandsmenge.ts) — mit nur `sets`
   // antwortete sie 0 (gemessen: „expected 2, actual 0").
   await db.run(`CREATE TABLE sets (user_id INTEGER, set_number TEXT)`);
-  await db.run(`INSERT INTO rb_themes VALUES (1,'Star Wars',NULL),(2,'Ultimate Collector Series',1),(3,'Technic',NULL) ON CONFLICT DO NOTHING`);
+  await db.run(
+    `INSERT INTO rb_themes VALUES (1,'Star Wars',NULL),(2,'Ultimate Collector Series',1),(3,'Technic',NULL) ON CONFLICT DO NOTHING`,
+  );
   let i = 0;
   for (let y = 2000; y <= 2026; y++)
     for (let k = 0; k < 3; k++)
-      await db.run(`INSERT INTO rb_sets VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
-        [`${1000 + i++}-1`, `Set ${y}-${k}`, y, (k % 2) ? 3 : 2, 100 + k, '']);
+      await db.run(`INSERT INTO rb_sets VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`, [
+        `${1000 + i++}-1`,
+        `Set ${y}-${k}`,
+        y,
+        k % 2 ? 3 : 2,
+        100 + k,
+        '',
+      ]);
   for (let k = 0; k < 4; k++)
-    await db.run(`INSERT INTO rb_sets VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
-      [`${9000 + k}-1`, `Future Set ${k}`, 2027, 1, 500 + k, '']);
+    await db.run(`INSERT INTO rb_sets VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`, [
+      `${9000 + k}-1`,
+      `Future Set ${k}`,
+      2027,
+      1,
+      500 + k,
+      '',
+    ]);
   await db.run(`INSERT INTO rb_inventories VALUES (1, 1, '9000-1'), (2, 2, '9000-1') ON CONFLICT DO NOTHING`);
-  await db.run(`INSERT INTO rb_inventory_minifigs (inventory_id, fig_num, quantity) VALUES (2,'fig-001',2),(2,'fig-002',1),(1,'fig-old',9) ON CONFLICT DO NOTHING`);
+  await db.run(
+    `INSERT INTO rb_inventory_minifigs (inventory_id, fig_num, quantity) VALUES (2,'fig-001',2),(2,'fig-002',1),(1,'fig-old',9) ON CONFLICT DO NOTHING`,
+  );
   // Der Bestand: Konto 1 haelt 9000-1, und zwar zwei Exemplare — die Zahl
   // steht in der Erfassung.
   await db.run(`INSERT INTO users (id, username, password_hash)
@@ -92,26 +127,10 @@ async function seed() {
                 VALUES (1, '9000-1', 2)`);
 }
 
-test('Katalog-API (Postgres-Integration)', async (t) => {
+test('Katalog-API (Postgres-Integration)', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    // REQUIRE_DB=1 (CI): Ein Überspringen ist hier KEIN akzeptabler Ausgang.
-    // Vorher war die Suite in jeder Umgebung ohne Datenbank grün — also
-    // ausgerechnet dort, wo niemand hinschaut. Wer die Datenbank erwartet,
-    // bekommt jetzt einen Fehlschlag statt eines stillen Skips.
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar: ${DB_URL}`);
-    }
-    // REQUIRE_DB=1 (in CI gesetzt) verbietet das Überspringen.
-    //
-    // Ohne diese Sperre war die Suite in jeder Umgebung ohne Postgres GRÜN —
-    // inklusive CI, falls der Service-Container mal nicht hochkommt. Genau
-    // die Tests, die am meisten absichern, hätten dann stillschweigend nichts
-    // geprüft. Lieber ein lauter Fehlschlag.
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error(`REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.`);
-    }
-    t.skip(`Test-DB nicht erreichbar (${DB_URL}) — Suite übersprungen`);
+    keineDb(t, DB_URL);
     return;
   }
   await seed();
@@ -119,7 +138,7 @@ test('Katalog-API (Postgres-Integration)', async (t) => {
   app.use('/api/v1', _req('routes/api_v1/catalog.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}/api/v1`;
-  const get = async (p) => {
+  const get = async p => {
     const r = await fetch(base + p);
     return { status: r.status, body: await r.json() };
   };
@@ -162,7 +181,9 @@ test('Katalog-API (Postgres-Integration)', async (t) => {
   await t.test('die Liste nennt das lokale Bild aus set_catalog, ein Platzhalter der Erfassung fehlt', async () => {
     await db.run(`INSERT INTO set_catalog (set_number, image_local) VALUES ('9001-1', '/images/sets/9001-1.jpg')
                   ON CONFLICT (set_number) DO UPDATE SET image_local = EXCLUDED.image_local`);
-    await db.run(`INSERT INTO rb_sets (set_num, name, herkunft) VALUES ('9100-1', 'Set 9100-1', 'api') ON CONFLICT DO NOTHING`);
+    await db.run(
+      `INSERT INTO rb_sets (set_num, name, herkunft) VALUES ('9100-1', 'Set 9100-1', 'api') ON CONFLICT DO NOTHING`,
+    );
     const r = await get('/catalog/sets?q=Future&limit=60');
     const bilder = Object.fromEntries(r.body.sets.map(s => [s.set_number, s.image_local]));
     assert.deepEqual(bilder, { '9000-1': null, '9001-1': '/images/sets/9001-1.jpg', '9002-1': null, '9003-1': null });
@@ -193,7 +214,10 @@ test('Katalog-API (Postgres-Integration)', async (t) => {
     assert.equal(r.body.sets.length, 10);
     // page_size ist der Name aller Listen; limit bleibt für ältere Apps.
     const neu = await get('/catalog/sets?page_size=10&page=2&sort=num_asc');
-    assert.deepEqual(neu.body.sets.map(s => s.set_number), r.body.sets.map(s => s.set_number));
+    assert.deepEqual(
+      neu.body.sets.map(s => s.set_number),
+      r.body.sets.map(s => s.set_number),
+    );
     assert.equal(neu.body.page_size, 10);
     assert.equal(neu.body.pages, 9);
   });
@@ -201,5 +225,5 @@ test('Katalog-API (Postgres-Integration)', async (t) => {
   srv.close();
   // REIHENFOLGE: erst das Schema, dann der Pool
   await schemaWiederherstellen();
-  await db.pool.end();   // pg-Pool schließen, sonst hält er den Prozess offen
+  await db.pool.end(); // pg-Pool schließen, sonst hält er den Prozess offen
 });

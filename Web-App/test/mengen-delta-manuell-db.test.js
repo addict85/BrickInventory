@@ -21,15 +21,25 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 
-const NAME = `mdelta_${process.pid}`, TEIL = '3001md', FIGUR = 'fig-md01';
+const NAME = `mdelta_${process.pid}`,
+  TEIL = '3001md',
+  FIGUR = 'fig-md01';
 
-test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+                             VALUES ($1, 'x', true, true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, $2, 5, 'manual')`, [uid, TEIL]);
-  await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, $2, 5, 2)`, [uid, TEIL]);
+  await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, $2, 5, 2)`, [
+    uid,
+    TEIL,
+  ]);
   await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, $2, 'manual')`, [uid, FIGUR]);
   await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity) VALUES ($1, $2, 1)`, [uid, FIGUR]);
   t.after(async () => {
@@ -38,25 +48,58 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
   });
   const { updateManualPart } = _req('src/teile/manuelleTeile.js');
   const { updateManualFig } = _req('src/figuren/manuelleFiguren.js');
-  const teil = async () => Number((await db.get(
-    'SELECT COALESCE(SUM(quantity),0)::int q FROM part_acquisitions WHERE user_id=$1 AND part_number=$2', [uid, TEIL])).q);
-  const figur = async () => Number((await db.get(
-    'SELECT COALESCE(SUM(quantity),0)::int q FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [uid, FIGUR])).q);
+  const teil = async () =>
+    Number(
+      (
+        await db.get(
+          'SELECT COALESCE(SUM(quantity),0)::int q FROM part_acquisitions WHERE user_id=$1 AND part_number=$2',
+          [uid, TEIL],
+        )
+      ).q,
+    );
+  const figur = async () =>
+    Number(
+      (
+        await db.get(
+          'SELECT COALESCE(SUM(quantity),0)::int q FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2',
+          [uid, FIGUR],
+        )
+      ).q,
+    );
 
   await t.test('zwei gleichzeitige +1 ergeben +2', async () => {
-    await Promise.all([updateManualPart(uid, TEIL, 5, { quantity_delta: 1 }), updateManualPart(uid, TEIL, 5, { quantity_delta: 1 })]);
+    await Promise.all([
+      updateManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
+      updateManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
+    ]);
     assert.equal(await teil(), 4);
-    await Promise.all([updateManualFig(uid, FIGUR, { quantity_delta: 1 }), updateManualFig(uid, FIGUR, { quantity_delta: 1 })]);
+    await Promise.all([
+      updateManualFig(uid, FIGUR, { quantity_delta: 1 }),
+      updateManualFig(uid, FIGUR, { quantity_delta: 1 }),
+    ]);
     assert.equal(await figur(), 3);
   });
 
   await t.test('über die Route: Schritt nach unten, Antwort mit der Menge danach', async () => {
-    const { base } = testServer(_req, { apiNutzer: { user_id: uid, is_admin: 0 }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-    const put = (pfad, body) => fetch(`${base}/api/v1/${pfad}`, {
-      method: 'PUT', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body) }).then(async r => ({ status: r.status, body: await r.json() }));
-    assert.deepEqual(await put(`parts/${TEIL}/5`, { quantity_delta: -1 }), { status: 200, body: { success: true, quantity: 3 } });
-    assert.deepEqual(await put(`minifigs/${FIGUR}`, { quantity_delta: -2 }), { status: 200, body: { success: true, quantity: 1 } });
+    const { base } = testServer(_req, {
+      apiNutzer: { user_id: uid, is_admin: 0 },
+      routen: { '/api/v1': 'routes/api_v1/index.js' },
+      t,
+    });
+    const put = (pfad, body) =>
+      fetch(`${base}/api/v1/${pfad}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(async r => ({ status: r.status, body: await r.json() }));
+    assert.deepEqual(await put(`parts/${TEIL}/5`, { quantity_delta: -1 }), {
+      status: 200,
+      body: { success: true, quantity: 3 },
+    });
+    assert.deepEqual(await put(`minifigs/${FIGUR}`, { quantity_delta: -2 }), {
+      status: 200,
+      body: { success: true, quantity: 1 },
+    });
     assert.equal((await put(`parts/${TEIL}/5`, { quantity_delta: 1.5 })).status, 400);
     assert.equal(await teil(), 3);
   });

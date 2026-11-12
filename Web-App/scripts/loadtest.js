@@ -36,9 +36,9 @@ function arg(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
   return i !== -1 && process.argv[i + 1] ? Number(process.argv[i + 1]) : fallback;
 }
-const USERS    = arg('users', 20);   // gleichzeitige virtuelle Nutzer
-const DAUER_S  = arg('dauer', 10);   // Messdauer je Durchgang
-const N_SETS   = arg('sets', 800);   // Sammlungsgrösse (wie in Durchgang 119)
+const USERS = arg('users', 20); // gleichzeitige virtuelle Nutzer
+const DAUER_S = arg('dauer', 10); // Messdauer je Durchgang
+const N_SETS = arg('sets', 800); // Sammlungsgrösse (wie in Durchgang 119)
 
 const dbModul = require(path.join(ROOT, 'dist/db/database.js'));
 const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
@@ -64,9 +64,8 @@ function fehlertext(e) {
   const m = e ? /** @type {any} */ (e).message : undefined;
   if (typeof m === 'string' && m) return m;
   // `String([])` ist leer — siehe src/infra/fehler.ts, dort gefunden.
-  return e === null || e === undefined ? 'Unbekannter Fehler' : (String(e) || 'Unbekannter Fehler');
+  return e === null || e === undefined ? 'Unbekannter Fehler' : String(e) || 'Unbekannter Fehler';
 }
-
 
 const USER = { id: null, username: 'loadtest-user' };
 
@@ -87,14 +86,20 @@ async function seed() {
     `INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts)
      SELECT (10000+g)||'-1', 'Set '||g, 1990 + (g % 35), 1 + g%12, 100 + (g*7)%8000
        FROM generate_series(1, $1) g
-     ON CONFLICT (set_num) DO NOTHING`, [N_SETS]);
+     ON CONFLICT (set_num) DO NOTHING`,
+    [N_SETS],
+  );
   await db.run(
     `INSERT INTO set_catalog (set_number, minifigs)
      SELECT (10000+g)||'-1', g%9 FROM generate_series(1, $1) g
-     ON CONFLICT (set_number) DO NOTHING`, [N_SETS]);
+     ON CONFLICT (set_number) DO NOTHING`,
+    [N_SETS],
+  );
   await db.run(
     `INSERT INTO sets (user_id, set_number)
-     SELECT $1, (10000+g)||'-1' FROM generate_series(1, $2) g`, [USER.id, N_SETS]);
+     SELECT $1, (10000+g)||'-1' FROM generate_series(1, $2) g`,
+    [USER.id, N_SETS],
+  );
 
   // Erfassungen: Sie sind seit Migration 0036 die EINZIGE Quelle der
   // Stueckzahl. 1 bis 3 Exemplare je Set, verteilt über zwei Jahre.
@@ -103,7 +108,9 @@ async function seed() {
      SELECT $1, (10000+g)||'-1', 20 + (g%400), CASE WHEN g%3=0 THEN 'U' ELSE 'N' END,
             1 + (g%3),
             NOW() - ((g % 700) || ' days')::interval
-       FROM generate_series(1, $2) g`, [USER.id, N_SETS]);
+       FROM generate_series(1, $2) g`,
+    [USER.id, N_SETS],
+  );
 
   // Teile: ~75 je Set — das ergibt bei 800 Sets die Grössenordnung 60'000
   // aus den Messungen von Durchgang 119.
@@ -111,33 +118,45 @@ async function seed() {
     `INSERT INTO part_catalog (part_number, part_name)
      SELECT DISTINCT (3000 + (g*13 + p) % 900)::text, 'Part '||((g*13+p)%900)
        FROM generate_series(1, $1) g, generate_series(1, 75) p
-     ON CONFLICT (part_number) DO NOTHING`, [N_SETS]);
+     ON CONFLICT (part_number) DO NOTHING`,
+    [N_SETS],
+  );
   await db.run(
     `INSERT INTO part_color_catalog (part_number, color_id, color_name)
      SELECT DISTINCT (3000 + (g*13 + p) % 900)::text, (p % 60), 'Color '||(p % 60)
        FROM generate_series(1, $1) g, generate_series(1, 75) p
-     ON CONFLICT (part_number, color_id) DO NOTHING`, [N_SETS]);
+     ON CONFLICT (part_number, color_id) DO NOTHING`,
+    [N_SETS],
+  );
   await db.run(
     `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
      SELECT $1, (10000+g)||'-1', (3000 + (g*13 + p) % 900)::text,
             (p % 60), 1 + (p % 4)
-       FROM generate_series(1, $2) g, generate_series(1, 75) p`, [USER.id, N_SETS]);
+       FROM generate_series(1, $2) g, generate_series(1, 75) p`,
+    [USER.id, N_SETS],
+  );
 
   await db.run(
     `INSERT INTO minifigs_catalog (fig_number, fig_name)
      SELECT DISTINCT 'fig'||((g*3+m)%2500), 'Minifig '||((g*3+m)%2500)
        FROM generate_series(1, $1) g, generate_series(1, 4) m
-     ON CONFLICT (fig_number) DO NOTHING`, [N_SETS]);
+     ON CONFLICT (fig_number) DO NOTHING`,
+    [N_SETS],
+  );
   await db.run(
     `INSERT INTO minifigs (user_id, set_number, fig_number, quantity)
      SELECT $1, (10000+g)||'-1', 'fig'||((g*3+m)%2500), 1
-       FROM generate_series(1, $2) g, generate_series(1, 4) m`, [USER.id, N_SETS]);
+       FROM generate_series(1, $2) g, generate_series(1, 4) m`,
+    [USER.id, N_SETS],
+  );
 
   // Marktpreise je Zustand — ohne sie rechnen die Finanz-Endpunkte im Leeren.
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity)
      SELECT (10000+g)||'-1', c, 'EUR', 10+(g%300), 30+(g%500), 60+(g%800), 31+(g%500), 5
-       FROM generate_series(1, $1) g, (VALUES ('N'),('U')) AS t(c)`, [N_SETS]);
+       FROM generate_series(1, $1) g, (VALUES ('N'),('U')) AS t(c)`,
+    [N_SETS],
+  );
 
   // Preisverlauf: 180 Tage, aber mit Lücken (nicht jedes Set schreibt täglich).
   await db.run(
@@ -145,12 +164,16 @@ async function seed() {
      SELECT (10000+g)||'-1', 'N', 'EUR', 30 + (g%500) + d*0.05, 31 + (g%500),
             (CURRENT_DATE - (180 - d))::timestamptz + interval '9 hours'
        FROM generate_series(1, $1) g, generate_series(1, 180) d
-      WHERE (d + g) % 4 = 0`, [N_SETS]);
+      WHERE (d + g) % 4 = 0`,
+    [N_SETS],
+  );
 
   /** @param {string} t Tabellenname — fest verdrahtet unten, keine Eingabe */
-  const z = async (t) => (await db.get(`SELECT count(*)::int n FROM ${t}`)).n;
-  console.log(`  → sets ${await z('sets')}, parts ${await z('parts')}, ` +
-              `minifigs ${await z('minifigs')}, price_history ${await z('price_history')}\n`);
+  const z = async t => (await db.get(`SELECT count(*)::int n FROM ${t}`)).n;
+  console.log(
+    `  → sets ${await z('sets')}, parts ${await z('parts')}, ` +
+      `minifigs ${await z('minifigs')}, price_history ${await z('price_history')}\n`,
+  );
 }
 
 // ── Der echte Stack, wie im Paritätstest ─────────────────────────────────────
@@ -161,9 +184,9 @@ function buildApp() {
     req.session = { userId: USER.id, username: USER.username, isAdmin: false };
     next();
   });
-  app.use('/api/sets',     require(path.join(ROOT, 'dist/routes/sets.js')));
-  app.use('/api/parts',    require(path.join(ROOT, 'dist/routes/parts.js')));
-  app.use('/api/finance',  require(path.join(ROOT, 'dist/routes/finance.js')));
+  app.use('/api/sets', require(path.join(ROOT, 'dist/routes/sets.js')));
+  app.use('/api/parts', require(path.join(ROOT, 'dist/routes/parts.js')));
+  app.use('/api/finance', require(path.join(ROOT, 'dist/routes/finance.js')));
   app.use('/api/settings', require(path.join(ROOT, 'dist/routes/api_v1/settings.js')));
   app.use('/api/minifigs', require(path.join(ROOT, 'dist/routes/minifigs.js')));
   return app;
@@ -173,15 +196,15 @@ function buildApp() {
 // durchblättern, Finanzen ansehen.
 /** @type {Array<[string, string]>} */
 const PFADE = [
-  ['Galerie (Seite 1)',      '/api/sets/?page=1&page_size=60'],
-  ['Galerie (Seite 5)',      '/api/sets/?page=5&page_size=60'],
-  ['Teile-Liste',            '/api/parts/?page=1&page_size=60'],
-  ['Teile-Suche',            '/api/parts/?search=Part%201&page=1&page_size=60'],
-  ['Teile-Statistik',        '/api/parts/stats'],
-  ['Minifiguren',            '/api/minifigs/?page=1&page_size=60'],
-  ['Bewertung Sets',         '/api/finance/valuation'],
-  ['GuV',                    '/api/finance/pnl'],
-  ['Portfolio-Verlauf',      '/api/finance/portfolio-history?range=year'],
+  ['Galerie (Seite 1)', '/api/sets/?page=1&page_size=60'],
+  ['Galerie (Seite 5)', '/api/sets/?page=5&page_size=60'],
+  ['Teile-Liste', '/api/parts/?page=1&page_size=60'],
+  ['Teile-Suche', '/api/parts/?search=Part%201&page=1&page_size=60'],
+  ['Teile-Statistik', '/api/parts/stats'],
+  ['Minifiguren', '/api/minifigs/?page=1&page_size=60'],
+  ['Bewertung Sets', '/api/finance/valuation'],
+  ['GuV', '/api/finance/pnl'],
+  ['Portfolio-Verlauf', '/api/finance/portfolio-history?range=year'],
 ];
 
 /**
@@ -209,7 +232,7 @@ const perzentil = (arr, p) => {
 async function miss(base, pfad) {
   const t0 = process.hrtime.bigint();
   const r = await fetch(base + pfad);
-  await r.arrayBuffer();               // Antwort vollständig lesen
+  await r.arrayBuffer(); // Antwort vollständig lesen
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
   return { ms, ok: r.status === 200, status: r.status };
 }
@@ -252,7 +275,7 @@ async function main() {
   let gesamt = 0;
 
   /** @param {number} id */
-  const nutzer = async (id) => {
+  const nutzer = async id => {
     // Versetzter Start, damit nicht alle im Gleichschritt laufen.
     await new Promise(r => setTimeout(r, (id * 37) % 250));
     while (Date.now() < ende) {
@@ -260,7 +283,7 @@ async function main() {
       // nie leer ist — ein Index in ein Array bleibt auch mit Tupel-Elementen
       // moeglicherweise daneben.
       const eintrag = PFADE[Math.floor(Math.random() * PFADE.length)];
-      if (!eintrag) continue;   // PFADE ist nie leer; das sagt es dem Pruefer
+      if (!eintrag) continue; // PFADE ist nie leer; das sagt es dem Pruefer
       const [name, p] = eintrag;
       try {
         const { ms, ok, status } = await miss(base, p);
@@ -286,11 +309,13 @@ async function main() {
     // Messwerte — `?? []` ist hier kein Beruhigungsmittel, sondern der Fall.
     const w = messung[name] ?? [];
     const referenz = allein[name] ?? 0;
-    const p50 = perzentil(w, 0.5), p95 = perzentil(w, 0.95), max = Math.max(0, ...w);
-    const faktor = referenz > 0 ? (p50 / referenz) : 0;
+    const p50 = perzentil(w, 0.5),
+      p95 = perzentil(w, 0.95),
+      max = Math.max(0, ...w);
+    const faktor = referenz > 0 ? p50 / referenz : 0;
     console.log(
       `${name.padEnd(24)} ${referenz.toFixed(0).padStart(6)}  ${p50.toFixed(0).padStart(6)}  ` +
-      `${p95.toFixed(0).padStart(6)}  ${max.toFixed(0).padStart(6)}  ${faktor.toFixed(1).padStart(6)}x  ${String(w.length).padStart(4)}`
+        `${p95.toFixed(0).padStart(6)}  ${max.toFixed(0).padStart(6)}  ${faktor.toFixed(1).padStart(6)}x  ${String(w.length).padStart(4)}`,
     );
   }
   const fehlerListe = Object.entries(fehler);
@@ -307,4 +332,7 @@ async function main() {
   await db.pool.end();
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+main().catch(e => {
+  console.error(e);
+  process.exit(1);
+});

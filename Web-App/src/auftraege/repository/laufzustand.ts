@@ -11,7 +11,8 @@ export async function setzeZustand(db: DbSchnittstelle, schluessel: string, wert
   await db.run(
     `INSERT INTO laufzustand (schluessel, wert, aktualisiert) VALUES ($1, $2, NOW())
      ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert, aktualisiert = NOW()`,
-    [schluessel, String(wert)]);
+    [schluessel, String(wert)],
+  );
 }
 
 export async function loescheZustand(db: DbSchnittstelle, ...schluessel: string[]): Promise<void> {
@@ -24,6 +25,6 @@ export async function zaehleZustand(db: DbSchnittstelle, schluessel: string, del
     `INSERT INTO laufzustand (schluessel, wert, aktualisiert) VALUES ($1, $2, NOW())
      ON CONFLICT (schluessel) DO UPDATE
        SET wert = GREATEST(0, COALESCE(NULLIF(laufzustand.wert, '')::int, 0) + $3)::text, aktualisiert = NOW()`,
-    [schluessel, String(Math.max(0, delta)), delta]);
+    [schluessel, String(Math.max(0, delta)), delta],
+  );
 }
-

@@ -28,27 +28,37 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) => {
+test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   const geld = _req('src/infra/geld.js');
   await t.test('120,3333 × 2 ist 240,67, und 1,005 rundet auf 1,01', () => {
     assert.equal(geld.zeilenwert(120.3333, 2), 240.67);
     assert.equal(geld.zeilenwert('120.3333', 2), 240.67);
     assert.equal(geld.alsText(1.005), '1.01');
     assert.equal(geld.aufRappen(-12345), -1.23);
-    assert.equal(geld.summeAus([{ preis: 0.07, menge: 1000 }, { preis: null, menge: 5 }]), 70);
+    assert.equal(
+      geld.summeAus([
+        { preis: 0.07, menge: 1000 },
+        { preis: null, menge: 5 },
+      ]),
+      70,
+    );
     const { valueSet } = _req('src/finanzen/setValue.js');
     const v = valueSet('X-1', [{ quantity: 2, condition: 'N' }], new Map([['X-1|N', 120.3333]]));
     assert.equal(v.total, 240.67);
     assert.equal(v.unit_price, 120.33);
   });
 
-  if (!await dbOderSkip(t, _req)) return;
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const NAME = `geld-${process.pid}`, SN = `GW${process.pid}-1`;
-  const TEIL_EUR = `gwe${process.pid}`, TEIL_CHF = `gwc${process.pid}`, FIG = `gwf${process.pid}`;
+  const NAME = `geld-${process.pid}`,
+    SN = `GW${process.pid}-1`;
+  const TEIL_EUR = `gwe${process.pid}`,
+    TEIL_CHF = `gwc${process.pid}`,
+    FIG = `gwf${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NAME + '-2']]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const ohne = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME + '-2'])).id;
+  const ohne = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME + '-2']))
+    .id;
   const globalVorher = await db.get(`SELECT value FROM global_settings WHERE key='currency'`);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, ohne]]);
@@ -62,11 +72,17 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
 
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','CHF')`, [uid]);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
-  await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
-                VALUES ($1,$2,2,100,'N','CHF','2026-01-05T12:00:00Z'), ($1,$2,1,50,'N','EUR','2026-01-06T12:00:00Z')`, [uid, SN]);
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
+                VALUES ($1,$2,2,100,'N','CHF','2026-01-05T12:00:00Z'), ($1,$2,1,50,'N','EUR','2026-01-06T12:00:00Z')`,
+    [uid, SN],
+  );
   await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-  await db.run(`INSERT INTO price_cache (set_number, currency_code, condition, avg_price, fetched_at)
-                VALUES ($1,'CHF','N',120.3333,NOW())`, [SN]);
+  await db.run(
+    `INSERT INTO price_cache (set_number, currency_code, condition, avg_price, fetched_at)
+                VALUES ($1,'CHF','N',120.3333,NOW())`,
+    [SN],
+  );
 
   await t.test('120,3333 × 3 ist 361,00, und ein Kaufpreis in EUR wird gezählt', async () => {
     const { computeSetsValuation } = _req('src/finanzen/financeCalc.js');
@@ -100,32 +116,65 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
     await db.run(`UPDATE part_acquisitions SET currency='EUR' WHERE user_id=$1 AND part_number=$2`, [uid, TEIL_EUR]);
     await db.run(`UPDATE minifig_acquisitions SET currency='EUR' WHERE user_id=$1 AND fig_number=$2`, [uid, FIG]);
     for (const nr of [TEIL_EUR, TEIL_CHF])
-      await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
-                    VALUES ($1,5,'N','CHF',2.1,2.1)`, [nr]);
-    await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,'N','CHF',4)`, [FIG]);
+      await db.run(
+        `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
+                    VALUES ($1,5,'N','CHF',2.1,2.1)`,
+        [nr],
+      );
+    await db.run(
+      `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,'N','CHF',4)`,
+      [FIG],
+    );
     const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
     const teile = await computePartsValuation(uid, [uid]);
     const figuren = await computeMinifigsValuation(uid, [uid]);
-    const sicht = (z) => z && { markt: z.avg_price, kauf: z.purchase_price, pnl: z.pnl_prozent };
-    assert.deepEqual({
-      eur: sicht(teile.parts.find(z => z.part_number === TEIL_EUR)),
-      chf: sicht(teile.parts.find(z => z.part_number === TEIL_CHF)),
-      figur: sicht(figuren.figs.find(z => z.fig_number === FIG)),
-      fremd: [teile.kaufpreise_fremde_waehrung, figuren.kaufpreise_fremde_waehrung],
-    }, {
-      eur: { markt: 2.1, kauf: null, pnl: null },
-      chf: { markt: 2.1, kauf: 0.1, pnl: 2000 },
-      figur: { markt: 4, kauf: null, pnl: null },
-      fremd: [1, 1],
-    });
+    const sicht = z => z && { markt: z.avg_price, kauf: z.purchase_price, pnl: z.pnl_prozent };
+    assert.deepEqual(
+      {
+        eur: sicht(teile.parts.find(z => z.part_number === TEIL_EUR)),
+        chf: sicht(teile.parts.find(z => z.part_number === TEIL_CHF)),
+        figur: sicht(figuren.figs.find(z => z.fig_number === FIG)),
+        fremd: [teile.kaufpreise_fremde_waehrung, figuren.kaufpreise_fremde_waehrung],
+      },
+      {
+        eur: { markt: 2.1, kauf: null, pnl: null },
+        chf: { markt: 2.1, kauf: 0.1, pnl: 2000 },
+        figur: { markt: 4, kauf: null, pnl: null },
+        fremd: [1, 1],
+      },
+    );
   });
 
   await t.test('mehrere Zeilen eines Sets: mengengewichtet, sonst der Kaufpreis', () => {
     const { kachelWerte } = _req('src/finanzen/setValue.js');
     const w = kachelWerte([
-      { set_number: 'A', quantity: 1, current_price: 750, purchase_price: 100, baseline_price: 100, pnl_pct: '650.0', baseline_pnl_pct: '650.0' },
-      { set_number: 'A', quantity: 1, current_price: 750, purchase_price: 600, baseline_price: 600, pnl_pct: '25.0', baseline_pnl_pct: '25.0' },
-      { set_number: 'B', quantity: 2, current_price: 0, purchase_price: 40, baseline_price: 40, pnl_pct: null, baseline_pnl_pct: null },
+      {
+        set_number: 'A',
+        quantity: 1,
+        current_price: 750,
+        purchase_price: 100,
+        baseline_price: 100,
+        pnl_pct: '650.0',
+        baseline_pnl_pct: '650.0',
+      },
+      {
+        set_number: 'A',
+        quantity: 1,
+        current_price: 750,
+        purchase_price: 600,
+        baseline_price: 600,
+        pnl_pct: '25.0',
+        baseline_pnl_pct: '25.0',
+      },
+      {
+        set_number: 'B',
+        quantity: 2,
+        current_price: 0,
+        purchase_price: 40,
+        baseline_price: 40,
+        pnl_pct: null,
+        baseline_pnl_pct: null,
+      },
     ]);
     assert.deepEqual(w.get('A'), { kachel_preis: 750, kachel_pnl_pct: 114.3, kachel_quelle: 'markt' });
     assert.deepEqual(w.get('B'), { kachel_preis: 40, kachel_pnl_pct: null, kachel_quelle: 'kauf' });
@@ -141,6 +190,9 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
     await gutscheinAnlegen(ohne, { number: '1234567', pin: null, amount: 10, currency: null });
     await gutscheinAnlegen(uid, { number: '7654321', pin: null, amount: 10, currency: null });
     const g = await db.all('SELECT user_id, currency FROM vouchers WHERE user_id = ANY($1) ORDER BY id', [[uid, ohne]]);
-    assert.deepEqual(g.map(z => z.currency), ['GBP', 'CHF']);
+    assert.deepEqual(
+      g.map(z => z.currency),
+      ['GBP', 'CHF'],
+    );
   });
 });

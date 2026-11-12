@@ -10,22 +10,32 @@ function figurenSuche(nummer: string, name: string, pi: number) {
 }
 
 /** Gezählt werden die Gruppen, sonst zählte eine Figur aus fünf Sets fünfmal. */
-export async function figurenGruppiert(db: DbSchnittstelle, uids: number[], f: { search?: string | null; source?: string | null; setNumber: string | null;
-  seite: { groesse: number; versatz: number } | null }) {
+export async function figurenGruppiert(
+  db: DbSchnittstelle,
+  uids: number[],
+  f: {
+    search?: string | null;
+    source?: string | null;
+    setNumber: string | null;
+    seite: { groesse: number; versatz: number } | null;
+  },
+) {
   const { search, source } = f;
-  const params: unknown[] = [uids]; let pi = 2;
+  const params: unknown[] = [uids];
+  let pi = 2;
   let where = 'm.user_id = ANY($1)';
   if (f.setNumber) {
     where += ` AND m.set_number = $${pi++}`;
     params.push(f.setNumber);
   }
-  if (source === 'set')    where += " AND m.source = 'set'";
+  if (source === 'set') where += " AND m.source = 'set'";
   if (source === 'manual') where += " AND m.source = 'manual'";
   if (search) {
     // Der Figurenname steht im Katalog; figurSichtJoin hängt an jeder Abfrage,
     // die diese Bedingung benutzt.
     where += ` AND ${figurenSuche('m.fig_number', FIGUR.name, pi)}`;
-    params.push(enthaeltMuster(search)); pi++;
+    params.push(enthaeltMuster(search));
+    pi++;
   }
   const figParams = [...params];
   let figLimit = '';
@@ -35,13 +45,17 @@ export async function figurenGruppiert(db: DbSchnittstelle, uids: number[], f: {
   }
   // Die Zählung braucht keinen Join auf sets.
   const figCount = f.seite
-    ? await db.get<{ c: number }>(`SELECT COUNT(*)::int AS c FROM (
+    ? await db.get<{ c: number }>(
+        `SELECT COUNT(*)::int AS c FROM (
          SELECT 1 FROM minifigs m
          ${figurSichtJoin('m.user_id', 'm.fig_number')}
-         WHERE ${where} GROUP BY LOWER(TRIM(m.fig_number)), m.source) g`, params)
+         WHERE ${where} GROUP BY LOWER(TRIM(m.fig_number)), m.source) g`,
+        params,
+      )
     : null;
 
-  const figs = await db.all<Zeile<{ fig_number: string; image_local: string | null; owner_ids: number[] | null }>>(`
+  const figs = await db.all<Zeile<{ fig_number: string; image_local: string | null; owner_ids: number[] | null }>>(
+    `
     SELECT MIN(m.id) AS id,
            -- Besitzer der GRUPPE: Die Zeile fasst die Figur über alle Konten
            -- zusammen und hat keine einzelne user_id mehr.
@@ -89,11 +103,18 @@ export async function figurenGruppiert(db: DbSchnittstelle, uids: number[], f: {
     -- dieselbe Figurennummer mit Whitespace-/Case-Varianten liefern — die
     -- würden die Gruppierung sonst unsichtbar aushebeln.
     GROUP BY LOWER(TRIM(m.fig_number)), m.source
-    ORDER BY MAX(${FIGUR.name}) ASC, LOWER(TRIM(m.fig_number)) ASC${figLimit}`, figParams);
+    ORDER BY MAX(${FIGUR.name}) ASC, LOWER(TRIM(m.fig_number)) ASC${figLimit}`,
+    figParams,
+  );
   return { figCount, figs };
 }
 
-export async function manuelleFigurenListe(db: DbSchnittstelle, uids: number[], search: string | null | undefined, seite: { groesse: number; versatz: number } | null) {
+export async function manuelleFigurenListe(
+  db: DbSchnittstelle,
+  uids: number[],
+  search: string | null | undefined,
+  seite: { groesse: number; versatz: number } | null,
+) {
   const params: unknown[] = [uids];
   // Platzhalter vor LIMIT/OFFSET.
   let suche = '';
@@ -141,21 +162,26 @@ export async function manuelleFigurenListe(db: DbSchnittstelle, uids: number[], 
        ) neu ON TRUE
       WHERE m.user_id = ANY($1) AND m.source = 'manual'${suche}
       ORDER BY ${FIGUR.name} ASC, m.fig_number ASC${limit}`,
-    params);
+    params,
+  );
   return figs;
 }
 
 export function zustandszahlenManuellerFiguren(db: DbSchnittstelle, uids: number[]) {
-  return db.all<{ fkey: string; acq_count: number; used_count: number }>(`SELECT LOWER(TRIM(a.fig_number)) AS fkey,
+  return db.all<{ fkey: string; acq_count: number; used_count: number }>(
+    `SELECT LOWER(TRIM(a.fig_number)) AS fkey,
             COUNT(*)::int AS acq_count,
             COUNT(*) FILTER (WHERE a.condition = 'U')::int AS used_count
      FROM minifig_acquisitions a
      WHERE a.user_id = ANY($1)
-     GROUP BY LOWER(TRIM(a.fig_number))`, [uids]);
+     GROUP BY LOWER(TRIM(a.fig_number))`,
+    [uids],
+  );
 }
 
 export function figurenKennzahlen(db: DbSchnittstelle, uids: number[]) {
-  return db.get<{ types: number; total_quantity: number; manual: number }>(`
+  return db.get<{ types: number; total_quantity: number; manual: number }>(
+    `
     SELECT COUNT(*)::int AS types,
            COALESCE(SUM(g.menge), 0)::int AS total_quantity,
            COUNT(*) FILTER (WHERE g.source = 'manual')::int AS manual
@@ -166,5 +192,7 @@ export function figurenKennzahlen(db: DbSchnittstelle, uids: number[]) {
           ${teilmengeJoin('m', 'fig')}
          WHERE m.user_id = ANY($1)
          GROUP BY LOWER(TRIM(m.fig_number)), m.source
-      ) g`, [uids]);
+      ) g`,
+    [uids],
+  );
 }

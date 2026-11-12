@@ -3,15 +3,21 @@
 
 /** Hier statt in einer Route, weil mehrere Schichten sie brauchen. */
 export const ERLAUBTE_BILD_HOSTS = [
-  'cdn.rebrickable.com', 'rebrickable.com',
+  'cdn.rebrickable.com',
+  'rebrickable.com',
   'images.brickset.com',
-  'www.bricklink.com', 'img.bricklink.com',
+  'www.bricklink.com',
+  'img.bricklink.com',
 ];
 
 // Nur diese Hosts dürfen Dateien auf die Platte liefern. Bei LEGO die, auf denen
 // Anleitungen liegen: Unter *.lego.com stünde jede Unterdomäne, die jemand dort einrichtet.
 export const ERLAUBTE_DOWNLOAD_HOSTS = [
-  ...ERLAUBTE_BILD_HOSTS, 'lego.com', 'www.lego.com', 'assets.lego.com', 'bdpinstructions.s3.amazonaws.com',
+  ...ERLAUBTE_BILD_HOSTS,
+  'lego.com',
+  'www.lego.com',
+  'assets.lego.com',
+  'bdpinstructions.s3.amazonaws.com',
 ];
 
 /** JSON- und Seitenabrufe: Rebrickable, Anleitungsbilder, EAN-Suche. */
@@ -27,11 +33,13 @@ export const ERLAUBTE_REBRICKABLE_HOSTS = ['rebrickable.com'];
  * aus, zielen aber woandershin. Unparsebar heisst: NICHT holen. */
 export function hostErlaubt(url: string, liste: readonly string[]): boolean {
   let u: URL;
-  try { u = new URL(url); } catch { return false; }
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
   if (u.username !== '' || u.password !== '') return false;
-  return liste.some(h => h.startsWith('*.')
-    ? u.port === '' && u.hostname.endsWith(h.slice(1))
-    : u.host === h);
+  return liste.some(h => (h.startsWith('*.') ? u.port === '' && u.hostname.endsWith(h.slice(1)) : u.host === h));
 }
 
 export const UMLEITUNGS_GRENZE = 5;
@@ -54,7 +62,11 @@ export function naechsteUmleitung(
 
   // Ein Location-Kopf DARF ein blosser Pfad sein (RFC 9110).
   let ziel: URL;
-  try { ziel = new URL(location, von); } catch { return null; }
+  try {
+    ziel = new URL(location, von);
+  } catch {
+    return null;
+  }
 
   // POSITIV auf https geprüft, nicht negativ auf http: Eine Verbotsliste vergisst
   // irgendwann ein Schema.
@@ -65,13 +77,16 @@ export function naechsteUmleitung(
   // Bei Hostwechsel fliegt alles raus, was ein Geheimnis trägt. Der HOST zählt,
   // nicht der Ursprung: :443 → ohne Port wäre sonst ein „Wechsel".
   let vonHost = '';
-  try { vonHost = new URL(von).hostname; } catch { return null; }
+  try {
+    vonHost = new URL(von).hostname;
+  } catch {
+    return null;
+  }
   if (vonHost === ziel.hostname) return { url: ziel.href, kopfzeilen };
 
   const gefiltert: Record<string, string> = {};
   for (const [k, v] of Object.entries(kopfzeilen))
-    if (k.toLowerCase() !== 'authorization' && k.toLowerCase() !== 'cookie')
-      gefiltert[k] = v;
+    if (k.toLowerCase() !== 'authorization' && k.toLowerCase() !== 'cookie') gefiltert[k] = v;
   return { url: ziel.href, kopfzeilen: gefiltert };
 }
 

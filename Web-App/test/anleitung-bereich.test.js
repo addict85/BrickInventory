@@ -4,11 +4,11 @@
  * Gegenprobe (durchgefuehrt): in antwortAufDateiFehler() wieder bedingungslos
  * `res.status(404)` gesetzt → Schritt „416" wird rot, die anderen bleiben gruen.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const os     = require('node:os');
-const path   = require('node:path');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const express = require('express');
 
 const { liefereDatei } = require('./helpers/sources').buildAndRequire()('src/http/dateiAusliefern.js');
@@ -27,12 +27,11 @@ function starte() {
   return { srv, basis };
 }
 
-test('Bereichsanfragen an eine Anleitung', async (t) => {
+test('Bereichsanfragen an eine Anleitung', async t => {
   const { srv, basis } = starte();
   t.after(() => srv.close());
 
-  const hol = async (pfad, range) => (await fetch(basis + pfad,
-    range ? { headers: { Range: range } } : undefined));
+  const hol = async (pfad, range) => await fetch(basis + pfad, range ? { headers: { Range: range } } : undefined);
 
   await t.test('ohne Bereich kommt die ganze Datei', async () => {
     const r = await hol('/data/instructions/BI-3004.pdf');
@@ -50,9 +49,12 @@ test('Bereichsanfragen an eine Anleitung', async (t) => {
 
   await t.test('ein Bereich HINTER dem Dateiende ist 416, nicht 404', async () => {
     const r = await hol('/data/instructions/BI-3004.pdf', `bytes=${GROESSE}-`);
-    assert.equal(r.status, 416,
+    assert.equal(
+      r.status,
+      416,
       'Genau Marcos Befund: Die Datei ist da, der Bereich ist es nicht. 404 ' +
-      'behauptet das Gegenteil und schickt jede Fehlersuche in die Irre.');
+        'behauptet das Gegenteil und schickt jede Fehlersuche in die Irre.',
+    );
     // Die Laengenangabe ist die Auskunft, mit der ein Client sich selbst
     // korrigieren kann — sie muss die 416 begleiten.
     assert.equal(r.headers.get('content-range'), `bytes */${GROESSE}`);

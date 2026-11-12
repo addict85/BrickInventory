@@ -26,6 +26,8 @@ import java.io.IOException
  *      (gegenproben/update-umleitung-ueberall.patch) → rot „eine Umleitung auf einen fremden Host …“
  *   B  updateZielErlaubt() mit `url.host.endsWith("githubusercontent.com")` ohne Punkt →
  *      rot „nur GitHub und sein CDN …“
+ *   C  MAX_UMLEITUNGEN = 1 (Gegenprobe vom 12.11.2026) → rot „der feste Link ueber
+ *      releases-latest …“ (IOException „Zu viele Umleitungen“)
  */
 class UpdateUmleitungTest {
 
@@ -51,6 +53,19 @@ class UpdateUmleitungTest {
         assertEquals("/objekt.apk", ziel.takeRequest().path)
     }
 
+    /** Wie GitHub für `/releases/latest/download/…`: erst auf das Etikett, dann ins CDN. */
+    @Test
+    fun `der feste Link ueber releases-latest folgt zwei Umleitungen`() {
+        val fassung = "/addict85/BrickInventory/releases/download/android-v1/version-signiert.json"
+        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", fassung))
+        start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", ziel.url("/objekt")))
+        ziel.enqueue(MockResponse().setBody("{}"))
+        assertEquals(200 to "{}", hole(start.url("/addict85/BrickInventory/releases/latest/download/version-signiert.json").toString()))
+        assertEquals("/addict85/BrickInventory/releases/latest/download/version-signiert.json", start.takeRequest().path)
+        assertEquals(fassung, start.takeRequest().path)
+        assertEquals("/objekt", ziel.takeRequest().path)
+    }
+
     @Test
     fun `eine Umleitung auf einen fremden Host wird nicht einmal verbunden`() {
         start.enqueue(MockResponse().setResponseCode(302).setHeader("Location", fremd.url("/spiegel.apk")))
@@ -65,7 +80,8 @@ class UpdateUmleitungTest {
 
     @Test
     fun `nur GitHub und sein CDN, nur ueber https auf 443`() {
-        for (gut in listOf("https://github.com/a/b/releases/download/x/y.apk", "https://objects.githubusercontent.com/z",
+        for (gut in listOf("https://github.com/a/b/releases/download/x/y.apk", "https://github.com/a/b/releases/latest/download/y.json",
+                           "https://objects.githubusercontent.com/z",
                            "https://release-assets.githubusercontent.com/z")) {
             assertTrue(gut, updateZielErlaubt(gut.toHttpUrl()))
         }

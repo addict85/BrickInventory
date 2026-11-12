@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
 const U = {};
@@ -17,11 +18,16 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
-  for (const [name, mail] of [['ich', 'ich@example.test'], ['ohnemail', null]]) {
-    await db.run(`INSERT INTO users (username, email, password_hash) VALUES ($1,$2,'x')`,
-      [name, mail]);
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
+  for (const [name, mail] of [
+    ['ich', 'ich@example.test'],
+    ['ohnemail', null],
+  ]) {
+    await db.run(`INSERT INTO users (username, email, password_hash) VALUES ($1,$2,'x')`, [name, mail]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
 }
@@ -33,20 +39,23 @@ async function setzePreis(preis, condition = 'N', waehrung = 'EUR') {
      VALUES ($1,$2,$3,$4,NOW())
      ON CONFLICT (set_number, currency_code, condition)
        DO UPDATE SET avg_price = $4, fetched_at = NOW()`,
-    [SN, condition, waehrung, preis]);
+    [SN, condition, waehrung, preis],
+  );
 }
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Preisalarm gegen echte Datenbank', async (t) => {
+test('Preisalarm gegen echte Datenbank', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
   await seed();
@@ -60,11 +69,11 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
   const A = { ..._req('src/finanzen/preisalarm.js'), ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm };
   let versandt = [];
   let versandFehler = null;
-  const versende = async (m) => {
+  const versende = async m => {
     if (versandFehler) throw new Error(versandFehler);
     versandt.push(m);
   };
-  const pruefe = (sn) => A.pruefeSet(sn, versende);
+  const pruefe = sn => A.pruefeSet(sn, versende);
 
   await t.test('die Richtung bedeutet, was sie sagt', () => {
     // Die einzige Stelle im Modul, an der ein Vorzeichenfehler entsteht.
@@ -79,15 +88,22 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
   await t.test('unsinnige Eingaben werden abgelehnt, nicht zurechtgebogen', async () => {
     // Eine stillschweigend korrigierte Schwelle wäre schlimmer als eine
     // Absage: Der Alarm stünde da und meldete nie oder immer.
-    for (const [feld, wert] of [['richtung', 'seitwärts'], ['schwelle', 0],
-                                ['schwelle', -5], ['schwelle', 'abc'], ['condition', 'X']]) {
+    for (const [feld, wert] of [
+      ['richtung', 'seitwärts'],
+      ['schwelle', 0],
+      ['schwelle', -5],
+      ['schwelle', 'abc'],
+      ['condition', 'X'],
+    ]) {
       const eingabe = { richtung: 'unter', schwelle: 200, condition: 'N', [feld]: wert };
       // Auf `code` geprüft, nicht auf die Meldung: fachfehler() setzt als
       // `message` den DEUTSCHEN Satz — ein Test darauf bräche bei jeder
       // Umformulierung, ohne dass sich das Verhalten ändert.
-      await assert.rejects(() => A.setzeAlarm(U.ich, SN, 'EUR', eingabe),
-        (e) => String(e.code || '').startsWith('alarm_'),
-        `${feld}=${wert} wurde angenommen`);
+      await assert.rejects(
+        () => A.setzeAlarm(U.ich, SN, 'EUR', eingabe),
+        e => String(e.code || '').startsWith('alarm_'),
+        `${feld}=${wert} wurde angenommen`,
+      );
     }
   });
 
@@ -135,7 +151,7 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     // Alarms, ist er nicht falsch — nur (noch) nicht beantwortbar.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
     await A.setzeAlarm(U.ich, SN, 'CHF', { richtung: 'unter', schwelle: 200, condition: 'N' });
-    await setzePreis(10, 'N', 'EUR');       // billig, aber in der falschen Währung
+    await setzePreis(10, 'N', 'EUR'); // billig, aber in der falschen Währung
     assert.equal(await pruefe(SN), 0, 'ein Preis in fremder Währung hat ausgelöst');
     await setzePreis(10, 'N', 'CHF');
     assert.equal(await pruefe(SN), 1);
@@ -160,8 +176,7 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     await A.setzeAlarm(U.ohnemail, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
     await setzePreis(100, 'N');
     assert.equal(await pruefe(SN), 0, 'ohne Adresse darf nichts verschickt werden');
-    assert.equal((await A.alarmeFuer(U.ohnemail, SN))[0].ausgeloest, true,
-      'der Merker muss trotzdem stehen');
+    assert.equal((await A.alarmeFuer(U.ohnemail, SN))[0].ausgeloest, true, 'der Merker muss trotzdem stehen');
   });
 
   await t.test('ein gescheiterter Versand lässt den Merker ungesetzt', async () => {
@@ -173,8 +188,11 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     versandFehler = 'SMTP weg';
     await setzePreis(100, 'N');
     assert.equal(await pruefe(SN), 0);
-    assert.equal((await A.alarmeFuer(U.ich, SN))[0].ausgeloest, false,
-      'nach einem gescheiterten Versand darf der Merker nicht stehen');
+    assert.equal(
+      (await A.alarmeFuer(U.ich, SN))[0].ausgeloest,
+      false,
+      'nach einem gescheiterten Versand darf der Merker nicht stehen',
+    );
     versandFehler = null;
     // Und beim nächsten Lauf wird es erneut versucht.
     assert.equal(await pruefe(SN), 1, 'der zweite Versuch blieb aus');
@@ -213,10 +231,13 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     // Auch hier die Zeitstempel: Ein voller CI-Lauf ist an diesem Subtest
     // einmal gescheitert, und aus dem Bericht war nicht zu erkennen, WELCHE
     // der beiden Zusicherungen gerissen ist. Beide nennen deshalb ihre Werte.
-    assert.equal(erste.alerts.length, 1,
+    assert.equal(
+      erste.alerts.length,
+      1,
       'die ausgelöste Schwelle fehlt. ' +
-      `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
-      `zuletzt_am=${(await db.get('SELECT zuletzt_am FROM price_alerts'))?.zuletzt_am}`);
+        `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
+        `zuletzt_am=${(await db.get('SELECT zuletzt_am FROM price_alerts'))?.zuletzt_am}`,
+    );
     assert.equal(erste.alerts[0].set_number, SN);
     assert.equal(erste.alerts[0].richtung, 'unter');
     // numeric kommt als Zeichenkette aus dem Treiber — käme sie so durch,
@@ -232,11 +253,14 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     // diese Zusicherung ist mir EINMAL in einem vollen Lauf rot geworden und
     // in vier Wiederholungen nicht mehr. Ohne die drei Werte bliebe im
     // Fehlerbericht nur „kam ein zweites Mal" — und damit wieder nichts zu …
-    assert.deepEqual(zweite.alerts, [],
+    assert.deepEqual(
+      zweite.alerts,
+      [],
       'dieselbe Meldung kam ein zweites Mal. ' +
-      `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
-      `zuletzt_am=${erste.alerts[0]?.zuletzt_am?.toISOString?.() ?? erste.alerts[0]?.zuletzt_am}, ` +
-      `erste.now=${erste.now?.toISOString?.() ?? erste.now}`);
+        `vorher=${vorher?.toISOString?.() ?? vorher}, ` +
+        `zuletzt_am=${erste.alerts[0]?.zuletzt_am?.toISOString?.() ?? erste.alerts[0]?.zuletzt_am}, ` +
+        `erste.now=${erste.now?.toISOString?.() ?? erste.now}`,
+    );
   });
 
   await t.test('Abholen: eine Meldung aus derselben Millisekunde kommt NICHT doppelt', async () => {
@@ -249,23 +273,27 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     const NUR_MILLI = new Date('2026-09-19T20:29:58.527Z');
     await db.run(
       `UPDATE price_alerts SET ausgeloest = TRUE, zuletzt_am = $1::timestamptz,
-              zuletzt_preis = 100 WHERE user_id = $2`, [MIT_MIKRO, U.ich]);
+              zuletzt_preis = 100 WHERE user_id = $2`,
+      [MIT_MIKRO, U.ich],
+    );
 
     const r = await A.ausgeloesteSeit(U.ich, NUR_MILLI);
-    assert.deepEqual(r.alerts, [],
+    assert.deepEqual(
+      r.alerts,
+      [],
       'Die Meldung kam ein zweites Mal: in der Datenbank steht ' +
-      `${MIT_MIKRO}, die Marke trägt ${NUR_MILLI.toISOString()}. ` +
-      'Die Mikrosekunden entscheiden — sie dürfen es nicht.');
+        `${MIT_MIKRO}, die Marke trägt ${NUR_MILLI.toISOString()}. ` +
+        'Die Mikrosekunden entscheiden — sie dürfen es nicht.',
+    );
 
     // Und die Gegenrichtung muss weiter funktionieren: Eine Meldung aus der
     // NÄCHSTEN Millisekunde ist wirklich neu und gehört geliefert.
     const r2 = await A.ausgeloesteSeit(U.ich, new Date('2026-09-19T20:29:58.526Z'));
-    assert.equal(r2.alerts.length, 1,
-      'Eine Meldung nach der Marke wurde verschluckt — die Kürzung geht zu weit');
+    assert.equal(r2.alerts.length, 1, 'Eine Meldung nach der Marke wurde verschluckt — die Kürzung geht zu weit');
   });
 
   await t.test('Abholen: jedes Konto sieht nur seine eigenen Alarme', async () => {
-    // Die Abfrage steht auf user_id, nicht auf scopeIds() — und das ist
+    // Die Abfrage steht auf user_id, nicht auf blickfeldIds() — und das ist
     // Absicht: Eine Meldung gehört dem, der die Schwelle gesetzt hat. Ein
     // Hauptkonto bekäme sonst die Meldungen aller Unterkonten, ohne je einen
     // Alarm gesetzt zu haben.
@@ -277,8 +305,7 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     assert.equal(await pruefe(SN), 1);
 
     assert.equal((await A.ausgeloesteSeit(U.ich, vorher)).alerts.length, 1);
-    assert.deepEqual((await A.ausgeloesteSeit(U.ohnemail, vorher)).alerts, [],
-      'ein fremdes Konto sah die Meldung');
+    assert.deepEqual((await A.ausgeloesteSeit(U.ohnemail, vorher)).alerts, [], 'ein fremdes Konto sah die Meldung');
   });
 
   await t.test('Marcos vier Schritte — auch die APP bekommt je Übergang genau eine', async () => {
@@ -291,7 +318,7 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     await A.setzeAlarm(U.ich, SN, 'EUR', { richtung: 'unter', schwelle: 200, condition: 'N' });
 
     /** Ein Preislauf: Preis setzen, prüfen, abholen. Gibt [Mails, Meldungen] zurück. */
-    const lauf = async (preis) => {
+    const lauf = async preis => {
       versandt = [];
       await setzePreis(preis);
       const mails = await pruefe(SN);
@@ -320,8 +347,7 @@ test('Preisalarm gegen echte Datenbank', async (t) => {
     // Meldung steht weiter bereit, solange die Marke älter ist — das Telefon
     // darf aus sein.
     const spaeter = await A.ausgeloesteSeit(U.ich, new Date(Date.now() - 60_000));
-    assert.equal(spaeter.alerts.length, 1,
-      'eine Meldung verfällt, wenn die App gerade nicht abholt');
+    assert.equal(spaeter.alerts.length, 1, 'eine Meldung verfällt, wenn die App gerade nicht abholt');
   });
 
   await t.test('Löschen ist ohne Alarm kein Fehler', async () => {

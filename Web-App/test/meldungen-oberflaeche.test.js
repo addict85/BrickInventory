@@ -30,7 +30,10 @@ function zeitgeberFangen(w) {
   const gefangen = [];
   const echt = w.setTimeout;
   w.setTimeout = (fn, ms, ...rest) => {
-    if (typeof fn === 'function' && ms >= 3000) { gefangen.push({ fn, ms }); return 0; }
+    if (typeof fn === 'function' && ms >= 3000) {
+      gefangen.push({ fn, ms });
+      return 0;
+    }
     return echt.call(w, fn, ms, ...rest);
   };
   return gefangen;
@@ -50,18 +53,29 @@ test('Fehler und Knopf-Meldungen laufen nicht ab', async () => {
     assert.equal(zu.getAttribute('aria-label'), 'Schliessen');
     zu.click();
     assert.equal(meldung.isConnected, false, 'das ✕ schliesst');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Maus auf der Meldung hält die Frist an', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/wanted': (_u, o) => (o.method === 'POST'
-    ? { success: true, war_neu: true } : { success: true, items: [] }) });
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/wanted': (_u, o) => (o.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] }),
+  });
   try {
     // Wie zeitgeberFangen, aber clearTimeout nimmt einen gefangenen Zeitgeber wieder heraus.
-    const offen = new Map(); let n = 1e6;
-    const setzen = w.setTimeout, loeschen = w.clearTimeout;
-    w.setTimeout = (fn, ms, ...rest) => (typeof fn === 'function' && ms >= 3000 ? (offen.set(++n, fn), n) : setzen.call(w, fn, ms, ...rest));
-    w.clearTimeout = (id) => (offen.has(id) ? offen.delete(id) : loeschen.call(w, id));
+    const offen = new Map();
+    let n = 1e6;
+    const setzen = w.setTimeout,
+      loeschen = w.clearTimeout;
+    w.setTimeout = (fn, ms, ...rest) => {
+      if (typeof fn === 'function' && ms >= 3000) {
+        offen.set(++n, fn);
+        return n;
+      }
+      return setzen.call(w, fn, ms, ...rest);
+    };
+    w.clearTimeout = id => (offen.has(id) ? offen.delete(id) : loeschen.call(w, id));
     await merkpostenAnlegen(w, d);
     await warte(() => d.querySelector('#toasts .toast.success'));
     const meldung = d.querySelector('#toasts .toast.success');
@@ -71,18 +85,25 @@ test('Maus auf der Meldung hält die Frist an', async () => {
     meldung.dispatchEvent(new w.MouseEvent('mouseleave'));
     for (const fn of [...offen.values()]) fn();
     assert.equal(meldung.isConnected, false, 'nach dem Verlassen läuft die Frist wieder');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('gleiche Fehler stapeln sich nicht', async () => {
   const { w, d } = await oeffneOberflaeche(FEHLER);
   try {
-    for (let i = 0; i < 3; i++) { await merkpostenAnlegen(w, d); await warte(() => d.querySelectorAll('#toasts .toast.error').length > 0); }
+    for (let i = 0; i < 3; i++) {
+      await merkpostenAnlegen(w, d);
+      await warte(() => d.querySelectorAll('#toasts .toast.error').length > 0);
+    }
     await warte(() => d.querySelector('#toasts .toast-anzahl:not([hidden])')?.textContent === '×3', 1000);
     const meldungen = d.querySelectorAll('#toasts .toast.error');
     assert.equal(meldungen.length, 1, `${meldungen.length} Meldungen`);
     assert.equal(meldungen[0].querySelector('.toast-anzahl').textContent, '×3');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Klick räumt die Meldung weg', async () => {
@@ -93,5 +114,7 @@ test('Klick räumt die Meldung weg', async () => {
     const meldung = d.querySelector('#toasts .toast.error');
     meldung.querySelector('.toast-text').click();
     assert.equal(meldung.isConnected, false);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

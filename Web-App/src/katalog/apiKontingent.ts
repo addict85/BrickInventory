@@ -21,7 +21,7 @@ const ALLE_KONTEN = -1;
 const heute = () => new Date().toISOString().slice(0, 10);
 
 export async function getLimitForApi(apiName: ApiName): Promise<number> {
-  return parseInt(await getGlobalSetting(`api_limit_${apiName}`, '')) || VORGABEN[apiName] || 4000;
+  return parseInt(await getGlobalSetting(`api_limit_${apiName}`, ''), 10) || VORGABEN[apiName] || 4000;
 }
 
 const grenzeJeKonto = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL_JE_KONTO));
@@ -38,27 +38,26 @@ export async function checkAndIncrementRateLimit(apiName: ApiName, _vorgabe?: nu
     return z ? Number(z.anzahl) : null;
   };
   if (limit <= 0) return { allowed: false, count: 0, limit, remaining: 0 };
-  return katalog().db.transaction(async (tx) => {
-    const gesamt = await zaehle(tx, 0, limit);
-    if (gesamt === null) return { allowed: false, count: limit, limit, remaining: 0 };
-    if (konto && !konto.verwalter) {
-      const alle = await zaehle(tx, ALLE_KONTEN, grenzeAlleKonten(limit));
-      const eigen = alle === null ? null : await zaehle(tx, konto.id, grenzeJeKonto(limit));
-      if (eigen === null) throw Object.assign(new Error('kontingent_je_konto'), { kontoVoll: true });
-    }
-    return { allowed: true, count: gesamt, limit, remaining: limit - gesamt };
-  }).catch((e: { kontoVoll?: boolean }) => {
-    if (e?.kontoVoll) return { allowed: false, count: 0, limit, remaining: 0, jeKonto: true };
-    throw e;
-  });
+  return katalog()
+    .db.transaction(async tx => {
+      const gesamt = await zaehle(tx, 0, limit);
+      if (gesamt === null) return { allowed: false, count: limit, limit, remaining: 0 };
+      if (konto && !konto.verwalter) {
+        const alle = await zaehle(tx, ALLE_KONTEN, grenzeAlleKonten(limit));
+        const eigen = alle === null ? null : await zaehle(tx, konto.id, grenzeJeKonto(limit));
+        if (eigen === null) throw Object.assign(new Error('kontingent_je_konto'), { kontoVoll: true });
+      }
+      return { allowed: true, count: gesamt, limit, remaining: limit - gesamt };
+    })
+    .catch((e: { kontoVoll?: boolean }) => {
+      if (e?.kontoVoll) return { allowed: false, count: 0, limit, remaining: 0, jeKonto: true };
+      throw e;
+    });
 }
 
 export async function getRateLimitStatus(apiName: ApiName) {
   const tag = heute();
-  const [z, limit] = await Promise.all([
-    katalog().apiKontingent.aufrufeHeute(tag, apiName),
-    getLimitForApi(apiName),
-  ]);
+  const [z, limit] = await Promise.all([katalog().apiKontingent.aufrufeHeute(tag, apiName), getLimitForApi(apiName)]);
   const count = Number(z?.anzahl || 0);
   return { count, limit, remaining: Math.max(0, limit - count), date: tag };
 }
@@ -71,8 +70,10 @@ export async function kontingentFrei(apiName: ApiName) {
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
   const z = await katalog().apiKontingent.aufrufeJeKonto(s.date, apiName, konto.id, ALLE_KONTEN);
   const stand = (k: number) => Number(z.find(r => Number(r.konto) === k)?.anzahl || 0);
-  return { allowed: stand(konto.id) < grenzeJeKonto(s.limit) && stand(ALLE_KONTEN) < grenzeAlleKonten(s.limit),
-           limit: s.limit };
+  return {
+    allowed: stand(konto.id) < grenzeJeKonto(s.limit) && stand(ALLE_KONTEN) < grenzeAlleKonten(s.limit),
+    limit: s.limit,
+  };
 }
 
 export async function setzeKontingentZurueck(apiName: ApiName): Promise<void> {

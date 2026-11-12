@@ -25,7 +25,7 @@ private const val SERVER = "http://nas:3000/"
  * Warteschlange (server.ts, "Generate missing thumbnails"). Der vorherige
  * Wiederholversuch fragte dieselbe (fehlende) Vorschau-Datei ein zweites Mal
  * an — dieselbe 404, keine Besserung. Die Webapp fällt in genau diesem Fall
- * auf die volle Auflösung zurück (public/js/11-actions.js, data-orig); Android
+ * auf die volle Auflösung zurück (public/js/actions.js, data-orig); Android
  * hatte dieses Verhalten bisher nicht.
  */
 class ThumbFallbackTest {
@@ -232,7 +232,7 @@ class PartsMinifigsFullResBypassProxyTest {
  *
  * Ein früherer Kommentar behauptete, die Webapp mache im Detail-Dialog
  * dieselbe Thumb/Voll-Unterscheidung wie die Kachel — das stimmte nicht.
- * public/js/07-admin.js zeigt für "m-img" (das Hauptbild im Detail-Dialog)
+ * public/js/admin.js zeigt für "m-img" (das Hauptbild im Detail-Dialog)
  * immer fullUrl(), nie eine Vorschau. Android zeigte dort fälschlich
  * resolveThumbUrl().
  */

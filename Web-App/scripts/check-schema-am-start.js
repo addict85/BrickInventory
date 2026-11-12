@@ -2,8 +2,8 @@
 /**
  * Das Schema steht an EINER Stelle — nicht im Anfragepfad.
  */
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -27,7 +27,7 @@ function ohneKommentare(quelle) {
     .split('\n')
     .map(z => {
       const t = z.trim();
-      return (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('#')) ? '' : z;
+      return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('#') ? '' : z;
     })
     .join('\n');
 }
@@ -74,8 +74,13 @@ for (const datei of dateien) {
 
 // Der Selbstbeweis, und warum er JEDEN Teil einzeln prüft
 const migVerz = path.join(ROOT, 'db/migrations');
-const bekannt = ohneKommentare(fs.readdirSync(migVerz).filter(f => f.endsWith('.sql'))
-  .map(f => fs.readFileSync(path.join(migVerz, f), 'utf8')).join('\n'));
+const bekannt = ohneKommentare(
+  fs
+    .readdirSync(migVerz)
+    .filter(f => f.endsWith('.sql'))
+    .map(f => fs.readFileSync(path.join(migVerz, f), 'utf8'))
+    .join('\n'),
+);
 
 for (const teil of [/\bCREATE\s+TABLE\b/i, /\bCREATE\s+(?:UNIQUE\s+)?INDEX\b/i, /\bALTER\s+TABLE\b/i]) {
   if (!teil.test(bekannt)) {
@@ -122,7 +127,8 @@ function sammleAlle(verz, raus) {
     if (eintrag.isDirectory()) sammleAlle(p, raus);
     // schema-stand.sql und basis.sql sind erzeugte Abbilder, keine Quellen —
     // sie nennen jede Tabelle ein zweites Mal, und zwar mit Absicht.
-    else if (/\.(ts|js|sql)$/.test(eintrag.name) && !['schema-stand.sql', 'basis.sql'].includes(eintrag.name)) raus.push(p);
+    else if (/\.(ts|js|sql)$/.test(eintrag.name) && !['schema-stand.sql', 'basis.sql'].includes(eintrag.name))
+      raus.push(p);
   }
   return raus;
 }
@@ -178,5 +184,7 @@ if (mehrfach.length) {
   process.exit(1);
 }
 
-console.log(`GRUEN — ${dateien.length} Dateien im Anfragepfad ohne Schema-Anweisung, ` +
-            `${angelegt.size} Tabellen/Indizes je genau einmal angelegt`);
+console.log(
+  `GRUEN — ${dateien.length} Dateien im Anfragepfad ohne Schema-Anweisung, ` +
+    `${angelegt.size} Tabellen/Indizes je genau einmal angelegt`,
+);

@@ -22,7 +22,9 @@ function num(v: unknown): number {
 /** In EINER Abfrage für viele Sets.
  * @returns Map "setNumber|condition" → avg_price */
 export async function loadConditionPrices(
-  setNumbers: string[], currency: string, ttlHours?: number
+  setNumbers: string[],
+  currency: string,
+  ttlHours?: number,
 ): Promise<Map<string, number>> {
   const out = new Map<string, number>();
   const list = [...new Set((setNumbers || []).filter(Boolean))];
@@ -43,7 +45,7 @@ export async function loadConditionPrices(
 }
 
 function priceFor(prices: Map<string, number>, setNumber: string, cond: string): number | null {
-  const want  = prices.get(`${setNumber}|${cond}`);
+  const want = prices.get(`${setNumber}|${cond}`);
   if (want) return want;
   const other = prices.get(`${setNumber}|${cond === 'N' ? 'U' : 'N'}`);
   return other || null;
@@ -56,20 +58,21 @@ export function valueSet(
   acquisitions: { quantity: number; condition?: string | null }[],
   prices: Map<string, number>,
   fallbackCondition: string = 'N',
-  fallbackQuantity: number = 1
+  fallbackQuantity: number = 1,
 ): SetValue {
   const rows = acquisitions?.length
     ? acquisitions.map(a => ({
         condition: zustand(a.condition),
-        quantity: Math.max(1, parseInt(String(a.quantity)) || 1),
+        quantity: Math.max(1, parseInt(String(a.quantity), 10) || 1),
       }))
-    : [{ condition: zustand(fallbackCondition),
-         quantity: Math.max(1, fallbackQuantity) }];
+    : [{ condition: zustand(fallbackCondition), quantity: Math.max(1, fallbackQuantity) }];
 
   const byCond = new Map<'N' | 'U', number>();
   for (const r of rows) byCond.set(r.condition, (byCond.get(r.condition) || 0) + r.quantity);
 
-  let totalZ = 0, quantity = 0, priced = 0;
+  let totalZ = 0,
+    quantity = 0,
+    priced = 0;
   const by_condition: SetValue['by_condition'] = [];
 
   for (const [condition, qty] of byCond) {
@@ -77,7 +80,10 @@ export function valueSet(
     by_condition.push({ condition, quantity: qty, unit_price: unit });
     quantity += qty;
     const z = inZehntel4(unit);
-    if (z !== null) { totalZ += z * qty; priced += qty; }
+    if (z !== null) {
+      totalZ += z * qty;
+      priced += qty;
+    }
   }
 
   // Kein Zustand hat einen Preis → kein Wert, nicht 0: Eine 0 sähe in den
@@ -86,13 +92,17 @@ export function valueSet(
 
   // Über die BEPREISTEN Stück, damit ein fehlender Preis den Stückpreis nicht
   // nach unten zieht. Gerundet wird erst hier.
-  return { unit_price: aufRappen(totalZ / priced), unit_z: totalZ / priced, total: aufRappen(totalZ), quantity, by_condition };
+  return {
+    unit_price: aufRappen(totalZ / priced),
+    unit_z: totalZ / priced,
+    total: aufRappen(totalZ),
+    quantity,
+    by_condition,
+  };
 }
 
 /** Für Listen loadConditionPrices() + valueSet(), damit es bei einer Abfrage bleibt. */
-export async function getSetValue(
-  userId: number, setNumber: string, currency: string
-): Promise<SetValue> {
+export async function getSetValue(userId: number, setNumber: string, currency: string): Promise<SetValue> {
   const acqs = await finanzenBereich().setWert.setErfassungenZumWert(userId, setNumber);
   const prices = await loadConditionPrices([setNumber], currency);
   return valueSet(setNumber, acqs, prices, 'N', 1);
@@ -105,7 +115,7 @@ export async function getSetValue(
  * stand dort „+327.600 %"). */
 export function entwicklungProzent(kauf: number | null | undefined, markt: number | null | undefined): number | null {
   if (kauf == null || !(kauf > 0) || markt == null || !(markt > 0)) return null;
-  return (markt - kauf) / kauf * 100;
+  return ((markt - kauf) / kauf) * 100;
 }
 
 export function pnlProzent(purchase: number | null, market: number | null): number | null {
@@ -137,10 +147,15 @@ export interface AcquisitionValueRow {
 
 /** Was eine Erfassung für ihren Wert mitbringt; purchase_price bei Sets, unit_price sonst. */
 export interface ErfassungFuerWert {
-  id: number; condition?: string | null; quantity: number | string;
-  purchase_price?: number | string | null; unit_price?: number | string | null;
-  created_at?: Date | string | null; currency?: string | null;
-  kaufpreis_fremd?: boolean | null; kaufpreis_original?: number | string | null;
+  id: number;
+  condition?: string | null;
+  quantity: number | string;
+  purchase_price?: number | string | null;
+  unit_price?: number | string | null;
+  created_at?: Date | string | null;
+  currency?: string | null;
+  kaufpreis_fremd?: boolean | null;
+  kaufpreis_original?: number | string | null;
   price_estimated?: boolean | null;
 }
 
@@ -148,16 +163,15 @@ export interface ErfassungFuerWert {
 export function valueAcquisitionRows(
   setNumber: string,
   acquisitions: ErfassungFuerWert[],
-  prices: Map<string, number>
+  prices: Map<string, number>,
 ): AcquisitionValueRow[] {
   return (acquisitions || []).map(a => {
-    const condition: 'N' | 'U' = (a.condition === 'U') ? 'U' : 'N';
-    const quantity = Math.max(1, parseInt(String(a.quantity)) || 1);
+    const condition: 'N' | 'U' = a.condition === 'U' ? 'U' : 'N';
+    const quantity = Math.max(1, parseInt(String(a.quantity), 10) || 1);
     // purchase_price (Sets) und unit_price (manuell) sind dieselbe Grösse unter
     // zwei Namen; beide lesen erspart je eine Fassung dieser Funktion.
     const raw = a.purchase_price ?? a.unit_price;
-    const purchase = (raw === null || raw === undefined)
-      ? null : (parseFloat(String(raw)) || 0);
+    const purchase = raw === null || raw === undefined ? null : parseFloat(String(raw)) || 0;
     const unit = priceFor(prices, setNumber, condition);
     return {
       id: a.id,
@@ -171,7 +185,8 @@ export function valueAcquisitionRows(
       pnl_prozent: pnlProzent(purchase, unit),
       created_at: a.created_at ?? null,
       ...(a.kaufpreis_fremd && a.kaufpreis_original != null
-        ? { kaufpreis_original: parseFloat(String(a.kaufpreis_original)), kaufpreis_waehrung: String(a.currency) } : {}),
+        ? { kaufpreis_original: parseFloat(String(a.kaufpreis_original)), kaufpreis_waehrung: String(a.currency) }
+        : {}),
       ...(a.price_estimated && purchase != null ? { price_estimated: true as const } : {}),
     };
   });
@@ -186,12 +201,20 @@ export function weightedPurchase(rows: AcquisitionValueRow[]): number | null {
   return withCost.reduce((s, r) => s + (r.purchase_price as number) * r.quantity, 0) / qty;
 }
 
-export interface KachelWert { kachel_preis: number | null; kachel_pnl_pct: number | null; kachel_quelle: 'markt' | 'kauf' | null }
+export interface KachelWert {
+  kachel_preis: number | null;
+  kachel_pnl_pct: number | null;
+  kachel_quelle: 'markt' | 'kauf' | null;
+}
 
 export interface KachelQuelle {
-  set_number: string; quantity: number; current_price: number | null;
-  purchase_price: number | null; baseline_price: number | null;
-  pnl_pct: string | null; baseline_pnl_pct: string | null;
+  set_number: string;
+  quantity: number;
+  current_price: number | null;
+  purchase_price: number | null;
+  baseline_price: number | null;
+  pnl_pct: string | null;
+  baseline_pnl_pct: string | null;
 }
 
 /** Im Haushalt zählt der nach Menge gewichtete Basispreis: „Irgendeine Zeile"
@@ -203,12 +226,14 @@ export function kachelWerte(zeilen: KachelQuelle[]): Map<string, KachelWert> {
   for (const [nr, zs] of jeSet) {
     const markt = Number(zs[0]?.current_price) || 0;
     const gewichtet = (feld: 'baseline_price' | 'purchase_price') => {
-      let summe = 0, menge = 0;
+      let summe = 0,
+        menge = 0;
       for (const z of zs) {
         const b = z[feld];
         if (b == null) continue;
         const m = Math.max(1, Number(z.quantity) || 1);
-        summe += Number(b) * m; menge += m;
+        summe += Number(b) * m;
+        menge += m;
       }
       return menge > 0 ? summe / menge : null;
     };
@@ -223,8 +248,12 @@ export function kachelWerte(zeilen: KachelQuelle[]): Map<string, KachelWert> {
     }
     const kauf = gewichtet('purchase_price');
     const quelle = markt > 0 ? 'markt' : kauf != null ? 'kauf' : null;
-    aus.set(nr, { kachel_preis: quelle === 'markt' ? aufRappen(inZehntel4(markt) ?? 0) : (kauf != null ? aufRappen(inZehntel4(kauf) ?? 0) : null),
-                  kachel_pnl_pct: pct, kachel_quelle: quelle });
+    aus.set(nr, {
+      kachel_preis:
+        quelle === 'markt' ? aufRappen(inZehntel4(markt) ?? 0) : kauf != null ? aufRappen(inZehntel4(kauf) ?? 0) : null,
+      kachel_pnl_pct: pct,
+      kachel_quelle: quelle,
+    });
   }
   return aus;
 }

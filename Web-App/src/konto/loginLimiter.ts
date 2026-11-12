@@ -18,7 +18,7 @@ interface Zaehlerstand {
 }
 
 export const MAX_ATTEMPTS = 5;
-const WINDOW_MS    = 15 * 60 * 1000;
+const WINDOW_MS = 15 * 60 * 1000;
 
 /** Je KONTO über alle Adressen, verdoppelnd: Wer viele Adressen hat, rät nur
  * noch rund 15 Mal je Viertelstunde; der Inhaber wartet bei einem Vertipper
@@ -29,8 +29,8 @@ export function wartezeitSekunden(fehlversuche: number): number {
 }
 /** Über ALLE Namen: Die Grenze je Konto liesse sonst Password-Spraying zu. */
 export const MAX_JE_ADRESSE = 30;
-const BEKANNT_MIN  = 30 * 24 * 60;
-const WINDOW_MIN   = WINDOW_MS / 60000;
+const BEKANNT_MIN = 30 * 24 * 60;
+const WINDOW_MIN = WINDOW_MS / 60000;
 /** Ein reservierter Platz, dessen Prüfung nie gemeldet wurde, verfällt danach. */
 const LAUFEND_VERFALL_S = 60;
 
@@ -54,9 +54,15 @@ export function drosselAdresse(ip: string): string {
   if (v4 && isIPv4(v4[1]!)) return v4[1]!;
   if (!isIPv6(ip)) return ip;
   const [links = '', rechts = ''] = ip.toLowerCase().split('::');
-  const l = links ? links.split(':') : [], r = rechts ? rechts.split(':') : [];
+  const l = links ? links.split(':') : [],
+    r = rechts ? rechts.split(':') : [];
   const gruppen = ip.includes('::') ? [...l, ...Array(8 - l.length - r.length).fill('0'), ...r] : l;
-  return gruppen.slice(0, 4).map(g => g.replace(/^0+(?=.)/, '')).join(':') + '::/64';
+  return (
+    gruppen
+      .slice(0, 4)
+      .map(g => g.replace(/^0+(?=.)/, ''))
+      .join(':') + '::/64'
+  );
 }
 
 // einzelwert(): Kommt der Name doppelt an, liefert Express ein Array.
@@ -67,10 +73,14 @@ const _nameKey = (name: string) => `login-name|${einzelwert(name).toLowerCase()}
  * nur der HMAC der Adresse; er bleibt für dieselbe Adresse gleich und zählt weiter. */
 function adressAbdruck(ip: string): string {
   const a = drosselAdresse(ip);
-  try { return suchwert('anmeldeadresse', a); }
-  catch { return createHash('sha256').update(`brickinventory/anmeldeadresse/${a}`).digest('hex'); }
+  try {
+    return suchwert('anmeldeadresse', a);
+  } catch {
+    return createHash('sha256').update(`brickinventory/anmeldeadresse/${a}`).digest('hex');
+  }
 }
-const _bekanntKey = (ip: string, name: string) => `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
+const _bekanntKey = (ip: string, name: string) =>
+  `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
 const _erfolgKey = (ip: string, kennung: string) => `login-erfolg|${adressAbdruck(ip)}|${kennung}`;
 
 function _prune() {
@@ -86,13 +96,20 @@ async function _read(key: string, windowMin: number): Promise<Zaehlerstand | nul
   try {
     const row = await kontoBereich().anmeldezaehler.lies(key, windowMin);
     if (!row) return null;
-    return { count: parseInt(row.count) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(row.wait_min) || 1)),
-             seitLetztem: Math.max(0, parseFloat(row.seit) || 0) };
+    return {
+      count: parseInt(row.count, 10) || 0,
+      waitMin: Math.max(1, Math.ceil(parseFloat(row.wait_min) || 1)),
+      seitLetztem: Math.max(0, parseFloat(row.seit) || 0),
+    };
   } catch (fehler) {
     imSpeicher('lesen', fehler);
     const e = _attempts.get(key);
     if (!e || Date.now() - e.firstAt > windowMin * 60000) return null;
-    return { count: e.count, waitMin: _restMin(e.firstAt, windowMin), seitLetztem: (Date.now() - (e.lastAt ?? e.firstAt)) / 1000 };
+    return {
+      count: e.count,
+      waitMin: _restMin(e.firstAt, windowMin),
+      seitLetztem: (Date.now() - (e.lastAt ?? e.firstAt)) / 1000,
+    };
   }
 }
 
@@ -103,8 +120,13 @@ async function _bump(key: string, windowMin: number): Promise<number> {
     imSpeicher('zählen', fehler);
     const now = Date.now();
     const e = _attempts.get(key);
-    if (!e || now - e.firstAt > windowMin * 60000) _attempts.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
-    else { e.count++; e.lastAt = now; e.laufend = Math.max(0, (e.laufend || 0) - 1); }
+    if (!e || now - e.firstAt > windowMin * 60000)
+      _attempts.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
+    else {
+      e.count++;
+      e.lastAt = now;
+      e.laufend = Math.max(0, (e.laufend || 0) - 1);
+    }
     _prune();
     return _attempts.get(key)?.count ?? 1;
   }
@@ -114,14 +136,18 @@ type Stand = Zaehlerstand & { laufend: number };
 
 /** BEVOR geprüft wird, unter einer Zeilensperre, damit gleichzeitige Versuche
  * einander sehen. */
-async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) => boolean): Promise<{ ok: boolean; stand: Stand }> {
+async function _reserviere(
+  key: string,
+  windowMin: number,
+  erlaubt: (s: Stand) => boolean,
+): Promise<{ ok: boolean; stand: Stand }> {
   try {
-    return await kontoBereich().db.transaction(async (tx) => {
+    return await kontoBereich().db.transaction(async tx => {
       const r = await repo.sperre(tx, key, windowMin, LAUFEND_VERFALL_S);
       const neu = !!r.abgelaufen;
       const stand: Stand = {
-        count: neu ? 0 : parseInt(r.count) || 0,
-        laufend: r.laufend_alt ? 0 : parseInt(r.laufend) || 0,
+        count: neu ? 0 : parseInt(r.count, 10) || 0,
+        laufend: r.laufend_alt ? 0 : parseInt(r.laufend, 10) || 0,
         waitMin: neu ? windowMin : Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)),
         seitLetztem: Math.max(0, parseFloat(r.seit) || 0),
       };
@@ -134,9 +160,16 @@ async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) =
     // Im Prozessspeicher ist dieser Block ohne await atomar.
     const now = Date.now();
     let e = _attempts.get(key);
-    if (!e || now - e.firstAt > windowMin * 60000) { e = { count: 0, firstAt: now, lastAt: null, laufend: 0 }; _attempts.set(key, e); }
-    const stand: Stand = { count: e.count, laufend: e.laufend || 0, waitMin: _restMin(e.firstAt, windowMin, now),
-      seitLetztem: (now - (e.lastAt ?? e.firstAt)) / 1000 };
+    if (!e || now - e.firstAt > windowMin * 60000) {
+      e = { count: 0, firstAt: now, lastAt: null, laufend: 0 };
+      _attempts.set(key, e);
+    }
+    const stand: Stand = {
+      count: e.count,
+      laufend: e.laufend || 0,
+      waitMin: _restMin(e.firstAt, windowMin, now),
+      seitLetztem: (now - (e.lastAt ?? e.firstAt)) / 1000,
+    };
     if (!erlaubt(stand)) return { ok: false, stand };
     e.laufend = stand.laufend + 1;
     _prune();
@@ -145,16 +178,22 @@ async function _reserviere(key: string, windowMin: number, erlaubt: (s: Stand) =
 }
 
 async function _freigeben(key: string): Promise<void> {
-  try { await kontoBereich().anmeldezaehler.gibLaufplatzFrei(key); }
-  catch (fehler) {
+  try {
+    await kontoBereich().anmeldezaehler.gibLaufplatzFrei(key);
+  } catch (fehler) {
     imSpeicher('freigeben', fehler);
-    const e = _attempts.get(key); if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1);
+    const e = _attempts.get(key);
+    if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1);
   }
 }
 
 async function _clear(key: string): Promise<void> {
-  try { await kontoBereich().anmeldezaehler.loescheZaehler(key); }
-  catch (e) { imSpeicher('löschen', e); _attempts.delete(key); }
+  try {
+    await kontoBereich().anmeldezaehler.loescheZaehler(key);
+  } catch (e) {
+    imSpeicher('löschen', e);
+    _attempts.delete(key);
+  }
 }
 
 /** Name und E-Mail desselben Kontos zählen gemeinsam, sonst gälte jede Grenze
@@ -163,7 +202,9 @@ async function _clear(key: string): Promise<void> {
 async function kontoKennung(username: string): Promise<string> {
   // Ausnahme: Bei gestörter Datenbank zählt die Drossel im Speicher weiter
   // (imSpeicher); ohne Konto dann nach dem Namen, statt die Anmeldung zu sperren.
-  const z = await kontoBereich().anmeldezaehler.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
+  const z = await kontoBereich()
+    .anmeldezaehler.kontoZumNamen(einzelwert(username))
+    .catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
   return `name:${namensAbdruck(z?.kennung ?? einzelwert(username).toLowerCase())}`;
 }
@@ -171,9 +212,12 @@ async function kontoKennung(username: string): Promise<string> {
 /** Ein unbekannter Name ist oft ein vertipptes Passwort, und die Tabelle liest die
  * Leserolle: nur der HMAC, der für denselben Namen gleich bleibt und weiter zählt. */
 function namensAbdruck(name: string): string {
-  try { return suchwert('anmeldename', name); }
-  // Ohne Datenschlüssel (Werkzeuge, frühe Tests) wenigstens kein Klartext.
-  catch { return createHash('sha256').update(`brickinventory/anmeldename/${name}`).digest('hex'); }
+  try {
+    return suchwert('anmeldename', name);
+  } catch {
+    // Ohne Datenschlüssel (Werkzeuge, frühe Tests) wenigstens kein Klartext.
+    return createHash('sha256').update(`brickinventory/anmeldename/${name}`).digest('hex');
+  }
 }
 
 export type Sperre = { code: FehlerCode; vars: { minuten: number } };
@@ -183,8 +227,7 @@ export type Sperre = { code: FehlerCode; vars: { minuten: number } };
 export async function checkLoginAllowed(ip: string, username: string): Promise<Sperre | null> {
   const kennung = await kontoKennung(username);
   const gesamt = await _reserviere(_adressKey(ip), WINDOW_MIN, s => s.count + s.laufend < MAX_JE_ADRESSE);
-  if (!gesamt.ok)
-    return { code: 'zu_viele_fehlversuche', vars: { minuten: gesamt.stand.waitMin } };
+  if (!gesamt.ok) return { code: 'zu_viele_fehlversuche', vars: { minuten: gesamt.stand.waitMin } };
   const adresse = await _reserviere(_key(ip, kennung), WINDOW_MIN, s => s.count + s.laufend < MAX_ATTEMPTS);
   if (!adresse.ok) {
     await _freigeben(_adressKey(ip));
@@ -223,22 +266,38 @@ export async function recordLoginFailure(ip: string, username: string): Promise<
   return n;
 }
 
-export type Anmeldeereignis = 'anmeldung_fehlgeschlagen' | 'anmeldung_gesperrt' | 'zweiter_faktor_falsch'
-  | 'bestaetigung_fehlgeschlagen' | 'bestaetigung_gesperrt' | 'bestaetigung_gebremst';
+export type Anmeldeereignis =
+  | 'anmeldung_fehlgeschlagen'
+  | 'anmeldung_gesperrt'
+  | 'zweiter_faktor_falsch'
+  | 'bestaetigung_fehlgeschlagen'
+  | 'bestaetigung_gesperrt'
+  | 'bestaetigung_gebremst';
 /** Eine Warnzeile je Ereignis für Protokoll, app_logs und fail2ban; nie Passwort, Code
  * oder eingegebener Name, denn im Namensfeld landet auch einmal ein Passwort. */
-export function meldeAnmeldeereignis(ereignis: Anmeldeereignis, angaben: { ip?: string; konto?: number | null; art?: Bremse; zugang?: string }): void {
+export function meldeAnmeldeereignis(
+  ereignis: Anmeldeereignis,
+  angaben: { ip?: string; konto?: number | null; art?: Bremse; zugang?: string },
+): void {
   const { ip, konto, ...rest } = angaben;
-  console.warn(`[anmeldung] ${ereignis}`, { ereignis, ...(ip ? { adresse: drosselAdresse(ip) } : {}),
-    konto: konto ?? 'unbekannt', ...rest });
+  console.warn(`[anmeldung] ${ereignis}`, {
+    ereignis,
+    ...(ip ? { adresse: drosselAdresse(ip) } : {}),
+    konto: konto ?? 'unbekannt',
+    ...rest,
+  });
 }
 
 /** Erst der Erfolg zeigt, ob nach Fehlversuchen jemand hineinkam, und von wo; nie der Name. */
 export type Anmeldeweg = 'passwort' | 'passwort+code' | 'passwort+passkey' | 'passkey' | 'qr';
 export function meldeAnmeldung(angaben: { ip?: string | undefined; konto: number; zugang: Anmeldeweg }): void {
   const { ip, konto, zugang } = angaben;
-  console.info('[anmeldung] anmeldung_erfolgreich', { ereignis: 'anmeldung_erfolgreich',
-    ...(ip ? { adresse: drosselAdresse(ip) } : {}), konto, zugang });
+  console.info('[anmeldung] anmeldung_erfolgreich', {
+    ereignis: 'anmeldung_erfolgreich',
+    ...(ip ? { adresse: drosselAdresse(ip) } : {}),
+    konto,
+    zugang,
+  });
 }
 
 export async function recordLoginSuccess(ip: string, username: string): Promise<void> {
@@ -259,7 +318,7 @@ export const ERFOLGE_MIT_VORRANG = 30;
 /** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet, und nicht zu oft. */
 export async function bekannteAnmeldung(ip: string, username: string): Promise<boolean> {
   const kennung = await kontoKennung(username);
-  if (!await _read(_bekanntKey(ip, kennung), BEKANNT_MIN)) return false;
+  if (!(await _read(_bekanntKey(ip, kennung), BEKANNT_MIN))) return false;
   return ((await _read(_erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
 }
 
@@ -270,18 +329,26 @@ export async function raeumeAnmeldezaehlerAuf(): Promise<number> {
 
 /** In einem Schritt: Getrennt gelesen und gezählt kamen gleichzeitige Anfragen
  * durch. Abgewiesene zählen mit, verlängern aber nicht. */
-export async function zaehleAnfrage(bucket: string, ip: string, windowMs: number): Promise<{ count: number; waitMin: number }> {
+export async function zaehleAnfrage(
+  bucket: string,
+  ip: string,
+  windowMs: number,
+): Promise<{ count: number; waitMin: number }> {
   const key = `${bucket}|${drosselAdresse(ip)}`;
   const windowMin = windowMs / 60000;
   try {
     const r = await kontoBereich().anmeldezaehler.zaehleHoch(key, windowMin);
-    return { count: parseInt(r.count) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
+    return { count: parseInt(r.count, 10) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
   } catch (fehler) {
     imSpeicher('anfrage', fehler);
     const now = Date.now();
     let e = _attempts.get(key);
-    if (!e || now - e.firstAt > windowMin * 60000) { e = { count: 0, firstAt: now, lastAt: now, laufend: 0 }; _attempts.set(key, e); }
-    e.count++; e.lastAt = now;
+    if (!e || now - e.firstAt > windowMin * 60000) {
+      e = { count: 0, firstAt: now, lastAt: now, laufend: 0 };
+      _attempts.set(key, e);
+    }
+    e.count++;
+    e.lastAt = now;
     _prune();
     return { count: e.count, waitMin: _restMin(e.firstAt, windowMin, now) };
   }
@@ -300,13 +367,17 @@ const fenster = (art: Bremse) => (art === 'faktor' ? FAKTOR_FENSTER_MIN : WINDOW
  * gesperrt werden nur Zugänge, die selbst falsch geraten haben. */
 export const MAX_BESTAETIGUNG_JE_KONTO = 20;
 const KONTO_FENSTER_MIN = 24 * 60;
-const _kontoBestaetigungKey = (art: Bremse, uid: number) => `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen-konto|${uid}`;
+const _kontoBestaetigungKey = (art: Bremse, uid: number) =>
+  `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen-konto|${uid}`;
 
 export async function bestaetigungGesperrt(art: Bremse, uid: number, zugang: string): Promise<Sperre | null> {
   const konto = await _read(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
   const kontoVoll = !!konto && konto.count >= MAX_BESTAETIGUNG_JE_KONTO;
-  const r = await _reserviere(_bestaetigungKey(art, uid, zugang), fenster(art),
-    s => s.count + s.laufend < MAX_ATTEMPTS && !(kontoVoll && s.count > 0));
+  const r = await _reserviere(
+    _bestaetigungKey(art, uid, zugang),
+    fenster(art),
+    s => s.count + s.laufend < MAX_ATTEMPTS && !(kontoVoll && s.count > 0),
+  );
   if (r.ok) return null;
   const minuten = kontoVoll && r.stand.count < MAX_ATTEMPTS ? konto!.waitMin : r.stand.waitMin;
   return { code: 'zu_viele_fehlversuche', vars: { minuten } };

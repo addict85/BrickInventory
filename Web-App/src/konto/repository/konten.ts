@@ -5,12 +5,26 @@ import { LOCKS } from '../../infra/lockNamespaces';
 export type KontoKurz = { id: number; username: string; is_admin: boolean; must_change_password: boolean };
 
 export interface Konto {
-  id: number; username: string; email: string | null; first_name: string | null; last_name: string | null;
-  password_hash: string; is_admin: boolean; is_active: boolean; email_verified: boolean;
-  must_change_password: boolean; created_at: Date; [spalte: string]: unknown;
+  id: number;
+  username: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  password_hash: string;
+  is_admin: boolean;
+  is_active: boolean;
+  email_verified: boolean;
+  must_change_password: boolean;
+  created_at: Date;
+  [spalte: string]: unknown;
 }
-export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'last_name' | 'email_verified'> & { email_neu: string | null };
-export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & { zweiter_faktor: boolean; wartet_auf_bestaetigung: boolean };
+export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'last_name' | 'email_verified'> & {
+  email_neu: string | null;
+};
+export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & {
+  zweiter_faktor: boolean;
+  wartet_auf_bestaetigung: boolean;
+};
 
 export function kontoKurz(db: DbSchnittstelle, id: number): Promise<KontoKurz | undefined> {
   return db.get('SELECT id, username, is_admin, must_change_password FROM users WHERE id = $1', [id]);
@@ -21,13 +35,18 @@ export function kontoVoll(db: DbSchnittstelle, id: number): Promise<Konto | unde
 }
 
 export function profilZeile(db: DbSchnittstelle, id: number): Promise<Profil | undefined> {
-  return db.get<Profil>('SELECT id, username, email, first_name, last_name, email_verified, email_neu FROM users WHERE id=$1', [id]);
+  return db.get<Profil>(
+    'SELECT id, username, email, first_name, last_name, email_verified, email_neu FROM users WHERE id=$1',
+    [id],
+  );
 }
 
 /** Der Login sucht Name ODER E-Mail ohne Gross/klein — beides muss deshalb über beide Spalten eindeutig sein. */
 export async function nameVergeben(db: DbSchnittstelle, name: string, ausser: number): Promise<boolean> {
-  return !!await db.get(
-    'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2', [name, ausser]);
+  return !!(await db.get(
+    'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2',
+    [name, ausser],
+  ));
 }
 
 /** Die Namen gehen in die Anweisung, nicht als Parameter — deshalb eine feste Liste. */
@@ -37,13 +56,25 @@ export async function aendereProfil(db: DbSchnittstelle, id: number, felder: Rec
   const spalten = Object.keys(felder);
   if (!spalten.length) return;
   for (const s of spalten) if (!PROFILSPALTEN.has(s)) throw new Error(`Profilspalte nicht erlaubt: ${s}`);
-  await db.run(`UPDATE users SET ${spalten.map((s, i) => `${s}=$${i + 1}`).join(',')} WHERE id=$${spalten.length + 1}`,
-    [...spalten.map(s => felder[s]), id]);
+  await db.run(
+    `UPDATE users SET ${spalten.map((s, i) => `${s}=$${i + 1}`).join(',')} WHERE id=$${spalten.length + 1}`,
+    [...spalten.map(s => felder[s]), id],
+  );
 }
 
-export async function merkeEmailNeu(db: DbSchnittstelle, id: number, email: string, tokenHash: string, bis: Date): Promise<void> {
-  await db.run('UPDATE users SET email_neu = $2, email_neu_token = $3, email_neu_bis = $4 WHERE id = $1',
-    [id, email, tokenHash, bis]);
+export async function merkeEmailNeu(
+  db: DbSchnittstelle,
+  id: number,
+  email: string,
+  tokenHash: string,
+  bis: Date,
+): Promise<void> {
+  await db.run('UPDATE users SET email_neu = $2, email_neu_token = $3, email_neu_bis = $4 WHERE id = $1', [
+    id,
+    email,
+    tokenHash,
+    bis,
+  ]);
 }
 
 const OHNE_EMAIL_NEU = 'email_neu = NULL, email_neu_token = NULL, email_neu_bis = NULL';
@@ -51,53 +82,99 @@ const OHNE_EMAIL_NEU = 'email_neu = NULL, email_neu_token = NULL, email_neu_bis 
 /** Erst hier wird die Adresse vergeben: Was beim Antrag frei war, kann inzwischen belegt sein.
  * Auch ein Fehlschlag verbraucht den Link. @returns undefined bei ungültigem Link */
 export async function uebernimmEmailNeu(db: Db, hash: string): Promise<{ id: number; ok: boolean } | undefined> {
-  const k = await db.get<{ id: number }>('SELECT id FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()', [hash]);
+  const k = await db.get<{ id: number }>('SELECT id FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()', [
+    hash,
+  ]);
   if (!k) return undefined;
-  const ok = await db.transaction(async (tx) => {
-    const neu = await tx.get<{ email_neu: string }>(
-      'SELECT email_neu FROM users WHERE id = $1 AND email_neu_token = $2 FOR UPDATE', [k.id, hash]);
-    if (!neu) return false;
-    if (await tx.get<unknown>('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
-      [neu.email_neu, k.id])) return false;
-    await tx.run(`UPDATE users SET email = email_neu, email_verified = true, registrierung_offen = false,
-                   ${OHNE_EMAIL_NEU}, ${OHNE_RUECKSETZLINK} WHERE id = $1`, [k.id]);
-    return true;
-  }).catch((e: { code?: string }) => { if (e?.code === '23505') return false; throw e; });
+  const ok = await db
+    .transaction(async tx => {
+      const neu = await tx.get<{ email_neu: string }>(
+        'SELECT email_neu FROM users WHERE id = $1 AND email_neu_token = $2 FOR UPDATE',
+        [k.id, hash],
+      );
+      if (!neu) return false;
+      if (
+        await tx.get<unknown>(
+          'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
+          [neu.email_neu, k.id],
+        )
+      )
+        return false;
+      await tx.run(
+        `UPDATE users SET email = email_neu, email_verified = true, registrierung_offen = false,
+                   ${OHNE_EMAIL_NEU}, ${OHNE_RUECKSETZLINK} WHERE id = $1`,
+        [k.id],
+      );
+      return true;
+    })
+    .catch((e: { code?: string }) => {
+      if (e?.code === '23505') return false;
+      throw e;
+    });
   if (!ok) await db.run(`UPDATE users SET ${OHNE_EMAIL_NEU} WHERE id = $1 AND email_neu_token = $2`, [k.id, hash]);
   return { id: k.id, ok };
 }
 
 /** Nur der Name: Wer den Link hat, sieht vor dem Einlösen, zu welchem Konto er gehört. */
 export async function nameZuEmailToken(db: DbSchnittstelle, hash: string): Promise<string | null> {
-  return (await db.get<{ username: string }>(
-    'SELECT username FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()', [hash]))?.username ?? null;
+  return (
+    (
+      await db.get<{ username: string }>(
+        'SELECT username FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()',
+        [hash],
+      )
+    )?.username ?? null
+  );
 }
 
 export async function offeneRegistrierungen(db: DbSchnittstelle, email: string): Promise<number> {
-  return Number((await db.get<{ n: string }>(
-    'SELECT COUNT(*) AS n FROM users WHERE registrierung_offen AND LOWER(email_neu) = LOWER($1) AND email_neu_bis > NOW()',
-    [email]))?.n ?? 0);
+  return Number(
+    (
+      await db.get<{ n: string }>(
+        'SELECT COUNT(*) AS n FROM users WHERE registrierung_offen AND LOWER(email_neu) = LOWER($1) AND email_neu_bis > NOW()',
+        [email],
+      )
+    )?.n ?? 0,
+  );
 }
 
 /** Wie uebernimmEmailNeu, aber ohne Link: Die Adresse kann inzwischen ein anderes Konto haben. */
 export async function schalteRegistrierungFrei(db: Db, id: number): Promise<'ok' | 'nicht_wartend' | 'vergeben'> {
-  return db.transaction(async (tx) => {
-    const k = await tx.get<{ email_neu: string | null }>(
-      'SELECT email_neu FROM users WHERE id = $1 AND registrierung_offen AND NOT email_verified FOR UPDATE', [id]);
-    if (!k) return 'nicht_wartend' as const;
-    if (k.email_neu && await tx.get('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
-      [k.email_neu, id])) return 'vergeben' as const;
-    await tx.run(`UPDATE users SET email = COALESCE(email_neu, email), email_verified = true, registrierung_offen = false,
-                   ${OHNE_EMAIL_NEU} WHERE id = $1`, [id]);
-    return 'ok' as const;
-  }).catch((e: { code?: string }) => { if (e?.code === '23505') return 'vergeben' as const; throw e; });
+  return db
+    .transaction(async tx => {
+      const k = await tx.get<{ email_neu: string | null }>(
+        'SELECT email_neu FROM users WHERE id = $1 AND registrierung_offen AND NOT email_verified FOR UPDATE',
+        [id],
+      );
+      if (!k) return 'nicht_wartend' as const;
+      if (
+        k.email_neu &&
+        (await tx.get(
+          'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
+          [k.email_neu, id],
+        ))
+      )
+        return 'vergeben' as const;
+      await tx.run(
+        `UPDATE users SET email = COALESCE(email_neu, email), email_verified = true, registrierung_offen = false,
+                   ${OHNE_EMAIL_NEU} WHERE id = $1`,
+        [id],
+      );
+      return 'ok' as const;
+    })
+    .catch((e: { code?: string }) => {
+      if (e?.code === '23505') return 'vergeben' as const;
+      throw e;
+    });
 }
 
 /** Altbestand aus Migration 0096: ausstehend ohne gültigen Link. */
 export async function ausstehendOhneLink(db: DbSchnittstelle): Promise<number[]> {
-  return (await db.all<{ id: number }>(
-    'SELECT id FROM users WHERE email_neu IS NOT NULL AND email_neu_bis IS NULL AND NOT registrierung_offen ORDER BY id'))
-    .map(z => z.id);
+  return (
+    await db.all<{ id: number }>(
+      'SELECT id FROM users WHERE email_neu IS NOT NULL AND email_neu_bis IS NULL AND NOT registrierung_offen ORDER BY id',
+    )
+  ).map(z => z.id);
 }
 
 export function alleKonten(db: DbSchnittstelle): Promise<KontoInListe[]> {
@@ -105,23 +182,33 @@ export function alleKonten(db: DbSchnittstelle): Promise<KontoInListe[]> {
     `SELECT u.id, u.username, u.is_admin, u.is_active, u.created_at,
             EXISTS (SELECT 1 FROM zweiter_faktor z WHERE z.user_id = u.id AND z.aktiv) AS zweiter_faktor,
             (u.registrierung_offen AND NOT u.email_verified) AS wartet_auf_bestaetigung
-       FROM users u ORDER BY u.id`);
+       FROM users u ORDER BY u.id`,
+  );
 }
 
 export function alleAdressen(db: DbSchnittstelle): Promise<{ id: number; email: string }[]> {
-  return db.all<{ id: number; email: string }>(`SELECT id, email FROM users WHERE COALESCE(email, '') <> '' ORDER BY id`);
+  return db.all<{ id: number; email: string }>(
+    `SELECT id, email FROM users WHERE COALESCE(email, '') <> '' ORDER BY id`,
+  );
 }
 
 export async function aktiveVerwalter(db: DbSchnittstelle): Promise<number[]> {
-  return (await db.all<{ id: number }>('SELECT id FROM users WHERE is_admin AND is_active AND email IS NOT NULL ORDER BY id'))
-    .map(z => z.id);
+  return (
+    await db.all<{ id: number }>('SELECT id FROM users WHERE is_admin AND is_active AND email IS NOT NULL ORDER BY id')
+  ).map(z => z.id);
 }
 
 /** Ein vergebenes Passwort kennen Verwalter und Weitergabe: nur bis zum ersten Wechsel. */
-export async function fuegeKontoEin(db: DbSchnittstelle, username: string, hash: string, verwalter: boolean): Promise<number | null> {
+export async function fuegeKontoEin(
+  db: DbSchnittstelle,
+  username: string,
+  hash: string,
+  verwalter: boolean,
+): Promise<number | null> {
   const neu = await db.get<{ id: number }>(
     'INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES ($1, $2, $3, true) RETURNING id',
-    [username, hash, verwalter]);
+    [username, hash, verwalter],
+  );
   return neu ? neu.id : null;
 }
 
@@ -133,29 +220,43 @@ const ANDERER_VERWALTER = 'EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.
 /** Ohne die Sperre sähen zwei gleichzeitige Entzüge je den anderen noch als Verwalter
  * (READ COMMITTED), und es bliebe keiner. Sie gilt bis zum Ende der Transaktion. */
 async function unterVerwalterSperre<T>(db: Db, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
-  return db.transaction(async (tx) => {
+  return db.transaction(async tx => {
     await tx.get<unknown>('SELECT pg_advisory_xact_lock($1, 0)', [LOCKS.VERWALTER_BESTAND]);
     return fn(tx);
   });
 }
 
 /** @returns der Zustand vor der Änderung, undefined ohne Konto, oder LETZTER_VERWALTER */
-export async function setzeVerwalter(db: Db, id: number, ja: boolean): Promise<{ vorher: boolean } | typeof LETZTER_VERWALTER | undefined> {
-  return unterVerwalterSperre(db, async (tx) => {
-    const r = await tx.get<{ vorher: boolean }>(`UPDATE users u SET is_admin = $2 FROM users alt
+export async function setzeVerwalter(
+  db: Db,
+  id: number,
+  ja: boolean,
+): Promise<{ vorher: boolean } | typeof LETZTER_VERWALTER | undefined> {
+  return unterVerwalterSperre(db, async tx => {
+    const r = await tx.get<{ vorher: boolean }>(
+      `UPDATE users u SET is_admin = $2 FROM users alt
       WHERE u.id = $1 AND alt.id = u.id AND ($2 OR NOT (alt.is_admin AND alt.is_active) OR ${ANDERER_VERWALTER})
-      RETURNING alt.is_admin AS vorher`, [id, ja]);
+      RETURNING alt.is_admin AS vorher`,
+      [id, ja],
+    );
     if (r) return r;
     return (await tx.get<unknown>('SELECT 1 FROM users WHERE id = $1', [id])) ? LETZTER_VERWALTER : undefined;
   });
 }
 
 /** @returns der Zustand vor der Änderung, undefined ohne Konto, oder LETZTER_VERWALTER */
-export async function schreibeAktiv(db: Db, id: number, ja: boolean): Promise<{ vorher: boolean } | typeof LETZTER_VERWALTER | undefined> {
-  return unterVerwalterSperre(db, async (tx) => {
-    const r = await tx.get<{ vorher: boolean }>(`UPDATE users u SET is_active = $2 FROM users alt
+export async function schreibeAktiv(
+  db: Db,
+  id: number,
+  ja: boolean,
+): Promise<{ vorher: boolean } | typeof LETZTER_VERWALTER | undefined> {
+  return unterVerwalterSperre(db, async tx => {
+    const r = await tx.get<{ vorher: boolean }>(
+      `UPDATE users u SET is_active = $2 FROM users alt
       WHERE u.id = $1 AND alt.id = u.id AND ($2 OR NOT (alt.is_admin AND alt.is_active) OR ${ANDERER_VERWALTER})
-      RETURNING alt.is_active AS vorher`, [id, ja]);
+      RETURNING alt.is_active AS vorher`,
+      [id, ja],
+    );
     if (r) return r;
     return (await tx.get<unknown>('SELECT 1 FROM users WHERE id = $1', [id])) ? LETZTER_VERWALTER : undefined;
   });
@@ -167,17 +268,24 @@ const OHNE_RUECKSETZLINK = 'reset_token = NULL, reset_token_expires = NULL';
 
 /** Ein fremd gesetztes Passwort kennt auch der Verwalter: der Inhaber ersetzt es. */
 export async function setzePasswortHash(db: DbSchnittstelle, id: number, hash: string): Promise<boolean> {
-  return !!(await db.run(`UPDATE users SET password_hash = $1, must_change_password = true, ${OHNE_RUECKSETZLINK} WHERE id = $2`,
-    [hash, id])).changes;
+  return !!(
+    await db.run(
+      `UPDATE users SET password_hash = $1, must_change_password = true, ${OHNE_RUECKSETZLINK} WHERE id = $2`,
+      [hash, id],
+    )
+  ).changes;
 }
 
 /** Eigenes Passwort geändert: auch die Aufforderung dazu ist erledigt. */
 export async function setzeEigenesPasswort(db: DbSchnittstelle, id: number, hash: string): Promise<void> {
-  await db.run(`UPDATE users SET password_hash = $1, must_change_password = false, ${OHNE_RUECKSETZLINK} WHERE id = $2`, [hash, id]);
+  await db.run(
+    `UPDATE users SET password_hash = $1, must_change_password = false, ${OHNE_RUECKSETZLINK} WHERE id = $2`,
+    [hash, id],
+  );
 }
 
 export async function kontoExistiert(db: DbSchnittstelle, id: number): Promise<boolean> {
-  return !!await db.get('SELECT 1 FROM users WHERE id = $1', [id]);
+  return !!(await db.get('SELECT 1 FROM users WHERE id = $1', [id]));
 }
 
 /** Auch aus den Kopien vor Migrationen; den Namen im Protokoll nimmt raeumeProtokollAuf(). */
@@ -187,22 +295,43 @@ async function spurenLoeschen(tx: DbSchnittstelle, id: number): Promise<void> {
 
 /** Nie das eigene Konto und nie den letzten aktiven Verwalter.
  * @returns false ohne Konto oder beim eigenen */
-export async function loescheKonto(db: Db, id: number, eigenes: number | null): Promise<boolean | typeof LETZTER_VERWALTER> {
-  return unterVerwalterSperre(db, async (tx) => {
-    if ((await tx.run(`DELETE FROM users WHERE id = $1 AND id != $2
-      AND (NOT (is_admin AND is_active) OR ${ANDERER_VERWALTER})`, [id, eigenes])).changes) {
+export async function loescheKonto(
+  db: Db,
+  id: number,
+  eigenes: number | null,
+): Promise<boolean | typeof LETZTER_VERWALTER> {
+  return unterVerwalterSperre(db, async tx => {
+    if (
+      (
+        await tx.run(
+          `DELETE FROM users WHERE id = $1 AND id != $2
+      AND (NOT (is_admin AND is_active) OR ${ANDERER_VERWALTER})`,
+          [id, eigenes],
+        )
+      ).changes
+    ) {
       await spurenLoeschen(tx, id);
       return true;
     }
-    return (await tx.get<unknown>('SELECT 1 FROM users WHERE id = $1 AND id != $2', [id, eigenes])) ? LETZTER_VERWALTER : false;
+    return (await tx.get<unknown>('SELECT 1 FROM users WHERE id = $1 AND id != $2', [id, eigenes]))
+      ? LETZTER_VERWALTER
+      : false;
   });
 }
 
 /** Das eigene Konto; der letzte aktive Verwalter bleibt. */
 export async function loescheEigenesKonto(db: Db, id: number): Promise<boolean> {
-  return unterVerwalterSperre(db, async (tx) => {
-    if (!(await tx.run(`DELETE FROM users WHERE id = $1 AND (NOT is_admin
-      OR EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1))`, [id])).changes) return false;
+  return unterVerwalterSperre(db, async tx => {
+    if (
+      !(
+        await tx.run(
+          `DELETE FROM users WHERE id = $1 AND (NOT is_admin
+      OR EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1))`,
+          [id],
+        )
+      ).changes
+    )
+      return false;
     await spurenLoeschen(tx, id);
     return true;
   });
@@ -210,26 +339,43 @@ export async function loescheEigenesKonto(db: Db, id: number): Promise<boolean> 
 
 /** Registrierungen, deren Adresse nach `tage` Tagen nicht bestätigt ist. */
 export async function loescheOffeneRegistrierungen(db: Db, tage: number): Promise<number> {
-  return db.transaction(async (tx) => {
-    const weg = await tx.all<{ id: number }>(`DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
-      AND created_at < NOW() - make_interval(days => $1::int) RETURNING id`, [tage]);
+  return db.transaction(async tx => {
+    const weg = await tx.all<{ id: number }>(
+      `DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
+      AND created_at < NOW() - make_interval(days => $1::int) RETURNING id`,
+      [tage],
+    );
     for (const { id } of weg) await spurenLoeschen(tx, id);
     return weg.length;
   });
 }
 
-export function kontoMitEmail(db: DbSchnittstelle, email: string): Promise<Omit<KontoKurz, 'must_change_password'> & { email: string } | undefined> {
+export function kontoMitEmail(
+  db: DbSchnittstelle,
+  email: string,
+): Promise<(Omit<KontoKurz, 'must_change_password'> & { email: string }) | undefined> {
   return db.get('SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
 }
 
 /** Ohne RETURNING: Die Kompatschicht hängt an ein INSERT ohne ON CONFLICT
  * selbst `ON CONFLICT DO NOTHING` an, dahinter wäre RETURNING ein Syntaxfehler. */
-export async function registriereKonto(db: DbSchnittstelle, k: { username: string; email: string; first_name?: string | null | undefined;
-  last_name?: string | null | undefined; hash: string; tokenHash: string; bis: Date }): Promise<number | null> {
+export async function registriereKonto(
+  db: DbSchnittstelle,
+  k: {
+    username: string;
+    email: string;
+    first_name?: string | null | undefined;
+    last_name?: string | null | undefined;
+    hash: string;
+    tokenHash: string;
+    bis: Date;
+  },
+): Promise<number | null> {
   await db.run(
     `INSERT INTO users (username, email_neu, email_neu_token, email_neu_bis, first_name, last_name, password_hash,
                         is_admin, is_active, email_verified, registrierung_offen) VALUES ($1,$2,$3,$4,$5,$6,$7,false,true,false,true)`,
-    [k.username, k.email, k.tokenHash, k.bis, k.first_name || null, k.last_name || null, k.hash]);
+    [k.username, k.email, k.tokenHash, k.bis, k.first_name || null, k.last_name || null, k.hash],
+  );
   const neu = await db.get<{ id: number }>('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [k.username]);
   return neu?.id ?? null;
 }
@@ -241,41 +387,75 @@ export function aktivesKontoNachEmail(db: DbSchnittstelle, email: string): Promi
 /** Der Zeitpunkt des letzten Links ergibt sich aus seinem Ablauf; die Bedingung
  * im UPDATE lässt auch bei gleichzeitigen Anfragen nur eine durch.
  * @returns false, wenn der letzte Link jünger als `pauseMin` ist */
-export async function setzeRuecksetzTokenWennFrei(db: DbSchnittstelle, id: number, hash: string, gueltigMin: number, pauseMin: number): Promise<boolean> {
-  return !!(await db.run(
-    `UPDATE users SET reset_token = $1, reset_token_expires = NOW() + make_interval(mins => $2::int)
+export async function setzeRuecksetzTokenWennFrei(
+  db: DbSchnittstelle,
+  id: number,
+  hash: string,
+  gueltigMin: number,
+  pauseMin: number,
+): Promise<boolean> {
+  return !!(
+    await db.run(
+      `UPDATE users SET reset_token = $1, reset_token_expires = NOW() + make_interval(mins => $2::int)
       WHERE id = $3 AND (reset_token_expires IS NULL
                          OR reset_token_expires < NOW() + make_interval(mins => $2::int - $4::int))`,
-    [hash, gueltigMin, id, pauseMin])).changes;
+      [hash, gueltigMin, id, pauseMin],
+    )
+  ).changes;
 }
 
 /** Wie setzeRuecksetzTokenWennFrei. Nur wenn genau eine offene Registrierung die Adresse
  * nennt: Bei mehreren ginge ein Link zu einem fremd angelegten Konto an ihren Inhaber. */
-export function erneuereEmailTokenWennFrei(db: DbSchnittstelle, email: string, hash: string, gueltigStd: number, pauseMin: number) {
+export function erneuereEmailTokenWennFrei(
+  db: DbSchnittstelle,
+  email: string,
+  hash: string,
+  gueltigStd: number,
+  pauseMin: number,
+) {
   return db.get<{ id: number; email: string }>(
     `UPDATE users u SET email_neu_token = $2, email_neu_bis = NOW() + make_interval(hours => $3::int)
        FROM (SELECT MIN(id) AS id FROM users WHERE registrierung_offen AND LOWER(email_neu) = LOWER($1)
              HAVING COUNT(*) = 1) e
       WHERE u.id = e.id AND u.is_active
         AND (u.email_neu_bis IS NULL OR u.email_neu_bis < NOW() + make_interval(hours => $3::int, mins => -$4::int))
-      RETURNING u.id, u.email_neu AS email`, [email, hash, gueltigStd, pauseMin]);
+      RETURNING u.id, u.email_neu AS email`,
+    [email, hash, gueltigStd, pauseMin],
+  );
 }
 
-export function kontoNachRuecksetzToken(db: DbSchnittstelle, hash: string): Promise<{ id: number; username: string } | undefined> {
+export function kontoNachRuecksetzToken(
+  db: DbSchnittstelle,
+  hash: string,
+): Promise<{ id: number; username: string } | undefined> {
   return db.get('SELECT id, username FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()', [hash]);
 }
 
 /** Prüfen und Verbrauchen in einer Anweisung: Zwei gleichzeitige Anfragen mit
  * demselben Link setzen sonst beide ein Passwort. */
-export function setzePasswortNachRuecksetzen(db: DbSchnittstelle, tokenHash: string, hash: string): Promise<{ id: number } | undefined> {
-  return db.get<{ id: number }>(`UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL
-    WHERE reset_token = $2 AND reset_token_expires > NOW() RETURNING id`, [hash, tokenHash]);
+export function setzePasswortNachRuecksetzen(
+  db: DbSchnittstelle,
+  tokenHash: string,
+  hash: string,
+): Promise<{ id: number } | undefined> {
+  return db.get<{ id: number }>(
+    `UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL
+    WHERE reset_token = $2 AND reset_token_expires > NOW() RETURNING id`,
+    [hash, tokenHash],
+  );
 }
 
 export interface Zugang {
-  token: string; label: string | null; created_at: Date; last_used: Date | null;
-  hard_expires_at: Date | null; expires_at: Date | null; scope: 'app' | 'voll';
-  ip_bereich: string | null; never_expires: boolean; rotiert_am: Date;
+  token: string;
+  label: string | null;
+  created_at: Date;
+  last_used: Date | null;
+  hard_expires_at: Date | null;
+  expires_at: Date | null;
+  scope: 'app' | 'voll';
+  ip_bereich: string | null;
+  never_expires: boolean;
+  rotiert_am: Date;
 }
 
 /** Ein getauschter Token in seiner Überlappung zählt nicht mehr als eigenes Gerät. */
@@ -287,42 +467,73 @@ export function zugaengeDesKontos(db: DbSchnittstelle, uid: number): Promise<Zug
       WHERE user_id = $1 AND ersetzt_durch IS NULL
         AND (expires_at IS NULL OR expires_at > NOW())
         AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
-      ORDER BY created_at DESC`, [uid]);
+      ORDER BY created_at DESC`,
+    [uid],
+  );
 }
 
-export function tokenStand(db: DbSchnittstelle, hash: string): Promise<{ scope: 'app' | 'voll'; expires_at: Date | null;
-    hard_expires_at: Date | null; never_expires: boolean; rotiert_am: Date } | undefined> {
+export function tokenStand(
+  db: DbSchnittstelle,
+  hash: string,
+): Promise<
+  | {
+      scope: 'app' | 'voll';
+      expires_at: Date | null;
+      hard_expires_at: Date | null;
+      never_expires: boolean;
+      rotiert_am: Date;
+    }
+  | undefined
+> {
   return db.get(
     `SELECT scope, LEAST(expires_at, hard_expires_at) AS expires_at, hard_expires_at, never_expires, rotiert_am
-       FROM api_tokens WHERE token = $1`, [hash]);
+       FROM api_tokens WHERE token = $1`,
+    [hash],
+  );
 }
 
 /** Gleichheit auf der ganzen Kennung, kein Präfix. Ein Vorgänger in seiner
  * Überlappung fällt mit, zählt aber nicht als eigenes Gerät. */
-export async function zugangLoeschen(db: DbSchnittstelle, uid: number, kennung: string): Promise<{ anzahl: number; label: string | null }> {
+export async function zugangLoeschen(
+  db: DbSchnittstelle,
+  uid: number,
+  kennung: string,
+): Promise<{ anzahl: number; label: string | null }> {
   const r = await db.get<{ n: number; label: string | null }>(
     `WITH weg AS (DELETE FROM api_tokens WHERE user_id = $1 AND (left(token, 16) = $2 OR left(ersetzt_durch, 16) = $2)
                   RETURNING ersetzt_durch, label)
-     SELECT count(*) FILTER (WHERE ersetzt_durch IS NULL)::int AS n, max(label) AS label FROM weg`, [uid, kennung]);
+     SELECT count(*) FILTER (WHERE ersetzt_durch IS NULL)::int AS n, max(label) AS label FROM weg`,
+    [uid, kennung],
+  );
   return { anzahl: r?.n ?? 0, label: r?.label ?? null };
 }
 
 /** Alle App-Zugänge ausser `eigener` samt dessen Vorgänger und Nachfolger in der Überlappung. */
-export async function andereZugaengeLoeschen(db: DbSchnittstelle, uid: number, eigener: string | null): Promise<number> {
+export async function andereZugaengeLoeschen(
+  db: DbSchnittstelle,
+  uid: number,
+  eigener: string | null,
+): Promise<number> {
   const r = await db.get<{ n: number }>(
     `WITH weg AS (DELETE FROM api_tokens WHERE user_id = $1 AND ($2::text IS NULL OR (token <> $2
                     AND ersetzt_durch IS DISTINCT FROM $2
                     AND token IS DISTINCT FROM (SELECT ersetzt_durch FROM api_tokens WHERE token = $2)))
                   RETURNING ersetzt_durch)
-     SELECT count(*) FILTER (WHERE ersetzt_durch IS NULL)::int AS n FROM weg`, [uid, eigener]);
+     SELECT count(*) FILTER (WHERE ersetzt_durch IS NULL)::int AS n FROM weg`,
+    [uid, eigener],
+  );
   return r?.n ?? 0;
 }
 
 export async function loescheAndereSitzungen(db: DbSchnittstelle, uid: number, eigeneSid: string): Promise<number> {
-  return (await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2", [String(uid), eigeneSid])).changes;
+  return (
+    await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2", [String(uid), eigeneSid])
+  ).changes;
 }
 
 export async function mussPasswortAendern(db: DbSchnittstelle, uid: number): Promise<boolean> {
-  const r = await db.get<{ must_change_password: boolean }>('SELECT must_change_password FROM users WHERE id = $1', [uid]);
+  const r = await db.get<{ must_change_password: boolean }>('SELECT must_change_password FROM users WHERE id = $1', [
+    uid,
+  ]);
   return r?.must_change_password === true;
 }

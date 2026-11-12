@@ -26,20 +26,22 @@ const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const pk = _req('src/bestand/papierkorb.js');
 
-const SN = `99041-${process.pid}`, PN = `pk${process.pid}`, FN = `fig-pk-${process.pid}`;
+const SN = `99041-${process.pid}`,
+  PN = `pk${process.pid}`,
+  FN = `fig-pk-${process.pid}`;
 
 /** Alle Zeilen eines Elements, als JSON — der Massstab für „wie vorher". */
 async function zeilen(uid) {
-  const q = (tab, wo, p) => db.all(`SELECT to_jsonb(t) AS z FROM ${tab} t WHERE ${wo} ORDER BY id`, p)
-    .then(r => r.map(x => x.z));
+  const q = (tab, wo, p) =>
+    db.all(`SELECT to_jsonb(t) AS z FROM ${tab} t WHERE ${wo} ORDER BY id`, p).then(r => r.map(x => x.z));
   return {
-    sets:     await q('sets', 'user_id=$1 AND set_number=$2', [uid, SN]),
+    sets: await q('sets', 'user_id=$1 AND set_number=$2', [uid, SN]),
     setTeile: await q('parts', 'user_id=$1 AND set_number=$2', [uid, SN]),
-    setKauf:  await q('set_acquisitions', 'user_id=$1 AND set_number=$2', [uid, SN]),
-    teil:     await q('parts', "user_id=$1 AND part_number=$2 AND source='manual'", [uid, PN]),
+    setKauf: await q('set_acquisitions', 'user_id=$1 AND set_number=$2', [uid, SN]),
+    teil: await q('parts', "user_id=$1 AND part_number=$2 AND source='manual'", [uid, PN]),
     teilKauf: await q('part_acquisitions', 'user_id=$1 AND part_number=$2', [uid, PN]),
-    figur:    await q('minifigs', "user_id=$1 AND fig_number=$2 AND source='manual'", [uid, FN]),
-    figKauf:  await q('minifig_acquisitions', 'user_id=$1 AND fig_number=$2', [uid, FN]),
+    figur: await q('minifigs', "user_id=$1 AND fig_number=$2 AND source='manual'", [uid, FN]),
+    figKauf: await q('minifig_acquisitions', 'user_id=$1 AND fig_number=$2', [uid, FN]),
   };
 }
 
@@ -53,13 +55,14 @@ async function aufraeumen(namen) {
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
 }
 
-test('Papierkorb', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Papierkorb', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const namen = [`pk-haupt-${process.pid}`, `pk-sub-${process.pid}`, `pk-fremd-${process.pid}`];
   await aufraeumen(namen);
   const ids = [];
-  const PASS = 'pk-Passwort-1', hash = require('../node_modules/bcryptjs').hashSync(PASS, 4);
+  const PASS = 'pk-Passwort-1',
+    hash = require('../node_modules/bcryptjs').hashSync(PASS, 4);
   for (const n of namen)
     ids.push((await db.get('INSERT INTO users (username,password_hash) VALUES ($1,$2) RETURNING id', [n, hash])).id);
   const [haupt, sub, fremd] = ids;
@@ -69,11 +72,13 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
   const H = testServer(_req, { sitzung: { userId: haupt }, apiNutzer: { user_id: haupt, is_admin: 0 }, routen, t });
   const F = testServer(_req, { sitzung: { userId: fremd }, apiNutzer: { user_id: fremd, is_admin: 0 }, routen, t });
   const api = async (srv, methode, pfad, body) => {
-    const r = await fetch(srv.base + '/api/v1' + pfad, { method: methode,
-      ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) });
+    const r = await fetch(srv.base + '/api/v1' + pfad, {
+      method: methode,
+      ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
+    });
     return { status: r.status, body: await r.json() };
   };
-  const eintraege = async (srv) => (await api(srv, 'GET', '/papierkorb')).body.eintraege;
+  const eintraege = async srv => (await api(srv, 'GET', '/papierkorb')).body.eintraege;
 
   try {
     await t.test('Set des Unterkontos: löschen, ansehen, zurückholen', async () => {
@@ -95,8 +100,11 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
 
       // Ein fremdes Konto sieht den Eintrag nicht und kann ihn nicht zurückholen.
       assert.equal((await eintraege(F)).length, 0);
-      assert.equal((await api(F, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status, 404,
-        'fremdes Konto darf nicht wiederherstellen');
+      assert.equal(
+        (await api(F, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status,
+        404,
+        'fremdes Konto darf nicht wiederherstellen',
+      );
       assert.equal((await api(F, 'DELETE', `/papierkorb/${e.id}`, { password: PASS })).status, 404);
 
       const r = await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`);
@@ -118,7 +126,11 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       assert.deepEqual(await zeilen(sub), neu, 'Der neue Bestand bleibt, wie er ist');
       assert.equal((await eintraege(H)).length, 1, 'Der Eintrag bleibt liegen');
       const ohne = await api(H, 'DELETE', `/papierkorb/${e.id}`);
-      assert.deepEqual([ohne.status, ohne.body.code], [400, 'aktuelles_passwort_falsch'], 'endgültig löschen ohne Passwort');
+      assert.deepEqual(
+        [ohne.status, ohne.body.code],
+        [400, 'aktuelles_passwort_falsch'],
+        'endgültig löschen ohne Passwort',
+      );
       assert.equal((await eintraege(H)).length, 1, 'ohne Passwort ist der Eintrag weg');
       assert.equal((await api(H, 'DELETE', `/papierkorb/${e.id}`, { password: PASS })).status, 200);
       assert.equal((await eintraege(H)).length, 0);
@@ -132,12 +144,14 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       const vorher = await zeilen(haupt);
       const tw = await api(H, 'DELETE', `/parts/${PN}/5`);
       const fw = await api(H, 'DELETE', `/minifigs/${FN}`);
-      assert.equal(tw.status, 200); assert.equal(fw.status, 200);
+      assert.equal(tw.status, 200);
+      assert.equal(fw.status, 200);
       const leer = await zeilen(haupt);
       assert.deepEqual([leer.teil, leer.teilKauf, leer.figur, leer.figKauf], [[], [], [], []]);
 
       const liste = await eintraege(H);
-      const teil = liste.find(x => x.art === 'teil'), figur = liste.find(x => x.art === 'figur');
+      const teil = liste.find(x => x.art === 'teil'),
+        figur = liste.find(x => x.art === 'figur');
       assert.ok(teil && figur, JSON.stringify(liste));
       assert.equal(teil.farbe_id, 5);
       assert.equal(teil.anzahl, 3);
@@ -145,15 +159,16 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       for (const e of [teil, figur])
         assert.equal((await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status, 200);
       const nachher = await zeilen(haupt);
-      for (const k of ['teil', 'teilKauf', 'figur', 'figKauf'])
-        assert.deepEqual(nachher[k], vorher[k], k);
+      for (const k of ['teil', 'teilKauf', 'figur', 'figKauf']) assert.deepEqual(nachher[k], vorher[k], k);
     });
 
     await t.test('ein Schnappschuss übersteht eine entfallene Spalte', async () => {
       assert.equal((await api(H, 'DELETE', `/parts/${PN}/5`)).status, 200);
       const [e] = await eintraege(H);
       await db.run(
-        `UPDATE papierkorb SET zeilen = jsonb_set(zeilen, '{parts,0,gibt_es_nicht_mehr}', '"x"') WHERE id=$1`, [e.id]);
+        `UPDATE papierkorb SET zeilen = jsonb_set(zeilen, '{parts,0,gibt_es_nicht_mehr}', '"x"') WHERE id=$1`,
+        [e.id],
+      );
       const r = await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`);
       assert.equal(r.status, 200, 'unbekannte Spalte: ' + JSON.stringify(r.body));
     });
@@ -165,7 +180,7 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       await haeltTeil(db, haupt, PN, { colorId: 5, menge: 3 });
       await haeltFigur(db, haupt, FN, { menge: 1 });
       // Ein Set des Unterkontos: Das Hauptkonto sieht es, „meine Daten" ist es nicht.
-      const SN2 = `${SN.replace(/-\d+$/, "")}9-1`;   // mit Version: die Datenbank ergänzt sie sonst (Migration 0074)
+      const SN2 = `${SN.replace(/-\d+$/, '')}9-1`; // mit Version: die Datenbank ergänzt sie sonst (Migration 0074)
       await haeltSet(db, sub, SN2, 1);
       const vorher = await zeilen(haupt);
 
@@ -175,13 +190,24 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       const nachher = await zeilen(haupt);
       for (const k of ['sets', 'setTeile', 'setKauf', 'teil', 'teilKauf', 'figur', 'figKauf'])
         assert.deepEqual(nachher[k], [], `${k} ist nicht weg`);
-      assert.ok(await db.get('SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2', [sub, SN2]),
-        'Das Set des Unterkontos wurde mitgelöscht');
+      assert.ok(
+        await db.get('SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2', [sub, SN2]),
+        'Das Set des Unterkontos wurde mitgelöscht',
+      );
 
       const liste = await eintraege(H);
-      const arten = liste.filter(e => e.user_id === haupt).map(e => e.art).sort();
+      const arten = liste
+        .filter(e => e.user_id === haupt)
+        .map(e => e.art)
+        .sort();
       assert.deepEqual(arten, ['figur', 'set', 'teil'], 'Figur fehlt (oder Set/Teil) im Papierkorb');
-      assert.deepEqual(r.body.papierkorb.sort(), liste.filter(e => e.user_id === haupt).map(e => e.id).sort());
+      assert.deepEqual(
+        r.body.papierkorb.sort(),
+        liste
+          .filter(e => e.user_id === haupt)
+          .map(e => e.id)
+          .sort(),
+      );
 
       // Und alles kommt einzeln zurück, wie vorher.
       for (const e of liste.filter(e => e.user_id === haupt))
@@ -199,12 +225,23 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       const [a, b] = await eintraege(H);
       await db.run("UPDATE papierkorb SET geloescht_am = NOW() - interval '31 days' WHERE id=$1", [a.id]);
       await db.run("UPDATE papierkorb SET geloescht_am = NOW() - interval '29 days' WHERE id=$1", [b.id]);
-      assert.ok(await pk.raeumePapierkorbAuf() >= 1);
-      assert.deepEqual((await eintraege(H)).map(x => x.id), [b.id]);
+      assert.ok((await pk.raeumePapierkorbAuf()) >= 1);
+      assert.deepEqual(
+        (await eintraege(H)).map(x => x.id),
+        [b.id],
+      );
       const ohne = await api(H, 'DELETE', '/papierkorb', { password: 'falsch-Passwort-1' });
-      assert.deepEqual([ohne.status, ohne.body.code], [400, 'aktuelles_passwort_falsch'], 'Leeren mit falschem Passwort');
+      assert.deepEqual(
+        [ohne.status, ohne.body.code],
+        [400, 'aktuelles_passwort_falsch'],
+        'Leeren mit falschem Passwort',
+      );
       assert.equal((await eintraege(H)).length, 1, 'Leeren mit falschem Passwort hat entfernt');
-      assert.equal((await api(H, 'DELETE', '/papierkorb', { password: PASS })).body.entfernt, 1, 'Leeren entfernt den Rest');
+      assert.equal(
+        (await api(H, 'DELETE', '/papierkorb', { password: PASS })).body.entfernt,
+        1,
+        'Leeren entfernt den Rest',
+      );
     });
   } finally {
     await db.run('DELETE FROM papierkorb WHERE user_id = ANY($1)', [ids]).catch(() => {});

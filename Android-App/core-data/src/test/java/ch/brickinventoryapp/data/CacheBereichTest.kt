@@ -45,7 +45,8 @@ class CacheBereichTest {
      */
     @Test
     fun `die Offline-Ablage kennt genau die eingeordneten Faecher`() {
-        assertEquals(setOf("SETS", "MERKLISTE", "TEILE", "FIGUREN", "MANUELLE_TEILE", "MANUELLE_FIGUREN", "GUTSCHEINE"),
+        assertEquals(setOf("SETS", "MERKLISTE", "TEILE", "FIGUREN", "MANUELLE_TEILE", "MANUELLE_FIGUREN", "GUTSCHEINE",
+            "PREISALARME", "LAGERORTE"),
             Bestandsart.entries.map { it.name }.toSet())
     }
 

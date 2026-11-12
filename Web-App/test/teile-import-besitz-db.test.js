@@ -21,6 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
+const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Vor dem Laden der Route: Import und Rebrickable-Abruf mitschreiben statt ausführen.
@@ -32,30 +33,42 @@ const ersetze = (rel, zusatz) => {
   require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
 };
 // Der Client zuerst: Wer ihn danach lädt, bekommt schon den Ersatz.
-ersetze('clients/rebrickable.js', { holeSetTeile: async (n) => { abrufe.push(n); return { teile: [], verweigert: false }; } });
-ersetze('src/katalog/partsImport.js', { importPartsForSet: async (sn, uid) => { importe.push([sn, uid]); return 3; } });
+ersetze('clients/rebrickable.js', {
+  holeSetTeile: async n => {
+    abrufe.push(n);
+    return { teile: [], verweigert: false };
+  },
+});
+ersetze('src/katalog/partsImport.js', {
+  importPartsForSet: async (sn, uid) => {
+    importe.push([sn, uid]);
+    return 3;
+  },
+});
 
 const db = _req('db/database.js');
 const P = process.pid;
 
-test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    if (process.env.REQUIRE_DB === '1')
-      throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
-    t.skip('Test-DB nicht erreichbar'); return;
-  }
-  const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const namen = [`ti_haupt_${P}`, `ti_unter_${P}`, `ti_fremd_${P}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
-  for (const n of namen) ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active)
-    VALUES ($1, 'x', true) RETURNING id`, [n])).id);
+  for (const n of namen)
+    ids.push(
+      (
+        await db.get(
+          `INSERT INTO users (username, password_hash, is_active)
+    VALUES ($1, 'x', true) RETURNING id`,
+          [n],
+        )
+      ).id,
+    );
   const [H, U, F] = ids;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [H, U]);
-  const UNTER = `TIU${P}-1`, FREMD = `TIF${P}-1`;
+  const UNTER = `TIU${P}-1`,
+    FREMD = `TIF${P}-1`;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [U, UNTER, F, FREMD]);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'teile-import|%'");
   t.after(async () => {

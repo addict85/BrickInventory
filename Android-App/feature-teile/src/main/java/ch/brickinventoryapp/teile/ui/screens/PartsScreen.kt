@@ -149,7 +149,7 @@ internal fun PartsScreen(
     LaunchedEffect(endReached) { if (endReached) onLoadMore(currentPage + 1) }
 
     var zeigeFilter by rememberSaveable { mutableStateOf(false) }
-    // Farbe und Kategorie — die beiden Filterlisten der Webapp (03-parts.js,
+    // Farbe und Kategorie — die beiden Filterlisten der Webapp (parts.js,
     // loadPartsFilters). Die Umrechnung auf die gemeinsame Form steht hier: Die beiden
     // Antworten tragen verschiedene Feldnamen, alles andere ist gleich.
     val farbe = farbUebersetzer()

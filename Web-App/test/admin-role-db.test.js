@@ -18,21 +18,29 @@ const AUTH = require('./helpers/sources').einhaengung('auth');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-test('Adminrechte lassen sich auch mit "false" als Text entziehen',
-  { concurrency: 1 }, async (t) => {
+test('Adminrechte lassen sich auch mit "false" als Text entziehen', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  {
+    const c = await db.pool.connect();
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
+  }
 
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
-  { const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
-
-  const ADMIN = 'rollen-admin-test', ZIEL = 'rollen-ziel-test';
+  const ADMIN = 'rollen-admin-test',
+    ZIEL = 'rollen-ziel-test';
   await db.run(`DELETE FROM users WHERE username IN ($1, $2)`, [ADMIN, ZIEL]);
   const bcrypt = require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs'));
   const ADMIN_PW = 'verwalterPasswort1';
-  await db.run(`INSERT INTO users (username, password_hash, is_admin, is_active)
-                VALUES ($1,$3,true,true), ($2,'x',true,true)`, [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)]);
+  await db.run(
+    `INSERT INTO users (username, password_hash, is_admin, is_active)
+                VALUES ($1,$3,true,true), ($2,'x',true,true)`,
+    [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)],
+  );
   const adminId = (await db.get(`SELECT id FROM users WHERE username=$1`, [ADMIN])).id;
-  const zielId  = (await db.get(`SELECT id FROM users WHERE username=$1`, [ZIEL])).id;
+  const zielId = (await db.get(`SELECT id FROM users WHERE username=$1`, [ZIEL])).id;
 
   const { base, srv } = testServer(_req, {
     sitzung: { userId: adminId, username: ADMIN, isAdmin: true },
@@ -47,7 +55,8 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
   const entziehe = async (url, methode, wert) => {
     await setzeZielAdmin();
     const r = await fetch(url, {
-      method: methode, headers: { 'content-type': 'application/json' },
+      method: methode,
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ is_admin: wert, admin_password: ADMIN_PW }),
     });
     return { status: r.status, adminDanach: await istAdmin() };
@@ -57,7 +66,8 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
 
   try {
     {
-      const name = 'Webapp', url = WEB;
+      const name = 'Webapp',
+        url = WEB;
       // Der eigentliche Fund: "false" als Zeichenkette MUSS entziehen.
       let e = await entziehe(url, 'PUT', 'false');
       assert.equal(e.status, 200, `${name}: "false" sollte angenommen werden`);
@@ -83,7 +93,8 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
     // auf der v1-Route; die Regel selbst ist unverändert und steht in
     // routes/auth.ts.
     const r = await fetch(`${base}${AUTH}/users/${adminId}/admin`, {
-      method: 'PUT', headers: { 'content-type': 'application/json' },
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ is_admin: 'false', admin_password: ADMIN_PW }),
     });
     assert.equal(r.status, 400, 'die eigene Admin-Rolle darf auch mit "false" nicht entfernt werden');

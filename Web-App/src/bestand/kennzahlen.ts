@@ -19,23 +19,22 @@ export async function getStats(userIdWahl: Sicht | number | number[]) {
   ]);
   const userCondRow = await bestandBereich().kennzahlen.vorgabeZustandImBlickfeld(uids);
   const globalCond = await getGlobalSetting('default_price_condition');
-  const effectiveCondition = (userCondRow?.value && ['N','U'].includes(userCondRow.value))
-    ? userCondRow.value : (globalCond || 'N');
+  const effectiveCondition =
+    userCondRow?.value && ['N', 'U'].includes(userCondRow.value) ? userCondRow.value : globalCond || 'N';
   const pieces = Number(partsRow?.t ?? 0);
   const einzeln = Number(einzelnRow?.t ?? 0);
   return {
-    total_sets:          Number(setsRow?.total_sets ?? 0),
-    total_quantity:      Number(setsRow?.total_quantity ?? 0),
-    total_pieces:        pieces,
-    total_parts:         pieces,
+    total_sets: Number(setsRow?.total_sets ?? 0),
+    total_quantity: Number(setsRow?.total_quantity ?? 0),
+    total_pieces: pieces,
+    total_parts: pieces,
     // Dieselbe Zahl zeigt der Teile-Reiter; die Aufschlüsselung macht sie nachvollziehbar.
-    set_parts:           pieces - einzeln,
-    manual_parts:        einzeln,
-    total_minifigs:      Number(minifigsRow?.t ?? 0),
-    total_instructions:  Number(instrRow?.total_instructions ?? 0),
-    currency:            cur?.value || 'EUR',
+    set_parts: pieces - einzeln,
+    manual_parts: einzeln,
+    total_minifigs: Number(minifigsRow?.t ?? 0),
+    total_instructions: Number(instrRow?.total_instructions ?? 0),
+    currency: cur?.value || 'EUR',
     user_default_condition: userCondRow?.value || null,
-    default_condition:   effectiveCondition,
+    default_condition: effectiveCondition,
   };
 }
-

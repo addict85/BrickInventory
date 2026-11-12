@@ -7,8 +7,9 @@
  */
 if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
   const roh = process.stdout.write.bind(process.stdout);
-  process.stdout.write = /** @type {typeof process.stdout.write} */ (function (stueck, ...rest) {
-    // @ts-ignore — dieselben Überladungen wie stdout.write
-    return typeof stueck === 'string' ? process.stderr.write(stueck, ...rest) : roh(stueck, ...rest);
-  });
+  process.stdout.write = /** @type {typeof process.stdout.write} */ (
+    (stueck, ...rest) => {
+      return typeof stueck === 'string' ? process.stderr.write(stueck, ...rest) : roh(stueck, ...rest);
+    }
+  );
 }

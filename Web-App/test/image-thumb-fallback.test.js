@@ -34,28 +34,44 @@ const NR = `zz-vorschau-${process.pid}`;
 const CDN = `https://cdn.rebrickable.com/media/parts/elements/${NR}.jpg`;
 
 test.after(async () => {
-  await _req('db/database.js').run('DELETE FROM part_color_catalog WHERE part_number = $1', [NR]).catch(() => {});
-  await _req('db/database.js').pool?.end?.().catch(() => {});
+  await _req('db/database.js')
+    .run('DELETE FROM part_color_catalog WHERE part_number = $1', [NR])
+    .catch(() => {});
+  await _req('db/database.js')
+    .pool?.end?.()
+    .catch(() => {});
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
-test('fehlt die Vorschau, kommt das Original vor dem CDN', async (t) => {
+test('fehlt die Vorschau, kommt das Original vor dem CDN', async t => {
   const db = await dbOderSkip(t, _req, { migrieren: false });
   if (!db) return;
   // Die CDN-Adresse ist bekannt: Ohne den Rückfall ginge die Anfrage zum Bild-Proxy.
-  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url, image_local) VALUES ($1, 5, $2, $3)
-    ON CONFLICT DO NOTHING`, [NR, CDN, `/images/parts/${NR}.jpg`]);
+  await db.run(
+    `INSERT INTO part_color_catalog (part_number, color_id, image_url, image_local) VALUES ($1, 5, $2, $3)
+    ON CONFLICT DO NOTHING`,
+    [NR, CDN, `/images/parts/${NR}.jpg`],
+  );
   fs.mkdirSync(ordner, { recursive: true });
-  const original = path.join(ordner, `${NR}.jpg`), vorschau = path.join(ordner, `${NR}_thumb.jpg`);
-  await sharp({ create: { width: 600, height: 400, channels: 3, background: '#c33' } }).jpeg().toFile(original);
+  const original = path.join(ordner, `${NR}.jpg`),
+    vorschau = path.join(ordner, `${NR}_thumb.jpg`);
+  await sharp({ create: { width: 600, height: 400, channels: 3, background: '#c33' } })
+    .jpeg()
+    .toFile(original);
 
   const app = express();
-  app.use((req, _res, next) => { Object.assign(req, { session: { userId: 1 } }); next(); });
+  app.use((req, _res, next) => {
+    Object.assign(req, { session: { userId: 1 } });
+    next();
+  });
   app.get('/images/*pfad', liefereBild);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const hole = async p => {
-    const r = await fetch(`http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}${p}`, { redirect: 'manual' });
+    const r = await fetch(
+      `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}${p}`,
+      { redirect: 'manual' },
+    );
     return { status: r.status, n: (await r.arrayBuffer()).byteLength, ort: r.headers.get('location') };
   };
 
@@ -66,7 +82,8 @@ test('fehlt die Vorschau, kommt das Original vor dem CDN', async (t) => {
   const b = await hole(`/images/parts/${NR}_thumb.jpg`);
   assert.deepEqual([b.status, b.n], [200, fs.statSync(vorschau).size], 'jetzt gilt die Vorschau');
 
-  fs.rmSync(original); fs.rmSync(vorschau);
+  fs.rmSync(original);
+  fs.rmSync(vorschau);
   const c = await hole(`/images/parts/${NR}_thumb.jpg`);
   assert.equal(c.status, 302, 'ohne Original führt der Weg zum Bild-Proxy');
   assert.match(c.ort ?? '', /\/img-proxy\?url=.*zz-vorschau/);

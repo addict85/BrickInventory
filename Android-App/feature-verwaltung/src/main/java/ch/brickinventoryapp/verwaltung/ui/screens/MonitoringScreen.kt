@@ -73,7 +73,7 @@ internal fun MonitoringRoute(
     val lebenszyklus = androidx.lifecycle.compose.LocalLifecycleOwner.current
     LaunchedEffect(Unit) {
         lebenszyklus.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-            while (!mon.state.value.zugriffEntzogen) { mon.ladeJobs(); mon.ladeHintergrund(); delay(5000) }
+            mon.haltAktuell()
         }
     }
     LaunchedEffect(Unit) { mon.ladeCacheAbschnitt() }
@@ -361,7 +361,7 @@ private fun JobCard(
                     Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), style = MaterialTheme.typography.labelMedium)
                 }
                 // Der zweite Bilderknopf: Der darüber holt die Bilder des Bestands nach, dieser
-                // die des Katalogs — wie in der Webapp (07-admin.js, queueCatalogImages), damit
+                // die des Katalogs — wie in der Webapp (admin.js, queueCatalogImages), damit
                 // sich ein fehlendes Katalogbild nachziehen lässt.
                 var katMsg by remember { mutableStateOf<String?>(null) }
                 FilledTonalButton(

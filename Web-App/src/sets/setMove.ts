@@ -22,22 +22,27 @@ export interface MoveResult {
 async function copyContents(tx: DbSchnittstelle, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
   for (const t of ['parts', 'minifigs', 'instructions'] as const)
-    if (!await repo.hatInhalt(tx, t, toId, sn))
-      n[t] = t === 'instructions' ? await repo.kopiereAnleitungen(tx, sn, fromId, toId) : await kopiereSetInhalt(tx, t, sn, fromId, toId);
+    if (!(await repo.hatInhalt(tx, t, toId, sn)))
+      n[t] =
+        t === 'instructions'
+          ? await repo.kopiereAnleitungen(tx, sn, fromId, toId)
+          : await kopiereSetInhalt(tx, t, sn, fromId, toId);
   return n;
 }
 
 /** @param acquisitionIds leer = das ganze Set; sonst nur diese Kaufpreis-Zeilen */
 export async function moveSetBetweenAccounts(
-  tx: DbSchnittstelle, sn: string, fromId: number, toId: number, acquisitionIds?: number[]
+  tx: DbSchnittstelle,
+  sn: string,
+  fromId: number,
+  toId: number,
+  acquisitionIds?: number[],
 ): Promise<MoveResult> {
   const src = await repo.setZeile(tx, fromId, sn);
   if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
 
   const all = await repo.erfassungenZumVerschieben(tx, fromId, sn);
-  const wanted = acquisitionIds?.length
-    ? all.filter(a => acquisitionIds.includes(parseInt(String(a.id))))
-    : all;
+  const wanted = acquisitionIds?.length ? all.filter(a => acquisitionIds.includes(parseInt(String(a.id), 10))) : all;
   if (!wanted.length) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
 
   const gesamtQty = all.reduce((s, a) => s + (a.quantity || 1), 0);
@@ -50,11 +55,20 @@ export async function moveSetBetweenAccounts(
   if (!dst) await repo.legeSetAn(tx, toId, sn, src.added_at);
 
   for (const a of wanted) {
-    await recordAcquisitionForDay('set', toId, [sn], {
-      quantity: a.quantity, price: a.purchase_price,
-      condition: a.condition, createdAt: a.created_at,
-      geschaetzt: a.price_estimated, currency: a.currency,
-    }, tx);
+    await recordAcquisitionForDay(
+      'set',
+      toId,
+      [sn],
+      {
+        quantity: a.quantity,
+        price: a.purchase_price,
+        condition: a.condition,
+        createdAt: a.created_at,
+        geschaetzt: a.price_estimated,
+        currency: a.currency,
+      },
+      tx,
+    );
     await repo.loescheSetErfassung(tx, a.id, [fromId]);
   }
 
@@ -62,19 +76,21 @@ export async function moveSetBetweenAccounts(
 
   // Teilverschiebung: Der Absender behält Exemplare und damit Set und Inhalt.
   if (remaining > 0) {
-    return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst,
-             ...counts, source_emptied: false };
+    return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: false };
   }
   await repo.entferneSet(tx, fromId, sn);
-  return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst,
-           ...counts, source_emptied: true };
+  return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: true };
 }
 
 /** Über den KAUFPREIS, nicht über den Eintrag; was beim Absender bleibt, folgt
  * aus seinen Erfassungen. */
 export async function moveManualAcquisition(
-  tx: DbSchnittstelle, kind: 'part' | 'fig', keyValues: (string | number)[], acquisitionId: number,
-  fromId: number, toId: number
+  tx: DbSchnittstelle,
+  kind: 'part' | 'fig',
+  keyValues: (string | number)[],
+  acquisitionId: number,
+  fromId: number,
+  toId: number,
 ): Promise<{ quantity: number; merged: boolean; source_emptied: boolean }> {
   const acq = await repo.manuelleErfassung(tx, kind, acquisitionId, fromId, keyValues);
   if (!acq) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
@@ -82,17 +98,26 @@ export async function moveManualAcquisition(
   const src = await repo.manuelleZeile(tx, kind, fromId, keyValues);
   if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
 
-  const movingQty = Math.max(1, parseInt(String(acq.quantity)) || 1);
-  const remaining = Math.max(0, await repo.erfassteMenge(tx, kind, fromId, keyValues) - movingQty);
+  const movingQty = Math.max(1, parseInt(String(acq.quantity), 10) || 1);
+  const remaining = Math.max(0, (await repo.erfassteMenge(tx, kind, fromId, keyValues)) - movingQty);
 
   const dst = await repo.manuelleZeile(tx, kind, toId, keyValues);
   if (!dst) await legeManuellAn(tx, kind, toId, keyValues);
 
-  await recordAcquisitionForDay(kind, toId, keyValues, {
-    quantity: movingQty, price: acq.unit_price,
-    condition: acq.condition, createdAt: acq.created_at,
-    geschaetzt: acq.price_estimated, currency: acq.currency,
-  }, tx);
+  await recordAcquisitionForDay(
+    kind,
+    toId,
+    keyValues,
+    {
+      quantity: movingQty,
+      price: acq.unit_price,
+      condition: acq.condition,
+      createdAt: acq.created_at,
+      geschaetzt: acq.price_estimated,
+      currency: acq.currency,
+    },
+    tx,
+  );
   await repo.loescheManuelleErfassung(tx, kind, acq.id, [fromId]);
 
   if (remaining > 0) return { quantity: movingQty, merged: !!dst, source_emptied: false };
@@ -101,8 +126,15 @@ export async function moveManualAcquisition(
 }
 
 /** Unter der Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
-export function verschiebeSet(sk: SetsKontext, sn: string, fromId: number, toId: number, erfassungen: number[]): Promise<MoveResult> {
+export function verschiebeSet(
+  sk: SetsKontext,
+  sn: string,
+  fromId: number,
+  toId: number,
+  erfassungen: number[],
+): Promise<MoveResult> {
   // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
-  return mitInventarSperre(sk.db, fromId, sn, (tx) => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen),
-    { wiederholeBeiKonflikt: true });
+  return mitInventarSperre(sk.db, fromId, sn, tx => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen), {
+    wiederholeBeiKonflikt: true,
+  });
 }

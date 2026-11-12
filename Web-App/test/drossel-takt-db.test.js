@@ -23,8 +23,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
   const { RateLimiter } = _req('src/katalog/rateLimiter.js');

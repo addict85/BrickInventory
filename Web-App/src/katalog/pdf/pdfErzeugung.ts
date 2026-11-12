@@ -1,5 +1,5 @@
-import fsp from 'fs/promises';
-import path from 'path';
+import fsp from 'node:fs/promises';
+import path from 'node:path';
 import { bilderAusKatalog as katalogbilder } from '../bildlage';
 import { MINIFIG_IMAGES_DIR } from '../../infra/appPaths';
 import { getMinifigInfo } from '../quellen';
@@ -24,13 +24,17 @@ const cdnAdresse = (url: string) => {
 export const bilderAusKatalog = (parts: PdfTeil[]) => katalogbilder(parts, istFigur);
 
 async function figurenOhneAdresse(parts: PdfTeil[]) {
-  for (const p of parts.filter(p => istFigur(p) && !p.image_url && !p.image_local && /^fig-\d{1,8}$/.test(p.part_number))) {
+  for (const p of parts.filter(
+    p => istFigur(p) && !p.image_url && !p.image_local && /^fig-\d{1,8}$/.test(p.part_number),
+  )) {
     try {
       const info = await getMinifigInfo(p.part_number);
       if (!info?.image_url) continue;
       p.image_url = info.image_url;
       await merkeFigurBildAdresse(p.part_number, info.image_url).catch(logAndContinue('pdf:figurbild merken'));
-    } catch (e) { meldeFehler('pdf:figurbild holen', e); }
+    } catch (e) {
+      meldeFehler('pdf:figurbild holen', e);
+    }
   }
 }
 
@@ -39,10 +43,15 @@ async function figurenAufDerPlatte(parts: PdfTeil[]) {
   for (const p of parts.filter(p => istFigur(p) && !p.image_local && p.image_url)) {
     const cdn = cdnAdresse(p.image_url || '');
     const ext = ((cdn.split('.').pop() || '').split('?')[0] || 'jpg').substring(0, 4).toLowerCase();
-    for (const name of [`${p.part_number.replace(/[^a-z0-9-]/gi, '_')}.${ext}`,
-                        `${p.part_number.replace(/[^a-z0-9]/gi, '_')}.${ext}`,
-                        `fig_${p.part_number.replace(/[^a-z0-9]/gi, '_')}.${ext}`]) {
-      const da = await fsp.access(path.join(MINIFIG_IMAGES_DIR, name)).then(() => true, () => false);
+    for (const name of [
+      `${p.part_number.replace(/[^a-z0-9-]/gi, '_')}.${ext}`,
+      `${p.part_number.replace(/[^a-z0-9]/gi, '_')}.${ext}`,
+      `fig_${p.part_number.replace(/[^a-z0-9]/gi, '_')}.${ext}`,
+    ]) {
+      const da = await fsp.access(path.join(MINIFIG_IMAGES_DIR, name)).then(
+        () => true,
+        () => false,
+      );
       if (!da) continue;
       p.image_local = `/images/minifigs/${name}`;
       await setzeFigurBildLokal(p.part_number, p.image_local).catch(logAndContinue('pdf:figurbild pfad merken'));
@@ -57,7 +66,10 @@ async function erzeugePdf(n: PdfNutzlast, lauf?: AuftragsLauf): Promise<void> {
   if (!ziel) throw new Error(`ungültige Auftragskennung ${jobId}`);
   const setNumbers = [...new Set(sets.map(s => normalisiereSetNummer(s?.set_number ?? '')).filter(moeglicheSetNummer))];
   // Warten, falls ein anderer Prozess dieselben Bilder lädt — sonst fehlten sie im PDF.
-  for (const sn of setNumbers) { pruefeAbbruch(lauf); await downloadSetImages(sn, true).catch(logAndContinue(`pdf:bilder ${sn}`)); }
+  for (const sn of setNumbers) {
+    pruefeAbbruch(lauf);
+    await downloadSetImages(sn, true).catch(logAndContinue(`pdf:bilder ${sn}`));
+  }
   await bilderAusKatalog(parts);
   await figurenOhneAdresse(parts);
   await figurenAufDerPlatte(parts);
@@ -65,12 +77,18 @@ async function erzeugePdf(n: PdfNutzlast, lauf?: AuftragsLauf): Promise<void> {
   for (const p of parts.filter(p => !p.image_local && p.image_url)) {
     pruefeAbbruch(lauf);
     const figur = istFigur(p);
-    const lokal = await downloadImage(cdnAdresse(p.image_url!), p.part_number, figur ? 0 : (p.color_id ?? KEINE_FARBE),
-      figur ? 'minifig' : 'part').catch(logAndContinue(`pdf:bild ${p.part_number}`));
+    const lokal = await downloadImage(
+      cdnAdresse(p.image_url!),
+      p.part_number,
+      figur ? 0 : (p.color_id ?? KEINE_FARBE),
+      figur ? 'minifig' : 'part',
+    ).catch(logAndContinue(`pdf:bild ${p.part_number}`));
     if (!lokal) continue;
     p.image_local = lokal;
-    await (figur ? setzeFigurBildLokal(p.part_number, lokal) : setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, lokal))
-      .catch(logAndContinue(`pdf:bildpfad ${p.part_number}`));
+    await (figur
+      ? setzeFigurBildLokal(p.part_number, lokal)
+      : setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, lokal)
+    ).catch(logAndContinue(`pdf:bildpfad ${p.part_number}`));
   }
   const mitBild = parts.filter(p => p.image_local).length;
   if (mitBild < parts.length) console.log(`[PDF job] ${jobId}: ${mitBild}/${parts.length} Bilder vorhanden`);

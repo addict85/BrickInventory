@@ -27,18 +27,31 @@ const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const NAME = `pflicht_${process.pid}`, PASS = 'start-Passwort-1', NEU = 'eigenes-Passwort-2';
+const NAME = `pflicht_${process.pid}`,
+  PASS = 'start-Passwort-1',
+  NEU = 'eigenes-Passwort-2';
 
-test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, must_change_password)
-    VALUES ($1, $2, true, true, true, true) RETURNING id`, [NAME, await bcrypt.hash(PASS, 4)])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified, must_change_password)
+    VALUES ($1, $2, true, true, true, true) RETURNING id`,
+      [NAME, await bcrypt.hash(PASS, 4)],
+    )
+  ).id;
 
   const app = express();
   app.use(express.json());
-  app.use(session({ store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1', _req('routes/api_v1/index.js'));
   app.use('/api/v1/auth', _req('routes/auth.js'));
@@ -51,17 +64,28 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
     await db.pool.end().catch(() => {});
   });
   const ruf = async (weg, { body, cookie, token } = {}) => {
-    const r = await fetch(basis + weg, { method: body ? 'POST' : 'GET',
-      headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}),
-                 ...(token ? { authorization: `Bearer ${token}` } : {}) },
-      ...(body ? { body: JSON.stringify(body) } : {}) });
-    return { status: r.status, cookie: r.headers.get('set-cookie')?.split(';')[0], body: await r.json().catch(() => null) };
+    const r = await fetch(basis + weg, {
+      method: body ? 'POST' : 'GET',
+      headers: {
+        'content-type': 'application/json',
+        ...(cookie ? { cookie } : {}),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    return {
+      status: r.status,
+      cookie: r.headers.get('set-cookie')?.split(';')[0],
+      body: await r.json().catch(() => null),
+    };
   };
 
   const anmeldung = await ruf('/auth/login', { body: { username: NAME, password: PASS } });
   assert.equal(anmeldung.status, 200, JSON.stringify(anmeldung.body));
   assert.equal(anmeldung.body.user.mustChangePassword, true);
-  const { body: { token } } = anmeldung;
+  const {
+    body: { token },
+  } = anmeldung;
   const { cookie } = await ruf('/auth/login', { body: { username: NAME, password: PASS, ohne_token: true } });
 
   await t.test('Sitzung und Token kommen nur bis zum Wechsel', async () => {

@@ -30,20 +30,32 @@ const assert = require('node:assert/strict');
 const { starteApp, warte } = require('./helpers/app-browser');
 const { musterHaushalt } = require('./helpers/bestand');
 
-const klick = (sel) => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
-const reiter = (r) => klick(`.ntab[data-tab="${r}"]`);
-const text = (sel) => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
+const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
+const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 
-test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (t) => {
-  const NAME = `r12_${process.pid}`, KIND = `${NAME}_kind`, ANDERE = `r12x_${process.pid}`;
+test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async t => {
+  const NAME = `r12_${process.pid}`,
+    KIND = `${NAME}_kind`,
+    ANDERE = `r12x_${process.pid}`;
   const app = await starteApp(t, { name: NAME, bestand: musterHaushalt });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, db, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
-  const geh = async (pfad) => { await b.auswerten(`location.hash = '#/${pfad}'; true`); await warte(300); };
-  const telefon = (an) => b.tab('Emulation.setDeviceMetricsOverride', an
-    ? { width: 390, height: 844, deviceScaleFactor: 2, mobile: true } : { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  const geh = async pfad => {
+    await b.auswerten(`location.hash = '#/${pfad}'; true`);
+    await warte(300);
+  };
+  const telefon = an =>
+    b.tab(
+      'Emulation.setDeviceMetricsOverride',
+      an
+        ? { width: 390, height: 844, deviceScaleFactor: 2, mobile: true }
+        : { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false },
+    );
 
   await t.test('Finanzen: ein Kauf je Zeile, mit Konto', async () => {
     await geh('finanzen');
@@ -51,26 +63,43 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
     const zeilen = await b.auswerten(`[...document.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody tr')]
       .filter(r => r.textContent.includes('Tree House')).map(r => [...r.querySelectorAll('.besitzer-badge')].map(x => x.textContent.replace('Konto: ', '')))`);
     assert.deepEqual(zeilen.map(z => z.join()).sort(), [KIND, NAME].sort(), 'je Kauf eine Zeile mit ihrem Konto');
-    assert.match(await b.auswerten(text('#fin-tbl .fin-legende')), /Kaufpreis dieser Zeile/, 'die Legende erklärt die Prozente');
+    assert.match(
+      await b.auswerten(text('#fin-tbl .fin-legende')),
+      /Kaufpreis dieser Zeile/,
+      'die Legende erklärt die Prozente',
+    );
   });
 
   await t.test('Finanzen: Summen ohne Doppelzählung', async () => {
-    const z = await b.auswerten(`Promise.all([fetch('/api/v1/finance/pnl').then(r => r.json()), fetch('/api/v1/finance/valuation').then(r => r.json())])
+    const z =
+      await b.auswerten(`Promise.all([fetch('/api/v1/finance/pnl').then(r => r.json()), fetch('/api/v1/finance/valuation').then(r => r.json())])
       .then(([p, v]) => ({ kauf: p.totals.sets_purchase, markt: v.totals.avg, baum: p.sets.filter(s => s.set_number === '21318-1').map(s => s.quantity) }))`);
     // 679,99 + 650 + 0 (Geschenk) + 199,99 + 210; Marktwert 712,40 + 801,50 + 163,80 + 2 × 186,20.
     assert.deepEqual(z, { kauf: '1739.98', markt: '2050.10', baum: [2] });
   });
 
   await t.test('Löschdialog nennt das Konto', async () => {
-    await db.run(`INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true)`, [ANDERE, `${ANDERE}@example.org`]);
+    await db.run(
+      `INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true)`,
+      [ANDERE, `${ANDERE}@example.org`],
+    );
     await geh('einstellungen/benutzer');
-    await bis(`[...document.querySelectorAll('#users-tbl tr')].some(r => r.textContent.includes(${JSON.stringify(ANDERE)}))`, 'Benutzerliste', 100);
-    for (const [aktion, titel] of [['delUser', /^Konto „r12x_\d+“ löschen\?$/], ['toggleAdmin', /^„r12x_\d+“ zum Verwalter machen\?$/], ['toggleAktiv', /^Konto „r12x_\d+“ deaktivieren\?$/]]) {
+    await bis(
+      `[...document.querySelectorAll('#users-tbl tr')].some(r => r.textContent.includes(${JSON.stringify(ANDERE)}))`,
+      'Benutzerliste',
+      100,
+    );
+    for (const [aktion, titel] of [
+      ['delUser', /^Konto „r12x_\d+“ löschen\?$/],
+      ['toggleAdmin', /^„r12x_\d+“ zum Verwalter machen\?$/],
+      ['toggleAktiv', /^Konto „r12x_\d+“ deaktivieren\?$/],
+    ]) {
       await b.auswerten(`(() => { const z = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(ANDERE)});
         z.querySelector('[data-click="${aktion}"]').click(); return true; })()`);
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, `Dialog ${aktion}`);
       assert.match(await b.auswerten(text('#cd-title')), titel);
-      if (aktion === 'delUser') assert.match(await b.auswerten(text('#cd-confirm')), new RegExp(`${ANDERE}“ endgültig löschen`));
+      if (aktion === 'delUser')
+        assert.match(await b.auswerten(text('#cd-confirm')), new RegExp(`${ANDERE}“ endgültig löschen`));
       await b.auswerten(klick('#cd-cancel'));
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display === 'none'`, 'Dialog zu');
     }
@@ -83,7 +112,11 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
     await b.tab('Accessibility.enable');
     const { nodes } = await b.tab('Accessibility.getFullAXTree');
     const namen = nodes.filter(n => !n.ignored && n.name?.value).map(n => `${n.role?.value}: ${n.name.value}`);
-    assert.deepEqual(namen.filter(n => /BIM|6\+/.test(n)), [], 'das Logo wird nicht vorgelesen');
+    assert.deepEqual(
+      namen.filter(n => /BIM|6\+/.test(n)),
+      [],
+      'das Logo wird nicht vorgelesen',
+    );
     const karte = namen.find(n => n.startsWith('button: 10294-1'));
     assert.ok(karte, 'Kachel Titanic als Knopf');
     assert.equal(karte.match(/Titanic/g).length, 1, `Name einmal: ${karte}`);
@@ -91,9 +124,15 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
 
   await t.test('Farbname deutsch', async () => {
     await geh('teile');
-    await bis(`!!document.querySelector('.part-card[data-click="openSetItemDetail"][data-arg3="0"]')`, 'Teile aus Sets');
+    await bis(
+      `!!document.querySelector('.part-card[data-click="openSetItemDetail"][data-arg3="0"]')`,
+      'Teile aus Sets',
+    );
     await b.auswerten(klick('.part-card[data-click="openSetItemDetail"][data-arg3="0"]'));
-    await bis(`document.getElementById('setitem-modal').classList.contains('open') && /·/.test(document.getElementById('setitem-sub').textContent)`, 'Teil-Dialog');
+    await bis(
+      `document.getElementById('setitem-modal').classList.contains('open') && /·/.test(document.getElementById('setitem-sub').textContent)`,
+      'Teil-Dialog',
+    );
     assert.match(await b.auswerten(text('#setitem-sub')), /· Schwarz$/);
     await b.auswerten(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
   });
@@ -118,7 +157,10 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
 
   await t.test('Toast verdeckt den Titel nicht', async () => {
     await geh('sammlung/set/99999-9');
-    await bis(`[...document.querySelectorAll('#toasts .toast')].some(x => /nicht in deiner Sammlung/.test(x.textContent))`, 'Toast');
+    await bis(
+      `[...document.querySelectorAll('#toasts .toast')].some(x => /nicht in deiner Sammlung/.test(x.textContent))`,
+      'Toast',
+    );
     await b.auswerten(`scrollTo(0, 0); true`);
     await ruhig();
     const z = await b.auswerten(`(() => { const r = e => e.getBoundingClientRect();
@@ -130,7 +172,12 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
 
   await t.test('offline: Knopf deckend', async () => {
     await geh('sammlung');
-    await b.tab('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    await b.tab('Network.emulateNetworkConditions', {
+      offline: true,
+      latency: 0,
+      downloadThroughput: -1,
+      uploadThroughput: -1,
+    });
     try {
       await bis(`document.querySelector('.knopf-schwebend')?.disabled === true`, 'Knopf gesperrt');
       const z = await b.auswerten(`(() => { const s = getComputedStyle(document.querySelector('.knopf-schwebend'));
@@ -138,7 +185,12 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
       assert.equal(z.deckend, '1', 'der gesperrte Knopf ist deckend');
       assert.doesNotMatch(z.grund, /rgba\(.*, 0(\.\d+)?\)$/, `mit deckendem Grund: ${z.grund}`);
     } finally {
-      await b.tab('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      await b.tab('Network.emulateNetworkConditions', {
+        offline: false,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+      });
       await b.auswerten(`dispatchEvent(new Event('online')); true`);
     }
     await bis(`document.querySelector('.knopf-schwebend')?.disabled === false`, 'wieder frei', 100);
@@ -158,20 +210,34 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
   await t.test('Gutschein: eine Knopfgrösse', async () => {
     await b.auswerten(klick('.umenu-item[data-arg="gutscheine"]'));
     await bis(`!!document.querySelector('.voucher-row')`, 'Gutscheine');
-    const groessen = await b.auswerten(`[...document.querySelectorAll('.voucher-row :is(.v-btn, .btn)')].filter(k => k.checkVisibility()).map(k => getComputedStyle(k).fontSize)`);
+    const groessen = await b.auswerten(
+      `[...document.querySelectorAll('.voucher-row :is(.v-btn, .btn)')].filter(k => k.checkVisibility()).map(k => getComputedStyle(k).fontSize)`,
+    );
     assert.ok(groessen.length >= 4, `nur ${groessen.length} Knöpfe`);
     assert.equal(new Set(groessen).size, 1, `Schriftgrössen ${groessen}`);
   });
 
   await t.test('200 %: Achse kurz, Kopf weicht', async () => {
-    await b.auswerten(`document.documentElement.style.fontSize = '200%'; document.getElementById('portfolio-chart').innerHTML = ''; true`);
+    await b.auswerten(
+      `document.documentElement.style.fontSize = '200%'; document.getElementById('portfolio-chart').innerHTML = ''; true`,
+    );
     try {
-      await geh('sammlung'); await geh('finanzen');
+      await geh('sammlung');
+      await geh('finanzen');
       await bis(`!!document.querySelector('#portfolio-chart svg polyline')`, 'Wertdiagramm', 200);
-      assert.ok(await b.auswerten(`[...document.querySelectorAll('#portfolio-chart svg text')].some(x => /Tsd\\./.test(x.textContent))`), 'Tausender kurz');
-      await b.auswerten(`scrollTo(0, 0); true`); await warte(200);
-      await b.auswerten(`scrollTo(0, 600); true`); await warte(400);
-      const z = await b.auswerten(`({ kopf: getComputedStyle(document.querySelector('header')).transform, leiste: getComputedStyle(document.querySelector('nav:not(.einst-nav)')).transform })`);
+      assert.ok(
+        await b.auswerten(
+          `[...document.querySelectorAll('#portfolio-chart svg text')].some(x => /Tsd\\./.test(x.textContent))`,
+        ),
+        'Tausender kurz',
+      );
+      await b.auswerten(`scrollTo(0, 0); true`);
+      await warte(200);
+      await b.auswerten(`scrollTo(0, 600); true`);
+      await warte(400);
+      const z = await b.auswerten(
+        `({ kopf: getComputedStyle(document.querySelector('header')).transform, leiste: getComputedStyle(document.querySelector('nav:not(.einst-nav)')).transform })`,
+      );
       assert.notEqual(z.kopf, 'none', 'der Kopf weicht beim Rollen');
       assert.notEqual(z.leiste, 'none', 'die Leiste weicht beim Rollen');
     } finally {
@@ -184,7 +250,10 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
     await b.auswerten(`(() => { const f = window.fetch; window.fetch = (u, o) => String(u).includes('/api/v1/wanted')
       ? Promise.resolve(new Response('{"message":"Unauthorized"}', { status: 401, headers: { 'Content-Type': 'application/json' } })) : f(u, o); return true; })()`);
     await geh('merkliste');
-    await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none' && !document.getElementById('login-hinweis').hidden`, 'Anmeldung mit Hinweis');
+    await bis(
+      `getComputedStyle(document.getElementById('login-screen')).display !== 'none' && !document.getElementById('login-hinweis').hidden`,
+      'Anmeldung mit Hinweis',
+    );
     assert.match(await b.auswerten(text('#login-hinweis')), /Sitzung abgelaufen/);
   });
 });

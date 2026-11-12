@@ -28,23 +28,47 @@ const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css'];
 
 /** Erfassen, Filter, Liste je Reiter — als Selektoren auf das gezeichnete Dokument. */
 const REITER = {
-  Galerie:     ['[data-click="oeffneErfassen"][data-arg="set"]',  '#gs',           '#gallery'],
-  Teile:       ['[data-click="oeffneErfassen"][data-arg="part"]', '#parts-search', '#manual-parts-list', '#parts-main'],
-  Minifiguren: ['[data-click="oeffneErfassen"][data-arg="fig"]',  '#fig-search',   '#manual-figs-list',  '#figs-list'],
-  Katalog:     ['[data-tab-title="catalog"]',                     '#cat-search',   '#catalog-grid'],
+  Galerie: ['[data-click="oeffneErfassen"][data-arg="set"]', '#gs', '#gallery'],
+  Teile: ['[data-click="oeffneErfassen"][data-arg="part"]', '#parts-search', '#manual-parts-list', '#parts-main'],
+  Minifiguren: ['[data-click="oeffneErfassen"][data-arg="fig"]', '#fig-search', '#manual-figs-list', '#figs-list'],
+  Katalog: ['[data-tab-title="catalog"]', '#cat-search', '#catalog-grid'],
 };
-const EINMAL = ['gs', 'gtheme', 'gsort', 'scope-gallery', 'vg', 'vl', 'parts-search', 'parts-spare', 'parts-view',
-  'scope-parts', 'fig-search', 'figs-view', 'scope-minifigs'];
+const EINMAL = [
+  'gs',
+  'gtheme',
+  'gsort',
+  'scope-gallery',
+  'vg',
+  'vl',
+  'parts-search',
+  'parts-spare',
+  'parts-view',
+  'scope-parts',
+  'fig-search',
+  'figs-view',
+  'scope-minifigs',
+];
 
 /** Misst im gezeichneten index.html; liefert, was `messung` (Funktionsrumpf im Browser) zurückgibt. */
 let _ergebnis;
 function gemessen(t) {
   if (_ergebnis !== undefined) return _ergebnis;
   const bin = chrome();
-  if (!bin) { t.skip('kein Chrome gefunden'); _ergebnis = null; return null; }
-  const html = require('./helpers/sources').ohneHtmlKommentare(fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8'));
-  const koerper = html.slice(html.indexOf('<body'), html.lastIndexOf('</body>')).replace(/<script[\s\S]*?<\/script>/g, '')
-    .replace(/data-stil="display:none;?/g, 'style="').replace(/data-stil="/g, 'style="').replace(/ hidden(?=[ >])/g, '').replace(/<details /g, '<details open ');
+  if (!bin) {
+    t.skip('kein Chrome gefunden');
+    _ergebnis = null;
+    return null;
+  }
+  const html = require('./helpers/sources').ohneHtmlKommentare(
+    fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8'),
+  );
+  const koerper = html
+    .slice(html.indexOf('<body'), html.lastIndexOf('</body>'))
+    .replace(/<script[\s\S]*?<\/script>/g, '')
+    .replace(/data-stil="display:none;?/g, 'style="')
+    .replace(/data-stil="/g, 'style="')
+    .replace(/ hidden(?=[ >])/g, '')
+    .replace(/<details /g, '<details open ');
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
   const seite = `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
 <style>#app{display:block!important}.tab{display:block!important}#login-screen,#startgeruest{display:none!important}</style></head>
@@ -69,17 +93,30 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
   try {
     const datei = path.join(ordner, 'seite.html');
     fs.writeFileSync(datei, seite);
-    const dom = execFileSync(bin, ['--headless', '--no-sandbox', '--disable-gpu', '--allow-file-access-from-files',
-      '--window-size=1200,900', '--virtual-time-budget=3000', '--dump-dom', `file://${datei}`],
-      { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] });
+    const dom = execFileSync(
+      bin,
+      [
+        '--headless',
+        '--no-sandbox',
+        '--disable-gpu',
+        '--allow-file-access-from-files',
+        '--window-size=1200,900',
+        '--virtual-time-budget=3000',
+        '--dump-dom',
+        `file://${datei}`,
+      ],
+      { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
+    );
     const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
     assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
     _ergebnis = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
     return _ergebnis;
-  } finally { fs.rmSync(ordner, { recursive: true, force: true }); }
+  } finally {
+    fs.rmSync(ordner, { recursive: true, force: true });
+  }
 }
 
-test('Erfassen steht über den Filtern, die Filter über den Listen (auch der manuellen)', (t) => {
+test('Erfassen steht über den Filtern, die Filter über den Listen (auch der manuellen)', t => {
   const e = gemessen(t);
   if (!e) return;
   const falsch = [];
@@ -87,26 +124,37 @@ test('Erfassen steht über den Filtern, die Filter über den Listen (auch der ma
     for (const [s, y] of folge) if (y == null) falsch.push(`${name}: ${s} fehlt`);
     for (let i = 1; i < folge.length; i++)
       if (folge[i - 1][1] != null && folge[i][1] != null && !(folge[i - 1][1] < folge[i][1]))
-        falsch.push(`${name}: ${folge[i - 1][0]} (${folge[i - 1][1]}) steht nicht über ${folge[i][0]} (${folge[i][1]})`);
+        falsch.push(
+          `${name}: ${folge[i - 1][0]} (${folge[i - 1][1]}) steht nicht über ${folge[i][0]} (${folge[i][1]})`,
+        );
   }
   assert.deepEqual(falsch, []);
 });
 
-test('jede Bedienelement-ID gibt es genau einmal', (t) => {
+test('jede Bedienelement-ID gibt es genau einmal', t => {
   const e = gemessen(t);
   if (!e) return;
-  assert.deepEqual(Object.entries(e.einmal).filter(([, n]) => n !== 1).map(([id, n]) => `${id}: ${n}×`), [],
-    'Die IDs sind der Vertrag mit dem JS');
+  assert.deepEqual(
+    Object.entries(e.einmal)
+      .filter(([, n]) => n !== 1)
+      .map(([id, n]) => `${id}: ${n}×`),
+    [],
+    'Die IDs sind der Vertrag mit dem JS',
+  );
 });
 
-test('die Filterleisten halten Abstand zur Liste', (t) => {
+test('die Filterleisten halten Abstand zur Liste', t => {
   const e = gemessen(t);
   if (!e) return;
   assert.equal(e.leisten.length, 5, 'Galerie, Teile, Minifiguren, Katalog, Merkliste');
-  assert.deepEqual(e.leisten.filter(rem => rem < 1.5), [], 'Abstand unter 1.5rem');
+  assert.deepEqual(
+    e.leisten.filter(rem => rem < 1.5),
+    [],
+    'Abstand unter 1.5rem',
+  );
 });
 
-test('der eigene Bestand steht in der Teileliste auf einer eigenen Zeile', (t) => {
+test('der eigene Bestand steht in der Teileliste auf einer eigenen Zeile', t => {
   const e = gemessen(t);
   if (!e) return;
   const { setnr, knopf, lose } = e.bestand;
@@ -121,15 +169,36 @@ test('die App hält den eigenen Bestand ebenfalls aus der Werkzeugzeile heraus',
   // im Quelltext die Aussage: „Reset" ist der letzte Knopf der Werkzeug-Row,
   // also steht alles danach ausserhalb davon.
   const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
-  const src = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'screens', 'PartsListScreen.kt'), 'utf8'));
+  const src = ohneKommentare(
+    fs.readFileSync(
+      path.join(
+        __dirname,
+        '..',
+        '..',
+        'Android-App',
+        'feature-teile',
+        'src',
+        'main',
+        'java',
+        'ch',
+        'brickinventoryapp',
+        'teile',
+        'ui',
+        'screens',
+        'PartsListScreen.kt',
+      ),
+      'utf8',
+    ),
+  );
 
-  const reset  = src.indexOf('R.string.partslist_reset');
+  const reset = src.indexOf('R.string.partslist_reset');
   const bestand = src.indexOf('R.string.partslist_fill_owned');
-  const lose    = src.indexOf('R.string.partslist_only_loose');
+  const lose = src.indexOf('R.string.partslist_only_loose');
   assert.ok(reset >= 0 && bestand >= 0 && lose >= 0, 'Beschriftungen nicht gefunden — Bildschirm umgebaut?');
-  assert.ok(bestand > reset,
+  assert.ok(
+    bestand > reset,
     '„Mein Bestand" steht wieder VOR dem Reset-Knopf und damit in derselben ' +
-    'Werkzeug-Row. In der Webapp hat Marco genau das beanstandet.');
-  assert.ok(lose > bestand,
-    '„nur lose Teile" gehört neben den Bestand-Knopf, nicht davor.');
+      'Werkzeug-Row. In der Webapp hat Marco genau das beanstandet.',
+  );
+  assert.ok(lose > bestand, '„nur lose Teile" gehört neben den Bestand-Knopf, nicht davor.');
 });

@@ -31,7 +31,10 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
 
   const ausgang = await dienst.beginne(uid, schluessel, dienst.fingerabdruck(req.method, req.originalUrl, req.body));
   if (ausgang.art === 'anders') return sendeFehler(req, res, 422, 'idempotenz_schluessel_anders');
-  if (ausgang.art === 'laeuft') { res.set('Retry-After', '1'); return sendeFehler(req, res, 409, 'idempotenz_laeuft'); }
+  if (ausgang.art === 'laeuft') {
+    res.set('Retry-After', '1');
+    return sendeFehler(req, res, 409, 'idempotenz_laeuft');
+  }
   if (ausgang.art === 'nicht_wiederholbar') return sendeFehler(req, res, 409, 'idempotenz_nicht_wiederholbar');
   if (ausgang.art === 'wiederholung') {
     res.set('Idempotent-Replay', 'true');
@@ -43,14 +46,16 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
   const json = res.json.bind(res);
   res.json = (rumpf: unknown) => {
     gemerkt = true;
-    void dienst.beende(uid, schluessel, res.statusCode, geheim ? null : JSON.stringify(rumpf))
+    void dienst
+      .beende(uid, schluessel, res.statusCode, geheim ? null : JSON.stringify(rumpf))
       .catch((e: unknown) => meldeFehler('idempotenz:merken', e))
       .finally(() => json(rumpf));
     return res;
   };
   // Keine JSON-Antwort (Datei, Strom): nichts zu wiederholen, der Schlüssel wird frei.
   res.on('finish', () => {
-    if (!gemerkt) dienst.gibFrei(uid, schluessel, res.statusCode).catch((e: unknown) => meldeFehler('idempotenz:freigeben', e));
+    if (!gemerkt)
+      dienst.gibFrei(uid, schluessel, res.statusCode).catch((e: unknown) => meldeFehler('idempotenz:freigeben', e));
   });
   // Jede Transaktion der Route vermerkt ihre Wirkung am Schlüssel, im selben COMMIT.
   dienst.mitWirkungsVermerk(uid, schluessel, next);

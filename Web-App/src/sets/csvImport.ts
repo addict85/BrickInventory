@@ -37,7 +37,7 @@ function csvMenge(roh: string): number | null {
 
 /** Spaltennamen ohne Gross/klein und BOM. */
 export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen: number[] } {
-  let gelesen;
+  let gelesen: ReturnType<typeof csvEinlesen>;
   try {
     gelesen = csvEinlesen(text);
   } catch (e) {
@@ -59,32 +59,32 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
           .trim()
           .replace(/^\uFEFF/, '')
       ] = String(entschaerfungRueckgaengig(v) ?? '');
-    const rawSn = row.set_number || row['setnummer'] || row['set'] || Object.values(row)[0];
+    const rawSn = row.set_number || row.setnummer || row.set || Object.values(row)[0];
     const sn = rawSn ? vorDem(String(rawSn), ';').trim() : '';
     const leer = { sn, qty: 0, purchasePrice: null, condition: null, acquiredAt: null, ...(zeile ? { zeile } : {}) };
     if (!sn) {
       rows.push({ ...leer, fehler: { code: 'csv_keine_setnummer' } });
       continue;
     }
-    const mengeRoh = String(row.quantity ?? row['anzahl'] ?? row['qty'] ?? row['menge'] ?? '');
+    const mengeRoh = String(row.quantity ?? row.anzahl ?? row.qty ?? row.menge ?? '');
     const qty = csvMenge(mengeRoh);
     if (qty === null) {
       rows.push({ ...leer, fehler: { code: 'csv_menge_ungueltig', wert: mengeRoh.trim().slice(0, 20) } });
       continue;
     }
-    const rawPrice = row.purchase_price ?? row['kaufpreis'] ?? row['einkaufspreis'] ?? row['price'] ?? '';
+    const rawPrice = row.purchase_price ?? row.kaufpreis ?? row.einkaufspreis ?? row.price ?? '';
     const preis = String(rawPrice).trim() !== '' ? parseFloat(String(rawPrice).replace(',', '.')) : null;
-    const zustand = String(row.condition || row['zustand'] || row['kondition'] || '')
+    const zustand = String(row.condition || row.zustand || row.kondition || '')
       .trim()
       .toUpperCase();
     rows.push({
       sn,
       qty,
       ...(zeile ? { zeile } : {}),
-      purchasePrice: preis !== null && !isNaN(preis) ? preis : null,
+      purchasePrice: preis !== null && !Number.isNaN(preis) ? preis : null,
       condition: ['N', 'U'].includes(zustand) ? zustand : null,
       // 05.03.2026 ist der 5. März, nicht der 3. Mai.
-      acquiredAt: parseCsvDate(row.acquired_at || row['erfassungsdatum'] || row['datum']),
+      acquiredAt: parseCsvDate(row.acquired_at || row.erfassungsdatum || row.datum),
     });
   }
   return { rows, uebersprungen: gelesen.uebersprungen };
@@ -118,7 +118,7 @@ export async function setCsvImportStarten(sk: SetsKontext, userId: number, text:
     run_id: lauf,
   });
   try {
-    await stelleAuftragEin('csv_import', { user_id: userId, lauf, rows }, { userId, maxVersuche: 3 });
+    await stelleAuftragEin('csv_import', { user_id: userId, lauf, rows }, { userId, maxVersuche: 3 }, sk.auftraege);
   } catch (e) {
     await versuche(
       'csv-import:fehler vermerken',

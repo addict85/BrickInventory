@@ -17,8 +17,13 @@ export const PASSWORT_MAX_BYTE = 72;
 let liste: Set<string> | null = null;
 /** Mitgeliefert (haeufige-passwoerter.txt neben dieser Datei), ohne Netzabfrage. */
 function haeufige(): Set<string> {
-  liste ??= new Set(fs.readFileSync(path.join(__dirname, 'haeufige-passwoerter.txt'), 'utf8')
-    .split('\n').map(z => z.trim()).filter(z => z && !z.startsWith('#')));
+  liste ??= new Set(
+    fs
+      .readFileSync(path.join(__dirname, 'haeufige-passwoerter.txt'), 'utf8')
+      .split('\n')
+      .map(z => z.trim())
+      .filter(z => z && !z.startsWith('#')),
+  );
   return liste;
 }
 

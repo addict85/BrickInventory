@@ -20,7 +20,7 @@ export function drossleBeruehren<T extends Speicher<never>>(speicher: T, frist =
   if (!echt) return speicher;
 
   const zuletzt = new Map<string, number>();
-  speicher.touch = function (sid: string, sess: never, cb?: (err?: unknown) => void) {
+  speicher.touch = (sid: string, sess: never, cb?: (err?: unknown) => void) => {
     const jetzt = Date.now();
     const vorher = zuletzt.get(sid);
     if (vorher !== undefined && jetzt - vorher < frist) return cb?.();

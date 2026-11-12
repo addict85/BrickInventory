@@ -16,11 +16,16 @@ export function geheimnisseAusDateien(env: Umgebung): string[] {
   for (const name of DATEI_VARIABLEN) {
     const datei = env[`${name}_FILE`]?.trim();
     if (!datei) continue;
-    if (env[name]) { fehler.push(`${name} und ${name}_FILE sind beide gesetzt — nur eines davon`); continue; }
+    if (env[name]) {
+      fehler.push(`${name} und ${name}_FILE sind beide gesetzt — nur eines davon`);
+      continue;
+    }
     try {
       env[name] = readFileSync(datei, 'utf8').replace(/\r?\n$/, '');
       delete env[`${name}_FILE`];
-    } catch (e) { fehler.push(`${name}_FILE="${datei}" ist nicht lesbar (${(e as NodeJS.ErrnoException).code ?? e})`); }
+    } catch (e) {
+      fehler.push(`${name}_FILE="${datei}" ist nicht lesbar (${(e as NodeJS.ErrnoException).code ?? e})`);
+    }
   }
   return fehler;
 }
@@ -106,16 +111,57 @@ export class KonfigFehler extends Error {
 
 /** Jede Variable, die ladeKonfig liest; .env.example nennt sie alle (test/konfig.test.js). */
 export const VARIABLEN = [
-  'NODE_ENV', 'PORT', 'HSTS_MAX_AGE', 'TRUST_PROXY', 'SESSION_SECRET', 'COOKIE_SECURE',
-  'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'TOKEN_IDLE_DAYS', 'ROLLE',
-  'DATABASE_URL', 'PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGSSLMODE',
-  'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
-  'APP_BASE_URL', 'APP_BASE_URL_FEHLT_OK', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'DATA_KEY_ALT', 'DATA_KEY_ALT_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
-  'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
-  'BILD_CACHE_MAX_MB', 'BILD_ABRUFE_JE_MINUTE',
-  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'BCRYPT_ARBEITER', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
-  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', 'DB_SUPERUSER_ERLAUBT',
-  'ATTESTATION_WURZELN', 'GERAETESCHLUESSEL_ALT_BIS', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
+  'NODE_ENV',
+  'PORT',
+  'HSTS_MAX_AGE',
+  'TRUST_PROXY',
+  'SESSION_SECRET',
+  'COOKIE_SECURE',
+  'SESSION_IDLE_MINUTES',
+  'SESSION_MAX_HOURS',
+  'TOKEN_IDLE_DAYS',
+  'ROLLE',
+  'DATABASE_URL',
+  'PGHOST',
+  'PGPORT',
+  'PGUSER',
+  'PGPASSWORD',
+  'PGDATABASE',
+  'PGSSLMODE',
+  'PG_POOL_MAX',
+  'PG_POOL_MIN',
+  'PG_IDLE_MS',
+  'PG_CONN_MS',
+  'PG_STMT_MS',
+  'ADMIN_PASSWORD',
+  'APP_BASE_URL',
+  'APP_BASE_URL_FEHLT_OK',
+  'APP_ROOT',
+  'APP_VERSION',
+  'DATA_KEY',
+  'DATA_KEY_FILE',
+  'DATA_KEY_ALT',
+  'DATA_KEY_ALT_FILE',
+  'ERFASSUNG_ZEITZONE',
+  'TZ',
+  'PRICE_HISTORY_KEEP_DAYS',
+  'UPLOAD_KONTINGENT_MB',
+  'MAIL_KONSOLE_MIT_TOKEN',
+  'IMG_USER_AGENT',
+  'BILD_CACHE_MAX_MB',
+  'BILD_ABRUFE_JE_MINUTE',
+  'CSV_ZEILE_FRIST_MS',
+  'AUFTRAG_PARALLEL',
+  'BCRYPT_ARBEITER',
+  'AUFTRAG_FRIST_SEK',
+  'CA_ZERTIFIKAT',
+  'VERTRAG_PRUEFEN',
+  'PASSKEY_ANDROID_ZERTIFIKATE',
+  'PASSKEY_ANDROID_PAKET',
+  'DB_SUPERUSER_ERLAUBT',
+  'ATTESTATION_WURZELN',
+  'GERAETESCHLUESSEL_ALT_BIS',
+  ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
 ] as const;
 
 /** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
@@ -144,7 +190,10 @@ function zahl(env: Umgebung, name: string, vorgabe: number, fehler: string[]): n
   const roh = env[name]?.trim();
   if (roh === undefined || roh === '') return vorgabe;
   const n = Number(roh);
-  if (!Number.isFinite(n) || n <= 0) { fehler.push(`${name}="${roh}" ist keine positive Zahl`); return vorgabe; }
+  if (!Number.isFinite(n) || n <= 0) {
+    fehler.push(`${name}="${roh}" ist keine positive Zahl`);
+    return vorgabe;
+  }
   return n;
 }
 
@@ -165,7 +214,8 @@ function androidZertifikate(env: Umgebung, fehler: string[]): string[] {
   const liste = roh ? roh.split(/[\s,;]+/).filter(Boolean) : [];
   const hex = liste.map(f => f.replace(/:/g, '').toUpperCase());
   const falsch = liste.filter((_, i) => !/^[0-9A-F]{64}$/.test(hex[i] ?? ''));
-  if (falsch.length) fehler.push(`PASSKEY_ANDROID_ZERTIFIKATE: ${falsch.join(', ')} ist kein SHA-256-Fingerabdruck (64 Hex-Zeichen)`);
+  if (falsch.length)
+    fehler.push(`PASSKEY_ANDROID_ZERTIFIKATE: ${falsch.join(', ')} ist kein SHA-256-Fingerabdruck (64 Hex-Zeichen)`);
   return falsch.length ? [] : [...new Set(hex)];
 }
 
@@ -197,14 +247,22 @@ function altschluesselBis(env: Umgebung, fehler: string[]): Date {
 /** Sicher genug, um in eine Verbindungsoption eingesetzt zu werden. */
 export function zeitzoneGueltig(name: string): boolean {
   if (!/^[A-Za-z0-9_+\-/]+$/.test(name)) return false;
-  try { new Intl.DateTimeFormat('de', { timeZone: name }); return true; } catch { return false; }
+  try {
+    new Intl.DateTimeFormat('de', { timeZone: name });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Ausdrücklich gesetzt muss die Zone stimmen; TZ und Prozesszone sind nur
  * Rückfall und fallen bei einem Fremdwert auf UTC. */
 function zoneAus(env: Umgebung, fehler: string[]): string {
   let zone = env.ERFASSUNG_ZEITZONE?.trim() || '';
-  if (zone && !zeitzoneGueltig(zone)) { fehler.push(`ERFASSUNG_ZEITZONE="${zone}" ist keine bekannte Zeitzone`); zone = ''; }
+  if (zone && !zeitzoneGueltig(zone)) {
+    fehler.push(`ERFASSUNG_ZEITZONE="${zone}" ist keine bekannte Zeitzone`);
+    zone = '';
+  }
   if (!zone) zone = env.TZ?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   return zeitzoneGueltig(zone) ? zone : 'UTC';
 }
@@ -219,7 +277,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
 
   const basis = env.APP_BASE_URL?.trim().replace(/\/+$/, '') || null;
-  if (basis && !/^https?:\/\/[^/\s]+/i.test(basis)) f.push(`APP_BASE_URL="${env.APP_BASE_URL}" ist keine http(s)-Adresse`);
+  if (basis && !/^https?:\/\/[^/\s]+/i.test(basis))
+    f.push(`APP_BASE_URL="${env.APP_BASE_URL}" ist keine http(s)-Adresse`);
 
   const datenSchluessel = env.DATA_KEY?.trim() || '';
   if (datenSchluessel && Buffer.from(datenSchluessel, 'base64').length !== 32)
@@ -314,8 +373,9 @@ export function konfigNeuLesen(): Readonly<Konfig> {
 }
 
 export function pruefeKonfigBeimStart(): Konfig {
-  try { return konfig(); }
-  catch (e) {
+  try {
+    return konfig();
+  } catch (e) {
     if (!(e instanceof KonfigFehler)) throw e;
     console.error(`❌ ${e.message}\n   Siehe .env.example.`);
     process.exit(1);
@@ -328,9 +388,9 @@ export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
   geheimnisseAusDateien(env);
   if (env.DATABASE_URL) return { connectionString: env.DATABASE_URL };
   return {
-    host:     env.PGHOST     || 'postgres',
-    port:     parseInt(env.PGPORT || '5432'),
-    user:     env.PGUSER     || 'brickinventory',
+    host: env.PGHOST || 'postgres',
+    port: parseInt(env.PGPORT || '5432', 10),
+    user: env.PGUSER || 'brickinventory',
     password: env.PGPASSWORD || STANDARD_DB_PASSWORT,
     database: env.PGDATABASE || 'brickinventory',
   };
@@ -343,8 +403,11 @@ export const STANDARD_DB_PASSWORT = 'brickinventory_secret';
 export function standardPasswortInBenutzung(env: NodeJS.ProcessEnv = process.env): boolean {
   const v = datenbankVerbindung(env);
   if (!('connectionString' in v)) return v.password === STANDARD_DB_PASSWORT;
-  try { return decodeURIComponent(new URL(v.connectionString).password) === STANDARD_DB_PASSWORT; }
-  catch { return false; }
+  try {
+    return decodeURIComponent(new URL(v.connectionString).password) === STANDARD_DB_PASSWORT;
+  } catch {
+    return false;
+  }
 }
 
 /** Ein öffentlich bekanntes Datenbankpasswort oder ein TRUST_PROXY, der Clients
@@ -353,18 +416,31 @@ export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
   if (entwicklungsUmgebung(env)) return [];
   const gruende: string[] = [];
   if (standardPasswortInBenutzung(env))
-    gruende.push('[datenbank] Die Datenbank benutzt das Beispielpasswort „brickinventory_secret" aus compose.yaml — '
-      + 'Start verweigert. Ein eigenes setzen: in psql `ALTER USER brickinventory PASSWORD \'…\';` und denselben '
-      + 'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).');
-  try { proxyVertrauen(env.TRUST_PROXY); }
-  catch (e) { gruende.push(`[proxy] ${(e as Error).message} Start verweigert.`); }
+    gruende.push(
+      '[datenbank] Die Datenbank benutzt das Beispielpasswort „brickinventory_secret" aus compose.yaml — ' +
+        "Start verweigert. Ein eigenes setzen: in psql `ALTER USER brickinventory PASSWORD '…';` und denselben " +
+        'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).',
+    );
+  try {
+    proxyVertrauen(env.TRUST_PROXY);
+  } catch (e) {
+    gruende.push(`[proxy] ${(e as Error).message} Start verweigert.`);
+  }
   // Ohne die Adresse gibt es keinen Host-Filter gegen DNS-Rebinding; wer das will, sagt es ausdrücklich.
-  if (!env.APP_BASE_URL?.trim() && env.ROLLE?.trim().toLowerCase() !== 'jobs' && env.APP_BASE_URL_FEHLT_OK?.trim() !== '1')
-    gruende.push('[start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter gegen DNS-Rebinding wäre aus — Start verweigert. '
-      + 'In .env setzen (README.md); nur bewusst ohne: APP_BASE_URL_FEHLT_OK=1 (UPGRADE.md).');
+  if (
+    !env.APP_BASE_URL?.trim() &&
+    env.ROLLE?.trim().toLowerCase() !== 'jobs' &&
+    env.APP_BASE_URL_FEHLT_OK?.trim() !== '1'
+  )
+    gruende.push(
+      '[start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter gegen DNS-Rebinding wäre aus — Start verweigert. ' +
+        'In .env setzen (README.md); nur bewusst ohne: APP_BASE_URL_FEHLT_OK=1 (UPGRADE.md).',
+    );
   if (env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1')
-    gruende.push('[mail] MAIL_KONSOLE_MIT_TOKEN=1 schreibt Rücksetz- und Bestätigungslinks samt Token ins Protokoll — '
-      + 'im Betrieb Start verweigert. Nur auf einem Entwicklungsrechner setzen (NODE_ENV=development).');
+    gruende.push(
+      '[mail] MAIL_KONSOLE_MIT_TOKEN=1 schreibt Rücksetz- und Bestätigungslinks samt Token ins Protokoll — ' +
+        'im Betrieb Start verweigert. Nur auf einem Entwicklungsrechner setzen (NODE_ENV=development).',
+    );
   return gruende;
 }
 
@@ -373,15 +449,21 @@ export function startWarnungen(env: NodeJS.ProcessEnv = process.env): string[] {
   if (entwicklungsUmgebung(env)) return [];
   const w: string[] = [];
   if (schalter(env, 'COOKIE_SECURE', []) === false)
-    w.push('[start] COOKIE_SECURE=0: Das Sitzungs-Cookie geht auch über http, Passwort und Sitzung lesbar durchs Netz. '
-      + 'Nur ohne TLS gedacht (README.md, „Ohne HTTPS“).');
+    w.push(
+      '[start] COOKIE_SECURE=0: Das Sitzungs-Cookie geht auch über http, Passwort und Sitzung lesbar durchs Netz. ' +
+        'Nur ohne TLS gedacht (README.md, „Ohne HTTPS“).',
+    );
   if (env.HSTS_MAX_AGE?.trim() === '0')
-    w.push('[start] HSTS_MAX_AGE=0: Browser vergessen, dass der Server nur HTTPS spricht; ein Angreifer im Netz '
-      + 'kann die erste Anfrage auf http umlenken. Nur zum Rückbau von HTTPS gedacht (README.md).');
+    w.push(
+      '[start] HSTS_MAX_AGE=0: Browser vergessen, dass der Server nur HTTPS spricht; ein Angreifer im Netz ' +
+        'kann die erste Anfrage auf http umlenken. Nur zum Rückbau von HTTPS gedacht (README.md).',
+    );
   if (dbOhneTls(env))
-    w.push('[datenbank] Die Datenbank liegt auf einem anderen Rechner, die Verbindung prüft aber kein Zertifikat: '
-      + 'Passwort und Daten gehen ungeschützt durchs Netz. PGSSLMODE=verify-full setzen (bzw. sslmode=verify-full '
-      + 'in DATABASE_URL), README.md „Externe Datenbank“.');
+    w.push(
+      '[datenbank] Die Datenbank liegt auf einem anderen Rechner, die Verbindung prüft aber kein Zertifikat: ' +
+        'Passwort und Daten gehen ungeschützt durchs Netz. PGSSLMODE=verify-full setzen (bzw. sslmode=verify-full ' +
+        'in DATABASE_URL), README.md „Externe Datenbank“.',
+    );
   return w;
 }
 
@@ -389,13 +471,16 @@ export function startWarnungen(env: NodeJS.ProcessEnv = process.env): string[] {
  * Den vergibt Docker für Dienste und Container im eigenen Netz (`postgres`,
  * `db-brickinventory`); ein Rechner im LAN hat in der Regel einen Namen mit Domain. */
 function dbOhneTls(env: NodeJS.ProcessEnv): boolean {
-  let host = env.PGHOST?.trim() || 'postgres', modus = env.PGSSLMODE?.trim() || '';
+  let host = env.PGHOST?.trim() || 'postgres',
+    modus = env.PGSSLMODE?.trim() || '';
   if (env.DATABASE_URL) {
     try {
       const u = new URL(env.DATABASE_URL);
       host = u.hostname.replace(/^\[|\]$/g, '') || 'localhost';
       modus = u.searchParams.get('sslmode') || modus;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }
   const nah = ['127.0.0.1', '::1'].includes(host) || host.startsWith('/') || /^[a-z0-9_-]+$/i.test(host);
   return !nah && !/^verify-(ca|full)$/.test(modus);

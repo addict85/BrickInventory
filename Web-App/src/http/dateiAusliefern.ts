@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import type { Response } from 'express';
 
 /** Für hochgeladene Dateien: Was nur in den ersten Bytes geprüft ist, läuft so

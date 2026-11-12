@@ -1,29 +1,29 @@
 /** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
  * damit die Aufteilung der Dateien darunter frei bleibt. */
 export {
-  acquisitionMoveSource,
+  umzugsQuelle,
   asIds,
   beiHaushaltsaenderung,
   blickfeldAus,
-  householdStatus,
+  haushaltsStand,
   meldeHaushaltsaenderung,
-  resolveWriteTarget,
+  schreibzielOderNull,
   schreibbereichAus,
   schreibziel,
-  scopeIds,
-  withOwners,
-  writableIds,
+  blickfeldIds,
+  besitzerAnhaengen,
+  schreibbereich,
 } from './haushalt';
 export type { Blickfeld, BlickfeldEingabe, Schreiber, Sicht } from './haushalt';
 export {
   HAUSHALT_KANAL,
-  createInvite,
-  householdMembers,
+  einladungAnlegen,
+  haushaltsMitglieder,
   leereHaushaltCache,
   pruefeEinladung,
-  redeemInvite,
+  einladungEinloesen,
   siehtKonto,
-  unlink,
+  kontenTrennen,
   verwerfeGetrennt,
 } from './haushalt';
 export { erzeugeHaushalt } from './bereich';

@@ -11,17 +11,17 @@ import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.zustand.ui.Kontowerte
-import ch.brickinventoryapp.zustand.ui.Sitzung
+import ch.brickinventoryapp.sitzung.Kontowerte
+import ch.brickinventoryapp.sitzung.Sitzung
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import ch.brickinventoryapp.model.data.model.MeResponse
 import ch.brickinventoryapp.model.data.model.StartupStatus
 import ch.brickinventoryapp.model.data.model.User
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.Abmeldevorgang
-import ch.brickinventoryapp.zustand.ui.SitzungsDienst
-import ch.brickinventoryapp.zustand.ui.Vorwaermung
+import ch.brickinventoryapp.sitzung.Abmeldevorgang
+import ch.brickinventoryapp.sitzung.SitzungsDienst
+import ch.brickinventoryapp.sitzung.Vorwaermung
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -45,11 +45,11 @@ import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.SpeicherSitzungsablage
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.testing.text
+import ch.brickinventoryapp.model.ui.Meldung
 
 /**
  * Der SitzungsDienst ausgeführt: Abmelden bei 401 und zu alter Anmeldung,
@@ -121,7 +121,7 @@ class SitzungsDienstTest {
         }
         val dienst = SitzungsDienst(
             konto = konto, verwaltung = VerwaltungRepository(fake.api, t.cache), prefs = prefs, sessionExpired = abgelaufenSignal, rechte = rechte,
-            meldungen = t.meldungen, texte = NummernTexte, sitzung = sitzung, blickfeld = t.blickfeld,
+            meldungen = t.meldungen, sitzung = sitzung, blickfeld = t.blickfeld,
             abgleich = t.abgleich, zweiterFaktorPflicht = ZweiterFaktorPflicht(),
             abmeldevorgang = Abmeldevorgang {
                 abmeldungen++
@@ -271,7 +271,9 @@ class SitzungsDienstTest {
     fun `eine endgueltig gescheiterte Abmeldung am Server wird einmal gemeldet`() {
         ablage.gescheitert += "https://alt.example"
         mitVm {
-            assertEquals("t${R.string.abmeldung_gescheitert_text}", t.meldungen.text)
+            val m = t.meldungen.meldung.value as Meldung.Ressource
+            assertEquals(R.string.abmeldung_gescheitert_text, m.id)
+            assertTrue("der Server steht im Satz: ${m.werte}", m.werte.single().toString().contains("alt.example"))
             assertTrue(ablage.gescheitert.isEmpty())
         }
     }

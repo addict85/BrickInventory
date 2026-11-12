@@ -26,20 +26,26 @@ const { haeltSet, erfasse, katalogSet } = require('./helpers/bestand');
 const NAME = `guvwaehrung_${process.pid}`;
 const NR = { eur: `9${process.pid}1-1`, gemischt: `9${process.pid}2-1`, null: `9${process.pid}3-1` };
 
-test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
   const nummern = Object.values(NR);
   for (const nr of nummern) {
     await katalogSet(db, nr, { name: nr });
-    await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
-      VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`, [nr]);
+    await db.run(
+      `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
+      VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`,
+      [nr],
+    );
   }
   const mitWaehrung = async (nr, menge, preis, waehrung, am) => {
     await erfasse(db, uid, nr, menge, { preis, am });
-    await db.run(`UPDATE set_acquisitions SET currency = $1 WHERE id = (SELECT max(id) FROM set_acquisitions WHERE user_id = $2)`, [waehrung, uid]);
+    await db.run(
+      `UPDATE set_acquisitions SET currency = $1 WHERE id = (SELECT max(id) FROM set_acquisitions WHERE user_id = $2)`,
+      [waehrung, uid],
+    );
   };
   await haeltSet(db, uid, NR.eur, 0);
   await mitWaehrung(NR.eur, 2, 100, 'EUR');
@@ -57,7 +63,7 @@ test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async (t)
 
   const { computePnl } = _req('src/finanzen/financeCalc.js');
   const pnl = await computePnl(uid, [uid]);
-  const zeile = (nr) => pnl.sets.find(s => s.set_number === nr);
+  const zeile = nr => pnl.sets.find(s => s.set_number === nr);
   assert.equal(pnl.currency, 'CHF');
 
   await t.test('nur in EUR erfasst: Kaufpreis unbekannt', () => {

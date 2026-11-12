@@ -5,7 +5,7 @@
  * Feld abweist, erreicht den Server nicht. Angenommen werden muss jede …
  *
  * Gegenproben (am 28.10. gemessen):
- *   A  in doAddSet() (02-gallery.js) die Prüfung entfernt → rot: „abc wird abgewiesen“
+ *   A  in doAddSet() (gallery.js) die Prüfung entfernt → rot: „abc wird abgewiesen“
  *      und „falsche Formen werden abgewiesen“
  *   B  istSetnummer() ohne Buchstaben-Präfix (/^\d…/) → rot: „gültige Nummern gehen durch“ (llca30-1)
  *   C  feldFehler() ohne aria-invalid → rot: „abc wird abgewiesen“
@@ -16,7 +16,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { oeffneOberflaeche, takt } = require('./helpers/oberflaeche');
 
-const KORPUS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8')).faelle;
+const KORPUS = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'),
+).faelle;
 
 async function versuche(o, nummer) {
   const { d, w, aufrufe } = o;
@@ -50,7 +52,9 @@ test('abc wird abgewiesen, mit Meldung am Feld', async () => {
     const leer = await versuche(o, '   ');
     assert.equal(leer.gesendet, false);
     assert.match(leer.fehler, /Setnummer eingeben/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('falsche Formen werden abgewiesen', async () => {
@@ -60,7 +64,9 @@ test('falsche Formen werden abgewiesen', async () => {
       const r = await versuche(o, n);
       assert.equal(r.gesendet, false, `„${n}“ ging an den Server`);
     }
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('gültige Nummern gehen durch', async () => {
@@ -73,5 +79,7 @@ test('gültige Nummern gehen durch', async () => {
       assert.equal(r.gesendet, true, `„${n}“ wurde abgewiesen: ${r.fehler}`);
       assert.equal(r.fehler, '');
     }
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });

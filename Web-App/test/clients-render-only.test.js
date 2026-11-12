@@ -1,7 +1,7 @@
 /**
  * Beide Oberflächen rechnen keine Geldbeträge nach.
  *
- * Gegenproben (08.11.2026 gemessen): in 04-finance.js den Gesamtwert wieder
+ * Gegenproben (08.11.2026 gemessen): in finance.js den Gesamtwert wieder
  * selbst addieren (`const grandTotal = setsQtyAvg + extra`) → rot: „die
  * Webapp zeigt den Gesamtwert des Servers“. Dass der Server ihn liefert,
  * prüft geschenk-guv-db.test.js („der Gesamtwert kommt fertig …“, C).
@@ -41,21 +41,34 @@ test('die Webapp summiert keine Geldbeträge selbst', () => {
       if (!ERLAUBT.includes(eintrag)) treffer.push(eintrag);
     }
   }
-  assert.deepEqual(treffer, [],
-    'Die Oberfläche bildet eine Geldsumme selbst:\n  ' + treffer.join('\n  ') +
-    '\nDer Server liefert solche Summen fertig (total_value, totals.grand_total). ' +
-    'Zwei Rechenwege bedeuten zwei Ergebnisse, sobald sich die Regel ändert.');
+  assert.deepEqual(
+    treffer,
+    [],
+    'Die Oberfläche bildet eine Geldsumme selbst:\n  ' +
+      treffer.join('\n  ') +
+      '\nDer Server liefert solche Summen fertig (total_value, totals.grand_total). ' +
+      'Zwei Rechenwege bedeuten zwei Ergebnisse, sobald sich die Regel ändert.',
+  );
 });
 
 test('die Webapp zeigt den Gesamtwert des Servers', async () => {
   // Ohne Marktpreis bei den Posten trägt die Kopfzahl den Gesamtwert; der Server sagt 777,
   // die eigene Summe der Tabellen wäre 0.
   const { w, d } = await oeffneOberflaeche({
-    '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { purchase: '0', current: '777.00', grand_total: '777.00' } },
+    '/v1/finance/pnl': {
+      success: true,
+      currency: 'EUR',
+      sets: [],
+      totals: { purchase: '0', current: '777.00', grand_total: '777.00' },
+    },
   });
   try {
     await reiter(w, 'finance');
-    assert.ok(await warte(() => /777/.test(d.getElementById('portfolio-current')?.textContent || '')),
-      `Kopfzahl: ${d.getElementById('portfolio-current')?.textContent}`);
-  } finally { w.close(); }
+    assert.ok(
+      await warte(() => /777/.test(d.getElementById('portfolio-current')?.textContent || '')),
+      `Kopfzahl: ${d.getElementById('portfolio-current')?.textContent}`,
+    );
+  } finally {
+    w.close();
+  }
 });

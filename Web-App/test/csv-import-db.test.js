@@ -26,28 +26,31 @@
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { ROOT, buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db   = _req('db/database.js');
+const { keineDb } = require('./helpers/db');
+const db = _req('db/database.js');
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Katalog-Import tauscht, statt zu leeren', async (t) => {
+test('Katalog-Import tauscht, statt zu leeren', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
-    if (process.env.REQUIRE_DB === '1') {
-      throw new Error('REQUIRE_DB=1, aber die Test-Datenbank ist nicht erreichbar.');
-    }
-    t.skip('Test-DB nicht erreichbar — Suite übersprungen');
+    keineDb(t);
     return;
   }
 
@@ -57,7 +60,11 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
   // Und die MIGRATIONEN, nicht nur das Schema
   {
     const mc = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(mc);
+    } finally {
+      mc.release();
+    }
   }
 
   // Die Import-Tabellen legt der CSV-Abgleich selbst an.
@@ -77,8 +84,10 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
     await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans)
                   SELECT g, 'alt-' || g, 'FFFFFF', 'f' FROM generate_series(1, 300) g`);
 
-    csvSchreiben('colors.csv.tmp', ['id,name,rgb,is_trans']
-      .concat(Array.from({ length: 300 }, (_, i) => `${i + 1},neu-${i + 1},C91A09,f`)));
+    csvSchreiben(
+      'colors.csv.tmp',
+      ['id,name,rgb,is_trans'].concat(Array.from({ length: 300 }, (_, i) => `${i + 1},neu-${i + 1},C91A09,f`)),
+    );
 
     // Zweite Verbindung: zählt fortlaufend mit, während der Import läuft.
     const leser = await db.pool.connect();
@@ -100,8 +109,11 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
     leser.release();
 
     assert.equal(total, 300);
-    assert.notEqual(minimum, 0,
-      'ein Leser hat die Tabelle LEER gesehen — genau das Fenster, das der Umbau schliessen sollte');
+    assert.notEqual(
+      minimum,
+      0,
+      'ein Leser hat die Tabelle LEER gesehen — genau das Fenster, das der Umbau schliessen sollte',
+    );
     const jetzt = await db.get(`SELECT name FROM rb_colors WHERE id=1`);
     assert.equal(jetzt.name, 'neu-1', 'die neuen Daten sind nicht angekommen');
   });
@@ -112,8 +124,11 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
     csvSchreiben('colors.csv.tmp', ['id,name,rgb,is_trans']);
 
     const worker = _req('jobs/csvImportWorker.js');
-    await assert.rejects(() => worker.TASKS.colors(), /0 Zeilen/,
-      'ein abgebrochener Download hätte den Katalog gelöscht');
+    await assert.rejects(
+      () => worker.TASKS.colors(),
+      /0 Zeilen/,
+      'ein abgebrochener Download hätte den Katalog gelöscht',
+    );
     const übrig = await db.get('SELECT count(*)::int AS c FROM rb_colors');
     assert.equal(übrig.c, 1, 'der alte Bestand ist trotz Abbruch verschwunden');
   });
@@ -127,8 +142,10 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
     csvSchreiben('colors.csv.tmp', ['id,name,rgb,is_trans', '1,viel-zu-langer-name,C91A09,f']);
 
     const worker = _req('jobs/csvImportWorker.js');
-    await assert.rejects(() => worker.TASKS.colors(),
-      'ein abgewiesener Block wurde verschluckt — der Import meldet Erfolg mit fehlenden Zeilen');
+    await assert.rejects(
+      () => worker.TASKS.colors(),
+      'ein abgewiesener Block wurde verschluckt — der Import meldet Erfolg mit fehlenden Zeilen',
+    );
     const übrig = await db.get('SELECT count(*)::int AS c FROM rb_colors');
     assert.equal(übrig.c, 1, 'der alte Bestand ist trotz Abbruch verschwunden');
     await db.run(`ALTER TABLE rb_colors DROP CONSTRAINT rb_colors_name_kurz`);
@@ -139,7 +156,10 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
     const worker = _req('jobs/csvImportWorker.js');
     assert.equal(await worker.TASKS.inventories(), 3);
     const zeilen = await db.all('SELECT id, set_num FROM rb_inventories ORDER BY id');
-    assert.deepEqual(zeilen.map(z => z.set_num), ['75192-1', 'llca8-1', 'fig-000001']);
+    assert.deepEqual(
+      zeilen.map(z => z.set_num),
+      ['75192-1', 'llca8-1', 'fig-000001'],
+    );
   });
 
   await t.test('verdoppelte Anführungszeichen bleiben ein Anführungszeichen', async () => {
@@ -153,36 +173,77 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
 
   await t.test('rb_sets bildet den Dump nach: neu, geändert, mit Bezug, ohne Bezug', async () => {
     await db.run('DELETE FROM rb_sets');
-    const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ('csv-abgleich','x') RETURNING id`)).id;
+    const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ('csv-abgleich','x') RETURNING id`))
+      .id;
     await db.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, herkunft) VALUES
       ('1-1','A alt',2000,1,10,'csv'), ('2-1','Set 2-1',NULL,NULL,NULL,'api'), ('3-1','C',2001,1,10,'csv'),
       ('4-1','D',2002,1,10,'csv'), ('5-1','E',2003,1,10,'api'), ('6-1','F',2004,1,10,'api')`);
-    await db.run(`INSERT INTO set_catalog (set_number, image_local) SELECT set_num, '/images/sets/' || set_num || '.jpg' FROM rb_sets`);
+    await db.run(
+      `INSERT INTO set_catalog (set_number, image_local) SELECT set_num, '/images/sets/' || set_num || '.jpg' FROM rb_sets`,
+    );
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '3-1')`, [uid]);
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '5-1', 'N')`, [uid]);
-    csvSchreiben('sets.csv.tmp', ['set_num,name,year,theme_id,num_parts,img_url',
-      '1-1,A neu,2000,2,11,https://cdn/1.jpg', '2-1,B echt,2020,3,99,', '7-1,G,2024,1,7,']);
+    csvSchreiben('sets.csv.tmp', [
+      'set_num,name,year,theme_id,num_parts,img_url',
+      '1-1,A neu,2000,2,11,https://cdn/1.jpg',
+      '2-1,B echt,2020,3,99,',
+      '7-1,G,2024,1,7,',
+    ]);
     const worker = _req('jobs/csvImportWorker.js');
     assert.equal(await worker.TASKS.sets(), 3);
-    const zeilen = Object.fromEntries((await db.all(
-      `SELECT r.set_num, r.name, r.theme_id, r.num_parts, r.set_img_url, r.herkunft, (c.set_number IS NOT NULL) AS katalog
-         FROM rb_sets r LEFT JOIN set_catalog c ON c.set_number = r.set_num`)).map(z => [z.set_num, z]));
-    assert.deepEqual(zeilen['7-1'] && [zeilen['7-1'].herkunft, zeilen['7-1'].katalog], ['csv', true], 'neu: eingefügt, mit set_catalog');
-    assert.deepEqual(['1-1', '2-1'].map(n => zeilen[n] && [zeilen[n].name, zeilen[n].theme_id, zeilen[n].num_parts, zeilen[n].herkunft]),
-      [['A neu', 2, 11, 'csv'], ['B echt', 3, 99, 'csv']], 'geändert: aktualisiert, eine api-Zeile wird csv');
+    const zeilen = Object.fromEntries(
+      (
+        await db.all(
+          `SELECT r.set_num, r.name, r.theme_id, r.num_parts, r.set_img_url, r.herkunft, (c.set_number IS NOT NULL) AS katalog
+         FROM rb_sets r LEFT JOIN set_catalog c ON c.set_number = r.set_num`,
+        )
+      ).map(z => [z.set_num, z]),
+    );
+    assert.deepEqual(
+      zeilen['7-1'] && [zeilen['7-1'].herkunft, zeilen['7-1'].katalog],
+      ['csv', true],
+      'neu: eingefügt, mit set_catalog',
+    );
+    assert.deepEqual(
+      ['1-1', '2-1'].map(
+        n => zeilen[n] && [zeilen[n].name, zeilen[n].theme_id, zeilen[n].num_parts, zeilen[n].herkunft],
+      ),
+      [
+        ['A neu', 2, 11, 'csv'],
+        ['B echt', 3, 99, 'csv'],
+      ],
+      'geändert: aktualisiert, eine api-Zeile wird csv',
+    );
     assert.equal(zeilen['1-1'].set_img_url, 'https://cdn/1.jpg');
-    assert.deepEqual(['3-1', '5-1'].map(n => zeilen[n] && [zeilen[n].herkunft, zeilen[n].katalog]),
-      [['api', true], ['api', true]], 'mit Bezug (Bestand, Merkliste): bleibt als api');
-    assert.deepEqual(['4-1', '6-1'].filter(n => zeilen[n]), [], 'ohne Bezug: entfernt');
-    assert.equal((await db.get(`SELECT count(*)::int AS n FROM set_catalog WHERE set_number IN ('4-1','6-1')`)).n, 0,
-      'ohne Bezug: die set_catalog-Zeile geht mit');
+    assert.deepEqual(
+      ['3-1', '5-1'].map(n => zeilen[n] && [zeilen[n].herkunft, zeilen[n].katalog]),
+      [
+        ['api', true],
+        ['api', true],
+      ],
+      'mit Bezug (Bestand, Merkliste): bleibt als api',
+    );
+    assert.deepEqual(
+      ['4-1', '6-1'].filter(n => zeilen[n]),
+      [],
+      'ohne Bezug: entfernt',
+    );
+    assert.equal(
+      (await db.get(`SELECT count(*)::int AS n FROM set_catalog WHERE set_number IN ('4-1','6-1')`)).n,
+      0,
+      'ohne Bezug: die set_catalog-Zeile geht mit',
+    );
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
   });
 
   await t.test('nach dem Lauf bleibt keine Schattentabelle zurück', async () => {
     const rest = await db.all(
-      `SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename LIKE '%\\_import'`);
-    assert.deepEqual(rest.map(r => r.tablename), []);
+      `SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename LIKE '%\\_import'`,
+    );
+    assert.deepEqual(
+      rest.map(r => r.tablename),
+      [],
+    );
   });
 
   await db.pool.end().catch(() => {});
@@ -195,8 +256,9 @@ test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', (
   const aufruf = src.slice(src.indexOf('await oeffneHttps('), src.indexOf('});', src.indexOf('await oeffneHttps(')));
   for (const feld of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])
     assert.ok(aufruf.includes(feld), `der Download ruft oeffneHttps ohne ${feld}`);
-  assert.doesNotMatch(ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/csvAbgleich.ts'), 'utf8')),
-    /from 'https'/, 'der Job lädt nicht mehr selbst');
-
+  assert.doesNotMatch(
+    ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/csvAbgleich.ts'), 'utf8')),
+    /from 'https'/,
+    'der Job lädt nicht mehr selbst',
+  );
 });
-

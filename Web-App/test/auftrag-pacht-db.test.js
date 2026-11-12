@@ -26,9 +26,9 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 let downloadLaeuft = false;
 const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = _echtesRequire.apply(this, arguments);
-  if (name !== 'https') return m;
+Module.prototype.require = function (name, ...rest) {
+  const m = _echtesRequire.call(this, name, ...rest);
+  if (name.replace(/^node:/, '') !== 'https') return m;
   return {
     ...m,
     get: (_url, _opt, beiAntwort) => {

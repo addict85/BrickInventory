@@ -1,10 +1,9 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.api.ApiJson
-import ch.brickinventoryapp.data.api.BrickApiService
+import ch.brickinventoryapp.testing.BrickApiService
 import ch.brickinventoryapp.model.data.model.Preisalarm
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.repository.SetsRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -16,7 +15,7 @@ import retrofit2.http.PUT
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.ResponseCache
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.AlarmRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -41,8 +40,8 @@ class AlarmUebersichtTest {
         val pfade = PfadServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
         try {
             runBlocking {
-                SetsRepository(TestApi.fuer(pfade.server),
-                    ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-alarme") }).getAlleAlarme()
+                AlarmRepository(TestApi.fuer(pfade.server),
+                    ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-alarme") }).aktualisiereAlarme()
             }
             assertEquals(listOf("GET /api/v1/alerts"), pfade.anfragen.toList())
         } finally {
@@ -103,10 +102,8 @@ class AlarmUebersichtTest {
      * „Kommt man zurück soll man sich wieder an der gleichen Stelle befinden
      * (analog wie das bei den Finanzen der Fall ist)."
      *
-     * Der Rollzustand MUSS ausserhalb des Ziels liegen: Der Weg in die
-     * Detailansicht verwirft das Ziel, und ein rememberScrollState() darin
-     * waere bei der Rueckkehr zurueckgesetzt. Genau das ist in dieser Reihe
-     * schon dreimal passiert (Nachtraege 92 bis 95).
+     * Der Weg in die Detailansicht verwirft das Ziel; die Stelle muss darum im
+     * ScrollMemory liegen und beim Zurueckkommen ausdruecklich gesetzt werden.
      */
     @Test
     fun `die Einstellungen merken sich ihre Rollposition`() {
@@ -119,9 +116,9 @@ class AlarmUebersichtTest {
             "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
                 "springt zurueck."
         }
-        val nav = quelle("app/AppNavigation.kt")
-        assert(nav.contains("einstellungen = androidx.compose.foundation.rememberScrollState()")) {
-            "Der Zustand entsteht nicht oberhalb des NavHost — dort, wo er ueberlebt."
+        // Die Stelle haelt der ScrollMemory, nicht der Zustand: Er entsteht je Besuch neu.
+        assert(graph.contains("val settingsScrollState = remember { ScrollState(0) }")) {
+            "Die Einstellungen legen ihren Rollzustand nicht im Ziel an"
         }
         val screen = quelle("konto/ui/screens/SettingsScreen.kt")
         assert(!screen.contains("rememberScrollState()")) {

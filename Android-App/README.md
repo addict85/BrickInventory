@@ -106,17 +106,23 @@ Daneben misst der Job `gegenproben` die Patches unter `gegenproben/`: auf einem
 Push nur die betroffenen, nachts und von Hand alle. Die Test- und Lint-Berichte
 hängen als Artefakt am Lauf (auch bei rotem Lauf — gerade dann werden sie gebraucht).
 
-Die APK **nicht**: Sie wird als Anhang am Release `apk-neuste` abgelegt und
-ist damit direkt herunterladbar —
+Die APK **nicht**: Sie wird als Anhang an der Release ihres Etiketts abgelegt;
+der feste Link folgt immer der als „Latest“ markierten —
 
-<https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk>
+<https://github.com/addict85/BrickInventory/releases/latest/download/BrickInventory.apk>
+
+Bis zum 2.11.2026 lag sie im Release `apk-neuste`. Seit *Immutable releases*
+lässt sich dort kein Anhang mehr ersetzen; `apk-neuste` ist eingefroren. Ab dem
+ersten Etikett nach `android-v2026.11.12.1` gilt der Link oben (diese Release
+selbst trägt nur `BrickInventory-<versionCode>.apk`). Eine vorher installierte
+App fragt weiter bei `apk-neuste` und braucht das Update **einmal von Hand**.
 
 Der Grund steht ausführlich im Workflow: GitHub packt **jedes** Artefakt in ein
 Zip, auch eine einzelne Datei, und es gibt dagegen keinen Schalter (»There is
 currently no way to download artifacts in a format other than a Zip«, Anleitung
 von `actions/upload-artifact`). Ein Release-Anhang wird roh ausgeliefert,
-braucht kein GitHub-Konto und verfällt nicht nach 90 Tagen. Ersetzt wird er
-**nur** aus einem Etikett `android-v…`, dessen Commit auf `main` liegt — nicht
+braucht kein GitHub-Konto und verfällt nicht nach 90 Tagen. Angelegt wird eine
+Release **nur** aus einem Etikett `android-v…`, dessen Commit auf `main` liegt — nicht
 aus Zweigen, Pull-Requests oder jedem Push auf `main`.
 
 **Veröffentlichen:** auf dem gewünschten Stand von `main`
@@ -309,7 +315,10 @@ Geheimnis nur, wenn man sie dort auswählt.
 
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
 kennt einen anderen, ohne Ausnahme; was mehrere Bereiche zeigen, liegt im Kernmodul
-`core-ui-bestand` (`ModulgrenzenTest` prüft es an den Build-Dateien).
+`core-ui-bestand`. Die Regel steht einmal in
+`build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt`:
+Die Aufgabe `modulkantenPruefen` (an `check`, in der CI für alle Module) führt sie
+gegen die aufgelösten Kanten aus, `ModulgrenzenTest` gegen die Build-Dateien.
 
 Den gemeinsamen Android-Block setzen Konventions-Plugins aus `build-logic/`
 (ein eigener Gradle-Bau, eingebunden in `settings.gradle.kts`, Plugin-IDs im
@@ -320,7 +329,7 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | --- | --- |
 | `brickinventory.android.library` | `com.android.library`, compileSdk/minSdk aus `Sdk.kt`, Java und Kotlin 17 |
 | `brickinventory.android.application` | dasselbe für `com.android.application`, dazu targetSdk |
-| `brickinventory.android.unittests` | JVM-Tests: `isReturnDefaultValues`, voller Stack im Protokoll, Gruppe `unit-tests` |
+| `brickinventory.android.unittests` | JVM-Tests ohne `isReturnDefaultValues` (Android ohne Robolectric wirft), voller Stack im Protokoll, Gruppe `unit-tests` |
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
 | `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |
@@ -328,7 +337,7 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.jvm.library` | `org.jetbrains.kotlin.jvm`, Java und Kotlin 17, Testprotokoll, detekt — für `core-model` |
 
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
-des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
+des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
 `core-model` bleibt reines Kotlin (`brickinventory.jvm.library`).
 
@@ -344,7 +353,8 @@ des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 | `core-dienste` | `ch.brickinventoryapp.dienste` | CSV-Import und PDF-Export als Vordergrund-Dienste, stündlicher Preisalarm (WorkManager); hängt an `core-data` |
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine); kennt keine Ansichten und keine Servermodelle |
 | `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
-| `core-zustand` | `ch.brickinventoryapp.zustand` | Sitzung, Kontowerte, Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; ohne `core-ui` |
+| `core-sitzung` | `ch.brickinventoryapp.sitzung` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
+| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
 | `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
 | `feature-katalog` | `ch.brickinventoryapp.katalog` | Katalog und Katalog-Detail |
@@ -587,22 +597,22 @@ und signieren nicht, wenn ein Pflichtprüfer fehlt oder mehr als `main` zugelass
 Unter **Settings → General → Releases** *Immutable releases* einschalten: Der
 Anhang `BrickInventory-<versionCode>.apk` im Release jedes Etiketts ist das,
 worauf die signierte Beschreibung zeigt; er soll sich nach dem Veröffentlichen
-nicht mehr ändern lassen. Der Workflow ersetzt ihn ohnehin nie.
+nicht mehr ändern lassen. Der Workflow legt darum jede Release in **einem**
+`gh release create` mit allen Anhängen an (`BrickInventory-<versionCode>.apk`,
+`BrickInventory.apk`, `version-signiert.json`) und markiert sie als „Latest“;
+danach ändert er nichts mehr an ihr.
 
 Dazu ein **Tag-Ruleset** (Settings → Rules → Rulesets → New tag ruleset) für
 `refs/tags/android-v*`: Anlegen, Ändern und Löschen nur für Administratoren
 (Bypass-Liste), *Restrict updates* und *Restrict deletions* an. Ein Etikett
 lässt sich sonst von jedem mit Schreibrecht setzen oder umhängen; der Workflow
-signiert ohnehin nur Commits, die auf `main` liegen. Dasselbe Ruleset auch für
-`refs/tags/apk-neuste` (*Restrict deletions*, *Restrict updates*).
+signiert ohnehin nur Commits, die auf `main` liegen. `refs/tags/apk-neuste` bleibt
+im Ruleset (*Restrict deletions*, *Restrict updates*): Es schützt das eingefrorene
+Etikett, nach dem ältere installierte Fassungen noch fragen.
 
-Das Release `apk-neuste` muss veränderlich bleiben (der Workflow ersetzt dort
-APK und Beschreibung); *Immutable releases* gilt nur für Releases, die nach dem
-Einschalten veröffentlicht werden, und schützt es darum nicht. Umgekehrt darf
-es bei eingeschalteter Einstellung nie gelöscht werden: Neu angelegt wäre es
-unveränderlich, und jedes weitere Hochladen scheiterte. Gegen ein
-Zurückhalten dort wirkt die Frist der Beschreibung (unten). Wer `contents:
-write` hat, kann Anhänge ersetzen: Schreibrecht nur an wenige Personen,
+Wer `contents: write` hat, kann eine ältere Release wieder als „Latest“ markieren
+und so ein Update zurückhalten; dagegen wirkt die Frist der Beschreibung (unten).
+Schreibrecht darum nur an wenige Personen,
 Zwei-Faktor-Pflicht für die Organisation und fein granulierte Token mit
 Ablaufdatum statt klassischer PATs mit `repo`-Scope.
 
@@ -644,8 +654,8 @@ die der Signierweg ausgab.
 
 ### Release-Zertifikat und Fassung
 
-**Vor einer Neuinstallation prüfen** (der feste Link `apk-neuste` kann von jedem mit
-Schreibrecht ersetzt werden; ein Update prüft die App selbst): Das Release-APK ist
+**Vor einer Neuinstallation prüfen** (wohin der feste Link `releases/latest` zeigt,
+kann jeder mit Schreibrecht ändern; ein Update prüft die App selbst): Das Release-APK ist
 mit dem Zertifikat
 
     SHA-256 a51ff2f425d94b6f31a06b7805013cc801791b28e58404dc26c7c8298380af06
@@ -667,15 +677,18 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
   signiert mit einem Wegwerfschlüssel und muss genau an dieser Prüfung
   scheitern; so läuft sie bei jedem Bau.
 - **Fassung:** Der versionCode muss über dem der veröffentlichten
-  Beschreibung liegen (gleich nur für denselben Commit); gelesen wird die
-  signierte, `version.json` nur, solange `apk-neuste` noch keine trägt. Ein Etikett auf einem
-  älteren Commit von `main` wird so nicht zum „neusten APK“. Der Job `release`
-  prüft dasselbe unmittelbar vor dem Hochladen noch einmal; zwei Etiketten
-  laufen dort nacheinander (`concurrency: apk-neuste`).
+  Beschreibung liegen (gleich nur für denselben Commit); gelesen wird
+  `version-signiert.json` der als „Latest“ markierten Release. Trägt diese keine
+  (die Fassungen bis `android-v2026.11.12.1`), gilt übergangsweise der eingefrorene
+  Stand von `apk-neuste`. Ein Etikett auf einem älteren Commit von `main` wird so
+  nicht zum „neusten APK“. Der Job `release` prüft dasselbe unmittelbar vor dem
+  Anlegen noch einmal; zwei Etiketten laufen dort nacheinander
+  (`concurrency: android-release-neuste`).
 
 ### Signierte Beschreibung, Prüfsumme des Baus
 
-- **`version-signiert.json`** (im Release `apk-neuste`): Der Job *APK signieren*
+- **`version-signiert.json`** (in der Release jedes Etiketts; die App liest sie über
+  `releases/latest/download/`): Der Job *APK signieren*
   schreibt versionCode, versionName, Commit, die Adresse des
   Fassungsanhangs, Grösse und SHA-256 des APK und signiert das zweimal
   (`openssl dgst -sha256`): mit dem eigenen **Beschreibungsschlüssel**
@@ -688,16 +701,15 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
   (30 Tage, Sekunden seit 1970, UTC). Die App merkt sich den höchsten gesehenen
   versionCode und den spätesten Ausstellungszeitpunkt. Eine ältere oder
   abgelaufene Beschreibung meldet sie in den Einstellungen („veraltet oder
-  manipuliert“) statt „aktuell“; ein Zurückhalten durch erneutes Hochladen einer
-  alten Datei bleibt so nicht mehr still. **Auffrischen:** Spätestens alle 30
+  manipuliert“) statt „aktuell“; ein Zurückhalten, etwa indem eine ältere Release
+  wieder „Latest“ wird, bleibt so nicht mehr still. **Auffrischen:** Spätestens alle 30
   Tage ein neues Etikett `android-v…` setzen, notfalls auf denselben Commit von
   `main`. Gleicher versionCode und Commit gelten dabei als Wiederholung, die App
   bietet nichts an und sieht nur die neue Frist.
-- **`version.json` (unsigniert):** Nur noch bis zum Stichtag 01.02.2027 für
-  Fassungen vor sec8 N4, die die signierte Beschreibung nicht kennen; danach
-  löscht der Job `release` den Anhang. Ohne sie blieben diese Geräte ohne
-  Meldung auf ihrer Fassung; mit ihr holen sie sich einmal die neue und lesen
-  ab dann die signierte.
+- **`version.json` (unsigniert):** Liegt nur noch im eingefrorenen `apk-neuste`
+  (Stand 2.11.2026) für Fassungen vor sec8 N4; neue Releases tragen sie nicht,
+  denn keine App liest sie unter `releases/latest`. Diese Geräte brauchen das
+  Update einmal von Hand.
 - **Prüfsumme des Baus:** Der Baujob misst das unsignierte APK und Bundle gleich
   nach `assembleRelease`, bevor Lint und weitere Gradle-Läufe Projektcode
   ausführen; signiert werden nur genau diese Bytes (bezeugt vom Job *Übergabe an das Signieren*).

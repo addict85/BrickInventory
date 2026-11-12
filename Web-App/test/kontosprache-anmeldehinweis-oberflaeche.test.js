@@ -19,7 +19,8 @@ const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
 test('Bauliste in Kontosprache', async () => {
   const { w, d } = await oeffneOberflaeche({
-    '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'en', rebrickable_api_key: 'probe' } } });
+    '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'en', rebrickable_api_key: 'probe' } },
+  });
   try {
     await reiter(w, 'partslist');
     await warte(() => d.documentElement.lang === 'en');
@@ -27,7 +28,9 @@ test('Bauliste in Kontosprache', async () => {
     const leer = text(d.querySelector('#pl-sets .leer'));
     assert.doesNotMatch(leer, /Noch keine|Setnummer/, `deutsch: ${leer}`);
     assert.match(leer, /set/i);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 async function anmelden(antwort) {
@@ -41,15 +44,30 @@ async function anmelden(antwort) {
 }
 
 test('Anmeldung: falsches Passwort ohne Bestätigungslink', async () => {
-  const { w, d } = await anmelden({ $status: 401, success: false, code: 'anmeldedaten_ungueltig', error: 'Benutzername oder Passwort falsch' });
+  const { w, d } = await anmelden({
+    $status: 401,
+    success: false,
+    code: 'anmeldedaten_ungueltig',
+    error: 'Benutzername oder Passwort falsch',
+  });
   try {
     assert.equal(d.querySelector('#lerr [data-click="bestaetigungErneut"]'), null);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Anmeldung: Adresse nicht bestätigt mit Bestätigungslink', async () => {
-  const { w, d } = await anmelden({ $status: 403, success: false, code: 'email_nicht_bestaetigt', unverified: true, error: 'E-Mail-Adresse noch nicht bestätigt' });
+  const { w, d } = await anmelden({
+    $status: 403,
+    success: false,
+    code: 'email_nicht_bestaetigt',
+    unverified: true,
+    error: 'E-Mail-Adresse noch nicht bestätigt',
+  });
   try {
     assert.ok(d.querySelector('#lerr [data-click="bestaetigungErneut"]'));
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

@@ -10,7 +10,20 @@ const path = require('node:path');
 const { routerEinhaengungen } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 // Je Bereich eine Datei (data/api/); geprüft wird der ganze Ordner.
-const SERVICE = path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api');
+const SERVICE = path.join(
+  __dirname,
+  '..',
+  '..',
+  'Android-App',
+  'core-data',
+  'src',
+  'main',
+  'java',
+  'ch',
+  'brickinventoryapp',
+  'data',
+  'api',
+);
 const { apiQuelltext } = require('../scripts/kotlin-vertrag.js');
 
 function ohneKommentare(src) {
@@ -23,9 +36,7 @@ function ohneKommentare(src) {
  * Platzhalters. Ein umbenannter Parameter ist keine Abweichung.
  */
 function form(p) {
-  return ('/' + p.trim().replace(/^\/+|\/+$/g, ''))
-    .replace(/\{[^}]+\}/g, ':X')
-    .replace(/:[A-Za-z_]\w*/g, ':X');
+  return ('/' + p.trim().replace(/^\/+|\/+$/g, '')).replace(/\{[^}]+\}/g, ':X').replace(/:[A-Za-z_]\w*/g, ':X');
 }
 
 /** Alle `router.<verb>('<pfad>'` einer Datei, mit Mountpunkt davor. */
@@ -41,8 +52,7 @@ function serverRouten() {
   const alle = new Set();
   // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
   // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
-  for (const r of routerEinhaengungen())
-    for (const x of routenAus(r.datei, r.mount)) alle.add(x);
+  for (const r of routerEinhaengungen()) for (const x of routenAus(r.datei, r.mount)) alle.add(x);
 
   const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {
@@ -67,16 +77,22 @@ test('jede Adresse der Android-App existiert auf dem Server', () => {
 
   const server = serverRouten();
   const kt = ohneKommentare(apiQuelltext(SERVICE));
-  const aufrufe = [...kt.matchAll(/@(GET|POST|PUT|DELETE|PATCH)\(\s*"([^"]+)"\s*\)/g)]
-    .map(m => ({ roh: `${m[1]} ${m[2]}`, norm: `${m[1]} ${form(m[2])}` }));
+  const aufrufe = [...kt.matchAll(/@(GET|POST|PUT|DELETE|PATCH)\(\s*"([^"]+)"\s*\)/g)].map(m => ({
+    roh: `${m[1]} ${m[2]}`,
+    norm: `${m[1]} ${form(m[2])}`,
+  }));
 
   assert.ok(server.size >= 120, `Nur ${server.size} Server-Routen gefunden — Muster veraltet?`);
   assert.ok(aufrufe.length >= 60, `Nur ${aufrufe.length} Retrofit-Aufrufe gefunden — Muster veraltet?`);
 
   const fehlend = [...new Set(aufrufe.filter(a => !server.has(a.norm)).map(a => a.roh))].sort();
-  assert.deepEqual(fehlend, [],
-    'Diese Adressen ruft die App auf, der Server hat sie nicht:\n  ' + fehlend.join('\n  ') +
-    '\nEntweder die Route ist gelöscht worden und die Deklaration blieb stehen ' +
-    '(dann streichen), oder sie fehlt auf dem Server (dann nachziehen). Beides ' +
-    'endet sonst zur Laufzeit in einem 404, den man im eigenen Code sucht.');
+  assert.deepEqual(
+    fehlend,
+    [],
+    'Diese Adressen ruft die App auf, der Server hat sie nicht:\n  ' +
+      fehlend.join('\n  ') +
+      '\nEntweder die Route ist gelöscht worden und die Deklaration blieb stehen ' +
+      '(dann streichen), oder sie fehlt auf dem Server (dann nachziehen). Beides ' +
+      'endet sonst zur Laufzeit in einem 404, den man im eigenen Code sucht.',
+  );
 });

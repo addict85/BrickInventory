@@ -28,10 +28,10 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 /** Geheimnisse, die in keiner Antwort im Klartext stehen dürfen. */
 const GEHEIM = {
   bricklink_consumer_secret: 'GEHEIM-bl-cs-4711',
-  bricklink_token_secret:    'GEHEIM-bl-ts-4712',
-  brickset_api_key:          'GEHEIM-bs-key-4713',
-  rebrickable_api_key:       'GEHEIM-rb-key-4714',
-  smtp_pass:                 'GEHEIM-smtp-4715',
+  bricklink_token_secret: 'GEHEIM-bl-ts-4712',
+  brickset_api_key: 'GEHEIM-bs-key-4713',
+  rebrickable_api_key: 'GEHEIM-rb-key-4714',
+  smtp_pass: 'GEHEIM-smtp-4715',
 };
 
 /** Keine Geheimnisse, aber nur für den Verwalter. */
@@ -45,40 +45,53 @@ const VERWALTUNG = {
  * Leserouten, die global_settings ausliefern — GESUCHT, nicht aufgezählt.
  */
 const AUSGENOMMEN = new Map([
-  ['/', 'Die Sicht der App: nur die Felder aus APP_FELDER (Währung, Zustand, ' +
-        'Cache-Dauer), keine globalen Schlüssel.'],
+  [
+    '/',
+    'Die Sicht der App: nur die Felder aus APP_FELDER (Währung, Zustand, ' + 'Cache-Dauer), keine globalen Schlüssel.',
+  ],
   ['/default-condition', 'Gibt genau einen Wert heraus (den globalen Standard-Zustand).'],
   ['/user/default-condition', 'Gibt genau einen Wert heraus (den Zustand des Kontos).'],
   ['/household', 'Konten des Haushalts und offene Einladungen, keine Einstellungen.'],
-  ['/export', 'Die Konfigurations-Sicherung lässt Geheimnisse ganz weg statt sie ' +
-              'zu maskieren; für Nicht-Verwalter enthält sie gar keine globalen ' +
-              'Werte (test/einstellungen-pruefung-db.test.js).'],
-  ['/export/data', 'ZIP mit Sets/Teilen/Minifiguren als CSV — enthält gar keine ' +
-                   'Einstellungen und liefert kein JSON.'],
+  [
+    '/export',
+    'Die Konfigurations-Sicherung lässt Geheimnisse ganz weg statt sie ' +
+      'zu maskieren; für Nicht-Verwalter enthält sie gar keine globalen ' +
+      'Werte (test/einstellungen-pruefung-db.test.js).',
+  ],
+  [
+    '/export/data',
+    'ZIP mit Sets/Teilen/Minifiguren als CSV — enthält gar keine ' + 'Einstellungen und liefert kein JSON.',
+  ],
   ['/tls', 'Gibt den öffentlichen Fingerabdruck der CA heraus, keine Einstellungen.'],
-  ['/theme', 'Gibt genau einen Wert heraus (den Designnamen) und ist bewusst ' +
-             'ohne Login erreichbar, damit der Login-Bildschirm passt.'],
-  ['/tokens', 'Listet App-Token, keine Einstellungen. Die Token selbst stehen ' +
-              'nur als Hash in der Datenbank.'],
-  ['/einrichtung', 'Stand des Einrichtungs-Assistenten: je Quelle nur ja/nein, ' +
-                   'keine Werte, und nur für Verwalter. Dass kein Schlüssel ' +
-                   'herauskommt, prüft test/einrichtung-db.test.js.'],
+  [
+    '/theme',
+    'Gibt genau einen Wert heraus (den Designnamen) und ist bewusst ' +
+      'ohne Login erreichbar, damit der Login-Bildschirm passt.',
+  ],
+  ['/tokens', 'Listet App-Token, keine Einstellungen. Die Token selbst stehen ' + 'nur als Hash in der Datenbank.'],
+  [
+    '/einrichtung',
+    'Stand des Einrichtungs-Assistenten: je Quelle nur ja/nein, ' +
+      'keine Werte, und nur für Verwalter. Dass kein Schlüssel ' +
+      'herauskommt, prüft test/einrichtung-db.test.js.',
+  ],
 ]);
 
 function leserouten() {
-  const quelle = require('node:fs').readFileSync(
-    require('node:path').join(__dirname, '..', 'routes/api_v1/settings.ts'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const quelle = require('node:fs')
+    .readFileSync(require('node:path').join(__dirname, '..', 'routes/api_v1/settings.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
   const gefunden = [...quelle.matchAll(/router\.get\(\s*'\/settings([^']*)'/g)].map(m => m[1] || '/');
   // Selbstbeweis: Griffe das Muster nicht, wäre die Liste leer und der Test
   // grün, ohne eine einzige Route angesehen zu haben.
-  assert.ok(gefunden.length >= 4,
-    `Nur ${gefunden.length} GET-Routen in routes/api_v1/settings.ts gefunden — Muster veraltet?`);
+  assert.ok(
+    gefunden.length >= 4,
+    `Nur ${gefunden.length} GET-Routen in routes/api_v1/settings.ts gefunden — Muster veraltet?`,
+  );
   const veraltet = [...AUSGENOMMEN.keys()].filter(p => !gefunden.includes(p));
-  assert.deepEqual(veraltet, [],
-    'Diese Ausnahmen beschreiben keine Route mehr — streichen: ' + veraltet.join(', '));
-  return gefunden.filter(p => !AUSGENOMMEN.has(p))
-                 .map(p => '/api/v1/settings' + (p === '/' ? '' : p));
+  assert.deepEqual(veraltet, [], 'Diese Ausnahmen beschreiben keine Route mehr — streichen: ' + veraltet.join(', '));
+  return gefunden.filter(p => !AUSGENOMMEN.has(p)).map(p => '/api/v1/settings' + (p === '/' ? '' : p));
 }
 
 /** Alle Zeichenketten einer Antwort — egal wie tief verpackt. */
@@ -89,8 +102,8 @@ function alleWerte(x, out = []) {
   return out;
 }
 
-test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
   const NUTZER = `sec-user-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
@@ -100,13 +113,16 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
   const vorher = {};
   for (const [k, v] of Object.entries({ ...GEHEIM, ...VERWALTUNG })) {
     vorher[k] = (await db.get(`SELECT value FROM global_settings WHERE key=$1`, [k]))?.value ?? null;
-    await db.run(`INSERT INTO global_settings (key,value) VALUES ($1,$2)
-                  ON CONFLICT (key) DO UPDATE SET value=$2`, [k, v]);
+    await db.run(
+      `INSERT INTO global_settings (key,value) VALUES ($1,$2)
+                  ON CONFLICT (key) DO UPDATE SET value=$2`,
+      [k, v],
+    );
   }
   // Wie der Start: Klartext in der Tabelle wird vor der ersten Anfrage verschlüsselt.
   await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
 
-  const appFuer = (isAdmin) => {
+  const appFuer = isAdmin => {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
@@ -116,9 +132,9 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
     app.use('/api/v1', _req('routes/api_v1/settings.js'));
     return app;
   };
-  const srvUser  = appFuer(false).listen(0);
+  const srvUser = appFuer(false).listen(0);
   const srvAdmin = appFuer(true).listen(0);
-  const baseUser  = `http://localhost:${srvUser.address().port}`;
+  const baseUser = `http://localhost:${srvUser.address().port}`;
   const baseAdmin = `http://localhost:${srvAdmin.address().port}`;
 
   const hol = async (base, pfad) => {
@@ -132,8 +148,7 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
       // 1. Ein Konto OHNE Adminrechte darf die Schlüssel gar nicht sehen.
       const alsNutzer = await hol(baseUser, pfad);
       for (const [k, v] of Object.entries(GEHEIM)) {
-        assert.ok(!alsNutzer.includes(v),
-          `${pfad}: ein Konto ohne Adminrechte bekommt ${k} im Klartext`);
+        assert.ok(!alsNutzer.includes(v), `${pfad}: ein Konto ohne Adminrechte bekommt ${k} im Klartext`);
       }
 
       for (const [k, v] of Object.entries(VERWALTUNG)) {
@@ -144,14 +159,15 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
       //    Browser-Speicher, wo jede XSS-Lücke sie mitnimmt.
       const alsAdmin = await hol(baseAdmin, pfad);
       for (const [k, v] of Object.entries(GEHEIM)) {
-        assert.ok(!alsAdmin.includes(v),
-          `${pfad}: auch ein Admin darf ${k} nur maskiert bekommen`);
+        assert.ok(!alsAdmin.includes(v), `${pfad}: auch ein Admin darf ${k} nur maskiert bekommen`);
       }
       // Gegenrichtung: Die Maske muss überhaupt ankommen, sonst kann das
       // Formular „gesetzt" nicht von „nicht gesetzt" unterscheiden — ein Test,
       // der nur das Fehlen prüft, wäre auch bei einer leeren Antwort grün.
-      assert.ok(alsAdmin.some(s => s.includes('\u2022'.repeat(12))),
-        `${pfad}: der Admin muss die maskierte Fassung sehen`);
+      assert.ok(
+        alsAdmin.some(s => s.includes('\u2022'.repeat(12))),
+        `${pfad}: der Admin muss die maskierte Fassung sehen`,
+      );
       // Nicht einmal das Ende des Werts: Es verkürzt das Raten.
       for (const [k, v] of Object.entries(GEHEIM))
         assert.ok(!alsAdmin.some(s => s.includes(v.slice(-4))), `${pfad}: die Maske von ${k} verrät „${v.slice(-4)}"`);

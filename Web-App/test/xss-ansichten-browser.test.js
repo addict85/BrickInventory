@@ -3,9 +3,9 @@
  * durch die Hauptansichten gerendert, im echten Chrome.
  *
  * Gegenproben (gemessen):
- *   A  im Kachelnamen der Sammlung (02-gallery.js) den Namen in ungeprueft()
+ *   A  im Kachelnamen der Sammlung (gallery.js) den Namen in ungeprueft()
  *      gesetzt (vor dem Umbau: esc() entfernt) → rot: „Sammlung“ mit img[onerror]
- *   B  im Lagerortfeld (05-lagerorte.js) esc() entfernt (vor dem Umbau) → rot:
+ *   B  im Lagerortfeld (lagerorte.js) esc() entfernt (vor dem Umbau) → rot:
  *      „Lagerorte“
  *
  * Ohne Chrome (CHROME_BIN) wird übersprungen; Voraussetzung: Test-DB.
@@ -27,24 +27,40 @@ const PRUEFE = `(() => {
     || [...document.querySelectorAll('input')].some(i => i.getClientRects().length && i.value.includes('<img src=x onerror')) };
 })()`;
 
-test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, timeout: 300_000 }, async (t) => {
+test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await starteApp(t, {
     name: `xss_${process.pid}`,
     bestand: async (db, uid) => {
-      const ort = (await db.get('INSERT INTO storage_locations (user_id, name) VALUES ($1, $2) RETURNING id', [uid, `${SPUR} ${N}`])).id;
-      for (const [nr, was] of [['99901-1', 'Set'], ['99902-1', 'Wunsch']])
+      const ort = (
+        await db.get('INSERT INTO storage_locations (user_id, name) VALUES ($1, $2) RETURNING id', [
+          uid,
+          `${SPUR} ${N}`,
+        ])
+      ).id;
+      for (const [nr, was] of [
+        ['99901-1', 'Set'],
+        ['99902-1', 'Wunsch'],
+      ])
         await katalogSet(db, nr, { name: `${SPUR} ${was} ${N}`, theme: `${SPUR} Thema ${N}`, year: 2020, pieces: 100 });
       await haeltSet(db, uid, '99901-1', 1, { preis: 10 });
       await db.run('UPDATE sets SET storage_id = $1 WHERE user_id = $2 AND set_number = $3', [ort, uid, '99901-1']);
-      await db.run(`INSERT INTO teil_eigen (user_id, part_number, part_name, category_name) VALUES ($1, 'xss1', $2, $3)`,
-        [uid, `${SPUR} Teil ${N}`, `${SPUR} Kategorie ${N}`]);
+      await db.run(
+        `INSERT INTO teil_eigen (user_id, part_number, part_name, category_name) VALUES ($1, 'xss1', $2, $3)`,
+        [uid, `${SPUR} Teil ${N}`, `${SPUR} Kategorie ${N}`],
+      );
       await haeltTeil(db, uid, 'xss1', { storageId: ort, preis: 1 });
-      await db.run(`INSERT INTO figur_eigen (user_id, fig_number, fig_name) VALUES ($1, 'fig-xss1', $2)`, [uid, `${SPUR} Figur ${N}`]);
+      await db.run(`INSERT INTO figur_eigen (user_id, fig_number, fig_name) VALUES ($1, 'fig-xss1', $2)`, [
+        uid,
+        `${SPUR} Figur ${N}`,
+      ]);
       await haeltFigur(db, uid, 'fig-xss1', { storageId: ort, preis: 1 });
       await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '99902-1', 'N')`, [uid]);
     },
   });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
@@ -61,13 +77,25 @@ test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, time
       assert.ok(r.alsText, `${name}: Nutzlast steht nicht als Text da — prüft der Test noch etwas?`);
     });
   };
-  await ansicht('Sammlung', '#/sammlung', `document.querySelector('#gallery')?.innerText.includes(${JSON.stringify(SPUR + ' Set')})`);
-  await ansicht('Set-Detail', '#/sammlung/set/99901-1', `document.querySelector('#set-modal.open')?.innerText.includes(${JSON.stringify(SPUR)})`);
+  await ansicht(
+    'Sammlung',
+    '#/sammlung',
+    `document.querySelector('#gallery')?.innerText.includes(${JSON.stringify(SPUR + ' Set')})`,
+  );
+  await ansicht(
+    'Set-Detail',
+    '#/sammlung/set/99901-1',
+    `document.querySelector('#set-modal.open')?.innerText.includes(${JSON.stringify(SPUR)})`,
+  );
   await b.auswerten(`document.querySelector('#set-modal.open [data-click="closeModal"]')?.click(); true`);
   await ansicht('Teile', '#/teile');
   await ansicht('Figuren', '#/minifiguren');
   await ansicht('Merkliste', '#/merkliste');
   await ansicht('Finanzen', '#/finanzen');
   // Die Orte stehen hier in Eingabefeldern (umbenennen); der Name ist dann ein value, kein Text.
-  await ansicht('Lagerorte', '#/lagerorte', `[...document.querySelectorAll('.lager-eingabe')].some(i => i.value.includes(${JSON.stringify(SPUR)}))`);
+  await ansicht(
+    'Lagerorte',
+    '#/lagerorte',
+    `[...document.querySelectorAll('.lager-eingabe')].some(i => i.value.includes(${JSON.stringify(SPUR)}))`,
+  );
 });

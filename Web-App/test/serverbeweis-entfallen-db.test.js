@@ -22,19 +22,25 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
-test('POST /api/v1/auth/serverbeweis gibt es nicht mehr', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('POST /api/v1/auth/serverbeweis gibt es nicht mehr', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.session = req.get('x-probe-angemeldet') ? { userId: 1, mussPasswortAendern: false } : {}; next(); });
+  app.use((req, _res, next) => {
+    req.session = req.get('x-probe-angemeldet') ? { userId: 1, mussPasswortAendern: false } : {};
+    next();
+  });
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1/auth', _req('routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const frage = (kopf = {}) => fetch(`http://127.0.0.1:${srv.address().port}/api/v1/auth/serverbeweis`, {
-    method: 'POST', headers: { 'content-type': 'application/json', ...kopf },
-    body: JSON.stringify({ kennung: '0123456789abcdef', nonce: 'ab'.repeat(16) }) }).then(r => r.status);
+  const frage = (kopf = {}) =>
+    fetch(`http://127.0.0.1:${srv.address().port}/api/v1/auth/serverbeweis`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...kopf },
+      body: JSON.stringify({ kennung: '0123456789abcdef', nonce: 'ab'.repeat(16) }),
+    }).then(r => r.status);
 
   await t.test('ohne Anmeldung 401', async () => assert.equal(await frage(), 401));
   await t.test('angemeldet 404', async () => assert.equal(await frage({ 'x-probe-angemeldet': '1' }), 404));

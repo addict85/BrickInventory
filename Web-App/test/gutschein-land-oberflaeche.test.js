@@ -15,18 +15,30 @@ const { landFuerWaehrung } = _req('src/gutscheine/gutscheinGuthaben.js');
 const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
 
 test('Server: Land zur Kontowährung', () => {
-  assert.deepEqual(['CHF', 'EUR', 'GBP', 'USD', 'JPY'].map(landFuerWaehrung), ['de-CH', 'de-DE', 'en-GB', 'en-US', 'de-CH']);
+  assert.deepEqual(['CHF', 'EUR', 'GBP', 'USD', 'JPY'].map(landFuerWaehrung), [
+    'de-CH',
+    'de-DE',
+    'en-GB',
+    'en-US',
+    'de-CH',
+  ]);
 });
 
 test('EUR-Konto ohne gespeichertes Land: Deutschland, kein Abweichungshinweis', async () => {
   const { w, d } = await oeffneOberflaeche({
     '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe' } },
-    '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '6123456789012', pin: '', amount: 50, currency: 'EUR', hat_pdf: false }] } });
+    '/v1/vouchers': {
+      success: true,
+      vouchers: [{ id: 3, number: '6123456789012', pin: '', amount: 50, currency: 'EUR', hat_pdf: false }],
+    },
+  });
   try {
     await sicht(w, 'gutscheine');
     await warte(() => d.querySelector('.voucher-row'));
     assert.equal(d.getElementById('gutschein-land').value, 'de-DE', 'EUR-Konto');
     assert.equal(d.querySelector('.voucher-abweichung'), null);
     assert.equal(d.getElementById('v-currency').value, 'EUR');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

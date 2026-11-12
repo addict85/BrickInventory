@@ -375,7 +375,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // Der frühere Zweig erhöhte bei einer heutigen Erfassung NUR die Menge. Ein
   // heute dazugekauftes Exemplar zum aktuellen Marktpreis verschwand damit im
   // alten Stückpreis — die Zeile zeigte zwei Stück zum Preis des ersten.
-  const src = require('./helpers/sources').setKernQuelle();
+  const src = require('./helpers/sources').kompakt(require('./helpers/sources').setKernQuelle());
   const fn = src.slice(
     src.indexOf('async function adjustAcquisitionsToQuantity'),
     src.indexOf('async function schreibeInLetzteErfassung'),
@@ -395,7 +395,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // in offener Transaktion hielte Sperre und Verbindung).
   assert.match(
     fn,
-    /pricePlan \?\? await priceForNewAcquisition\(sk, userId, setNumber, dbh\)/,
+    /pricePlan \?\? \(?await priceForNewAcquisition\(sk, userId, setNumber, dbh\)/,
     'Ein vorab ermittelter Preis muss durchgereicht werden können',
   );
   // Ziel der Mengenänderung ist seit einer früheren Runde das EIGENE Konto (`uid`) und

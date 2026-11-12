@@ -30,25 +30,40 @@ function runner(dateien, mehr = {}) {
   delete env.TEST_NACHLAUF;
   Object.assign(env, mehr);
   // Ohne Datenbank und nicht als Kind dieses Testlaufs: sonst schriebe node --test anders.
-  for (const k of ['TEST_DATABASE_URL', 'TEST_DB_VORLAGE', 'TEST_DB_BASIS', 'TEST_DB_EIGEN', 'NODE_TEST_CONTEXT']) delete env[k];
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-lauf.js'), ...dateien],
-    { cwd: ROOT, env, encoding: 'utf8', timeout: 120_000 });
+  for (const k of ['TEST_DATABASE_URL', 'TEST_DB_VORLAGE', 'TEST_DB_BASIS', 'TEST_DB_EIGEN', 'NODE_TEST_CONTEXT'])
+    delete env[k];
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-lauf.js'), ...dateien], {
+    cwd: ROOT,
+    env,
+    encoding: 'utf8',
+    timeout: 120_000,
+  });
   return { code: r.status, aus: r.stdout + r.stderr };
 }
 
-test('Frist und Nachlauf im Runner', { concurrency: 1, timeout: 240_000 }, async (t) => {
+test('Frist und Nachlauf im Runner', { concurrency: 1, timeout: 240_000 }, async t => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'test-lauf-frist-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const marke = path.join(ordner, 'schon-gelaufen');
-  const datei = (name, rumpf) => { const p = path.join(ordner, name); fs.writeFileSync(p, `const test = require('node:test');\n${rumpf}\n`); return p; };
+  const datei = (name, rumpf) => {
+    const p = path.join(ordner, name);
+    fs.writeFileSync(p, `const test = require('node:test');\n${rumpf}\n`);
+    return p;
+  };
   // Erst 8 s, dann 3 s: über der Frist (3 s), unter der doppelten — wie unter fremder Last.
-  const langsam = datei('langsam.test.js', `const fs = require('node:fs');
+  const langsam = datei(
+    'langsam.test.js',
+    `const fs = require('node:fs');
 test('braucht erst 8 s, dann 3 s', async () => {
   const erstes = !fs.existsSync(${JSON.stringify(marke)});
   fs.writeFileSync(${JSON.stringify(marke)}, '1');
   await new Promise(r => setTimeout(r, erstes ? 8000 : 3000));
-});`);
-  const immerLangsam = datei('immer-langsam.test.js', `test('braucht immer 9 s', () => new Promise(r => setTimeout(r, 9000)));`);
+});`,
+  );
+  const immerLangsam = datei(
+    'immer-langsam.test.js',
+    `test('braucht immer 9 s', () => new Promise(r => setTimeout(r, 9000)));`,
+  );
   const kaputt = datei('kaputt.test.js', `test('scheitert', () => { throw new Error('echter Fehler'); });`);
 
   await t.test('unter Last zu langsam, einzeln grün: der Lauf ist grün', () => {

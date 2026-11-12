@@ -205,9 +205,9 @@ jobs:
     environment: release
     runs-on: ubuntu-24.04
     # Zwei Etiketten zugleich: Sonst prüften beide gegen dieselbe alte Fassung,
-    # und das ältere könnte nach dem neueren hochladen.
+    # und das ältere könnte nach dem neueren als „Latest“ erscheinen.
     concurrency:
-      group: apk-neuste
+      group: android-release-neuste
       cancel-in-progress: false
     permissions:
       contents: write
@@ -239,8 +239,9 @@ jobs:
             "$BESCHREIBUNG_SOLL" "$A/version-signiert.json" "$AAB_SOLL" "$A/bundle/release/app-release.aab" | sha256sum -c -
 
       # Ein Release-Anhang statt eines Artefakts: Artefakte liefert GitHub nur als
-      # Zip, ein Anhang kommt roh, ohne Konto und ohne Verfall. Die Datei hinter dem
-      # festen Etikett wird ersetzt, damit der Link bleibt.
+      # Zip, ein Anhang kommt roh, ohne Konto und ohne Verfall. Releases sind
+      # unveränderlich („Immutable releases“): Alles kommt beim Anlegen mit, und der
+      # feste Link folgt über /releases/latest/ der als „Latest“ markierten Fassung.
       - name: BrickInventory.apk als Release bereitstellen
         env:
           GH_TOKEN: ${{ github.token }}
@@ -248,23 +249,12 @@ jobs:
           COMMIT: ${{ needs.etikett.outputs.commit }}
         run: |
           set -euo pipefail
-          ETIKETT=apk-neuste
           APK=app/build/outputs/apk/release/BrickInventory.apk
-          LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT/BrickInventory.apk"
+          BESCHREIBUNG=app/build/outputs/version-signiert.json
+          LINK="https://github.com/$GITHUB_REPOSITORY/releases/latest/download/BrickInventory.apk"
           # Neuinstallationen prüfen gegen den festgenagelten Wert (sec17 B-N9), nicht gegen GitHub.
           ZERT=$(grep -Eo '^[0-9a-f]{64}' tools/release-zertifikat.sha256 | head -1)
-          TEXT="Gebaut aus dem Etikett \`$QUELLE\` ($COMMIT) am $(date -u '+%d.%m.%Y %H:%M UTC').
 
-          Signierzertifikat SHA-256: \`$ZERT\`
-          Vor einer Neuinstallation prüfen: apksigner verify --print-certs BrickInventory.apk
-          (die Zeile „certificate SHA-256 digest“ muss genau diesen Wert zeigen).
-          Herkunft prüfen: gh attestation verify BrickInventory.apk --repo $GITHUB_REPOSITORY --signer-workflow $GITHUB_REPOSITORY/.github/workflows/android-bescheinigung.yml
-
-          Direkter Download (immer die neuste Fassung, kein Zip):
-          $LINK"
-
-          # Vor dem Hochladen, nicht danach: Die Werte bestimmen, ob überhaupt
-          # hochgeladen wird.
           META=app/build/outputs/apk/release/output-metadata.json
           if [ ! -f "$META" ]; then
             echo "::error::$META fehlt — ohne die Werte von AGP koennte hier nur geraten werden."
@@ -282,84 +272,76 @@ jobs:
           fi
 
           # Dieselbe Regel wie im Job apk-pruefen (tools/release-pruefen.py fassung),
-          # hier unter der concurrency-Gruppe unmittelbar vor dem Hochladen. Ohne
+          # hier unter der concurrency-Gruppe unmittelbar vor dem Anlegen. Ohne
           # Werkzeug aus dem Repository: Dieser Job hat Schreibrecht.
-          if gh release view "$ETIKETT" >/dev/null 2>&1; then
-            if gh release download "$ETIKETT" -p version-signiert.json -O "$RUNNER_TEMP/alt-signiert.json"; then
-              jq -r .daten "$RUNNER_TEMP/alt-signiert.json" | base64 -d > "$RUNNER_TEMP/version-alt.json"
-            else
-              gh release download "$ETIKETT" -p version.json -O "$RUNNER_TEMP/version-alt.json"
-            fi
-            ALT_CODE=$(jq -r '.versionCode' "$RUNNER_TEMP/version-alt.json")
-            ALT_COMMIT=$(jq -r '.commit' "$RUNNER_TEMP/version-alt.json")
+          if ! NEUSTE=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name) || [ -z "$NEUSTE" ]; then
+            echo "::error::Die als „Latest“ markierte Release liess sich nicht lesen. Nichts wird veröffentlicht."
+            exit 1
+          fi
+          # Übergang: Die Fassungen bis android-v2026.11.12.1 tragen keine Beschreibung;
+          # dann gilt der eingefrorene Stand von apk-neuste.
+          ALT="$RUNNER_TEMP/version-alt.json"
+          if gh release download "$NEUSTE" -p version-signiert.json -O "$RUNNER_TEMP/alt.json" --clobber ||
+             gh release download apk-neuste -p version-signiert.json -O "$RUNNER_TEMP/alt.json" --clobber; then
+            jq -r .daten "$RUNNER_TEMP/alt.json" | base64 -d > "$ALT"
+          elif ! gh release download apk-neuste -p version.json -O "$ALT" --clobber; then
+            ALT=
+          fi
+          if [ -n "$ALT" ]; then
+            ALT_CODE=$(jq -r '.versionCode' "$ALT")
+            ALT_COMMIT=$(jq -r '.commit' "$ALT")
             if ! printf '%s' "$ALT_CODE" | grep -Eq '^[0-9]+$' || [ "$V_CODE" -lt "$ALT_CODE" ] ||
                { [ "$V_CODE" -eq "$ALT_CODE" ] && [ "$ALT_COMMIT" != "$COMMIT" ]; }; then
               echo "::error::versionCode $V_CODE folgt nicht auf das veröffentlichte $ALT_CODE ($ALT_COMMIT). Nichts wird veröffentlicht."
               exit 1
             fi
           fi
-          # Unveränderlich je Fassung: Die signierte Beschreibung zeigt auf
-          # BrickInventory-<versionCode>.apk im Release des Etiketts. Der Anhang wird
-          # nie ersetzt; ein erneuter Lauf vergleicht nur („Immutable releases“, README).
+
+          # Die signierte Beschreibung zeigt auf BrickInventory-<versionCode>.apk;
+          # BrickInventory.apk ist dieselbe Datei unter dem Namen des festen Links.
           FASSUNG="BrickInventory-${V_CODE}.apk"
           cp "$APK" "$RUNNER_TEMP/$FASSUNG"
-          # Mit dem Anhang in einem Schritt: Eine veröffentlichte Release nimmt keinen Anhang mehr an.
+          TEXT="Gebaut aus dem Etikett \`$QUELLE\` ($COMMIT), Fassung $V_CODE, am $(date -u '+%d.%m.%Y %H:%M UTC').
+
+          Signierzertifikat SHA-256: \`$ZERT\`
+          Vor einer Neuinstallation prüfen: apksigner verify --print-certs BrickInventory.apk
+          (die Zeile „certificate SHA-256 digest“ muss genau diesen Wert zeigen).
+          Herkunft prüfen: gh attestation verify BrickInventory.apk --repo $GITHUB_REPOSITORY --signer-workflow $GITHUB_REPOSITORY/.github/workflows/android-bescheinigung.yml
+
+          Direkter Download (immer die neuste Fassung, kein Zip):
+          $LINK"
           if ! gh release view "$QUELLE" >/dev/null 2>&1; then
-            gh release create "$QUELLE" "$RUNNER_TEMP/$FASSUNG" --verify-tag --latest=false \
-              --title "BrickInventory $V_NAME" --notes "Fassung $V_CODE aus $COMMIT. $LINK zeigt immer auf die neuste."
-          elif gh release view "$QUELLE" --json assets --jq '.assets[].name' | grep -qxF "$FASSUNG"; then
-            gh release download "$QUELLE" -p "$FASSUNG" -O "$RUNNER_TEMP/vorhanden.apk"
-            if ! cmp -s "$RUNNER_TEMP/vorhanden.apk" "$APK"; then
-              echo "::error::$QUELLE trägt schon ein anderes $FASSUNG; ein Fassungsanhang wird nie ersetzt."
+            gh release create "$QUELLE" "$RUNNER_TEMP/$FASSUNG" "$APK" "$BESCHREIBUNG" \
+              --verify-tag --latest --title "BrickInventory $V_NAME" --notes "$TEXT"
+            DRAUSSEN_BESCHREIBUNG="$BESCHREIBUNG"
+          else
+            # Wiederholter Lauf: Die Release nimmt nichts mehr an, verglichen wird nur.
+            # Die Beschreibung trägt je Lauf eine neue Signatur; sie muss nur dastehen.
+            for NAME in "$FASSUNG" BrickInventory.apk; do
+              if ! gh release download "$QUELLE" -p "$NAME" -O "$RUNNER_TEMP/vorhanden-$NAME" ||
+                 ! cmp -s "$RUNNER_TEMP/vorhanden-$NAME" "$APK"; then
+                echo "::error::$QUELLE trägt kein oder ein anderes $NAME; eine unveränderliche Release nimmt keinen Anhang an. Ein neues Etikett setzen, nur das Etikett, keine Release."
+                exit 1
+              fi
+            done
+            DRAUSSEN_BESCHREIBUNG="$RUNNER_TEMP/vorhanden-signiert.json"
+            if ! gh release download "$QUELLE" -p version-signiert.json -O "$DRAUSSEN_BESCHREIBUNG"; then
+              echo "::error::$QUELLE trägt keine version-signiert.json; ohne sie findet keine App das Update. Ein neues Etikett setzen."
               exit 1
             fi
-          else
-            echo "::error::Zu $QUELLE gibt es schon eine Release ohne $FASSUNG (von Hand angelegt?). Sie ist unveränderlich und nimmt keinen Anhang an: ein neues Etikett setzen, nur das Etikett, keine Release."
-            exit 1
-          fi
-          # Erst wenn die Fassung steht, zeigt der stabile Zeiger auf sie.
-          if gh release view "$ETIKETT" >/dev/null 2>&1; then
-            gh release edit "$ETIKETT" --notes "$TEXT"
-          else
-            gh release create "$ETIKETT" --title "BrickInventory — neustes APK" --notes "$TEXT"
           fi
 
-          # Der stabile Link für Neuinstallationen: Hier darf ersetzt werden, die App
-          # lädt ihre Updates vom Fassungsanhang oben.
-          gh release upload "$ETIKETT" "$APK" --clobber
-          # Signiert im Job signieren; ersetzt wird nur der Zeiger auf die neuste.
-          gh release upload "$ETIKETT" app/build/outputs/version-signiert.json --clobber
-
-          # version.json nur bis zum Stichtag: unsigniert und ohne Frist, sie hält
-          # alte Fassungen still fest. Sie bleibt, damit Geräte vor der signierten
-          # Beschreibung das nächste Update noch finden; `commit` ist nur Herkunft.
-          if [ "$(date -u +%Y%m%d)" -lt 20270201 ]; then
-            jq -n --argjson code "$V_CODE" --arg name "$V_NAME" \
-                  --arg commit "$COMMIT" --arg url "$LINK" \
-                  --argjson size "$(stat -c%s "$APK")" \
-                  '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size}' \
-                  > version.json
-            gh release upload "$ETIKETT" version.json --clobber
-            # Zurückfragen statt `gh` zu glauben: Halbes JSON meldete auf alten Geräten einen Fehler.
-            ZURUECK=$(gh release view "$ETIKETT" --json assets \
-              --jq '.assets[] | select(.name=="version.json") | .size')
-            if [ "$ZURUECK" != "$(stat -c%s version.json)" ]; then
-              echo "::error::version.json unvollstaendig hochgeladen ($ZURUECK Bytes draussen)."
-              exit 1
-            fi
-          elif gh release view "$ETIKETT" --json assets --jq '.assets[].name' | grep -xF version.json >/dev/null; then
-            gh release delete-asset "$ETIKETT" version.json --yes
-          fi
-
-          # Nicht der Ausgabe von `gh` glauben, sondern den Anhang zurückfragen: Ein
+          # Nicht der Ausgabe von `gh` glauben, sondern jeden Anhang zurückfragen: Ein
           # abgebrochener Upload liefert sonst einen Link auf ein halbes APK.
-          LOKAL=$(stat -c%s "$APK")
-          DRAUSSEN=$(gh release view "$ETIKETT" --json assets \
-            --jq '.assets[] | select(.name=="BrickInventory.apk") | .size')
-          if [ "$DRAUSSEN" != "$LOKAL" ]; then
-            echo "::error::Das Release meldet $DRAUSSEN Bytes, lokal sind es $LOKAL. Anhang unvollstaendig."
-            exit 1
-          fi
+          for PAAR in "$FASSUNG=$APK" "BrickInventory.apk=$APK" "version-signiert.json=$DRAUSSEN_BESCHREIBUNG"; do
+            NAME=${PAAR%%=*}; LOKAL=$(stat -c%s "${PAAR#*=}")
+            DRAUSSEN=$(gh release view "$QUELLE" --json assets \
+              --jq ".assets[] | select(.name==\"$NAME\") | .size")
+            if [ "$DRAUSSEN" != "$LOKAL" ]; then
+              echo "::error::$QUELLE meldet für $NAME $DRAUSSEN Bytes, lokal sind es $LOKAL. Anhang unvollstaendig; ein neues Etikett setzen."
+              exit 1
+            fi
+          done
 
           {
             echo "## APK zum direkten Herunterladen"
@@ -368,9 +350,10 @@ jobs:
             echo ""
             echo "| | |"
             echo "| --- | --- |"
-            echo "| Groesse | $LOKAL Bytes |"
+            echo "| Groesse | $(stat -c%s "$APK") Bytes |"
+            echo "| Fassung | $V_CODE ($V_NAME) |"
             echo "| Gebaut aus | \`$QUELLE\` ($COMMIT) |"
             echo ""
-            echo "> Kein Zip: Ein Release-Anhang wird roh ausgeliefert. Der Link"
-            echo "> bleibt ueber alle Builds derselbe und braucht kein GitHub-Konto."
+            echo "> Kein Zip: Ein Release-Anhang wird roh ausgeliefert. Der Link folgt"
+            echo "> der als „Latest“ markierten Release und braucht kein GitHub-Konto."
           } >> "$GITHUB_STEP_SUMMARY"
