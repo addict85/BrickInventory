@@ -74,7 +74,7 @@ internal object Alarmabholung {
     fun text(a: Preisalarm, unter: String, ueber: String, zahlen: Locale): String {
         val richtung = if (a.richtung == Alarmrichtung.UNTER) unter else ueber
         val format = NumberFormat.getCurrencyInstance(zahlen).apply {
-            runCatching { currency = Currency.getInstance(a.currencyCode) }
+            runCatching { currency = Currency.getInstance(a.currencyCode.code) }
             minimumFractionDigits = 2
             maximumFractionDigits = 2
         }

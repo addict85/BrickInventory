@@ -12,6 +12,6 @@ diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste
          val richtung = if (a.richtung == Alarmrichtung.UNTER) unter else ueber
 -        val format = NumberFormat.getCurrencyInstance(zahlen).apply {
 +        val format = NumberFormat.getCurrencyInstance(Locale.US).apply {
-             runCatching { currency = Currency.getInstance(a.currencyCode) }
+             runCatching { currency = Currency.getInstance(a.currencyCode.code) }
              minimumFractionDigits = 2
              maximumFractionDigits = 2
