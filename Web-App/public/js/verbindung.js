@@ -103,6 +103,7 @@ export const SCHREIBENDE_AKTIONEN = new Set([
   'manAcqSave',
   'manQtyChange',
   'manQtySave',
+  'mengeJeKonto',
   'merkpostenDetailLoeschen',
   'merkpostenDetailUebernehmen',
   'merkpostenHinzufuegen',

@@ -143,7 +143,10 @@ export async function schreibeZurueck(
 }
 
 export async function hatSetZeile(tx: DbSchnittstelle, userId: number, nummer: string): Promise<boolean> {
-  return !!(await tx.get('SELECT 1 FROM sets WHERE user_id = $1 AND set_number = $2', [userId, nummer]));
+  return !!(await tx.get<{ da: number }>('SELECT 1 AS da FROM sets WHERE user_id = $1 AND set_number = $2', [
+    userId,
+    nummer,
+  ]));
 }
 
 /** Erst die Herkunftszeile (gekürzt, nicht gelöscht), dann eine Zeile mit demselben Schlüssel des

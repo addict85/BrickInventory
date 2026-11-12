@@ -1470,6 +1470,16 @@ p.mon-leise{margin:0 0 .35rem}
 #set-modal .menge-knopf{font-size:var(--fs-4);padding:0 10px;line-height:1}
 #set-modal .menge-feld{flex:0 0 auto;width:5em}
 .menge-feld{width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:4px;font-weight:600;background:var(--sur);color:var(--txt)}
+/* Menge im Haushalt: je Konto eine Zeile mit eigenem Regler, darunter die Summe. */
+.menge-regler{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.menge-konten{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.menge-konto{display:flex;align-items:center;gap:6px}
+.menge-name{color:var(--mut);font-size:var(--fs-2);min-width:4em;text-align:right}
+.menge-zahl{min-width:2em;text-align:center;font-weight:600}
+.menge-gesamt{font-size:var(--fs-1);color:var(--mut)}
+/* „Gespeichert ✓“ am Feld (meldeAmFeld); leer nimmt es keinen Platz. */
+.feld-status{font-size:var(--fs-1);color:var(--gewinn,var(--g700));font-weight:600}
+.feld-status:empty{display:none}
 input.alarm-feld[inputmode=decimal]{width:7.5em}
 #set-modal .mehr-liste{flex-wrap:wrap}
 

@@ -8,7 +8,8 @@ import { api } from './api.js';
 import { fullUrl, setzeDialogbild, PLATZHALTER_SET } from './bilder.js';
 import { G, ico, aktiverReiter, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld } from './format.js';
-import { toast, verwirfToasts } from './meldungen.js';
+import { meldeAmFeld, toast, verwirfToasts } from './meldungen.js';
+import { geloeschtMitRueckgaengig } from './papierkorb.js';
 import { alarmBlock, closeModal, ladeAlarm, ladeOrtAuswahl, lagerortBlock, setzeAlarmFeld } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { delSet, loadGallery, loadStats, reimportParts } from './gallery.js';
@@ -24,6 +25,76 @@ import { kurzfassung, renderAcquisitionSummary } from './kaufpreis-anzeige.js';
 // acquisition_ids.
 let _detailLauf = 0;
 
+/** Konten, für die dieses Konto schreiben darf (Server: haushaltsMitglieder); null = noch nicht geladen.
+ * @type {number[] | null} */
+let _schreibbar = null;
+
+/** Im Haushalt: Gehört das Set (auch) einem anderen Konto? @param {import('../../frontend-typen/vertrag').SetItem | null} set */
+const imHaushalt = set => (set?.owners || []).some(o => !ME || o.id !== ME.id);
+
+/** Ein Name für die Oberfläche: das eigene Konto heisst „ich“. @param {{ id: number, username: string }} o */
+const kontoName = o => (ME && o.id === ME.id ? tRaw('detail.ich') : o.username);
+
+/**
+ * Menge je Konto aus den Erfassungen; das eigene Konto zuerst. Im Haushalt hat jedes Konto seinen Regler: Eine
+ * Gesamtzahl mit „−“ nahm still den Kauf des eigenen Kontos weg, auch wenn man den des anderen meinte.
+ * @param {import('../../frontend-typen/vertrag').SetItem} set @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs
+ */
+function mengenJeKonto(set, acqs) {
+  const besitzer = set.owners?.length ? set.owners : ME ? [{ id: ME.id, username: ME.username }] : [];
+  return besitzer
+    .map(o => ({
+      ...o,
+      menge: acqs.filter(a => (a.owner_user_id ?? ME?.id) === o.id).reduce((s, a) => s + (a.quantity || 0), 0),
+    }))
+    .sort((a, b) => Number(b.id === ME?.id) - Number(a.id === ME?.id));
+}
+
+/**
+ * Ohne Haushalt das bekannte Feld; im Haushalt eine Zeile je Konto (Regler nur, wo geschrieben werden darf).
+ * „−“ beim letzten Exemplar des ganzen Sets fehlt: Das ist Löschen und geht über „Löschen“.
+ * @param {import('../../frontend-typen/vertrag').SetItem} set @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs
+ */
+function mengenBlock(set, acqs) {
+  if (!imHaushalt(set))
+    return html`<span class="menge-regler" data-rueckmeldung>
+      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${tRaw('detail.qty_less')}">−</button>
+      <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-feld menge-feld" aria-label="${tRaw('detail.qty')}" data-change="autosaveSet" />
+      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyInc" aria-label="${tRaw('detail.qty_more')}">+</button>
+      <span class="feld-status" role="status"></span></span>`;
+  const konten = mengenJeKonto(set, acqs);
+  const gesamt = konten.reduce((s, k) => s + k.menge, 0);
+  const zeilen = konten.map(k => {
+    const darf = !_schreibbar || _schreibbar.includes(k.id);
+    const name = kontoName(k);
+    const knopf = (/** @type {number} */ schritt, /** @type {string} */ zeichen, /** @type {string} */ was) =>
+      html`<button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mengeJeKonto" data-arg="${k.id}" data-arg2="${schritt}" aria-label="${tRaw(was)}: ${name}"${schritt < 0 && (k.menge === 0 || gesamt <= 1) ? ' disabled' : ''}>${zeichen}</button>`;
+    return html`<div class="menge-konto" data-konto="${k.id}">
+      <span class="menge-name">${name}</span>
+      ${darf ? knopf(-1, '−', 'detail.qty_less') : ''}<span class="menge-zahl">${k.menge}</span>${darf ? knopf(1, '+', 'detail.qty_more') : ''}
+    </div>`;
+  });
+  return html`<div class="menge-konten" data-rueckmeldung>${zeilen}
+    <div class="menge-gesamt">${tRaw('detail.qty_zusammen', { n: gesamt })}</div>
+    <span class="feld-status" role="status"></span></div>`;
+}
+
+/** Kopfzeile: Nummer und, im Haushalt, ALLE Besitzer — nur das fremde Konto zu nennen las sich, als gehöre
+ * das Set dem anderen allein. @param {import('../../frontend-typen/vertrag').SetItem} set */
+function untertitel(set) {
+  const konten = imHaushalt(set)
+    ? (set.owners || []).slice().sort((a, b) => Number(b.id === ME?.id) - Number(a.id === ME?.id))
+    : [];
+  return [
+    set.name ? set.set_number : '',
+    konten.length
+      ? tRaw(konten.length > 1 ? 'detail.konten_von' : 'detail.konto_von', { namen: konten.map(kontoName).join(', ') })
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
 /** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
   const set = curSet;
@@ -33,15 +104,10 @@ function setDetailHtml(sn, acqs) {
   // Platzhalter. Ein Wert fürs ganze Set vermischte neu und gebraucht.
   const priceRow = html`<div class="m-wertkopf" id="m-market-rows" data-kopf="1" role="group" aria-label="${tRaw('detail.wert')}"><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
   const pnlRow = '';
-  const qtyRow = detailZeile(
-    t('detail.qty'),
-    html`
-      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${tRaw('detail.qty_less')}">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-feld menge-feld" aria-label="${tRaw('detail.qty')}" data-change="autosaveSet" />
-      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyInc" aria-label="${tRaw('detail.qty_more')}">+</button>
-    `,
-    { wertStil: 'display:flex;align-items:center;gap:6px' },
-  );
+  const qtyRow = detailZeile(t('detail.qty'), mengenBlock(set, acqs), {
+    zeilenStil: 'align-items:flex-start',
+    wertId: 'm-menge',
+  });
 
   // Acquisition summary: compact read-only rows + button to open full editor
   const acqRows = detailZeile(
@@ -79,7 +145,11 @@ function setDetailHtml(sn, acqs) {
       html`${lagerortBlock('m-storage', set.storage, `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`)}<button type="button" class="zu-sicht" data-click="sichtAusDialog" data-arg="lagerorte">${tRaw('detail.lagerorte_verwalten')}</button>`,
       { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
     )}
-    ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`, { klasse: 'dr-leise' })}
+    ${detailZeile(
+      t('detail.created'),
+      html`${ico('kalender')} ${addedFmt} <span class="text-klein">(${tRaw('detail.created_hint')})</span>`,
+      { klasse: 'dr-leise' },
+    )}
     <div id="m-price-chart" data-stil="margin-top:.75rem">
       <h3 class="bereich-titel" data-stil="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
       <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
@@ -133,10 +203,12 @@ export async function openModal(sn) {
   G('m-instr').replaceChildren();
   G('set-modal').dataset.nummer = sn;
   G('set-modal').classList.add('open');
-  const [d, ad] = await Promise.all([
+  const [d, ad, hm] = await Promise.all([
     api('GET', `/v1/sets/${sn}`),
     api('GET', `/v1/sets/${sn}/acquisitions`).catch(() => null),
+    _schreibbar ? null : api('GET', '/v1/sets/household-members').catch(() => null),
   ]);
+  if (hm?.success) _schreibbar = hm.members.map(m => m.id);
   // Inzwischen geschlossen oder ein anderes Set geöffnet: nichts mehr zeichnen.
   if (lauf !== _detailLauf || !G('set-modal').classList.contains('open')) return;
   if (!d?.success) {
@@ -163,14 +235,7 @@ export async function openModal(sn) {
   set_curSet(set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent = set.name || set.set_number;
-  // Gehört das Set einem anderen Konto im Haushalt, steht es dabei; sonst sähe es aus wie das eigene.
-  const fremd = (set.owners || []).filter(o => !ME || o.id !== ME.id).map(o => o.username);
-  G('m-untertit').textContent = [
-    set.name ? set.set_number : '',
-    fremd.length ? tRaw('detail.konto_von', { namen: fremd.join(', ') }) : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  G('m-untertit').textContent = untertitel(set);
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
   const img = G('m-img');
   setzeDialogbild(img, fullUrl(set.image_local || set.image_url) || PLATZHALTER_SET, PLATZHALTER_SET);
@@ -178,7 +243,8 @@ export async function openModal(sn) {
 
   setzeHtml(G('m-det'), setDetailHtml(sn, ad?.acquisitions || []));
 
-  G('m-qty').value = String(set.quantity);
+  const feld = G('m-qty');
+  if (feld) feld.value = String(set.quantity);
 
   renderInstructions(set.instructions || [], sn);
   // Ab hier meinen die Alarm-Handler DIESEN Dialog.
@@ -315,46 +381,105 @@ let _autosaveTimer = null;
 export function autosaveSet() {
   if (!curSet) return;
   clearTimeout(_autosaveTimer);
-  _autosaveTimer = setTimeout(async () => {
-    const set = curSet;
-    if (!set) return;
+  _autosaveTimer = setTimeout(() => {
+    if (!curSet) return;
     const qty = parseInt(G('m-qty').value, 10) || 1;
-    const prevQty = set.quantity || qty;
-    const d = await api('PUT', `/v1/sets/${esc(set.set_number)}`, { quantity: qty });
-    if (d.success) {
-      // Die wirkliche Gesamtmenge kommt vom Server: Beim Verringern deckelt er bei den eigenen Exemplaren,
-      // und dann stimmt die gesendete Zahl nicht. Ohne Übernahme stünde bis zum nächsten Öffnen die eigene
-      // Annahme da.
-      const echt = d.quantity != null && Number.isInteger(d.quantity) ? d.quantity : qty;
-      // Gespeichert, aber ohne Marktpreis für die neue Erfassung: Er kommt mit dem Preislauf nach.
-      if (d.degradiert?.includes('kaufpreis')) toast(tRaw('set.kaufpreis_folgt'), 'info');
-      set.quantity = echt;
-      if (echt !== qty) G('m-qty').value = String(echt);
-      // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim Erhöhen entsteht eine neue Zeile,
-      // beim Reduzieren fällt (LIFO) die letzte weg — sonst blieb die entfernte Zeile in der Detailsicht
-      // stehen.
-      const sn = set.set_number;
-      if (echt !== prevQty && typeof renderAcquisitionSummary === 'function') {
-        api('GET', `/v1/sets/${esc(sn)}/acquisitions`)
-          .then(ad => {
-            if (!ad?.success) return;
-            if (echt > prevQty) meldeNeueExemplare(sn, ad.acquisitions, echt - prevQty);
-            const sumEl = G('m-acq-summary');
-            if (sumEl) setzeHtml(sumEl, kurzfassung(ad.acquisitions, set.set_number));
-            if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
-              renderAcqModalBody(set.set_number, ad.acquisitions, undefined);
-            }
-          })
-          .catch(() => {});
-      }
-      // Mehr Exemplare melden sich mit Preis (meldeNeueExemplare), sobald die Erfassungen da sind.
-      if (!(echt > prevQty)) toast(tRaw('settings.saved'), 'success');
-      loadGallery();
-      if (aktiverReiter() === 'finance') loadFinance();
-    } else {
-      toast(d.error || t('settings.error'), 'error');
-    }
+    aendereMenge({ quantity: qty }, qty - (curSet.quantity || qty), G('m-qty'));
   }, 400);
+}
+
+/** Der Regler eines Kontos im Haushalt: ein Schritt, relativ, für genau dieses Konto.
+ * @param {string} konto @param {string} schritt */
+function mengeJeKonto(konto, schritt) {
+  const id = Number(konto),
+    n = Number(schritt);
+  if (!curSet || !Number.isInteger(id) || !n) return;
+  const knopf = document.querySelector(`#m-menge [data-konto="${id}"] [data-arg2="${n}"]`);
+  aendereMenge({ quantity_delta: n, ...(id === ME?.id ? {} : { owner_user_id: id }) }, n, knopf);
+}
+
+/**
+ * Speichern, dann alles im Detail neu laden, was von der Menge abhängt (Regler, Kaufpreise, Wertkopf mit G&V
+ * und die Kaufpreis-Linie im Diagramm). Eine Verringerung nennt den Kauf, der entfiel, und bietet Rückgängig
+ * wie das Löschen; eine Erhöhung nennt den geschätzten Preis.
+ * @param {{ quantity?: number, quantity_delta?: number, owner_user_id?: number }} body @param {number} schritt
+ * @param {Element | null} feld
+ */
+async function aendereMenge(body, schritt, feld) {
+  const set = curSet;
+  if (!set || !schritt) return;
+  const sn = set.set_number;
+  const d = await api('PUT', `/v1/sets/${esc(sn)}`, body);
+  if (!d.success) {
+    toast(d.error || t('settings.error'), 'error');
+    return;
+  }
+  // Gespeichert, aber ohne Marktpreis für die neue Erfassung: Er kommt mit dem Preislauf nach.
+  if (d.degradiert?.includes('kaufpreis')) toast(tRaw('set.kaufpreis_folgt'), 'info');
+  if (d.entfallen?.length) meldeEntfallen(sn, d, body.owner_user_id);
+  const ad = await frischeDetailAuf(sn, feld);
+  if (schritt > 0 && ad) meldeNeueExemplare(sn, ad.acquisitions, schritt);
+  loadGallery();
+  if (aktiverReiter() === 'finance') loadFinance();
+}
+
+/** „Kauf vom 13.09.2026 (250,00 €) entfernt“ mit Rückgängig; der Kauf liegt im Papierkorb.
+ * @param {string} sn @param {import('../../frontend-typen/vertrag').MengeGeaendert} d @param {number} [konto] */
+function meldeEntfallen(sn, d, konto) {
+  const weg = d.entfallen || [];
+  const k = weg[0];
+  const preis = k?.purchase_price != null ? ` (${fmtGeld(k.purchase_price, k.currency || CURRENCY)})` : '';
+  const wem = konto ? (curSet?.owners || []).find(o => o.id === konto) : null;
+  const text =
+    weg.length === 1 && k
+      ? tRaw('detail.kauf_entfernt', { datum: fmtDatum(k.date || ''), preis })
+      : tRaw('detail.kaeufe_entfernt', { n: weg.length });
+  const ids = typeof d.papierkorb === 'number' ? [d.papierkorb] : d.papierkorb || [];
+  geloeschtMitRueckgaengig(wem ? `${text} · ${kontoName(wem)}` : text, { papierkorb: ids }, () => {
+    if (curSet?.set_number === sn) frischeDetailAuf(sn, null);
+  });
+}
+
+/**
+ * Set und Erfassungen neu holen und den Mengenblock, die Kaufpreise, die Kopfzeile und den Wertkopf samt
+ * Diagramm neu zeichnen. Der Fokus bleibt auf dem gedrückten Knopf, die Rückmeldung steht am Feld.
+ * @param {string} sn @param {Element | null} feld
+ */
+async function frischeDetailAuf(sn, feld) {
+  const [d, ad] = await Promise.all([
+    api('GET', `/v1/sets/${esc(sn)}`),
+    api('GET', `/v1/sets/${esc(sn)}/acquisitions`).catch(() => null),
+  ]);
+  if (!d?.success || !d.set || curSet?.set_number !== sn || !G('set-modal').classList.contains('open')) return ad;
+  set_curSet(d.set);
+  const acqs = ad?.acquisitions || [];
+  const fokus = feld && feld === document.activeElement ? feld : null;
+  const menge = G('m-menge');
+  if (menge) setzeHtml(menge, mengenBlock(d.set, acqs));
+  const feldNeu = G('m-qty');
+  if (feldNeu) feldNeu.value = String(d.set.quantity);
+  const sumEl = G('m-acq-summary');
+  if (sumEl) setzeHtml(sumEl, kurzfassung(acqs, sn));
+  if (G('acq-modal').classList.contains('open')) renderAcqModalBody(sn, acqs, ad?.totals);
+  G('m-untertit').textContent = untertitel(d.set);
+  // Der gedrückte Knopf ist ersetzt; der Fokus geht an seinen Nachfolger, ist der gesperrt (letztes „−“), an „+“.
+  const konto = feld instanceof HTMLElement ? feld.dataset.arg : undefined;
+  const knoepfe = konto ? [...(menge?.querySelectorAll(`[data-arg="${konto}"]`) || [])] : [];
+  const ziel =
+    feld?.id === 'm-qty'
+      ? feldNeu
+      : (knoepfe.find(
+          k =>
+            k instanceof HTMLElement &&
+            k.dataset.arg2 === /** @type {HTMLElement} */ (feld).dataset.arg2 &&
+            !k.hasAttribute('disabled'),
+        ) ??
+        knoepfe.find(k => !k.hasAttribute('disabled')) ??
+        null);
+  if (fokus && ziel instanceof HTMLElement) ziel.focus({ preventScroll: true });
+  meldeAmFeld(ziel || menge?.querySelector('[data-rueckmeldung]'));
+  ladeSetNachtraege(sn);
+  return ad;
 }
 
 /**
@@ -402,6 +527,7 @@ stelleZielBereit({ setDetail: openModal });
 registerActions({
   teileNeuImportieren,
   autosaveSet,
+  mengeJeKonto,
   closeImageLightbox,
   delInstr,
   redownloadInstr,
