@@ -361,23 +361,31 @@
                   aria-haspopup="true" aria-expanded="false"
                   aria-controls="umenu-pop"><svg class="ico ubadge-ico" aria-hidden="true"><use href="#i-profil"/></svg><span class="ubadge-name" id="ubadge">—</span><span class="ubadge-striche" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-menue"/></svg></span><span class="vh" data-i18n="menu.open">Menü</span></button>
           <div class="umenu-pop" id="umenu-pop" role="menu" aria-labelledby="btn-umenu" data-stil="display:none">
-            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="profil">
-                    <svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg><span data-i18n="settings.group.profile">Konto</span></button>
-            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="gutscheine">
-                    <svg class="ico" aria-hidden="true"><use href="#i-gutschein"/></svg><span data-i18n="vouchers.group">Gutscheine</span></button>
-            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="alarme">
-                    <svg class="ico" aria-hidden="true"><use href="#i-alarm"/></svg><span data-i18n="alerts.group">Preisalarme</span></button>
+            <div class="umenu-gruppe-titel" id="umenu-gr-sammlung" role="presentation" data-i18n="menu.gruppe_sammlung">Rund um die Sammlung</div>
+            <div class="umenu-gruppe" role="group" aria-labelledby="umenu-gr-sammlung">
             <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="lagerorte">
                     <svg class="ico" aria-hidden="true"><use href="#i-lagerort"/></svg><span data-i18n="storage.group">Lagerorte</span></button>
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="alarme">
+                    <svg class="ico" aria-hidden="true"><use href="#i-alarm"/></svg><span data-i18n="alerts.group">Preisalarme</span></button>
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="gutscheine">
+                    <svg class="ico" aria-hidden="true"><use href="#i-gutschein"/></svg><span data-i18n="vouchers.group">Gutscheine</span></button>
+            </div>
+            <div class="umenu-gruppe-titel" id="umenu-gr-konto" role="presentation" data-i18n="menu.gruppe_konto">Mein Konto</div>
+            <div class="umenu-gruppe" role="group" aria-labelledby="umenu-gr-konto">
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="profil">
+                    <svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg><span><span data-i18n="settings.group.profile">Konto</span><small class="umenu-unter" data-i18n="menu.konto_unter">Profil, Design, Anmeldung</small></span></button>
             <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="haushalt">
                     <svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg><span data-i18n="household.group">Haushalt</span></button>
             <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="daten">
                     <svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg><span data-i18n="settings.data_export">Daten und Papierkorb</span></button>
             <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="app">
                     <svg class="ico" aria-hidden="true"><use href="#i-app"/></svg><span data-i18n="menu.app">Android-App</span></button>
-            <!-- Abmelden steht abgesetzt, nicht als achter Punkt in einer … -->
-            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="settings"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg><span data-i18n="nav.settings">Einstellungen</span></button>
+            </div>
+            <div class="umenu-gruppe-titel admin-only" id="umenu-gr-verwaltung" role="presentation" data-stil="display:none" data-i18n="menu.gruppe_verwaltung">Verwaltung</div>
+            <div class="umenu-gruppe admin-only" role="group" aria-labelledby="umenu-gr-verwaltung" data-stil="display:none">
+            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="settings"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg><span><span data-i18n="nav.settings">Einstellungen</span><small class="umenu-unter" data-i18n="menu.einstellungen_unter">Für alle Konten</small></span></button>
             <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hinter­grund­arbeiten</span></button>
+            </div>
             <hr class="umenu-trenner">
             <button class="umenu-item umenu-abmelden" role="menuitem" tabindex="-1" id="btn-logout"><svg class="ico" aria-hidden="true"><use href="#i-abmelden"/></svg><span data-i18n="settings.logout">Abmelden</span></button>
           </div>

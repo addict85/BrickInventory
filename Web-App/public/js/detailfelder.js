@@ -79,6 +79,7 @@ export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
              data-input="alarmGetippt" data-arg="${sn}"
              data-change="speichereAlarm" /></label><span class="alarm-waehrung" aria-hidden="true">${CURRENCY}</span>
       <span id="${p}-alert-state" class="alarm-stand"></span>
+      <button type="button" class="zu-sicht" data-click="sichtAusDialog" data-arg="alarme">${tRaw('detail.alle_alarme')}</button>
     `;
 }
 

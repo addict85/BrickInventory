@@ -77,13 +77,13 @@ test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, asyn
   });
   await t.test('Wahl fokussiert die Überschrift der Sicht', async () => {
     await taste('Enter');
-    await taste('ArrowDown'); // Gutscheine
+    await taste('ArrowDown'); // der zweite Eintrag, eine Sicht ohne Reiter
     await taste('Enter');
     await ruhig();
     assert.equal(await offen(), false);
     assert.equal(
       await b.auswerten(`document.activeElement.classList.contains('ptitle')
-      && !!document.activeElement.closest('#tab-gutscheine')`),
+      && !!document.activeElement.closest('#tab-${eintraege[1]}')`),
       true,
       `Fokus auf ${await fokus()}`,
     );

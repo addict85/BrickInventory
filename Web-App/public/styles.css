@@ -203,6 +203,11 @@
     .umenu-abmelden{background:var(--sur);color:var(--r700,#b91c1c)}
     @media (hover:hover){.umenu-abmelden:hover{background:var(--r100,var(--s100))}}
     .umenu-item:focus-visible{outline:2px solid var(--fokus,var(--b700));outline-offset:-2px}
+    /* Drei Gruppen statt neun gleichrangiger Punkte; der Titel gehört zur Klappe und bringt ihren Grund mit. */
+    .umenu-gruppe-titel{background:var(--sur);color:var(--mut);font-size:var(--fs-1);font-weight:700;
+                        text-transform:uppercase;letter-spacing:.04em;padding:.55rem .7rem .2rem}
+    .umenu-gruppe + .umenu-gruppe-titel{border-top:1px solid var(--bdr);margin-top:4px}
+    .umenu-unter{display:block;font-size:var(--fs-1);color:var(--mut)}
     /* Der Namenszug ist jetzt der Menüknopf (Marcos Nachzug vom 17.10.).
        `.ubadge` bleibt der Name der Plakette, obwohl darunter ein <button>
        liegt: themes/brick.css streicht `header .ubadge` eigens um, und
@@ -1524,11 +1529,13 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .ew-aktion{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;margin-top:.75rem}
 .ew-aktion .btn{flex:0 0 auto}
 .ew-link{display:inline-flex;align-items:center;min-height:24px;font-size:var(--fs-2)}
+.zu-sicht{background:none;border:0;padding:0 2px;color:var(--b600);text-decoration:underline;font:inherit;font-size:var(--fs-1);
+  cursor:pointer;min-height:24px}
 .ew-fuss{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
 .ew-fuss-rechts{display:flex;gap:.5rem;margin-left:auto}
 .ew-fuss .btn{flex:0 0 auto}
 #ew-spaeter[hidden]{display:none}
-@media (max-width:640px){.ew-link{min-height:44px}}
+@media (max-width:640px){.ew-link,.zu-sicht{min-height:44px}}
 .diagramm-preis .kaufpunkt{pointer-events:none}
 .mk-preis-offen{font-size:var(--fs-1)}
 .mon-arten td:first-child{font-weight:600}
