@@ -16,6 +16,8 @@
  *   E  in zeigeOffeneAlarme `if (!marke) return;` entfernt → rot: „Webapp: offene
  *      Alarme …“ (Meldung beim ersten Besuch)
  *   F  dort die Marke aus Date.now() statt d.now → rot: ebenda
+ *   I  (12.11.2026) dort die Beträge wieder mit toFixed(2) und dem Code davor →
+ *      rot: ebenda („CHF 199.50“ statt „199,50 CHF“)
  *   G  in zeigeAlarmMerker alert_fired/alert_armed vertauscht → rot: „Webapp: beim Tippen …“
  *   H  in Alarmeingabe.kt RUHE_MS 800 → 500 (bzw. 1200) → rot: „Webapp: beim
  *      Tippen …“ — die Ruhezeit beider Oberflächen ist dieselbe
@@ -436,9 +438,11 @@ test('Webapp: offene Alarme — der erste Besuch merkt nur, danach die Meldung w
     await dann.ruhig();
     assert.ok(dann.aufrufe.some(a => a.url.includes('/v1/alerts/pending?since=2026-11-09T08%3A00%3A00Z')));
     assert.ok(await warte(() => meldungen(dann).some(m => m.includes(SN))), 'keine Meldung');
-    // Derselbe Aufbau wie Alarmabholung.text() der App: Währung des Alarms, zwei Stellen.
+    // Aufbau wie Alarmabholung.text() der App (Währung des Alarms, zwei Stellen), die Beträge aber in der
+    // Schreibweise der Weboberfläche.
+    const geld = v => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'CHF' }).format(v);
     assert.ok(
-      meldungen(dann).includes(`${SN}: CHF 199.50 (${de['detail.alert_below']} CHF 200.00)`),
+      meldungen(dann).includes(`${SN}: ${geld(199.5)} (${de['detail.alert_below']} ${geld(200)})`),
       meldungen(dann).join(' | '),
     );
     const kt = ohneKommentare(KT_ABHOL);

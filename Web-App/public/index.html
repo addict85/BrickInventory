@@ -180,10 +180,11 @@
   <text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text>
   <rect x="29" y="78" width="62" height="5" rx="1" fill="#e5e7eb"/>
   <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
-</svg><h1>BrickInventory <span>Manager</span></h1></div>
+</svg><p class="llogo-name">BrickInventory <span>Manager</span></p></div>
 
     <!-- ── LOGIN ─────────────────────────────────────────────────────── -->
     <div id="panel-login">
+      <h1 class="vh" data-i18n="login.submit">Anmelden</h1>
       <div class="lerr" id="lerr" role="alert"></div>
       <div class="login-hinweis" id="login-hinweis" role="status" hidden></div>
       <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten: … -->
@@ -211,7 +212,7 @@
 
     <!-- ── REGISTRIERUNG ─────────────────────────────────────────────── -->
     <div id="panel-register" data-stil="display:none">
-      <h2 class="login-unterzeile" data-i18n="register.title">Registrieren</h2>
+      <h1 class="login-unterzeile" data-i18n="register.title">Registrieren</h1>
       <div class="lerr" id="reg-err" role="alert"></div>
       <div class="erfolg-box" id="reg-success" data-stil="display:none"></div>
       <form class="sform" id="reg-form" data-submit="btn-register">
@@ -239,7 +240,7 @@
 
     <!-- ── PASSWORT VERGESSEN ─────────────────────────────────────────── -->
     <div id="panel-forgot" data-stil="display:none">
-      <p class="login-unterzeile" data-i18n="reset.title">Neues Passwort</p>
+      <h1 class="login-unterzeile" data-i18n="reset.title">Neues Passwort</h1>
       <div class="lerr" id="forgot-err" role="alert"></div>
       <div class="erfolg-box" id="forgot-success" data-stil="display:none"></div>
       <div class="sform" id="forgot-form">
@@ -253,7 +254,7 @@
 
     <!-- ── PASSWORT ZURÜCKSETZEN ──────────────────────────────────────── -->
     <div id="panel-reset" data-stil="display:none">
-      <p class="login-unterzeile" data-i18n="reset.new_password">Neues Passwort setzen</p>
+      <h1 class="login-unterzeile" data-i18n="reset.new_password">Neues Passwort setzen</h1>
       <div class="lerr" id="reset-err" role="alert"></div>
       <div class="erfolg-box" id="reset-success" data-stil="display:none"></div>
       <form class="sform" id="reset-form" data-submit="btn-reset">
@@ -265,7 +266,7 @@
 
     <!-- ── E-MAIL BESTÄTIGEN (Link aus der Mail, Bestätigung erst per Knopf) ─ -->
     <div id="panel-verify" data-stil="display:none">
-      <p class="login-unterzeile" data-i18n="verify.title">E-Mail-Adresse bestätigen</p>
+      <h1 class="login-unterzeile" data-i18n="verify.title">E-Mail-Adresse bestätigen</h1>
       <p class="text-klein abstand-u-075" id="verify-ziel"></p>
       <div class="lerr" id="verify-err" role="alert"></div>
       <button type="button" class="btn bp knopf-breit" id="btn-verify" data-i18n="verify.button">Adresse bestätigen</button>
@@ -276,7 +277,7 @@
 
     <!-- ── STARTPASSWORT ERSETZEN (Server: 403 passwort_wechsel_noetig) ─ -->
     <div id="panel-pflichtwechsel" data-stil="display:none">
-      <p class="login-unterzeile" data-i18n="pflicht.title">Vorläufiges Passwort ersetzen</p>
+      <h1 class="login-unterzeile" data-i18n="pflicht.title">Vorläufiges Passwort ersetzen</h1>
       <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Verwalter vergeben hat. Bitte zuerst ein eigenes setzen.</div>
       <div class="lerr" id="pflicht-err" role="alert"></div>
       <form class="sform" data-submit="btn-pflicht">
@@ -288,7 +289,7 @@
       </form>
     </div>
     <div id="panel-zweitpflicht" data-stil="display:none">
-      <p class="login-unterzeile" data-i18n="zfpflicht.title">Zweiten Faktor einrichten</p>
+      <h1 class="login-unterzeile" data-i18n="zfpflicht.title">Zweiten Faktor einrichten</h1>
       <div class="text-klein abstand-u-075" id="zfpflicht-hinweis" data-i18n="zfpflicht.hint">Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.</div>
       <div id="zf-pflicht-flaeche" class="abstand-u-075"></div>
       <button type="button" class="btn bs knopf-breit" data-click="pflichtAbmelden" data-i18n="zfpflicht.logout">Abmelden</button>
@@ -492,10 +493,10 @@
             <option value="" data-i18n="catalog.filter.all_themes">Alle Themen</option>
           </select>
           <select class="w-auto" id="cat-year-from" aria-label="Jahr von" data-i18n="catalog.year_from_label" data-i18n-attr="aria-label">
-            <option value="" data-i18n="catalog.filter.year_from">Von…</option>
+            <option value="" data-i18n="catalog.filter.year_from">Jahr ab…</option>
           </select>
           <select class="w-auto" id="cat-year-to" aria-label="Jahr bis" data-i18n="catalog.year_to_label" data-i18n-attr="aria-label">
-            <option value="" data-i18n="catalog.filter.year_to">Bis…</option>
+            <option value="" data-i18n="catalog.filter.year_to">Jahr bis…</option>
           </select>
           <select class="w-auto" id="cat-sort" aria-label="Sortierung" data-i18n="gallery.sort_label" data-i18n-attr="aria-label">
             <option value="year_desc" data-i18n="catalog.sort.year_desc">Jahr ↓</option>
@@ -1613,7 +1614,7 @@
   <div class="modal">
     <div class="mhd"><div><h2 class="mtit" id="m-tit">Set</h2><div class="muntertit" id="m-untertit"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div class="m-kopfteil">
-      <img id="m-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+      <img id="m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
       <div id="m-det"></div>
     </div>
     <div id="m-instr" class="il"></div>
@@ -1642,7 +1643,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="schliesseMerkpostenDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="mk-m-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="mk-m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
     <div id="mk-m-det"></div>
     <div id="mk-m-market-rows"></div>
     <div class="abstand-o-075" id="mk-m-price-chart">
@@ -1691,7 +1692,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="closeCatModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="cat-m-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="cat-m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
       <div class="zeile luecke-8 unten umbruch">

@@ -1006,9 +1006,9 @@ function langeBloecke(/** @type {string} */ text) {
 test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie mehr', () => {
   // Im Code steht das Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md);
   // Gegenprobenlisten zählen nicht.
-  // Gemessen am 12.11.2026: Tests 58 Blöcke, scripts 0, index.html 163 Zeilen.
+  // Gemessen am 12.11.2026: Tests 58 Blöcke, scripts 0, index.html 162 Zeilen.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
-  const SCHRANKE = { tests: 58, scripts: 0, indexHtml: 163 };
+  const SCHRANKE = { tests: 58, scripts: 0, indexHtml: 162 };
   const js = (/** @type {string} */ d) =>
     fs
       .readdirSync(d)

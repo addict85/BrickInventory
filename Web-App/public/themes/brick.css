@@ -324,7 +324,7 @@
 
 [data-theme="brick"] .llogo{margin-bottom:1.6rem}
 [data-theme="brick"] .llogo .icon{background:var(--b600);border-radius:8px}
-[data-theme="brick"] .llogo h1 span{color:var(--b600)}
+[data-theme="brick"] .llogo .llogo-name span{color:var(--b600)}
 
 /* Eingabefelder und Buttons wie im App-Bereich */
 [data-theme="brick"] .lcard input,

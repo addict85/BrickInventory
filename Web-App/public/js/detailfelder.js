@@ -5,7 +5,7 @@ import { registerActions } from './registry.js';
 import { html, ungeprueft } from './escapen.js';
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
-import { betragFuerFeld, leseBetrag } from './format.js';
+import { betragFuerFeld, fmtN, leseBetrag } from './format.js';
 import { toast } from './meldungen.js';
 import { feldFehler } from './formular.js';
 import { CURRENCY, ME, allSets, curSet, set_curSet } from './zustand.js';
@@ -344,14 +344,12 @@ export async function zeigeOffeneAlarme() {
     ueber = tRaw('detail.alert_above');
   for (const a of d.alerts || []) {
     const richtung = a.richtung === 'unter' ? unter : ueber;
-    const schwelle = Number(a.schwelle).toFixed(2);
-    // Derselbe Aufbau wie Alarmabholung.text() in der App — wer beides benutzt, soll nicht zwei
-    // Formulierungen derselben Meldung lesen.
+    // Beträge wie überall in der Oberfläche („712,40 €“), in der Währung des Alarms.
+    const schwelle = fmtN(a.schwelle, a.currency_code);
     const txt =
       a.zuletzt_preis == null
-        ? `${a.set_number}: ${richtung} ${a.currency_code} ${schwelle}`
-        : `${a.set_number}: ${a.currency_code} ${Number(a.zuletzt_preis).toFixed(2)} ` +
-          `(${richtung} ${a.currency_code} ${schwelle})`;
+        ? `${a.set_number}: ${richtung} ${schwelle}`
+        : `${a.set_number}: ${fmtN(a.zuletzt_preis, a.currency_code)} (${richtung} ${schwelle})`;
     toast(txt, 'info');
   }
 }

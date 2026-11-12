@@ -78,8 +78,8 @@
     .lcard{background:var(--sur);border-radius:16px;padding:2.5rem;width:100%;max-width:400px;box-shadow:var(--sh2);border:1px solid var(--bdr)}
     .llogo{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:2rem;justify-content:center}
     .llogo .icon{width:44px;height:44px;background:var(--b600);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
-    .llogo h1{font-size:var(--fs-6);font-weight:800;min-width:0;text-align:center;overflow-wrap:break-word;hyphens:auto}
-    .llogo h1 span{color:var(--b600)}
+    .llogo .llogo-name{font-size:var(--fs-6);font-weight:800;min-width:0;text-align:center;overflow-wrap:break-word;hyphens:auto}
+    .llogo .llogo-name span{color:var(--b600)}
     /* Fehlermeldung direkt am Feld (feldFehler in 01-core.js). */
     .feld-fehler{color:var(--r700);font-size:var(--fs-2);margin-top:4px;flex-basis:100%}
     input[aria-invalid="true"]{border-color:var(--r500)}
@@ -1082,6 +1082,8 @@ input.suchfeld{width:220px}
 .merk-kasten-kopf{list-style:none;cursor:pointer;border-radius:6px}
 .merk-kasten-kopf::-webkit-details-marker{display:none}
 .merk-kasten:not([open]) .merk-kasten-kopf .stit{margin-bottom:0;padding-bottom:0;border-bottom:0}
+/* Zugeklappt ist die Box nur noch ihr Titel: Der volle Innenabstand machte sie am Telefon fast doppelt so hoch. */
+.merk-kasten:not([open]){padding-block:.5rem}
 /* Feld, Auswahl und Knöpfe einer Zeile gleich hoch — wie die Felder (38 px). */
 .merk-erfassen > .btn{height:max(38px,2.6em);box-sizing:border-box}
 /* Geheimnisse verdeckt, mit Knopf zum Anzeigen daneben. */
@@ -1144,7 +1146,7 @@ input.suchfeld{width:220px}
 #tab-daten .ssec{max-width:52rem}
 .trenner-oben-13{border-top:1px solid var(--bdr);padding-top:13px}
 .login-unterzeile{font-weight:600;margin-bottom:1rem;color:var(--s600);text-align:center}
-h2.login-unterzeile{font-size:inherit;margin-top:0}
+h1.login-unterzeile{font-size:inherit;margin-top:0}
 .reg-mail-hinweis{margin:.25rem 0 0 24px;color:var(--a-schrift)}
 .login-fuss{text-align:center;margin-top:.85rem;font-size:var(--fs-2)}
 .login-fuss-hinweis{margin:0 0 .5rem}
@@ -1507,7 +1509,7 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 /* Leer: Der Hauptknopf steht im Leerzustand; oben bliebe er doppelt. */
 .tab.sammlung-leer .erfassen-leiste > .btn.bp{display:none}
 .import-mehr,.nur-telefon{display:none}
-#tab-finance.finanzen-leer :is(#portfolio-chart-section,#fin-sum,#fin-basis,#fin-filter){display:none}
+#tab-finance.finanzen-leer :is(#portfolio-chart-section,#fin-sum,#fin-basis,#fin-filter,.fin-suche-zeile){display:none}
 
 /* Einstellungen: eine Seitennavigation mit aktivem Balken statt einer Reihe
    kleiner Umrandungsknöpfe (I5). Am Telefon eine rollende Reihe von Reitern. */
