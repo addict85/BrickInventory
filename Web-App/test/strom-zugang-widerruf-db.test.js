@@ -86,7 +86,7 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
     (async () => {
       const leser = r.body.getReader();
       for (;;) {
-        const { done, value } = await leser.read().catch(() => ({ done: true }));
+        const { done, value } = await leser.read().catch(() => ({ done: true, value: undefined }));
         if (done) break;
         s.text += Buffer.from(value).toString('utf8');
       }

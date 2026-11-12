@@ -119,7 +119,7 @@ test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
     t.after(() => (freigegeben ? undefined : frei()));
     const port = await new Promise(r => {
       const s = net.createServer().listen(0, () => {
-        const p = s.address().port;
+        const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
         s.close(() => r(p));
       });
     });

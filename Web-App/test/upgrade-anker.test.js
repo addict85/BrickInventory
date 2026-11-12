@@ -15,7 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const { baueDist, ohneKommentare } = require('./helpers/sources');
+const quellen = require('./helpers/sources');
 const WEB = path.join(__dirname, '..');
 const ANKER = new Set(
   [...fs.readFileSync(path.join(WEB, 'UPGRADE.md'), 'utf8').matchAll(/<a id="([\w-]+)"><\/a>/g)].map(m => m[1]),
@@ -53,14 +53,15 @@ test('jeder Verweis trifft einen Anker, keine Abschnittsnummern mehr; die Startm
       gefunden++;
       if (!ANKER.has(a)) fehlend.push(`${rel}: #${a}`);
     }
-    if (/UPGRADE\.md,?\s*(?:'\s*\+\s*')?(?:Abschnitte?|section)\s*\d/.test(ohneKommentare(text))) nummern.push(rel);
+    if (/UPGRADE\.md,?\s*(?:'\s*\+\s*')?(?:Abschnitte?|section)\s*\d/.test(quellen.ohneKommentare(text)))
+      nummern.push(rel);
   }
   assert.ok(gefunden >= 20, `nur ${gefunden} Verweise gefunden — greift die Suche noch?`);
   assert.deepEqual(fehlend, [], 'jeder Verweis auf UPGRADE.md trifft einen Anker');
   assert.deepEqual(nummern, [], 'keine Abschnittsnummern mehr');
 
   // Die Meldung, die der Betreiber beim Start wirklich sieht: Superuser ohne Ausweg.
-  baueDist();
+  quellen.baueDist();
   const lauf = spawnSync(
     process.execPath,
     ['-e', "require('./dist/startup/datenbank.js').warneBeiSuperuser({ alsSuperuserVerbunden: async () => true })"],
