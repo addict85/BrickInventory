@@ -2,6 +2,9 @@ package ch.brickinventoryapp.ui.util
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.appcompat.app.AppCompatDelegate
+import android.text.format.DateFormat
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
@@ -121,3 +124,7 @@ fun fmtProzent(prozent: Double): String {
     val text = nf.format(gerundet / 100.0)
     return if (gerundet > 0) "+$text" else text
 }
+
+/** Stellt das Gerät die Uhr auf 24 Stunden? Wie die Statusleiste, nicht nach der Sprache. */
+@Composable
+fun vierundzwanzigStunden(): Boolean = DateFormat.is24HourFormat(LocalContext.current)

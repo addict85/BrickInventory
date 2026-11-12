@@ -22,7 +22,9 @@ import java.util.Locale
  * "en"` immer genommen → rot „je Sprache eine Form wie im Web“; im en-Zweig `DatumJahr.OHNE`
  * wie VOLL behandelt → ebenso rot; in fmtStand das Datum wieder fest als
  * dd.MM.yyyy → rot „der Stand folgt derselben Form“. Englisch wieder „$t/$m/$jj“
- * → rot „je Sprache eine Form …“.
+ * → rot „je Sprache eine Form …“. uhrzeitFormat() wieder fest „HH:mm“ → rot „die Uhrzeit
+ * folgt der 12- oder 24-Stunden-Einstellung …“ (gegenproben/uhrzeit-fest-24-stunden.patch,
+ * mit kotlinc gemessen).
  */
 class DatumFormatTest {
 
@@ -55,6 +57,28 @@ class DatumFormatTest {
             fmtStand(millis, Locale.forLanguageTag("en-GB"), utc)
         }
         assert(fmtStand(millis, DE, utc) == "01.08.2026 09:05")
+    }
+
+    /**
+     * Fest „HH:mm“ zeigte einem Gerät auf 12 Stunden eine andere Uhr als die Statusleiste.
+     * Die Einstellung des Geräts entscheidet, die Sprache nur die Tageszeit-Wörter.
+     */
+    @Test
+    fun `die Uhrzeit folgt der 12- oder 24-Stunden-Einstellung des Geraets`() {
+        val utc = ZoneOffset.UTC
+        val millis = Instant.parse("2026-08-01T21:05:00Z").toEpochMilli()
+        val us = Locale.forLanguageTag("en-US")
+        assert(fmtStand(millis, us, utc, vierundzwanzig = false) == "Aug 1, 2026 9:05 PM") {
+            fmtStand(millis, us, utc, vierundzwanzig = false)
+        }
+        assert(fmtStand(millis, us, utc, vierundzwanzig = true) == "Aug 1, 2026 21:05")
+        assert(fmtStand(millis, DE, utc, vierundzwanzig = true, jahr = DatumJahr.OHNE) == "01.08. 21:05") {
+            fmtStand(millis, DE, utc, vierundzwanzig = true, jahr = DatumJahr.OHNE)
+        }
+        val zwoelf = fmtStand(millis, DE, utc, vierundzwanzig = false)
+        assert(zwoelf.startsWith("01.08.2026 9:05 ")) { zwoelf }
+        val uhr = fmtUhrzeit("2026-08-01T21:05:09Z", us, vierundzwanzig = false)!!
+        assert(Regex("""^\d{1,2}:05:09 (AM|PM)$""").matches(uhr)) { uhr }
     }
 
     @Test

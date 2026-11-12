@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.mutableIntStateOf
+import ch.brickinventoryapp.gemeinsam.ui.LocalSpaltenkarte
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -221,8 +222,10 @@ internal fun SetDetailScreen(
             val rand = PaddingValues(bottom = Abstaende.sehrGross)
             if (zweiSpaltig(maxWidth.value)) {
                 Row(Modifier.fillMaxSize()) {
-                    LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand) { kopf(); preise() }
-                    LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand) { angaben(); anleitungen() }
+                    CompositionLocalProvider(LocalSpaltenkarte provides true) {
+                        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand) { kopf(); preise() }
+                        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand) { angaben(); anleitungen() }
+                    }
                 }
             } else {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = rand) { kopf(); preise(); angaben(); anleitungen() }

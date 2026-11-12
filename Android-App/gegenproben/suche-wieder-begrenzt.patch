@@ -1,0 +1,25 @@
+Gegenprobe: Die Suchzeile endet auf dem Tablet wieder bei 720 dp, mitten über dem Raster
+Modul: core-ui-bestand
+Test: ch.brickinventoryapp.gemeinsam.SucheMitFilterBreiteTest
+Rot: auf dem Tablet geht die Suchzeile
+
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
+@@ -15,6 +15,7 @@
+ import androidx.compose.foundation.layout.Row
+ import androidx.compose.foundation.layout.fillMaxWidth
+ import androidx.compose.foundation.layout.padding
++import androidx.compose.foundation.layout.widthIn
+ import androidx.compose.foundation.rememberScrollState
+ import androidx.compose.foundation.verticalScroll
+ import androidx.compose.material.icons.Icons
+@@ -104,7 +105,7 @@
+         } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+             // Über die ganze Breite, die Knöpfe am rechten Rand des Rasters: Auf 720 dp begrenzt
+             // endete die Zeile auf dem Tablet mitten über den Kacheln, rechts davon leer.
+-            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
++            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f, fill = false).widthIn(max = 720.dp).fillMaxWidth())
+             knoepfe()
+         }
+     }

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
 import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.VorwaermNetz
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.HintergrundUiState
@@ -189,7 +190,7 @@ fun MonitoringScreen(zustand: MonitoringZustand, aktionen: MonitoringAktionen, c
                     },
                     onRetry = { sn ->
                         scope.launch {
-                            snack = if (aktionen.wiederholeEintrag(sn)) String.format(retryQueuedFmt, sn)
+                            snack = if (aktionen.wiederholeEintrag(sn)) String.format(appNumberLocale(), retryQueuedFmt, sn)
                                     else retryErrorMsg
                         }
                     },
@@ -197,7 +198,7 @@ fun MonitoringScreen(zustand: MonitoringZustand, aktionen: MonitoringAktionen, c
                         scope.launch {
                             // Das Vorwegnehmen und das Wiederherstellen bei Fehlschlag
                             // stehen jetzt im ViewModel — hier bleibt die Meldung.
-                            snack = if (aktionen.entferneEintrag(sn)) String.format(entryRemovedFmt, sn)
+                            snack = if (aktionen.entferneEintrag(sn)) String.format(appNumberLocale(), entryRemovedFmt, sn)
                                     else deleteErrorMsg
                         }
                     },
@@ -242,7 +243,6 @@ private fun JobCard(
     val startingMsg      = stringResource(R.string.monitoring_starting)
     val startedMsg       = stringResource(R.string.monitoring_started)
     val syncStartedMsg   = stringResource(R.string.monitoring_sync_started_short)
-    val queueShowFmt   = stringResource(R.string.monitoring_queue_show)
     val statusColor = when (job.status) {
         Laufstatus.LAEUFT -> MaterialTheme.colorScheme.primary
         Laufstatus.FERTIG -> LocalStatusFarben.current.erfolg
@@ -405,7 +405,7 @@ private fun JobCard(
                     Icon(if (queueOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (queueOpen) stringResource(R.string.monitoring_queue_collapse) else String.format(queueShowFmt, job.total), style = MaterialTheme.typography.labelMedium)
+                    Text(if (queueOpen) stringResource(R.string.monitoring_queue_collapse) else stringResource(R.string.monitoring_queue_show, job.total), style = MaterialTheme.typography.labelMedium)
                 }
 
                 AnimatedVisibility(queueOpen) {
