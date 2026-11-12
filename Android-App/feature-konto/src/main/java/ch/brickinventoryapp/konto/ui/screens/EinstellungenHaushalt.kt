@@ -22,9 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.konto.ui.*
@@ -207,7 +205,7 @@ internal fun HouseholdCard(
                 supportingText = if (faktorFalsch) {
                     { Text(stringResource(R.string.household_redeem_code_wrong)) }
                 } else null,
-                modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode },
+                modifier = Modifier.fillMaxWidth(),
                 shape = Formen.feld,
             )
         }
