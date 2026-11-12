@@ -1,0 +1,17 @@
+Gegenprobe: Der Mengenregler behält seine Annahme statt der Menge des Servers
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetDetailAnzeigeTest
+Rot: der Mengenregler folgt der Menge
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
+@@ -179,7 +179,7 @@
+             // Mengenregler, an set.quantity gekoppelt: Der Server kann eine Verringerung
+             // deckeln und meldet die wirkliche Menge zurück; ohne die Kopplung behielte der
+             // Regler seine Annahme.
+-            var qty by remember(set.setNumber, set.quantity) { mutableIntStateOf(set.quantity) }
++            var qty by remember(set.setNumber) { mutableIntStateOf(set.quantity) }
+             // Ein leiser Takt je Schritt: Die Zahl ändert sich, ohne dass man hinsehen muss.
+             val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
+             val takt = { haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick) }

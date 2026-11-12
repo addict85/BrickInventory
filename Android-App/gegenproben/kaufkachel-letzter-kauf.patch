@@ -1,0 +1,17 @@
+Gegenprobe: Die Kaufpreis-Kachel zeigt den höchsten Kauf statt des Schnitts
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetDetailAnzeigeTest
+Rot: die Kaufpreis-Kachel zeigt den mengengewichteten Schnitt
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
+@@ -244,7 +244,7 @@
+     item(key = "wertkacheln") {
+         // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
+         val marktpreis = price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }
+-        val kaufpreis = set.anzeigeKaufpreis
++        val kaufpreis = set.maxPurchasePrice
+         val differenz = if (marktpreis != null && kaufpreis != null) marktpreis - kaufpreis else null
+         WertKacheln(
+             markt = fmtPrice(marktpreis),
