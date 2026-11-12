@@ -34,6 +34,25 @@ let _pdfSeiteW = 0,
 // einen Platzhalter, der inzwischen eine andere Grösse hat — die Seite wäre verzerrt. Siehe _renderPdfPage.
 let _pdfZoomGen = 0;
 
+/**
+ * PDF.js (rund 400 KB) erst beim ersten PDF laden, nicht bei jedem Seitenaufruf. Die Adresse steht als inertes
+ * <script> in einem <template> in index.html: So trägt sie den Stempel des Servers wie jedes andere Asset.
+ * @returns {Promise<PdfJs | undefined>}
+ */
+async function ladePdfjs() {
+  if (window.pdfjsLib) return window.pdfjsLib;
+  const vorlage = document.getElementById('pdfjs-quelle');
+  const quelle =
+    vorlage instanceof HTMLTemplateElement ? vorlage.content.querySelector('script')?.getAttribute('src') : null;
+  if (!quelle) return undefined;
+  try {
+    await import(quelle);
+  } catch (e) {
+    console.error('[pdf] PDF.js nicht geladen:', e);
+  }
+  return window.pdfjsLib;
+}
+
 /** @param {{ daten?: ArrayBuffer, dateiname?: string }} [opt] schon geladene Bytes (Gutschein-PDF mit
  * Einmal-Ticket: ein zweiter Abruf schlüge fehl), `url` dient dann nur dem Download.
  * @param {string} url @param {string} title */
@@ -66,13 +85,7 @@ export async function openPdfViewer(url, title, opt = {}) {
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 
-  // PDF.js wird als ESM-Modul asynchron geladen → ggf. kurz darauf warten.
-  let _tries = 0;
-  while (!window.pdfjsLib && _tries < 50) {
-    await new Promise(r => setTimeout(r, 100));
-    _tries++;
-  }
-  const pdfjsLib = window.pdfjsLib;
+  const pdfjsLib = await ladePdfjs();
   if (!pdfjsLib) {
     if (loading) setzeHtml(loading, html`<span data-stil="color:#f88;padding:20px">${tRaw('pdf.lib_missing')}</span>`);
     return;
