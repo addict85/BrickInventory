@@ -7,7 +7,9 @@
  *      → rot: „Set hinzufügen: Kaufpreis-Platzhalter ganz sichtbar“ („Platzhalter braucht 65 px,
  *      das Feld hat 58 px“)
  *   B  in mobile.css den Block `#tab-catalog .filterzeile { display: grid … }` entfernt
- *      → rot: „Katalog: Filter in drei Zeilen, nichts abgeschnitten“ („stehen in 5 Zeilen“)
+ *      → rot: „Katalog: Filter in vier Zeilen, nichts abgeschnitten“ („stehen in 5 Zeilen“)
+ *   E  (12.11.2026) Katalog am Telefon einspaltig (grid-template-columns: minmax(0, 1fr))
+ *      → rot: „Katalog: Filter in vier Zeilen …“ (die Jahre nicht nebeneinander)
  *   C  in styles.css die Pfeil-Regeln der Abschnittsleiste (`.einst-nav[data-mehr*="r"]::after`)
  *      auf das alte Zeichen ohne Knopf (width:2rem, border:0) zurückgesetzt
  *      → rot: „Einstellungen: Pfeil als Knopf, solange rechts Abschnitte liegen“
@@ -70,17 +72,17 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
     assert.ok(m.seite <= 390, `Seite ${m.seite} px breit`);
   });
 
-  await t.test('Katalog: Filter in drei Zeilen, nichts abgeschnitten', async () => {
+  await t.test('Katalog: Filter in vier Zeilen, nichts abgeschnitten', async () => {
     await reiter('catalog');
     const m = await b.auswerten(`(() => { const breite = ${TEXTBREITE};
       const ids = ['cat-theme', 'cat-year-from', 'cat-year-to', 'cat-sort'], f = id => document.getElementById(id);
       const r = id => f(id).getBoundingClientRect();
       const zeilen = new Set(['cat-search', ...ids].map(id => Math.round(r(id).top)));
       return { zeilen: zeilen.size, felder: ids.map(id => breite(f(id), [...f(id).options].map(o => o.text))),
-               obenGleich: ['cat-year-from', 'cat-year-to', 'cat-sort'].every(id => Math.abs(r(id).top - r('cat-year-from').top) < 2),
+               jahreGleich: Math.abs(r('cat-year-to').top - r('cat-year-from').top) < 2,
                themaVoll: Math.abs(r('cat-theme').width - r('cat-search').width) < 2, seite: document.documentElement.scrollWidth }; })()`);
-    assert.equal(m.zeilen, 3, `Suche, Thema und die drei kleinen Filter stehen in ${m.zeilen} Zeilen`);
-    assert.equal(m.obenGleich, true, 'Von, Bis und Sortierung stehen nicht in einer Zeile');
+    assert.equal(m.zeilen, 4, `Suche, Thema, die Jahre und die Sortierung stehen in ${m.zeilen} Zeilen`);
+    assert.equal(m.jahreGleich, true, 'Jahr ab und Jahr bis stehen nicht in einer Zeile');
     assert.equal(m.themaVoll, true, 'Thema ist nicht so breit wie die Suche');
     assert.deepEqual(
       m.felder.filter(x => !x.passt),

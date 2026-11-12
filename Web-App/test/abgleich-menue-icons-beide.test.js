@@ -111,7 +111,8 @@ const NUR_APP = {
 function webMenue() {
   const html = ohneHtmlKommentare(lies(path.join(ROOT, 'public', 'index.html')));
   const auf = html.indexOf('<div class="umenu-pop"');
-  const zu = html.indexOf('</div>', auf);
+  // Bis hinter Abmelden: Die Klappe gliedert sich in Gruppen, ihr erstes </div> schliesst nur die erste.
+  const zu = html.indexOf('</button>', html.indexOf('id="btn-logout"', auf)) + '</button>'.length;
   assert.ok(auf > 0 && zu > auf, 'Die Menüklappe ist nicht mehr zu finden.');
   return [...html.slice(auf, zu).matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)].map(m => ({
     schluessel: (/data-i18n="([^"]+)"/.exec(m[1]) || [])[1],

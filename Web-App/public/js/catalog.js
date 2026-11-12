@@ -114,16 +114,18 @@ async function loadCatalogMeta() {
     const mk = (
       /** @type {HTMLElement | null} */ el,
       /** @type {string} */ placeholderKey,
+      /** @type {string} */ jahrKey,
       /** @type {string} */ cur,
     ) => {
+      // „ab 2015“ statt nur „2015“: Gewählt steht sonst eine Zahl im Feld, die nicht sagt, welche Grenze sie ist.
       let opts = html`<option value="">${tRaw(placeholderKey)}</option>`;
       for (let y = bis; y >= von; y--) {
-        opts = html`${opts}${html`<option value="${y}"${String(y) === cur ? ' selected' : ''}>${y}</option>`}`;
+        opts = html`${opts}${html`<option value="${y}"${String(y) === cur ? ' selected' : ''}>${tRaw(jahrKey, { jahr: y })}</option>`}`;
       }
       if (el) setzeHtml(el, opts);
     };
-    mk(G('cat-year-from'), 'catalog.filter.year_from', _catState.yearFrom);
-    mk(G('cat-year-to'), 'catalog.filter.year_to', _catState.yearTo);
+    mk(G('cat-year-from'), 'catalog.filter.year_from', 'catalog.filter.ab_jahr', _catState.yearFrom);
+    mk(G('cat-year-to'), 'catalog.filter.year_to', 'catalog.filter.bis_jahr', _catState.yearTo);
   }
   // Von-Bis-Slider initialisieren
   _catYearCounts = {};

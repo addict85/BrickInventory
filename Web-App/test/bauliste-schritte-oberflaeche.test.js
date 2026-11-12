@@ -1,9 +1,8 @@
 /**
- * Bauliste: „Bauliste erstellen“ ist der Hauptknopf, „Zurücksetzen“ nicht
- * rot; das Set-Feld hat eine sichtbare Beschriftung, die Zustandswahl auch.
- * Export und Optionen erscheinen erst mit Teilen; das leere Ergebnis nennt den
- * Grund, eine Nummer, die der Katalog nicht kennt, steht als solche da und
- * zählt nicht als Set. Echtes Bündel in jsdom.
+ * Bauliste im echten Bündel (jsdom): Hauptknopf ist der nächste Schritt, gesperrt
+ * mit sichtbarem Grund; „Zurücksetzen“ nicht rot; Feld und Zustandswahl beschriftet.
+ * Export und Optionen erst mit Teilen; das leere Ergebnis nennt den Grund, eine
+ * Nummer, die der Katalog nicht kennt, steht als solche da und zählt nicht als Set.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  plExportStand() mit box.hidden = _plParts === null (der alte Stand) →
@@ -15,6 +14,9 @@
  *   C  Zurücksetzen wieder class="btn bd" → rot: „Aufbau“
  *   E  (05.11.2026, UI-Prüfung 17 M14) Farbgruppe wieder ohne colorName() →
  *      rot: „Farbgruppen deutsch, Zusammenfassung nennt Sorten“ („Red“)
+ *   F  (12.11.2026) plSchritt() in plRenderSets nicht gerufen → rot: „ein
+ *      Hauptknopf …“; in plGenerate die getippte Nummer nicht übernommen →
+ *      rot: ebenda (Fehler am Feld statt Liste)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,15 +54,47 @@ async function erstelle(teile, nummern = '10294') {
   return o;
 }
 
-test('Aufbau: Hauptknopf, Beschriftungen, Zurücksetzen nicht rot', async () => {
+test('Aufbau: Beschriftungen, Zurücksetzen nicht rot', async () => {
   const { w, d } = await oeffneOberflaeche();
   try {
     assert.equal(text(d.querySelector('label[for="pl-setnr"]')), 'Setnummern (mehrere mit Komma trennen)');
     assert.equal(text(d.querySelector('label[for="pl-bl-condition"]')), 'Zustand für BrickLink');
-    assert.ok(d.getElementById('btn-pl-gen').classList.contains('bp'), 'Erstellen ist der Hauptknopf');
     assert.equal(text(d.getElementById('btn-pl-gen')), 'Bauliste erstellen');
     assert.equal(d.getElementById('btn-pl-reset').classList.contains('bd'), false, 'Zurücksetzen ist rot');
     assert.equal(d.getElementById('pl-export').hidden, true, 'Exportieren vor dem ersten Ergebnis');
+  } finally {
+    w.close();
+  }
+});
+
+test('ein Hauptknopf: erst Hinzufügen, dann Erstellen; gesperrt mit sichtbarem Grund', async () => {
+  const o = await oeffneOberflaeche({
+    '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
+    '/v1/sets/10294-1/parts-list': { success: true, parts: [TEIL] },
+    '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
+    '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },
+  });
+  const { w, d } = o;
+  try {
+    await reiter(w, 'partslist');
+    const haupt = () => [...d.querySelectorAll('#tab-partslist .btn.bp')].map(text);
+    const gen = d.getElementById('btn-pl-gen'),
+      hinweis = d.getElementById('pl-gen-hinweis');
+    assert.deepEqual(haupt(), ['Hinzufügen'], 'ohne Sets');
+    assert.equal(gen.getAttribute('aria-disabled'), 'true');
+    assert.equal(hinweis.hidden, false, 'der Grund steht nicht da');
+    assert.match(text(hinweis), /Setnummer eintragen/);
+    assert.ok(gen.getAttribute('aria-describedby').split(' ').includes('pl-gen-hinweis'));
+    assert.equal(d.querySelector('#pl-sets button'), null, 'der Leerzustand hat einen eigenen Knopf');
+
+    // Getippt, aber nicht hinzugefügt: „Erstellen“ nimmt die Nummer mit.
+    d.getElementById('pl-setnr').value = '10294';
+    gen.click();
+    assert.ok(await warte(() => / aus 1 Set/.test(d.getElementById('pl-status').textContent), 3000), 'keine Liste');
+    assert.deepEqual(haupt(), ['Bauliste erstellen'], 'mit Set');
+    assert.equal(gen.hasAttribute('aria-disabled'), false);
+    assert.equal(hinweis.hidden, true);
+    assert.equal((gen.getAttribute('aria-describedby') || '').includes('pl-gen-hinweis'), false);
   } finally {
     w.close();
   }

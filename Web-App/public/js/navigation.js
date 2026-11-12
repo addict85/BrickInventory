@@ -532,6 +532,17 @@ abonniere('spracheGewechselt', ({ echterWechsel }) => {
   if (aktiv === 'gallery') renderGallery();
 });
 
+/**
+ * Aus einem Dialog zu einer Menüseite (Set-Detail → Preisalarme). Erst schliesst der Dialog über seinen eigenen
+ * Schliessknopf, damit er aufräumt wie sonst auch; dann erst die Seite.
+ * @this {HTMLElement} @param {string} name
+ */
+function sichtAusDialog(name) {
+  const zu = this.closest('.ovl')?.querySelector('[data-dialog-zu]');
+  if (zu instanceof HTMLElement) zu.click();
+  oeffneSicht(name);
+}
+
 stelleZielBereit({ sicht: oeffneSicht });
 
 registerActions({
@@ -540,6 +551,7 @@ registerActions({
   benutzerMenue,
   oeffneSicht,
   oeffneReiter,
+  sichtAusDialog,
   onScopeChange,
   onStorageChange,
 });
