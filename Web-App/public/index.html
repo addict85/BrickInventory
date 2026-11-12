@@ -757,13 +757,14 @@
             <label for="pl-setnr" data-i18n="pl.feld_setnr">Setnummern (mehrere mit Komma trennen)</label>
             <div class="zeile mittig luecke-05">
               <input type="text" id="pl-setnr" class="pl-setnr" autocomplete="off" />
-              <button class="btn bs fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
+              <button class="btn bp fest" data-click="plAddSet" id="btn-pl-add" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
             </div>
           </div>
           <div class="zeile mittig luecke-05 umbruch">
-            <button class="btn bp fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" data-i18n="pl.generate" data-ico="werkzeug">Bauliste erstellen</button>
+            <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" aria-describedby="pl-gen-hinweis" data-i18n="pl.generate" data-ico="werkzeug">Bauliste erstellen</button>
             <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
           </div>
+          <p class="pl-hinweis" id="pl-gen-hinweis" data-i18n="pl.erst_set">Erst eine Setnummer eintragen und hinzufügen, dann „Bauliste erstellen“ wählen.</p>
         </div>
       </div>
       <!-- Added sets -->

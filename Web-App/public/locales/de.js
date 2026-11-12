@@ -643,7 +643,6 @@ window.I18N_DE = {
   'monitor.delete_error': 'Fehler beim Löschen',
   'monitor.job_already': 'Läuft bereits',
   'pl.no_sets': 'Diese Bauliste ist noch leer',
-  'pl.erstes_set': 'Erstes Set eintragen',
   'pl.no_sets_hint': 'Setnummern im Feld darüber eintragen — die Liste zählt dann alle Teile dieser Sets zusammen.',
   'pl.loading_set': 'Lade Teile für {set}…',
   'pl.types': '({n} Sorten)',

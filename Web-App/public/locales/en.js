@@ -637,7 +637,6 @@ window.I18N_EN = {
   'monitor.delete_error': 'Error while deleting',
   'monitor.job_already': 'Job already running',
   'pl.no_sets': 'This build list is still empty',
-  'pl.erstes_set': 'Enter the first set',
   'pl.no_sets_hint': 'Enter set numbers in the field above — the list then adds up all parts of these sets.',
   'pl.loading_set': 'Loading parts for {set}…',
   'pl.types': '({n} kinds)',

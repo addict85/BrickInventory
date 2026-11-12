@@ -1479,6 +1479,7 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .pl-leiste{display:flex;flex-direction:column;gap:.75rem;align-items:flex-start}
 .pl-feld{display:flex;flex-direction:column;gap:.3rem;max-width:100%}
 .pl-feld label,.pl-zustand label{font-size:var(--fs-2);font-weight:600}
+.pl-hinweis{font-size:var(--fs-2);color:var(--mut);margin:0}
 .pl-setnr{width:14em;max-width:100%;flex:0 1 auto}
 /* Bauliste: Set-Chips (Name in Textfarbe: --mut auf --b50 kam nur auf 4,4:1) und Optionen. */
 .pl-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px}
