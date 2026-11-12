@@ -1,7 +1,7 @@
 /** RFC 6238 (TOTP, SHA-1, 6 Stellen, 30 s): die Form, die jede
  * Authenticator-App versteht. Ohne Fremdpaket, mit node:crypto. */
 import { verschluessele, entschluessele, kontext, suchwert, suchwertAlt } from '../infra/geheimnis';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import { konfig } from '../infra/konfig';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/zweiterFaktor';
@@ -17,10 +17,16 @@ const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 export const faktorKontext = (uid: number) => kontext('zweiter_faktor.geheimnis', uid);
 
 export function base32(buf: Buffer): string {
-  let bits = 0, wert = 0, aus = '';
+  let bits = 0,
+    wert = 0,
+    aus = '';
   for (const b of buf) {
-    wert = (wert << 8) | b; bits += 8;
-    while (bits >= 5) { aus += BASE32[(wert >>> (bits - 5)) & 31]; bits -= 5; }
+    wert = (wert << 8) | b;
+    bits += 8;
+    while (bits >= 5) {
+      aus += BASE32[(wert >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
   }
   if (bits > 0) aus += BASE32[(wert << (5 - bits)) & 31];
   return aus;
@@ -28,11 +34,16 @@ export function base32(buf: Buffer): string {
 
 export function ausBase32(s: string): Buffer {
   const rein = s.toUpperCase().replace(/[^A-Z2-7]/g, '');
-  let bits = 0, wert = 0;
+  let bits = 0,
+    wert = 0;
   const aus: number[] = [];
   for (const z of rein) {
-    wert = (wert << 5) | BASE32.indexOf(z); bits += 5;
-    if (bits >= 8) { aus.push((wert >>> (bits - 8)) & 255); bits -= 8; }
+    wert = (wert << 5) | BASE32.indexOf(z);
+    bits += 5;
+    if (bits >= 8) {
+      aus.push((wert >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
   }
   return Buffer.from(aus);
 }
@@ -67,9 +78,11 @@ export function passenderSchritt(geheimnis: string, code: string, jetztMs = Date
 export function otpauthAdresse(geheimnis: string, konto: string): string {
   const aussteller = 'BrickInventory';
   const basis = konfig().appBaseUrl;
-  return `otpauth://totp/${encodeURIComponent(`${aussteller}:${konto}`)}` +
+  return (
+    `otpauth://totp/${encodeURIComponent(`${aussteller}:${konto}`)}` +
     `?secret=${geheimnis}&issuer=${encodeURIComponent(aussteller)}&algorithm=SHA1&digits=${STELLEN}&period=${SCHRITT_S}` +
-    (basis ? `&image=${encodeURIComponent(`${basis}/assets/logo-256.png`)}` : '');
+    (basis ? `&image=${encodeURIComponent(`${basis}/assets/logo-256.png`)}` : '')
+  );
 }
 
 function normiereCode(code: string): string {
@@ -86,12 +99,17 @@ const alterHash = (code: string) => crypto.createHash('sha256').update(normiereC
 /** 16 Zeichen Base32 = 80 Bit, in Vierergruppen zum Abschreiben. */
 function neueWiederherstellungscodes(): string[] {
   return Array.from({ length: CODES_ANZAHL }, () =>
-    base32(crypto.randomBytes(10)).toLowerCase().match(/.{4}/g)!.join('-'));
+    base32(crypto.randomBytes(10)).toLowerCase().match(/.{4}/g)!.join('-'),
+  );
 }
 
 async function codesErsetzen(tx: DbSchnittstelle, uid: number): Promise<string[]> {
   const codes = neueWiederherstellungscodes();
-  await repo.ersetzeCodes(tx, uid, codes.map(c => hashCode(uid, c)));
+  await repo.ersetzeCodes(
+    tx,
+    uid,
+    codes.map(c => hashCode(uid, c)),
+  );
   return codes;
 }
 
@@ -107,11 +125,13 @@ export async function stand(uid: number): Promise<{ aktiv: boolean; codes_uebrig
 /** Noch nicht aktiv. @returns null, wenn der Faktor schon aktiv ist */
 export async function beginneEinrichtung(uid: number): Promise<string | null> {
   const geheimnis = base32(crypto.randomBytes(20));
-  return await kontoBereich().zweiterFaktor.legeGeheimnisAn(uid, verschluessele(geheimnis, faktorKontext(uid))) ? geheimnis : null;
+  return (await kontoBereich().zweiterFaktor.legeGeheimnisAn(uid, verschluessele(geheimnis, faktorKontext(uid))))
+    ? geheimnis
+    : null;
 }
 
 export async function bestaetigeEinrichtung(uid: number, code: string): Promise<string[] | null> {
-  return kontoBereich().db.transaction(async (tx) => {
+  return kontoBereich().db.transaction(async tx => {
     const z = await repo.unbestaetigtesGeheimnisSperren(tx, uid);
     if (!z) return null;
     const schritt = passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', String(code ?? '').trim());
@@ -122,21 +142,24 @@ export async function bestaetigeEinrichtung(uid: number, code: string): Promise<
 }
 
 /** Einmalcode und Wiederherstellungscode gelten genau einmal. */
-export async function pruefeCode(uid: number, code: string | number | null | undefined): Promise<'totp' | 'wiederherstellung' | null> {
+export async function pruefeCode(
+  uid: number,
+  code: string | number | null | undefined,
+): Promise<'totp' | 'wiederherstellung' | null> {
   const eingabe = String(code ?? '').trim();
   if (!eingabe) return null;
   if (/^\d{6}$/.test(eingabe)) {
     const z = await kontoBereich().zweiterFaktor.aktivesGeheimnis(uid);
     const schritt = z ? passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', eingabe) : null;
     if (schritt === null) return null;
-    return await kontoBereich().zweiterFaktor.verbraucheSchritt(uid, schritt) ? 'totp' : null;
+    return (await kontoBereich().zweiterFaktor.verbraucheSchritt(uid, schritt)) ? 'totp' : null;
   }
   if (await kontoBereich().zweiterFaktor.verbraucheCode(uid, hashCode(uid, eingabe))) return 'wiederherstellung';
   // Codes aus der Zeit vor einem Schlüsselwechsel: Ihr Klartext ist nicht gespeichert, neu hashen geht nicht.
   const vorWechsel = suchwertAlt('zweiter-faktor-code', `${uid}:${normiereCode(eingabe)}`);
-  if (vorWechsel && await kontoBereich().zweiterFaktor.verbraucheCode(uid, vorWechsel)) return 'wiederherstellung';
+  if (vorWechsel && (await kontoBereich().zweiterFaktor.verbraucheCode(uid, vorWechsel))) return 'wiederherstellung';
   if (normiereCode(eingabe).length !== ALT_LAENGE) return null;
-  return await kontoBereich().zweiterFaktor.verbraucheCode(uid, alterHash(eingabe)) ? 'wiederherstellung' : null;
+  return (await kontoBereich().zweiterFaktor.verbraucheCode(uid, alterHash(eingabe))) ? 'wiederherstellung' : null;
 }
 
 export function schalteAb(uid: number): Promise<void> {

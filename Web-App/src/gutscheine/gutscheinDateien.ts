@@ -1,7 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
-import { verschluesselePuffer, entschluesselePuffer, istVerschluesselterPuffer, altenPufferLesen, kontext, pufferUmschluesseln } from '../infra/geheimnis';
+import {
+  verschluesselePuffer,
+  entschluesselePuffer,
+  istVerschluesselterPuffer,
+  altenPufferLesen,
+  kontext,
+  pufferUmschluesseln,
+} from '../infra/geheimnis';
 import { ohneFehlendeDatei } from '../infra/fehler';
 
 /** Die PDFs tragen Kartennummer und PIN im Klartext; verschlüsselt gibt eine
@@ -58,7 +65,10 @@ export async function verschluesseleGutscheinAltbestand(o: { alle?: boolean } = 
       const roh = await fs.promises.readFile(datei);
       if (istVerschluesselterPuffer(roh)) {
         const neu = o.alle ? pufferUmschluesseln(roh, dateiKontext(datei)) : undefined;
-        if (neu) { await ersetzeDatei(datei, neu); n++; }
+        if (neu) {
+          await ersetzeDatei(datei, neu);
+          n++;
+        }
         continue;
       }
       const klar = altenPufferLesen(roh, dateiKontext(datei));
@@ -69,4 +79,3 @@ export async function verschluesseleGutscheinAltbestand(o: { alle?: boolean } = 
   }
   return n;
 }
-

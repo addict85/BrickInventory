@@ -71,11 +71,35 @@ export const PdfFreigabe = z.looseObject({
 
 export const routen = {
   'GET /api/v1/vouchers': { antwort: GutscheinListe, abfrage: abfrage(SEITE) },
-  'POST /api/v1/vouchers': { eingabe: z.strictObject({ number: TEXT(40), pin: TEXT(40).nullable().optional(), amount: eingabe.geld('Betrag', { nullbar: false, einCode: 'betrag_ungueltig' }), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
-  'PUT /api/v1/vouchers/:id': { eingabe: z.strictObject({ number: TEXT(40).optional(), pin: TEXT(40).nullable().optional(), amount: eingabe.geld('Betrag', { nullbar: false, einCode: 'betrag_ungueltig' }).optional(), currency: TEXT(40).nullable().optional() }), antwort: GutscheinAntwort },
+  'POST /api/v1/vouchers': {
+    eingabe: z.strictObject({
+      number: TEXT(40),
+      pin: TEXT(40).nullable().optional(),
+      amount: eingabe.geld('Betrag', { nullbar: false, einCode: 'betrag_ungueltig' }),
+      currency: TEXT(40).nullable().optional(),
+    }),
+    antwort: GutscheinAntwort,
+  },
+  'PUT /api/v1/vouchers/:id': {
+    eingabe: z.strictObject({
+      number: TEXT(40).optional(),
+      pin: TEXT(40).nullable().optional(),
+      amount: eingabe.geld('Betrag', { nullbar: false, einCode: 'betrag_ungueltig' }).optional(),
+      currency: TEXT(40).nullable().optional(),
+    }),
+    antwort: GutscheinAntwort,
+  },
   'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse, ...bestaetigt() },
-  'POST /api/v1/vouchers/pdf': { formular: true, antwort: GutscheinAntwort, eingabe: z.strictObject({
-    number: TEXT(40).optional(), pin: TEXT(40).optional(), amount: eingabe.geld('Betrag', { nullbar: false, einCode: 'betrag_ungueltig' }).optional(), currency: TEXT(40).optional() }) },
+  'POST /api/v1/vouchers/pdf': {
+    formular: true,
+    antwort: GutscheinAntwort,
+    eingabe: z.strictObject({
+      number: TEXT(40).optional(),
+      pin: TEXT(40).optional(),
+      amount: eingabe.geld('Betrag', { nullbar: false, einCode: 'betrag_ungueltig' }).optional(),
+      currency: TEXT(40).optional(),
+    }),
+  },
   'POST /api/v1/vouchers/:id/guthaben': { eingabe: OHNE_RUMPF, antwort: GuthabenAntwort },
   'POST /api/v1/vouchers/:id/klartext': { antwort: GutscheinKlartext, ...bestaetigt(), geheim: true },
   'POST /api/v1/vouchers/:id/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt(), geheim: true },

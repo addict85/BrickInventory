@@ -12,10 +12,22 @@ import { ME } from './zustand.js';
 /** Ansicht (data-tab bzw. Sicht) → Pfad in der Adresse. */
 /** @type {Record<string, string>} */
 export const PFADE = {
-  gallery: 'sammlung', parts: 'teile', minifigs: 'minifiguren', partslist: 'bauliste',
-  finance: 'finanzen', wanted: 'merkliste', catalog: 'katalog', monitor: 'hintergrund',
-  settings: 'einstellungen', profil: 'konto', gutscheine: 'gutscheine', alarme: 'alarme',
-  lagerorte: 'lagerorte', haushalt: 'haushalt', daten: 'daten', app: 'app',
+  gallery: 'sammlung',
+  parts: 'teile',
+  minifigs: 'minifiguren',
+  partslist: 'bauliste',
+  finance: 'finanzen',
+  wanted: 'merkliste',
+  catalog: 'katalog',
+  monitor: 'hintergrund',
+  settings: 'einstellungen',
+  profil: 'konto',
+  gutscheine: 'gutscheine',
+  alarme: 'alarme',
+  lagerorte: 'lagerorte',
+  haushalt: 'haushalt',
+  daten: 'daten',
+  app: 'app',
 };
 const ANSICHT = Object.fromEntries(Object.entries(PFADE).map(([a, p]) => [p, a]));
 const SICHTEN = new Set(['profil', 'gutscheine', 'alarme', 'lagerorte', 'haushalt', 'daten', 'app']);
@@ -24,8 +36,13 @@ const NUR_VERWALTER = new Set(['monitor', 'settings']);
 /** Abschnitte der Einstellungen: Element-ID ↔ Pfad. */
 /** @type {Record<string, string>} */
 const ABSCHNITTE = {
-  'einst-design': 'erscheinungsbild', 'einst-bl': 'bricklink', 'einst-rb': 'rebrickable',
-  'einst-bs': 'brickset', usermgmt: 'benutzer', 'einst-smtp': 'e-mail', 'einst-konfig': 'konfiguration',
+  'einst-design': 'erscheinungsbild',
+  'einst-bl': 'bricklink',
+  'einst-rb': 'rebrickable',
+  'einst-bs': 'brickset',
+  usermgmt: 'benutzer',
+  'einst-smtp': 'e-mail',
+  'einst-konfig': 'konfiguration',
 };
 const ABSCHNITT_ID = Object.fromEntries(Object.entries(ABSCHNITTE).map(([i, p]) => [p, i]));
 
@@ -33,9 +50,21 @@ const ABSCHNITT_ID = Object.fromEntries(Object.entries(ABSCHNITTE).map(([i, p]) 
 /** @type {Record<string, Record<string, string>>} */
 const FILTER = {
   gallery: { gs: 'suche', gtheme: 'thema', gsort: 'sortierung' },
-  catalog: { 'cat-search': 'suche', 'cat-theme': 'thema', 'cat-year-from': 'von', 'cat-year-to': 'bis', 'cat-sort': 'sortierung' },
+  catalog: {
+    'cat-search': 'suche',
+    'cat-theme': 'thema',
+    'cat-year-from': 'von',
+    'cat-year-to': 'bis',
+    'cat-sort': 'sortierung',
+  },
   wanted: { mks: 'suche', mkcond: 'zustand', mksort: 'sortierung' },
-  parts: { 'parts-search': 'suche', 'parts-spare': 'ersatz', 'parts-ordnung': 'ordnung', 'parts-color': 'farbe', 'parts-cat': 'kategorie' },
+  parts: {
+    'parts-search': 'suche',
+    'parts-spare': 'ersatz',
+    'parts-ordnung': 'ordnung',
+    'parts-color': 'farbe',
+    'parts-cat': 'kategorie',
+  },
   minifigs: { 'fig-search': 'suche' },
 };
 const FILTERFELD = new Map(Object.entries(FILTER).flatMap(([a, f]) => Object.keys(f).map(id => [id, a])));
@@ -53,10 +82,10 @@ function vorgabe(id) {
 }
 
 let _ansicht = 'gallery';
-let _wendeAn = 0;          // > 0, solange der Router selbst umschaltet (kein neuer Eintrag)
-let _eigeneZurueck = 0;    // eigene history.back() nach dem Schliessen eines Dialogs
+let _wendeAn = 0; // > 0, solange der Router selbst umschaltet (kein neuer Eintrag)
+let _eigeneZurueck = 0; // eigene history.back() nach dem Schliessen eines Dialogs
 /** @type {(() => void)[]} */
-let _danach = [];          // Einträge, die erst nach diesem Zurück gesetzt werden dürfen
+let _danach = []; // Einträge, die erst nach diesem Zurück gesetzt werden dürfen
 let _gestartet = false;
 
 /** Der offene Einstellungsabschnitt als Pfad (aus der Leiste gelesen). */
@@ -76,7 +105,7 @@ export function leseAdresse(hash = location.hash) {
   const ansicht = ANSICHT[teile[0]];
   if (!ansicht) return null;
   const set = teile[1] === 'set' && teile[2] ? teile[2] : '';
-  return { ansicht, unter: set ? '' : (teile[1] || ''), set, filter };
+  return { ansicht, unter: set ? '' : teile[1] || '', set, filter };
 }
 
 /**
@@ -154,7 +183,10 @@ function dialogAdresse(id) {
 /** @param {HTMLElement} dialog @param {boolean} offen */
 function dialogGewechselt(dialog, offen) {
   if (!_gestartet || !dialog.id) return;
-  if (_eigeneZurueck > 0) { _danach.push(() => dialogGewechselt(dialog, offen)); return; }
+  if (_eigeneZurueck > 0) {
+    _danach.push(() => dialogGewechselt(dialog, offen));
+    return;
+  }
   const stapel = offeneDialoge();
   if (offen) {
     if (stapel.includes(dialog.id)) return;
@@ -163,15 +195,21 @@ function dialogGewechselt(dialog, offen) {
   }
   // Vom Nutzer geschlossen (Knopf, Escape, Speichern): den eigenen Eintrag wieder abnehmen, sonst bräuchte
   // „Zurück“ einen leeren Schritt.
-  if (stapel.at(-1) === dialog.id) { _eigeneZurueck++; history.back(); }
-  else if (stapel.includes(dialog.id))
+  if (stapel.at(-1) === dialog.id) {
+    _eigeneZurueck++;
+    history.back();
+  } else if (stapel.includes(dialog.id))
     history.replaceState(zustand({ dlg: stapel.filter(d => d !== dialog.id) }), '', location.href);
 }
 
 /** @param {() => void} fn */
 function mitRouter(fn) {
   _wendeAn++;
-  try { return fn(); } finally { _wendeAn--; }
+  try {
+    return fn();
+  } finally {
+    _wendeAn--;
+  }
 }
 
 /**
@@ -181,7 +219,10 @@ function schliesse(dialog) {
   const zu = /** @type {HTMLElement|null} */ (dialog.querySelector('[data-dialog-zu]'));
   mitRouter(() => {
     if (zu) zu.click();
-    else { dialog.classList.remove('open'); dialog.style.display = dialog.style.display ? 'none' : ''; }
+    else {
+      dialog.classList.remove('open');
+      dialog.style.display = dialog.style.display ? 'none' : '';
+    }
   });
 }
 
@@ -198,7 +239,10 @@ function zeigeAnsicht(ansicht, unter) {
     if (ansicht === 'settings' && ABSCHNITT_ID[unter]) springe('einstAbschnitt', ABSCHNITT_ID[unter]);
     if (ansicht !== _ansicht || !document.getElementById('tab-' + ansicht)?.classList.contains('active')) {
       if (SICHTEN.has(ansicht)) springe('sicht', ansicht);
-      else /** @type {HTMLElement|null} */ (document.querySelector(`.ntab[data-tab="${ansicht}"]`))?.click();
+      else {
+        const reiter = /** @type {HTMLElement|null} */ (document.querySelector(`.ntab[data-tab="${ansicht}"]`));
+        reiter?.click();
+      }
     }
   });
   if (ansicht !== _ansicht) verwirfToasts();
@@ -232,7 +276,10 @@ function setzeFilter(ansicht, filter) {
     el.value = soll;
     geaendert = true;
     if (el.value !== soll && el instanceof HTMLSelectElement) wennOption(el, soll);
-    else mitRouter(() => el.dispatchEvent(new Event(el instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true })));
+    else
+      mitRouter(() =>
+        el.dispatchEvent(new Event(el instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true })),
+      );
   }
   return geaendert;
 }
@@ -267,10 +314,14 @@ function wendeAn(ziel, dlg) {
   return false;
 }
 
-window.addEventListener('popstate', (ev) => {
+window.addEventListener('popstate', ev => {
   if (!_gestartet) return;
   if (_eigeneZurueck > 0) {
-    if (--_eigeneZurueck === 0) { const f = _danach; _danach = []; for (const x of f) x(); }
+    if (--_eigeneZurueck === 0) {
+      const f = _danach;
+      _danach = [];
+      for (const x of f) x();
+    }
     return;
   }
   const ziel = leseAdresse();
@@ -306,16 +357,20 @@ export function routeBeimStart() {
   }
   const abgewiesen = wendeAn(ziel, []);
   history.replaceState({ brick: 1, ansicht: _ansicht, dlg: [] }, '', adresse());
-  if (abgewiesen) { sageUmleitung('verwalter'); return; }
+  if (abgewiesen) {
+    sageUmleitung('verwalter');
+    return;
+  }
   // Ein Set-Link öffnet den Dialog über der Ansicht; „Zurück“ schliesst ihn.
   if (ziel.set) springe('setDetail', ziel.set);
 }
 
 // Filtereingaben laufen über die Felder; die Adresse folgt nach.
 if (typeof document !== 'undefined') {
-  for (const art of ['input', 'change']) document.addEventListener(art, (ev) => {
-    const id = /** @type {HTMLElement} */ (ev.target)?.id;
-    if (id && FILTERFELD.get(id) === _ansicht) meldeFilter();
-  });
+  for (const art of ['input', 'change'])
+    document.addEventListener(art, ev => {
+      const id = /** @type {HTMLElement} */ (ev.target)?.id;
+      if (id && FILTERFELD.get(id) === _ansicht) meldeFilter();
+    });
   beiDialogWechsel(dialogGewechselt);
 }

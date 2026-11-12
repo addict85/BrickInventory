@@ -2,7 +2,7 @@
 // richtige Design. Erst der letzte bekannte Wert, dann der Abgleich mit dem Server — so blinkt nichts und
 // nichts veraltet.
 
-(function () {
+(() => {
   var KEY = 'bim_theme';
   // Muss mit DESIGNS in src/konto/settings.ts uebereinstimmen — eine Pruefung haelt beide zusammen
   // (theme.test.js).
@@ -30,7 +30,12 @@
   var serverDesign = null;
   /** 'system', 'server' (nie dunkel) oder 'immer'. */
   function wahl() {
-    try { var w = localStorage.getItem(DUNKEL_KEY); return w === 'server' || w === 'immer' ? w : 'system'; } catch (_) { return 'system'; }
+    try {
+      const w = localStorage.getItem(DUNKEL_KEY);
+      return w === 'server' || w === 'immer' ? w : 'system';
+    } catch (_) {
+      return 'system';
+    }
   }
   /** @param {string} theme */
   function wirksam(theme) {
@@ -41,20 +46,24 @@
     else document.documentElement.removeAttribute('data-dunkel');
     // Die media-Attribute der Meta-Tags kennen „immer“ und „nie dunkel“ nicht; Werkbank ist ohne Variante dunkel.
     var leiste = dunkel || theme === 'werkbank' ? '#14181d' : '#f8fafc';
-    document.querySelectorAll('meta[name=theme-color]').forEach((m) => { m.setAttribute('content', leiste); });
+    document.querySelectorAll('meta[name=theme-color]').forEach(m => {
+      m.setAttribute('content', leiste);
+    });
     return theme;
   }
   function neuAnwenden() {
     if (serverDesign) document.documentElement.setAttribute('data-theme', wirksam(serverDesign));
   }
-  if (systemDunkel && systemDunkel.addEventListener) systemDunkel.addEventListener('change', neuAnwenden);
-  window.__bimDunkel = function (wert) {
-    try { localStorage.setItem(DUNKEL_KEY, wert === 'immer' || wert === 'server' ? wert : 'system'); } catch (_) {}
+  if (systemDunkel?.addEventListener) systemDunkel.addEventListener('change', neuAnwenden);
+  window.__bimDunkel = wert => {
+    try {
+      localStorage.setItem(DUNKEL_KEY, wert === 'immer' || wert === 'server' ? wert : 'system');
+    } catch (_) {}
     neuAnwenden();
   };
   window.__bimDunkelWert = wahl;
   // Hat ein Design keine helle Fassung? Die Einstellungen sagen es dann dazu.
-  window.__bimNurDunkel = function (theme) { return theme === 'werkbank'; };
+  window.__bimNurDunkel = theme => theme === 'werkbank';
 
   /**
    * Setter für konto.js und den Admin-Speichern-Handler. Nur gültige Werte werden angewendet UND gecacht —
@@ -64,7 +73,9 @@
   function applier(theme) {
     var val = apply(theme);
     if (!val) return null;
-    try { localStorage.setItem(KEY, val); } catch (_) {}
+    try {
+      localStorage.setItem(KEY, val);
+    } catch (_) {}
     return val;
   }
 
@@ -74,7 +85,9 @@
   //    Sprung noch eine zusätzliche Anfrage pro Seitenaufruf.
   var served = document.documentElement.getAttribute('data-theme');
   if (served && ALLOWED.indexOf(served) !== -1) {
-    try { localStorage.setItem(KEY, served); } catch (_) {}
+    try {
+      localStorage.setItem(KEY, served);
+    } catch (_) {}
     serverDesign = served;
     neuAnwenden();
     window.__bimApplyTheme = applier;
@@ -86,21 +99,27 @@
   //    sofort anwenden, danach gegen den Server abgleichen.
   /** @type {string | null} */
   var cached = null;
-  try { cached = localStorage.getItem(KEY); } catch (_) {}
+  try {
+    cached = localStorage.getItem(KEY);
+  } catch (_) {}
   apply(cached);
 
   // 2) Serverwert nachziehen
   function sync() {
     fetch('/api/v1/settings/theme', { credentials: 'same-origin' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) {
-        if (!d || !d.success || !d.theme) return;
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (!d?.success || !d.theme) return;
         if (d.theme !== cached) {
           apply(d.theme);
-          try { localStorage.setItem(KEY, d.theme); } catch (_) {}
+          try {
+            localStorage.setItem(KEY, d.theme);
+          } catch (_) {}
         }
       })
-      .catch(function () { /* offline oder Server startet noch — Cache bleibt gültig */ });
+      .catch(() => {
+        /* offline oder Server startet noch — Cache bleibt gültig */
+      });
   }
 
   // Der Server nimmt Anfragen erst nach initSchemaOnce() an; ein Fehlschlag hier ist unkritisch, weil

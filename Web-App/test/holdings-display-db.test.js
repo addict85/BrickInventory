@@ -17,11 +17,12 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet, erfasse } = require('./helpers/bestand');
 
-test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const HAUPT = `bh-${process.pid}`, SUB = `bs-${process.pid}`;
-  const SN = `83${process.pid % 900 + 100}-1`;
+  const HAUPT = `bh-${process.pid}`,
+    SUB = `bs-${process.pid}`;
+  const SN = `83${(process.pid % 900) + 100}-1`;
 
   const aufraeumen = async () => {
     for (const tab of ['sets', 'set_acquisitions', 'price_history', 'price_cache'])
@@ -31,28 +32,41 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
   await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
   const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
-  const subId   = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-               [hauptId, subId]);
+  const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
+    hauptId,
+    subId,
+  ]);
   await aufraeumen();
 
   // Der Preis-Job schreibt BEIDE Zustände, unabhängig davon, was jemand
   // besitzt — genau daher kam die überzählige Reihe.
-  for (const [cond, preis] of [['N', 7.99], ['U', 3.94]]) {
-    await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
-                  VALUES ($1,$2,'CHF',$3,$3,5)`, [SN, cond, preis]);
+  for (const [cond, preis] of [
+    ['N', 7.99],
+    ['U', 3.94],
+  ]) {
+    await db.run(
+      `INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
+                  VALUES ($1,$2,'CHF',$3,$3,5)`,
+      [SN, cond, preis],
+    );
     for (let d = 1; d >= 0; d--)
-      await db.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
+      await db.run(
+        `INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                     VALUES ($1,$2,'CHF',$3,$3, CURRENT_DATE - $4::int + interval '9 hours')`,
-                   [SN, cond, preis, d]);
+        [SN, cond, preis, d],
+      );
   }
 
   // Hauptkonto: Kaufpreis gelöscht → Menge 0, keine Erfassung mehr.
-  await haeltSet(db, hauptId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltSet(db, hauptId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
   // Unterkonto: ein GEBRAUCHTES Exemplar mit Kaufpreis.
-  await haeltSet(db, subId, SN, 0);  // Menge 0: die Erfassung dahinter traegt sie
-  await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
-                VALUES ($1,$2,3.94,'U',1)`, [subId, SN]);
+  await haeltSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
+                VALUES ($1,$2,3.94,'U',1)`,
+    [subId, SN],
+  );
 
   const { preisverlaufSet } = _req('src/finanzen/priceHistory.js');
   const { getSets } = require('./helpers/sources').handlerModul(_req);
@@ -60,11 +74,13 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
   try {
     await t.test('das Diagramm zeigt nur die Zustände im Bestand', async () => {
       const ph = await preisverlaufSet([hauptId, subId], SN, 'CHF');
-      assert.deepEqual(Object.keys(ph.by_condition), ['U'],
-        'Vorbedingung: nur „gebraucht" ist erfasst');
-      assert.deepEqual(ph.chart.values.map(v => v.name), ['U'],
+      assert.deepEqual(Object.keys(ph.by_condition), ['U'], 'Vorbedingung: nur „gebraucht" ist erfasst');
+      assert.deepEqual(
+        ph.chart.values.map(v => v.name),
+        ['U'],
         'Das Diagramm führt eine Reihe für einen Zustand, der nicht im Bestand liegt — ' +
-        'die Legende zeigt dann „Neu" für ein Set, das es nur gebraucht gibt');
+          'die Legende zeigt dann „Neu" für ein Set, das es nur gebraucht gibt',
+      );
     });
 
     await t.test('Tief, Aktuell und Hoch stammen aus derselben Reihe', async () => {
@@ -75,8 +91,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
       const ph = await preisverlaufSet([hauptId, subId], SN, 'CHF');
       const werte = ph.chart.values.flatMap(v => v.values.map(p => p.y)).filter(y => y > 0);
       assert.ok(werte.length, 'keine Diagrammwerte');
-      assert.equal(Math.max(...werte), 3.94,
-        `Der Höchstwert stammt aus dem falschen Zustand: ${Math.max(...werte)}`);
+      assert.equal(Math.max(...werte), 3.94, `Der Höchstwert stammt aus dem falschen Zustand: ${Math.max(...werte)}`);
       assert.equal(Math.min(...werte), 3.94);
     });
 
@@ -87,10 +102,16 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
       await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
       const ph = await preisverlaufSet([hauptId, subId], SN, 'CHF');
       assert.deepEqual(Object.keys(ph.by_condition), []);
-      assert.equal(ph.chart.values.length, 1,
-        'Ohne Erfassung muss der Zustand des Bestandes übrig bleiben, nicht nichts');
-      await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
-                    VALUES ($1,$2,3.94,'U',1)`, [subId, SN]);
+      assert.equal(
+        ph.chart.values.length,
+        1,
+        'Ohne Erfassung muss der Zustand des Bestandes übrig bleiben, nicht nichts',
+      );
+      await db.run(
+        `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
+                    VALUES ($1,$2,3.94,'U',1)`,
+        [subId, SN],
+      );
     });
 
     await t.test('ein Konto mit Menge 0 steht nicht mehr als Besitzer da', async () => {
@@ -99,9 +120,12 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async (t) =
       assert.ok(zeile, 'das Set fehlt in der Galerie');
       assert.equal(zeile.quantity, 1, 'die Menge des Haushalts ist die Summe');
       const namen = (zeile.owners || []).map(o => o.username);
-      assert.deepEqual(namen, [SUB],
+      assert.deepEqual(
+        namen,
+        [SUB],
         `Besitzer-Label falsch: ${namen.join(',')} — ein Konto, dessen Kaufpreis gelöscht ` +
-        'wurde, hält kein Exemplar mehr');
+          'wurde, hält kein Exemplar mehr',
+      );
     });
 
     await t.test('hält wieder jemand ein Exemplar, kommt das Label zurück', async () => {

@@ -25,7 +25,10 @@ export async function speichereSetLagerort(sn) {
   const el = G('m-storage');
   if (!el) return;
   const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/storage`, { storage: el.value });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   // Die Liste im Hintergrund trägt den Ort ebenfalls — ohne Nachziehen zeigte die Kachel den alten, bis
   // jemand neu lädt.
   const eintrag = (allSets || []).find(x => x.set_number === sn);
@@ -43,7 +46,9 @@ let _alarmFeld = 'm';
 /**
  * @param {string} praefix
  */
-export function setzeAlarmFeld(praefix) { _alarmFeld = praefix === 'mk-m' ? 'mk-m' : 'm'; }
+export function setzeAlarmFeld(praefix) {
+  _alarmFeld = praefix === 'mk-m' ? 'mk-m' : 'm';
+}
 
 const alarmId = (/** @type {string} */ teil) => `${_alarmFeld}-alert-${teil}`;
 
@@ -83,7 +88,8 @@ export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
  */
 const ORT_NEU_MARKE = html`data-neu="1"`;
 
-const istNeuEintrag = (/** @type {Pick<HTMLSelectElement, 'selectedOptions'> | null | undefined} */ sel) => sel?.selectedOptions?.[0]?.dataset?.neu === '1';
+const istNeuEintrag = (/** @type {Pick<HTMLSelectElement, 'selectedOptions'> | null | undefined} */ sel) =>
+  sel?.selectedOptions?.[0]?.dataset?.neu === '1';
 
 /** @type {string[]} */
 let _orte = [];
@@ -96,9 +102,10 @@ let _orte = [];
  * @param {unknown[] | null | undefined} namen
  */
 export function setzeOrtVorrat(namen) {
-  _orte = [...new Set((namen || []).filter(Boolean).map(String))]
-    .sort((a, b) => a.localeCompare(b));
-  for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (document.querySelectorAll('select[data-ortauswahl]'))) {
+  _orte = [...new Set((namen || []).filter(Boolean).map(String))].sort((a, b) => a.localeCompare(b));
+  for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (
+    document.querySelectorAll('select[data-ortauswahl]')
+  )) {
     // Steht die Auswahl gerade auf „neuer Ort", soll sie dort stehen bleiben — sonst spraenge sie jemandem
     // beim Tippen unter der Hand weg.
     const warNeu = istNeuEintrag(sel);
@@ -149,7 +156,8 @@ export function lagerortBlock(id, wert, attrs = '') {
  * @param {string} id Kennung des Textfeldes; die Auswahl heisst id + "-sel".
  */
 export function lagerortGewaehlt(id) {
-  const sel = G(`${id}-sel`), feld = G(id);
+  const sel = G(`${id}-sel`),
+    feld = G(id);
   if (!sel || !feld) return;
   if (istNeuEintrag(sel)) {
     // Leeren, zeigen, Fokus: Wer „neuer Ort" waehlt, will tippen — nicht erst den alten Namen wegloeschen.
@@ -172,14 +180,13 @@ export function lagerortGewaehlt(id) {
  * @this {HTMLInputElement}
  */
 export function lagerortGetippt() {
-  const feld = this;
-  const sel = G(`${feld?.id}-sel`);
+  const sel = G(`${this?.id}-sel`);
   if (!sel) return;
-  const ort = String(feld.value || '').trim();
+  const ort = String(this.value || '').trim();
   if (!_orte.includes(ort) && ort) _orte = [..._orte, ort].sort((a, b) => a.localeCompare(b));
   setzeHtml(sel, ungeprueft(ortOptionen(ort)));
   sel.value = ort;
-  if (ort) feld.style.display = 'none';
+  if (ort) this.style.display = 'none';
 }
 
 /**
@@ -196,12 +203,14 @@ function alarmZustand() {
  */
 export async function ladeAlarm(sn) {
   const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`).catch(() => null);
-  const dir = G(alarmId('dir')), val = G(alarmId('val'));
+  const dir = G(alarmId('dir')),
+    val = G(alarmId('val'));
   if (!dir || !val) return;
   // Gibt es nur einen Alarm für den anderen Zustand, steht die Auswahl auf ihm: Sonst sähe es aus, als fehle er.
   const alle = d?.alerts || [];
   const wahl = G(alarmId('cond'));
-  if (wahl && alle.length && !alle.some(x => x.condition === alarmZustand())) wahl.value = alle[0]?.condition === 'U' ? 'U' : 'N';
+  if (wahl && alle.length && !alle.some(x => x.condition === alarmZustand()))
+    wahl.value = alle[0]?.condition === 'U' ? 'U' : 'N';
   const a = alle.find(x => x.condition === alarmZustand());
   dir.value = a?.richtung || 'unter';
   val.value = a ? betragFuerFeld(a.schwelle) : '';
@@ -218,8 +227,7 @@ function zeigeAlarmMerker(a) {
   if (!st) return;
   // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der Unterschied zwischen „der Alarm steht"
   // und „der Alarm hat gefeuert" — sonst fragt man sich, warum keine Mail mehr kommt.
-  st.textContent = !a ? ''
-    : a.ausgeloest ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
+  st.textContent = !a ? '' : a.ausgeloest ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
 }
 
 /**
@@ -228,7 +236,8 @@ function zeigeAlarmMerker(a) {
  * @param {string} sn
  */
 export function wechsleAlarmZustand(sn) {
-  clearTimeout(_alarmRuhe); _alarmRuhe = null;
+  clearTimeout(_alarmRuhe);
+  _alarmRuhe = null;
   return ladeAlarm(sn);
 }
 
@@ -251,11 +260,16 @@ let _alarmRuhe = null;
  * @param {string} sn
  */
 export function alarmGetippt(sn) {
-  const dir = G(alarmId('dir')), val = G(alarmId('val'));
+  const dir = G(alarmId('dir')),
+    val = G(alarmId('val'));
   if (!dir || !val) return;
-  const richtung = dir.value, roh = String(val.value || '').trim();
+  const richtung = dir.value,
+    roh = String(val.value || '').trim();
   clearTimeout(_alarmRuhe);
-  _alarmRuhe = setTimeout(() => { _alarmRuhe = null; sendeAlarm(sn, richtung, roh); }, ALARM_RUHE);
+  _alarmRuhe = setTimeout(() => {
+    _alarmRuhe = null;
+    sendeAlarm(sn, richtung, roh);
+  }, ALARM_RUHE);
 }
 
 /**
@@ -267,9 +281,11 @@ export function alarmGetippt(sn) {
  * @param {string} sn
  */
 export function speichereAlarm(sn) {
-  const dir = G(alarmId('dir')), val = G(alarmId('val'));
+  const dir = G(alarmId('dir')),
+    val = G(alarmId('val'));
   if (!dir || !val) return;
-  clearTimeout(_alarmRuhe); _alarmRuhe = null;
+  clearTimeout(_alarmRuhe);
+  _alarmRuhe = null;
   return sendeAlarm(sn, dir.value, String(val.value || '').trim());
 }
 
@@ -283,16 +299,21 @@ export function speichereAlarm(sn) {
 async function sendeAlarm(sn, richtung, roh) {
   const zahl = leseBetrag(roh);
   // „abc“ oder „0“ ist kein Wunsch zu löschen, sondern ein Tippfehler: dieselbe Meldung wie auf #/alarme.
-  if (roh !== '' && !(zahl != null && zahl > 0)) { feldFehler(alarmId('val'), tRaw('alerts.new_preis_fehlt')); return; }
+  if (roh !== '' && !(zahl != null && zahl > 0)) {
+    feldFehler(alarmId('val'), tRaw('alerts.new_preis_fehlt'));
+    return;
+  }
   const loeschen = zahl == null;
   const cond = alarmZustand();
   const d = loeschen
     ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
-    : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`,
-                { richtung, schwelle: zahl, condition: cond });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+    : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, { richtung, schwelle: zahl, condition: cond });
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   // Nur den Merker, nicht das Feld — die Begründung steht an zeigeAlarmMerker().
-  zeigeAlarmMerker(loeschen ? undefined : d.alert ?? undefined);
+  zeigeAlarmMerker(loeschen ? undefined : (d.alert ?? undefined));
 }
 
 /**
@@ -304,25 +325,32 @@ export async function zeigeOffeneAlarme() {
   const schluessel = 'bim_alarm_marke_' + ME.id;
   /** @type {string | null} */
   let marke = null;
-  try { marke = localStorage.getItem(schluessel); } catch (_) {}
-  const d = await api('GET', `/v1/alerts/pending${marke ? '?since=' + encodeURIComponent(marke) : ''}`)
-    .catch(() => null);
+  try {
+    marke = localStorage.getItem(schluessel);
+  } catch (_) {}
+  const d = await api('GET', `/v1/alerts/pending${marke ? '?since=' + encodeURIComponent(marke) : ''}`).catch(
+    () => null,
+  );
   // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts speichern als eine falsche.
   if (!d?.success || !d.now) return;
-  try { localStorage.setItem(schluessel, String(d.now)); } catch (_) {}
+  try {
+    localStorage.setItem(schluessel, String(d.now));
+  } catch (_) {}
   // Erster Besuch: nur merken, nichts melden. Sonst schlaegt ein frisch angemeldetes Konto mit Schwellen auf,
   // die vor Wochen gerissen sind.
   if (!marke) return;
-  const unter = tRaw('detail.alert_below'), ueber = tRaw('detail.alert_above');
-  for (const a of (d.alerts || [])) {
+  const unter = tRaw('detail.alert_below'),
+    ueber = tRaw('detail.alert_above');
+  for (const a of d.alerts || []) {
     const richtung = a.richtung === 'unter' ? unter : ueber;
     const schwelle = Number(a.schwelle).toFixed(2);
     // Derselbe Aufbau wie Alarmabholung.text() in der App — wer beides benutzt, soll nicht zwei
     // Formulierungen derselben Meldung lesen.
-    const txt = a.zuletzt_preis == null
-      ? `${a.set_number}: ${richtung} ${a.currency_code} ${schwelle}`
-      : `${a.set_number}: ${a.currency_code} ${Number(a.zuletzt_preis).toFixed(2)} ` +
-        `(${richtung} ${a.currency_code} ${schwelle})`;
+    const txt =
+      a.zuletzt_preis == null
+        ? `${a.set_number}: ${richtung} ${a.currency_code} ${schwelle}`
+        : `${a.set_number}: ${a.currency_code} ${Number(a.zuletzt_preis).toFixed(2)} ` +
+          `(${richtung} ${a.currency_code} ${schwelle})`;
     toast(txt, 'info');
   }
 }
@@ -335,11 +363,16 @@ export async function zeigeOffeneAlarme() {
 export async function ladeOrtAuswahl(besitzer) {
   const dl = G('lagerorte');
   if (!dl) return;
-  const ids = (besitzer || []).map((/** @type {{ id: number } | number} */ o) => typeof o === 'number' ? o : o?.id ?? o).filter(n => Number.isFinite(Number(n)));
+  const ids = (besitzer || [])
+    .map((/** @type {{ id: number } | number} */ o) => (typeof o === 'number' ? o : (o?.id ?? o)))
+    .filter(n => Number.isFinite(Number(n)));
   const frage = ids.length ? '?owner=' + encodeURIComponent(ids.join(',')) : '';
   const d = await api('GET', `/v1/storage/locations${frage}`).catch(() => null);
   if (!d?.success) return;
-  setzeHtml(dl, (d.orte || []).map(o => html`<option value="${o.name}"></option>`));
+  setzeHtml(
+    dl,
+    (d.orte || []).map(o => html`<option value="${o.name}"></option>`),
+  );
   // Dieselbe Liste speist das Auswahlfeld im Detail (lagerortBlock).
   setzeOrtVorrat((d.orte || []).map(o => o.name));
 }
@@ -362,7 +395,11 @@ export async function ladeLagerorte(konten) {
   if (vorrat?.success) {
     const namen = (vorrat.orte || []).map(o => o.name);
     const dl = G('lagerorte');
-    if (dl) setzeHtml(dl, [...new Set(namen)].map(n => html`<option value="${n}"></option>`));
+    if (dl)
+      setzeHtml(
+        dl,
+        [...new Set(namen)].map(n => html`<option value="${n}"></option>`),
+      );
     setzeOrtVorrat(namen);
   }
   if (belegt?.success) initStorageSelects(belegt.orte || []);
@@ -370,7 +407,10 @@ export async function ladeLagerorte(konten) {
 
 // Hier und nicht im Set-Detail: Auch der Kaufpreis-Dialog schliesst ihn, und der liegt im Importgraphen
 // darunter.
-export function closeModal(){ G('set-modal').classList.remove('open'); set_curSet(null); }
+export function closeModal() {
+  G('set-modal').classList.remove('open');
+  set_curSet(null);
+}
 
 registerActions({
   closeModal,
@@ -389,13 +429,20 @@ registerActions({
  */
 export function initStorageSelects(orte) {
   // Lange Namen gekürzt: Ein Auswahlfeld ist so breit wie seine längste Option; der volle Name steht im title.
-  const kurz = (/** @type {string} */ s) => s.length > 32 ? s.slice(0, 30) + '…' : s;
-  const opts = [html`<option value="">${tRaw('filter.storage_all')}</option>`,
-    ...orte.map(o => html`<option value="${o.ort}"${o.ort.length > 32 ? html` title="${o.ort}"` : ''}>${kurz(o.ort)}</option>`)].join('');
+  const kurz = (/** @type {string} */ s) => (s.length > 32 ? s.slice(0, 30) + '…' : s);
+  const opts = [
+    html`<option value="">${tRaw('filter.storage_all')}</option>`,
+    ...orte.map(
+      o => html`<option value="${o.ort}"${o.ort.length > 32 ? html` title="${o.ort}"` : ''}>${kurz(o.ort)}</option>`,
+    ),
+  ].join('');
   for (const view of LAGER_VIEWS) {
     const el = G('storage-' + view);
     if (!el) continue;
-    if (!orte.length) { el.style.display = 'none'; continue; }
+    if (!orte.length) {
+      el.style.display = 'none';
+      continue;
+    }
     setzeHtml(el, ungeprueft(opts));
     // Zeigt die gespeicherte Wahl auf einen inzwischen leeren Ort, steht hier sonst eine leere Beschriftung
     // über einer gefilterten Liste — dieselbe Falle wie beim Kontofilter.

@@ -26,8 +26,10 @@ require('./helpers/sources').buildAndRequire();
 function lade(wurzel, env = {}) {
   const skript = `const g = require(${JSON.stringify(path.join(DIST, 'src/infra/geheimnis.js'))});
     process.stdout.write(g.datenSchluessel().toString('base64'));`;
-  const r = spawnSync(process.execPath, ['-e', skript], { encoding: 'utf8',
-    env: { ...process.env, DATA_KEY: '', DATA_KEY_FILE: '', APP_ROOT: wurzel, ...env } });
+  const r = spawnSync(process.execPath, ['-e', skript], {
+    encoding: 'utf8',
+    env: { ...process.env, DATA_KEY: '', DATA_KEY_FILE: '', APP_ROOT: wurzel, ...env },
+  });
   return { schluessel: r.status === 0 ? r.stdout : null, fehler: r.stderr, status: r.status };
 }
 
@@ -39,8 +41,10 @@ function installation(t) {
 }
 const zufall = () => crypto.randomBytes(32).toString('base64');
 
-test('der Schlüssel aus DATA_KEY_FILE wird benutzt, nichts landet in data/', (t) => {
-  const wurzel = installation(t), datei = path.join(wurzel, 'geheim', 'k'), k = zufall();
+test('der Schlüssel aus DATA_KEY_FILE wird benutzt, nichts landet in data/', t => {
+  const wurzel = installation(t),
+    datei = path.join(wurzel, 'geheim', 'k'),
+    k = zufall();
   fs.mkdirSync(path.dirname(datei));
   fs.writeFileSync(datei, k + '\n', { mode: 0o600 });
   const r = lade(wurzel, { DATA_KEY_FILE: datei });
@@ -49,7 +53,7 @@ test('der Schlüssel aus DATA_KEY_FILE wird benutzt, nichts landet in data/', (t
   assert.deepEqual(fs.readdirSync(path.join(wurzel, 'data')), []);
 });
 
-test('ohne Schlüssel entsteht er unter schluessel/, nur für den Besitzer lesbar', (t) => {
+test('ohne Schlüssel entsteht er unter schluessel/, nur für den Besitzer lesbar', t => {
   const wurzel = installation(t);
   const r = lade(wurzel);
   const datei = path.join(wurzel, 'schluessel', 'datenschluessel');
@@ -59,8 +63,9 @@ test('ohne Schlüssel entsteht er unter schluessel/, nur für den Besitzer lesba
   assert.equal(lade(wurzel).schluessel, r.schluessel, 'der zweite Start nimmt denselben');
 });
 
-test('eine alte Installation mit data/.datenschluessel läuft weiter und wird gewarnt', (t) => {
-  const wurzel = installation(t), alt = zufall();
+test('eine alte Installation mit data/.datenschluessel läuft weiter und wird gewarnt', t => {
+  const wurzel = installation(t),
+    alt = zufall();
   fs.writeFileSync(path.join(wurzel, 'data', '.datenschluessel'), alt, { mode: 0o600 });
   const neu = path.join(wurzel, 'schluessel', 'datenschluessel');
   const r = lade(wurzel, { DATA_KEY_FILE: neu });
@@ -75,7 +80,7 @@ test('eine alte Installation mit data/.datenschluessel läuft weiter und wird ge
   assert.doesNotMatch(danach.fehler, /Datenordner/);
 });
 
-test('zwei verschiedene Schlüssel halten den Start an', (t) => {
+test('zwei verschiedene Schlüssel halten den Start an', t => {
   const wurzel = installation(t);
   fs.writeFileSync(path.join(wurzel, 'data', '.datenschluessel'), zufall());
   fs.mkdirSync(path.join(wurzel, 'schluessel'));

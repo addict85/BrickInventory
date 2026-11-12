@@ -8,7 +8,9 @@ export type Art = PapierArt;
 export const AUFBEWAHRUNG_TAGE = 30;
 
 const ERFASSUNGEN: Record<Art, string> = {
-  set: 'set_acquisitions', teil: 'part_acquisitions', figur: 'minifig_acquisitions',
+  set: 'set_acquisitions',
+  teil: 'part_acquisitions',
+  figur: 'minifig_acquisitions',
 };
 
 function parameter(art: Art, userId: number, nummer: string, farbeId: number | null) {
@@ -19,7 +21,11 @@ function parameter(art: Art, userId: number, nummer: string, farbeId: number | n
  * wird auch nicht gelöscht.
  * @returns die id des Eintrags, oder null, wenn es keine Stammzeile gab */
 export async function legeInPapierkorb(
-  tx: DbSchnittstelle, art: Art, userId: number, nummer: string, farbeId: number | null = null,
+  tx: DbSchnittstelle,
+  art: Art,
+  userId: number,
+  nummer: string,
+  farbeId: number | null = null,
 ): Promise<number | null> {
   const p = parameter(art, userId, nummer, farbeId);
   const zeilen = await repo.bestandsZeilen(tx, art, p);
@@ -31,14 +37,21 @@ export async function legeInPapierkorb(
 }
 
 export interface PapierkorbEintrag {
-  id: number; user_id: number; art: Art; nummer: string; farbe_id: number | null;
-  bezeichnung: string | null; anzahl: number; geloescht_am: string; endgueltig_am: string;
+  id: number;
+  user_id: number;
+  art: Art;
+  nummer: string;
+  farbe_id: number | null;
+  bezeichnung: string | null;
+  anzahl: number;
+  geloescht_am: string;
+  endgueltig_am: string;
 }
 
 export async function listePapierkorb(uidsWahl: Schreiber | number[]): Promise<PapierkorbEintrag[]> {
   const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
   const rows = await bestandBereich().papierkorb.eintraege(uids, AUFBEWAHRUNG_TAGE);
-  return rows.map((r) => {
+  return rows.map(r => {
     const erfassungen = r.zeilen?.[ERFASSUNGEN[r.art]] ?? [];
     const { zeilen: _z, ...rest } = r;
     return { ...rest, anzahl: erfassungen.reduce((s, e) => s + (Number(e.quantity) || 0), 0) };
@@ -71,7 +84,7 @@ export async function stelleWiederHer(uidsWahl: Schreiber | number[], id: number
 
 export async function loescheEndgueltig(uidsWahl: Schreiber | number[], id: number): Promise<boolean> {
   const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
-  return await bestandBereich().papierkorb.entferneEintragDesKontos(id, uids) > 0;
+  return (await bestandBereich().papierkorb.entferneEintragDesKontos(id, uids)) > 0;
 }
 
 export async function leerePapierkorb(uidsWahl: Schreiber | number[]): Promise<number> {

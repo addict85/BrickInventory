@@ -31,15 +31,33 @@ const messen = `(() => {
            breit: document.documentElement.scrollWidth };
 })()`;
 
-test('Sammlung am Telefon: Karte über der Falz, Preise ohne Überlappung', { timeout: 120_000 }, async (t) => {
+test('Sammlung am Telefon: Karte über der Falz, Preise ohne Überlappung', { timeout: 120_000 }, async t => {
   const app = await starteApp(t, { name: `falz_${process.pid}`, bestand: musterSammlung, telefon: true });
-  if (app.grund) { t.skip(app.grund); return; }
-  for (const [breite, hoehe] of [[320, 640], [360, 740], [390, 844]]) {
-    await app.b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 2, mobile: true });
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
+  for (const [breite, hoehe] of [
+    [320, 640],
+    [360, 740],
+    [390, 844],
+  ]) {
+    await app.b.tab('Emulation.setDeviceMetricsOverride', {
+      width: breite,
+      height: hoehe,
+      deviceScaleFactor: 2,
+      mobile: true,
+    });
     await app.ruhig();
-    await app.bis(`document.querySelectorAll('#gallery .price-badge:not([hidden])').length > 0`, 'Marktpreise auf den Karten');
+    await app.bis(
+      `document.querySelectorAll('#gallery .price-badge:not([hidden])').length > 0`,
+      'Marktpreise auf den Karten',
+    );
     const m = await app.b.auswerten(messen);
-    assert.ok(m.oben !== null && m.oben + 60 < m.leiste, `${breite}: erste Karte über der Falz (oben ${m.oben}, Leiste ${m.leiste})`);
+    assert.ok(
+      m.oben !== null && m.oben + 60 < m.leiste,
+      `${breite}: erste Karte über der Falz (oben ${m.oben}, Leiste ${m.leiste})`,
+    );
     assert.ok(m.karten >= 2, `${breite}: zu wenig Preiszeilen geprüft (${m.karten})`);
     assert.deepEqual(m.ueberlapp, [], `${breite}: Preis und Nachbar überlappen`);
     assert.equal(m.breit, breite, `${breite}: waagrechtes Scrollen`);

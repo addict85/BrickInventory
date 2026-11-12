@@ -27,22 +27,36 @@ const UMBRUCH = `[...document.querySelectorAll('.dt-fin thead th, .dt-summe thea
   const zelle = th.getBoundingClientRect();
   return (tops.size > 1 || rechts > zelle.right + 0.5) ? th.textContent.trim() + ': ' + tops.size + ' Zeilen' : null; }).filter(Boolean)`;
 
-test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, timeout: 300_000 }, async (t) => {
+test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await starteApp(t, {
     name: `fintab_${process.pid}`,
     bestand: async (db, uid) => {
       await haeltSet(db, uid, '10294-1', 2, { preis: 100 });
       await haeltSet(db, uid, '75192-1', 1, { preis: 50 });
-      for (const [nr, p] of [['10294-1', 120], ['75192-1', 60]])
-        await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
-                      VALUES ($1, 'N', 'EUR', $2, $2, $2, $2, 10, NOW()) ON CONFLICT DO NOTHING`, [nr, p]).catch(() => {});
+      for (const [nr, p] of [
+        ['10294-1', 120],
+        ['75192-1', 60],
+      ])
+        await db
+          .run(
+            `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
+                      VALUES ($1, 'N', 'EUR', $2, $2, $2, $2, 10, NOW()) ON CONFLICT DO NOTHING`,
+            [nr, p],
+          )
+          .catch(() => {});
     },
   });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
-  const groesse = async (w) => { await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: 900, deviceScaleFactor: 1, mobile: false }); await warte(300); };
+  const groesse = async w => {
+    await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: 900, deviceScaleFactor: 1, mobile: false });
+    await warte(300);
+  };
   await b.auswerten(`location.hash = '#/finanzen'; true`);
   await bis(`document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2`, 'Sets in der Finanztabelle');
 
@@ -55,20 +69,35 @@ test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, t
       return { spalte, zeilen: zellen.map(z => zahl(z.firstChild.textContent)), je: zellen.map(z => z.querySelector('.fin-je')?.textContent || ''),
                summe: zahl(tab.querySelector('tfoot .fin-fuss-wert').textContent) }; })()`);
     assert.ok(m.spalte > 0, 'Spalte „Einstand“ fehlt');
-    assert.deepEqual(m.zeilen.slice().sort((a, b) => a - b), [50, 200]);
-    assert.equal(m.zeilen.reduce((a, b) => a + b, 0), m.summe);
-    assert.ok(m.je.some(j => /^je .*100[.,]00/.test(j)), `Stückpreis fehlt: ${JSON.stringify(m.je)}`);
+    assert.deepEqual(
+      m.zeilen.slice().sort((a, b) => a - b),
+      [50, 200],
+    );
+    assert.equal(
+      m.zeilen.reduce((a, b) => a + b, 0),
+      m.summe,
+    );
+    assert.ok(
+      m.je.some(j => /^je .*100[.,]00/.test(j)),
+      `Stückpreis fehlt: ${JSON.stringify(m.je)}`,
+    );
   });
 
   await t.test('Köpfe in einer Zeile', async () => {
     const fehler = [];
     for (const sprache of ['de', 'en']) {
       if (sprache === 'en') {
-        await b.auswerten(`(() => { const s = document.getElementById('lang-select'); s.value = 'en'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+        await b.auswerten(
+          `(() => { const s = document.getElementById('lang-select'); s.value = 'en'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
+        );
         await bis(`document.documentElement.lang === 'en'`, 'Englisch');
-        await b.auswerten(`location.hash = '#/sammlung'; true`); await warte(300);
+        await b.auswerten(`location.hash = '#/sammlung'; true`);
+        await warte(300);
         await b.auswerten(`location.hash = '#/finanzen'; true`);
-        await bis(`document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2 && /Purchase price/.test(document.querySelector('.dt-fin thead').textContent)`, 'englische Finanztabelle');
+        await bis(
+          `document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2 && /Purchase price/.test(document.querySelector('.dt-fin thead').textContent)`,
+          'englische Finanztabelle',
+        );
       }
       for (const w of [1280, 1440]) {
         await groesse(w);

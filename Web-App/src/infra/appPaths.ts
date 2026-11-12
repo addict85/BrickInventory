@@ -1,7 +1,7 @@
 /** Pfade an einer Stelle: __dirname zeigt aus dist/ an einen anderen Ort als
  * aus den Quellen. */
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 import { konfig } from './konfig';
 
 function findRoot(): string {
@@ -31,8 +31,8 @@ export const PUBLIC_DIR = path.join(APP_ROOT, 'public');
 export const IMAGES_DIR = path.join(DATA_DIR, 'images');
 
 // Bilder nach Art getrennt.
-export const SET_IMAGES_DIR     = path.join(IMAGES_DIR, 'sets');
-export const PART_IMAGES_DIR    = path.join(IMAGES_DIR, 'parts');
+export const SET_IMAGES_DIR = path.join(IMAGES_DIR, 'sets');
+export const PART_IMAGES_DIR = path.join(IMAGES_DIR, 'parts');
 export const MINIFIG_IMAGES_DIR = path.join(IMAGES_DIR, 'minifigs');
 
 // Geteilte Anleitungen; eigene in uploads/.
@@ -42,8 +42,7 @@ export const PDF_JOB_DIR = path.join(DATA_DIR, 'pdf-jobs');
 /** null für alles andere — der Aufrufer entscheidet, was das heisst. */
 export function resolveWebPath(webPath: string): string | null {
   if (!webPath) return null;
-  if (webPath.startsWith('/data/'))   return path.join(APP_ROOT, webPath.slice(1));
+  if (webPath.startsWith('/data/')) return path.join(APP_ROOT, webPath.slice(1));
   if (webPath.startsWith('/images/')) return path.join(IMAGES_DIR, webPath.slice('/images/'.length));
   return null;
 }
-

@@ -4,9 +4,16 @@ import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '.
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
 export function erfassungsKennzahlen(db: DbSchnittstelle, art: 'part' | 'fig', uids: number[]) {
-  return db.all<{ part_number?: string; color_id?: number | null; fig_number?: string;
-                  acq_count: string; used_count: string; avg_purchase_price: number | null }>(art === 'part'
-    ? `SELECT part_number, color_id,
+  return db.all<{
+    part_number?: string;
+    color_id?: number | null;
+    fig_number?: string;
+    acq_count: string;
+    used_count: string;
+    avg_purchase_price: number | null;
+  }>(
+    art === 'part'
+      ? `SELECT part_number, color_id,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
                 SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('part_acquisitions')})::numeric
@@ -14,14 +21,16 @@ export function erfassungsKennzahlen(db: DbSchnittstelle, art: 'part' | 'fig', u
            FROM part_acquisitions ${kontowaehrungJoin('part_acquisitions')}
           WHERE part_acquisitions.user_id = ANY($1)
           GROUP BY part_number, color_id`
-    : `SELECT fig_number,
+      : `SELECT fig_number,
                 COUNT(*) AS acq_count,
                 COUNT(*) FILTER (WHERE condition = 'U') AS used_count,
                 SUM(unit_price * quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')})::numeric
                   / NULLIF(SUM(quantity) FILTER (WHERE unit_price IS NOT NULL AND ${inKontowaehrung('minifig_acquisitions')}), 0) AS avg_purchase_price
            FROM minifig_acquisitions ${kontowaehrungJoin('minifig_acquisitions')}
           WHERE minifig_acquisitions.user_id = ANY($1)
-          GROUP BY fig_number`, [uids]);
+          GROUP BY fig_number`,
+    [uids],
+  );
 }
 
 /** Spalten, über die gesucht werden darf. Siehe verwendendeSets(). */
@@ -58,13 +67,30 @@ const ART = { parts: 'part', minifigs: 'fig' } as const;
 
 /** Ein Set, das den Bestandteil enthält, mit den Kopffeldern des Bestandteils. */
 export interface VerwendungsZeile {
-  set_number: string; owner_user_id: number; quantity: number; set_name: string | null;
-  set_image_local: string | null; set_image_url: string | null; nummer: string; name: string | null;
-  color_id: number | null; color_name: string | null; color_hex: string | null; category_name: string | null;
-  teil_image_local: string | null; teil_image_url: string | null; is_spare: unknown; storage: string | null;
+  set_number: string;
+  owner_user_id: number;
+  quantity: number;
+  set_name: string | null;
+  set_image_local: string | null;
+  set_image_url: string | null;
+  nummer: string;
+  name: string | null;
+  color_id: number | null;
+  color_name: string | null;
+  color_hex: string | null;
+  category_name: string | null;
+  teil_image_local: string | null;
+  teil_image_url: string | null;
+  is_spare: unknown;
+  storage: string | null;
 }
 
-export async function setsMitBestandteil(db: DbSchnittstelle, uids: number[], tabelle: 'parts' | 'minifigs', schluessel: Record<string, string | number>) {
+export async function setsMitBestandteil(
+  db: DbSchnittstelle,
+  uids: number[],
+  tabelle: 'parts' | 'minifigs',
+  schluessel: Record<string, string | number>,
+) {
   const spalten = Object.keys(schluessel);
   // Die Namen kommen aus Literalen, die Schranke steht trotzdem: Ein Spaltenname
   // lässt sich nicht als Parameter binden.
@@ -111,7 +137,8 @@ export async function setsMitBestandteil(db: DbSchnittstelle, uids: number[], ta
       GROUP BY x.set_number, x.user_id, ${SCHLUESSELSPALTE[tabelle]},
                rs.name, c.image_local, c.image_url
       ORDER BY x.set_number`,
-    params);
+    params,
+  );
 }
 
 /** Mit dem Set gehen seine Teile und Figuren. */
@@ -121,7 +148,13 @@ export async function entferneSetInhalt(tx: DbSchnittstelle, uids: number[], set
 }
 
 /** Nur Schlüssel und Herkunft: Beschreibung und Stückzahl stehen im Katalog. */
-export async function kopiereSetInhalt(tx: DbSchnittstelle, tabelle: 'parts' | 'minifigs', sn: string, von: number, nach: number): Promise<number> {
+export async function kopiereSetInhalt(
+  tx: DbSchnittstelle,
+  tabelle: 'parts' | 'minifigs',
+  sn: string,
+  von: number,
+  nach: number,
+): Promise<number> {
   const sql = {
     parts: `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
             SELECT $1, set_number, part_number, color_id, source FROM parts
@@ -134,16 +167,31 @@ export async function kopiereSetInhalt(tx: DbSchnittstelle, tabelle: 'parts' | '
 }
 
 /** Ohne Menge: Sie entsteht aus der Erfassung, die gleich mitwandert. */
-export async function legeManuellAn(tx: DbSchnittstelle, art: 'part' | 'fig', uid: number, schluessel: (string | number)[]): Promise<void> {
+export async function legeManuellAn(
+  tx: DbSchnittstelle,
+  art: 'part' | 'fig',
+  uid: number,
+  schluessel: (string | number)[],
+): Promise<void> {
   if (art === 'part')
-    await tx.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual')`, [uid, ...schluessel]);
-  else
-    await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, ...schluessel]);
+    await tx.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,$3,'manual')`, [
+      uid,
+      ...schluessel,
+    ]);
+  else await tx.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, ...schluessel]);
 }
 
-export function loescheTeilZeile(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, partNumber: string, colorId: number) {
-  return dbh.run("DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
-    [ownerId, partNumber, colorId]);
+export function loescheTeilZeile(
+  dbh: Pick<DbSchnittstelle, 'run'>,
+  ownerId: number,
+  partNumber: string,
+  colorId: number,
+) {
+  return dbh.run("DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'", [
+    ownerId,
+    partNumber,
+    colorId,
+  ]);
 }
 
 export function loescheFigurZeile(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, figNumber: string) {

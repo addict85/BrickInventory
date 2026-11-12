@@ -18,14 +18,19 @@ const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
-test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   // Die Tagesregel steht als Index in Migration 0047; ohne ihn greift das
   // ON CONFLICT beim Erfassen nicht.
   const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(mc);
+  } finally {
+    mc.release();
+  }
 
-  const U = `neuzust-${process.pid}`, SET = '60445-1';
+  const U = `neuzust-${process.pid}`,
+    SET = '60445-1';
   const aufraeumen = async () => {
     await db.run('DELETE FROM set_acquisitions WHERE set_number=$1', [SET]).catch(() => {});
     await db.run('DELETE FROM sets WHERE set_number=$1', [SET]).catch(() => {});
@@ -43,29 +48,42 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
     // sagt 'N'. Bis Migration 0032 stand das 'N' zusaetzlich in
     // sets.condition — die Spalte ist weg, die Verwechslungsmoeglichkeit
     // zwischen Vorgabe und Erfassung bleibt.
-    await haeltSet(db, uid, SET, 0);  // Menge 0: die Erfassung dahinter traegt sie
-    await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
-                  VALUES ($1,$2,1,10,'U', NOW() - INTERVAL '2 days')`, [uid, SET]);
+    await haeltSet(db, uid, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await db.run(
+      `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
+                  VALUES ($1,$2,1,10,'U', NOW() - INTERVAL '2 days')`,
+      [uid, SET],
+    );
     // Preise fuer BEIDE Zustaende — sonst waere der Unterschied unsichtbar.
-    for (const [c, p] of [['N', 100], ['U', 20]])
-      await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
+    for (const [c, p] of [
+      ['N', 100],
+      ['U', 20],
+    ])
+      await db.run(
+        `INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
                     VALUES ($1,$2,'EUR',$3,$3,$3,$3,5,NOW())
-                    ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET avg_price=$3`, [SET, c, p]);
+                    ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET avg_price=$3`,
+        [SET, c, p],
+      );
 
     const { updateSet } = _req('src/sets/index.js');
     await updateSet(uid, SET, { quantity: 2 });
 
     const erf = await db.all(
       `SELECT condition, purchase_price::float AS p FROM set_acquisitions
-        WHERE user_id=$1 AND set_number=$2 ORDER BY created_at ASC, id ASC`, [uid, SET]);
+        WHERE user_id=$1 AND set_number=$2 ORDER BY created_at ASC, id ASC`,
+      [uid, SET],
+    );
     assert.equal(erf.length, 2, 'Die Mengenerhoehung hat keine neue Erfassung angelegt');
     // Gegenprobe: in priceForNewAcquisition den Zustand auf
     // DEFAULT_PRICE_CONDITION festnageln -> hier steht 'N' und 100.
-    assert.equal(erf[1].condition, 'U',
-      'Das neue Exemplar traegt die Vorgabe statt den Zustand der Erfassungen');
-    assert.equal(erf[1].p, 20,
+    assert.equal(erf[1].condition, 'U', 'Das neue Exemplar traegt die Vorgabe statt den Zustand der Erfassungen');
+    assert.equal(
+      erf[1].p,
+      20,
       'Das neue Exemplar hat den Neupreis bekommen, obwohl das Set gebraucht ist — ' +
-      'das geht in Bestandswert und G&V ein');
+        'das geht in Bestandswert und G&V ein',
+    );
   } finally {
     await aufraeumen();
     await db.pool.end();
@@ -78,7 +96,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
 test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
-  const gehen = (d) => {
+  const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts'].includes(e.name) || e.name.startsWith('.')) continue;
       const abs = path.join(d, e.name);
@@ -87,8 +105,7 @@ test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
     }
   };
   gehen(ROOT);
-  assert.ok(dateien.length >= 40,
-    `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
   // Gesucht werden die Formen, in denen die zwei Spalten in diesem Baum
   // tatsaechlich vorkamen — GEFUNDEN, nicht erdacht (git log von Migration
@@ -105,8 +122,10 @@ test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
   const treffer = [];
   let geprueft = 0;
   for (const f of dateien) {
-    const code = fs.readFileSync(f, 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+    const code = fs
+      .readFileSync(f, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/[^\n]*$/gm, '');
     geprueft++;
     for (const r of verboten) {
       const m = code.match(r);
@@ -118,12 +137,18 @@ test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
   const probe = `SELECT s.condition, s.purchase_price FROM sets s
     INSERT INTO sets (user_id,purchase_price) VALUES ($1,$2)`;
   const angeschlagen = verboten.filter(r => r.test(probe)).length;
-  assert.equal(angeschlagen, 3,
+  assert.equal(
+    angeschlagen,
+    3,
     `Von den Mustern schlugen ${angeschlagen} auf der Probe an, erwartet 3 ` +
-    '(s.condition, s.purchase_price, INSERT INTO sets mit purchase_price)');
+      '(s.condition, s.purchase_price, INSERT INTO sets mit purchase_price)',
+  );
   assert.ok(geprueft >= 40, `Nur ${geprueft} Dateien geprueft — die Suche greift nicht mehr`);
-  assert.deepEqual(treffer, [],
+  assert.deepEqual(
+    treffer,
+    [],
     'Diese Stellen lesen oder schreiben Kaufpreis/Zustand auf der sets-Zeile. ' +
-    'Beides steht seit Migration 0032 nur in set_acquisitions; genau aus dem ' +
-    'Nebeneinander sind in diesem Baum achtmal dieselben Fehler entstanden.');
+      'Beides steht seit Migration 0032 nur in set_acquisitions; genau aus dem ' +
+      'Nebeneinander sind in diesem Baum achtmal dieselben Fehler entstanden.',
+  );
 });

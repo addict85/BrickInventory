@@ -37,16 +37,26 @@ const PASS = 'Bremsen-Passwort-1';
 
 async function konto(name) {
   await db.run('DELETE FROM users WHERE username = $1', [name]);
-  return (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
-    VALUES ($1, $2, $3, true, true) RETURNING id`, [name, `${name}@example.org`, await bcrypt.hash(PASS, 4)])).id;
+  return (
+    await db.get(
+      `INSERT INTO users (username, email, password_hash, is_active, email_verified)
+    VALUES ($1, $2, $3, true, true) RETURNING id`,
+      [name, `${name}@example.org`, await bcrypt.hash(PASS, 4)],
+    )
+  ).id;
 }
 
-test('Bremsen der Bestätigung', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
-  const NAME = `bb_${process.pid}`, KARL = `bb_karl_${process.pid}`;
-  const uid = await konto(NAME), karl = await konto(KARL);
-  const leeren = () => db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2',
-    [`%-bestaetigen|${uid}|%`, `%-bestaetigen|${karl}|%`]);
+test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
+  const NAME = `bb_${process.pid}`,
+    KARL = `bb_karl_${process.pid}`;
+  const uid = await konto(NAME),
+    karl = await konto(KARL);
+  const leeren = () =>
+    db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [
+      `%-bestaetigen|${uid}|%`,
+      `%-bestaetigen|${karl}|%`,
+    ]);
   t.after(async () => {
     await leeren().catch(() => {});
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, karl]]).catch(() => {});
@@ -55,7 +65,10 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async (t) => {
 
   await zf.beginneEinrichtung(uid);
   const z = await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid]);
-  const codes = await zf.bestaetigeEinrichtung(uid, zf.hotp(zf.ausBase32(entschluessele(z.geheimnis, zf.faktorKontext(uid))), zf.zeitschritt()));
+  const codes = await zf.bestaetigeEinrichtung(
+    uid,
+    zf.hotp(zf.ausBase32(entschluessele(z.geheimnis, zf.faktorKontext(uid))), zf.zeitschritt()),
+  );
   let naechster = 0;
   const richtig = () => codes[naechster++];
 
@@ -74,18 +87,26 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async (t) => {
   t.after(() => new Promise(r => srv.close(r)));
   const base = `http://localhost:${srv.address().port}`;
   const ruf = async (methode, weg, body, kopf) => {
-    const r = await fetch(base + weg, { method: methode, headers: { 'content-type': 'application/json', ...kopf },
-      body: JSON.stringify(body) });
+    const r = await fetch(base + weg, {
+      method: methode,
+      headers: { 'content-type': 'application/json', ...kopf },
+      body: JSON.stringify(body),
+    });
     return { status: r.status, code: (await r.json().catch(() => ({}))).code };
   };
-  const A = { 'x-sitzung': 'sitzung-angreifer' }, O = { 'x-sitzung': 'sitzung-inhaber' };
-  const passkeyLoeschen = (code, kopf = A) => ruf('DELETE', '/api/v1/auth/passkeys/999999', { password: PASS, code }, kopf);
+  const A = { 'x-sitzung': 'sitzung-angreifer' },
+    O = { 'x-sitzung': 'sitzung-inhaber' };
+  const passkeyLoeschen = (code, kopf = A) =>
+    ruf('DELETE', '/api/v1/auth/passkeys/999999', { password: PASS, code }, kopf);
 
   await t.test('das Passwort setzt den Codezähler nicht zurück', async () => {
     await leeren();
     // Jeder Versuch trägt das richtige Passwort; dazwischen der frühere Rücksetzweg (Passwort ohne Code).
     for (let i = 0; i < 4; i++) assert.equal((await passkeyLoeschen(String(100000 + i))).code, 'zweiter_faktor_falsch');
-    assert.equal((await ruf('POST', '/api/v1/auth/zweiter-faktor/einrichten', { password: PASS }, A)).code, 'zweiter_faktor_noetig');
+    assert.equal(
+      (await ruf('POST', '/api/v1/auth/zweiter-faktor/einrichten', { password: PASS }, A)).code,
+      'zweiter_faktor_noetig',
+    );
     assert.equal((await passkeyLoeschen('100004')).code, 'zweiter_faktor_falsch');
     const sechster = await passkeyLoeschen(richtig());
     assert.equal(sechster.status, 429, `das Passwort setzt den Codezähler zurück: ${JSON.stringify(sechster)}`);
@@ -103,12 +124,23 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async (t) => {
     const kopf = { 'x-sitzung': 'karl-fremd', 'x-konto': String(karl) };
     for (let i = 0; i < 5; i++)
       await ruf('POST', '/api/v1/settings/sessions/andere-beenden', { password: `falsch${i}` }, kopf);
-    assert.equal((await ruf('POST', '/api/v1/settings/sessions/andere-beenden', { password: PASS }, kopf)).status, 429,
-      'Vorbedingung: die fremde Sitzung ist gesperrt');
+    assert.equal(
+      (await ruf('POST', '/api/v1/settings/sessions/andere-beenden', { password: PASS }, kopf)).status,
+      429,
+      'Vorbedingung: die fremde Sitzung ist gesperrt',
+    );
     const eigen = { 'x-sitzung': 'karl-eigen', 'x-konto': String(karl) };
-    assert.equal((await ruf('POST', '/api/v1/settings/sessions/andere-beenden', { password: PASS }, eigen)).status, 200,
-      'eine fremde Sitzung sperrt die Notbremsen');
-    const wechsel = await ruf('POST', '/api/v1/auth/change-password', { current: PASS, newPassword: 'Neues-Passwort-77' }, eigen);
+    assert.equal(
+      (await ruf('POST', '/api/v1/settings/sessions/andere-beenden', { password: PASS }, eigen)).status,
+      200,
+      'eine fremde Sitzung sperrt die Notbremsen',
+    );
+    const wechsel = await ruf(
+      'POST',
+      '/api/v1/auth/change-password',
+      { current: PASS, newPassword: 'Neues-Passwort-77' },
+      eigen,
+    );
     assert.equal(wechsel.status, 200, `eine fremde Sitzung sperrt die Notbremsen: ${JSON.stringify(wechsel)}`);
     await db.run('UPDATE users SET password_hash = $2 WHERE id = $1', [karl, await bcrypt.hash(PASS, 4)]);
   });
@@ -117,19 +149,26 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async (t) => {
     await leeren();
     for (let i = 0; i < 5; i++) await passkeyLoeschen(String(300000 + i), A);
     assert.equal((await passkeyLoeschen(richtig(), A)).status, 429, 'Vorbedingung: Angreifer gesperrt');
-    assert.equal((await passkeyLoeschen(richtig(), O)).status, 200, 'falsche Codes einer fremden Sitzung sperren den Inhaber');
+    assert.equal(
+      (await passkeyLoeschen(richtig(), O)).status,
+      200,
+      'falsche Codes einer fremden Sitzung sperren den Inhaber',
+    );
   });
 
   await t.test('der Tausch des Tokens setzt die Bremse nicht zurück', async () => {
     await leeren();
     const token = await createToken(karl, 'Probe', true);
-    const mit = (tk) => ({ authorization: `Bearer ${tk}` });
+    const mit = tk => ({ authorization: `Bearer ${tk}` });
     for (let i = 0; i < 5; i++) await ruf('DELETE', '/api/v1/bestand', { password: `falsch${i}` }, mit(token));
     assert.equal((await ruf('DELETE', '/api/v1/bestand', { password: PASS }, mit(token))).status, 429, 'Vorbedingung');
     const r = await fetch(`${base}/api/v1/auth/token-rotieren`, { method: 'POST', headers: mit(token) });
     const neu = (await r.json()).token;
     assert.ok(neu, 'Vorbedingung: getauscht');
-    assert.equal((await ruf('DELETE', '/api/v1/bestand', { password: PASS }, mit(neu))).status, 429,
-      'der Tausch des Tokens setzt die Bremse zurück');
+    assert.equal(
+      (await ruf('DELETE', '/api/v1/bestand', { password: PASS }, mit(neu))).status,
+      429,
+      'der Tausch des Tokens setzt die Bremse zurück',
+    );
   });
 });

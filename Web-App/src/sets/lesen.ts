@@ -6,7 +6,6 @@ import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } 
 
 // Leseabfragen; Zustand aus den Erfassungen.
 
-
 import type { Abfrage } from '../vertrag';
 import { versuche } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
@@ -22,13 +21,16 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
   const { search, theme, sort, page = 1, page_size = null } = query;
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const { sets, countRow, themeRows } = await repo.setListe(sk.db, uids, {
-    search, theme, sort, storage: query.storage,
-    seite: size ? { groesse: size, versatz: (Math.max(1, parseInt(String(page)) || 1) - 1) * size } : null,
-    themen: !!page_size && parseInt(String(page)) <= 1,
+    search,
+    theme,
+    sort,
+    storage: query.storage,
+    seite: size ? { groesse: size, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * size } : null,
+    themen: !!page_size && parseInt(String(page), 10) <= 1,
   });
 
   // Anleitungen nur für die Sets DIESER Seite; ohne Sets entfallen beide Abfragen.
-  const pageSetNumbers = sets.map((r: any) => r.set_number);
+  const pageSetNumbers = sets.map(r => r.set_number);
   const [sharedInstrs, userInstrs] = pageSetNumbers.length
     ? await Promise.all([
         repo.geteilteAnleitungen(sk.db, pageSetNumbers, uids),
@@ -55,11 +57,8 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
     image_local: resolveImageLocal(s.image_local),
     // Besitzer nur im Haushalt — im Einzelkonto wäre „gehört mir" nur Rauschen.
     // Dort immer, auch leer: array_agg liefert NULL, wenn der FILTER alles ausschliesst.
-    ...(uids.length > 1 ? { owner_ids: (s.owner_ids || []).map((n: any) => parseInt(n)) } : {}),
-    instructions: anleitungenZusammenlegen(
-      sharedBySet.get(s.set_number) || [],
-      userBySet.get(s.set_number) || [],
-    ),
+    ...(uids.length > 1 ? { owner_ids: (s.owner_ids || []).map(n => parseInt(String(n), 10)) } : {}),
+    instructions: anleitungenZusammenlegen(sharedBySet.get(s.set_number) || [], userBySet.get(s.set_number) || []),
   }));
 
   // Eine Abfrage für die ganze Seite statt einer je Zeile.
@@ -77,7 +76,7 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
 export async function getSetConditionAggregate(sk: SetsKontext, userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setErfassungsKennzahlen(sk.db, uids, setNumber);
-  const acqCount  = Number(acq?.acq_count) || 0;
+  const acqCount = Number(acq?.acq_count) || 0;
   const usedCount = Number(acq?.used_count) || 0;
   return {
     condition: conditionFromAcquisitions(acqCount, usedCount),
@@ -92,7 +91,12 @@ export async function getSetConditionAggregate(sk: SetsKontext, userId: Blickfel
 }
 
 /** Damit die Schreib-Endpunkte die Kachel ohne Neuladen aktualisieren. */
-export async function withSetAggregate<T extends object>(sk: SetsKontext, userId: Blickfeld, setNumber: string, payload: T) {
+export async function withSetAggregate<T extends object>(
+  sk: SetsKontext,
+  userId: Blickfeld,
+  setNumber: string,
+  payload: T,
+) {
   const uids = asIds(userId);
   const agg = await versuche('sets-handler:getSetConditionAggregate', getSetConditionAggregate(sk, uids, setNumber));
   return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
@@ -122,9 +126,12 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
   ]);
   const { owner_ids, ...ohneIds } = set;
   const [mitBesitzern] = await besitzerAnhaengen(sk.db, uids, [uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds]);
-  return { ...mitBesitzern, ...agg,
+  return {
+    ...mitBesitzern,
+    ...agg,
     bricklink,
     preisvergleich_url: preisvergleich,
     image_local: resolveImageLocal(set.image_local),
-    instructions: anleitungenZusammenlegen(shared, uploaded) };
+    instructions: anleitungenZusammenlegen(shared, uploaded),
+  };
 }

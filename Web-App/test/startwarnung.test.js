@@ -17,9 +17,9 @@
  *   O  (06.11.2026) in dbOhneTls() die Regel für Namen ohne Punkt gestrichen →
  *      rot: „entfernte Datenbank …“ ({"PGHOST":"db-brickinventory"})
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
+const path = require('node:path');
 const { spawn } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
@@ -28,17 +28,32 @@ const { startWarnungen } = _req('src/infra/konfig.js');
 
 /** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
 function starte(env, ms = 20000) {
-  return new Promise((fertig) => {
+  return new Promise(fertig => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-      cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-      env: { PATH: process.env.PATH, NODE_ENV: 'production', PORT: '39649',
-             SESSION_SECRET: 'startverbot-geheimnis-lang-genug-1234567', ...env },
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        PATH: process.env.PATH,
+        NODE_ENV: 'production',
+        PORT: '39649',
+        SESSION_SECRET: 'startverbot-geheimnis-lang-genug-1234567',
+        ...env,
+      },
     });
     let log = '';
-    srv.stdout.on('data', d => { log += d; });
-    srv.stderr.on('data', d => { log += d; });
-    const uhr = setTimeout(() => { srv.kill('SIGKILL'); }, ms);
-    srv.on('exit', (code) => { clearTimeout(uhr); fertig({ code, log }); });
+    srv.stdout.on('data', d => {
+      log += d;
+    });
+    srv.stderr.on('data', d => {
+      log += d;
+    });
+    const uhr = setTimeout(() => {
+      srv.kill('SIGKILL');
+    }, ms);
+    srv.on('exit', code => {
+      clearTimeout(uhr);
+      fertig({ code, log });
+    });
   });
 }
 
@@ -70,13 +85,19 @@ test('HSTS_MAX_AGE=0 im Betrieb: genau eine Warnung', () => {
 });
 
 test('entfernte Datenbank ohne geprüftes TLS: Warnung', () => {
-  const tls = (env) => startWarnungen({ NODE_ENV: 'production', ...env }).filter(x => x.startsWith('[datenbank]'));
+  const tls = env => startWarnungen({ NODE_ENV: 'production', ...env }).filter(x => x.startsWith('[datenbank]'));
   assert.equal(tls({ PGHOST: 'db.example.org' }).length, 1);
   assert.equal(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=require' }).length, 1);
   assert.deepEqual(tls({ PGHOST: 'db.example.org', PGSSLMODE: 'verify-full' }), []);
   assert.deepEqual(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=verify-full' }), []);
   assert.equal(tls({ PGHOST: '192.168.1.20' }).length, 1, 'eine Adresse im LAN');
-  for (const nah of [{}, { PGHOST: 'postgres' }, { PGHOST: '127.0.0.1' }, { DATABASE_URL: 'postgres://u:p@localhost/x' },
-    { PGHOST: 'db-brickinventory' }, { DATABASE_URL: 'postgres://u:p@db-brickinventory:5432/x' }])
+  for (const nah of [
+    {},
+    { PGHOST: 'postgres' },
+    { PGHOST: '127.0.0.1' },
+    { DATABASE_URL: 'postgres://u:p@localhost/x' },
+    { PGHOST: 'db-brickinventory' },
+    { DATABASE_URL: 'postgres://u:p@db-brickinventory:5432/x' },
+  ])
     assert.deepEqual(tls(nah), [], JSON.stringify(nah));
 });

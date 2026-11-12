@@ -24,21 +24,85 @@ const { oeffneOberflaeche, reiter, sicht, warte, takt } = require('./helpers/obe
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 // jsdom formatiert je nach Umgebung „1.500 €“ oder „EUR 1’500“; verglichen wird ohne Trenner.
-const zahl = s => { const o = s.replace(/[’'\s\u00a0]/g, ''); return /,\d\d/.test(o) ? o.replace(/\./g, '').replace(/,/g, '.') : o; };
+const zahl = s => {
+  const o = s.replace(/[’'\s\u00a0]/g, '');
+  return /,\d\d/.test(o) ? o.replace(/\./g, '').replace(/,/g, '.') : o;
+};
 const SETS = {
-  '/v1/sets': { success: true, total: 2, themes: [], sets: [
-    { set_number: '10300-1', name: 'Back to the Future', year: 2022, theme: 'Icons / Modular Buildings Collection', quantity: 1, avg_purchase_price: 0, max_purchase_price: 0 },
-    { set_number: '21318-1', name: 'Tree House', year: 2019, theme: 'Ideas', quantity: 1, avg_purchase_price: 199.99, max_purchase_price: 199.99 } ] },
-  '/v1/finance/pnl': { success: true, currency: 'EUR', totals: { grand_total: '350', purchase: '199.99' }, sets: [
-    // Der Server schickt bei Kaufpreis 0 kein Prozent mehr; die Kachel darf es auch nicht zeigen, wenn doch.
-    { set_number: '10300-1', kachel_preis: 163.8, kachel_pnl_pct: 1637000 },
-    { set_number: '21318-1', kachel_preis: 186.2, kachel_pnl_pct: -6.9 } ] },
-  '/v1/finance/valuation': { success: true, currency: 'EUR', totals: { min: '0', avg: '350', max: '0' }, sets: [
-    { set_number: '10300-1', name: 'Back to the Future', quantity: 1, purchase_price: 0, avg_price: 163.8, wert_gesamt: 163.8, pnl_prozent: null,
-      acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 0, avg_price: 163.8, wert_gesamt: 163.8, pnl_prozent: null }] } ] },
-  '/v1/sets/10300-1': { success: true, set: { set_number: '10300-1', name: 'Back to the Future', year: 2022, quantity: 1 } },
-  '/v1/sets/10300-1/acquisitions': { success: true, acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 0, created_at: '2026-06-01T10:00:00Z' }] },
-  '/v1/sets/10300-1/price-history': { success: true, by_condition: { N: { market_price: 163.8, purchase_price: 0, pnl_pct: null } } },
+  '/v1/sets': {
+    success: true,
+    total: 2,
+    themes: [],
+    sets: [
+      {
+        set_number: '10300-1',
+        name: 'Back to the Future',
+        year: 2022,
+        theme: 'Icons / Modular Buildings Collection',
+        quantity: 1,
+        avg_purchase_price: 0,
+        max_purchase_price: 0,
+      },
+      {
+        set_number: '21318-1',
+        name: 'Tree House',
+        year: 2019,
+        theme: 'Ideas',
+        quantity: 1,
+        avg_purchase_price: 199.99,
+        max_purchase_price: 199.99,
+      },
+    ],
+  },
+  '/v1/finance/pnl': {
+    success: true,
+    currency: 'EUR',
+    totals: { grand_total: '350', purchase: '199.99' },
+    sets: [
+      // Der Server schickt bei Kaufpreis 0 kein Prozent mehr; die Kachel darf es auch nicht zeigen, wenn doch.
+      { set_number: '10300-1', kachel_preis: 163.8, kachel_pnl_pct: 1637000 },
+      { set_number: '21318-1', kachel_preis: 186.2, kachel_pnl_pct: -6.9 },
+    ],
+  },
+  '/v1/finance/valuation': {
+    success: true,
+    currency: 'EUR',
+    totals: { min: '0', avg: '350', max: '0' },
+    sets: [
+      {
+        set_number: '10300-1',
+        name: 'Back to the Future',
+        quantity: 1,
+        purchase_price: 0,
+        avg_price: 163.8,
+        wert_gesamt: 163.8,
+        pnl_prozent: null,
+        acquisitions: [
+          {
+            id: 1,
+            condition: 'N',
+            quantity: 1,
+            purchase_price: 0,
+            avg_price: 163.8,
+            wert_gesamt: 163.8,
+            pnl_prozent: null,
+          },
+        ],
+      },
+    ],
+  },
+  '/v1/sets/10300-1': {
+    success: true,
+    set: { set_number: '10300-1', name: 'Back to the Future', year: 2022, quantity: 1 },
+  },
+  '/v1/sets/10300-1/acquisitions': {
+    success: true,
+    acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 0, created_at: '2026-06-01T10:00:00Z' }],
+  },
+  '/v1/sets/10300-1/price-history': {
+    success: true,
+    by_condition: { N: { market_price: 163.8, purchase_price: 0, pnl_pct: null } },
+  },
 };
 
 test('Geschenk in Kachel, Tabelle und Detail', async () => {
@@ -47,9 +111,16 @@ test('Geschenk in Kachel, Tabelle und Detail', async () => {
     await warte(() => /\d/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
     const kachel = text(d.querySelector('[data-price-for="10300-1"]'));
     // Seit der UI-Prüfung 13 als Plakette beim Zustand, nicht im Preiskasten.
-    assert.match(text(d.querySelector('[data-price-for="10300-1"]').closest('.sc').querySelector('.splaketten')), /Geschenk/);
+    assert.match(
+      text(d.querySelector('[data-price-for="10300-1"]').closest('.sc').querySelector('.splaketten')),
+      /Geschenk/,
+    );
     assert.doesNotMatch(kachel, /%|Geschenk/, `Kachel: ${kachel}`);
-    assert.match(text(d.querySelector('[data-price-for="21318-1"]')), /[−-]6[.,]9/, 'das andere Set behält sein Prozent');
+    assert.match(
+      text(d.querySelector('[data-price-for="21318-1"]')),
+      /[−-]6[.,]9/,
+      'das andere Set behält sein Prozent',
+    );
 
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#fin-tbl tbody tr'));
@@ -62,7 +133,9 @@ test('Geschenk in Kachel, Tabelle und Detail', async () => {
     await warte(() => text(d.getElementById('m-market-rows')).includes('Geschenk'));
     assert.match(zahl(text(d.getElementById('set-modal'))), /(EUR0\.00|0\.00€)/, 'Kaufpreis im Detail');
     assert.match(d.getElementById('m-img').getAttribute('src'), /set-placeholder\.svg$/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Set ohne Bild: derselbe Würfel wie in der Kachel', () => {
@@ -76,7 +149,10 @@ test('Menüseite: kein Reiter markiert, Name im Kopf', async () => {
   const { w, d } = await oeffneOberflaeche({ '/v1/auth/profile': { success: true, user: { username: 'anna' } } });
   try {
     await sicht(w, 'profil');
-    assert.deepEqual([...d.querySelectorAll('.ntab[aria-current], .ntab.gruppe-aktiv, .ntab.active')].map(x => x.dataset.tab), []);
+    assert.deepEqual(
+      [...d.querySelectorAll('.ntab[aria-current], .ntab.gruppe-aktiv, .ntab.active')].map(x => x.dataset.tab),
+      [],
+    );
     assert.equal(d.getElementById('kopf-sicht').hidden, false);
     assert.equal(text(d.getElementById('kopf-sicht')), 'Konto');
     assert.match(d.title, /^Konto – /);
@@ -84,7 +160,9 @@ test('Menüseite: kein Reiter markiert, Name im Kopf', async () => {
     assert.equal(d.getElementById('kopf-sicht').hidden, true, 'Name bleibt nach dem Reiterwechsel stehen');
     assert.equal(d.querySelector('.ntab[aria-current="page"]')?.dataset.tab, 'finance');
     assert.match(d.title, /^Finanzen – /);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Import als ein Menü', async () => {
@@ -92,7 +170,11 @@ test('Import als ein Menü', async () => {
   try {
     for (const tab of ['gallery', 'parts', 'minifigs']) {
       const leiste = d.querySelector(`#tab-${tab} .erfassen-leiste`);
-      assert.deepEqual([...leiste.children].map(e => e.tagName + '.' + e.className.replace(' knopf-schwebend', '')), ['BUTTON.btn bp', 'DETAILS.import-menue'], tab);
+      assert.deepEqual(
+        [...leiste.children].map(e => e.tagName + '.' + e.className.replace(' knopf-schwebend', '')),
+        ['BUTTON.btn bp', 'DETAILS.import-menue'],
+        tab,
+      );
       const menue = leiste.querySelector('details');
       // Dazu kommt beim Set-Menü "Letzter Import" (UI-Prüfung 17 M4), verborgen, solange es keinen gibt.
       assert.equal(menue.querySelectorAll('.import-klappe > :not([hidden])').length, 3, `${tab}: drei Importwege`);
@@ -100,7 +182,9 @@ test('Import als ein Menü', async () => {
       d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       assert.equal(menue.open, false, `${tab}: Escape schliesst das Menü`);
     }
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Thema ganz', async () => {
@@ -110,17 +194,27 @@ test('Thema ganz', async () => {
     const thema = d.querySelector('[data-arg="10300-1"] .smeta-text');
     assert.match(text(thema), /Icons \/ Modular Buildings Collection$/);
     assert.equal(thema.getAttribute('title'), 'Icons / Modular Buildings Collection');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 const zeitpunkte = ['2026-08-01', '2026-09-01', '2026-10-01', '2026-10-29'];
-const VERLAUF = { success: true, currency: 'EUR', period_change_pct: 5, messpunkte: 4,
+const VERLAUF = {
+  success: true,
+  currency: 'EUR',
+  period_change_pct: 5,
+  messpunkte: 4,
   points: [1700, 1750, 1720, 1850].map((value, i) => ({ x_label: zeitpunkte[i], value })),
-  chart: { values: [{ values: zeitpunkte.map(x => ({ x })) }] } };
+  chart: { values: [{ values: zeitpunkte.map(x => ({ x })) }] },
+};
 
 test('Wertdiagramm: Währung, Einstand, Achsenbruch, Fadenkreuz per Tastatur', async () => {
-  const { w, d } = await oeffneOberflaeche({ ...SETS, '/v1/finance/portfolio-history': VERLAUF,
-    '/v1/finance/pnl': { ...SETS['/v1/finance/pnl'], totals: { grand_total: '1850', purchase: '1568.98' } } });
+  const { w, d } = await oeffneOberflaeche({
+    ...SETS,
+    '/v1/finance/portfolio-history': VERLAUF,
+    '/v1/finance/pnl': { ...SETS['/v1/finance/pnl'], totals: { grand_total: '1850', purchase: '1568.98' } },
+  });
   try {
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#portfolio-chart svg'));
@@ -136,26 +230,45 @@ test('Wertdiagramm: Währung, Einstand, Achsenbruch, Fadenkreuz per Tastatur', a
     assert.equal(fk.getAttribute('visibility'), 'visible');
     assert.match(zahl(text(fk.querySelector('.fk-text'))), /01\.?10\.?2026.*1720\.00/);
     assert.match(zahl(text(svg.parentElement.querySelector('.diagramm-ansage'))), /1720\.00/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Zeitraum ohne Verlauf', async () => {
-  const { w, d } = await oeffneOberflaeche({ ...SETS,
-    '/v1/finance/portfolio-history': { success: true, currency: 'EUR', points: [], messpunkte: 0 } });
+  const { w, d } = await oeffneOberflaeche({
+    ...SETS,
+    '/v1/finance/portfolio-history': { success: true, currency: 'EUR', points: [], messpunkte: 0 },
+  });
   try {
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#portfolio-chart .diagramm-leer'));
-    assert.deepEqual([...d.querySelectorAll('.zeitraum-wahl .period-btn')].map(b => b.disabled), [true, true, true, true]);
+    assert.deepEqual(
+      [...d.querySelectorAll('.zeitraum-wahl .period-btn')].map(b => b.disabled),
+      [true, true, true, true],
+    );
     w.document.querySelector('.zeitraum-wahl .period-btn[data-period="week"]').disabled = false;
     w.document.querySelector('.zeitraum-wahl .period-btn[data-period="week"]').click();
     await takt(50);
-    assert.ok(d.querySelector('#fin-filter [data-art=""]').classList.contains('active'), 'der Chip „Alle“ verlor seine Wahl');
-  } finally { w.close(); }
+    assert.ok(
+      d.querySelector('#fin-filter [data-art=""]').classList.contains('active'),
+      'der Chip „Alle“ verlor seine Wahl',
+    );
+  } finally {
+    w.close();
+  }
 });
 
 test('Platzhalter je Sprache', async () => {
-  for (const [sprache, erwartet] of [['de', 'z. B. 79,99'], ['en', 'e.g. 79.99']]) {
+  for (const [sprache, erwartet] of [
+    ['de', 'z. B. 79,99'],
+    ['en', 'e.g. 79.99'],
+  ]) {
     const { w, d } = await oeffneOberflaeche({}, { sprache });
-    try { assert.equal(d.getElementById('add-price').placeholder, erwartet); } finally { w.close(); }
+    try {
+      assert.equal(d.getElementById('add-price').placeholder, erwartet);
+    } finally {
+      w.close();
+    }
   }
 });

@@ -9,16 +9,19 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickable-Nummer', async (t) => {
+test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickable-Nummer', async t => {
   const db = _req('db/database.js');
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    keineDb(t, e); return;
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
 
   const ph = _req('src/finanzen/priceHistory.js');
   const u = await db.get(
-    `INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`);
+    `INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`,
+  );
   // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [u.id]);
 
@@ -26,30 +29,41 @@ test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickabl
   // Die Zuordnung steht seit Migration 0037 in bl_zuordnung (art, rb_id, bl_id).
   await db.run(
     `INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part','31000','bl31000')
-     ON CONFLICT DO NOTHING`);
+     ON CONFLICT DO NOTHING`,
+  );
   await db.run(
     `INSERT INTO rb_colors (id, name, bl_color_id) VALUES (1,'Blue',7)
-     ON CONFLICT (id) DO UPDATE SET bl_color_id = 7`);
+     ON CONFLICT (id) DO UPDATE SET bl_color_id = 7`,
+  );
 
   // Erfassung mit Rebrickable-Schlüssel …
   await db.run(
     `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition)
-     VALUES ($1,'31000',1,2,'0.11','U')`, [u.id]);
+     VALUES ($1,'31000',1,2,'0.11','U')`,
+    [u.id],
+  );
   // … Preis mit BrickLink-Schlüssel.
   await db.run(
     `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
      VALUES ('bl31000',7,'U','CHF',0.13,0.13)
-     ON CONFLICT (part_number,color_id,condition,currency_code) DO UPDATE SET avg_price = 0.13`);
+     ON CONFLICT (part_number,color_id,condition,currency_code) DO UPDATE SET avg_price = 0.13`,
+  );
 
   const r = await ph.preisverlaufTeil([u.id], '31000', 1, 'CHF');
 
   assert.ok(r.by_condition.U, 'Für den erfassten Zustand fehlt die Zeile ganz');
-  assert.equal(r.by_condition.U.market_price, 0.13,
+  assert.equal(
+    r.by_condition.U.market_price,
+    0.13,
     'Der Marktpreis kommt nicht an — die Abfrage sucht ihn unter der ' +
-    'Rebrickable-Nummer, geschrieben wurde er unter der BrickLink-Nummer.');
-  assert.equal(r.by_condition.U.purchase_price, 0.11,
+      'Rebrickable-Nummer, geschrieben wurde er unter der BrickLink-Nummer.',
+  );
+  assert.equal(
+    r.by_condition.U.purchase_price,
+    0.11,
     'Der Kaufpreis kommt nicht an — die Erfassung steht unter der ' +
-    'Rebrickable-Nummer und darf NICHT mit übersetzt werden.');
+      'Rebrickable-Nummer und darf NICHT mit übersetzt werden.',
+  );
   assert.equal(r.by_condition.U.pnl_prozent, 18.2);
   assert.equal(r.by_condition.U.pnl_pct, '18.2', 'der Text wie in allen anderen Antworten (veraltet)');
 

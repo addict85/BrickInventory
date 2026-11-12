@@ -24,11 +24,12 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const H = require('./helpers/sources').handlerModul(_req);
   const PS = _req('src/teile/partsSummary.js');
-  const A = `kz-einzeln-${process.pid}`, B = `kz-gemischt-${process.pid}`;
+  const A = `kz-einzeln-${process.pid}`,
+    B = `kz-gemischt-${process.pid}`;
   const SN = `KE${process.pid}-1`;
   const TEILE = ['ke1', 'ke2', 'ke3', 'ke4'];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[A, B]]);
@@ -64,7 +65,10 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
     await t.test('gemischt: Zusammenfassung und Live gleich', async () => {
       const live = await H.getPartsStats(UB);
       await PS.rebuildNow(UB);
-      const repo = { ..._req('src/teile/repository/teileListe.js'), ..._req('src/teile/prozess.js').teileBereich().teileListe };
+      const repo = {
+        ..._req('src/teile/repository/teileListe.js'),
+        ..._req('src/teile/prozess.js').teileBereich().teileListe,
+      };
       const zsf = await repo.kennzahlen([UB], true);
       assert.deepEqual(zsf, live);
       assert.deepEqual(await H.getPartsStats(UB), live);

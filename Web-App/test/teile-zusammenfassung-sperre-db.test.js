@@ -16,26 +16,38 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-test('rebuild weicht einer gehaltenen Kontosperre aus', async (t) => {
+test('rebuild weicht einer gehaltenen Kontosperre aus', async t => {
   const db = _req('db/database.js');
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    keineDb(t, e); return;
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   const PS = _req('src/teile/partsSummary.js');
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
-  const u = (await db.get(`INSERT INTO users (username, password_hash) VALUES ('sperre_'||floor(random()*1e9),'x') RETURNING id`)).id;
+  const u = (
+    await db.get(`INSERT INTO users (username, password_hash) VALUES ('sperre_'||floor(random()*1e9),'x') RETURNING id`)
+  ).id;
   const stand = async () => ({
     zeilen: (await db.get('SELECT COUNT(*)::int AS n FROM parts_summary WHERE user_id = $1', [u])).n,
-    version: (await db.get('SELECT built_version::int AS built_version FROM parts_summary_state WHERE user_id = $1', [u]))?.built_version ?? null,
+    version:
+      (await db.get('SELECT built_version::int AS built_version FROM parts_summary_state WHERE user_id = $1', [u]))
+        ?.built_version ?? null,
   });
   const halter = await db.pool.connect();
   try {
-    await db.run(`INSERT INTO parts_summary (user_id, part_key, color_id, total_quantity) VALUES ($1, 'fremd', 1, 3)`, [u]);
+    await db.run(`INSERT INTO parts_summary (user_id, part_key, color_id, total_quantity) VALUES ($1, 'fremd', 1, 3)`, [
+      u,
+    ]);
     await halter.query('BEGIN');
     await halter.query('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.TEILE_SUMMARY, u]);
     await PS.rebuild(u, { v: 7 });
-    assert.deepEqual(await stand(), { zeilen: 1, version: null }, 'Bei gehaltener Sperre darf nichts geschrieben werden');
+    assert.deepEqual(
+      await stand(),
+      { zeilen: 1, version: null },
+      'Bei gehaltener Sperre darf nichts geschrieben werden',
+    );
     await halter.query('COMMIT');
 
     await PS.rebuild(u, { v: 7 });

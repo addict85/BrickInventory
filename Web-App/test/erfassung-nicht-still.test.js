@@ -12,7 +12,7 @@ test('kein stiller catch an einer Erfassung', () => {
 
   /** @type {string[]} */
   const dateien = [];
-  const sammle = (d) => {
+  const sammle = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) sammle(p);
@@ -24,8 +24,7 @@ test('kein stiller catch an einer Erfassung', () => {
     assert.ok(fs.existsSync(p), `${o}/ gibt es nicht — ohne den Ordner prüft dieser Test nichts`);
     sammle(p);
   }
-  assert.ok(dateien.length >= 30,
-    `nur ${dateien.length} Dateien gefunden — der Pfad stimmt nicht`);
+  assert.ok(dateien.length >= 30, `nur ${dateien.length} Dateien gefunden — der Pfad stimmt nicht`);
 
   const verstoesse = [];
   let aufrufe = 0;
@@ -47,12 +46,14 @@ test('kein stiller catch an einer Erfassung', () => {
 
   // Selbstbeweis: Findet das Muster keine Aufrufe, sagt ein leeres Ergebnis
   // nichts. Es gibt derer deutlich mehr als fünf.
-  assert.ok(aufrufe >= 5,
-    `nur ${aufrufe} Aufruf(e) von recordAcquisitionForDay gefunden — Muster veraltet?`);
+  assert.ok(aufrufe >= 5, `nur ${aufrufe} Aufruf(e) von recordAcquisitionForDay gefunden — Muster veraltet?`);
 
-  assert.deepEqual(verstoesse, [],
+  assert.deepEqual(
+    verstoesse,
+    [],
     'Diese Erfassungen verschwinden bei einem Fehler ohne Spur:\n  ' +
-    verstoesse.join('\n  ') +
-    '\nEntweder den Fehler weiterreichen (gar kein catch) oder ihn mit ' +
-    'logAndContinue(kontext) protokollieren.');
+      verstoesse.join('\n  ') +
+      '\nEntweder den Fehler weiterreichen (gar kein catch) oder ihn mit ' +
+      'logAndContinue(kontext) protokollieren.',
+  );
 });

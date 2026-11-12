@@ -19,16 +19,16 @@
  *   F  traegtSitzungsKeks() erkennt wieder nur `connect.sid` → rot: „eine
  *      Cookie-Sitzung ohne jede Herkunftsangabe", „ein Bearer-Kopf …"
  */
-const test   = require('node:test');
+const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
+const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { nurEigeneHerkunft } = _req('src/http/herkunft.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
-test('Herkunft schreibender Anfragen', async (t) => {
+test('Herkunft schreibender Anfragen', async t => {
   const app = express();
   app.use(nurEigeneHerkunft);
   app.all('/x', (_req, res) => res.json({ ok: true }));
@@ -70,14 +70,19 @@ test('Herkunft schreibender Anfragen', async (t) => {
     try {
       assert.equal(await ruf('POST', { ...SITZUNG, origin: 'https://lego.example.org.boese.example' }), 403);
       assert.equal(await ruf('POST', { ...SITZUNG, referer: 'https://lego.example.org.boese.example/' }), 403);
-    } finally { umgebung({ APP_BASE_URL: undefined }); }
+    } finally {
+      umgebung({ APP_BASE_URL: undefined });
+    }
   });
   await t.test('ein alter Browser von der eigenen Seite', async () => {
     assert.equal(await ruf('POST', { ...SITZUNG, origin: eigen() }), 200);
     assert.equal(await ruf('POST', { ...SITZUNG, referer: `${eigen()}/#/sets` }), 200);
     umgebung({ APP_BASE_URL: 'https://lego.example.org' });
-    try { assert.equal(await ruf('POST', { ...SITZUNG, origin: 'https://lego.example.org' }), 200, 'APP_BASE_URL'); }
-    finally { umgebung({ APP_BASE_URL: undefined }); }
+    try {
+      assert.equal(await ruf('POST', { ...SITZUNG, origin: 'https://lego.example.org' }), 200, 'APP_BASE_URL');
+    } finally {
+      umgebung({ APP_BASE_URL: undefined });
+    }
   });
   await t.test('lesend und mit Token', async () => {
     assert.equal(await ruf('GET', { 'sec-fetch-site': 'cross-site' }), 200);
@@ -85,9 +90,17 @@ test('Herkunft schreibender Anfragen', async (t) => {
   });
   await t.test('ein Bearer-Kopf neben dem Sitzungs-Cookie schaltet nichts ab', async () => {
     // Mit Cookie gilt die Sitzung, nicht das Token — die Herkunft zählt also.
-    assert.equal(await ruf('POST', { 'sec-fetch-site': 'same-site', authorization: 'Bearer x',
-                                     cookie: 'theme=dunkel; bim.sid=s%3Aabc' }), 403);
-    assert.equal(await ruf('POST', { 'sec-fetch-site': 'same-origin', authorization: 'Bearer x',
-                                     cookie: 'bim.sid=s%3Aabc' }), 200);
+    assert.equal(
+      await ruf('POST', {
+        'sec-fetch-site': 'same-site',
+        authorization: 'Bearer x',
+        cookie: 'theme=dunkel; bim.sid=s%3Aabc',
+      }),
+      403,
+    );
+    assert.equal(
+      await ruf('POST', { 'sec-fetch-site': 'same-origin', authorization: 'Bearer x', cookie: 'bim.sid=s%3Aabc' }),
+      200,
+    );
   });
 });

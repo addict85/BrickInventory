@@ -26,40 +26,61 @@ const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    keineDb(t, e); return;
+test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   const NAME = `hgv_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,'x',true,true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,'x',true,true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   await db.run('DELETE FROM auftraege');
   const Z = _req('src/auftraege/zeitplan.js');
-  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege });
+  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
+    ..._req('src/auftraege/dienst.js'),
+    ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+  });
   t.after(async () => {
     await db.run('DELETE FROM auftraege');
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
-    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});
+    await _req('db/database.js')
+      .standardDb()
+      .benachrichtigung.close()
+      .catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, {
     sitzung: { userId: uid, username: NAME, isAdmin: true },
     apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t,
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
   });
   const rufe = async (methode, pfad, body) => {
-    const r = await fetch(base + '/api/v1' + pfad, { method: methode,
-      headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+    const r = await fetch(base + '/api/v1' + pfad, {
+      method: methode,
+      headers: body ? { 'content-type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
     return { status: r.status, body: await r.json() };
   };
-  const plan = (art) => db.get(`SELECT id::text AS id, status, faellig_ab FROM auftraege WHERE schluessel = $1 AND status = 'offen'`, [`plan:${art}`]);
+  const plan = art =>
+    db.get(`SELECT id::text AS id, status, faellig_ab FROM auftraege WHERE schluessel = $1 AND status = 'offen'`, [
+      `plan:${art}`,
+    ]);
 
   // Ein Intervall aus einem früheren Lauf liesse den Termin schon richtig stehen.
   await db.run(`DELETE FROM global_settings WHERE key = 'price_job_interval_minutes'`);
   await Z.planeAlle();
   const wartend = [];
-  for (const sn of ['11111-1', '22222-1']) wartend.push(await A.stelleAuftragEin('anleitung', { set_number: sn }, { schluessel: `anleitung:${sn}` }));
+  for (const sn of ['11111-1', '22222-1'])
+    wartend.push(await A.stelleAuftragEin('anleitung', { set_number: sn }, { schluessel: `anleitung:${sn}` }));
   const kaputt = await A.stelleAuftragEin('nachlauf', { schritt: 'katalog' });
   await db.run(`UPDATE auftraege SET status = 'fehler', fehler = 'Quelle weg' WHERE id = $1`, [kaputt]);
   await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ('jobs_lebenszeichen', NOW()::text)
@@ -69,8 +90,17 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async (t) => {
     const r = await rufe('GET', '/admin/auftraege');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const { auftraege, zusammenfassung, job_prozess } = r.body;
-    assert.deepEqual(auftraege.filter(a => a.art === 'anleitung').map(a => a.set_number).sort(), ['11111-1', '22222-1']);
-    assert.ok(auftraege.some(a => a.art === 'preise' && a.geplant === true), 'geplante Läufe fehlen');
+    assert.deepEqual(
+      auftraege
+        .filter(a => a.art === 'anleitung')
+        .map(a => a.set_number)
+        .sort(),
+      ['11111-1', '22222-1'],
+    );
+    assert.ok(
+      auftraege.some(a => a.art === 'preise' && a.geplant === true),
+      'geplante Läufe fehlen',
+    );
     const f = auftraege.find(a => a.id === kaputt);
     assert.deepEqual([f.status, f.fehler], ['fehler', 'Quelle weg']);
     assert.ok(zusammenfassung.some(z => z.art === 'anleitung' && z.status === 'offen' && z.anzahl === 2));
@@ -81,7 +111,11 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async (t) => {
   await t.test('wiederholen stellt einen gescheiterten neu ein', async () => {
     assert.equal((await rufe('POST', `/admin/auftraege/${kaputt}/wiederholen`)).status, 200);
     assert.equal((await db.get('SELECT status, versuche FROM auftraege WHERE id = $1', [kaputt])).status, 'offen');
-    assert.equal((await rufe('POST', `/admin/auftraege/${kaputt}/wiederholen`)).status, 409, 'ein offener lässt sich nicht wiederholen');
+    assert.equal(
+      (await rufe('POST', `/admin/auftraege/${kaputt}/wiederholen`)).status,
+      409,
+      'ein offener lässt sich nicht wiederholen',
+    );
   });
 
   await t.test('ein abgebrochener geplanter Lauf hinterlässt den nächsten Termin', async () => {
@@ -125,6 +159,9 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async (t) => {
     assert.match(e.retry_after, /^\d{4}-\d{2}-\d{2}$/);
     assert.deepEqual([e.attempts, e.last_error], [1, 'Quota exceeded']);
     assert.equal((await rufe('DELETE', '/admin/brickset-queue/33333-1')).status, 200);
-    assert.equal((await rufe('GET', '/admin/brickset-queue')).body.entries.some(x => x.set_number === '33333-1'), false);
+    assert.equal(
+      (await rufe('GET', '/admin/brickset-queue')).body.entries.some(x => x.set_number === '33333-1'),
+      false,
+    );
   });
 });

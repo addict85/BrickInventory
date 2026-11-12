@@ -18,10 +18,7 @@ export const BL_UPLOAD_MAX_BYTES = 204800;
  *          condition?:string}} p
  */
 function item(p) {
-  const zeilen = [
-    `<ITEMTYPE>${esc(p.type)}</ITEMTYPE>`,
-    `<ITEMID>${esc(p.part)}</ITEMID>`,
-  ];
+  const zeilen = [`<ITEMTYPE>${esc(p.type)}</ITEMTYPE>`, `<ITEMID>${esc(p.part)}</ITEMID>`];
   // COLOR nur, wenn eine BRICKLINK-Nummer bekannt ist. `null` heisst „unbekannt" und ist etwas anderes als 0
   // — 0 ist bei BrickLink „(Not Applicable)" und bei Rebrickable SCHWARZ. Diese beiden zu verwechseln hat am
   // 19.10. schon den Import verdorben.
@@ -54,12 +51,14 @@ export function baueWantedXmlStuecke(posten, grenze = BL_UPLOAD_MAX_BYTES) {
   let aktuell = [];
   let gross = RUMPF;
   for (const p of posten) {
-    const b = bytes(item(p)) + 1;          // +1 für das trennende \n
+    const b = bytes(item(p)) + 1; // +1 für das trennende \n
     if (aktuell.length && gross + b > grenze) {
       stuecke.push(baueWantedXml(aktuell));
-      aktuell = []; gross = RUMPF;
+      aktuell = [];
+      gross = RUMPF;
     }
-    aktuell.push(p); gross += b;
+    aktuell.push(p);
+    gross += b;
   }
   if (aktuell.length) stuecke.push(baueWantedXml(aktuell));
   return stuecke;

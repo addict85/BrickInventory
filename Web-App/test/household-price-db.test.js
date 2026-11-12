@@ -18,37 +18,59 @@ const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
-test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   // account_links kommt aus den Migrationen, nicht aus initSchema
   // (Muster wie in test/household-db.test.js).
   const mc = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(mc);
+  } finally {
+    mc.release();
+  }
 
-  const HAUPT = 'hhprice-haupt', SUB = 'hhprice-sub', SET = '42200-1';
+  const HAUPT = 'hhprice-haupt',
+    SUB = 'hhprice-sub',
+    SET = '42200-1';
   await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
   const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
-  const subId   = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [hauptId, subId]);
-  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
-                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [hauptId]);
+  const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
+    hauptId,
+    subId,
+  ]);
+  await db.run(
+    `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
+                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,
+    [hauptId],
+  );
   // Im Haushalt gilt eine Währung (src/haushalt/haushalt.ts) — auch für das Unterkonto.
-  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
-                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [subId]);
+  await db.run(
+    `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
+                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,
+    [subId],
+  );
 
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   await db.run(`DELETE FROM price_history WHERE set_number=$1`, [SET]);
   // Das Set gehört dem UNTERKONTO — wie im Screenshot.
-  await haeltSet(db, subId, SET, 0);  // Menge 0: die Erfassung dahinter traegt sie
-  await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity) VALUES ($1,$2,18.20,'U',1)`, [subId, SET]);
-  await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
+  await haeltSet(db, subId, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity) VALUES ($1,$2,18.20,'U',1)`,
+    [subId, SET],
+  );
+  await db.run(
+    `INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
                 VALUES ($1,'U','CHF',15,22.50,30,23,4,NOW())
-                ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET avg_price=22.50, fetched_at=NOW()`, [SET]);
-  await db.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
-                SELECT $1,'U','CHF',20+d*0.1,20,(CURRENT_DATE-d)::timestamptz FROM generate_series(1,10) d`, [SET]);
+                ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET avg_price=22.50, fetched_at=NOW()`,
+    [SET],
+  );
+  await db.run(
+    `INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
+                SELECT $1,'U','CHF',20+d*0.1,20,(CURRENT_DATE-d)::timestamptz FROM generate_series(1,10) d`,
+    [SET],
+  );
 
   // Betrachter ist das HAUPTKONTO.
   const { base, srv } = testServer(_req, {
@@ -63,7 +85,7 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets',
     let r = await fetch(`${base}/api/v1/sets/${SET}/price`);
     assert.equal(r.status, 200, 'Preisroute muss das Haushalts-Set finden (vorher: 404 Set not found)');
     let j = await r.json();
-    assert.equal(parseFloat(j.avg_price), 22.50, 'der CHF-Cache-Preis muss ankommen');
+    assert.equal(parseFloat(j.avg_price), 22.5, 'der CHF-Cache-Preis muss ankommen');
     assert.ok(!j.no_price, 'kein no_price — genau das war der leere Marktpreis in der App');
 
     // 2. Verlauf: Chartpunkte UND by_condition mit Kaufpreis des Unterkontos.
@@ -73,8 +95,8 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets',
     const punkte = (j.chart?.values || []).reduce((a, s) => a + (s.values || []).length, 0);
     assert.ok(punkte >= 10, `der Chart braucht die Verlaufspunkte (bekommen: ${punkte})`);
     assert.ok(j.by_condition?.U, 'by_condition.U muss existieren — die Erfassung des Unterkontos zählt');
-    assert.equal(parseFloat(j.by_condition.U.purchase_price), 18.20, 'Kaufpreis des Unterkontos');
-    assert.equal(parseFloat(j.by_condition.U.market_price), 22.50);
+    assert.equal(parseFloat(j.by_condition.U.purchase_price), 18.2, 'Kaufpreis des Unterkontos');
+    assert.equal(parseFloat(j.by_condition.U.market_price), 22.5);
 
     // 3. Dieselbe Logik am Webapp-Weg (gemeinsamer Helfer — Marcos Wunsch).
     r = await fetch(`${base}/api/finance/price-history/${SET}`);

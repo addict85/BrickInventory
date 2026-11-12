@@ -18,7 +18,10 @@ export const IMPORT_WARTEN_MS = 10 * 60_000;
 const TAKT_MS = 150;
 
 /** Was der Job ablegt: das Ergebnis, oder der Fachfehler, den die Route meldet. */
-type Abgelegt = { ergebnis?: Record<string, unknown>; fachfehler?: { code: FehlerCode; art: FehlerArt; vars?: Record<string, string | number> } };
+type Abgelegt = {
+  ergebnis?: Record<string, unknown>;
+  fachfehler?: { code: FehlerCode; art: FehlerArt; vars?: Record<string, string | number> };
+};
 
 export async function setzeErgebnis(id: string, ergebnis: Record<string, unknown>): Promise<void> {
   await auftraegeBereich().auftraege.schreibeErgebnis(id, { ergebnis } satisfies Abgelegt);
@@ -26,12 +29,19 @@ export async function setzeErgebnis(id: string, ergebnis: Record<string, unknown
 
 /** Ein Fachfehler (falsche Datei, fehlendes Recht) kommt bei der Anfrage mit Code an. */
 export async function setzeFachfehler(id: string, e: Fachfehler): Promise<void> {
-  await auftraegeBereich().auftraege.schreibeErgebnis(id, { fachfehler: { code: e.code, art: e.art, ...(e.vars ? { vars: e.vars } : {}) } } satisfies Abgelegt);
+  await auftraegeBereich().auftraege.schreibeErgebnis(id, {
+    fachfehler: { code: e.code, art: e.art, ...(e.vars ? { vars: e.vars } : {}) },
+  } satisfies Abgelegt);
 }
 
 /** @typeParam T die Antwort, die der Job ablegt; der Vertrag prüft sie im Testlauf. */
-export async function importAlsAuftrag<T = Record<string, unknown>, Q extends ImportQuelle = ImportQuelle>(uid: number, quelle: Q, eingabe: ImportEingabe<Q>,
-  o: { fortschritt?: (f: Fortschritt) => void; wartenMs?: number } = {}, ad: AuftraegeDienste = auftraegeBereich()): Promise<T> {
+export async function importAlsAuftrag<T = Record<string, unknown>, Q extends ImportQuelle = ImportQuelle>(
+  uid: number,
+  quelle: Q,
+  eingabe: ImportEingabe<Q>,
+  o: { fortschritt?: (f: Fortschritt) => void; wartenMs?: number } = {},
+  ad: AuftraegeDienste = auftraegeBereich(),
+): Promise<T> {
   // Ein Versuch: Ein zweiter Lauf legte schon Angelegtes noch einmal an.
   // tsc verbindet Q nicht mit dem Zweig der Union; geprüft wird beim Einstellen.
   const nutzlast = { user_id: uid, quelle, eingabe } as NutzlastEingabe<'csv_import'>;
@@ -43,10 +53,14 @@ export async function importAlsAuftrag<T = Record<string, unknown>, Q extends Im
     const s = await ad.auftraege.auftragsStand(id);
     if (s?.fortschritt && o.fortschritt) {
       const j = JSON.stringify(s.fortschritt);
-      if (j !== zuletzt) { zuletzt = j; o.fortschritt(s.fortschritt); }
+      if (j !== zuletzt) {
+        zuletzt = j;
+        o.fortschritt(s.fortschritt);
+      }
     }
     const abgelegt = (s?.ergebnis ?? {}) as Abgelegt;
-    if (abgelegt.fachfehler) throw new Fachfehler(abgelegt.fachfehler.art ?? 'ungueltig', abgelegt.fachfehler.code, abgelegt.fachfehler.vars);
+    if (abgelegt.fachfehler)
+      throw new Fachfehler(abgelegt.fachfehler.art ?? 'ungueltig', abgelegt.fachfehler.code, abgelegt.fachfehler.vars);
     if (s?.status === 'erledigt') {
       // Gelesen ist gelesen: Das Ergebnis trägt Namen und Nummern aus der Datei.
       await ad.auftraege.schreibeErgebnis(id, null);

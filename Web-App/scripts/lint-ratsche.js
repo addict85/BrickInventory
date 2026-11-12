@@ -19,8 +19,9 @@ const schrankenDatei = process.env.LINT_SCHRANKEN || path.join(__dirname, 'lint-
 const schranke = JSON.parse(fs.readFileSync(schrankenDatei, 'utf8'))[art];
 
 const biome = path.join(ROOT, 'node_modules', '@biomejs', 'biome', 'bin', 'biome');
+// LINT_WURZEL: ein anderer Baum mit eigener biome.json, für den Test mit absichtlichen Funden.
 const r = spawnSync(process.execPath, [biome, art, '--reporter=json', '--max-diagnostics=none', '.'], {
-  cwd: ROOT,
+  cwd: process.env.LINT_WURZEL || ROOT,
   encoding: 'utf8',
   maxBuffer: 256 * 1024 * 1024,
 });

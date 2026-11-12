@@ -18,21 +18,35 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 
-test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async (t) => {
+test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t => {
   // Ohne das Feld fielen beide Clients still auf ihre eigene Annahme zurück —
   // der Rückfall ist absichtlich lautlos. Die Menge kommt aus updateSet(),
   // summiert über das Blickfeld.
   const db = _req('db/database.js');
-  if (!await dbOderSkip(t, _req)) return;
-  const NAME = `mengenecho-${process.pid}`, SN = `${process.pid}5-1`;
+  if (!(await dbOderSkip(t, _req))) return;
+  const NAME = `mengenecho-${process.pid}`,
+    SN = `${process.pid}5-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  t.after(async () => { await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
   await haeltSet(db, uid, SN, 2);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
-                                     routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const setze = async (quantity) => (await fetch(`${base}/api/v1/sets/${SN}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quantity }) })).json();
+  const { base } = testServer(_req, {
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
+  const setze = async quantity =>
+    (
+      await fetch(`${base}/api/v1/sets/${SN}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity }),
+      })
+    ).json();
   assert.equal((await setze(3)).quantity, 3, 'die Route liefert die Menge');
   assert.equal((await setze(1)).quantity, 1, 'auch nach dem Verringern');
 });
@@ -42,7 +56,8 @@ test('die Webapp übernimmt die Menge aus der Antwort', async () => {
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 3 };
   const { w, d, aufrufe } = await oeffneOberflaeche({
     '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
-    '/v1/sets/10294-1': (_url, o) => (o?.method === 'PUT' ? { success: true, quantity: 2 } : { success: true, set: SET }),
+    '/v1/sets/10294-1': (_url, o) =>
+      o?.method === 'PUT' ? { success: true, quantity: 2 } : { success: true, set: SET },
     '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
   });
   try {
@@ -52,7 +67,11 @@ test('die Webapp übernimmt die Menge aus der Antwort', async () => {
     d.getElementById('m-qty').value = '1';
     d.getElementById('m-qty').dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT')), 'Die Menge wird nicht gespeichert');
-    assert.ok(await warte(() => d.getElementById('m-qty').value === '2'),
-      `Das Feld behält die eigene Annahme: ${d.getElementById('m-qty').value}`);
-  } finally { w.close(); }
+    assert.ok(
+      await warte(() => d.getElementById('m-qty').value === '2'),
+      `Das Feld behält die eigene Annahme: ${d.getElementById('m-qty').value}`,
+    );
+  } finally {
+    w.close();
+  }
 });

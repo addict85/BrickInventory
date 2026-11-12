@@ -33,7 +33,7 @@ const YML = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflo
 function pruefSkript() {
   const schritt = YML.split('\n      - id: p\n')[1]?.split(/\n {6}- /)[0] ?? '';
   const zeilen = schritt.split('\n');
-  const start = zeilen.findIndex(z => z === '        run: |');
+  const start = zeilen.indexOf('        run: |');
   assert.ok(start >= 0, 'run-Block des Prüfschritts nicht gefunden');
   const rumpf = [];
   for (const z of zeilen.slice(start + 1)) {
@@ -50,16 +50,31 @@ function lauf(tag, { ref = 'refs/heads/main', gruen = '1' } = {}) {
   fs.writeFileSync(gh, gruen === null ? '#!/bin/sh\nexit 1\n' : `#!/bin/sh\necho ${gruen}\n`, { mode: 0o755 });
   // git ebenso als Ersatz: Der Schritt fragt nur nach dem Commit, und der Test
   // soll auch in einer Kopie ohne .git laufen.
-  fs.writeFileSync(path.join(path.dirname(aus), 'git'), `#!/bin/sh
+  fs.writeFileSync(
+    path.join(path.dirname(aus), 'git'),
+    `#!/bin/sh
 case "$*" in
   "rev-parse HEAD") echo ${'a1'.repeat(20)} ;;
   "rev-parse --short=7 HEAD") echo a1a1a1a ;;
   *) echo "git-Ersatz kennt: $*" >&2; exit 2 ;;
 esac
-`, { mode: 0o755 });
-  const r = spawnSync('bash', ['-e', '-c', pruefSkript()], { encoding: 'utf8', cwd: __dirname,
-    env: { ...process.env, PATH: `${path.dirname(aus)}:${process.env.PATH}`, GITHUB_OUTPUT: aus,
-      EREIGNIS: 'workflow_dispatch', ERGEBNIS: '', TAG_EINGABE: tag, REF: ref, REPO: 'probe/probe' } });
+`,
+    { mode: 0o755 },
+  );
+  const r = spawnSync('bash', ['-e', '-c', pruefSkript()], {
+    encoding: 'utf8',
+    cwd: __dirname,
+    env: {
+      ...process.env,
+      PATH: `${path.dirname(aus)}:${process.env.PATH}`,
+      GITHUB_OUTPUT: aus,
+      EREIGNIS: 'workflow_dispatch',
+      ERGEBNIS: '',
+      TAG_EINGABE: tag,
+      REF: ref,
+      REPO: 'probe/probe',
+    },
+  });
   const ausgabe = fs.readFileSync(aus, 'utf8');
   fs.rmSync(path.dirname(aus), { recursive: true, force: true });
   return { status: r.status, ausgabe };
@@ -77,12 +92,12 @@ test('gültige Tags gehen als Ausgabe weiter', () => {
 
 const BOESE = {
   'zwei Zeilen': 'gut\ntype=raw,value=latest',
-  'Leerzeichen': 'a b',
-  'Strichpunkt': 'a;b',
+  Leerzeichen: 'a b',
+  Strichpunkt: 'a;b',
   'Bindestrich vorn': '-a',
-  'Umlaut': 'ä',
+  Umlaut: 'ä',
   'zu lang': 'a'.repeat(129),
-  'Wagenrücklauf': 'gut\r',
+  Wagenrücklauf: 'gut\r',
 };
 for (const [fall, tag] of Object.entries(BOESE)) {
   test(`abgewiesen: ${fall}`, () => {
@@ -93,7 +108,11 @@ for (const [fall, tag] of Object.entries(BOESE)) {
 }
 
 test('ohne grüne CI kein Image', () => {
-  for (const [fall, gruen] of [['keiner grün', '0'], ['Abfrage gescheitert', null], ['Unsinn', 'x']]) {
+  for (const [fall, gruen] of [
+    ['keiner grün', '0'],
+    ['Abfrage gescheitert', null],
+    ['Unsinn', 'x'],
+  ]) {
     const r = lauf('', { gruen });
     assert.notEqual(r.status, 0, `ohne grüne CI kein Image: ${fall}`);
     assert.doesNotMatch(r.ausgabe, /^bauen=true$/m, fall);
@@ -107,9 +126,15 @@ test('Handstart auf einem Nebenzweig', () => {
 });
 
 test('inputs.tag steht nur in env', () => {
-  const ohneKommentare = YML.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+  const ohneKommentare = YML.split('\n')
+    .filter(z => !z.trimStart().startsWith('#'))
+    .join('\n');
   const stellen = ohneKommentare.match(/.*inputs\.tag.*/g) || [];
-  assert.deepEqual(stellen.map(s => s.trim()), ['TAG_EINGABE: ${{ inputs.tag }}'], 'inputs.tag steht nur in env');
+  assert.deepEqual(
+    stellen.map(s => s.trim()),
+    ['TAG_EINGABE: ${{ inputs.tag }}'],
+    'inputs.tag steht nur in env',
+  );
   assert.match(ohneKommentare, /APP_VERSION=\$\{\{ needs\.pruefen\.outputs\.tag/);
   assert.match(ohneKommentare, /type=raw,value=\$\{\{ needs\.pruefen\.outputs\.tag \}\}/);
 });

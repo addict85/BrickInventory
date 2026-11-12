@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+
 /**
  * PDF.js kommt aus der npm-Abhängigkeit pdfjs-dist (exakte Fassung in
  * package.json), damit npm audit und Renovate es sehen. Dieses Skript legt die
@@ -8,8 +9,8 @@
  *
  *   node scripts/pdfjs-kopieren.js [Zielwurzel]
  */
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const DATEIEN = ['pdf.min.mjs', 'pdf.worker.min.mjs'];
@@ -33,6 +34,9 @@ module.exports = { kopierePdfjs, DATEIEN };
 
 if (require.main === module) {
   const fassung = kopierePdfjs(process.argv[2] ? path.resolve(process.argv[2]) : ROOT);
-  console.log(fassung ? `[pdfjs] ${fassung} → public/vendor/pdfjs/`
-    : '[pdfjs] pdfjs-dist nicht installiert — die eingecheckten Dateien bleiben');
+  console.log(
+    fassung
+      ? `[pdfjs] ${fassung} → public/vendor/pdfjs/`
+      : '[pdfjs] pdfjs-dist nicht installiert — die eingecheckten Dateien bleiben',
+  );
 }

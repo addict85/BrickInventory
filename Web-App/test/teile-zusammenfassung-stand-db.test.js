@@ -22,17 +22,23 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
-test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const PS = _req('src/teile/partsSummary.js');
-  const NAME = `stand-${process.pid}`, SN = `31170-${process.pid % 1000}`, TEIL = `stand${process.pid}`;
+  const NAME = `stand-${process.pid}`,
+    SN = `31170-${process.pid % 1000}`,
+    TEIL = `stand${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const ort = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Kiste 1') RETURNING id`, [uid])).id;
+  const ort = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Kiste 1') RETURNING id`, [uid]))
+    .id;
   await haeltSet(db, uid, SN, 1);
   await haeltTeil(db, uid, TEIL, { setNumber: SN, menge: 2, colorId: 4, storageId: ort });
-  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Alter Name')
-                ON CONFLICT (part_number) DO UPDATE SET part_name = 'Alter Name'`, [TEIL]);
+  await db.run(
+    `INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Alter Name')
+                ON CONFLICT (part_number) DO UPDATE SET part_name = 'Alter Name'`,
+    [TEIL],
+  );
 
   try {
     await t.test('ein umbenannter Lagerort entwertet die Zusammenfassung', async () => {
@@ -50,7 +56,10 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async (t) => {
       assert.equal(await PS.ensureFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
       await db.run(`UPDATE part_catalog SET part_name = 'Neuer Name' WHERE part_number = $1`, [TEIL]);
       assert.equal(await PS.ensureFresh(uid, { strict: true }), true, 'der Nachzug läuft in ensureFresh');
-      assert.equal((await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1', [uid])).part_name, 'Neuer Name');
+      assert.equal(
+        (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1', [uid])).part_name,
+        'Neuer Name',
+      );
     });
   } finally {
     await db.run('DELETE FROM users WHERE id=$1', [uid]);

@@ -24,11 +24,16 @@ export function rbHinweisZeigen() {
   try {
     const weg = Number(localStorage.getItem(RB_HINWEIS_WEG));
     if (weg && Date.now() - weg < RB_HINWEIS_FRIST) return;
-  } catch (_) { /* ohne Speicher: zeigen */ }
+  } catch (_) {
+    /* ohne Speicher: zeigen */
+  }
   band.hidden = false;
 }
 
-export function rbHinweisVerbergen() { const b = G('rb-hinweis'); if (b) b.hidden = true; }
+export function rbHinweisVerbergen() {
+  const b = G('rb-hinweis');
+  if (b) b.hidden = true;
+}
 
 function rbHinweisOeffnen() {
   rbHinweisVerbergen();
@@ -40,7 +45,11 @@ function rbHinweisOeffnen() {
 /** Wegklicken gilt RB_HINWEIS_FRIST lang; der Fokus geht an den Seiteninhalt statt ins Leere. */
 function rbHinweisWeg() {
   rbHinweisVerbergen();
-  try { localStorage.setItem(RB_HINWEIS_WEG, String(Date.now())); } catch (_) { /* dann eben bis zum Neuladen */ }
+  try {
+    localStorage.setItem(RB_HINWEIS_WEG, String(Date.now()));
+  } catch (_) {
+    /* dann eben bis zum Neuladen */
+  }
   G('inhalt')?.focus({ preventScroll: true });
 }
 
@@ -61,39 +70,37 @@ export function _updateLangSelect() {
 /**
  * @param {string} theme
  */
-export function applyTheme(theme){
+export function applyTheme(theme) {
   // Keine eigene Liste gültiger Designs: Die alte kannte zwei von sechs, und die neueren wirkten erst nach
   // dem Neuladen. Gültig ist, was theme-boot.js kennt; ohne dieses Skript wird nichts gesetzt.
   if (typeof window.__bimApplyTheme !== 'function') return null;
   return window.__bimApplyTheme(theme);
 }
 
-export async function initDefaultCondition(){
+export async function initDefaultCondition() {
   try {
     // Effektiver Default des Nutzers (User-Override → global → 'N'), damit die Erfassungsformulare den in den
     // Einstellungen gewählten Zustand vorbelegen.
     const d = await api('GET', '/v1/settings/user/default-condition');
     if (d?.success && d.condition) {
-      ['add-condition','ap-condition','af-condition'].forEach(id => {
+      ['add-condition', 'ap-condition', 'af-condition'].forEach(id => {
         const el = G(id);
         if (el) el.value = d.condition;
       });
     }
-  } catch(e) {}
+  } catch {}
 }
 
 /**
  * Der Name in der Kopfleiste, für Verwalter mit „(Verwalter)“ statt eigener Plakette. Eine Funktion, weil
  * Anmeldung und Profil ihn schreiben und eine zweite Fassung schon einmal ins Leere lief.
  */
-export function zeigeBenutzernamen(){
+export function zeigeBenutzernamen() {
   const el = G('ubadge');
   if (!el || !ME) return;
   // „admin (Admin)“ sagte dasselbe zweimal.
   const doppelt = ME.username.toLocaleLowerCase() === tRaw('users.admin_badge').toLocaleLowerCase();
-  el.textContent = ME.isAdmin && !doppelt
-    ? `${ME.username} (${tRaw('users.admin_badge')})`
-    : ME.username;
+  el.textContent = ME.isAdmin && !doppelt ? `${ME.username} (${tRaw('users.admin_badge')})` : ME.username;
 }
 
 registerActions({

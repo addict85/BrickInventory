@@ -34,16 +34,25 @@ const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Gnaden-Passwort-1';
 
-test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
-  const NAME = `gnade_${process.pid}`, NUTZER = `gnade_n_${process.pid}`;
+test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
+  const NAME = `gnade_${process.pid}`,
+    NUTZER = `gnade_n_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NUTZER]]);
-  const konto = async (n, verwalter) => (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
-    VALUES ($1, $2, $3, $4, true, true) RETURNING id`, [n, `${n}@example.org`, await bcrypt.hash(PASS, 4), verwalter])).id;
-  const uid = await konto(NAME, true), nutzer = await konto(NUTZER, false);
+  const konto = async (n, verwalter) =>
+    (
+      await db.get(
+        `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
+    VALUES ($1, $2, $3, $4, true, true) RETURNING id`,
+        [n, `${n}@example.org`, await bcrypt.hash(PASS, 4), verwalter],
+      )
+    ).id;
+  const uid = await konto(NAME, true),
+    nutzer = await konto(NUTZER, false);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, nutzer]]).catch(() => {});
-    for (const id of [uid, nutzer]) await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%|${id}|%`]).catch(() => {});
+    for (const id of [uid, nutzer])
+      await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%|${id}|%`]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -51,8 +60,11 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
   const sitzung = {};
   const basis = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t }).base;
   const ruf = async (weg, body, kopf = {}) => {
-    const r = await fetch(`${basis}/api/v1/auth${weg}`, { method: 'POST',
-      headers: { 'content-type': 'application/json', ...kopf }, body: JSON.stringify(body) });
+    const r = await fetch(`${basis}/api/v1/auth${weg}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...kopf },
+      body: JSON.stringify(body),
+    });
     return { status: r.status, body: await r.json() };
   };
   const anmelden = async (name = NAME) => {
@@ -111,7 +123,11 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
   await t.test('ein gewöhnliches Konto nennt immer das Passwort', async () => {
     await anmelden(NUTZER);
     const r = await einrichten();
-    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'ein gewöhnliches Konto ohne Passwort');
+    assert.deepEqual(
+      [r.status, r.body.code],
+      [400, 'aktuelles_passwort_erforderlich'],
+      'ein gewöhnliches Konto ohne Passwort',
+    );
     assert.equal((await einrichten({ password: PASS })).status, 200, 'mit Passwort');
   });
 });

@@ -22,21 +22,34 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const NAME = `geldpruef_${process.pid}`;
 
-test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_2`]]);
-  const uid = (await db.get(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, 'x') RETURNING id`,
-    [NAME, `${NAME}@example.org`])).id;
+  const uid = (
+    await db.get(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, 'x') RETURNING id`, [
+      NAME,
+      `${NAME}@example.org`,
+    ])
+  ).id;
   await katalogSet(db, '99901-1', { name: 'Probe' });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, '99901-1']);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_2`]]);
     await db.pool.end().catch(() => {});
   });
-  const erfasse = (preis, waehrung) => db.run(
-    `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, currency) VALUES ($1, '99901-1', 1, $2, $3)`,
-    [uid, preis, waehrung]);
-  const abgelehnt = async (p) => { try { await p; return null; } catch (e) { return e.code; } };
+  const erfasse = (preis, waehrung) =>
+    db.run(
+      `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, currency) VALUES ($1, '99901-1', 1, $2, $3)`,
+      [uid, preis, waehrung],
+    );
+  const abgelehnt = async p => {
+    try {
+      await p;
+      return null;
+    } catch (e) {
+      return e.code;
+    }
+  };
 
   await t.test('eine gültige Erfassung geht durch', async () => {
     assert.equal(await abgelehnt(erfasse(19.9, 'CHF')), null);
@@ -49,13 +62,26 @@ test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async (t
 
   await t.test('ein negativer Betrag wird abgelehnt', async () => {
     assert.equal(await abgelehnt(erfasse(-1, 'CHF')), '23514');
-    assert.equal(await abgelehnt(_req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine.gutscheinAnlegen(uid,
-      { number: '5045076374450019999', pin: null, amount: -5, currency: 'CHF' })), '23514');
+    assert.equal(
+      await abgelehnt(
+        _req('src/gutscheine/prozess.js')
+          .gutscheineBereich()
+          .gutscheine.gutscheinAnlegen(uid, { number: '5045076374450019999', pin: null, amount: -5, currency: 'CHF' }),
+      ),
+      '23514',
+    );
   });
 
   await t.test('die E-Mail bleibt eindeutig', async () => {
     assert.equal(await db.get(`SELECT 1 FROM pg_indexes WHERE indexname = 'users_email_unique'`), undefined);
-    assert.equal(await abgelehnt(db.run(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, 'x')`,
-      [`${NAME}_2`, `${NAME}@example.org`])), '23505');
+    assert.equal(
+      await abgelehnt(
+        db.run(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, 'x')`, [
+          `${NAME}_2`,
+          `${NAME}@example.org`,
+        ]),
+      ),
+      '23505',
+    );
   });
 });

@@ -26,27 +26,38 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const H = require('./helpers/sources').handlerModul(_req);
   const PS = _req('src/teile/partsSummary.js');
   const NAME = `kategorie-${process.pid}`;
   const SN = `KZ${process.pid}-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const U = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  await db.run(`INSERT INTO rb_part_categories (id, name) VALUES (98701, 'Steine'), (98702, 'Platten') ON CONFLICT (id) DO NOTHING`);
-  await db.run(`INSERT INTO rb_parts (part_num, name, part_cat_id) VALUES ('kz2', 'Zwei', 98701) ON CONFLICT (part_num) DO UPDATE SET part_cat_id = 98701`);
+  await db.run(
+    `INSERT INTO rb_part_categories (id, name) VALUES (98701, 'Steine'), (98702, 'Platten') ON CONFLICT (id) DO NOTHING`,
+  );
+  await db.run(
+    `INSERT INTO rb_parts (part_num, name, part_cat_id) VALUES ('kz2', 'Zwei', 98701) ON CONFLICT (part_num) DO UPDATE SET part_cat_id = 98701`,
+  );
   await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name)
                 VALUES ('kz1', 'Eins', '98701'), ('kz2', 'Zwei', NULL), ('kz3', 'Drei', '98702')
                 ON CONFLICT (part_number) DO UPDATE SET category_name = EXCLUDED.category_name`);
-  await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
-                VALUES ($1, 'kz1', 5, 4, false), ($1, 'kz2', 5, 2, true), ($1, 'kz3', 1, 3, false)`, [SN]);
+  await db.run(
+    `INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
+                VALUES ($1, 'kz1', 5, 4, false), ($1, 'kz2', 5, 2, true), ($1, 'kz3', 1, 3, false)`,
+    [SN],
+  );
   await haeltSet(db, U, SN, 2);
-  for (const [nr, farbe, menge] of [['kz1', 5, 4], ['kz2', 5, 2], ['kz3', 1, 3]])
+  for (const [nr, farbe, menge] of [
+    ['kz1', 5, 4],
+    ['kz2', 5, 2],
+    ['kz3', 1, 3],
+  ])
     await haeltTeil(db, U, nr, { setNumber: SN, colorId: farbe, menge });
 
-  const zeilen = (r) => r.parts.map(p => `${p.part_number}|${p.color_id}|${p.total_quantity}`).sort();
-  const kategorien = (l) => l.map(k => `${k.category_name}|${k.label}|${k.total_quantity}`).sort();
+  const zeilen = r => r.parts.map(p => `${p.part_number}|${p.color_id}|${p.total_quantity}`).sort();
+  const kategorien = l => l.map(k => `${k.category_name}|${k.label}|${k.total_quantity}`).sort();
   const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
 
   try {

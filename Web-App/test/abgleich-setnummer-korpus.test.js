@@ -23,8 +23,36 @@ const { setnummerKandidaten, GUETE } = _req('src/katalog/produkttitel.js');
 
 const ROOT = path.join(__dirname, '..');
 const KORPUS_DATEI = path.join(ROOT, '..', 'shared', 'setnummer-korpus.json');
-const KOTLIN = path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'ui', 'screens', 'BarcodeScannerScreen.kt');
-const KOTLIN_TEST = path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'test', 'java', 'ch', 'brickinventoryapp', 'sammlung', 'SetnummerKorpusTest.kt');
+const KOTLIN = path.join(
+  __dirname,
+  '..',
+  '..',
+  'Android-App',
+  'feature-sammlung',
+  'src',
+  'main',
+  'java',
+  'ch',
+  'brickinventoryapp',
+  'sammlung',
+  'ui',
+  'screens',
+  'BarcodeScannerScreen.kt',
+);
+const KOTLIN_TEST = path.join(
+  __dirname,
+  '..',
+  '..',
+  'Android-App',
+  'feature-sammlung',
+  'src',
+  'test',
+  'java',
+  'ch',
+  'brickinventoryapp',
+  'sammlung',
+  'SetnummerKorpusTest.kt',
+);
 
 const korpus = JSON.parse(fs.readFileSync(KORPUS_DATEI, 'utf8')).faelle;
 
@@ -41,15 +69,21 @@ function ohneKommentare(src) {
 }
 
 test('jeder Fall des gemeinsamen Korpus liefert denselben ersten Kandidaten', () => {
-  let mitErwartung = 0, ohneKandidat = 0, dreistellig = 0;
+  let mitErwartung = 0,
+    ohneKandidat = 0,
+    dreistellig = 0;
   for (const [i, fall] of korpus.entries()) {
     const k = setnummerKandidaten(fall.text);
     const ist = k[0] ?? null;
-    assert.equal(ist, fall.erwartet,
+    assert.equal(
+      ist,
+      fall.erwartet,
       `Korpusfall ${i}: ${JSON.stringify(fall.text)}\n` +
-      `  erwartet: ${fall.erwartet}\n  bekommen: ${ist}  (alle: ${JSON.stringify(k)})\n` +
-      `  warum: ${fall.warum}`);
-    if (fall.erwartet === null) ohneKandidat++; else mitErwartung++;
+        `  erwartet: ${fall.erwartet}\n  bekommen: ${ist}  (alle: ${JSON.stringify(k)})\n` +
+        `  warum: ${fall.warum}`,
+    );
+    if (fall.erwartet === null) ohneKandidat++;
+    else mitErwartung++;
     if (fall.erwartet !== null && fall.erwartet.length === 3) dreistellig++;
   }
 
@@ -70,8 +104,10 @@ test('jeder Korpusfall hat eine Begründung', () => {
   for (const [i, fall] of korpus.entries()) {
     assert.equal(typeof fall.text, 'string', `Fall ${i} ohne Text`);
     assert.ok((fall.warum || '').length >= 20, `Fall ${i} ohne Begründung: ${fall.warum}`);
-    assert.ok(fall.erwartet === null || typeof fall.erwartet === 'string',
-      `Fall ${i}: "erwartet" muss ein String oder null sein`);
+    assert.ok(
+      fall.erwartet === null || typeof fall.erwartet === 'string',
+      `Fall ${i}: "erwartet" muss ein String oder null sein`,
+    );
   }
 });
 
@@ -80,16 +116,19 @@ test('die Güte-Reihenfolge steht in beiden Apps gleich', () => {
   const m = kt.match(/val GUETE = listOf\(([\d,\s]+)\)/);
   assert.ok(m, 'GUETE in BarcodeScannerScreen.kt nicht gefunden — umbenannt?');
   const kotlinGuete = m[1].split(',').map(s => Number(s.trim()));
-  assert.deepEqual(kotlinGuete, GUETE,
+  assert.deepEqual(
+    kotlinGuete,
+    GUETE,
     'Die App ordnet Stellenzahlen anders als der Server — genau die stille ' +
-    'Abweichung, wegen der es diesen Korpus gibt.');
+      'Abweichung, wegen der es diesen Korpus gibt.',
+  );
   // Selbstbeweis: eine leere Liste würde oben gegen eine leere Liste bestehen.
   assert.ok(GUETE.length >= 4, `GUETE hat nur ${GUETE.length} Einträge`);
 });
 
 test('das Mengenwort-Muster steht in beiden Apps gleich', () => {
   const ts = fs.readFileSync(path.join(ROOT, 'src/katalog/produkttitel.ts'), 'utf8');
-  const mTs = ts.match(/const MENGENWORT = \/(.+)\/i;/);
+  const mTs = ts.match(/const MENGENWORT =\s*\/(.+)\/i;/);
   assert.ok(mTs, 'MENGENWORT in produkttitel.ts nicht gefunden');
 
   const kt = fs.readFileSync(KOTLIN, 'utf8');
@@ -99,11 +138,11 @@ test('das Mengenwort-Muster steht in beiden Apps gleich', () => {
   // maskierten Rückstrichen; `(?iu)` ist dort nötig, weil Javas Ignorieren der
   // Gross-/Kleinschreibung sonst auf ASCII beschränkt bleibt (Umlaute!).
   const kotlinMuster = (mKt[1].match(/"(?:[^"\\]|\\.)*"/g) || [])
-    .map(s => s.slice(1, -1)).join('')
+    .map(s => s.slice(1, -1))
+    .join('')
     .replace(/\\\\/g, '\\')
     .replace('(?iu)', '');
-  assert.equal(kotlinMuster, mTs[1],
-    'Die App sortiert andere Mengenangaben aus als der Server.');
+  assert.equal(kotlinMuster, mTs[1], 'Die App sortiert andere Mengenangaben aus als der Server.');
   assert.ok(mTs[1].length >= 40, `Muster verdächtig kurz: ${mTs[1]}`);
 });
 
@@ -112,8 +151,9 @@ test('die App prüft denselben Korpus', () => {
   // weiter alles grün, und die Behauptung „beide Apps antworten gleich" wäre
   // nur noch eine Behauptung.
   const src = ohneKommentare(fs.readFileSync(KOTLIN_TEST, 'utf8'));
-  assert.ok(src.includes('shared/setnummer-korpus.json'),
-    'SetnummerKorpusTest.kt liest den gemeinsamen Korpus nicht mehr');
-  assert.ok(src.includes('setNumberCandidates'),
-    'SetnummerKorpusTest.kt ruft die Kotlin-Fassung nicht mehr auf');
+  assert.ok(
+    src.includes('shared/setnummer-korpus.json'),
+    'SetnummerKorpusTest.kt liest den gemeinsamen Korpus nicht mehr',
+  );
+  assert.ok(src.includes('setNumberCandidates'), 'SetnummerKorpusTest.kt ruft die Kotlin-Fassung nicht mehr auf');
 });

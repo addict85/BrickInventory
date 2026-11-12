@@ -19,15 +19,22 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-test('Grenzen für Formulare mit Datei', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Grenzen für Formulare mit Datei', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const NAME = `formular_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
-  t.after(async () => { await db.run('DELETE FROM users WHERE id = $1', [uid]); await db.pool.end().catch(() => {}); });
-  const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const datei = (name = 'e.json') => new Blob([JSON.stringify({ user_settings: { currency: 'CHF' } })], { type: 'application/json' });
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE id = $1', [uid]);
+    await db.pool.end().catch(() => {});
+  });
+  const { base } = testServer(_req, {
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
+  const datei = () => new Blob([JSON.stringify({ user_settings: { currency: 'CHF' } })], { type: 'application/json' });
   const sende = async (pfad, fd) => {
     const r = await fetch(base + pfad, { method: 'POST', body: fd });
     return [r.status, (await r.json()).code ?? null];
@@ -49,10 +56,17 @@ test('Grenzen für Formulare mit Datei', { concurrency: 1 }, async (t) => {
     const zwei = new FormData();
     zwei.append('file', datei(), 'e.json');
     zwei.append('file', datei(), 'f.json');
-    assert.deepEqual([
-      await sende('/api/v1/settings/import', viele),
-      await sende('/api/v1/vouchers/pdf', gross),
-      await sende('/api/v1/settings/import', zwei),
-    ], [[400, 'upload_ungueltig'], [400, 'upload_ungueltig'], [400, 'upload_ungueltig']]);
+    assert.deepEqual(
+      [
+        await sende('/api/v1/settings/import', viele),
+        await sende('/api/v1/vouchers/pdf', gross),
+        await sende('/api/v1/settings/import', zwei),
+      ],
+      [
+        [400, 'upload_ungueltig'],
+        [400, 'upload_ungueltig'],
+        [400, 'upload_ungueltig'],
+      ],
+    );
   });
 });

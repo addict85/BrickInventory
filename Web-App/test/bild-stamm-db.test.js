@@ -23,19 +23,31 @@ const { katalogSet } = require('./helpers/bestand');
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Bildadresse über den Dateinamen-Stamm', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Bildadresse über den Dateinamen-Stamm', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const { cdnFuerFehlendesBild, CDN_ABFRAGE } = _req('src/katalog/bilder/bildNachschlagen.js');
   const P = `bst${process.pid}`;
-  await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url, image_local)
-                VALUES ($1, 4, 'https://cdn.rebrickable.com/media/parts/x.png', $2)`, [P, `/images/parts/${P}_4.png`]);
-  await db.run(`INSERT INTO minifigs_catalog (fig_number, image_url, image_local) VALUES ($1, 'https://cdn.rebrickable.com/f.jpg', $2)`,
-    [`fig-${P}`, `/images/minifigs/fig-${P}.jpg`]);
-  await katalogSet(db, `${P}-1`, { name: 'Test', image_url: 'https://img.bricklink.com/s.png', image_local: `/images/sets/${P}-1.png` });
+  await db.run(
+    `INSERT INTO part_color_catalog (part_number, color_id, image_url, image_local)
+                VALUES ($1, 4, 'https://cdn.rebrickable.com/media/parts/x.png', $2)`,
+    [P, `/images/parts/${P}_4.png`],
+  );
+  await db.run(
+    `INSERT INTO minifigs_catalog (fig_number, image_url, image_local) VALUES ($1, 'https://cdn.rebrickable.com/f.jpg', $2)`,
+    [`fig-${P}`, `/images/minifigs/fig-${P}.jpg`],
+  );
+  await katalogSet(db, `${P}-1`, {
+    name: 'Test',
+    image_url: 'https://img.bricklink.com/s.png',
+    image_local: `/images/sets/${P}-1.png`,
+  });
 
   try {
     await t.test('eine fehlende Vorschau findet die Adresse des Teilebilds', async () => {
-      assert.equal(await cdnFuerFehlendesBild(`/images/parts/${P}_4_thumb.jpg`), 'https://cdn.rebrickable.com/media/parts/x.png');
+      assert.equal(
+        await cdnFuerFehlendesBild(`/images/parts/${P}_4_thumb.jpg`),
+        'https://cdn.rebrickable.com/media/parts/x.png',
+      );
     });
     await t.test('Figuren und Sets', async () => {
       assert.equal(await cdnFuerFehlendesBild(`/images/minifigs/fig-${P}.jpg`), 'https://cdn.rebrickable.com/f.jpg');
@@ -43,14 +55,18 @@ test('Bildadresse über den Dateinamen-Stamm', { concurrency: 1 }, async (t) => 
       assert.equal(await cdnFuerFehlendesBild(`/images/sets/${P}-9.png`), null);
     });
     await t.test('jede Bildtabelle fragt über ihren Index', async () => {
-      const plan = await db.transaction(async (tx) => {
+      const plan = await db.transaction(async tx => {
         await tx.run('SET LOCAL enable_seqscan = off');
         return (await tx.all(`EXPLAIN ${CDN_ABFRAGE.replaceAll('$1', `'${P}_4'`)}`))
-          .map(z => z['QUERY PLAN']).join('\n');
+          .map(z => z['QUERY PLAN'])
+          .join('\n');
       });
       // set_minifigs_catalog ist seit Migration 0072 eine Sicht auf minifigs_catalog.
-      for (const ix of ['idx_part_color_catalog_bild_stamm',
-                        'idx_minifigs_catalog_bild_stamm', 'idx_set_catalog_bild_stamm'])
+      for (const ix of [
+        'idx_part_color_catalog_bild_stamm',
+        'idx_minifigs_catalog_bild_stamm',
+        'idx_set_catalog_bild_stamm',
+      ])
         assert.ok(plan.includes(ix), `${ix} fehlt im Plan:\n${plan}`);
       // Nicht nur durchlaufen, sondern über den Stamm gesucht: Ohne Suchschlüssel
       // läse der Planer bei abgeschaltetem Seq Scan den Teilindex ganz.

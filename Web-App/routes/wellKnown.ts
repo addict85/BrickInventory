@@ -7,7 +7,8 @@ const router = express.Router();
 
 router.get('/.well-known/assetlinks.json', (_req, res) => {
   const dokument = assetlinks();
-  if (!dokument) return res.status(404).type('text/plain').send('Keine App eingetragen (PASSKEY_ANDROID_ZERTIFIKATE).\n');
+  if (!dokument)
+    return res.status(404).type('text/plain').send('Keine App eingetragen (PASSKEY_ANDROID_ZERTIFIKATE).\n');
   res.set('Cache-Control', 'public, max-age=3600');
   res.json(dokument);
 });

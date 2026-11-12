@@ -26,31 +26,48 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const express   = require(path.join(ROOT, 'node_modules', 'express'));
-const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
+const express = require(path.join(ROOT, 'node_modules', 'express'));
+const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
-const bcrypt    = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAMEN = ['sv_chef', 'sv_zweiter', 'sv_nutzer'];
 const PW = 'sitzungsVersion-1';
 
-test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   for (const n of NAMEN) await db.run('DELETE FROM users WHERE username = $1', [n]);
   const hash = await bcrypt.hash(PW, 4);
   const id = {};
-  for (const [n, admin] of [['sv_chef', true], ['sv_zweiter', true], ['sv_nutzer', false]])
-    id[n] = (await db.get('INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,$3,true) RETURNING id',
-      [n, hash, admin])).id;
+  for (const [n, admin] of [
+    ['sv_chef', true],
+    ['sv_zweiter', true],
+    ['sv_nutzer', false],
+  ])
+    id[n] = (
+      await db.get(
+        'INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,$3,true) RETURNING id',
+        [n, hash, admin],
+      )
+    ).id;
   // Verwalter brauchen einen Code-Generator; Anmeldung und Bestätigung nehmen je einen Wiederherstellungscode.
   const { verwalterMitFaktor } = require('./helpers/verwalter');
-  const codes = { sv_chef: await verwalterMitFaktor(_req, id.sv_chef), sv_zweiter: await verwalterMitFaktor(_req, id.sv_zweiter) };
+  const codes = {
+    sv_chef: await verwalterMitFaktor(_req, id.sv_chef),
+    sv_zweiter: await verwalterMitFaktor(_req, id.sv_zweiter),
+  };
 
   const app = express();
   app.use(express.json());
-  app.use(session({ store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
   app.use(_req('src/konto/http/sitzungsPruefung.js').sitzungsVersionPruefen());
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1', _req('routes/api_v1/index.js'));
@@ -58,20 +75,25 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
-  const ruf = (pfad, cookie, o = {}) => fetch(basis + pfad, { ...o,
-    headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) } });
-  const anmelden = async (name) => {
-    const r = await ruf('/api/v1/auth/login', null, { method: 'POST', body: JSON.stringify({ username: name, password: PW, ohne_token: true, code: codes[name]?.shift() }) });
+  const ruf = (pfad, cookie, o = {}) =>
+    fetch(basis + pfad, { ...o, headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) } });
+  const anmelden = async name => {
+    const r = await ruf('/api/v1/auth/login', null, {
+      method: 'POST',
+      body: JSON.stringify({ username: name, password: PW, ohne_token: true, code: codes[name]?.shift() }),
+    });
     assert.equal(r.status, 200, await r.text());
     return (r.headers.get('set-cookie') || '').split(';')[0];
   };
-  const sid = (cookie) => decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0];
-  const zeile = async (cookie) => db.get('SELECT sid, sess, expire FROM user_sessions WHERE sid = $1', [sid(cookie)]);
+  const sid = cookie => decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0];
+  const zeile = async cookie => db.get('SELECT sid, sess, expire FROM user_sessions WHERE sid = $1', [sid(cookie)]);
   // Was eine Anfrage tut, die vor dem Löschen begann und danach speichert.
-  const zurueckschreiben = (z) => db.run(
-    'INSERT INTO user_sessions (sid, sess, expire) VALUES ($1,$2,$3) ON CONFLICT (sid) DO UPDATE SET sess = EXCLUDED.sess',
-    [z.sid, z.sess, z.expire]);
-  const angemeldet = async (cookie) => (await (await ruf('/api/v1/auth/me', cookie)).json()).loggedIn === true;
+  const zurueckschreiben = z =>
+    db.run(
+      'INSERT INTO user_sessions (sid, sess, expire) VALUES ($1,$2,$3) ON CONFLICT (sid) DO UPDATE SET sess = EXCLUDED.sess',
+      [z.sid, z.sess, z.expire],
+    );
+  const angemeldet = async cookie => (await (await ruf('/api/v1/auth/me', cookie)).json()).loggedIn === true;
 
   try {
     await t.test('Rechteentzug: die zurückgeschriebene Verwaltersitzung gilt nicht mehr', async () => {
@@ -81,8 +103,10 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
       const alt = await zeile(zweiter);
       assert.ok(alt, 'Vorbedingung: Sitzungszeile liegt');
 
-      const r = await ruf(`/api/v1/auth/users/${id.sv_zweiter}/admin`, chef,
-        { method: 'PUT', body: JSON.stringify({ is_admin: false, admin_password: PW, code: codes.sv_chef.shift() }) });
+      const r = await ruf(`/api/v1/auth/users/${id.sv_zweiter}/admin`, chef, {
+        method: 'PUT',
+        body: JSON.stringify({ is_admin: false, admin_password: PW, code: codes.sv_chef.shift() }),
+      });
       assert.equal(r.status, 200, await r.text());
       assert.equal(await zeile(zweiter), undefined, 'Vorbedingung: Zeile gelöscht');
       await zurueckschreiben(alt);
@@ -98,7 +122,10 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
       const a = await anmelden('sv_nutzer');
       const b = await anmelden('sv_nutzer');
       const altB = await zeile(b);
-      const r = await ruf('/api/v1/settings/sessions/andere-beenden', a, { method: 'POST', body: JSON.stringify({ password: PW }) });
+      const r = await ruf('/api/v1/settings/sessions/andere-beenden', a, {
+        method: 'POST',
+        body: JSON.stringify({ password: PW }),
+      });
       assert.equal(r.status, 200, await r.text());
       await zurueckschreiben(altB);
       assert.equal(await angemeldet(b), false, 'das andere Fenster bleibt draussen');

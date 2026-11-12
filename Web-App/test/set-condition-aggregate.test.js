@@ -16,6 +16,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { pruefeParameter } = require('./helpers/sources');
+const kompakt = require('./helpers/sources').kompakt;
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
@@ -323,7 +324,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   // der Graph zeigt trotzdem einen Abfall am selben Tag. Ursache:
   // `const condition = DEFAULT_PRICE_CONDITION` — fest 'U', unabhängig vom
   // tatsächlichen Zustand des Sets. Für ein als „Neu" geführtes Set bevorzugte …
-  const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
+  const src = kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
   const i = src.indexOf("router.get('/sets/:setNumber/price-history'");
   assert.ok(i > 0, 'Die Preisverlauf-Route ist nicht mehr auffindbar');
   const fn = src.slice(i, i + 1200);
@@ -345,11 +346,11 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   );
 
   assert.match(
-    fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8'),
+    kompakt(fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8')),
     /preisverlaufSet\(sicht, sn, await waehrungVon\((?:sk, )?uid\), sk\.finanzen\)/,
     'Der Dienst nutzt den gemeinsamen Helfer',
   );
-  const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
+  const helper = kompakt(fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8'));
   assert.match(
     helper,
     /const condition = await resolveSetCondition\(uids, setNumber, undefined, f\);/,
@@ -362,7 +363,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // für ein als „Neu" geführtes Set mit Kaufpreis 162.42 CHF — „-32.0%
   // Entwicklung", obwohl sich der Preis nie bewegt hatte. Ursache identisch zur
   // Webapp-Route: `fetchPrice(sn, DEFAULT_PRICE_CONDITION, …)` — fest 'U'.
-  const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
+  const src = kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
   // Die Route ruft setPreis() im Dienst; dort wird der Zustand aufgelöst.
   const dienst = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
   const priceRoute = dienst.slice(

@@ -13,7 +13,9 @@ import { alsHtml, esc, html, ungeprueft } from './escapen.js';
  * @param {string} id
  * @returns {Feld}
  */
-export function G(id) { return /** @type {Feld} */ (document.getElementById(id)); }
+export function G(id) {
+  return /** @type {Feld} */ (document.getElementById(id));
+}
 
 /**
  * querySelectorAll als HTMLElement[]: Die Oberfläche fragt nur HTML-Elemente ab, und dataset, style und
@@ -21,10 +23,14 @@ export function G(id) { return /** @type {Feld} */ (document.getElementById(id))
  * @param {string} sel @param {ParentNode} [wurzel]
  * @returns {HTMLElement[]}
  */
-export function alle(sel, wurzel = document) { return /** @type {HTMLElement[]} */ ([...wurzel.querySelectorAll(sel)]); }
+export function alle(sel, wurzel = document) {
+  return /** @type {HTMLElement[]} */ ([...wurzel.querySelectorAll(sel)]);
+}
 
 /** querySelector als HTMLElement, siehe alle(). @param {string} sel @param {ParentNode} [wurzel] */
-export function eins(sel, wurzel = document) { return /** @type {HTMLElement | null} */ (wurzel.querySelector(sel)); }
+export function eins(sel, wurzel = document) {
+  return /** @type {HTMLElement | null} */ (wurzel.querySelector(sel));
+}
 
 /** Der offene Reiter (data-tab des aktiven Knopfs in der Leiste). */
 /** Weich rollen nur ohne Wunsch nach weniger Bewegung: Ein ausdrückliches 'smooth' übergeht die CSS-Regel. */
@@ -32,13 +38,17 @@ export function rollArt() {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 }
 
-export function aktiverReiter() { return eins('.ntab.active')?.dataset.tab; }
+export function aktiverReiter() {
+  return eins('.ntab.active')?.dataset.tab;
+}
 
 /**
  * Ein Symbol aus der Symbolfamilie (Sprite in index.html) als HTML.
  * @param {string} name
  */
-export function ico(name) { return html`<svg class="ico" aria-hidden="true"><use href="#i-${name}"/></svg>`; }
+export function ico(name) {
+  return html`<svg class="ico" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+}
 
 /** @type {ReturnType<typeof setTimeout> | undefined} */
 let _trefferUhr;
@@ -62,10 +72,14 @@ export function meldeTreffer(text) {
  * @param {{ ico: string, titel?: string, text?: string, titelKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
  */
 export function leerZustand(o) {
-  const knopfText = o.knopf?.textKey ? html`<span data-i18n="${o.knopf.textKey}">${tRaw(o.knopf.textKey)}</span>` : html`<span>${o.knopf?.text}</span>`;
-  const knopf = o.knopf ? html`<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${o.knopf.click}"${o.knopf.arg ? html` data-arg="${o.knopf.arg}"` : ''}>${ico(o.knopf.ico || 'plus')}${knopfText}</button>` : '';
+  const knopfText = o.knopf?.textKey
+    ? html`<span data-i18n="${o.knopf.textKey}">${tRaw(o.knopf.textKey)}</span>`
+    : html`<span>${o.knopf?.text}</span>`;
+  const knopf = o.knopf
+    ? html`<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${o.knopf.click}"${o.knopf.arg ? html` data-arg="${o.knopf.arg}"` : ''}>${ico(o.knopf.ico || 'plus')}${knopfText}</button>`
+    : '';
   // Mit Schlüssel übersetzt applyLang den Text nach, wenn die Kontosprache erst später feststeht.
-  const k = (/** @type {string | undefined} */ key) => key ? ` data-i18n="${esc(key)}"` : '';
+  const k = (/** @type {string | undefined} */ key) => (key ? ` data-i18n="${esc(key)}"` : '');
   return html`<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${ungeprueft(k(o.titelKey))}>${o.titelKey ? tRaw(o.titelKey) : o.titel}</h2>${o.text || o.textKey ? html`<p${ungeprueft(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${knopf}</div>`;
 }
 
@@ -74,7 +88,13 @@ export function leerZustand(o) {
  * @param {string} ansicht
  */
 export function zuruecksetzenKnopf(ansicht) {
-  return { text: tRaw('common.reset_filter'), click: 'filterZuruecksetzen', arg: ansicht, ico: 'schliessen', art: 'bs' };
+  return {
+    text: tRaw('common.reset_filter'),
+    click: 'filterZuruecksetzen',
+    arg: ansicht,
+    ico: 'schliessen',
+    art: 'bs',
+  };
 }
 
 /**
@@ -100,7 +120,7 @@ export function knopfBesetzt(btn, laeuft) {
   btn.disabled = true;
   btn.classList.add('besetzt');
   if (laeuft !== undefined) btn.textContent = laeuft;
-  return (text) => {
+  return text => {
     btn.disabled = false;
     btn.classList.remove('besetzt');
     // Nur zuruecksetzen, was ueberhaupt gesetzt wurde — sonst schriebe die Freigabe eine Beschriftung neu,

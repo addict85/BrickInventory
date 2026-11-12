@@ -28,35 +28,47 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('ich','x')`);
   U.ich = (await db.get(`SELECT id FROM users WHERE username='ich'`)).id;
 
   // Zwei Merkposten auf DASSELBE Set, in beiden Zuständen — daran hängt die
   // wichtigste Aussage.
   for (const c of ['N', 'U']) {
-    await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'10179-1',$2)`,
-      [U.ich, c]);
+    await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'10179-1',$2)`, [U.ich, c]);
   }
-  await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'75192-1','N')`,
-    [U.ich]);
+  await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'75192-1','N')`, [U.ich]);
 
   // Preise: neu 500, gebraucht 300 — und in einer ANDEREN Währung ein
   // abweichender Wert, damit ein fehlender Währungsvergleich auffällt.
-  for (const [c, p, w] of [['N', 500, 'EUR'], ['U', 300, 'EUR'], ['N', 999, 'CHF']]) {
+  for (const [c, p, w] of [
+    ['N', 500, 'EUR'],
+    ['U', 300, 'EUR'],
+    ['N', 999, 'CHF'],
+  ]) {
     await db.run(
       `INSERT INTO price_cache (set_number, condition, currency_code, avg_price)
-       VALUES ('10179-1',$1,$2,$3)`, [c, w, p]);
+       VALUES ('10179-1',$1,$2,$3)`,
+      [c, w, p],
+    );
   }
   // 75192-1 bleibt ohne Preis — „noch keiner im Cache" ist ein gültiger Fall.
 }
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Merkliste: Marktpreis aus dem Cache', async (t) => {
+test('Merkliste: Marktpreis aus dem Cache', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -82,9 +94,9 @@ test('Merkliste: Marktpreis aus dem Cache', async (t) => {
     // der Neupreis — und niemand sähe es der Zahl an.
     const liste = await M.merkpostenVon([U.ich], undefined, 'EUR');
     const karte = Object.fromEntries(
-      liste.filter(w => w.set_number === '10179-1').map(w => [w.condition, w.marktpreis]));
-    assert.deepEqual(karte, { N: 500, U: 300 },
-      'Der gebrauchte Merkposten zeigt nicht den Gebrauchtpreis.');
+      liste.filter(w => w.set_number === '10179-1').map(w => [w.condition, w.marktpreis]),
+    );
+    assert.deepEqual(karte, { N: 500, U: 300 }, 'Der gebrauchte Merkposten zeigt nicht den Gebrauchtpreis.');
   });
 
   await t.test('3. Die Währung des Lesers entscheidet', async () => {

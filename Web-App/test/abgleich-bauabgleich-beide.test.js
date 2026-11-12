@@ -18,14 +18,68 @@ const WEB = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
 // Kommentare ABSTREIFEN, und zwar hier schon beim Lesen.
 const lies = p => ohneKommentare(fs.readFileSync(p, 'utf8'));
-const web  = rel => lies(path.join(WEB, rel));
+const web = rel => lies(path.join(WEB, rel));
 
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN
-const KT_API   = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api')));
-const KT_FEAT  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'Teileliste.kt'));
-const KT_SCREEN= lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'teile', 'ui', 'screens', 'PartsListScreen.kt'));
-const XML_EN   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
-const XML_DE   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
+const KT_API = ohneKommentare(
+  require('../scripts/kotlin-vertrag.js').apiQuelltext(
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      'Android-App',
+      'core-data',
+      'src',
+      'main',
+      'java',
+      'ch',
+      'brickinventoryapp',
+      'data',
+      'api',
+    ),
+  ),
+);
+const KT_FEAT = lies(
+  path.join(
+    __dirname,
+    '..',
+    '..',
+    'Android-App',
+    'feature-teile',
+    'src',
+    'main',
+    'java',
+    'ch',
+    'brickinventoryapp',
+    'teile',
+    'ui',
+    'Teileliste.kt',
+  ),
+);
+const KT_SCREEN = lies(
+  path.join(
+    __dirname,
+    '..',
+    '..',
+    'Android-App',
+    'feature-teile',
+    'src',
+    'main',
+    'java',
+    'ch',
+    'brickinventoryapp',
+    'teile',
+    'ui',
+    'screens',
+    'PartsListScreen.kt',
+  ),
+);
+const XML_EN = lies(
+  path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'),
+);
+const XML_DE = lies(
+  path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'),
+);
 
 const ROUTE = '/parts/owned';
 
@@ -33,8 +87,20 @@ test('Webapp: fragt den Endpunkt in Rebrickable-Schreibweise, unterscheidet lose
   const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
   const anfragen = [];
   const { w, d } = await oeffneOberflaeche({
-    '/v1/sets/10294-1/parts-list': { success: true, parts: [{ part_number: '3001', bl_part_number: '3001b', part_name: 'Brick 2 x 4',
-      color_id: 4, color_name: 'Red', color_hex: 'C91A09', quantity: 6 }] },
+    '/v1/sets/10294-1/parts-list': {
+      success: true,
+      parts: [
+        {
+          part_number: '3001',
+          bl_part_number: '3001b',
+          part_name: 'Brick 2 x 4',
+          color_id: 4,
+          color_name: 'Red',
+          color_hex: 'C91A09',
+          quantity: 6,
+        },
+      ],
+    },
     '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
     '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
     '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },
@@ -69,17 +135,19 @@ test('Webapp: fragt den Endpunkt in Rebrickable-Schreibweise, unterscheidet lose
     subs.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => anfragen.length === 3), 'mit Unterkonten nicht neu gefragt');
     assert.match(anfragen[2].url, /\/api\/v1\/parts\/owned$/, 'mit Unterkonten trotzdem nur das eigene Konto');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('App: fragt den Endpunkt, den der Server anbietet', () => {
-  assert.match(web('routes/api_v1/parts.ts'),
-    new RegExp(`router\\.post\\('${ROUTE}'`),
-    'Der Endpunkt fehlt — dann fragt niemand irgendwo');
+  assert.match(
+    web('routes/api_v1/parts.ts'),
+    new RegExp(`router\\.post\\(\\s*'${ROUTE}'`),
+    'Der Endpunkt fehlt — dann fragt niemand irgendwo',
+  );
 
-  assert.match(KT_API,
-    new RegExp(`@POST\\("api/v1${ROUTE}"\\)`),
-    'Die App ruft den Endpunkt nicht auf');
+  assert.match(KT_API, new RegExp(`@POST\\("api/v1${ROUTE}"\\)`), 'Die App ruft den Endpunkt nicht auf');
 });
 
 test('App: fragt in der Rebrickable-Schreibweise', () => {
@@ -90,10 +158,12 @@ test('App: fragt in der Rebrickable-Schreibweise', () => {
   const kt = KT_FEAT;
   const fk = kt.slice(kt.indexOf('suspend fun mitBestand'));
   assert.ok(fk.length > 100, 'mitBestand nicht gefunden');
-  assert.match(fk, /partNumber = it\.partNumber/,
-    'Die App muss die Rebrickable-Nummer schicken');
-  assert.doesNotMatch(fk.slice(0, fk.indexOf('return teile.map')), /blPartNumber/,
-    'Die App fragt mit der BrickLink-Nummer — damit findet sie nichts');
+  assert.match(fk, /partNumber = it\.partNumber/, 'Die App muss die Rebrickable-Nummer schicken');
+  assert.doesNotMatch(
+    fk.slice(0, fk.indexOf('return teile.map')),
+    /blPartNumber/,
+    'Die App fragt mit der BrickLink-Nummer — damit findet sie nichts',
+  );
 });
 
 test('App: unterscheidet „alles" von „nur lose"', () => {
@@ -101,28 +171,39 @@ test('App: unterscheidet „alles" von „nur lose"', () => {
   // Set besitzt man zwar, müsste dafür aber ein anderes Set zerlegen. Böte
   // eine der beiden Oberflächen die Unterscheidung nicht, gäbe sie auf
   // dieselbe Frage eine andere Antwort als die andere.
-  assert.match(KT_SCREEN,
-    /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_only_loose\), )nurLose/, 'Der App fehlt der Schalter „nur lose Teile"');
-  assert.match(KT_FEAT,
-    /if \(nurLose\) eintrag\.lose else eintrag\.gesamt/,
-    'Die App wertet den Schalter nicht aus');
+  assert.match(
+    KT_SCREEN,
+    /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_only_loose\), )nurLose/,
+    'Der App fehlt der Schalter „nur lose Teile"',
+  );
+  assert.match(KT_FEAT, /if \(nurLose\) eintrag\.lose else eintrag\.gesamt/, 'Die App wertet den Schalter nicht aus');
 });
 
 test('App: fragt ihr Blickfeld an DIESER Stelle', () => {
   // Was sich geändert hat (Marcos Vorgabe)
-  assert.match(KT_SCREEN, /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_include_subs\), )mitUnterkonten/,
-    'Der App fehlt die Wahl „Unterkonten mit einbeziehen"');
-  assert.match(KT_FEAT, /if \(mitUnterkonten\) null else Kontoauswahl\.Eigene/,
-    'Die App schickt ohne Haken kein „own"');
-  assert.doesNotMatch(KT_FEAT,
+  assert.match(
+    KT_SCREEN,
+    /(?:Checkbox\(checked = |KaestchenZeile\(stringResource\(R\.string\.partslist_include_subs\), )mitUnterkonten/,
+    'Der App fehlt die Wahl „Unterkonten mit einbeziehen"',
+  );
+  assert.match(
+    KT_FEAT,
+    /if \(mitUnterkonten\) null else Kontoauswahl\.Eigene/,
+    'Die App schickt ohne Haken kein „own"',
+  );
+  assert.doesNotMatch(
+    KT_FEAT,
     /scopeFor\((ch\.brickinventoryapp\.model\.data\.)?ScopeFilter\.View\.PARTS\)/,
-    'Die App hängt wieder am Kontofilter des Teile-Reiters');
+    'Die App hängt wieder am Kontofilter des Teile-Reiters',
+  );
 
   // Unverändert und weiterhin die Voraussetzung für beides: Der Endpunkt muss
   // den Namen in IDs übersetzen.
-  assert.match(web('routes/api_v1/parts.ts'),
-    /router\.post\('\/parts\/owned'[\s\S]{0,400}?getOwnedQuantities\(sichtVon\(req\)/,
-    'Der Endpunkt übersetzt den Kontofilter nicht in IDs');
+  assert.match(
+    web('routes/api_v1/parts.ts'),
+    /router\.post\(\s*'\/parts\/owned'[\s\S]{0,400}?getOwnedQuantities\(\s*sichtVon\(req\)/,
+    'Der Endpunkt übersetzt den Kontofilter nicht in IDs',
+  );
 });
 
 test('beide Sprachen sind gepflegt — in beiden Oberflächen', () => {
@@ -131,17 +212,31 @@ test('beide Sprachen sind gepflegt — in beiden Oberflächen', () => {
   // wie ein Text.
   for (const datei of ['public/locales/de.js', 'public/locales/en.js']) {
     const s = web(datei);
-    for (const k of ['pl.fill_owned', 'pl.only_loose', 'pl.include_subs', 'pl.owned_complete',
-                     'pl.owned_missing', 'pl.owned_none', 'pl.owned_filled']) {
+    for (const k of [
+      'pl.fill_owned',
+      'pl.only_loose',
+      'pl.include_subs',
+      'pl.owned_complete',
+      'pl.owned_missing',
+      'pl.owned_none',
+      'pl.owned_filled',
+    ]) {
       assert.ok(s.includes(`'${k}'`), `${datei}: ${k} fehlt`);
     }
   }
-  for (const [name, s] of [['res/values/strings.xml', XML_EN],
-                          ['res/values-de/strings.xml', XML_DE]]) {
+  for (const [name, s] of [
+    ['res/values/strings.xml', XML_EN],
+    ['res/values-de/strings.xml', XML_DE],
+  ]) {
     const datei = name;
-    for (const k of ['partslist_fill_owned', 'partslist_only_loose', 'partslist_include_subs',
-                     'partslist_owned_complete', 'partslist_owned_missing',
-                     'partslist_owned_error']) {
+    for (const k of [
+      'partslist_fill_owned',
+      'partslist_only_loose',
+      'partslist_include_subs',
+      'partslist_owned_complete',
+      'partslist_owned_missing',
+      'partslist_owned_error',
+    ]) {
       assert.ok(s.includes(`name="${k}"`), `${datei}: ${k} fehlt`);
     }
   }

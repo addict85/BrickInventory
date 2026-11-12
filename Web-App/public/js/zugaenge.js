@@ -73,9 +73,18 @@ async function qrKopplungAblehnen() {
 /** @param {HTMLElement} container @param {string} qrData */
 function zeichneQr(container, qrData) {
   container.replaceChildren();
-  if (typeof QRCode === 'undefined') { container.textContent = qrData; return; }
-  new QRCode(container, { text: qrData, width: 220, height: 220, colorDark: '#1e293b', colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M });
+  if (typeof QRCode === 'undefined') {
+    container.textContent = qrData;
+    return;
+  }
+  new QRCode(container, {
+    text: qrData,
+    width: 220,
+    height: 220,
+    colorDark: '#1e293b',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M,
+  });
 }
 
 async function generateQrCode() {
@@ -94,14 +103,18 @@ async function generateQrCode() {
     kopplungBeenden();
     if (G('qr-kopplung')) G('qr-kopplung').hidden = true;
     const d = await mitZweitemFaktor(z => api('POST', '/v1/auth/qr-token', { gueltigkeit, password, ...z }));
-    if (d === null) { frei(); return; }
+    if (d === null) {
+      frei();
+      return;
+    }
     if (!d.success) {
-      hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown'));
+      hint.textContent = tRaw('toast.error') + ': ' + (d.error || t('common.unknown'));
       // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein sichtbarer Code neben einer
       // Fehlermeldung sieht aus wie ein Code, der trotzdem geht. Beim Ablaufzaehler weiter unten wird aus
       // demselben Grund geleert.
       container.replaceChildren();
-      frei(); return;
+      frei();
+      return;
     }
     // Nur die Adresse, die der Server nennt (APP_BASE_URL): Die in der Browserzeile ist die des Betrachters,
     // etwa eine LAN-Adresse, die ausser Haus nicht existiert. Lieber kein Code als einer, der sich falsch
@@ -114,14 +127,18 @@ async function generateQrCode() {
     zeichneQr(container, qrData);
     // Die Dauer nennt der Server (expires_in): Ein fester Wert lief am Ende des Codes vorbei.
     let secs = Number(d.expires_in) || 300;
-    const fmt = (/** @type {number} */ v) => `${Math.floor(v/60)}:${(v%60).toString().padStart(2,'0')}`;
+    const fmt = (/** @type {number} */ v) => `${Math.floor(v / 60)}:${(v % 60).toString().padStart(2, '0')}`;
     const timer = setInterval(() => {
       secs--;
-      hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
-      if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.replaceChildren(); }
+      hint.textContent = tRaw('qr.valid_for', { t: fmt(secs) });
+      if (secs <= 0) {
+        clearInterval(timer);
+        hint.textContent = tRaw('qr.expired');
+        container.replaceChildren();
+      }
     }, 1000);
     _kopplung = { id: d.kopplung, timer: setInterval(kopplungPruefen, 2000) };
-    hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
+    hint.textContent = tRaw('qr.valid_for', { t: fmt(secs) });
     // Die Laufzeit aus der Serverantwort, nicht aus der Auswahl: Kennt er den Wert nicht, gilt die
     // Gleitfrist. Drei Fälle — 0 heisst unbegrenzt, null nichts gewählt; ein einfacher Wahrheitstest würfe
     // beide zusammen.
@@ -136,14 +153,20 @@ async function generateQrCode() {
       klartext.textContent = klartext.hidden ? '' : tRaw('qr.klartext_hinweis');
     }
     const zugang = G('qr-access-hint');
-    if (zugang) zugang.textContent =
-      d.token_days === 0    ? tRaw('qr.access_unlimited')
-      : (d.token_days ?? 0) > 0 ? tRaw('qr.access_days', { n: d.token_days })
-                            : tRaw('qr.access_default');
+    if (zugang)
+      zugang.textContent =
+        d.token_days === 0
+          ? tRaw('qr.access_unlimited')
+          : (d.token_days ?? 0) > 0
+            ? tRaw('qr.access_days', { n: d.token_days })
+            : tRaw('qr.access_default');
     // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine Stelle, an der die Beschriftung
     // sich absichtlich ändert.
     frei(tRaw('qr.regenerate'));
-  } catch(e) { hint.textContent = tRaw('toast.error')+': ' + fehlerMeldung(e); frei(); }
+  } catch (e) {
+    hint.textContent = tRaw('toast.error') + ': ' + fehlerMeldung(e);
+    frei();
+  }
 }
 
 G('btn-gen-qr').onclick = generateQrCode;
@@ -164,12 +187,21 @@ export async function loadTokens() {
   const ziel = G('tokens-tbl');
   if (!ziel) return;
   const d = await api('GET', '/v1/settings/tokens');
-  if (!d.success) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${d.error || t('settings.error')}</p>`); return; }
-  if (!d.tokens.length) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${tRaw('tokens.none')}</p>`); return; }
-  setzeHtml(ziel, html`<div class="tw"><table class="dt" aria-label="${tRaw('tokens.title')}"><thead><tr>
+  if (!d.success) {
+    setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${d.error || t('settings.error')}</p>`);
+    return;
+  }
+  if (!d.tokens.length) {
+    setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${tRaw('tokens.none')}</p>`);
+    return;
+  }
+  setzeHtml(
+    ziel,
+    html`<div class="tw"><table class="dt" aria-label="${tRaw('tokens.title')}"><thead><tr>
       <th>${tRaw('tokens.col.label')}</th><th>${tRaw('tokens.col.created')}</th>
       <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('tokens.col.scope')}</th><th>${tRaw('tokens.col.ip')}</th>
-      <th>${tRaw('tokens.col.expires')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.tokens.map(tk => html`<tr>
+      <th>${tRaw('tokens.col.expires')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.tokens.map(
+        tk => html`<tr>
       <td><strong>${tk.label || '—'}</strong>${tk.aktuell ? html` <span class="rb ra">${tRaw('tokens.current')}</span>` : ''}</td>
       <td>${tokenDatum(tk.created_at)}</td>
       <td>${tokenDatum(tk.last_used)}</td>
@@ -177,7 +209,9 @@ export async function loadTokens() {
       <td>${tk.ip_bereich || '—'}</td>
       <td>${tk.never_expires ? tRaw('tokens.never') : tokenDatum(tk.expires_at)}${tk.hard_expires_at ? html` <span class="rb ra" title="${tokenDatum(tk.hard_expires_at)}">${tRaw('tokens.fixed')}</span>` : ''}</td>
       <td>${tk.aktuell ? '' : html`<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${tk.token_id}" data-arg2="${tk.label || ''}" aria-label="${tRaw('common.delete')}">${ico('loeschen')}</button>`}</td>
-    </tr>`)}</tbody></table></div>`);
+    </tr>`,
+      )}</tbody></table></div>`,
+  );
 }
 
 /**
@@ -188,12 +222,17 @@ export async function ladeTls() {
   const ziel = G('tls-flaeche');
   if (!ziel) return;
   const d = await api('GET', '/v1/settings/tls');
-  if (!d?.success) { setzeHtml(ziel, html`<p class="hinweis-absatz">${d?.error || t('settings.error')}</p>`); return; }
+  if (!d?.success) {
+    setzeHtml(ziel, html`<p class="hinweis-absatz">${d?.error || t('settings.error')}</p>`);
+    return;
+  }
   if (!d.fp) {
     setzeHtml(ziel, html`<p class="hinweis-absatz">${d.https ? tRaw('tls.ohne_ca') : tRaw('tls.ohne_https')}</p>`);
     return;
   }
-  setzeHtml(ziel, html`<p class="hinweis-absatz">${tRaw('tls.hint')}</p>
+  setzeHtml(
+    ziel,
+    html`<p class="hinweis-absatz">${tRaw('tls.hint')}</p>
     <div class="text-klein">${tRaw('tls.subject')}: ${d.subject}<br>${tRaw('tls.valid_until')}: ${tokenDatum(d.gueltig_bis)}</div>
     <div class="text-klein abstand-o-075">${tRaw('tls.zert_sha256')}</div>
     <code id="tls-zert-sha256" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.zert_sha256 || ''}</code>
@@ -201,7 +240,8 @@ export async function ladeTls() {
     <code id="tls-fp-hex" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp_hex}</code>
     <div class="text-klein abstand-o-075">${tRaw('tls.fp_base64')}</div>
     <code id="tls-fp" data-stil="user-select:all;word-break:break-all;font-size:var(--fs-2)">${d.fp}</code>
-    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${sichereUrl(d.download)}" download>${tRaw('tls.download')}</a></div>`);
+    <div class="abstand-o-075"><a class="btn bs btn-sm" href="${sichereUrl(d.download)}" download>${tRaw('tls.download')}</a></div>`,
+  );
 }
 
 /**
@@ -211,29 +251,49 @@ export async function ladeTls() {
  * @param {string} label
  */
 async function revokeToken(tokenId, label) {
-  const password = await bestaetigeMitPasswort(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel', { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' });
+  const password = await bestaetigeMitPasswort(
+    tRaw('tokens.revoke.title'),
+    tRaw('tokens.revoke.text', { name: label || '—' }),
+    'schluessel',
+    { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' },
+  );
   if (password === null) return;
-  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tokenId)}`, { password, ...z }));
+  const d = await mitZweitemFaktor(z =>
+    api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tokenId)}`, { password, ...z }),
+  );
   if (!d) return;
-  if (d.success) { toast(tRaw('tokens.revoked'), 'success'); loadTokens(); }
-  else toast(d.error || t('settings.error'), 'error');
+  if (d.success) {
+    toast(tRaw('tokens.revoked'), 'success');
+    loadTokens();
+  } else toast(d.error || t('settings.error'), 'error');
 }
 
 /** Alle übrigen Browser und App-Zugänge in EINER bestätigten Anfrage: Ein Code des zweiten Faktors gilt nur einmal. */
 async function revokeOtherTokens() {
   const d = await api('GET', '/v1/settings/tokens');
-  if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
+  if (!d.success) {
+    toast(d.error || t('settings.error'), 'error');
+    return;
+  }
   const andere = d.tokens.filter(tk => !tk.aktuell);
-  const password = await bestaetigeMitPasswort(tRaw('tokens.revoke_others.title'),
-                                               tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden', { knopf: 'confirm.btn.abmelden', art: 'bp' });
+  const password = await bestaetigeMitPasswort(
+    tRaw('tokens.revoke_others.title'),
+    tRaw('tokens.revoke_others.text', { n: andere.length }),
+    'abmelden',
+    { knopf: 'confirm.btn.abmelden', art: 'bp' },
+  );
   if (password === null) return;
-  const s = await mitZweitemFaktor(z => api('POST', '/v1/settings/sessions/andere-beenden', { password, zugaenge: true, ...z }));
+  const s = await mitZweitemFaktor(z =>
+    api('POST', '/v1/settings/sessions/andere-beenden', { password, zugaenge: true, ...z }),
+  );
   if (s === null) return;
-  if (!s.success) { toast(s.error || t('settings.error'), 'error'); return; }
+  if (!s.success) {
+    toast(s.error || t('settings.error'), 'error');
+    return;
+  }
   toast(tRaw('tokens.revoked_n', { n: (s.zugaenge || 0) + (s.deleted || 0) }), 'success');
   loadTokens();
 }
-
 
 // ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
 registerActions({

@@ -17,11 +17,11 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
-const http   = require('node:http');
-const net    = require('node:net');
+const path = require('node:path');
+const http = require('node:http');
+const net = require('node:net');
 const { spawn } = require('node:child_process');
 
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -37,27 +37,46 @@ const { warte } = require('./helpers/zeit');
 
 function freierPort() {
   return new Promise((auf, ab) => {
-    const s = net.createServer().listen(0, '127.0.0.1', () => {
-      const { port } = s.address(); s.close(() => auf(port));
-    }).on('error', ab);
+    const s = net
+      .createServer()
+      .listen(0, '127.0.0.1', () => {
+        const { port } = s.address();
+        s.close(() => auf(port));
+      })
+      .on('error', ab);
   });
 }
 
 function hole(port, weg, { methode = 'GET', token, kopf = {}, body } = {}) {
   return new Promise((auf, ab) => {
     const daten = body ? JSON.stringify(body) : null;
-    const r = http.request({
-      host: '127.0.0.1', port, path: weg, method: methode, agent: false,
-      headers: {
-        ...kopf,
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-        ...(daten ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(daten) } : {}),
+    const r = http.request(
+      {
+        host: '127.0.0.1',
+        port,
+        path: weg,
+        method: methode,
+        agent: false,
+        headers: {
+          ...kopf,
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+          ...(daten ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(daten) } : {}),
+        },
       },
-    }, (res) => {
-      let roh = '';
-      res.on('data', d => { roh += d; });
-      res.on('end', () => { let j = null; try { j = JSON.parse(roh); } catch {} auf({ status: res.statusCode, headers: res.headers, body: j }); });
-    });
+      res => {
+        let roh = '';
+        res.on('data', d => {
+          roh += d;
+        });
+        res.on('end', () => {
+          let j = null;
+          try {
+            j = JSON.parse(roh);
+          } catch {}
+          auf({ status: res.statusCode, headers: res.headers, body: j });
+        });
+      },
+    );
     r.on('error', ab);
     if (daten) r.write(daten);
     r.end();
@@ -66,13 +85,27 @@ function hole(port, weg, { methode = 'GET', token, kopf = {}, body } = {}) {
 
 function starte(rolle, port) {
   const p = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'rollen-test-geheimnis-lang-genug-1234',
-           PORT: String(port), ROLLE: rolle, NODE_ENV: 'production', AUFTRAG_FRIST_SEK: '600', DB_SUPERUSER_ERLAUBT: '1', APP_BASE_URL_FEHLT_OK: '1' },
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      DATABASE_URL: URL_DB,
+      SESSION_SECRET: 'rollen-test-geheimnis-lang-genug-1234',
+      PORT: String(port),
+      ROLLE: rolle,
+      NODE_ENV: 'production',
+      AUFTRAG_FRIST_SEK: '600',
+      DB_SUPERUSER_ERLAUBT: '1',
+      APP_BASE_URL_FEHLT_OK: '1',
+    },
   });
   p.log = '';
-  p.stdout.on('data', d => { p.log += d; });
-  p.stderr.on('data', d => { p.log += d; });
+  p.stdout.on('data', d => {
+    p.log += d;
+  });
+  p.stderr.on('data', d => {
+    p.log += d;
+  });
   return p;
 }
 
@@ -82,33 +115,44 @@ async function beende(p) {
   if (p.exitCode === null && p.signalCode === null) p.kill('SIGKILL');
 }
 
-test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   // Ohne heutige Stempel lädt der Job-Prozess den Rebrickable-Katalog herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
-    await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
-                  ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`, [k]);
+    await db.run(
+      `INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
+                  ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
+      [k],
+    );
   await db.run(`DELETE FROM laufzustand WHERE schluessel = 'startup_status'`);
 
-  const NAME = `rollen_${process.pid}`, PASS = 'Passwort12345', MARKE = `rollen-${process.pid}`;
+  const NAME = `rollen_${process.pid}`,
+    PASS = 'Passwort12345',
+    MARKE = `rollen-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]);
-  await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
-    [NAME, await bcrypt.hash(PASS, 4)]);
+  await db.get(
+    `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
+    [NAME, await bcrypt.hash(PASS, 4)],
+  );
 
-  const port = await freierPort(), jobsPort = await freierPort();
+  const port = await freierPort(),
+    jobsPort = await freierPort();
   const web = starte('web', port);
   let jobs = null;
-  const auftrag = (id) => db.get('SELECT status, versuche FROM auftraege WHERE id = $1', [id]);
+  const auftrag = id => db.get('SELECT status, versuche FROM auftraege WHERE id = $1', [id]);
 
   try {
     for (let i = 0; i < 240 && !/localhost:\d+/.test(web.log); i++) await warte(250);
     assert.match(web.log, /Rolle web/, web.log.slice(-1500));
 
     await t.test('der Web-Prozess arbeitet keine Aufträge ab', async () => {
-      const id = (await db.get(`INSERT INTO auftraege (art, nutzlast) VALUES ('bilder', $1) RETURNING id`,
-        [JSON.stringify({ set_number: `rollen-nichtda-${process.pid}`, marke: MARKE })])).id;
+      const id = (
+        await db.get(`INSERT INTO auftraege (art, nutzlast) VALUES ('bilder', $1) RETURNING id`, [
+          JSON.stringify({ set_number: `rollen-nichtda-${process.pid}`, marke: MARKE }),
+        ])
+      ).id;
       await db.run(`SELECT pg_notify('auftraege', 'bilder')`);
       await warte(1500);
       assert.equal((await auftrag(id)).status, 'offen', 'Der Web-Prozess hat einen Auftrag belegt');
@@ -120,13 +164,21 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => 
       assert.equal(vorher.body.ready, false, 'Vorbedingung: ohne Job-Prozess ist der Katalog nicht geprüft');
       jobs = starte('jobs', jobsPort);
       let r;
-      for (let i = 0; i < 120; i++) { r = await hole(port, '/api/v1/startup-status'); if (r.body?.ready) break; await warte(250); }
+      for (let i = 0; i < 120; i++) {
+        r = await hole(port, '/api/v1/startup-status');
+        if (r.body?.ready) break;
+        await warte(250);
+      }
       assert.equal(r.body.ready, true, `${JSON.stringify(r.body)}\n${jobs.log.slice(-1500)}`);
     });
 
     await t.test('der Job-Prozess erledigt den Auftrag und nimmt keine Anfragen an', async () => {
       let z;
-      for (let i = 0; i < 80; i++) { z = await auftrag(t.erster); if (z.status !== 'offen' && z.status !== 'laeuft') break; await warte(250); }
+      for (let i = 0; i < 80; i++) {
+        z = await auftrag(t.erster);
+        if (z.status !== 'offen' && z.status !== 'laeuft') break;
+        await warte(250);
+      }
       assert.equal(z.status, 'erledigt', jobs.log.slice(-1500));
       assert.match(jobs.log, /Rolle jobs/);
       await assert.rejects(hole(jobsPort, '/api/v1/health'), /ECONNREFUSED/, 'Der Job-Prozess lauscht auf einem Port');
@@ -143,7 +195,10 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => 
 
     await t.test('eine zu alte App wird mit 426 abgewiesen', async () => {
       const { API_MIN_APP } = _req('src/http/apiVersion.js');
-      assert.equal((await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP - 1) } })).status, 426);
+      assert.equal(
+        (await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP - 1) } })).status,
+        426,
+      );
       assert.equal((await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP) } })).status, 200);
     });
 
@@ -161,8 +216,11 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => 
     await t.test('SIGTERM: der Job-Prozess gibt seinen laufenden Auftrag zurück', async () => {
       // Ein Auftrag mit langer Frist, den der Job-Prozess belegt, aber nie zu Ende bringt:
       // Die Art kennt er nicht, also simuliert der Test die Belegung selbst mit seiner Kennung.
-      const id = (await db.get(`INSERT INTO auftraege (art, nutzlast) VALUES ('bilder', $1) RETURNING id`,
-        [JSON.stringify({ set_number: `rollen-zwei-${process.pid}`, marke: MARKE })])).id;
+      const id = (
+        await db.get(`INSERT INTO auftraege (art, nutzlast) VALUES ('bilder', $1) RETURNING id`, [
+          JSON.stringify({ set_number: `rollen-zwei-${process.pid}`, marke: MARKE }),
+        ])
+      ).id;
       jobs.kill('SIGTERM');
       web.kill('SIGTERM');
       for (let i = 0; i < 150 && (jobs.exitCode === null || web.exitCode === null); i++) await warte(100);

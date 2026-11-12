@@ -30,22 +30,37 @@ const db = _req('db/database.js');
 const { haeltSet, erfasse, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
 
 const NAME = `geschenk_${process.pid}`;
-const SET = `8${process.pid}1-1`, TEIL = `gt${process.pid}`, FARBE = 11, FIGUR = `gf${process.pid}`;
+const SET = `8${process.pid}1-1`,
+  TEIL = `gt${process.pid}`,
+  FARBE = 11,
+  FIGUR = `gf${process.pid}`;
 
-test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
   await katalogSet(db, SET, { name: SET });
-  await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
-                VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`, [SET]);
-  await db.run(`INSERT INTO price_history (set_number, condition, currency_code, avg_price, recorded_at)
-                VALUES ($1, 'N', 'CHF', 110, NOW() - INTERVAL '3 days')`, [SET]);
-  await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
-                VALUES ($1, $2, 'N', 'CHF', 0.4, 0.4, NOW())`, [TEIL, FARBE]);
-  await db.run(`INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at)
-                VALUES ($1, 'N', 'CHF', 6, 6, NOW())`, [FIGUR]);
+  await db.run(
+    `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
+                VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`,
+    [SET],
+  );
+  await db.run(
+    `INSERT INTO price_history (set_number, condition, currency_code, avg_price, recorded_at)
+                VALUES ($1, 'N', 'CHF', 110, NOW() - INTERVAL '3 days')`,
+    [SET],
+  );
+  await db.run(
+    `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
+                VALUES ($1, $2, 'N', 'CHF', 0.4, 0.4, NOW())`,
+    [TEIL, FARBE],
+  );
+  await db.run(
+    `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at)
+                VALUES ($1, 'N', 'CHF', 6, 6, NOW())`,
+    [FIGUR],
+  );
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SET]);
@@ -103,8 +118,11 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
     const figur = await preisverlaufFigur([uid], FIGUR, 'CHF');
     assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
     const { valueAcquisitionRows } = _req('src/finanzen/setValue.js');
-    const [zeile] = valueAcquisitionRows(TEIL, [{ id: 1, condition: 'N', quantity: 10, unit_price: 0 }],
-      new Map([[`${TEIL}|N`, 0.4]]));
+    const [zeile] = valueAcquisitionRows(
+      TEIL,
+      [{ id: 1, condition: 'N', quantity: 10, unit_price: 0 }],
+      new Map([[`${TEIL}|N`, 0.4]]),
+    );
     assert.equal(zeile.purchase_price, 0);
     assert.equal(zeile.pnl_pct, null);
     assert.equal(zeile.pnl_prozent, null);

@@ -8,7 +8,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const JS_DIR = path.join(__dirname, '..', 'public', 'js');
-const FILES = fs.readdirSync(JS_DIR).filter(f => istAppModul(f)).sort();
+const FILES = fs
+  .readdirSync(JS_DIR)
+  .filter(f => istAppModul(f))
+  .sort();
 
 // Die Helfer selbst, nicht nachgebaut: escapen.js ist DOM-frei und lädt in Node.
 const helfer = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escapen.js')).href);
@@ -27,10 +30,29 @@ test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
 // Gegenprobe (08.11.2026): „\\“ und Steuerzeichen im Regex von sichereUrl() entfernt → rot: „/\\host“ kam durch.
 test('sichereUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', async () => {
   const { sichereUrl } = await loadHelpers();
-  for (const gut of ['/img/a.png', '/', 'https://cdn.example/a.png', 'http://x/y', 'data:image/png;base64,AAAA', ' /pfad '])
+  for (const gut of [
+    '/img/a.png',
+    '/',
+    'https://cdn.example/a.png',
+    'http://x/y',
+    'data:image/png;base64,AAAA',
+    ' /pfad ',
+  ])
     assert.equal(sichereUrl(gut), gut.trim(), `„${gut}“ fälschlich verworfen`);
-  for (const schlecht of ['//evil.example/x', '/\\evil.example/x', '/\\\\evil.example', '/\t/evil.example', '/\n/evil.example',
-    'javascript:alert(1)', 'https:\\\\evil.example', 'ftp://x', 'evil.example', '', null, undefined])
+  for (const schlecht of [
+    '//evil.example/x',
+    '/\\evil.example/x',
+    '/\\\\evil.example',
+    '/\t/evil.example',
+    '/\n/evil.example',
+    'javascript:alert(1)',
+    'https:\\\\evil.example',
+    'ftp://x',
+    'evil.example',
+    '',
+    null,
+    undefined,
+  ])
     assert.equal(sichereUrl(schlecht), '', `„${schlecht}“ kam durch`);
 });
 
@@ -67,7 +89,8 @@ test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', async () => {
 
 // ── Statische Sink-Prüfung ──────────────────────────────────────────────────
 const SAFE = /^\s*(esc|escJs|escUrl|sichereUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
-const DATA_FIELD = /(set_number|part_number|bl_part_number|fig_number|bl_fig_number|part_name|fig_name|color_name|category_name|image_url|image_local|note|username|theme|last_error)\b/;
+const DATA_FIELD =
+  /(set_number|part_number|bl_part_number|fig_number|bl_fig_number|part_name|fig_name|color_name|category_name|image_url|image_local|note|username|theme|last_error)\b/;
 
 function interpolations(attrValue) {
   return [...attrValue.matchAll(/\$\{([^{}]*)\}/g)].map(m => m[1]);
@@ -102,16 +125,19 @@ test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
 test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
   // Alle Maskierer liegen in escapen.js (DOM-frei, auch der BrickLink-Export
   // lädt es). Zwei Fassungen desselben Maskierers liefen schon einmal auseinander.
-  const zuhause = { esc: 'escapen.js', escJs: 'escapen.js',
-                    escUrl: 'escapen.js', escHex: 'escapen.js' };
+  const zuhause = { esc: 'escapen.js', escJs: 'escapen.js', escUrl: 'escapen.js', escHex: 'escapen.js' };
   for (const [name, datei] of Object.entries(zuhause)) {
     const defs = FILES.filter(f =>
-      new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));
-    assert.deepEqual(defs, [datei],
+      new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')),
+    );
+    assert.deepEqual(
+      defs,
+      [datei],
       `${name}() muss genau einmal deklariert sein (in ${datei}) — sonst haengt ` +
-      'das Escaping an der Ladereihenfolge, und zwei Fassungen laufen ' +
-      'auseinander. Genau das hat test/wunschliste-xml.test.js schon einmal ' +
-      'gemeldet: Die App maskierte, die Webapp nicht.');
+        'das Escaping an der Ladereihenfolge, und zwei Fassungen laufen ' +
+        'auseinander. Genau das hat test/wunschliste-xml.test.js schon einmal ' +
+        'gemeldet: Die App maskierte, die Webapp nicht.',
+    );
   }
 });
 
@@ -121,16 +147,25 @@ test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () 
   const offenders = [];
   for (const f of fs.readdirSync(jsDir)) {
     if (!f.endsWith('.js') || f === 'app.bundle.js') continue;
-    fs.readFileSync(path.join(jsDir, f), 'utf8').split('\n').forEach((l, i) => {
-      if (/^\s*(\/\/|\*)/.test(l)) return;
-      // Zuweisung an ein Textziel oder Aufruf einer Funktion, die textContent setzt
-      if (/(\.(?:textContent|value|placeholder|title|alt|label)\s*=\s*|alert\(|confirm\(|toast\(|confirmDelete\()\s*t\(/.test(l)) {
-        offenders.push(`${f}:${i + 1}`);
-      }
-    });
+    fs.readFileSync(path.join(jsDir, f), 'utf8')
+      .split('\n')
+      .forEach((l, i) => {
+        if (/^\s*(\/\/|\*)/.test(l)) return;
+        // Zuweisung an ein Textziel oder Aufruf einer Funktion, die textContent setzt
+        if (
+          /(\.(?:textContent|value|placeholder|title|alt|label)\s*=\s*|alert\(|confirm\(|toast\(|confirmDelete\()\s*t\(/.test(
+            l,
+          )
+        ) {
+          offenders.push(`${f}:${i + 1}`);
+        }
+      });
   }
-  assert.deepEqual(offenders, [],
-    `t() statt tRaw() an einem Textziel — die Maskierung würde sichtbar: ${offenders.join(', ')}`);
+  assert.deepEqual(
+    offenders,
+    [],
+    `t() statt tRaw() an einem Textziel — die Maskierung würde sichtbar: ${offenders.join(', ')}`,
+  );
 });
 
 test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
@@ -141,9 +176,10 @@ test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
     let ab = 0;
     src.split('\n').forEach((line, i) => {
-      const zeileAb = ab; ab += line.length + 1;
+      const zeileAb = ab;
+      ab += line.length + 1;
       if (/^\s*(\/\/|\*)/.test(line)) return;
-      if (!/<\w/.test(line)) return;                       // kein HTML-Kontext
+      if (!/<\w/.test(line)) return; // kein HTML-Kontext
       for (const m of line.matchAll(/\$\{([^}]*)\}/g)) {
         // In html`` maskiert die Vorlage selbst — ausser der Wert geht durch ungeprueft().
         const vor = src.lastIndexOf('`', zeileAb + (m.index ?? 0));
@@ -153,14 +189,17 @@ test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
         const ausdruck = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");
         for (const treffer of ausdruck.matchAll(FELD)) {
           const danach = ausdruck.slice(treffer.index + treffer[0].length).trimStart();
-          if (danach.startsWith('?')) continue;             // Bedingungsstellung
+          if (danach.startsWith('?')) continue; // Bedingungsstellung
           const davor = ausdruck.slice(0, treffer.index);
-          if (/\besc\s*\($/.test(davor)) continue;          // bereits maskiert
+          if (/\besc\s*\($/.test(davor)) continue; // bereits maskiert
           bad.push(`${f}:${i + 1}: \${${m[1]}}`);
         }
       }
     });
   }
-  assert.deepEqual(bad, [],
-    `Fehlermeldungen im HTML-Kontext müssen durch esc() — sie können Text fremder Dienste enthalten: ${bad.join(', ')}`);
+  assert.deepEqual(
+    bad,
+    [],
+    `Fehlermeldungen im HTML-Kontext müssen durch esc() — sie können Text fremder Dienste enthalten: ${bad.join(', ')}`,
+  );
 });

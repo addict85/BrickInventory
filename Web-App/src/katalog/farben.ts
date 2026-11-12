@@ -8,23 +8,27 @@ import { versuche } from '../infra/ergebnis';
 
 export { KEINE_FARBE };
 
-export interface Farbe { id: number; name: string; hex: string | null }
+export interface Farbe {
+  id: number;
+  name: string;
+  hex: string | null;
+}
 
 /** Nur Farben mit feststehender Rebrickable-ID: Eine falsche ID landete im
  * Bestand und im Preisabruf. */
 const NOTLISTE: Farbe[] = [
   { id: KEINE_FARBE, name: '[No Color/Any Color]', hex: null },
-  { id: 0,   name: 'Black',             hex: '05131D' },
-  { id: 1,   name: 'Blue',              hex: '0055BF' },
-  { id: 2,   name: 'Green',             hex: '237841' },
-  { id: 4,   name: 'Red',               hex: 'C91A09' },
-  { id: 14,  name: 'Yellow',            hex: 'F2CD37' },
-  { id: 15,  name: 'White',             hex: 'FFFFFF' },
-  { id: 19,  name: 'Tan',               hex: 'E4CD9E' },
-  { id: 25,  name: 'Orange',            hex: 'FE8A18' },
-  { id: 70,  name: 'Reddish Brown',     hex: '582A12' },
-  { id: 71,  name: 'Light Bluish Gray', hex: 'A0A5A9' },
-  { id: 72,  name: 'Dark Bluish Gray',  hex: '6C6E68' },
+  { id: 0, name: 'Black', hex: '05131D' },
+  { id: 1, name: 'Blue', hex: '0055BF' },
+  { id: 2, name: 'Green', hex: '237841' },
+  { id: 4, name: 'Red', hex: 'C91A09' },
+  { id: 14, name: 'Yellow', hex: 'F2CD37' },
+  { id: 15, name: 'White', hex: 'FFFFFF' },
+  { id: 19, name: 'Tan', hex: 'E4CD9E' },
+  { id: 25, name: 'Orange', hex: 'FE8A18' },
+  { id: 70, name: 'Reddish Brown', hex: '582A12' },
+  { id: 71, name: 'Light Bluish Gray', hex: 'A0A5A9' },
+  { id: 72, name: 'Dark Bluish Gray', hex: '6C6E68' },
 ];
 
 export async function farbliste(): Promise<Farbe[]> {

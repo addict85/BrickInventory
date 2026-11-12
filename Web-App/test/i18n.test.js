@@ -45,8 +45,11 @@ test('Platzhalter stimmen zwischen DE und EN überein', () => {
   const { de, en } = loadTranslations();
   for (const k of Object.keys(de)) {
     if (!(k in en)) continue; // wird vom Paritätstest gemeldet
-    assert.deepEqual(placeholders(de[k]), placeholders(en[k]),
-      `Platzhalter weichen ab bei "${k}": DE=${de[k]}  EN=${en[k]}`);
+    assert.deepEqual(
+      placeholders(de[k]),
+      placeholders(en[k]),
+      `Platzhalter weichen ab bei "${k}": DE=${de[k]}  EN=${en[k]}`,
+    );
   }
 });
 
@@ -57,14 +60,23 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
   // Begriffe, Eigennamen und Zahlenformate, die in beiden Sprachen gleich
   // lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
   const gewolltGleich = new Set([
-    'catalog.sort.name', 'col.name', 'col.sets', 'currency.eur',
+    'catalog.sort.name',
+    'col.name',
+    'col.sets',
+    'currency.eur',
     // „Passkey“ und „Name“ heissen in beiden Sprachen so.
-    'pk.title', 'pk.col.name',
+    'pk.title',
+    'pk.col.name',
     // „Filter“ heisst in beiden Sprachen so.
     'common.filter',
-    'finance.filter.sets', 'finance.period.max',
-    'gallery.sort.name', 'header.sets', 'log.auto', 'monitor.api.bricklink',
-    'monitor.api.brickset', 'monitor.api.rebrickable',
+    'finance.filter.sets',
+    'finance.period.max',
+    'gallery.sort.name',
+    'header.sets',
+    'log.auto',
+    'monitor.api.bricklink',
+    'monitor.api.brickset',
+    'monitor.api.rebrickable',
     // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
     'vouchers.pin',
     // Die Rückmeldung der Guthaben-Abfrage: „{nummer}: {betrag}" — ein reiner
@@ -81,26 +93,37 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
   ]);
 
   const { de, en } = loadTranslations();
-  assert.ok(Object.keys(en).length > 400,
-    `Zu wenige Texte geladen (${Object.keys(en).length}) — Helfer kaputt?`);
+  assert.ok(Object.keys(en).length > 400, `Zu wenige Texte geladen (${Object.keys(en).length}) — Helfer kaputt?`);
 
   const gleich = Object.keys(en).filter(k => k in de && de[k] === en[k]);
   const unuebersetzt = gleich.filter(k => !gewolltGleich.has(k)).sort();
-  assert.deepEqual(unuebersetzt, [],
+  assert.deepEqual(
+    unuebersetzt,
+    [],
     'Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr wahrscheinlich ' +
-    'beim Anlegen kopiert und nicht übersetzt:\n  ' +
-    unuebersetzt.map(k => `${k} = "${en[k]}"`).join('\n  ') +
-    '\nIst er wirklich in beiden Sprachen gleich, gehört er in `gewolltGleich`.');
+      'beim Anlegen kopiert und nicht übersetzt:\n  ' +
+      unuebersetzt.map(k => `${k} = "${en[k]}"`).join('\n  ') +
+      '\nIst er wirklich in beiden Sprachen gleich, gehört er in `gewolltGleich`.',
+  );
 
   const veraltet = [...gewolltGleich].filter(k => !gleich.includes(k)).sort();
-  assert.deepEqual(veraltet, [],
-    `Diese Einträge in \`gewolltGleich\` stimmen nicht mehr: ${veraltet.join(', ')} — raus damit.`);
+  assert.deepEqual(
+    veraltet,
+    [],
+    `Diese Einträge in \`gewolltGleich\` stimmen nicht mehr: ${veraltet.join(', ')} — raus damit.`,
+  );
 });
 
 test('Katalog-Schlüssel vorhanden', () => {
   const { de } = loadTranslations();
-  for (const k of ['nav.catalog', 'catalog.title', 'catalog.filter.year_from',
-                   'catalog.filter.year_to', 'catalog.buy_bricklink', 'catalog.add_to_gallery']) {
+  for (const k of [
+    'nav.catalog',
+    'catalog.title',
+    'catalog.filter.year_from',
+    'catalog.filter.year_to',
+    'catalog.buy_bricklink',
+    'catalog.add_to_gallery',
+  ]) {
     assert.ok(k in de, `Schlüssel fehlt: ${k}`);
   }
 });
@@ -112,51 +135,101 @@ test('der Papierkorb im Brick-Design ist von Anfang an weiss hinterlegt, nicht e
   // weiss, sobald die Kachel selbst überfahren wird (die Sichtbarkeit des
   // gesamten .ca-Containers regelt bereits .sc:hover .ca in styles.css).
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'themes', 'brick.css'), 'utf8');
-  const fn = src.slice(src.indexOf('[data-theme="brick"] .sc .delbtn{'),
-                       src.indexOf('[data-theme="brick"] .qbadge'));
-  assert.doesNotMatch(fn, /rgba\(255,255,255,\.22\)/,
-    'Der schwache Ruhezustand darf nicht mehr vorkommen');
-  assert.match(fn, /\[data-theme="brick"\] \.sc \.delbtn\{\s*background:#fff;/,
-    'Der Ruhezustand muss bereits voll weiss hinterlegt sein');
+  const fn = src.slice(src.indexOf('[data-theme="brick"] .sc .delbtn{'), src.indexOf('[data-theme="brick"] .qbadge'));
+  assert.doesNotMatch(fn, /rgba\(255,255,255,\.22\)/, 'Der schwache Ruhezustand darf nicht mehr vorkommen');
+  assert.match(
+    fn,
+    /\[data-theme="brick"\] \.sc \.delbtn\{\s*background:#fff;/,
+    'Der Ruhezustand muss bereits voll weiss hinterlegt sein',
+  );
 });
 
 const GRAU = 'Dark Bluish Gray';
 const FARBEN = {
-  '/v1/parts': { success: true, total: 1, page: 1, page_size: 100, parts: [
-    { part_number: '3001', part_name: 'Brick 2 x 4', color_id: 72, color_name: GRAU, color_hex: '6C6E68', total_quantity: 2 }] },
-  '/v1/parts/colors': { success: true, colors: [{ color_name: GRAU, color_hex: '6C6E68', unique_parts: 1, total_quantity: 2 }] },
+  '/v1/parts': {
+    success: true,
+    total: 1,
+    page: 1,
+    page_size: 100,
+    parts: [
+      {
+        part_number: '3001',
+        part_name: 'Brick 2 x 4',
+        color_id: 72,
+        color_name: GRAU,
+        color_hex: '6C6E68',
+        total_quantity: 2,
+      },
+    ],
+  },
+  '/v1/parts/colors': {
+    success: true,
+    colors: [{ color_name: GRAU, color_hex: '6C6E68', unique_parts: 1, total_quantity: 2 }],
+  },
   '/v1/parts/brick-colors': { success: true, colors: [{ id: 72, name: GRAU, hex: '6C6E68' }] },
 };
 
 test('Farbnamen: deutsch angezeigt, englisch gespeichert und gefiltert', async () => {
-  for (const [sprache, sichtbar] of [['de', 'Dunkelbläulichgrau'], ['en', GRAU]]) {
+  for (const [sprache, sichtbar] of [
+    ['de', 'Dunkelbläulichgrau'],
+    ['en', GRAU],
+  ]) {
     const { w, d } = await oeffneOberflaeche(FARBEN, { sprache });
     try {
       await reiter(w, 'parts');
-      assert.ok(await warte(() => d.querySelector('#ap-color-select option[data-name]') && d.querySelector('#parts-main .group-title')));
+      assert.ok(
+        await warte(
+          () => d.querySelector('#ap-color-select option[data-name]') && d.querySelector('#parts-main .group-title'),
+        ),
+      );
       const option = d.querySelector('#ap-color-select option[data-name]');
       // data-name geht beim Speichern ans Backend und an BrickLink: englisch.
       assert.deepEqual([option.textContent.trim(), option.dataset.name], [sichtbar, GRAU], sprache);
-      assert.equal(d.querySelector('#parts-main .group-title').textContent.trim(), sichtbar, `${sprache}: Gruppenüberschrift`);
+      assert.equal(
+        d.querySelector('#parts-main .group-title').textContent.trim(),
+        sichtbar,
+        `${sprache}: Gruppenüberschrift`,
+      );
       assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(sichtbar), `${sprache}: Kachel`);
       const filter = [...d.querySelectorAll('#parts-color option')].find(o => o.value === GRAU);
       assert.ok(filter, 'Der Filterwert bleibt englisch');
       assert.match(filter.textContent, new RegExp(`^${sichtbar} `), `${sprache}: Filterbeschriftung`);
-    } finally { w.close(); }
+    } finally {
+      w.close();
+    }
   }
 });
 
 test('der Kaufpreis-Detail-Dialog lädt das Teilebild in voller Grösse über den Proxy', async () => {
   const CDN = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
-  const { w, d } = await oeffneOberflaeche({ ...FARBEN,
-    '/v1/parts/manual': { success: true, parts: [{ part_number: '3002', part_name: 'Brick 2 x 3', color_id: 72,
-      color_name: GRAU, color_hex: '6C6E68', quantity: 1, image_url: CDN }] } });
+  const { w, d } = await oeffneOberflaeche({
+    ...FARBEN,
+    '/v1/parts/manual': {
+      success: true,
+      parts: [
+        {
+          part_number: '3002',
+          part_name: 'Brick 2 x 3',
+          color_id: 72,
+          color_name: GRAU,
+          color_hex: '6C6E68',
+          quantity: 1,
+          image_url: CDN,
+        },
+      ],
+    },
+  });
   try {
     await reiter(w, 'parts');
     assert.ok(await warte(() => d.querySelector('#manual-parts-list [data-click="openManDetail"]')));
     d.querySelector('#manual-parts-list [data-click="openManDetail"]').click();
     assert.ok(await warte(() => d.getElementById('man-detail-img').getAttribute('src')));
-    assert.equal(d.getElementById('man-detail-img').getAttribute('src'), `/api/v1/img-proxy?url=${encodeURIComponent(CDN)}`);
+    assert.equal(
+      d.getElementById('man-detail-img').getAttribute('src'),
+      `/api/v1/img-proxy?url=${encodeURIComponent(CDN)}`,
+    );
     assert.match(d.getElementById('man-detail-sub').textContent, /Dunkelbläulichgrau/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

@@ -29,38 +29,72 @@ async function erfasse(antwort, sprache = 'de') {
 }
 
 test('ohne Katalogdaten: gespeichert, Rest kommt nach', async () => {
-  const { w, d } = await erfasse({ success: true, action: 'added', set_number: '99071-1', name: 'Set 99071-1', katalog_offen: true });
+  const { w, d } = await erfasse({
+    success: true,
+    action: 'added',
+    set_number: '99071-1',
+    name: 'Set 99071-1',
+    katalog_offen: true,
+  });
   try {
     const t = d.querySelector('#toasts .toast');
     assert.match(t.textContent, /99071-1 gespeichert — Name und Bild kommen nach/);
     assert.ok(t.classList.contains('info'), 'als Erfolg gemeldet');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('mit Katalogdaten: hinzugefügt', async () => {
-  const { w, d } = await erfasse({ success: true, action: 'added', set_number: '10294-1', name: 'Titanic', katalog_offen: false });
+  const { w, d } = await erfasse({
+    success: true,
+    action: 'added',
+    set_number: '10294-1',
+    name: 'Titanic',
+    katalog_offen: false,
+  });
   try {
     assert.match(d.querySelector('#toasts .toast').textContent, /10294-1 hinzugefügt!/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('aktualisiert', async () => {
-  const { w, d } = await erfasse({ success: true, action: 'updated', set_number: '10294-1', name: 'Titanic', katalog_offen: false });
+  const { w, d } = await erfasse({
+    success: true,
+    action: 'updated',
+    set_number: '10294-1',
+    name: 'Titanic',
+    katalog_offen: false,
+  });
   try {
     assert.equal(d.querySelector('#toasts .toast .toast-text').textContent, 'Set 10294-1 aktualisiert!');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('englisch: hinzugefügt', async () => {
-  const { w, d } = await erfasse({ success: true, action: 'added', set_number: '10294-1', name: 'Titanic', katalog_offen: false }, 'en');
+  const { w, d } = await erfasse(
+    { success: true, action: 'added', set_number: '10294-1', name: 'Titanic', katalog_offen: false },
+    'en',
+  );
   try {
     assert.equal(d.querySelector('#toasts .toast .toast-text').textContent, 'Set 10294-1 added!');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('englisch: aktualisiert', async () => {
-  const { w, d } = await erfasse({ success: true, action: 'updated', set_number: '10294-1', name: 'Titanic', katalog_offen: false }, 'en');
+  const { w, d } = await erfasse(
+    { success: true, action: 'updated', set_number: '10294-1', name: 'Titanic', katalog_offen: false },
+    'en',
+  );
   try {
     assert.equal(d.querySelector('#toasts .toast .toast-text').textContent, 'Set 10294-1 updated!');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

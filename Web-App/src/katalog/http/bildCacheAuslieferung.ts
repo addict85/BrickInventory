@@ -1,4 +1,4 @@
-import type { ServerResponse } from 'http';
+import type { ServerResponse } from 'node:http';
 import { cacheTreffer } from '../bilder/imgCacheServe';
 
 type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };

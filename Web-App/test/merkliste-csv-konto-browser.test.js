@@ -13,17 +13,23 @@ const assert = require('node:assert/strict');
 const { starteApp } = require('./helpers/app-browser');
 const { musterHaushalt } = require('./helpers/bestand');
 
-test('Merkliste: CSV-Import in das gewählte Konto', { timeout: 120_000 }, async (t) => {
+test('Merkliste: CSV-Import in das gewählte Konto', { timeout: 120_000 }, async t => {
   const app = await starteApp(t, { name: `mkcsv_${process.pid}`, bestand: musterHaushalt });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, db, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
   const kid = (await db.get('SELECT id FROM users WHERE username = $1', [`mkcsv_${process.pid}_kind`])).id;
   await b.auswerten(`location.hash = '#/merkliste'; true`);
   // Das Konto-Feld erscheint, sobald die Haushaltsmitglieder geladen sind.
-  await bis(`[...document.querySelectorAll('#mk-owner option')].some(o => o.value === '${kid}')
-    && getComputedStyle(document.getElementById('mk-owner-box')).display !== 'none'`, 'Konto-Feld');
+  await bis(
+    `[...document.querySelectorAll('#mk-owner option')].some(o => o.value === '${kid}')
+    && getComputedStyle(document.getElementById('mk-owner-box')).display !== 'none'`,
+    'Konto-Feld',
+  );
   // Den Upload abfangen statt ihn an den Server zu schicken: Geprüft wird, was die Oberfläche sendet.
   await b.auswerten(`(() => {
     const echt = window.fetch.bind(window);

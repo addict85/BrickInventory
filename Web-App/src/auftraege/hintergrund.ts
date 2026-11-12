@@ -15,8 +15,9 @@ function pruefeArt(art: string): AuftragsArt {
 
 /** Nutzlasten bleiben draussen: Sie tragen ganze Listen. */
 export async function auftraegeImUeberblick(filter: { status?: string | undefined; art?: string | undefined } = {}) {
-  const status = (filter.status ? filter.status.split(',') : ['offen', 'laeuft', 'fehler', 'abgebrochen'])
-    .filter(s => (STATUS as readonly string[]).includes(s));
+  const status = (filter.status ? filter.status.split(',') : ['offen', 'laeuft', 'fehler', 'abgebrochen']).filter(s =>
+    (STATUS as readonly string[]).includes(s),
+  );
   const art = filter.art ? pruefeArt(filter.art) : null;
   const [auftraege, zusammenfassung, pausen, lebenszeichen] = await Promise.all([
     auftraegeBereich().auftraege.auftragsListe(status, art),
@@ -26,8 +27,14 @@ export async function auftraegeImUeberblick(filter: { status?: string | undefine
   ]);
   const alterSek = lebenszeichen ? Math.round((Date.now() - new Date(lebenszeichen).getTime()) / 1000) : null;
   return {
-    auftraege, zusammenfassung, pausen,
-    job_prozess: { lebenszeichen, alter_sekunden: alterSek, laeuft: alterSek !== null && alterSek < LEBENSZEICHEN_GILT_SEK },
+    auftraege,
+    zusammenfassung,
+    pausen,
+    job_prozess: {
+      lebenszeichen,
+      alter_sekunden: alterSek,
+      laeuft: alterSek !== null && alterSek < LEBENSZEICHEN_GILT_SEK,
+    },
   };
 }
 
@@ -40,7 +47,7 @@ export async function auftragAbbrechen(id: string) {
 }
 
 export async function auftragWiederholen(id: string) {
-  if (!await wiederhole(id)) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
+  if (!(await wiederhole(id))) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
   return { id, status: 'offen' };
 }
 

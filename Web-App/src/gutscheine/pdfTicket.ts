@@ -1,6 +1,6 @@
 /** Ein bestätigter PDF-Abruf gilt einmal und 60 s: Die GET-Adresse wäre sonst ein
  * Freibrief für jeden Token. Nur der Web-Prozess liefert aus; gespeichert wird der Hash. */
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 export const TICKET_SEK = 60;
 const tickets = new Map<string, { uid: number; ziel: string; bis: number }>();
@@ -16,7 +16,8 @@ export function stelleTicketAus(uid: number, ziel: string): string {
 
 export function loeseTicketEin(roh: unknown, uid: number, ziel: string): boolean {
   if (typeof roh !== 'string' || !roh) return false;
-  const k = hash(roh), t = tickets.get(k);
+  const k = hash(roh),
+    t = tickets.get(k);
   if (!t) return false;
   tickets.delete(k);
   return t.uid === uid && t.ziel === ziel && t.bis >= Date.now();

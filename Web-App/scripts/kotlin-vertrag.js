@@ -5,8 +5,8 @@
  * Datei). Der Vertrag selbst steht im Server (src/vertrag/);
  * vergleiche() prüft, ob die Modelle der App ihn lesen können.
  */
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 /**
  * @typedef {{ art: string, nullbar: boolean, element?: KTyp, wert?: KTyp, name?: string }} KTyp
@@ -16,8 +16,13 @@ const path = require('path');
 
 /** @type {Record<string, string>} */
 const PRIMITIV = {
-  String: 'string', Int: 'int', Long: 'int', Short: 'int',
-  Double: 'number', Float: 'number', Boolean: 'boolean',
+  String: 'string',
+  Int: 'int',
+  Long: 'int',
+  Short: 'int',
+  Double: 'number',
+  Float: 'number',
+  Boolean: 'boolean',
 };
 
 /** Alle .kt-Dateien unter `dir`. @param {string} dir @returns {string[]} */
@@ -44,17 +49,29 @@ function apiQuelltext(pfad) {
   } finally {
     fs.closeSync(fd);
   }
-  return kotlinDateien(pfad).sort().map(d => fs.readFileSync(d, 'utf8')).join('\n');
+  return kotlinDateien(pfad)
+    .sort()
+    .map(d => fs.readFileSync(d, 'utf8'))
+    .join('\n');
 }
 
 /** Kommentare und Zeichenketten so leeren, dass Positionen gleich bleiben. @param {string} src */
 function entschaerfe(src) {
-  let aus = '', i = 0;
+  let aus = '',
+    i = 0;
   while (i < src.length) {
-    const c = src[i], n = src[i + 1];
-    if (c === '/' && n === '/') { while (i < src.length && src[i] !== '\n') { aus += ' '; i++; } continue; }
+    const c = src[i],
+      n = src[i + 1];
+    if (c === '/' && n === '/') {
+      while (i < src.length && src[i] !== '\n') {
+        aus += ' ';
+        i++;
+      }
+      continue;
+    }
     if (c === '/' && n === '*') {
-      const e = src.indexOf('*/', i + 2); const bis = e < 0 ? src.length : e + 2;
+      const e = src.indexOf('*/', i + 2);
+      const bis = e < 0 ? src.length : e + 2;
       for (; i < bis; i++) aus += src[i] === '\n' ? '\n' : ' ';
       continue;
     }
@@ -62,11 +79,16 @@ function entschaerfe(src) {
       // Zeichenketten bleiben stehen (SerialName braucht sie), nur ihr Inhalt
       // darf keine Klammern zählen lassen.
       let j = i + 1;
-      while (j < src.length && src[j] !== '"') { if (src[j] === '\\') j++; j++; }
+      while (j < src.length && src[j] !== '"') {
+        if (src[j] === '\\') j++;
+        j++;
+      }
       aus += src.slice(i, j + 1).replace(/[(){}<>,]/g, ' ');
-      i = j + 1; continue;
+      i = j + 1;
+      continue;
     }
-    aus += c; i++;
+    aus += c;
+    i++;
   }
   return aus;
 }
@@ -87,12 +109,17 @@ function bisZu(src, i, auf = '(', zu = ')') {
 /** An Kommas auf oberster Ebene trennen (nicht in (), <>, []). @param {string} s */
 function trenne(s) {
   /** @type {string[]} */
-  const teile = []; let tiefe = 0, start = 0;
+  const teile = [];
+  let tiefe = 0,
+    start = 0;
   for (let i = 0; i < s.length; i++) {
     const c = s[i] ?? '';
     if ('(<['.includes(c)) tiefe++;
     else if (')>]'.includes(c)) tiefe--;
-    else if (c === ',' && tiefe === 0) { teile.push(s.slice(start, i)); start = i + 1; }
+    else if (c === ',' && tiefe === 0) {
+      teile.push(s.slice(start, i));
+      start = i + 1;
+    }
   }
   teile.push(s.slice(start));
   return teile.map(t => t.trim()).filter(Boolean);
@@ -118,7 +145,7 @@ function kotlinModelle(wurzel) {
   const modelle = new Map();
   // Eine Wurzel oder mehrere: Seit der Aufteilung der App liegen die Modelle in
   // core-model, einige in core-data und app.
-  for (const datei of (Array.isArray(wurzel) ? wurzel : [wurzel]).flatMap((w) => kotlinDateien(w))) {
+  for (const datei of (Array.isArray(wurzel) ? wurzel : [wurzel]).flatMap(w => kotlinDateien(w))) {
     const roh = fs.readFileSync(datei, 'utf8');
     const src = entschaerfe(roh);
     for (const m of src.matchAll(/@Serializable\s+(?:data\s+)?class\s+(\w+)\s*\(/g)) {
@@ -127,7 +154,12 @@ function kotlinModelle(wurzel) {
       if (zu < 0) continue;
       /** @type {KFeld[]} */
       const felder = [];
-      for (const p of trenne(roh.slice(auf + 1, zu).replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''))) {
+      for (const p of trenne(
+        roh
+          .slice(auf + 1, zu)
+          .replace(/\/\/[^\n]*/g, '')
+          .replace(/\/\*[\s\S]*?\*\//g, ''),
+      )) {
         const sn = /@SerialName\(\s*"([^"]+)"\s*\)/.exec(p);
         const v = /\b(?:val|var)\s+(\w+)\s*:\s*([^=]+?)\s*(=|$)/s.exec(p.replace(/@\w+(\([^)]*\))?/g, ' '));
         if (!v) continue;
@@ -155,11 +187,16 @@ function apiRouten(serviceDatei) {
     const zu = bisZu(src, auf);
     const rest = roh.slice(zu + 1, zu + 200);
     const r = /^\s*:\s*Response<\s*([\w.]+)\s*>/.exec(rest);
-    const name = r ? (r[1] ?? '').split('.').pop() ?? null : null;
+    const name = r ? ((r[1] ?? '').split('.').pop() ?? null) : null;
     const params = roh.slice(auf + 1, zu);
-    aus.push({ pfad: '/' + m[1], typ: name,
-               anfrage: [...params.matchAll(/@Query\("([^"]+)"\)\s*\w+\s*:\s*([\w?]+)(\s*=)?/g)]
-                 .map(q => ({ name: q[1] ?? '', pflicht: !(q[2] ?? '').endsWith('?') && !q[3] })) });
+    aus.push({
+      pfad: '/' + m[1],
+      typ: name,
+      anfrage: [...params.matchAll(/@Query\("([^"]+)"\)\s*\w+\s*:\s*([\w?]+)(\s*=)?/g)].map(q => ({
+        name: q[1] ?? '',
+        pflicht: !(q[2] ?? '').endsWith('?') && !q[3],
+      })),
+    });
   }
   return aus;
 }
@@ -175,17 +212,23 @@ function schreibRouten(serviceDatei) {
   const src = entschaerfe(roh);
   /** @type {{ methode: string, pfad: string, typ: string | null, anfrage: { name: string }[], rumpf: string | null }[]} */
   const aus = [];
-  for (const m of roh.matchAll(/@(POST|PUT|DELETE|PATCH|HTTP)\((?:method\s*=\s*)?"([^"]+)"(?:,\s*path\s*=\s*"([^"]+)")?[^)]*\)/g)) {
+  for (const m of roh.matchAll(
+    /@(POST|PUT|DELETE|PATCH|HTTP)\((?:method\s*=\s*)?"([^"]+)"(?:,\s*path\s*=\s*"([^"]+)")?[^)]*\)/g,
+  )) {
     const fn = src.indexOf('suspend fun', m.index);
     const auf = src.indexOf('(', fn);
     const zu = bisZu(src, auf);
     const r = /^\s*:\s*(?:retrofit2\.)?Response<\s*([\w.]+)\s*>/.exec(roh.slice(zu + 1, zu + 200));
     const params = roh.slice(auf + 1, zu);
     const b = /@Body\s+\w+\s*:\s*([\w.]+)\s*[,)=\s]/.exec(params + ')');
-    const methode = m[1] === 'HTTP' ? m[2] ?? '' : m[1] ?? '';
-    aus.push({ methode, pfad: '/' + (m[1] === 'HTTP' ? m[3] : m[2]), typ: r ? (r[1] ?? '').split('.').pop() ?? null : null,
+    const methode = m[1] === 'HTTP' ? (m[2] ?? '') : (m[1] ?? '');
+    aus.push({
+      methode,
+      pfad: '/' + (m[1] === 'HTTP' ? m[3] : m[2]),
+      typ: r ? ((r[1] ?? '').split('.').pop() ?? null) : null,
       anfrage: [...params.matchAll(/@Query\("([^"]+)"\)/g)].map(q => ({ name: q[1] ?? '' })),
-      rumpf: b ? (b[1] ?? '').split('.').pop() ?? null : null });
+      rumpf: b ? ((b[1] ?? '').split('.').pop() ?? null) : null,
+    });
   }
   return aus;
 }
@@ -198,19 +241,30 @@ function schreibRouten(serviceDatei) {
  * @type {Map<string, string>}
  */
 const FEHLEN_ERLAUBT = new Map([
-  ['/api/v1/sets SetsResponse.themes',
-   'kommt nur mit der ersten Seite eines geblätterten Abrufs; ohne sie behält die App ihre Liste'],
-  ['/api/v1/parts/manual PartValuationItem.acquisitions',
-   'die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions'],
-  ['/api/v1/minifigs/manual FigValuationItem.acquisitions',
-   'die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions'],
+  [
+    '/api/v1/sets SetsResponse.themes',
+    'kommt nur mit der ersten Seite eines geblätterten Abrufs; ohne sie behält die App ihre Liste',
+  ],
+  [
+    '/api/v1/parts/manual PartValuationItem.acquisitions',
+    'die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions',
+  ],
+  [
+    '/api/v1/minifigs/manual FigValuationItem.acquisitions',
+    'die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions',
+  ],
   ['/api/v1/sets/exists/{setNumber} SetExistsResponse.is_self', 'nur, wenn es das Set im Blickfeld gibt'],
   // Besitzer nennt der Server nur im Haushalt (besitzerAnhaengen); allein gibt es keine.
-  ...[['/api/v1/sets', 'SetItem'], ['/api/v1/sets/{setNumber}', 'SetItem'], ['/api/v1/minifigs', 'Minifig'],
-    ['/api/v1/sets/{setNumber}/minifigs-list', 'Minifig'], ['/api/v1/parts/manual', 'PartValuationItem'],
-    ['/api/v1/minifigs/manual', 'FigValuationItem'], ['/api/v1/finance/parts-valuation', 'PartValuationItem'],
-    ['/api/v1/finance/minifigs-valuation', 'FigValuationItem']]
-    .map(([route, klasse]) => /** @type {[string, string]} */ ([`${route} ${klasse}.owners`, 'nur im Haushalt'])),
+  ...[
+    ['/api/v1/sets', 'SetItem'],
+    ['/api/v1/sets/{setNumber}', 'SetItem'],
+    ['/api/v1/minifigs', 'Minifig'],
+    ['/api/v1/sets/{setNumber}/minifigs-list', 'Minifig'],
+    ['/api/v1/parts/manual', 'PartValuationItem'],
+    ['/api/v1/minifigs/manual', 'FigValuationItem'],
+    ['/api/v1/finance/parts-valuation', 'PartValuationItem'],
+    ['/api/v1/finance/minifigs-valuation', 'FigValuationItem'],
+  ].map(([route, klasse]) => /** @type {[string, string]} */ ([`${route} ${klasse}.owners`, 'nur im Haushalt'])),
 ]);
 
 /**
@@ -224,14 +278,19 @@ const FEHLEN_ERLAUBT = new Map([
  * @returns {string[]}
  */
 function vergleiche(t, schema, modelle, aufloesen, ort = '$', o = {}) {
-  const s = schema && schema.$ref ? aufloesen(schema.$ref) : schema;
+  const s = schema?.$ref ? aufloesen(schema.$ref) : schema;
   if (!s || typeof s !== 'object') return [`${ort}: kein Schema`];
-  const zweige = Array.isArray(s.anyOf) ? s.anyOf.map((/** @type {any} */ z) => (z.$ref ? aufloesen(z.$ref) : z)) : null;
+  const zweige = Array.isArray(s.anyOf)
+    ? s.anyOf.map((/** @type {any} */ z) => (z.$ref ? aufloesen(z.$ref) : z))
+    : null;
   if (zweige) {
     const ohneNull = zweige.filter((/** @type {any} */ z) => z.type !== 'null');
-    if (ohneNull.length < zweige.length && !t.nullbar) return [`${ort}: Schema erlaubt null, Kotlin nicht (${beschreibe(t)})`];
+    if (ohneNull.length < zweige.length && !t.nullbar)
+      return [`${ort}: Schema erlaubt null, Kotlin nicht (${beschreibe(t)})`];
     // Jede erlaubte Form muss die App lesen können.
-    return ohneNull.flatMap((/** @type {any} */ z) => vergleiche({ ...t, nullbar: true }, z, modelle, aufloesen, ort, o));
+    return ohneNull.flatMap((/** @type {any} */ z) =>
+      vergleiche({ ...t, nullbar: true }, z, modelle, aufloesen, ort, o),
+    );
   }
   if (s.type === 'null') return t.nullbar ? [] : [`${ort}: Schema sagt null, Kotlin ${beschreibe(t)}`];
   // zod schreibt ein nullbares Primitiv als Typliste: ["string", "null"].
@@ -241,31 +300,48 @@ function vergleiche(t, schema, modelle, aufloesen, ort = '$', o = {}) {
   const typ = ohneNull.length === 1 ? ohneNull[0] : ohneNull.join('|') || undefined;
   const falsch = (/** @type {string} */ erwartet) => [`${ort}: Schema ${typ ?? 'beliebig'}, Kotlin ${erwartet}`];
   switch (t.art) {
-    case 'string':  return typ === 'string' ? [] : falsch('String');
-    case 'boolean': return typ === 'boolean' ? [] : falsch('Boolean');
-    case 'int':     return typ === 'integer' ? [] : falsch('Int');
-    case 'number':  return typ === 'number' || typ === 'integer' ? [] : falsch('Double');
+    case 'string':
+      return typ === 'string' ? [] : falsch('String');
+    case 'boolean':
+      return typ === 'boolean' ? [] : falsch('Boolean');
+    case 'int':
+      return typ === 'integer' ? [] : falsch('Int');
+    case 'number':
+      return typ === 'number' || typ === 'integer' ? [] : falsch('Double');
     case 'liste':
       if (typ !== 'array') return falsch('Liste');
       return vergleiche(t.element ?? { art: 'klasse', nullbar: true }, s.items, modelle, aufloesen, `${ort}[]`, o);
     case 'karte':
       if (typ !== 'object' || !s.additionalProperties || typeof s.additionalProperties !== 'object')
         return falsch('Map');
-      return vergleiche(t.wert ?? { art: 'klasse', nullbar: true }, s.additionalProperties, modelle, aufloesen, `${ort}{}`, o);
+      return vergleiche(
+        t.wert ?? { art: 'klasse', nullbar: true },
+        s.additionalProperties,
+        modelle,
+        aufloesen,
+        `${ort}{}`,
+        o,
+      );
     case 'klasse': {
       const m = modelle.get(t.name ?? '');
-      if (!m) return [];                                     // JsonElement, Any …
+      if (!m) return []; // JsonElement, Any …
       if (typ !== 'object') return falsch(t.name ?? 'Klasse');
       const { route = '', standardwerte = true } = o;
       const pflicht = new Set(s.required ?? []);
       /** @type {string[]} */
       const aus = [];
       for (const f of m.felder) {
-        const darfFehlen = f.hatDefault && (f.typ.nullbar || !standardwerte || FEHLEN_ERLAUBT.has(`${route} ${t.name}.${f.json}`));
+        const darfFehlen =
+          f.hatDefault && (f.typ.nullbar || !standardwerte || FEHLEN_ERLAUBT.has(`${route} ${t.name}.${f.json}`));
         const feld = s.properties?.[f.json];
-        if (!feld) { if (!darfFehlen) aus.push(`${ort}.${f.json}: fehlt im Schema (${t.name})`); continue; }
+        if (!feld) {
+          if (!darfFehlen) aus.push(`${ort}.${f.json}: fehlt im Schema (${t.name})`);
+          continue;
+        }
         if (!pflicht.has(f.json) && !darfFehlen)
-          aus.push(`${ort}.${f.json}: im Schema optional, in Kotlin ${f.hatDefault ? 'ohne erlaubte Lücke' : 'ohne Standardwert'} (${t.name})`);
+          aus.push(
+            `${ort}.${f.json}: im Schema optional, in Kotlin ${f.hatDefault ? 'ohne erlaubte Lücke' : 'ohne Standardwert'} (${t.name})`,
+          );
         aus.push(...vergleiche(f.typ, feld, modelle, aufloesen, `${ort}.${f.json}`, o));
       }
       return aus;
@@ -275,11 +351,20 @@ function vergleiche(t, schema, modelle, aufloesen, ort = '$', o = {}) {
 }
 
 /** @param {KTyp} t */
-const beschreibe = (t) => t.art === 'klasse' ? t.name : t.art;
+const beschreibe = t => (t.art === 'klasse' ? t.name : t.art);
 
 /** Die Kennungen der Aufzählung Fehlercode: `NAME("kennung")` je Zeile. @param {string} datei */
 function kotlinFehlercodes(datei) {
-  return [...fs.readFileSync(datei, 'utf8').matchAll(/^\s+[A-Z_]+\("([a-z][a-z0-9_]*)"\)/gm)].map((m) => m[1]);
+  return [...fs.readFileSync(datei, 'utf8').matchAll(/^\s+[A-Z_]+\("([a-z][a-z0-9_]*)"\)/gm)].map(m => m[1]);
 }
 
-module.exports = { kotlinModelle, kotlinFehlercodes, apiRouten, schreibRouten, vergleiche, typ, FEHLEN_ERLAUBT, apiQuelltext };
+module.exports = {
+  kotlinModelle,
+  kotlinFehlercodes,
+  apiRouten,
+  schreibRouten,
+  vergleiche,
+  typ,
+  FEHLEN_ERLAUBT,
+  apiQuelltext,
+};

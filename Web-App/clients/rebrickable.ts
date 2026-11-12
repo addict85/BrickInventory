@@ -1,10 +1,10 @@
 // Ein API-Client, kein Router: Deshalb liegt er nicht unter routes/.
 import { KEINE_FARBE } from '../src/infra/validate';
 
-import { pipeline } from 'stream/promises';
-import { holeHttps, oeffneHttps, AbrufFehler } from '../src/infra/abruf';
-import path from 'path';
-import fs from 'fs';
+import { pipeline } from 'node:stream/promises';
+import { holeHttps, oeffneHttps, AbrufFehler, type AbrufAntwort, type AbrufStrom } from '../src/infra/abruf';
+import path from 'node:path';
+import fs from 'node:fs';
 import { fehlertext, meldeUndLiefere, meldeFehler } from '../src/infra/fehler';
 import { mitVersion } from '../src/infra/setNummer';
 import { zugang } from './zugang';
@@ -14,7 +14,7 @@ import {
   RbSet,
   RbThema,
   RbTeil,
-  RbSetTeil,
+  RbSetTeil as RbSetTeilSchema,
   RbSetFigur,
   RbFigur,
   RbFarbe,
@@ -33,7 +33,8 @@ import {
 const BASE = 'https://rebrickable.com/api/v3';
 
 /** Eine Teilezeile, wie sie /lego/sets/{id}/parts liefert. */
-export type RbSetTeil = z.output<typeof RbSetTeil>;
+export type RbSetTeil = z.output<typeof RbSetTeilSchema>;
+const SetTeilSeite = rbSeite(RbSetTeilSchema);
 
 /**
  * Der Rebrickable-Schluessel — aus der zentralen Einstellungs-Lesung.
@@ -61,7 +62,7 @@ export function parseThrottleWait(body: string) {
   try {
     const data = typeof body === 'string' ? JSON.parse(body) : body;
     const match = data?.detail?.match(/(\d+)\s*second/);
-    if (match) return parseInt(match[1]) * 1000 + 500;
+    if (match) return parseInt(match[1], 10) * 1000 + 500;
   } catch (e) {
     meldeFehler('kontingent:retry-after-lesen', e);
   }
@@ -107,7 +108,7 @@ async function httpsGetRobust(
     ? ERLAUBTE_REBRICKABLE_HOSTS
     : ERLAUBTE_API_HOSTS;
   for (let versuch = 1; ; versuch++) {
-    let r;
+    let r: AbrufAntwort;
     try {
       r = await holeHttps(url, {
         hosts,
@@ -222,7 +223,7 @@ async function holeSetTeile(n: string): Promise<{ teile: RbSetTeil[]; verweigert
       break;
     }
     await rebrickableLimiter.waitForSlot();
-    let status, body;
+    let status: number, body: string;
     try {
       ({ status, body } = await httpsGetRobust(url, { Authorization: `key ${key}` }, 60000));
     } catch (e) {
@@ -242,9 +243,9 @@ async function holeSetTeile(n: string): Promise<{ teile: RbSetTeil[]; verweigert
       console.error(`  Parts HTTP ${status}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
       break;
     }
-    let data;
+    let data: z.output<typeof SetTeilSeite>;
     try {
-      data = pruefeAntwort('Rebrickable', rbSeite(RbSetTeil), JSON.parse(body));
+      data = pruefeAntwort('Rebrickable', SetTeilSeite, JSON.parse(body));
     } catch (e) {
       meldeFehler('rebrickable:teile-seite', e);
       break;
@@ -298,7 +299,7 @@ async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_M
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
   // Was hier landet, liefert der Server an jedes Konto aus: deshalb die
   // Hostliste bei jedem Sprung, nicht nur bei der ersten Adresse.
-  let antwort;
+  let antwort: AbrufStrom;
   try {
     antwort = await oeffneHttps(url, {
       hosts: ERLAUBTE_DOWNLOAD_HOSTS,
@@ -426,7 +427,7 @@ async function holeFigurTeile(
     30000,
   );
   if (status !== 200) return null;
-  const data = pruefeAntwort('Rebrickable', rbSeite(RbSetTeil), JSON.parse(body));
+  const data = pruefeAntwort('Rebrickable', SetTeilSeite, JSON.parse(body));
   return data.results
     .filter(r => r.part.part_num)
     .map(r => ({
@@ -485,13 +486,13 @@ async function lookupPart(partNumber: string, colorId?: number | null) {
  */
 /** Die erste BrickLink-Nummer eines Teils; Rebrickable liefert sie als Liste. */
 function ersteBlNummer(ext: Record<string, unknown> | null | undefined): string | null {
-  const bl = ext?.['BrickLink'];
+  const bl = ext?.BrickLink;
   return Array.isArray(bl) && bl[0] != null ? String(bl[0]) : null;
 }
 
 function traegtBlNummer(teil: unknown, blId: string): boolean {
   const ext = (teil as { external_ids?: Record<string, unknown> } | null)?.external_ids;
-  const roh = ext?.['BrickLink'];
+  const roh = ext?.BrickLink;
   const liste: unknown[] = Array.isArray(roh)
     ? roh
     : Array.isArray((roh as { ext_ids?: unknown[] } | undefined)?.ext_ids)

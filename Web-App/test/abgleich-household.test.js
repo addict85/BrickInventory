@@ -28,6 +28,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pruefeParameter } = require('./helpers/sources');
+const kompakt = require('./helpers/sources').kompakt;
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -159,8 +160,8 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Tages — genau den Zustand, den der Bearbeiten-Pfad ablehnt.
   // ohneKommentare(): Die BEGRÜNDUNGEN dieser Regeln stehen in setMove.ts als
   // Kommentar, und sie ZITIEREN die Anweisungen, die es nicht mehr geben darf …
-  const mv = require('./helpers/sources').ohneKommentare(
-    require('./helpers/sources').dienstQuelle('src/sets/setMove.ts'),
+  const mv = kompakt(
+    require('./helpers/sources').ohneKommentare(require('./helpers/sources').dienstQuelle('src/sets/setMove.ts')),
   );
   assert.ok(
     mv.includes("recordAcquisitionForDay('set', toId, [sn]"),
@@ -188,7 +189,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // zusammen, nicht eines statt des anderen.
   assert.ok(src.includes('sets.setVerschieben('), 'Die Route ruft den Dienst');
   assert.ok(
-    read('src/sets/dienst.ts').includes('verschiebeSet(sk, sn, fromId'),
+    kompakt(read('src/sets/dienst.ts')).includes('verschiebeSet(sk, sn, fromId'),
     'Das Verschieben läuft über verschiebeSet',
   );
   assert.ok(mv.includes('mitInventarSperre(sk.db, fromId, sn'), 'Serialisiert über das Quellkonto');
@@ -210,7 +211,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   // Teil sind zwei Bestände mit eigener Menge und eigenem Kaufpreis, und jeder
   // Bearbeiten-Weg führt auf genau eine Zeile. Ohne Plakette sähe die Liste
   // wie eine doppelte Zeile aus.
-  const h = require('./helpers/sources').handlerQuelle();
+  const h = kompakt(require('./helpers/sources').handlerQuelle());
   // Auf die Parameter geprüft, nicht auf den Wortlaut: `rows: any[]` eines Tages
   // zu `rows: Row[]` zu schärfen ist eine Verbesserung und darf hier nicht als
   // Fehler erscheinen (siehe pruefeParameter() im Helfer).
@@ -230,7 +231,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
     'Ohne user_id in der Abfrage gibt es keinen Besitzer',
   );
 
-  const fc = require('./helpers/sources').finanzQuelle();
+  const fc = kompakt(require('./helpers/sources').finanzQuelle());
   const uses = (fc.match(/await (?:haushaltBereich\(\)\.haushalt\.)?besitzerAnhaengen\(uids,/g) || []).length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
@@ -269,7 +270,7 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
 
 test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   // Im Einzelkonto stünde an jeder Kachel „gehört mir" — reines Rauschen.
-  const gal = require('./helpers/sources').frontendQuelle();
+  const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function ownerBadges/);
   assert.match(gal, /if \(!item\?\.owners\?\.length\) return '';/);
   // Eine Auswahl mit einer einzigen Möglichkeit ist keine Auswahl.
@@ -286,7 +287,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
     );
   }
   assert.match(gal, /\['add-owner', 'ap-owner', 'af-owner'/, 'Die Kontoauswahl gehört in alle drei Erfassen-Formulare');
-  const fig = require('./helpers/sources').frontendQuelle();
+  const fig = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(fig, /owner_user_id: selectedOwner\('ap-owner'\)/);
   assert.match(fig, /owner_user_id: selectedOwner\('af-owner'\)/);
   // Und die Besitzer-Plakette auf den manuellen Kacheln.
@@ -296,7 +297,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   // den KAUFPREIS, Zeile für Zeile. Geprüft wird jetzt, dass die
   // Eigentümer-Spalte im Kaufpreis-Dialog nur im Haushalt erscheint — und
   // zwar in BEIDEN Dialogen (Sets und manuelle Einträge).
-  const adm = require('./helpers/sources').adminQuelle();
+  const adm = kompakt(require('./helpers/sources').adminQuelle());
   assert.doesNotMatch(
     adm,
     /renderMoveBox|moveSetToAccount/,
@@ -355,13 +356,13 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
 test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   // Alle vier gleichzeitig neu zu laden würde drei Ansichten anfassen, die
   // niemand ansieht — und dabei Preisabrufe auslösen.
-  const gal = require('./helpers/sources').frontendQuelle();
+  const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function onScopeChange\(view\)/);
-  assert.match(gal, /if \(view === 'finance'\) {2}loadFinance\(\);/);
+  assert.match(gal, /if \(view === 'finance'\) loadFinance\(\);/);
   // Die Reiter Teile und Minifiguren haben ZWEI Listen — die aus Sets und die
   // manuell erfassten. Der manuelle Bereich lädt über einen eigenen Endpunkt
   // und blieb sonst ungefiltert stehen.
-  assert.match(gal, /if \(view === 'parts'\) {4}\{ loadParts\(\); loadManualParts\(\); \}/);
+  assert.match(gal, /if \(view === 'parts'\) \{ loadParts\(\); loadManualParts\(\); \}/);
   // Und er erscheint nur bei einem Hauptkonto mit Unterkonten.
   assert.match(gal, /if \(!isMain\) \{ el\.style\.display = 'none'; continue; \}/);
   assert.match(gal, /initScopeSelects\(members\);/);
@@ -396,7 +397,7 @@ test('Verschieben geht NUR über den Kaufpreis', async () => {
 test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
   // Inhalt — es wandern nur Menge und Erfassung.
-  const mv = read('src/sets/setMove.ts');
+  const mv = kompakt(read('src/sets/setMove.ts'));
   assert.match(mv, /export async function moveManualAcquisition/);
   assert.match(mv, /recordAcquisitionForDay\(kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
 
@@ -406,7 +407,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Teile und Figuren gehen über denselben Aufruf; die Art kommt aus der Tabelle.
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
   const f = 'src/sammlung/erfassungen.ts';
-  const src = read(f);
+  const src = kompakt(read(f));
   assert.ok(src.includes('moveManualAcquisition(tx, art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,

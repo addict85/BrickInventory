@@ -44,16 +44,18 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
     ...tsDateien(path.join(ROOT, 'src')).map(([r, p]) => [r, p]),
     ...tsDateien(path.join(ROOT, 'jobs')).map(([r, p]) => [r, p]),
   ];
-  assert.ok(dateien.length >= 30,
-    `Nur ${dateien.length} Dateien gefunden — dann prüft der Rest nichts.`);
+  assert.ok(dateien.length >= 30, `Nur ${dateien.length} Dateien gefunden — dann prüft der Rest nichts.`);
 
   const verstoesse = [];
   const gebraucht = new Set();
-  for (const [rel, voll] of dateien) {
+  for (const [, voll] of dateien) {
     // Der Schlüssel in ERLAUBT ist der Pfad ab Web-App/ — hier zusammensetzen.
     const unterOrdner = path.relative(ROOT, voll).split(path.sep).join('/');
-    const src = fs.readFileSync(voll, 'utf8')
-      .split('\n').filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*')).join('\n');
+    const src = fs
+      .readFileSync(voll, 'utf8')
+      .split('\n')
+      .filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*'))
+      .join('\n');
     // KEIN Backtick und KEIN Zeilenumbruch im Text: Der erste Entwurf nahm
     // beides und lief damit über Zeilenenden hinweg — er meldete sechs Stellen,
     // an denen `error:` mitten in einem PROTOKOLLTEXT steht
@@ -78,17 +80,26 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
   // als `{ de: '…', en: '…' }`, nie als `error: '…'`. Der Eintrag verbarg
   // also nichts, nahm aber ausgerechnet die Datei, in der ALLE Fehlertexte
   // stehen, von dieser Pruefung aus. Damit das nicht wiederkommt:
-  const veraltet = Object.keys(ERLAUBT).filter(k => !gebraucht.has(k)).sort();
-  assert.deepEqual(veraltet, [],
-    'Diese Eintraege in ERLAUBT beschreiben nichts mehr:\n  ' + veraltet.join('\n  ') +
-    '\nDie Datei enthaelt keinen festen Fehlersatz (mehr). Der Eintrag nimmt sie ' +
-    'trotzdem von der Pruefung aus — raus damit.');
+  const veraltet = Object.keys(ERLAUBT)
+    .filter(k => !gebraucht.has(k))
+    .sort();
+  assert.deepEqual(
+    veraltet,
+    [],
+    'Diese Eintraege in ERLAUBT beschreiben nichts mehr:\n  ' +
+      veraltet.join('\n  ') +
+      '\nDie Datei enthaelt keinen festen Fehlersatz (mehr). Der Eintrag nimmt sie ' +
+      'trotzdem von der Pruefung aus — raus damit.',
+  );
 
-  assert.deepEqual(verstoesse, [],
+  assert.deepEqual(
+    verstoesse,
+    [],
     'Diese Stellen schicken einen festen Satz statt sendeFehler(req, res, …, code):\n  ' +
-    verstoesse.join('\n  ') +
-    '\nDamit steht die Meldung nur in einer Sprache da — in einer Oberfläche, ' +
-    'die es in zweien gibt.');
+      verstoesse.join('\n  ') +
+      '\nDamit steht die Meldung nur in einer Sprache da — in einer Oberfläche, ' +
+      'die es in zweien gibt.',
+  );
 });
 
 test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', () => {
@@ -121,16 +132,41 @@ test('die Webapp sagt dem Server, welche Sprache sie zeigt', async () => {
     try {
       const api = aufrufe.filter(a => a.url.includes('/api/v1/'));
       assert.ok(api.length >= 5, `nur ${api.length} Anfragen`);
-      assert.deepEqual(api.filter(a => a.headers['Accept-Language'] !== sprache).map(a => a.url), [], `ohne Sprache ${sprache}`);
-    } finally { w.close(); }
+      assert.deepEqual(
+        api.filter(a => a.headers['Accept-Language'] !== sprache).map(a => a.url),
+        [],
+        `ohne Sprache ${sprache}`,
+      );
+    } finally {
+      w.close();
+    }
   }
 });
 
 test('die App sagt dem Server, welche Sprache sie zeigt', () => {
   const app = fs.readFileSync(
-    path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'di', 'ServerClient.kt'), 'utf8');
-  assert.match(app, /header\("Accept-Language",/,
-    'Die Android-App schickt Accept-Language nicht mit (data/di/ServerClient.kt, Interceptor).');
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      'Android-App',
+      'core-data',
+      'src',
+      'main',
+      'java',
+      'ch',
+      'brickinventoryapp',
+      'data',
+      'di',
+      'ServerClient.kt',
+    ),
+    'utf8',
+  );
+  assert.match(
+    app,
+    /header\("Accept-Language",/,
+    'Die Android-App schickt Accept-Language nicht mit (data/di/ServerClient.kt, Interceptor).',
+  );
   // Aus den Ressourcen abgeleitet sagt sie, was sie wirklich zeigt.
   assert.match(app, /R\.string\.lang_code/);
 });

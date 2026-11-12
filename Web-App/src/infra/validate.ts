@@ -84,6 +84,7 @@ export function requireItemNumber(value: unknown, field = 'part_number'): string
 export function optionalText(value: unknown, maxLen = 200): string | null {
   if (value === undefined || value === null) return null;
   const v = String(value)
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen herauszufiltern ist der Zweck dieser Stelle.
     .replace(/[\u0000-\u001F\u007F]/g, '')
     .trim();
   return v ? v.slice(0, maxLen) : null;
@@ -199,7 +200,7 @@ export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown, v
 export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown): T | undefined;
 export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe?: T): T | undefined {
   const k = einzelwert(schluessel);
-  return Object.prototype.hasOwnProperty.call(tabelle, k) ? tabelle[k] : vorgabe;
+  return Object.hasOwn(tabelle, k) ? tabelle[k] : vorgabe;
 }
 
 /** Dieselben Prüfungen als Eingabeschema für den API-Vertrag: Die Regel gibt es

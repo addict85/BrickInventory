@@ -20,11 +20,11 @@
  *
  * REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const http   = require('node:http');
-const path   = require('node:path');
-const wt     = require('node:worker_threads');
+const http = require('node:http');
+const path = require('node:path');
+const wt = require('node:worker_threads');
 const { bis } = require('./helpers/zeit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -53,34 +53,65 @@ async function hochladen(base, daten) {
 function haengenderUpload(base) {
   const u = new URL(`${base}/api/v1/vouchers/pdf`);
   const grenze = 'xyzgrenze';
-  const req = http.request({ host: u.hostname, port: u.port, path: u.pathname, method: 'POST',
-    headers: { 'content-type': `multipart/form-data; boundary=${grenze}` } });
-  const antwort = new Promise((fertig) => req.on('response', (r) => { r.resume(); r.on('end', () => fertig(r.statusCode)); }));
+  const req = http.request({
+    host: u.hostname,
+    port: u.port,
+    path: u.pathname,
+    method: 'POST',
+    headers: { 'content-type': `multipart/form-data; boundary=${grenze}` },
+  });
+  const antwort = new Promise(fertig =>
+    req.on('response', r => {
+      r.resume();
+      r.on('end', () => fertig(r.statusCode));
+    }),
+  );
   req.on('error', () => {});
-  req.write(`--${grenze}\r\nContent-Disposition: form-data; name="file"; filename="g.pdf"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.4\n`);
+  req.write(
+    `--${grenze}\r\nContent-Disposition: form-data; name="file"; filename="g.pdf"\r\nContent-Type: application/pdf\r\n\r\n%PDF-1.4\n`,
+  );
   return { antwort, ende: () => req.end(`\r\n--${grenze}--\r\n`) };
 }
 
-test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    keineDb(t, e); return;
+test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   await db.initSchema();
-  { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
-  const neu = async (name) => {
+  {
+    const c = await db.pool.connect();
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
+  }
+  const neu = async name => {
     await db.run('DELETE FROM users WHERE username = $1', [name]);
     return (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
   };
-  const A = await neu(`schranke_a_${process.pid}`), B = await neu(`schranke_b_${process.pid}`);
+  const A = await neu(`schranke_a_${process.pid}`),
+    B = await neu(`schranke_b_${process.pid}`);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]);
-    await _req('db/database.js').standardDb().benachrichtigung.close().catch(() => {});   // der CSV-Strom hört auf NOTIFY
+    await _req('db/database.js')
+      .standardDb()
+      .benachrichtigung.close()
+      .catch(() => {}); // der CSV-Strom hört auf NOTIFY
     await db.pool.end().catch(() => {});
   });
-  const server = (uid) => testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const a = server(A), b = server(B);
+  const server = uid =>
+    testServer(_req, {
+      sitzung: { userId: uid },
+      apiNutzer: { user_id: uid, is_admin: 0 },
+      routen: { '/api/v1': 'routes/api_v1/index.js' },
+      t,
+    });
+  const a = server(A),
+    b = server(B);
 
   await t.test('250 Seiten: 422 mit verständlicher Meldung', async () => {
     const r = await hochladen(a.base, await pdfMit(250));
@@ -94,12 +125,19 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
     const { liesImHintergrund } = _req('src/gutscheine/pdfLesen.js');
     const Echt = wt.Worker;
     let gestartet = 0;
-    wt.Worker = class extends Echt { constructor(...a) { super(...a); gestartet++; } };
+    wt.Worker = class extends Echt {
+      constructor(...a) {
+        super(...a);
+        gestartet++;
+      }
+    };
     try {
       const r = await liesImHintergrund(await pdfMit(3));
       assert.equal(r.art, 'gelesen');
       assert.equal(r.seiten, 3);
-    } finally { wt.Worker = Echt; }
+    } finally {
+      wt.Worker = Echt;
+    }
     assert.equal(gestartet, 1);
   });
 
@@ -113,7 +151,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
       const fremd = await hochladen(b.base, await pdfMit(1));
       assert.notEqual(fremd.status, 429, 'ein anderes Konto ist nicht betroffen');
     } finally {
-      erster.ende();   // sonst wartet das Schliessen des Servers auf ihn
+      erster.ende(); // sonst wartet das Schliessen des Servers auf ihn
       await erster.antwort;
     }
   });
@@ -125,17 +163,24 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
 
   await t.test('höchstens sechs Ereignisströme je Konto', async () => {
     const offen = [];
-    const strom = () => new Promise((fertig) => {
-      const req = http.get(`${a.base}/api/v1/sets/import/csv/stream`, (r) => { offen.push(r); fertig(r.statusCode); r.resume(); });
-      req.on('error', () => fertig(0));
-    });
+    const strom = () =>
+      new Promise(fertig => {
+        const req = http.get(`${a.base}/api/v1/sets/import/csv/stream`, r => {
+          offen.push(r);
+          fertig(r.statusCode);
+          r.resume();
+        });
+        req.on('error', () => fertig(0));
+      });
     try {
       const stati = [];
       for (let i = 0; i < 7; i++) stati.push(await strom());
       assert.deepEqual(stati, [200, 200, 200, 200, 200, 200, 429]);
       for (const r of offen) r.destroy();
-      assert.ok(await bis(async () => await strom() === 200, 3000), 'geschlossene Ströme geben ihren Platz frei');
-    } finally { for (const r of offen) r.destroy(); }
+      assert.ok(await bis(async () => (await strom()) === 200, 3000), 'geschlossene Ströme geben ihren Platz frei');
+    } finally {
+      for (const r of offen) r.destroy();
+    }
   });
 });
 
@@ -147,11 +192,22 @@ test('der Platz ist frei, sobald die Antwort übergeben ist', () => {
   const schranke = kontoSchranke('gutscheinPdf');
   const anfrage = () => {
     const res = Object.assign(new EventEmitter(), {
-      statusCode: 200, status(c) { this.statusCode = c; return this; }, json() { return this; },
-      setHeader() {}, getHeader() {}, headersSent: false,
+      statusCode: 200,
+      status(c) {
+        this.statusCode = c;
+        return this;
+      },
+      json() {
+        return this;
+      },
+      setHeader() {},
+      getHeader() {},
+      headersSent: false,
     });
     let weiter = false;
-    schranke({ session: { userId: 987654 }, headers: {}, get: () => undefined }, res, () => { weiter = true; });
+    schranke({ session: { userId: 987654 }, headers: {}, get: () => undefined }, res, () => {
+      weiter = true;
+    });
     return { res, weiter };
   };
   const erste = anfrage();

@@ -11,11 +11,11 @@
  *   E  in bildEndung Object.hasOwn durch `in` ersetzt (02.11. gemessen)
  *                                                 → rot: „constructor als Endung übernommen"
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
-const https  = require('node:https');
+const fs = require('node:fs');
+const path = require('node:path');
+const https = require('node:https');
 const { Readable } = require('node:stream');
 const { EventEmitter } = require('node:events');
 
@@ -45,7 +45,9 @@ function stelleNach(t, { status = 200, typ = 'image/png', body = Buffer.from('PN
     });
     return req;
   };
-  t.after(() => { https.get = echt; });
+  t.after(() => {
+    https.get = echt;
+  });
   return aufrufe;
 }
 
@@ -72,38 +74,49 @@ test('die Bausteine', () => {
   assert.equal(bd.zielImOrdner('/a/b', 'c.png'), '/a/b/c.png');
 });
 
-test('downloadImage', { concurrency: 1 }, async (t) => {
+test('downloadImage', { concurrency: 1 }, async t => {
   t.after(aufraeumen);
 
-  await t.test('ein Bild vom CDN wird gespeichert', async (tt) => {
+  await t.test('ein Bild vom CDN wird gespeichert', async tt => {
     aufraeumen();
     const aufrufe = stelleNach(tt);
     const rel = await downloadImage(`${CDN}/1.png`, NUMMER, 4, 'part');
     assert.equal(rel, `/images/parts/${NUMMER}_4.png`);
     assert.equal(aufrufe.length, 1);
     assert.equal(fs.readFileSync(path.join(PART_IMAGES_DIR, `${NUMMER}_4.png`), 'utf8'), 'PNGDATEN');
-    assert.deepEqual(fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMMER) && f.endsWith('.teil')), []);
+    assert.deepEqual(
+      fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMMER) && f.endsWith('.teil')),
+      [],
+    );
   });
 
-  await t.test('fremder Host: kein Abruf', async (tt) => {
+  await t.test('fremder Host: kein Abruf', async tt => {
     aufraeumen();
     const aufrufe = stelleNach(tt);
-    for (const adresse of ['https://169.254.169.254/latest/meta-data.png', 'https://localhost/x.png',
-                           'http://cdn.rebrickable.com/x.png', 'https://rebrickable.com.boese.example/x.png'])
+    for (const adresse of [
+      'https://169.254.169.254/latest/meta-data.png',
+      'https://localhost/x.png',
+      'http://cdn.rebrickable.com/x.png',
+      'https://rebrickable.com.boese.example/x.png',
+    ])
       assert.equal(await downloadImage(adresse, NUMMER, 0, 'part'), null, adresse);
     assert.deepEqual(aufrufe, [], 'fremder Host wird abgerufen');
   });
 
-  await t.test('kein Bild: nichts gespeichert', async (tt) => {
+  await t.test('kein Bild: nichts gespeichert', async tt => {
     for (const typ of ['image/svg+xml', 'text/html']) {
       aufraeumen();
       stelleNach(tt, { typ, body: Buffer.from('<svg onload="alert(1)"/>') });
       assert.equal(await downloadImage(`${CDN}/x.png`, NUMMER, 0, 'part'), null, `${typ} gespeichert`);
-      assert.deepEqual(fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMMER)), [], 'SVG gespeichert');
+      assert.deepEqual(
+        fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMMER)),
+        [],
+        'SVG gespeichert',
+      );
     }
   });
 
-  await t.test('Pfad aus der Teilenummer: kein Abruf, keine Datei ausserhalb', async (tt) => {
+  await t.test('Pfad aus der Teilenummer: kein Abruf, keine Datei ausserhalb', async tt => {
     const aufrufe = stelleNach(tt);
     const boese = `a/../../../${NUMMER}`;
     tt.after(() => fs.rmSync(path.join(DATA_DIR, `${NUMMER}_0.png`), { force: true }));
@@ -112,18 +125,24 @@ test('downloadImage', { concurrency: 1 }, async (t) => {
     assert.equal(fs.existsSync(path.join(DATA_DIR, `${NUMMER}_0.png`)), false);
   });
 
-  await t.test('zu gross: abgebrochen, nichts liegen gelassen', async (tt) => {
+  await t.test('zu gross: abgebrochen, nichts liegen gelassen', async tt => {
     aufraeumen();
     const block = Buffer.alloc(1024 * 1024, 1);
     stelleNach(tt, { body: Array(bd.BILD_MAX_BYTES / block.length + 2).fill(block) });
     assert.equal(await downloadImage(`${CDN}/x.png`, NUMMER, 0, 'part'), null, 'übergrosses Bild gespeichert');
-    assert.deepEqual(fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMMER)), []);
+    assert.deepEqual(
+      fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMMER)),
+      [],
+    );
   });
 
-  await t.test('HTTP 404: nichts gespeichert', async (tt) => {
+  await t.test('HTTP 404: nichts gespeichert', async tt => {
     aufraeumen();
     stelleNach(tt, { status: 404, typ: 'text/html' });
     assert.equal(await downloadImage(`${CDN}/x.png`, NUMMER, 0, 'part'), null);
-    assert.deepEqual(fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMMER)), []);
+    assert.deepEqual(
+      fs.readdirSync(PART_IMAGES_DIR).filter(f => f.startsWith(NUMMER)),
+      [],
+    );
   });
 });

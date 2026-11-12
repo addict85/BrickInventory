@@ -28,17 +28,17 @@ function annotationen(protokoll) {
   const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bi-rot-')), 'test.log');
   fs.writeFileSync(datei, protokoll);
   try {
-    return execFileSync('awk', ['-f', AWK, datei], { encoding: 'utf8' })
-      .split('\n').filter(Boolean);
+    return execFileSync('awk', ['-f', AWK, datei], { encoding: 'utf8' }).split('\n').filter(Boolean);
   } finally {
     fs.rmSync(path.dirname(datei), { recursive: true, force: true });
   }
 }
 
-test('Annotationen fuer rote Tests', async (t) => {
-  assert.ok(fs.existsSync(AWK),
-    `${AWK} fehlt — dann hat der Workflow nichts zum Auslesen und dieser Test ` +
-    `prueft nichts.`);
+test('Annotationen fuer rote Tests', async t => {
+  assert.ok(
+    fs.existsSync(AWK),
+    `${AWK} fehlt — dann hat der Workflow nichts zum Auslesen und dieser Test ` + `prueft nichts.`,
+  );
 
   await t.test('die Begruendung steht in der Annotation, nicht nur der Name', () => {
     // Genau die Form, die `npm test` in der CI schreibt (ohne Terminal nimmt
@@ -67,8 +67,11 @@ test('Annotationen fuer rote Tests', async (t) => {
     const m = a[0];
     assert.match(m, /^::error title=Roter Test::/);
     assert.match(m, /Sitzung: gelesen wird immer/, 'der Name fehlt');
-    assert.match(m, /2 Schreibvorgaenge bei 20 Anfragen/,
-      'die BEGRUENDUNG fehlt — genau das war der Befund, aus dem dieser Test entstand.');
+    assert.match(
+      m,
+      /2 Schreibvorgaenge bei 20 Anfragen/,
+      'die BEGRUENDUNG fehlt — genau das war der Befund, aus dem dieser Test entstand.',
+    );
     assert.match(m, /expected: 1/, 'die Erwartung fehlt');
     assert.match(m, /actual: 2/, 'der Istwert fehlt');
     assert.match(m, /sitzung-beruehrung-db\.test\.js:78/, 'die Fundstelle fehlt');
@@ -82,17 +85,30 @@ test('Annotationen fuer rote Tests', async (t) => {
   await t.test('elf rote Tests ergeben neun plus eine Sammelmeldung', () => {
     const bloecke = [];
     for (let i = 1; i <= 11; i++) {
-      bloecke.push(`not ok ${i} - Test ${i}`, '  ---', '  error: |-',
-        `    Begruendung ${i}`, '  stack: |-', '    x', '  ...');
+      bloecke.push(
+        `not ok ${i} - Test ${i}`,
+        '  ---',
+        '  error: |-',
+        `    Begruendung ${i}`,
+        '  stack: |-',
+        '    x',
+        '  ...',
+      );
     }
     const a = annotationen('TAP version 13\n' + bloecke.join('\n') + '\n');
-    assert.equal(a.length, 10,
+    assert.equal(
+      a.length,
+      10,
       `GitHub zeigt je Stufe und Schritt hoechstens zehn Annotationen; es sind ${a.length}. ` +
-      `Mit mehr waere die Sammelmeldung die unsichtbare.`);
+        `Mit mehr waere die Sammelmeldung die unsichtbare.`,
+    );
     const einzeln = a.filter(z => z.startsWith('::error title=Roter Test::'));
     assert.equal(einzeln.length, 9);
-    assert.match(a[9], /^::error title=Weitere rote Tests::2 weitere/,
-      `die Sammelmeldung fehlt oder zaehlt falsch: ${a[9]}`);
+    assert.match(
+      a[9],
+      /^::error title=Weitere rote Tests::2 weitere/,
+      `die Sammelmeldung fehlt oder zaehlt falsch: ${a[9]}`,
+    );
     // Und sie duerfen nicht alle dasselbe sagen.
     assert.match(einzeln[0], /Begruendung 1/);
     assert.match(einzeln[8], /Begruendung 9/);
@@ -102,8 +118,7 @@ test('Annotationen fuer rote Tests', async (t) => {
     const a = annotationen('✖ failing tests:\n\n✖ Test A (1.2ms)\n  error: etwas\n  stack: x\n');
     assert.equal(a.length, 1, `erwartet eine Annotation, bekommen ${a.length}:\n${a.join('\n')}`);
     assert.match(a[0], /Test A/);
-    assert.doesNotMatch(a[0], /failing tests/,
-      '„failing tests:" ist die Ueberschrift der Liste, kein Testname.');
+    assert.doesNotMatch(a[0], /failing tests/, '„failing tests:" ist die Ueberschrift der Liste, kein Testname.');
   });
 
   await t.test('ein Lauf ohne roten Test ergibt keine Annotation', () => {
@@ -117,7 +132,6 @@ test('Annotationen fuer rote Tests', async (t) => {
     // wuerde sonst als Kodierung gelesen und den Rest verschlucken.
     const a = annotationen('not ok 1 - Deckung\n  error: |-\n    nur 95 % erreicht\n  stack: x\n');
     assert.equal(a.length, 1);
-    assert.match(a[0], /nur 95 %25 erreicht/,
-      `das Prozentzeichen ist nicht maskiert: ${a[0]}`);
+    assert.match(a[0], /nur 95 %25 erreicht/, `das Prozentzeichen ist nicht maskiert: ${a[0]}`);
   });
 });

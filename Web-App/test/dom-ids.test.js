@@ -15,7 +15,8 @@ const PUB = path.join(__dirname, '..', 'public');
 // Quelldateien darin) und liegt nur lokal/im Image, nicht im Repo. Würde es
 // mitgeprüft, meldete jeder Test doppelte Deklarationen — einmal aus der
 // Quelle, einmal aus dem Bündel.
-const JS_FILES = fs.readdirSync(path.join(PUB, 'js'))
+const JS_FILES = fs
+  .readdirSync(path.join(PUB, 'js'))
   .filter(f => f.endsWith('.js'))
   .filter(f => f !== 'app.bundle.js' && !f.startsWith('.'));
 
@@ -63,12 +64,8 @@ test('jede Moduldatei hängt im Bündel-Graphen', () => {
   // Was diese beiden Tests früher prüften
   const { STANDALONE } = require('../scripts/build-frontend.js');
   const entry = fs.readFileSync(path.join(PUB, 'js', 'main.js'), 'utf8');
-  const imported = new Set(
-    [...entry.matchAll(/from\s+'\.\/([^']+)'|import\s+'\.\/([^']+)'/g)]
-      .map(m => m[1] || m[2]));
+  const imported = new Set([...entry.matchAll(/from\s+'\.\/([^']+)'|import\s+'\.\/([^']+)'/g)].map(m => m[1] || m[2]));
   const actual = fs.readdirSync(path.join(PUB, 'js')).filter(f => f.endsWith('.js'));
-  const orphans = actual.filter(f =>
-    !STANDALONE.has(f) && !imported.has(f) && f !== 'registry.js');
-  assert.deepEqual(orphans, [],
-    `Nicht im Modulgraphen und damit nie ausgeliefert: ${orphans.join(', ')}`);
+  const orphans = actual.filter(f => !STANDALONE.has(f) && !imported.has(f) && f !== 'registry.js');
+  assert.deepEqual(orphans, [], `Nicht im Modulgraphen und damit nie ausgeliefert: ${orphans.join(', ')}`);
 });

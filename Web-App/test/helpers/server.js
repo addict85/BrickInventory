@@ -31,7 +31,7 @@ function testServer(_req, { sitzung = {}, apiNutzer, routen, t, kette = false })
   if (kette) _req('startup/app.js').apiEingang(app);
   for (const [pfad, modul] of Object.entries(routen)) app.use(pfad, _req(modul));
   const srv = app.listen(0);
-  const schliessen = () => new Promise((r) => srv.close(r));
+  const schliessen = () => new Promise(r => srv.close(r));
   if (t && typeof t.after === 'function') t.after(schliessen);
   return { app, srv, base: `http://localhost:${srv.address().port}`, schliessen };
 }

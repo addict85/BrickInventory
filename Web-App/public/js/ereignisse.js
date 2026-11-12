@@ -28,10 +28,15 @@ const _hoerer = new Map();
  */
 export function abonniere(name, fn) {
   let liste = _hoerer.get(name);
-  if (!liste) { liste = new Set(); _hoerer.set(name, liste); }
+  if (!liste) {
+    liste = new Set();
+    _hoerer.set(name, liste);
+  }
   const hoerer = /** @type {(daten: unknown) => void} */ (fn);
   liste.add(hoerer);
-  return () => { liste.delete(hoerer); };
+  return () => {
+    liste.delete(hoerer);
+  };
 }
 
 /**
@@ -43,6 +48,12 @@ export function abonniere(name, fn) {
  */
 export function melde(name, daten) {
   for (const fn of [...(_hoerer.get(name) ?? [])]) {
-    try { fn(daten); } catch (e) { setTimeout(() => { throw e; }); }
+    try {
+      fn(daten);
+    } catch (e) {
+      setTimeout(() => {
+        throw e;
+      });
+    }
   }
 }

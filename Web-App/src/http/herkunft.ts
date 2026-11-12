@@ -12,7 +12,9 @@ function hostVon(adresse: string): string | null {
   try {
     const u = new URL(adresse);
     return u.protocol === 'https:' || u.protocol === 'http:' ? u.host.toLowerCase() : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function eigeneHosts(req: Request): Set<string> {

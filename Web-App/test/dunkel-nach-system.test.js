@@ -14,10 +14,10 @@
  *   D  (29.10.) folgtSystem() wieder mit === 'system' → rot: „ohne Wahl folgt
  *      das Gerät dem System“ (data-dunkel fehlte)
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
@@ -25,8 +25,10 @@ const BOOT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), '
 
 /** Ein Fenster mit Server-Design, Gerätewahl und Systemfarbe. */
 function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
-  const dom = new jsdom.JSDOM(`<!doctype html><html data-theme="${server}"><head></head><body></body></html>`,
-    { runScripts: 'outside-only', url: 'http://localhost/' });
+  const dom = new jsdom.JSDOM(`<!doctype html><html data-theme="${server}"><head></head><body></body></html>`, {
+    runScripts: 'outside-only',
+    url: 'http://localhost/',
+  });
   const w = dom.window;
   const hoerer = [];
   const mq = { matches: dunkel, addEventListener: (_e, f) => hoerer.push(f) };
@@ -34,7 +36,10 @@ function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
   w.fetch = async () => ({ ok: false });
   if (wahl) w.localStorage.setItem('bim_dunkel', wahl);
   w.eval(BOOT);
-  const systemWechsel = (d) => { mq.matches = d; for (const f of hoerer) f(); };
+  const systemWechsel = d => {
+    mq.matches = d;
+    for (const f of hoerer) f();
+  };
   const hatDunkel = () => w.document.documentElement.hasAttribute('data-dunkel');
   return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDunkel, systemWechsel };
 }

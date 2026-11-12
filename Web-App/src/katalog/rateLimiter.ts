@@ -12,11 +12,11 @@ export class RateLimiter {
    *             drosselt die Instanz nur sich selbst. */
   constructor(maxRequests: number, windowMs: number, takt: { api: string; abstandMs: number } | null = null) {
     this.maxRequests = maxRequests;
-    this.windowMs    = windowMs;
-    this.lastCall    = 0;  // timestamp of last allowed call
-    this.queue       = []; // pending {resolve} entries
-    this._scheduled  = false;
-    this.takt        = takt;
+    this.windowMs = windowMs;
+    this.lastCall = 0; // timestamp of last allowed call
+    this.queue = []; // pending {resolve} entries
+    this._scheduled = false;
+    this.takt = takt;
   }
 
   async waitForSlot() {
@@ -30,7 +30,7 @@ export class RateLimiter {
   _schedule() {
     if (this._scheduled || !this.queue.length) return;
     this._scheduled = true;
-    const now  = Date.now();
+    const now = Date.now();
     const next = this.lastCall + this.windowMs;
     const wait = Math.max(0, next - now);
     setTimeout(() => {
@@ -81,7 +81,8 @@ export async function warteAufTakt(api: string, abstandMs: number): Promise<void
 /** Ein 429 gilt für alle Prozesse. */
 function taktAussetzen(api: string, waitMs: number) {
   if (Date.now() < taktGestoertBis) return;
-  katalog().apiTakt.schiebeTakt(api, waitMs)
+  katalog()
+    .apiTakt.schiebeTakt(api, waitMs)
     .catch(e => meldeFehler('drossel:takt-aussetzen', e));
 }
 
@@ -115,11 +116,11 @@ export class ConcurrentRateLimiter {
 
   constructor(maxConcurrent: number, intervalMs: number) {
     this.maxConcurrent = maxConcurrent; // max parallel requests in flight
-    this.intervalMs    = intervalMs;    // min ms between starting new requests
-    this.active        = 0;            // currently in-flight
-    this.queue         = [];           // waiting resolvers
-    this.lastStart     = 0;            // timestamp last request was started
-    this._timer        = null;
+    this.intervalMs = intervalMs; // min ms between starting new requests
+    this.active = 0; // currently in-flight
+    this.queue = []; // waiting resolvers
+    this.lastStart = 0; // timestamp last request was started
+    this._timer = null;
   }
 
   acquire() {
@@ -136,13 +137,16 @@ export class ConcurrentRateLimiter {
 
   _drain() {
     if (this._timer || !this.queue.length) return;
-    const now  = Date.now();
+    const now = Date.now();
     const wait = Math.max(0, this.lastStart + this.intervalMs - now);
     const canStart = this.active < this.maxConcurrent;
     if (canStart && wait === 0) {
       this._start();
     } else if (canStart) {
-      this._timer = setTimeout(() => { this._timer = null; this._drain(); }, wait);
+      this._timer = setTimeout(() => {
+        this._timer = null;
+        this._drain();
+      }, wait);
     }
   }
 
@@ -154,7 +158,10 @@ export class ConcurrentRateLimiter {
     // Die Länge ist im Wächter am Methodenanfang geprüft.
     if (resolve) resolve();
     if (this.queue.length && this.active < this.maxConcurrent) {
-      this._timer = setTimeout(() => { this._timer = null; this._drain(); }, this.intervalMs);
+      this._timer = setTimeout(() => {
+        this._timer = null;
+        this._drain();
+      }, this.intervalMs);
     }
   }
 }

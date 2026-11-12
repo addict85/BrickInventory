@@ -35,17 +35,23 @@ export async function recordAcquisitionForDay(
   userId: number,
   keyValues: (string | number)[],
   input: AcquisitionInput,
-  dbh: DbSchnittstelle = bestandBereich().db
+  dbh: DbSchnittstelle = bestandBereich().db,
 ): Promise<{ merged: boolean }> {
-  const qty   = Math.max(1, parseInt(String(input.quantity)) || 1);
+  const qty = Math.max(1, parseInt(String(input.quantity), 10) || 1);
   const price = num(input.price);
-  const cond  = zustand(input.condition);
+  const cond = zustand(input.condition);
   const geschaetzt = price != null && !!input.geschaetzt;
 
   // Eine Anweisung statt Lesen-Rechnen-Schreiben: Gleichzeitige Erfassungen
   // addieren sich. Zusammengelegt nur bei gleichem Preis, Herkunft und Währung.
-  const merged = await repo.fuegeErfassungHinzu(dbh, kind, userId, keyValues,
-    { menge: qty, preis: price, zustand: cond, geschaetzt, waehrung: input.currency ?? null, am: input.createdAt || null });
+  const merged = await repo.fuegeErfassungHinzu(dbh, kind, userId, keyValues, {
+    menge: qty,
+    preis: price,
+    zustand: cond,
+    geschaetzt,
+    waehrung: input.currency ?? null,
+    am: input.createdAt || null,
+  });
   return { merged };
 }
 
@@ -60,18 +66,26 @@ export async function findSameDayAcquisition(
   excludeId: number | null,
   condition: string | null = null,
   dbh: DbSchnittstelle = bestandBereich().db,
-  merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {}
+  merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {},
 ): Promise<number | null> {
   const cond = zustand(condition);
-  return repo.gleicheErfassungAmTag(dbh, kind, userId, keyValues, day, excludeId ?? -1,
-    { zustand: cond, preis: num(merkmale.preis), geschaetzt: !!merkmale.geschaetzt, waehrung: merkmale.waehrung ?? null });
+  return repo.gleicheErfassungAmTag(dbh, kind, userId, keyValues, day, excludeId ?? -1, {
+    zustand: cond,
+    preis: num(merkmale.preis),
+    geschaetzt: !!merkmale.geschaetzt,
+    waehrung: merkmale.waehrung ?? null,
+  });
 }
 
 /** @returns {{quantity:number, amount:number|null, priced_rows:number}} */
 export function acquisitionTotals(rows: { quantity?: unknown; purchase_price?: unknown; unit_price?: unknown }[]): {
-  quantity: number; amount: number | null; priced_rows: number;
+  quantity: number;
+  amount: number | null;
+  priced_rows: number;
 } {
-  let quantity = 0, amount = 0, priced = 0;
+  let quantity = 0,
+    amount = 0,
+    priced = 0;
   for (const r of rows || []) {
     const menge = Number(r?.quantity) || 0;
     quantity += menge;
@@ -92,32 +106,60 @@ export function acquisitionTotals(rows: { quantity?: unknown; purchase_price?: u
   };
 }
 
-type MitPreis = { quantity?: unknown; purchase_price?: unknown; unit_price?: unknown; currency?: string | null | undefined; created_at?: unknown };
+type MitPreis = {
+  quantity?: unknown;
+  purchase_price?: unknown;
+  unit_price?: unknown;
+  currency?: string | null | undefined;
+  created_at?: unknown;
+};
 
 /** Summe in der Währung des Betrachters, zum Kurs des Kauftags wie in den Finanzen: Sonst stünden
  * 3 × 260,66 USD als Euro darin. Ohne Kurs zählt die Zeile in `ohne_kurs`, nicht in der Summe. */
 export async function erfassungenInKontowaehrung<T extends MitPreis>(rows: T[], betrachter: number) {
-  const preise = rows.map(r => { const roh = r.purchase_price ?? r.unit_price; return roh === null || roh === undefined ? null : Number(roh); });
-  const tage = rows.map(r => { const d = r.created_at ? new Date(String(r.created_at)) : null; return d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null; });
-  const umgerechnet = await bestandBereich().kaufErfassungen.inWaehrungDesKontos(betrachter, preise, rows.map(r => r.currency ?? null), tage);
+  const preise = rows.map(r => {
+    const roh = r.purchase_price ?? r.unit_price;
+    return roh === null || roh === undefined ? null : Number(roh);
+  });
+  const tage = rows.map(r => {
+    const d = r.created_at ? new Date(String(r.created_at)) : null;
+    return d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null;
+  });
+  const umgerechnet = await bestandBereich().kaufErfassungen.inWaehrungDesKontos(
+    betrachter,
+    preise,
+    rows.map(r => r.currency ?? null),
+    tage,
+  );
   const acquisitions = rows.map((r, i) => ({ ...r, preis_konto: umgerechnet.betraege[i] ?? null }));
-  return { acquisitions, totals: { ...acquisitionTotals(acquisitions.map(a => ({ quantity: a.quantity, purchase_price: a.preis_konto }))),
-    currency: umgerechnet.waehrung, ohne_kurs: acquisitions.filter((a, i) => preise[i] != null && a.preis_konto == null).length } };
+  return {
+    acquisitions,
+    totals: {
+      ...acquisitionTotals(acquisitions.map(a => ({ quantity: a.quantity, purchase_price: a.preis_konto }))),
+      currency: umgerechnet.waehrung,
+      ohne_kurs: acquisitions.filter((a, i) => preise[i] != null && a.preis_konto == null).length,
+    },
+  };
 }
 
 /** Gibt es am selben Tag schon eine gleiche Zeile, wandert die Menge dorthin,
  * statt am eindeutigen Index zu scheitern.
  * @returns true, wenn etwas geändert wurde */
 export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, preis: number): Promise<boolean> {
-  return bestandBereich().db.transaction(async (tx) => {
-    const z = await repo.erfassungSperren(tx, kind, id);
-    if (!z || z[preisSpalte(kind)] != null) return false;
-    const keys = schluesselSpalten(kind).map(k => z[k]);
-    const ziel = await findSameDayAcquisition(kind, z.user_id, keys, z.tag, id, z.condition, tx,
-      { preis, geschaetzt: true, waehrung: z.currency });
-    if (ziel) await repo.legeErfassungZusammen(tx, kind, id, ziel, z.quantity);
-    else await repo.setzePreisGeschaetzt(tx, kind, id, preis);
-    return true;
-  }, { wiederholeBeiKonflikt: true }); // sperrt die Zeile, dann die Zielzeile: zwei Nachträge können sich kreuzen
+  return bestandBereich().db.transaction(
+    async tx => {
+      const z = await repo.erfassungSperren(tx, kind, id);
+      if (!z || z[preisSpalte(kind)] != null) return false;
+      const keys = schluesselSpalten(kind).map(k => z[k]);
+      const ziel = await findSameDayAcquisition(kind, z.user_id, keys, z.tag, id, z.condition, tx, {
+        preis,
+        geschaetzt: true,
+        waehrung: z.currency,
+      });
+      if (ziel) await repo.legeErfassungZusammen(tx, kind, id, ziel, z.quantity);
+      else await repo.setzePreisGeschaetzt(tx, kind, id, preis);
+      return true;
+    },
+    { wiederholeBeiKonflikt: true },
+  ); // sperrt die Zeile, dann die Zielzeile: zwei Nachträge können sich kreuzen
 }
-

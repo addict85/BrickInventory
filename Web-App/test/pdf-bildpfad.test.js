@@ -8,17 +8,16 @@
  * Gegenprobe (am 27.10. gemessen): die Prüfung `startsWith(IMAGES_DIR + sep)`
  * entfernt → rot: „fremde Uploads", „aus dem Bildordner heraus".
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
+const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { pdfBildPfad } = _req('src/katalog/pdf/pdfZeichnen.js');
 const { IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
 
 test('ein Teilebild aus dem Bildordner wird gelesen', () => {
-  assert.equal(pdfBildPfad({ image_local: '/images/parts/3001_4.png' }),
-    path.join(IMAGES_DIR, 'parts', '3001_4.png'));
+  assert.equal(pdfBildPfad({ image_local: '/images/parts/3001_4.png' }), path.join(IMAGES_DIR, 'parts', '3001_4.png'));
 });
 
 test('fremde Uploads', () => {
@@ -27,8 +26,7 @@ test('fremde Uploads', () => {
 });
 
 test('aus dem Bildordner heraus', () => {
-  for (const weg of ['/images/../uploads/7/a.png', '/images/../../package.json',
-                     '/images/parts/../../../etc/passwd'])
+  for (const weg of ['/images/../uploads/7/a.png', '/images/../../package.json', '/images/parts/../../../etc/passwd'])
     assert.equal(pdfBildPfad({ image_local: weg }), null, weg);
   assert.ok(!String(pdfBildPfad({ image_local: '/images/sets/a.png' })).startsWith(path.join(DATA_DIR, 'uploads')));
 });

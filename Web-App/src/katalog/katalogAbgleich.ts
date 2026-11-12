@@ -4,10 +4,17 @@ import { downloadFile, lookupPart } from './quellen';
 import { generateThumb } from './bilder/thumbs';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
-import { merkeTeil, merkeTeilFarbe, merkeSetTeil, setzeTeilBildLokal, merkeFiguren, merkeSetFiguren } from './katalogPflege';
+import {
+  merkeTeil,
+  merkeTeilFarbe,
+  merkeSetTeil,
+  setzeTeilBildLokal,
+  merkeFiguren,
+  merkeSetFiguren,
+} from './katalogPflege';
 import { logAndContinue, meldeFehler } from '../infra/fehler';
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';
 import { rebrickableBackgroundLimiter as rebrickableLimiter } from './rateLimiter';
 import { KEINE_FARBE } from '../infra/validate';
@@ -18,7 +25,8 @@ async function syncSetCatalog(setNumber: string) {
   const n = mitVersion(setNumber);
 
   const stand = await katalog().csvKatalog.katalogBildstand(n);
-  const total = stand.total, withImg = stand.mitBild;
+  const total = stand.total,
+    withImg = stand.mitBild;
   if (total > 0 && withImg >= total) {
     return;
   }
@@ -35,13 +43,12 @@ async function syncSetCatalog(setNumber: string) {
   }
   fs.mkdirSync(IMG_DIR, { recursive: true });
 
-  let downloaded = 0;
   for (const p of parts) {
     let imageLocal: string | null = null;
     if (p.image_url) {
       const imgFile = `${p.part_number}_${p.color_id ?? KEINE_FARBE}.jpg`;
-      const dest    = path.join(IMG_DIR, imgFile);
-      const rel     = `/images/parts/${imgFile}`;
+      const dest = path.join(IMG_DIR, imgFile);
+      const rel = `/images/parts/${imgFile}`;
 
       if (fs.existsSync(dest)) {
         imageLocal = rel;
@@ -51,7 +58,6 @@ async function syncSetCatalog(setNumber: string) {
         if (fs.existsSync(dest)) {
           await generateThumb(rel).catch(logAndContinue('katalog-sync:generateThumb'));
           imageLocal = rel;
-          downloaded++;
         }
       }
     }
@@ -60,19 +66,31 @@ async function syncSetCatalog(setNumber: string) {
       // Name, Farbe und Bild in die Kataloge, Menge in die Setliste.
       const melde = logAndContinue('katalogSync:setteil');
       await merkeTeil(p.part_number, p.part_name).catch(melde);
-      await merkeTeilFarbe(p.part_number, p.color_id ?? KEINE_FARBE, p.color_name, p.color_hex, p.image_url, imageLocal).catch(melde);
-      await merkeSetTeil(n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity||1, false).catch(melde);
+      await merkeTeilFarbe(
+        p.part_number,
+        p.color_id ?? KEINE_FARBE,
+        p.color_name,
+        p.color_hex,
+        p.image_url,
+        imageLocal,
+      ).catch(melde);
+      await merkeSetTeil(n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(melde);
     } else if (imageLocal) {
-      await setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, imageLocal).catch(logAndContinue('katalogSync:bild'));
+      await setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, imageLocal).catch(
+        logAndContinue('katalogSync:bild'),
+      );
     }
   }
 
   const figs = await katalog().csvKatalog.inventarFiguren(invId);
 
-  await merkeFiguren(figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })))
-    .catch(logAndContinue('katalog-sync:figur merken'));
-  await merkeSetFiguren(n, figs.map(f => ({ figNumber: f.fig_number, quantity: f.quantity })))
-    .catch(logAndContinue('katalog-sync:setfigur merken'));
+  await merkeFiguren(figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url }))).catch(
+    logAndContinue('katalog-sync:figur merken'),
+  );
+  await merkeSetFiguren(
+    n,
+    figs.map(f => ({ figNumber: f.fig_number, quantity: f.quantity })),
+  ).catch(logAndContinue('katalog-sync:setfigur merken'));
 }
 
 async function syncAllMissing() {
@@ -93,7 +111,9 @@ async function teilfarbenbilderNachtragen() {
         await katalog().csvKatalog.ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
         done++;
       }
-    } catch (e) { meldeFehler('kaufpreis-nachtrag:teilebild', e); }
+    } catch (e) {
+      meldeFehler('kaufpreis-nachtrag:teilebild', e);
+    }
     await warte(1500);
   }
   console.log(`  [purchase-price-backfill] Teile-Bilder aktualisiert: ${done}/${rows.length}`);

@@ -11,14 +11,20 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // über ein spätes require(). null = das CDN hat kein Bild.
 let versuche = 0;
 const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = echtesRequire.apply(this, arguments);
+Module.prototype.require = function (name, ...rest) {
+  const m = echtesRequire.call(this, name, ...rest);
   // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
+  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
     return new Proxy(m, {
-      get: (t, k) => k === 'downloadSetImage' ? (async () => { versuche++; return null; }) : t[k],
+      get: (t, k) =>
+        k === 'downloadSetImage'
+          ? async () => {
+              versuche++;
+              return null;
+            }
+          : t[k],
     });
   }
   return m;
@@ -29,10 +35,8 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req)) return;
+test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const NUTZER = `im-${process.pid}`;
   const PRAEFIX = `IM${process.pid}_`;
@@ -41,9 +45,12 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
   await db.run(`DELETE FROM rb_sets WHERE set_num LIKE $1`, [PRAEFIX + '%']);
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + PRAEFIX + '%']).catch(() => {});
   // Ein Jahrgang ohne Bilder — wie 1958 im echten Katalog.
-  await db.run(`INSERT INTO rb_sets (set_num,name,year,theme_id,num_parts,set_img_url)
+  await db.run(
+    `INSERT INTO rb_sets (set_num,name,year,theme_id,num_parts,set_img_url)
                 SELECT $1||g, 'Alt', 1958, 1, 50, 'https://example.invalid/'||g||'.jpg'
-                  FROM generate_series(1,60) g`, [PRAEFIX]);
+                  FROM generate_series(1,60) g`,
+    [PRAEFIX],
+  );
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
@@ -67,8 +74,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
     // src/katalog/bilder/bildbedarfLauf.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
     // die Liste.
     await besuch();
-    assert.equal(versuche, 0,
-      `${versuche} Downloads aus der Liste — sie darf keine mehr auslösen`);
+    assert.equal(versuche, 0, `${versuche} Downloads aus der Liste — sie darf keine mehr auslösen`);
 
     await t.test('ein anderer Prozess weiss davon', async () => {
       // Der Kern der Sache: Der Server läuft im Cluster. Ein Merker im
@@ -78,12 +84,17 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht',
       IM.merkeFehlend('set:' + PRAEFIX + '_probe');
       await IM._schreibePuffer();
       IM._leereVordergrund();
-      assert.equal(IM.istBekanntFehlend('set:' + PRAEFIX + '_probe'), false,
-        'Vorbedingung: der Arbeitsspeicher ist leer');
+      assert.equal(
+        IM.istBekanntFehlend('set:' + PRAEFIX + '_probe'),
+        false,
+        'Vorbedingung: der Arbeitsspeicher ist leer',
+      );
       await IM._auffrischen();
-      assert.equal(IM.istBekanntFehlend('set:' + PRAEFIX + '_probe'), true,
-        'Ohne die Tabelle ist das Wissen nach einem Neustart weg — dann sucht ' +
-        'jeder Arbeitsprozess von vorn');
+      assert.equal(
+        IM.istBekanntFehlend('set:' + PRAEFIX + '_probe'),
+        true,
+        'Ohne die Tabelle ist das Wissen nach einem Neustart weg — dann sucht ' + 'jeder Arbeitsprozess von vorn',
+      );
     });
 
     await t.test('ein Bild, das es gibt, wird nicht gemerkt', async () => {

@@ -20,7 +20,10 @@ export function sitzungsHoechstdauer(hoechstMs = SITZUNG_HOECHST_MS) {
     const s = req.session;
     if (!s?.userId) return next();
     const jetzt = Date.now();
-    if (typeof s.angemeldetAm !== 'number') { s.angemeldetAm = jetzt; return next(); }
+    if (typeof s.angemeldetAm !== 'number') {
+      s.angemeldetAm = jetzt;
+      return next();
+    }
     if (jetzt - s.angemeldetAm <= hoechstMs) return next();
     s.destroy((e?: unknown) => next(e));
   };

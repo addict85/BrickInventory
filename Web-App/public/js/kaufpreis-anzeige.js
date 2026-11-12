@@ -78,9 +78,9 @@ function legendeGeschaetzt(acqs) {
 
 /**
  * @param {Erfassung[] | null | undefined} acqs
- * @param {string} sn
+ * @param {string} _sn
  */
-export function renderAcquisitionSummary(acqs, sn) {
+export function renderAcquisitionSummary(acqs, _sn) {
   if (!acqs?.length) return html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return (
     acqs
@@ -105,11 +105,11 @@ export function renderAcquisitionSummary(acqs, sn) {
 // Kurzübersicht für Teile und Figuren (mit unit_price statt purchase_price)
 /**
  * @param {Erfassung[] | null | undefined} acqs
- * @param {string} type
- * @param {string} id
- * @param {number} colorId
+ * @param {string} _type
+ * @param {string} _id
+ * @param {number} _colorId
  */
-export function renderManAcqSummary(acqs, type, id, colorId) {
+export function renderManAcqSummary(acqs, _type, _id, _colorId) {
   if (!acqs?.length) return html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return (
     acqs

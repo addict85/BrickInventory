@@ -17,11 +17,20 @@ const BOESE = '03:00"><img id="eingeschleust" src="x">';
 test('der Zeitplan im Monitor setzt Serverwerte maskiert ein', async () => {
   const o = await oeffneOberflaeche({
     '/v1/admin/job-status': { success: true, job: { running: false } },
-    '/v1/admin/auftraege': { success: true, auftraege: [], zusammenfassung: [], job_prozess: { laeuft: true }, bildbedarf: 0, pausen: [] },
-    '/v1/admin/jobs': { success: true,
+    '/v1/admin/auftraege': {
+      success: true,
+      auftraege: [],
+      zusammenfassung: [],
+      job_prozess: { laeuft: true },
+      bildbedarf: 0,
+      pausen: [],
+    },
+    '/v1/admin/jobs': {
+      success: true,
       jobs: { priceJob: { status: 'idle', progress: 0, total: 0 }, imgDl: { status: 'idle', progress: 0, total: 0 } },
       schedules: { priceJob: { type: 'daily', time: BOESE }, imgDl: { type: 'interval', minutes: 15 } },
-      db: { csvCache: {}, blMapping: {} } },
+      db: { csvCache: {}, blMapping: {} },
+    },
   });
   try {
     await reiter(o.w, 'monitor');
@@ -30,5 +39,7 @@ test('der Zeitplan im Monitor setzt Serverwerte maskiert ein', async () => {
     assert.equal(o.d.querySelector('.mon-minuten').value, '15');
     assert.equal(o.d.querySelector('.mon-zeit').value, BOESE, 'der Wert kam nicht unverändert ins Feld');
     assert.equal(o.d.querySelector('.mon-zeit').dataset.arg, 'priceJob');
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });

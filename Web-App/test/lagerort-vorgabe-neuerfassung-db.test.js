@@ -29,16 +29,16 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
+const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db   = _req('db/database.js');
+const db = _req('db/database.js');
 
 // Rebrickable vorgeben: Ohne Namen im Rumpf fragt addManualPart/addManualFig
 // den Katalog und danach notfalls Rebrickable. Hier geht es um den Lagerort,
@@ -49,16 +49,20 @@ const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js')
 // `undefined` (als Zuweisungsziel wird die linke Seite zuerst aufgeloest).
 const echtRb = require(rbPfad);
 require.cache[rbPfad].exports = Object.assign({}, echtRb, {
-  lookupPart:     async () => null,
+  lookupPart: async () => null,
   getMinifigInfo: async () => null,
 });
 
-test.after(async () => { await db.pool.end().catch(() => {}); });
+test.after(async () => {
+  await db.pool.end().catch(() => {});
+});
 
-test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    keineDb(t, e); return;
+test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -66,11 +70,14 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   await db.initSchema();
   {
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   }
 
-  const UID = (await db.get(
-    `INSERT INTO users (username,password_hash) VALUES ('marco','x') RETURNING id`)).id;
+  const UID = (await db.get(`INSERT INTO users (username,password_hash) VALUES ('marco','x') RETURNING id`)).id;
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES
                   ('3001','Brick 2 x 4'), ('3002','Brick 2 x 2'), ('3003','Brick 2 x 3'),
                   ('3004','Brick 1 x 2')`);
@@ -79,20 +86,27 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
                   ('3003',4,'https://cdn.example/c.jpg'), ('3004',4,'https://cdn.example/d.jpg')`);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url) VALUES
                   ('fig-000123','Chewbacca','https://cdn.example/e.jpg')`);
-  await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 7'), ($1,'Kiste 3')`,
-               [UID]);
-  const ortId = async (name) =>
+  await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 7'), ($1,'Kiste 3')`, [UID]);
+  const ortId = async name =>
     (await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, name])).id;
 
-  const { setzeVorgabe, ortFuerNeuerfassung } = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
+  const { setzeVorgabe, ortFuerNeuerfassung } = {
+    ..._req('src/bestand/lagerort.js'),
+    ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst,
+  };
   const { addManualPart } = _req('src/teile/manuelleTeile.js');
-  const { addManualFig }  = _req('src/figuren/manuelleFiguren.js');
+  const { addManualFig } = _req('src/figuren/manuelleFiguren.js');
 
   await setzeVorgabe(UID, await ortId('Kiste 7'));
 
-  const ortVonTeil = async (nr) => (await db.get(
-    `SELECT l.name FROM parts p LEFT JOIN storage_locations l ON l.id = p.storage_id
-      WHERE p.user_id=$1 AND p.part_number=$2`, [UID, nr]))?.name ?? null;
+  const ortVonTeil = async nr =>
+    (
+      await db.get(
+        `SELECT l.name FROM parts p LEFT JOIN storage_locations l ON l.id = p.storage_id
+      WHERE p.user_id=$1 AND p.part_number=$2`,
+        [UID, nr],
+      )
+    )?.name ?? null;
 
   await t.test('ein Teil ohne Ortangabe bekommt die Vorgabe', async () => {
     // Genau so ruft der Wanted-Import an (routes/api_v1/wanted.ts, `anleger`):
@@ -105,7 +119,9 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     await addManualFig(UID, { fig_number: 'fig-000123', quantity: 1 });
     const z = await db.get(
       `SELECT l.name FROM minifigs m LEFT JOIN storage_locations l ON l.id = m.storage_id
-        WHERE m.user_id=$1 AND m.fig_number='fig-000123'`, [UID]);
+        WHERE m.user_id=$1 AND m.fig_number='fig-000123'`,
+      [UID],
+    );
     assert.equal(z?.name ?? null, 'Kiste 7');
   });
 
@@ -113,9 +129,12 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     // Nicht durch addSet hindurch — siehe den Kopf. Geprueft ist der Wert, den
     // die Huelle in src/sets/setService.ts aus demselben Aufruf erhaelt.
     assert.equal(await ortFuerNeuerfassung(UID, undefined), 'Kiste 7');
-    assert.equal(await ortFuerNeuerfassung(UID, null), 'Kiste 7',
+    assert.equal(
+      await ortFuerNeuerfassung(UID, null),
+      'Kiste 7',
       'null kommt aus einem fehlenden Vorgabewert der Signatur und heisst ' +
-      'dasselbe wie undefined: niemand hat etwas gesagt');
+        'dasselbe wie undefined: niemand hat etwas gesagt',
+    );
   });
 
   await t.test('ein mitgegebener Ort gewinnt gegen die Vorgabe', async () => {
@@ -125,16 +144,22 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
 
   await t.test('ein ausdruecklich geleertes Feld bleibt leer', async () => {
     await addManualPart(UID, { part_number: '3003', color_id: 4, quantity: 1, storage: '' });
-    assert.equal(await ortVonTeil('3003'), null,
+    assert.equal(
+      await ortVonTeil('3003'),
+      null,
       'Das sendet ein Formular, in dem die vorbefuellte Vorgabe weggeraeumt ' +
-      'wurde (selectedStorage in gallery.js). Sie wieder einzusetzen waere ' +
-      'ein Ort, den niemand wegbekommt');
+        'wurde (selectedStorage in gallery.js). Sie wieder einzusetzen waere ' +
+        'ein Ort, den niemand wegbekommt',
+    );
   });
 
   await t.test('eine Vorgabe, deren Ort geloescht wurde, gilt nicht', async () => {
     await db.run('DELETE FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, 'Kiste 7']);
-    assert.equal(await ortFuerNeuerfassung(UID, undefined), null,
-      'vorgabeVon() liest ueber einen JOIN auf den Vorrat — die Vorgabe heilt sich selbst');
+    assert.equal(
+      await ortFuerNeuerfassung(UID, undefined),
+      null,
+      'vorgabeVon() liest ueber einen JOIN auf den Vorrat — die Vorgabe heilt sich selbst',
+    );
     await addManualPart(UID, { part_number: '3004', color_id: 4, quantity: 1 });
     assert.equal(await ortVonTeil('3004'), null);
   });

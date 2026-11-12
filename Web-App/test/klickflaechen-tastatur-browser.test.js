@@ -22,9 +22,9 @@ const assert = require('node:assert/strict');
 const { starteApp } = require('./helpers/app-browser');
 const { musterHaushalt } = require('./helpers/bestand');
 
-const klick = (sel) => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
-const reiter = (r) => klick(`.ntab[data-tab="${r}"]`);
-const sicht = (s) => klick(`.umenu-item[data-arg="${s}"]`);
+const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
+const reiter = r => klick(`.ntab[data-tab="${r}"]`);
+const sicht = s => klick(`.umenu-item[data-arg="${s}"]`);
 const ansicht = (id, wert) => klick(`[data-click="ansichtWaehlen"][data-arg="${id}"][data-arg2="${wert}"]`);
 
 const SEITEN = [
@@ -39,7 +39,13 @@ const SEITEN = [
   ['Merkliste', [reiter('wanted')]],
   ['Katalog', [reiter('catalog')]],
   ['Hintergrundarbeiten', [reiter('monitor')]],
-  ['Einstellungen', [reiter('settings'), `document.querySelectorAll('#global-settings-grid > .ssec').forEach(a => a.classList.add('einst-aktiv')); true`]],
+  [
+    'Einstellungen',
+    [
+      reiter('settings'),
+      `document.querySelectorAll('#global-settings-grid > .ssec').forEach(a => a.classList.add('einst-aktiv')); true`,
+    ],
+  ],
   ...['profil', 'gutscheine', 'alarme', 'lagerorte', 'haushalt', 'daten', 'app'].map(s => [`Sicht ${s}`, [sicht(s)]]),
   ['Set-Detail', [reiter('gallery'), klick('#gallery [data-click="openModal"]')]],
 ];
@@ -58,9 +64,12 @@ const UNBEDIENBAR = `(() => {
   }
   return [...funde]; })()`;
 
-test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async (t) => {
+test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async t => {
   const app = await starteApp(t, { name: `kft_${process.pid}`, bestand: musterHaushalt });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
@@ -71,8 +80,13 @@ test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async (t) => {
     let geprueft = 0;
     for (const [seite, schritte] of SEITEN) {
       await b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open')); true`);
-      for (const s of schritte) { await b.auswerten(s); await ruhe(); }
-      geprueft += await b.auswerten(`[...document.querySelectorAll('[data-click]')].filter(e => e.checkVisibility()).length`);
+      for (const s of schritte) {
+        await b.auswerten(s);
+        await ruhe();
+      }
+      geprueft += await b.auswerten(
+        `[...document.querySelectorAll('[data-click]')].filter(e => e.checkVisibility()).length`,
+      );
       for (const f of await b.auswerten(UNBEDIENBAR)) funde.push(`${seite}: ${f}`);
     }
     assert.ok(geprueft > 200, `nur ${geprueft} Klickflächen gesehen — prüft der Test noch etwas?`);
@@ -82,7 +96,10 @@ test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async (t) => {
   await t.test('Figur aus Set per Tastatur', async () => {
     await b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open')); true`);
     await b.auswerten(reiter('minifigs'));
-    for (const [wert, sel] of [['grid', '#figs-list .part-card[data-click="openSetItemDetail"]'], ['table', '#figs-list tr .zeile-oeffnen[data-click="openSetItemDetail"]']]) {
+    for (const [wert, sel] of [
+      ['grid', '#figs-list .part-card[data-click="openSetItemDetail"]'],
+      ['table', '#figs-list tr .zeile-oeffnen[data-click="openSetItemDetail"]'],
+    ]) {
       await b.auswerten(ansicht('figs-view', wert));
       await bis(`!!document.querySelector(${JSON.stringify(sel)})`, `Figur aus Set (${wert})`);
       // Mit Tab hin, nicht mit focus(): Der Befund war, dass der Tab-Gang sie übersprang.
@@ -94,10 +111,22 @@ test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async (t) => {
         erreicht = await b.auswerten(`document.activeElement === document.querySelector(${JSON.stringify(sel)})`);
       }
       assert.ok(erreicht, `${wert}: Tab erreicht die Figur aus dem Set nicht`);
-      await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' });
+      await b.tab('Input.dispatchKeyEvent', {
+        type: 'keyDown',
+        key: 'Enter',
+        code: 'Enter',
+        windowsVirtualKeyCode: 13,
+        text: '\r',
+      });
       await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
-      await bis(`document.getElementById('setitem-modal')?.classList.contains('open')`, `${wert}: Eingabe öffnet den Dialog`);
-      await bis(`/Marty McFly/.test(document.getElementById('setitem-modal').textContent)`, `${wert}: Dialog der Figur`);
+      await bis(
+        `document.getElementById('setitem-modal')?.classList.contains('open')`,
+        `${wert}: Eingabe öffnet den Dialog`,
+      );
+      await bis(
+        `/Marty McFly/.test(document.getElementById('setitem-modal').textContent)`,
+        `${wert}: Dialog der Figur`,
+      );
       await b.auswerten(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
       await bis(`!document.getElementById('setitem-modal').classList.contains('open')`, 'Dialog zu');
     }

@@ -11,11 +11,11 @@ export function teilSichtJoin(konto: string, nummer: string, farbe: string): str
 }
 
 export const TEIL = {
-  name:      'COALESCE(pc.part_name, te.part_name)',
+  name: 'COALESCE(pc.part_name, te.part_name)',
   kategorie: 'COALESCE(pc.category_name, te.category_name)',
-  farbname:  'COALESCE(pcc.color_name, tfe.color_name)',
-  farbcode:  'COALESCE(pcc.color_hex, tfe.color_hex)',
-  bild:      'COALESCE(pcc.image_url, tfe.image_url)',
+  farbname: 'COALESCE(pcc.color_name, tfe.color_name)',
+  farbcode: 'COALESCE(pcc.color_hex, tfe.color_hex)',
+  bild: 'COALESCE(pcc.image_url, tfe.image_url)',
   bildDatei: 'pcc.image_local',
 } as const;
 
@@ -26,8 +26,8 @@ export function figurSichtJoin(konto: string, nummer: string): string {
 }
 
 export const FIGUR = {
-  name:      'COALESCE(mc.fig_name, fe.fig_name)',
-  bild:      'COALESCE(mc.image_url, fe.image_url)',
+  name: 'COALESCE(mc.fig_name, fe.fig_name)',
+  bild: 'COALESCE(mc.image_url, fe.image_url)',
   bildDatei: 'mc.image_local',
 } as const;
 
@@ -40,8 +40,8 @@ export function setStammJoin(nummer: string): string {
 }
 
 export const SET = {
-  name:  'rs.name',
-  jahr:  'NULLIF(rs.year, 0)',
+  name: 'rs.name',
+  jahr: 'NULLIF(rs.year, 0)',
   thema: 'rt.name',
   teile: 'NULLIF(rs.num_parts, 0)',
 } as const;

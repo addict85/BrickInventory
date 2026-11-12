@@ -13,15 +13,46 @@ const assert = require('node:assert/strict');
 const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
 
 const ANTWORTEN = {
-  '/v1/parts/manual': { success: true, parts: [
-    { part_number: '3001', color_id: 4, part_name: 'Brick 2 x 4', color_name: 'Red', quantity: 3, user_id: 1, source: 'manual' },
-  ] },
-  '/v1/parts/3001/4/acquisitions': { success: true, acquisitions: [
-    { id: 7, quantity: 2, unit_price: 3.5, condition: 'U', price_estimated: true, currency: 'CHF',
-      created_at: '2026-10-28T08:00:00Z', owner_user_id: 1 },
-    { id: 8, quantity: 1, unit_price: 1.25, condition: 'N', price_estimated: false, currency: 'EUR',
-      created_at: '2026-10-27T08:00:00Z', owner_user_id: 1 },
-  ], totals: { quantity: 3, amount: 8.25, priced_rows: 2 } },
+  '/v1/parts/manual': {
+    success: true,
+    parts: [
+      {
+        part_number: '3001',
+        color_id: 4,
+        part_name: 'Brick 2 x 4',
+        color_name: 'Red',
+        quantity: 3,
+        user_id: 1,
+        source: 'manual',
+      },
+    ],
+  },
+  '/v1/parts/3001/4/acquisitions': {
+    success: true,
+    acquisitions: [
+      {
+        id: 7,
+        quantity: 2,
+        unit_price: 3.5,
+        condition: 'U',
+        price_estimated: true,
+        currency: 'CHF',
+        created_at: '2026-10-28T08:00:00Z',
+        owner_user_id: 1,
+      },
+      {
+        id: 8,
+        quantity: 1,
+        unit_price: 1.25,
+        condition: 'N',
+        price_estimated: false,
+        currency: 'EUR',
+        created_at: '2026-10-27T08:00:00Z',
+        owner_user_id: 1,
+      },
+    ],
+    totals: { quantity: 3, amount: 8.25, priced_rows: 2 },
+  },
 };
 
 async function detail() {
@@ -44,7 +75,9 @@ test('jede Erfassung in ihrer Währung', async () => {
     const flach = text.replace(/\s+/g, ' ');
     assert.match(flach, /CHF ?3[.,]50|3[.,]50 ?CHF/, `CHF fehlt: ${flach.slice(0, 600)}`);
     assert.match(flach, /(EUR|€) ?1[.,]25|1[.,]25 ?(EUR|€)/, 'die EUR-Erfassung bleibt in EUR');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('ein geschätzter Preis trägt ≈', async () => {
@@ -53,5 +86,7 @@ test('ein geschätzter Preis trägt ≈', async () => {
     const zeichen = [...d.querySelectorAll('#man-detail-body [role="img"]')].filter(e => e.textContent === '≈');
     assert.equal(zeichen.length, 1, 'genau die geschätzte Erfassung trägt ≈');
     assert.match(zeichen[0].getAttribute('aria-label'), /geschätzt/i);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

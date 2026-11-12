@@ -10,15 +10,21 @@ const ROOT = path.join(__dirname, '..');
 
 /** Tabellen mit Daten, die der Nutzer selbst eingegeben hat. */
 const NUTZERDATEN = [
-  'sets', 'parts', 'minifigs',
-  'set_acquisitions', 'part_acquisitions', 'minifig_acquisitions',
-  'users', 'user_settings', 'account_links',
+  'sets',
+  'parts',
+  'minifigs',
+  'set_acquisitions',
+  'part_acquisitions',
+  'minifig_acquisitions',
+  'users',
+  'user_settings',
+  'account_links',
 ];
 
 test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
   /** @type {string[]} */
   const dateien = [];
-  const sammle = (d) => {
+  const sammle = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', '.git', 'dist', 'coverage', 'public', 'test'].includes(e.name)) continue;
       const p = path.join(d, e.name);
@@ -32,12 +38,16 @@ test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
   // Warum hier geklammert und nicht nur ein Fenster gelesen wird
   const aufruf = /\b(?:db|tx|dbh|client)\.(?:run|query)\(|\bpool\.query\(/g;
   const stillDanach = /^\s*\)?\s*\.catch\(\s*\(?\s*_?\w*\s*\)?\s*=>\s*(\{\s*\}|null|undefined)\s*\)/;
-  const schreib = new RegExp(
-    `\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+(${NUTZERDATEN.join('|')})\\b`, 'i');
+  const schreib = new RegExp(`\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+(${NUTZERDATEN.join('|')})\\b`, 'i');
 
-  const ohneKommentare = (src) => src.split('\n')
-    .map(z => { const t = z.trim(); return (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) ? '' : z; })
-    .join('\n');
+  const ohneKommentare = src =>
+    src
+      .split('\n')
+      .map(z => {
+        const t = z.trim();
+        return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') ? '' : z;
+      })
+      .join('\n');
 
   const verstoesse = [];
   let geprueft = 0;
@@ -45,7 +55,8 @@ test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const m of src.matchAll(aufruf)) {
       // Bis zur schliessenden Klammer des Aufrufs
-      let tiefe = 1, i = m.index + m[0].length;
+      let tiefe = 1,
+        i = m.index + m[0].length;
       while (i < src.length && tiefe > 0) {
         const c = src[i];
         if (c === '(') tiefe++;
@@ -64,12 +75,14 @@ test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
 
   // Selbstbeweis: Findet das Muster keine schreibenden Aufrufe auf diesen
   // Tabellen, sagt ein leeres Ergebnis nichts.
-  assert.ok(geprueft >= 30,
-    `nur ${geprueft} schreibende Aufrufe auf Nutzerdaten gefunden — Muster veraltet`);
+  assert.ok(geprueft >= 30, `nur ${geprueft} schreibende Aufrufe auf Nutzerdaten gefunden — Muster veraltet`);
 
-  assert.deepEqual(verstoesse, [],
+  assert.deepEqual(
+    verstoesse,
+    [],
     'Diese Schreibvorgaenge auf Nutzerdaten scheitern spurlos:\n  ' +
-    verstoesse.join('\n  ') +
-    '\nEntweder den Fehler weiterreichen (gar kein catch) oder ihn mit ' +
-    'logAndContinue(kontext) protokollieren.');
+      verstoesse.join('\n  ') +
+      '\nEntweder den Fehler weiterreichen (gar kein catch) oder ihn mit ' +
+      'logAndContinue(kontext) protokollieren.',
+  );
 });

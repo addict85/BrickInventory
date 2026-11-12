@@ -11,13 +11,17 @@ import { auftraegeBereich } from '../src/auftraege';
 /** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers: In
  * Betrieb (auch ohne NODE_ENV) ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
 export async function warneBeiSuperuser(db: Db): Promise<boolean> {
-  if (!konfig().betrieb || !await db.alsSuperuserVerbunden()) return false;
+  if (!konfig().betrieb || !(await db.alsSuperuserVerbunden())) return false;
   if (!konfig().dbSuperuserErlaubt) {
-    console.error('❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md, '
-      + 'Abschnitt 29; wer es bewusst so betreibt, setzt DB_SUPERUSER_ERLAUBT=1 (Abschnitt 34).');
+    console.error(
+      '❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md, ' +
+        'Abschnitt 29; wer es bewusst so betreibt, setzt DB_SUPERUSER_ERLAUBT=1 (Abschnitt 34).',
+    );
     process.exit(1);
   }
-  console.warn('⚠️  [datenbank] Die App verbindet sich als Superuser (DB_SUPERUSER_ERLAUBT=1). Eigene Rolle: UPGRADE.md, Abschnitt 29.');
+  console.warn(
+    '⚠️  [datenbank] Die App verbindet sich als Superuser (DB_SUPERUSER_ERLAUBT=1). Eigene Rolle: UPGRADE.md, Abschnitt 29.',
+  );
   return true;
 }
 
@@ -30,8 +34,12 @@ export const ALTBESTAND_MARKE = 'altbestand_v2';
  * Doppelprüfung. @returns null, wenn die Marke schon steht */
 export async function altbestandAufruesten(): Promise<{ umgeschluesselt: number; abdruecke: number } | null> {
   if (await auftraegeBereich().laufzustand.liesZustand(ALTBESTAND_MARKE)) return null;
-  const n = await gutscheineBereich().gutscheine.nummernNachverschluesseln() + await gutscheineBereich().gutscheine.kopienVerschluesseln() + await verschluesseleAltbestand()
-    + await antwortenUmschluesseln() + await verschluesseleGutscheinAltbestand();
+  const n =
+    (await gutscheineBereich().gutscheine.nummernNachverschluesseln()) +
+    (await gutscheineBereich().gutscheine.kopienVerschluesseln()) +
+    (await verschluesseleAltbestand()) +
+    (await antwortenUmschluesseln()) +
+    (await verschluesseleGutscheinAltbestand());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
   const alt = await alteAbdrueckeLoeschen();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
@@ -44,12 +52,17 @@ export async function altbestandAufruesten(): Promise<{ umgeschluesselt: number;
  * stören sich nicht: Jede Zeile wird nur ersetzt, wenn sie unverändert ist. */
 export async function schluesselWechsel(): Promise<number | null> {
   if (!altSchluessel()) return null;
-  const n = await verschluesseleAltbestand({ alle: true }) + await gutscheineBereich().gutscheine.gutscheineNeuVerschluesseln()
-    + await gutscheineBereich().gutscheine.kopienVerschluesseln(true) + await verschluesseleGutscheinAltbestand({ alle: true });
+  const n =
+    (await verschluesseleAltbestand({ alle: true })) +
+    (await gutscheineBereich().gutscheine.gutscheineNeuVerschluesseln()) +
+    (await gutscheineBereich().gutscheine.kopienVerschluesseln(true)) +
+    (await verschluesseleGutscheinAltbestand({ alle: true }));
   // Antworten und Abdrücke gelten 24 Stunden und hängen am Schlüssel; neu rechnen lohnt nicht.
   await alleVergessen();
-  console.log(`[geheimnis] Schlüsselwechsel: ${n} Werte mit dem neuen Schlüssel geschrieben. Der vorige `
-    + '(DATA_KEY_ALT_FILE) kann weg, sobald jedes Konto mit zweitem Faktor neue Wiederherstellungscodes hat (UPGRADE.md).');
+  console.log(
+    `[geheimnis] Schlüsselwechsel: ${n} Werte mit dem neuen Schlüssel geschrieben. Der vorige ` +
+      '(DATA_KEY_ALT_FILE) kann weg, sobald jedes Konto mit zweitem Faktor neue Wiederherstellungscodes hat (UPGRADE.md).',
+  );
   return n;
 }
 

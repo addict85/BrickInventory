@@ -24,7 +24,7 @@ const OFFEN = new Map([]);
 function dateien() {
   const out = [];
   /** @param {string} d */
-  const lauf = (d) => {
+  const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
       const p = path.join(d, e.name);
@@ -53,9 +53,11 @@ const fehler = [];
 for (const [datei, n] of gefunden) {
   const erlaubt = OFFEN.get(datei);
   if (erlaubt === undefined) {
-    fehler.push(`NEU: ${datei} (${n}x). global_settings gehört über src/einstellungen/settings.ts — ` +
-      `getGlobalSetting() / setGlobalSetting(). Nur so ist updated_at einheitlich ` +
-      `und ein späterer Umbau der Tabelle EINE Änderung statt zwanzig.`);
+    fehler.push(
+      `NEU: ${datei} (${n}x). global_settings gehört über src/einstellungen/settings.ts — ` +
+        `getGlobalSetting() / setGlobalSetting(). Nur so ist updated_at einheitlich ` +
+        `und ein späterer Umbau der Tabelle EINE Änderung statt zwanzig.`,
+    );
   } else if (n > erlaubt) {
     fehler.push(`MEHR: ${datei} hat ${n} statt ${erlaubt}. Die Liste darf nur kürzer werden.`);
   }

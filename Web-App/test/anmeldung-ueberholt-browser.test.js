@@ -12,13 +12,24 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { starteApp } = require('./helpers/app-browser');
 
-test('eine späte Startantwort „nicht angemeldet“ beendet die frische Anmeldung nicht', { timeout: 120_000 }, async (t) => {
+test('eine späte Startantwort „nicht angemeldet“ beendet die frische Anmeldung nicht', {
+  timeout: 120_000,
+}, async t => {
   const app = await starteApp(t, {
     name: `ueberholt_${process.pid}`,
-    abfangen: [{ muster: '*/api/v1/auth/me*', enthaelt: '/api/v1/auth/me',
-                 antwort: { success: true, loggedIn: false, user: null }, verzoegerung: 4000 }],
+    abfangen: [
+      {
+        muster: '*/api/v1/auth/me*',
+        enthaelt: '/api/v1/auth/me',
+        antwort: { success: true, loggedIn: false, user: null },
+        verzoegerung: 4000,
+      },
+    ],
   });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   // starteApp kehrt kurz nach der Anmeldung zurück; die Startantwort kommt
   // 4 s nach dem Laden der Seite. ruhig() wartet, bis sie da ist.
   await app.ruhig(15_000);

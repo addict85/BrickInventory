@@ -8,10 +8,10 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -30,24 +30,31 @@ test.after(async () => {
     await db.run('CREATE SCHEMA public');
     await db.initSchema();
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   } catch (e) {
     console.error('[setmenge-aus-erfassungen] Aufraeumen fehlgeschlagen:', e.message);
   }
   await db.pool.end().catch(() => {});
 });
 
-const spaltenVon = async (tabelle) => (await db.all(
-  `SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
-  .map(r => r.column_name).sort();
+const spaltenVon = async tabelle =>
+  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
+    .map(r => r.column_name)
+    .sort();
 
-const dbDa = async (t) => {
-  try { await db.run('SELECT 1'); return true; }
-  catch (e) {
-    keineDb(t, e); return false;
+const dbDa = async t => {
+  try {
+    await db.run('SELECT 1');
+    return true;
+  } catch (e) {
+    keineDb(t, e);
+    return false;
   }
 };
-
 
 /** Frische Datenbank, Schema, alle Migrationen. */
 async function volleKette() {
@@ -55,11 +62,14 @@ async function volleKette() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c);
+  } finally {
+    c.release();
+  }
 }
 
-test('nach der ganzen Kette trägt sets keine quantity mehr',
-  { concurrency: 1 }, async (t) => {
+test('nach der ganzen Kette trägt sets keine quantity mehr', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -69,12 +79,18 @@ test('nach der ganzen Kette trägt sets keine quantity mehr',
   // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
   // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
 
   const nachher = await spaltenVon('sets');
-  assert.ok(!nachher.includes('quantity'),
+  assert.ok(
+    !nachher.includes('quantity'),
     'sets.quantity ist nach allen Migrationen noch da — Migration 0036 hat nicht ' +
-    'geloescht, oder etwas legt die Spalte danach wieder an.');
+      'geloescht, oder etwas legt die Spalte danach wieder an.',
+  );
 
   // Und was `sets` noch ist: DIESES Konto haelt DIESES Set, seit DANN, an DEM
   // Ort. Marcos Liste.
@@ -85,8 +101,7 @@ test('nach der ganzen Kette trägt sets keine quantity mehr',
   // Nicht verschwunden, sondern umgezogen.
   const erf = await spaltenVon('set_acquisitions');
   for (const sp of ['user_id', 'set_number', 'quantity', 'purchase_price', 'condition', 'created_at']) {
-    assert.ok(erf.includes(sp),
-      `set_acquisitions.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
+    assert.ok(erf.includes(sp), `set_acquisitions.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
   }
 });
 
@@ -96,10 +111,13 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   // nicht, jede verbliebene Lesestelle ist ein harter Fehler — und genau
   // deshalb laufen die Lesewege unten gegen eine migrierte Datenbank.
   const dateien = [];
-  const lauf = (verz) => {
+  const lauf = verz => {
     for (const e of fs.readdirSync(verz, { withFileTypes: true })) {
       const p = path.join(verz, e.name);
-      if (e.isDirectory()) { lauf(p); continue; }
+      if (e.isDirectory()) {
+        lauf(p);
+        continue;
+      }
       if (/\.(ts|js)$/.test(e.name)) dateien.push(p);
     }
   };
@@ -113,40 +131,50 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   /** Zeilen ohne Kommentare — ein Erklärtext, der eine Anweisung ZITIERT, ist
    *  kein Schreibzugriff. Genau diese Falle hat in diesem Baum schon eine
    *  Regel ihren eigenen Begründungstext melden lassen. */
-  const codeZeilen = (txt) => txt.split('\n')
-    .filter(z => { const t = z.trim(); return !(t.startsWith('//') || t.startsWith('*')
-                                             || t.startsWith('/*') || t.startsWith('--')); });
+  const codeZeilen = txt =>
+    txt.split('\n').filter(z => {
+      const t = z.trim();
+      return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('--'));
+    });
 
   // Nur die sets-Tabelle: Die Erfassungstabellen schreiben ihre eigene
   // quantity natuerlich fort — sie sind die Wahrheit, nicht die Kopie.
   // GEMESSEN beim ersten Entwurf dieser Regel in ihrer breiteren Fassung: Sie
   // meldete `UPDATE part_acquisitions SET quantity=quantity-$1` als Verstoss,
   // und das ist genau der Weg, auf dem eine Erfassung kleiner wird.
-  const setzt         = /UPDATE\s+sets\s+SET\s+[^;`']*\bquantity\s*=/i;
+  const setzt = /UPDATE\s+sets\s+SET\s+[^;`']*\bquantity\s*=/i;
   const fortschreiben = /UPDATE\s+sets\s+SET\s+quantity\s*=\s*(?:sets\.)?quantity\s*[+-]/i;
-  const beiKonflikt   = /INSERT\s+INTO\s+sets\b[^;]*DO\s+UPDATE\s+SET\s+[^;]*\bquantity\s*=/i;
+  const beiKonflikt = /INSERT\s+INTO\s+sets\b[^;]*DO\s+UPDATE\s+SET\s+[^;]*\bquantity\s*=/i;
   // Und die Spalte darf auch nicht wieder angelegt werden — ein
   // `ADD COLUMN quantity` auf sets wuerde die Kopie zurueckbringen, ohne eine
   // einzige der Regeln oben zu verletzen.
-  const legtAn        = /ALTER\s+TABLE\s+sets\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?quantity/i;
+  const legtAn = /ALTER\s+TABLE\s+sets\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?quantity/i;
 
   const stellen = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei);
     const txt = fs.readFileSync(datei, 'utf8');
     for (const z of codeZeilen(txt)) {
-      for (const [was, muster] of [['setzt', setzt], ['schreibt fort', fortschreiben],
-                                   ['bei Konflikt', beiKonflikt], ['legt an', legtAn]]) {
+      for (const [was, muster] of [
+        ['setzt', setzt],
+        ['schreibt fort', fortschreiben],
+        ['bei Konflikt', beiKonflikt],
+        ['legt an', legtAn],
+      ]) {
         if (muster.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 90)}`);
       }
     }
   }
 
-  assert.deepEqual(stellen, [],
-    'Diese Stellen schreiben die Stückzahl eines Sets:\n  ' + stellen.join('\n  ') +
-    '\nSie steht seit Migration 0036 ausschliesslich in set_acquisitions. Genau die ' +
-    'zweite Schreibrichtung ist auseinandergelaufen: sets.quantity = 10 bei drei ' +
-    'Erfassungen mit Summe 7.');
+  assert.deepEqual(
+    stellen,
+    [],
+    'Diese Stellen schreiben die Stückzahl eines Sets:\n  ' +
+      stellen.join('\n  ') +
+      '\nSie steht seit Migration 0036 ausschliesslich in set_acquisitions. Genau die ' +
+      'zweite Schreibrichtung ist auseinandergelaufen: sets.quantity = 10 bei drei ' +
+      'Erfassungen mit Summe 7.',
+  );
 
   // ── Selbstbeweis ─────────────────────────────────────────────────────────
   //
@@ -157,55 +185,58 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   const proben = [
     ['UPDATE sets SET quantity = $1 WHERE user_id=$2', setzt],
     ['UPDATE sets SET quantity = quantity + $1 WHERE id=$2', fortschreiben],
-    [`INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,$2,$3)
-        ON CONFLICT (user_id,set_number) DO UPDATE SET quantity = sets.quantity + 1`, beiKonflikt],
+    [
+      `INSERT INTO sets (user_id,set_number,quantity) VALUES ($1,$2,$3)
+        ON CONFLICT (user_id,set_number) DO UPDATE SET quantity = sets.quantity + 1`,
+      beiKonflikt,
+    ],
     ['ALTER TABLE sets ADD COLUMN IF NOT EXISTS quantity INTEGER', legtAn],
   ];
   for (const [zeile, muster] of proben) {
-    assert.ok(muster.test(zeile),
-      `Das Muster greift nicht mehr auf seine eigene Probe: ${zeile.slice(0, 60)}`);
+    assert.ok(muster.test(zeile), `Das Muster greift nicht mehr auf seine eigene Probe: ${zeile.slice(0, 60)}`);
   }
   // Und die Gegenrichtung: Was erlaubt ist, darf NICHT greifen.
   for (const zeile of [
     'UPDATE set_acquisitions SET quantity = quantity - $1 WHERE id=$2',
     'UPDATE parts SET quantity = COALESCE((SELECT SUM(a.quantity) FROM part_acquisitions a), 0)',
   ]) {
-    for (const [was, muster] of [['setzt', setzt], ['schreibt fort', fortschreiben],
-                                 ['bei Konflikt', beiKonflikt], ['legt an', legtAn]]) {
-      assert.ok(!muster.test(zeile),
-        `Das Muster „${was}" meldet eine erlaubte Zeile: ${zeile.slice(0, 70)}`);
+    for (const [was, muster] of [
+      ['setzt', setzt],
+      ['schreibt fort', fortschreiben],
+      ['bei Konflikt', beiKonflikt],
+      ['legt an', legtAn],
+    ]) {
+      assert.ok(!muster.test(zeile), `Das Muster „${was}" meldet eine erlaubte Zeile: ${zeile.slice(0, 70)}`);
     }
   }
 });
 
-test('die Lesewege liefern die Stückzahl aus den Erfassungen',
-  { concurrency: 1 }, async (t) => {
+test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await volleKette();
 
-  const haupt = await db.get(
-    `INSERT INTO users (username,password_hash) VALUES ('mengeleser','x') RETURNING id`);
-  const kind = await db.get(
-    `INSERT INTO users (username,password_hash) VALUES ('mengeleser_kind','x') RETURNING id`);
+  const haupt = await db.get(`INSERT INTO users (username,password_hash) VALUES ('mengeleser','x') RETURNING id`);
+  const kind = await db.get(`INSERT INTO users (username,password_hash) VALUES ('mengeleser_kind','x') RETURNING id`);
   const SN = '10290-1';
 
   await katalogSet(db, SN, { name: 'Pickup Truck', year: 2022, pieces: 1677 });
   // Zwei Konten halten dasselbe Set — der Haushaltszweig von getSets() fasst
   // sie zu EINER Kachel zusammen und muss die Mengen addieren.
-  await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`,
-    [haupt.id, SN, kind.id]);
+  await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`, [haupt.id, SN, kind.id]);
   // Drei Erfassungen: zwei beim Hauptkonto (2+1), eine beim Kind (3).
   //
   // Verschiedene TAGE, und das ist keine Kosmetik: idx_set_acq_tag_zustand (Migration
   // 0004) erlaubt je Konto, Set und Tag genau eine Erfassung. Mit demselben
   // Datum brach das INSERT ab — gemessen, „duplicate key value violates
   // unique constraint idx_set_acq_tag_zustand".
-  await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                 VALUES ($1,$2,2,100,'N', NOW() - INTERVAL '3 days'),
                        ($1,$2,1, 80,'U', NOW() - INTERVAL '1 day'),
                        ($3,$2,3, 90,'N', NOW() - INTERVAL '2 days')`,
-    [haupt.id, SN, kind.id]);
+    [haupt.id, SN, kind.id],
+  );
 
   const H = _req('src/sets/index.js');
 
@@ -213,29 +244,31 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
   const eins = await H.getSets([haupt.id], { page_size: 60 });
   const kachel = eins.sets.find(s => s.set_number === SN);
   assert.ok(kachel, `Das Set fehlt in der Antwort: ${JSON.stringify(eins.sets).slice(0, 300)}`);
-  assert.equal(Number(kachel.quantity), 3,
-    `Ein Konto, Erfassungen 2+1: erwartet 3, bekam ${kachel.quantity}`);
+  assert.equal(Number(kachel.quantity), 3, `Ein Konto, Erfassungen 2+1: erwartet 3, bekam ${kachel.quantity}`);
   // Der Treiber liefert BIGINT als ZEICHENKETTE. Ohne den ::int-Cast in
   // db/bestandsmenge.ts haengt der JSON-Typ daran, welcher Zweig geantwortet
   // hat — genau dieser Fehler ist in src/teile/abfragen.ts schon aufgeflogen.
-  assert.equal(typeof kachel.quantity, 'number',
-    `quantity muss eine Zahl sein, war ${typeof kachel.quantity} (${kachel.quantity})`);
+  assert.equal(
+    typeof kachel.quantity,
+    'number',
+    `quantity muss eine Zahl sein, war ${typeof kachel.quantity} (${kachel.quantity})`,
+  );
 
   // ── Haushalt ─────────────────────────────────────────────────────────────
   const beide = await H.getSets([haupt.id, kind.id], { page_size: 60 });
   const zusammen = beide.sets.find(s => s.set_number === SN);
   assert.ok(zusammen, 'Das Set fehlt in der Haushaltsantwort');
-  assert.equal(Number(zusammen.quantity), 6,
-    `Haushalt, Erfassungen 2+1+3: erwartet 6, bekam ${zusammen.quantity}`);
-  assert.deepEqual([...(zusammen.owner_ids || [])].map(Number).sort((a, b) => a - b),
+  assert.equal(Number(zusammen.quantity), 6, `Haushalt, Erfassungen 2+1+3: erwartet 6, bekam ${zusammen.quantity}`);
+  assert.deepEqual(
+    [...(zusammen.owner_ids || [])].map(Number).sort((a, b) => a - b),
     [haupt.id, kind.id].sort((a, b) => a - b),
-    'Beide Konten halten Exemplare und müssen beide als Besitzer erscheinen');
+    'Beide Konten halten Exemplare und müssen beide als Besitzer erscheinen',
+  );
 
   // ── Detail ───────────────────────────────────────────────────────────────
   const detail = await H.getSet(haupt.id, SN);
   assert.ok(detail, 'Das Set-Detail antwortet nicht');
-  assert.equal(Number(detail.quantity), 3,
-    `Detail eines Kontos: erwartet 3, bekam ${detail.quantity}`);
+  assert.equal(Number(detail.quantity), 3, `Detail eines Kontos: erwartet 3, bekam ${detail.quantity}`);
 
   // ── GEGENPROBE: eine Erfassung ändern ────────────────────────────────────
   //
@@ -245,18 +278,22 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
   // kommt.
   const eine = await db.get(
     `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
-      ORDER BY id ASC LIMIT 1`, [haupt.id, SN]);
+      ORDER BY id ASC LIMIT 1`,
+    [haupt.id, SN],
+  );
   await db.run('UPDATE set_acquisitions SET quantity = 7 WHERE id=$1', [eine.id]);
 
   const nachher = await H.getSets([haupt.id], { page_size: 60 });
   const neu = nachher.sets.find(s => s.set_number === SN);
-  assert.equal(Number(neu.quantity), 8,
+  assert.equal(
+    Number(neu.quantity),
+    8,
     `Nach 2 → 7 muss die Summe 8 sein (7+1), bekam ${neu.quantity}. Dann liest die ` +
-    'Liste die Menge nicht aus set_acquisitions.');
+      'Liste die Menge nicht aus set_acquisitions.',
+  );
 
   const detail2 = await H.getSet(haupt.id, SN);
-  assert.equal(Number(detail2.quantity), 8,
-    `Das Detail folgt der Änderung nicht: ${detail2.quantity} statt 8`);
+  assert.equal(Number(detail2.quantity), 8, `Das Detail folgt der Änderung nicht: ${detail2.quantity} statt 8`);
 
   // ── Und ohne Erfassung ist die Menge 0, nicht 1 ──────────────────────────
   //
@@ -264,13 +301,13 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen',
   // Migration traegt fuer jede eine nach), aber sie darf die Liste nicht
   // LEEREN — deshalb LEFT JOIN in db/bestandsmenge.ts. Sie bedeutet dann
   // null Stueck.
-  await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2',
-    [haupt.id, SN]);
+  await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [haupt.id, SN]);
   const leer = await H.getSets([haupt.id], { page_size: 60 });
   const nullStueck = leer.sets.find(s => s.set_number === SN);
-  assert.ok(nullStueck,
+  assert.ok(
+    nullStueck,
     'Ohne Erfassung ist das Set aus der Liste gefallen — der JOIN muss ein LEFT JOIN ' +
-    'sein, sonst verschwinden genau die Zeilen, denen etwas fehlt');
-  assert.equal(Number(nullStueck.quantity), 0,
-    `Ohne Erfassung muss die Menge 0 sein, nicht ${nullStueck.quantity}`);
+      'sein, sonst verschwinden genau die Zeilen, denen etwas fehlt',
+  );
+  assert.equal(Number(nullStueck.quantity), 0, `Ohne Erfassung muss die Menge 0 sein, nicht ${nullStueck.quantity}`);
 });

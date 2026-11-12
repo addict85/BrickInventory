@@ -16,37 +16,54 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-for (const [sprache, bauliste, neu] of [['de', 'Bauliste', 'Neuware'], ['en', 'Build list', 'New']]) {
+for (const [sprache, bauliste, neu] of [
+  ['de', 'Bauliste', 'Neuware'],
+  ['en', 'Build list', 'New'],
+]) {
   test(`${sprache}: ${bauliste} in Leiste und Überschrift, Zustand „${neu}“`, async () => {
     const { w, d } = await oeffneOberflaeche({}, { sprache });
     try {
       assert.equal(d.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim(), bauliste);
       assert.equal(d.querySelector('#tab-partslist .ptitle').textContent.trim(), bauliste);
       assert.equal(d.querySelector('#add-condition option[value="N"]').textContent.trim(), neu);
-    } finally { w.close(); }
+    } finally {
+      w.close();
+    }
   });
 }
 
 test('Teilekachel zeigt ×N', async () => {
   const { w, d } = await oeffneOberflaeche({
-    '/v1/parts': { success: true, total: 1, parts: [{ part_number: '3001', part_name: 'Brick 2 x 4', color_id: 5, color_name: 'Red', total_quantity: 12 }] },
+    '/v1/parts': {
+      success: true,
+      total: 1,
+      parts: [{ part_number: '3001', part_name: 'Brick 2 x 4', color_id: 5, color_name: 'Red', total_quantity: 12 }],
+    },
   });
   try {
     await reiter(w, 'parts');
     await warte(() => !!d.querySelector('.part-card .part-qty'));
     assert.equal(d.querySelector('.part-card .part-qty').textContent.trim(), '×12');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('de: Setnummer ohne Bindestrich, wie in der Android-App', async () => {
   const { w, d } = await oeffneOberflaeche({});
   try {
-    const texte = [d.body.textContent, ...[...d.querySelectorAll('[placeholder], [aria-label]')]
-      .map(e => `${e.getAttribute('placeholder') ?? ''} ${e.getAttribute('aria-label') ?? ''}`)].join('\n');
+    const texte = [
+      d.body.textContent,
+      ...[...d.querySelectorAll('[placeholder], [aria-label]')].map(
+        e => `${e.getAttribute('placeholder') ?? ''} ${e.getAttribute('aria-label') ?? ''}`,
+      ),
+    ].join('\n');
     assert.match(texte, /Setnummer/, 'die Oberfläche nennt die Setnummer gar nicht');
     assert.doesNotMatch(texte, /Set-Nummer/);
     assert.equal(d.querySelector('label[for="add-num"]').textContent.trim(), 'Setnummer *');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('en: Platzhalter des Lagerort-Felds', async () => {
@@ -54,5 +71,7 @@ test('en: Platzhalter des Lagerort-Felds', async () => {
   try {
     await warte(() => d.documentElement.lang === 'en');
     assert.equal(d.getElementById('storage-new').getAttribute('placeholder'), 'New storage location');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

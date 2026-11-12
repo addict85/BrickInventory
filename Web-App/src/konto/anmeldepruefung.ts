@@ -82,7 +82,7 @@ export interface AnmeldeAbsage {
   passkey?: boolean;
 }
 
-export type AnmeldeErgebnis = { ok: true; user: Record<string, any> } | { ok: false; absage: AnmeldeAbsage };
+export type AnmeldeErgebnis = { ok: true; user: Record<string, unknown> } | { ok: false; absage: AnmeldeAbsage };
 
 export interface Herkunft {
   ip?: string | null;

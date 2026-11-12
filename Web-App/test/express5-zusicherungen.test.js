@@ -25,9 +25,11 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   }
   assert.ok(kandidaten.length, 'Keine Route rendert mehr index.html — Suche veraltet?');
   const muster = kandidaten.find(k => k.includes('*'));
-  assert.ok(muster,
+  assert.ok(
+    muster,
     `Keine der rendernden Routen (${kandidaten.join(', ')}) fängt noch alles ab. ` +
-    'Dann gibt es keinen SPA-Catch-all mehr.');
+      'Dann gibt es keinen SPA-Catch-all mehr.',
+  );
 
   // Dasselbe Muster auf einem leeren Express: Was die echte Route ausliefert,
   // ist hier egal — gefragt ist allein, OB sie trifft.
@@ -38,15 +40,17 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   const basis = `http://localhost:${srv.address().port}`;
   try {
     const wurzel = await fetch(`${basis}/`);
-    assert.equal(wurzel.status, 200,
+    assert.equal(
+      wurzel.status,
+      200,
       `Das Muster ${muster} trifft die nackte Wurzel nicht (${wurzel.status}). ` +
-      'Damit laeuft jeder Aufruf der Seite ohne Pfad — Lesezeichen, ' +
-      'Startbildschirm, erster Besuch — ins Leere.');
+        'Damit laeuft jeder Aufruf der Seite ohne Pfad — Lesezeichen, ' +
+        'Startbildschirm, erster Besuch — ins Leere.',
+    );
     // Und die Pfade darunter weiterhin; sonst koennte man die Regel mit
     // einem Muster beruhigen, das NUR die Wurzel trifft.
     for (const pfad of ['/start', '/tief/drin', '/reset-password']) {
-      assert.equal((await fetch(basis + pfad)).status, 200,
-        `Das Muster ${muster} trifft ${pfad} nicht mehr`);
+      assert.equal((await fetch(basis + pfad)).status, 200, `Das Muster ${muster} trifft ${pfad} nicht mehr`);
     }
   } finally {
     await new Promise(r => srv.close(r));
@@ -66,29 +70,35 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
   await new Promise(r => s1.once('listening', r));
   let ohneZusicherung;
   try {
-    ohneZusicherung = (await (await fetch(`http://localhost:${s1.address().port}/a`,
-      { method: 'POST' })).json()).fehlt;
-  } finally { await new Promise(r => s1.close(r)); }
-  assert.equal(ohneZusicherung, true,
+    ohneZusicherung = (await (await fetch(`http://localhost:${s1.address().port}/a`, { method: 'POST' })).json()).fehlt;
+  } finally {
+    await new Promise(r => s1.close(r));
+  }
+  assert.equal(
+    ohneZusicherung,
+    true,
     'Express liefert ohne Zusicherung wieder ein Objekt — dann ist die Zeile ' +
-    'in server.ts ueberfluessig geworden und darf weg (mitsamt dieser Regel).');
+      'in server.ts ueberfluessig geworden und darf weg (mitsamt dieser Regel).',
+  );
 
   // Und jetzt die Zusicherung selbst. Gelesen wird ohne Kommentare: Der
   // Erklaerblock darueber nennt `req.body` reichlich, ein blosses indexOf
   // waere damit fuer immer zufrieden.
   // Seit dem 04.11.2026 in rumpfLesen: Die Rümpfe werden erst nach der Anmeldung gelesen.
   const code = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'routes', 'api_v1', 'middleware.ts'), 'utf8'));
-  assert.match(code, /req\.body === undefined.*req\.body = \{\}/,
+  assert.match(
+    code,
+    /req\.body === undefined.*req\.body = \{\}/,
     'In rumpfLesen fehlt die Zusicherung, dass req.body ein Objekt ist. ' +
-    'Ohne sie antworten vierzehn Handler mit 500 statt mit ihrem eigenen 400, ' +
-    'sobald ein Client den Content-Type vergisst.');
+      'Ohne sie antworten vierzehn Handler mit 500 statt mit ihrem eigenen 400, ' +
+      'sobald ein Client den Content-Type vergisst.',
+  );
 
   // Sie muss NACH den Parsern stehen — davor brächte sie nichts, weil der
   // Parser danach überschreibt.
   const nachParser = code.indexOf('req.body === undefined');
-  const beiJson    = code.indexOf('express.json(');
-  assert.ok(beiJson >= 0 && nachParser > beiJson,
-    'Die Zusicherung steht vor den Parsern — dort ist sie wirkungslos.');
+  const beiJson = code.indexOf('express.json(');
+  assert.ok(beiJson >= 0 && nachParser > beiJson, 'Die Zusicherung steht vor den Parsern — dort ist sie wirkungslos.');
 });
 
 /**
@@ -111,9 +121,12 @@ test('3. die Startseite geht durch den Renderer', () => {
   const auf = src.indexOf('express.static(PUBLIC_DIR');
   assert.ok(auf > 0, 'Die statische Auslieferung ist nicht mehr zu finden.');
   const block = src.slice(auf, src.indexOf('}));', auf));
-  assert.match(block, /index:\s*false/,
+  assert.match(
+    block,
+    /index:\s*false/,
     'express.static liefert die index.html fuer `/` wieder selbst aus. Dann ' +
-    'geht die Startseite am Renderer vorbei: kein serverseitiges data-theme ' +
-    '(sichtbarer Designsprung beim ersten Aufruf) und kein Dateistempel an ' +
-    'den Assets (der Browser behaelt seine alten Kopien).');
+      'geht die Startseite am Renderer vorbei: kein serverseitiges data-theme ' +
+      '(sichtbarer Designsprung beim ersten Aufruf) und kein Dateistempel an ' +
+      'den Assets (der Browser behaelt seine alten Kopien).',
+  );
 });

@@ -23,14 +23,23 @@ const { chrome } = require('./helpers/app-browser');
 
 const WEB = path.join(__dirname, '..');
 const P = (...t) => path.join(WEB, ...t);
-const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css', 'themes/brick.css', 'themes/werkbank.css',
-  'themes/farbfaecher.css', 'themes/noppe.css', 'themes/hochglanz.css'];
+const STILE = [
+  'vendor/fonts/fonts.css',
+  'tokens.css',
+  'styles.css',
+  'themes/brick.css',
+  'themes/werkbank.css',
+  'themes/farbfaecher.css',
+  'themes/noppe.css',
+  'themes/hochglanz.css',
+];
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
 /** Die Kopfleiste wie im Betrieb: data-stil als Stil (stile.js), Klappe offen, Name gesetzt. */
 function kopfleiste() {
   const html = require('./helpers/sources').ohneHtmlKommentare(fs.readFileSync(P('public', 'index.html'), 'utf8'));
-  const kopf = html.slice(html.indexOf('<header'), html.indexOf('</header>') + 9)
+  const kopf = html
+    .slice(html.indexOf('<header'), html.indexOf('</header>') + 9)
     .replace(/data-stil="/g, 'style="')
     .replace('<span class="ubadge-name" id="ubadge">—</span>', '<span class="ubadge-name" id="ubadge">anna</span>');
   assert.match(kopf, /id="umenu-pop"/, 'Die Menüklappe steht nicht mehr in der Kopfleiste');
@@ -41,8 +50,11 @@ function testseite() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${P('public', s)}">`).join('\n');
   const kopf = kopfleiste();
   const teile = [];
-  for (const d of DESIGNS) for (const dunkel of d === 'werkbank' ? [true] : [false, true])
-    teile.push(`<div class="probe" data-theme="${d}"${dunkel ? ' data-dunkel' : ''} data-name="${d} ${dunkel ? 'dunkel' : 'hell'}" style="background:var(--bg);color:var(--txt);font-family:var(--font);position:relative;min-height:640px">${kopf}</div>`);
+  for (const d of DESIGNS)
+    for (const dunkel of d === 'werkbank' ? [true] : [false, true])
+      teile.push(
+        `<div class="probe" data-theme="${d}"${dunkel ? ' data-dunkel' : ''} data-name="${d} ${dunkel ? 'dunkel' : 'hell'}" style="background:var(--bg);color:var(--txt);font-family:var(--font);position:relative;min-height:640px">${kopf}</div>`,
+      );
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
 <style>*{transition:none!important;animation:none!important}#umenu-pop{display:block!important;position:static!important}</style></head><body>${teile.join('\n')}
 <pre id="ergebnis"></pre>
@@ -70,22 +82,42 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
 </script></body></html>`;
 }
 
-test('jeder Text in der Kopfleiste ist in jedem Design lesbar', (t) => {
+test('jeder Text in der Kopfleiste ist in jedem Design lesbar', t => {
   const bin = chrome();
-  if (!bin) { t.skip('kein Chrome gefunden'); return; }
+  if (!bin) {
+    t.skip('kein Chrome gefunden');
+    return;
+  }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kopfleiste-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
   fs.writeFileSync(datei, testseite());
-  const dom = execFileSync(bin, ['--headless', '--no-sandbox', '--disable-gpu', '--allow-file-access-from-files',
-    '--window-size=1200,800', '--virtual-time-budget=3000', '--dump-dom', `file://${datei}`],
-    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] });
+  const dom = execFileSync(
+    bin,
+    [
+      '--headless',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--allow-file-access-from-files',
+      '--window-size=1200,800',
+      '--virtual-time-budget=3000',
+      '--dump-dom',
+      `file://${datei}`,
+    ],
+    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
+  );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const werte = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
   // Je Design: Marke, Name, sieben Sichten und Abmelden — mindestens zehn Texte.
   assert.ok(werte.length >= 11 * 10, `${werte.length} Messungen — greift die Auswahl noch?`);
-  assert.ok(werte.some(w => /brick hell: Abmelden/.test(w.name)), 'Abmelden wird nicht gemessen');
+  assert.ok(
+    werte.some(w => /brick hell: Abmelden/.test(w.name)),
+    'Abmelden wird nicht gemessen',
+  );
   // 4,5:1 — die WCAG-Schwelle für normalen Text; die Kopfleiste hat nur kleine Schrift.
-  assert.deepEqual(werte.filter(w => w.wert < 4.5).map(w => `${w.name} ${w.wert}:1`), []);
+  assert.deepEqual(
+    werte.filter(w => w.wert < 4.5).map(w => `${w.name} ${w.wert}:1`),
+    [],
+  );
 });

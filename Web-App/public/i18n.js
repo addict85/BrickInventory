@@ -28,11 +28,10 @@ function loadLang(lang) {
       if (dict) I18N[lang] = dict;
       resolve();
     };
-    s.onerror = () => resolve();   // Fehler: bisherige Sprache behalten
+    s.onerror = () => resolve(); // Fehler: bisherige Sprache behalten
     document.head.appendChild(s);
   });
 }
-
 
 // Active language – loaded from localStorage first (instant), then from server
 const _browserLang = navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en';
@@ -48,7 +47,10 @@ export function setzeZahlenWaehrung(cur) {
   const neu = String(cur || 'EUR').toUpperCase();
   if (neu === _waehrung) return;
   _waehrung = neu;
-  if (typeof document !== 'undefined') document.querySelectorAll('[data-i18n-betrag]').forEach(el => { schreibeI18n(/** @type {HTMLElement} */ (el)); });
+  if (typeof document !== 'undefined')
+    document.querySelectorAll('[data-i18n-betrag]').forEach(el => {
+      schreibeI18n(/** @type {HTMLElement} */ (el));
+    });
 }
 
 /**
@@ -92,7 +94,7 @@ function mehrzahlSchluessel(dict, key, vars) {
   const zahl = vars ? (vars.n ?? vars.count) : undefined;
   if (typeof zahl !== 'number' || !Number.isFinite(zahl)) return key;
   const form = key + '_' + new Intl.PluralRules(locale()).select(zahl);
-  return (dict[form] || I18N['de']?.[form]) ? form : key;
+  return dict[form] || I18N.de?.[form] ? form : key;
 }
 
 /**
@@ -106,14 +108,16 @@ function mehrzahlSchluessel(dict, key, vars) {
 export function t(key, vars) {
   // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe, dann greift der Rückfall auf
   // den Schlüssel selbst.
-  const dict = I18N[LANG] || I18N['de'] || I18N['en'] || {};
+  const dict = I18N[LANG] || I18N.de || I18N.en || {};
   // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird nur locales/en.js geladen. Der
   // Rückfall greift deshalb nur, wenn Deutsch tatsächlich da ist; sonst bleibt der Schlüssel selbst als
   // letzte Stufe.
   const k = mehrzahlSchluessel(dict, key, vars);
-  let str = dict[k] || I18N['de']?.[k] || key;
+  let str = dict[k] || I18N.de?.[k] || key;
   if (vars) {
-    Object.keys(vars).forEach(k => { str = str.replaceAll('{' + k + '}', _i18nEsc(vars[k])); });
+    Object.keys(vars).forEach(k => {
+      str = str.replaceAll('{' + k + '}', _i18nEsc(vars[k]));
+    });
   }
   return new SicheresHtml(str);
 }
@@ -131,14 +135,16 @@ export function t(key, vars) {
 export function tRaw(key, vars) {
   // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe, dann greift der Rückfall auf
   // den Schlüssel selbst.
-  const dict = I18N[LANG] || I18N['de'] || I18N['en'] || {};
+  const dict = I18N[LANG] || I18N.de || I18N.en || {};
   // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird nur locales/en.js geladen. Der
   // Rückfall greift deshalb nur, wenn Deutsch tatsächlich da ist; sonst bleibt der Schlüssel selbst als
   // letzte Stufe.
   const k = mehrzahlSchluessel(dict, key, vars);
-  let str = dict[k] || I18N['de']?.[k] || key;
+  let str = dict[k] || I18N.de?.[k] || key;
   if (vars) {
-    Object.keys(vars).forEach(k => { str = str.replaceAll('{' + k + '}', String(vars[k] ?? '')); });
+    Object.keys(vars).forEach(k => {
+      str = str.replaceAll('{' + k + '}', String(vars[k] ?? ''));
+    });
   }
   return str;
 }
@@ -148,7 +154,6 @@ export function tRaw(key, vars) {
 /** @type {string | null} */
 let _langApplied = null;
 
-
 /**
  * Farbnamen nur in der Anzeige übersetzen: Daten und BrickLink-Abfragen brauchen die englischen Namen. Ein
  * Wortschatz statt einer Liste aller Farben, damit auch neue Rebrickable-Farben lesbar werden.
@@ -156,28 +161,98 @@ let _langApplied = null;
 /** @type {Record<string, string>} */
 const COLOR_WORDS_DE = {
   // Modifikatoren
-  'dark':'Dunkel','light':'Hell','medium':'Mittel','bright':'Leucht','very':'Sehr',
-  'reddish':'Rötlich','bluish':'Bläulich','yellowish':'Gelblich','dark-':'Dunkel',
-  'trans':'Trans','transparent':'Transparent','neon':'Neon','glitter':'Glitzer',
-  'speckle':'Gesprenkelt','metallic':'Metallic','pearl':'Perl','satin':'Satin',
-  'chrome':'Chrom','flat':'Matt','opal':'Opal','milky':'Milchig','glow':'Leucht',
-  'in':'im','the':'','dark2':'Dunkeln','fabuland':'Fabuland','modulex':'Modulex',
+  dark: 'Dunkel',
+  light: 'Hell',
+  medium: 'Mittel',
+  bright: 'Leucht',
+  very: 'Sehr',
+  reddish: 'Rötlich',
+  bluish: 'Bläulich',
+  yellowish: 'Gelblich',
+  'dark-': 'Dunkel',
+  trans: 'Trans',
+  transparent: 'Transparent',
+  neon: 'Neon',
+  glitter: 'Glitzer',
+  speckle: 'Gesprenkelt',
+  metallic: 'Metallic',
+  pearl: 'Perl',
+  satin: 'Satin',
+  chrome: 'Chrom',
+  flat: 'Matt',
+  opal: 'Opal',
+  milky: 'Milchig',
+  glow: 'Leucht',
+  in: 'im',
+  the: '',
+  dark2: 'Dunkeln',
+  fabuland: 'Fabuland',
+  modulex: 'Modulex',
   // Grundfarben
-  'red':'Rot','blue':'Blau','green':'Grün','yellow':'Gelb','white':'Weiss',
-  'black':'Schwarz','gray':'Grau','grey':'Grau','brown':'Braun','orange':'Orange',
-  'purple':'Violett','violet':'Violett','pink':'Rosa','tan':'Beige','lime':'Limette',
-  'azure':'Azur','aqua':'Aquamarin','magenta':'Magenta','olive':'Oliv','sand':'Sand',
-  'salmon':'Lachs','gold':'Gold','silver':'Silber','copper':'Kupfer','bronze':'Bronze',
-  'clear':'Klar','nougat':'Nougat','lavender':'Lavendel','turquoise':'Türkis',
-  'coral':'Koralle','maroon':'Kastanie','teal':'Petrol','beige':'Beige','rust':'Rost',
-  'khaki':'Khaki','ochre':'Ocker','plum':'Pflaume','burgundy':'Bordeaux',
-  'unknown':'Unbekannt','none':'Ohne','no':'Kein','color':'Farbe','colour':'Farbe',
+  red: 'Rot',
+  blue: 'Blau',
+  green: 'Grün',
+  yellow: 'Gelb',
+  white: 'Weiss',
+  black: 'Schwarz',
+  gray: 'Grau',
+  grey: 'Grau',
+  brown: 'Braun',
+  orange: 'Orange',
+  purple: 'Violett',
+  violet: 'Violett',
+  pink: 'Rosa',
+  tan: 'Beige',
+  lime: 'Limette',
+  azure: 'Azur',
+  aqua: 'Aquamarin',
+  magenta: 'Magenta',
+  olive: 'Oliv',
+  sand: 'Sand',
+  salmon: 'Lachs',
+  gold: 'Gold',
+  silver: 'Silber',
+  copper: 'Kupfer',
+  bronze: 'Bronze',
+  clear: 'Klar',
+  nougat: 'Nougat',
+  lavender: 'Lavendel',
+  turquoise: 'Türkis',
+  coral: 'Koralle',
+  maroon: 'Kastanie',
+  teal: 'Petrol',
+  beige: 'Beige',
+  rust: 'Rost',
+  khaki: 'Khaki',
+  ochre: 'Ocker',
+  plum: 'Pflaume',
+  burgundy: 'Bordeaux',
+  unknown: 'Unbekannt',
+  none: 'Ohne',
+  no: 'Kein',
+  color: 'Farbe',
+  colour: 'Farbe',
 };
 
 /** Wörter, die im Deutschen mit dem folgenden zusammengeschrieben werden. */
 const COLOR_PREFIX_DE = new Set([
-  'Dunkel','Hell','Mittel','Leucht','Perl','Matt','Neon','Rötlich','Bläulich',
-  'Gelblich','Sand','Metallic','Chrom','Satin','Opal','Milchig','Glitzer',
+  'Dunkel',
+  'Hell',
+  'Mittel',
+  'Leucht',
+  'Perl',
+  'Matt',
+  'Neon',
+  'Rötlich',
+  'Bläulich',
+  'Gelblich',
+  'Sand',
+  'Metallic',
+  'Chrom',
+  'Satin',
+  'Opal',
+  'Milchig',
+  'Glitzer',
 ]);
 
 /**
@@ -193,10 +268,16 @@ export function colorName(en) {
   const parts = String(en).split(/(\s+|-)/);
   const out = [];
   for (const tok of parts) {
-    if (/^\s+$/.test(tok)) { out.push(' '); continue; }
-    if (tok === '-') { out.push('-'); continue; }
+    if (/^\s+$/.test(tok)) {
+      out.push(' ');
+      continue;
+    }
+    if (tok === '-') {
+      out.push('-');
+      continue;
+    }
     const de = COLOR_WORDS_DE[tok.toLowerCase()];
-    out.push(de === undefined ? tok : de);     // unbekannt: englisch lassen
+    out.push(de === undefined ? tok : de); // unbekannt: englisch lassen
   }
 
   // Bekannte Modifikatoren ans nächste Wort hängen („Dunkelbläulichgrau“), unbekannte Wörter getrennt lassen.
@@ -205,9 +286,16 @@ export function colorName(en) {
   let res = '';
   let joinNext = false;
   for (const cur of out) {
-    if (cur === ' ') { if (!joinNext) res += ' '; continue; }
-    if (cur === '-') { res += '-'; joinNext = false; continue; }
-    res += joinNext ? (cur.charAt(0).toLowerCase() + cur.slice(1)) : cur;
+    if (cur === ' ') {
+      if (!joinNext) res += ' ';
+      continue;
+    }
+    if (cur === '-') {
+      res += '-';
+      joinNext = false;
+      continue;
+    }
+    res += joinNext ? cur.charAt(0).toLowerCase() + cur.slice(1) : cur;
     joinNext = COLOR_PREFIX_DE.has(cur);
   }
   return res.replace(/\s{2,}/g, ' ').trim();
@@ -216,23 +304,35 @@ export function colorName(en) {
 /** Ein Element mit data-i18n neu schreiben. @param {HTMLElement} el */
 function schreibeI18n(el) {
   const key = el.dataset.i18n;
-  const attr = el.dataset.i18nAttr;   // optional: 'placeholder', 'title', etc.
+  const attr = el.dataset.i18nAttr; // optional: 'placeholder', 'title', etc.
   // optional: data-i18n-vars='{"n":"4000"}' für parametrisierte statische Texte
   let vars;
-  if (el.dataset.i18nVars) { try { vars = JSON.parse(el.dataset.i18nVars); } catch (_) {} }
+  if (el.dataset.i18nVars) {
+    try {
+      vars = JSON.parse(el.dataset.i18nVars);
+    } catch (_) {}
+  }
   // data-i18n-betrag: ein Beispielbetrag im Zahlenformat der Oberfläche („z. B. 79,99“).
-  if (el.dataset.i18nBetrag) vars = { ...vars, betrag: new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, useGrouping: false }).format(Number(el.dataset.i18nBetrag)) };
+  if (el.dataset.i18nBetrag)
+    vars = {
+      ...vars,
+      betrag: new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, useGrouping: false }).format(
+        Number(el.dataset.i18nBetrag),
+      ),
+    };
   const val = tRaw(key ?? '', vars);
   if (attr) el.setAttribute(attr, val);
   else if (el.dataset.ico) {
     // Symbol vor dem Text: data-ico nennt es, der Text bleibt übersetzbar.
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 'ico'); svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('class', 'ico');
+    svg.setAttribute('aria-hidden', 'true');
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     use.setAttribute('href', '#i-' + el.dataset.ico);
     svg.appendChild(use);
     const text = document.createElement('span');
-    text.className = 'ico-text'; text.textContent = val;
+    text.className = 'ico-text';
+    text.textContent = val;
     el.replaceChildren(svg, text);
   } else el.textContent = val;
 }
@@ -246,10 +346,12 @@ export function applyLang(lang, persist) {
   // Sprache noch nicht geladen: nachladen und erneut anlaufen. Ein stilles return hiesse, der Klick auf
   // Englisch tut nichts. Synchron, damit die rund zwanzig Aufrufstellen bleiben, wie sie sind.
   if (!I18N[lang]) {
-    loadLang(lang).then(() => { if (I18N[lang]) applyLang(lang, persist); });
+    loadLang(lang).then(() => {
+      if (I18N[lang]) applyLang(lang, persist);
+    });
     return;
   }
-  if (_langApplied === lang && !persist) return;   // nichts zu tun
+  if (_langApplied === lang && !persist) return; // nichts zu tun
   const isRealSwitch = _langApplied !== null && _langApplied !== lang;
   _langApplied = lang;
   LANG = lang;
@@ -283,7 +385,6 @@ export function applyLang(lang, persist) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-
 /**
  * Aktive Sprache setzen, ohne die volle Neuübersetzung von applyLang().
  *
@@ -293,4 +394,6 @@ export function applyLang(lang, persist) {
  *
  * @param {string} lang
  */
-export function setLangValue(lang) { LANG = lang; }
+export function setLangValue(lang) {
+  LANG = lang;
+}

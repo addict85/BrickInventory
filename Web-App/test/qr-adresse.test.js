@@ -33,15 +33,16 @@ const { dbOderSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
 const db = _req('db/database.js');
 
-const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
-test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run("DELETE FROM users WHERE username = 'qr_pruefling'");
   const nutzer = await db.get(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,false,true) RETURNING id",
-    ['qr_pruefling', require('bcryptjs').hashSync('qr-passwort-1', 4)]);
+    'INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,false,true) RETURNING id',
+    ['qr_pruefling', require('bcryptjs').hashSync('qr-passwort-1', 4)],
+  );
   // Aufraeumen UND den Pool schliessen, beides hier: Ohne das `end()` haelt
   // die offene Verbindung den Prozess am Leben, und `node --test` haengt nach
   // dem letzten Schritt, statt rot oder gruen zu melden. Genau das ist beim
@@ -53,37 +54,46 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
 
   const { base } = testServer(_req, {
     sitzung: { userId: nutzer.id, username: 'qr_pruefling', isAdmin: 0 },
-    routen: { [AUTH]: 'routes/auth.js' }, t,
+    routen: { [AUTH]: 'routes/auth.js' },
+    t,
   });
-  const hole = () => fetch(`${base}${AUTH}/qr-token`, {
-    // Seit dem Passwortschritt verlangt die Route das eigene Passwort.
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: 'qr-passwort-1' }),
-  });
-  const nonces = async () => (await db.get(
-    'SELECT COUNT(*)::int AS n FROM qr_login_tokens WHERE user_id = $1', [nutzer.id])).n;
+  const hole = () =>
+    fetch(`${base}${AUTH}/qr-token`, {
+      // Seit dem Passwortschritt verlangt die Route das eigene Passwort.
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'qr-passwort-1' }),
+    });
+  const nonces = async () =>
+    (await db.get('SELECT COUNT(*)::int AS n FROM qr_login_tokens WHERE user_id = $1', [nutzer.id])).n;
 
   // ── Fall 1: Die Variable fehlt ────────────────────────────────────────────
   const vorher = process.env.APP_BASE_URL;
-  t.after(() => { if (vorher === undefined) umgebung({ APP_BASE_URL: undefined });
-                  else umgebung({ APP_BASE_URL: vorher }); });
+  t.after(() => {
+    if (vorher === undefined) umgebung({ APP_BASE_URL: undefined });
+    else umgebung({ APP_BASE_URL: vorher });
+  });
   umgebung({ APP_BASE_URL: undefined });
 
   const abgelehnt = await hole();
-  assert.equal(abgelehnt.status, 503,
-    'Ohne APP_BASE_URL muss die Route absagen — sonst traegt der Code die Browseradresse.');
+  assert.equal(
+    abgelehnt.status,
+    503,
+    'Ohne APP_BASE_URL muss die Route absagen — sonst traegt der Code die Browseradresse.',
+  );
   const grund = await abgelehnt.json();
   assert.equal(grund.success, false);
-  assert.equal(grund.code, 'qr_ohne_basis_url',
-    'Die Absage nennt ihren Grund nicht — die Oberflaeche kann nicht sagen, was zu tun ist.');
-  assert.match(grund.error, /APP_BASE_URL/,
-    'Der Satz fuer den Nutzer nennt die Variable nicht, die zu setzen ist.');
+  assert.equal(
+    grund.code,
+    'qr_ohne_basis_url',
+    'Die Absage nennt ihren Grund nicht — die Oberflaeche kann nicht sagen, was zu tun ist.',
+  );
+  assert.match(grund.error, /APP_BASE_URL/, 'Der Satz fuer den Nutzer nennt die Variable nicht, die zu setzen ist.');
 
   // DAS ist der Kern: Die Absage steht VOR dem Datenbankzugriff. Stuende sie
   // dahinter, laege hier ein Zugangscode, der fuenf Minuten lang ein Konto
   // oeffnet und den niemand je einloest.
-  assert.equal(await nonces(), 0,
-    'Trotz Absage ist eine Nonce entstanden — die Pruefung steht zu spaet.');
+  assert.equal(await nonces(), 0, 'Trotz Absage ist eine Nonce entstanden — die Pruefung steht zu spaet.');
 
   // ── Fall 2: Die Variable ist gesetzt ──────────────────────────────────────
   // Mit ueberzaehligem Schraegstrich, denn genau der wuerde sich sonst zu
@@ -92,28 +102,28 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
   const gut = await hole();
   assert.equal(gut.status, 200, 'Mit APP_BASE_URL muss ein Code entstehen.');
   const d = await gut.json();
-  assert.equal(d.url, 'https://lego.example.org',
-    'Der Server nennt die Adresse nicht oder laesst den Schraegstrich stehen.');
+  assert.equal(
+    d.url,
+    'https://lego.example.org',
+    'Der Server nennt die Adresse nicht oder laesst den Schraegstrich stehen.',
+  );
   assert.match(d.token, /^bim:/, 'Der Token hat seine Form verloren.');
   assert.equal(await nonces(), 1, 'Im guten Fall MUSS genau eine Nonce entstehen.');
 });
 
 test('2. die Webapp hat keine eigene Meinung mehr zur Adresse', () => {
   const js = require('./helpers/sources').ansichtQuelle('einstellungen');
-  assert.match(js, /const serverUrl = d\.url;/,
-    'Die Webapp nimmt nicht schlicht die Adresse des Servers.');
+  assert.match(js, /const serverUrl = d\.url;/, 'Die Webapp nimmt nicht schlicht die Adresse des Servers.');
   // Der Rueckfall ist weg — das war Marcos zweiter Satz. `ohneKommentare`
   // sorgt dafuer, dass die Erklaerung DARUEBER (die den alten Ausdruck zitiert)
   // diese Zusicherung nicht scheinbar erfuellt.
-  assert.ok(!/location\.origin/.test(js),
-    'location.origin steht noch im Code der QR-Erzeugung.');
+  assert.ok(!/location\.origin/.test(js), 'location.origin steht noch im Code der QR-Erzeugung.');
 
   // Das versteckte Feld ist entfallen: Es trug nur location.origin weiter und
   // war nie zu bearbeiten. Eine Zeile, die niemand mehr braucht, ist eine
   // Stelle, an der jemand spaeter etwas Falsches vermutet.
   const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
-  assert.ok(!/id="qr-server-url"/.test(html),
-    'Das verwaiste Feld qr-server-url steht noch im Markup.');
+  assert.ok(!/id="qr-server-url"/.test(html), 'Das verwaiste Feld qr-server-url steht noch im Markup.');
   assert.ok(!/qr-server-url/.test(js), 'Die Webapp liest das entfallene Feld noch.');
 });
 
@@ -125,13 +135,18 @@ test('3. eine Quelle fuer QR-Code, Mail-Knopf und Reset-Links', () => {
   // Ende); basisUrl() ist der eine Weg dorthin.
   const helfer = lies('src/infra/basisUrl.ts');
   assert.match(helfer, /konfig\(\)\.appBaseUrl/, 'src/infra/basisUrl.ts liest die Konfiguration nicht.');
-  assert.match(lies('src/infra/konfig.ts'), /APP_BASE_URL\?\.trim\(\)\.replace\(\/\\\/\+\$\/, ''\)/,
-    'Ein abschliessender Schraegstrich wird nicht entfernt.');
+  assert.match(
+    lies('src/infra/konfig.ts'),
+    /APP_BASE_URL\?\.trim\(\)\.replace\(\/\\\/\+\$\/, ''\)/,
+    'Ein abschliessender Schraegstrich wird nicht entfernt.',
+  );
 
   for (const datei of ['src/konto/anmeldungAblauf.ts', 'routes/auth/registrierung.ts', 'src/mail/mailer.ts']) {
     const quelle = lies(datei);
-    assert.ok(!/process\.env\.APP_BASE_URL/.test(quelle),
-      `${datei} liest APP_BASE_URL selbst — das ist die Kopie, die auseinanderlaeuft.`);
+    assert.ok(
+      !/process\.env\.APP_BASE_URL/.test(quelle),
+      `${datei} liest APP_BASE_URL selbst — das ist die Kopie, die auseinanderlaeuft.`,
+    );
     assert.match(quelle, /basisUrl\(\)/, `${datei} benutzt den gemeinsamen Helfer nicht.`);
   }
 
@@ -139,11 +154,13 @@ test('3. eine Quelle fuer QR-Code, Mail-Knopf und Reset-Links', () => {
   // fuer einen Link in einer Mail — eine geratene Adresse ist schlechter als
   // keine. (getBaseUrl weiter unten DARF es, siehe die Begruendung dort.)
   const auth = lies('routes/auth.ts');
-  const i = auth.indexOf("router.post('/qr-token'");
+  const i = auth.search(/router\.post\(\s*'\/qr-token'/);
   assert.ok(i > 0, 'Die Route /qr-token ist verschwunden — umbenannt?');
   const rumpf = auth.slice(i, auth.indexOf('\nrouter.', i + 10));
-  assert.ok(!/headers\['x-forwarded-host'\]|headers\.host/.test(rumpf),
-    'Die Route faellt auf den Host-Header zurueck — genau das soll sie nicht.');
+  assert.ok(
+    !/headers\['x-forwarded-host'\]|headers\.host/.test(rumpf),
+    'Die Route faellt auf den Host-Header zurueck — genau das soll sie nicht.',
+  );
 
   // Und sie ist dokumentiert — sonst weiss niemand, dass es sie zu setzen gilt.
   const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');

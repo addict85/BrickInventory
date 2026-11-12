@@ -32,16 +32,31 @@ export let _pnlCache = {};
 export let _lastImportAt = 0;
 
 /** @param {typeof ME} v */
-export function set_ME(v) { ME = v; }
+export function set_ME(v) {
+  ME = v;
+}
 /** @param {string} v */
-export function set_CURRENCY(v) { CURRENCY = v; setzeZahlenWaehrung(v); }
+export function set_CURRENCY(v) {
+  CURRENCY = v;
+  setzeZahlenWaehrung(v);
+}
 /** @param {typeof _settingsCache} v */
-export function set_settingsCache(v) { _settingsCache = v; }
+export function set_settingsCache(v) {
+  _settingsCache = v;
+}
 /** @param {Kachel[]} v */
-export function setAllSets(v) { allSets = v; }
+export function setAllSets(v) {
+  allSets = v;
+}
 /** @param {Kachel | null} v */
-export function set_curSet(v) { curSet = v; }
+export function set_curSet(v) {
+  curSet = v;
+}
 /** @param {typeof _pnlCache} v */
-export function set_pnlCache(v) { _pnlCache = v; }
+export function set_pnlCache(v) {
+  _pnlCache = v;
+}
 /** @param {number} v */
-export function set_lastImportAt(v) { _lastImportAt = v; }
+export function set_lastImportAt(v) {
+  _lastImportAt = v;
+}

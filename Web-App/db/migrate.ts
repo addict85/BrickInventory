@@ -1,9 +1,9 @@
 /**
  * Schema-Migrationen mit nummerierten Dateien.
  */
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
 import type { ClientBase } from 'pg';
 import { meldeFehler, fehlertext, logAndContinue } from '../src/infra/fehler';
 import type { DbSchnittstelle } from './typen';
@@ -22,7 +22,10 @@ async function runMigrations(client: ClientBase, { sichern = false }: { sichern?
 
   // Lexikografisch sortieren — deshalb die vierstellige Nummer im Dateinamen.
   // Lücken (0002, 0028) sind gewollt: Eine entfallene Migration gibt ihre Nummer nicht weiter.
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
+  const files = fs
+    .readdirSync(dir)
+    .filter(f => f.endsWith('.sql'))
+    .sort();
   if (!files.length) return [];
 
   const { rows }: { rows: Angewandt[] } = await client.query('SELECT name, pruefsumme FROM schema_migrations');
@@ -58,7 +61,10 @@ async function runMigrations(client: ClientBase, { sichern = false }: { sichern?
   return applied;
 }
 
-interface Angewandt { name: string; pruefsumme: string | null }
+interface Angewandt {
+  name: string;
+  pruefsumme: string | null;
+}
 
 /** SHA-256 des Inhalts; Zeilenenden zählen nicht (ein Windows-Checkout ist dieselbe Migration). */
 function pruefsumme(sql: string): string {
@@ -74,12 +80,15 @@ async function pruefeAngewandte(client: ClientBase, dir: string, rows: Angewandt
     const datei = path.join(dir, r.name);
     if (!fs.existsSync(datei)) continue;
     const ist = pruefsumme(fs.readFileSync(datei, 'utf8'));
-    if (r.pruefsumme === null) await client.query('UPDATE schema_migrations SET pruefsumme = $2 WHERE name = $1', [r.name, ist]);
+    if (r.pruefsumme === null)
+      await client.query('UPDATE schema_migrations SET pruefsumme = $2 WHERE name = $1', [r.name, ist]);
     else if (r.pruefsumme !== ist) geaendert.push(r.name);
   }
-  if (geaendert.length) throw new Error(
-    `Schon angewandte Migration(en) nachträglich geändert: ${geaendert.join(', ')}. `
-    + 'Den alten Inhalt wiederherstellen und die Änderung als neue Migration anlegen.');
+  if (geaendert.length)
+    throw new Error(
+      `Schon angewandte Migration(en) nachträglich geändert: ${geaendert.join(', ')}. ` +
+        'Den alten Inhalt wiederherstellen und die Änderung als neue Migration anlegen.',
+    );
 }
 
 const SICHERUNGEN_BEHALTEN = 3;
@@ -99,16 +108,25 @@ const ueberClient = (c: ClientBase): Abfrager => ({
  * gelöschtes Konto darin weiterlebt, und der nächste Lauf des Dienstes
  * migration räumt das leere Schema weg. @returns gelöschte oder geleerte Schemas */
 export async function raeumeAlteSicherungenAuf(c: Abfrager, tage = SICHERUNG_FRIST_TAGE): Promise<number> {
-  const rows = await c.all<{ nspname: string; eigen: boolean }>(`
+  const rows = await c.all<{ nspname: string; eigen: boolean }>(
+    `
     SELECT nspname, pg_has_role(nspowner, 'USAGE') AS eigen FROM pg_namespace WHERE nspname ~ '${SICHERUNG_SCHEMA}'
        AND to_timestamp(substr(nspname, 15, 14), 'YYYYMMDDHH24MISS') AT TIME ZONE 'UTC'
-           < NOW() - make_interval(days => $1)`, [tage]);
+           < NOW() - make_interval(days => $1)`,
+    [tage],
+  );
   let n = 0;
   for (const { nspname, eigen } of rows) {
-    if (eigen) { await c.run(`DROP SCHEMA "${nspname}" CASCADE`); n++; continue; }
+    if (eigen) {
+      await c.run(`DROP SCHEMA "${nspname}" CASCADE`);
+      n++;
+      continue;
+    }
     let geleert = 0;
     for (const { relname } of await c.all<{ relname: string }>(
-      `SELECT relname FROM pg_class WHERE relnamespace = $1::regnamespace AND relkind = 'r'`, [nspname]))
+      `SELECT relname FROM pg_class WHERE relnamespace = $1::regnamespace AND relkind = 'r'`,
+      [nspname],
+    ))
       geleert += (await c.run(`DELETE FROM "${nspname}"."${relname.replace(/"/g, '""')}"`)).changes;
     if (geleert) n++;
   }
@@ -118,9 +136,16 @@ export async function raeumeAlteSicherungenAuf(c: Abfrager, tage = SICHERUNG_FRI
 /** Migrationsdateien, die in schema_migrations fehlen; ohne die Tabelle alle. */
 export async function offeneMigrationen(client: ClientBase): Promise<string[]> {
   const dir = path.join(__dirname, 'migrations');
-  const dateien = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort() : [];
+  const dateien = fs.existsSync(dir)
+    ? fs
+        .readdirSync(dir)
+        .filter(f => f.endsWith('.sql'))
+        .sort()
+    : [];
   if (!(await client.query(`SELECT to_regclass('public.schema_migrations') AS t`)).rows[0].t) return dateien;
-  const fertig = new Set((await client.query<{ name: string }>('SELECT name FROM schema_migrations')).rows.map(z => z.name));
+  const fertig = new Set(
+    (await client.query<{ name: string }>('SELECT name FROM schema_migrations')).rows.map(z => z.name),
+  );
   return dateien.filter(f => !fertig.has(f));
 }
 
@@ -145,7 +170,8 @@ export async function entferneKontoAusSicherungen(c: Abfrager, uid: number): Pro
        AND format_type(a.atttypid, a.atttypmod) IN ('integer', 'bigint')`);
   let n = 0;
   const id = (x: string) => `"${x.replace(/"/g, '""')}"`;
-  for (const z of rows) n += (await c.run(`DELETE FROM ${id(z.schema)}.${id(z.tabelle)} WHERE ${id(z.spalte)} = $1`, [uid])).changes;
+  for (const z of rows)
+    n += (await c.run(`DELETE FROM ${id(z.schema)}.${id(z.tabelle)} WHERE ${id(z.spalte)} = $1`, [uid])).changes;
   return n;
 }
 

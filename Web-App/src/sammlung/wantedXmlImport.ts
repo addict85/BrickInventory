@@ -2,7 +2,14 @@
  * fragt auf Wunsch Rebrickable — beides gehört nicht in den Web-Prozess. */
 import { importiereWantedListe } from '../merkliste';
 import { merkeBlNummer, merkeEigeneBlNummer } from '../katalog';
-import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen, type Nutzlast, type AuftragsKontext } from '../auftraege';
+import {
+  starteAuftrag,
+  meldeAuftrag,
+  beendeAuftrag,
+  istAbgebrochen,
+  type Nutzlast,
+  type AuftragsKontext,
+} from '../auftraege';
 import { addManualPart } from '../teile';
 import { addManualFig } from '../figuren';
 import { addSet } from '../sets';
@@ -10,17 +17,23 @@ import { logAndContinue } from '../infra/fehler';
 
 export type WantedXmlEingabe = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
 
-async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: AuftragsKontext): Promise<Record<string, unknown>> {
+async function importiereWantedXml(
+  uid: number,
+  e: WantedXmlEingabe,
+  k: AuftragsKontext,
+): Promise<Record<string, unknown>> {
   // Zwei Merker: angefragt (für die Kette) und laufend (für den Abbruch).
   let auftragAngefragt = false;
   let auftragLaeuft = false;
   // Über eine Kette, weil der Rückruf synchron ist und das Schreiben nicht;
   // sonst stünde im Balken eine kleinere Zahl nach einer grösseren.
   let kette: Promise<unknown> = Promise.resolve();
-  let zuletzt = 0, letztePhase = '';
+  let zuletzt = 0,
+    letztePhase = '';
   const anDenBalken = (stand: { fertig: number; gesamt: number }, unbedingt = false) => {
     if (!auftragLaeuft) return;
-    kette = kette.then(() => meldeAuftrag(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt))
+    kette = kette
+      .then(() => meldeAuftrag(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt))
       .catch(logAndContinue('wanted-import:auftrag'));
   };
   try {
@@ -29,50 +42,61 @@ async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: Auftrags
       ueberRebrickable: e.ueberRebrickable,
       ...(e.korrekturen ? { korrekturen: e.korrekturen } : {}),
       // Eine Korrektur des Kontos gilt nur für dieses; gemeinsam nur, was Rebrickable bestätigt hat.
-      merkeNummer: (art, rbId, blId, quelle) => quelle === 'korrigiert'
-        ? merkeEigeneBlNummer(uid, art, rbId, blId) : merkeBlNummer(art, rbId, blId),
-      fortschritt: (stand) => {
+      merkeNummer: (art, rbId, blId, quelle) =>
+        quelle === 'korrigiert' ? merkeEigeneBlNummer(uid, art, rbId, blId) : merkeBlNummer(art, rbId, blId),
+      fortschritt: stand => {
         // Der Stand reist über den Auftrag zur wartenden Anfrage (und deren Strom);
         // höchstens fünfmal je Sekunde, der letzte jeder Phase immer.
         const jetzt = Date.now();
         if (jetzt - zuletzt >= 200 || stand.fertig === stand.gesamt || stand.phase !== letztePhase) {
-          zuletzt = jetzt; letztePhase = stand.phase;
+          zuletzt = jetzt;
+          letztePhase = stand.phase;
           const f = { ...stand, erledigt: stand.fertig };
           kette = kette.then(() => k.fortschritt(f)).catch(logAndContinue('wanted-import:stand'));
         }
         // Beim ERSTEN Schreib-Fortschritt angelegt: Vorher ist der Nenner nicht bekannt.
         if (e.schreiben && !auftragAngefragt && stand.phase === 'schreiben') {
           auftragAngefragt = true;
-          kette = kette.then(async () => { auftragLaeuft = await starteAuftrag(uid, { total: stand.gesamt, current: e.dateiName }); })
-            .catch((f) => { auftragLaeuft = false; logAndContinue('wanted-import:auftrag')(f); });
+          kette = kette
+            .then(async () => {
+              auftragLaeuft = await starteAuftrag(uid, { total: stand.gesamt, current: e.dateiName });
+            })
+            .catch(f => {
+              auftragLaeuft = false;
+              logAndContinue('wanted-import:auftrag')(f);
+            });
         }
         anDenBalken(stand);
       },
-      ...(e.schreiben ? { abbruch: async () => auftragLaeuft && await istAbgebrochen(uid) } : {}),
+      ...(e.schreiben ? { abbruch: async () => auftragLaeuft && (await istAbgebrochen(uid)) } : {}),
       anleger: {
-        teil:  (u, body) => addManualPart(u, body),
+        teil: (u, body) => addManualPart(u, body),
         figur: (u, body) => addManualFig(u, body),
         // Kaufpreis ist MAXPRICE aus der Datei.
-        set:   (u, sn, menge, zustand, kaufpreis) => addSet({ setNumber: sn, menge, konto: u, kaufpreis, zustand }),
+        set: (u, sn, menge, zustand, kaufpreis) => addSet({ setNumber: sn, menge, konto: u, kaufpreis, zustand }),
       },
     });
     // Erst die Kette abwarten, dann schliessen: Sonst stünde der Balken anderswo noch auf „läuft".
     await kette;
     if (auftragLaeuft) {
-      await beendeAuftrag(uid, {
-        ok: bericht.angelegt + bericht.aufgestockt,
-        // Offene Posten sind eine Anmerkung (⚠), weder angelegt noch gescheitert.
-        warn: bericht.posten.filter(p => p.ausgang === 'offen').length,
-        fehler: bericht.fehler,
-        // Die BEARBEITETEN Posten, sonst bliebe der Balken vor dem Ende stehen.
-        done: bericht.posten.length,
-        abgebrochen: !!bericht.abgebrochen,
-      },
-      // Je Posten eine lesbare Zeile fürs Protokoll des Balkens.
-      bericht.posten.map(p => (p.ausgang === 'angelegt' || p.ausgang === 'aufgestockt')
-        ? { success: true, set_number: p.blId, action: p.ausgang === 'angelegt' ? 'added' : 'updated' }
-        : { success: false, isWarning: p.ausgang === 'offen', set_number: p.blId, error: p.grund || '' }))
-        .catch(logAndContinue('wanted-import:auftrag-ende'));
+      await beendeAuftrag(
+        uid,
+        {
+          ok: bericht.angelegt + bericht.aufgestockt,
+          // Offene Posten sind eine Anmerkung (⚠), weder angelegt noch gescheitert.
+          warn: bericht.posten.filter(p => p.ausgang === 'offen').length,
+          fehler: bericht.fehler,
+          // Die BEARBEITETEN Posten, sonst bliebe der Balken vor dem Ende stehen.
+          done: bericht.posten.length,
+          abgebrochen: !!bericht.abgebrochen,
+        },
+        // Je Posten eine lesbare Zeile fürs Protokoll des Balkens.
+        bericht.posten.map(p =>
+          p.ausgang === 'angelegt' || p.ausgang === 'aufgestockt'
+            ? { success: true, set_number: p.blId, action: p.ausgang === 'angelegt' ? 'added' : 'updated' }
+            : { success: false, isWarning: p.ausgang === 'offen', set_number: p.blId, error: p.grund || '' },
+        ),
+      ).catch(logAndContinue('wanted-import:auftrag-ende'));
     }
     return { ...bericht };
   } catch (f) {
@@ -80,8 +104,9 @@ async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: Auftrags
     // einen Import, den es nicht mehr gibt.
     await kette;
     if (auftragLaeuft) {
-      await beendeAuftrag(uid, { ok: 0, fehler: 0, done: 0, abgebrochen: true })
-        .catch(logAndContinue('wanted-import:auftrag-ende (Fehler)'));
+      await beendeAuftrag(uid, { ok: 0, fehler: 0, done: 0, abgebrochen: true }).catch(
+        logAndContinue('wanted-import:auftrag-ende (Fehler)'),
+      );
     }
     throw f;
   }

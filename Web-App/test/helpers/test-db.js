@@ -8,7 +8,7 @@ const path = require('node:path');
 const { Client } = require(path.join(__dirname, '..', '..', 'node_modules', 'pg'));
 
 const [, , was, name, vorlage] = process.argv;
-const id = (s) => `"${String(s).replace(/"/g, '""')}"`;
+const id = s => `"${String(s).replace(/"/g, '""')}"`;
 
 (async () => {
   const c = new Client({ connectionString: process.env.TEST_DB_BASIS || process.env.TEST_DATABASE_URL });
@@ -17,5 +17,10 @@ const id = (s) => `"${String(s).replace(/"/g, '""')}"`;
     if (was === 'anlegen') await c.query(`CREATE DATABASE ${id(name)} TEMPLATE ${id(vorlage)}`);
     else if (was === 'loeschen') await c.query(`DROP DATABASE IF EXISTS ${id(name)} WITH (FORCE)`);
     else throw new Error(`unbekannt: ${was}`);
-  } finally { await c.end(); }
-})().catch((e) => { console.error(`[test-db] ${was} ${name}: ${e.message}`); process.exit(1); });
+  } finally {
+    await c.end();
+  }
+})().catch(e => {
+  console.error(`[test-db] ${was} ${name}: ${e.message}`);
+  process.exit(1);
+});

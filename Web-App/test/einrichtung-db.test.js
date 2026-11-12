@@ -21,28 +21,54 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-const SCHLUESSEL = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consumer_key',
-  'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret', 'einrichtung_erledigt'];
+const SCHLUESSEL = [
+  'rebrickable_api_key',
+  'brickset_api_key',
+  'bricklink_consumer_key',
+  'bricklink_consumer_secret',
+  'bricklink_token',
+  'bricklink_token_secret',
+  'einrichtung_erledigt',
+];
 
-test('Einrichtungs-Assistent', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
 
   const name = `ew_${process.pid}`;
-  const uid = (await db.get(
-    "INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES ($1,'x',true,true) RETURNING id", [name])).id;
+  const uid = (
+    await db.get(
+      "INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES ($1,'x',true,true) RETURNING id",
+      [name],
+    )
+  ).id;
   const routen = { '/api/v1': 'routes/api_v1/settings.js' };
-  const V = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, apiNutzer: { user_id: uid, is_admin: 1 }, routen, t });
-  const N = testServer(_req, { sitzung: { userId: uid, isAdmin: false }, apiNutzer: { user_id: uid, is_admin: 0 }, routen, t });
+  const V = testServer(_req, {
+    sitzung: { userId: uid, isAdmin: true },
+    apiNutzer: { user_id: uid, is_admin: 1 },
+    routen,
+    t,
+  });
+  const N = testServer(_req, {
+    sitzung: { userId: uid, isAdmin: false },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen,
+    t,
+  });
   const ruf = async (srv, weg, body) => {
     const r = await fetch(srv.base + '/api/v1/settings' + weg, {
-      method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json' },
-      ...(body ? { body: JSON.stringify(body) } : {}) });
+      method: body ? 'POST' : 'GET',
+      headers: { 'content-type': 'application/json' },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
     return { status: r.status, body: await r.json() };
   };
-  const setze = (k, v) => db.run(
-    `INSERT INTO global_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [k, v]);
+  const setze = (k, v) =>
+    db.run(
+      `INSERT INTO global_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [k, v],
+    );
 
   try {
     await t.test('frische Installation: offen, mit Passwortschritt', async () => {

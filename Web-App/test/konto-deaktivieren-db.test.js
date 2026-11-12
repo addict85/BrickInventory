@@ -35,14 +35,23 @@ const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const CHEF = `deakt_chef_${process.pid}`, NUTZER = `deakt_nutzer_${process.pid}`, PASS = 'Deakt-Passwort-1';
+  const CHEF = `deakt_chef_${process.pid}`,
+    NUTZER = `deakt_nutzer_${process.pid}`,
+    PASS = 'Deakt-Passwort-1';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NUTZER]]);
-  const lege = async (name, admin) => (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
-    VALUES ($1, $2, $3, true, true) RETURNING id`, [name, bcrypt.hashSync(PASS, 4), admin])).id;
-  const chef = await lege(CHEF, true), nutzer = await lege(NUTZER, false);
+  const lege = async (name, admin) =>
+    (
+      await db.get(
+        `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
+    VALUES ($1, $2, $3, true, true) RETURNING id`,
+        [name, bcrypt.hashSync(PASS, 4), admin],
+      )
+    ).id;
+  const chef = await lege(CHEF, true),
+    nutzer = await lege(NUTZER, false);
   // Verwalterrechte verlangen einen Code-Generator; jede Bestätigung nimmt einen Wiederherstellungscode.
   const codes = await require('./helpers/verwalter').verwalterMitFaktor(_req, chef);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
@@ -54,29 +63,49 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
 
   const app = express();
   app.use(express.json());
-  app.use(session({ store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: 'deaktivieren-test-geheimnis-lang-genug', resave: false, saveUninitialized: false,
-    name: _req('src/http/sitzungsKeks.js').sitzungsKeksName() }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: 'deaktivieren-test-geheimnis-lang-genug',
+      resave: false,
+      saveUninitialized: false,
+      name: _req('src/http/sitzungsKeks.js').sitzungsKeksName(),
+    }),
+  );
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1/auth', _req('routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const rufe = (methode, pfad, { body, cookie, token } = {}) => fetch(`http://127.0.0.1:${srv.address().port}/api/v1/auth${pfad}`, {
-    method: methode, body: body && JSON.stringify(body),
-    headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}),
-               ...(token ? { authorization: `Bearer ${token}` } : {}) },
-  }).then(async r => ({ status: r.status, cookie: (r.headers.get('set-cookie') || '').split(';')[0], body: await r.json() }));
+  const rufe = (methode, pfad, { body, cookie, token } = {}) =>
+    fetch(`http://127.0.0.1:${srv.address().port}/api/v1/auth${pfad}`, {
+      method: methode,
+      body: body && JSON.stringify(body),
+      headers: {
+        'content-type': 'application/json',
+        ...(cookie ? { cookie } : {}),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+    }).then(async r => ({
+      status: r.status,
+      cookie: (r.headers.get('set-cookie') || '').split(';')[0],
+      body: await r.json(),
+    }));
   const anmelden = (name, body = {}) => rufe('POST', '/login', { body: { username: name, password: PASS, ...body } });
-  const schalte = (id, aktiv, pw = PASS) => rufe('PUT', `/users/${id}/aktiv`,
-    { cookie: chefKeks, body: { is_active: aktiv, admin_password: pw, code: codes.shift() } });
-  const protokoll = async () => (await db.all(
-    'SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY id', [nutzer])).map(z => z.aktion);
+  const schalte = (id, aktiv, pw = PASS) =>
+    rufe('PUT', `/users/${id}/aktiv`, {
+      cookie: chefKeks,
+      body: { is_active: aktiv, admin_password: pw, code: codes.shift() },
+    });
+  const protokoll = async () =>
+    (await db.all('SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY id', [nutzer])).map(
+      z => z.aktion,
+    );
 
   const chefKeks = (await anmelden(CHEF, { ohne_token: true, code: codes.shift() })).cookie;
   assert.match(chefKeks, /^bim\.sid=/);
 
   await t.test('Token und Sitzung gelten sofort nicht mehr', async () => {
-    const a = { ...await anmelden(NUTZER), cookie: (await anmelden(NUTZER, { ohne_token: true })).cookie };
+    const a = { ...(await anmelden(NUTZER)), cookie: (await anmelden(NUTZER, { ohne_token: true })).cookie };
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal((await rufe('GET', '/profile', { token: a.body.token })).status, 200);
     assert.equal((await rufe('GET', '/profile', { cookie: a.cookie })).status, 200);
@@ -121,22 +150,42 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
 
   await t.test('unbestätigt: dieselbe Absage, neuer Link ohne Kontoauskunft', async () => {
     const adresse = `deakt_${process.pid}@example.org`;
-    await db.run('UPDATE users SET email = NULL, email_neu = $2, registrierung_offen = true WHERE id = $1', [nutzer, adresse]);
+    await db.run('UPDATE users SET email = NULL, email_neu = $2, registrierung_offen = true WHERE id = $1', [
+      nutzer,
+      adresse,
+    ]);
     const a = await anmelden(NUTZER);
     const falsch = await rufe('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
-    assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'unbestätigt antwortet wie ein falsches Passwort');
-    const erneut = (email) => rufe('POST', '/bestaetigung-erneut', { body: { email } });
+    assert.deepEqual(
+      [a.status, a.body],
+      [falsch.status, falsch.body],
+      'unbestätigt antwortet wie ein falsches Passwort',
+    );
+    const erneut = email => rufe('POST', '/bestaetigung-erneut', { body: { email } });
     const unbekannt = await erneut(`niemand_${process.pid}@example.org`);
     const bekannt = await erneut(adresse.toUpperCase());
-    assert.deepEqual([bekannt.status, bekannt.body], [unbekannt.status, unbekannt.body], 'die Antwort verrät das Konto');
+    assert.deepEqual(
+      [bekannt.status, bekannt.body],
+      [unbekannt.status, unbekannt.body],
+      'die Antwort verrät das Konto',
+    );
     assert.equal(bekannt.status, 200);
-    const z = await db.get('SELECT email_neu_token, email_neu_bis > NOW() + interval \'23 hours\' AS frisch FROM users WHERE id = $1', [nutzer]);
+    const z = await db.get(
+      "SELECT email_neu_token, email_neu_bis > NOW() + interval '23 hours' AS frisch FROM users WHERE id = $1",
+      [nutzer],
+    );
     assert.ok(z.email_neu_token && z.frisch, 'kein neuer Link für das unbestätigte Konto');
     await erneut(adresse);
-    assert.equal((await db.get('SELECT email_neu_token FROM users WHERE id = $1', [nutzer])).email_neu_token,
-      z.email_neu_token, 'ein zweiter Link sofort danach');
-    await db.run(`UPDATE users SET email_verified = true, registrierung_offen = false, email_neu = NULL, email_neu_token = NULL,
-      email_neu_bis = NULL WHERE id = $1`, [nutzer]);
+    assert.equal(
+      (await db.get('SELECT email_neu_token FROM users WHERE id = $1', [nutzer])).email_neu_token,
+      z.email_neu_token,
+      'ein zweiter Link sofort danach',
+    );
+    await db.run(
+      `UPDATE users SET email_verified = true, registrierung_offen = false, email_neu = NULL, email_neu_token = NULL,
+      email_neu_bis = NULL WHERE id = $1`,
+      [nutzer],
+    );
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   });
 

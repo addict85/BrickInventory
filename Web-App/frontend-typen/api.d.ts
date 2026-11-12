@@ -7,14 +7,26 @@ import type { Route } from './vertrag';
 type OhneAbfrage<P extends string> = P extends `${infer B}?${string}` ? B : P;
 type Genau<M, P, R = Route> = R extends { m: M; p: infer Q } ? (P extends Q ? R : never) : never;
 // `${pfad}${scopeQuery()}`: die Abfrage hängt als ${string} hinten an.
-type MitAnhang<M, P, R = Route> = R extends { m: M; p: infer Q extends string } ? (P extends `${Q}${string}` ? R : never) : never;
+type MitAnhang<M, P, R = Route> = R extends { m: M; p: infer Q extends string }
+  ? P extends `${Q}${string}`
+    ? R
+    : never
+  : never;
 // Mit Anhang vergleicht sich die Genauigkeit an `${Q}${string}`: `/v1/stats…`
 // ist genauer als `/v1/…`, obwohl `/v1/stats` nicht auf `/v1/` passt.
 type Muster<Q, Anhang> = Anhang extends true ? `${Q & string}${string}` : Q;
 type Genaueste<R, Anhang, Alle = R> = R extends { p: infer Q }
-  ? ([Alle extends { p: infer Q2 }
-      ? (Muster<Q2, Anhang> extends Muster<Q, Anhang> ? (Muster<Q, Anhang> extends Muster<Q2, Anhang> ? never : Alle) : never)
-      : never] extends [never] ? R : never)
+  ? [
+      Alle extends { p: infer Q2 }
+        ? Muster<Q2, Anhang> extends Muster<Q, Anhang>
+          ? Muster<Q, Anhang> extends Muster<Q2, Anhang>
+            ? never
+            : Alle
+          : never
+        : never,
+    ] extends [never]
+    ? R
+    : never
   : never;
 type Treffer<M, P extends string> = [Genau<M, OhneAbfrage<P>>] extends [never]
   ? Genaueste<MitAnhang<M, P>, true>
@@ -35,7 +47,11 @@ export type ApiFehler = {
 type Benannt<T> = keyof { [K in keyof T as string extends K ? never : number extends K ? never : K]: 0 };
 
 /** Antwort einer Route bei Erfolg, mit dem HTTP-Status, den api() anhängt. */
-export type ApiErfolg<M extends string, P extends string> = Treffer<M, P>['a'] & { status: number; ausZwischenspeicher?: boolean; error?: string | null };
+export type ApiErfolg<M extends string, P extends string> = Treffer<M, P>['a'] & {
+  status: number;
+  ausZwischenspeicher?: boolean;
+  error?: string | null;
+};
 
 /** Im Fehlerfall fehlen die Felder der Erfolgsantwort: `d.sets` ist dann
  * undefined, nicht unbekannt — ohne Prüfung auf `success` lesbar, mit
@@ -43,8 +59,12 @@ export type ApiErfolg<M extends string, P extends string> = Treffer<M, P>['a'] &
 type FehlerZu<A> = ApiFehler & { [K in Exclude<Benannt<A>, Benannt<ApiFehler>>]?: undefined };
 
 export type ApiAntwort<M extends string, P extends string> = [Treffer<M, P>] extends [never]
-  ? any
+  ? // biome-ignore lint/suspicious/noExplicitAny: Pfade ausserhalb des Vertrags (zusammengesetzt) bleiben ungeprüft; unknown verlangte an jeder Aufrufstelle eine Prüfung ohne Gewinn.
+    any
   : ApiErfolg<M, P> | FehlerZu<Treffer<M, P>['a']>;
 
 /** apiDaten(): die Antwort unverändert bei Erfolg, sonst null. */
-export type ApiDaten<M extends string, P extends string> = [Treffer<M, P>] extends [never] ? any : Treffer<M, P>['a'] | null;
+export type ApiDaten<M extends string, P extends string> = [Treffer<M, P>] extends [never]
+  ? // biome-ignore lint/suspicious/noExplicitAny: wie bei ApiAntwort — ein Pfad ausserhalb des Vertrags hat keinen Antworttyp.
+    any
+  : Treffer<M, P>['a'] | null;

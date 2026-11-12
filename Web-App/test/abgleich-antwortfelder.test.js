@@ -36,7 +36,8 @@ test('kein Antwortfeld ohne Verbraucher', () => {
   try {
     execFileSync(process.execPath, [skript], { encoding: 'utf8', stdio: 'pipe' });
   } catch (e) {
-    assert.fail(`${e.stdout || ''}${e.stderr || ''}`.trim() ||
-      'check-antwortfelder.js ist fehlgeschlagen, ohne etwas zu melden');
+    assert.fail(
+      `${e.stdout || ''}${e.stderr || ''}`.trim() || 'check-antwortfelder.js ist fehlgeschlagen, ohne etwas zu melden',
+    );
   }
 });

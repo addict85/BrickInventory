@@ -35,15 +35,21 @@ function dienst(name) {
   }
   return block;
 }
-const einhaengungen = (name) => dienst(name).map(l => l.match(/^\s+-\s+([^\s:]+):(\/\S*)\s*$/)).filter(Boolean)
-  .map(m => ({ quelle: m[1], ziel: m[2].replace(/:ro$/, ''), nurLesen: m[2].endsWith(':ro') }));
+const einhaengungen = name =>
+  dienst(name)
+    .map(l => l.match(/^\s+-\s+([^\s:]+):(\/\S*)\s*$/))
+    .filter(Boolean)
+    .map(m => ({ quelle: m[1], ziel: m[2].replace(/:ro$/, ''), nurLesen: m[2].endsWith(':ro') }));
 
 /** Das Skript hinter `command: [sh, -c, |]` von Caddy, wie Compose es übergibt ($$ → $). */
 function caddySkript() {
   const z = dienst('caddy');
   const i = z.findIndex(l => /^\s+- \|\s*$/.test(l));
   const rumpf = [];
-  for (const l of z.slice(i + 1)) { if (!/^ {8}/.test(l)) break; rumpf.push(l.slice(8)); }
+  for (const l of z.slice(i + 1)) {
+    if (!/^ {8}/.test(l)) break;
+    rumpf.push(l.slice(8));
+  }
   return rumpf.join('\n').replace(/\$\$/g, '$');
 }
 
@@ -52,7 +58,11 @@ test('kein Dienst ausser Caddy hängt Caddys Daten ein, die App nur das Zertifik
   assert.ok(namen.includes('app') && namen.includes('caddy'), `Dienste nicht gefunden: ${namen}`);
   // caddy-rechte übergibt Caddy seine Ordner und hat kein Netz (compose-haertung).
   for (const n of namen.filter(n => n !== 'caddy' && n !== 'caddy-rechte')) {
-    assert.deepEqual(einhaengungen(n).filter(e => e.quelle.startsWith('./caddy')), [], `${n} sieht Caddys Daten`);
+    assert.deepEqual(
+      einhaengungen(n).filter(e => e.quelle.startsWith('./caddy')),
+      [],
+      `${n} sieht Caddys Daten`,
+    );
   }
   const ca = einhaengungen('app').find(e => e.quelle === 'ca-wurzel');
   assert.deepEqual(ca, { quelle: 'ca-wurzel', ziel: '/caddy-ca', nurLesen: true });
@@ -61,17 +71,30 @@ test('kein Dienst ausser Caddy hängt Caddys Daten ein, die App nur das Zertifik
   assert.match(compose, /^volumes:\n(?:\s*#.*\n)*\s+ca-wurzel:\s*$/m, 'das Volume ca-wurzel ist nicht angelegt');
 });
 
-test('die Schleife kopiert nur root.crt, auch wenn Caddy die CA erst später anlegt', async (t) => {
+test('die Schleife kopiert nur root.crt, auch wenn Caddy die CA erst später anlegt', async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wurzelprobe-'));
-  const ca = path.join(tmp, 'data', 'caddy', 'pki', 'authorities', 'local'), vol = path.join(tmp, 'vol');
+  const ca = path.join(tmp, 'data', 'caddy', 'pki', 'authorities', 'local'),
+    vol = path.join(tmp, 'vol');
   fs.mkdirSync(vol);
   const skript = caddySkript();
   assert.match(skript, /exec caddy run /, 'Caddy startet nicht mehr am Ende des Skripts');
-  const umgebogen = skript.replaceAll('/data/', `${tmp}/data/`).replaceAll('/ca-wurzel', vol)
+  const umgebogen = skript
+    .replaceAll('/data/', `${tmp}/data/`)
+    .replaceAll('/ca-wurzel', vol)
     .replace(/exec caddy run .*/, 'exec sleep 60');
-  const p = spawn('sh', ['-c', umgebogen], { detached: true, stdio: 'ignore',
-    env: { PATH: process.env.PATH, CA_OHNE_NAMENSBESCHRAENKUNG: 'ja' } });
-  t.after(() => { try { process.kill(-p.pid, 'SIGKILL'); } catch { /* schon beendet */ } fs.rmSync(tmp, { recursive: true, force: true }); });
+  const p = spawn('sh', ['-c', umgebogen], {
+    detached: true,
+    stdio: 'ignore',
+    env: { PATH: process.env.PATH, CA_OHNE_NAMENSBESCHRAENKUNG: 'ja' },
+  });
+  t.after(() => {
+    try {
+      process.kill(-p.pid, 'SIGKILL');
+    } catch {
+      /* schon beendet */
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
 
   await new Promise(r => setTimeout(r, 500));
   assert.deepEqual(fs.readdirSync(vol), [], 'ohne CA nichts im Volume');

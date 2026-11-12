@@ -28,26 +28,37 @@ test('kein Planer fragt mehr nach Auslösern', () => {
   // Auslöser-Einträge mit eigenem Kanal sind weg.
   const { alleQuellen } = require('./helpers/sources');
   const treffer = alleQuellen().filter(rel =>
-    /csv_sync_trigger|job_reschedule_trigger|instr_queue_trigger/.test(fs.readFileSync(path.join(ROOT, rel), 'utf8')));
+    /csv_sync_trigger|job_reschedule_trigger|instr_queue_trigger/.test(fs.readFileSync(path.join(ROOT, rel), 'utf8')),
+  );
   assert.deepEqual(treffer, []);
 });
 
-test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, async (t) => {
+test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, async t => {
   const db = _req('db/database.js');
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    keineDb(t, e); return;
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
-  t.after(async () => { await pgNotify.close(); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await pgNotify.close();
+    await db.pool.end().catch(() => {});
+  });
   const KANAL = `ae_probe_${process.pid}`;
   const bekommen = [];
-  const warteAuf = (n) => bis(() => bekommen.length >= n, 5000);
+  const warteAuf = n => bis(() => bekommen.length >= n, 5000);
 
-  assert.throws(() => pgNotify.listen('kein kanal', () => {}), /Ungültiger Kanalname/,
-    'ein Kanalname mit Leerzeichen wird abgewiesen');
+  assert.throws(
+    () => pgNotify.listen('kein kanal', () => {}),
+    /Ungültiger Kanalname/,
+    'ein Kanalname mit Leerzeichen wird abgewiesen',
+  );
 
-  pgNotify.listen(KANAL, (nutzlast) => { bekommen.push(nutzlast ?? null); });
+  pgNotify.listen(KANAL, nutzlast => {
+    bekommen.push(nutzlast ?? null);
+  });
   await warteAuf(1);
   assert.deepEqual(bekommen, [null], 'beim Verbinden fragt der Handler einmal von sich aus');
 
@@ -57,20 +68,28 @@ test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, a
 
   // Die lauschende Verbindung abreissen: Ein Signal in der Lücke ginge
   // verloren, deshalb holt der Handler beim Wiederverbinden nach.
-  await db.run(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
-                 WHERE pid <> pg_backend_pid() AND query LIKE $1`, [`LISTEN "${KANAL}"%`]);
+  await db.run(
+    `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+                 WHERE pid <> pg_backend_pid() AND query LIKE $1`,
+    [`LISTEN "${KANAL}"%`],
+  );
   await warteAuf(3);
   assert.deepEqual(bekommen, [null, 'hallo', null], 'nach dem Wiederverbinden holt der Handler nach');
 });
 
 test('beim Senden wird der Kanal gebunden, nicht eingesetzt', () => {
-  assert.match(NOTIFY, /pg_notify\(\$1, \$2\)/,
-    'Beim Senden lässt sich der Kanal binden — dort gehört kein String-Bau hin');
+  assert.match(
+    NOTIFY,
+    /pg_notify\(\$1, \$2\)/,
+    'Beim Senden lässt sich der Kanal binden — dort gehört kein String-Bau hin',
+  );
 });
 
 test('eigene Verbindung, mit gedeckeltem Reconnect', () => {
-  assert.match(NOTIFY, /new Client\(/,
-    'Ein dauerhaft lauschender Client wäre im Pool blockiert');
-  assert.match(NOTIFY, /Math\.min\(30_000, (?:this\.)?_retryMs \* 2\)/,
-    'Reconnect ohne Deckelung und Backoff hämmert bei DB-Ausfall dagegen');
+  assert.match(NOTIFY, /new Client\(/, 'Ein dauerhaft lauschender Client wäre im Pool blockiert');
+  assert.match(
+    NOTIFY,
+    /Math\.min\(30_000, (?:this\.)?_retryMs \* 2\)/,
+    'Reconnect ohne Deckelung und Backoff hämmert bei DB-Ausfall dagegen',
+  );
 });

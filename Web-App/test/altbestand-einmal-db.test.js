@@ -20,7 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 
-test('Altbestand einmal je Datenbank', { concurrency: 1 }, async (t) => {
+test('Altbestand einmal je Datenbank', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));

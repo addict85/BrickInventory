@@ -1,6 +1,6 @@
 /** Bilder von den CDNs (Rebrickable, BrickLink, Brickset, LEGO): Host-Liste,
  * Kopfzeilen und Verbindungspool an einer Stelle statt je Aufrufer. */
-import https from 'https';
+import https from 'node:https';
 import { oeffneHttps, holeHttps, type AbrufStrom, type AbrufAntwort } from '../src/infra/abruf';
 import { ERLAUBTE_BILD_HOSTS } from '../src/infra/fremdeAdressen';
 import { oeffentlicherLookup } from '../src/infra/zielAdresse';

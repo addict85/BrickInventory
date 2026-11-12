@@ -14,10 +14,20 @@ function probe(app, pfad) {
     const srv = app.listen(0, () => {
       const req = http.get({ port: srv.address().port, path: pfad, timeout: 800 }, res => {
         res.resume();
-        res.on('end', () => { srv.close(); resolve(res.statusCode); });
+        res.on('end', () => {
+          srv.close();
+          resolve(res.statusCode);
+        });
       });
-      req.on('timeout', () => { req.destroy(); srv.close(); resolve('hängt'); });
-      req.on('error', () => { srv.close(); resolve('hängt'); });
+      req.on('timeout', () => {
+        req.destroy();
+        srv.close();
+        resolve('hängt');
+      });
+      req.on('error', () => {
+        srv.close();
+        resolve('hängt');
+      });
     });
   });
 }
@@ -25,9 +35,13 @@ function probe(app, pfad) {
 function app() {
   const a = express();
   const r = express.Router();
-  r.get('/boom', async () => { throw new Error('kaputt'); });
+  r.get('/boom', async () => {
+    throw new Error('kaputt');
+  });
   const m = express.Router();
-  m.use(async () => { throw new Error('auch kaputt'); });
+  m.use(async () => {
+    throw new Error('auch kaputt');
+  });
   a.use('/api', r);
   a.use('/mw', m);
   a.use((err, _req, res, _next) => res.status(500).json({ error: err.message }));

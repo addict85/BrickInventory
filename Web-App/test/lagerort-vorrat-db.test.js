@@ -18,8 +18,11 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
   for (const name of ['opa', 'enkel']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
@@ -27,10 +30,15 @@ async function seed() {
 }
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
+test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -56,11 +64,16 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   await t.test('leer und zu lang werden abgelehnt, nicht zurechtgebogen', async () => {
     for (const roh of ['', '   ', null, undefined]) {
-      await assert.rejects(() => L.legeOrtAn(U.opa, roh),
-        e => String(e.code) === 'lagerort_leer', `${JSON.stringify(roh)} wurde angenommen`);
+      await assert.rejects(
+        () => L.legeOrtAn(U.opa, roh),
+        e => String(e.code) === 'lagerort_leer',
+        `${JSON.stringify(roh)} wurde angenommen`,
+      );
     }
-    await assert.rejects(() => L.legeOrtAn(U.opa, 'x'.repeat(61)),
-      e => String(e.code) === 'lagerort_zu_lang');
+    await assert.rejects(
+      () => L.legeOrtAn(U.opa, 'x'.repeat(61)),
+      e => String(e.code) === 'lagerort_zu_lang',
+    );
     // Genau auf der Grenze ist erlaubt — sonst wäre die Zahl in der
     // Fehlermeldung („höchstens 60") gelogen.
     const rand = await L.legeOrtAn(U.opa, 'y'.repeat(60));
@@ -72,12 +85,21 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // Ein Lagerort ist ein Regal in einer Wohnung. Der Grossvater hat andere
     // Regale als der Enkel, auch wenn er dessen Sets sehen darf.
     await L.legeOrtAn(U.enkel, 'Kinderzimmer');
-    assert.deepEqual((await L.orteVon([U.opa])).map(o => o.name), ['Regal A']);
-    assert.deepEqual((await L.orteVon([U.enkel])).map(o => o.name), ['Kinderzimmer']);
+    assert.deepEqual(
+      (await L.orteVon([U.opa])).map(o => o.name),
+      ['Regal A'],
+    );
+    assert.deepEqual(
+      (await L.orteVon([U.enkel])).map(o => o.name),
+      ['Kinderzimmer'],
+    );
     // Und der Grossvater kann beide Listen zusammen abfragen — genau das tut
     // das Auswahlfeld bei einem Set, das beiden gehört.
-    assert.deepEqual((await L.orteVon([U.opa, U.enkel])).map(o => o.name),
-      ['Kinderzimmer', 'Regal A'], 'sortiert ohne Rücksicht auf Gross-/Kleinschreibung');
+    assert.deepEqual(
+      (await L.orteVon([U.opa, U.enkel])).map(o => o.name),
+      ['Kinderzimmer', 'Regal A'],
+      'sortiert ohne Rücksicht auf Gross-/Kleinschreibung',
+    );
   });
 
   await t.test('ein neuer Ort am SET landet im Vorrat', async () => {
@@ -86,8 +108,10 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // nächsten Mal gewählt werden soll.
     await haeltSet(db, U.enkel, '10179-1', 1);
     assert.equal(await L.setzeLagerort('set', [U.enkel], ['10179-1'], 'Unterm Bett'), 1);
-    assert.ok((await L.orteVon([U.enkel])).some(o => o.name === 'Unterm Bett'),
-      'Der frisch getippte Ort fehlt im Vorrat');
+    assert.ok(
+      (await L.orteVon([U.enkel])).some(o => o.name === 'Unterm Bett'),
+      'Der frisch getippte Ort fehlt im Vorrat',
+    );
   });
 
   await t.test('ein Ort, der keine Zeile trifft, hinterlässt keinen Eintrag', async () => {
@@ -95,8 +119,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     // stehen bleiben. Sonst sammelte die Liste Namen aus Fehlversuchen.
     const vorher = (await L.orteVon([U.opa])).length;
     assert.equal(await L.setzeLagerort('set', [U.opa], ['99999-1'], 'Geisterkiste'), 0);
-    assert.equal((await L.orteVon([U.opa])).length, vorher,
-      'Ein Fehlversuch hat einen Ort im Vorrat hinterlassen');
+    assert.equal((await L.orteVon([U.opa])).length, vorher, 'Ein Fehlversuch hat einen Ort im Vorrat hinterlassen');
   });
 
   await t.test('Umbenennen nimmt die Zuordnungen mit', async () => {
@@ -110,17 +133,20 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     const amSet = await db.get(
       `SELECT l.name AS storage FROM sets t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
-        WHERE t.set_number = $1`, ['10179-1']);
-    assert.equal(amSet.storage,
-      'Kiste 3', 'Das Set steht noch im alten Ort — das Umbenennen war ein Verlieren');
+        WHERE t.set_number = $1`,
+      ['10179-1'],
+    );
+    assert.equal(amSet.storage, 'Kiste 3', 'Das Set steht noch im alten Ort — das Umbenennen war ein Verlieren');
     assert.ok((await L.orteVon([U.enkel])).some(o => o.name === 'Kiste 3'));
   });
 
   await t.test('Umbenennen auf einen belegten Namen wird abgelehnt', async () => {
     const ort = (await L.orteVon([U.enkel])).find(o => o.name === 'Kiste 3');
-    await assert.rejects(() => L.benenneOrtUm(U.enkel, ort.id, 'kinderzimmer'),
+    await assert.rejects(
+      () => L.benenneOrtUm(U.enkel, ort.id, 'kinderzimmer'),
       e => String(e.code) === 'lagerort_doppelt',
-      'Zwei Orte mit demselben Namen wären eine Falle in der Auswahlliste');
+      'Zwei Orte mit demselben Namen wären eine Falle in der Auswahlliste',
+    );
     // Der eigene Name auf sich selbst ist dagegen in Ordnung — sonst liesse
     // sich „Kiste 3" nicht zu „KISTE 3" korrigieren.
     await L.benenneOrtUm(U.enkel, ort.id, 'KISTE 3');
@@ -129,17 +155,23 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   await t.test('ein fremdes Konto kann nichts umbenennen', async () => {
     const ort = (await L.orteVon([U.enkel])).find(o => o.name === 'KISTE 3');
-    await assert.rejects(() => L.benenneOrtUm(U.opa, ort.id, 'Opas Keller'),
-      e => String(e.code) === 'lagerort_unbekannt');
-    await assert.rejects(() => L.loescheOrt(U.opa, ort.id),
-      e => String(e.code) === 'lagerort_unbekannt');
+    await assert.rejects(
+      () => L.benenneOrtUm(U.opa, ort.id, 'Opas Keller'),
+      e => String(e.code) === 'lagerort_unbekannt',
+    );
+    await assert.rejects(
+      () => L.loescheOrt(U.opa, ort.id),
+      e => String(e.code) === 'lagerort_unbekannt',
+    );
   });
 
   await t.test('Löschen geht nur bei einem leeren Ort', async () => {
     const belegt = (await L.orteVon([U.enkel])).find(o => o.name === 'KISTE 3');
-    await assert.rejects(() => L.loescheOrt(U.enkel, belegt.id),
+    await assert.rejects(
+      () => L.loescheOrt(U.enkel, belegt.id),
       e => String(e.code) === 'lagerort_in_benutzung',
-      'Ein belegter Ort liess sich löschen — die Zuordnung wäre ohne Weg zurück weg');
+      'Ein belegter Ort liess sich löschen — die Zuordnung wäre ohne Weg zurück weg',
+    );
 
     const leer = (await L.orteVon([U.enkel])).find(o => o.name === 'Kinderzimmer');
     await L.loescheOrt(U.enkel, leer.id);
@@ -153,13 +185,12 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
   await t.test('eine Zuordnung ohne Ort im Vorrat ist nicht mehr moeglich', async () => {
     // Was hier vorher stand, und warum es weg ist
-    const frei = (await db.get(
-      'SELECT COALESCE(MAX(id),0) + 1000 AS frei FROM storage_locations')).frei;
+    const frei = (await db.get('SELECT COALESCE(MAX(id),0) + 1000 AS frei FROM storage_locations')).frei;
     await assert.rejects(
-      () => db.run('UPDATE sets SET storage_id = $1 WHERE set_number = $2',
-                   [frei, '10179-1']),
-      (e) => /foreign key|verletzt|violates/i.test(String(e?.message || e)),
-      'Ein Set liess sich auf einen Ort setzen, den es im Vorrat nicht gibt');
+      () => db.run('UPDATE sets SET storage_id = $1 WHERE set_number = $2', [frei, '10179-1']),
+      e => /foreign key|verletzt|violates/i.test(String(e?.message || e)),
+      'Ein Set liess sich auf einen Ort setzen, den es im Vorrat nicht gibt',
+    );
   });
 
   await db.pool.end().catch(() => {});

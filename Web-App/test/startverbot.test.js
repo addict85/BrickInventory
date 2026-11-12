@@ -31,10 +31,10 @@
  *      gestrichen → rot: „Beispielwert und zu kurzes Sitzungsgeheimnis …“
  *   L  die Mindestlänge in sitzungsGeheimnis() gestrichen → rot: dieselbe Prüfung
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { spawn } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
@@ -43,23 +43,40 @@ const { startVerbote } = _req('src/infra/konfig.js');
 
 /** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
 function starte(env, ms = 8000) {
-  return new Promise((fertig) => {
+  return new Promise(fertig => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-      cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-      env: { PATH: process.env.PATH, NODE_ENV: 'production', PORT: '39648',
-             SESSION_SECRET: 'startverbot-geheimnis-lang-genug-1234567', ...env },
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        PATH: process.env.PATH,
+        NODE_ENV: 'production',
+        PORT: '39648',
+        SESSION_SECRET: 'startverbot-geheimnis-lang-genug-1234567',
+        ...env,
+      },
     });
     let log = '';
-    srv.stdout.on('data', d => { log += d; });
-    srv.stderr.on('data', d => { log += d; });
-    const uhr = setTimeout(() => { srv.kill('SIGKILL'); }, ms);
-    srv.on('exit', (code) => { clearTimeout(uhr); fertig({ code, log }); });
+    srv.stdout.on('data', d => {
+      log += d;
+    });
+    srv.stderr.on('data', d => {
+      log += d;
+    });
+    const uhr = setTimeout(() => {
+      srv.kill('SIGKILL');
+    }, ms);
+    srv.on('exit', code => {
+      clearTimeout(uhr);
+      fertig({ code, log });
+    });
   });
 }
 
 test('Beispielpasswort der Datenbank: Start verweigert', { timeout: 30_000 }, async () => {
-  for (const env of [{ PGPASSWORD: 'brickinventory_secret', PGHOST: '127.0.0.1', PGPORT: '1' },
-                     { DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@127.0.0.1:1/x' }]) {
+  for (const env of [
+    { PGPASSWORD: 'brickinventory_secret', PGHOST: '127.0.0.1', PGPORT: '1' },
+    { DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@127.0.0.1:1/x' },
+  ]) {
     const { code, log } = await starte(env);
     assert.equal(code, 1, `der Server läuft mit dem Beispielpasswort weiter: ${log.slice(-400)}`);
     assert.match(log, /Beispielpasswort .*Start verweigert/);
@@ -73,7 +90,11 @@ test('TRUST_PROXY=docker: Start verweigert', { timeout: 30_000 }, async () => {
 });
 
 test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, async () => {
-  const ohne = { NODE_ENV: undefined, DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
+  const ohne = {
+    NODE_ENV: undefined,
+    DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x',
+    APP_BASE_URL: 'https://lego.example.org',
+  };
   for (const geheimnis of [undefined, 'brickinventory-manager-dev-secret']) {
     const { code, log } = await starte({ ...ohne, SESSION_SECRET: geheimnis });
     assert.equal(code, 1, log.slice(-400));
@@ -88,7 +109,10 @@ test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, 
 
 test('Beispielwert und zu kurzes Sitzungsgeheimnis: Start verweigert', { timeout: 30_000 }, async () => {
   const env = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
-  for (const [geheimnis, grund] of [['change-me-to-a-long-random-string', /Beispielwert/], ['nur-31-zeichen-lang-1234567890x', /zu kurz \(nötig sind mindestens 32 Zeichen/]]) {
+  for (const [geheimnis, grund] of [
+    ['change-me-to-a-long-random-string', /Beispielwert/],
+    ['nur-31-zeichen-lang-1234567890x', /zu kurz \(nötig sind mindestens 32 Zeichen/],
+  ]) {
     const { code, log } = await starte({ ...env, SESSION_SECRET: geheimnis });
     assert.equal(code, 1, log.slice(-400));
     assert.match(log, grund);

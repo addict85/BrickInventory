@@ -23,7 +23,8 @@ const SKRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 
 
 function oeffne() {
   const { JSDOM } = require(path.join(ROOT, 'node_modules', 'jsdom'));
-  const dom = new JSDOM(`<!doctype html><html><body data-base="" data-i18n='{"log.entries":"Einträge"}'>
+  const dom = new JSDOM(
+    `<!doctype html><html><body data-base="" data-i18n='{"log.entries":"Einträge"}'>
     <select id="period" data-change="loadLogs"><option value="15">15</option></select>
     <button id="btn-info" data-click="toggleLevel" data-arg="info"></button>
     <button id="btn-warn" class="active" data-click="toggleLevel" data-arg="warn"></button>
@@ -32,19 +33,25 @@ function oeffne() {
     <button id="btn-auto" data-click="toggleAuto"></button>
     <button id="fremd" data-click="alert">x</button>
     <span id="status"></span><div id="log-wrap"></div></body></html>`,
-  { runScripts: 'outside-only', url: 'http://localhost/' });
+    { runScripts: 'outside-only', url: 'http://localhost/' },
+  );
   const w = dom.window;
   const aufrufe = [];
   w.fetch = async (url, o = {}) => {
     aufrufe.push({ url: String(url), headers: o.headers || {}, credentials: o.credentials });
-    const daten = pruefeAntwort(o.method || 'GET', url, { success: true, logs: [
-      { level: 'info', message: 'Start fertig', logged_at: '2026-11-05T10:00:00Z' },
-      { level: 'error', message: 'Abruf <b>kaputt</b>', logged_at: '2026-11-05T10:01:00Z' },
-    ] });
+    const daten = pruefeAntwort(o.method || 'GET', url, {
+      success: true,
+      logs: [
+        { level: 'info', message: 'Start fertig', logged_at: '2026-11-05T10:00:00Z' },
+        { level: 'error', message: 'Abruf <b>kaputt</b>', logged_at: '2026-11-05T10:01:00Z' },
+      ],
+    });
     return { ok: true, json: async () => daten };
   };
   let alarm = 0;
-  w.alert = () => { alarm++; };
+  w.alert = () => {
+    alarm++;
+  };
   w.eval(SKRIPT);
   return { w, d: w.document, aufrufe, alarm: () => alarm };
 }
@@ -61,7 +68,9 @@ test('lädt mit dem Sitzungscookie und zeigt nur die gewählten Stufen, maskiert
     assert.equal(zeilen.length, 1, 'info ist zu Beginn ausgeblendet');
     assert.match(zeilen[0].innerHTML, /&lt;b&gt;kaputt/, 'Meldungstext wird maskiert');
     assert.equal(d.getElementById('status').textContent, '1 / 2 Einträge');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Stufe info zuschalten und Suche filtern', async () => {
@@ -75,7 +84,9 @@ test('Stufe info zuschalten und Suche filtern', async () => {
     suche.dispatchEvent(new w.Event('input'));
     assert.equal(d.querySelectorAll('#log-wrap .ll').length, 1);
     assert.match(d.querySelector('#log-wrap mark').textContent, /Start/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('fremder Name bleibt wirkungslos', async () => {
@@ -85,5 +96,7 @@ test('fremder Name bleibt wirkungslos', async () => {
     d.getElementById('fremd').click();
     assert.equal(alarm(), 0, 'data-click="alert" darf window.alert nicht erreichen');
     assert.equal(typeof w.loadLogs, 'undefined', 'Die Handler sollen nicht global sein');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

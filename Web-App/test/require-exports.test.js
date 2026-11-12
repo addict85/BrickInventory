@@ -4,10 +4,10 @@
  * Gegenprobe (31.10.2026): `const { konfig } = require('./konfig')` in
  * src/infra/appPaths.ts → rot.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { ROOT, buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const DIST = path.join(ROOT, 'dist');
@@ -32,7 +32,10 @@ test('kein Servermodul holt ein anderes per spätem require()', () => {
   const treffer = [];
   for (const datei of dateien) {
     // `import x = require('./y')` ist ein Import (TypeScript prüft ihn), kein später Aufruf.
-    const src = ohneKommentare(fs.readFileSync(datei, 'utf8')).replace(/^\s*import\s+\w+\s*=\s*require\([^)]*\);?/gm, '');
+    const src = ohneKommentare(fs.readFileSync(datei, 'utf8')).replace(
+      /^\s*import\s+\w+\s*=\s*require\([^)]*\);?/gm,
+      '',
+    );
     for (const m of src.matchAll(/\brequire\(\s*['"](\.[^'"]*)['"]/g))
       treffer.push(`${path.relative(ROOT, datei)}: require('${m[1]}')`);
   }
@@ -49,7 +52,7 @@ test('kein Servermodul holt ein anderes per spätem require()', () => {
  * darunter liefen nie mehr. Sichtbar war das nur an einer Zahl („nicht ok" für …
  */
 test('kein Test holt ein Modul aus dist/, das es nicht gibt', () => {
-  buildAndRequire();                       // stellt sicher, dass dist/ steht
+  buildAndRequire(); // stellt sicher, dass dist/ steht
   const dir = path.join(ROOT, 'test');
   const fehlend = [];
   let geprueft = 0;
@@ -60,7 +63,8 @@ test('kein Test holt ein Modul aus dist/, das es nicht gibt', () => {
     // `buildAndRequire()('x')`, mal über einen zwischengespeicherten `req('x')`.
     // Gesucht wird deshalb, was beide gemeinsam haben — der Modulpfad selbst.
     for (const m of src.matchAll(
-      /['"]((?:utils|routes|db|jobs|clients|startup)\/[A-Za-z0-9_/-]+\.js|server\.js)['"]/g)) {
+      /['"]((?:utils|routes|db|jobs|clients|startup)\/[A-Za-z0-9_/-]+\.js|server\.js)['"]/g,
+    )) {
       geprueft++;
       if (!fs.existsSync(path.join(DIST, m[1]))) fehlend.push(`${f}: ${m[1]}`);
     }

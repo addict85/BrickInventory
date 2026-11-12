@@ -28,33 +28,42 @@ const db = _req('db/database.js');
 
 /** @type {string[]} */
 const aufrufe = [];
-// @ts-ignore — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
+// @ts-expect-error — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
 https.get = (url, _opts, cb) => {
   const u = new URL(url);
   aufrufe.push(u.pathname + u.search);
   const req = new EventEmitter();
   const art = u.searchParams.get('guide_type');
-  const data = art === 'stock'
-    ? { avg_price: '12.50', qty_avg_price: '12.00', min_price: '10', max_price: '15', total_quantity: '3' }
-    : { avg_price: '0', qty_avg_price: '0', min_price: '0', max_price: '0', total_quantity: '0' };
+  const data =
+    art === 'stock'
+      ? { avg_price: '12.50', qty_avg_price: '12.00', min_price: '10', max_price: '15', total_quantity: '3' }
+      : { avg_price: '0', qty_avg_price: '0', min_price: '0', max_price: '0', total_quantity: '0' };
   setImmediate(() => {
     cb(Object.assign(Readable.from([JSON.stringify({ meta: { code: 200 }, data })]), { statusCode: 200, headers: {} }));
   });
   return req;
 };
 
-const zaehler = async () => Number((await db.get(
-  `SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = 'bricklink' AND konto = 0`,
-  [new Date().toISOString().slice(0, 10)]))?.anzahl || 0);
+const zaehler = async () =>
+  Number(
+    (
+      await db.get(`SELECT anzahl FROM api_aufrufe WHERE tag = $1 AND api = 'bricklink' AND konto = 0`, [
+        new Date().toISOString().slice(0, 10),
+      ])
+    )?.anzahl || 0,
+  );
 
-test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const SN = `91${process.pid % 10000}-1`;
   const heute = new Date().toISOString().slice(0, 10);
   const vorher = await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`);
-  const setze = async (k, v) => db.run(
-    `INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [k, v]);
+  const setze = async (k, v) =>
+    db.run(`INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [
+      k,
+      v,
+    ]);
   const neuerTag = async () => {
     await db.run(`DELETE FROM api_aufrufe WHERE tag = $1 AND api = 'bricklink'`, [heute]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);

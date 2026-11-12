@@ -14,7 +14,10 @@ import { kontoBereich } from './prozess';
 export { LETZTER_VERWALTER } from './repository/konten';
 
 /** Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
-export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<{ beendet: number; version: number }> {
+export async function andereSitzungenBeenden(
+  uid: number,
+  eigeneSid: string,
+): Promise<{ beendet: number; version: number }> {
   const version = await erhoeheSitzungsVersion(uid);
   return { beendet: await kontoBereich().konten.loescheAndereSitzungen(uid, eigeneSid), version };
 }
@@ -22,16 +25,22 @@ export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Pr
 /** Nur melden, nichts ändern: Welche Adresse gemeint war, weiss nur der Inhaber. */
 export async function meldeUngueltigeAdressen(): Promise<number[]> {
   const ids = (await kontoBereich().konten.alleAdressen()).filter(z => !emailGueltig(z.email)).map(z => z.id);
-  if (ids.length) console.warn(`⚠️  [konto] ${ids.length} Konto/Konten mit einer E-Mail-Adresse, die keine einzelne reine Adresse ist `
-    + `(IDs ${ids.join(', ')}). An sie geht keine Mail; Adresse im Konto neu eintragen oder das Konto löschen (UPGRADE.md).`);
+  if (ids.length)
+    console.warn(
+      `⚠️  [konto] ${ids.length} Konto/Konten mit einer E-Mail-Adresse, die keine einzelne reine Adresse ist ` +
+        `(IDs ${ids.join(', ')}). An sie geht keine Mail; Adresse im Konto neu eintragen oder das Konto löschen (UPGRADE.md).`,
+    );
   return ids;
 }
 
 /** H5: Eine Adresse aus dem Altbestand, die nie bestätigt wurde, gilt nicht mehr; der Inhaber muss es wissen. */
 export async function meldeAusstehendeAdressen(): Promise<number[]> {
   const ids = await kontoBereich().konten.ausstehendOhneLink();
-  if (ids.length) console.warn(`⚠️  [konto] ${ids.length} Konto/Konten mit einer nie bestätigten Adresse (IDs ${ids.join(', ')}). `
-    + 'Sie gilt erst nach Bestätigung; im Profil neu eintragen, dann kommt der Link (UPGRADE.md).');
+  if (ids.length)
+    console.warn(
+      `⚠️  [konto] ${ids.length} Konto/Konten mit einer nie bestätigten Adresse (IDs ${ids.join(', ')}). ` +
+        'Sie gilt erst nach Bestätigung; im Profil neu eintragen, dann kommt der Link (UPGRADE.md).',
+    );
   return ids;
 }
 
@@ -57,7 +66,7 @@ async function startpasswortErledigt(uid: number): Promise<void> {
 export async function setzeFremdesPasswort(uid: number, passwort: string): Promise<boolean> {
   const hash = await hashe(passwort);
   return mitZugangsende(uid, async () => {
-    if (!await kontoBereich().konten.setzePasswortHash(uid, hash)) return false;
+    if (!(await kontoBereich().konten.setzePasswortHash(uid, hash))) return false;
     await zugaengeBeenden(uid);
     return true;
   });
@@ -65,8 +74,11 @@ export async function setzeFremdesPasswort(uid: number, passwort: string): Promi
 
 /** Auch der gerade benutzte Token fällt. Passkeys nur auf Wunsch: Wer sein
  * Passwort bloss erneuert, soll seine Geräte nicht neu einrichten müssen. */
-export async function aendereEigenesPasswort(uid: number, passwort: string,
-                                             o: { passkeysWiderrufen?: boolean } = {}): Promise<void> {
+export async function aendereEigenesPasswort(
+  uid: number,
+  passwort: string,
+  o: { passkeysWiderrufen?: boolean } = {},
+): Promise<void> {
   const hash = await hashe(passwort);
   await mitZugangsende(uid, async () => {
     await kontoBereich().konten.setzeEigenesPasswort(uid, hash);
@@ -80,13 +92,16 @@ export async function aendereEigenesPasswort(uid: number, passwort: string,
  * @returns das Konto, oder null, wenn der Link schon verbraucht oder abgelaufen ist */
 export async function setzePasswortZurueck(tokenHash: string, passwort: string): Promise<number | null> {
   const hash = await hashe(passwort);
-  const konto = await mitZugangsende((id: number | null) => id, async () => {
-    const uid = (await kontoBereich().konten.setzePasswortNachRuecksetzen(tokenHash, hash))?.id;
-    if (!uid) return null;
-    await zugaengeBeenden(uid);
-    await kontoBereich().passkeys.loescheAlleDesKontos(uid);
-    return uid;
-  });
+  const konto = await mitZugangsende(
+    (id: number | null) => id,
+    async () => {
+      const uid = (await kontoBereich().konten.setzePasswortNachRuecksetzen(tokenHash, hash))?.id;
+      if (!uid) return null;
+      await zugaengeBeenden(uid);
+      await kontoBereich().passkeys.loescheAlleDesKontos(uid);
+      return uid;
+    },
+  );
   if (konto) await startpasswortErledigt(konto);
   return konto;
 }
@@ -106,15 +121,32 @@ export async function legeKontoAn(username: string, passwort: string, verwalter:
   return kontoBereich().konten.fuegeKontoEin(username, await hashe(passwort), verwalter);
 }
 
-export async function registriere(d: { username: string; email: string; first_name?: string | null | undefined;
-  last_name?: string | null | undefined; passwort: string; tokenHash: string; bis: Date }): Promise<number | null> {
-  return kontoBereich().konten.registriereKonto({ username: d.username, email: d.email, first_name: d.first_name,
-    last_name: d.last_name, hash: await hashe(d.passwort), tokenHash: d.tokenHash, bis: d.bis });
+export async function registriere(d: {
+  username: string;
+  email: string;
+  first_name?: string | null | undefined;
+  last_name?: string | null | undefined;
+  passwort: string;
+  tokenHash: string;
+  bis: Date;
+}): Promise<number | null> {
+  return kontoBereich().konten.registriereKonto({
+    username: d.username,
+    email: d.email,
+    first_name: d.first_name,
+    last_name: d.last_name,
+    hash: await hashe(d.passwort),
+    tokenHash: d.tokenHash,
+    bis: d.bis,
+  });
 }
 
 /** Erst sperren, dann Zugänge löschen (die Token-Abfrage prüft is_active). Sitzungen
  * fallen über die Sitzungsversion, auch eine wieder geschriebene Zeile. */
-export async function setzeAktiv(uid: number, soll: boolean): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
+export async function setzeAktiv(
+  uid: number,
+  soll: boolean,
+): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
   const r = await kontoBereich().konten.schreibeAktiv(uid, soll);
   if (!r) return null;
   if (r === repo.LETZTER_VERWALTER) return r;
@@ -125,7 +157,10 @@ export async function setzeAktiv(uid: number, soll: boolean): Promise<{ geaender
 /** Ändert sich die Rolle, enden die Browser-Sitzungen: Sie tragen die Rolle
  * seit der Anmeldung. Der Token-Cache wird nur geleert — die App soll die neue
  * Rolle sehen, nicht abgemeldet werden. */
-export async function setzeVerwalterRolle(uid: number, soll: boolean): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
+export async function setzeVerwalterRolle(
+  uid: number,
+  soll: boolean,
+): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
   const vorher = await kontoBereich().konten.setzeVerwalter(uid, soll);
   if (!vorher) return null;
   if (vorher === repo.LETZTER_VERWALTER) return vorher;

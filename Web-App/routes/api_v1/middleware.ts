@@ -11,8 +11,10 @@ import { verlangeFreigabe } from '../../src/konto/http/schrittschutz';
 import type { Sicht } from '../../src/haushalt';
 
 /** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
-export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht =>
-  ({ nutzer: req.apiUser.user_id, konten: req.abfrage.accounts });
+export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht => ({
+  nutzer: req.apiUser.user_id,
+  konten: req.abfrage.accounts,
+});
 import { sendeFehler } from '../../src/http/httpAntwort';
 import { waechter } from '../../src/http/vertragsRouter';
 
@@ -30,7 +32,10 @@ const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/auth\/(me|registration-status)$/],
   // token-rotieren prüft selbst: Ein unbegrenzter Token nach der Pflichtfrist
   // gilt nur noch dort, und das kann der Eingang nicht wissen.
-  ['POST', /^\/auth\/(login|logout|qr-login(?:\/abholen)?|register|forgot-password|reset-password|bestaetigung-erneut|email-bestaetigen(?:\/vorschau)?|token-rotieren)$/],
+  [
+    'POST',
+    /^\/auth\/(login|logout|qr-login(?:\/abholen)?|register|forgot-password|reset-password|bestaetigung-erneut|email-bestaetigen(?:\/vorschau)?|token-rotieren)$/,
+  ],
   ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
 ];
 
@@ -56,8 +61,11 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
   const methode = req.method === 'HEAD' ? 'GET' : req.method;
   if (OEFFENTLICH.some(([m, re]) => m === methode && re.test(req.path))) return next();
   if (req.session?.userId) {
-    req.apiUser = { user_id: req.session.userId, is_admin: !!req.session.isAdmin,
-                    ...(req.session.username ? { username: req.session.username } : {}) };
+    req.apiUser = {
+      user_id: req.session.userId,
+      is_admin: !!req.session.isAdmin,
+      ...(req.session.username ? { username: req.session.username } : {}),
+    };
   } else {
     // Ein Lesefehler ist keine ungültige Anmeldung: Ein 401 meldete die App ab.
     const uid = await resolveUserId(req);
@@ -72,9 +80,9 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
  * Eingang stehen und sonst an beiden Regeln vorbeiliefen. */
 export async function eingangsSperre(req: Request, res: Response, next: NextFunction) {
   const methode = req.method === 'HEAD' ? 'GET' : req.method;
-  if (!(methode === 'POST' && VOR_DEM_WECHSEL.test(req.path)) && await mussWechseln(req))
+  if (!(methode === 'POST' && VOR_DEM_WECHSEL.test(req.path)) && (await mussWechseln(req)))
     return sendeFehler(req, res, 403, 'passwort_wechsel_noetig');
-  if (!ZUR_EINRICHTUNG.some(([m, re]) => m === methode && re.test(req.path)) && await zweiterFaktorPflicht(req))
+  if (!ZUR_EINRICHTUNG.some(([m, re]) => m === methode && re.test(req.path)) && (await zweiterFaktorPflicht(req)))
     return sendeFehler(req, res, 403, 'zweiter_faktor_pflicht');
   next();
 }
@@ -83,16 +91,24 @@ export const requireToken = waechter<AuthedRequest>((req, res, next) => {
   // Schon am Eingang geprüft: kein zweiter Datenbankzugriff.
   if (req.apiUser) return next();
   if (req.session?.userId) {
-    req.apiUser = { user_id: req.session.userId, is_admin: !!req.session.isAdmin,
-      ...(req.session.username ? { username: req.session.username } : {}) };
+    req.apiUser = {
+      user_id: req.session.userId,
+      is_admin: !!req.session.isAdmin,
+      ...(req.session.username ? { username: req.session.username } : {}),
+    };
     return next();
   }
   const token = bearerToken(req);
-  validateToken(token, { ip: req.ip }).then(user => {
-    if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
-    req.apiUser = { ...user, is_admin: user.is_admin === true };
-    next();
-  }).catch((e: unknown) => { meldeFehler('eingang:token', e); sendeFehler(req, res, 401, 'auth_fehler'); });
+  validateToken(token, { ip: req.ip })
+    .then(user => {
+      if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
+      req.apiUser = { ...user, is_admin: user.is_admin === true };
+      next();
+    })
+    .catch((e: unknown) => {
+      meldeFehler('eingang:token', e);
+      sendeFehler(req, res, 401, 'auth_fehler');
+    });
 });
 
 export const requireApiAdmin = waechter<AuthedRequest>((req, res, next) => {
@@ -103,8 +119,10 @@ export const requireApiAdmin = waechter<AuthedRequest>((req, res, next) => {
   });
 });
 
-const nurWenn = (soll: (req: Request) => boolean, schritt: RequestHandler): RequestHandler =>
-  (req, res, next) => soll(req) ? schritt(req, res, next) : next();
+const nurWenn =
+  (soll: (req: Request) => boolean, schritt: RequestHandler): RequestHandler =>
+  (req, res, next) =>
+    soll(req) ? schritt(req, res, next) : next();
 const unangemeldet = (req: Request) => nutzerId(req) === null;
 
 /** Ohne Konto sind es höchstens 16 KB: Wer dafür länger braucht, hält nur eine
@@ -132,8 +150,12 @@ export const rumpfLesen: RequestHandler[] = [
   nurWenn(req => req.method === 'POST' && req.path === '/sets/partslist-pdf', express.json({ limit: '4mb' })),
   express.json({ limit: '256kb' }),
   express.urlencoded({ extended: true, limit: '256kb' }),
-  (req, _res, next) => { if (req.body === undefined) req.body = {}; next(); },   // Express 5: sonst undefined
-  (req, res, next) => zuGrosseId(req.body) || zuGrosseId(req.query) ? sendeFehler(req, res, 400, 'id_ungueltig') : next(),
+  (req, _res, next) => {
+    if (req.body === undefined) req.body = {};
+    next();
+  }, // Express 5: sonst undefined
+  (req, res, next) =>
+    zuGrosseId(req.body) || zuGrosseId(req.query) ? sendeFehler(req, res, 400, 'id_ungueltig') : next(),
 ];
 
 /** Vor dem Empfang des Rumpfs: Am Limit wird die Datei gar nicht erst gelesen. */

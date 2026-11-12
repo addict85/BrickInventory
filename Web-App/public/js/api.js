@@ -21,14 +21,20 @@ export async function apiRoh(method, path, o = {}) {
   /** @type {RequestInit} */
   const init = { method, headers, credentials: 'same-origin' };
   if (o.body instanceof FormData) init.body = o.body;
-  else if (o.body) { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(o.body); }
+  else if (o.body) {
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(o.body);
+  }
   if (o.signal) init.signal = o.signal;
   if (o.cache) init.cache = o.cache;
   let res;
   try {
     res = await fetch('/api' + path, init);
   } catch (e) {
-    if (/** @type {{ name?: string } | null} */ (e)?.name !== 'AbortError') { console.warn('[api]', method, path, e); zeigeVerbindung(false); }
+    if (/** @type {{ name?: string } | null} */ (e)?.name !== 'AbortError') {
+      console.warn('[api]', method, path, e);
+      zeigeVerbindung(false);
+    }
     throw e;
   }
   antwortErhalten();
@@ -49,7 +55,9 @@ export async function apiDaten(method, path) {
   try {
     const r = await apiRoh(method, path);
     return r.ok ? await r.json() : null;
-  } catch (_) { return null; }
+  } catch (_) {
+    return null;
+  }
 }
 
 /**
@@ -72,7 +80,7 @@ export async function api(method, path, body, o = {}) {
   } catch (_) {
     const alt = method === 'GET' ? ausZwischenspeicher(path) : null;
     if (alt) return { ...alt, ausZwischenspeicher: true };
-    return { success:false, error:tRaw('api.unreachable'), networkError:true, status:0 };
+    return { success: false, error: tRaw('api.unreachable'), networkError: true, status: 0 };
   }
   /** @type {Record<string, unknown> | null} */
   let daten = null;
@@ -80,16 +88,24 @@ export async function api(method, path, body, o = {}) {
     daten = await res.json();
   } catch (_) {
     console.warn('[api]', method, path, 'Antwort ist kein JSON (Status ' + res.status + ')');
-    return { success:false, status:res.status,
-             error: res.ok ? tRaw('api.unexpected') : tRaw('api.server_error', { status:res.status }) };
+    return {
+      success: false,
+      status: res.status,
+      error: res.ok ? tRaw('api.unexpected') : tRaw('api.server_error', { status: res.status }),
+    };
   }
   if (!res.ok && daten && typeof daten === 'object' && daten.success === undefined) {
-    return { ...daten, success:false, status:res.status,
-             error: String(daten.error || tRaw('api.server_error', { status:res.status })) };
+    return {
+      ...daten,
+      success: false,
+      status: res.status,
+      error: String(daten.error || tRaw('api.server_error', { status: res.status })),
+    };
   }
   if (daten && typeof daten === 'object') daten.status = res.status;
   if (method === 'GET' && res.ok && daten?.success !== false) inZwischenspeicher(path, daten);
-  if (res.status === 401 && daten?.error && !/^\/v1\/auth\/(me|login)/.test(path)) merkeSitzungsende(String(daten.error));
+  if (res.status === 401 && daten?.error && !/^\/v1\/auth\/(me|login)/.test(path))
+    merkeSitzungsende(String(daten.error));
   if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') melde('passwortWechselNoetig');
   if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') melde('zweiterFaktorPflicht');
   return /** @type {import('../../frontend-typen/api').ApiAntwort<M, P>} */ (/** @type {unknown} */ (daten));
@@ -102,7 +118,10 @@ export async function api(method, path, body, o = {}) {
  */
 export function fehlerMeldung(e) {
   const text = String(/** @type {{ message?: unknown } | null} */ (e)?.message ?? e ?? '');
-  if (/failed to fetch|networkerror|load failed|network request failed/i.test(text) || (typeof navigator !== 'undefined' && navigator.onLine === false))
+  if (
+    /failed to fetch|networkerror|load failed|network request failed/i.test(text) ||
+    (typeof navigator !== 'undefined' && navigator.onLine === false)
+  )
     return tRaw('api.unreachable');
   return text || tRaw('common.unknown_error');
 }
@@ -117,14 +136,28 @@ const ZS_PFADE = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/se
 /** @param {string} pfad @param {unknown} daten */
 function inZwischenspeicher(pfad, daten) {
   if (!ZS_PFADE.test(pfad)) return;
-  try { const s = JSON.stringify(daten); if (s.length < 400_000) sessionStorage.setItem(ZS + pfad, s); } catch (_) { /* voll oder gesperrt: dann ohne */ }
+  try {
+    const s = JSON.stringify(daten);
+    if (s.length < 400_000) sessionStorage.setItem(ZS + pfad, s);
+  } catch (_) {
+    /* voll oder gesperrt: dann ohne */
+  }
 }
 
 /** @param {string} pfad */
 function ausZwischenspeicher(pfad) {
-  try { const s = sessionStorage.getItem(ZS + pfad); return s ? JSON.parse(s) : null; } catch (_) { return null; }
+  try {
+    const s = sessionStorage.getItem(ZS + pfad);
+    return s ? JSON.parse(s) : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 export function leereZwischenspeicher() {
-  try { for (const k of Object.keys(sessionStorage)) if (k.startsWith(ZS)) sessionStorage.removeItem(k); } catch (_) { /* ohne Speicher nichts zu leeren */ }
+  try {
+    for (const k of Object.keys(sessionStorage)) if (k.startsWith(ZS)) sessionStorage.removeItem(k);
+  } catch (_) {
+    /* ohne Speicher nichts zu leeren */
+  }
 }

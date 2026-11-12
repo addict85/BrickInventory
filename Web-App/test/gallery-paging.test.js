@@ -32,7 +32,7 @@ const SETS = [
   { nr: '77105-1', name: 'Epsilon', theme: 'Stadt', menge: 3, vor: 1 },
 ];
 
-test('seitenweise Listen am Server', { concurrency: 1 }, async (t) => {
+test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   const NAME = `paging_${process.pid}`;
@@ -47,24 +47,34 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async (t) => {
   for (const s of SETS) {
     await katalogSet(db, s.nr, { name: s.name, theme: s.theme });
     await haeltSet(db, uid, s.nr, s.menge);
-    await db.run(`UPDATE sets SET added_at = NOW() - make_interval(days => $3) WHERE user_id = $1 AND set_number = $2`, [uid, s.nr, s.vor]);
+    await db.run(
+      `UPDATE sets SET added_at = NOW() - make_interval(days => $3) WHERE user_id = $1 AND set_number = $2`,
+      [uid, s.nr, s.vor],
+    );
   }
   // Dieselbe Figur in zwei Sets und eine zweite: zwei Gruppen.
   await haeltFigur(db, uid, 'fig-0001', { setNumber: '77101-1' });
   await haeltFigur(db, uid, 'FIG-0001 ', { setNumber: '77103-1' });
   await haeltFigur(db, uid, 'fig-0002', { setNumber: '77104-1' });
   for (const nr of ['91001', '91002', '91003']) await haeltTeil(db, uid, nr);
-  t.after(async () => { await aufraeumen().catch(() => {}); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await aufraeumen().catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const hole = async (pfad) => {
+  const { base } = testServer(_req, {
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
+  const hole = async pfad => {
     const r = await fetch(`${base}/api/v1${pfad}`);
     const b = await r.json();
     assert.equal(r.status, 200, `${pfad}: ${JSON.stringify(b)}`);
     return b;
   };
-  const folge = async (abfrage) => (await hole(`/sets?${abfrage}`)).sets.map(s => s.name[0]);
+  const folge = async abfrage => (await hole(`/sets?${abfrage}`)).sets.map(s => s.name[0]);
 
   await t.test('nach Anzahl lässt sich in beide Richtungen sortieren, Gleichstand nach Aufnahme', async () => {
     assert.deepEqual(await folge('sort=qty_desc'), ['E', 'A', 'G', 'D', 'O']);

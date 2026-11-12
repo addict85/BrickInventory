@@ -18,23 +18,30 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
 
   for (const name of ['ich', 'kind']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
-  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)',
-    [U.ich, U.kind]);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [U.ich, U.kind]);
   await haeltSet(db, U.ich, '10179-1', 1);
 }
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
+test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -44,8 +51,8 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
   const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
 
   const estrich = (await L.legeOrtAn(U.ich, 'Estrich')).ort;
-  const keller  = (await L.legeOrtAn(U.ich, 'Keller')).ort;
-  const fremd   = (await L.legeOrtAn(U.kind, 'Kinderzimmer')).ort;
+  const keller = (await L.legeOrtAn(U.ich, 'Keller')).ort;
+  const fremd = (await L.legeOrtAn(U.kind, 'Kinderzimmer')).ort;
 
   await t.test('ohne Stern gibt es keine Vorgabe', async () => {
     // Der Ausgangszustand, und er ist eine eigene Aussage: Eine Oberflaeche,
@@ -68,9 +75,12 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
     // Gewinn aus der Ablage in user_settings (ein Schluessel, ein Wert).
     await L.setzeVorgabe(U.ich, keller.id);
     assert.equal((await L.vorgabeVon(U.ich))?.name, 'Keller');
-    const n = (await db.get(
-      `SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`,
-      [U.ich, L.VORGABE_SCHLUESSEL])).c;
+    const n = (
+      await db.get(`SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`, [
+        U.ich,
+        L.VORGABE_SCHLUESSEL,
+      ])
+    ).c;
     assert.equal(n, 1, `${n} Zeilen fuer die Vorgabe — es darf genau eine geben`);
     await L.setzeVorgabe(U.ich, estrich.id);
   });
@@ -80,11 +90,16 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
     // diese Grenze stuende mein Stern an einem Ort in einer anderen Wohnung.
     // Geprueft wird `e.code` und nicht der Text: Der erste Entwurf suchte
     // „lagerort_unbekannt" in der MELDUNG, und die lautet auf Deutsch …
-    await assert.rejects(() => L.setzeVorgabe(U.ich, fremd.id),
+    await assert.rejects(
+      () => L.setzeVorgabe(U.ich, fremd.id),
       e => String(e.code) === 'lagerort_unbekannt',
-      'Ein fremder Ort liess sich als eigene Vorgabe setzen');
-    assert.equal((await L.vorgabeVon(U.ich))?.name, 'Estrich',
-      'Die abgelehnte Zuweisung hat die bestehende Vorgabe veraendert');
+      'Ein fremder Ort liess sich als eigene Vorgabe setzen',
+    );
+    assert.equal(
+      (await L.vorgabeVon(U.ich))?.name,
+      'Estrich',
+      'Die abgelehnte Zuweisung hat die bestehende Vorgabe veraendert',
+    );
   });
 
   await t.test('UMBENENNEN: die Vorgabe bleibt und heisst neu', async () => {
@@ -94,9 +109,12 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
     await L.benenneOrtUm(U.ich, estrich.id, 'Dachboden');
     const v = await L.vorgabeVon(U.ich);
     assert.equal(v?.id, estrich.id, 'Die Vorgabe zeigt nach dem Umbenennen ins Leere');
-    assert.equal(v?.name, 'Dachboden',
+    assert.equal(
+      v?.name,
+      'Dachboden',
       'Die Vorgabe traegt noch den alten Namen — dann steht beim Erfassen ein ' +
-      'Ort, den die Auswahlliste nicht mehr kennt');
+        'Ort, den die Auswahlliste nicht mehr kennt',
+    );
     await L.benenneOrtUm(U.ich, estrich.id, 'Estrich');
   });
 
@@ -107,19 +125,25 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
     await L.setzeVorgabe(U.ich, kiste.id);
     assert.equal((await L.vorgabeVon(U.ich))?.name, 'Kiste 7');
     await L.loescheOrt(U.ich, kiste.id);
-    assert.equal(await L.vorgabeVon(U.ich), null,
+    assert.equal(
+      await L.vorgabeVon(U.ich),
+      null,
       'Nach dem Loeschen des Ortes meldet die Vorgabe noch etwas — sie heilt ' +
-      'sich also nicht selbst, und die Oberflaeche waehlt einen Ort vor, den ' +
-      'es nicht gibt');
+        'sich also nicht selbst, und die Oberflaeche waehlt einen Ort vor, den ' +
+        'es nicht gibt',
+    );
     // Die verwaiste Zeile in user_settings darf bleiben: Sie ist stumm (der
     // JOIN findet nichts) und wird beim naechsten Stern ueberschrieben. Sie
     // aufzuraeumen waere genau der Code, den dieser Entwurf einspart.
-    const rest = (await db.get(
-      `SELECT value FROM user_settings WHERE user_id=$1 AND key=$2`,
-      [U.ich, L.VORGABE_SCHLUESSEL]))?.value;
-    assert.equal(rest, String(kiste.id),
+    const rest = (
+      await db.get(`SELECT value FROM user_settings WHERE user_id=$1 AND key=$2`, [U.ich, L.VORGABE_SCHLUESSEL])
+    )?.value;
+    assert.equal(
+      rest,
+      String(kiste.id),
       'Erwartet war die stumme, verwaiste Zeile — steht dort etwas anderes, ' +
-      'stimmt die Begruendung in src/bestand/lagerort.ts nicht mehr');
+        'stimmt die Begruendung in src/bestand/lagerort.ts nicht mehr',
+    );
   });
 
   await t.test('der Stern laesst sich wieder abschalten', async () => {
@@ -127,9 +151,12 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async (t) => {
     assert.equal((await L.vorgabeVon(U.ich))?.name, 'Keller');
     assert.equal(await L.setzeVorgabe(U.ich, null), null);
     assert.equal(await L.vorgabeVon(U.ich), null, 'Der Stern liess sich nicht loeschen');
-    const n = (await db.get(
-      `SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`,
-      [U.ich, L.VORGABE_SCHLUESSEL])).c;
+    const n = (
+      await db.get(`SELECT COUNT(*)::int c FROM user_settings WHERE user_id=$1 AND key=$2`, [
+        U.ich,
+        L.VORGABE_SCHLUESSEL,
+      ])
+    ).c;
     assert.equal(n, 0, 'Die Einstellung steht noch da');
   });
 

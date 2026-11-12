@@ -28,8 +28,15 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
-const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css', 'mobile.css', 'themes/werkbank.css',
-  'themes/noppe.css', 'themes/hochglanz.css'];
+const STILE = [
+  'vendor/fonts/fonts.css',
+  'tokens.css',
+  'styles.css',
+  'mobile.css',
+  'themes/werkbank.css',
+  'themes/noppe.css',
+  'themes/hochglanz.css',
+];
 
 const { chrome } = require('./helpers/app-browser');
 
@@ -165,27 +172,52 @@ function wortabstand() {
 </script></body></html>`;
 }
 
-test('Kontrast, Datei-Felder und Kachelschrift', (t) => {
+test('Kontrast, Datei-Felder und Kachelschrift', t => {
   const bin = chrome();
-  if (!bin) { t.skip('kein Chrome gefunden'); return; }
+  if (!bin) {
+    t.skip('kein Chrome gefunden');
+    return;
+  }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'lesbar-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
   fs.writeFileSync(datei, testseite());
-  const dom = execFileSync(bin, ['--headless', '--no-sandbox', '--disable-gpu', '--allow-file-access-from-files',
-    '--window-size=1200,800', '--virtual-time-budget=3000', '--dump-dom', `file://${datei}`],
-    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] });
+  const dom = execFileSync(
+    bin,
+    [
+      '--headless',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--allow-file-access-from-files',
+      '--window-size=1200,800',
+      '--virtual-time-budget=3000',
+      '--dump-dom',
+      `file://${datei}`,
+    ],
+    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
+  );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.ok(e.kontrast.length >= 16);
   assert.ok(e.kontrast.filter(k => k.name.startsWith('dunkel ')).length === 35, 'Die dunklen Varianten fehlen');
-  assert.deepEqual(e.dunkelGrund.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`), [], 'Die Karte der dunklen Variante ist hell');
+  assert.deepEqual(
+    e.dunkelGrund.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`),
+    [],
+    'Die Karte der dunklen Variante ist hell',
+  );
   // hochglanz erbt die Farben von noppe; die übrigen vier bleiben unterscheidbar.
   assert.equal(new Set(e.marken).size, 4, `Markenfarben dunkel: ${e.marken}`);
   assert.equal(e.farbton.length, 4);
-  assert.deepEqual(e.farbton.filter(f => f.rot).map(f => f.name), [], 'Preis in Rot — liest sich als Verlust');
-  assert.deepEqual(e.kontrast.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`), []);
+  assert.deepEqual(
+    e.farbton.filter(f => f.rot).map(f => f.name),
+    [],
+    'Preis in Rot — liest sich als Verlust',
+  );
+  assert.deepEqual(
+    e.kontrast.filter(k => k.wert < 4.5).map(k => `${k.name} ${k.wert}:1`),
+    [],
+  );
   assert.equal(e.fokus, true, 'Datei-Feld fokussierbar: Tab übersprang CSV und BrickLink XML');
   assert.ok(e.snum >= 12 && e.smeta >= 12, `Kachelschrift ${e.snum}/${e.smeta} px`);
   assert.ok(e.raum >= 0.22, `Wortabstand ${e.raum} em — „Set hinzufügen“ liest sich wie ein Wort`);

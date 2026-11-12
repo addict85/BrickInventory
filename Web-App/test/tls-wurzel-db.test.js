@@ -60,7 +60,13 @@ test('Fingerabdruck = Base64 SHA-256 des SPKI, 32 Byte', () => {
 test('zum Abgleich auf dem Gerät: SHA-256 des ganzen Zertifikats, wie im Protokoll von Caddy', () => {
   // Wie compose.yaml ihn ins Protokoll schreibt: sha256sum über den DER-Inhalt des PEM.
   const der = Buffer.from(PEM1.replace(/-----[^-]+-----|\s/g, ''), 'base64');
-  const hex = require('node:crypto').createHash('sha256').update(der).digest('hex').toUpperCase().match(/../g).join(':');
+  const hex = require('node:crypto')
+    .createHash('sha256')
+    .update(der)
+    .digest('hex')
+    .toUpperCase()
+    .match(/../g)
+    .join(':');
   const stand = _req('src/infra/tlsWurzel.js').tlsStandAus(PEM1);
   assert.equal(stand.zert_sha256, hex);
   assert.notEqual(stand.zert_sha256, stand.fp_hex);
@@ -77,17 +83,25 @@ test('Cookie nur über TLS: in Produktion und hinter https, abschaltbar', () => 
   assert.equal(cookieSicher(ladeKonfig({ APP_BASE_URL: 'https://lego.test', COOKIE_SECURE: '0' })), false);
 });
 
-test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run("DELETE FROM users WHERE username = 'tls_nutzer'");
-  await db.run("INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('tls_nutzer',$1,false,true,true)",
-    [await bcrypt.hash('richtigesPasswort1', 4)]);
+  await db.run(
+    "INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('tls_nutzer',$1,false,true,true)",
+    [await bcrypt.hash('richtigesPasswort1', 4)],
+  );
 
   const app = express();
   app.set('trust proxy', true);
   app.use(express.json());
-  app.use(session({ store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
   app.use(_req('routes/zertifikat.js'));
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1', _req('routes/api_v1/settings.js'));
@@ -100,13 +114,19 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
     await db.pool.end();
     fs.rmSync(ordner, { recursive: true, force: true });
   });
-  const ruf = (weg, o = {}) => fetch(basis + weg, { method: o.body ? 'POST' : 'GET',
-    headers: { 'content-type': 'application/json', ...(o.cookie ? { cookie: o.cookie } : {}) },
-    ...(o.body ? { body: JSON.stringify(o.body) } : {}) });
-  const anmeldung = await ruf('/api/v1/auth/login', { body: { username: 'tls_nutzer', password: 'richtigesPasswort1', ohne_token: true } });
-  await anmeldung.text();   // die Sitzung steht erst nach dem letzten Byte im Speicher
+  const ruf = (weg, o = {}) =>
+    fetch(basis + weg, {
+      method: o.body ? 'POST' : 'GET',
+      headers: { 'content-type': 'application/json', ...(o.cookie ? { cookie: o.cookie } : {}) },
+      ...(o.body ? { body: JSON.stringify(o.body) } : {}),
+    });
+  const anmeldung = await ruf('/api/v1/auth/login', {
+    body: { username: 'tls_nutzer', password: 'richtigesPasswort1', ohne_token: true },
+  });
+  await anmeldung.text(); // die Sitzung steht erst nach dem letzten Byte im Speicher
   const cookie = anmeldung.headers.get('set-cookie').split(';')[0];
-  const qr = async () => (await ruf('/api/v1/auth/qr-token', { cookie, body: { password: 'richtigesPasswort1' } })).json();
+  const qr = async () =>
+    (await ruf('/api/v1/auth/qr-token', { cookie, body: { password: 'richtigesPasswort1' } })).json();
 
   // Noch keine Datei (Caddy hat die CA nicht angelegt): kein fp, 404.
   assert.equal((await ruf('/ca.crt')).status, 404);
@@ -143,5 +163,7 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
     const ohne = await qr();
     assert.equal(ohne.success, true);
     assert.equal(ohne.fp, undefined);
-  } finally { umgebung({ APP_BASE_URL: 'https://lego.test' }); }
+  } finally {
+    umgebung({ APP_BASE_URL: 'https://lego.test' });
+  }
 });

@@ -55,40 +55,80 @@ const ZUSATZ = {
   'POST /api/v1/settings/smtp-test': { to: 'fremd@bv.example' },
 };
 /** Neue Zugänge prägen, Schutz abbauen, alles löschen (Bericht M1) — und die Notbremse. */
-const PFLICHT = ['POST /api/v1/auth/token-create', 'POST /api/v1/auth/qr-token', 'POST /api/v1/auth/users',
-  'PUT /api/v1/auth/users/:id/admin', 'PUT /api/v1/auth/users/:id/aktiv', 'PUT /api/v1/auth/users/:id/password',
-  'DELETE /api/v1/auth/users/:id', 'DELETE /api/v1/auth/users/:id/zweiter-faktor', 'DELETE /api/v1/bestand',
-  'POST /api/v1/auth/change-password', 'PUT /api/v1/auth/profile', 'DELETE /api/v1/auth/passkeys/:id',
-  'POST /api/v1/auth/passkey/registrieren/optionen', 'POST /api/v1/auth/zweiter-faktor/abschalten',
-  'POST /api/v1/settings/household/redeem', 'POST /api/v1/settings', 'POST /api/v1/settings/sessions/andere-beenden',
+const PFLICHT = [
+  'POST /api/v1/auth/token-create',
+  'POST /api/v1/auth/qr-token',
+  'POST /api/v1/auth/users',
+  'PUT /api/v1/auth/users/:id/admin',
+  'PUT /api/v1/auth/users/:id/aktiv',
+  'PUT /api/v1/auth/users/:id/password',
+  'DELETE /api/v1/auth/users/:id',
+  'DELETE /api/v1/auth/users/:id/zweiter-faktor',
+  'DELETE /api/v1/bestand',
+  'POST /api/v1/auth/change-password',
+  'PUT /api/v1/auth/profile',
+  'DELETE /api/v1/auth/passkeys/:id',
+  'POST /api/v1/auth/passkey/registrieren/optionen',
+  'POST /api/v1/auth/zweiter-faktor/abschalten',
+  'POST /api/v1/settings/household/redeem',
+  'POST /api/v1/settings',
+  'POST /api/v1/settings/sessions/andere-beenden',
   'DELETE /api/v1/settings/tokens/:tokenId',
-  'DELETE /api/v1/papierkorb', 'DELETE /api/v1/papierkorb/:id', 'DELETE /api/v1/vouchers/:id',
-  'POST /api/v1/vouchers/:id/klartext', 'POST /api/v1/vouchers/:id/pdf-freigabe', 'POST /api/v1/vouchers/export/pdf-freigabe'];
+  'DELETE /api/v1/papierkorb',
+  'DELETE /api/v1/papierkorb/:id',
+  'DELETE /api/v1/vouchers/:id',
+  'POST /api/v1/vouchers/:id/klartext',
+  'POST /api/v1/vouchers/:id/pdf-freigabe',
+  'POST /api/v1/vouchers/export/pdf-freigabe',
+];
 /** Vor der Anmeldung gibt es nichts zu bestätigen. */
 const OEFFENTLICH = ['POST /api/v1/auth/login', 'POST /api/v1/auth/register', 'POST /api/v1/auth/reset-password'];
 const PASSWORTFELDER = ['password', 'admin_password', 'current', 'password_current'];
 
 async function konto(name, admin) {
   await db.run('DELETE FROM users WHERE username = $1', [name]);
-  return (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
-    VALUES ($1, $2, $3, $4, true, true) RETURNING id`, [name, `${name}@alt.example`, await bcrypt.hash(PASS, 4), admin])).id;
+  return (
+    await db.get(
+      `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
+    VALUES ($1, $2, $3, $4, true, true) RETURNING id`,
+      [name, `${name}@alt.example`, await bcrypt.hash(PASS, 4), admin],
+    )
+  ).id;
 }
 async function mitFaktor(uid) {
   await zf.beginneEinrichtung(uid);
   const z = await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid]);
-  const codes = await zf.bestaetigeEinrichtung(uid, zf.hotp(zf.ausBase32(entschluessele(z.geheimnis, zf.faktorKontext(uid))), zf.zeitschritt()));
+  const codes = await zf.bestaetigeEinrichtung(
+    uid,
+    zf.hotp(zf.ausBase32(entschluessele(z.geheimnis, zf.faktorKontext(uid))), zf.zeitschritt()),
+  );
   assert.ok(Array.isArray(codes), 'Vorbedingung: Faktor aktiv');
   return codes;
 }
 
-test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
-  const CHEF = `bv_chef_${process.pid}`, ZIEL = `bv_ziel_${process.pid}`, OHNE = `bv_ohne_${process.pid}`;
-  const chef = await konto(CHEF, true), ziel = await konto(ZIEL, false), ohne = await konto(OHNE, false);
+test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
+  const CHEF = `bv_chef_${process.pid}`,
+    ZIEL = `bv_ziel_${process.pid}`,
+    OHNE = `bv_ohne_${process.pid}`;
+  const chef = await konto(CHEF, true),
+    ziel = await konto(ZIEL, false),
+    ohne = await konto(OHNE, false);
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = ANY($1) OR username = $2', [[chef, ziel, ohne], ZUSATZ['POST /api/v1/auth/users'].username]).catch(() => {});
+    await db
+      .run('DELETE FROM users WHERE id = ANY($1) OR username = $2', [
+        [chef, ziel, ohne],
+        ZUSATZ['POST /api/v1/auth/users'].username,
+      ])
+      .catch(() => {});
     await db.run("DELETE FROM global_settings WHERE key = 'smtp_host' AND value = 'mail.bv.example'").catch(() => {});
-    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key LIKE $3', [`%-bestaetigen|${chef}|%`, `%-bestaetigen|${ohne}|%`, `%-bestaetigen-konto|${chef}`]).catch(() => {});
+    await db
+      .run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key LIKE $3', [
+        `%-bestaetigen|${chef}|%`,
+        `%-bestaetigen|${ohne}|%`,
+        `%-bestaetigen-konto|${chef}`,
+      ])
+      .catch(() => {});
     await db.pool.end().catch(() => {});
   });
   const codes = await mitFaktor(chef);
@@ -97,8 +137,11 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
   const basis = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true }, routen, t }).base;
   const ruf = async (b, schluessel, body) => {
     const [methode, muster] = schluessel.split(' ');
-    const r = await fetch(b + muster.replace(':id', String(ziel)).replace(':tokenId', '0123456789abcdef'), { method: methode,
-      headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await fetch(b + muster.replace(':id', String(ziel)).replace(':tokenId', '0123456789abcdef'), {
+      method: methode,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
     return { status: r.status, body: await r.json().catch(() => ({})) };
   };
   const markiert = Object.entries(VERTRAG).filter(([, r]) => r.bestaetigung);
@@ -109,27 +152,48 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('jede Passwort-Eingabe trägt die Marke', () => {
-    const ohneMarke = Object.entries(VERTRAG).filter(([k, r]) => !OEFFENTLICH.includes(k) && !r.bestaetigung
-      && r.eingabe?.shape && PASSWORTFELDER.some(f => r.eingabe.shape[f]?.safeParse('x').success)).map(([k]) => k);
+    const ohneMarke = Object.entries(VERTRAG)
+      .filter(
+        ([k, r]) =>
+          !OEFFENTLICH.includes(k) &&
+          !r.bestaetigung &&
+          r.eingabe?.shape &&
+          PASSWORTFELDER.some(f => r.eingabe.shape[f]?.safeParse('x').success),
+      )
+      .map(([k]) => k);
     assert.deepEqual(ohneMarke, []);
   });
 
   for (const [schluessel, route] of markiert) {
     await t.test(`${schluessel}: Passwort allein genügt nicht`, async () => {
       // Auch die Kontobremse (20 am Tag): Hier rät eine Sitzung absichtlich bei jeder Route falsch.
-      await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [`%-bestaetigen|${chef}|%`, `%-bestaetigen-konto|${chef}`]);
+      await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [
+        `%-bestaetigen|${chef}|%`,
+        `%-bestaetigen-konto|${chef}`,
+      ]);
       const { passwort, code } = route.bestaetigung;
       const rumpf = { ...ZUSATZ[schluessel], [passwort]: PASS };
       const ohneCode = await ruf(basis, schluessel, rumpf);
-      assert.deepEqual([ohneCode.status, ohneCode.body.code], [400, 'zweiter_faktor_noetig'], `${schluessel} ohne Code`);
+      assert.deepEqual(
+        [ohneCode.status, ohneCode.body.code],
+        [400, 'zweiter_faktor_noetig'],
+        `${schluessel} ohne Code`,
+      );
       const falsch = await ruf(basis, schluessel, { ...rumpf, [code]: '000000' });
-      assert.deepEqual([falsch.status, falsch.body.code], [400, 'zweiter_faktor_falsch'], `${schluessel} mit falschem Code`);
+      assert.deepEqual(
+        [falsch.status, falsch.body.code],
+        [400, 'zweiter_faktor_falsch'],
+        `${schluessel} mit falschem Code`,
+      );
     });
   }
   assert.ok(markiert.length >= PFLICHT.length, `nur ${markiert.length} markierte Routen`);
 
   await t.test('mit Code geht es, ohne Faktor wie bisher', async () => {
-    const r = await ruf(basis, 'DELETE /api/v1/auth/users/:id/zweiter-faktor', { admin_password: PASS, code: codes[0] });
+    const r = await ruf(basis, 'DELETE /api/v1/auth/users/:id/zweiter-faktor', {
+      admin_password: PASS,
+      code: codes[0],
+    });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await zf.istAktiv(ziel), false);
     const ohneFaktor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, routen, t }).base;
@@ -141,11 +205,19 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
     const ordner = [path.join(ROOT, 'routes'), path.join(ROOT, 'src'), path.join(ROOT, 'jobs')];
-    const dateien = ordner.flatMap(o => fs.readdirSync(o, { recursive: true }).map(f => path.resolve(o, String(f))))
-      .filter(f => f.endsWith('.ts')).concat(path.join(ROOT, 'server.ts'));
-    const treffer = dateien.filter(f => /\bbcrypt\.compare\(/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
-      .map(f => path.relative(ROOT, f).replace(/\\/g, '/')).sort();
-    assert.deepEqual(treffer, ['src/konto/bcryptPool.ts'], 'nur der Rückfall des Pools; alle anderen über passwortPasst()');
+    const dateien = ordner
+      .flatMap(o => fs.readdirSync(o, { recursive: true }).map(f => path.resolve(o, String(f))))
+      .filter(f => f.endsWith('.ts'))
+      .concat(path.join(ROOT, 'server.ts'));
+    const treffer = dateien
+      .filter(f => /\bbcrypt\.compare\(/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
+      .map(f => path.relative(ROOT, f).replace(/\\/g, '/'))
+      .sort();
+    assert.deepEqual(
+      treffer,
+      ['src/konto/bcryptPool.ts'],
+      'nur der Rückfall des Pools; alle anderen über passwortPasst()',
+    );
   });
 
   await t.test('ohne Marke keine Bestätigung', async () => {
@@ -155,6 +227,8 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
     try {
       const r = await ruf(basis, 'DELETE /api/v1/bestand', { password: PASS, code: codes[1] });
       assert.equal(r.status, 500, `ohne Marke keine Bestätigung: ${JSON.stringify(r.body)}`);
-    } finally { route.bestaetigung = marke; }
+    } finally {
+      route.bestaetigung = marke;
+    }
   });
 });

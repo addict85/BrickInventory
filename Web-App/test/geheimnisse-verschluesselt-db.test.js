@@ -33,8 +33,8 @@ const g = _req('src/infra/geheimnis.js');
 
 const NAME = `geheim_${process.pid}`;
 
-test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const vorher = await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'");
@@ -56,16 +56,27 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('Gutschein-PIN', async () => {
-    const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-    const r = await fetch(`${base}/api/v1/vouchers`, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ number: '5045076374450012121', pin: '8642', amount: 50, currency: 'CHF' }) });
+    const { base } = testServer(_req, {
+      sitzung: { userId: uid },
+      apiNutzer: { user_id: uid, is_admin: 0 },
+      routen: { '/api/v1': 'routes/api_v1/index.js' },
+      t,
+    });
+    const r = await fetch(`${base}/api/v1/vouchers`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ number: '5045076374450012121', pin: '8642', amount: 50, currency: 'CHF' }),
+    });
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
     assert.equal(b.voucher.pin, '•••', 'nach aussen nur die Maske');
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
     assert.ok(roh.startsWith('v2:') && !roh.includes('8642'), roh);
-    assert.equal((await _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine.gutschein(uid, b.voucher.id)).pin, '8642', 'entschlüsselt lesbar');
+    assert.equal(
+      (await _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine.gutschein(uid, b.voucher.id)).pin,
+      '8642',
+      'entschlüsselt lesbar',
+    );
   });
 
   await t.test('TOTP-Geheimnis', async () => {
@@ -77,8 +88,16 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('Altbestand wird nachverschlüsselt', async () => {
-    const gs = { ..._req('src/gutscheine/repository/gutscheine.js'), ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine };
-    const { id } = await gs.gutscheinAnlegen(uid, { number: '5045076374450013131', pin: null, amount: 10, currency: 'CHF' });
+    const gs = {
+      ..._req('src/gutscheine/repository/gutscheine.js'),
+      ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine,
+    };
+    const { id } = await gs.gutscheinAnlegen(uid, {
+      number: '5045076374450013131',
+      pin: null,
+      amount: 10,
+      currency: 'CHF',
+    });
     await db.run("UPDATE vouchers SET pin = '9753' WHERE id = $1", [id]);
     await gs.nummernNachverschluesseln();
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [id])).pin;
@@ -90,7 +109,12 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
     const wert = g.verschluessele('geheim', g.kontext('probe'));
     umgebung({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
     g._vergissSchluessel();
-    const echt = console.warn; console.warn = () => {};
-    try { assert.equal(g.entschluessele(wert, g.kontext('probe')), null); } finally { console.warn = echt; }
+    const echt = console.warn;
+    console.warn = () => {};
+    try {
+      assert.equal(g.entschluessele(wert, g.kontext('probe')), null);
+    } finally {
+      console.warn = echt;
+    }
   });
 });

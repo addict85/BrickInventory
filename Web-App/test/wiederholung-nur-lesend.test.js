@@ -9,7 +9,7 @@
  *   B  istLesend ohne die Prüfung auf INSERT/UPDATE/DELETE → rot: „INSERT …
  *      RETURNING ist kein Lesezugriff"
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -19,7 +19,11 @@ const { queryWithRetry, istLesend } = _req('db/database.js');
 /** Scheitert beim ersten Versuch mit `code`, danach gelingt es. */
 function einmalAbbruch(code) {
   let versuche = 0;
-  const fn = async () => { versuche++; if (versuche === 1) throw Object.assign(new Error('weg'), { code }); return 'ok'; };
+  const fn = async () => {
+    versuche++;
+    if (versuche === 1) throw Object.assign(new Error('weg'), { code });
+    return 'ok';
+  };
   return { fn, versuche: () => versuche };
 }
 

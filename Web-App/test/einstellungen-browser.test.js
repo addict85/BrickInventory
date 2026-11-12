@@ -42,17 +42,31 @@ window.addEventListener('load', () => {
 </script></body></html>`;
 }
 
-test('das Port-Feld bleibt in der Karte', (t) => {
+test('das Port-Feld bleibt in der Karte', t => {
   const bin = chrome();
-  if (!bin) { t.skip('kein Chrome gefunden'); return; }
+  if (!bin) {
+    t.skip('kein Chrome gefunden');
+    return;
+  }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'einstellungen-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
   fs.writeFileSync(datei, testseite());
   for (const breite of [1440, 390]) {
-    const dom = execFileSync(bin, ['--headless', '--no-sandbox', '--disable-gpu', '--allow-file-access-from-files',
-      `--window-size=${breite},900`, '--virtual-time-budget=3000', '--dump-dom', `file://${datei}`],
-      { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] });
+    const dom = execFileSync(
+      bin,
+      [
+        '--headless',
+        '--no-sandbox',
+        '--disable-gpu',
+        '--allow-file-access-from-files',
+        `--window-size=${breite},900`,
+        '--virtual-time-budget=3000',
+        '--dump-dom',
+        `file://${datei}`,
+      ],
+      { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
+    );
     const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
     assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
     const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));

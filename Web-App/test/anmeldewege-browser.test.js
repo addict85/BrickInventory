@@ -15,9 +15,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { starteApp } = require('./helpers/app-browser');
 
-test('Anmeldewege: die jüngste Antwort gilt', { timeout: 120_000 }, async (t) => {
+test('Anmeldewege: die jüngste Antwort gilt', { timeout: 120_000 }, async t => {
   const app = await starteApp(t, { name: `aw_${process.pid}` });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   await ruhig();
   // Die erste Abfrage antwortet spät und verneint „Passwort vergessen?“, die zweite sofort und bejaht.

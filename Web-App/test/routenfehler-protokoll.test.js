@@ -22,9 +22,20 @@ function protokolliereMitStufe(fehler, req) {
   console.error = (...teile) => zeilen.push({ stufe: 'error', zeile: require('node:util').format(...teile) });
   console.warn = (...teile) => zeilen.push({ stufe: 'warn', zeile: require('node:util').format(...teile) });
   // Eine Antwort, die nur so viel kann, wie handleRouteError braucht.
-  const res = { headersSent: false, status() { return this; }, json() { return this; } };
-  try { handleRouteError(res, fehler, undefined, req); }
-  finally { Object.assign(console, echt); }
+  const res = {
+    headersSent: false,
+    status() {
+      return this;
+    },
+    json() {
+      return this;
+    },
+  };
+  try {
+    handleRouteError(res, fehler, undefined, req);
+  } finally {
+    Object.assign(console, echt);
+  }
   assert.equal(zeilen.length, 1, 'Es soll genau eine Zeile geschrieben werden');
   return zeilen[0];
 }
@@ -36,8 +47,11 @@ test('die Fehlerzeile nennt Methode und Pfad', () => {
     method: 'PUT',
     originalUrl: '/api/v1/parts/3001/5/acquisitions/42',
   });
-  assert.match(zeile, /\[route-warnung\] PUT \/api\/v1\/parts\/3001\/5\/acquisitions\/42 404:/,
-    `Ohne Methode und Pfad ist die Zeile nicht zuzuordnen — dastand: ${zeile}`);
+  assert.match(
+    zeile,
+    /\[route-warnung\] PUT \/api\/v1\/parts\/3001\/5\/acquisitions\/42 404:/,
+    `Ohne Methode und Pfad ist die Zeile nicht zuzuordnen — dastand: ${zeile}`,
+  );
 });
 
 test('der Fragezeichen-Teil bleibt draussen', () => {
@@ -47,9 +61,10 @@ test('der Fragezeichen-Teil bleibt draussen', () => {
     originalUrl: '/api/v1/sets?accounts=alle&geheim=abc',
   });
   assert.ok(zeile.includes('GET /api/v1/sets '), `Pfad fehlt: ${zeile}`);
-  assert.ok(!zeile.includes('geheim'),
-    'Die Abfrage steht mit im Protokoll — was dort stehen darf, ist nicht Sache ' +
-    `des Protokolls: ${zeile}`);
+  assert.ok(
+    !zeile.includes('geheim'),
+    'Die Abfrage steht mit im Protokoll — was dort stehen darf, ist nicht Sache ' + `des Protokolls: ${zeile}`,
+  );
   assert.ok(!zeile.includes('accounts'), `Die Abfrage steht mit im Protokoll: ${zeile}`);
 });
 
@@ -62,8 +77,10 @@ test('ohne Anfrage bleibt die Zeile wie bisher', () => {
 });
 
 test('ein 4xx ist eine Warnung ohne Stack, ein 5xx ein Fehler mit Stack', () => {
-  const nicht = protokolliereMitStufe(Object.assign(new Error('Nicht gefunden'), { status: 404 }),
-    { method: 'GET', originalUrl: '/api/v1/sets/1-1' });
+  const nicht = protokolliereMitStufe(Object.assign(new Error('Nicht gefunden'), { status: 404 }), {
+    method: 'GET',
+    originalUrl: '/api/v1/sets/1-1',
+  });
   assert.equal(nicht.stufe, 'warn');
   assert.match(nicht.zeile, /Nicht gefunden/);
   assert.ok(!/\n\s+at /.test(nicht.zeile), `Stack in einer 4xx-Zeile: ${nicht.zeile}`);

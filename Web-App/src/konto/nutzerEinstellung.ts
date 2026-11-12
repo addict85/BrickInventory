@@ -18,7 +18,7 @@ export async function setUserSetting(userId: number, key: string, value: unknown
 /** Für den ganzen Haushalt: Zwei Währungen ergäben eine Summe, der man den
  * Fehler nicht ansieht. einladungEinloesen() prüft unter derselben Sperre. */
 async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
-  const vorher = await kontoBereich().db.transaction(async (tx) => {
+  const vorher = await kontoBereich().db.transaction(async tx => {
     await sperreHaushaltswaehrung(tx);
     const alt = await repo.waehrungIn(tx, userId);
     const unterkonto = await repo.hatHauptkonto(tx, userId);
@@ -38,13 +38,18 @@ async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
     return alt;
   });
   if (vorher !== waehrung) {
-    console.log(`[settings] Währung für Benutzer ${userId} und seinen Haushalt geändert (${vorher ?? '—'} → ${waehrung}) — Preis-Job wird angestossen`);
+    console.log(
+      `[settings] Währung für Benutzer ${userId} und seinen Haushalt geändert (${vorher ?? '—'} → ${waehrung}) — Preis-Job wird angestossen`,
+    );
     setImmediate(() => nacharbeit().preisJobAnstossen());
   }
 }
 
 export async function setzeEigenesDesign(userId: number, theme: unknown): Promise<void> {
   const v = String(theme ?? '').trim();
-  if (!v) { await deleteUserSetting(userId, 'app_theme'); return; }
+  if (!v) {
+    await deleteUserSetting(userId, 'app_theme');
+    return;
+  }
   await setUserSetting(userId, 'app_theme', v);
 }

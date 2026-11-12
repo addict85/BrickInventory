@@ -38,9 +38,12 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { warte, bis } = require('./helpers/zeit');
 
-test('Auftragstabelle', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
-  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege });
+test('Auftragstabelle', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
+  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
+    ..._req('src/auftraege/dienst.js'),
+    ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+  });
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
   const ART = `test-${process.pid}`;
@@ -52,7 +55,8 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
     await db.run('INSERT INTO auftrags_arten (art) VALUES ($1) ON CONFLICT DO NOTHING', [art]);
   }
   const leeren = () => db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]);
-  const zeile = (id) => db.get('SELECT status, versuche, fehler, faellig_ab > NOW() AS spaeter FROM auftraege WHERE id=$1', [id]);
+  const zeile = id =>
+    db.get('SELECT status, versuche, fehler, faellig_ab > NOW() AS spaeter FROM auftraege WHERE id=$1', [id]);
   await leeren();
 
   try {
@@ -62,7 +66,16 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       const tot = await A.belegeAuftrag([ART], 1);
       assert.equal(tot.id, id);
       const erledigt = [];
-      const w = erzeugeWorker({ [ART]: { ausfuehren: async (n) => { erledigt.push(n.n); } } }, { fristSek: 60 });
+      const w = erzeugeWorker(
+        {
+          [ART]: {
+            ausfuehren: async n => {
+              erledigt.push(n.n);
+            },
+          },
+        },
+        { fristSek: 60 },
+      );
       assert.equal(await w.verarbeiteEinen(), false, 'vor Ablauf der Frist gehört er noch dem anderen');
       // Die Frist des toten Prozesses läuft ab; dann nimmt ihn der zweite.
       assert.ok(await bis(() => w.verarbeiteEinen(), 5000), 'nach Ablauf der Frist übernimmt der Worker');
@@ -75,10 +88,17 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       await leeren();
       let mal = 0;
       const aufgegeben = [];
-      const w = erzeugeWorker({ [ART]: {
-        ausfuehren: async (n) => { mal++; if (n.immer || mal === 1) throw new Error('Quelle weg'); },
-        aufgegeben: async (n, fehler) => { aufgegeben.push(fehler); },
-      } });
+      const w = erzeugeWorker({
+        [ART]: {
+          ausfuehren: async n => {
+            mal++;
+            if (n.immer || mal === 1) throw new Error('Quelle weg');
+          },
+          aufgegeben: async (_n, fehler) => {
+            aufgegeben.push(fehler);
+          },
+        },
+      });
       const id = await A.stelleAuftragEin(ART, { marke: MARKE }, { maxVersuche: 3 });
       assert.equal(await w.verarbeiteEinen(), true);
       const nachFehler = await zeile(id);
@@ -111,16 +131,28 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       const N = 40;
       for (let i = 0; i < N; i++) await A.stelleAuftragEin(ART, { marke: MARKE, n: i });
       const laeufe = [];
-      const bearbeiter = { [ART]: { ausfuehren: async (n) => { laeufe.push(n.n); await warte(15); } } };
+      const bearbeiter = {
+        [ART]: {
+          ausfuehren: async n => {
+            laeufe.push(n.n);
+            await warte(15);
+          },
+        },
+      };
       const w1 = erzeugeWorker(bearbeiter, { parallel: 4, taktMs: 20 });
       const w2 = erzeugeWorker(bearbeiter, { parallel: 4, taktMs: 20 });
-      w1.starte(); w2.starte();
+      w1.starte();
+      w2.starte();
       for (let i = 0; i < 200; i++) {
-        const offen = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE nutzlast->>'marke' = $1 AND status <> 'erledigt'`, [MARKE]);
+        const offen = await db.get(
+          `SELECT COUNT(*)::int AS n FROM auftraege WHERE nutzlast->>'marke' = $1 AND status <> 'erledigt'`,
+          [MARKE],
+        );
         if (offen.n === 0 && w1.laufend() === 0 && w2.laufend() === 0) break;
         await warte(25);
       }
-      await w1.stoppe(0); await w2.stoppe(0);
+      await w1.stoppe(0);
+      await w2.stoppe(0);
       const doppelt = laeufe.filter((n, i) => laeufe.indexOf(n) !== i);
       assert.deepEqual(doppelt, [], 'Aufträge doppelt ausgeführt');
       assert.equal(new Set(laeufe).size, N);
@@ -133,12 +165,26 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       await A.pausiereArt(EX, new Date(Date.now() + 60_000), 'Test');
       assert.equal(await A.belegeAuftrag([EX], 60, 'x', [EX]), null, 'trotz Pause belegt');
       await A.beendePause(EX);
-      let gleichzeitig = 0, hoechstens = 0;
-      const w = erzeugeWorker({ [EX]: { exklusiv: true, ausfuehren: async () => {
-        hoechstens = Math.max(hoechstens, ++gleichzeitig); await warte(60); gleichzeitig--; } } }, { parallel: 3, taktMs: 20 });
+      let gleichzeitig = 0,
+        hoechstens = 0;
+      const w = erzeugeWorker(
+        {
+          [EX]: {
+            exklusiv: true,
+            ausfuehren: async () => {
+              hoechstens = Math.max(hoechstens, ++gleichzeitig);
+              await warte(60);
+              gleichzeitig--;
+            },
+          },
+        },
+        { parallel: 3, taktMs: 20 },
+      );
       w.starte();
       for (let i = 0; i < 100; i++) {
-        const offen = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE art = $1 AND status <> 'erledigt'`, [EX]);
+        const offen = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE art = $1 AND status <> 'erledigt'`, [
+          EX,
+        ]);
         if (offen.n === 0 && w.laufend() === 0) break;
         await warte(25);
       }
@@ -151,14 +197,22 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       await leeren();
       const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
       let zaehlt = false;
-      const w = erzeugeWorker({ [ART]: { ausfuehren: async () => {
-        throw new AuftragVerschieben(new Date(Date.now() + 3_600_000), 'gedrosselt', zaehlt); } } });
+      const w = erzeugeWorker({
+        [ART]: {
+          ausfuehren: async () => {
+            throw new AuftragVerschieben(new Date(Date.now() + 3_600_000), 'gedrosselt', zaehlt);
+          },
+        },
+      });
       const id = await A.stelleAuftragEin(ART, { marke: MARKE }, { maxVersuche: 2 });
       await w.verarbeiteEinen();
       let z = await zeile(id);
       assert.deepEqual([z.status, z.versuche, z.fehler, z.spaeter], ['offen', 0, 'gedrosselt', true]);
       zaehlt = true;
-      for (let i = 0; i < 2; i++) { await db.run('UPDATE auftraege SET faellig_ab = NOW() WHERE id=$1', [id]); await w.verarbeiteEinen(); }
+      for (let i = 0; i < 2; i++) {
+        await db.run('UPDATE auftraege SET faellig_ab = NOW() WHERE id=$1', [id]);
+        await w.verarbeiteEinen();
+      }
       z = await zeile(id);
       assert.deepEqual([z.status, z.versuche], ['fehler', 2], 'gezählte Verschiebungen enden nach max_versuche');
     });
@@ -168,10 +222,23 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       let lebt = null;
       // Ohne feste Wartezeiten: Der Bearbeiter meldet, dass er läuft, und
       // fragt erst nach dem Abbruch nach seinem Lebenszeichen.
-      let laeuft = () => {}, abgebrochen = () => {};
-      const gestartet = new Promise(r => { laeuft = r; });
-      const nachAbbruch = new Promise(r => { abgebrochen = r; });
-      const w = erzeugeWorker({ [ART]: { ausfuehren: async (_n, k) => { laeuft(); await nachAbbruch; lebt = await k.lebenszeichen(); } } });
+      let laeuft = () => {},
+        abgebrochen = () => {};
+      const gestartet = new Promise(r => {
+        laeuft = r;
+      });
+      const nachAbbruch = new Promise(r => {
+        abgebrochen = r;
+      });
+      const w = erzeugeWorker({
+        [ART]: {
+          ausfuehren: async (_n, k) => {
+            laeuft();
+            await nachAbbruch;
+            lebt = await k.lebenszeichen();
+          },
+        },
+      });
       const id = await A.stelleAuftragEin(ART, { marke: MARKE });
       const lauf = w.verarbeiteEinen();
       await gestartet;
@@ -189,16 +256,33 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       await db.run(`DELETE FROM auftraege WHERE art = 'aufraeumen'`);
       await Z.planeAlle();
       await Z.planeAlle();
-      const plaene = await db.all(`SELECT faellig_ab FROM auftraege WHERE schluessel = 'plan:aufraeumen' AND status = 'offen'`);
+      const plaene = await db.all(
+        `SELECT faellig_ab FROM auftraege WHERE schluessel = 'plan:aufraeumen' AND status = 'offen'`,
+      );
       assert.equal(plaene.length, 1, 'planeAlle legt je Art genau einen Termin an');
-      assert.ok(new Date(plaene[0].faellig_ab) > new Date(Date.now() + 55 * 60_000), 'stündlich heisst in einer Stunde');
+      assert.ok(
+        new Date(plaene[0].faellig_ab) > new Date(Date.now() + 55 * 60_000),
+        'stündlich heisst in einer Stunde',
+      );
       assert.equal(await Z.ziehePlanVor('aufraeumen'), true);
       let lief = 0;
-      const w = erzeugeWorker({ aufraeumen: { ausfuehren: async () => { lief++; } } });
+      const w = erzeugeWorker({
+        aufraeumen: {
+          ausfuehren: async () => {
+            lief++;
+          },
+        },
+      });
       assert.equal(await w.verarbeiteEinen(), true);
       assert.equal(lief, 1);
-      const danach = await db.all(`SELECT status, faellig_ab FROM auftraege WHERE schluessel = 'plan:aufraeumen' ORDER BY id`);
-      assert.deepEqual(danach.map(z => z.status), ['erledigt', 'offen'], 'kein Folgetermin eingetragen');
+      const danach = await db.all(
+        `SELECT status, faellig_ab FROM auftraege WHERE schluessel = 'plan:aufraeumen' ORDER BY id`,
+      );
+      assert.deepEqual(
+        danach.map(z => z.status),
+        ['erledigt', 'offen'],
+        'kein Folgetermin eingetragen',
+      );
       assert.ok(new Date(danach[1].faellig_ab) > new Date(Date.now() + 55 * 60_000));
       await db.run(`DELETE FROM auftraege WHERE art = 'aufraeumen'`);
     });
@@ -209,13 +293,24 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
       const pdfA = _req('src/auftraege/pdfAuftraege.js');
       const jobId = _req('src/auftraege/pdfAuftraege.js').neueJobId();
-      const w = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['pdf'], taktMs: 50 });
+      _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['pdf'], taktMs: 50 });
       try {
-        await A.stelleAuftragEin('pdf', { job_id: jobId, user_id: uid, sets: [],
-          parts: [{ part_number: '3001', part_name: 'Stein', color_name: 'Rot', quantity: 2 }] },
-          { userId: uid, schluessel: pdfA.pdfSchluessel(jobId) });
+        await A.stelleAuftragEin(
+          'pdf',
+          {
+            job_id: jobId,
+            user_id: uid,
+            sets: [],
+            parts: [{ part_number: '3001', part_name: 'Stein', color_name: 'Rot', quantity: 2 }],
+          },
+          { userId: uid, schluessel: pdfA.pdfSchluessel(jobId) },
+        );
         let stand;
-        for (let i = 0; i < 200; i++) { stand = await pdfA.liesAuftrag(jobId); if (stand?.status !== 'running') break; await warte(25); }
+        for (let i = 0; i < 200; i++) {
+          stand = await pdfA.liesAuftrag(jobId);
+          if (stand?.status !== 'running') break;
+          await warte(25);
+        }
         assert.equal(stand?.status, 'done', JSON.stringify(stand));
         const datei = pdfA.pdfDateiPfad(jobId);
         assert.equal(require('node:fs').readFileSync(datei).subarray(0, 5).toString(), '%PDF-');

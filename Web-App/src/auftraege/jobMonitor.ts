@@ -7,23 +7,34 @@ import type { AuftragsArt } from './auftraege';
 import { auftraegeBereich } from './prozess';
 
 export interface Kachel {
-  label: string; status: 'idle' | 'running' | 'done' | 'error'; progress: number; total: number;
-  sub?: string | null; lastRun?: string | null; [k: string]: unknown;
+  label: string;
+  status: 'idle' | 'running' | 'done' | 'error';
+  progress: number;
+  total: number;
+  sub?: string | null;
+  lastRun?: string | null;
+  [k: string]: unknown;
 }
 
 const KACHELN: Record<string, { art: AuftragsArt; label: string; total: number }> = {
-  csvImport:  { art: 'csv_sync',      label: 'CSV-Import (Rebrickable)',  total: 8 },
-  instrQueue: { art: 'anleitung',     label: 'Anleitungen herunterladen', total: 0 },
-  priceJob:   { art: 'preise',        label: 'Preise aktualisieren',      total: 0 },
-  imgDl:      { art: 'bild_nachlauf', label: '📥 Bild-Download (CDN)',    total: 0 },
+  csvImport: { art: 'csv_sync', label: 'CSV-Import (Rebrickable)', total: 8 },
+  instrQueue: { art: 'anleitung', label: 'Anleitungen herunterladen', total: 0 },
+  priceJob: { art: 'preise', label: 'Preise aktualisieren', total: 0 },
+  imgDl: { art: 'bild_nachlauf', label: '📥 Bild-Download (CDN)', total: 0 },
 };
 const OHNE_AUFTRAG: Record<string, Kachel> = {
-  blIds:         { label: 'BrickLink IDs nachladen',  status: 'idle', progress: 0, total: 0 },
-  pdfJobs:       { label: '📄 PDF-Jobs',              status: 'idle', progress: 0, total: 0 },
-  bricksetRetry: { label: '🔄 Brickset Retry Queue',  status: 'done', progress: 0, total: 0 },
+  blIds: { label: 'BrickLink IDs nachladen', status: 'idle', progress: 0, total: 0 },
+  pdfJobs: { label: '📄 PDF-Jobs', status: 'idle', progress: 0, total: 0 },
+  bricksetRetry: { label: '🔄 Brickset Retry Queue', status: 'done', progress: 0, total: 0 },
 };
 
-const STATUS: Record<string, Kachel['status']> = { laeuft: 'running', erledigt: 'done', fehler: 'error', abgebrochen: 'idle', offen: 'idle' };
+const STATUS: Record<string, Kachel['status']> = {
+  laeuft: 'running',
+  erledigt: 'done',
+  fehler: 'error',
+  abgebrochen: 'idle',
+  offen: 'idle',
+};
 const ganz = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.round(x) : 0);
 
 function alsKachel(k: { label: string; total: number }, z: LetzterStand | undefined): Kachel {
@@ -32,8 +43,9 @@ function alsKachel(k: { label: string; total: number }, z: LetzterStand | undefi
   return {
     label: typeof f.schritt === 'string' ? f.schritt : k.label,
     status: STATUS[z.status] ?? 'idle',
-    progress: ganz(f.erledigt), total: ganz(f.gesamt) || k.total,
-    sub: z.status === 'fehler' ? z.fehler : (typeof f.text === 'string' ? f.text : null),
+    progress: ganz(f.erledigt),
+    total: ganz(f.gesamt) || k.total,
+    sub: z.status === 'fehler' ? z.fehler : typeof f.text === 'string' ? f.text : null,
     lastRun: z.aktualisiert ? new Date(z.aktualisiert).toISOString() : null,
   };
 }
@@ -58,14 +70,18 @@ const IMGDL_PENDING_KEY = 'imgdl_pending_count';
 export async function imgDlAdd(delta: number) {
   const d = Math.round(Number(delta) || 0);
   if (!d) return;
-  await auftraegeBereich().laufzustand.zaehleZustand(IMGDL_PENDING_KEY, d).catch(logAndContinue('job-monitor:imgDlAdd'));
+  await auftraegeBereich()
+    .laufzustand.zaehleZustand(IMGDL_PENDING_KEY, d)
+    .catch(logAndContinue('job-monitor:imgDlAdd'));
 }
 
 export async function imgDlPending() {
-  const n = parseInt(await auftraegeBereich().laufzustand.liesZustand(IMGDL_PENDING_KEY) || '0', 10);
+  const n = parseInt((await auftraegeBereich().laufzustand.liesZustand(IMGDL_PENDING_KEY)) || '0', 10);
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
 export async function imgDlReset() {
-  await auftraegeBereich().laufzustand.setzeZustand(IMGDL_PENDING_KEY, 0).catch(logAndContinue('job-monitor:setzeZustand'));
+  await auftraegeBereich()
+    .laufzustand.setzeZustand(IMGDL_PENDING_KEY, 0)
+    .catch(logAndContinue('job-monitor:setzeZustand'));
 }

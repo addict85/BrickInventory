@@ -49,7 +49,7 @@ const SCHLIESSEN = `(() => { document.dispatchEvent(new KeyboardEvent('keydown',
   document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
   const p = document.getElementById('pdf-viewer-modal'); if (p) p.style.display = 'none'; return true; })()`;
 
-async function pdfBetrachter(t, a) {
+async function pdfBetrachter(_t, a) {
   const { b, bis } = a;
   await b.auswerten(
     `document.querySelector('.ntab[data-tab="gallery"]').click(); document.querySelector('#gallery [data-click="openModal"]').click(); true`,
@@ -78,7 +78,7 @@ async function pdfBetrachter(t, a) {
   assert.deepEqual(await b.auswerten(AXE_LAUF), []);
 }
 
-async function csvFortschritt(t, a) {
+async function csvFortschritt(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await b.auswerten(datei('#csv-file', 'sets.csv', 'text/csv', 'set_number,quantity\n75192-1,1\n99999-1,abc\n'));
@@ -108,7 +108,7 @@ async function csvFortschritt(t, a) {
   assert.deepEqual(await b.auswerten(AXE_LAUF), []);
 }
 
-async function protokollfenster(t, a) {
+async function protokollfenster(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="monitor"]').click(); true`);
   await bis(`!!document.querySelector('[data-click="openLogViewer"]')`, 'Hintergrundarbeiten');
@@ -156,7 +156,7 @@ async function protokollfenster(t, a) {
   await b.auswerten(`document.getElementById('lv-rahmen').remove(); true`);
 }
 
-async function masse(t, a) {
+async function masse(_t, a) {
   const { b, bis, ruhig } = a;
   const groesse = (w, h, mobil) =>
     b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
@@ -219,7 +219,7 @@ const RING = `(() => {
   }
   document.activeElement?.blur(); return funde; })()`;
 
-async function fokusring(t, a) {
+async function fokusring(_t, a) {
   const { b } = a;
   // Eine echte Taste zuerst: Danach zeigt Chrome den Ring auch für focus() (:focus-visible).
   await taste(b, { key: 'Shift', code: 'ShiftLeft', windowsVirtualKeyCode: 16 });

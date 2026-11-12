@@ -20,12 +20,25 @@ async function legeAlarmAn() {
   const roh = String(G('alarm-neu-set')?.value || '').trim();
   const sn = /^\d+$/.test(roh) ? roh + '-1' : roh;
   const schwelle = leseBetrag(G('alarm-neu-preis')?.value);
-  if (!sn) { feldFehler('alarm-neu-set', tRaw('alerts.new_set_fehlt')); return; }
-  if (!(Number(schwelle) > 0)) { feldFehler('alarm-neu-preis', tRaw('alerts.new_preis_fehlt')); return; }
-  const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`,
-    { richtung: G('alarm-neu-richtung').value, schwelle, condition: G('alarm-neu-zustand').value });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
-  G('alarm-neu-set').value = ''; G('alarm-neu-preis').value = '';
+  if (!sn) {
+    feldFehler('alarm-neu-set', tRaw('alerts.new_set_fehlt'));
+    return;
+  }
+  if (!(Number(schwelle) > 0)) {
+    feldFehler('alarm-neu-preis', tRaw('alerts.new_preis_fehlt'));
+    return;
+  }
+  const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
+    richtung: G('alarm-neu-richtung').value,
+    schwelle,
+    condition: G('alarm-neu-zustand').value,
+  });
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
+  G('alarm-neu-set').value = '';
+  G('alarm-neu-preis').value = '';
   toast(tRaw('alerts.new_ok', { set: sn }), 'success');
   await ladeAlarmUebersicht();
 }
@@ -39,7 +52,11 @@ export async function ladeAlarmUebersicht() {
   const el = G('alerts-list');
   if (!el) return;
   const vorschlag = G('alarm-neu-sets');
-  if (vorschlag) setzeHtml(vorschlag, allSets.map(x => html`<option value="${x.set_number}">${x.name || ''}</option>`));
+  if (vorschlag)
+    setzeHtml(
+      vorschlag,
+      allSets.map(x => html`<option value="${x.set_number}">${x.name || ''}</option>`),
+    );
   const d = await api('GET', '/v1/alerts');
   if (!d?.success) return;
   const alarme = d.alerts || [];
@@ -47,34 +64,32 @@ export async function ladeAlarmUebersicht() {
     setzeHtml(el, html`<p class="text-mut">${tRaw('alerts.empty')}</p>`);
     return;
   }
-  setzeHtml(el, alarme.map(a => {
-    const zustand = a.condition === 'U' ? tRaw('common.condition_used') : tRaw('common.condition_new');
-    const richtung = a.richtung === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
-    // Der Schluessel ist (Set, Zustand) — beides muss mit, sonst trifft das Aendern den falschen der beiden
-    // moeglichen Alarme eines Sets.
-    const schluessel = `${a.set_number}|${a.condition}`;
-    const stand = a.zuletzt_preis == null
-      ? ''
-      : t('alerts.last', { preis: fmtN(a.zuletzt_preis, a.currency_code) });
-    // „scharf“ gegen „unscharf“ nicht über die Farbe allein, denn grün und grau sind für Rot-Grün-Schwache
-    // gleich: Wort, Fläche (gefüllt/umrandet) und Zeichen (●/○) tragen es je für sich, wie in der App.
-    const marke = a.ausgeloest
-      ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
-      : `<span class="alarm-marke alarm-marke-an">${esc(tRaw('alerts.armed'))}</span>`;
-    // Bild wie in den Finanzen: erst die heruntergeladene Kopie, dann die Adresse aus der eigenen Sammlung,
-    // zuletzt die des Katalogs. Ein Alarm auf ein Set, das man NICHT besitzt, hat nur die letzte — deshalb
-    // steht sie ueberhaupt in der Antwort.
-    const bildQuelle = a.image_local || a.image_url || a.set_img_url || '';
-    const bild = bildQuelle
-      ? bildTag({ src: imgUrl(thumbUrl(bildQuelle) || bildQuelle, true), alt: '', klasse: 'bild-38', ph: 'set' })
-      : `<span class="bild-ph bild-38" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
-    // Die Zeile öffnet das Set-Detail, aber nur wenn das Set im Bestand ist — sonst käme statt Dialog ein
-    // Fehler. Feld und Löschknopf haben eigenes data-click, sonst öffnete jeder Klick ins Feld den Dialog
-    // darüber.
-    const oeffnet = a.besitzt
-      ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"`
-      : '';
-    return html`<div class="alarm-ue"${ungeprueft(oeffnet)}>
+  setzeHtml(
+    el,
+    alarme.map(a => {
+      const zustand = a.condition === 'U' ? tRaw('common.condition_used') : tRaw('common.condition_new');
+      const richtung = a.richtung === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
+      // Der Schluessel ist (Set, Zustand) — beides muss mit, sonst trifft das Aendern den falschen der beiden
+      // moeglichen Alarme eines Sets.
+      const schluessel = `${a.set_number}|${a.condition}`;
+      const stand = a.zuletzt_preis == null ? '' : t('alerts.last', { preis: fmtN(a.zuletzt_preis, a.currency_code) });
+      // „scharf“ gegen „unscharf“ nicht über die Farbe allein, denn grün und grau sind für Rot-Grün-Schwache
+      // gleich: Wort, Fläche (gefüllt/umrandet) und Zeichen (●/○) tragen es je für sich, wie in der App.
+      const marke = a.ausgeloest
+        ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
+        : `<span class="alarm-marke alarm-marke-an">${esc(tRaw('alerts.armed'))}</span>`;
+      // Bild wie in den Finanzen: erst die heruntergeladene Kopie, dann die Adresse aus der eigenen Sammlung,
+      // zuletzt die des Katalogs. Ein Alarm auf ein Set, das man NICHT besitzt, hat nur die letzte — deshalb
+      // steht sie ueberhaupt in der Antwort.
+      const bildQuelle = a.image_local || a.image_url || a.set_img_url || '';
+      const bild = bildQuelle
+        ? bildTag({ src: imgUrl(thumbUrl(bildQuelle) || bildQuelle, true), alt: '', klasse: 'bild-38', ph: 'set' })
+        : `<span class="bild-ph bild-38" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+      // Die Zeile öffnet das Set-Detail, aber nur wenn das Set im Bestand ist — sonst käme statt Dialog ein
+      // Fehler. Feld und Löschknopf haben eigenes data-click, sonst öffnete jeder Klick ins Feld den Dialog
+      // darüber.
+      const oeffnet = a.besitzt ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"` : '';
+      return html`<div class="alarm-ue"${ungeprueft(oeffnet)}>
       ${ungeprueft(bild)}
       <div class="alarm-ue-text">
         <div><strong>${a.name || a.set_number}</strong></div>
@@ -91,7 +106,8 @@ export async function ladeAlarmUebersicht() {
               aria-label="${tRaw('common.delete')}: ${a.set_number}" title="${tRaw('common.delete')}"
               data-arg2="${a.set_number}">${ico('loeschen')}</button>
     </div>`;
-  }));
+    }),
+  );
 }
 
 /**
@@ -111,12 +127,15 @@ async function aendereAlarmSchwelle(schluessel, wert) {
   const schwelle = leseBetrag(wert);
   // Kein stilles Zurueckschreiben bei Unsinn: Wer 0 oder Text eingibt, soll sehen, dass nichts passiert ist,
   // statt spaeter einen Alarm zu suchen, den es nicht gibt.
-  if (!(schwelle != null && schwelle > 0)) { toast(tRaw('alerts.bad_value'), 'error'); await ladeAlarmUebersicht(); return; }
+  if (!(schwelle != null && schwelle > 0)) {
+    toast(tRaw('alerts.bad_value'), 'error');
+    await ladeAlarmUebersicht();
+    return;
+  }
   const { setNumber, condition } = alarmSchluessel(schluessel);
   // Geschrieben wird ueber die BESTEHENDE Route zum Set — die Uebersicht bekommt keinen eigenen Schreibweg
   // (siehe routes/api_v1/sets.ts).
-  const d = await api('PUT', `/v1/sets/${encodeURIComponent(setNumber)}/alert`,
-    { condition, schwelle });
+  const d = await api('PUT', `/v1/sets/${encodeURIComponent(setNumber)}/alert`, { condition, schwelle });
   if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
   await ladeAlarmUebersicht();
 }
@@ -127,16 +146,37 @@ async function aendereAlarmSchwelle(schluessel, wert) {
  */
 async function loescheAlarm(schluessel, setNumber) {
   // Dieselbe Rückfrage wie überall (rueckfrage.js) statt des Browserfensters, danach „Rückgängig“.
-  if (!await confirmDelete(tRaw('alerts.delete_title'), tRaw('alerts.confirm_delete', { set: setNumber }), 'alarm')) return;
+  if (!(await confirmDelete(tRaw('alerts.delete_title'), tRaw('alerts.confirm_delete', { set: setNumber }), 'alarm')))
+    return;
   const { setNumber: sn, condition } = alarmSchluessel(schluessel);
-  const vorher = (await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`))?.alerts?.find(a => a.condition === condition);
+  const vorher = (await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`))?.alerts?.find(
+    a => a.condition === condition,
+  );
   const d = await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${encodeURIComponent(condition)}`);
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); await ladeAlarmUebersicht(); return; }
-  toast(tRaw('alerts.deleted', { set: setNumber }), 'success', vorher ? { text: tRaw('trash.undo'), bleibt: true, fn: async () => {
-    const r = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, { richtung: vorher.richtung === 'ueber' ? 'ueber' : 'unter', schwelle: Number(vorher.schwelle), condition });
-    if (!r?.success) toast(r?.error || tRaw('settings.error'), 'error');
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
     await ladeAlarmUebersicht();
-  } } : undefined);
+    return;
+  }
+  toast(
+    tRaw('alerts.deleted', { set: setNumber }),
+    'success',
+    vorher
+      ? {
+          text: tRaw('trash.undo'),
+          bleibt: true,
+          fn: async () => {
+            const r = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
+              richtung: vorher.richtung === 'ueber' ? 'ueber' : 'unter',
+              schwelle: Number(vorher.schwelle),
+              condition,
+            });
+            if (!r?.success) toast(r?.error || tRaw('settings.error'), 'error');
+            await ladeAlarmUebersicht();
+          },
+        }
+      : undefined,
+  );
   await ladeAlarmUebersicht();
 }
 
@@ -147,9 +187,14 @@ async function loescheAlarm(schluessel, setNumber) {
  */
 async function importAlarmeCsv() {
   const status = G('alerts-csv-status');
-  const d = await csvHochladen({ feld: 'alerts-csv-file', pfad: '/v1/alerts/import/csv',
-    hinweise: (a) => [a.waehrung_hinweis],
-    zeige: (l) => { if (status) status.textContent = l ? tRaw('import.running') : ''; } });
+  const d = await csvHochladen({
+    feld: 'alerts-csv-file',
+    pfad: '/v1/alerts/import/csv',
+    hinweise: a => [a.waehrung_hinweis],
+    zeige: l => {
+      if (status) status.textContent = l ? tRaw('import.running') : '';
+    },
+  });
   if (d) await ladeAlarmUebersicht();
 }
 

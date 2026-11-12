@@ -45,20 +45,30 @@ test('jedes Passwortfeld eines MENSCHEN liegt in einem Formular', () => {
   const felder = [...d.querySelectorAll('input[type=password]')];
   assert.ok(felder.length >= 13, `Nur ${felder.length} Passwortfelder gefunden — stimmt der Pfad?`);
 
-  const ohne = felder.filter(i => !i.closest('form')).map(i => i.id).sort();
-  assert.deepEqual(ohne, ['bl-cs', 'bl-ts', 'bs-key', 'rb-key', 'smtp-pass'],
-    'Diese Passwortfelder liegen in keinem Formular: ' + ohne.join(', ') +
-    '\nErlaubt sind genau die fünf Schnittstellen-Geheimnisse (BrickLink, Rebrickable, Brickset, SMTP) — ' +
-    'siehe den Kopf dieser Datei. Steht hier ein Feld eines MENSCHEN, bietet der ' +
-    'Passwortmanager dort kein Speichern mehr an.');
+  const ohne = felder
+    .filter(i => !i.closest('form'))
+    .map(i => i.id)
+    .sort();
+  assert.deepEqual(
+    ohne,
+    ['bl-cs', 'bl-ts', 'bs-key', 'rb-key', 'smtp-pass'],
+    'Diese Passwortfelder liegen in keinem Formular: ' +
+      ohne.join(', ') +
+      '\nErlaubt sind genau die fünf Schnittstellen-Geheimnisse (BrickLink, Rebrickable, Brickset, SMTP) — ' +
+      'siehe den Kopf dieser Datei. Steht hier ein Feld eines MENSCHEN, bietet der ' +
+      'Passwortmanager dort kein Speichern mehr an.',
+  );
 
   // Und die Gegenrichtung: Die fuenf duerfen auch kein `autocomplete` haben,
   // das sie doch wieder als Anmeldedaten ausweist.
   for (const id of ohne) {
     const ac = d.getElementById(id).getAttribute('autocomplete');
-    assert.equal(ac, 'off',
+    assert.equal(
+      ac,
+      'off',
       `${id} traegt autocomplete="${ac}" statt "off" — dann ist das Formular nicht ` +
-      'der Grund, warum der Passwortmanager schweigt, und die Entscheidung oben wackelt');
+        'der Grund, warum der Passwortmanager schweigt, und die Entscheidung oben wackelt',
+    );
   }
 });
 
@@ -66,8 +76,7 @@ test('Absenden lädt die Seite NICHT neu, sondern drückt den Knopf', () => {
   const dom = buehne();
   const d = dom.window.document;
   const formulare = [...d.querySelectorAll('form[data-submit]')];
-  assert.ok(formulare.length >= 6,
-    `Nur ${formulare.length} Formulare mit data-submit — erwartet mindestens sechs`);
+  assert.ok(formulare.length >= 6, `Nur ${formulare.length} Formulare mit data-submit — erwartet mindestens sechs`);
 
   for (const f of formulare) {
     const id = f.getAttribute('data-submit');
@@ -76,16 +85,24 @@ test('Absenden lädt die Seite NICHT neu, sondern drückt den Knopf', () => {
     assert.ok(f.contains(knopf), `Der Knopf ${id} liegt gar nicht in seinem Formular`);
 
     let gedrueckt = 0;
-    knopf.addEventListener('click', () => { gedrueckt++; });
+    knopf.addEventListener('click', () => {
+      gedrueckt++;
+    });
     const ev = new dom.window.Event('submit', { bubbles: true, cancelable: true });
     f.dispatchEvent(ev);
 
-    assert.equal(ev.defaultPrevented, true,
+    assert.equal(
+      ev.defaultPrevented,
+      true,
       `Das Absenden von ${id} wurde NICHT abgebrochen — der Browser lüde die Seite neu ` +
-      'und der angemeldete Zustand wäre weg');
-    assert.equal(gedrueckt, 1,
+        'und der angemeldete Zustand wäre weg',
+    );
+    assert.equal(
+      gedrueckt,
+      1,
       `Der Knopf ${id} wurde ${gedrueckt}-mal gedrückt statt genau einmal. Null heisst: ` +
-      'die Eingabetaste tut nichts. Mehr als einmal heisst: es dreht sich im Kreis.');
+        'die Eingabetaste tut nichts. Mehr als einmal heisst: es dreht sich im Kreis.',
+    );
   }
 });
 
@@ -101,7 +118,11 @@ test('die Absendeknöpfe tragen type="button"', () => {
       if (b.getAttribute('type') !== 'button') falsch.push(b.id || b.textContent.trim().slice(0, 20));
     }
   }
-  assert.deepEqual(falsch, [],
-    'Diese Knöpfe in einem Formular sind Absendeknöpfe: ' + falsch.join(', ') +
-    '\nOhne type="button" löst ihr Klick wieder ein submit aus.');
+  assert.deepEqual(
+    falsch,
+    [],
+    'Diese Knöpfe in einem Formular sind Absendeknöpfe: ' +
+      falsch.join(', ') +
+      '\nOhne type="button" löst ihr Klick wieder ein submit aus.',
+  );
 });

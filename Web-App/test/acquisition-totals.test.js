@@ -27,11 +27,11 @@ const { acquisitionTotals } = _req('src/bestand/acquisitions.js');
 
 test('Menge und Betrag: mengengewichtet über alle Zeilen', () => {
   const t = acquisitionTotals([
-    { quantity: 2, purchase_price: '7.41' },   // aus Postgres kommen NUMERIC als Text
+    { quantity: 2, purchase_price: '7.41' }, // aus Postgres kommen NUMERIC als Text
     { quantity: 1, purchase_price: 9.48 },
   ]);
   assert.equal(t.quantity, 3);
-  assert.equal(t.amount, 24.3);               // 2×7.41 + 1×9.48
+  assert.equal(t.amount, 24.3); // 2×7.41 + 1×9.48
   assert.equal(t.priced_rows, 2);
 });
 
@@ -60,10 +60,7 @@ test('eine Zeile mit Preis 0 ist erfasst und ergibt 0', () => {
 });
 
 test('gemischt: Zeilen mit und ohne Preis', () => {
-  const t = acquisitionTotals([
-    { quantity: 2, purchase_price: 10 },
-    { quantity: 5 },
-  ]);
+  const t = acquisitionTotals([{ quantity: 2, purchase_price: 10 }, { quantity: 5 }]);
   assert.equal(t.quantity, 7, 'die preislose Zeile zählt bei der MENGE mit');
   assert.equal(t.amount, 20, 'beim BETRAG nicht — sie hat keinen');
 });
@@ -81,30 +78,54 @@ test('leere Liste', () => {
 
 // ── Teil 2: die Regel ───────────────────────────────────────────────────────
 
-test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, async (t) => {
+test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, async t => {
   const db = _req('db/database.js');
-  if (!await dbOderSkip(t, _req)) return;
-  const P = process.pid, NAME = `summen-${P}`, SN = `${P}7-1`, PN = `su${P}`, FN = `fig-su${P}`;
+  if (!(await dbOderSkip(t, _req))) return;
+  const P = process.pid,
+    NAME = `summen-${P}`,
+    SN = `${P}7-1`,
+    PN = `su${P}`,
+    FN = `fig-su${P}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  t.after(async () => { await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {}); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
+    await db.pool.end().catch(() => {});
+  });
   // Die Kontowährung ist die der Käufe: So bleibt die Summe ohne Umrechnung nachrechenbar.
   await db.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')", [uid]);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
-  await db.run(`INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
-                VALUES ($1,$2,2,7.41,'N','CHF','2026-01-01'), ($1,$2,1,9.48,'N','CHF','2026-01-02')`, [uid, SN]);
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)
+                VALUES ($1,$2,2,7.41,'N','CHF','2026-01-01'), ($1,$2,1,9.48,'N','CHF','2026-01-02')`,
+    [uid, SN],
+  );
   await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,$2,4,'manual')`, [uid, PN]);
-  await db.run(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, currency)
-                VALUES ($1,$2,4,3,0.6,'N','CHF')`, [uid, PN]);
+  await db.run(
+    `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, currency)
+                VALUES ($1,$2,4,3,0.6,'N','CHF')`,
+    [uid, PN],
+  );
   await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,$2,'manual')`, [uid, FN]);
-  await db.run(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, currency)
-                VALUES ($1,$2,2,NULL,'U','CHF')`, [uid, FN]);
+  await db.run(
+    `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition, currency)
+                VALUES ($1,$2,2,NULL,'U','CHF')`,
+    [uid, FN],
+  );
 
-  const { base } = testServer(_req, { sitzung: { userId: uid }, apiNutzer: { user_id: uid, is_admin: 0 },
-                                     routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, {
+    sitzung: { userId: uid },
+    apiNutzer: { user_id: uid, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
   for (const [art, pfad, erwartet] of [
     ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2, currency: 'CHF', ohne_kurs: 0 }],
-    ['parts', `parts/${PN}/4/acquisitions`, { quantity: 3, amount: 1.8, priced_rows: 1, currency: 'CHF', ohne_kurs: 0 }],
+    [
+      'parts',
+      `parts/${PN}/4/acquisitions`,
+      { quantity: 3, amount: 1.8, priced_rows: 1, currency: 'CHF', ohne_kurs: 0 },
+    ],
     ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0, currency: 'CHF', ohne_kurs: 0 }],
   ]) {
     const r = await (await fetch(`${base}/api/v1/${pfad}`)).json();
@@ -117,14 +138,24 @@ test('keine Oberfläche rechnet die Summe noch einmal', async () => {
   // Der Server schickt die Summenzeile als `totals`; hier bewusst NICHT die Summe der Zeilen
   // (10 + 20 bei Menge 2): Was die Oberfläche zeigt, muss vom Server stammen.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 2 };
-  const zeile = (id, preis) => ({ id, quantity: 1, purchase_price: preis, condition: 'N', currency: 'EUR',
-    created_at: '2026-10-01T10:00:00Z', user_id: 1 });
+  const zeile = (id, preis) => ({
+    id,
+    quantity: 1,
+    purchase_price: preis,
+    condition: 'N',
+    currency: 'EUR',
+    created_at: '2026-10-01T10:00:00Z',
+    user_id: 1,
+  });
   const { d } = await oeffneOberflaeche({
     '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
     '/v1/sets/10294-1': { success: true, set: SET },
-    '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [zeile(1, 10), zeile(2, 20)],
-      totals: { quantity: 5, amount: 99, currency: 'EUR' } },
-  }).then(async (o) => {
+    '/v1/sets/10294-1/acquisitions': {
+      success: true,
+      acquisitions: [zeile(1, 10), zeile(2, 20)],
+      totals: { quantity: 5, amount: 99, currency: 'EUR' },
+    },
+  }).then(async o => {
     assert.ok(await warte(() => o.d.querySelector('#gallery [data-click="openModal"]')));
     o.d.querySelector('#gallery [data-click="openModal"]').click();
     assert.ok(await warte(() => o.d.querySelector('[data-click="openAcqModal"]')), 'Kein Knopf zu den Kaufpreisen');
@@ -135,5 +166,7 @@ test('keine Oberfläche rechnet die Summe noch einmal', async () => {
   try {
     assert.equal(d.getElementById('acq-total-qty').textContent.trim(), '5');
     assert.match(d.getElementById('acq-total-price').textContent, /99[.,]00/);
-  } finally { d.defaultView.close(); }
+  } finally {
+    d.defaultView.close();
+  }
 });

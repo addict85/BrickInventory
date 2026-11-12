@@ -7,13 +7,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
-const SRC = fs.readFileSync(
-  path.join(__dirname, '..', 'public', 'js', 'mobile.js'), 'utf8');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'mobile.js'), 'utf8');
 
 /** Frisches Dokument mit geladenem mobile.js. */
 function boot(bodyHtml) {
-  const dom = new JSDOM(`<!doctype html><html><body>${bodyHtml || ''}</body></html>`,
-    { runScripts: 'outside-only' });
+  const dom = new JSDOM(`<!doctype html><html><body>${bodyHtml || ''}</body></html>`, { runScripts: 'outside-only' });
   dom.window.eval(SRC);
   return dom;
 }
@@ -25,8 +23,10 @@ test('data-label kommt aus der Kopfzeile', () => {
       <tbody><tr><td>75192-1</td><td>Falcon</td><td>CHF 800</td></tr></tbody>
     </table>`);
   const tds = [...dom.window.document.querySelectorAll('td')];
-  assert.deepEqual(tds.map(td => td.getAttribute('data-label')),
-    ['Nr.', 'Name', 'Preis']);
+  assert.deepEqual(
+    tds.map(td => td.getAttribute('data-label')),
+    ['Nr.', 'Name', 'Preis'],
+  );
 });
 
 test('bei mehrzeiligem Kopf zählt die unterste Zeile', () => {
@@ -41,7 +41,10 @@ test('bei mehrzeiligem Kopf zählt die unterste Zeile', () => {
       <tbody><tr><td>2024</td><td>2026</td></tr></tbody>
     </table>`);
   const tds = [...dom.window.document.querySelectorAll('tbody td')];
-  assert.deepEqual(tds.map(td => td.getAttribute('data-label')), ['Von', 'Bis']);
+  assert.deepEqual(
+    tds.map(td => td.getAttribute('data-label')),
+    ['Von', 'Bis'],
+  );
 });
 
 test('colspan verschiebt die Zuordnung nicht', () => {
@@ -52,8 +55,11 @@ test('colspan verschiebt die Zuordnung nicht', () => {
     </table>`);
   const tds = [...dom.window.document.querySelectorAll('tbody td')];
   assert.equal(tds[0].getAttribute('data-label'), 'A');
-  assert.equal(tds[1].getAttribute('data-label'), 'C',
-    'Nach einem colspan=2 muss die nächste Zelle Spalte C treffen, nicht B');
+  assert.equal(
+    tds[1].getAttribute('data-label'),
+    'C',
+    'Nach einem colspan=2 muss die nächste Zelle Spalte C treffen, nicht B',
+  );
 });
 
 test('leere Spaltenköpfe ergeben ein leeres Label', () => {
@@ -77,9 +83,12 @@ test('nachträglich eingefügte Tabellen werden ebenfalls beschriftet', async ()
       <thead><tr><th>Teil</th><th>Menge</th></tr></thead>
       <tbody><tr><td>3001</td><td>4</td></tr></tbody>
     </table>`;
-  await new Promise(r => setTimeout(r, 20));   // MutationObserver ist asynchron
+  await new Promise(r => setTimeout(r, 20)); // MutationObserver ist asynchron
   const tds = [...dom.window.document.querySelectorAll('tbody td')];
-  assert.deepEqual(tds.map(td => td.getAttribute('data-label')), ['Teil', 'Menge']);
+  assert.deepEqual(
+    tds.map(td => td.getAttribute('data-label')),
+    ['Teil', 'Menge'],
+  );
 });
 
 test('vorhandene data-label werden nicht überschrieben', () => {
@@ -107,31 +116,30 @@ test('eine Tabelle wird nur einmal verarbeitet', () => {
       <tbody><tr><td>x</td></tr></tbody>
     </table>`);
   const table = dom.window.document.querySelector('table');
-  assert.equal(table.dataset.labelled, '1',
-    'Ohne Markierung liefe der Observer bei jeder DOM-Änderung erneut über alle Tabellen');
+  assert.equal(
+    table.dataset.labelled,
+    '1',
+    'Ohne Markierung liefe der Observer bei jeder DOM-Änderung erneut über alle Tabellen',
+  );
 });
 
 test('mobile.css deckt beide Designs ab und steht ganz in Media Queries', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8');
   // Alles ausserhalb einer @media-Regel würde den Desktop verändern.
   const outside = css
-    .replace(/\/\*[\s\S]*?\*\//g, '')          // Kommentare weg
-    .replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '')  // Media-Blöcke weg
+    .replace(/\/\*[\s\S]*?\*\//g, '') // Kommentare weg
+    .replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '') // Media-Blöcke weg
     // Container-Abfragen greifen nur, wo ein Container besteht — und den
     // legt mobile.css nur innerhalb von @media an (geprüft darunter).
     .replace(/@container[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '')
     .trim();
-  assert.equal(outside, '',
-    `Regeln ausserhalb von @media würden den Desktop treffen:\n${outside.slice(0, 300)}`);
+  assert.equal(outside, '', `Regeln ausserhalb von @media würden den Desktop treffen:\n${outside.slice(0, 300)}`);
 
   const ohneMedia = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
   assert.doesNotMatch(ohneMedia, /container\s*:/, 'Ein Container ausserhalb von @media verändert auch den Desktop');
-  assert.match(css, /\[data-theme="brick"\]/,
-    'Das Stein-Design braucht eigene Regeln für Noppen und Innenabstände');
-  assert.match(css, /#login-screen/,
-    'Die Login-Seite muss mit abgedeckt sein');
-  assert.match(css, /font-size:\s*16px/,
-    'Unter 16px zoomt iOS beim Fokussieren in Eingabefelder hinein');
+  assert.match(css, /\[data-theme="brick"\]/, 'Das Stein-Design braucht eigene Regeln für Noppen und Innenabstände');
+  assert.match(css, /#login-screen/, 'Die Login-Seite muss mit abgedeckt sein');
+  assert.match(css, /font-size:\s*16px/, 'Unter 16px zoomt iOS beim Fokussieren in Eingabefelder hinein');
 });
 
 test('index.html lädt mobile.css nach beiden Designs', () => {
@@ -140,15 +148,20 @@ test('index.html lädt mobile.css nach beiden Designs', () => {
   const iMobile = html.indexOf('mobile.css');
   const iBase = html.indexOf('styles.css');
   assert.ok(iMobile > 0, 'mobile.css wird nicht eingebunden');
-  assert.ok(iMobile > iTheme && iMobile > iBase,
-    'mobile.css muss NACH styles.css und dem Theme kommen, sonst gewinnt das Theme');
+  assert.ok(
+    iMobile > iTheme && iMobile > iBase,
+    'mobile.css muss NACH styles.css und dem Theme kommen, sonst gewinnt das Theme',
+  );
   // mobile.js steht seit der Bündelung nicht mehr als eigenes <script>-Tag
   // in index.html, sondern in js/app.bundle.js. Geprüft wird deshalb, dass es
   // Teil des Bündels ist — inhaltlich dieselbe Zusicherung.
   // Seit der Umstellung auf ES-Module gibt es keine Dateiliste mehr, sondern
   // einen Modulgraphen: js/main.js importiert die Teile, esbuild bündelt sie.
   const entry = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'main.js'), 'utf8');
-  assert.match(entry, /'\.\/mobile\.js'/,
-    'mobile.js wird von js/main.js nicht importiert und würde nicht ausgeliefert');
+  assert.match(
+    entry,
+    /'\.\/mobile\.js'/,
+    'mobile.js wird von js/main.js nicht importiert und würde nicht ausgeliefert',
+  );
   assert.match(html, /app\.bundle\.js/, 'Das Frontend-Bündel wird nicht eingebunden');
 });

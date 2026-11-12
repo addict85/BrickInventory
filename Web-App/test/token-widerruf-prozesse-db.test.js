@@ -25,12 +25,17 @@ const tokenCache = _req('src/konto/tokenCache.js');
 const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
-test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const NAME = `widerruf_p_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-    VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+    VALUES ($1, 'x', true, true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   // Der „andere Prozess“: eine eigene Verbindung, die löscht, meldet und mithört.
   const anderer = new Client({ connectionString: process.env.DATABASE_URL });
   await anderer.connect();
@@ -44,7 +49,9 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async (t) => {
   // Steht die Horch-Verbindung, leert sie einmal den Speicher; das darf nicht
   // mitten in den ersten Fall fallen. Ein eigener Horcher meldet, wann es so weit ist.
   let bereit = false;
-  const fertig = () => { bereit = true; };
+  const fertig = () => {
+    bereit = true;
+  };
   pgNotify.listen('token_widerrufen', fertig);
   for (let i = 0; i < 200 && !bereit; i++) await new Promise(r => setTimeout(r, 25));
   pgNotify.unlisten('token_widerrufen', fertig);
@@ -66,7 +73,7 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async (t) => {
 
   await t.test('ein Widerruf hier meldet sich bei den anderen', async () => {
     const gehoert = [];
-    anderer.on('notification', (m) => gehoert.push(m.channel));
+    anderer.on('notification', m => gehoert.push(m.channel));
     await anderer.query('LISTEN token_widerrufen');
     await auth.revokeAllTokens(uid);
     for (let i = 0; i < 40 && !gehoert.length; i++) await new Promise(r => setTimeout(r, 25));

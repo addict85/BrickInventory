@@ -9,8 +9,9 @@ const PAKET = path.join('java', 'ch', 'brickinventoryapp');
 
 /** Die Gradle-Module (Ordner mit build.gradle.kts). @returns {string[]} */
 function gradleModule() {
-  return fs.readdirSync(ANDROID)
-    .filter((d) => fs.existsSync(path.join(ANDROID, d, 'build.gradle.kts')))
+  return fs
+    .readdirSync(ANDROID)
+    .filter(d => fs.existsSync(path.join(ANDROID, d, 'build.gradle.kts')))
     .sort();
 }
 
@@ -20,7 +21,9 @@ function gradleModule() {
  * @returns {string[]}
  */
 function quellwurzeln(art = 'main') {
-  return gradleModule().map((m) => path.join(ANDROID, m, 'src', art, PAKET)).filter((p) => fs.existsSync(p));
+  return gradleModule()
+    .map(m => path.join(ANDROID, m, 'src', art, PAKET))
+    .filter(p => fs.existsSync(p));
 }
 
 /**
@@ -30,7 +33,9 @@ function quellwurzeln(art = 'main') {
  * @returns {string}
  */
 function androidDatei(rel, art = 'main') {
-  const treffer = quellwurzeln(art).map((w) => path.join(w, rel)).filter((p) => fs.existsSync(p));
+  const treffer = quellwurzeln(art)
+    .map(w => path.join(w, rel))
+    .filter(p => fs.existsSync(p));
   const [eine] = treffer;
   if (treffer.length !== 1 || eine === undefined) {
     throw new Error(`${rel}: ${treffer.length} Fundstellen in den Android-Modulen (erwartet: genau eine)`);
@@ -44,9 +49,12 @@ function androidDatei(rel, art = 'main') {
  * @returns {string}
  */
 function androidRes(rel) {
-  const treffer = gradleModule().map((m) => path.join(ANDROID, m, 'src', 'main', 'res', rel)).filter((p) => fs.existsSync(p));
+  const treffer = gradleModule()
+    .map(m => path.join(ANDROID, m, 'src', 'main', 'res', rel))
+    .filter(p => fs.existsSync(p));
   const [eine] = treffer;
-  if (treffer.length !== 1 || eine === undefined) throw new Error(`res/${rel}: ${treffer.length} Fundstellen (erwartet: genau eine)`);
+  if (treffer.length !== 1 || eine === undefined)
+    throw new Error(`res/${rel}: ${treffer.length} Fundstellen (erwartet: genau eine)`);
   return eine;
 }
 
@@ -56,11 +64,11 @@ function androidRes(rel) {
  * @param {string} [art]
  * @returns {string[]}
  */
-function androidDateien(filter = (f) => f.endsWith('.kt'), art = 'main') {
+function androidDateien(filter = f => f.endsWith('.kt'), art = 'main') {
   /** @type {string[]} */
   const aus = [];
   /** @param {string} d */
-  const gehen = (d) => {
+  const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) gehen(p);

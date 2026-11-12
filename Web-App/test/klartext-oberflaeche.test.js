@@ -19,13 +19,21 @@ const SENKEN = [
 
 test('kein fester Text in textContent, placeholder, title, toast, confirm oder alert', () => {
   const dateien = [];
-  const lauf = (d) => {
+  const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) { if (!/node_modules|locales/.test(p)) lauf(p); continue; }
+      if (e.isDirectory()) {
+        if (!/node_modules|locales/.test(p)) lauf(p);
+        continue;
+      }
       if (!e.name.endsWith('.js') || e.name === 'app.bundle.js') continue;
-      dateien.push([path.relative(ROOT, p),
-        fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')]);
+      dateien.push([
+        path.relative(ROOT, p),
+        fs
+          .readFileSync(p, 'utf8')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/^\s*\/\/.*$/gm, ''),
+      ]);
     }
   };
   lauf(path.join(ROOT, 'public'));
@@ -52,9 +60,13 @@ test('kein fester Text in textContent, placeholder, title, toast, confirm oder a
     assert.equal([...probe.matchAll(muster)].length, 1, `Das Muster ${muster} greift nicht mehr`);
   void geprueft;
 
-  assert.deepEqual(fest.sort(), [],
-    'Diese Texte stehen fest im Quelltext statt im Wörterbuch:\n  ' + fest.join('\n  ') +
-    '\nIn einer englischen Oberfläche steht dann ein deutsches Wort da. Bei einer ' +
-    'Knopfbeschriftung, die nach dem Klick zurückkommt, hilft knopfBesetzt() ' +
-    '(dom.js): Es MERKT sich den Text, statt einen zweiten zu erfinden.');
+  assert.deepEqual(
+    fest.sort(),
+    [],
+    'Diese Texte stehen fest im Quelltext statt im Wörterbuch:\n  ' +
+      fest.join('\n  ') +
+      '\nIn einer englischen Oberfläche steht dann ein deutsches Wort da. Bei einer ' +
+      'Knopfbeschriftung, die nach dem Klick zurückkommt, hilft knopfBesetzt() ' +
+      '(dom.js): Es MERKT sich den Text, statt einen zweiten zu erfinden.',
+  );
 });

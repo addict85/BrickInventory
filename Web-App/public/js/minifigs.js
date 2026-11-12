@@ -7,7 +7,16 @@ import { colorName, t, tRaw } from '../i18n.js';
 import { escHex, esc, html, ungeprueft } from './escapen.js';
 import { api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './bilder.js';
-import { leerZustand, meldeTreffer, G, TRASH_ICON_SVG, zuruecksetzenKnopf, aktiverReiter, ico, setzeHtml } from './dom.js';
+import {
+  leerZustand,
+  meldeTreffer,
+  G,
+  TRASH_ICON_SVG,
+  zuruecksetzenKnopf,
+  aktiverReiter,
+  ico,
+  setzeHtml,
+} from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
@@ -25,13 +34,19 @@ import { confirmDelete } from './rueckfrage.js';
 /** @type {Figur[]} */
 let allFigsCache = [];
 /** Die zuletzt geladenen Figuren aus Sets (nur lesen). */
-export function alleFiguren() { return allFigsCache; }
+export function alleFiguren() {
+  return allFigsCache;
+}
 
 // ── Endlos-Scroll der Minifiguren ──────────────────────────────────────────
 // Wie in Galerie, Katalog und Teileansicht. Suche und Quellenfilter gehen an den Server: Clientseitig über
 // allFigsCache zu filtern würde mit seitenweisem Laden nur die geladene Seite durchsuchen.
 const FIG_PAGE_SIZE = 60;
-let _figGen = 0, _figPage = 1, _figDone = false, _figLoadingMore = false, _figTotal = 0;
+let _figGen = 0,
+  _figPage = 1,
+  _figDone = false,
+  _figLoadingMore = false,
+  _figTotal = 0;
 
 /** @param {number} page */
 function figParams(page) {
@@ -55,13 +70,19 @@ async function loadMinifigsMore() {
     const d = await api('GET', `/v1/minifigs?${figParams(_figPage + 1)}`);
     if (gen !== _figGen) return;
     const batch = d.figs || [];
-    if (!batch.length) { _figDone = true; return; }
+    if (!batch.length) {
+      _figDone = true;
+      return;
+    }
     _figPage++;
     allFigsCache = allFigsCache.concat(batch);
     if (allFigsCache.length >= (_figTotal || 0)) _figDone = true;
     appendFigs(batch);
-  } catch (_) { /* stumm — der Sentinel versucht es beim nächsten Scrollen */ }
-  finally { if (gen === _figGen) _figLoadingMore = false; }
+  } catch (_) {
+    /* stumm — der Sentinel versucht es beim nächsten Scrollen */
+  } finally {
+    if (gen === _figGen) _figLoadingMore = false;
+  }
 }
 
 function maybeLoadMoreFigs() {
@@ -74,17 +95,28 @@ function bindFigsSentinel() {
   if (!sent || sent._bound) return;
   sent._bound = true;
   if (typeof IntersectionObserver === 'function') {
-    new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) maybeLoadMoreFigs(); },
-      { rootMargin: '600px' }).observe(sent);
+    new IntersectionObserver(
+      es => {
+        if (es.some(e => e.isIntersecting)) maybeLoadMoreFigs();
+      },
+      { rootMargin: '600px' },
+    ).observe(sent);
   } else {
-    window.addEventListener('scroll', () => {
-      if (sent.getBoundingClientRect().top < window.innerHeight + 600) maybeLoadMoreFigs();
-    }, { passive: true });
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (sent.getBoundingClientRect().top < window.innerHeight + 600) maybeLoadMoreFigs();
+      },
+      { passive: true },
+    );
   }
 }
 
 export async function loadMinifigs() {
-  _figGen++; _figPage = 1; _figDone = false; _figLoadingMore = false;
+  _figGen++;
+  _figPage = 1;
+  _figDone = false;
+  _figLoadingMore = false;
   const gen = _figGen;
   const d = await api('GET', `/v1/minifigs?${figParams(1)}`);
   if (gen !== _figGen) return;
@@ -102,7 +134,7 @@ export async function loadMinifigs() {
   const s = await api('GET', `/v1/minifigs/stats${scopeQuery('minifigs')}`);
   if (s.success) {
     G('mf-unique').textContent = String(s.stats.types);
-    G('mf-total').textContent  = String(s.stats.total_quantity);
+    G('mf-total').textContent = String(s.stats.total_quantity);
   }
   // Manual valuation — mit dem Filter des Minifiguren-Reiters, damit die Wertangabe zur Liste darüber passt.
   const v = await api('GET', `/v1/finance/minifigs-valuation${scopeQuery('minifigs')}`);
@@ -117,7 +149,10 @@ export async function loadMinifigs() {
  * Suche und Quelle filtert der Server; hier wird neu geladen, sonst durchsuchte der Filter nur die geladene
  * Seite. Beide Listen, weil die manuellen Figuren unter derselben Filterleiste stehen.
  */
-function filterFigs() { loadMinifigs(); loadManualFigsTable(); }
+function filterFigs() {
+  loadMinifigs();
+  loadManualFigsTable();
+}
 
 /**
  * Hängt eine nachgeladene Seite an, statt die Liste neu zu bauen: Ein Ersetzen per innerHTML brach die
@@ -158,7 +193,8 @@ function appendFigs(batch) {
 export function renderFigs(list, target) {
   const el = target || G('figs-list');
   if (!target) _setFigurenLeer = !list.length;
-  if (!target && list.length && G('fig-search')?.value.trim()) meldeTreffer(tRaw('treffer.eintraege', { n: list.length }));
+  if (!target && list.length && G('fig-search')?.value.trim())
+    meldeTreffer(tRaw('treffer.eintraege', { n: list.length }));
   if (!list.length) {
     if (target) el.replaceChildren();
     else figurenLeerAbgleichen();
@@ -171,7 +207,9 @@ export function renderFigs(list, target) {
   if (viewMode === 'table') {
     // Ohne „Quelle“ und Papierkorb: Diese Liste lädt nur source=set, beide Spalten wären in jeder Zeile
     // gleich bzw. leer. Manuelle Figuren haben ihren eigenen Bereich mit editierbaren Karten.
-    setzeHtml(el, html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.minifigs')}">
+    setzeHtml(
+      el,
+      html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.minifigs')}">
       <thead><tr>
         <th>${tRaw('col.image')}</th><th>${tRaw('col.number')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th>
       </tr></thead>
@@ -181,16 +219,24 @@ export function renderFigs(list, target) {
         const erfasst = dateVal ? fmtDatum(dateVal) : '—';
         // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden Ansichten (Marcos Detail-Dialog
         // fuer automatisch erfasste Figuren).
-        return html`<tr data-stil="cursor:pointer" data-click="${f.source==='manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
+        return html`<tr data-stil="cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
           <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}</td>
-          <td>${zeilenKnopf({ click: f.source==='manual' ? 'openManDetail' : 'openSetItemDetail', arg: 'fig', arg2: f.fig_number, arg3: 0 },
+          <td>${zeilenKnopf(
+            {
+              click: f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail',
+              arg: 'fig',
+              arg2: f.fig_number,
+              arg3: 0,
+            },
             html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${f.fig_number}</span>`,
-            tRaw('zeile.oeffnen', { name: f.fig_name || f.fig_number, nr: f.fig_number }))}</td>
+            tRaw('zeile.oeffnen', { name: f.fig_name || f.fig_number, nr: f.fig_number }),
+          )}</td>
           <td data-stil="max-width:200px">${f.fig_name || '—'}</td>
           <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${f.total_quantity || f.quantity}</span></td>
           <td data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(erfasst)}</td>
         </tr>`;
-      })}</tbody></table></div>`);
+      })}</tbody></table></div>`,
+    );
     return;
   }
 
@@ -202,7 +248,10 @@ export function renderFigs(list, target) {
     if (!groups[key]) groups[key] = [];
     groups[key].push(f);
   }
-  setzeHtml(el, Object.entries(groups).map(([label, figs]) => html`
+  setzeHtml(
+    el,
+    Object.entries(groups).map(
+      ([label, figs]) => html`
     <div class="parts-group">
       <div class="group-hd">
         ${ico('set')}<span class="group-title">${ungeprueft(label)}</span>
@@ -216,13 +265,17 @@ export function renderFigs(list, target) {
           // Papierkorb oben rechts, wie auf der Set-Kachel: .ca setzt top:6px;right:6px und blendet ihn beim
           // Ueberfahren ein (styles.css). Marcos Vorgabe vom 24.09., zweiter Teil: „analog den Kacheln bei
           // den Sets. Dies aber nur in der webapp."
-          const delBtn = f.source==='manual' ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>` : '';
+          const delBtn =
+            f.source === 'manual'
+              ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
+              : '';
           // Zustand nur bei manuell erfassten Figuren — aus Sets haben sie keinen eigenen. Die
           // Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei der Figur aus dem Set eines
           // Kindes genauso.
-          const condBadge = f.source==='manual'
-            ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
-            : '';
+          const condBadge =
+            f.source === 'manual'
+              ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
+              : '';
           const besitzer = ownerBadges(f)
             ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
             : '';
@@ -230,7 +283,7 @@ export function renderFigs(list, target) {
           // den neuen ohne Preis und ohne Mengenaenderung. Die Kachel entscheidet nach der Quelle, damit
           // BEIDE Faelle richtig sind — auch wenn diese Liste heute nur
           // `source=set` laedt.
-          return html`<div class="part-card" tabindex="0" role="button"${f.source==='manual' ? html` aria-keyshortcuts="Delete"` : ''} data-stil="position:relative;cursor:pointer" data-click="${f.source==='manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
+          return html`<div class="part-card" tabindex="0" role="button"${f.source === 'manual' ? html` aria-keyshortcuts="Delete"` : ''} data-stil="position:relative;cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
             ${ungeprueft(delBtn)}
             ${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' }) : html`<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}
             <div class="part-num">${f.fig_number}</div>
@@ -242,21 +295,36 @@ export function renderFigs(list, target) {
           </div>`;
         })}
       </div>
-    </div>`));
+    </div>`,
+    ),
+  );
 }
 
 /** @param {string} figNumber @param {number|string} [owner] siehe deleteManualPart */
 export async function deleteManualFig(figNumber, owner) {
-  if (!await confirmDelete(tRaw('figs.delete.title'), tRaw('gallery.delete.text',{name:figNumber}), 'figur')) return false;
-  const d = await api('DELETE', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`);
-  if (d.success) { geloeschtMitRueckgaengig(tRaw('figs.deleted'), d); loadMinifigs(); loadManualFigsTable(); return true; }
-  else { toast(d.error || t('settings.error'), 'error'); return false; }
+  if (!(await confirmDelete(tRaw('figs.delete.title'), tRaw('gallery.delete.text', { name: figNumber }), 'figur')))
+    return false;
+  const d = await api(
+    'DELETE',
+    `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+  );
+  if (d.success) {
+    geloeschtMitRueckgaengig(tRaw('figs.deleted'), d);
+    loadMinifigs();
+    loadManualFigsTable();
+    return true;
+  } else {
+    toast(d.error || t('settings.error'), 'error');
+    return false;
+  }
 }
 
 /** @type {ManuelleFigur[]} */
 let manualFigsCache = [];
 /** Die zuletzt geladenen manuell erfassten Figuren (nur lesen). */
-export function manuelleFiguren() { return manualFigsCache; }
+export function manuelleFiguren() {
+  return manualFigsCache;
+}
 export async function loadManualFigsTable() {
   const d = await api('GET', `/v1/minifigs/manual${manuellQuery('minifigs', 'fig-search')}`);
   if (!d.success) return;
@@ -265,7 +333,7 @@ export async function loadManualFigsTable() {
 }
 
 /** @type {boolean | null} */
-let _setFigurenLeer = null;   // null: noch nicht geladen
+let _setFigurenLeer = null; // null: noch nicht geladen
 /** @type {boolean | null} */
 let _manuelleFigurenLeer = null;
 
@@ -281,17 +349,34 @@ function figurenLeerAbgleichen() {
   if (G('manual-figs-n')) G('manual-figs-n').textContent = n ? tRaw('parts.group_types', { n }) : '';
   if (_setFigurenLeer !== true) return;
   const el = G('figs-list');
-  if (_manuelleFigurenLeer === false) { el.replaceChildren(); return; }
+  if (_manuelleFigurenLeer === false) {
+    el.replaceChildren();
+    return;
+  }
   const q = G('fig-search')?.value.trim() || '';
   G('tab-minifigs')?.classList.toggle('sammlung-leer', !q);
   if (q) meldeTreffer(tRaw('common.no_hits', { query: q }));
-  setzeHtml(el, q ? leerZustand({ ico: 'suche', titel: tRaw('common.no_hits', { query: q }), knopf: zuruecksetzenKnopf('minifigs') }) : leerZustand({ ico: 'figur', titel: tRaw('figs.empty'), text: tRaw('figs.auto_hint'),
-                    knopf: { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } }));
+  setzeHtml(
+    el,
+    q
+      ? leerZustand({
+          ico: 'suche',
+          titel: tRaw('common.no_hits', { query: q }),
+          knopf: zuruecksetzenKnopf('minifigs'),
+        })
+      : leerZustand({
+          ico: 'figur',
+          titel: tRaw('figs.empty'),
+          text: tRaw('figs.auto_hint'),
+          knopf: { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' },
+        }),
+  );
 }
 
 /** Die Suche leeren (Knopf im Leerzustand). */
 export function figurenFilterZuruecksetzen() {
-  const el = G('fig-search'); if (el) el.value = '';
+  const el = G('fig-search');
+  if (el) el.value = '';
   filterFigs();
 }
 
@@ -300,14 +385,18 @@ export function renderManualFigsTable() {
   if (!el) return;
   _manuelleFigurenLeer = !manualFigsCache.length;
   figurenLeerAbgleichen();
-  if (!manualFigsCache.length) { el.replaceChildren(); return; }
-  if (tabellenAnsicht('figs-view')) {
-    setzeHtml(el, manuelleTabelle(manualFigsCache, 'fig'));
-    if (typeof window.__bimLabelTables === 'function')
-      window.__bimLabelTables(el.querySelector('table'));
+  if (!manualFigsCache.length) {
+    el.replaceChildren();
     return;
   }
-  setzeHtml(el, html`<div class="man-grid">
+  if (tabellenAnsicht('figs-view')) {
+    setzeHtml(el, manuelleTabelle(manualFigsCache, 'fig'));
+    if (typeof window.__bimLabelTables === 'function') window.__bimLabelTables(el.querySelector('table'));
+    return;
+  }
+  setzeHtml(
+    el,
+    html`<div class="man-grid">
     ${manualFigsCache.map(f => {
       const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
       const img = imgSrc
@@ -317,7 +406,7 @@ export function renderManualFigsTable() {
       // geschriebene Einzelwert der Stammzeile — bei zwei Erfassungen zu verschiedenen Preisen stimmte er
       // nicht.
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
-      const priceStr = figPrice!=null ? fmtN(figPrice, CURRENCY) : '—';
+      const priceStr = figPrice != null ? fmtN(figPrice, CURRENCY) : '—';
       const condBadge = condBadges(f);
       return html`<div class="man-tile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0" data-stil="cursor:pointer">
         <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${f.fig_number}" data-arg2="${f.user_id || ''}" title="${t('figs.delete')}">${TRASH_ICON_SVG}</span></div>
@@ -330,14 +419,23 @@ export function renderManualFigsTable() {
         <div class="preis man-preis">${ungeprueft(priceStr)}</div>
       </div>`;
     })}
-  </div>`);
+  </div>`,
+  );
 }
 
 /** @param {string} figNumber @param {object} body @param {number | string} [owner] Besitzer der Karte — siehe deleteManualPart. */
 export async function updateManualFig(figNumber, body, owner) {
-  const d = await api('PUT', `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`, body);
-  if (d.success) { toast(tRaw('settings.saved'),'success'); loadManualFigsTable(); loadMinifigs(); if(aktiverReiter()==='finance') loadFinance(); }
-  else toast(d.error||t('settings.error'),'error');
+  const d = await api(
+    'PUT',
+    `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
+    body,
+  );
+  if (d.success) {
+    toast(tRaw('settings.saved'), 'success');
+    loadManualFigsTable();
+    loadMinifigs();
+    if (aktiverReiter() === 'finance') loadFinance();
+  } else toast(d.error || t('settings.error'), 'error');
 }
 
 /**
@@ -354,38 +452,60 @@ export function preisHerkunftHinweis(zustand) {
 G('btn-add-fig')?.addEventListener('click', async () => {
   const num = G('af-num-inline')?.value.trim();
   const res = G('af-inline-result');
-  if(!num){ res.style.color='var(--r500)'; res.textContent=tRaw('figs.number_required'); return; }
+  if (!num) {
+    res.style.color = 'var(--r500)';
+    res.textContent = tRaw('figs.number_required');
+    return;
+  }
   const preis = betragAusFeld('af-price-inline');
   const datumOk = kaufdatumGueltig('af-date');
   const menge = mengeAusFeld('af-qty-inline');
   if (!preis.ok || !menge.ok || !datumOk) return;
-  const btn = G('btn-add-fig'); btn.disabled=true; btn.textContent='…';
-  res.style.color='var(--mut)'; res.textContent=tRaw('adding.progress');
-  const d = await api('POST','/v1/minifigs',{
+  const btn = G('btn-add-fig');
+  btn.disabled = true;
+  btn.textContent = '…';
+  res.style.color = 'var(--mut)';
+  res.textContent = tRaw('adding.progress');
+  const d = await api('POST', '/v1/minifigs', {
     fig_number: num,
-    bl_fig_number: G('af-blnum-inline')?.value.trim()||null,
-    quantity:   menge.wert,
+    bl_fig_number: G('af-blnum-inline')?.value.trim() || null,
+    quantity: menge.wert,
     unit_price: preis.wert,
     condition: G('af-condition')?.value || 'N',
     acquired_at: G('af-date')?.value || null,
     owner_user_id: selectedOwner('af-owner'),
     storage: selectedStorage('af-storage'),
   });
-  btn.disabled=false; btn.textContent=tRaw('gallery.add.submit');
-  if(d.success){
+  btn.disabled = false;
+  btn.textContent = tRaw('gallery.add.submit');
+  if (d.success) {
     const hinweisF = preisHerkunftHinweis(d.price_from_condition);
-    res.style.color='var(--g700)';
-    res.textContent=`${d.fig_number} ${d.action==='added'?t('common.added'):t('common.updated')}`
-      + (hinweisF ? ` — ${hinweisF}` : '');
+    res.style.color = 'var(--g700)';
+    res.textContent =
+      `${d.fig_number} ${d.action === 'added' ? t('common.added') : t('common.updated')}` +
+      (hinweisF ? ` — ${hinweisF}` : '');
     // Der Dialog schliesst; das Ergebnis samt Preishinweis kommt als Meldung.
-    schliesseErfassen('fig'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
-    G('af-num-inline').value=''; G('af-blnum-inline').value=''; G('af-qty-inline').value='1'; G('af-price-inline').value=''; G('af-date').value='';
+    schliesseErfassen('fig');
+    toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
+    G('af-num-inline').value = '';
+    G('af-blnum-inline').value = '';
+    G('af-qty-inline').value = '1';
+    G('af-price-inline').value = '';
+    G('af-date').value = '';
     leereLagerortFeld('af-storage');
     loadMinifigs();
     // Mit Hinweis laenger stehen lassen: Drei Sekunden reichen fuer ein Haekchen, nicht fuer einen Satz, den
     // man lesen soll.
-    setTimeout(()=>{ res.textContent=''; }, hinweisF ? 9000 : 3000);
-  } else { res.style.color='var(--r500)'; res.textContent=d.error||tRaw('settings.error'); }
+    setTimeout(
+      () => {
+        res.textContent = '';
+      },
+      hinweisF ? 9000 : 3000,
+    );
+  } else {
+    res.style.color = 'var(--r500)';
+    res.textContent = d.error || tRaw('settings.error');
+  }
 });
 
 // Persistente Status-/Hinweiszeile für den CSV-Import (Teile & Minifiguren)
@@ -397,33 +517,40 @@ G('btn-add-fig')?.addEventListener('click', async () => {
 export function csvImportStatus(elId, state, msg) {
   const el = G(elId);
   if (!el) return;
-  if (state === 'hide') { el.style.display = 'none'; el.textContent = ''; return; }
+  if (state === 'hide') {
+    el.style.display = 'none';
+    el.textContent = '';
+    return;
+  }
   /** @type {Record<string, string>} */
   const styles = {
     running: 'background:var(--b100);color:var(--b700)',
     success: 'background:var(--g100);color:var(--g700)',
-    warn:    'background:var(--s100);color:var(--s600)',
-    error:   'background:var(--r100);color:var(--r700)',
+    warn: 'background:var(--s100);color:var(--s600)',
+    error: 'background:var(--r100);color:var(--r700)',
   };
   el.style.cssText = `display:block;font-size:var(--fs-3);margin-bottom:1rem;padding:.55rem .8rem;border-radius:8px;font-weight:600;${styles[state] || styles.running}`;
   el.textContent = msg;
 }
 
 async function importFigsCsv() {
-  const d = await csvHochladen({ feld: 'fig-csv-file', pfad: '/v1/minifigs/import/csv',
-    zeige: (l) => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', tRaw('import.running')) });
+  const d = await csvHochladen({
+    feld: 'fig-csv-file',
+    pfad: '/v1/minifigs/import/csv',
+    zeige: l => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', tRaw('import.running')),
+  });
   if (d) loadMinifigs();
 }
 
-G('btn-fig-csv-template').onclick = (e) => {
+G('btn-fig-csv-template').onclick = e => {
   e.preventDefault();
-  const csv = 'fig_number,bl_fig_number,quantity,unit_price,condition,acquired_at\nfig-007357,sw0001,1,12.50,N,2024-01-15\nfig-009314,,2,,U,\n';
+  const csv =
+    'fig_number,bl_fig_number,quantity,unit_price,condition,acquired_at\nfig-007357,sw0001,1,12.50,N,2024-01-15\nfig-009314,,2,,U,\n';
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'minifigs-template.csv';
   a.click();
 };
-
 
 /**
  * Abfrageteil der manuellen Listen: Kontofilter UND Suchtext. scopeQuery() allein liess die Suche an den
@@ -478,9 +605,11 @@ export function manuelleTabelle(posten, art) {
       : `data-arg="${esc(nummer)}" data-arg2="${p.user_id || ''}"`;
     return html`<tr data-stil="cursor:pointer" data-click="openManDetail" data-arg="${art}" data-arg2="${nummer}" data-arg3="${istTeil ? p.color_id || 0 : 0}">
       <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: istTeil ? 'teil' : 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt(istTeil ? 'teil' : 'figur')}</span>`}</td>
-      <td>${zeilenKnopf({ click: 'openManDetail', arg: art, arg2: String(nummer), arg3: istTeil ? Number(p.color_id) || 0 : 0 },
+      <td>${zeilenKnopf(
+        { click: 'openManDetail', arg: art, arg2: String(nummer), arg3: istTeil ? Number(p.color_id) || 0 : 0 },
         html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${nummer}">${blNummer}</span>`,
-        tRaw('zeile.oeffnen', { name: name || nummer, nr: blNummer }))}</td>
+        tRaw('zeile.oeffnen', { name: name || nummer, nr: blNummer }),
+      )}</td>
       <td data-stil="max-width:200px">${name || '—'}</td>
       ${istTeil ? html`<td><div data-stil="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
       <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
@@ -501,7 +630,10 @@ export function tabellenAnsicht(id) {
   return G(id)?.value === 'table';
 }
 
-abonniere('bestandGeaendert', () => { loadMinifigs(); loadManualFigsTable(); });
+abonniere('bestandGeaendert', () => {
+  loadMinifigs();
+  loadManualFigsTable();
+});
 
 // ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
 registerActions({

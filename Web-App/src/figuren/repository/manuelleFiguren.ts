@@ -4,7 +4,11 @@ import type { ErfassungsZeile } from '../../../db/bestandsmenge';
 
 /** Die BrickLink-Nummer hängt an der Figur (bl_zuordnung), nicht am Exemplar. */
 
-export function figurZeileManuell(db: DbSchnittstelle, uid: number, figNumber: string): Promise<{ id: number } | undefined> {
+export function figurZeileManuell(
+  db: DbSchnittstelle,
+  uid: number,
+  figNumber: string,
+): Promise<{ id: number } | undefined> {
   return db.get("SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'", [uid, figNumber]);
 }
 
@@ -16,25 +20,43 @@ export function figurZeileMitZustand(db: DbSchnittstelle, uid: number, figNumber
               ORDER BY a.created_at DESC, a.id DESC LIMIT 1) AS condition
        FROM minifigs m
        ${blJoin('m.fig_number', 'fig', 'm.user_id', 'z')}
-      WHERE m.user_id=$1 AND m.fig_number=$2 AND m.source='manual'`, [uid, figNumber]);
+      WHERE m.user_id=$1 AND m.fig_number=$2 AND m.source='manual'`,
+    [uid, figNumber],
+  );
 }
 
 /** Ohne Menge: Sie entsteht aus der ersten Erfassung. */
 export async function legeFigurManuellAn(db: DbSchnittstelle, uid: number, figNumber: string): Promise<void> {
-  await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, source)
-                VALUES ($1, NULL, $2, 'manual') ON CONFLICT DO NOTHING`, [uid, figNumber]);
+  await db.run(
+    `INSERT INTO minifigs (user_id, set_number, fig_number, source)
+                VALUES ($1, NULL, $2, 'manual') ON CONFLICT DO NOTHING`,
+    [uid, figNumber],
+  );
 }
 
 const NEUESTE = `(SELECT a.id FROM minifig_acquisitions a
                    WHERE a.user_id=$2 AND a.fig_number=$3
                    ORDER BY a.created_at DESC, a.id DESC LIMIT 1)`;
 
-export async function setzeFigurpreisNeueste(db: DbSchnittstelle, uid: number, figNumber: string, preis: number | null): Promise<void> {
-  await db.run(`UPDATE minifig_acquisitions SET unit_price = NULLIF($1::numeric, 0) WHERE id = ${NEUESTE}`,
-    [preis, uid, figNumber]);
+export async function setzeFigurpreisNeueste(
+  db: DbSchnittstelle,
+  uid: number,
+  figNumber: string,
+  preis: number | null,
+): Promise<void> {
+  await db.run(`UPDATE minifig_acquisitions SET unit_price = NULLIF($1::numeric, 0) WHERE id = ${NEUESTE}`, [
+    preis,
+    uid,
+    figNumber,
+  ]);
 }
 
-export async function setzeFigurzustandNeueste(db: DbSchnittstelle, uid: number, figNumber: string, zustand: string): Promise<void> {
+export async function setzeFigurzustandNeueste(
+  db: DbSchnittstelle,
+  uid: number,
+  figNumber: string,
+  zustand: string,
+): Promise<void> {
   await db.run(`UPDATE minifig_acquisitions SET condition=$1 WHERE id = ${NEUESTE}`, [zustand, uid, figNumber]);
 }
 
@@ -45,5 +67,7 @@ export function figurErfassungen(db: DbSchnittstelle, uids: number[], figNumber:
             a.created_at, a.user_id AS owner_user_id
      FROM minifig_acquisitions a
      WHERE a.user_id = ANY($1) AND a.fig_number=$2
-     ORDER BY a.created_at ASC, a.id ASC`, [uids, figNumber]);
+     ORDER BY a.created_at ASC, a.id ASC`,
+    [uids, figNumber],
+  );
 }

@@ -33,8 +33,8 @@ const INDIZES = `
     JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = 'public'
     JOIN pg_am am ON am.oid = c.relam`;
 
-test('Indizes', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Indizes', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   try {
     await t.test('kein Index ist der Anfang eines anderen', async () => {
@@ -50,7 +50,10 @@ test('Indizes', { concurrency: 1 }, async (t) => {
            AND a.spalten = b.spalten[1:array_length(a.spalten, 1)]
            AND a.klassen[1:array_length(a.spalten, 1)] = b.klassen[1:array_length(a.spalten, 1)]
          ORDER BY 1`);
-      assert.deepEqual(doppel.map(z => z.d), []);
+      assert.deepEqual(
+        doppel.map(z => z.d),
+        [],
+      );
     });
 
     await t.test('jeder Fremdschlüssel hat einen Index', async () => {
@@ -65,7 +68,10 @@ test('Indizes', { concurrency: 1 }, async (t) => {
                              AND (NOT ix.teil OR ix.bedingung = '(' || (SELECT attname FROM pg_attribute
                                     WHERE attrelid = c.conrelid AND attnum = c.conkey[array_upper(c.conkey, 1)]) || ' IS NOT NULL)'))
          ORDER BY 1`);
-      assert.deepEqual(ohne.map(z => z.d), []);
+      assert.deepEqual(
+        ohne.map(z => z.d),
+        [],
+      );
     });
   } finally {
     await db.pool.end().catch(() => {});

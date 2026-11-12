@@ -26,19 +26,30 @@ function waehleAlarmCsv(w) {
 }
 
 test('Upload trägt die Sprache und geht als FormData ohne JSON-Kopf', async () => {
-  const { w, aufrufe } = await oeffneOberflaeche({
-    '/v1/alerts/import/csv': { success: true, added: 1, updated: 0, errors: 0 },
-  }, { sprache: 'en' });
+  const { w, aufrufe } = await oeffneOberflaeche(
+    {
+      '/v1/alerts/import/csv': { success: true, added: 1, updated: 0, errors: 0 },
+    },
+    { sprache: 'en' },
+  );
   try {
     waehleAlarmCsv(w);
-    assert.ok(await warte(() => aufrufe.some(a => a.url.endsWith('/alerts/import/csv'))), 'Upload wurde nicht abgeschickt');
+    assert.ok(
+      await warte(() => aufrufe.some(a => a.url.endsWith('/alerts/import/csv'))),
+      'Upload wurde nicht abgeschickt',
+    );
     const upload = aufrufe.find(a => a.url.endsWith('/alerts/import/csv'));
     assert.equal(upload.method, 'POST');
     assert.ok(upload.body instanceof w.FormData, 'Körper ist kein FormData');
     assert.equal(upload.headers['Accept-Language'], 'en', 'Accept-Language fehlt am Upload');
-    assert.equal(upload.headers['Content-Type'], undefined,
-      'Ein gesetzter Content-Type zerbricht die multipart-Grenze');
-  } finally { w.close(); }
+    assert.equal(
+      upload.headers['Content-Type'],
+      undefined,
+      'Ein gesetzter Content-Type zerbricht die multipart-Grenze',
+    );
+  } finally {
+    w.close();
+  }
 });
 
 test('401 beim Upload beendet die Sitzung wie bei jedem anderen Aufruf', async () => {
@@ -48,23 +59,38 @@ test('401 beim Upload beendet die Sitzung wie bei jedem anderen Aufruf', async (
   try {
     assert.equal(d.getElementById('login-screen').style.display, 'none', 'Vorbedingung: angemeldet');
     waehleAlarmCsv(w);
-    assert.ok(await warte(() => d.getElementById('login-screen').style.display === 'flex'),
-      'Nach 401 steht die Anmeldemaske nicht da');
+    assert.ok(
+      await warte(() => d.getElementById('login-screen').style.display === 'flex'),
+      'Nach 401 steht die Anmeldemaske nicht da',
+    );
     assert.equal(d.getElementById('app').style.display, 'none');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('der CSV-Import meldet übersprungene Zeilen und Zusatzhinweise in einer Meldung', async () => {
   const { w, d } = await oeffneOberflaeche({
-    '/v1/alerts/import/csv': { success: true, added: 1, updated: 0, errors: 0, skipped: 2,
-                               skipped_hint: 'zwei Zeilen übersprungen', waehrung_hinweis: 'Währung CHF' },
+    '/v1/alerts/import/csv': {
+      success: true,
+      added: 1,
+      updated: 0,
+      errors: 0,
+      skipped: 2,
+      skipped_hint: 'zwei Zeilen übersprungen',
+      waehrung_hinweis: 'Währung CHF',
+    },
   });
   try {
     waehleAlarmCsv(w);
-    assert.ok(await warte(() => /zwei Zeilen übersprungen/.test(d.getElementById('toasts')?.textContent || '')),
-      'Der Hinweis auf übersprungene Zeilen fehlt in der Meldung');
+    assert.ok(
+      await warte(() => /zwei Zeilen übersprungen/.test(d.getElementById('toasts')?.textContent || '')),
+      'Der Hinweis auf übersprungene Zeilen fehlt in der Meldung',
+    );
     const text = d.getElementById('toasts').textContent;
     assert.match(text, /Währung CHF/, 'Der Zusatzhinweis des Alarm-Imports fehlt');
     assert.equal(w.document.getElementById('alerts-csv-file').value, '', 'Das Dateifeld wird nicht geleert');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

@@ -1,22 +1,41 @@
 // Der eine Weg vom Fehler zur HTTP-Antwort. Express kennen nur src/http, die
 // HTTP-Seiten der Bereiche und die Routen; db/, clients/ und die Dienste
 // melden über fehler.ts und Fachfehler.
-import fs from 'fs';
+import fs from 'node:fs';
 import type { Request, Response, NextFunction } from 'express';
-import type { ServerResponse } from 'http';
+import type { ServerResponse } from 'node:http';
 import { konfig } from '../infra/konfig';
-import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
+import {
+  FEHLER,
+  fehlerText,
+  antwortSprache,
+  dateiFehler,
+  Meldung,
+  type FehlerArt,
+  type FehlerCode,
+} from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
 import { statusVon } from './fehlerArt';
 
-export interface FehlerZiel { headersSent: boolean; status(code: number): { json(body: unknown): unknown } }
-export interface FehlerQuelle { method?: string; originalUrl?: string; url?: string; headers?: Record<string, unknown> }
+export interface FehlerZiel {
+  headersSent: boolean;
+  status(code: number): { json(body: unknown): unknown };
+}
+export interface FehlerQuelle {
+  method?: string;
+  originalUrl?: string;
+  url?: string;
+  headers?: Record<string, unknown>;
+}
 
 /** `code` steht neben dem Satz, damit ein Client reagieren kann, ohne Text zu
  * vergleichen. */
 export function sendeFehler(
-  req: { headers?: Record<string, unknown> } | undefined, res: { status(c: number): { json(b: unknown): unknown } },
-  status: number, code: FehlerCode, vars?: Record<string, string | number>,
+  req: { headers?: Record<string, unknown> } | undefined,
+  res: { status(c: number): { json(b: unknown): unknown } },
+  status: number,
+  code: FehlerCode,
+  vars?: Record<string, string | number>,
 ): void {
   res.status(status).json({
     success: false,
@@ -25,7 +44,13 @@ export function sendeFehler(
   });
 }
 
-interface Geworfen { status?: unknown; code?: unknown; vars?: Record<string, string | number>; stack?: unknown; message?: unknown }
+interface Geworfen {
+  status?: unknown;
+  code?: unknown;
+  vars?: Record<string, string | number>;
+  stack?: unknown;
+  message?: unknown;
+}
 
 // Interna ins Protokoll, nicht zum Client.
 export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: number, req?: FehlerQuelle): void {
@@ -45,34 +70,35 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
   // Sprache des Anfragenden.
   if (typeof e?.code === 'string' && e.code in FEHLER) {
     res.status(code).json({
-      success: false, code: e.code,
+      success: false,
+      code: e.code,
       error: fehlerText(e.code as FehlerCode, antwortSprache(req), e.vars),
     });
     return;
   }
   // Der Text einer Bibliothek nennt Parser, Pfade oder Bytes; er bleibt im Protokoll.
   if (!isServerError && !(e instanceof Meldung)) {
-    const ersatz: FehlerCode = code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
+    const ersatz: FehlerCode =
+      code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
     res.status(code).json({ success: false, code: ersatz, error: fehlerText(ersatz, antwortSprache(req)) });
     return;
   }
   // Jede Fehlerantwort trägt einen Code, damit die Apps nicht am Satz raten.
   // Den Text der Ausnahme sieht nur die Entwicklung; im Betrieb nennt er Interna.
   const kennung: FehlerCode = isServerError ? 'interner_fehler' : 'anfrage_ungueltig';
-  const message = (isServerError && konfig().betrieb)
-    ? fehlerText('interner_fehler', antwortSprache(req))
-    : fehlertext(e);
+  const message =
+    isServerError && konfig().betrieb ? fehlerText('interner_fehler', antwortSprache(req)) : fehlertext(e);
   res.status(code).json({ success: false, code: kennung, error: message });
 }
 
 /** SQLSTATE der Integritätsregeln → Antwort. Das Protokoll nennt weiter die verletzte Regel. */
 const DB_REGELN: Record<string, [FehlerCode, FehlerArt]> = {
-  '22003': ['wert_ungueltig', 'ungueltig'],  // numeric_value_out_of_range
-  '22P02': ['wert_ungueltig', 'ungueltig'],  // invalid_text_representation
-  '23502': ['wert_ungueltig', 'ungueltig'],  // not_null_violation
-  '23514': ['wert_ungueltig', 'ungueltig'],  // check_violation
-  '23505': ['schon_vorhanden', 'konflikt'],  // unique_violation
-  '23503': ['bezug_fehlt', 'konflikt'],      // foreign_key_violation
+  '22003': ['wert_ungueltig', 'ungueltig'], // numeric_value_out_of_range
+  '22P02': ['wert_ungueltig', 'ungueltig'], // invalid_text_representation
+  '23502': ['wert_ungueltig', 'ungueltig'], // not_null_violation
+  '23514': ['wert_ungueltig', 'ungueltig'], // check_violation
+  '23505': ['schon_vorhanden', 'konflikt'], // unique_violation
+  '23503': ['bezug_fehlt', 'konflikt'], // foreign_key_violation
 };
 
 /** Ohne Status sähe eine zu grosse Datei wie ein Serverfehler aus; hier wird
@@ -88,7 +114,10 @@ function alsUploadFehler<T>(e: T): T | Error {
     return dateiFehler(art, code);
   }
   if (m?.type === 'entity.too.large') return dateiFehler('zu_gross', 'anfrage_zu_gross');
-  if (typeof m?.type === 'string' && /^(charset|encoding)\.unsupported$|^request\.aborted$|^entity\.verify\.failed$/.test(m.type))
+  if (
+    typeof m?.type === 'string' &&
+    /^(charset|encoding)\.unsupported$|^request\.aborted$|^entity\.verify\.failed$/.test(m.type)
+  )
     return dateiFehler('ungueltig', 'anfrage_unlesbar');
   if (m?.name !== 'MulterError') return e;
   const zuGross = m.code === 'LIMIT_FILE_SIZE';
@@ -96,8 +125,7 @@ function alsUploadFehler<T>(e: T): T | Error {
 }
 
 // Express 5 liefert Platzhalter auch als Array; verbunden wird mit / statt Komma.
-export function pfadParam(req: { params: Record<string, string | string[] | undefined> },
-                   name: string): string {
+export function pfadParam(req: { params: Record<string, string | string[] | undefined> }, name: string): string {
   const wert = req.params[name];
   return Array.isArray(wert) ? wert.join('/') : (wert ?? '');
 }
@@ -121,15 +149,24 @@ export function unbekannterApiPfad(req: Request, res: Response): void {
 }
 
 /** @param req nur für die Sprache der Meldung; ohne ihn Deutsch. */
-export function streamFileToResponse(res: ServerResponse, filePath: string, onEnd?: () => void, req?: { headers?: Record<string, unknown> }) {
+export function streamFileToResponse(
+  res: ServerResponse,
+  filePath: string,
+  onEnd?: () => void,
+  req?: { headers?: Record<string, unknown> },
+) {
   const stream = fs.createReadStream(filePath);
   stream.on('error', (e: NodeJS.ErrnoException) => {
     console.error(`[stream] ${filePath}: ${e?.code || e?.message}`);
     if (!res.headersSent) {
       // Nicht auf Express-Methoden verlassen: Der Helfer läuft auch an einer nackten
       // http-Antwort.
-      if ('status' in res && typeof res.status === 'function') sendeFehler(req, res as Response, 404, 'datei_nicht_verfuegbar');
-      else { res.statusCode = 404; res.end(); }
+      if ('status' in res && typeof res.status === 'function')
+        sendeFehler(req, res as Response, 404, 'datei_nicht_verfuegbar');
+      else {
+        res.statusCode = 404;
+        res.end();
+      }
     } else {
       res.end();
     }

@@ -35,17 +35,22 @@ const { dbOderSkip } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = _req('db/database.js');
 const zf = _req('src/konto/zweiterFaktor.js');
-const express   = require(path.join(ROOT, 'node_modules', 'express'));
-const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
+const express = require(path.join(ROOT, 'node_modules', 'express'));
+const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
-const bcrypt    = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 test('RFC 6238: die Testvektoren für SHA-1', () => {
   // Anhang B der RFC: Schlüssel "12345678901234567890", acht Stellen.
   const schluessel = Buffer.from('12345678901234567890');
-  for (const [sekunden, erwartet] of [[59, '94287082'], [1111111109, '07081804'],
-                                      [1111111111, '14050471'], [1234567890, '89005924'],
-                                      [2000000000, '69279037'], [20000000000, '65353130']]) {
+  for (const [sekunden, erwartet] of [
+    [59, '94287082'],
+    [1111111109, '07081804'],
+    [1111111111, '14050471'],
+    [1234567890, '89005924'],
+    [2000000000, '69279037'],
+    [20000000000, '65353130'],
+  ]) {
     assert.equal(zf.hotp(schluessel, Math.floor(sekunden / 30), 8), erwartet, `T=${sekunden}`);
   }
   // Und Base32 hin und zurück, wie es eine Authenticator-App liest.
@@ -55,7 +60,9 @@ test('RFC 6238: die Testvektoren für SHA-1', () => {
 
 test('passenderSchritt: ein Schritt Spielraum, nicht mehr', () => {
   const g = zf.base32(Buffer.from('12345678901234567890'));
-  const jetzt = 1234567890 * 1000, s = zf.zeitschritt(jetzt), k = zf.ausBase32(g);
+  const jetzt = 1234567890 * 1000,
+    s = zf.zeitschritt(jetzt),
+    k = zf.ausBase32(g);
   assert.equal(zf.passenderSchritt(g, zf.hotp(k, s), jetzt), s);
   assert.equal(zf.passenderSchritt(g, zf.hotp(k, s - 1), jetzt), s - 1);
   assert.equal(zf.passenderSchritt(g, zf.hotp(k, s + 1), jetzt), s + 1);
@@ -63,22 +70,31 @@ test('passenderSchritt: ein Schritt Spielraum, nicht mehr', () => {
   assert.equal(zf.passenderSchritt(g, 'abcdef', jetzt), null);
 });
 
-test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const NAME = `zf_${process.pid}`, PASS = 'richtigesPasswort1';
-  const SPERRE = `zf_sperre_${process.pid}`, BREMSE = `zf_bremse_${process.pid}`, VERWALTER = `zf_verw_${process.pid}`;
+  const NAME = `zf_${process.pid}`,
+    PASS = 'richtigesPasswort1';
+  const SPERRE = `zf_sperre_${process.pid}`,
+    BREMSE = `zf_bremse_${process.pid}`,
+    VERWALTER = `zf_verw_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE, BREMSE, VERWALTER]]);
   for (const n of [NAME, SPERRE, BREMSE])
-    await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)',
-      [n, await bcrypt.hash(PASS, 4)]);
+    await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)', [
+      n,
+      await bcrypt.hash(PASS, 4),
+    ]);
 
   const app = express();
   app.use(express.json());
-  app.use(session({
-    store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false,
-  }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
   app.use(AUTH, _req('routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
@@ -91,17 +107,27 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const anmelden = (name, code) => ruf('/login', { username: name, password: PASS, ...(code !== undefined ? { code } : {}) });
+  const anmelden = (name, code) =>
+    ruf('/login', { username: name, password: PASS, ...(code !== undefined ? { code } : {}) });
   /** Ein Code, der zum aktuellen Geheimnis passt — wahlweise einen Schritt versetzt. */
   const codeFuer = async (name, versatz = 0) => {
-    const z = await db.get('SELECT f.user_id, f.geheimnis FROM zweiter_faktor f JOIN users u ON u.id = f.user_id WHERE u.username = $1', [name]);
-    return zf.hotp(zf.ausBase32(_req('src/infra/geheimnis.js').entschluessele(z.geheimnis, zf.faktorKontext(z.user_id))), zf.zeitschritt() + versatz);
+    const z = await db.get(
+      'SELECT f.user_id, f.geheimnis FROM zweiter_faktor f JOIN users u ON u.id = f.user_id WHERE u.username = $1',
+      [name],
+    );
+    return zf.hotp(
+      zf.ausBase32(_req('src/infra/geheimnis.js').entschluessele(z.geheimnis, zf.faktorKontext(z.user_id))),
+      zf.zeitschritt() + versatz,
+    );
   };
   /** Einrichten bis aktiv; gibt den Token und die Wiederherstellungscodes zurück. */
-  const einrichten = async (name) => {
+  const einrichten = async name => {
     const token = (await anmelden(name)).body.token;
-    assert.equal((await ruf('/zweiter-faktor/einrichten', { password: 'falsch' }, token)).status, 400,
-      'Einrichten ohne richtiges Passwort');
+    assert.equal(
+      (await ruf('/zweiter-faktor/einrichten', { password: 'falsch' }, token)).status,
+      400,
+      'Einrichten ohne richtiges Passwort',
+    );
     const e = await ruf('/zweiter-faktor/einrichten', { password: PASS }, token);
     assert.equal(e.status, 200, JSON.stringify(e.body));
     assert.match(e.body.otpauth, /^otpauth:\/\/totp\/BrickInventory%3A/);
@@ -118,9 +144,16 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     // Ein Zugang von vorher — nach dem Einschalten muss er weg sein.
     const alt = (await anmelden(NAME)).body.token;
     const { token, codes } = await einrichten(NAME);
-    assert.equal((await ruf('/zweiter-faktor', null, alt)).status, 401,
-      'Ein Token von vor dem Einschalten gilt weiter — ein Eindringling bliebe drin');
-    assert.deepEqual((await ruf('/zweiter-faktor', null, token)).body, { success: true, aktiv: true, codes_uebrig: 10 });
+    assert.equal(
+      (await ruf('/zweiter-faktor', null, alt)).status,
+      401,
+      'Ein Token von vor dem Einschalten gilt weiter — ein Eindringling bliebe drin',
+    );
+    assert.deepEqual((await ruf('/zweiter-faktor', null, token)).body, {
+      success: true,
+      aktiv: true,
+      codes_uebrig: 10,
+    });
     const roh = JSON.stringify(await db.all('SELECT code_hash FROM zweiter_faktor_codes'));
     assert.ok(!codes.some(c => roh.includes(c.replace(/-/g, ''))), 'Wiederherstellungscodes stehen im Klartext');
     // 80 Bit: 16 Base32-Zeichen in Vierergruppen; gespeichert als HMAC, nicht als blankes SHA-256.
@@ -163,7 +196,15 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     assert.equal(pw.status, 400, 'falsches aktuelles Passwort beim Wechsel ist ein 401 — die Clients melden dann ab');
     assert.equal((await ruf('/zweiter-faktor/abschalten', { password: PASS, code: codes[1] }, token)).status, 200);
     assert.equal((await anmelden(NAME)).status, 200, 'nach dem Abschalten wieder ohne Code');
-    assert.equal((await db.get('SELECT COUNT(*)::int n FROM zweiter_faktor_codes f JOIN users u ON u.id=f.user_id WHERE u.username=$1', [NAME])).n, 0);
+    assert.equal(
+      (
+        await db.get(
+          'SELECT COUNT(*)::int n FROM zweiter_faktor_codes f JOIN users u ON u.id=f.user_id WHERE u.username=$1',
+          [NAME],
+        )
+      ).n,
+      0,
+    );
 
     // Falsche Codes zählen als Fehlversuche: Danach hilft auch der richtige nicht.
     const { token: tS, codes: cS } = await einrichten(SPERRE);
@@ -177,8 +218,11 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
       await ruf('/zweiter-faktor/abschalten', { password: PASS, code: String(200000 + i) }, tS);
     const geraten = await ruf('/zweiter-faktor/abschalten', { password: PASS, code: cS[0] }, tS);
     assert.equal(geraten.status, 429, `Code beim Abschalten beliebig oft ratbar: ${geraten.status}`);
-    assert.equal((await ruf('/zweiter-faktor/codes', { code: cS[1] }, tS)).status, 429,
-      'Auch das Erneuern der Wiederherstellungscodes muss gesperrt sein');
+    assert.equal(
+      (await ruf('/zweiter-faktor/codes', { code: cS[1] }, tS)).status,
+      429,
+      'Auch das Erneuern der Wiederherstellungscodes muss gesperrt sein',
+    );
 
     // Das Bestätigen der Einrichtung bremst genauso.
     const tB = (await anmelden(BREMSE)).body.token;
@@ -189,22 +233,34 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
 
     // Der Notausgang des Verwalters gilt nur fremden Konten: Für das eigene
     // genügte sonst eine offene Sitzung samt Passwort, ganz ohne Code.
-    await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
-      [VERWALTER, await bcrypt.hash(PASS, 4)]);
+    await db.run(
+      'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
+      [VERWALTER, await bcrypt.hash(PASS, 4)],
+    );
     await einrichten(VERWALTER);
-    const sitzung = await fetch(`${basis}/login`, { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: VERWALTER, password: PASS, code: await codeFuer(VERWALTER), ohne_token: true }) });
+    const sitzung = await fetch(`${basis}/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: VERWALTER, password: PASS, code: await codeFuer(VERWALTER), ohne_token: true }),
+    });
     assert.equal(sitzung.status, 200);
     const keks = (sitzung.headers.get('set-cookie') || '').split(';')[0];
     const idV = (await db.get('SELECT id FROM users WHERE username = $1', [VERWALTER])).id;
     const idS = (await db.get('SELECT id FROM users WHERE username = $1', [SPERRE])).id;
-    const entfernen = async (id) => {
-      const r = await fetch(`${basis}/users/${id}/zweiter-faktor`, { method: 'DELETE',
-        headers: { 'content-type': 'application/json', cookie: keks }, body: JSON.stringify({ admin_password: PASS, code: await codeFuer(VERWALTER, 1) }) });
+    const entfernen = async id => {
+      const r = await fetch(`${basis}/users/${id}/zweiter-faktor`, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json', cookie: keks },
+        body: JSON.stringify({ admin_password: PASS, code: await codeFuer(VERWALTER, 1) }),
+      });
       return { status: r.status, body: await r.json().catch(() => null) };
     };
     const eigen = await entfernen(idV);
-    assert.deepEqual([eigen.status, eigen.body?.code], [400, 'eigener_zweiter_faktor'], 'eigener Faktor nur mit Passwort entfernt');
+    assert.deepEqual(
+      [eigen.status, eigen.body?.code],
+      [400, 'eigener_zweiter_faktor'],
+      'eigener Faktor nur mit Passwort entfernt',
+    );
     assert.equal(await zf.istAktiv(idV), true);
     assert.equal((await entfernen(idS)).status, 200, 'fremder Faktor lässt sich nicht mehr entfernen');
     assert.equal(await zf.istAktiv(idS), false);

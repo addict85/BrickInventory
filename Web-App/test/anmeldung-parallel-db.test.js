@@ -23,15 +23,24 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const NAME = `parallel_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-    VALUES ($1, $2, true, true) RETURNING id`, [NAME, bcrypt.hashSync('richtig-geheim', 4)])).id;
-  const aufraeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key LIKE $3`,
-    [`%|${NAME}`, `%konto:${uid}`, `%-bestaetigen|${uid}|%`]);
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+    VALUES ($1, $2, true, true) RETURNING id`,
+      [NAME, bcrypt.hashSync('richtig-geheim', 4)],
+    )
+  ).id;
+  const aufraeumen = () =>
+    db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key LIKE $3`, [
+      `%|${NAME}`,
+      `%konto:${uid}`,
+      `%-bestaetigen|${uid}|%`,
+    ]);
   await aufraeumen();
   t.after(async () => {
     await aufraeumen();
@@ -43,8 +52,7 @@ test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async (
 
   await t.test('20 gleichzeitige Fehlversuche, höchstens 5 Prüfungen', async () => {
     const anfrage = { ip: '203.0.113.7', socket: {}, headers: {} };
-    const r = await Promise.all(Array.from({ length: 20 },
-      () => pruefeAnmeldedaten(anfrage, NAME, 'falsch')));
+    const r = await Promise.all(Array.from({ length: 20 }, () => pruefeAnmeldedaten(anfrage, NAME, 'falsch')));
     const geprueft = r.filter(x => x.absage?.art === 'nicht_angemeldet').length;
     const gesperrt = r.filter(x => x.absage?.art === 'zu_viele').length;
     assert.ok(geprueft <= lim.MAX_ATTEMPTS, `${geprueft} Passwortprüfungen, ${gesperrt} gesperrt`);

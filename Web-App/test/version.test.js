@@ -33,13 +33,17 @@ test('ein Build-Argument geht vor, sonst Git', () => {
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'version-'));
   try {
     const skript = path.join(ROOT, 'scripts', 'version.js');
-    execFileSync(process.execPath, [skript, '--outdir', ziel],
-      { env: { PATH: process.env.PATH, APP_VERSION: '2026.10.30' }, stdio: 'ignore' });
+    execFileSync(process.execPath, [skript, '--outdir', ziel], {
+      env: { PATH: process.env.PATH, APP_VERSION: '2026.10.30' },
+      stdio: 'ignore',
+    });
     assert.equal(JSON.parse(fs.readFileSync(path.join(ziel, 'version.json'), 'utf8')).version, '2026.10.30');
     const ohne = execFileSync(process.execPath, [skript], { env: { PATH: process.env.PATH }, encoding: 'utf8' });
     assert.match(ohne, /^\[version\] [\w.-]+\n$/);
     assert.doesNotMatch(ohne, /2026\.10\.30/);
-  } finally { fs.rmSync(ziel, { recursive: true, force: true }); }
+  } finally {
+    fs.rmSync(ziel, { recursive: true, force: true });
+  }
 });
 
 test('der Server meldet die gebaute Version', () => {
@@ -52,5 +56,8 @@ test('der Server meldet die gebaute Version', () => {
     assert.equal(appVersion(), gebaut);
     umgebung({ APP_VERSION: 'laufzeit-1' });
     assert.equal(appVersion(), 'laufzeit-1', 'APP_VERSION zur Laufzeit geht vor');
-  } finally { if (alt === undefined) umgebung({ APP_VERSION: undefined }); else umgebung({ APP_VERSION: alt }); }
+  } finally {
+    if (alt === undefined) umgebung({ APP_VERSION: undefined });
+    else umgebung({ APP_VERSION: alt });
+  }
 });

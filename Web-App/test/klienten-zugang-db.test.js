@@ -27,7 +27,7 @@ const { dbOderSkip } = require('./helpers/db');
 
 /** @type {{ pfad: string, schluessel: string | undefined }[]} */
 const abrufe = [];
-// @ts-ignore — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
+// @ts-expect-error — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
 https.get = (url, opts, cb) => {
   const u = new URL(url);
   abrufe.push({ pfad: u.pathname, schluessel: opts?.headers?.Authorization });

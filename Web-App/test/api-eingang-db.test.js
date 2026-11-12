@@ -31,48 +31,65 @@ const { warte } = require('./helpers/zeit');
 
 /** Absichtlich ohne Anmeldung erreichbar — mit Grund. Wächst die Liste, muss jemand sie begründen. */
 const ERWARTET_OFFEN = new Map([
-  ['POST /api/v1/auth/login',            'Die Anmeldung selbst'],
-  ['POST /api/v1/auth/logout',           'Muss auch ohne gültige Sitzung gehen'],
-  ['GET /api/v1/auth/me',                'Antwortet „nicht angemeldet" — der Startpunkt der Oberfläche'],
-  ['POST /api/v1/auth/qr-login',         'Anmeldung per QR-Code'],
+  ['POST /api/v1/auth/login', 'Die Anmeldung selbst'],
+  ['POST /api/v1/auth/logout', 'Muss auch ohne gültige Sitzung gehen'],
+  ['GET /api/v1/auth/me', 'Antwortet „nicht angemeldet" — der Startpunkt der Oberfläche'],
+  ['POST /api/v1/auth/qr-login', 'Anmeldung per QR-Code'],
   ['POST /api/v1/auth/qr-login/abholen', 'Die App holt nach der Bestätigung im Browser ihren Zugang ab'],
   ['GET /api/v1/auth/registration-status', 'Ob Registrierung offen ist — vor dem Konto'],
-  ['POST /api/v1/auth/forgot-password',  'Wer sein Passwort vergisst, kann sich nicht anmelden'],
+  ['POST /api/v1/auth/forgot-password', 'Wer sein Passwort vergisst, kann sich nicht anmelden'],
   ['POST /api/v1/auth/bestaetigung-erneut', 'Ein unbestätigtes Konto kann sich nicht anmelden'],
-  ['POST /api/v1/auth/reset-password',   'Dasselbe, zweiter Schritt'],
+  ['POST /api/v1/auth/reset-password', 'Dasselbe, zweiter Schritt'],
   ['POST /api/v1/auth/email-bestaetigen', 'Wer seine Adresse bestätigt, ist noch nicht angemeldet'],
   ['POST /api/v1/auth/email-bestaetigen/vorschau', 'Dasselbe, vor dem Bestätigen'],
   ['POST /api/v1/auth/passkey/anmelden/optionen', 'Die Anmeldung mit Passkey beginnt vor jedem Konto'],
-  ['GET /api/v1/settings/theme',         'Das Design des Login-Bildschirms, vor jeder Anmeldung'],
-  ['GET /api/v1/einrichtung/stand',      'Was vor dem ersten Konto fehlt — die Anmeldeseite fragt es ab'],
-  ['GET /api/v1/startup-status',         'Der Ladebildschirm vor der Anmeldung'],
-  ['GET /api/v1/health',                 'Status für Überwachung, Details nur für Verwalter'],
-  ['GET /api/v1/health/live',            'Lebenszeichen des Prozesses'],
-  ['GET /api/v1/health/ready',           'Gesundheitsprüfung von compose.yaml (Datenbank)'],
+  ['GET /api/v1/settings/theme', 'Das Design des Login-Bildschirms, vor jeder Anmeldung'],
+  ['GET /api/v1/einrichtung/stand', 'Was vor dem ersten Konto fehlt — die Anmeldeseite fragt es ab'],
+  ['GET /api/v1/startup-status', 'Der Ladebildschirm vor der Anmeldung'],
+  ['GET /api/v1/health', 'Status für Überwachung, Details nur für Verwalter'],
+  ['GET /api/v1/health/live', 'Lebenszeichen des Prozesses'],
+  ['GET /api/v1/health/ready', 'Gesundheitsprüfung von compose.yaml (Datenbank)'],
 ]);
 
-const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
+const freierPort = () =>
+  new Promise(r => {
+    const s = net.createServer().listen(0, () => {
+      const p = s.address().port;
+      s.close(() => r(p));
+    });
+  });
 
-test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
   const port = await freierPort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'eingang-test-geheimnis-lang-genug-1234',
-           PORT: String(port), TRUST_PROXY: 'false' },
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      DATABASE_URL: URL_DB,
+      SESSION_SECRET: 'eingang-test-geheimnis-lang-genug-1234',
+      PORT: String(port),
+      TRUST_PROXY: 'false',
+    },
   });
   let log = '';
-  srv.stdout.on('data', d => { log += d; });
-  srv.stderr.on('data', d => { log += d; });
+  srv.stdout.on('data', d => {
+    log += d;
+  });
+  srv.stderr.on('data', d => {
+    log += d;
+  });
   t.after(async () => {
     srv.kill('SIGTERM');
     for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
     if (srv.exitCode === null && srv.signalCode === null) srv.kill('SIGKILL');
   });
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
-  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++) await warte(250);
+  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++)
+    await warte(250);
 
   const alle = v1Routen();
   assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);
@@ -81,8 +98,11 @@ test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async (t) => {
     const url = p.replace(/:[A-Za-z_]+\??/g, '1').replace(/\*[a-z]+/g, 'a');
     // Leerer Körper: Ein öffentlicher Endpunkt antwortet dann 400, aber nicht 401.
     const r = await fetch(`http://127.0.0.1:${port}${url}`, {
-      method: m, redirect: 'manual', headers: { 'content-type': 'application/json' },
-      body: m === 'GET' ? undefined : '{}' });
+      method: m,
+      redirect: 'manual',
+      headers: { 'content-type': 'application/json' },
+      body: m === 'GET' ? undefined : '{}',
+    });
     await r.arrayBuffer();
     // /auth/register ist öffentlich, antwortet aber 403, solange die Registrierung
     // aus ist — das hängt an einer Einstellung, die andere Tests umschalten.
@@ -90,7 +110,8 @@ test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async (t) => {
   }
 
   await t.test('nur die öffentlichen Pfade antworten ohne Anmeldung', () =>
-    assert.deepEqual([...offen].sort(), [...ERWARTET_OFFEN.keys()].sort()));
+    assert.deepEqual([...offen].sort(), [...ERWARTET_OFFEN.keys()].sort()),
+  );
 
   await t.test('ein falsches Token kommt nicht hinein', async () => {
     const r = await fetch(`http://127.0.0.1:${port}/api/v1/stats`, { headers: { authorization: 'Bearer falsch' } });

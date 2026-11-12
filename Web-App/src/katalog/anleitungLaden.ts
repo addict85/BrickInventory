@@ -2,10 +2,22 @@
  * pausiert die ganze Art 15 Sekunden, nach einer Cloudflare-Sperre 5–20
  * Minuten und dann bis zum nächsten Tag. */
 import { mitSitzungsSperre } from '../../db/txLock';
-import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from './instructions';
+import {
+  downloadSetInstructions,
+  letzterAbrufWarExtern,
+  anzahlAnleitungen,
+  scrapeInstructionsFromFallback,
+} from './instructions';
 import { fehlertext } from '../infra/fehler';
 import { alsAbrufFehler } from './quellen';
-import { auftraegeBereich, zaehleArt, beendePause, type Nutzlast, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
+import {
+  auftraegeBereich,
+  zaehleArt,
+  beendePause,
+  type Nutzlast,
+  type AuftragsLauf,
+  AuftragVerschieben,
+} from '../auftraege';
 import { LOCKS } from '../infra/lockNamespaces';
 import { katalog } from './prozess';
 
@@ -25,29 +37,44 @@ function naechsterTag(jetzt = new Date()): Date {
  * weil Advisory-Locks an der Sitzung hängen. */
 function mitSperre<T>(lauf: () => Promise<T>): Promise<T> {
   return mitSitzungsSperre(katalog().db, LOCKS.ANLEITUNGS_QUEUE, lauf, () => {
-    throw new AuftragVerschieben(new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Anleitungen laufen in einem anderen Prozess');
+    throw new AuftragVerschieben(
+      new Date(Date.now() + TAKT_NACH_ABRUF_MS),
+      'Anleitungen laufen in einem anderen Prozess',
+    );
   });
 }
 
 async function meldeAnleitungen(setNumber: string, lauf?: AuftragsLauf): Promise<void> {
   const z = await zaehleArt('anleitung');
-  const offen = z.offen + z.laeuft, gesamt = offen + z.erledigt + z.fehler;
-  await lauf?.fortschritt?.({ erledigt: gesamt - offen + 1, gesamt,
-    text: offen > 1 ? `${setNumber} · ${offen - 1} ausstehend` : 'Alle erledigt' });
+  const offen = z.offen + z.laeuft,
+    gesamt = offen + z.erledigt + z.fehler;
+  await lauf?.fortschritt?.({
+    erledigt: gesamt - offen + 1,
+    gesamt,
+    text: offen > 1 ? `${setNumber} · ${offen - 1} ausstehend` : 'Alle erledigt',
+  });
 }
 
 /** Eine Drosselung verschiebt den Auftrag, ohne ihn als Versuch zu zählen. */
 async function anleitungLaden(n: Nutzlast<'anleitung'>, lauf?: AuftragsLauf): Promise<void> {
   const sn = n.set_number;
-  if (await anzahlAnleitungen(sn) > 0) return;
-  if (n.nur_ausweichquelle) { await scrapeInstructionsFromFallback(sn); return; }
+  if ((await anzahlAnleitungen(sn)) > 0) return;
+  if (n.nur_ausweichquelle) {
+    await scrapeInstructionsFromFallback(sn);
+    return;
+  }
   await mitSperre(async () => {
     try {
       // Den Abstand hält die Pause der Art, nicht die Funktion.
       const anzahl = await downloadSetInstructions(sn, true);
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
       if (await auftraegeBereich().auftraege.liesPause('anleitung')) await beendePause('anleitung');
-      if (letzterAbrufWarExtern()) await auftraegeBereich().auftraege.pausiereArt('anleitung', new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Abstand zwischen zwei Abrufen');
+      if (letzterAbrufWarExtern())
+        await auftraegeBereich().auftraege.pausiereArt(
+          'anleitung',
+          new Date(Date.now() + TAKT_NACH_ABRUF_MS),
+          'Abstand zwischen zwei Abrufen',
+        );
       await meldeAnleitungen(sn, lauf);
     } catch (e) {
       const f = alsAbrufFehler(e);
@@ -55,10 +82,16 @@ async function anleitungLaden(n: Nutzlast<'anleitung'>, lauf?: AuftragsLauf): Pr
       if (f.isCloudflare || msg.includes('1015')) {
         const stufe = (await auftraegeBereich().auftraege.liesPause('anleitung'))?.stufe ?? 0;
         const bis = stufe < CF_PAUSEN_MS.length ? new Date(Date.now() + CF_PAUSEN_MS[stufe]!) : naechsterTag();
-        const grund = stufe < CF_PAUSEN_MS.length
-          ? `Cloudflare-Sperre: ${Math.round(CF_PAUSEN_MS[stufe]! / 60000)} min warten (Versuch ${stufe + 1})`
-          : 'Cloudflare-Sperre: bis morgen pausiert';
-        await auftraegeBereich().auftraege.pausiereArt('anleitung', bis, grund, stufe < CF_PAUSEN_MS.length ? stufe + 1 : 0);
+        const grund =
+          stufe < CF_PAUSEN_MS.length
+            ? `Cloudflare-Sperre: ${Math.round(CF_PAUSEN_MS[stufe]! / 60000)} min warten (Versuch ${stufe + 1})`
+            : 'Cloudflare-Sperre: bis morgen pausiert';
+        await auftraegeBereich().auftraege.pausiereArt(
+          'anleitung',
+          bis,
+          grund,
+          stufe < CF_PAUSEN_MS.length ? stufe + 1 : 0,
+        );
         await lauf?.fortschritt?.({ text: grund });
         console.log(`[instr-queue] ${grund}`);
         throw new AuftragVerschieben(bis, grund);

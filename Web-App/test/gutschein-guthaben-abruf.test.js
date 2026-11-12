@@ -27,20 +27,36 @@ const { AbrufFehler } = _req('src/infra/abruf.js');
 
 const FIX = path.join(__dirname, 'fixtures');
 const cert = fs.readFileSync(path.join(FIX, 'abruf-test.crt'));
-const NUMMER = '6006491234567890123', PIN = '4711';
-const TOKEN = [Buffer.from('{"alg":"none"}').toString('base64url'),
-  Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'), 'x'].join('.');
+const NUMMER = '6006491234567890123',
+  PIN = '4711';
+const TOKEN = [
+  Buffer.from('{"alg":"none"}').toString('base64url'),
+  Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'),
+  'x',
+].join('.');
 
-let modus = 'gut', port = 0;
+let modus = 'gut',
+  port = 0;
 const gesehen = [];
 const server = https.createServer({ key: fs.readFileSync(path.join(FIX, 'abruf-test.key')), cert }, (req, res) => {
   let rumpf = '';
-  req.on('data', d => { rumpf += d; });
+  req.on('data', d => {
+    rumpf += d;
+  });
   req.on('end', () => {
-    gesehen.push({ host: req.headers.host, methode: req.method, pfad: req.url, keks: req.headers.cookie || '',
-      auth: req.headers.authorization || '', rumpf });
+    gesehen.push({
+      host: req.headers.host,
+      methode: req.method,
+      pfad: req.url,
+      keks: req.headers.cookie || '',
+      auth: req.headers.authorization || '',
+      rumpf,
+    });
     if (req.url === '/de-ch/gift-cards/balance') {
-      if (modus === 'umleitung') { res.writeHead(302, { Location: 'https://example.org/de-ch/gift-cards/balance' }); return res.end(); }
+      if (modus === 'umleitung') {
+        res.writeHead(302, { Location: 'https://example.org/de-ch/gift-cards/balance' });
+        return res.end();
+      }
       res.writeHead(200, { 'Set-Cookie': ['sitzung=s1; Path=/', 'bot=b2; Path=/'] });
       return res.end('<html>Guthaben</html>');
     }
@@ -50,18 +66,36 @@ const server = https.createServer({ key: fs.readFileSync(path.join(FIX, 'abruf-t
     }
     if (req.url === '/api/graphql/giftCardBalanceQuery' && req.method === 'POST') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      if (modus === 'gross') { res.write('{"data":"'); res.write(Buffer.alloc(2 * 1024 * 1024, 0x61)); return res.end('"}'); }
-      return res.end(JSON.stringify({ data: { giftCard: { balance: { centAmount: 1250, currencyCode: 'CHF', formattedAmount: 'CHF 12.50' } } } }));
+      if (modus === 'gross') {
+        res.write('{"data":"');
+        res.write(Buffer.alloc(2 * 1024 * 1024, 0x61));
+        return res.end('"}');
+      }
+      return res.end(
+        JSON.stringify({
+          data: { giftCard: { balance: { centAmount: 1250, currencyCode: 'CHF', formattedAmount: 'CHF 12.50' } } },
+        }),
+      );
     }
-    res.writeHead(404); res.end();
+    res.writeHead(404);
+    res.end();
   });
 });
 
 /** Jeder Host landet beim Testserver; das Zertifikat gilt nicht für www.lego.com. */
 class Umlenker extends https.Agent {
   createConnection(opt, cb) {
-    return tls.connect({ ...opt, host: '127.0.0.1', port, ca: cert, servername: opt.servername || opt.host,
-      checkServerIdentity: () => undefined }, cb);
+    return tls.connect(
+      {
+        ...opt,
+        host: '127.0.0.1',
+        port,
+        ca: cert,
+        servername: opt.servername || opt.host,
+        checkServerIdentity: () => undefined,
+      },
+      cb,
+    );
   }
 }
 
@@ -71,17 +105,29 @@ test.before(async () => {
   port = server.address().port;
   https.globalAgent = new Umlenker();
 });
-test.after(() => { https.globalAgent = vorher; server.closeAllConnections(); server.close(); });
-test.beforeEach(() => { gesehen.length = 0; G.vergesseSitzungen(); });
+test.after(() => {
+  https.globalAgent = vorher;
+  server.closeAllConnections();
+  server.close();
+});
+test.beforeEach(() => {
+  gesehen.length = 0;
+  G.vergesseSitzungen();
+});
 
 test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
   modus = 'gut';
   const g = await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH' });
   assert.deepEqual(g, { betrag: 12.5, waehrung: 'CHF', angezeigt: 'CHF 12.50' });
-  assert.deepEqual(gesehen.map(a => `${a.methode} ${a.pfad}`),
-    ['GET /de-ch/gift-cards/balance', 'POST /api/graphql/Login', 'POST /api/graphql/giftCardBalanceQuery']);
+  assert.deepEqual(
+    gesehen.map(a => `${a.methode} ${a.pfad}`),
+    ['GET /de-ch/gift-cards/balance', 'POST /api/graphql/Login', 'POST /api/graphql/giftCardBalanceQuery'],
+  );
   const abfrage = gesehen[2];
-  assert.ok(gesehen.every(a => a.host === 'www.lego.com'), JSON.stringify(gesehen.map(a => a.host)));
+  assert.ok(
+    gesehen.every(a => a.host === 'www.lego.com'),
+    JSON.stringify(gesehen.map(a => a.host)),
+  );
   assert.match(abfrage.keks, /sitzung=s1/);
   assert.match(abfrage.keks, new RegExp(`gqauth=${TOKEN.replace(/\./g, '\\.')}`));
   assert.equal(abfrage.auth, TOKEN);
@@ -90,14 +136,21 @@ test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
 
 test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
   modus = 'umleitung';
-  await assert.rejects(G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH' }),
-    e => e instanceof AbrufFehler && e.grund === 'umleitung');
+  await assert.rejects(
+    G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH' }),
+    e => e instanceof AbrufFehler && e.grund === 'umleitung',
+  );
   assert.ok(gesehen.length >= 1, 'der Testserver wurde nicht gefragt');
-  assert.deepEqual(gesehen.filter(a => a.host !== 'www.lego.com'), []);
+  assert.deepEqual(
+    gesehen.filter(a => a.host !== 'www.lego.com'),
+    [],
+  );
 });
 
 test('eine übergrosse Antwort wird abgebrochen', async () => {
   modus = 'gross';
-  await assert.rejects(G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH' }),
-    e => e instanceof AbrufFehler && e.grund === 'zu-gross');
+  await assert.rejects(
+    G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH' }),
+    e => e instanceof AbrufFehler && e.grund === 'zu-gross',
+  );
 });

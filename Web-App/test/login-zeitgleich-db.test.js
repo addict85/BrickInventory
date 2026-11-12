@@ -23,7 +23,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 /** Minimaler Request: pruefeAnmeldedaten braucht davon nur die IP (Zähler). */
 const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
-const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+const median = xs => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
 async function dauer(fn) {
   const t0 = process.hrtime.bigint();
@@ -31,10 +31,8 @@ async function dauer(fn) {
   return { ms: Number(process.hrtime.bigint() - t0) / 1e6, wert };
 }
 
-test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req)) return;
+test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   // Die Kosten müssen denen echter Passwörter entsprechen — mit weniger Runden
   // wäre der BEKANNTE Fall der schnellere und der Vergleich stünde auf dem
@@ -46,7 +44,8 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
   for (const name of namen)
     await db.run(
       'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
-      [name, hash]);
+      [name, hash],
+    );
 
   try {
     // Je ein Versuch pro Name: Der Brute-Force-Zähler läuft über IP UND Name,
@@ -64,8 +63,11 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
         // Vorbedingung: wirklich abgelehnt, mit 401 — nicht 429 (Sperre) oder
         // 400 (Formfehler). Sonst misst der Test etwas anderes als gedacht.
         assert.equal(r.wert.ok, false, `${was}: hätte abgelehnt werden müssen`);
-        assert.equal(r.wert.absage.art, 'nicht_angemeldet',
-          `${was}: erwartet nicht_angemeldet, bekommen ${r.wert.absage.art} (${r.wert.absage.error})`);
+        assert.equal(
+          r.wert.absage.art,
+          'nicht_angemeldet',
+          `${was}: erwartet nicht_angemeldet, bekommen ${r.wert.absage.art} (${r.wert.absage.error})`,
+        );
         messungen[was].push(r.ms);
       }
     }
@@ -73,14 +75,18 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort',
     const unbekannt = { ms: median(messungen.unbekannt) };
     // Und die Messung selbst muss überhaupt etwas gekostet haben — ohne das
     // wäre „0 ms ≥ 0 ms" grün, ganz ohne Passwortprüfung.
-    assert.ok(bekannt.ms > 20,
-      `Der bekannte Fall dauerte nur ${bekannt.ms.toFixed(1)} ms — hier wurde kein bcrypt gerechnet`);
+    assert.ok(
+      bekannt.ms > 20,
+      `Der bekannte Fall dauerte nur ${bekannt.ms.toFixed(1)} ms — hier wurde kein bcrypt gerechnet`,
+    );
 
-    assert.ok(unbekannt.ms >= bekannt.ms * 0.5,
+    assert.ok(
+      unbekannt.ms >= bekannt.ms * 0.5,
       `Ein unbekannter Name ist messbar schneller: bekannt ${bekannt.ms.toFixed(1)} ms, ` +
-      `unbekannt ${unbekannt.ms.toFixed(1)} ms. Damit lässt sich von aussen abfragen, ` +
-      `welche Konten es gibt. Der Vergleich muss auch ohne Treffer gegen den ` +
-      `Dummy-Hash laufen (siehe pruefeAnmeldedaten in src/konto/anmeldepruefung.ts).`);
+        `unbekannt ${unbekannt.ms.toFixed(1)} ms. Damit lässt sich von aussen abfragen, ` +
+        `welche Konten es gibt. Der Vergleich muss auch ohne Treffer gegen den ` +
+        `Dummy-Hash laufen (siehe pruefeAnmeldedaten in src/konto/anmeldepruefung.ts).`,
+    );
   } finally {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
     // Ohne das bleibt der Pool offen und der Testprozess endet nie — der Lauf

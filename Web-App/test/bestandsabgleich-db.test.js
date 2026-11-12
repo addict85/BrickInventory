@@ -18,15 +18,17 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
 
   for (const name of ['ich', 'kind', 'fremd']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
-  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)',
-    [U.ich, U.kind]);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [U.ich, U.kind]);
 
   // Dieselbe Teilenummer in ZWEI Farben, und dieselbe Farbe bei ZWEI
   // Teilenummern: Nur so fällt eine verrutschte Paarung auf.
@@ -34,11 +36,11 @@ async function seed() {
   // ab — eine Zeile mit Set ist ein Set-Teil, eine ohne ein manuelles. …
   const teile = [
     // user, nummer, farbe, menge, set
-    [U.ich,   '3001', 4,  6, '10179-1'],
-    [U.ich,   '3001', 4,  2, null],
-    [U.ich,   '3001', 5,  3, null],
-    [U.ich,   '3002', 4, 10, '10179-1'],
-    [U.kind,  '3001', 4,  1, null],
+    [U.ich, '3001', 4, 6, '10179-1'],
+    [U.ich, '3001', 4, 2, null],
+    [U.ich, '3001', 5, 3, null],
+    [U.ich, '3002', 4, 10, '10179-1'],
+    [U.kind, '3001', 4, 1, null],
     [U.fremd, '3001', 4, 99, null],
   ];
   for (const [uid, num, farbe, menge, set] of teile) {
@@ -46,16 +48,23 @@ async function seed() {
     // Bestandszeile.
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
-       ON CONFLICT (part_number) DO NOTHING`, [num, 'Teil ' + num]);
+       ON CONFLICT (part_number) DO NOTHING`,
+      [num, 'Teil ' + num],
+    );
     await haeltTeil(db, uid, num, { setNumber: set, menge, colorId: farbe });
   }
 }
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Bestandsabgleich gegen echte Datenbank', async (t) => {
+test('Bestandsabgleich gegen echte Datenbank', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -63,14 +72,20 @@ test('Bestandsabgleich gegen echte Datenbank', async (t) => {
   }
   await seed();
   const { getOwnedQuantities, BESTAND_MAX_TEILE } = _req('src/teile/abfragen.js');
-  const household = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
+  const household = {
+    ..._req('src/haushalt/haushalt.js'),
+    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+  };
 
   await t.test('zählt je Teil UND Farbe, nicht je Teilenummer', async () => {
-    const b = await getOwnedQuantities([U.ich], [
-      { part_number: '3001', color_id: 4 },
-      { part_number: '3001', color_id: 5 },
-      { part_number: '3002', color_id: 4 },
-    ]);
+    const b = await getOwnedQuantities(
+      [U.ich],
+      [
+        { part_number: '3001', color_id: 4 },
+        { part_number: '3001', color_id: 5 },
+        { part_number: '3002', color_id: 4 },
+      ],
+    );
     // 6 aus dem Set + 2 lose = 8 gesamt, davon 2 lose.
     assert.deepEqual(b['3001|4'], { gesamt: 8, lose: 2 });
     // Dieselbe Nummer, andere Farbe — darf sich nicht vermischen.
@@ -98,9 +113,10 @@ test('Bestandsabgleich gegen echte Datenbank', async (t) => {
 
   await t.test('das Blickfeld entscheidet, nicht die Anfrage', async () => {
     // Ohne diese Grenze wäre der Abgleich ein Weg, fremde Bestände zu zählen.
-    const nurIch  = await getOwnedQuantities([U.ich], [{ part_number: '3001', color_id: 4 }]);
-    const mitKind = await getOwnedQuantities(
-      await household.blickfeldIds(U.ich, 'all'), [{ part_number: '3001', color_id: 4 }]);
+    const nurIch = await getOwnedQuantities([U.ich], [{ part_number: '3001', color_id: 4 }]);
+    const mitKind = await getOwnedQuantities(await household.blickfeldIds(U.ich, 'all'), [
+      { part_number: '3001', color_id: 4 },
+    ]);
     assert.equal(nurIch['3001|4'].gesamt, 8);
     assert.equal(mitKind['3001|4'].gesamt, 9, 'Das Unterkonto muss mitzählen');
     // 99 Stück liegen bei 'fremd' — die dürfen nirgends auftauchen.
@@ -108,12 +124,15 @@ test('Bestandsabgleich gegen echte Datenbank', async (t) => {
   });
 
   await t.test('doppelte Anfragen und leere Eingaben laufen nicht ins Leere', async () => {
-    const b = await getOwnedQuantities([U.ich], [
-      { part_number: '3001', color_id: 4 },
-      { part_number: '3001', color_id: 4 },   // doppelt
-      { part_number: '',     color_id: 4 },   // leer
-      { part_number: '3001' },                // ohne Farbe → 0
-    ]);
+    const b = await getOwnedQuantities(
+      [U.ich],
+      [
+        { part_number: '3001', color_id: 4 },
+        { part_number: '3001', color_id: 4 }, // doppelt
+        { part_number: '', color_id: 4 }, // leer
+        { part_number: '3001' }, // ohne Farbe → 0
+      ],
+    );
     assert.equal(b['3001|4'].gesamt, 8, 'Eine doppelte Anfrage darf nicht doppelt zählen');
     assert.deepEqual(await getOwnedQuantities([U.ich], []), {});
   });
@@ -122,9 +141,8 @@ test('Bestandsabgleich gegen echte Datenbank', async (t) => {
     // Eine Teileliste über viele Sets darf keine unbegrenzte Abfrage bauen.
     // GEMESSEN: Der Deckel greift, die Antwort bleibt leer statt zu werfen.
     assert.equal(typeof BESTAND_MAX_TEILE, 'number');
-    const viele = Array.from({ length: BESTAND_MAX_TEILE + 50 },
-      (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
-    viele.push({ part_number: '3001', color_id: 4 });   // steht HINTER dem Deckel
+    const viele = Array.from({ length: BESTAND_MAX_TEILE + 50 }, (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
+    viele.push({ part_number: '3001', color_id: 4 }); // steht HINTER dem Deckel
     const b = await getOwnedQuantities([U.ich], viele);
     assert.deepEqual(b, {}, 'Alles hinter dem Deckel muss wegfallen — auch Vorhandenes');
   });

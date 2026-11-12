@@ -13,7 +13,9 @@
 const _ziele = {};
 
 /** @param {Partial<Ziele>} teil */
-export function stelleZielBereit(teil) { Object.assign(_ziele, teil); }
+export function stelleZielBereit(teil) {
+  Object.assign(_ziele, teil);
+}
 
 /**
  * @template {keyof Ziele} K
@@ -22,7 +24,9 @@ export function stelleZielBereit(teil) { Object.assign(_ziele, teil); }
  */
 export function springe(name, ...args) {
   const ziel = /** @type {((...a: Parameters<Ziele[K]>) => unknown) | undefined} */ (_ziele[name]);
-  if (!ziel) { console.warn('[ziele] nicht angemeldet:', name); return undefined; }
+  if (!ziel) {
+    console.warn('[ziele] nicht angemeldet:', name);
+    return undefined;
+  }
   return ziel(...args);
 }
-

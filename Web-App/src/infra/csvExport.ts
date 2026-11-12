@@ -1,4 +1,3 @@
-
 // CSV mit richtigem Quoting, damit ein Export mit dem passenden Import unverändert wieder eingelesen werden kann.
 import { parse } from 'csv-parse/sync';
 import { fehlerText, type Sprache } from './fehlerTexte';
@@ -13,7 +12,7 @@ const MUSS_IN_ANFUEHRUNG = /[",;\t\r\n]/;
 // Ein Feld mit = führte Excel beim Öffnen aus.
 export function entschaerfe(s: string): string {
   if (!FORMEL_START.test(s)) return s;
-  if (/^\s*-?\d+([.,]\d+)?\s*$/.test(s)) return s;   // reine Zahl, auch negativ
+  if (/^\s*-?\d+([.,]\d+)?\s*$/.test(s)) return s; // reine Zahl, auch negativ
   return "'" + s;
 }
 
@@ -24,12 +23,15 @@ export function entschaerfungRueckgaengig(v: unknown) {
   return v;
 }
 
+/** Eine eingelesene Zeile; mit `columns` liefert csv-parse jeden Wert als Text. */
+export type CsvZeile = Record<string, string>;
+
 /** Hinter jedes parse() der Importwege, damit ein eigener Export unverändert
  * wieder eingelesen wird. */
-export function csvZeilenBereinigen(records: any[]): any[] {
+export function csvZeilenBereinigen(records: CsvZeile[]): CsvZeile[] {
   return records.map(row => {
-    const out: any = {};
-    for (const [k, v] of Object.entries(row)) out[k] = entschaerfungRueckgaengig(v);
+    const out: CsvZeile = {};
+    for (const [k, v] of Object.entries(row)) out[k] = entschaerfungRueckgaengig(v) as string;
     return out;
   });
 }
@@ -59,14 +61,14 @@ export function parseCsvDate(raw: unknown) {
 
   m = /^(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})$/.exec(s);
   if (m) {
-    const day = parseInt((m[1] ?? '')), mon = parseInt((m[2] ?? ''));
-    let year = parseInt((m[3] ?? ''));
+    const day = parseInt(m[1] ?? '', 10),
+      mon = parseInt(m[2] ?? '', 10);
+    let year = parseInt(m[3] ?? '', 10);
     if ((m[3] ?? '').length === 2) year += year < 70 ? 2000 : 1900;
     if (day < 1 || day > 31 || mon < 1 || mon > 12) return null;
     // Über ein echtes Datum prüfen: 31.02. gibt es nicht; Date rollt ihn in den Folgemonat, und das fällt hier auf.
     const probe = new Date(Date.UTC(year, mon - 1, day));
-    if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== mon - 1 ||
-        probe.getUTCDate() !== day) return null;
+    if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== mon - 1 || probe.getUTCDate() !== day) return null;
     return `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
   return null;
@@ -76,7 +78,12 @@ export function parseCsvDate(raw: unknown) {
 const GEFAEHRLICHE_SPALTEN = new Set(['__proto__', 'constructor', 'prototype']);
 
 /** `zeilen[i]` ist die Zeile der Datei, in der `records[i]` steht: Leerzeilen verschieben sonst die Zählung. */
-export function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[]; zeilen: number[] } {
+export function csvEinlesen(csvText: string): {
+  records: CsvZeile[];
+  delimiter: string;
+  uebersprungen: number[];
+  zeilen: number[];
+} {
   const text = String(csvText || '').replace(/^\uFEFF/, '');
   const firstLine = text.split('\n')[0] || '';
   const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
@@ -85,10 +92,11 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
   const records = parse(text, {
     // Die Kopfzeile filtern: `columns: true` macht aus `__proto__` einen
     // Schlüssel, der in die Prototypenkette schreibt.
-    columns: (kopf: string[]) => kopf.map(name => {
-      const rein = String(name || '').trim();
-      return GEFAEHRLICHE_SPALTEN.has(rein) ? false : rein;
-    }),
+    columns: (kopf: string[]) =>
+      kopf.map(name => {
+        const rein = String(name || '').trim();
+        return GEFAEHRLICHE_SPALTEN.has(rein) ? false : rein;
+      }),
     skip_empty_lines: true,
     trim: true,
     delimiter,
@@ -96,15 +104,17 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
     relax_column_count: true,
     relax_quotes: true,
     info: true,
-  }) as { record: any; info: { lines: number } }[];
+  }) as { record: CsvZeile; info: { lines: number } }[];
 
   // Zeilen ohne Inhalt gelten als übersprungen — das macht `relax_column_count` aus einer krummen Zeile.
-  const brauchbar: any[] = [];
+  const brauchbar: CsvZeile[] = [];
   const zeilen: number[] = [];
   records.forEach(({ record: r, info }) => {
     const werte = Object.values(r).map(v => String(v ?? '').trim());
-    if (werte.some(v => v !== '')) { brauchbar.push(r); zeilen.push(info.lines); }
-    else uebersprungen.push(info.lines);
+    if (werte.some(v => v !== '')) {
+      brauchbar.push(r);
+      zeilen.push(info.lines);
+    } else uebersprungen.push(info.lines);
   });
 
   return { records: brauchbar, delimiter, uebersprungen, zeilen };
@@ -121,27 +131,28 @@ export function uebersprungenHinweis(zeilen: number[], sprache: Sprache = 'de'):
 }
 
 // Die gemeinsamen Spalten einmal gelesen, damit jede Behebung alle Importe trifft.
-export function csvGemeinsameFelder(row: any): {
+export function csvGemeinsameFelder(row: CsvZeile): {
   menge: number;
   preis: number | null;
   erfasstAm: string | null;
   zustand: string;
 } {
-  const rohPreis = row.unit_price ?? row['Preis'] ?? '';
-  let preis: number | null = String(rohPreis).trim() !== ''
-    ? parseFloat(String(rohPreis).replace(',', '.')) : null;
-  if (preis !== null && isNaN(preis)) preis = null;
+  const rohPreis = row.unit_price ?? row.Preis ?? '';
+  let preis: number | null = String(rohPreis).trim() !== '' ? parseFloat(String(rohPreis).replace(',', '.')) : null;
+  if (preis !== null && Number.isNaN(preis)) preis = null;
   return {
-    menge: parseInt(String(row.quantity || row['Anzahl'] || '1').replace(/[^0-9]/g, '')) || 1,
+    menge: parseInt(String(row.quantity || row.Anzahl || '1').replace(/[^0-9]/g, ''), 10) || 1,
     preis,
-    erfasstAm: parseCsvDate(row.acquired_at || row['erfassungsdatum']),
-    zustand: (row.condition || row['zustand'] || '').trim().toUpperCase(),
+    erfasstAm: parseCsvDate(row.acquired_at || row.erfassungsdatum),
+    zustand: (row.condition || row.zustand || '').trim().toUpperCase(),
   };
 }
 
 /** `records` bleibt getrennt von `bereinigt`: `total` nennt die Zeilen der Datei. */
 export function csvZeilenAusAnfrage(text: string): {
-  records: any[]; bereinigt: any[]; uebersprungen: number[];
+  records: CsvZeile[];
+  bereinigt: CsvZeile[];
+  uebersprungen: number[];
 } {
   const gelesen = csvEinlesen(text);
   return {
@@ -155,19 +166,29 @@ export function csvZeilenAusAnfrage(text: string): {
 /** An einer Stelle, damit beide Oberflächen dieselben Felder bekommen. */
 /** Was jeder CSV-Import antwortet; `records` zählt nur. */
 export interface ImportZeilenErgebnis {
-  set_number?: string; action?: string; error?: string | null; isWarning?: boolean; success?: boolean;
+  set_number?: string;
+  action?: string;
+  error?: string | null;
+  isWarning?: boolean;
+  success?: boolean;
   [feld: string]: unknown;
 }
 export function csvImportBericht(d: {
-  added: number; updated: number; errors: number;
-  records: unknown[]; results: ImportZeilenErgebnis[]; uebersprungen: number[];
+  added: number;
+  updated: number;
+  errors: number;
+  records: unknown[];
+  results: ImportZeilenErgebnis[];
+  uebersprungen: number[];
 }) {
   return {
-    added: d.added, updated: d.updated, errors: d.errors,
-    total: d.records.length, results: d.results,
+    added: d.added,
+    updated: d.updated,
+    errors: d.errors,
+    total: d.records.length,
+    results: d.results,
     skipped: d.uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(d.uebersprungen) || undefined,
   };
 }
 export type CsvImportBericht = ReturnType<typeof csvImportBericht>;
-

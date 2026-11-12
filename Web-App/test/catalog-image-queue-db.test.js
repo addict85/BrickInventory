@@ -11,16 +11,21 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // über ein spätes require(), das dieser Wrapper mitbekommt.
 let angestossen = 0;
 const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = echtesRequire.apply(this, arguments);
+Module.prototype.require = function (name, ...rest) {
+  const m = echtesRequire.call(this, name, ...rest);
   // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
+  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
     return new Proxy(m, {
-      get: (t, k) => k === 'downloadSetImage'
-        ? (async () => { angestossen++; await new Promise(r => setTimeout(r, 2)); return null; })
-        : t[k],
+      get: (t, k) =>
+        k === 'downloadSetImage'
+          ? async () => {
+              angestossen++;
+              await new Promise(r => setTimeout(r, 2));
+              return null;
+            }
+          : t[k],
     });
   }
   return m;
@@ -31,8 +36,8 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-test('die Katalogliste löst gar keine Bildarbeit aus', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('die Katalogliste löst gar keine Bildarbeit aus', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const NUTZER = `bq-${process.pid}`;
   await db.run(`CREATE TABLE IF NOT EXISTS rb_themes (id INT PRIMARY KEY, name TEXT, parent_id INT)`);
@@ -60,9 +65,12 @@ test('die Katalogliste löst gar keine Bildarbeit aus', { concurrency: 1 }, asyn
     await new Promise(r => setTimeout(r, 2500));
 
     // Aus dem Deckel wurde eine Null
-    assert.equal(angestossen, 0,
+    assert.equal(
+      angestossen,
+      0,
       `${angestossen} Bild-Aufträge aus der LISTE. Sie darf gar keine mehr ` +
-      'auslösen — jeder Aufruf von hier läuft an allen Drosselungen vorbei.');
+        'auslösen — jeder Aufruf von hier läuft an allen Drosselungen vorbei.',
+    );
   } finally {
     await db.run(`DELETE FROM rb_sets WHERE set_num LIKE 'BQ%'`).catch(() => {});
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});

@@ -4,45 +4,61 @@ import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../in
 /** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen. */
 
 // Der Ereignisbus schiebt den Stand ohne Polling an verbundene Ströme; /status bleibt als Rückfall.
-import EventEmitter from 'events';
+import EventEmitter from 'node:events';
 import { auftraegeBereich } from './prozess';
 export const csvImportBus = new EventEmitter();
 csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
 
 /** `isWarning` trennt „hat nicht geklappt" von „ist eine Anmerkung"; sonst
  * stünde jede Anmerkung als Fehler da. */
-export type ImportErgebnis = { success?: boolean; isWarning?: boolean; [k: string]: any };
+export type ImportErgebnis = {
+  success?: boolean;
+  isWarning?: boolean;
+  vars?: Record<string, string | number>;
+  [k: string]: unknown;
+};
 
-type ImportAuftrag = {
-  status?: string | null;
-  total?: number | null;
-  done?: number | null;
-  current?: string | null;
-  error?: string | null;
-  results?: ImportErgebnis[] | null;
-  updated_at?: Date | string | null;
-} | null | undefined;
+type ImportAuftrag =
+  | {
+      status?: string | null;
+      total?: number | null;
+      done?: number | null;
+      current?: string | null;
+      error?: string | null;
+      results?: ImportErgebnis[] | null;
+      updated_at?: Date | string | null;
+    }
+  | null
+  | undefined;
 
-export function buildJobStatus(job: ImportAuftrag, req?: { headers?: Record<string, unknown> }, sprache: Sprache = antwortSprache(req)) {
-  if (!job || !job.status) {
-    return { success: false, code: 'kein_import_laeuft',
-             error: fehlerText('kein_import_laeuft', sprache) };
+export function buildJobStatus(
+  job: ImportAuftrag,
+  req?: { headers?: Record<string, unknown> },
+  sprache: Sprache = antwortSprache(req),
+) {
+  if (!job?.status) {
+    return { success: false, code: 'kein_import_laeuft', error: fehlerText('kein_import_laeuft', sprache) };
   }
   const results = (Array.isArray(job.results) ? job.results : []).map((r: ImportErgebnis) =>
-    r.code ? { ...r, error: fehlerText(r.code as FehlerCode, sprache, r.vars) } : r);
+    r.code ? { ...r, error: fehlerText(r.code as FehlerCode, sprache, r.vars) } : r,
+  );
   // Ein Set, das der Katalog nicht kennt, ist gebucht, aber eine Warnung wert: Grün hiesse „alles bekannt“.
-  const ok   = results.filter((r: ImportErgebnis)=>r.success && !r.katalog_offen).length;
-  const err  = results.filter((r: ImportErgebnis)=>!r.success && !r.isWarning).length;
-  const warn = results.filter((r: ImportErgebnis)=>(!r.success && r.isWarning) || (r.success && r.katalog_offen)).length;
+  const ok = results.filter((r: ImportErgebnis) => r.success && !r.katalog_offen).length;
+  const err = results.filter((r: ImportErgebnis) => !r.success && !r.isWarning).length;
+  const warn = results.filter(
+    (r: ImportErgebnis) => (!r.success && r.isWarning) || (r.success && r.katalog_offen),
+  ).length;
   return {
     success: true,
-    status:  job.status,
-    total:   job.total  || 0,
-    done:    job.done   || 0,
+    status: job.status,
+    total: job.total || 0,
+    done: job.done || 0,
     current: job.current || null,
-    ok, err, warn,
+    ok,
+    err,
+    warn,
     results,
-    error:   job.error  || null,
+    error: job.error || null,
     ...(job.updated_at ? { beendet_am: new Date(job.updated_at).toISOString() } : {}),
   };
 }
@@ -52,9 +68,13 @@ export async function emitJobStatus(userId: number) {
     const job = await jobGet(userId);
     // Ohne Request ist die Sprache des Empfängers unbekannt; `code` reist mit.
     csvImportBus.emit(`progress:${userId}`, buildJobStatus(job));
-  } catch (_) { /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */ }
+  } catch (_) {
+    /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */
+  }
   // Der Bus ist prozesslokal, der Import läuft im Job-Prozess: NOTIFY trägt den Stand in den Web-Prozess.
-  auftraegeBereich().db.benachrichtigung.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
+  auftraegeBereich()
+    .db.benachrichtigung.notify('csv_import_progress', String(userId))
+    .catch(logAndContinue('import-auftrag:notify'));
 }
 
 export const VERWAIST_MIN = 10;
@@ -80,8 +100,10 @@ export async function jobUpdate(userId: number, fields: Record<string, unknown>,
 
 /** Nach einem Neustart auch dann, wenn die Zeile als verwaist markiert wurde;
  * abgebrochen oder abgelöst bleibt sie (dann: null). */
-export async function setzeImportFort(userId: number, lauf: string):
-    Promise<{ results: ImportErgebnis[]; current: string | null } | null> {
+export async function setzeImportFort(
+  userId: number,
+  lauf: string,
+): Promise<{ results: ImportErgebnis[]; current: string | null } | null> {
   const z = await auftraegeBereich().importStand.setzeLaufFort(userId, lauf);
   return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;
 }
@@ -93,12 +115,15 @@ const MELDE_ABSTAND_MS = 300;
 /** `false`, wenn schon ein Auftrag LÄUFT: Der Balken bleibt bei dem, der zuerst
  * da war; der Import läuft trotzdem. */
 export async function starteAuftrag(
-  userId: number, angaben: { total: number; current?: string | null },
+  userId: number,
+  angaben: { total: number; current?: string | null },
 ): Promise<boolean> {
   // Scheitert das Lesen, wird NICHT gestartet: Einen fremden Import im Zweifel
   // zu überschreiben ist der teurere Fehler.
-  const laufend = await jobGet(userId)
-    .catch((e) => { meldeFehler('import-auftrag:stand lesen', e); return { status: 'running' }; });
+  const laufend = await jobGet(userId).catch(e => {
+    meldeFehler('import-auftrag:stand lesen', e);
+    return { status: 'running' };
+  });
   if (laufend && (laufend.status === 'running' || laufend.status === 'pending')) return false;
   await jobSet(userId, {
     status: 'running',
@@ -154,9 +179,11 @@ export async function beendeAuftrag(
 
 // Ohne diese Frage hätte der Balken ein Kreuz, das lügt; auch eine fehlende Zeile heisst abgebrochen.
 export async function istAbgebrochen(userId: number): Promise<boolean> {
-  const stand = await jobGet(userId)
-    .catch((e) => { meldeFehler('import-auftrag:abbruch pruefen', e); return null; });
-  return !stand || stand.status !== 'running';
+  const stand = await jobGet(userId).catch(e => {
+    meldeFehler('import-auftrag:abbruch pruefen', e);
+    return null;
+  });
+  return stand?.status !== 'running';
 }
 
 /** Weckt, wenn ein anderer Prozess den Stand eines Kontos schrieb; gibt das Abmelden zurück. */

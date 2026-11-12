@@ -14,7 +14,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const Module = /** @type {{ _load: (anfrage: string, ...rest: unknown[]) => unknown }} */ (/** @type {unknown} */ (require('node:module')));
+const Module = /** @type {{ _load: (anfrage: string, ...rest: unknown[]) => unknown }} */ (
+  /** @type {unknown} */ (require('node:module'))
+);
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
@@ -28,9 +30,16 @@ async function lege(name) {
   fs.mkdirSync(ordner, { recursive: true });
   const datei = path.join(ordner, `${name}.png`);
   await sharp({ create: { width: 300, height: 200, channels: 4, background: { r: 10, g: 200, b: 10, alpha: 0 } } })
-    .png().toFile(datei);
-  return { web: `/images/sets/${name}.png`, vorschau: path.join(ordner, `${name}_thumb.jpg`),
-    weg: () => { fs.rmSync(datei, { force: true }); fs.rmSync(path.join(ordner, `${name}_thumb.jpg`), { force: true }); } };
+    .png()
+    .toFile(datei);
+  return {
+    web: `/images/sets/${name}.png`,
+    vorschau: path.join(ordner, `${name}_thumb.jpg`),
+    weg: () => {
+      fs.rmSync(datei, { force: true });
+      fs.rmSync(path.join(ordner, `${name}_thumb.jpg`), { force: true });
+    },
+  };
 }
 
 async function pruefeVorschau(datei) {
@@ -45,7 +54,9 @@ test('sharp: 200 × 200, mittig zugeschnitten, Transparenz auf Weiss', async () 
   try {
     assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));
     await pruefeVorschau(b.vorschau);
-  } finally { b.weg(); }
+  } finally {
+    b.weg();
+  }
 });
 
 test('ohne sharp rechnet Jimp dieselbe Vorschau', async () => {
@@ -60,11 +71,19 @@ test('ohne sharp rechnet Jimp dieselbe Vorschau', async () => {
   console.warn = (...a) => warnungen.push(a.join(' '));
   try {
     assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));
-  } finally { Module._load = laden; console.warn = warn; }
+  } finally {
+    Module._load = laden;
+    console.warn = warn;
+  }
   try {
     await pruefeVorschau(b.vorschau);
-    assert.ok(warnungen.some(w => /sharp nicht verfügbar.*Jimp/.test(w)), warnungen.join('\n'));
-  } finally { b.weg(); }
+    assert.ok(
+      warnungen.some(w => /sharp nicht verfügbar.*Jimp/.test(w)),
+      warnungen.join('\n'),
+    );
+  } finally {
+    b.weg();
+  }
 });
 
 test('sharp und Jimp sind als Abhängigkeiten eingetragen', () => {

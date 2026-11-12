@@ -26,13 +26,17 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-test('Design je Konto', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Design je Konto', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const namen = [`design_a_${process.pid}`, `design_b_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
-  for (const n of namen) ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', true) RETURNING id`, [n])).id);
+  for (const n of namen)
+    ids.push(
+      (await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', true) RETURNING id`, [n]))
+        .id,
+    );
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
   await setGlobalSetting('app_theme', 'noppe');
@@ -47,8 +51,16 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
   const hole = async (pfad, o = {}) => (await fetch(base + '/api/v1/settings' + pfad, o)).json();
-  const setze = (theme) => hole('/user/theme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme }) });
-  const als = (uid) => { if (uid) sitzung.userId = uid; else delete sitzung.userId; };
+  const setze = theme =>
+    hole('/user/theme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme }),
+    });
+  const als = uid => {
+    if (uid) sitzung.userId = uid;
+    else delete sitzung.userId;
+  };
 
   await t.test('ohne Anmeldung: die Vorgabe', async () => {
     als(null);
@@ -60,7 +72,11 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
     const r = await setze('werkbank');
     assert.equal(r.success, true, JSON.stringify(r));
     assert.deepEqual(await hole('/theme'), { success: true, theme: 'werkbank', vorgabe: 'noppe', eigenes: 'werkbank' });
-    assert.equal((await hole('/raw')).settings.app_theme, 'werkbank', '/settings/raw nennt nicht das Design des Kontos');
+    assert.equal(
+      (await hole('/raw')).settings.app_theme,
+      'werkbank',
+      '/settings/raw nennt nicht das Design des Kontos',
+    );
     als(ids[1]);
     assert.equal((await hole('/theme')).theme, 'noppe');
     assert.equal((await hole('/raw')).settings.app_theme, 'noppe');
@@ -83,7 +99,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
 
   await t.test('index.html: Design des Kontos, ohne Konto die Vorgabe', async () => {
     const { renderIndexHtml } = _req('src/konto/indexHtml.js');
-    const designVon = (html) => /<html[^>]*\sdata-theme="([^"]+)"/.exec(html)?.[1];
+    const designVon = html => /<html[^>]*\sdata-theme="([^"]+)"/.exec(html)?.[1];
     assert.equal(designVon(await renderIndexHtml(ids[0])), 'werkbank');
     assert.equal(designVon(await renderIndexHtml(ids[1])), 'noppe');
     assert.equal(designVon(await renderIndexHtml()), 'noppe');

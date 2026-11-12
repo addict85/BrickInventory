@@ -16,6 +16,7 @@ export function belegeKontoPlatz(art: Schranke, konto: number): (() => void) | n
     if (frei) return;
     frei = true;
     const rest = (offen.get(schluessel) ?? 1) - 1;
-    if (rest > 0) offen.set(schluessel, rest); else offen.delete(schluessel);
+    if (rest > 0) offen.set(schluessel, rest);
+    else offen.delete(schluessel);
   };
 }

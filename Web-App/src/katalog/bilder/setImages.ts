@@ -1,7 +1,7 @@
 import { fehlertext } from '../../infra/fehler';
 import { konfig } from '../../infra/konfig';
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 import { AbrufFehler } from '../../infra/abruf';
 import { holeBild, BILD_KOPFZEILEN } from '../quellen';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';

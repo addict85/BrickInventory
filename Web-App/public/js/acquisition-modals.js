@@ -14,7 +14,15 @@ import { confirmDelete } from './rueckfrage.js';
 import { acqSummary, summenText, umgerechnetText, kurzfassung } from './kaufpreis-anzeige.js';
 export { erfassungsPreis, renderAcquisitionSummary } from './kaufpreis-anzeige.js';
 import { renderMarketRows } from './diagramme.js';
-import { erfassung, gespeichert, setzeMitFokus, isoTag, datumFeld, gespeichertMarke, zeigeGespeichert } from './erfassung-zustand.js';
+import {
+  erfassung,
+  gespeichert,
+  setzeMitFokus,
+  isoTag,
+  datumFeld,
+  gespeichertMarke,
+  zeigeGespeichert,
+} from './erfassung-zustand.js';
 // Kaufpreis-Modal und Detailfenster für manuelle Einträge: Beides ist Erfassung, keine Administration, und
 // gehört deshalb nicht nach admin.js.
 /** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} Konto */
@@ -30,7 +38,10 @@ export function openAcqModal(sn) {
   // Header
   G('acq-modal-tit').textContent = tRaw('detail.purchase_price');
   G('acq-modal-sub').textContent = sn + (curSet?.name ? ' – ' + curSet.name : '');
-  setzeHtml(G('acq-modal-body'), html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('common.loading')}</div>`);
+  setzeHtml(
+    G('acq-modal-body'),
+    html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('common.loading')}</div>`,
+  );
   G('set-modal').classList.remove('open');
   gespeichert.clear();
   G('acq-modal').classList.add('open');
@@ -41,7 +52,6 @@ export function openAcqModal(sn) {
 // für Set und manuellen Eintrag.
 G('acq-modal').addEventListener('click', e => e.target === e.currentTarget && closeAcqModal());
 
-
 /**
  * Summe nach jedem Speichern nachziehen: Sie stand bis zum erneuten Öffnen auf dem alten Wert.
  * @param {string} sn
@@ -49,11 +59,15 @@ G('acq-modal').addEventListener('click', e => e.target === e.currentTarget && cl
 async function aktualisiereSumme(sn) {
   const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
   if (!ad?.success || erfassung.sn !== sn) return;
-  const preis = G('acq-total-price'), menge = G('acq-total-qty');
+  const preis = G('acq-total-price'),
+    menge = G('acq-total-qty');
   if (preis) preis.textContent = summenText(ad.totals);
   if (menge) menge.textContent = String(ad.totals?.quantity ?? 0);
   const hinweis = G('acq-summe-hinweis');
-  if (hinweis) { hinweis.hidden = !ad.totals?.ohne_kurs; hinweis.textContent = ad.totals?.ohne_kurs ? tRaw('acq.ohne_kurs', { n: ad.totals.ohne_kurs }) : ''; }
+  if (hinweis) {
+    hinweis.hidden = !ad.totals?.ohne_kurs;
+    hinweis.textContent = ad.totals?.ohne_kurs ? tRaw('acq.ohne_kurs', { n: ad.totals.ohne_kurs }) : '';
+  }
   for (const a of ad.acquisitions || []) {
     const um = G(`acq-um-${a.id}`);
     if (um) um.textContent = umgerechnetText(a, ad.totals);
@@ -64,7 +78,7 @@ async function aktualisiereSumme(sn) {
  * @param {string} sn
  */
 async function loadAcqModal(sn) {
-  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`).catch(()=>null);
+  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`).catch(() => null);
   const acqs = ad?.acquisitions || [];
   if (!erfassung.mitglieder.length) {
     const hm = await api('GET', '/v1/sets/household-members').catch(() => null);
@@ -81,7 +95,10 @@ async function loadAcqModal(sn) {
  */
 export function renderAcqModalBody(sn, acqs, totals) {
   if (!acqs.length) {
-    setzeHtml(G('acq-modal-body'), html`<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`);
+    setzeHtml(
+      G('acq-modal-body'),
+      html`<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`,
+    );
     return;
   }
   let markup = html`<div class="tw"><table class="dt acq-tabelle" aria-label="${tRaw('detail.purchase_price')}">
@@ -108,8 +125,8 @@ export function renderAcqModalBody(sn, acqs, totals) {
       <td>${datumFeld(`id="acq-datum-feld-${a.id}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"`, dateIso, `acq-datum-${a.id}`)}</td>
       <td>
         <select class="acq-feld" aria-label="${tRaw('common.condition')}" data-change="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="cond" data-val="1">
-          <option value="N" ${a.condition!=='U' ? 'selected' : ''}>${tRaw('common.condition_new')}</option>
-          <option value="U" ${a.condition==='U' ? 'selected' : ''}>${tRaw('common.condition_used')}</option>
+          <option value="N" ${a.condition !== 'U' ? 'selected' : ''}>${tRaw('common.condition_new')}</option>
+          <option value="U" ${a.condition === 'U' ? 'selected' : ''}>${tRaw('common.condition_used')}</option>
         </select>
       </td>
       <td class="zahl">
@@ -118,11 +135,15 @@ export function renderAcqModalBody(sn, acqs, totals) {
           data-keydown="blurOnEnter" /><span class="acq-waehrung" aria-hidden="true">${a.currency || totals?.currency || CURRENCY}</span></span>
         <span class="acq-umgerechnet" id="acq-um-${a.id}">${umgerechnetText(a, totals)}</span>
       </td>
-      ${erfassung.mitglieder.length > 1 ? html`<td>
+      ${
+        erfassung.mitglieder.length > 1
+          ? html`<td>
         <select class="acq-feld" aria-label="${tRaw('household.owner')}" data-change="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="owner" data-val="1">
           ${erfassung.mitglieder.map(m => html`<option value="${m.id}"${m.id === (a.owner_user_id ?? erfassung.besitzer) ? ' selected' : ''}>${m.username}</option>`)}
         </select>
-      </td>` : ''}
+      </td>`
+          : ''
+      }
       <td class="acq-aktion">
         ${gespeichertMarke(a.id)}
         <button class="acq-loeschen" data-click="acqDelete"${echt()} data-arg="${sn}" data-arg2="${a.id}"
@@ -155,27 +176,40 @@ async function acqSave(sn, id, field, value) {
     if (!preis.ok) return;
     body.purchase_price = preis.wert;
   } else if (field === 'qty') {
-    const menge = mengeAusFeld(`acq-menge-${id}`); if (!menge.ok) return; body.quantity = menge.wert;
+    const menge = mengeAusFeld(`acq-menge-${id}`);
+    if (!menge.ok) return;
+    body.quantity = menge.wert;
   } else if (field === 'date') {
     if (!kaufdatumGueltig(`acq-datum-feld-${id}`)) return;
     body.date = value;
   } else if (field === 'owner') {
     // Eigentümerwechsel verschiebt genau diese Kaufpreis-Zeile, ohne from_user_id: Den Absender kennt der
     // Server aus der Zeile. Mit dem Betrachter als Absender fand er Zeilen von Unterkonten nicht (404).
-    body.owner_user_id = parseInt(value);
+    body.owner_user_id = parseInt(value, 10);
   } else {
     body.condition = value;
   }
   const d = await api('PUT', `/v1/sets/${sn}/acquisitions/${id}`, body);
   if (field === 'owner') {
-    if (!d.success) { toast(d.error || t('settings.error'), 'error'); loadAcqModal(sn); return; }
+    if (!d.success) {
+      toast(d.error || t('settings.error'), 'error');
+      loadAcqModal(sn);
+      return;
+    }
     // Nach einem Wechsel stimmt fast alles auf dem Schirm nicht mehr: Mengen, Summen, Besitzer-Plaketten.
     // Lieber neu laden als vier Stellen einzeln nachziehen.
-    toast(tRaw(d.source_emptied ? 'household.move_ok' : 'household.owner_moved',
-      { parts: d.parts ?? 0, figs: d.minifigs ?? 0 }), 'success');
+    toast(
+      tRaw(d.source_emptied ? 'household.move_ok' : 'household.owner_moved', {
+        parts: d.parts ?? 0,
+        figs: d.minifigs ?? 0,
+      }),
+      'success',
+    );
     // restore: Ohne das landet der Nutzer nach dem Wechsel wieder bei Seite 1; so bleiben Position und
     // geladene Tiefe erhalten.
-    closeAcqModal(); closeModal(); loadGallery({ restore: true });
+    closeAcqModal();
+    closeModal();
+    loadGallery({ restore: true });
     return;
   }
   // Der Server liefert das neu berechnete Zustands-Aggregat mit — direkt in die Galerie-Liste schreiben,
@@ -187,14 +221,19 @@ async function acqSave(sn, id, field, value) {
     return;
   }
   zeigeGespeichert(id);
-  if (field === 'price') { const f = G(`acq-preis-${id}`); if (f && f !== document.activeElement) f.value = betragFuerFeld(body.purchase_price); }
+  if (field === 'price') {
+    const f = G(`acq-preis-${id}`);
+    if (f && f !== document.activeElement) f.value = betragFuerFeld(body.purchase_price);
+  }
   aktualisiereSumme(sn);
   // Marktpreis-Zeilen neu holen.
   //
   // Wird erstmals ein Kaufpreis in einem Zustand erfasst, entsteht dafür eine NEUE Zeile (der Server liefert
   // by_condition nur für Zustände mit Erfassung). Ohne dieses Nachladen erschiene sie erst beim nächsten
   // Öffnen des Dialogs.
-  api('GET', `/v1/sets/${sn}/price-history`).then(renderMarketRows).catch(()=>{});
+  api('GET', `/v1/sets/${sn}/price-history`)
+    .then(renderMarketRows)
+    .catch(() => {});
 
   // Galerie und Finanzen mitziehen: Kaufpreis und Menge wirken auf die Kachel und die Auswertung, die sonst
   // bis zum Neuladen alt blieben. restore, damit der Wechsel nicht die gescrollte Tiefe kostet.
@@ -204,12 +243,14 @@ async function acqSave(sn, id, field, value) {
   // Datum geändert → Reihenfolge/Summary neu laden
   if (field === 'date') {
     loadAcqModal(sn);
-    api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
-      if (ad?.success && curSet?.set_number === sn) {
-        const summaryEl = G('m-acq-summary');
-        if (summaryEl) setzeHtml(summaryEl, kurzfassung(ad.acquisitions, sn));
-      }
-    }).catch(()=>{});
+    api('GET', `/v1/sets/${sn}/acquisitions`)
+      .then(ad => {
+        if (ad?.success && curSet?.set_number === sn) {
+          const summaryEl = G('m-acq-summary');
+          if (summaryEl) setzeHtml(summaryEl, kurzfassung(ad.acquisitions, sn));
+        }
+      })
+      .catch(() => {});
     return;
   }
   // War der Preis leer, hat der Server den Marktpreis geholt; neu laden, um ihn zu zeigen
@@ -220,22 +261,26 @@ async function acqSave(sn, id, field, value) {
   // Zusammenfassung im Detail-Dialog nachziehen. Das Zustands-Aggregat kommt inzwischen aus der PUT-Antwort
   // (applySetAggregate oben) — hier wird nur noch die Erfassungsliste neu gerendert.
   if (field === 'cond') {
-    api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
-      if (!ad?.success) return;
-      const sumEl = G('m-acq-summary');
-      if (sumEl) setzeHtml(sumEl, kurzfassung(ad.acquisitions, sn));
-    }).catch(()=>{});
+    api('GET', `/v1/sets/${sn}/acquisitions`)
+      .then(ad => {
+        if (!ad?.success) return;
+        const sumEl = G('m-acq-summary');
+        if (sumEl) setzeHtml(sumEl, kurzfassung(ad.acquisitions, sn));
+      })
+      .catch(() => {});
   }
   // Menge geändert: ganzen Dialog neu laden (Zusammenfassung, Menge im Set-Detail)
   if (field === 'qty') {
     loadAcqModal(sn);
     // Auch die Zusammenfassung im Set-Detail auffrischen
-    api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
-      if (ad.success && curSet?.set_number === sn) {
-        const summaryEl = G('m-acq-summary');
-        if (summaryEl) setzeHtml(summaryEl, kurzfassung(ad.acquisitions, sn));
-      }
-    }).catch(()=>{});
+    api('GET', `/v1/sets/${sn}/acquisitions`)
+      .then(ad => {
+        if (ad.success && curSet?.set_number === sn) {
+          const summaryEl = G('m-acq-summary');
+          if (summaryEl) setzeHtml(summaryEl, kurzfassung(ad.acquisitions, sn));
+        }
+      })
+      .catch(() => {});
     return;
   }
 }
@@ -245,9 +290,12 @@ async function acqSave(sn, id, field, value) {
  * @param {string} id
  */
 async function acqDelete(sn, id) {
-  if (!await confirmDelete(tRaw('acq.delete_title'), tRaw('acq.delete_text'), 'loeschen')) return;
+  if (!(await confirmDelete(tRaw('acq.delete_title'), tRaw('acq.delete_text'), 'loeschen'))) return;
   const d = await api('DELETE', `/v1/sets/${sn}/acquisitions/${id}`);
-  if (!d.success) { toast(tRaw('settings.error'), 'error'); return; }
+  if (!d.success) {
+    toast(tRaw('settings.error'), 'error');
+    return;
+  }
   // curSet und das Mengenfeld im Set-Detail nachführen
   if (curSet?.set_number === sn) {
     curSet.quantity = /** @type {number} */ (d.new_quantity);
@@ -255,15 +303,20 @@ async function acqDelete(sn, id) {
     if (qEl) qEl.value = String(d.new_quantity);
   }
   // Erfassungsdialog neu laden
-  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`).catch(()=>null);
-  if (!ad?.acquisitions?.length) { closeAcqModal(); return; }
+  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`).catch(() => null);
+  if (!ad?.acquisitions?.length) {
+    closeAcqModal();
+    return;
+  }
   renderAcqModalBody(sn, ad.acquisitions, ad.totals);
   // Kurzübersicht im Set-Detail auffrischen
   const dvEl = G('m-acq-summary');
   if (dvEl) setzeHtml(dvEl, kurzfassung(ad.acquisitions, sn));
   // Wie in acqSave(): Eine gelöschte Erfassung verändert Bestand und Wert — und lässt eine Zustands-Zeile
   // verschwinden, wenn es die letzte war.
-  api('GET', `/v1/sets/${sn}/price-history`).then(renderMarketRows).catch(()=>{});
+  api('GET', `/v1/sets/${sn}/price-history`)
+    .then(renderMarketRows)
+    .catch(() => {});
   loadGallery({ restore: true });
   loadFinance();
 }
@@ -277,19 +330,28 @@ export function closeAcqModal() {
   } else if (erfassung.sn) {
     const sn = erfassung.sn;
     G('set-modal').classList.add('open');
-    api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
-      if (!ad?.success) return;
-      const sumEl = G('m-acq-summary');
-      // Der Neuaufbau ersetzt den Knopf, auf den die Dialogverwaltung den Fokus zurückgab; ohne das stünde
-      // er danach auf der Dialogfläche.
-      const aktiv = document.activeElement;
-      const hatteFokus = !aktiv || aktiv === document.body || !!sumEl?.contains(aktiv) || aktiv.matches('#set-modal > .modal');
-      if (sumEl) setzeHtml(sumEl, kurzfassung(ad.acquisitions, sn));
-      if (hatteFokus) /** @type {HTMLElement | null} */ (sumEl?.querySelector('[data-click="openAcqModal"]'))?.focus({ preventScroll: true });
-      const total = ad.totals?.quantity ?? 0;
-      const qEl = G('m-qty');
-      if (qEl && total > 0) { qEl.value = String(total); if(curSet) curSet.quantity = total; }
-    }).catch(()=>{});
+    api('GET', `/v1/sets/${sn}/acquisitions`)
+      .then(ad => {
+        if (!ad?.success) return;
+        const sumEl = G('m-acq-summary');
+        // Der Neuaufbau ersetzt den Knopf, auf den die Dialogverwaltung den Fokus zurückgab; ohne das stünde
+        // er danach auf der Dialogfläche.
+        const aktiv = document.activeElement;
+        const hatteFokus =
+          !aktiv || aktiv === document.body || !!sumEl?.contains(aktiv) || aktiv.matches('#set-modal > .modal');
+        if (sumEl) setzeHtml(sumEl, kurzfassung(ad.acquisitions, sn));
+        if (hatteFokus)
+          /** @type {HTMLElement | null} */ (sumEl?.querySelector('[data-click="openAcqModal"]'))?.focus({
+            preventScroll: true,
+          });
+        const total = ad.totals?.quantity ?? 0;
+        const qEl = G('m-qty');
+        if (qEl && total > 0) {
+          qEl.value = String(total);
+          if (curSet) curSet.quantity = total;
+        }
+      })
+      .catch(() => {});
   }
 }
 

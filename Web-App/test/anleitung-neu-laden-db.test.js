@@ -22,9 +22,9 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
+const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
@@ -40,22 +40,35 @@ const echt = _req('src/katalog/instructions.js');
 require.cache[anlPfad].exports = Object.assign({}, echt, { downloadSetInstructions: async () => [] });
 
 const db = _req('db/database.js');
-const SET = '99072-1', URL_A = 'https://quelle.example/99072.pdf';
+const SET = '99072-1',
+  URL_A = 'https://quelle.example/99072.pdf';
 const NAMEN = ['anl_halter', 'anl_fremd'].map(n => `${n}_${process.pid}`);
 
-test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Anleitungen neu laden', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
   for (const n of NAMEN)
-    ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                            VALUES ($1, 'x', true, true) RETURNING id`, [n])).id);
+    ids.push(
+      (
+        await db.get(
+          `INSERT INTO users (username, password_hash, is_active, email_verified)
+                            VALUES ($1, 'x', true, true) RETURNING id`,
+          [n],
+        )
+      ).id,
+    );
   await katalogSet(db, SET, { name: 'Anleitungsprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await haeltSet(db, ids[0], SET, 1);
-  const anleitung = () => db.run(`INSERT INTO shared_instructions (set_number, url) VALUES ($1, $2)
-                                  ON CONFLICT DO NOTHING`, [SET, URL_A]);
-  const vorhanden = async () => !!(await db.get('SELECT 1 AS ok FROM shared_instructions WHERE set_number = $1', [SET]));
+  const anleitung = () =>
+    db.run(
+      `INSERT INTO shared_instructions (set_number, url) VALUES ($1, $2)
+                                  ON CONFLICT DO NOTHING`,
+      [SET, URL_A],
+    );
+  const vorhanden = async () =>
+    !!(await db.get('SELECT 1 AS ok FROM shared_instructions WHERE set_number = $1', [SET]));
 
   const drossel = () => db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`anleitung-neu|${SET}`]);
   await drossel();
@@ -90,15 +103,19 @@ test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]);
     assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 202);
     assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 429);
-    await db.run(`UPDATE rate_limit_attempts SET first_at = NOW() - INTERVAL '25 hours' WHERE key = $1`, [`anleitung-neu|${SET}`]);
+    await db.run(`UPDATE rate_limit_attempts SET first_at = NOW() - INTERVAL '25 hours' WHERE key = $1`, [
+      `anleitung-neu|${SET}`,
+    ]);
     assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 202, 'nach einem Tag geht es wieder');
   });
 
   await t.test('der Verwalter ersetzt', async () => {
     await anleitung();
     assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 202);
-    assert.ok(!await vorhanden(), 'der Verwalter hat die alte Zeile nicht ersetzt');
-    const auftrag = await db.get(`SELECT status FROM auftraege WHERE art = 'anleitung' AND schluessel = $1`, [`anleitung:${SET}`]);
+    assert.ok(!(await vorhanden()), 'der Verwalter hat die alte Zeile nicht ersetzt');
+    const auftrag = await db.get(`SELECT status FROM auftraege WHERE art = 'anleitung' AND schluessel = $1`, [
+      `anleitung:${SET}`,
+    ]);
     assert.equal(auftrag?.status, 'offen', 'das Neuladen steht als Auftrag an');
     await anleitung();
     assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 202, 'den Verwalter hält die Drossel nicht');

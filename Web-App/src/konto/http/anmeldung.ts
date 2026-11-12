@@ -5,8 +5,13 @@ import { pruefeToken, rotationFaellig, type TokenPruefung } from '../geraeteToke
 import { pruefeAnmeldedaten, type AnmeldeErgebnis } from '../anmeldepruefung';
 import { begrenzeSitzungen } from '../zugangsende';
 import { zaehleAnfrage } from '../loginLimiter';
-import { pruefeBestaetigung, pruefeCodeBestaetigung, type BestaetigungsAbsage, type Faktor } from '../passwortBestaetigung';
-import { createHash } from 'crypto';
+import {
+  pruefeBestaetigung,
+  pruefeCodeBestaetigung,
+  type BestaetigungsAbsage,
+  type Faktor,
+} from '../passwortBestaetigung';
+import { createHash } from 'node:crypto';
 import { konfig } from '../../infra/konfig';
 import { routeZu } from '../../vertrag';
 import { fehlerText, antwortSprache } from '../../infra/fehlerTexte';
@@ -24,7 +29,7 @@ import { versuche } from '../../infra/ergebnis';
 export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
   const uid = nutzerId(req);
   const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
-  return uid !== null && verwalter && !await istAktiv(uid);
+  return uid !== null && verwalter && !(await istAktiv(uid));
 }
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
@@ -33,30 +38,52 @@ export function adresse(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
 
-export function anmelden(req: Request, username: string | null | undefined, password: string | null | undefined, code?: string | number | null | undefined,
-                         passkeyAntwort?: unknown): Promise<AnmeldeErgebnis> {
+export function anmelden(
+  req: Request,
+  username: string | null | undefined,
+  password: string | null | undefined,
+  code?: string | number | null | undefined,
+  passkeyAntwort?: unknown,
+): Promise<AnmeldeErgebnis> {
   return pruefeAnmeldedaten({ ip: adresse(req) }, username, password, code, passkeyAntwort);
 }
 
 /** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
  * Anfrage die neue ID schon kennt. */
-export async function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
-                                                       mussPasswortAendern?: boolean; passwortBestaetigtAm?: number }): Promise<void> {
+export async function establishSession(
+  req: Request,
+  data: {
+    userId: number;
+    username: string;
+    isAdmin: boolean;
+    mussPasswortAendern?: boolean;
+    passwortBestaetigtAm?: number;
+  },
+): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
-  const sitzungsVersion = await sitzungsVersionAusDb(data.userId)
-    .catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0)) ?? 0;
+  const sitzungsVersion =
+    (await sitzungsVersionAusDb(data.userId).catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0))) ??
+    0;
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {
       // Nur in Tests ohne express-session: Im Betrieb steht die Middleware davor.
-      Object.assign(req.session || (req.session = {} as typeof req.session), data, { angemeldetAm: Date.now(), sitzungsVersion });
+      if (!req.session) req.session = {} as typeof req.session;
+      Object.assign(req.session, data, {
+        angemeldetAm: Date.now(),
+        sitzungsVersion,
+      });
       return resolve(undefined);
     }
     req.session.regenerate((err?: Error) => {
       if (err) return reject(err);
       Object.assign(req.session, data, { angemeldetAm: Date.now(), sitzungsVersion });
-      req.session.save((e2?: Error) => (e2 ? reject(e2)
-        : versuche('anmeldung:sitzungen-begrenzen', begrenzeSitzungen(data.userId, req.sessionID))
-          .then(() => resolve(undefined))));
+      req.session.save((e2?: Error) =>
+        e2
+          ? reject(e2)
+          : versuche('anmeldung:sitzungen-begrenzen', begrenzeSitzungen(data.userId, req.sessionID)).then(() =>
+              resolve(undefined),
+            ),
+      );
     });
   });
 }
@@ -67,7 +94,8 @@ export const PASSWORT_GNADENFRIST_MS = 5 * 60 * 1000;
 
 /** Nur mit Sitzung, nie mit Token, und nur einmal: Der Aufruf verbraucht die Frist. */
 export function gnadenfristVerbrauchen(req: Request): boolean {
-  const s = req.session, am = s?.passwortBestaetigtAm;
+  const s = req.session,
+    am = s?.passwortBestaetigtAm;
   if (!s?.userId || req.tokenUserId || typeof am !== 'number') return false;
   delete s.passwortBestaetigtAm;
   const alter = Date.now() - am;
@@ -81,8 +109,9 @@ export async function resolveUserId(req: Request): Promise<number | null> {
   const auth = req.headers.authorization || '';
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
-  const pruefung = await pruefeToken(token, { ip: req.ip })
-    .catch(meldeUndLiefere<TokenPruefung>('auth:validateToken', { nutzer: null }));
+  const pruefung = await pruefeToken(token, { ip: req.ip }).catch(
+    meldeUndLiefere<TokenPruefung>('auth:validateToken', { nutzer: null }),
+  );
   const user = pruefung.nutzer;
   if (pruefung.grund) req.tokenAbsage = pruefung.grund;
   // Der Hinweis reist mit jeder Antwort; die App tauscht dann von selbst.
@@ -108,10 +137,17 @@ export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
         }, opts.timeoutMs)
       : null;
     let uid: number | null = null;
-    try { uid = await resolveUserId(req); } catch (_) { uid = null; }
+    try {
+      uid = await resolveUserId(req);
+    } catch (_) {
+      uid = null;
+    }
     if (timer) clearTimeout(timer);
-    if (res.headersSent) return;               // Zeitlimit war schneller
-    if (uid) { req.tokenUserId = uid; return next(); }
+    if (res.headersSent) return; // Zeitlimit war schneller
+    if (uid) {
+      req.tokenUserId = uid;
+      return next();
+    }
     return sendeTokenAbsage(req, res);
   };
 }
@@ -140,8 +176,7 @@ export function istVerwalter(req: Request): boolean {
 export function ipThrottle(bucket: string, max: number, windowMs: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const st = await zaehleAnfrage(bucket, adresse(req), windowMs);
-    if (st.count > max)
-      return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: st.waitMin });
+    if (st.count > max) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: st.waitMin });
     next();
   };
 }
@@ -149,34 +184,55 @@ export function ipThrottle(bucket: string, max: number, windowMs: number) {
 /** Bremsschlüssel des Zugangs: die Sitzung (gehasht, die ID ist ein Geheimnis)
  * oder die Token-Familie; `created_at` erbt jeder Nachfolger beim Tausch. */
 export function zugangVon(req: Request): string {
-  if (req.session?.userId) return `s:${createHash('sha256').update(String(req.sessionID ?? '')).digest('hex').slice(0, 16)}`;
+  if (req.session?.userId)
+    return `s:${createHash('sha256')
+      .update(String(req.sessionID ?? ''))
+      .digest('hex')
+      .slice(0, 16)}`;
   const seit = req.apiUser?.created_at;
   return `t:${seit ? new Date(seit).getTime() : '?'}`;
 }
 
 function absagen(req: Request, res: Response, absage: BestaetigungsAbsage): void {
   const status = STATUS_DER_ART[absage.art];
-  if (!absage.passkey) return sendeFehler(req, res, status, absage.code, absage.vars);
-  res.status(status).json({ success: false, code: absage.code, passkey: true,
-    error: fehlerText(absage.code, antwortSprache(req), absage.vars) });
+  if (!absage.passkey) {
+    sendeFehler(req, res, status, absage.code, absage.vars);
+    return;
+  }
+  res.status(status).json({
+    success: false,
+    code: absage.code,
+    passkey: true,
+    error: fehlerText(absage.code, antwortSprache(req), absage.vars),
+  });
 }
 
 /** Passwort, bei aktivem zweitem Faktor auch Code oder Passkey; nur für Routen
  * mit `bestaetigung` im Vertrag, die der Wächtertest einzeln prüft. */
-export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: string | null | undefined,
-                                          codeFeld = 'code'): Promise<boolean> {
+export async function bestaetigeMitFaktor(
+  req: Request,
+  res: Response,
+  uid: number,
+  passwort: string | null | undefined,
+  codeFeld = 'code',
+): Promise<boolean> {
   const schluessel = req.route ? `${req.method} ${req.baseUrl}${req.route.path}` : '';
   if (konfig().vertragPruefen && routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
     throw new Error(`${schluessel} bestätigt, ohne \`bestaetigung\` im Vertrag`);
   // Der geprüfte Rumpf (eingabePruefen): Felder der Bestätigung stehen im Vertrag (bestaetigt()).
-  const eingabe = ((req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {});
+  const eingabe = (req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {};
   const faktor = { code: eingabe[codeFeld], passkey: eingabe.passkey } as Faktor;
   const absage = await pruefeBestaetigung(uid, zugangVon(req), passwort, faktor);
   if (absage) absagen(req, res, absage);
   return !absage;
 }
 
-export async function bestaetigeCode(req: Request, res: Response, uid: number, code: string | number | null | undefined): Promise<boolean> {
+export async function bestaetigeCode(
+  req: Request,
+  res: Response,
+  uid: number,
+  code: string | number | null | undefined,
+): Promise<boolean> {
   const absage = await pruefeCodeBestaetigung(uid, zugangVon(req), code);
   if (absage) absagen(req, res, absage);
   return !absage;

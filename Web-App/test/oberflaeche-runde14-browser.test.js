@@ -31,34 +31,58 @@ const { starteApp, warte } = require('./helpers/app-browser');
 const { musterHaushalt, haeltTeil } = require('./helpers/bestand');
 const { buildAndRequire } = require('./helpers/sources');
 
-const klick = (sel) => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
-const text = (sel) => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
+const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
+const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 const offen = `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`;
-const rechteck = (sel) => `(() => { const r = document.querySelector(${JSON.stringify(sel)})?.getBoundingClientRect();
+const rechteck = sel => `(() => { const r = document.querySelector(${JSON.stringify(sel)})?.getBoundingClientRect();
   return r ? { l: Math.round(r.left), r: Math.round(r.right), o: Math.round(r.top), u: Math.round(r.bottom), b: Math.round(r.width) } : null; })()`;
 const schneiden = (a, b) => a.l < b.r && b.l < a.r && a.o < b.u && b.o < a.u;
 
-test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async (t) => {
-  const NAME = `r14_${process.pid}`, KIND = `${NAME}_kind`, WARTET = `${NAME}_wartet`;
-  const app = await starteApp(t, { name: NAME, bestand: async (db, uid) => {
-    await musterHaushalt(db, uid);
-    await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ('99901', 'Rätselteil', '999') ON CONFLICT DO NOTHING`);
-    await haeltTeil(db, uid, '99901', { setNumber: '10294-1', colorId: 0, menge: 3 });
-    await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ('99902', 'Kennstein', 'Bricks') ON CONFLICT DO NOTHING`);
-    await haeltTeil(db, uid, '99902', { setNumber: '10294-1', colorId: 0, menge: 2 });
-    await db.run(`INSERT INTO users (username, email_neu, password_hash, is_active, email_verified, registrierung_offen)
-      VALUES ($1, $2, 'x', true, false, true)`, [WARTET, `${WARTET}@example.org`]);
-  } });
-  if (app.grund) { t.skip(app.grund); return; }
+test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async t => {
+  const NAME = `r14_${process.pid}`,
+    KIND = `${NAME}_kind`,
+    WARTET = `${NAME}_wartet`;
+  const app = await starteApp(t, {
+    name: NAME,
+    bestand: async (db, uid) => {
+      await musterHaushalt(db, uid);
+      await db.run(
+        `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ('99901', 'Rätselteil', '999') ON CONFLICT DO NOTHING`,
+      );
+      await haeltTeil(db, uid, '99901', { setNumber: '10294-1', colorId: 0, menge: 3 });
+      await db.run(
+        `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ('99902', 'Kennstein', 'Bricks') ON CONFLICT DO NOTHING`,
+      );
+      await haeltTeil(db, uid, '99902', { setNumber: '10294-1', colorId: 0, menge: 2 });
+      await db.run(
+        `INSERT INTO users (username, email_neu, password_hash, is_active, email_verified, registrierung_offen)
+      VALUES ($1, $2, 'x', true, false, true)`,
+        [WARTET, `${WARTET}@example.org`],
+      );
+    },
+  });
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, db, port, uid, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
-  const smtpVorher = await db.all("SELECT key, value FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')");
+  const smtpVorher = await db.all(
+    "SELECT key, value FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')",
+  );
   await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')");
-  const geh = async (pfad) => { await b.auswerten(`location.hash = '#/${pfad}'; true`); await warte(400); };
-  const zu = async () => { await b.auswerten(klick('#cd-cancel')); await bis(`!(${offen})`, 'Dialog zu'); };
-  const telefon = (breite, hoehe) => b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 1, mobile: true });
-  const schrift = (prozent) => b.auswerten(`document.documentElement.style.fontSize = '${prozent}'; true`);
+  const geh = async pfad => {
+    await b.auswerten(`location.hash = '#/${pfad}'; true`);
+    await warte(400);
+  };
+  const zu = async () => {
+    await b.auswerten(klick('#cd-cancel'));
+    await bis(`!(${offen})`, 'Dialog zu');
+  };
+  const telefon = (breite, hoehe) =>
+    b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 1, mobile: true });
+  const schrift = prozent => b.auswerten(`document.documentElement.style.fontSize = '${prozent}'; true`);
 
   await telefon(390, 844);
 
@@ -69,10 +93,13 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
     try {
       await geh('merkliste');
       await bis(`!!document.querySelector('#mk-list .fehler-zustand')`, 'Fehlerzustand');
-      const z = await b.auswerten(`(() => { const f = document.querySelector('#mk-list .fehler-zustand').getBoundingClientRect();
+      const z =
+        await b.auswerten(`(() => { const f = document.querySelector('#mk-list .fehler-zustand').getBoundingClientRect();
         return { kasten: document.getElementById('mk-kasten').open, unterLeiste: f.top > document.querySelector('nav:not(.einst-nav)').getBoundingClientRect().top - 40 }; })()`);
       assert.deepEqual(z, { kasten: false, unterLeiste: false });
-    } finally { await b.auswerten(`window.fetch = window.__echtFetch; true`); }
+    } finally {
+      await b.auswerten(`window.fetch = window.__echtFetch; true`);
+    }
   });
 
   await t.test('Gutscheinkarte ruhig', async () => {
@@ -91,20 +118,38 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
     await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
     await schrift('200%');
     try {
-      await b.auswerten(`scrollTo(0, 0); true`); await warte(300);
+      await b.auswerten(`scrollTo(0, 0); true`);
+      await warte(300);
       const knopf = await b.auswerten(rechteck('#tab-gallery .knopf-schwebend'));
-      for (const sel of ['#gs', '#tab-gallery .brick-stats', '#tab-gallery .filter-knopf', '#tab-gallery h1 > span[data-i18n]'])
+      for (const sel of [
+        '#gs',
+        '#tab-gallery .brick-stats',
+        '#tab-gallery .filter-knopf',
+        '#tab-gallery h1 > span[data-i18n]',
+      ])
         assert.equal(schneiden(knopf, await b.auswerten(rechteck(sel))), false, `über ${sel}`);
-    } finally { await schrift(''); }
+    } finally {
+      await schrift('');
+    }
   });
 
   await t.test('Offline-Band: heute', async () => {
-    await b.tab('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    await b.tab('Network.emulateNetworkConditions', {
+      offline: true,
+      latency: 0,
+      downloadThroughput: -1,
+      uploadThroughput: -1,
+    });
     try {
       await bis(`!document.getElementById('offline-band').hidden`, 'Band');
       assert.match(await b.auswerten(text('#offline-band')), /seit heute, \d\d:\d\d\./);
     } finally {
-      await b.tab('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      await b.tab('Network.emulateNetworkConditions', {
+        offline: false,
+        latency: 0,
+        downloadThroughput: -1,
+        uploadThroughput: -1,
+      });
       await b.auswerten(`dispatchEvent(new Event('online')); true`);
     }
     await bis(`document.getElementById('offline-band').hidden`, 'wieder online', 100);
@@ -115,7 +160,10 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
 
   await t.test('Weitere Aktionen bei 320 px und 200 %', async () => {
     await geh('sammlung/set/10294-1');
-    await bis(`document.getElementById('set-modal').classList.contains('open') && !document.querySelector('#set-modal .skelett-zeile')`, 'Set-Dialog');
+    await bis(
+      `document.getElementById('set-modal').classList.contains('open') && !document.querySelector('#set-modal .skelett-zeile')`,
+      'Set-Dialog',
+    );
     await b.auswerten(klick('#set-modal .v-mehr > summary'));
     await bis(`document.querySelector('#set-modal .v-mehr').open`, 'Menü offen');
     const r = await b.auswerten(rechteck('#set-modal .v-mehr > .mehr-liste'));
@@ -124,9 +172,13 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
   });
 
   await t.test('Fokus nach Esc bei Direktaufruf', async () => {
-    for (const type of ['rawKeyDown', 'keyUp']) await b.tab('Input.dispatchKeyEvent', { type, key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    for (const type of ['rawKeyDown', 'keyUp'])
+      await b.tab('Input.dispatchKeyEvent', { type, key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'Dialog zu');
-    assert.equal(await b.auswerten(`document.activeElement?.closest('h1')?.dataset.tabTitle ?? document.activeElement?.tagName`), 'gallery');
+    assert.equal(
+      await b.auswerten(`document.activeElement?.closest('h1')?.dataset.tabTitle ?? document.activeElement?.tagName`),
+      'gallery',
+    );
   });
 
   await schrift('');
@@ -139,21 +191,33 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
     await b.auswerten(klick('[data-click="unlinkHousehold"]'));
     await bis(offen, 'Dialog');
     assert.equal(await b.auswerten(text('#cd-title')), `Verknüpfung mit „${KIND}“ lösen?`);
-    assert.match(await b.auswerten(text('#cd-msg')), new RegExp(`Sammlung von „${KIND}“ danach nicht mehr.*zwischen den Konten verschoben habt`));
+    assert.match(
+      await b.auswerten(text('#cd-msg')),
+      new RegExp(`Sammlung von „${KIND}“ danach nicht mehr.*zwischen den Konten verschoben habt`),
+    );
     await zu();
   });
 
   await t.test('Verwaltung: wartendes Konto, Schalter ohne Mail', async () => {
     await geh('einstellungen/benutzer');
-    await bis(`!!document.querySelector('#users-tbl tbody tr') && !document.getElementById('reg-mail-hinweis').hidden`, 'Benutzerliste');
-    const z = await b.auswerten(`(() => { const zeile = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)}));
+    await bis(
+      `!!document.querySelector('#users-tbl tbody tr') && !document.getElementById('reg-mail-hinweis').hidden`,
+      'Benutzerliste',
+    );
+    const z =
+      await b.auswerten(`(() => { const zeile = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)}));
       const tabelle = document.getElementById('users-tbl').innerText;
       return { wartet: /wartet auf Bestätigung/.test(zeile.textContent), knopf: !!zeile.querySelector('[data-click="kontoFreischalten"]'),
         verwalter: /Verwalter/.test(tabelle), admin: /\\bAdmin/.test(tabelle), schalter: document.getElementById('reg-enabled').disabled,
         hinweis: document.getElementById('reg-mail-hinweis').textContent }; })()`);
-    assert.deepEqual({ ...z, hinweis: /E-Mail-Versand/.test(z.hinweis) }, { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hinweis: true });
+    assert.deepEqual(
+      { ...z, hinweis: /E-Mail-Versand/.test(z.hinweis) },
+      { wartet: true, knopf: true, verwalter: true, admin: false, schalter: true, hinweis: true },
+    );
     assert.match(await b.auswerten(text('#ubadge')), new RegExp(`${NAME} \\(Verwalter\\)`));
-    await b.auswerten(`[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)})).querySelector('[data-click="kontoFreischalten"]').click(); true`);
+    await b.auswerten(
+      `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.textContent.includes(${JSON.stringify(WARTET)})).querySelector('[data-click="kontoFreischalten"]').click(); true`,
+    );
     await bis(offen, 'Dialog');
     assert.equal(await b.auswerten(text('#cd-title')), `Konto „${WARTET}“ freischalten?`);
     await zu();
@@ -162,48 +226,90 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
   await t.test('Kategorie in Tabelle und Filter', async () => {
     await geh('teile');
     await b.auswerten(klick('[data-click="ansichtWaehlen"][data-arg="parts-view"][data-arg2="table"]'));
-    await bis(`[...document.querySelectorAll('#parts-main tbody.parts-body tr')].some(r => r.textContent.includes('99901'))`, 'Teiletabelle');
+    await bis(
+      `[...document.querySelectorAll('#parts-main tbody.parts-body tr')].some(r => r.textContent.includes('99901'))`,
+      'Teiletabelle',
+    );
     const kategorien = `(() => { const zelle = (nr) => [...document.querySelectorAll('#parts-main tbody.parts-body tr')].find(r => r.children[1]?.textContent.trim() === nr)?.children[4]?.textContent.trim();
       return { b99902: zelle('99902'), b99901: zelle('99901'), filter: [...document.querySelectorAll('#parts-cat option')].map(o => o.textContent).slice(1).sort() }; })()`;
-    assert.deepEqual(await b.auswerten(kategorien), { b99902: 'Bricks', b99901: 'Unbekannt', filter: ['Bricks', 'Unbekannt'] });
-    await b.auswerten(`(() => { const s = document.getElementById('lang-select'); s.value = 'en'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+    assert.deepEqual(await b.auswerten(kategorien), {
+      b99902: 'Bricks',
+      b99901: 'Unbekannt',
+      filter: ['Bricks', 'Unbekannt'],
+    });
+    await b.auswerten(
+      `(() => { const s = document.getElementById('lang-select'); s.value = 'en'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
+    );
     try {
-      await bis(`[...document.querySelectorAll('#parts-cat option')].some(o => o.textContent === 'Unknown')`, 'englisch', 50);
+      await bis(
+        `[...document.querySelectorAll('#parts-cat option')].some(o => o.textContent === 'Unknown')`,
+        'englisch',
+        50,
+      );
       assert.equal(await b.auswerten(text('#link-register')), 'Register');
     } finally {
-      await b.auswerten(`(() => { const s = document.getElementById('lang-select'); s.value = 'de'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+      await b.auswerten(
+        `(() => { const s = document.getElementById('lang-select'); s.value = 'de'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`,
+      );
     }
   });
 
   await t.test('Hintergrundarbeiten: Anleitungen', async () => {
     await geh('hintergrund');
     await bis(`document.querySelectorAll('.mon-dienste .mon-name').length >= 6`, 'Dienste');
-    const namen = await b.auswerten(`[...document.querySelectorAll('.mon-dienste .mon-name')].map(n => n.textContent.trim()).join(' | ')`);
+    const namen = await b.auswerten(
+      `[...document.querySelectorAll('.mon-dienste .mon-name')].map(n => n.textContent.trim()).join(' | ')`,
+    );
     assert.match(namen, /Anleitungen herunterladen/);
     assert.doesNotMatch(namen, /Handbücher/);
   });
 
   await t.test('Bestätigung angemeldet', async () => {
     const { hashToken } = buildAndRequire()('src/konto/geraeteToken.js');
-    const NEU = `${NAME}-neu@example.org`, TOKEN = `r14-${process.pid}-${Date.now()}`;
-    await db.run(`UPDATE users SET email_neu = $2, email_neu_token = $3, email_neu_bis = NOW() + INTERVAL '1 hour' WHERE id = $1`, [uid, NEU, hashToken(TOKEN)]);
+    const NEU = `${NAME}-neu@example.org`,
+      TOKEN = `r14-${process.pid}-${Date.now()}`;
+    await db.run(
+      `UPDATE users SET email_neu = $2, email_neu_token = $3, email_neu_bis = NOW() + INTERVAL '1 hour' WHERE id = $1`,
+      [uid, NEU, hashToken(TOKEN)],
+    );
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${TOKEN}` });
-    await bis(`(document.getElementById('verify-ziel')?.textContent || '').includes(${JSON.stringify(NEU)})`, 'Ziel genannt');
-    const z = await b.auswerten(`({ haupt: document.getElementById('btn-verify').classList.contains('bp'), zurueck: ${text('#link-verify-to-login')},
+    await bis(
+      `(document.getElementById('verify-ziel')?.textContent || '').includes(${JSON.stringify(NEU)})`,
+      'Ziel genannt',
+    );
+    const z =
+      await b.auswerten(`({ haupt: document.getElementById('btn-verify').classList.contains('bp'), zurueck: ${text('#link-verify-to-login')},
       formular: { h2: ${text('#panel-register h2')}, pflicht: ['reg-user', 'reg-email', 'reg-pass', 'reg-pass2'].every(id => document.getElementById(id).required && document.getElementById(id).getAttribute('aria-required') === 'true'),
         regel: document.getElementById(document.getElementById('reg-pass').getAttribute('aria-describedby'))?.textContent } })`);
-    assert.deepEqual(z, { haupt: true, zurueck: '← Zurück zur Sammlung',
-      formular: { h2: 'Registrieren', pflicht: true, regel: 'Mindestens 12 Zeichen, kein häufig verwendetes Passwort.' } });
+    assert.deepEqual(z, {
+      haupt: true,
+      zurueck: '← Zurück zur Sammlung',
+      formular: {
+        h2: 'Registrieren',
+        pflicht: true,
+        regel: 'Mindestens 12 Zeichen, kein häufig verwendetes Passwort.',
+      },
+    });
     await b.auswerten(klick('#btn-verify'));
     await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'App offen');
-    await bis(`[...document.querySelectorAll('#toasts .toast')].some(x => x.textContent.includes(${JSON.stringify(`Neue Adresse ${NEU} bestätigt.`)}))`, 'Toast');
+    await bis(
+      `[...document.querySelectorAll('#toasts .toast')].some(x => x.textContent.includes(${JSON.stringify(`Neue Adresse ${NEU} bestätigt.`)}))`,
+      'Toast',
+    );
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, NEU);
     // Nichts ausstehend: Bestätigen ist nicht mehr der nahegelegte Schritt.
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=veraltet` });
-    await bis(`/wartet keine neue Adresse/.test(document.getElementById('verify-ziel')?.textContent || '')`, 'nichts ausstehend');
-    assert.deepEqual(await b.auswerten(`[...document.getElementById('btn-verify').classList].filter(k => k === 'bp' || k === 'bs')`), ['bs']);
+    await bis(
+      `/wartet keine neue Adresse/.test(document.getElementById('verify-ziel')?.textContent || '')`,
+      'nichts ausstehend',
+    );
+    assert.deepEqual(
+      await b.auswerten(`[...document.getElementById('btn-verify').classList].filter(k => k === 'bp' || k === 'bs')`),
+      ['bs'],
+    );
   });
 
   // Aufräumen hier, nicht in t.after: Dort endet der Pool aus starteApp zuerst.
-  for (const z of smtpVorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT DO NOTHING', [z.key, z.value]);
+  for (const z of smtpVorher)
+    await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT DO NOTHING', [z.key, z.value]);
 });

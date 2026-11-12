@@ -20,32 +20,42 @@ const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
 async function fenster() {
   const dom = new jsdom.JSDOM(HTML, { runScripts: 'outside-only', url: 'http://localhost/' });
   const w = dom.window;
-  w.fetch = async () => ({ ok: true, status: 200, headers: { get: () => 'application/json' },
-                           json: async () => ({ success: true }) });
+  w.fetch = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json' },
+    json: async () => ({ success: true }),
+  });
   w.eval(BUNDLE);
-  if (w.document.readyState === 'loading')
-    await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
+  if (w.document.readyState === 'loading') await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
   return w;
 }
 
 function aufbau(w) {
-  const d = w.document, ziel = d.createElement('div');
+  const d = w.document,
+    ziel = d.createElement('div');
   ziel.innerHTML = `
     <div class="sc" id="karte" tabindex="0" role="button" data-click="stopEvent">
       <button id="innen" data-click="stopEvent">x</button></div>
     <table><tbody><tr id="zeile" tabindex="0" data-click="stopEvent"><td>1</td></tr></tbody></table>`;
   d.body.appendChild(ziel);
   const klicks = { karte: 0, zeile: 0 };
-  d.getElementById('karte').addEventListener('click', e => { if (e.target.id === 'karte') klicks.karte++; });
-  d.getElementById('zeile').addEventListener('click', () => { klicks.zeile++; });
+  d.getElementById('karte').addEventListener('click', e => {
+    if (e.target.id === 'karte') klicks.karte++;
+  });
+  d.getElementById('zeile').addEventListener('click', () => {
+    klicks.zeile++;
+  });
   return klicks;
 }
-const taste = (w, el, key) => el.dispatchEvent(new w.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+const taste = (w, el, key) =>
+  el.dispatchEvent(new w.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
 
-test('Karten und Zeilen per Tastatur', async (t) => {
+test('Karten und Zeilen per Tastatur', async t => {
   const w = await fenster();
   t.after(() => w.close());
-  const d = w.document, k = aufbau(w);
+  const d = w.document,
+    k = aufbau(w);
 
   await t.test('Eingabe auf einer Karte', () => {
     taste(w, d.getElementById('karte'), 'Enter');

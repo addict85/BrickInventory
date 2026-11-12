@@ -54,12 +54,12 @@ process.on('uncaughtException', e => { console.log('CRASH:' + e.message); proces
 })().catch(e => { console.log('FEHLER:' + e.message); process.exit(9); });
 `;
 
-test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet neu',
-  { concurrency: 1 }, async (t) => {
-
-  try { await db.pool.query('SELECT 1'); }
-  catch (e) {
-    keineDb(t, e); return;
+test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet neu', { concurrency: 1 }, async t => {
+  try {
+    await db.pool.query('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
 
   const file = path.join(os.tmpdir(), `notify-reconnect-${process.pid}.js`);
@@ -73,13 +73,15 @@ test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet n
       const stdout = (e.stdout || '').toString();
       assert.fail(
         `Der Kindprozess ist nicht sauber beendet worden (Exitcode ${e.status}). ` +
-        `Ausgabe: ${stdout.trim() || '(leer)'}`
+          `Ausgabe: ${stdout.trim() || '(leer)'}`,
       );
     }
-    assert.ok(!out.includes('CRASH:'),
-      `Der Abriss hat den Prozess abgeschossen: ${out.trim()}`);
-    assert.match(out, /LISTEN_WIEDER_DA:[1-9]/,
-      `Nach dem Abriss steht kein LISTEN mehr — der Reconnect hat nicht gegriffen. Ausgabe: ${out.trim()}`);
+    assert.ok(!out.includes('CRASH:'), `Der Abriss hat den Prozess abgeschossen: ${out.trim()}`);
+    assert.match(
+      out,
+      /LISTEN_WIEDER_DA:[1-9]/,
+      `Nach dem Abriss steht kein LISTEN mehr — der Reconnect hat nicht gegriffen. Ausgabe: ${out.trim()}`,
+    );
   } finally {
     fs.rmSync(file, { force: true });
     await db.pool.end().catch(() => {});
@@ -88,13 +90,19 @@ test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet n
 
 // Unter Last ist der Aufbau noch unterwegs, wenn ein Test close() ruft; die
 // Verbindung, die danach ankam, hielt den Prozess für immer offen.
-test('close() während des Verbindungsaufbaus lässt keine Verbindung offen', async (t) => {
+test('close() während des Verbindungsaufbaus lässt keine Verbindung offen', async t => {
   // Der Pool ist nach dem ersten Test zu: eine eigene Verbindung für die Probe.
-  const probe = new (require(path.join(ROOT, 'node_modules', 'pg')).Client)({ connectionString: process.env.DATABASE_URL });
-  try { await probe.connect(); }
-  catch (e) {
-    keineDb(t, e); return;
-  } finally { await probe.end().catch(() => {}); }
+  const probe = new (require(path.join(ROOT, 'node_modules', 'pg')).Client)({
+    connectionString: process.env.DATABASE_URL,
+  });
+  try {
+    await probe.connect();
+  } catch (e) {
+    keineDb(t, e);
+    return;
+  } finally {
+    await probe.end().catch(() => {});
+  }
   // Kein process.exit im Kind: Es muss von selbst enden.
   const kind = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};

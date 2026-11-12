@@ -10,7 +10,9 @@ import { konfig } from '../infra/konfig';
 export class BcryptUeberlast extends Error {
   status = 503;
   code = 'server_ausgelastet' as const;
-  constructor() { super('bcrypt: zu viele gleichzeitige Prüfungen'); }
+  constructor() {
+    super('bcrypt: zu viele gleichzeitige Prüfungen');
+  }
 }
 
 export interface Schranke {
@@ -23,23 +25,38 @@ export function neueSchranke(gleichzeitig: number, wartendHoechstens: number, wa
   let laufend = 0;
   const warteschlange: (() => void)[] = [];
   const platz = (vorrang: boolean): Promise<void> => {
-    if (laufend < gleichzeitig) { laufend++; return Promise.resolve(); }
+    if (laufend < gleichzeitig) {
+      laufend++;
+      return Promise.resolve();
+    }
     if (!vorrang && warteschlange.length >= wartendHoechstens) return Promise.reject(new BcryptUeberlast());
     return new Promise((weiter, abbrechen) => {
-      const los = () => { clearTimeout(frist); weiter(); };
+      const los = () => {
+        clearTimeout(frist);
+        weiter();
+      };
       const frist = setTimeout(() => {
         warteschlange.splice(warteschlange.indexOf(los), 1);
         abbrechen(new BcryptUeberlast());
       }, wartezeitMs);
-      if (vorrang) warteschlange.unshift(los); else warteschlange.push(los);
+      if (vorrang) warteschlange.unshift(los);
+      else warteschlange.push(los);
     });
   };
   // Der freie Platz geht direkt an den nächsten Wartenden, `laufend` bleibt dann gleich.
-  const frei = () => { const naechster = warteschlange.shift(); if (naechster) naechster(); else laufend--; };
+  const frei = () => {
+    const naechster = warteschlange.shift();
+    if (naechster) naechster();
+    else laufend--;
+  };
   return {
     async mit(arbeit, vorrang = false) {
       await platz(vorrang);
-      try { return await arbeit(); } finally { frei(); }
+      try {
+        return await arbeit();
+      } finally {
+        frei();
+      }
     },
     stand: () => ({ laufend, wartend: warteschlange.length }),
   };
@@ -47,16 +64,27 @@ export function neueSchranke(gleichzeitig: number, wartendHoechstens: number, wa
 
 /** Kerne laut cgroup-Kontingent (v2 cpu.max, v1 cfs_quota), null ohne Kontingent. */
 export function kontingentKerne(wurzel = '/sys/fs/cgroup'): number | null {
-  const lies = (f: string) => { try { return fs.readFileSync(path.join(wurzel, f), 'utf8').trim(); } catch { return ''; } };
+  const lies = (f: string) => {
+    try {
+      return fs.readFileSync(path.join(wurzel, f), 'utf8').trim();
+    } catch {
+      return '';
+    }
+  };
   const [v2q, v2p] = lies('cpu.max').split(/\s+/);
-  const [quote, periode] = v2q ? [Number(v2q), Number(v2p)] : [Number(lies('cpu/cpu.cfs_quota_us')), Number(lies('cpu/cpu.cfs_period_us'))];
+  const [quote, periode] = v2q
+    ? [Number(v2q), Number(v2p)]
+    : [Number(lies('cpu/cpu.cfs_quota_us')), Number(lies('cpu/cpu.cfs_period_us'))];
   return quote > 0 && periode > 0 ? Math.max(1, Math.ceil(quote / periode)) : null;
 }
 
 /** Jeder Arbeiter belegt gut 12 MB; die Kerne des Hosts sagen nichts über das
  * Speicherlimit des Containers. BCRYPT_ARBEITER hebt die Vorgabe von 4 an. */
-export function bcryptArbeiter(gesetzt = konfig().bcryptArbeiter, kerne = os.availableParallelism(),
-                               kontingent = kontingentKerne()): number {
+export function bcryptArbeiter(
+  gesetzt = konfig().bcryptArbeiter,
+  kerne = os.availableParallelism(),
+  kontingent = kontingentKerne(),
+): number {
   return gesetzt ?? Math.max(2, Math.min(kerne, kontingent ?? kerne, 4));
 }
 

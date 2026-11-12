@@ -43,11 +43,12 @@ export async function manuellerKaufpreis(
   const markt = unitPrice !== null ? null : await marktpreis(zustand);
   const kaufpreis = unitPrice !== null ? unitPrice : (markt?.preis ?? 0);
   return {
-    unitPrice, kaufpreis,
+    unitPrice,
+    kaufpreis,
     erfassungsPreis: kaufpreis > 0 ? kaufpreis : null,
     zustand,
     // Eine Herkunft ohne Wert wäre ein Hinweis auf etwas, das nirgends steht.
-    preisAusZustand: (kaufpreis > 0 && markt?.ausZustand) ? markt.ausZustand : null,
+    preisAusZustand: kaufpreis > 0 && markt?.ausZustand ? markt.ausZustand : null,
     geschaetzt: unitPrice === null && kaufpreis > 0,
   };
 }

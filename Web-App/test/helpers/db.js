@@ -13,14 +13,19 @@
  */
 async function dbOderSkip(t, _req, { migrieren = true } = {}) {
   const db = _req('db/database.js');
-  try { await db.initSchema(); }
-  catch (e) {
+  try {
+    await db.initSchema();
+  } catch (e) {
     keineDb(t, e);
     return null;
   }
   if (migrieren) {
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   }
   return db;
 }

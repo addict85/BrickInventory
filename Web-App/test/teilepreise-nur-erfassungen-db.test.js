@@ -3,7 +3,7 @@
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -21,27 +21,33 @@ test.after(async () => {
     await db.run('CREATE SCHEMA public');
     await db.initSchema();
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   } catch (e) {
     console.error('[teilepreise-nur-erfassungen] Aufraeumen fehlgeschlagen:', e.message);
   }
   await db.pool.end().catch(() => {});
 });
 
-const spaltenVon = async (tabelle) => (await db.all(
-  `SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
-  .map(r => r.column_name).sort();
+const spaltenVon = async tabelle =>
+  (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
+    .map(r => r.column_name)
+    .sort();
 
-const dbDa = async (t) => {
-  try { await db.run('SELECT 1'); return true; }
-  catch (e) {
-    keineDb(t, e); return false;
+const dbDa = async t => {
+  try {
+    await db.run('SELECT 1');
+    return true;
+  } catch (e) {
+    keineDb(t, e);
+    return false;
   }
 };
 
-
-test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
-  { concurrency: 1 }, async (t) => {
+test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -51,20 +57,25 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
   // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
   // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
 
   const nachher = await spaltenVon('parts');
   for (const sp of ['unit_price', 'purchase_price', 'condition']) {
-    assert.ok(!nachher.includes(sp),
+    assert.ok(
+      !nachher.includes(sp),
       `parts.${sp} ist nach allen Migrationen noch da — Migration 0035 hat nicht ` +
-      'geloescht, oder etwas legt die Spalte danach wieder an.');
+        'geloescht, oder etwas legt die Spalte danach wieder an.',
+    );
   }
   // Und der Bestand ist noch da: Marcos Liste, plus was den Kauf NICHT betrifft.
   // bl_part_number stand hier und ist weg: Migration 0037 hat sie geloescht,
   // die BrickLink-Nummer steht in bl_zuordnung (einmal je Teil statt je
   // Konto). Siehe test/bricklink-zuordnung-db.test.js. …
-  for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id',
-                    'source', 'storage_id', 'added_at']) {
+  for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id', 'source', 'storage_id', 'added_at']) {
     assert.ok(nachher.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
   }
 
@@ -75,29 +86,30 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr',
 
   // Nicht verschwunden, sondern umgezogen.
   for (const [tab, spalten] of [
-    ['part_acquisitions',    ['user_id', 'part_number', 'color_id', 'quantity', 'unit_price', 'condition', 'created_at']],
+    ['part_acquisitions', ['user_id', 'part_number', 'color_id', 'quantity', 'unit_price', 'condition', 'created_at']],
     ['minifig_acquisitions', ['user_id', 'fig_number', 'quantity', 'unit_price', 'condition', 'created_at']],
   ]) {
     const vorhanden = await spaltenVon(tab);
     for (const sp of spalten) {
-      assert.ok(vorhanden.includes(sp),
-        `${tab}.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
+      assert.ok(vorhanden.includes(sp), `${tab}.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
     }
   }
 });
 
-test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
-  { concurrency: 1 }, async (t) => {
+test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const c0 = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c0); } finally { c0.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c0);
+  } finally {
+    c0.release();
+  }
 
-  const u = await db.get(
-    `INSERT INTO users (username,password_hash) VALUES ('preisleser','x') RETURNING id`);
+  const u = await db.get(`INSERT INTO users (username,password_hash) VALUES ('preisleser','x') RETURNING id`);
   const uid = u.id;
 
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3002','Brick 2x3')
@@ -115,12 +127,18 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
   // ZWEI Erfassungen, verschiedene Tage und Zustaende. Die neuere ist die, die
   // als „der Preis dieses Teils" angezeigt werden muss — die aeltere darf ihn
   // nicht verdecken.
-  await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
+  await db.run(
+    `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
                 VALUES ($1,'3002',1,2,1.00,'N', NOW() - INTERVAL '3 days'),
-                       ($1,'3002',1,3,2.00,'U', NOW() - INTERVAL '1 day')`, [uid]);
-  await db.run(`INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition,created_at)
+                       ($1,'3002',1,3,2.00,'U', NOW() - INTERVAL '1 day')`,
+    [uid],
+  );
+  await db.run(
+    `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition,created_at)
                 VALUES ($1,'fig-5',1,5.00,'N', NOW() - INTERVAL '2 days'),
-                       ($1,'fig-5',2,7.50,'U', NOW())`, [uid]);
+                       ($1,'fig-5',2,7.50,'U', NOW())`,
+    [uid],
+  );
 
   const H = _req('src/teile/abfragen.js');
   const M = _req('src/figuren/abfragen.js');
@@ -128,18 +146,14 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
   const teile = await H.getManualParts([uid], uid);
   const teil = (Array.isArray(teile) ? teile : teile.parts || []).find(p => p.part_number === '3002');
   assert.ok(teil, `Das Teil fehlt in der Antwort: ${JSON.stringify(teile).slice(0, 300)}`);
-  assert.equal(Number(teil.unit_price), 2.00,
-    'unit_price muss der Preis der NEUESTEN Erfassung sein');
-  assert.equal(Number(teil.purchase_price), 2.00,
-    'purchase_price ist der Anzeigewert und darf nicht leer sein');
-  assert.equal(teil.condition, 'U',
-    'Eine gebrauchte Erfassung macht das Teil gebraucht (conditionFromAcquisitions)');
+  assert.equal(Number(teil.unit_price), 2.0, 'unit_price muss der Preis der NEUESTEN Erfassung sein');
+  assert.equal(Number(teil.purchase_price), 2.0, 'purchase_price ist der Anzeigewert und darf nicht leer sein');
+  assert.equal(teil.condition, 'U', 'Eine gebrauchte Erfassung macht das Teil gebraucht (conditionFromAcquisitions)');
 
   const figs = await M.getManualMinifigs([uid], uid);
   const fig = (Array.isArray(figs) ? figs : figs.minifigs || []).find(f => f.fig_number === 'fig-5');
   assert.ok(fig, `Die Figur fehlt in der Antwort: ${JSON.stringify(figs).slice(0, 300)}`);
-  assert.equal(Number(fig.unit_price), 7.50,
-    'unit_price muss der Preis der NEUESTEN Erfassung sein');
+  assert.equal(Number(fig.unit_price), 7.5, 'unit_price muss der Preis der NEUESTEN Erfassung sein');
   assert.equal(fig.condition, 'U', 'Eine gebrauchte Erfassung macht die Figur gebraucht');
 
   // ── Und ohne Preis bleibt der Anzeigewert 0, nicht leer ──────────────────
@@ -153,14 +167,22 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung',
   // Menge 0 fuer die Bestandszeile, die Erfassung kommt darunter mit
   // AUSDRUECKLICH leerem Preis — das ist die Aussage dieses Falls.
   await haeltTeil(db, uid, '3003', { menge: 0, colorId: 0 });
-  await db.run(`INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
-                VALUES ($1,'3003',0,1,NULL,'N')`, [uid]);
+  await db.run(
+    `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
+                VALUES ($1,'3003',0,1,NULL,'N')`,
+    [uid],
+  );
   const teile2 = await H.getManualParts([uid], uid);
-  const ohnePreis = (Array.isArray(teile2) ? teile2 : teile2.parts || [])
-    .find(p => p.part_number === '3003');
+  const ohnePreis = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3003');
   assert.ok(ohnePreis, 'Das Teil ohne Preis fehlt in der Antwort');
-  assert.equal(ohnePreis.unit_price, null,
-    'Ohne Preis muss unit_price leer sein — das ist die Aussage „nichts eingegeben"');
-  assert.equal(Number(ohnePreis.purchase_price), 0,
-    'Der Anzeigewert muss 0 sein, nicht leer — siehe src/finanzen/preisRegel.ts');
+  assert.equal(
+    ohnePreis.unit_price,
+    null,
+    'Ohne Preis muss unit_price leer sein — das ist die Aussage „nichts eingegeben"',
+  );
+  assert.equal(
+    Number(ohnePreis.purchase_price),
+    0,
+    'Der Anzeigewert muss 0 sein, nicht leer — siehe src/finanzen/preisRegel.ts',
+  );
 });

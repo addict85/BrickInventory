@@ -13,7 +13,7 @@
  *   D  "strict": true in tsconfig.frontend.json auf false → rot: „strict ist
  *      eingeschaltet“; "noImplicitThis": false ergänzt → ebenso rot
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pruefe, LAEUFE } = require('../scripts/check-frontend-typen');
 
@@ -37,12 +37,23 @@ test('Oberfläche: strict ist eingeschaltet, kein Teil davon abgeschaltet', () =
   const ROOT = path.join(__dirname, '..');
   // Das Werkzeug liegt im Projekt; -p nimmt den Konfigurationsnamen relativ zu cwd.
   for (const config of LAEUFE) {
-    const r = spawnSync(process.execPath, [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', config, '--showConfig'],
-      { cwd: ROOT, encoding: 'utf8' });
+    const r = spawnSync(
+      process.execPath,
+      [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', config, '--showConfig'],
+      { cwd: ROOT, encoding: 'utf8' },
+    );
     const o = JSON.parse(r.stdout).compilerOptions;
     assert.equal(o.strict, true, `${config}: strict`);
-    for (const teil of ['strictNullChecks', 'noImplicitAny', 'noImplicitThis', 'strictFunctionTypes',
-      'strictBindCallApply', 'strictPropertyInitialization', 'useUnknownInCatchVariables', 'alwaysStrict'])
+    for (const teil of [
+      'strictNullChecks',
+      'noImplicitAny',
+      'noImplicitThis',
+      'strictFunctionTypes',
+      'strictBindCallApply',
+      'strictPropertyInitialization',
+      'useUnknownInCatchVariables',
+      'alwaysStrict',
+    ])
       assert.notEqual(o[teil], false, `${config}: ${teil} abgeschaltet`);
   }
 });

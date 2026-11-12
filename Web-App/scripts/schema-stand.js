@@ -2,8 +2,8 @@
 /**
  * Das vollständige Schema an einer Stelle: db/schema-stand.sql.
  */
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const DATEI = path.join(__dirname, '..', 'db/schema-stand.sql');
 
@@ -54,8 +54,9 @@ async function schemaText(db) {
     ...erweiterungen.map(e => `CREATE EXTENSION ${e.extname};`),
   ];
   for (const t of tabellen) {
-    const zeilen = von(spalten, t).map(s =>
-      `  ${s.spalte} ${s.typ}${s.pflicht ? ' NOT NULL' : ''}${s.vorgabe != null ? ` DEFAULT ${s.vorgabe}` : ''}`);
+    const zeilen = von(spalten, t).map(
+      s => `  ${s.spalte} ${s.typ}${s.pflicht ? ' NOT NULL' : ''}${s.vorgabe != null ? ` DEFAULT ${s.vorgabe}` : ''}`,
+    );
     zeilen.push(...von(schranken, t).map(k => `  CONSTRAINT ${k.name} ${k.def}`));
     teile.push('', `CREATE TABLE ${t} (`, zeilen.join(',\n'), ');');
     teile.push(...von(indizes, t).map(i => `${i.def.replace(/ ON public\./, ' ON ')};`));
@@ -67,7 +68,13 @@ async function schemaText(db) {
 
 const BASIS = path.join(__dirname, '..', 'db/basis.sql');
 /** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
-const BASIS_DATEN = ['auftrag_exklusiv', 'auftrags_arten', 'global_settings', 'gutschein_guthaben_schranke', 'schema_migrations'];
+const BASIS_DATEN = [
+  'auftrag_exklusiv',
+  'auftrags_arten',
+  'global_settings',
+  'gutschein_guthaben_schranke',
+  'schema_migrations',
+];
 
 /** Hauptversion des pg_dump im Pfad; das Abbild unterscheidet sich zwischen Versionen. */
 function pgDumpVersion() {
@@ -83,25 +90,40 @@ function pgDumpVersion() {
 function basisText(url) {
   const { execFileSync } = require('node:child_process');
   /** @param {string[]} args */
-  const dump = (args) => execFileSync('pg_dump', [...args, '--no-owner', '--no-privileges', '--no-comments', url],
-    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-  const roh = dump(['--schema-only']) + '\n' +
+  const dump = args =>
+    execFileSync('pg_dump', [...args, '--no-owner', '--no-privileges', '--no-comments', url], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  const roh =
+    dump(['--schema-only']) +
+    '\n' +
     dump(['--data-only', '--column-inserts', ...BASIS_DATEN.flatMap(t => ['-t', `public.${t}`])]);
   // Weg damit: psql-Befehle (\restrict), die Leerung des Suchpfads (die Funktionen der Trigger
   // suchen ihre Tabellen ohne Schemaangabe), Versionszeilen und die Überschrift je Objekt.
-  const sauber = roh.split('\n').filter(z =>
-    !/^\\(un)?restrict\b/.test(z) &&
-    !/^SELECT pg_catalog\.set_config\('search_path'/.test(z) &&
-    !/^--( Dumped (from|by).*| (Data for )?Name: .*| PostgreSQL database dump( complete)?)?$/.test(z))
-    .join('\n').replace(/\n{3,}/g, '\n\n').trim();
-  return [
-    '-- Schema einer NEUEN Installation: Abbild aller Migrationen, die es bei',
-    '-- seiner Erzeugung gab. db/database.ts spielt es in eine leere Datenbank,',
-    '-- danach laufen nur die jüngeren Migrationen. Nicht von Hand ändern —',
-    '-- neu erzeugen mit `npm run build && npm run schema:stand`.',
-    `-- Erzeugt mit pg_dump ${pgDumpVersion()}.`,
-    '',
-  ].join('\n') + sauber + '\n';
+  const sauber = roh
+    .split('\n')
+    .filter(
+      z =>
+        !/^\\(un)?restrict\b/.test(z) &&
+        !/^SELECT pg_catalog\.set_config\('search_path'/.test(z) &&
+        !/^--( Dumped (from|by).*| (Data for )?Name: .*| PostgreSQL database dump( complete)?)?$/.test(z),
+    )
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return (
+    [
+      '-- Schema einer NEUEN Installation: Abbild aller Migrationen, die es bei',
+      '-- seiner Erzeugung gab. db/database.ts spielt es in eine leere Datenbank,',
+      '-- danach laufen nur die jüngeren Migrationen. Nicht von Hand ändern —',
+      '-- neu erzeugen mit `npm run build && npm run schema:stand`.',
+      `-- Erzeugt mit pg_dump ${pgDumpVersion()}.`,
+      '',
+    ].join('\n') +
+    sauber +
+    '\n'
+  );
 }
 
 /** db/basis.sql aus einer fertig migrierten Datenbank schreiben. @param {string} url */
@@ -120,7 +142,8 @@ async function main() {
   await admin.connect();
   await admin.query(`DROP DATABASE IF EXISTS ${name}`);
   await admin.query(`CREATE DATABASE ${name}`);
-  const ziel = new URL(basis); ziel.pathname = '/' + name;
+  const ziel = new URL(basis);
+  ziel.pathname = '/' + name;
   process.env.DATABASE_URL = ziel.toString();
   const dbModul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
   const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
@@ -138,6 +161,10 @@ async function main() {
   }
 }
 
-if (require.main === module) main().catch(e => { console.error(e.message); process.exit(1); });
+if (require.main === module)
+  main().catch(e => {
+    console.error(e.message);
+    process.exit(1);
+  });
 
 module.exports = { schemaText, schreibeBasis, basisText, pgDumpVersion, DATEI, BASIS };

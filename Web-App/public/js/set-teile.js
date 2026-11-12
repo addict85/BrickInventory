@@ -25,13 +25,15 @@ function verwendetInListe(sets) {
       : html`<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   };
   return sets.length
-    ? html`<table aria-label="${tRaw('setitem.used_in')}" data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(s => html`
+    ? html`<table aria-label="${tRaw('setitem.used_in')}" data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(
+        s => html`
         <tr>
           <td data-stil="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
           <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${zeilenKnopf({ click: 'openSetAusItem', arg: s.set_number }, s.set_number, tRaw('zeile.oeffnen', { name: s.set_name || s.set_number, nr: s.set_number }))}</td>
           <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${s.set_name || ''}</td>
           <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${ungeprueft((s.quantity || 0).toLocaleString(locale()))}</td>
-        </tr>`)}</tbody></table>`
+        </tr>`,
+      )}</tbody></table>`
     : html`<span data-stil="color:var(--mut);font-size:var(--fs-2)">${t('setitem.used_in_none')}</span>`;
 }
 
@@ -41,11 +43,11 @@ function verwendetInListe(sets) {
  * @param {string | number} colorId
  */
 export async function openSetItemDetail(type, id, colorId) {
-  const farbe = parseInt(String(colorId)) || 0;
+  const farbe = parseInt(String(colorId), 10) || 0;
   vergissManItem();
-  const modal  = G('setitem-modal');
+  const modal = G('setitem-modal');
   const bodyEl = G('setitem-body');
-  const imgEl  = G('setitem-img');
+  const imgEl = G('setitem-img');
 
   G('setitem-tit').textContent = id;
   G('setitem-sub').textContent = '';
@@ -55,10 +57,10 @@ export async function openSetItemDetail(type, id, colorId) {
 
   // Blickfeld mitgeben wie überall: Im Haushalt gehört das Set des Geschwisterkontos dazu. scopeQuery()
   // angehängt, nicht im Pfad, damit test/frontend-api-paths.test.js die Adresse lesen kann.
-  const url = (type === 'fig'
-    ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
-    : `/v1/parts/${encodeURIComponent(id)}/${farbe}/sets`)
-    + scopeQuery(type === 'fig' ? 'minifigs' : 'parts');
+  const url =
+    (type === 'fig'
+      ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
+      : `/v1/parts/${encodeURIComponent(id)}/${farbe}/sets`) + scopeQuery(type === 'fig' ? 'minifigs' : 'parts');
   const d = await api('GET', url).catch(() => null);
   // Zwischenzeitlich geschlossen? Dann nichts mehr hineinschreiben.
   if (!modal.classList.contains('open')) return;
@@ -84,8 +86,12 @@ export async function openSetItemDetail(type, id, colorId) {
   const zeilen = [];
   // Anzahl nur zur Anzeige: Sie entsteht aus den Inventaren der Sets. Mit toLocaleString wie auf der
   // Teilekachel — fmtN() ist der Geldformatierer und machte aus 6 „EUR 6.00×“.
-  zeilen.push(detailZeile(t('setitem.total_qty'),
-    html`<span data-stil="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`));
+  zeilen.push(
+    detailZeile(
+      t('setitem.total_qty'),
+      html`<span data-stil="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`,
+    ),
+  );
 
   if (type === 'part' && item?.color_name) {
     const punkt = item.color_hex
@@ -102,19 +108,29 @@ export async function openSetItemDetail(type, id, colorId) {
     // Die Ortsliste gehört dem Besitzer, wie beim Set. owner_ids statt owners, weil gruppierte Teilezeilen
     // keine Besitzerplakette tragen.
     ladeOrtAuswahl(item?.owner_ids).catch(() => {});
-    zeilen.push(detailZeile(t('detail.storage'),
-      lagerortBlock('setitem-storage', item?.storage,
-        `data-change="speichereTeilLagerort" data-typ="part" data-part="${escJs(id)}" data-color="${farbe}" ` +
-        `data-owners="${esc((item?.owner_ids || []).join(','))}"`),
-      { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' }));
+    zeilen.push(
+      detailZeile(
+        t('detail.storage'),
+        lagerortBlock(
+          'setitem-storage',
+          item?.storage,
+          `data-change="speichereTeilLagerort" data-typ="part" data-part="${escJs(id)}" data-color="${farbe}" ` +
+            `data-owners="${esc((item?.owner_ids || []).join(','))}"`,
+        ),
+        { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
+      ),
+    );
   }
 
   const liste = verwendetInListe(sets);
   // Die Tabelle steht unter der Beschriftung (flex-direction:column): In der .dr-Zeile rutschte sie bei einem
   // einzigen Set neben „Verwendet in“, und das Bild berührte den Text.
-  zeilen.push(detailZeile(t('setitem.used_in'), liste,
-    { zeilenStil: 'flex-direction:column;align-items:stretch;gap:4px',
-      wertStil: 'flex-direction:column;align-items:stretch;gap:0;min-width:0' }));
+  zeilen.push(
+    detailZeile(t('setitem.used_in'), liste, {
+      zeilenStil: 'flex-direction:column;align-items:stretch;gap:4px',
+      wertStil: 'flex-direction:column;align-items:stretch;gap:0;min-width:0',
+    }),
+  );
 
   setzeHtml(bodyEl, ungeprueft(zeilen.join('')));
 }
@@ -128,12 +144,16 @@ async function speichereTeilLagerort() {
   const el = this instanceof HTMLInputElement ? this : G('setitem-storage');
   if (!el) return;
   const nummer = el.dataset.part ?? '';
-  const farbe  = parseInt(el.dataset.color ?? '') || 0;
-  const adresse = el.dataset.typ === 'fig'
-    ? `/v1/minifigs/${encodeURIComponent(nummer)}/storage`
-    : `/v1/parts/${encodeURIComponent(nummer)}/${farbe}/storage`;
+  const farbe = parseInt(el.dataset.color ?? '', 10) || 0;
+  const adresse =
+    el.dataset.typ === 'fig'
+      ? `/v1/minifigs/${encodeURIComponent(nummer)}/storage`
+      : `/v1/parts/${encodeURIComponent(nummer)}/${farbe}/storage`;
   const d = await api('PUT', adresse, { storage: el.value });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   await ladeLagerorte();
   // Ein frisch getippter Ort ist jetzt im Vorrat — ohne das stünde er am Teil, fehlte aber in der Liste, aus
   // der er beim nächsten Mal gewählt wird.
@@ -143,8 +163,7 @@ async function speichereTeilLagerort() {
 function closeSetItemDetail() {
   G('setitem-modal').classList.remove('open');
 }
-G('setitem-modal').addEventListener('click',
-  e => e.target === e.currentTarget && closeSetItemDetail());
+G('setitem-modal').addEventListener('click', e => e.target === e.currentTarget && closeSetItemDetail());
 
 /**
  * Aus dem Teil-Dialog ins Set-Detail — der eine schliesst, der andere öffnet.

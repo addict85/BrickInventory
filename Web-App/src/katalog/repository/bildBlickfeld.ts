@@ -7,5 +7,7 @@ export function setsImBlickfeld(db: DbSchnittstelle, ids: number[]) {
        SELECT set_number, true AS besitz FROM sets WHERE user_id = ANY($1)
        UNION ALL SELECT set_number, false FROM wanted WHERE user_id = ANY($1)
        UNION ALL SELECT set_number, false FROM price_alerts WHERE user_id = ANY($1)) t
-     GROUP BY set_number`, [ids]);
+     GROUP BY set_number`,
+    [ids],
+  );
 }

@@ -1,10 +1,10 @@
 /**
  * Funktionen ohne Aufrufer.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { ROOT, ohneKommentare } = require('./helpers/sources');
 
@@ -24,9 +24,11 @@ function dateien(unterordner, endung) {
 }
 
 test('keine Funktion ohne einen einzigen Aufrufer', () => {
-  const quellen = ['routes', 'src', 'jobs', 'db'].flatMap(d => dateien(d, '.ts'))
+  const quellen = ['routes', 'src', 'jobs', 'db']
+    .flatMap(d => dateien(d, '.ts'))
     .concat([path.join(ROOT, 'server.ts')]);
-  const korpus = quellen.concat(dateien('test', '.js'))
+  const korpus = quellen
+    .concat(dateien('test', '.js'))
     .map(f => ohneKommentare(fs.readFileSync(f, 'utf8')))
     .join('\n');
 
@@ -54,7 +56,8 @@ test('keine Funktion ohne einen einzigen Aufrufer', () => {
  */
 test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
   const quellen = ['routes', 'src', 'jobs', 'db', 'clients', 'startup']
-    .flatMap(d => dateien(d, '.ts')).concat([path.join(ROOT, 'server.ts')]);
+    .flatMap(d => dateien(d, '.ts'))
+    .concat([path.join(ROOT, 'server.ts')]);
   const mitTests = quellen.concat(dateien('test', '.js'));
   assert.ok(quellen.length > 20, `nur ${quellen.length} Quelldateien — die Pruefung liefe ins Leere`);
 
@@ -64,10 +67,11 @@ test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
   const gefunden = { inline: 0, liste: 0 };
 
   /** Exportierte WERTE (keine Typen) einer Datei. */
-  const exportierteWerte = (src) => {
+  const exportierteWerte = src => {
     const namen = new Set();
     for (const m of src.matchAll(/^export\s+(?:async\s+)?(?:function|const|class)\s+(\w+)/gm)) {
-      namen.add(m[1]); gefunden.inline++;
+      namen.add(m[1]);
+      gefunden.inline++;
     }
     for (const m of src.matchAll(/^export\s*\{([^}]*)\}/gm))
       for (const roh of m[1].split(',')) {
@@ -75,7 +79,10 @@ test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
         // Grossgeschrieben und ohne Klammern: kann ein Typ sein — die
         // Unterscheidung ist hier nicht sicher moeglich, also im Zweifel
         // auslassen. Lieber ein Fund weniger als ein Fehlalarm.
-        if (n && !/^[A-Z][A-Za-z]*$/.test(n)) { namen.add(n); gefunden.liste++; }
+        if (n && !/^[A-Z][A-Za-z]*$/.test(n)) {
+          namen.add(n);
+          gefunden.liste++;
+        }
       }
     return namen;
   };
@@ -86,8 +93,14 @@ test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
     let inExportListe = false;
     for (const z of src.split('\n')) {
       const t = z.trim();
-      if (/^export\s*\{/.test(t)) { inExportListe = !t.includes('}'); continue; }
-      if (inExportListe) { if (t.includes('}')) inExportListe = false; continue; }
+      if (/^export\s*\{/.test(t)) {
+        inExportListe = !t.includes('}');
+        continue;
+      }
+      if (inExportListe) {
+        if (t.includes('}')) inExportListe = false;
+        continue;
+      }
       if (new RegExp(`^(export\\s+)?(async\\s+)?(function|const|class)\\s+${name}\\b`).test(t)) continue;
       n += (z.match(new RegExp(`\\b${name}\\b`, 'g')) || []).length;
     }
@@ -95,15 +108,11 @@ test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
   };
 
   const tot = [];
-  let geprueft = 0;
   for (const datei of quellen) {
     const src = inhalt.get(datei);
     for (const name of exportierteWerte(src)) {
-      geprueft++;
-      const anderswo = [...inhalt].some(([f, t]) =>
-        f !== datei && new RegExp(`\\b${name}\\b`).test(t));
-      if (!anderswo && eigenNutzung(src, name) === 0)
-        tot.push(`${path.relative(ROOT, datei)}: ${name}`);
+      const anderswo = [...inhalt].some(([f, t]) => f !== datei && new RegExp(`\\b${name}\\b`).test(t));
+      if (!anderswo && eigenNutzung(src, name) === 0) tot.push(`${path.relative(ROOT, datei)}: ${name}`);
     }
   }
 
@@ -114,15 +123,22 @@ test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
   // genug Namen, und die Schranke blieb erfuellt. Ein Selbstbeweis, der
   // Zahlen addiert, deckt das Sterben eines Summanden zu — genau die
   // Fehlerart, gegen die er gebaut ist.
-  assert.ok(gefunden.inline > 70,
+  assert.ok(
+    gefunden.inline > 70,
     `Nur ${gefunden.inline} Exporte in der Form \`export function x\` gefunden ` +
-    '(GEMESSEN: 139) — dieses Muster ist veraltet.');
-  assert.ok(gefunden.liste > 125,
+      '(GEMESSEN: 139) — dieses Muster ist veraltet.',
+  );
+  assert.ok(
+    gefunden.liste > 125,
     `Nur ${gefunden.liste} Exporte in der Form \`export { x }\` gefunden ` +
-    '(GEMESSEN: 252) — dieses Muster ist veraltet. Genau dieses fand upsert().');
+      '(GEMESSEN: 252) — dieses Muster ist veraltet. Genau dieses fand upsert().',
+  );
 
-  assert.deepEqual(tot, [],
+  assert.deepEqual(
+    tot,
+    [],
     'Diese Namen werden exportiert und NIRGENDS aufgerufen — auch nicht in ihrer ' +
-    'eigenen Datei. Entweder fehlt der Anschluss, oder die Fassung ist ueberholt; ' +
-    'beides altert unbemerkt mit.');
+      'eigenen Datei. Entweder fehlt der Anschluss, oder die Fassung ist ueberholt; ' +
+      'beides altert unbemerkt mit.',
+  );
 });

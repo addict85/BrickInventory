@@ -18,9 +18,13 @@ const ROOT = path.join(__dirname, '..');
 test('test-lauf.js übersteht Rahmen mit Nicht-ASCII-Text dahinter', () => {
   const env = { ...process.env };
   // Ohne Datenbank: Geprüft wird nur der Weg der Ausgabe.
-  delete env.TEST_DATABASE_URL; delete env.NODE_TEST_CONTEXT;
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-lauf.js'), 'test/fixtures/rahmen-und-text.js'],
-    { cwd: ROOT, env, encoding: 'utf8', timeout: 120_000 });
+  delete env.TEST_DATABASE_URL;
+  delete env.NODE_TEST_CONTEXT;
+  const r = spawnSync(
+    process.execPath,
+    [path.join(ROOT, 'scripts', 'test-lauf.js'), 'test/fixtures/rahmen-und-text.js'],
+    { cwd: ROOT, env, encoding: 'utf8', timeout: 120_000 },
+  );
   const ausgabe = r.stdout + r.stderr;
   assert.equal(r.status, 0, ausgabe.slice(-2000));
   assert.match(ausgabe, /^(# |ℹ )pass 1$/m);

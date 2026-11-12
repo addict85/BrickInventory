@@ -8,12 +8,17 @@ import { LOCKS } from '../../infra/lockNamespaces';
 export async function rohstand(db: DbSchnittstelle, userId: number): Promise<{ v: number; katalogOffen: boolean }> {
   const r = await db.get<{ v: number | null; katalog_offen: boolean }>(
     `SELECT (SELECT v FROM parts_version_user WHERE user_id = $1) AS v,
-            EXISTS (SELECT 1 FROM parts_katalog_offen) AS katalog_offen`, [userId]);
+            EXISTS (SELECT 1 FROM parts_katalog_offen) AS katalog_offen`,
+    [userId],
+  );
   return { v: Number(r?.v) || 0, katalogOffen: !!r?.katalog_offen };
 }
 
 export async function gebauterStand(db: DbSchnittstelle, userId: number): Promise<number | null> {
-  const r = await db.get<{ built_version: number }>('SELECT built_version FROM parts_summary_state WHERE user_id = $1', [userId]);
+  const r = await db.get<{ built_version: number }>(
+    'SELECT built_version FROM parts_summary_state WHERE user_id = $1',
+    [userId],
+  );
   return r ? Number(r.built_version) : null;
 }
 
@@ -44,13 +49,19 @@ function zusammenfassungEinfuegen(nurGruppen: boolean): string {
         ${blJoin('p.part_number', 'part', 'p.user_id')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
         ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
-       WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'${nurGruppen ? `
-         AND ${blNummerSql('p.part_number')} = ANY($2)` : ''}
+       WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'${
+         nurGruppen
+           ? `
+         AND ${blNummerSql('p.part_number')} = ANY($2)`
+           : ''
+       }
        GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`;
 }
 
 export async function sperreKonto(tx: DbSchnittstelle, userId: number): Promise<boolean> {
-  return !!(await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, $2) AS ok', [LOCKS.TEILE_SUMMARY, userId]))?.ok;
+  return !!(
+    await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, $2) AS ok', [LOCKS.TEILE_SUMMARY, userId])
+  )?.ok;
 }
 
 /** Dieselbe Sperre, aber wartend: Ein laufender Neuaufbau wird abgewartet. */
@@ -61,10 +72,13 @@ export async function warteAufKonto(tx: DbSchnittstelle, userId: number): Promis
 export async function baueNeu(tx: DbSchnittstelle, userId: number, stand: number): Promise<void> {
   await tx.run('DELETE FROM parts_summary WHERE user_id = $1', [userId]);
   await tx.run(zusammenfassungEinfuegen(false), [userId]);
-  await tx.run(`
+  await tx.run(
+    `
       INSERT INTO parts_summary_state (user_id, built_version, built_at)
       VALUES ($1, $2, NOW())
-      ON CONFLICT (user_id) DO UPDATE SET built_version = $2, built_at = NOW()`, [userId, stand]);
+      ON CONFLICT (user_id) DO UPDATE SET built_version = $2, built_at = NOW()`,
+    [userId, stand],
+  );
 }
 
 export async function baueGruppenNeu(tx: DbSchnittstelle, userId: number, gruppen: string[]): Promise<void> {
@@ -82,7 +96,11 @@ export async function sperreKatalogNachzug(tx: DbSchnittstelle): Promise<boolean
 
 /** Was danach eintrifft, bleibt für den nächsten Lauf. */
 export async function holeOffeneNummern(tx: DbSchnittstelle): Promise<string[]> {
-  return [...new Set((await tx.all<{ nummer: string }>('DELETE FROM parts_katalog_offen RETURNING nummer')).map(r => r.nummer))];
+  return [
+    ...new Set(
+      (await tx.all<{ nummer: string }>('DELETE FROM parts_katalog_offen RETURNING nummer')).map(r => r.nummer),
+    ),
+  ];
 }
 
 /** Alle Stände verwerfen: Jedes Konto baut beim nächsten Lesen neu. */
@@ -92,7 +110,8 @@ export async function verwirfAlleStaende(tx: DbSchnittstelle): Promise<number> {
 
 /** Vorher wie nachher: Eine neue Zuordnung verschiebt ein Teil in eine andere Gruppe. */
 export function betroffeneGruppen(tx: DbSchnittstelle, nummern: string[]) {
-  return tx.all<{ user_id: number; part_key: string }>(`
+  return tx.all<{ user_id: number; part_key: string }>(
+    `
       SELECT DISTINCT p.user_id, ${blNummerSql('p.part_number')} AS part_key
         FROM parts p
         ${blJoin('p.part_number', 'part', 'p.user_id')}
@@ -100,5 +119,7 @@ export function betroffeneGruppen(tx: DbSchnittstelle, nummern: string[]) {
        WHERE COALESCE(p.source, 'set') <> 'manual'
          AND (p.part_number = ANY($1) OR ${blNummerSql('p.part_number')} = ANY($1))
       UNION
-      SELECT user_id, part_key FROM parts_summary WHERE part_key = ANY($1) OR part_number = ANY($1)`, [nummern]);
+      SELECT user_id, part_key FROM parts_summary WHERE part_key = ANY($1) OR part_number = ANY($1)`,
+    [nummern],
+  );
 }

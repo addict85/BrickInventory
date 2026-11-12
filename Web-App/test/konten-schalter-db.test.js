@@ -22,13 +22,16 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Kontoschalter und eindeutige Adresse', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Kontoschalter und eindeutige Adresse', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   const K = `schalter${process.pid}`;
   const leeren = () => db.run('DELETE FROM users WHERE username LIKE $1', [`${K}%`]);
   const lege = (n, extra = '', werte = []) =>
-    db.get(`INSERT INTO users (username, password_hash${extra ? ', ' + extra : ''})
-            VALUES ($1, 'x'${werte.map((_, i) => `, $${i + 2}`).join('')}) RETURNING *`, [`${K}${n}`, ...werte]);
+    db.get(
+      `INSERT INTO users (username, password_hash${extra ? ', ' + extra : ''})
+            VALUES ($1, 'x'${werte.map((_, i) => `, $${i + 2}`).join('')}) RETURNING *`,
+      [`${K}${n}`, ...werte],
+    );
   await leeren();
 
   try {
@@ -37,16 +40,16 @@ test('Kontoschalter und eindeutige Adresse', { concurrency: 1 }, async (t) => {
       assert.deepEqual([u.is_admin, u.is_active, u.email_verified], [false, true, false]);
     });
     await t.test('ein Schalter ist nie leer', async () => {
-      await assert.rejects(lege('b', 'is_admin', [null]), (e) => e.code === '23502');
-      await assert.rejects(lege('c', 'is_active', [null]), (e) => e.code === '23502');
+      await assert.rejects(lege('b', 'is_admin', [null]), e => e.code === '23502');
+      await assert.rejects(lege('c', 'is_active', [null]), e => e.code === '23502');
     });
     await t.test('ein Schalter ist ein Wahrheitswert', async () => {
-      await assert.rejects(lege('d', 'is_admin', [2]), (e) => e.code === '22P02');
-      await assert.rejects(lege('e', 'email_verified', [-1]), (e) => e.code === '22P02');
+      await assert.rejects(lege('d', 'is_admin', [2]), e => e.code === '22P02');
+      await assert.rejects(lege('e', 'email_verified', [-1]), e => e.code === '22P02');
     });
     await t.test('eine Adresse gibt es nur einmal, gleich in welcher Schreibweise', async () => {
       await lege('f', 'email', [`${K}@Beispiel.ch`]);
-      await assert.rejects(lege('g', 'email', [`${K.toUpperCase()}@beispiel.CH`]), (e) => e.code === '23505');
+      await assert.rejects(lege('g', 'email', [`${K.toUpperCase()}@beispiel.CH`]), e => e.code === '23505');
       assert.ok(await lege('h', 'email', [null]));
       assert.ok(await lege('i', 'email', [null]), 'ohne Adresse dürfen es mehrere sein');
     });

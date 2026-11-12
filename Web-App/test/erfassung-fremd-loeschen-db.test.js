@@ -18,27 +18,44 @@ const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 
-const A = `fremd_a_${process.pid}`, B = `fremd_b_${process.pid}`;
+const A = `fremd_a_${process.pid}`,
+  B = `fremd_b_${process.pid}`;
 
-test('fremde Erfassungen löschen', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('fremde Erfassungen löschen', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[A, B]]);
-  const neu = async (n) => (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id;
-  const a = await neu(A), b = await neu(B);
+  const neu = async n =>
+    (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id;
+  const a = await neu(A),
+    b = await neu(B);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
     await db.pool.end().catch(() => {});
   });
   await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, '3001', 4, 'manual')`, [b]);
-  const teil = (await db.get(`INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, condition)
-    VALUES ($1, '3001', 4, 2, 'N') RETURNING id`, [b])).id;
+  const teil = (
+    await db.get(
+      `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, condition)
+    VALUES ($1, '3001', 4, 2, 'N') RETURNING id`,
+      [b],
+    )
+  ).id;
   await db.run(`INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1, 'sw0001', 'manual')`, [b]);
-  const figur = (await db.get(`INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, condition)
-    VALUES ($1, 'sw0001', 1, 'N') RETURNING id`, [b])).id;
+  const figur = (
+    await db.get(
+      `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, condition)
+    VALUES ($1, 'sw0001', 1, 'N') RETURNING id`,
+      [b],
+    )
+  ).id;
 
-  const { base } = testServer(_req, { sitzung: { userId: a }, apiNutzer: { user_id: a, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const loesche = (pfad) => fetch(base + pfad, { method: 'DELETE' }).then(r => r.status);
+  const { base } = testServer(_req, {
+    sitzung: { userId: a },
+    apiNutzer: { user_id: a, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
+  const loesche = pfad => fetch(base + pfad, { method: 'DELETE' }).then(r => r.status);
 
   await t.test('Teil', async () => {
     assert.equal(await loesche(`/api/v1/parts/3001/4/acquisitions/${teil}`), 404);

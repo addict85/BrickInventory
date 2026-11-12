@@ -18,10 +18,11 @@ const { dbOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
-test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const HAUPT = `besitz-haupt-${process.pid}`, SUB = `besitz-sub-${process.pid}`;
+  const HAUPT = `besitz-haupt-${process.pid}`,
+    SUB = `besitz-sub-${process.pid}`;
   const SET = `60445-1`;
   const aufraeumen = async () => {
     await db.run('DELETE FROM set_acquisitions WHERE set_number=$1', [SET]).catch(() => {});
@@ -33,14 +34,19 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
   try {
     await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
     const hauptId = (await db.get('SELECT id FROM users WHERE username=$1', [HAUPT])).id;
-    const subId   = (await db.get('SELECT id FROM users WHERE username=$1', [SUB])).id;
-    await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
-      [hauptId, subId]);
+    const subId = (await db.get('SELECT id FROM users WHERE username=$1', [SUB])).id;
+    await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
+      hauptId,
+      subId,
+    ]);
 
     // Set UND Erfassung gehoeren dem UNTERKONTO — wie im gemeldeten Fall.
-    await haeltSet(db, subId, SET, 0);  // Menge 0: die Erfassung dahinter traegt sie
-    await db.run(`INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
-                  VALUES ($1,$2,1,10,'N')`, [subId, SET]);
+    await haeltSet(db, subId, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await db.run(
+      `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
+                  VALUES ($1,$2,1,10,'N')`,
+      [subId, SET],
+    );
 
     const { updateSet } = _req('src/sets/index.js');
     // Die sets-Zeile traegt seit Migration 0032 nur noch Menge und Besitzer —
@@ -53,8 +59,13 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
                 COALESCE((SELECT SUM(a.quantity) FROM set_acquisitions a
                            WHERE a.user_id = s.user_id
                              AND a.set_number = s.set_number), 0)::int AS quantity
-           FROM sets s WHERE s.set_number=$1`, [SET]),
-      erf: await db.get('SELECT user_id, condition, purchase_price::float AS p FROM set_acquisitions WHERE set_number=$1', [SET]),
+           FROM sets s WHERE s.set_number=$1`,
+        [SET],
+      ),
+      erf: await db.get(
+        'SELECT user_id, condition, purchase_price::float AS p FROM set_acquisitions WHERE set_number=$1',
+        [SET],
+      ),
     });
 
     // 1. Der Preis — der Zweig, der schon vorher richtig lag.
@@ -67,16 +78,18 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     //    ersetzt -> dieser Teilschritt rot (durchgefuehrt).
     await updateSet(hauptId, SET, { condition: 'U' });
     s = await stand();
-    assert.equal(s.erf.condition, 'U',
+    assert.equal(
+      s.erf.condition,
+      'U',
       'Die letzte Erfassung traegt den neuen Zustand nicht — die Aenderung hat ' +
-      'keine Zeile getroffen und wurde trotzdem als Erfolg gemeldet');
+        'keine Zeile getroffen und wurde trotzdem als Erfolg gemeldet',
+    );
     assert.equal(s.erf.p, 99, 'Die Zustandsaenderung hat den Preis mitgenommen');
 
     // 3. Und beides steht weiterhin beim BESITZER, nicht beim Aufrufer.
     assert.equal(s.set.user_id, subId, 'Die Aenderung hat eine Zeile im falschen Konto angelegt');
     assert.equal(s.erf.user_id, subId);
-    const fremde = await db.get(
-      'SELECT COUNT(*)::int n FROM sets WHERE set_number=$1 AND user_id=$2', [SET, hauptId]);
+    const fremde = await db.get('SELECT COUNT(*)::int n FROM sets WHERE set_number=$1 AND user_id=$2', [SET, hauptId]);
     assert.equal(fremde.n, 0, 'Eine Preis- oder Zustandsaenderung hat eine eigene Zeile erzeugt');
   } finally {
     await aufraeumen();
@@ -91,12 +104,18 @@ test('die Menge geht bewusst auf das eigene Konto', () => {
   // Besitzer ab. Das steht hier, damit es niemand „mit vereinheitlicht".
   const src = fs.readFileSync(path.join(ROOT, 'src/sets/setService.ts'), 'utf8');
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-  assert.match(code, /adjustAcquisitionsToQuantity\(sk, uid, sn/,
+  assert.match(
+    code,
+    /adjustAcquisitionsToQuantity\(sk, uid, sn/,
     'Die Mengenanpassung laeuft nicht mehr auf das eigene Konto — dann erhoeht ' +
-    'ein „+" den Bestand eines fremden Kontos');
+      'ein „+" den Bestand eines fremden Kontos',
+  );
   // Und Preis/Zustand gehen NICHT ueber den Aufrufer.
-  assert.doesNotMatch(code, /UPDATE sets SET (?:purchase_price|condition)[^;]*\[\s*\w+,\s*uid,/,
-    'Preis oder Zustand werden wieder mit der Aufrufer-ID geschrieben');
+  assert.doesNotMatch(
+    code,
+    /UPDATE sets SET (?:purchase_price|condition)[^;]*\[\s*\w+,\s*uid,/,
+    'Preis oder Zustand werden wieder mit der Aufrufer-ID geschrieben',
+  );
 });
 
 // Der Name lautete „die Spiegelung auf Set und letzte Erfassung steht an einer
@@ -106,7 +125,7 @@ test('die Menge geht bewusst auf das eigene Konto', () => {
 test('die letzte Erfassung wird an genau einer Stelle beschrieben', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
-  const gehen = (d) => {
+  const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts'].includes(e.name) || e.name.startsWith('.')) continue;
       const abs = path.join(d, e.name);
@@ -115,21 +134,26 @@ test('die letzte Erfassung wird an genau einer Stelle beschrieben', () => {
     }
   };
   gehen(ROOT);
-  assert.ok(dateien.length >= 40,
-    `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
   const stellen = [];
   for (const f of dateien) {
-    const code = fs.readFileSync(f, 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+    const code = fs
+      .readFileSync(f, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/[^\n]*$/gm, '');
     // JEDE Fundstelle, nicht je Datei eine: Beim Gegenprobieren habe ich eine
     // zweite Abschrift in DERSELBEN Datei eingesetzt, und die Regel blieb
     // gruen — sie sammelte Dateinamen statt Vorkommen.
     for (const _ of code.matchAll(
-      /UPDATE set_acquisitions SET[\s\S]{0,260}?ORDER BY created_at DESC, id DESC LIMIT 1/g))
+      /UPDATE set_acquisitions SET[\s\S]{0,260}?ORDER BY created_at DESC, id DESC LIMIT 1/g,
+    ))
       stellen.push(path.relative(ROOT, f));
   }
-  assert.deepEqual(stellen, ['src/sets/repository/sets.ts'],
+  assert.deepEqual(
+    stellen,
+    ['src/sets/repository/sets.ts'],
     'Die letzte Erfassung wird an mehr als einer Stelle beschrieben — genau so ' +
-    'sind Preis und Zustand mit verschiedenen Konten auseinandergelaufen');
+      'sind Preis und Zustand mit verschiedenen Konten auseinandergelaufen',
+  );
 });

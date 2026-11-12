@@ -1,9 +1,9 @@
 // Beide Pfadpräfixe, ein Existenz-Cache.
 
-import fs from 'fs';
-import crypto from 'crypto';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { APP_ROOT, IMAGES_DIR } from '../../infra/appPaths';
-import path from 'path';
+import path from 'node:path';
 import { Zwischenspeicher } from '../../infra/zwischenspeicher';
 
 // Positive Treffer bleiben gültig (Vorschauen werden nie gelöscht); negative
@@ -13,10 +13,10 @@ const _thumbCache = new Zwischenspeicher<string, boolean>(20000);
 
 export function resolveImageLocal(localPath: string | null | undefined) {
   if (!localPath) return localPath;
-  const ext       = path.extname(localPath);
+  const ext = path.extname(localPath);
   const thumbPath = localPath.replace(ext, '_thumb.jpg');
-  let thumbFs;
-  if      (thumbPath.startsWith('/data/'))   thumbFs = path.join(APP_ROOT, thumbPath.slice(1));
+  let thumbFs: string;
+  if (thumbPath.startsWith('/data/')) thumbFs = path.join(APP_ROOT, thumbPath.slice(1));
   else if (thumbPath.startsWith('/images/')) thumbFs = path.join(IMAGES_DIR, thumbPath.slice('/images/'.length));
   else return localPath;
 
@@ -42,7 +42,9 @@ function istRebrickableBild(url: string): boolean {
   try {
     const h = new URL(url).hostname;
     return h === 'rebrickable.com' || h.endsWith('.rebrickable.com');
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 export function proxyImageUrl(url: string | null | undefined) {
@@ -78,7 +80,11 @@ const OHNE_ANFRAGETEIL = ['cdn.rebrickable.com', 'images.brickset.com', 'img.bri
 /** Die Adresse, die der Proxy holt und nach der er ablegt; null, wenn unlesbar. */
 export function proxyAdresse(url: string): string | null {
   let u: URL;
-  try { u = new URL(url); } catch { return null; }
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
   u.hash = '';
   if (OHNE_ANFRAGETEIL.some(h => u.hostname === h || u.hostname.endsWith('.' + h))) u.search = '';
   else u.searchParams.sort();
@@ -86,7 +92,10 @@ export function proxyAdresse(url: string): string | null {
 }
 
 export function proxyCacheSchluessel(url: string): string {
-  return crypto.createHash('sha1').update(proxyAdresse(url) ?? url).digest('hex');
+  return crypto
+    .createHash('sha1')
+    .update(proxyAdresse(url) ?? url)
+    .digest('hex');
 }
 
 // Die Ablageregel des Proxy-Caches an einer Stelle, auch für die Bild-Diagnose.

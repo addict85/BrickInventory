@@ -30,24 +30,29 @@ const _meldungenDerAbgelaufenenSitzung = new Set();
  * @param {unknown} msg
  * @param {'info' | 'success' | 'error'} [type]
  */
-export function toast(msg, type='info', aktion, details) {
+export function toast(msg, type = 'info', aktion, details) {
   const c = G('toasts');
-  if (type === 'error' && !ME && [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m))) return null;
+  if (type === 'error' && !ME && [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m)))
+    return null;
   // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
   const schluessel = `${type}|${String(msg ?? '')}`;
   const gleich = aktion ? null : [...c.children].find(x => _toastStand.get(x)?.schluessel === schluessel);
   if (gleich) {
-    const stand = /** @type {{schluessel: string, anzahl: number, frist: ReturnType<typeof setTimeout> | null, dauer: number}} */ (_toastStand.get(gleich));
+    const stand =
+      /** @type {{schluessel: string, anzahl: number, frist: ReturnType<typeof setTimeout> | null, dauer: number}} */ (
+        _toastStand.get(gleich)
+      );
     stand.anzahl++;
     const zahl = /** @type {HTMLElement} */ (gleich.querySelector('.toast-anzahl'));
-    zahl.textContent = `×${stand.anzahl}`; zahl.hidden = false;
+    zahl.textContent = `×${stand.anzahl}`;
+    zahl.hidden = false;
     starteFrist(/** @type {HTMLElement} */ (gleich));
     return /** @type {HTMLElement} */ (gleich);
   }
   // Ein Erfolg erledigt ältere Fehler: Sie blieben sonst neben der Bestätigung stehen.
   if (type === 'success') for (const alt of [...c.children]) if (alt.classList.contains('error')) alt.remove();
   const el = document.createElement('div');
-  el.className=`toast ${type}`;
+  el.className = `toast ${type}`;
   if (type === 'error') el.setAttribute('role', 'alert');
   // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen und Set-/Teilenummern aus
   // Nutzereingaben.
@@ -58,7 +63,8 @@ export function toast(msg, type='info', aktion, details) {
   text.className = 'toast-text';
   text.textContent = String(msg ?? '');
   const anzahl = document.createElement('span');
-  anzahl.className = 'toast-anzahl'; anzahl.hidden = true;
+  anzahl.className = 'toast-anzahl';
+  anzahl.hidden = true;
   el.append(icon, text, anzahl);
   // Die Ursache aufklappbar: Sieben Zeilen Meldung verdeckten am Telefon die Liste.
   if (details) {
@@ -76,19 +82,25 @@ export function toast(msg, type='info', aktion, details) {
     knopf.type = 'button';
     knopf.className = 'toast-aktion';
     knopf.textContent = aktion.text;
-    knopf.onclick = () => { el.remove(); aktion.fn(); };
+    knopf.onclick = () => {
+      el.remove();
+      aktion.fn();
+    };
     el.append(knopf);
     if (aktion.bleibt) el.dataset.bleibt = '';
   }
   // Ein Fehler will gelesen werden, eine Bestätigung nur gesehen; mit Knopf muss man ihn auch treffen. Ein
   // Klick auf die Meldung räumt sie weg, damit sie keine Karte verdeckt.
-  el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button, details')) el.remove(); });
+  el.addEventListener('click', e => {
+    if (e.target === el || !(/** @type {Element} */ (e.target).closest('button, details'))) el.remove();
+  });
   // Fehler und Meldungen mit Knopf laufen nicht ab (WCAG 2.2.1): Wer per Tastatur zum Knopf will oder langsam
   // liest, verlor sie nach 9 s. Sie schliessen über ihr ✕, einen Klick oder den Wechsel der Ansicht.
   const bleibt = type === 'error' || !!aktion;
   if (bleibt) {
     const zu = document.createElement('button');
-    zu.type = 'button'; zu.className = 'toast-zu';
+    zu.type = 'button';
+    zu.className = 'toast-zu';
     zu.setAttribute('aria-label', tRaw('common.close'));
     setzeHtml(zu, ico('schliessen'));
     zu.onclick = () => el.remove();
@@ -98,10 +110,19 @@ export function toast(msg, type='info', aktion, details) {
   _toastStand.set(el, { schluessel, anzahl: 1, frist: null, dauer: bleibt ? 0 : (TOAST_DAUER[type] ?? 4500) });
   starteFrist(el);
   // Solange Maus oder Fokus darauf liegt, läuft die Frist nicht.
-  const halt = () => { const s = _toastStand.get(el); if (s?.frist) { clearTimeout(s.frist); s.frist = null; } };
-  el.addEventListener('mouseenter', halt); el.addEventListener('focusin', halt);
+  const halt = () => {
+    const s = _toastStand.get(el);
+    if (s?.frist) {
+      clearTimeout(s.frist);
+      s.frist = null;
+    }
+  };
+  el.addEventListener('mouseenter', halt);
+  el.addEventListener('focusin', halt);
   el.addEventListener('mouseleave', () => starteFrist(el));
-  el.addEventListener('focusout', e => { if (!el.contains(/** @type {Node | null} */ (e.relatedTarget))) starteFrist(el); });
+  el.addEventListener('focusout', e => {
+    if (!el.contains(/** @type {Node | null} */ (e.relatedTarget))) starteFrist(el);
+  });
   return el;
 }
 
@@ -110,8 +131,11 @@ export function toast(msg, type='info', aktion, details) {
  * (Rückgängig, Ändern) bleiben bis zur Frist.
  */
 export function verwirfToasts() {
-  for (const el of [...(G('toasts')?.children || [])]) if (!(/** @type {HTMLElement} */ (el)).hasAttribute('data-bleibt')) el.remove();
+  for (const el of [...(G('toasts')?.children || [])])
+    if (!(/** @type {HTMLElement} */ (el).hasAttribute('data-bleibt'))) el.remove();
 }
 
 /** Merkt den Text einer 401-Antwort; toast() lässt ihn nach dem Ende der Sitzung weg. @param {string} text */
-export function merkeSitzungsende(text) { _meldungenDerAbgelaufenenSitzung.add(text); }
+export function merkeSitzungsende(text) {
+  _meldungenDerAbgelaufenenSitzung.add(text);
+}

@@ -16,21 +16,38 @@ const assert = require('node:assert/strict');
 const { oeffneOberflaeche, warte, takt, ANMELDUNG } = require('./helpers/oberflaeche');
 
 const HAUSHALT = {
-  '/v1/sets/household-members': { success: true, members: [
-    { id: 1, username: 'anna', is_self: true, tiefe: 0 },
-    { id: 7, username: 'ben', is_self: false, tiefe: 1 },
-  ] },
+  '/v1/sets/household-members': {
+    success: true,
+    members: [
+      { id: 1, username: 'anna', is_self: true, tiefe: 0 },
+      { id: 7, username: 'ben', is_self: false, tiefe: 1 },
+    ],
+  },
 };
-const GEMERKT = { bim_scope_gallery: '7', bim_scope_parts: 'own', bim_scope_finance: '7', bim_lager_gallery: 'Regal A' };
-const merke = w => { for (const [k, v] of Object.entries(GEMERKT)) w.localStorage.setItem(k, v); };
+const GEMERKT = {
+  bim_scope_gallery: '7',
+  bim_scope_parts: 'own',
+  bim_scope_finance: '7',
+  bim_lager_gallery: 'Regal A',
+};
+const merke = w => {
+  for (const [k, v] of Object.entries(GEMERKT)) w.localStorage.setItem(k, v);
+};
 const setAbfragen = o => o.aufrufe.filter(a => a.method === 'GET' && /\/v1\/sets(\?|$)/.test(a.url));
 
 test('die Anmeldung setzt Konto- und Lagerortfilter zurück, bevor die Liste lädt', async () => {
-  const o = await oeffneOberflaeche({
-    ...ANMELDUNG, ...HAUSHALT,
-    '/v1/auth/me': { success: true, loggedIn: false },
-    '/v1/auth/login': { success: true, user: { id: 1, username: 'anna', is_admin: false, zweiterFaktorPflicht: false } },
-  }, { angemeldet: false, vorher: merke });
+  const o = await oeffneOberflaeche(
+    {
+      ...ANMELDUNG,
+      ...HAUSHALT,
+      '/v1/auth/me': { success: true, loggedIn: false },
+      '/v1/auth/login': {
+        success: true,
+        user: { id: 1, username: 'anna', is_admin: false, zweiterFaktorPflicht: false },
+      },
+    },
+    { angemeldet: false, vorher: merke },
+  );
   try {
     await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
     assert.equal(setAbfragen(o).length, 0, 'vor der Anmeldung lädt nichts');
@@ -43,18 +60,26 @@ test('die Anmeldung setzt Konto- und Lagerortfilter zurück, bevor die Liste lä
     assert.doesNotMatch(erste, /accounts=|storage=/, `die erste Setabfrage filtert noch: ${erste}`);
     for (const k of Object.keys(GEMERKT)) assert.equal(o.w.localStorage.getItem(k), null, `${k} blieb gespeichert`);
     assert.equal(o.d.getElementById('scope-gallery').value, 'all');
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('ein Neuladen in derselben Sitzung behält die Wahl', async () => {
   const o = await oeffneOberflaeche(HAUSHALT, { vorher: merke });
   try {
     await o.ruhig();
-    assert.ok(setAbfragen(o).some(a => /accounts=7/.test(a.url) && /storage=Regal(\+|%20)A/.test(a.url)),
-      setAbfragen(o).map(a => a.url).join('\n'));
+    assert.ok(
+      setAbfragen(o).some(a => /accounts=7/.test(a.url) && /storage=Regal(\+|%20)A/.test(a.url)),
+      setAbfragen(o)
+        .map(a => a.url)
+        .join('\n'),
+    );
     assert.equal(o.w.localStorage.getItem('bim_scope_gallery'), '7');
     assert.equal(o.d.getElementById('scope-gallery').value, '7');
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('die Wahl wird gemerkt und geht an den Server', async () => {
@@ -69,5 +94,7 @@ test('die Wahl wird gemerkt und geht an den Server', async () => {
     await o.ruhig();
     assert.equal(o.w.localStorage.getItem('bim_scope_gallery'), 'own');
     assert.match(setAbfragen(o).at(-1).url, /accounts=own/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });

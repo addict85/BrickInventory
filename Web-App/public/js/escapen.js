@@ -12,10 +12,13 @@
  * numerische Form zusätzlich in HTML 4. Eine Form, beide Verwendungen.
  * @param {unknown} s
  */
-export function esc(s){
+export function esc(s) {
   return String(s ?? '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Ansichten entstehen per innerHTML aus Vorlagen; jeder Wert aus Datenbank, CSV oder Fremd-API muss durch
@@ -28,11 +31,14 @@ export function esc(s){
  * Browser dekodiert ihn vor dem JS-Parsen zurück, und der String bricht auf.
  * @param {unknown} s
  */
-export function escJs(s){
+export function escJs(s) {
   return String(s ?? '')
-    .replace(/\\/g,'\\\\').replace(/'/g,"\\'")
-    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
-    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /**
@@ -40,12 +46,12 @@ export function escJs(s){
  * Bild-URL mitbringen — ohne diese Prüfung landet "javascript:…" ungefiltert in einem href.
  * @param {unknown} u
  */
-export function escUrl(u){
+export function escUrl(u) {
   return esc(sichereUrl(u));
 }
 
 /** Wie escUrl(), aber unmaskiert: für html``, das selbst maskiert. @param {unknown} u */
-export function sichereUrl(u){
+export function sichereUrl(u) {
   const v = String(u ?? '').trim();
   // Browser lesen „\" wie „/" und streichen Tab und Zeilenumbruch mitten in der Adresse: „/\host" und
   // „/<Tab>/host" wären protokollrelativ, also fremd. Beides kommt in einer echten Adresse nicht vor.
@@ -58,9 +64,11 @@ export function sichereUrl(u){
  * @param {unknown} hex
  * @param {string} fallback
  */
-export function escHex(hex, fallback){
-  const v = String(hex ?? '').trim().replace(/^#/, '');
-  return /^[0-9A-Fa-f]{6}$/.test(v) ? '#' + v : (fallback || 'var(--s300)');
+export function escHex(hex, fallback) {
+  const v = String(hex ?? '')
+    .trim()
+    .replace(/^#/, '');
+  return /^[0-9A-Fa-f]{6}$/.test(v) ? '#' + v : fallback || 'var(--s300)';
 }
 
 /**
@@ -68,8 +76,10 @@ export function escHex(hex, fallback){
  * escHex() dort ergäbe „##RRGGBB“.
  * @param {unknown} hex
  */
-export function hexZiffern(hex){
-  const v = String(hex ?? '').trim().replace(/^#/, '');
+export function hexZiffern(hex) {
+  const v = String(hex ?? '')
+    .trim()
+    .replace(/^#/, '');
   return /^[0-9A-Fa-f]{6}$/.test(v) ? v : '';
 }
 
@@ -78,15 +88,19 @@ export function hexZiffern(hex){
  */
 export function escHtmlAttr(v) {
   return String(v == null ? '' : v)
-    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 // Trusted Types (CSP `require-trusted-types-for 'script'`): Der Browser nimmt Markup nur als TrustedHTML.
 // Die Richtlinie `app` prägt es nur für den einen Text, den alsHtml() gerade aus SicheresHtml gebaut hat;
 // jeder andere Aufruf, auch mit ihrem Objekt, wird abgewiesen. Alles übrige landet bei `default` und scheitert.
-const tt = /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): unknown } } }} */ (
-  /** @type {unknown} */ (globalThis)).trustedTypes;
+const tt =
+  /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): unknown } } }} */ (
+    /** @type {unknown} */ (globalThis)
+  ).trustedTypes;
 /** @type {string | null} */
 let _freigabe = null;
 const richtlinie = tt?.createPolicy('app', {
@@ -103,9 +117,17 @@ function eigenesSkript(u) {
   return url.protocol === 'blob:' || /^\/(locales|vendor\/pdfjs|js)\//.test(url.pathname);
 }
 tt?.createPolicy('default', {
-  createHTML: (/** @type {string} */ s) => { if (s === '') return s; throw new TypeError('Trusted Types: Markup nur über die Richtlinie app'); },
-  createScriptURL: (/** @type {string} */ u) => { if (eigenesSkript(u)) return u; throw new TypeError(`Trusted Types: fremdes Skript ${u}`); },
-  createScript: () => { throw new TypeError('Trusted Types: kein Skript aus Text'); },
+  createHTML: (/** @type {string} */ s) => {
+    if (s === '') return s;
+    throw new TypeError('Trusted Types: Markup nur über die Richtlinie app');
+  },
+  createScriptURL: (/** @type {string} */ u) => {
+    if (eigenesSkript(u)) return u;
+    throw new TypeError(`Trusted Types: fremdes Skript ${u}`);
+  },
+  createScript: () => {
+    throw new TypeError('Trusted Types: kein Skript aus Text');
+  },
 });
 
 /** Markup für den Browser (TrustedHTML, ohne Trusted Types der Text): nur aus html`` oder ungeprueft(); eine
@@ -114,7 +136,11 @@ export function alsHtml(inhalt) {
   const text = einsetzen(inhalt);
   if (!richtlinie) return text;
   _freigabe = text;
-  try { return /** @type {string} */ (richtlinie.createHTML(text)); } finally { _freigabe = null; }
+  try {
+    return /** @type {string} */ (richtlinie.createHTML(text));
+  } finally {
+    _freigabe = null;
+  }
 }
 
 /** Fertiges Markup: aus html`` oder ungeprueft(). Nur so nimmt setzeHtml() (dom.js) Text als Markup an. */
@@ -122,10 +148,17 @@ export class SicheresHtml {
   /** Die Marke lässt sich nicht nachbauen: Object.create(SicheresHtml.prototype) besteht instanceof, nicht sie. */
   #marke = true;
   /** @param {string} text */
-  constructor(text) { this.text = text; void this.#marke; }
-  toString() { return this.text; }
+  constructor(text) {
+    this.text = text;
+    void this.#marke;
+  }
+  toString() {
+    return this.text;
+  }
   /** @param {unknown} wert @returns {wert is SicheresHtml} */
-  static markiert(wert) { return typeof wert === 'object' && wert !== null && #marke in wert; }
+  static markiert(wert) {
+    return typeof wert === 'object' && wert !== null && #marke in wert;
+  }
 }
 
 /** Was setzeHtml() annimmt: fertiges Markup, Listen davon oder nichts — keine Zeichenkette mit Daten.
@@ -157,4 +190,6 @@ export function html(teile, ...werte) {
  * test/ratschen.test.js; neue Vorlagen nehmen html``.
  * @param {unknown} text
  */
-export function ungeprueft(text) { return new SicheresHtml(String(text ?? '')); }
+export function ungeprueft(text) {
+  return new SicheresHtml(String(text ?? ''));
+}

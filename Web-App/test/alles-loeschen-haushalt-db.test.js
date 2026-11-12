@@ -21,12 +21,18 @@ const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
 async function erreichbar() {
-  try { await db.get('SELECT 1'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
-  if (!await erreichbar()) {
-    keineDb(t); return;
+test('Alles-Loeschen fasst die verknuepften Konten nicht an', async t => {
+  if (!(await erreichbar())) {
+    keineDb(t);
+    return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -34,15 +40,20 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   // Und die MIGRATIONEN, nicht nur das Schema
   {
     const mc = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(mc);
+    } finally {
+      mc.release();
+    }
   }
   t.after(() => db.pool.end());
 
   const PASS = 'eigenes-Passwort-1';
-  await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt', $1), ('kind','x')`,
-    [require(path.join(ROOT, 'node_modules', 'bcryptjs')).hashSync(PASS, 4)]);
+  await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt', $1), ('kind','x')`, [
+    require(path.join(ROOT, 'node_modules', 'bcryptjs')).hashSync(PASS, 4),
+  ]);
   const haupt = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
-  const kind  = (await db.get(`SELECT id FROM users WHERE username='kind'`)).id;
+  const kind = (await db.get(`SELECT id FROM users WHERE username='kind'`)).id;
   await db.run(`INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
   // 75192-1 besitzen BEIDE — das ist der Fall, den eine Prüfung auf
@@ -63,8 +74,13 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
     routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
-  const hole = async (pfad, methode = 'GET', body) => (await fetch(base + pfad, { method: methode,
-    ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) })).json();
+  const hole = async (pfad, methode = 'GET', body) =>
+    (
+      await fetch(base + pfad, {
+        method: methode,
+        ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
+      })
+    ).json();
 
   // Ohne Passwort bleibt alles stehen: Ein erbeutetes App-Token allein soll nicht alles löschen.
   const ohne = await hole('/api/v1/bestand', 'DELETE');
@@ -80,8 +96,11 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   assert.deepEqual(meine, [], 'Die eigenen Sets müssen weg sein');
 
   const seine = await db.all(`SELECT set_number FROM sets WHERE user_id=$1 ORDER BY set_number`, [kind]);
-  assert.deepEqual(seine.map(r => r.set_number), ['21318-1', '75192-1'],
-    'Das verknüpfte Konto behält ALLE seine Sets — auch die gemeinsame Nummer');
+  assert.deepEqual(
+    seine.map(r => r.set_number),
+    ['21318-1', '75192-1'],
+    'Das verknüpfte Konto behält ALLE seine Sets — auch die gemeinsame Nummer',
+  );
   const teile = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [kind]);
   const figuren = await db.get(`SELECT COUNT(*)::int c FROM minifigs WHERE user_id=$1`, [kind]);
   assert.equal(teile.c, 2, 'Teile des verknüpften Kontos bleiben (aus dem Set und manuell)');
@@ -94,14 +113,15 @@ test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () =
   // Ein Blickfeld-Parameter, der etwas ÖFFNEN kann, wäre ein Zugriffsweg statt
   // einer Sicherung. Der Dienst schneidet deshalb gegen schreibbereich(); die
   // Route gibt nur die Sicht weiter (Verhalten: blickfeld-dienste-db.test.js).
-  const src = fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8');
+  const src = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
   const i = src.indexOf("router.delete('/sets/:setNumber'");
   assert.ok(i > 0, 'Löschroute nicht gefunden');
   assert.match(src.slice(i, i + 900), /loescheSetFuer\(sichtVon\(req\)/, 'Die Route löscht nicht über den Dienst');
   const dienst = require('./helpers/sources').funktionsRumpf(
-    fs.readFileSync(path.join(ROOT, 'src/sets/loeschen.ts'), 'utf8'), 'loescheSetFuer');
-  assert.match(dienst, /schreibbar\.includes\(/,
-    'Die gewählte Menge muss gegen schreibbereich() geschnitten werden');
+    fs.readFileSync(path.join(ROOT, 'src/sets/loeschen.ts'), 'utf8'),
+    'loescheSetFuer',
+  );
+  assert.match(dienst, /schreibbar\.includes\(/, 'Die gewählte Menge muss gegen schreibbereich() geschnitten werden');
 });
 
 test('der Knopf überlässt die Auswahl dem Server', () => {
@@ -112,9 +132,12 @@ test('der Knopf überlässt die Auswahl dem Server', () => {
   const i = src.indexOf("G('btn-dall')");
   assert.ok(i > 0, 'Knopf btn-dall nicht gefunden');
   const block = src.slice(i, src.indexOf('\n};', i));
-  assert.match(block, /api\('DELETE','\/v1\/bestand',\s*\{\s*password\b/, 'Der Knopf ruft DELETE /v1/bestand mit Passwort');
+  assert.match(
+    block,
+    /api\(\s*'DELETE',\s*'\/v1\/bestand',\s*\{\s*password\b/,
+    'Der Knopf ruft DELETE /v1/bestand mit Passwort',
+  );
   assert.doesNotMatch(block, /\/v1\/sets/, 'Der Knopf listet und löscht wieder selbst');
   const loeschen = fs.readFileSync(path.join(ROOT, 'src/sammlung/loeschen.ts'), 'utf8');
   assert.match(loeschen, /loescheSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');
 });
-

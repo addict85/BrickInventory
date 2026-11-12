@@ -13,8 +13,8 @@ const fc = _req('src/finanzen/financeCalc.js');
 const { haeltTeil } = require('./helpers/bestand');
 
 const UID = 990101;
-const N   = 20;               // genug, damit „je Stück" von „einmalig" trennbar ist
-const NR  = i => `bwt-teil-${i}`;
+const N = 20; // genug, damit „je Stück" von „einmalig" trennbar ist
+const NR = i => `bwt-teil-${i}`;
 
 // Alle Abfragen dieses Laufs mitschreiben.
 const gesehen = [];
@@ -22,7 +22,7 @@ let zaehlen = false;
 const altQuery = db.pool.query.bind(db.pool);
 db.pool.query = (text, ...rest) => {
   if (zaehlen) {
-    const sql = String(typeof text === 'string' ? text : (text && text.text) || '').replace(/\s+/g, ' ');
+    const sql = String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' ');
     gesehen.push(sql);
   }
   return altQuery(text, ...rest);
@@ -36,9 +36,12 @@ async function aufraeumen() {
   await db.run('DELETE FROM users WHERE id = $1', [UID]).catch(() => {});
 }
 
-test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch { return t.skip('keine Test-Datenbank erreichbar'); }
+test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch {
+    return t.skip('keine Test-Datenbank erreichbar');
+  }
 
   try {
     await aufraeumen();
@@ -53,20 +56,25 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
       // Vorher stand dafuer bl_part_num = part_num in rb_bl_mapping.
       await db.run(
         "INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part', $1, NULL) ON CONFLICT (art, rb_id) DO UPDATE SET bl_id = NULL",
-        [NR(i)]);
+        [NR(i)],
+      );
       // Warmer Preis-Cache — der Normalfall. Ohne ihn misst man den
       // BrickLink-Abruf mit, den es beim zweiten Aufruf nicht mehr gibt.
       for (const zustand of ['N', 'U'])
         await db.run(
           `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
            VALUES ($1, 4, $2, 'EUR', 1.5, 1.4, NOW()) ON CONFLICT DO NOTHING`,
-          [NR(i), zustand]);
+          [NR(i), zustand],
+        );
     }
     // Farbtabelle: rb_colors wird als GANZES gemerkt. Ohne Zeile für Farbe 4
     // wäre die Karte leer und würde bewusst nicht gemerkt (siehe farbkarte).
-    await db.run(
-      'INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4, $1, 4) ON CONFLICT (id) DO UPDATE SET bl_color_id = 4',
-      ['Rot']).catch(() => {});
+    await db
+      .run(
+        'INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4, $1, 4) ON CONFLICT (id) DO UPDATE SET bl_color_id = 4',
+        ['Rot'],
+      )
+      .catch(() => {});
 
     gesehen.length = 0;
     zaehlen = true;
@@ -80,12 +88,18 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
     // Es ist nur noch EINE Einzelabfrage, nicht zwei: Der Rückfall auf
     // `parts.bl_part_number` ist mit Migration 0037 weg, weil es die zweite
     // Quelle nicht mehr gibt (die Begründung steht in src/finanzen/rechnung/preise.ts).
-    assert.equal(wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id=\$2/), 0,
-      'die Zuordnung wurde einzeln gefragt — das Vorladen (ladeBlNummernVor) greift nicht');
+    assert.equal(
+      wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id=\$2/),
+      0,
+      'die Zuordnung wurde einzeln gefragt — das Vorladen (ladeBlNummernVor) greift nicht',
+    );
 
     // ── 2. Statt dessen genau eine Sammelabfrage ───────────────────────────
-    assert.equal(wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id = ANY\(\$2\)/), 1,
-      'die Sammelabfrage auf bl_zuordnung fehlt oder lief mehrfach');
+    assert.equal(
+      wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id = ANY\(\$2\)/),
+      1,
+      'die Sammelabfrage auf bl_zuordnung fehlt oder lief mehrfach',
+    );
 
     // ── 3. Die Farbtabelle höchstens einmal ────────────────────────────────
     // Höchstens, nicht genau: Ein vorheriger Test im selben Prozess kann sie
@@ -97,8 +111,10 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
     // Gemessen: 1,1 je Teil (die Preis-Cache-Zeile plus ein paar einmalige).
     // Die Grenze steht bei 2, damit sie nicht bei jeder harmlosen Änderung
     // reisst — aber weit unter den 4,1 von vorher.
-    assert.ok(gesehen.length < 2 * N,
-      `${gesehen.length} Abfragen für ${N} Teile (${(gesehen.length / N).toFixed(1)} je Teil) — erwartet unter 2 je Teil`);
+    assert.ok(
+      gesehen.length < 2 * N,
+      `${gesehen.length} Abfragen für ${N} Teile (${(gesehen.length / N).toFixed(1)} je Teil) — erwartet unter 2 je Teil`,
+    );
 
     // ── GEGENPROBE ────────────────────────────────────────────────────────
     // Sähe der Zähler die Einzelabfragen überhaupt? Ein Teil, das NICHT
@@ -108,8 +124,11 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async (t) => {
     zaehlen = true;
     await fc.resolveBlPartNumber('bwt-teil-gibtesnicht');
     zaehlen = false;
-    assert.equal(wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id=\$2/), 1,
-      'Gegenprobe: die Einzelabfrage auf bl_zuordnung wurde nicht mitgezählt');
+    assert.equal(
+      wieOft(/FROM bl_zuordnung WHERE art=\$1 AND rb_id=\$2/),
+      1,
+      'Gegenprobe: die Einzelabfrage auf bl_zuordnung wurde nicht mitgezählt',
+    );
   } finally {
     db.pool.query = altQuery;
     await aufraeumen();

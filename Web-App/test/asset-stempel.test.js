@@ -44,18 +44,24 @@ test('eine geänderte Datei bekommt eine neue Adresse', () => {
 
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}');
     const nachher = stempelAus(stempleAssets(HTML, dir));
-    assert.notEqual(nachher, vorher,
+    assert.notEqual(
+      nachher,
+      vorher,
       'Nach dem Ändern steht dieselbe Adresse da — dann behält jeder Browser ' +
-      'seine alte Kopie, bis zu sieben Tage lang. Genau das war Marcos Befund.');
+        'seine alte Kopie, bis zu sieben Tage lang. Genau das war Marcos Befund.',
+    );
 
     // Und der Fall, der die GRÖSSE im Stempel rechtfertigt: gleiche mtime,
     // anderer Inhalt. Ohne die Grösse wäre das nicht zu unterscheiden.
     const st = fs.statSync(path.join(dir, 'a.css'));
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}/*x*/');
     fs.utimesSync(path.join(dir, 'a.css'), st.atime, st.mtime);
-    assert.notEqual(stempelAus(stempleAssets(HTML, dir)), nachher,
+    assert.notEqual(
+      stempelAus(stempleAssets(HTML, dir)),
+      nachher,
       'Bei gleicher Änderungszeit, aber anderer Grösse bleibt die Adresse ' +
-      'gleich — dann fehlt die Grösse im Stempel.');
+        'gleich — dann fehlt die Grösse im Stempel.',
+    );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -72,9 +78,12 @@ test('eine unveränderte Datei behält ihre Adresse', async () => {
     const a = stempelAus(stempleAssets(HTML, dir));
     await new Promise(r => setTimeout(r, 20));
     const b = stempelAus(stempleAssets(HTML, dir));
-    assert.equal(a, b,
+    assert.equal(
+      a,
+      b,
       'Zwei Aufrufe liefern verschiedene Adressen, obwohl sich nichts geändert ' +
-      'hat — dann lädt der Browser bei jedem Aufruf alles neu.');
+        'hat — dann lädt der Browser bei jedem Aufruf alles neu.',
+    );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -83,10 +92,13 @@ test('eine unveränderte Datei behält ihre Adresse', async () => {
 test('eine fehlende Datei lässt den vorhandenen Wert stehen', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stempel-leer-'));
   try {
-    assert.equal(stempleAssets(HTML, dir), HTML,
+    assert.equal(
+      stempleAssets(HTML, dir),
+      HTML,
       'Für eine Datei, die es nicht gibt, wurde etwas gestempelt — eine ' +
-      'fehlende Datei ist ein anderes Problem und darf die Adressen der ' +
-      'übrigen nicht verwackeln.');
+        'fehlende Datei ist ein anderes Problem und darf die Adressen der ' +
+        'übrigen nicht verwackeln.',
+    );
     assert.equal(dateiStempel(path.join(dir, 'gibtsnicht.css')), null);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -97,8 +109,7 @@ test('ein Verweis ohne ?v= bleibt unberührt', () => {
   const dir = baue('.a{}');
   try {
     const roh = '<link href="/a.css"><script src="/b.js"></script>';
-    assert.equal(stempleAssets(roh, dir), roh,
-      'Ein bewusst unversionierter Verweis wurde angefasst.');
+    assert.equal(stempleAssets(roh, dir), roh, 'Ein bewusst unversionierter Verweis wurde angefasst.');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -110,16 +121,21 @@ test('der Renderer stempelt wirklich', () => {
   // aufrufen. Dieselbe Lücke wie bei sitzung-beruehrung und
   // sitzung-leerlauf, dort mit derselben Begründung geschlossen.
   const idx = fs.readFileSync(path.join(ROOT, 'src/konto/indexHtml.ts'), 'utf8');
-  assert.match(idx, /return stempleAssetsGecacht\(out, PUBLIC_DIR\)/,
+  assert.match(
+    idx,
+    /return stempleAssetsGecacht\(out, PUBLIC_DIR\)/,
     'src/konto/indexHtml.ts stempelt die Assets nicht mehr — dann gilt wieder die ' +
-    'Zahl aus package.json, und die steht still, wenn niemand den Bumper läuft.');
+      'Zahl aus package.json, und die steht still, wenn niemand den Bumper läuft.',
+  );
   // ZULETZT, nach dem Sprachtausch: Die Sprachdatei trägt selbst ein `?v=`.
   //
   // Der Anker ist `lang !== ` und NICHT `/locales/`. Erster Versuch nahm
   // letzteres — und traf einen Kommentar weiter oben (Position 3150 statt
   // 4882), wodurch der Fall rot wurde, obwohl die Reihenfolge stimmte. Eine
   // Prüfung, die am falschen Wort hängt, misst das falsche.
-  assert.ok(idx.indexOf('stempleAssetsGecacht(out') > idx.indexOf("lang !== "),
+  assert.ok(
+    idx.indexOf('stempleAssetsGecacht(out') > idx.indexOf('lang !== '),
     'Gestempelt wird vor dem Austausch der Sprachdatei — dann hängt der ' +
-    'Stempel der deutschen Datei an der englischen.');
+      'Stempel der deutschen Datei an der englischen.',
+  );
 });

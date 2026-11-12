@@ -14,11 +14,16 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
     await k.fortschritt({ erledigt: 0, gesamt: 0, text: 'Alle Bilder gecacht' });
     return;
   }
-  console.log(`[img-dl-bg] fehlende Bilder: ${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)`);
+  console.log(
+    `[img-dl-bg] fehlende Bilder: ${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)`,
+  );
   let done = 0;
   const total = sets.length + manualParts.length + figsToFetch.length;
-  await k.fortschritt({ erledigt: 0, gesamt: total,
-    text: `${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)` });
+  await k.fortschritt({
+    erledigt: 0,
+    gesamt: total,
+    text: `${sets.length} Set(s), ${manualParts.length} Teil(e), ${figsToFetch.length} Minifig(s)`,
+  });
   const tick = async () => {
     done++;
     if (done % 10 === 0 || done === total) {
@@ -32,13 +37,17 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
   }
   for (const p of manualParts) {
     // Ein Fehler lässt das Teil ohne Bild; der nächste Nachlauf versucht es wieder.
-    const r = await versuche('bild-nachlauf:downloadImage', enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part'));
+    const r = await versuche(
+      'bild-nachlauf:downloadImage',
+      enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part'),
+    );
     const local = r.ok ? r.wert : null;
     if (local) {
       // Einmal für alle Konten in den Katalog; scheitert es, liegt das Bild zwar
       // auf der Platte, die Oberfläche zeigt es aber nicht — darum mit Protokoll.
-      await setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, local)
-        .catch(logAndContinue(`bilder:teil ${p.part_number}`));
+      await setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, local).catch(
+        logAndContinue(`bilder:teil ${p.part_number}`),
+      );
       // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
       // bei der Originalgrösse.
       generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
@@ -46,12 +55,14 @@ async function bildNachlauf(k: AuftragsKontext): Promise<void> {
     await tick();
   }
   for (const f of figsToFetch) {
-    const r = await versuche('bild-nachlauf:downloadImage', enrich.downloadImage(f.image_url, f.fig_number, 0, 'minifig'));
+    const r = await versuche(
+      'bild-nachlauf:downloadImage',
+      enrich.downloadImage(f.image_url, f.fig_number, 0, 'minifig'),
+    );
     const local = r.ok ? r.wert : null;
     if (local) {
       // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal.
-      await setzeFigurBildLokal(f.fig_number, local)
-        .catch(logAndContinue(`bilder:minifigur ${f.fig_number}`));
+      await setzeFigurBildLokal(f.fig_number, local).catch(logAndContinue(`bilder:minifigur ${f.fig_number}`));
       generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
     }
     await tick();

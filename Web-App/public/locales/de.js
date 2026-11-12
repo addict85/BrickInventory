@@ -39,10 +39,13 @@ window.I18N_DE = {
   'catalog.no_results': 'Keine Sets gefunden',
   'catalog.no_results_hint': 'Eine andere Schreibweise versuchen oder Thema und Jahre lockern.',
   'catalog.leer_titel': 'Der Katalog ist noch leer',
-  'catalog.empty_ohne_schluessel': 'Der Katalog kommt von Rebrickable, und dafür fehlt der Schlüssel. Trag ihn unter Menü → Einstellungen → Rebrickable ein; der nächste Abgleich füllt dann den Katalog.',
-  'catalog.empty_hint_konto': 'Der Katalog füllt sich, sobald der Verwalter den Abgleich mit Rebrickable eingerichtet hat.',
+  'catalog.empty_ohne_schluessel':
+    'Der Katalog kommt von Rebrickable, und dafür fehlt der Schlüssel. Trag ihn unter Menü → Einstellungen → Rebrickable ein; der nächste Abgleich füllt dann den Katalog.',
+  'catalog.empty_hint_konto':
+    'Der Katalog füllt sich, sobald der Verwalter den Abgleich mit Rebrickable eingerichtet hat.',
   'catalog.zum_abgleich': 'Zu den Hintergrundarbeiten',
-  'catalog.empty_hint': 'Der Katalog füllt sich beim Abgleich mit Rebrickable — er läuft nachts und lässt sich unter „Hintergrundarbeiten“ von Hand starten.',
+  'catalog.empty_hint':
+    'Der Katalog füllt sich beim Abgleich mit Rebrickable — er läuft nachts und lässt sich unter „Hintergrundarbeiten“ von Hand starten.',
   'catalog.result_count': '{count} Sets im Katalog',
   'catalog.result_count_one': '{count} Set im Katalog',
   'catalog.owned': 'Im Besitz',
@@ -60,7 +63,8 @@ window.I18N_DE = {
   'wanted.threshold': 'Schwelle (optional)',
   'wanted.empty': 'Noch nichts auf der Merkliste',
   'wanted.erster': 'Erstes Set merken',
-  'wanted.empty_hint': 'Unter „Zur Merkliste hinzufügen“ eine Setnummer eintragen oder eine CSV-Datei einlesen — dann meldet die Liste, wenn ein Preis fällt.',
+  'wanted.empty_hint':
+    'Unter „Zur Merkliste hinzufügen“ eine Setnummer eintragen oder eine CSV-Datei einlesen — dann meldet die Liste, wenn ein Preis fällt.',
   'wanted.owned': 'schon vorhanden',
   'wanted.added': 'Auf die Merkliste gesetzt',
   'wanted.already': 'Stand schon auf der Merkliste',
@@ -75,7 +79,8 @@ window.I18N_DE = {
   'catalog.buy_bricklink': 'Auf BrickLink kaufen',
   'detail.compare': 'Preisvergleich',
   'catalog.search_bricklink': 'Auf BrickLink suchen',
-  'catalog.search_bricklink_hint': 'BrickLink führt diesen Artikel unter einer anderen Nummer (z. B. Sammelminifiguren) — die Suche zeigt die Treffer.',
+  'catalog.search_bricklink_hint':
+    'BrickLink führt diesen Artikel unter einer anderen Nummer (z. B. Sammelminifiguren) — die Suche zeigt die Treffer.',
   'nav.parts': 'Teile',
   'nav.minifigs': 'Minifiguren',
   'nav.finance': 'Finanzen',
@@ -175,7 +180,8 @@ window.I18N_DE = {
   'api.server_error': 'Der Server hat mit einem Fehler geantwortet ({status}).',
   'api.unexpected': 'Unerwarteter Fehler — Einzelheiten in der Browser-Konsole.',
   'liste.fehler_titel': 'Die Liste konnte nicht geladen werden',
-  'liste.server_fehler': 'Der Server konnte die Daten gerade nicht liefern. Meist klappt es beim nächsten Versuch; sonst hilft der Verwalter weiter.',
+  'liste.server_fehler':
+    'Der Server konnte die Daten gerade nicht liefern. Meist klappt es beim nächsten Versuch; sonst hilft der Verwalter weiter.',
   'liste.details': 'Technische Details',
   'liste.erneut': 'Erneut versuchen',
   'liste.alter_stand_kurz': 'Konnte nicht aktualisieren — der letzte Stand bleibt sichtbar.',
@@ -199,13 +205,17 @@ window.I18N_DE = {
   'settings.password.repeat': 'Passwort wiederholen',
   'pflicht.title': 'Vorläufiges Passwort ersetzen',
   'pflicht.alt': 'Vorläufiges Passwort',
-  'pflicht.hint': 'Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Verwalter vergeben hat. Bitte zuerst ein eigenes setzen.',
+  'pflicht.hint':
+    'Dieses Passwort ist vorläufig: das Startpasswort aus dem Protokoll oder eines, das ein Verwalter vergeben hat. Bitte zuerst ein eigenes setzen.',
   'pflicht.regel': 'Mindestens {n} Zeichen, kein häufig verwendetes Passwort.',
   'zfpflicht.title': 'Zweiten Faktor einrichten',
-  'zfpflicht.hint': 'Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.',
+  'zfpflicht.hint':
+    'Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.',
   'zfpflicht.logout': 'Abmelden',
-  'zfpflicht.fertig': 'Der Code-Generator ist eingerichtet. Bitte jetzt die Wiederherstellungscodes sichern, danach öffnet sich die Anwendung.',
-  'settings.password.revoke_passkeys': 'Auch alle Passkeys entfernen (empfohlen: ein Passkey, den jemand Fremdes angelegt hat, bliebe sonst gültig; abwählen, wenn du nur dein Passwort erneuerst)',
+  'zfpflicht.fertig':
+    'Der Code-Generator ist eingerichtet. Bitte jetzt die Wiederherstellungscodes sichern, danach öffnet sich die Anwendung.',
+  'settings.password.revoke_passkeys':
+    'Auch alle Passkeys entfernen (empfohlen: ein Passkey, den jemand Fremdes angelegt hat, bliebe sonst gültig; abwählen, wenn du nur dein Passwort erneuerst)',
   'settings.password.change': 'Passwort ändern',
   'settings.password.mismatch': 'Passwörter stimmen nicht überein',
   'settings.password.too_short': 'Passwort muss mindestens {n} Zeichen lang sein',
@@ -213,12 +223,15 @@ window.I18N_DE = {
   'settings.cache_cleared': 'Gespeicherte Preise gelöscht',
   'settings.all_cache.cleared': 'Zwischenspeicher geleert',
   'settings.cache_prices.confirm_title': 'Gespeicherte Preise löschen?',
-  'settings.cache_prices.confirm_text': 'Löscht {p} gespeicherte Marktpreise. Deine Sammlung, die Kaufpreise und der Preisverlauf bleiben. Die Preise holt der Server beim nächsten Abruf neu von BrickLink; das verbraucht Tageskontingent. Rückgängig machen lässt es sich nicht.',
+  'settings.cache_prices.confirm_text':
+    'Löscht {p} gespeicherte Marktpreise. Deine Sammlung, die Kaufpreise und der Preisverlauf bleiben. Die Preise holt der Server beim nächsten Abruf neu von BrickLink; das verbraucht Tageskontingent. Rückgängig machen lässt es sich nicht.',
   'settings.all_cache.confirm_title': 'Zwischenspeicher ganz leeren?',
-  'settings.all_cache.confirm_text': 'Löscht {p} gespeicherte Preise, {s} Baulisten und {c} Katalog-Einträge. Deine Sammlung, die Kaufpreise und der Preisverlauf bleiben. Danach holt der Server alles neu von Rebrickable und BrickLink — das dauert eine Weile und verbraucht Tageskontingent. Rückgängig machen lässt es sich nicht.',
+  'settings.all_cache.confirm_text':
+    'Löscht {p} gespeicherte Preise, {s} Baulisten und {c} Katalog-Einträge. Deine Sammlung, die Kaufpreise und der Preisverlauf bleiben. Danach holt der Server alles neu von Rebrickable und BrickLink — das dauert eine Weile und verbraucht Tageskontingent. Rückgängig machen lässt es sich nicht.',
   'monitor.gefahrenzone': 'Zwischenspeicher leeren',
   'settings.delete_all.title': 'Alle Daten löschen?',
-  'settings.delete_all.text': 'Alle deine Sets, manuell erfassten Teile und Minifiguren kommen in den Papierkorb. Dort lassen sie sich 30 Tage lang wiederherstellen, danach werden sie endgültig gelöscht.',
+  'settings.delete_all.text':
+    'Alle deine Sets, manuell erfassten Teile und Minifiguren kommen in den Papierkorb. Dort lassen sie sich 30 Tage lang wiederherstellen, danach werden sie endgültig gelöscht.',
   'settings.delete_all.done': '{n} Elemente in den Papierkorb gelegt',
   'settings.delete_all.done_one': '{n} Element in den Papierkorb gelegt',
   'settings.bl_saved': 'BrickLink gespeichert',
@@ -348,23 +361,30 @@ window.I18N_DE = {
   'log.none_found': 'Keine Einträge gefunden',
   'verify.success': 'E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.',
   'verify.ausstehend': 'Für dein Konto „{konto}“ wartet die neue Adresse {email} auf Bestätigung.',
-  'verify.nichts_ausstehend': 'Angemeldet als „{konto}“. Für dieses Konto wartet keine neue Adresse – der Link gehört wohl zu einem anderen Konto oder ist veraltet.',
-  'verify.konto': 'Dieser Link gehört zum Konto „{konto}“. Bestätige nur, wenn das dein Benutzername ist – sonst schliesse diese Seite.',
-  'verify.fremdes_konto': 'Angemeldet bist du als „{ich}“, dieser Link gehört aber zum Konto „{konto}“. Bestätige nur, wenn auch das dein Konto ist.',
+  'verify.nichts_ausstehend':
+    'Angemeldet als „{konto}“. Für dieses Konto wartet keine neue Adresse – der Link gehört wohl zu einem anderen Konto oder ist veraltet.',
+  'verify.konto':
+    'Dieser Link gehört zum Konto „{konto}“. Bestätige nur, wenn das dein Benutzername ist – sonst schliesse diese Seite.',
+  'verify.fremdes_konto':
+    'Angemeldet bist du als „{ich}“, dieser Link gehört aber zum Konto „{konto}“. Bestätige nur, wenn auch das dein Konto ist.',
   'verify.button_konto': 'Ja, „{konto}“ ist mein Konto – bestätigen',
   'verify.title': 'E-Mail-Adresse bestätigen',
   'verify.button': 'Adresse bestätigen',
   'auth.back_to_login': '← Zurück zur Anmeldung',
   'parts.add.bl_hint': 'für Marktpreis',
-  'figs.add.hint': 'Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.',
+  'figs.add.hint':
+    'Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.',
   'settings.public_reg': 'Öffentliche Registrierung erlauben',
   'settings.public_reg.hint': 'Wenn deaktiviert, können nur Verwalter neue Benutzer anlegen.',
-  'settings.smtp.hint': 'Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.',
+  'settings.smtp.hint':
+    'Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.',
   'settings.export_rb': 'Sets für Rebrickable exportieren',
   // ── Angemeldete Geraete (Token-Verwaltung) ───────────────────────────────
   'tokens.title': 'Angemeldete Geräte',
-  'tokens.hint': 'Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.',
-  'tokens.none': 'Keine Zugänge — das passiert nur, wenn du dich gerade erst angemeldet hast und der Zugang noch nicht gespeichert war.',
+  'tokens.hint':
+    'Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.',
+  'tokens.none':
+    'Keine Zugänge — das passiert nur, wenn du dich gerade erst angemeldet hast und der Zugang noch nicht gespeichert war.',
   'tokens.reload': 'Aktualisieren',
   'tokens.revoke_others': 'Alle anderen abmelden',
   'tokens.col.label': 'Gerät',
@@ -387,17 +407,21 @@ window.I18N_DE = {
   'tokens.scope.app': 'App (ohne Verwaltung)',
   'tokens.scope.voll': 'voll',
   'tls.title': 'Server-Zertifikat',
-  'tls.hint': 'Dieser Server benutzt eine eigene Zertifizierungsstelle. Installiere ihr Wurzelzertifikat auf deinen Geräten. Über http:// kann die Datei unterwegs ausgetauscht werden: Vergleiche vor dem Installieren den SHA-256-Fingerabdruck, den das Gerät zeigt, Zeichen für Zeichen mit dem Wert hier (UPGRADE.md, Abschnitt 14). Stimmt er nicht, nicht installieren. Die Android-App bekommt ihn über den QR-Code.',
+  'tls.hint':
+    'Dieser Server benutzt eine eigene Zertifizierungsstelle. Installiere ihr Wurzelzertifikat auf deinen Geräten. Über http:// kann die Datei unterwegs ausgetauscht werden: Vergleiche vor dem Installieren den SHA-256-Fingerabdruck, den das Gerät zeigt, Zeichen für Zeichen mit dem Wert hier (UPGRADE.md, Abschnitt 14). Stimmt er nicht, nicht installieren. Die Android-App bekommt ihn über den QR-Code.',
   'tls.zert_sha256': 'Fingerabdruck des Zertifikats (SHA-256) – so zeigt ihn das Gerät beim Installieren',
   'tls.subject': 'Ausgestellt für',
   'tls.valid_until': 'Gültig bis',
   'tls.fp_sha256': 'Fingerabdruck des öffentlichen Schlüssels (SHA-256, für die App)',
   'tls.fp_base64': 'Derselbe Wert in Base64 (wie im QR-Code)',
   'tls.download': 'Wurzelzertifikat herunterladen',
-  'tls.ohne_ca': 'Der Server läuft über HTTPS mit einem Zertifikat, das nicht von der eigenen Zertifizierungsstelle stammt. Nichts zu installieren.',
-  'tls.ohne_https': 'Der Server läuft ohne HTTPS. Passwort und Sitzung gehen unverschlüsselt durchs Netz, und die Android-App verbindet sich nur über HTTPS. Siehe README, „HTTPS mit eigener CA“.',
+  'tls.ohne_ca':
+    'Der Server läuft über HTTPS mit einem Zertifikat, das nicht von der eigenen Zertifizierungsstelle stammt. Nichts zu installieren.',
+  'tls.ohne_https':
+    'Der Server läuft ohne HTTPS. Passwort und Sitzung gehen unverschlüsselt durchs Netz, und die Android-App verbindet sich nur über HTTPS. Siehe README, „HTTPS mit eigener CA“.',
   'pk.title': 'Passkeys',
-  'pk.hint': 'Anmelden ohne Passwort mit Fingerabdruck, Gesicht oder Geräte-PIN. Mit eingeschaltetem zweitem Faktor ersetzt ein Passkey auch den Code.',
+  'pk.hint':
+    'Anmelden ohne Passwort mit Fingerabdruck, Gesicht oder Geräte-PIN. Mit eingeschaltetem zweitem Faktor ersetzt ein Passkey auch den Code.',
   'pk.login': 'Mit Passkey anmelden',
   'pk.statt_code': 'Passkey statt Code verwenden',
   'pk.col.name': 'Name',
@@ -409,20 +433,26 @@ window.I18N_DE = {
   'pk.delete_title': 'Passkey entfernen?',
   'pk.delete_text': '„{name}“ kann danach nicht mehr anmelden. Bitte mit deinem Passwort bestätigen.',
   'pk.abgebrochen': 'Passkey-Dialog abgebrochen.',
-  'pk.ohne_domain': 'Passkeys gehen nur, wenn die App über HTTPS und einen Namen (keine IP-Adresse) erreichbar ist. Bitte den Verwalter fragen.',
+  'pk.ohne_domain':
+    'Passkeys gehen nur, wenn die App über HTTPS und einen Namen (keine IP-Adresse) erreichbar ist. Bitte den Verwalter fragen.',
   'pk.browser': 'Dieser Browser kann hier keine Passkeys benutzen (nur über HTTPS).',
   'apk.title': 'App herunterladen',
-  'apk.hint': 'Immer die neuste Fassung, direkt aus der Ablage auf GitHub. Android fragt beim Öffnen der Datei nach der Erlaubnis, Apps aus dieser Quelle zu installieren.',
+  'apk.hint':
+    'Immer die neuste Fassung, direkt aus der Ablage auf GitHub. Android fragt beim Öffnen der Datei nach der Erlaubnis, Apps aus dieser Quelle zu installieren.',
   'apk.badge_small': 'Direkt herunterladen',
   'apk.badge_big': 'Android-App (APK)',
   'settings.qr.title': 'QR-Code für die Android-App',
-  'settings.qr.hint': 'Scanne diesen Code in der Android-App, um Server-URL und Login automatisch zu konfigurieren. Der Code ist 5 Minuten gültig und kann nur einmal verwendet werden.',
-  'settings.danger.hint': 'Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.',
+  'settings.qr.hint':
+    'Scanne diesen Code in der Android-App, um Server-URL und Login automatisch zu konfigurieren. Der Code ist 5 Minuten gültig und kann nur einmal verwendet werden.',
+  'settings.danger.hint':
+    'Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.',
   'settings.delete_all_btn': 'Alle meine Daten löschen',
-  'settings.delete_account.hint': 'Das Konto selbst löschen: endgültig, ohne Papierkorb, mit Passwort und zweitem Faktor.',
+  'settings.delete_account.hint':
+    'Das Konto selbst löschen: endgültig, ohne Papierkorb, mit Passwort und zweitem Faktor.',
   'settings.delete_account.btn': 'Konto endgültig löschen',
   'settings.delete_account.title': 'Konto endgültig löschen',
-  'settings.delete_account.text': 'Konto, Bestand, Gutscheine, Anleitungen und Zugänge werden sofort und endgültig gelöscht. Zum Bestätigen das Passwort eingeben.',
+  'settings.delete_account.text':
+    'Konto, Bestand, Gutscheine, Anleitungen und Zugänge werden sofort und endgültig gelöscht. Zum Bestätigen das Passwort eingeben.',
   'monitor.catalog_entries': 'Katalog-Einträge',
   'confirm.delete_btn': 'Löschen',
   'confirm.btn.endgueltig_loeschen': 'Endgültig löschen',
@@ -485,9 +515,9 @@ window.I18N_DE = {
   'users.reset_pw_title_name': 'Passwort für „{name}“ setzen?',
   'settings.password.fill_all': 'Bitte aktuelles und neues Passwort ausfüllen',
 
-
   'gallery.adding_set': 'Set {num} hinzufügen',
-  'gallery.delete.name_parts': '{name} kommt mit seinen Teilen für 30 Tage in den Papierkorb und lässt sich von dort zurückholen.',
+  'gallery.delete.name_parts':
+    '{name} kommt mit seinen Teilen für 30 Tage in den Papierkorb und lässt sich von dort zurückholen.',
   'detail.importing_parts': 'Importiere Teile für {sn}…',
   'detail.parts_imported': '{count} Teile importiert',
   'detail.parts_imported_one': '{count} Teil importiert',
@@ -525,16 +555,20 @@ window.I18N_DE = {
   'finance.fetch_prices': 'Preise abrufen…',
   'smtp.ok': 'Verbindung erfolgreich',
   'smtp.confirm_title': 'Mailserver ändern',
-  'smtp.confirm_text': 'Über diesen Server gehen die Links zum Passwort-Zurücksetzen. Bitte bestätige mit deinem Passwort.',
+  'smtp.confirm_text':
+    'Über diesen Server gehen die Links zum Passwort-Zurücksetzen. Bitte bestätige mit deinem Passwort.',
   'smtp.test_confirm_title': 'Test-Mail an fremde Adresse',
-  'smtp.test_confirm_text': 'Die Test-Mail geht an eine andere Adresse als deine eigene. Bitte bestätige mit deinem Passwort.',
+  'smtp.test_confirm_text':
+    'Die Test-Mail geht an eine andere Adresse als deine eigene. Bitte bestätige mit deinem Passwort.',
   'smtp.console': 'SMTP nicht konfiguriert — es werden keine E-Mails verschickt',
   'qr.valid_for': 'Gültig noch {t} min',
   'qr.generate': 'QR-Code generieren',
   'profile.username_empty': 'Benutzername darf nicht leer sein',
-  'profile.email_pending': 'Ausstehend: {email}. Sie gilt erst, wenn du den Link in der Mail an diese Adresse öffnest; bis dahin bleibt die bisherige.',
+  'profile.email_pending':
+    'Ausstehend: {email}. Sie gilt erst, wenn du den Link in der Mail an diese Adresse öffnest; bis dahin bleibt die bisherige.',
   'profile.saved_mail': 'Gespeichert — Bestätigung an die neue Adresse gesendet',
-  'profile.mail_not_sent': 'Gespeichert, aber die Bestätigung an die neue Adresse ging nicht hinaus. Bitte den Verwalter fragen.',
+  'profile.mail_not_sent':
+    'Gespeichert, aber die Bestätigung an die neue Adresse ging nicht hinaus. Bitte den Verwalter fragen.',
   'profile.save_error': 'Fehler beim Speichern',
   'figs.auto_hint': 'Minifiguren kommen mit jedem Set dazu. Einzelne Figuren erfasst du mit „Minifigur hinzufügen“.',
   'figs.deleted': 'Minifigur gelöscht',
@@ -630,8 +664,10 @@ window.I18N_DE = {
   'detail.storage_none': '— kein Lagerort —',
   'detail.storage_new': '＋ neuer Lagerort …',
   'alerts.group': 'Preisalarme',
-  'alerts.intro': 'Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.',
-  'alerts.empty': 'Noch kein Preisalarm gesetzt. Lege mit „Preisalarm anlegen“ einen an oder im Detaildialog eines Sets.',
+  'alerts.intro':
+    'Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.',
+  'alerts.empty':
+    'Noch kein Preisalarm gesetzt. Lege mit „Preisalarm anlegen“ einen an oder im Detaildialog eines Sets.',
   'alerts.list_title': 'Deine Preisalarme',
   'alerts.below': 'fällt unter',
   'alerts.above': 'steigt über',
@@ -641,7 +677,8 @@ window.I18N_DE = {
   'alerts.bad_value': 'Die Schwelle muss grösser als 0 sein.',
   'alerts.confirm_delete': 'Preisalarm für {set} wirklich entfernen?',
   'storage.group': 'Lagerorte',
-  'storage.intro': 'Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue Orte lassen sich auch direkt dort eintragen; hier kannst du sie umbenennen oder entfernen.',
+  'storage.intro':
+    'Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue Orte lassen sich auch direkt dort eintragen; hier kannst du sie umbenennen oder entfernen.',
   'storage.new_ph': 'Neuer Lagerort',
   'storage.add': 'Hinzufügen',
   'storage.name_fehlt': 'Bitte einen Namen eingeben.',
@@ -655,11 +692,13 @@ window.I18N_DE = {
   'storage.belegt.figuren': '{n} Minifiguren',
   'storage.belegt.figuren_one': '{n} Minifigur',
   'storage.leer': 'nicht belegt',
-  'storage.default_hint': 'Der Stern markiert den Lagerort, der beim Erfassen schon vorausgewählt ist. Den Stern erneut wählen schaltet ihn ab.',
+  'storage.default_hint':
+    'Der Stern markiert den Lagerort, der beim Erfassen schon vorausgewählt ist. Den Stern erneut wählen schaltet ihn ab.',
   'storage.default_set': 'Als Vorgabe beim Erfassen setzen',
   'storage.default_is': 'Vorgabe beim Erfassen — tippen schaltet sie ab',
   'storage.delete_title': 'Lagerort löschen?',
-  'storage.delete_text': 'Der Ort verschwindet aus der Auswahl. Sets und Teile, die darin liegen, behalten ihre Zuordnung nicht — deshalb geht es nur bei einem leeren Ort.',
+  'storage.delete_text':
+    'Der Ort verschwindet aus der Auswahl. Sets und Teile, die darin liegen, behalten ihre Zuordnung nicht — deshalb geht es nur bei einem leeren Ort.',
   'filter.condition_all': 'Alle Zustände',
   'filter.storage_all': 'Alle Lagerorte',
   'pl.fill_owned': 'Bereits vorhandene Teile eintragen',
@@ -682,8 +721,7 @@ window.I18N_DE = {
   'settings.reg_title': 'Registrierung ändern',
   'settings.api_key_title': 'API-Schlüssel ändern',
 
-
-    'instr.section_title': 'Anleitungen',
+  'instr.section_title': 'Anleitungen',
   'instr.reload': 'Neu laden',
   'instr.upload_title': 'Anleitung manuell hochladen (PDF/JPG/PNG, max. 50 MB)',
   'instr.desc_placeholder': 'Beschreibung (optional)',
@@ -767,7 +805,8 @@ window.I18N_DE = {
   'monitor.art.preise': 'Preise aktualisieren',
   'monitor.art.preise_nachladen': 'Fehlende Preise holen',
   'monitor.art.konto_dateien': 'Dateien gelöschter Konten entfernen',
-  'set.kaufpreis_folgt': 'Menge gespeichert. Der Marktpreis für das neue Exemplar war nicht erreichbar und wird nachgetragen.',
+  'set.kaufpreis_folgt':
+    'Menge gespeichert. Der Marktpreis für das neue Exemplar war nicht erreichbar und wird nachgetragen.',
   'monitor.degradiert': 'Unvollständig, ein Teil liess sich nicht lesen: {teile}. Die Zahlen dort sind Ersatzwerte.',
   'monitor.art.bild_nachlauf': 'Bild-Download (CDN)',
   'monitor.art.aufraeumen': 'Aufräumen (stündlich)',
@@ -794,13 +833,15 @@ window.I18N_DE = {
   'settings.brickset_hint': 'Anleitungen, Ersatzquelle für Set-Infos',
   'settings.brickset_link': 'brickset.com → Tools → API Key anfordern',
   'settings.rebrickable_hint': 'Set-Infos, Teile & Bilder',
-  'settings.rb_list_hint': 'Alle Sets im Rebrickable-Listenformat exportieren (Spalten „Set Number,Quantity“), um sie unter „My Sets → Add via List“ bei Rebrickable zu importieren.',
+  'settings.rb_list_hint':
+    'Alle Sets im Rebrickable-Listenformat exportieren (Spalten „Set Number,Quantity“), um sie unter „My Sets → Add via List“ bei Rebrickable zu importieren.',
   'settings.data_export': 'Daten und Papierkorb',
   'settings.data_export_title': 'Daten exportieren',
   'settings.cfg_hint': 'API-Keys und Einstellungen als JSON exportieren/importieren.',
   'settings.cfg_export': 'Konfiguration exportieren',
   'settings.cfg_import': 'Konfiguration importieren',
-  'settings.wanted_hint': 'BrickLink-Wanted-Liste (.xml) einlesen — als manuell erfasste Teile, Minifiguren und Sets. Die Datei trägt BrickLink-Nummern; die Vorschau zeigt, wie viele sich auf Rebrickable abbilden lassen.',
+  'settings.wanted_hint':
+    'BrickLink-Wanted-Liste (.xml) einlesen — als manuell erfasste Teile, Minifiguren und Sets. Die Datei trägt BrickLink-Nummern; die Vorschau zeigt, wie viele sich auf Rebrickable abbilden lassen.',
   'settings.wanted_rb': 'Offene über Rebrickable nachfragen',
   'settings.wanted_read': 'Posten in der Datei',
   'settings.wanted_preview_only': 'Vorschau, es wurde nichts geschrieben',
@@ -852,7 +893,8 @@ window.I18N_DE = {
   'wanted.name_guessed': 'Name unter der BrickLink-Nummer gefunden',
   'wanted.corrections_rejected': 'Korrekturen abgewiesen (andere Datei?)',
   'wanted.topped_up': 'aufgestockt',
-  'settings.data_zip_hint': 'Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Eingelesen wird jede Datei über „Importieren“ auf ihrer eigenen Seite. Gutscheine sind nicht enthalten: Nummer und PIN wirken wie Bargeld. Sie lassen sich unter „Gutscheine“ nach Bestätigung mit dem Passwort als PDF sichern.',
+  'settings.data_zip_hint':
+    'Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Eingelesen wird jede Datei über „Importieren“ auf ihrer eigenen Seite. Gutscheine sind nicht enthalten: Nummer und PIN wirken wie Bargeld. Sie lassen sich unter „Gutscheine“ nach Bestätigung mit dem Passwort als PDF sichern.',
   'settings.data_zip_btn': 'Sets, Teile, Minifiguren, Merkliste & Alarme exportieren (ZIP)',
   'monitor.title': 'Hinter­grund­arbeiten',
   'monitor.parts_lists': 'Baulisten',
@@ -898,7 +940,8 @@ window.I18N_DE = {
   'parts.no_filter_match': 'Keine Teile passen zu diesem Filter',
   'figs.empty': 'Noch keine Minifiguren',
   'gallery.empty_hint': 'Füge dein erstes Set hinzu oder importiere eine Liste über „Importieren“.',
-  'gallery.empty_hint_telefon': 'Füge dein erstes Set hinzu oder importiere eine Liste über „Importieren“ im Menü ••• neben dem Titel.',
+  'gallery.empty_hint_telefon':
+    'Füge dein erstes Set hinzu oder importiere eine Liste über „Importieren“ im Menü ••• neben dem Titel.',
   'common.filter_no_match': 'Zu Suche und Filter passt nichts. Filter zurücksetzen oder anders suchen.',
   'parts.filter.color': 'Nach Farbe filtern',
   'parts.filter.category': 'Nach Kategorie filtern',
@@ -939,7 +982,8 @@ window.I18N_DE = {
   'finance.change.max': 'Marktwert seit Beginn der Aufzeichnung',
   'finance.change.seit': 'Entwicklung des Marktwerts seit {datum}',
   'finance.chart.too_few_title': 'Noch zu wenig Verlauf',
-  'finance.chart.too_few_text': 'Der Wert wird bei jedem Laden der Preise festgehalten. Ab zwei Messpunkten erscheint hier die Kurve.',
+  'finance.chart.too_few_text':
+    'Der Wert wird bei jedem Laden der Preise festgehalten. Ab zwei Messpunkten erscheint hier die Kurve.',
   'finance.stat.purchase': 'Kaufpreis gesamt',
   'finance.col.purchase': 'Kaufpreis',
   'finance.stat.purchase_hint': 'Summe der Kaufpreise',
@@ -971,7 +1015,8 @@ window.I18N_DE = {
   'finance.stat.pnl': 'Gewinn/Verlust zum Kaufpreis',
   'finance.ohne_n': 'ohne {n} Positionen',
   'finance.ohne_n_one': 'ohne 1 Position',
-  'finance.legende': 'Stand: {ok} Marktpreis vorhanden · {fehlt} kein Marktpreis bekannt · {fehler} Abruf fehlgeschlagen. Ohne Marktpreis zählt eine Position nicht zum Marktwert. Jeder Kauf steht in einer eigenen Zeile; G/V vergleicht den Marktpreis mit dem Kaufpreis dieser Zeile.',
+  'finance.legende':
+    'Stand: {ok} Marktpreis vorhanden · {fehlt} kein Marktpreis bekannt · {fehler} Abruf fehlgeschlagen. Ohne Marktpreis zählt eine Position nicht zum Marktwert. Jeder Kauf steht in einer eigenen Zeile; G/V vergleicht den Marktpreis mit dem Kaufpreis dieser Zeile.',
   'finance.konto': 'Konto',
   'finance.pnl_needs_prices': 'Braucht Kauf- und Marktpreise',
   'finance.not_loaded': 'Preise noch nicht geladen',
@@ -984,7 +1029,8 @@ window.I18N_DE = {
   'finance.figs_label': 'Minifiguren',
   'finance.figs_section': 'Manuell erfasste Minifiguren',
   'finance.empty': 'Noch nichts zu bewerten',
-  'finance.empty_text': 'Sobald Sets, Teile oder Minifiguren erfasst sind, steht hier ihr Wert. Am schnellsten geht es mit dem ersten Set.',
+  'finance.empty_text':
+    'Sobald Sets, Teile oder Minifiguren erfasst sind, steht hier ihr Wert. Am schnellsten geht es mit dem ersten Set.',
   'pl.erst_set': 'Erst eine Setnummer eintragen und hinzufügen, dann „Bauliste erstellen“ wählen.',
   'pl.generate': 'Bauliste erstellen',
   'pl.feld_setnr': 'Setnummern (mehrere mit Komma trennen)',
@@ -1000,9 +1046,11 @@ window.I18N_DE = {
   'pl.summary_sets': 'aus {n} Sets',
   'pl.summary_sets_one': 'aus {n} Set',
   'pl.leer_titel': 'Für diese Sets liegt noch keine Teileliste vor',
-  'pl.leer_text': 'Die Teilelisten stammen aus dem Rebrickable-Katalog, den der Server regelmässig lädt. Ist Rebrickable nicht erreichbar oder fehlt der Schlüssel (Einstellungen → Rebrickable), bleibt sie leer. Später erneut versuchen.',
+  'pl.leer_text':
+    'Die Teilelisten stammen aus dem Rebrickable-Katalog, den der Server regelmässig lädt. Ist Rebrickable nicht erreichbar oder fehlt der Schlüssel (Einstellungen → Rebrickable), bleibt sie leer. Später erneut versuchen.',
   'pl.leer_fehler_titel': 'Die Bauliste konnte nicht geladen werden',
-  'pl.leer_fehler_text': 'Der Server hat beim Abruf einen Fehler gemeldet. Prüfe die Verbindung und versuche es erneut.',
+  'pl.leer_fehler_text':
+    'Der Server hat beim Abruf einen Fehler gemeldet. Prüfe die Verbindung und versuche es erneut.',
   'pl.condition.any': 'Beliebig',
   'pl.condition.new': 'Neuware',
   'pl.condition.used': 'Gebraucht',
@@ -1014,7 +1062,8 @@ window.I18N_DE = {
   'settings.users_create': 'Erstellen',
   'settings.smtp.user': 'Benutzername',
   'settings.smtp.pass': 'Passwort',
-  'settings.smtp.tls_altlast': 'Die Ausnahme „Zertifikat nicht prüfen“ gibt es nicht mehr. Für ein selbst signiertes Zertifikat bitte hier das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen, sonst schlägt der Versand fehl.',
+  'settings.smtp.tls_altlast':
+    'Die Ausnahme „Zertifikat nicht prüfen“ gibt es nicht mehr. Für ein selbst signiertes Zertifikat bitte hier das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen, sonst schlägt der Versand fehl.',
   'settings.smtp.tls_fp': 'SHA-256-Fingerabdruck des Serverzertifikats (optional)',
   'settings.smtp.tls_ca': 'Eigenes Zertifikat oder eigene CA als PEM (für selbst signierte Zertifikate)',
   'settings.smtp.from': 'Absender (Von)',
@@ -1033,7 +1082,8 @@ window.I18N_DE = {
   'settings.general_title': 'Erscheinungsbild',
   'settings.sections': 'Abschnitte',
   'settings.secret_show': 'Anzeigen',
-  'settings.app_theme_hint': 'Vorgabe für alle Konten (Web & App). Jedes Konto kann unter „Konto“ ein eigenes Design wählen.',
+  'settings.app_theme_hint':
+    'Vorgabe für alle Konten (Web & App). Jedes Konto kann unter „Konto“ ein eigenes Design wählen.',
   'settings.own_theme': 'Design',
   'settings.own_theme_default': 'Vorgabe: {name}',
   'settings.own_theme_vorgabe': 'Vorgabe',
@@ -1046,7 +1096,8 @@ window.I18N_DE = {
   'settings.theme_noppe': 'Noppe (poppig)',
   'settings.theme_hochglanz': 'Hochglanz',
   'settings.kein_zugriff': 'Kein Zugriff',
-  'settings.kein_zugriff_text': 'Diese Einstellungen gelten für alle Konten und sind dem Verwalter vorbehalten. Deine eigenen findest du im Menü unter „Konto“.',
+  'settings.kein_zugriff_text':
+    'Diese Einstellungen gelten für alle Konten und sind dem Verwalter vorbehalten. Deine eigenen findest du im Menü unter „Konto“.',
   'settings.theme_desc.classic': 'Hell und sachlich, blaue Akzente.',
   'settings.theme_desc.brick': 'Kräftiges Blau, Karten wie Steine mit Noppenrand.',
   'settings.theme_desc.werkbank': 'Dunkle Werkbank mit Messing-Akzenten — immer dunkel, unabhängig von hell/dunkel.',
@@ -1083,15 +1134,18 @@ window.I18N_DE = {
   'household.scope_own': 'Eigene',
   'household.verknuepft': 'Verknüpfte Konten',
   'household.group': 'Haushalt',
-  'household.intro': 'Verknüpfe Konten zu einem Haushalt: Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner direkten Unterkonten zusammengefasst. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt. Beide Konten müssen dieselbe Währung verwenden.',
+  'household.intro':
+    'Verknüpfe Konten zu einem Haushalt: Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner direkten Unterkonten zusammengefasst. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt. Beide Konten müssen dieselbe Währung verwenden.',
   'household.state_none': 'Dieses Konto ist mit keinem anderen verknüpft. Währung: {cur}',
   'household.state_main': 'Unterkonten ({n}):',
   'household.state_parents': 'Dieses Konto gehört zu folgenden Hauptkonten ({n}):',
-  'household.former_intro': 'Diese Konten waren bisher nur über ein anderes Konto verknüpft und sind deshalb nicht mehr sichtbar. Damit du sie wieder siehst, muss das jeweilige Konto eine Einladung von dir annehmen:',
+  'household.former_intro':
+    'Diese Konten waren bisher nur über ein anderes Konto verknüpft und sind deshalb nicht mehr sichtbar. Damit du sie wieder siehst, muss das jeweilige Konto eine Einladung von dir annehmen:',
   'household.former_via': 'bisher über {via}',
   'household.former_dismiss': 'Ausblenden',
   'household.invite_title': 'Konto einladen',
-  'household.invite_hint': 'Erzeuge einen Einladungscode. Im anderen Konto unter Menü → Haushalt → „Einladung annehmen“ eingeben. Der Code gilt 24 Stunden und nur einmal.',
+  'household.invite_hint':
+    'Erzeuge einen Einladungscode. Im anderen Konto unter Menü → Haushalt → „Einladung annehmen“ eingeben. Der Code gilt 24 Stunden und nur einmal.',
   'household.invite_create': 'Einladungscode erzeugen',
   'household.invite_code': 'Einladungscode',
   'household.invite_copy': 'Kopieren',
@@ -1099,16 +1153,19 @@ window.I18N_DE = {
   'household.invite_copied': 'Code kopiert.',
   'household.invite_copy_manual': 'Code markiert — bitte von Hand kopieren.',
   'household.redeem_title': 'Einladung annehmen',
-  'household.redeem_hint': 'Gib den Code aus dem Hauptkonto ein. Das Hauptkonto sieht und bearbeitet danach deine Sammlung; du kannst die Verknüpfung jederzeit lösen.',
+  'household.redeem_hint':
+    'Gib den Code aus dem Hauptkonto ein. Das Hauptkonto sieht und bearbeitet danach deine Sammlung; du kannst die Verknüpfung jederzeit lösen.',
   'household.redeem_submit': 'Verknüpfen',
   'household.redeem_frage': 'Einladung von „{name}“ annehmen?',
-  'household.redeem_confirm_text': '„{name}“ kann danach deine Sets, Teile und Minifiguren sehen und ändern. Lösen kannst du die Verknüpfung jederzeit unter Haushalt. Bitte bestätige mit deinem Passwort.',
+  'household.redeem_confirm_text':
+    '„{name}“ kann danach deine Sets, Teile und Minifiguren sehen und ändern. Lösen kannst du die Verknüpfung jederzeit unter Haushalt. Bitte bestätige mit deinem Passwort.',
   'household.redeem_empty': 'Bitte Einladungscode eingeben.',
   'household.redeem_ok': 'Mit {name} verknüpft.',
   'household.unlink_self': 'Verknüpfung lösen',
   'household.unlink_sub': 'Verknüpfung lösen',
   'household.unlink_confirm_title': 'Verknüpfung mit „{name}“ lösen?',
-  'household.unlink_confirm_text': 'Du siehst und bearbeitest die Sammlung von „{name}“ danach nicht mehr; die Daten bleiben bei „{name}“. Sets, die ihr zwischen den Konten verschoben habt, bleiben bei dem Konto, bei dem sie jetzt liegen.',
+  'household.unlink_confirm_text':
+    'Du siehst und bearbeitest die Sammlung von „{name}“ danach nicht mehr; die Daten bleiben bei „{name}“. Sets, die ihr zwischen den Konten verschoben habt, bleiben bei dem Konto, bei dem sie jetzt liegen.',
   'household.unlink_ok': 'Verknüpfung gelöst.',
   'login.email_or_user': 'Benutzername oder E-Mail',
   'login.password': 'Passwort',
@@ -1153,7 +1210,8 @@ window.I18N_DE = {
   'startup.overall': 'Gesamtfortschritt',
   'users.admin_badge': 'Verwalter',
   'settings.importing': 'Importiere…',
-  'qr.klartext_hinweis': 'Die Adresse beginnt mit http://. Die Android-App nimmt nur noch HTTPS an und kann sich so nicht verbinden. Bitte HTTPS einrichten (siehe README).',
+  'qr.klartext_hinweis':
+    'Die Adresse beginnt mit http://. Die Android-App nimmt nur noch HTTPS an und kann sich so nicht verbinden. Bitte HTTPS einrichten (siehe README).',
   'qr.access_days': 'Der Zugang gilt danach {n} Tage.',
   'qr.access_days_one': 'Der Zugang gilt danach {n} Tag.',
   'qr.access_default': 'Der Zugang gilt, solange das Gerät benutzt wird (90 Tage ungenutzt).',
@@ -1166,14 +1224,17 @@ window.I18N_DE = {
   'qr.validity_2m': '2 Monate',
   'qr.validity_6m': '6 Monate',
   'qr.validity_12m': '12 Monate',
-  'qr.kopplung_frage': 'Das Gerät „{geraet}“ (Netz {netz}) möchte sich koppeln. Gib den sechsstelligen Code ein, den die App jetzt zeigt. Wenn du gerade kein Gerät koppelst: Ablehnen.',
+  'qr.kopplung_frage':
+    'Das Gerät „{geraet}“ (Netz {netz}) möchte sich koppeln. Gib den sechsstelligen Code ein, den die App jetzt zeigt. Wenn du gerade kein Gerät koppelst: Ablehnen.',
   'qr.kopplung_code': 'Code aus der App',
   'qr.kopplung_bestaetigen': 'Gerät koppeln',
   'qr.kopplung_ablehnen': 'Ablehnen',
   'qr.kopplung_bestaetigt': 'Bestätigt. „{geraet}“ holt seinen Zugang ab …',
   'qr.kopplung_fertig': '„{geraet}“ ist gekoppelt und steht unter „Angemeldete Geräte“.',
-  'qr.kopplung_abgelehnt': 'Die Kopplung wurde abgelehnt oder ist abgelaufen. Für ein neues Gerät einen neuen QR-Code erzeugen.',
-  'qr.ca_fp': 'Wurzelzertifikat dieses Servers, SHA-256: {fp}. Installierst du es auf dem Telefon, muss das Gerät denselben Wert zeigen.',
+  'qr.kopplung_abgelehnt':
+    'Die Kopplung wurde abgelehnt oder ist abgelaufen. Für ein neues Gerät einen neuen QR-Code erzeugen.',
+  'qr.ca_fp':
+    'Wurzelzertifikat dieses Servers, SHA-256: {fp}. Installierst du es auf dem Telefon, muss das Gerät denselben Wert zeigen.',
   'qr.expired': 'QR-Code abgelaufen — bitte neu generieren',
   'pdf.lib_missing': 'PDF.js nicht geladen',
   'log.title': 'App-Protokoll',
@@ -1185,8 +1246,10 @@ window.I18N_DE = {
   'log.search': 'Text suchen…',
   'log.auto': 'Auto',
   'log.stop': 'Stopp',
-  'price.from_other_condition_new': 'Kaufpreis aus dem Marktpreis „Neuware“ übernommen — für „Gebraucht“ führt BrickLink keinen Preis.',
-  'price.from_other_condition_used': 'Kaufpreis aus dem Marktpreis „Gebraucht“ übernommen — für „Neuware“ führt BrickLink keinen Preis.',
+  'price.from_other_condition_new':
+    'Kaufpreis aus dem Marktpreis „Neuware“ übernommen — für „Gebraucht“ führt BrickLink keinen Preis.',
+  'price.from_other_condition_used':
+    'Kaufpreis aus dem Marktpreis „Gebraucht“ übernommen — für „Neuware“ führt BrickLink keinen Preis.',
 
   // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ─────────────────────
   'vouchers.meine': 'Meine Gutscheine',
@@ -1219,25 +1282,31 @@ window.I18N_DE = {
   'vouchers.pdf_choose': 'PDF wählen',
   'vouchers.pdf_none': 'Keine Datei gewählt',
   'vouchers.pdf_label': 'PDF des Gutscheins (optional)',
-  'vouchers.pdf_hint': 'Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.',
+  'vouchers.pdf_hint':
+    'Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.',
   'vouchers.pdf_open': 'PDF in neuem Fenster öffnen',
   'vouchers.no_pdf': 'Kein PDF hinterlegt',
   'vouchers.no_pdf_kurz': 'kein PDF',
   'vouchers.pin_show': 'PIN anzeigen',
   'vouchers.klartext_title': 'Nummer und PIN anzeigen',
   'vouchers.pdf_freigabe_title': 'Gutschein-PDF öffnen',
-  'vouchers.pdf_freigabe_text': 'Das PDF enthält Nummer und PIN. Zum Öffnen dein Passwort eingeben; der Abruf wird protokolliert.',
-  'vouchers.klartext_text': 'Zum Anzeigen oder Kopieren von Nummer und PIN dein Passwort eingeben. Der Abruf wird protokolliert.',
+  'vouchers.pdf_freigabe_text':
+    'Das PDF enthält Nummer und PIN. Zum Öffnen dein Passwort eingeben; der Abruf wird protokolliert.',
+  'vouchers.klartext_text':
+    'Zum Anzeigen oder Kopieren von Nummer und PIN dein Passwort eingeben. Der Abruf wird protokolliert.',
   'vouchers.pin_hide': 'PIN verbergen',
   'vouchers.saved': 'Gutschein gespeichert',
   'vouchers.deleted': 'Gutschein gelöscht',
   'login.code': 'Code aus der Authenticator-App',
   'login.code_hint': 'Oder einer deiner Wiederherstellungscodes.',
   'zf.title': 'Zweiter Faktor',
-  'zf.code_noetig': 'Diese Änderung braucht zusätzlich den Code aus der Authenticator-App (oder einen Wiederherstellungscode).',
-  'zf.code_oder_passkey': 'Diese Änderung braucht zusätzlich den Code aus der Authenticator-App, einen Wiederherstellungscode oder einen Passkey.',
+  'zf.code_noetig':
+    'Diese Änderung braucht zusätzlich den Code aus der Authenticator-App (oder einen Wiederherstellungscode).',
+  'zf.code_oder_passkey':
+    'Diese Änderung braucht zusätzlich den Code aus der Authenticator-App, einen Wiederherstellungscode oder einen Passkey.',
   'zf.mit_passkey': 'Stattdessen Passkey verwenden',
-  'zf.hint': 'Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password). Schützt, falls jemand dein Passwort kennt.',
+  'zf.hint':
+    'Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password). Schützt, falls jemand dein Passwort kennt.',
   'zf.setup': 'Einrichten',
   'zf.scan': 'Den Code mit der Authenticator-App scannen:',
   'zf.manual': 'Oder den Schlüssel von Hand eingeben:',
@@ -1249,7 +1318,8 @@ window.I18N_DE = {
   'zf.active': 'Eingerichtet · {n} Wiederherstellungs\u00ADcodes übrig',
   'zf.active_one': 'Eingerichtet · {n} Wiederherstellungs\u00ADcode übrig',
   'zf.codes_title': 'Deine Wiederherstellungscodes',
-  'zf.codes_hint': 'Jeder gilt einmal, falls das Telefon fehlt. Jetzt sicher ablegen — sie werden nicht noch einmal angezeigt.',
+  'zf.codes_hint':
+    'Jeder gilt einmal, falls das Telefon fehlt. Jetzt sicher ablegen — sie werden nicht noch einmal angezeigt.',
   'zf.codes_done': 'Ich habe die Codes gesichert',
   'zf.copy': 'Kopieren',
   'zf.copied': 'Kopiert',
@@ -1262,7 +1332,8 @@ window.I18N_DE = {
   'zf.reset_title_name': 'Zweiten Faktor von „{name}“ zurücksetzen?',
   'zf.reset_text': '{name} meldet sich danach wieder nur mit dem Passwort an.',
   'es.link': 'Was fehlt noch zur Einrichtung?',
-  'es.link_hint': 'Frisch installiert? Hier siehst du, ob Datenbank, HTTPS, erstes Konto und Rebrickable-Schlüssel eingerichtet sind.',
+  'es.link_hint':
+    'Frisch installiert? Hier siehst du, ob Datenbank, HTTPS, erstes Konto und Rebrickable-Schlüssel eingerichtet sind.',
   'es.title': 'Einrichtung prüfen',
   'es.intro': 'Diese Seite prüft, was für den Betrieb noch fehlt. Sie zeigt keine Konten und keine Schlüssel.',
   'es.loading': 'Wird geprüft …',
@@ -1283,12 +1354,16 @@ window.I18N_DE = {
   'es.hint.datenbank': 'PostgreSQL läuft nicht oder die Zugangsdaten stimmen nicht.',
   'es.hint.basis_url': 'Ohne APP_BASE_URL enthalten Mails keine Links; Passkeys und QR-Code der App sind aus.',
   'es.hint.https': 'Ohne TLS reisen Passwörter im Klartext. Bitte Caddy aus compose.yaml mitverwenden.',
-  'es.hint.ca': 'Caddy legt das Zertifikat beim ersten Start an. Es muss auf jedem Gerät installiert werden — siehe unten.',
-  'es.hint.konto': 'Der erste Verwalter entsteht beim Start; sein Passwort steht einmalig im Protokoll und muss ersetzt werden.',
+  'es.hint.ca':
+    'Caddy legt das Zertifikat beim ersten Start an. Es muss auf jedem Gerät installiert werden — siehe unten.',
+  'es.hint.konto':
+    'Der erste Verwalter entsteht beim Start; sein Passwort steht einmalig im Protokoll und muss ersetzt werden.',
   'es.hint.quelle': 'Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu. Er ist kostenlos.',
   'es.ca_title': 'Wurzelzertifikat installieren',
-  'es.ca_hint': 'Der Server verschlüsselt mit einer eigenen Zertifizierungsstelle. Damit Browser und App ihm vertrauen, muss ihr Zertifikat einmal je Gerät installiert werden.',
-  'es.ca_fp': 'SHA-256-Fingerabdruck des Zertifikats. Vor dem Installieren mit dem Wert vergleichen, den das Gerät zeigt, und mit dem im Protokoll des Servers.',
+  'es.ca_hint':
+    'Der Server verschlüsselt mit einer eigenen Zertifizierungsstelle. Damit Browser und App ihm vertrauen, muss ihr Zertifikat einmal je Gerät installiert werden.',
+  'es.ca_fp':
+    'SHA-256-Fingerabdruck des Zertifikats. Vor dem Installieren mit dem Wert vergleichen, den das Gerät zeigt, und mit dem im Protokoll des Servers.',
   'es.ca_none': 'Kein Wurzelzertifikat eingerichtet (CA_ZERTIFIKAT fehlt).',
   'es.ca_until': 'Gültig bis {datum}.',
   'es.ca_download': 'Zertifikat herunterladen',
@@ -1297,11 +1372,16 @@ window.I18N_DE = {
   'es.platform_windows': 'Windows-Rechner',
   'es.platform_macos': 'macOS-Gerät',
   'es.platform_linux': 'Linux und Firefox',
-  'es.how_android': 'Einstellungen → Sicherheit → Verschlüsselung und Anmeldedaten → Zertifikat installieren → CA-Zertifikat, dann die Datei wählen. Android verlangt eine Bildschirmsperre.',
-  'es.how_ios': 'Datei in Safari laden, dann Einstellungen → Allgemein → VPN und Geräteverwaltung → Profil installieren. Danach Einstellungen → Allgemein → Info → Zertifikatsvertrauen → vollständiges Vertrauen einschalten.',
-  'es.how_windows': 'Datei doppelklicken → Zertifikat installieren → Lokaler Computer → Alle Zertifikate in folgendem Speicher ablegen → Vertrauenswürdige Stammzertifizierungsstellen.',
-  'es.how_macos': 'Datei doppelklicken, in der Schlüsselbundverwaltung das Zertifikat öffnen und unter Vertrauen „Immer vertrauen“ wählen.',
-  'es.how_linux': 'In Firefox oder Chrome: Einstellungen des Browsers → Datenschutz und Sicherheit → Zertifikate → Zertifizierungsstellen; die Datei importieren und „Websites identifizieren“ erlauben.',
+  'es.how_android':
+    'Einstellungen → Sicherheit → Verschlüsselung und Anmeldedaten → Zertifikat installieren → CA-Zertifikat, dann die Datei wählen. Android verlangt eine Bildschirmsperre.',
+  'es.how_ios':
+    'Datei in Safari laden, dann Einstellungen → Allgemein → VPN und Geräteverwaltung → Profil installieren. Danach Einstellungen → Allgemein → Info → Zertifikatsvertrauen → vollständiges Vertrauen einschalten.',
+  'es.how_windows':
+    'Datei doppelklicken → Zertifikat installieren → Lokaler Computer → Alle Zertifikate in folgendem Speicher ablegen → Vertrauenswürdige Stammzertifizierungsstellen.',
+  'es.how_macos':
+    'Datei doppelklicken, in der Schlüsselbundverwaltung das Zertifikat öffnen und unter Vertrauen „Immer vertrauen“ wählen.',
+  'es.how_linux':
+    'In Firefox oder Chrome: Einstellungen des Browsers → Datenschutz und Sicherheit → Zertifikate → Zertifizierungsstellen; die Datei importieren und „Websites identifizieren“ erlauben.',
   'setup.title': 'Willkommen — BrickInventory einrichten',
   'setup.step': 'Schritt {n} von {von}',
   'setup.pw_hint': 'Das Startpasswort stand nur im Protokoll des Servers. Bitte jetzt ein eigenes setzen.',
@@ -1323,7 +1403,8 @@ window.I18N_DE = {
   'setup.next': 'Weiter',
   'setup.finish': 'Fertig',
   'trash.title': 'Papierkorb',
-  'trash.hint': 'Gelöschte Sets, manuell erfasste Teile und Minifiguren bleiben 30 Tage hier und lassen sich zurückholen. Danach werden sie endgültig entfernt.',
+  'trash.hint':
+    'Gelöschte Sets, manuell erfasste Teile und Minifiguren bleiben 30 Tage hier und lassen sich zurückholen. Danach werden sie endgültig entfernt.',
   'trash.empty': 'Der Papierkorb ist leer.',
   'trash.load_error': 'Papierkorb konnte nicht geladen werden.',
   'trash.restore': 'Wiederherstellen',
@@ -1363,7 +1444,8 @@ window.I18N_DE = {
   'vouchers.balance_keine': 'Keine Karte mit PIN — für die Abfrage braucht es die PIN.',
   'vouchers.balance_belegt': 'Die Abfrage ist belegt (eine Karte alle 30 Sekunden). Bitte später erneut.',
   'vouchers.balance_alle_fertig': '{fertig} abgefragt, {fehler} nicht',
-  'monitor.intro': 'Was der Server im Hintergrund holt und rechnet: Kontingente der Dienste, Zwischenspeicher und anstehende Aufträge.',
+  'monitor.intro':
+    'Was der Server im Hintergrund holt und rechnet: Kontingente der Dienste, Zwischenspeicher und anstehende Aufträge.',
   'monitor.api_calls_hint': 'API-Aufrufe seit Mitternacht und die Tagesgrenze je Dienst.',
   'monitor.clear_all': 'Zwischenspeicher ganz leeren (Preise, Teile, Katalog)',
   'monitor.services': 'Dienste und Zeitpläne',
@@ -1384,7 +1466,8 @@ window.I18N_DE = {
   'monitor.sched.taeglich': 'täglich um',
   'monitor.sched.alle': 'alle',
   'monitor.sched.keiner': 'bei Bedarf',
-  'monitor.auftraege.hinweis': 'Je Art die wartenden, laufenden und fehlgeschlagenen Aufträge. „Jetzt starten“ zieht wartende vor.',
+  'monitor.auftraege.hinweis':
+    'Je Art die wartenden, laufenden und fehlgeschlagenen Aufträge. „Jetzt starten“ zieht wartende vor.',
   'monitor.auftraege.einzeln': 'Einzelne Aufträge',
   'monitor.auftraege.mehr': 'und {n} weitere',
   'monitor.sched.ungueltig': 'Uhrzeit bitte als HH:MM, etwa 03:00.',
@@ -1395,11 +1478,13 @@ window.I18N_DE = {
   'vouchers.waehrung_hinweis': 'Karten des Ausgabelandes lauten auf {w}.',
   'vouchers.land_waehrung': 'Karten von dort lauten auf {w}.',
   'common.edit': 'Bearbeiten',
-  'pk.ohne_domain_verwalter': 'Passkeys brauchen HTTPS und einen Namen statt einer IP-Adresse. Setze APP_BASE_URL auf die HTTPS-Adresse des Servers (etwa https://brick.example.org) und starte ihn neu.',
+  'pk.ohne_domain_verwalter':
+    'Passkeys brauchen HTTPS und einen Namen statt einer IP-Adresse. Setze APP_BASE_URL auf die HTTPS-Adresse des Servers (etwa https://brick.example.org) und starte ihn neu.',
   'konto.darstellung': 'Darstellung',
   'konto.darstellung_hint': 'Jede Änderung gilt sofort.',
   'profile.email_aendern_titel': 'E-Mail-Adresse ändern?',
-  'profile.email_aendern_text': 'Neue Adresse: {email}. Sie gilt erst, wenn du den Link in der Mail an sie öffnest. Bitte mit deinem Passwort bestätigen.',
+  'profile.email_aendern_text':
+    'Neue Adresse: {email}. Sie gilt erst, wenn du den Link in der Mail an sie öffnest. Bitte mit deinem Passwort bestätigen.',
   'profile.speichern_titel': 'Profil speichern?',
   'konto.profil': 'Profil',
   'konto.passwort_bestaetigen': 'Zum Speichern bitte mit deinem Passwort bestätigen.',
@@ -1415,49 +1500,63 @@ window.I18N_DE = {
   'alerts.new_ok': 'Preisalarm für {set} angelegt.',
   'alerts.new_preis': 'Grenzpreis',
   'gallery.card.unbekannt': 'nicht im Katalog',
-  'gallery.card.unbekannt_hint': 'Der Katalog kennt diese Nummer noch nicht. Name und Bild kommen nach, sobald sie bekannt ist.',
-  'gallery.add.unbekannt': 'Set {num} ist im Katalog (noch) unbekannt. Bitte die Nummer prüfen. Stimmt sie, lässt es sich trotzdem anlegen — Name und Bild kommen nach, sobald Rebrickable es kennt.',
+  'gallery.card.unbekannt_hint':
+    'Der Katalog kennt diese Nummer noch nicht. Name und Bild kommen nach, sobald sie bekannt ist.',
+  'gallery.add.unbekannt':
+    'Set {num} ist im Katalog (noch) unbekannt. Bitte die Nummer prüfen. Stimmt sie, lässt es sich trotzdem anlegen — Name und Bild kommen nach, sobald Rebrickable es kennt.',
   'gallery.add.trotzdem': 'Trotzdem anlegen',
-  'gallery.add.schon_da': '{name} ({num}) ist schon in deiner Sammlung (×{n}). Ein weiteres Exemplar erfasst du im Set über „Anzahl“ oder „Kaufpreise“.',
+  'gallery.add.schon_da':
+    '{name} ({num}) ist schon in deiner Sammlung (×{n}). Ein weiteres Exemplar erfasst du im Set über „Anzahl“ oder „Kaufpreise“.',
   'gallery.add.zum_set': 'Set öffnen',
-  'gallery.add.katalog_fehlt': 'Set {num} lässt sich gerade nicht prüfen: Der Set-Katalog ist noch nicht geladen, weil Rebrickable bisher nicht erreichbar war oder der Schlüssel fehlt (Einstellungen → Rebrickable). Du kannst es trotzdem anlegen — Name und Bild kommen nach, sobald der Katalog da ist.',
+  'gallery.add.katalog_fehlt':
+    'Set {num} lässt sich gerade nicht prüfen: Der Set-Katalog ist noch nicht geladen, weil Rebrickable bisher nicht erreichbar war oder der Schlüssel fehlt (Einstellungen → Rebrickable). Du kannst es trotzdem anlegen — Name und Bild kommen nach, sobald der Katalog da ist.',
   'detail.alert_preis_ph': 'Grenzpreis',
   'finance.price_status_kurz': 'Stand',
   'finance.je': 'je {preis}',
   'finance.pnl_kurz': 'G/V',
   'finance.market_price_stueck': 'Marktpreis je Stück',
   'wanted.preis_offen': 'Kein Preis',
-  'wanted.preis_offen_hint': 'Für diesen Zustand ist kein Marktpreis bekannt. Der tägliche Preislauf fragt erneut nach, sofern BrickLink erreichbar ist.',
+  'wanted.preis_offen_hint':
+    'Für diesen Zustand ist kein Marktpreis bekannt. Der tägliche Preislauf fragt erneut nach, sofern BrickLink erreichbar ist.',
   'setup.required': 'notwendig',
   'setup.optional': 'freiwillig',
-  'setup.rb_hint': 'Rebrickable liefert Sets, Teile und Bilder. Ohne diesen Schlüssel kommen keine neuen Sets, Teile und Bilder dazu. Er ist kostenlos.',
-  'setup.bl_hint': 'BrickLink liefert die Marktpreise für Finanzen und Preisalarme. Dafür braucht es vier Werte aus dem API-Zugang.',
+  'setup.rb_hint':
+    'Rebrickable liefert Sets, Teile und Bilder. Ohne diesen Schlüssel kommen keine neuen Sets, Teile und Bilder dazu. Er ist kostenlos.',
+  'setup.bl_hint':
+    'BrickLink liefert die Marktpreise für Finanzen und Preisalarme. Dafür braucht es vier Werte aus dem API-Zugang.',
   'setup.bs_hint': 'Brickset liefert Bauanleitungen, wenn Rebrickable keine hat.',
   'setup.check': 'Schlüssel prüfen',
   'setup.check_bl': 'Zugang prüfen',
   'setup.later': 'Später',
-  'household.unlink_confirm_text_eltern': '„{name}“ sieht und bearbeitet deine Sammlung danach nicht mehr; deine Daten bleiben bei dir. Sets, die ihr zwischen den Konten verschoben habt, bleiben bei dem Konto, bei dem sie jetzt liegen.',
+  'household.unlink_confirm_text_eltern':
+    '„{name}“ sieht und bearbeitet deine Sammlung danach nicht mehr; deine Daten bleiben bei dir. Sets, die ihr zwischen den Konten verschoben habt, bleiben bei dem Konto, bei dem sie jetzt liegen.',
   'verify.bestaetigt': 'Neue Adresse {email} bestätigt.',
   'verify.bestaetigt_kurz': 'E-Mail-Adresse bestätigt.',
   'verify.zur_sammlung': '← Zurück zur Sammlung',
-  'register.gesendet': 'Konto angelegt. Bitte bestätige deine E-Mail-Adresse über den Link in der Mail, die wir dir geschickt haben.',
-  'register.nicht_gesendet': 'Konto angelegt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann dein Konto freischalten.',
+  'register.gesendet':
+    'Konto angelegt. Bitte bestätige deine E-Mail-Adresse über den Link in der Mail, die wir dir geschickt haben.',
+  'register.nicht_gesendet':
+    'Konto angelegt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann dein Konto freischalten.',
   'login.register_link': 'Registrieren',
-  'settings.reg_braucht_mail': 'Braucht den E-Mail-Versand: Zuerst unter „E-Mail“ den Mailserver eintragen, sonst käme kein Bestätigungslink an.',
+  'settings.reg_braucht_mail':
+    'Braucht den E-Mail-Versand: Zuerst unter „E-Mail“ den Mailserver eintragen, sonst käme kein Bestätigungslink an.',
   'settings.reg_ruht': 'Ruht, bis der E-Mail-Versand eingerichtet ist: Ohne ihn käme kein Bestätigungslink an.',
   'users.status.wartet': 'wartet auf Bestätigung',
   'users.action.freischalten': 'Freischalten',
   'users.action.freischalten_title': 'Adresse als bestätigt übernehmen und die Anmeldung erlauben',
   'users.freischalten_title': 'Konto „{name}“ freischalten?',
-  'users.freischalten_text': 'Die Bestätigungsmail kam nicht an. Freigeschaltet gilt die angegebene Adresse als bestätigt, und „{name}“ kann sich anmelden. Bitte mit deinem Passwort bestätigen.',
+  'users.freischalten_text':
+    'Die Bestätigungsmail kam nicht an. Freigeschaltet gilt die angegebene Adresse als bestätigt, und „{name}“ kann sich anmelden. Bitte mit deinem Passwort bestätigen.',
   'users.freigeschaltet': 'Konto „{name}“ freigeschaltet.',
   'users.aktion.konto_freigeschaltet': 'Konto freigeschaltet',
   'confirm.btn.freischalten': 'Freischalten',
   'net.heute': 'heute, {zeit}',
   'gallery.stat.verschieden': '{n} verschiedene',
   'csv.vorhanden_titel': 'Sets schon in der Sammlung',
-  'csv.vorhanden_text': '{n} Sets aus der Datei sind schon in der Sammlung ({nummern}). Der Import erhöht dort die Menge. Trotzdem übernehmen?',
-  'csv.vorhanden_text_one': '1 Set aus der Datei ist schon in der Sammlung ({nummern}). Der Import erhöht dort die Menge. Trotzdem übernehmen?',
+  'csv.vorhanden_text':
+    '{n} Sets aus der Datei sind schon in der Sammlung ({nummern}). Der Import erhöht dort die Menge. Trotzdem übernehmen?',
+  'csv.vorhanden_text_one':
+    '1 Set aus der Datei ist schon in der Sammlung ({nummern}). Der Import erhöht dort die Menge. Trotzdem übernehmen?',
   'csv.vorhanden_knopf': 'Menge erhöhen',
   'csv.wartet': 'Wartet auf andere Hintergrundarbeiten …',
   'csv.zeile': 'Zeile {n}',
@@ -1497,7 +1596,8 @@ window.I18N_DE = {
   'monitor.sub.pdf_bereit_one': '{n} PDF bereit zum Herunterladen',
   'monitor.sub.bestand': 'Bestand:',
   'konto.waehrung_wechsel_titel': 'Währung wechseln?',
-  'konto.waehrung_wechsel_text': 'Marktpreise gibt es je Währung. Nach dem Wechsel von {alt} zu {neu} lädt der Preisauftrag sie neu; bis dahin fehlen Marktwerte und Wertkurve. Kaufpreise werden zum Kurs des Kauftags umgerechnet.',
+  'konto.waehrung_wechsel_text':
+    'Marktpreise gibt es je Währung. Nach dem Wechsel von {alt} zu {neu} lädt der Preisauftrag sie neu; bis dahin fehlen Marktwerte und Wertkurve. Kaufpreise werden zum Kurs des Kauftags umgerechnet.',
   'konto.waehrung_wechsel_knopf': 'Wechseln',
   'konto.waehrung_gespeichert_markt': 'Währung {w} gespeichert. Marktpreise werden neu geladen.',
   'pdf.seiten': 'Seiten',

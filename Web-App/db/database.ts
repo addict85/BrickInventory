@@ -34,14 +34,14 @@ export function dbKonfigAusUmgebung(): DbKonfig {
   return {
     verbindung: datenbankVerbindung(),
     pool: {
-      max:                    K.pgPoolMax ?? VORGABE_POOL,
-      min:                    K.pgPoolMin,
-      idleTimeoutMillis:      K.pgIdleMs,
-      connectionTimeoutMillis:K.pgConnMs,
+      max: K.pgPoolMax ?? VORGABE_POOL,
+      min: K.pgPoolMin,
+      idleTimeoutMillis: K.pgIdleMs,
+      connectionTimeoutMillis: K.pgConnMs,
       // Über die Verbindungsoptionen statt je Anfrage. Die Zeitzone des
       // Erfassungstags steht in der Datenbank (schreibeErfassungsZeitzone).
-      options:                `-c statement_timeout=${K.pgStmtMs} -c idle_in_transaction_session_timeout=${K.pgLeerlaufTxMs} -c lock_timeout=${K.pgSperreMs}`,
-      keepAlive:              true,
+      options: `-c statement_timeout=${K.pgStmtMs} -c idle_in_transaction_session_timeout=${K.pgLeerlaufTxMs} -c lock_timeout=${K.pgSperreMs}`,
+      keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
     },
   };
@@ -131,10 +131,10 @@ const laufendeTx = new AsyncLocalStorage<{ client: PoolClient; offen: boolean; d
 
 function txSchnittstelle(client: PoolClient): DbSchnittstelle {
   return {
-    all:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
-    get:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
-    run:  (sql: string, p?: unknown[]) => client.query(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
-    exec: (sql: string)            => client.query(sql).then(() => undefined),
+    all: <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
+    get: <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
+    run: (sql: string, p?: unknown[]) => client.query(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
+    exec: (sql: string) => client.query(sql).then(() => undefined),
   };
 }
 
@@ -149,7 +149,11 @@ export function mitCommitBegleiter<T>(begleiter: CommitBegleiter, arbeit: () => 
 /** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
  * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. Der
  * Name braucht nur innerhalb der Transaktion eindeutig zu sein. */
-async function innereTransaktion<T>(client: PoolClient, nummer: number, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+async function innereTransaktion<T>(
+  client: PoolClient,
+  nummer: number,
+  fn: (tx: DbSchnittstelle) => Promise<T>,
+): Promise<T> {
   const name = `sp_${nummer}`;
   await client.query(`SAVEPOINT ${name}`);
   try {
@@ -167,8 +171,9 @@ async function innereTransaktion<T>(client: PoolClient, nummer: number, fn: (tx:
  * Fehler auffängt und einen Ersatz liefert, verdeckt nichts. */
 const vomSicherungspunktAufgefangen = new WeakSet<object>();
 setzeTransaktionsWaechter({
-  verdirbt: (e) => laufendeTx.getStore()?.offen === true
-    && !(e !== null && typeof e === 'object' && vomSicherungspunktAufgefangen.has(e)),
+  verdirbt: e =>
+    laufendeTx.getStore()?.offen === true &&
+    !(e !== null && typeof e === 'object' && vomSicherungspunktAufgefangen.has(e)),
   streng: () => konfig().nodeEnv === 'test',
 });
 
@@ -184,12 +189,15 @@ const MINDESTSTAND = '0050-teilezaehler-nur-bestehende-konten.sql';
 export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   const pool = new Pool({ ...k.verbindung, ...k.pool });
   // Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
-  pool.on('error', (err) => {
+  pool.on('error', err => {
     console.error('[db-pool] idle client error:', err.message);
   });
   const ich = {};
   let sicherungspunkte = 0;
-  const txClient = (): PoolClient | null => { const t = laufendeTx.getStore(); return t?.offen && t.db === ich ? t.client : null; };
+  const txClient = (): PoolClient | null => {
+    const t = laufendeTx.getStore();
+    return t?.offen && t.db === ich ? t.client : null;
+  };
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
    * Spalten sein SQL liefert; ohne Angabe bleibt es `unknown`. */
@@ -215,8 +223,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     const aussen = txClient();
     if (aussen) return innereTransaktion(aussen, ++sicherungspunkte, fn);
     for (let versuch = 0; ; versuch++) {
-      try { return await einmaligeTransaktion(fn); }
-      catch (e) {
+      try {
+        return await einmaligeTransaktion(fn);
+      } catch (e) {
         if (!o.wiederholeBeiKonflikt || versuch >= TX_NEUVERSUCHE || !TX_KONFLIKT.has(fehlerCode(e) ?? '')) throw e;
         // Versetzt, damit die Gegenspieler nicht im Gleichschritt wieder aufeinandertreffen.
         await new Promise(r => setTimeout(r, 25 * (versuch + 1) + Math.random() * 50));
@@ -230,7 +239,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     let kaputt: Error | undefined;
     // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
     // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
-    const abriss = (e: Error) => { kaputt = e; };
+    const abriss = (e: Error) => {
+      kaputt = e;
+    };
     client.on('error', abriss);
     try {
       await client.query('BEGIN');
@@ -243,8 +254,11 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
       stand.offen = false;
       // Scheitert auch das ROLLBACK, ist die Verbindung kaputt: Sie darf nicht
       // in den Pool zurück, und gemeldet wird der Fehler, der es ausgelöst hat.
-      try { await client.query('ROLLBACK'); }
-      catch (r) { kaputt = r instanceof Error ? r : new Error(String(r)); }
+      try {
+        await client.query('ROLLBACK');
+      } catch (r) {
+        kaputt = r instanceof Error ? r : new Error(String(r));
+      }
       throw e;
     } finally {
       client.off('error', abriss);
@@ -307,7 +321,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
       if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
       else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
     } finally {
-      await client.query(`SELECT pg_advisory_unlock(${LOCKS.SCHEMA_INIT})`).catch(logAndContinue('db:pg_advisory_unlock'));
+      await client
+        .query(`SELECT pg_advisory_unlock(${LOCKS.SCHEMA_INIT})`)
+        .catch(logAndContinue('db:pg_advisory_unlock'));
       await client.query('RESET lock_timeout').catch(logAndContinue('db:lock_timeout'));
       await client.query('RESET statement_timeout').catch(logAndContinue('db:statement_timeout'));
       client.release();
@@ -315,14 +331,35 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   }
 
   return {
-    pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, eigeneVerbindung, mitCommitBegleiter,
+    pool,
+    all,
+    get,
+    run,
+    exec,
+    transaction,
+    initSchema,
+    initSchemaOnce,
+    eigeneVerbindung,
+    mitCommitBegleiter,
     benachrichtigung: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
     darfSchemaAendern: async () => (await get<{ d: boolean }>(DARF_SCHEMA_AENDERN))?.d === true,
     inTransaktion: () => txClient() !== null,
-    getPoolStats: () => ({ total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount,
-      active: pool.totalCount - pool.idleCount }),
-    datenbankAntwortet: () => pool.query('SELECT 1').then(() => true, (e: unknown) => { meldeFehler('health:ready', e); return false; }),
-    alsSuperuserVerbunden: async () => !!(await get<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user'))?.s,
+    getPoolStats: () => ({
+      total: pool.totalCount,
+      idle: pool.idleCount,
+      waiting: pool.waitingCount,
+      active: pool.totalCount - pool.idleCount,
+    }),
+    datenbankAntwortet: () =>
+      pool.query('SELECT 1').then(
+        () => true,
+        (e: unknown) => {
+          meldeFehler('health:ready', e);
+          return false;
+        },
+      ),
+    alsSuperuserVerbunden: async () =>
+      !!(await get<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user'))?.s,
   };
 }
 
@@ -332,7 +369,9 @@ async function schreibeErfassungsZeitzone(client: import('pg').ClientBase): Prom
   await client.query(
     `INSERT INTO global_settings (key, value) VALUES ('erfassung_zeitzone', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-     WHERE global_settings.value IS DISTINCT FROM EXCLUDED.value`, [konfig().erfassungZeitzone]);
+     WHERE global_settings.value IS DISTINCT FROM EXCLUDED.value`,
+    [konfig().erfassungZeitzone],
+  );
 }
 
 const DARF_SCHEMA_AENDERN = `SELECT has_schema_privilege('public', 'CREATE') AS d`;
@@ -345,9 +384,11 @@ async function darfSchemaAendernAuf(client: import('pg').ClientBase): Promise<bo
 async function nurStandPruefen(client: import('pg').ClientBase): Promise<void> {
   const leer = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
   const offen = leer ? [] : await offeneMigrationen(client);
-  if (leer || offen.length) throw new Error(
-    `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; `
-    + 'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md, Abschnitt 51).');
+  if (leer || offen.length)
+    throw new Error(
+      `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
+        'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md, Abschnitt 51).',
+    );
   await schreibeErfassungsZeitzone(client);
   console.log('✅ Schema aktuell (eingespielt vom Dienst migration)');
 }
@@ -357,9 +398,12 @@ async function nurStandPruefen(client: import('pg').ClientBase): Promise<void> {
  * dort fehlen, und schrieben sonst ein halbes Schema. */
 async function pruefeMindeststand(client: import('pg').ClientBase): Promise<void> {
   const { rows } = await client.query(`SELECT to_regclass('public.schema_migrations') IS NOT NULL AS da`);
-  const neuGenug = rows[0].da
-    && (await client.query('SELECT 1 FROM schema_migrations WHERE name >= $1 LIMIT 1', [MINDESTSTAND])).rows.length > 0;
-  if (!neuGenug) throw new Error(
-    `Die Datenbank ist älter als Migration ${MINDESTSTAND}. Zuerst auf eine Fassung vor dem `
-    + 'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md, Abschnitt 45).');
+  const neuGenug =
+    rows[0].da &&
+    (await client.query('SELECT 1 FROM schema_migrations WHERE name >= $1 LIMIT 1', [MINDESTSTAND])).rows.length > 0;
+  if (!neuGenug)
+    throw new Error(
+      `Die Datenbank ist älter als Migration ${MINDESTSTAND}. Zuerst auf eine Fassung vor dem ` +
+        'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md, Abschnitt 45).',
+    );
 }

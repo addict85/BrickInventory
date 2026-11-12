@@ -19,31 +19,39 @@ async function fuehreAus(schritte: Schritt[], auftrag?: AuftragsLauf): Promise<v
     try {
       const n = await lauf();
       if (typeof n === 'number' && n > 0) console.log(`[aufräumen] ${name}: ${n} entfernt`);
-    } catch (e) { fehler.push(`${name}: ${fehlertext(e)}`); }
+    } catch (e) {
+      fehler.push(`${name}: ${fehlertext(e)}`);
+    }
   }
   if (fehler.length) throw new Error(fehler.join('; '));
 }
 
 function aufraeumen(lauf?: AuftragsLauf): Promise<void> {
-  return fuehreAus([
-    ['abgelaufene Tokens', purgeExpiredTokens],
-    ['Anmeldezähler', raeumeAnmeldezaehlerAuf],
-    ['Papierkorb', raeumePapierkorbAuf],
-    ['PDF-Aufträge', cleanOldPdfJobs],
-    ['alte Aufträge', auftraegeBereich().auftraege.raeumeErledigteAuf],
-    ['verfallene Bildwünsche', loescheVerfallene],
-    ['Idempotenzschlüssel', raeumeIdempotenzAuf],
-  ], lauf);
+  return fuehreAus(
+    [
+      ['abgelaufene Tokens', purgeExpiredTokens],
+      ['Anmeldezähler', raeumeAnmeldezaehlerAuf],
+      ['Papierkorb', raeumePapierkorbAuf],
+      ['PDF-Aufträge', cleanOldPdfJobs],
+      ['alte Aufträge', auftraegeBereich().auftraege.raeumeErledigteAuf],
+      ['verfallene Bildwünsche', loescheVerfallene],
+      ['Idempotenzschlüssel', raeumeIdempotenzAuf],
+    ],
+    lauf,
+  );
 }
 
 function aufraeumenTaeglich(lauf?: AuftragsLauf): Promise<void> {
-  return fuehreAus([
-    ['Preisverlauf', purgeAltePreise],
-    ['unbestätigte Registrierungen', raeumeOffeneRegistrierungenAuf],
-    ['Bild-Cache', raeumeBildCacheAuf],
-    ['Verwaltungsprotokoll', () => kontoBereich().protokoll.raeumeProtokollAuf()],
-    ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(verwaltungBereich().db)],
-  ], lauf);
+  return fuehreAus(
+    [
+      ['Preisverlauf', purgeAltePreise],
+      ['unbestätigte Registrierungen', raeumeOffeneRegistrierungenAuf],
+      ['Bild-Cache', raeumeBildCacheAuf],
+      ['Verwaltungsprotokoll', () => kontoBereich().protokoll.raeumeProtokollAuf()],
+      ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(verwaltungBereich().db)],
+    ],
+    lauf,
+  );
 }
 
 export { aufraeumen, aufraeumenTaeglich };

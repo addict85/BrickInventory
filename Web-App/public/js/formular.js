@@ -18,10 +18,12 @@ export const PASSWORT_MIN_ZEICHEN = 12;
  * Serverfehler, wo die App den Knopf gar nicht erst freigibt. Hier wird vorher gefragt.
  * @param {unknown} p
  */
-export function passwortZuKurz(p){ return String(p ?? '').length < PASSWORT_MIN_ZEICHEN; }
+export function passwortZuKurz(p) {
+  return String(p ?? '').length < PASSWORT_MIN_ZEICHEN;
+}
 
 /** Die Meldung dazu — an fuenf Stellen dieselbe. */
-export function passwortZuKurzText(){
+export function passwortZuKurzText() {
   return tRaw('settings.password.too_short', { n: PASSWORT_MIN_ZEICHEN });
 }
 
@@ -33,9 +35,10 @@ export const PASSWORT_MAX_BYTE = 72;
  * nur der Server; seine Meldung kommt zurück.
  * @param {string} p
  */
-export function passwortRegelText(p){
+export function passwortRegelText(p) {
   if (passwortZuKurz(p)) return passwortZuKurzText();
-  if (new TextEncoder().encode(String(p)).length > PASSWORT_MAX_BYTE) return tRaw('settings.password.too_long', { n: PASSWORT_MAX_BYTE });
+  if (new TextEncoder().encode(String(p)).length > PASSWORT_MAX_BYTE)
+    return tRaw('settings.password.too_long', { n: PASSWORT_MAX_BYTE });
   return null;
 }
 
@@ -74,9 +77,15 @@ export function feldFehler(id, text) {
   el.hidden = !text;
   // Die eigene Kennung ergänzen und wieder nehmen: Ein vorhandener Hinweis (Passwortregel) bleibt verknüpft.
   const ids = new Set((feld.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
-  if (text) { ids.add(el.id); feld.setAttribute('aria-invalid', 'true'); }
-  else { ids.delete(el.id); feld.removeAttribute('aria-invalid'); }
-  if (ids.size) feld.setAttribute('aria-describedby', [...ids].join(' ')); else feld.removeAttribute('aria-describedby');
+  if (text) {
+    ids.add(el.id);
+    feld.setAttribute('aria-invalid', 'true');
+  } else {
+    ids.delete(el.id);
+    feld.removeAttribute('aria-invalid');
+  }
+  if (ids.size) feld.setAttribute('aria-describedby', [...ids].join(' '));
+  else feld.removeAttribute('aria-describedby');
   if (text) feld.focus();
 }
 
@@ -101,8 +110,14 @@ export function antwortFehler(d, felder, ersatz) {
  */
 export function setnummerFeldGueltig(id, wert) {
   const v = wert ?? (G(id)?.value || '').trim();
-  if (!v) { feldFehler(id, tRaw('common.enter_set_number')); return false; }
-  if (!istSetnummer(v)) { feldFehler(id, tRaw('gallery.add.number_invalid', { num: v })); return false; }
+  if (!v) {
+    feldFehler(id, tRaw('common.enter_set_number'));
+    return false;
+  }
+  if (!istSetnummer(v)) {
+    feldFehler(id, tRaw('gallery.add.number_invalid', { num: v }));
+    return false;
+  }
   feldFehler(id, '');
   return true;
 }
@@ -138,7 +153,10 @@ export function kaufdatumGueltig(id) {
   if (!feld) return true;
   const heute = heuteIso();
   feld.max = heute;
-  if (feld.value && feld.value > heute) { feldFehler(id, tRaw('common.date_future')); return false; }
+  if (feld.value && feld.value > heute) {
+    feldFehler(id, tRaw('common.date_future'));
+    return false;
+  }
   if (G(id + '-fehler')) feldFehler(id, '');
   return true;
 }
@@ -172,12 +190,16 @@ export function betragAusFeld(feld) {
  * @param {string[]} [felder] IDs der betroffenen Felder
  */
 export function formularFehler(box, text, felder = []) {
-  box.textContent = text; box.style.display = text ? 'block' : 'none';
-  box.parentElement?.querySelectorAll('[aria-invalid="true"]').forEach(f => { feldGueltig(f, box.id); });
+  box.textContent = text;
+  box.style.display = text ? 'block' : 'none';
+  box.parentElement?.querySelectorAll('[aria-invalid="true"]').forEach(f => {
+    feldGueltig(f, box.id);
+  });
   const ziele = /** @type {HTMLElement[]} */ (felder.map(id => G(id)).filter(Boolean));
   for (const f of ziele) {
     f.setAttribute('aria-invalid', 'true');
-    const ids = new Set((f.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean)); ids.add(box.id);
+    const ids = new Set((f.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+    ids.add(box.id);
     f.setAttribute('aria-describedby', [...ids].join(' '));
   }
   if (text && ziele[0]) ziele[0].focus();
@@ -187,24 +209,35 @@ export function formularFehler(box, text, felder = []) {
 function feldGueltig(f, boxId) {
   f.removeAttribute('aria-invalid');
   const rest = (f.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== boxId);
-  if (rest.length) f.setAttribute('aria-describedby', rest.join(' ')); else f.removeAttribute('aria-describedby');
+  if (rest.length) f.setAttribute('aria-describedby', rest.join(' '));
+  else f.removeAttribute('aria-describedby');
 }
 
 // Wer im markierten Feld tippt, korrigiert: Die Markierung geht, die Meldung bleibt stehen.
-if (typeof document !== 'undefined') document.addEventListener('input', (ev) => {
-  const f = ev.target instanceof Element ? ev.target : null;
-  if (f?.getAttribute('aria-invalid') === 'true') f.removeAttribute('aria-invalid');
-});
+if (typeof document !== 'undefined')
+  document.addEventListener('input', ev => {
+    const f = ev.target instanceof Element ? ev.target : null;
+    if (f?.getAttribute('aria-invalid') === 'true') f.removeAttribute('aria-invalid');
+  });
 
 // Ein Feld mit maxlength schnitt beim Tippen still ab („…Weihnachtss“). Mit data-zaehler steht ab zehn Zeichen
 // vor der Grenze darunter, wie viele es sind, und an der Grenze, dass nicht mehr geht.
-if (typeof document !== 'undefined') document.addEventListener('input', (ev) => {
-  const f = ev.target instanceof HTMLInputElement && ev.target.hasAttribute('data-zaehler') ? ev.target : null;
-  const max = f ? Number(f.getAttribute('maxlength')) : 0;
-  if (!f || !max) return;
-  let hinweis = f.nextElementSibling instanceof HTMLElement && f.nextElementSibling.classList.contains('zeichen-zaehler') ? f.nextElementSibling : null;
-  if (!hinweis) { hinweis = document.createElement('span'); hinweis.className = 'zeichen-zaehler'; hinweis.setAttribute('aria-live', 'polite'); f.insertAdjacentElement('afterend', hinweis); }
-  const n = f.value.length;
-  hinweis.hidden = n < max - 10;
-  hinweis.textContent = n >= max ? tRaw('form.zeichen_grenze', { n, max }) : tRaw('form.zeichen', { n, max });
-});
+if (typeof document !== 'undefined')
+  document.addEventListener('input', ev => {
+    const f = ev.target instanceof HTMLInputElement && ev.target.hasAttribute('data-zaehler') ? ev.target : null;
+    const max = f ? Number(f.getAttribute('maxlength')) : 0;
+    if (!f || !max) return;
+    let hinweis =
+      f.nextElementSibling instanceof HTMLElement && f.nextElementSibling.classList.contains('zeichen-zaehler')
+        ? f.nextElementSibling
+        : null;
+    if (!hinweis) {
+      hinweis = document.createElement('span');
+      hinweis.className = 'zeichen-zaehler';
+      hinweis.setAttribute('aria-live', 'polite');
+      f.insertAdjacentElement('afterend', hinweis);
+    }
+    const n = f.value.length;
+    hinweis.hidden = n < max - 10;
+    hinweis.textContent = n >= max ? tRaw('form.zeichen_grenze', { n, max }) : tRaw('form.zeichen', { n, max });
+  });

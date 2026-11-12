@@ -24,9 +24,13 @@ let _gespeichert = {};
 /** @type {Record<string, Record<string, string>>} */
 const QUELLEN_FELDER = {
   rebrickable: { rebrickable_api_key: 'ew-rb' },
-  brickset:    { brickset_api_key: 'ew-bs' },
-  bricklink:   { bricklink_consumer_key: 'ew-bl-ck', bricklink_consumer_secret: 'ew-bl-cs',
-                 bricklink_token: 'ew-bl-tv', bricklink_token_secret: 'ew-bl-ts' },
+  brickset: { brickset_api_key: 'ew-bs' },
+  bricklink: {
+    bricklink_consumer_key: 'ew-bl-ck',
+    bricklink_consumer_secret: 'ew-bl-cs',
+    bricklink_token: 'ew-bl-tv',
+    bricklink_token_secret: 'ew-bl-ts',
+  },
 };
 
 function zeige() {
@@ -48,7 +52,12 @@ function setzeStand(quelle, ok) {
   const el = G(`ew-stand-${quelle}`);
   if (!el) return;
   el.className = ok === null ? '' : ok ? 'ew-stand ok' : 'ew-stand fehlt';
-  setzeHtml(el, ok === null ? '' : html`${ico(ok ? 'ok' : 'fehler')}<span class="vh">${tRaw(ok ? 'setup.test_ok' : 'setup.test_failed')}</span>`);
+  setzeHtml(
+    el,
+    ok === null
+      ? ''
+      : html`${ico(ok ? 'ok' : 'fehler')}<span class="vh">${tRaw(ok ? 'setup.test_ok' : 'setup.test_failed')}</span>`,
+  );
 }
 
 /** Meldung am Abschnitt; der rohe Grund steht aufklappbar darunter. */
@@ -58,7 +67,11 @@ function quellenFehler(quelle, text, details = '', felder = []) {
   if (!box) return;
   formularFehler(box, text, felder);
   if (text && details && details !== text)
-    fuegeHtmlEin(box, 'beforeend', html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${details}</code></details>`);
+    fuegeHtmlEin(
+      box,
+      'beforeend',
+      html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${details}</code></details>`,
+    );
 }
 
 /**
@@ -83,7 +96,9 @@ export async function pruefeEinrichtung() {
   rbHinweisVerbergen();
 }
 
-function schliessen() { G('einrichtung-modal').classList.remove('open'); }
+function schliessen() {
+  G('einrichtung-modal').classList.remove('open');
+}
 
 async function abschliessen() {
   schliessen();
@@ -98,28 +113,49 @@ export function einrichtungSpaeter() {
 }
 
 export function einrichtungZurueck() {
-  if (_jetzt > 0) { _jetzt--; zeige(); }
+  if (_jetzt > 0) {
+    _jetzt--;
+    zeige();
+  }
 }
 
 export async function einrichtungWeiter() {
-  if (_jetzt < _schritte.length - 1) { _jetzt++; zeige(); return; }
+  if (_jetzt < _schritte.length - 1) {
+    _jetzt++;
+    zeige();
+    return;
+  }
   await abschliessen();
 }
 
 export async function einrichtungPasswort() {
-  const alt = G('ew-pw-alt').value, neu = G('ew-pw-neu').value, wdh = G('ew-pw-wdh').value;
+  const alt = G('ew-pw-alt').value,
+    neu = G('ew-pw-neu').value,
+    wdh = G('ew-pw-wdh').value;
   const box = G('ew-pw-fehler');
   formularFehler(box, '');
   const regel = passwortRegelText(neu);
-  if (regel) { formularFehler(box, regel, ['ew-pw-neu']); return; }
-  if (neu !== wdh) { formularFehler(box, tRaw('settings.password.mismatch'), ['ew-pw-wdh']); return; }
-  const d = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password', { current: alt, newPassword: neu, ...z }));
-  if (!d) return;
-  if (!d?.success) {
-    formularFehler(box, d?.error || tRaw('settings.error'), [d?.code === 'aktuelles_passwort_falsch' ? 'ew-pw-alt' : 'ew-pw-neu']);
+  if (regel) {
+    formularFehler(box, regel, ['ew-pw-neu']);
     return;
   }
-  ['ew-pw-alt', 'ew-pw-neu', 'ew-pw-wdh'].forEach(id => { G(id).value = ''; });
+  if (neu !== wdh) {
+    formularFehler(box, tRaw('settings.password.mismatch'), ['ew-pw-wdh']);
+    return;
+  }
+  const d = await mitZweitemFaktor(z =>
+    api('POST', '/v1/auth/change-password', { current: alt, newPassword: neu, ...z }),
+  );
+  if (!d) return;
+  if (!d?.success) {
+    formularFehler(box, d?.error || tRaw('settings.error'), [
+      d?.code === 'aktuelles_passwort_falsch' ? 'ew-pw-alt' : 'ew-pw-neu',
+    ]);
+    return;
+  }
+  ['ew-pw-alt', 'ew-pw-neu', 'ew-pw-wdh'].forEach(id => {
+    G(id).value = '';
+  });
   toast(tRaw('setup.pw_done'), 'success');
   await einrichtungWeiter();
 }
@@ -137,7 +173,8 @@ export async function einrichtungQuelle(quelle) {
   const leer = [];
   for (const [schluessel, id] of Object.entries(felder)) {
     const v = G(id).value.trim();
-    if (v) werte[schluessel] = v; else leer.push(id);
+    if (v) werte[schluessel] = v;
+    else leer.push(id);
   }
   quellenFehler(quelle, '');
   // Leer und nichts gespeichert: am Feld sagen, statt den Server „nicht konfiguriert“ melden zu lassen.
@@ -149,14 +186,27 @@ export async function einrichtungQuelle(quelle) {
   if (Object.keys(werte).length) {
     const s = await speichereEinstellungen(tRaw('settings.api_key_title'), werte);
     if (!s) return;
-    if (!s?.success) { quellenFehler(quelle, s?.error || tRaw('settings.error'), '', Object.values(felder)); return; }
+    if (!s?.success) {
+      quellenFehler(quelle, s?.error || tRaw('settings.error'), '', Object.values(felder));
+      return;
+    }
     if (!leer.length) _gespeichert[quelle] = true;
   }
   const d = await api('POST', '/v1/settings/quelle-testen', { quelle });
   setzeStand(quelle, !!d?.success);
-  if (d?.success) { toast(tRaw('setup.test_ok'), 'success'); return; }
-  const { grund, details } = d?.code ? { grund: d.error, details: d.details == null ? undefined : String(d.details) } : verstaendlicherGrund(d);
-  quellenFehler(quelle, grund || tRaw('settings.error'), details || '', d?.code === 'quelle_abgelehnt' ? Object.values(felder) : []);
+  if (d?.success) {
+    toast(tRaw('setup.test_ok'), 'success');
+    return;
+  }
+  const { grund, details } = d?.code
+    ? { grund: d.error, details: d.details == null ? undefined : String(d.details) }
+    : verstaendlicherGrund(d);
+  quellenFehler(
+    quelle,
+    grund || tRaw('settings.error'),
+    details || '',
+    d?.code === 'quelle_abgelehnt' ? Object.values(felder) : [],
+  );
 }
 
 /**
@@ -175,5 +225,11 @@ export function einrichtungZiel(ziel) {
   abschliessen();
 }
 
-registerActions({ einrichtungSpaeter, einrichtungZurueck, einrichtungWeiter, einrichtungPasswort,
-                  einrichtungQuelle, einrichtungZiel });
+registerActions({
+  einrichtungSpaeter,
+  einrichtungZurueck,
+  einrichtungWeiter,
+  einrichtungPasswort,
+  einrichtungQuelle,
+  einrichtungZiel,
+});

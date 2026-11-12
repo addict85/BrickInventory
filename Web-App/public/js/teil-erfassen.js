@@ -58,7 +58,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
   // „Keine Farbe“ ist null, nicht 0: 0 ist bei Rebrickable Schwarz. Mit 0 für beides suchte der Server für
   // schwarze Teile kein Farbbild und zeigte das allgemeine, meist weisse.
   const rawColor = colorSel?.value ?? '';
-  const colorId = String(rawColor).trim() === '' ? null : parseInt(rawColor) || 0;
+  const colorId = String(rawColor).trim() === '' ? null : parseInt(rawColor, 10) || 0;
   const colorOpt = colorSel?.options[colorSel.selectedIndex];
   const colorName = colorOpt?.dataset.name || null;
   const colorHex = colorOpt?.dataset.hex || null;

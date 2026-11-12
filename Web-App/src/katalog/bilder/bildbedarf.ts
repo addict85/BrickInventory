@@ -23,7 +23,7 @@ export async function bildbedarfAnstossen(): Promise<void> {
 
 /** Ein INSERT je Bildanfrage leerte bei einer Kachelwand den Pool. Was bei
  * einem Absturz im Puffer liegt, fragt der nächste Aufruf wieder an. */
-const _puffer = new Map<string, string>();   // url → set_number
+const _puffer = new Map<string, string>(); // url → set_number
 
 /** Hält die Anfrage nie auf. */
 export function merkeGebraucht(url: string, setNumber: string | null): void {
@@ -48,7 +48,11 @@ const _takte: NodeJS.Timeout[] = [];
 
 export async function initImageQueue(): Promise<void> {
   if (_takte.length) return;
-  _takte.push(setInterval(() => { schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer')); }, 10_000));
+  _takte.push(
+    setInterval(() => {
+      schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer'));
+    }, 10_000),
+  );
   _takte[0]?.unref();
 }
 
@@ -78,6 +82,9 @@ export async function leereBildbedarf(): Promise<number> {
 }
 
 /** In einem Schritt herausgenommen, damit zwei Läufe nicht dieselben Bilder holen. */
-export function nimmBildwuensche(gueltigMs: number, anzahl: number): Promise<{ url: string; set_number: string | null }[]> {
+export function nimmBildwuensche(
+  gueltigMs: number,
+  anzahl: number,
+): Promise<{ url: string; set_number: string | null }[]> {
   return katalog().bildbedarf.entnimmBildwuensche(String(gueltigMs), anzahl);
 }

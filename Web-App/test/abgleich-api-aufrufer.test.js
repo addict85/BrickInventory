@@ -28,8 +28,7 @@ function alleRouten() {
   const out = [];
   // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
   // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
-  for (const r of routerEinhaengungen())
-    out.push(...routenAus(r.datei, r.mount));
+  for (const r of routerEinhaengungen()) out.push(...routenAus(r.datei, r.mount));
   const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
@@ -45,7 +44,10 @@ function clientQuellen() {
     if (!fs.existsSync(dir)) return;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
-      if (e.isDirectory()) { if (e.name !== 'build') sammle(p, endungen); continue; }
+      if (e.isDirectory()) {
+        if (e.name !== 'build') sammle(p, endungen);
+        continue;
+      }
       // app.bundle.js ist das Erzeugnis aus public/js/*.js — mitzuzaehlen
       // hiesse, jeden Aufruf doppelt zu sehen, und ein Aufruf, den es nur im
       // Erzeugnis gaebe, waere ein Fehler und kein Beleg.
@@ -71,29 +73,40 @@ const OHNE_AUFRUFER = new Map([
   ['GET /api/v1/health/ready', 'Gesundheitsprüfung von compose.yaml (node -e im Container).'],
   // Die Token-Routen fehlen hier, weil ihre Oberfläche jetzt unter
   // „Angemeldete Geräte“ steht und sie damit einen Aufrufer haben.
-  ['POST /api/v1/admin/img-probe',
+  [
+    'POST /api/v1/admin/img-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, was der Bild-Proxy vom ' +
-    'Ursprungsserver bekommt. Entstanden, weil Minifiguren-Bilder über den ' +
-    'Proxy fehlschlugen, im Browser aber luden.'],
-  ['POST /api/v1/admin/price-probe',
+      'Ursprungsserver bekommt. Entstanden, weil Minifiguren-Bilder über den ' +
+      'Proxy fehlschlugen, im Browser aber luden.',
+  ],
+  [
+    'POST /api/v1/admin/price-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, woher ein Preis stammt ' +
-    '(Zustandswahl, Cache oder BrickLink-Antwort).'],
-  ['GET /api/v1/admin/image-diag/:setNumber',
-    'Diagnosewerkzeug, von Hand gerufen: reine Beobachtung des Bildzustands ' +
-    'eines Sets, ohne etwas nachzuladen.'],
-  ['POST /api/v1/admin/forget-image-misses',
+      '(Zustandswahl, Cache oder BrickLink-Antwort).',
+  ],
+  [
+    'GET /api/v1/admin/image-diag/:setNumber',
+    'Diagnosewerkzeug, von Hand gerufen: reine Beobachtung des Bildzustands ' + 'eines Sets, ohne etwas nachzuladen.',
+  ],
+  [
+    'POST /api/v1/admin/forget-image-misses',
     'Wartungsgriff, von Hand gerufen: nimmt gemerkte Bild-Fehlanzeigen zurück, ' +
-    'damit der Nachlauf es erneut versucht.'],
-  ['GET /api/v1/catalog/bricklink',
+      'damit der Nachlauf es erneut versucht.',
+  ],
+  [
+    'GET /api/v1/catalog/bricklink',
     'Gebündelte Abfrage der BrickLink-Nummern aus dem lokalen Katalog-Cache. ' +
-    'Gegen BrickLink selbst geht das nicht (deren API kennt nur einzelne ' +
-    'Artikel und drosselt) — deshalb existiert die Route, benutzt wird sie ' +
-    'noch nicht.'],
-  ['POST /api/v1/auth/token-create',
+      'Gegen BrickLink selbst geht das nicht (deren API kennt nur einzelne ' +
+      'Artikel und drosselt) — deshalb existiert die Route, benutzt wird sie ' +
+      'noch nicht.',
+  ],
+  [
+    'POST /api/v1/auth/token-create',
     'Stellt einen App-Token für eine bereits bestehende Anmeldung aus ' +
-    '(Sitzung ODER Token). Die App holt ihren Token beim Anmelden, die Webapp ' +
-    'über den QR-Weg (/auth/qr-token) — dieser dritte Weg wird derzeit von ' +
-    'keinem der beiden gerufen.'],
+      '(Sitzung ODER Token). Die App holt ihren Token beim Anmelden, die Webapp ' +
+      'über den QR-Weg (/auth/qr-token) — dieser dritte Weg wird derzeit von ' +
+      'keinem der beiden gerufen.',
+  ],
 ]);
 
 test('jede Route hat einen Aufrufer oder einen eingetragenen Grund', () => {
@@ -111,7 +124,10 @@ test('jede Route hat einen Aufrufer oder einen eingetragenen Grund', () => {
     const stamm = pfad.split('/:')[0].replace(/\/+$/, '');
     if (!stamm) continue;
     const formen = [stamm, stamm.slice(1), stamm.slice('/api'.length)].filter(Boolean);
-    if (formen.some(f => text.includes(f))) { mitAufrufer++; continue; }
+    if (formen.some(f => text.includes(f))) {
+      mitAufrufer++;
+      continue;
+    }
     ohne.push(`${verb} ${pfad}`);
   }
 
@@ -119,25 +135,32 @@ test('jede Route hat einen Aufrufer oder einen eingetragenen Grund', () => {
   // und der Test rot — der umgekehrte Fall ist gefaehrlicher: Passte jeder
   // Pfad auf irgendetwas, waere `ohne` leer und der Test gruen, ohne etwas
   // geprueft zu haben. Deshalb beide Seiten festnageln.
-  assert.ok(mitAufrufer >= 100,
-    `Nur ${mitAufrufer} Routen mit Aufrufer — findet die Suche noch, was sie soll?`);
-  assert.ok(ohne.length > 0,
+  assert.ok(mitAufrufer >= 100, `Nur ${mitAufrufer} Routen mit Aufrufer — findet die Suche noch, was sie soll?`);
+  assert.ok(
+    ohne.length > 0,
     'Keine einzige Route ohne Aufrufer — das waere schoen, ist aber ' +
-    'verdaechtig: Die Suche trifft dann vermutlich auf alles.');
+      'verdaechtig: Die Suche trifft dann vermutlich auf alles.',
+  );
 
   const unerklaert = ohne.filter(r => !OHNE_AUFRUFER.has(r)).sort();
-  assert.deepEqual(unerklaert, [],
+  assert.deepEqual(
+    unerklaert,
+    [],
     'Diese Routen ruft kein Client, und es steht kein Grund dabei:\n  ' +
-    unerklaert.join('\n  ') +
-    '\nEntweder sie wird nicht mehr gebraucht (dann entfernen), oder es gibt ' +
-    'einen Grund (E-Mail-Link, Diagnosewerkzeug, geplante Oberflaeche) — dann ' +
-    'in OHNE_AUFRUFER eintragen, damit der Naechste ihn nicht neu herleiten muss.');
+      unerklaert.join('\n  ') +
+      '\nEntweder sie wird nicht mehr gebraucht (dann entfernen), oder es gibt ' +
+      'einen Grund (E-Mail-Link, Diagnosewerkzeug, geplante Oberflaeche) — dann ' +
+      'in OHNE_AUFRUFER eintragen, damit der Naechste ihn nicht neu herleiten muss.',
+  );
 
   // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
   // prueft — dieselbe Regel wie in scripts/check-global-settings.js.
   const veraltet = [...OHNE_AUFRUFER.keys()].filter(r => !ohne.includes(r)).sort();
-  assert.deepEqual(veraltet, [],
+  assert.deepEqual(
+    veraltet,
+    [],
     'Diese Eintraege beschreiben keine aufruferlose Route mehr — entweder ist ' +
-    'sie geloescht worden oder sie hat jetzt einen Aufrufer. Zeile streichen:\n  ' +
-    veraltet.join('\n  '));
+      'sie geloescht worden oder sie hat jetzt einen Aufrufer. Zeile streichen:\n  ' +
+      veraltet.join('\n  '),
+  );
 });

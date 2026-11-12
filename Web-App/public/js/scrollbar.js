@@ -15,7 +15,9 @@ import { G, setzeHtml } from './dom.js';
  */
 let scrollLabelFn = null;
 /** @param {(() => string | null | undefined) | null} fn */
-export function setScrollLabel(fn) { scrollLabelFn = fn; }
+export function setScrollLabel(fn) {
+  scrollLabelFn = fn;
+}
 
 function _rollbarerBereich() {
   const doc = document.documentElement;
@@ -24,11 +26,15 @@ function _rollbarerBereich() {
 
 /** Griffgrösse und -lage aus dem Rollzustand — wie bei einem echten Balken. */
 export function zeichneScrollbalken() {
-  const bar = G('app-scrollbar'), thumb = G('app-scrollbar-thumb');
+  const bar = G('app-scrollbar'),
+    thumb = G('app-scrollbar-thumb');
   if (!bar || !thumb) return;
   const rollbar = _rollbarerBereich();
   // Passt alles ins Fenster, gibt es nichts zu rollen — dann auch keinen Balken.
-  if (rollbar < 8) { bar.style.display = 'none'; return; }
+  if (rollbar < 8) {
+    bar.style.display = 'none';
+    return;
+  }
   bar.style.display = 'block';
   const spur = bar.clientHeight;
   const anteil = window.innerHeight / document.documentElement.scrollHeight;
@@ -58,9 +64,11 @@ function _erzeugeScrollbalken() {
 
 export function initScrollbalken() {
   const bar = _erzeugeScrollbalken();
-  const thumb = G('app-scrollbar-thumb'), label = G('app-scrollbar-label');
+  const thumb = G('app-scrollbar-thumb'),
+    label = G('app-scrollbar-label');
   if (!bar || !thumb) return;
-  let ziehen = false, griffOffset = 0;
+  let ziehen = false,
+    griffOffset = 0;
 
   // Gedrosselt über requestAnimationFrame: Ein Scroll-Ereignis feuert dutzende Male je Sekunde, und
   // zeichneScrollbalken() LIEST Layout (scrollHeight). Ungedrosselt erzwingt das je Ereignis eine
@@ -69,7 +77,10 @@ export function initScrollbalken() {
   const nachzeichnen = () => {
     if (angefordert) return;
     angefordert = true;
-    requestAnimationFrame(() => { angefordert = false; zeichneScrollbalken(); });
+    requestAnimationFrame(() => {
+      angefordert = false;
+      zeichneScrollbalken();
+    });
   };
   window.addEventListener('scroll', nachzeichnen, { passive: true });
   window.addEventListener('resize', nachzeichnen, { passive: true });
@@ -89,16 +100,18 @@ export function initScrollbalken() {
       const text = scrollLabelFn ? scrollLabelFn() : null;
       label.textContent = text || '';
       label.style.display = text ? 'block' : 'none';
-      label.style.top = (oben + hoehe / 2) + 'px';
+      label.style.top = oben + hoehe / 2 + 'px';
     }
   };
   const start = (/** @type {MouseEvent | TouchEvent} */ ev) => {
     const y = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
     const tr = thumb.getBoundingClientRect();
     // Neben den Griff getippt: erst dorthin springen, dann greifen — wie bei einem gewöhnlichen Scrollbalken.
-    griffOffset = (y >= tr.top && y <= tr.bottom) ? y - tr.top : thumb.offsetHeight / 2;
-    ziehen = true; bar.classList.add('dragging');
-    rollen(y); ev.preventDefault();
+    griffOffset = y >= tr.top && y <= tr.bottom ? y - tr.top : thumb.offsetHeight / 2;
+    ziehen = true;
+    bar.classList.add('dragging');
+    rollen(y);
+    ev.preventDefault();
   };
   const bewegen = (/** @type {MouseEvent | TouchEvent} */ ev) => {
     if (!ziehen) return;

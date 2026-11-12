@@ -20,11 +20,26 @@ const path = require('node:path');
 const { oeffneOberflaeche, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
 
 const STIL = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-const mitStil = (w) => w.document.addEventListener('DOMContentLoaded', () => {
-  const s = w.document.createElement('style'); s.textContent = STIL; w.document.head.append(s); });
-const zu = (w, e) => { for (let x = e; x && x.nodeType === 1; x = x.parentElement) if (w.getComputedStyle(x).display === 'none') return true; return false; };
+const mitStil = w =>
+  w.document.addEventListener('DOMContentLoaded', () => {
+    const s = w.document.createElement('style');
+    s.textContent = STIL;
+    w.document.head.append(s);
+  });
+const zu = (w, e) => {
+  for (let x = e; x && x.nodeType === 1; x = x.parentElement) if (w.getComputedStyle(x).display === 'none') return true;
+  return false;
+};
 
-const GUTSCHEIN = { id: 3, number: '6123456789012', pin: '4711', amount: 50, currency: 'CHF', hat_pdf: false, guthaben_geprueft_am: null };
+const GUTSCHEIN = {
+  id: 3,
+  number: '6123456789012',
+  pin: '4711',
+  amount: 50,
+  currency: 'CHF',
+  hat_pdf: false,
+  guthaben_geprueft_am: null,
+};
 
 test('Gutscheine: Zeile und Aktionen', async () => {
   const o = await oeffneOberflaeche({ '/v1/vouchers': { success: true, vouchers: [GUTSCHEIN] } }, { vorher: mitStil });
@@ -39,7 +54,9 @@ test('Gutscheine: Zeile und Aktionen', async () => {
     assert.equal(loeschen.className, bearbeiten.className + ' v-btn-gefahr');
     assert.deepEqual([bearbeiten.textContent.trim(), loeschen.textContent.trim()], ['Bearbeiten', 'Löschen']);
     for (const e of o.d.querySelectorAll('[data-nur-mit-gutscheinen]')) assert.equal(zu(o.w, e), false);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('ohne Gutscheine: keine Summe, kein „alle abfragen“, kein Export', async () => {
@@ -49,23 +66,37 @@ test('ohne Gutscheine: keine Summe, kein „alle abfragen“, kein Export', asyn
     await warte(() => o.d.querySelector('.voucher-leer'));
     const teile = [...o.d.querySelectorAll('[data-nur-mit-gutscheinen]')];
     assert.equal(teile.length, 3);
-    assert.deepEqual(teile.map(e => zu(o.w, e)), [true, true, true]);
+    assert.deepEqual(
+      teile.map(e => zu(o.w, e)),
+      [true, true, true],
+    );
     assert.equal(zu(o.w, o.d.querySelector('[data-click="gutscheineExportieren"]')), true);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Rebrickable-Band nur in Sammlung und Katalog', async () => {
-  const o = await oeffneOberflaeche({ '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } } },
-    { vorher: mitStil });
+  const o = await oeffneOberflaeche(
+    { '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } } },
+    { vorher: mitStil },
+  );
   try {
     const band = o.d.getElementById('rb-hinweis');
     await warte(() => !band.hidden, 2000);
     assert.equal(zu(o.w, band), false, 'Sammlung');
-    for (const [tab, versteckt] of [['finance', true], ['wanted', true], ['catalog', false], ['parts', false]]) {
+    for (const [tab, versteckt] of [
+      ['finance', true],
+      ['wanted', true],
+      ['catalog', false],
+      ['parts', false],
+    ]) {
       await reiter(o.w, tab);
       assert.equal(zu(o.w, band), versteckt, tab);
     }
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('QR-Fläche erst mit Code', async () => {
@@ -75,36 +106,51 @@ test('QR-Fläche erst mit Code', async () => {
     assert.equal(o.w.getComputedStyle(f).display, 'none');
     f.innerHTML = '<canvas></canvas>';
     assert.notEqual(o.w.getComputedStyle(f).display, 'none');
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });
 
 test('Kein Zugriff für ein normales Konto, Verwalter sieht nichts davon', async () => {
-  const normal = await oeffneOberflaeche({ '/v1/auth/me': { loggedIn: true, user: { id: 2, username: 'bert', is_admin: false } } });
+  const normal = await oeffneOberflaeche({
+    '/v1/auth/me': { loggedIn: true, user: { id: 2, username: 'bert', is_admin: false } },
+  });
   try {
     normal.d.querySelector('.ntab[data-tab="settings"]').click();
     await takt(50);
     const f = normal.d.getElementById('einst-kein-zugriff');
     assert.equal(f.hidden, false);
     assert.match(f.textContent, /Kein Zugriff/);
-  } finally { normal.w.close(); }
+  } finally {
+    normal.w.close();
+  }
   const chef = await oeffneOberflaeche({});
   try {
     chef.d.querySelector('.ntab[data-tab="settings"]').click();
     await takt(50);
     assert.equal(chef.d.getElementById('einst-kein-zugriff').hidden, true);
-  } finally { chef.w.close(); }
+  } finally {
+    chef.w.close();
+  }
 });
 
 test('Design: ein Satz zur Wahl, Noppe und Hochglanz verschieden', async () => {
   const texte = {};
   for (const design of ['noppe', 'hochglanz', 'werkbank']) {
-    const o = await oeffneOberflaeche({ '/v1/settings/theme': { success: true, vorgabe: 'classic', eigenes: design, theme: design },
-      '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } } });
+    const o = await oeffneOberflaeche({
+      '/v1/settings/theme': { success: true, vorgabe: 'classic', eigenes: design, theme: design },
+      '/v1/auth/profile': {
+        success: true,
+        user: { username: 'anna', email: 'anna@example.org', email_verified: true },
+      },
+    });
     try {
       await sicht(o.w, 'profil');
       await warte(() => o.d.getElementById('design-hinweis').textContent);
       texte[design] = o.d.getElementById('design-hinweis').textContent;
-    } finally { o.w.close(); }
+    } finally {
+      o.w.close();
+    }
   }
   assert.match(texte.noppe, /verspielt/);
   assert.match(texte.hochglanz, /glatte Flächen/);

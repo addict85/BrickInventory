@@ -31,7 +31,9 @@ test('Sammlung: Suche ohne Treffer', async () => {
     const neu = aufrufe.slice(vorher).find(a => a.url.includes('/v1/sets?'));
     assert.ok(neu, 'Die Sammlung wurde nicht neu geladen');
     assert.doesNotMatch(neu.url, /search=/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Sammlung: Themenfilter ohne Treffer', async () => {
@@ -43,7 +45,9 @@ test('Sammlung: Themenfilter ohne Treffer', async () => {
     await warte(() => d.querySelector('#gallery .leer h2')?.textContent.includes('Filter'));
     assert.equal(d.querySelector('#gallery .leer h2').textContent, 'Keine Sets passen zu diesem Filter');
     assert.ok(d.querySelector('#gallery [data-click="filterZuruecksetzen"]'));
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Merkliste: Suche ohne Treffer', async () => {
@@ -57,6 +61,12 @@ test('Merkliste: Suche ohne Treffer', async () => {
     await takt(30);
     assert.equal(d.getElementById('mks').value, '');
     await warte(() => !d.querySelector('#mk-list [data-click="filterZuruecksetzen"]'));
-    assert.equal(d.querySelector('#mk-list [data-click="filterZuruecksetzen"]'), null, 'Nach dem Zurücksetzen steht weiter „nichts gefunden“');
-  } finally { w.close(); }
+    assert.equal(
+      d.querySelector('#mk-list [data-click="filterZuruecksetzen"]'),
+      null,
+      'Nach dem Zurücksetzen steht weiter „nichts gefunden“',
+    );
+  } finally {
+    w.close();
+  }
 });

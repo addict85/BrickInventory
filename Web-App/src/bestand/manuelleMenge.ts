@@ -26,25 +26,34 @@ export function mengenwunsch(body: { quantity?: unknown; quantity_delta?: unknow
   return null;
 }
 
-const ziel = (w: Mengenwunsch, bisher: number) =>
-  'absolut' in w ? w.absolut : Math.max(MINDESTENS, bisher + w.delta);
+const ziel = (w: Mengenwunsch, bisher: number) => ('absolut' in w ? w.absolut : Math.max(MINDESTENS, bisher + w.delta));
 
 /** In der Bestandssperre gerechnet, damit sich Web und App nicht überholen.
  * @param marktpreis wird VOR der Sperre und nur bei steigender Menge gefragt
  * @returns die Menge danach */
-export async function passeManuelleMengeAn(art: ManuelleArt, uid: number, schluessel: (string | number)[],
-                                            wunsch: Mengenwunsch, zustand: string,
-                                            marktpreis: () => Promise<number | null>, ab = new Abstriche()): Promise<number> {
+export async function passeManuelleMengeAn(
+  art: ManuelleArt,
+  uid: number,
+  schluessel: (string | number)[],
+  wunsch: Mengenwunsch,
+  zustand: string,
+  marktpreis: () => Promise<number | null>,
+  ab = new Abstriche(),
+): Promise<number> {
   const vorab = await bestandBereich().manuelleMengen.summeDerErfassungen(art, uid, schluessel);
-  const mp = ziel(wunsch, vorab) > vorab
-    ? await ab.oder('kaufpreis', marktpreis, null) : null;
-  return mitInventarSperre(bestandBereich().db, uid, bestandsSchluessel(art, schluessel), async (tx) => {
+  const mp = ziel(wunsch, vorab) > vorab ? await ab.oder('kaufpreis', marktpreis, null) : null;
+  return mitInventarSperre(bestandBereich().db, uid, bestandsSchluessel(art, schluessel), async tx => {
     const erfassungen = await repo.erfassungenNeuesteZuerst(tx, art, uid, schluessel);
     const bisher = erfassungen.reduce((s, r) => s + r.quantity, 0);
     const soll = ziel(wunsch, bisher);
     if (soll > bisher) {
-      await recordAcquisitionForDay(art, uid, schluessel,
-        { quantity: soll - bisher, price: mp, condition: zustand, geschaetzt: true }, tx);
+      await recordAcquisitionForDay(
+        art,
+        uid,
+        schluessel,
+        { quantity: soll - bisher, price: mp, condition: zustand, geschaetzt: true },
+        tx,
+      );
     }
     let rest = bisher - soll;
     for (const a of erfassungen) {

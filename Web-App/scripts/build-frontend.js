@@ -5,11 +5,11 @@
  * Bündelt und minifiziert das Frontend.
  */
 
-const { execFileSync } = require('child_process');
-const fs   = require('fs');
-const path = require('path');
+const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 
-const ROOT   = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..');
 const PUBLIC = path.join(ROOT, 'public');
 /**
  * Fassung für den npx-Rückfall.
@@ -22,7 +22,7 @@ const PUBLIC = path.join(ROOT, 'public');
 const ESBUILD_VERSION = '0.28.2';
 
 /** Einstiegspunkt — importiert alle Teile in der bisherigen Reihenfolge. */
-const ENTRY   = 'js/main.js';
+const ENTRY = 'js/main.js';
 const OUT_REL = 'js/app.bundle.js';
 
 /**
@@ -31,10 +31,10 @@ const OUT_REL = 'js/app.bundle.js';
  * nie ausgeliefert, und das fällt erst im Browser auf.
  */
 const STANDALONE = new Set([
-  'theme-boot.js',   // klassisches Skript im <head>, vor dem ersten Paint
-  'pdfjs-boot.js',      // eigenes ES-Modul mit type="module"
-  'logviewer.js',       // wird zur Laufzeit ins Popup nachgeladen
-  'main.js',            // der Einstiegspunkt selbst
+  'theme-boot.js', // klassisches Skript im <head>, vor dem ersten Paint
+  'pdfjs-boot.js', // eigenes ES-Modul mit type="module"
+  'logviewer.js', // wird zur Laufzeit ins Popup nachgeladen
+  'main.js', // der Einstiegspunkt selbst
   path.basename(OUT_REL),
 ]);
 
@@ -44,9 +44,23 @@ const STANDALONE = new Set([
  * prüft, dass Kern und Bausteine keine Ansicht importieren. Alles übrige ist Ansicht.
  */
 const KERN = ['stile.js', 'escapen.js', 'ereignisse.js', 'ziele.js', 'zustand.js', 'registry.js', 'theme-boot.js'];
-const BAUSTEINE = ['dom.js', 'format.js', 'meldungen.js', 'verbindung.js', 'api.js', 'bilder.js', 'formular.js',
-  'konto.js', 'dialoge.js', 'fortschritt.js', 'monitor.js', 'bausteine.js', 'rueckfrage.js', 'fadenkreuz.js',
-  'diagramme.js'];
+const BAUSTEINE = [
+  'dom.js',
+  'format.js',
+  'meldungen.js',
+  'verbindung.js',
+  'api.js',
+  'bilder.js',
+  'formular.js',
+  'konto.js',
+  'dialoge.js',
+  'fortschritt.js',
+  'monitor.js',
+  'bausteine.js',
+  'rueckfrage.js',
+  'fadenkreuz.js',
+  'diagramme.js',
+];
 
 /** Ausserhalb der App-Module: Einstieg, Bündel und die eigenständigen Skripte ohne Bündelbezug. */
 const KEINE_APP_MODULE = new Set(['main.js', path.basename(OUT_REL), 'logviewer.js', 'pdfjs-boot.js']);
@@ -71,9 +85,7 @@ function checkComplete() {
     process.exit(1);
   }
   const entry = fs.readFileSync(path.join(PUBLIC, ENTRY), 'utf8');
-  const imported = new Set(
-    [...entry.matchAll(/from\s+'\.\/([^']+)'|import\s+'\.\/([^']+)'/g)]
-      .map(m => m[1] || m[2]));
+  const imported = new Set([...entry.matchAll(/from\s+'\.\/([^']+)'|import\s+'\.\/([^']+)'/g)].map(m => m[1] || m[2]));
   const actual = fs.readdirSync(path.join(PUBLIC, 'js')).filter(f => f.endsWith('.js'));
   const orphans = actual.filter(f => !STANDALONE.has(f) && !imported.has(f) && f !== 'registry.js');
   if (orphans.length) {
@@ -90,8 +102,13 @@ function checkComplete() {
  * Werte mit `${…}` zählen nicht; die setzt der Aufrufer zur Laufzeit selbst.
  */
 function erlaubteStile() {
-  const dateien = ['index.html', ...fs.readdirSync(path.join(PUBLIC, 'js'))
-    .filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL)).map(f => 'js/' + f)];
+  const dateien = [
+    'index.html',
+    ...fs
+      .readdirSync(path.join(PUBLIC, 'js'))
+      .filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL))
+      .map(f => 'js/' + f),
+  ];
   const werte = new Set();
   /** @type {Record<string, string>} */
   const entity = { '&amp;': '&', '&quot;': '"', '&#39;': "'", '&lt;': '<', '&gt;': '>' };
@@ -99,7 +116,8 @@ function erlaubteStile() {
     const s = fs.readFileSync(path.join(PUBLIC, d), 'utf8');
     for (const m of s.matchAll(/data-stil=(\\?["'])([\s\S]*?)\1/g)) {
       const roh = m[2] ?? '';
-      if (!roh.includes('${')) werte.add(roh.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
+      if (!roh.includes('${'))
+        werte.add(roh.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
     }
     for (const m of s.matchAll(/\b(?:stil|zeilenStil|wertStil):\s*'([^'$]*)'/g)) werte.add(m[1] ?? '');
   }
@@ -114,26 +132,36 @@ function erlaubteStile() {
  */
 function baueBuendel(outAbs, opt = {}) {
   // Lokales esbuild statt npx — siehe die Begründung in scripts/build-ts.js.
-  const local = path.join(ROOT, 'node_modules', '.bin',
-    process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
-  const [cmd, prefix] = fs.existsSync(local)
-    ? [local, []]
-    : ['npx', ['--yes', `esbuild@${ESBUILD_VERSION}`]];
-  execFileSync(cmd, [
-    ...prefix, path.join(PUBLIC, ENTRY),
-    '--bundle', '--format=iife', ...(opt.quellkarte ? [] : ['--minify']), '--charset=utf8',
-    `--define:__ERLAUBTE_STILE__=${JSON.stringify(erlaubteStile())}`,
-    `--outfile=${outAbs}`,
-    ...(opt.quellkarte ? ['--sourcemap=inline', '--sources-content=true'] : []),
-  ], { stdio: ['ignore', 'ignore', 'inherit'] });
+  const local = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
+  const [cmd, prefix] = fs.existsSync(local) ? [local, []] : ['npx', ['--yes', `esbuild@${ESBUILD_VERSION}`]];
+  execFileSync(
+    cmd,
+    [
+      ...prefix,
+      path.join(PUBLIC, ENTRY),
+      '--bundle',
+      '--format=iife',
+      ...(opt.quellkarte ? [] : ['--minify']),
+      '--charset=utf8',
+      `--define:__ERLAUBTE_STILE__=${JSON.stringify(erlaubteStile())}`,
+      `--outfile=${outAbs}`,
+      ...(opt.quellkarte ? ['--sourcemap=inline', '--sources-content=true'] : []),
+    ],
+    { stdio: ['ignore', 'ignore', 'inherit'] },
+  );
 }
 
 /** Neueste Änderung an allem, woraus das Bündel entsteht (auch index.html: data-stil-Werte). */
 function neuesteQuelle() {
   const dateien = [
-    ...fs.readdirSync(path.join(PUBLIC, 'js')).filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL)).map(f => path.join(PUBLIC, 'js', f)),
+    ...fs
+      .readdirSync(path.join(PUBLIC, 'js'))
+      .filter(f => f.endsWith('.js') && f !== path.basename(OUT_REL))
+      .map(f => path.join(PUBLIC, 'js', f)),
     ...fs.readdirSync(path.join(PUBLIC, 'locales')).map(f => path.join(PUBLIC, 'locales', f)),
-    path.join(PUBLIC, 'i18n.js'), path.join(PUBLIC, 'index.html'), __filename,
+    path.join(PUBLIC, 'i18n.js'),
+    path.join(PUBLIC, 'index.html'),
+    __filename,
   ];
   return Math.max(...dateien.map(f => fs.statSync(f).mtimeMs));
 }
@@ -164,7 +192,10 @@ function main() {
 
   // --outfile=…: nur bündeln, an einen anderen Ort (test/buendel-gebaut.test.js).
   const ziel = process.argv.find(a => a.startsWith('--outfile='))?.slice('--outfile='.length);
-  if (ziel) { baueBuendel(path.resolve(ziel)); return; }
+  if (ziel) {
+    baueBuendel(path.resolve(ziel));
+    return;
+  }
   const outAbs = path.join(PUBLIC, OUT_REL);
   baueBuendel(outAbs);
 
@@ -179,4 +210,16 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { ENTRY, OUT_REL, STANDALONE, KERN, BAUSTEINE, istAppModul, appModule, erlaubteStile, baueBuendel, stelleBuendelSicher, neuesteQuelle };
+module.exports = {
+  ENTRY,
+  OUT_REL,
+  STANDALONE,
+  KERN,
+  BAUSTEINE,
+  istAppModul,
+  appModule,
+  erlaubteStile,
+  baueBuendel,
+  stelleBuendelSicher,
+  neuesteQuelle,
+};

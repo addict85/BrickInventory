@@ -24,7 +24,8 @@ export function confirmDelete(title, msg, icon, knopf = null) {
  * @param {Knopf} knopf
  */
 export function bestaetigeMitPasswort(title, msg, icon, knopf) {
-  if (!knopf?.knopf || !['bp', 'bd'].includes(knopf.art ?? '')) throw new Error('bestaetigeMitPasswort: Knopftext und Art fehlen');
+  if (!knopf?.knopf || !['bp', 'bd'].includes(knopf.art ?? ''))
+    throw new Error('bestaetigeMitPasswort: Knopftext und Art fehlen');
   return dialogOeffnen(title, msg, icon, true, false, false, { feld: 'confirm.admin_password', ...knopf });
 }
 
@@ -38,8 +39,15 @@ export async function mitZweitemFaktor(ruf) {
   const a = /** @type {{ code?: unknown, passkey?: unknown } | null | undefined} */ (d);
   if (a?.code !== 'zweiter_faktor_noetig') return d;
   const mitPasskey = !!(a.passkey && passkeyHolen);
-  const code = await dialogOeffnen(tRaw('zf.title'), tRaw(mitPasskey ? 'zf.code_oder_passkey' : 'zf.code_noetig'),
-    'schloss', false, true, mitPasskey, BESTAETIGEN);
+  const code = await dialogOeffnen(
+    tRaw('zf.title'),
+    tRaw(mitPasskey ? 'zf.code_oder_passkey' : 'zf.code_noetig'),
+    'schloss',
+    false,
+    true,
+    mitPasskey,
+    BESTAETIGEN,
+  );
   if (code === null) return null;
   if (code !== MIT_PASSKEY) return ruf({ code: code.trim() });
   const passkey = await /** @type {() => Promise<object | null>} */ (passkeyHolen)();
@@ -62,7 +70,8 @@ const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.passwo
  * @returns {Promise<T | null>} die Antwort, oder null bei Abbruch
  */
 export async function mitPasswortBestaetigen(titel, ruf, erklaerung = tRaw('konto.passwort_bestaetigen')) {
-  let text = erklaerung, knopfArt = BESTAETIGEN;
+  let text = erklaerung,
+    knopfArt = BESTAETIGEN;
   for (let versuch = 0; versuch < 5; versuch++) {
     const pw = await dialogOeffnen(titel, text, 'schloss', true, false, false, knopfArt);
     if (pw === null) return null;
@@ -83,9 +92,10 @@ export async function mitPasswortBestaetigen(titel, ruf, erklaerung = tRaw('kont
 export async function speichereEinstellungen(titel, werte) {
   const d = await api('POST', '/v1/settings', werte);
   if (d?.code !== 'aktuelles_passwort_erforderlich') return d;
-  return mitPasswortBestaetigen(titel, (admin_password, z) => api('POST', '/v1/settings', { ...werte, admin_password, ...z }));
+  return mitPasswortBestaetigen(titel, (admin_password, z) =>
+    api('POST', '/v1/settings', { ...werte, admin_password, ...z }),
+  );
 }
-
 
 /** passkeys.js meldet sich hier an, wenn der Browser Passkeys kann: Ein
  * Import in die Gegenrichtung liesse den Kern eine Ansicht laden.
@@ -93,7 +103,9 @@ export async function speichereEinstellungen(titel, werte) {
 let passkeyHolen = null;
 
 /** @param {() => Promise<object | null>} fn */
-export function setzePasskeyHolen(fn) { passkeyHolen = fn; }
+export function setzePasskeyHolen(fn) {
+  passkeyHolen = fn;
+}
 
 const MIT_PASSKEY = Symbol('passkey');
 
@@ -107,22 +119,26 @@ const MIT_PASSKEY = Symbol('passkey');
 function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasskey = false, knopf = null) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
-    const pwWrap = G('cd-pw-wrap'), pw = G('cd-pw');
-    const codeWrap = G('cd-code-wrap'), codeFeld = G('cd-code'), pkKnopf = G('cd-passkey');
+    const pwWrap = G('cd-pw-wrap'),
+      pw = G('cd-pw');
+    const codeWrap = G('cd-code-wrap'),
+      codeFeld = G('cd-code'),
+      pkKnopf = G('cd-passkey');
     if (pwWrap) pwWrap.hidden = !mitPasswort;
     if (codeWrap) codeWrap.hidden = !mitCode;
     if (pkKnopf) pkKnopf.hidden = !mitPasskey;
     if (pw) pw.value = '';
     if (codeFeld) codeFeld.value = '';
     G('cd-title').textContent = title || tRaw('common.delete_title');
-    G('cd-msg').textContent   = msg   || tRaw('common.delete_text');
+    G('cd-msg').textContent = msg || tRaw('common.delete_text');
     setzeHtml(G('cd-icon'), ico(icon || 'loeschen'));
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');
-    const btnNo  = G('cd-cancel');
+    const btnNo = G('cd-cancel');
     const gefahr = (knopf?.art || 'bd') === 'bd';
     btnYes.textContent = tRaw(knopf?.knopf || 'confirm.delete_btn', knopf?.werte);
-    btnYes.classList.toggle('bd', gefahr); btnYes.classList.toggle('bp', !gefahr);
+    btnYes.classList.toggle('bd', gefahr);
+    btnYes.classList.toggle('bp', !gefahr);
     G('cd-icon').classList.toggle('neutral', !gefahr);
     G('cd-msg').classList.toggle('text-gefahr', !!knopf?.fehler);
     G('cd-pw-label').textContent = tRaw(knopf?.feld || 'confirm.admin_password');
@@ -134,15 +150,20 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
       if (codeFeld) codeFeld.value = '';
       modal.style.display = 'none';
       btnYes.onclick = null;
-      btnNo.onclick  = null;
-      modal.onclick  = null;
+      btnNo.onclick = null;
+      modal.onclick = null;
       if (pkKnopf) pkKnopf.onclick = null;
       resolve(result);
     }
-    const wert = () => (mitPasswort ? (pw?.value || '') : mitCode ? (codeFeld?.value || '') : '');
-    btnYes.onclick = () => { const w = wert(); cleanup(w); };
+    const wert = () => (mitPasswort ? pw?.value || '' : mitCode ? codeFeld?.value || '' : '');
+    btnYes.onclick = () => {
+      const w = wert();
+      cleanup(w);
+    };
     if (pkKnopf && mitPasskey) pkKnopf.onclick = () => cleanup(MIT_PASSKEY);
-    btnNo.onclick  = () => cleanup(null);
-    modal.onclick  = e => { if (e.target === modal) cleanup(null); };
+    btnNo.onclick = () => cleanup(null);
+    modal.onclick = e => {
+      if (e.target === modal) cleanup(null);
+    };
   });
 }

@@ -47,36 +47,46 @@ const { buildAndRequire } = require('./helpers/sources');
 const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
-const db   = _req('db/database.js');
+const db = _req('db/database.js');
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
-const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const NAME = 'scope_chef', PASS = 'richtigesPasswort1';
+const NAME = 'scope_chef',
+  PASS = 'richtigesPasswort1';
 const TAG = 86400_000;
-const tageBis = (d) => (new Date(d).getTime() - Date.now()) / TAG;
+const tageBis = d => (new Date(d).getTime() - Date.now()) / TAG;
 
-test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
-    [NAME, await bcrypt.hash(PASS, 4)]);
+  await db.run(
+    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
+    [NAME, await bcrypt.hash(PASS, 4)],
+  );
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
   // Verwalter brauchen einen Code-Generator: Anmeldung und Bestätigung nehmen je einen
   // Wiederherstellungscode, reichen die zehn nicht, kommen neue.
   const vorrat = await require('./helpers/verwalter').verwalterMitFaktor(_req, uid);
-  const code = async () => { if (!vorrat.length) vorrat.push(...await _req('src/konto/zweiterFaktor.js').erneuereCodes(uid)); return vorrat.shift(); };
+  const code = async () => {
+    if (!vorrat.length) vorrat.push(...(await _req('src/konto/zweiterFaktor.js').erneuereCodes(uid)));
+    return vorrat.shift();
+  };
 
   const app = express();
   app.use(express.json());
-  app.use(session({
-    store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false,
-  }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1', _req('routes/api_v1/index.js'));
   app.use('/api/v1', _req('routes/api_v1/settings.js'));
@@ -92,30 +102,41 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
   const ruf = async (weg, opt = {}) => {
     const r = await fetch(basis + '/api/v1' + weg, {
       method: opt.method || 'GET',
-      headers: { 'content-type': 'application/json',
+      headers: {
+        'content-type': 'application/json',
         ...(opt.token ? { authorization: `Bearer ${opt.token}` } : {}),
-        ...(opt.cookie ? { cookie: opt.cookie } : {}) },
+        ...(opt.cookie ? { cookie: opt.cookie } : {}),
+      },
       ...(opt.body ? { body: JSON.stringify(opt.body) } : {}),
     });
     return { status: r.status, kopf: r.headers, body: await r.json().catch(() => null) };
   };
-  const zeile = (klartext) => db.get(
-    'SELECT * FROM api_tokens WHERE token = $1', [auth.hashToken(klartext)]);
+  const zeile = klartext => db.get('SELECT * FROM api_tokens WHERE token = $1', [auth.hashToken(klartext)]);
   const anmelden = async (body = {}) => {
-    const a = await ruf('/auth/login', { method: 'POST', body: { username: NAME, password: PASS, code: await code(), ...body } });
+    const a = await ruf('/auth/login', {
+      method: 'POST',
+      body: { username: NAME, password: PASS, code: await code(), ...body },
+    });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     return a;
   };
   const sitzung = (await anmelden({ ohne_token: true })).kopf.get('set-cookie').split(';')[0];
-  const qrToken = async (gueltigkeit) => {
-    const q = await ruf('/auth/qr-token', { method: 'POST', cookie: sitzung, body: { password: PASS, gueltigkeit, code: await code() } });
+  const qrToken = async gueltigkeit => {
+    const q = await ruf('/auth/qr-token', {
+      method: 'POST',
+      cookie: sitzung,
+      body: { password: PASS, gueltigkeit, code: await code() },
+    });
     return q;
   };
-  const qrLogin = async (gueltigkeit) => {
+  const qrLogin = async gueltigkeit => {
     const q = await qrToken(gueltigkeit);
     assert.equal(q.status, 200, JSON.stringify(q.body));
-    const l = await qrKoppeln((p, body, kopf) => ruf('/auth' + p, { method: 'POST', body, cookie: kopf.cookie }), q.body,
-      { cookie: sitzung });
+    const l = await qrKoppeln(
+      (p, body, kopf) => ruf('/auth' + p, { method: 'POST', body, cookie: kopf.cookie }),
+      q.body,
+      { cookie: sitzung },
+    );
     assert.equal(l.status, 200, JSON.stringify(l.body));
     return l;
   };
@@ -146,8 +167,11 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     assert.ok(Math.abs(tageBis((await zeile(tok)).expires_at) - 90) < 0.01, 'Vorgabe 90 Tage');
 
     // Zwei Tage nicht benutzt: Die nächste Anfrage schiebt Frist und letzte Nutzung.
-    await db.run(`UPDATE api_tokens SET last_used = NOW() - INTERVAL '2 days', expires_at = NOW() + INTERVAL '88 days',
-                  ip_bereich = NULL WHERE token = $1`, [auth.hashToken(tok)]);
+    await db.run(
+      `UPDATE api_tokens SET last_used = NOW() - INTERVAL '2 days', expires_at = NOW() + INTERVAL '88 days',
+                  ip_bereich = NULL WHERE token = $1`,
+      [auth.hashToken(tok)],
+    );
     tokenCache.leereTokenCache();
     assert.equal((await ruf('/auth/me', { token: tok })).status, 200);
     let z;
@@ -160,14 +184,21 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     assert.match(String(z.ip_bereich), /\/(24|48)$/, 'Der Adressbereich wird mitgeschrieben');
 
     // Vor 23 Stunden geschrieben: Weitere Anfragen schreiben nichts.
-    await db.run(`UPDATE api_tokens SET last_used = NOW() - INTERVAL '23 hours',
-                  expires_at = NOW() + INTERVAL '89 days 1 hour' WHERE token = $1`, [auth.hashToken(tok)]);
+    await db.run(
+      `UPDATE api_tokens SET last_used = NOW() - INTERVAL '23 hours',
+                  expires_at = NOW() + INTERVAL '89 days 1 hour' WHERE token = $1`,
+      [auth.hashToken(tok)],
+    );
     const vorher = await zeile(tok);
     tokenCache.leereTokenCache();
     for (let i = 0; i < 3; i++) assert.equal((await ruf('/auth/me', { token: tok })).status, 200);
     await new Promise(r => setTimeout(r, 300));
     const nachher = await zeile(tok);
-    assert.equal(nachher.last_used.getTime(), vorher.last_used.getTime(), 'Innerhalb eines Tages wird nicht geschrieben');
+    assert.equal(
+      nachher.last_used.getTime(),
+      vorher.last_used.getTime(),
+      'Innerhalb eines Tages wird nicht geschrieben',
+    );
     assert.equal(nachher.expires_at.getTime(), vorher.expires_at.getTime());
   });
 
@@ -186,7 +217,9 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     // Antwort verloren: Der alte tauscht noch einmal, der unbenutzte B fällt weg —
     // nach dem Sperrfenster gegen gleichzeitige Tausche (token-tausch-parallel-db).
     assert.equal((await ruf('/auth/me', { token: a })).status, 200, 'Der alte gilt in der Überlappung');
-    await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '1 minute' WHERE token = $1`, [auth.hashToken(b)]);
+    await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
+      auth.hashToken(b),
+    ]);
     const r2 = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
     assert.equal(r2.status, 200);
     const c = r2.body.token;
@@ -204,16 +237,23 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
   await t.test('App-Anmeldung: feste Höchstdauer 180 Tage, die der Tausch nicht verlängert', async () => {
     const a = (await anmelden({ never_expires: true, label: 'Höchstdauer' })).body.token;
     const z = await zeile(a);
-    assert.ok(z.hard_expires_at && Math.abs(tageBis(z.hard_expires_at) - 180) < 0.01,
-      `feste Frist 180 Tage, gemessen: ${z.hard_expires_at}`);
+    assert.ok(
+      z.hard_expires_at && Math.abs(tageBis(z.hard_expires_at) - 180) < 0.01,
+      `feste Frist 180 Tage, gemessen: ${z.hard_expires_at}`,
+    );
     assert.ok(Math.abs(tageBis(z.expires_at) - 90) < 0.01, 'die Gleitfrist bleibt daneben');
     // 170 Tage nach der Anmeldung: Ein Tausch erbt die zehn restlichen Tage.
-    await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() + INTERVAL '10 days' WHERE token = $1`, [auth.hashToken(a)]);
+    await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() + INTERVAL '10 days' WHERE token = $1`, [
+      auth.hashToken(a),
+    ]);
     tokenCache.leereTokenCache();
     const r = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const n = await zeile(r.body.token);
-    assert.ok(Math.abs(tageBis(n.hard_expires_at) - 10) < 0.01, `der Tausch verlängert die Höchstdauer: ${n.hard_expires_at}`);
+    assert.ok(
+      Math.abs(tageBis(n.hard_expires_at) - 10) < 0.01,
+      `der Tausch verlängert die Höchstdauer: ${n.hard_expires_at}`,
+    );
     assert.ok(tageBis(r.body.token_info.expires_at) <= 10.01, 'die Antwort nennt das frühere Ende');
   });
 
@@ -229,7 +269,9 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
       assert.equal(qr.body.token_info.never_expires, true);
       assert.equal(qr.body.token_info.expires_at, null);
 
-      await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '31 days' WHERE token = $1`, [auth.hashToken(u)]);
+      await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '31 days' WHERE token = $1`, [
+        auth.hashToken(u),
+      ]);
       tokenCache.leereTokenCache();
       const faellig = await ruf('/auth/me', { token: u });
       assert.equal(faellig.status, 200);
@@ -237,7 +279,9 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
       assert.equal(faellig.body.token_info.rotation_faellig, true);
       assert.equal((await ruf('/settings/tokens', { token: u })).kopf.get('x-token-rotation'), 'faellig');
 
-      await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '61 days' WHERE token = $1`, [auth.hashToken(u)]);
+      await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '61 days' WHERE token = $1`, [
+        auth.hashToken(u),
+      ]);
       tokenCache.leereTokenCache();
       const gesperrt = await ruf('/settings/tokens', { token: u });
       assert.equal(gesperrt.status, 401);
@@ -250,7 +294,9 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
       const ok = await ruf('/settings/tokens', { token: neu.body.token });
       assert.equal(ok.status, 200);
       assert.equal(ok.kopf.get('x-token-rotation'), null);
-    } finally { umgebung({ APP_BASE_URL: 'http://lego.test:3000' }); }
+    } finally {
+      umgebung({ APP_BASE_URL: 'http://lego.test:3000' });
+    }
   });
 
   await t.test('Geräteliste: Name, Scope, Nutzung, Bereich, Ablauf; einzeln widerrufbar', async () => {
@@ -269,7 +315,11 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     assert.equal(e.never_expires, false);
 
     assert.equal(e.token_id, auth.hashToken(neu).slice(0, 16), 'Es steht der neue Token da');
-    const weg = await ruf('/settings/tokens/' + e.token_id, { method: 'DELETE', cookie: sitzung, body: { password: PASS, code: await code() } });
+    const weg = await ruf('/settings/tokens/' + e.token_id, {
+      method: 'DELETE',
+      cookie: sitzung,
+      body: { password: PASS, code: await code() },
+    });
     assert.equal(weg.body.deleted, 1, 'der Vorgänger in der Überlappung zählt nicht als eigenes Gerät');
     assert.equal((await ruf('/auth/me', { token: neu })).status, 401);
     assert.equal((await ruf('/auth/me', { token: g })).status, 401, 'der Vorgänger in der Überlappung lebt weiter');
@@ -298,8 +348,11 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
       assert.ok(Math.abs(tageBis(z.kurz.expires_at) - 3) < 0.01, 'Eine kürzere Frist bleibt');
       assert.equal(z.kurz.sliding, false);
       await c.query(`INSERT INTO api_tokens (token, user_id) VALUES ('neu', 1)`);
-      assert.equal((await c.query(`SELECT scope FROM api_tokens WHERE token = 'neu'`)).rows[0].scope, 'app',
-        'Neue Zeilen bekommen ohne Angabe Scope app');
+      assert.equal(
+        (await c.query(`SELECT scope FROM api_tokens WHERE token = 'neu'`)).rows[0].scope,
+        'app',
+        'Neue Zeilen bekommen ohne Angabe Scope app',
+      );
     } finally {
       await c.query('ROLLBACK');
       c.release();

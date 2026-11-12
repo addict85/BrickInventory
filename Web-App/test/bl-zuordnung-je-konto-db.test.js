@@ -17,7 +17,7 @@
  *
  * REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -28,10 +28,14 @@ const { importWorker } = require('./helpers/auftraege');
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 
-test.after(async () => { await db.pool.end().catch(() => {}); });
+test.after(async () => {
+  await db.pool.end().catch(() => {});
+});
 
-const item = (typ, id, farbe) => `<ITEM><ITEMTYPE>${typ}</ITEMTYPE><ITEMID>${id}</ITEMID>`
-  + (farbe === null ? '' : `<COLOR>${farbe}</COLOR>`) + '<MINQTY>1</MINQTY><CONDITION>N</CONDITION></ITEM>';
+const item = (typ, id, farbe) =>
+  `<ITEM><ITEMTYPE>${typ}</ITEMTYPE><ITEMID>${id}</ITEMID>` +
+  (farbe === null ? '' : `<COLOR>${farbe}</COLOR>`) +
+  '<MINQTY>1</MINQTY><CONDITION>N</CONDITION></ITEM>';
 const liste = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>${i.join('')}</INVENTORY>\n`;
 
 async function hochladen(base, xml, korrekturen) {
@@ -42,30 +46,46 @@ async function hochladen(base, xml, korrekturen) {
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
-test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    keineDb(t, e); return;
+test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   importWorker(t, _req);
-  { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
+  {
+    const c = await db.pool.connect();
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
+  }
 
-  const neu = async (name) => (await db.get(
-    `INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
-  const ANNA = await neu('anna'), BRUNO = await neu('bruno');
-  await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('3001','Brick 2 x 4'), ('3003','Brick 2 x 2')`);
+  const neu = async name =>
+    (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
+  const ANNA = await neu('anna'),
+    BRUNO = await neu('bruno');
+  await db.run(
+    `INSERT INTO part_catalog (part_number, part_name) VALUES ('3001','Brick 2 x 4'), ('3003','Brick 2 x 2')`,
+  );
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name, image_url)
                 VALUES ('3001',4,'Red','https://cdn.rebrickable.com/a.jpg'), ('3003',4,'Red','https://cdn.rebrickable.com/b.jpg')`);
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name, image_url)
                 VALUES ('fig-000001','Han Solo','https://cdn.rebrickable.com/f.jpg')`);
   await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4,'Red',5)`);
   // Geprüft: 3003 heisst bei BrickLink gleich, die Figur sw0001.
-  await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part','3003',NULL), ('fig','fig-000001','sw0001')`);
-  const gemeinsam = async () => (await db.all('SELECT art, rb_id, bl_id FROM bl_zuordnung ORDER BY art, rb_id'))
-    .map(z => `${z.art}|${z.rb_id}|${z.bl_id}`);
+  await db.run(
+    `INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part','3003',NULL), ('fig','fig-000001','sw0001')`,
+  );
+  const gemeinsam = async () =>
+    (await db.all('SELECT art, rb_id, bl_id FROM bl_zuordnung ORDER BY art, rb_id')).map(
+      z => `${z.art}|${z.rb_id}|${z.bl_id}`,
+    );
   const vorher = await gemeinsam();
 
   // Bruno hält dieselben Dinge, damit seine Bewertung Zeilen hat.
@@ -74,8 +94,12 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async (t) => {
   await addManualPart(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
   await addManualFig(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
 
-  const anna = testServer(_req, { sitzung: { userId: ANNA }, apiNutzer: { user_id: ANNA, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const anna = testServer(_req, {
+    sitzung: { userId: ANNA },
+    apiNutzer: { user_id: ANNA, is_admin: 0 },
+    routen: { '/api/v1': 'routes/api_v1/index.js' },
+    t,
+  });
 
   await t.test('der Import schreibt nur Annas Zuordnung', async () => {
     const { status, body } = await hochladen(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [
@@ -86,12 +110,14 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async (t) => {
     assert.equal(body.korrekturen?.angewandt, 2, JSON.stringify(body.korrekturen));
     assert.deepEqual(await gemeinsam(), vorher, 'die gemeinsame Zuordnung hat sich verändert');
     const eigen = await db.all('SELECT user_id, art, rb_id, bl_id FROM bl_zuordnung_eigen ORDER BY art');
-    assert.deepEqual(eigen.map(z => `${z.user_id}|${z.art}|${z.rb_id}|${z.bl_id}`),
-      [`${ANNA}|fig|fig-000001|sw0001a`, `${ANNA}|part|3003|3001`]);
+    assert.deepEqual(
+      eigen.map(z => `${z.user_id}|${z.art}|${z.rb_id}|${z.bl_id}`),
+      [`${ANNA}|fig|fig-000001|sw0001a`, `${ANNA}|part|3003|3001`],
+    );
   });
 
   const { resolveBlPartNumber, fetchPartPrice } = _req('src/finanzen/rechnung/preise.js');
-  const { blNummerVon, blAbrufNummer } = _req('src/katalog/blZuordnung.js');
+  const { blNummerVon } = _req('src/katalog/blZuordnung.js');
 
   await t.test('Preisabruf: Anna fragt BrickLink nach 3001, Bruno nach 3003', async () => {
     assert.equal(await resolveBlPartNumber('3003', ANNA), '3001');
@@ -141,7 +167,10 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async (t) => {
     await merkeBlNummern('fig', [{ rbId: 'fig-000001', blId: 'auch-falsch' }]);
     await merkeBlNummer('part', '3003', '3003b');
     await merkeBlNummer('part', '3004', '3004');
-    assert.deepEqual(await gemeinsam(), ['fig|fig-000001|sw0001', 'part|3003|3003b', 'part|3004|null'],
-      'ein vorhandener Wert bleibt, ein leerer wird gefüllt, ein neuer angelegt');
+    assert.deepEqual(
+      await gemeinsam(),
+      ['fig|fig-000001|sw0001', 'part|3003|3003b', 'part|3004|null'],
+      'ein vorhandener Wert bleibt, ein leerer wird gefüllt, ein neuer angelegt',
+    );
   });
 });

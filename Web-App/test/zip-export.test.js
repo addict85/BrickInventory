@@ -31,21 +31,23 @@ test('archiver ist aus CommonJS heraus benutzbar', () => {
   // „benutzen" heisst — in archiver 7 eine Funktion aufrufen, seit 8 eine
   // Klasse konstruieren.
   const mod = require('archiver');
-  assert.equal(typeof mod.ZipArchive, 'function',
+  assert.equal(
+    typeof mod.ZipArchive,
+    'function',
     'archiver exportiert kein ZipArchive mehr — routes/api_v1/settings.ts baut darauf. ' +
-    'Vor 8.x hiess derselbe Weg archiver(\'zip\', opts).');
+      "Vor 8.x hiess derselbe Weg archiver('zip', opts).",
+  );
   const a = new mod.ZipArchive({ zlib: { level: 9 } });
   for (const m of ['append', 'pipe', 'finalize', 'on']) {
-    assert.equal(typeof a[m], 'function',
-      `Dem Archiv fehlt ${m}() — genau das benutzt der Datenexport.`);
+    assert.equal(typeof a[m], 'function', `Dem Archiv fehlt ${m}() — genau das benutzt der Datenexport.`);
   }
 });
 
 test('der Datenexport erzeugt ein entpackbares ZIP', async () => {
   const b = await zippen({
-    'sets.csv':         'set_number;name\n10294-1;Titanic\n',
-    'teile.csv':        'part;color\n3001;Rot\n',
-    'minifiguren.csv':  'fig;name\nsw0001;Luke\n',
+    'sets.csv': 'set_number;name\n10294-1;Titanic\n',
+    'teile.csv': 'part;color\n3001;Rot\n',
+    'minifiguren.csv': 'fig;name\nsw0001;Luke\n',
   });
 
   assert.equal(b.slice(0, 4).toString('hex'), '504b0304', 'kein ZIP-Kopf (PK)');
@@ -59,15 +61,15 @@ test('der Datenexport erzeugt ein entpackbares ZIP', async () => {
   }
 
   // Und wirklich entpacken — nicht nur hineinschauen.
-  const os = require('node:os'), fs = require('node:fs');
+  const os = require('node:os'),
+    fs = require('node:fs');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zip-'));
   try {
     const zip = path.join(dir, 'e.zip');
     fs.writeFileSync(zip, b);
     require('node:child_process').execFileSync('unzip', ['-q', '-o', zip, '-d', dir]);
     const inhalt = fs.readFileSync(path.join(dir, 'sets.csv'));
-    assert.equal(inhalt.slice(0, 3).toString('hex'), 'efbbbf',
-      'Das BOM fehlt — Excel liest die Umlaute dann falsch');
+    assert.equal(inhalt.slice(0, 3).toString('hex'), 'efbbbf', 'Das BOM fehlt — Excel liest die Umlaute dann falsch');
     assert.ok(inhalt.toString('utf8').includes('Titanic'), 'Der Inhalt kam nicht an');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -81,10 +83,13 @@ test('kein veraltetes glob mehr im Abhängigkeitsbaum', () => {
   const alt = Object.entries(lock.packages || {})
     .filter(([p, v]) => p.endsWith('node_modules/glob') && parseInt(v.version, 10) < 11)
     .map(([p, v]) => `${p}@${v.version}`);
-  assert.deepEqual(alt, [],
+  assert.deepEqual(
+    alt,
+    [],
     'Ein glob unter Version 11 ist zurück. Es gilt als nicht mehr unterstützt. ' +
-    'Wer es hereinzieht, steht oben in der Liste — entweder dort heben oder ' +
-    'einen overrides-Eintrag setzen (bis 05.10. stand einer auf ^13).');
+      'Wer es hereinzieht, steht oben in der Liste — entweder dort heben oder ' +
+      'einen overrides-Eintrag setzen (bis 05.10. stand einer auf ^13).',
+  );
 });
 
 test('kein minimatch unter 11.0.1 im Abhängigkeitsbaum', () => {
@@ -92,8 +97,11 @@ test('kein minimatch unter 11.0.1 im Abhängigkeitsbaum', () => {
   // Gegenprobe (01.11.2026): package-lock.json von e21f747 (minimatch 10.2.6) → rot.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
   const fassungen = Object.entries(lock.packages || {})
-    .filter(([p]) => p.endsWith('node_modules/minimatch')).map(([p, v]) => [p, v.version.split('.').map(Number)]);
+    .filter(([p]) => p.endsWith('node_modules/minimatch'))
+    .map(([p, v]) => [p, v.version.split('.').map(Number)]);
   assert.ok(fassungen.length > 0, 'minimatch nicht im Lockfile — greift die Suche noch?');
-  const alt = fassungen.filter(([, [a, b, c]]) => a < 11 || (a === 11 && b === 0 && c < 1)).map(([p, v]) => `${p}@${v.join('.')}`);
+  const alt = fassungen
+    .filter(([, [a, b, c]]) => a < 11 || (a === 11 && b === 0 && c < 1))
+    .map(([p, v]) => `${p}@${v.join('.')}`);
   assert.deepEqual(alt, []);
 });

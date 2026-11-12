@@ -7,11 +7,11 @@
  * public/ bleibt reines JavaScript.
  */
 
-const { execFileSync } = require('child_process');
-const fs   = require('fs');
-const path = require('path');
+const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 
-const ROOT    = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..');
 // Ein fehlender Ordner hier fehlt in dist/, und jeder Import darauf läuft beim Start ins Leere.
 const SRC_DIRS = ['db', 'src', 'routes', 'jobs', 'clients', 'startup'];
 /**
@@ -57,18 +57,19 @@ function collectTsFiles() {
   return files;
 }
 
-
 /** Pfad zum esbuild-Programm: lokal aus node_modules/.bin, weil npx je Aufruf
  * Startzeit kostet; npx nur ohne Installation. */
 function esbuildCmd() {
-  const local = path.join(ROOT, 'node_modules', '.bin',
-    process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
+  const local = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
   if (fs.existsSync(local)) return { cmd: local, prefix: [] };
   return { cmd: 'npx', prefix: ['--yes', `esbuild@${ESBUILD_VERSION}`] };
 }
 
 const files = collectTsFiles();
-if (!files.length) { console.error('[build-ts] Keine .ts-Dateien gefunden.'); process.exit(1); }
+if (!files.length) {
+  console.error('[build-ts] Keine .ts-Dateien gefunden.');
+  process.exit(1);
+}
 
 const { cmd, prefix } = esbuildCmd();
 const via = cmd === 'npx' ? `npx esbuild@${ESBUILD_VERSION}` : 'lokalem esbuild';
@@ -79,11 +80,19 @@ console.log(`[build-ts] Transpiliere ${files.length} Datei(en) mit ${via}${OUTDI
 // ohne --bundle bleibt jede Datei ein eigenes Modul.
 const outDir = OUTDIR || ROOT;
 fs.mkdirSync(outDir, { recursive: true });
-execFileSync(cmd, [
-  ...prefix, ...files,
-  '--format=cjs', '--platform=node', '--target=node20',
-  `--outbase=${ROOT}`, `--outdir=${outDir}`,
-], { stdio: ['ignore', 'ignore', 'inherit'] });
+execFileSync(
+  cmd,
+  [
+    ...prefix,
+    ...files,
+    '--format=cjs',
+    '--platform=node',
+    '--target=node20',
+    `--outbase=${ROOT}`,
+    `--outdir=${outDir}`,
+  ],
+  { stdio: ['ignore', 'ignore', 'inherit'] },
+);
 
 // Nicht-TypeScript-Dateien mitkopieren: Das Laufzeit-Image übernimmt nur dist/,
 // ohne die .sql-Migrationen meldete runMigrations() still „nichts zu tun".
@@ -95,7 +104,10 @@ function copyAssets(dir, out) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
     const abs = path.join(dir, entry.name);
-    if (entry.isDirectory()) { n += copyAssets(abs, out); continue; }
+    if (entry.isDirectory()) {
+      n += copyAssets(abs, out);
+      continue;
+    }
     if (!ASSET_EXT.includes(path.extname(entry.name))) continue;
     const dst = path.join(out, path.relative(ROOT, abs));
     fs.mkdirSync(path.dirname(dst), { recursive: true });
@@ -120,7 +132,10 @@ function entferneVerwaiste(out) {
     if (!fs.existsSync(dir)) return;
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const abs = path.join(dir, entry.name);
-      if (entry.isDirectory()) { geheDurch(abs); continue; }
+      if (entry.isDirectory()) {
+        geheDurch(abs);
+        continue;
+      }
       if (!ASSET_EXT.includes(path.extname(entry.name))) continue;
       // Umkehrung von copyAssets(): dst = out + (abs - ROOT)
       const quelle = path.join(ROOT, path.relative(out, abs));

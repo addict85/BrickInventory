@@ -67,9 +67,7 @@ export type Eingabe<K extends Schluessel> = Teil<K, 'eingabe'>;
 export type Abfrage<K extends Schluessel> = Teil<K, 'abfrage'>;
 
 export function routeZu(schluessel: string): Route | undefined {
-  return Object.prototype.hasOwnProperty.call(VERTRAG, schluessel)
-    ? (VERTRAG as Record<string, Route>)[schluessel]
-    : undefined;
+  return Object.hasOwn(VERTRAG, schluessel) ? (VERTRAG as Record<string, Route>)[schluessel] : undefined;
 }
 
 /** Wörtliche Abschnitte vor Platzhaltern, wie Express es für diese Pfade hält. */

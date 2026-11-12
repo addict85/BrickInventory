@@ -52,8 +52,10 @@ test('ein Router je Einhängepunkt', () => {
   // Gesundheit und Startstatus antworten VOR dem Eingang (anmeldungAmEingang),
   // der Router der API dahinter: zwei Stellen im Stapel, deshalb zwei Router.
   const VOR_DEM_EINGANG = new Set(['gesundheitRouter']);
-  const doppelt = [...je].map(([p, r]) => [p, r.filter(n => !VOR_DEM_EINGANG.has(n))])
-    .filter(([, r]) => r.length > 1).map(([p, r]) => `${p}: ${r.join(', ')}`);
+  const doppelt = [...je]
+    .map(([p, r]) => [p, r.filter(n => !VOR_DEM_EINGANG.has(n))])
+    .filter(([, r]) => r.length > 1)
+    .map(([p, r]) => `${p}: ${r.join(', ')}`);
   assert.deepEqual(doppelt, []);
 });
 
@@ -64,9 +66,15 @@ test('jede Route genau einmal', () => {
     alle.push(...routen(modul.default || modul, e.mount));
   }
   assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);
-  assert.ok(alle.includes('GET /api/v1/settings/theme') && alle.includes('GET /api/v1/settings'),
-    'die Einstellungen fehlen in der Liste');
-  const gesehen = new Set(), doppelt = [];
-  for (const r of alle) { if (gesehen.has(r)) doppelt.push(r); gesehen.add(r); }
+  assert.ok(
+    alle.includes('GET /api/v1/settings/theme') && alle.includes('GET /api/v1/settings'),
+    'die Einstellungen fehlen in der Liste',
+  );
+  const gesehen = new Set(),
+    doppelt = [];
+  for (const r of alle) {
+    if (gesehen.has(r)) doppelt.push(r);
+    gesehen.add(r);
+  }
   assert.deepEqual(doppelt, []);
 });

@@ -7,9 +7,9 @@
  *
  * Aufruf: node scripts/version.js [--outdir dist]   (sonst nur Ausgabe)
  */
-const { execFileSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -18,8 +18,13 @@ function bauVersion(env = process.env) {
   const gesetzt = (env.APP_VERSION || '').trim();
   if (gesetzt) return gesetzt;
   try {
-    return execFileSync('git', ['describe', '--tags', '--always', '--dirty'],
-      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || 'unbekannt';
+    return (
+      execFileSync('git', ['describe', '--tags', '--always', '--dirty'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim() || 'unbekannt'
+    );
   } catch {
     // Kein Git (Docker-Kontext ohne .git): Ohne Build-Argument bleibt es offen.
     return 'unbekannt';
@@ -29,8 +34,10 @@ function bauVersion(env = process.env) {
 /** @param {string} outdir @param {string} version */
 function schreibe(outdir, version) {
   fs.mkdirSync(outdir, { recursive: true });
-  fs.writeFileSync(path.join(outdir, 'version.json'),
-    JSON.stringify({ version, gebaut: new Date().toISOString() }, null, 2) + '\n');
+  fs.writeFileSync(
+    path.join(outdir, 'version.json'),
+    JSON.stringify({ version, gebaut: new Date().toISOString() }, null, 2) + '\n',
+  );
 }
 
 if (require.main === module) {

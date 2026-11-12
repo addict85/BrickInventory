@@ -33,27 +33,40 @@ export async function ladePapierkorb() {
   if (!liste) return;
   const d = await api('GET', '/v1/papierkorb');
   const leeren = G('papierkorb-leeren');
-  if (!d?.success) { setzeHtml(liste, html`<div class="voucher-leer">${tRaw('trash.load_error')}</div>`); return; }
+  if (!d?.success) {
+    setzeHtml(liste, html`<div class="voucher-leer">${tRaw('trash.load_error')}</div>`);
+    return;
+  }
   const eintraege = d.eintraege || [];
-  setzeHtml(liste, eintraege.length ? ungeprueft(eintraege.map(zeile).join('')) : html`<div class="voucher-leer">${tRaw('trash.empty')}</div>`);
+  setzeHtml(
+    liste,
+    eintraege.length
+      ? ungeprueft(eintraege.map(zeile).join(''))
+      : html`<div class="voucher-leer">${tRaw('trash.empty')}</div>`,
+  );
   if (leeren) leeren.style.display = eintraege.length ? '' : 'none';
 }
 
 /** Alles nachladen, was ein Wiederherstellen verändert haben kann. */
-function bestandNeuLaden() { melde('bestandGeaendert'); }
+function bestandNeuLaden() {
+  melde('bestandGeaendert');
+}
 
 /** @param {(number | string)[]} ids */
 async function wiederherstellen(ids) {
   for (const id of ids) {
     const d = await api('POST', `/v1/papierkorb/${id}/wiederherstellen`);
-    if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return false; }
+    if (!d?.success) {
+      toast(d?.error || tRaw('settings.error'), 'error');
+      return false;
+    }
   }
   return true;
 }
 
 /** @param {string} id */
 export async function papierkorbWiederherstellen(id) {
-  if (!await wiederherstellen([id])) return;
+  if (!(await wiederherstellen([id]))) return;
   toast(tRaw('trash.restored'), 'success');
   bestandNeuLaden();
   await ladePapierkorb();
@@ -62,20 +75,32 @@ export async function papierkorbWiederherstellen(id) {
 // Endgültig heisst unumkehrbar: Der Server verlangt dafür das Passwort (und den zweiten Faktor).
 /** @param {string} id */
 export async function papierkorbEndgueltig(id) {
-  const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), tRaw('common.delete_text'), 'loeschen', { knopf: 'confirm.btn.endgueltig_loeschen', art: 'bd' });
+  const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), tRaw('common.delete_text'), 'loeschen', {
+    knopf: 'confirm.btn.endgueltig_loeschen',
+    art: 'bd',
+  });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/papierkorb/${id}`, { password, ...z }));
   if (d === null) return;
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   await ladePapierkorb();
 }
 
 export async function papierkorbLeeren() {
-  const password = await bestaetigeMitPasswort(tRaw('trash.clear'), tRaw('trash.clear_confirm'), 'loeschen', { knopf: 'confirm.btn.papierkorb_leeren', art: 'bd' });
+  const password = await bestaetigeMitPasswort(tRaw('trash.clear'), tRaw('trash.clear_confirm'), 'loeschen', {
+    knopf: 'confirm.btn.papierkorb_leeren',
+    art: 'bd',
+  });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', '/v1/papierkorb', { password, ...z }));
   if (d === null) return;
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   await ladePapierkorb();
 }
 
@@ -86,14 +111,21 @@ export async function papierkorbLeeren() {
  */
 export function geloeschtMitRueckgaengig(meldung, antwort) {
   const ids = antwort?.papierkorb || [];
-  toast(meldung, 'success', ids.length ? {
-    text: tRaw('trash.undo'), bleibt: true,
-    fn: async () => {
-      if (!await wiederherstellen(ids)) return;
-      toast(tRaw('trash.restored'), 'success');
-      bestandNeuLaden();
-    },
-  } : undefined);
+  toast(
+    meldung,
+    'success',
+    ids.length
+      ? {
+          text: tRaw('trash.undo'),
+          bleibt: true,
+          fn: async () => {
+            if (!(await wiederherstellen(ids))) return;
+            toast(tRaw('trash.restored'), 'success');
+            bestandNeuLaden();
+          },
+        }
+      : undefined,
+  );
 }
 
 registerActions({ papierkorbWiederherstellen, papierkorbEndgueltig, papierkorbLeeren });

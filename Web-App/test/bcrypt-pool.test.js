@@ -40,7 +40,7 @@ async function laengsteVerzoegerung(arbeit) {
   return h.max / 1e6;
 }
 
-test('rechnet im Worker und richtig', async (t) => {
+test('rechnet im Worker und richtig', async t => {
   const pool = neuerPool(2);
   t.after(() => pool.beende());
   const hash = await pool.hash('Geheim-2026', 4);
@@ -51,15 +51,17 @@ test('rechnet im Worker und richtig', async (t) => {
   assert.deepEqual(pool.stand(), { arbeiter: 1, frei: 1, wartend: 0, hauptthread: false }, 'rechnet im Worker …');
 });
 
-test('der Hauptthread bleibt ansprechbar', async (t) => {
+test('der Hauptthread bleibt ansprechbar', async t => {
   const pool = neuerPool(2);
   t.after(() => pool.beende());
   const hash = bcrypt.hashSync('Geheim-2026', 12);
   await pool.vergleiche('aufwaermen', hash);
-  const vier = (f) => Promise.all([1, 2, 3, 4].map(() => f('Geheim-2026', hash)));
+  const vier = f => Promise.all([1, 2, 3, 4].map(() => f('Geheim-2026', hash)));
   const imHauptthread = await laengsteVerzoegerung(() => vier(bcrypt.compare));
   const imPool = await laengsteVerzoegerung(() => vier(pool.vergleiche));
-  console.log(`  ℹ längste Verzögerung der Ereignisschleife: Hauptthread ${imHauptthread.toFixed(0)} ms, Pool ${imPool.toFixed(0)} ms`);
+  console.log(
+    `  ℹ längste Verzögerung der Ereignisschleife: Hauptthread ${imHauptthread.toFixed(0)} ms, Pool ${imPool.toFixed(0)} ms`,
+  );
   assert.ok(imHauptthread >= 50, `Vorbedingung: bcryptjs hält den Hauptthread an (${imHauptthread} ms)`);
   assert.ok(imPool < imHauptthread / 2, `der Hauptthread bleibt ansprechbar: ${imPool} ms gegen ${imHauptthread} ms`);
 });
@@ -85,7 +87,7 @@ test('die Anmeldung prüft über den Pool', async () => {
   await bcryptPool.beende();
 });
 
-test('ein untätiger Arbeiter endet nach der Leerlaufzeit', async (t) => {
+test('ein untätiger Arbeiter endet nach der Leerlaufzeit', async t => {
   const pool = neuerPool(2, undefined, 200);
   t.after(() => pool.beende());
   await pool.hash('x', 4);
@@ -104,13 +106,21 @@ test('die Zahl der Arbeiter ist gedeckelt', () => {
   assert.equal(bcryptArbeiter(null, 3, null), 3);
   assert.equal(bcryptArbeiter(ladeKonfig({ BCRYPT_ARBEITER: '8' }).bcryptArbeiter, 64, 2), 8, 'die Variable gilt');
   assert.equal(ladeKonfig({}).bcryptArbeiter, null);
-  assert.throws(() => ladeKonfig({ BCRYPT_ARBEITER: '0' }), /BCRYPT_ARBEITER="0"/, 'ein ungültiger Wert hält den Start an');
+  assert.throws(
+    () => ladeKonfig({ BCRYPT_ARBEITER: '0' }),
+    /BCRYPT_ARBEITER="0"/,
+    'ein ungültiger Wert hält den Start an',
+  );
 
   const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'cgroup-'));
-  const t = (f, inhalt) => { fs.mkdirSync(path.dirname(path.join(wurzel, f)), { recursive: true }); fs.writeFileSync(path.join(wurzel, f), inhalt); };
+  const t = (f, inhalt) => {
+    fs.mkdirSync(path.dirname(path.join(wurzel, f)), { recursive: true });
+    fs.writeFileSync(path.join(wurzel, f), inhalt);
+  };
   try {
     assert.equal(kontingentKerne(wurzel), null, 'ohne Dateien kein Kontingent');
-    t('cpu/cpu.cfs_quota_us', '50000\n'); t('cpu/cpu.cfs_period_us', '100000\n');
+    t('cpu/cpu.cfs_quota_us', '50000\n');
+    t('cpu/cpu.cfs_period_us', '100000\n');
     assert.equal(kontingentKerne(wurzel), 1, 'cgroup v1: halber Kern');
     t('cpu/cpu.cfs_quota_us', '-1\n');
     assert.equal(kontingentKerne(wurzel), null, 'cgroup v1 ohne Kontingent');
@@ -118,5 +128,7 @@ test('die Zahl der Arbeiter ist gedeckelt', () => {
     assert.equal(kontingentKerne(wurzel), 2, 'cgroup v2: 1,5 Kerne');
     t('cpu.max', 'max 100000\n');
     assert.equal(kontingentKerne(wurzel), null, 'cgroup v2 ohne Kontingent');
-  } finally { fs.rmSync(wurzel, { recursive: true, force: true }); }
+  } finally {
+    fs.rmSync(wurzel, { recursive: true, force: true });
+  }
 });

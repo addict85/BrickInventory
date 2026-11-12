@@ -72,20 +72,26 @@ const MESSUNG = `(() => {
   return { flaechen: [...flaechen], texte: [...texte] };
 })()`;
 
-test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, timeout: 600_000 }, async (t) => {
+test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, timeout: 600_000 }, async t => {
   const app = await starteApp(t, {
     name: `dunkel_${process.pid}`,
     bestand: async (db, uid) => {
       await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
       await haeltSet(db, uid, '75192-1', 1, { preis: 650, zustand: 'U' });
       // Eine Anleitung, damit die Plakette mit der Anleitungszahl auf der Karte steht.
-      await db.run(`INSERT INTO instructions (user_id, set_number, url) VALUES ($1, '10300-1', 'https://example.org/10300.pdf')`, [uid]);
+      await db.run(
+        `INSERT INTO instructions (user_id, set_number, url) VALUES ($1, '10300-1', 'https://example.org/10300.pdf')`,
+        [uid],
+      );
       await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('10300-1', '3001', 5, 4)
                     ON CONFLICT DO NOTHING`);
       await haeltTeil(db, uid, '3001', { setNumber: '10300-1', menge: 4, colorId: 5 });
     },
   });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   const reiter = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
   assert.ok(reiter.length >= 8, `nur ${reiter.length} Reiter`);
@@ -94,7 +100,7 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}');
       document.documentElement.setAttribute('data-dunkel', ''); true`);
     const funde = { flaechen: new Set(), texte: new Set() };
-    const sammle = async (wo) => {
+    const sammle = async wo => {
       // Steht die Anmeldemaske da, mässe der Rest nur sie; dann die Ursache nennen.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
         assert.fail(`Sitzung vor „${design}: ${wo}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'keine'}`);
@@ -106,10 +112,15 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
       await b.auswerten(`document.querySelector('.ntab[data-tab="${r}"]').click(); true`);
       await ruhig();
       // Die Einstellungen zeigen je einen Abschnitt; gemessen werden alle.
-      const seiten = r === 'settings'
-        ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`) : [null];
+      const seiten =
+        r === 'settings'
+          ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`)
+          : [null];
       for (const seite of seiten) {
-        if (seite) { await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`); await warte(100); }
+        if (seite) {
+          await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`);
+          await warte(100);
+        }
         await sammle(seite ? `${r}/${seite}` : r);
       }
     }

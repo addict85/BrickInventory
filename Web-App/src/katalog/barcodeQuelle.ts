@@ -11,4 +11,3 @@ export const GEPRUEFT: ReadonlySet<string> = new Set([
 export function istVermutung(quelle: string | null | undefined): boolean {
   return !quelle || !GEPRUEFT.has(quelle);
 }
-

@@ -21,11 +21,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const PUB  = path.join(__dirname, '..', 'public');
+const PUB = path.join(__dirname, '..', 'public');
 const HTML = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
-const ACT  = fs.readFileSync(path.join(PUB, 'js', 'actions.js'), 'utf8');
+const ACT = fs.readFileSync(path.join(PUB, 'js', 'actions.js'), 'utf8');
 const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => istAppModul(f));
-
 
 test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates', () => {
   // Wichtig: (?<!data-) schliesst data-onerror aus, und das Muster verlangt ="
@@ -35,20 +34,29 @@ test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates
   // Handler ("War: onclick=…") und würde die Prüfung sonst selbst auslösen.
   const strip = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
   const found = [];
-  for (const [name, src] of [['index.html', HTML],
-       ...JS_FILES.concat(['actions.js']).map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')])]) {
+  for (const [name, src] of [
+    ['index.html', HTML],
+    ...JS_FILES.concat(['actions.js']).map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')]),
+  ]) {
     for (const m of strip(src).matchAll(RE)) found.push(`${name}: ${m[0]}`);
   }
-  assert.deepEqual(found, [],
-    `Noch ${found.length} Inline-Handler — mit denen wäre die geschlossene CSP ein Ausfall`);
+  assert.deepEqual(found, [], `Noch ${found.length} Inline-Handler — mit denen wäre die geschlossene CSP ein Ausfall`);
 });
 
 test('kein style-Attribut und kein <style> im Markup — ausser dem Startgerüst, das die CSP per Hash erlaubt', () => {
   // Gegenprobe: ein data-stil in index.html wieder als style= → rot.
-  const strip = t => require('./helpers/sources').ohneHtmlKommentare(t).replace(/<style id="startstil">[\s\S]*?<\/style>/, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+  const strip = t =>
+    require('./helpers/sources')
+      .ohneHtmlKommentare(t)
+      .replace(/<style id="startstil">[\s\S]*?<\/style>/, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/[^\n]*$/gm, '');
   const found = [];
-  for (const [name, src] of [['index.html', HTML], ['logviewer.js', fs.readFileSync(path.join(PUB, 'js', 'logviewer.js'), 'utf8')],
-       ...JS_FILES.map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')])]) {
+  for (const [name, src] of [
+    ['index.html', HTML],
+    ['logviewer.js', fs.readFileSync(path.join(PUB, 'js', 'logviewer.js'), 'utf8')],
+    ...JS_FILES.map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')]),
+  ]) {
     for (const m of strip(src).matchAll(/(?<![-\w])style=\\?["']|<style[\s>]/g)) found.push(`${name}: ${m[0]}`);
     // Ein Wert mit ${…} steht nicht auf der Freigabeliste und bliebe wirkungslos;
     // nur die Bausteine reichen den stil-Parameter ihres Aufrufers weiter.
@@ -62,20 +70,29 @@ test('der Dispatcher kommt ohne eval aus', () => {
   // Kommentare weg: Der Erklärtext nennt "kein eval, kein new Function" und
   // würde die Prüfung sonst selbst auslösen.
   const code = ACT.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.doesNotMatch(code, /\beval\s*\(|new Function/,
-    "Ein eval() würde 'unsafe-eval' verlangen und damit dasselbe Problem erzeugen");
+  assert.doesNotMatch(
+    code,
+    /\beval\s*\(|new Function/,
+    "Ein eval() würde 'unsafe-eval' verlangen und damit dasselbe Problem erzeugen",
+  );
   // Die typeof-Prüfung ist mit der Registry nach js/registry.js gewandert
   // (resolveAction) — der Dispatcher ruft sie nur noch auf.
   const REG = fs.readFileSync(path.join(PUB, 'js', 'registry.js'), 'utf8');
   assert.match(REG, /typeof fn === 'function'/, 'Der Name muss aufgelöst und geprüft werden');
-  assert.match(ACT, /console\.warn\('\[actions\] unbekannter Handler:'/,
-    'Ein Tippfehler im Handlernamen muss auffallen, nicht stumm nichts tun');
+  assert.match(
+    ACT,
+    /console\.warn\('\[actions\] unbekannter Handler:'/,
+    'Ein Tippfehler im Handlernamen muss auffallen, nicht stumm nichts tun',
+  );
 });
 
 test('Hover-Effekte liegen im Stylesheet', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-  assert.match(css, /\.hover-row:hover/,
-    'Die früheren onmouseenter/onmouseleave-Attribute brauchen eine CSS-Entsprechung');
+  assert.match(
+    css,
+    /\.hover-row:hover/,
+    'Die früheren onmouseenter/onmouseleave-Attribute brauchen eine CSS-Entsprechung',
+  );
 });
 
 test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
@@ -96,16 +113,21 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
     // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
     // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
     // hat genau das gemeldet, statt gruen durchzulaufen.
-    const knoepfe = [...src.matchAll(/<button[^>]*data-click="del\w*"[\s\S]{0,400}?<\/button>/g)]
-      .map(m => m[0]);
+    const knoepfe = [...src.matchAll(/<button[^>]*data-click="del\w*"[\s\S]{0,400}?<\/button>/g)].map(m => m[0]);
     knoepfeGesamt += knoepfe.length;
     let gefunden = 0;
     for (const k of knoepfe) {
       const name = (k.match(/data-click="(del\w*)"/) || [])[1];
-      if (AUSNAHME.has(name)) { gefunden++; continue; }
-      assert.match(k, /\$\{TRASH_ICON_SVG\}/,
+      if (AUSNAHME.has(name)) {
+        gefunden++;
+        continue;
+      }
+      assert.match(
+        k,
+        /\$\{TRASH_ICON_SVG\}/,
         `${file}: ein Löschknopf ohne Papierkorb-Symbol — ` +
-        `dieselbe Aktion soll überall gleich aussehen:\n${k.slice(0, 160)}`);
+          `dieselbe Aktion soll überall gleich aussehen:\n${k.slice(0, 160)}`,
+      );
     }
     ausnahmenGesehen += gefunden;
   }
@@ -113,9 +135,12 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
   // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
   // prueft — dieselbe Regel wie in den anderen Waechtern dieses Baums.
-  assert.equal(ausnahmenGesehen, AUSNAHME.size,
+  assert.equal(
+    ausnahmenGesehen,
+    AUSNAHME.size,
     `${ausnahmenGesehen} von ${AUSNAHME.size} Ausnahmen gefunden — eine davon ` +
-    'beschreibt keinen Knopf mehr und gehoert gestrichen.');
+      'beschreibt keinen Knopf mehr und gehoert gestrichen.',
+  );
 
   // Die betroffenen Knöpfe dürfen kein ✕ mehr enthalten
   const gallery = fs.readFileSync(path.join(PUB, 'js', 'gallery.js'), 'utf8');
@@ -124,15 +149,26 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // Der Papierkorb auf der Kachel ist ein Mausweg und für Hilfstechnik
   // verborgen (sonst steckte ein Knopf im Knopf); Löschen per Tastatur geht
   // über den Detail-Dialog. Ein title sagt der Maus, was er tut.
-  assert.match(gallery, /<span class="delbtn" data-click="delSetStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/, 'Set-Kachel: Papierkorb nicht verborgen');
+  assert.match(
+    gallery,
+    /<span class="delbtn" data-click="delSetStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/,
+    'Set-Kachel: Papierkorb nicht verborgen',
+  );
   const figs = fs.readFileSync(path.join(PUB, 'js', 'minifigs.js'), 'utf8');
-  assert.match(figs, /<span class="delbtn" data-click="deleteManualFigStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/,
-    'Minifiguren-Kachel: Papierkorb nicht verborgen');
+  assert.match(
+    figs,
+    /<span class="delbtn" data-click="deleteManualFigStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/,
+    'Minifiguren-Kachel: Papierkorb nicht verborgen',
+  );
 
   // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
-  for (const [file, expected] of [['gallery.js', 1], ['parts.js', 1], ['minifigs.js', 2]]) {
+  for (const [file, expected] of [
+    ['gallery.js', 1],
+    ['parts.js', 1],
+    ['minifigs.js', 2],
+  ]) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     const n = (src.match(/<div class="ca"><(?:button|span) class="delbtn"/g) || []).length;
     assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);
@@ -143,10 +179,16 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   // .mk-zeile steht seit dem 24.09. mit darin: Die Merklisten-Zeile trägt
   // denselben Papierkorb oben rechts und braucht dieselbe Einblendung.
-  assert.match(css, /\.sc:hover \.ca, \.man-tile:hover \.ca, \.mk-zeile:hover \.ca\{opacity:1\}/,
-    'Manuelle Kacheln oder die Merklisten-Zeile zeigen den Löschknopf nicht beim Überfahren');
-  assert.match(css, /@media \(hover: none\)\{ \.ca\{opacity:1\} \}/,
-    'Ohne Zeigegerät bliebe der Löschknopf unerreichbar');
+  assert.match(
+    css,
+    /\.sc:hover \.ca, \.man-tile:hover \.ca, \.mk-zeile:hover \.ca\{opacity:1\}/,
+    'Manuelle Kacheln oder die Merklisten-Zeile zeigen den Löschknopf nicht beim Überfahren',
+  );
+  assert.match(
+    css,
+    /@media \(hover: none\)\{ \.ca\{opacity:1\} \}/,
+    'Ohne Zeigegerät bliebe der Löschknopf unerreichbar',
+  );
 
   const i18n = require('./helpers/sources').i18nAll();
   assert.match(i18n, /'figs\.delete':\s*'Minifigur löschen'/, 'DE-Beschriftung fehlt');
@@ -155,24 +197,32 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
 test('der Löschknopf hat je Design eine eigene Fassung', () => {
   // Was dieser Test NICHT mehr prüft
-  const css   = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
+  const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   const brick = fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8');
 
   const del = css.slice(css.indexOf('.delbtn{'), css.indexOf('.delbtn svg'));
 
   // 1) Eigene Fassung je Design
   assert.ok(del.length > 0, 'styles.css hat keine .delbtn-Regel');
-  assert.match(brick, /\[data-theme="brick"\] \.sc \.delbtn\{/,
-    'Das Stein-Design braucht eine eigene Fassung — sonst sitzt der helle Knopf auf der dunklen Leiste');
-  assert.match(brick, /\[data-theme="brick"\] \.sc \.delbtn:hover\{/,
-    'Auch der Hover braucht im Stein-Design eine eigene Fassung');
+  assert.match(
+    brick,
+    /\[data-theme="brick"\] \.sc \.delbtn\{/,
+    'Das Stein-Design braucht eine eigene Fassung — sonst sitzt der helle Knopf auf der dunklen Leiste',
+  );
+  assert.match(
+    brick,
+    /\[data-theme="brick"\] \.sc \.delbtn:hover\{/,
+    'Auch der Hover braucht im Stein-Design eine eigene Fassung',
+  );
 
   // 2) Fokusring
-  assert.match(del, /\.delbtn:focus-visible\{outline/,
-    'Ohne Fokusring ist der Knopf per Tastatur unsichtbar');
+  assert.match(del, /\.delbtn:focus-visible\{outline/, 'Ohne Fokusring ist der Knopf per Tastatur unsichtbar');
 
   // 3) Token statt Literal — welcher Token, ist dem Test egal
-  for (const [name, src] of [['styles.css', del], ['brick.css', brick]]) {
+  for (const [name, src] of [
+    ['styles.css', del],
+    ['brick.css', brick],
+  ]) {
     assert.doesNotMatch(src, /#ef4444/, `${name}: --r500 benutzen statt Literal`);
     assert.doesNotMatch(src, /rgba\(239,\s*68,\s*68/, `${name}: --r500 benutzen statt Literal`);
   }
@@ -201,6 +251,7 @@ test('externe Links öffnen ohne Zugriff auf das Öffnerfenster', () => {
   // selbst; ältere und eingebettete WebViews nicht, und der Code setzte es an …
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const ohne = [...html.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)]
-    .map(m => m[0]).filter(tag => !/rel="[^"]*noopener/.test(tag));
+    .map(m => m[0])
+    .filter(tag => !/rel="[^"]*noopener/.test(tag));
   assert.deepEqual(ohne, [], `target="_blank" ohne rel="noopener": ${ohne.join(' | ')}`);
 });

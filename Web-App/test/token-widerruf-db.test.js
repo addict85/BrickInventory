@@ -17,28 +17,34 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db   = _req('db/database.js');
+const db = _req('db/database.js');
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
 const { bis } = require('./helpers/zeit');
 
-test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    keineDb(t, e); return;
+test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   const name = `tw_${process.pid}`;
-  const uid = (await db.get(
-    `INSERT INTO users (username, password_hash) VALUES ($1,'x')
-       ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username RETURNING id`, [name])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash) VALUES ($1,'x')
+       ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username RETURNING id`,
+      [name],
+    )
+  ).id;
   t.after(async () => {
     await pgNotify.close();
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]).catch(() => {});
@@ -75,7 +81,7 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async (t) => {
     assert.equal(await auth.validateToken(token), null);
   });
 
-  await t.test('ohne Benachrichtigung gilt ein widerrufener Token höchstens die Cache-Frist', async (t2) => {
+  await t.test('ohne Benachrichtigung gilt ein widerrufener Token höchstens die Cache-Frist', async t2 => {
     assert.ok(tokenCache.TOKEN_TTL_MS < 10_000, 'die Frist ist unter 10 s');
     const token = await imCacheOhneZeile();
     t2.mock.timers.enable({ apis: ['Date'], now: Date.now() });

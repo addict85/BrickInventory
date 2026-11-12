@@ -16,11 +16,18 @@ const path = require('node:path');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const STIL = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-const mitStil = (w) => w.document.addEventListener('DOMContentLoaded', () => {
-  const s = w.document.createElement('style'); s.textContent = STIL; w.document.head.append(s); });
-const sichtbar = (w, sel) => [...w.document.querySelectorAll(sel)].filter(e => {
-  for (let x = e; x && x.nodeType === 1; x = x.parentElement) if (w.getComputedStyle(x).display === 'none') return false;
-  return true; });
+const mitStil = w =>
+  w.document.addEventListener('DOMContentLoaded', () => {
+    const s = w.document.createElement('style');
+    s.textContent = STIL;
+    w.document.head.append(s);
+  });
+const sichtbar = (w, sel) =>
+  [...w.document.querySelectorAll(sel)].filter(e => {
+    for (let x = e; x && x.nodeType === 1; x = x.parentElement)
+      if (w.getComputedStyle(x).display === 'none') return false;
+    return true;
+  });
 
 test('Set hinzufügen genau einmal', async () => {
   const { w, d } = await oeffneOberflaeche({}, { vorher: mitStil });
@@ -30,16 +37,23 @@ test('Set hinzufügen genau einmal', async () => {
     assert.equal(knoepfe.length, 1);
     assert.ok(knoepfe[0].closest('#gallery .empty.leer'), 'der sichtbare Knopf steht nicht im Leerzustand');
     assert.match(d.querySelector('#gallery .empty.leer').textContent, /Noch keine Sets/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Teile und Minifiguren ebenso', async () => {
   const { w } = await oeffneOberflaeche({}, { vorher: mitStil });
   try {
-    for (const [tab, art] of [['parts', 'part'], ['minifigs', 'fig']]) {
+    for (const [tab, art] of [
+      ['parts', 'part'],
+      ['minifigs', 'fig'],
+    ]) {
       await reiter(w, tab);
       await warte(() => !!w.document.querySelector(`#tab-${tab} .empty.leer`));
       assert.equal(sichtbar(w, `#tab-${tab} [data-click="oeffneErfassen"][data-arg="${art}"]`).length, 1, tab);
     }
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

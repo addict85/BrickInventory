@@ -18,6 +18,7 @@ const ganzzahl = (min: number, max: number, code?: FehlerCode) =>
     code,
   );
 const text = (max: number) =>
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen herauszufiltern ist der Zweck dieser Stelle.
   wert(v => v.length <= max && !/[\u0000-\u001f\u007f]/.test(v), { type: 'string', maxLength: max });
 const auswahl = (werte: readonly string[], code?: FehlerCode) =>
   wert(v => werte.includes(v), { enum: [...werte] }, code);

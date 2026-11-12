@@ -13,12 +13,30 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
-const antwort = (waehrung) => ({
+const antwort = waehrung => ({
   '/v1/settings/raw': { success: true, settings: { currency: waehrung, language: 'de', rebrickable_api_key: 'probe' } },
-  '/v1/finance/valuation': { success: true, currency: waehrung, totals: { min: '0', avg: '0', max: '0' },
-    sets: [{ set_number: '10294-1', name: 'Titanic', quantity: 1, purchase_price: 1097.93, avg_price: 0, total_avg: '0',
-             acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 1097.93 }] }] },
-  '/v1/finance/pnl': { success: true, currency: waehrung, sets: [], totals: { purchase: '1097.93', sets_purchase: '1097.93' } },
+  '/v1/finance/valuation': {
+    success: true,
+    currency: waehrung,
+    totals: { min: '0', avg: '0', max: '0' },
+    sets: [
+      {
+        set_number: '10294-1',
+        name: 'Titanic',
+        quantity: 1,
+        purchase_price: 1097.93,
+        avg_price: 0,
+        total_avg: '0',
+        acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 1097.93 }],
+      },
+    ],
+  },
+  '/v1/finance/pnl': {
+    success: true,
+    currency: waehrung,
+    sets: [],
+    totals: { purchase: '1097.93', sets_purchase: '1097.93' },
+  },
 });
 
 async function einstand(browserSprache, waehrung = 'EUR') {
@@ -27,7 +45,9 @@ async function einstand(browserSprache, waehrung = 'EUR') {
     await reiter(o.w, 'finance');
     await warte(() => o.d.getElementById('fin-einstand').textContent.includes('1'));
     return o.d.getElementById('fin-einstand').textContent.replace(/ /g, ' ');
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 }
 
 test('de-DE', async () => {

@@ -12,10 +12,8 @@ const { testServer } = require('./helpers/server');
 const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
-test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req)) return;
+test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const USER = `delp-${process.pid}`;
   const SN = `41439-${process.pid}`;
@@ -39,14 +37,25 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
     // 0036 fuer die Menge). Menge 0 heisst hier „die Erfassungen tragen sie" —
     // 1 + 1 = 2, wie vorher in der Spalte.
     await haeltSet(db, uid, SN, 0);
-    await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
-                  VALUES ($1,$2,7.41,'U',1, NOW() - INTERVAL '2 days')`, [uid, SN]);
-    await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
-                  VALUES ($1,$2,9.48,'N',1, NOW() - INTERVAL '1 day')`, [uid, SN]);
+    await db.run(
+      `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
+                  VALUES ($1,$2,7.41,'U',1, NOW() - INTERVAL '2 days')`,
+      [uid, SN],
+    );
+    await db.run(
+      `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
+                  VALUES ($1,$2,9.48,'N',1, NOW() - INTERVAL '1 day')`,
+      [uid, SN],
+    );
   };
-  const neueste = async () => (await db.get(
-    `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
-      ORDER BY created_at DESC, id DESC LIMIT 1`, [uid, SN])).id;
+  const neueste = async () =>
+    (
+      await db.get(
+        `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
+      ORDER BY created_at DESC, id DESC LIMIT 1`,
+        [uid, SN],
+      )
+    ).id;
   // Was die Kachel sieht: das Aggregat aus den Erfassungen plus die Menge der
   // sets-Zeile (die der Lösch-Weg weiterhin nachrechnet).
   const eltern = async () => {
@@ -56,8 +65,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
     // Elternangabe, auch wenn noch Erfassungen herumliegen sollten.
     if (!(await haltZeile(db, uid, SN))) return undefined;
     const agg = await _req('src/sets/index.js').getSetConditionAggregate([uid], SN);
-    return { purchase_price: agg.avg_purchase_price, condition: agg.condition,
-             quantity: await mengeVon(db, uid, SN) };
+    return { purchase_price: agg.avg_purchase_price, condition: agg.condition, quantity: await mengeVon(db, uid, SN) };
   };
 
   try {
@@ -66,46 +74,55 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu',
     //    Die Antwort muss den mengengewichteten Mittelwert zeigen.
     await aufbauen();
     const vorher = await eltern();
-    assert.equal(Number(vorher.purchase_price), 8.445,
+    assert.equal(
+      Number(vorher.purchase_price),
+      8.445,
       'Der gezeigte Preis ist nicht der Mittelwert über die Erfassungen — ' +
-      'bei 9.48 steht dort weiterhin der Wert der NEUESTEN Erfassung');
-    assert.equal(vorher.condition, 'U',
-      'Eine gebrauchte Erfassung macht das Set gebraucht');
+        'bei 9.48 steht dort weiterhin der Wert der NEUESTEN Erfassung',
+    );
+    assert.equal(vorher.condition, 'U', 'Eine gebrauchte Erfassung macht das Set gebraucht');
 
     // 1. Marcos Fall: die neueste Erfassung löschen.
     await aufbauen();
     let r = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${await neueste()}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     let e = await eltern();
-    assert.equal(Number(e.purchase_price), 7.41,
-      'Die Kachel zeigt den Preis der GELÖSCHTEN Zeile — sie muss der verbliebenen folgen');
+    assert.equal(
+      Number(e.purchase_price),
+      7.41,
+      'Die Kachel zeigt den Preis der GELÖSCHTEN Zeile — sie muss der verbliebenen folgen',
+    );
     // 7.41 ist hier gleichzeitig der Mittelwert, weil nur eine Erfassung übrig
     // ist. Teilschritt 2 unten trennt die beiden Lesarten.
-    assert.equal(e.condition, 'U',
-      'Auch der Zustand muss der verbliebenen Erfassung folgen, nicht der gelöschten');
+    assert.equal(e.condition, 'U', 'Auch der Zustand muss der verbliebenen Erfassung folgen, nicht der gelöschten');
     assert.equal(Number(e.quantity), 1, 'Die Menge muss weiterhin stimmen');
 
     // 2. Gegenrichtung: Löscht man eine ÄLTERE Erfassung, darf sich am Preis
     //    nichts ändern — die neueste bleibt ja bestehen.
     await aufbauen();
-    const alte = (await db.all(
-      `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
-        ORDER BY created_at ASC, id ASC`, [uid, SN]))[0].id;
+    const alte = (
+      await db.all(
+        `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
+        ORDER BY created_at ASC, id ASC`,
+        [uid, SN],
+      )
+    )[0].id;
     r = await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${alte}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     e = await eltern();
-    assert.equal(Number(e.purchase_price), 9.48,
-      'Beim Löschen einer älteren Erfassung darf der Preis der neuesten stehen bleiben');
+    assert.equal(
+      Number(e.purchase_price),
+      9.48,
+      'Beim Löschen einer älteren Erfassung darf der Preis der neuesten stehen bleiben',
+    );
 
     // 3. Letzte Erfassung löschen: Es bleibt keine übrig — und seit
     //  auch keine Elternzeile mehr.
     await aufbauen();
-    for (const row of await db.all(
-      `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])) {
+    for (const row of await db.all(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])) {
       await fetch(`${base}/api/v1/sets/${SN}/acquisitions/${row.id}`, { method: 'DELETE' });
     }
-    assert.equal(await eltern(), undefined,
-      'Ohne Erfassungen darf keine Set-Zeile mit Menge 0 zurückbleiben');
+    assert.equal(await eltern(), undefined, 'Ohne Erfassungen darf keine Set-Zeile mit Menge 0 zurückbleiben');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]).catch(() => {});

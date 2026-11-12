@@ -181,7 +181,7 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
   );
   assert.match(
     fin,
-    /parseFloat\(d\.totals\.avg\|\|'?0'?\)/,
+    /parseFloat\(d\.totals\.avg\s*\|\|\s*'?0'?\)/,
     'Die Summen sind als „Ø Marktpreis" beschriftet und müssen totals.avg nehmen',
   );
   assert.match(
@@ -304,7 +304,7 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'gallery.js'), 'utf8');
   assert.match(
     gal,
-    /imgUrl\(thumbUrl\(src\)\|\|src, true\)/,
+    /imgUrl\(thumbUrl\(src\)\s*\|\|\s*src,\s*true\)/,
     'Der eigene Bestand sollte weiterhin Vorschauen bekommen',
   );
 });

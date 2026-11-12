@@ -14,10 +14,12 @@ export function proxyVertrauen(wert?: string): false | string[] | ((adresse: str
 }
 
 function proxyFehlertext(falsch: string[]): string {
-  return `TRUST_PROXY enthält ${falsch.map(f => `„${f}"`).join(', ')}. Erlaubt sind nur die feste Adresse `
-    + 'des eigenen Reverse-Proxys (z. B. 172.28.73.10) oder ein kleines Netz (IPv4 ab /16, IPv6 ab /64), '
-    + 'mehrere durch Komma getrennt, oder „false" ohne Proxy. „docker", „true" und Hop-Zahlen gibt es nicht mehr — '
-    + 'siehe README.md und docs/SICHERHEIT.md.';
+  return (
+    `TRUST_PROXY enthält ${falsch.map(f => `„${f}"`).join(', ')}. Erlaubt sind nur die feste Adresse ` +
+    'des eigenen Reverse-Proxys (z. B. 172.28.73.10) oder ein kleines Netz (IPv4 ab /16, IPv6 ab /64), ' +
+    'mehrere durch Komma getrennt, oder „false" ohne Proxy. „docker", „true" und Hop-Zahlen gibt es nicht mehr — ' +
+    'siehe README.md und docs/SICHERHEIT.md.'
+  );
 }
 
 /** Höchstens ein kleiner Bereich. */

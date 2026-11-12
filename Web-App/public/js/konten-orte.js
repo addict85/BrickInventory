@@ -30,7 +30,10 @@ export function initScopeSelects(members) {
   for (const view of SCOPE_VIEWS) {
     const el = G('scope-' + view);
     if (!el) continue;
-    if (!isMain) { el.style.display = 'none'; continue; }
+    if (!isMain) {
+      el.style.display = 'none';
+      continue;
+    }
     setzeHtml(el, ungeprueft(opts));
     // Gespeicherte Wahl kann auf ein inzwischen entkoppeltes Konto zeigen — dann auf „Alle" zurückfallen
     // statt eine leere Auswahl zu zeigen.
@@ -47,7 +50,10 @@ export function initScopeSelects(members) {
     subsBox.style.display = isMain ? 'inline-flex' : 'none';
     // Kein Haken, wenn es nichts einzubeziehen gibt: Sonst bliebe die Wahl beim Entkoppeln des letzten
     // Unterkontos unsichtbar gesetzt stehen und wirkte weiter.
-    if (!isMain) { const cb = G('pl-bestand-subs'); if (cb) cb.checked = false; }
+    if (!isMain) {
+      const cb = G('pl-bestand-subs');
+      if (cb) cb.checked = false;
+    }
   }
 }
 
@@ -62,7 +68,9 @@ export function initScopeSelects(members) {
 let _haushalt = [];
 
 /** Die gemerkten Konten. Leer, solange noch keine Antwort da war. */
-export function haushaltsKonten() { return _haushalt; }
+export function haushaltsKonten() {
+  return _haushalt;
+}
 
 /**
  * Kontoauswahl beim Erfassen, nur im Haushalt: Bei einem Konto ohne Verknüpfung liefert der Server genau
@@ -90,13 +98,20 @@ export async function loadHouseholdMembers() {
  * @param {HouseholdMember[]} members
  */
 function zeichneKontoauswahl(members) {
-  const markup = members.map(m =>
-    html`<option value="${m.id}"${m.is_self ? ' selected' : ''}>${m.username}${m.is_self ? html`${' '}${tRaw('household.ich')}` : ''}</option>`
-  ).join('');
+  const markup = members
+    .map(
+      m =>
+        html`<option value="${m.id}"${m.is_self ? ' selected' : ''}>${m.username}${m.is_self ? html`${' '}${tRaw('household.ich')}` : ''}</option>`,
+    )
+    .join('');
   for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner', 'mk-owner']) {
-    const box = G(`${id}-box`), sel = G(id);
+    const box = G(`${id}-box`),
+      sel = G(id);
     if (!box || !sel) continue;
-    if (members.length < 2) { box.style.display = 'none'; continue; }
+    if (members.length < 2) {
+      box.style.display = 'none';
+      continue;
+    }
     const vorher = sel.value;
     setzeHtml(sel, ungeprueft(markup));
     if (vorher && [...sel.querySelectorAll('option')].some(o => o.value === vorher)) sel.value = vorher;
@@ -117,8 +132,7 @@ abonniere('spracheGewechselt', () => {
  * Die Lagerortfelder der fünf Erfassungswege, einmal aus lagerortBlock() gezeichnet statt fünfmal im HTML.
  * Zusammen mit der Kontoauswahl, weil beide warten, bis der Haushalt geladen ist.
  */
-export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage',
-                                     'cat-m-storage', 'mk-take-storage'];
+export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage', 'cat-m-storage', 'mk-take-storage'];
 
 /**
  * Der Lagerort, der beim Erfassen schon dastehen soll — Marcos Stern.
@@ -176,11 +190,18 @@ export async function ladeLagerortVorgabe() {
  * @param {string} id
  */
 export function leereLagerortFeld(id) {
-  if (G(`${id}-slot`)) { zeichneOrtFeld(id, _ortVorgabe); return; }
+  if (G(`${id}-slot`)) {
+    zeichneOrtFeld(id, _ortVorgabe);
+    return;
+  }
   // Ohne Slot gibt es das zusammengesetzte Feld nicht; dann bleibt es beim alten Weg. Heute hat jeder der
   // fuenf Erfassungswege einen (public/ index.html), aber ein Formular ohne Slot soll hier nicht abstuerzen.
-  const feld = G(id), sel = G(`${id}-sel`);
-  if (feld) { feld.value = _ortVorgabe; feld.style.display = 'none'; }
+  const feld = G(id),
+    sel = G(`${id}-sel`);
+  if (feld) {
+    feld.value = _ortVorgabe;
+    feld.style.display = 'none';
+  }
   if (sel) sel.selectedIndex = 0;
 }
 
@@ -198,7 +219,8 @@ export function selectedStorage(id) {
  * @param {string} selectId
  */
 export function selectedOwner(selectId) {
-  const box = G(`${selectId}-box`), sel = G(selectId);
+  const box = G(`${selectId}-box`),
+    sel = G(selectId);
   if (!box || box.style.display === 'none' || !sel?.value) return undefined;
-  return parseInt(sel.value);
+  return parseInt(sel.value, 10);
 }

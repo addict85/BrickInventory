@@ -20,10 +20,8 @@ const { testServer } = require('./helpers/server');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
-test('die Bild-Diagnose beschreibt jede Lage im Klartext',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
@@ -31,8 +29,8 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
   fs.mkdirSync(ordner, { recursive: true });
 
   const USER = `diag-${process.pid}`;
-  const MIT  = `9000-${process.pid}`;   // Datei vorhanden
-  const OHNE = `9001-${process.pid}`;   // nichts vorhanden
+  const MIT = `9000-${process.pid}`; // Datei vorhanden
+  const OHNE = `9001-${process.pid}`; // nichts vorhanden
   const original = path.join(ordner, `${MIT}.jpg`);
   const vorschau = path.join(ordner, `${MIT}_thumb.jpg`);
 
@@ -56,7 +54,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
     routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
-  const frag = async (sn) => {
+  const frag = async sn => {
     const r = await fetch(`${base}/api/v1/admin/image-diag/${sn}`);
     assert.equal(r.status, 200, 'die Diagnose muss antworten');
     return r.json();
@@ -67,28 +65,35 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
     let d = await frag(MIT);
     assert.equal(d.lokal.original.vorhanden, true, 'das Original muss gefunden werden');
     assert.equal(d.lokal.vorschau.vorhanden, false);
-    assert.ok(d.hinweise.some(h => /Vorschau fehlt/.test(h)),
-      `die Diagnose muss die fehlende Vorschau benennen, bekam: ${d.hinweise.join(' | ')}`);
+    assert.ok(
+      d.hinweise.some(h => /Vorschau fehlt/.test(h)),
+      `die Diagnose muss die fehlende Vorschau benennen, bekam: ${d.hinweise.join(' | ')}`,
+    );
 
     // B) Nichts bekannt — weder Datei noch Adresse.
     d = await frag(OHNE);
-    assert.ok(d.hinweise.some(h => /Weder lokale Datei noch CDN-Adresse/.test(h)),
-      `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hinweise.join(' | ')}`);
+    assert.ok(
+      d.hinweise.some(h => /Weder lokale Datei noch CDN-Adresse/.test(h)),
+      `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hinweise.join(' | ')}`,
+    );
 
     // C) Nach der Erzeugung ist alles beisammen — und die Grössen stimmen.
     await _req('src/katalog/bilder/thumbs.js').generateThumb(`/images/sets/${MIT}.jpg`);
     d = await frag(MIT);
-    assert.ok(d.hinweise.some(h => /Alles vorhanden/.test(h)),
-      `nach der Erzeugung darf nichts mehr bemängelt werden, bekam: ${d.hinweise.join(' | ')}`);
-    assert.ok(d.lokal.vorschau.bytes < d.lokal.original.bytes,
-      'die gemeldete Vorschau muss kleiner sein als das Original');
+    assert.ok(
+      d.hinweise.some(h => /Alles vorhanden/.test(h)),
+      `nach der Erzeugung darf nichts mehr bemängelt werden, bekam: ${d.hinweise.join(' | ')}`,
+    );
+    assert.ok(
+      d.lokal.vorschau.bytes < d.lokal.original.bytes,
+      'die gemeldete Vorschau muss kleiner sein als das Original',
+    );
 
     // Die Diagnose darf NICHTS reparieren — sonst verändert das Werkzeug den
     // Zustand, den es beschreiben soll.
     fs.rmSync(vorschau, { force: true });
     await frag(MIT);
-    assert.equal(fs.existsSync(vorschau), false,
-      'die Diagnose hat die Vorschau erzeugt — sie soll nur beobachten');
+    assert.equal(fs.existsSync(vorschau), false, 'die Diagnose hat die Vorschau erzeugt — sie soll nur beobachten');
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[MIT, OHNE]]).catch(() => {});
@@ -106,10 +111,15 @@ test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
   // Bild-Fehlersuche über fünf Nachträge gestreckt.
   const src = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
   const start = src.indexOf('async function downloadSetImage');
-  const fn = src.slice(start, src.indexOf('\n}\n', start))
-    .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+  const fn = src
+    .slice(start, src.indexOf('\n}\n', start))
+    .split('\n')
+    .filter(l => !l.trim().startsWith('//'))
+    .join('\n');
   const meldungen = (fn.match(/console\.(error|log)/g) || []).length;
-  assert.ok(meldungen >= 4,
+  assert.ok(
+    meldungen >= 4,
     `downloadSetImage meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
-    'zu kleine Antwort und der umschliessende catch müssen alle eine Spur hinterlassen');
+      'zu kleine Antwort und der umschliessende catch müssen alle eine Spur hinterlassen',
+  );
 });

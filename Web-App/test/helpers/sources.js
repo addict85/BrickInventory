@@ -4,31 +4,37 @@
  * sich eine Stelle hier statt zwanzig Prüfungen.
  */
 const { istAppModul } = require('../../scripts/build-frontend');
-const fs   = require('node:fs');
+const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..', '..');
 
 /** Die App (startup/app.ts, Middleware in ihrer Reihenfolge) und server.ts:
  *  für Prüfungen, bei denen die REIHENFOLGE zählt. Wer den Start meint, nimmt startQuelle(). */
-const serverOnly = () => fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8')
-  + '\n' + fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
+const serverOnly = () =>
+  fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8') +
+  '\n' +
+  fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
-const imgProxy = () => fs.readFileSync(path.join(ROOT, 'src/katalog/http/bildProxy.ts'), 'utf8')
-  + '\n' + fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
+const imgProxy = () =>
+  fs.readFileSync(path.join(ROOT, 'src/katalog/http/bildProxy.ts'), 'utf8') +
+  '\n' +
+  fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
 
 /** Server, Bild-Proxy und Vorschau-Weg: für „kommt X irgendwo vor". Die
  *  Reihenfolge über Dateigrenzen ist bedeutungslos — für indexOf-Vergleiche
  *  serverOnly() oder imgProxy() nehmen. */
-const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuelle()
-  + '\n' + startQuelle();
+const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuelle() + '\n' + startQuelle();
 
 /** Die ganze Finanzschicht aneinandergehängt: Die Regeln („nur EINE
  *  Zustandsauflösung") gelten der Schicht, nicht der Fassade financeCalc.ts. */
 const finanzQuelle = () => {
   const ordner = path.join(ROOT, 'src/finanzen/rechnung');
   const teile = [dienstQuelle('src/finanzen/financeCalc.ts')];
-  for (const n of fs.readdirSync(ordner).filter(x => x.endsWith('.ts')).sort()) {
+  for (const n of fs
+    .readdirSync(ordner)
+    .filter(x => x.endsWith('.ts'))
+    .sort()) {
     teile.push(dienstQuelle('src/finanzen/rechnung/' + n));
   }
   // Selbstbeweis: Fände der Helfer die Module nicht, prüften die Regeln nur die
@@ -87,9 +93,9 @@ function baueDist() {
   require('./buendel').stelleBuendelSicher();
   if (!distIsFresh()) {
     const { execFileSync } = require('node:child_process');
-    execFileSync(process.execPath,
-      [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')],
-      { stdio: 'ignore' });
+    execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], {
+      stdio: 'ignore',
+    });
   }
   _built = true;
 }
@@ -109,38 +115,78 @@ function buildAndRequire() {
   // Die Bauteile erst beim ersten Gebrauch: Viele Tests stellen Klienten nach diesem
   // Aufruf über require.cache; ein früher geladener Dienst hielte die echten fest.
   const echt = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueVerdrahtung();
-  const faul = new Proxy({}, { get: (_z, k) => (...a) => echt().nacharbeit[k](...a) });
+  const faul = new Proxy(
+    {},
+    {
+      get:
+        (_z, k) =>
+        (...a) =>
+          echt().nacharbeit[k](...a),
+    },
+  );
   require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
-  const testDb = () => (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
+  const testDb = () =>
+    (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart: () => echt().erststart() }));
   // Wie verdrahte(): Ohne Zugang wirft jeder Abruf eines Klienten. Die Bauteile erst beim ersten Gebrauch.
   let klienten = null;
   const klientenEcht = () =>
     (klienten ??= require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueKlientenZugang());
   require(path.join(ROOT, 'dist', 'clients/zugang.js')).verdrahteKlienten(
-    new Proxy({}, { get: (_z, k) => klientenEcht()[k] }));
+    new Proxy({}, { get: (_z, k) => klientenEcht()[k] }),
+  );
   // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
-  const BEREICHE = [['einstellungen', 'Einstellungen'], ['auftraege', 'Auftraege'], ['haushalt', 'Haushalt'], ['konto', 'Konto'], ['idempotenz', 'Idempotenz'], ['finanzen', 'Finanzen'], ['bestand', 'Bestand'], ['teile', 'Teile'], ['figuren', 'Figuren'], ['merkliste', 'Merkliste'], ['gutscheine', 'Gutscheine'], ['sammlung', 'Sammlung'], ['verwaltung', 'Verwaltung']];
+  const BEREICHE = [
+    ['einstellungen', 'Einstellungen'],
+    ['auftraege', 'Auftraege'],
+    ['haushalt', 'Haushalt'],
+    ['konto', 'Konto'],
+    ['idempotenz', 'Idempotenz'],
+    ['finanzen', 'Finanzen'],
+    ['bestand', 'Bestand'],
+    ['teile', 'Teile'],
+    ['figuren', 'Figuren'],
+    ['merkliste', 'Merkliste'],
+    ['gutscheine', 'Gutscheine'],
+    ['sammlung', 'Sammlung'],
+    ['verwaltung', 'Verwaltung'],
+  ];
   for (const [b, B] of BEREICHE)
     require(path.join(ROOT, 'dist', `src/${b}/prozess.js`))[`verdrahte${B}`](() =>
-      require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: testDb() }));
+      require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: testDb() }),
+    );
   require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
-    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: testDb() }));
+    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: testDb() }),
+  );
   require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
     require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({
-      db: testDb(), nacharbeit: faul,
+      db: testDb(),
+      nacharbeit: faul,
       katalog: require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).katalog(),
       finanzen: require(path.join(ROOT, 'dist', 'src/finanzen/prozess.js')).finanzenBereich(),
       auftraege: require(path.join(ROOT, 'dist', 'src/auftraege/prozess.js')).auftraegeBereich(),
-    }));
+    }),
+  );
   // db/database.js mit den Funktionen des Testzugangs, wie es früher der Prozesszugang war.
   const fassade = Object.create(dbModul, {
     pool: { get: () => testDb().pool },
     standardDb: { value: testDb },
   });
-  for (const f of ['all', 'get', 'run', 'exec', 'transaction', 'initSchema', 'initSchemaOnce', 'getPoolStats',
-    'datenbankAntwortet', 'alsSuperuserVerbunden', 'eigeneVerbindung', 'inTransaktion'])
+  for (const f of [
+    'all',
+    'get',
+    'run',
+    'exec',
+    'transaction',
+    'initSchema',
+    'initSchemaOnce',
+    'getPoolStats',
+    'datenbankAntwortet',
+    'alsSuperuserVerbunden',
+    'eigeneVerbindung',
+    'inTransaktion',
+  ])
     fassade[f] = (...a) => testDb()[f](...a);
   return rel => (rel === 'db/database.js' ? fassade : require(path.join(ROOT, 'dist', rel)));
 }
@@ -175,12 +221,10 @@ function loadTranslations() {
   return { de: ctx.window.I18N_DE, en: ctx.window.I18N_EN };
 }
 
-const localeSource = lang =>
-  fs.readFileSync(path.join(ROOT, 'public', 'locales', `${lang}.js`), 'utf8');
+const localeSource = lang => fs.readFileSync(path.join(ROOT, 'public', 'locales', `${lang}.js`), 'utf8');
 
 const i18nAll = () =>
-  fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')
-  + '\n' + localeSource('de') + '\n' + localeSource('en');
+  fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8') + '\n' + localeSource('de') + '\n' + localeSource('en');
 
 module.exports.loadTranslations = loadTranslations;
 module.exports.localeSource = localeSource;
@@ -199,6 +243,20 @@ function ohneKommentare(src) {
 
 module.exports.ohneKommentare = ohneKommentare;
 
+/**
+ * Quelltext in einer Zeile, wie ihn der Formatierer bei beliebiger Zeilenbreite
+ * schriebe: Ein Muster auf eine Anweisung soll nicht daran hängen, wo Biome umbricht
+ * (Klammern über mehrere Zeilen, Komma vor der schliessenden Klammer).
+ */
+function kompakt(src) {
+  return String(src)
+    .replace(/\s+/g, ' ')
+    .replace(/([([]) /g, '$1')
+    .replace(/,? ([)\]])/g, '$1')
+    .replace(/, \}/g, ' }');
+}
+module.exports.kompakt = kompakt;
+
 /** HTML-Kommentare bis zum Fixpunkt: Ein Rest wie „<!<!---->--“ ergäbe sonst einen neuen. */
 function ohneHtmlKommentare(src) {
   let s = String(src);
@@ -216,18 +274,36 @@ module.exports.regexWoertlich = regexWoertlich;
 
 /** Der Vorschau-Weg des Bild-Proxys (src/katalog/bilder/proxyThumbs.ts). */
 function proxyThumbQuelle() {
-  return ['src/katalog/http/bildProxy.ts', 'routes/imgProxy.ts', 'src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/imgCacheServe.ts', 'src/katalog/http/bildCacheAuslieferung.ts']
-    .map(dienstQuelle).join('\n');
+  return [
+    'src/katalog/http/bildProxy.ts',
+    'routes/imgProxy.ts',
+    'src/katalog/bilder/proxyThumbs.ts',
+    'src/katalog/bilder/imgCacheServe.ts',
+    'src/katalog/http/bildCacheAuslieferung.ts',
+  ]
+    .map(dienstQuelle)
+    .join('\n');
 }
 module.exports.proxyThumbQuelle = proxyThumbQuelle;
 
 /** Die Oberfläche rund um Erfassungen: Set-Detail, Kaufpreis-Modal, Detailfenster
  *  und ihre Bausteine (Lagerort, Preisalarm, Diagramme, Rückfragen). */
 function adminQuelle() {
-  const path = require('path'), fs = require('fs');
+  const path = require('node:path'),
+    fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
-  return ['admin.js', 'set-detail.js', 'detailfelder.js', 'diagramme.js', 'fadenkreuz.js', 'rueckfrage.js',
-          'acquisition-modals.js', 'manuell-detail.js', 'erfassung-zustand.js', 'kaufpreis-anzeige.js']
+  return [
+    'admin.js',
+    'set-detail.js',
+    'detailfelder.js',
+    'diagramme.js',
+    'fadenkreuz.js',
+    'rueckfrage.js',
+    'acquisition-modals.js',
+    'manuell-detail.js',
+    'erfassung-zustand.js',
+    'kaufpreis-anzeige.js',
+  ]
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
 }
@@ -247,13 +323,22 @@ function setKernQuelle() {
     ['src/sets/erfassen.ts'],
     ['src/katalog/partsImport.ts'],
     ['src/katalog/minifigsImport.ts'],
-  ].map(p => dienstQuelle(p[0])).join('\n');
+  ]
+    .map(p => dienstQuelle(p[0]))
+    .join('\n');
 }
 module.exports.setKernQuelle = setKernQuelle;
 
 /** Die Leseabfragen je Fachbereich als EIN Quelltext. */
-const HANDLER_MODULE = ['src/bestand/gemeinsam', 'src/haushalt/haushalt', 'src/teile/abfragen', 'src/sets/lesen', 'src/sets/loeschen',
-  'src/figuren/abfragen', 'src/bestand/kennzahlen'];
+const HANDLER_MODULE = [
+  'src/bestand/gemeinsam',
+  'src/haushalt/haushalt',
+  'src/teile/abfragen',
+  'src/sets/lesen',
+  'src/sets/loeschen',
+  'src/figuren/abfragen',
+  'src/bestand/kennzahlen',
+];
 function handlerQuelle() {
   return HANDLER_MODULE.map(m => dienstQuelle(m + '.ts')).join('\n');
 }
@@ -262,20 +347,24 @@ module.exports.handlerQuelle = handlerQuelle;
 /** Das gebaute Modul für einen Namen aus den Leseabfragen. */
 function handlerModul(_req) {
   // Die Sets-Dienste bekommen ihren Kontext über die Fassade (src/sets/index.ts).
-  return Object.assign({},
-    ..._req && HANDLER_MODULE.map(m => _req(`${m}.js`)), _req && _req('src/sets/index.js'));
+  return Object.assign({}, ...(_req && HANDLER_MODULE.map(m => _req(`${m}.js`))), _req?.('src/sets/index.js'));
 }
 module.exports.handlerModul = handlerModul;
 
 /** server.ts samt Start des Job-Prozesses und der Läufe dort: für „läuft X
  *  beim Start an". */
 function startQuelle() {
-  const path = require('path'), fs = require('fs');
+  const path = require('node:path'),
+    fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'startup');
-  const teile = ['server.ts', 'src/katalog/bildNachlauf.ts', 'src/verwaltung/startNachlaeufe.ts', 'src/verwaltung/aufraeumen.ts',
-    'src/katalog/bildlage.ts']
-    .map(f => dienstQuelle(f));
+  const teile = [
+    'server.ts',
+    'src/katalog/bildNachlauf.ts',
+    'src/verwaltung/startNachlaeufe.ts',
+    'src/verwaltung/aufraeumen.ts',
+    'src/katalog/bildlage.ts',
+  ].map(f => dienstQuelle(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
       teile.push(dienstQuelle('startup/' + f));
@@ -287,7 +376,8 @@ module.exports.startQuelle = startQuelle;
 
 /** Die Portfolio-Kurve: Orchestrierung, Rekonstruktion und Diagrammdaten. */
 function portfolioQuelle() {
-  const path = require('path'), fs = require('fs');
+  const path = require('node:path'),
+    fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'src/finanzen/portfolio');
   const teile = [dienstQuelle('src/finanzen/portfolioHistory.ts')];
@@ -302,14 +392,31 @@ module.exports.portfolioQuelle = portfolioQuelle;
 
 /** Die Grundausstattung des Frontends samt der ausgelagerten Abschnitte. */
 function coreQuelle() {
-  const path = require('path'), fs = require('fs');
+  const path = require('node:path'),
+    fs = require('node:fs');
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
   // escapen.js VORNE: esc() gehört zur Grundausstattung, und
   // test/frontend-escaping.test.js schneidet seinen Sandkasten ab `function esc(s)`.
-  return ['escapen.js', 'zustand.js', 'ereignisse.js', 'dom.js', 'format.js', 'meldungen.js',
-          'verbindung.js', 'api.js', 'bilder.js', 'formular.js', 'konto.js', 'fortschritt.js',
-          'monitor.js', 'scope.js', 'scrollbar.js', 'sitzung.js']
-    .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+  return [
+    'escapen.js',
+    'zustand.js',
+    'ereignisse.js',
+    'dom.js',
+    'format.js',
+    'meldungen.js',
+    'verbindung.js',
+    'api.js',
+    'bilder.js',
+    'formular.js',
+    'konto.js',
+    'fortschritt.js',
+    'monitor.js',
+    'scope.js',
+    'scrollbar.js',
+    'sitzung.js',
+  ]
+    .map(f => fs.readFileSync(path.join(dir, f), 'utf8'))
+    .join('\n');
 }
 module.exports.coreQuelle = coreQuelle;
 
@@ -375,8 +482,7 @@ function pruefeParameter(src, name, params, hinweis = '') {
   let zuletzt = -1;
   for (const p of params) {
     const treffer = new RegExp(`\\b${p}\\b`).exec(innen.slice(zuletzt + 1));
-    assert.ok(treffer,
-      `${name} nimmt '${p}' nicht (mehr) entgegen${hinweis ? ' — ' + hinweis : ''}: ${kopf}`);
+    assert.ok(treffer, `${name} nimmt '${p}' nicht (mehr) entgegen${hinweis ? ' — ' + hinweis : ''}: ${kopf}`);
     zuletzt = zuletzt + 1 + treffer.index;
   }
 }
@@ -392,20 +498,30 @@ module.exports.pruefeParameter = pruefeParameter;
 function routerEinhaengungen(o = {}) {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
   // `import xRouter from '../routes/x'` oben, `app.use('/api/…', xRouter)` unten.
-  const dateiJeName = new Map([...src.matchAll(/import\s+(\w+)\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)]
-    .map(m => [m[1], m[2]]));
+  const dateiJeName = new Map(
+    [...src.matchAll(/import\s+(\w+)\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)].map(m => [m[1], m[2]]),
+  );
   const out = [];
   for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)\s*\)/g)) {
     const datei = dateiJeName.get(m[2]);
     if (!datei || datei.startsWith('routes/api_v1')) continue;
-    out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(ROOT, datei + '.ts'),
-               name: datei.replace(/^routes\//, '') });
+    out.push({
+      mount: m[1].replace(/\/+$/, ''),
+      datei: path.join(ROOT, datei + '.ts'),
+      name: datei.replace(/^routes\//, ''),
+    });
     // Ein Zusammenbau (routes/auth.ts) hängt seine Teile unter derselben Adresse ein.
     const teile = path.join(ROOT, datei);
     if (!o.ohneTeile && fs.existsSync(teile) && fs.statSync(teile).isDirectory())
-      for (const n of fs.readdirSync(teile).filter(n => n.endsWith('.ts')).sort())
-        out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(teile, n),
-                   name: `${datei.replace(/^routes\//, '')}/${n.replace(/\.ts$/, '')}` });
+      for (const n of fs
+        .readdirSync(teile)
+        .filter(n => n.endsWith('.ts'))
+        .sort())
+        out.push({
+          mount: m[1].replace(/\/+$/, ''),
+          datei: path.join(teile, n),
+          name: `${datei.replace(/^routes\//, '')}/${n.replace(/\.ts$/, '')}`,
+        });
   }
   return out;
 }
@@ -432,13 +548,14 @@ module.exports.einhaengung = einhaengung;
  */
 function abschnitt(quelle, ab, bis, wozu = '') {
   const i = String(quelle).indexOf(ab);
-  if (i < 0) throw new Error(
-    `Ankertext nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
-    'Der Ausschnitt waere leer, und Zusicherungen darauf pruefen nichts mehr.');
+  if (i < 0)
+    throw new Error(
+      `Ankertext nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
+        'Der Ausschnitt waere leer, und Zusicherungen darauf pruefen nichts mehr.',
+    );
   if (bis === undefined) return String(quelle).slice(i);
   const j = String(quelle).indexOf(bis, i);
-  if (j < 0) throw new Error(
-    `Endanker nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
+  if (j < 0) throw new Error(`Endanker nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
   return String(quelle).slice(i, j);
 }
 
@@ -457,12 +574,21 @@ function pfadForm(roh, marke = ':X') {
   let vor = null;
   // Innerste zuerst, bis nichts mehr passt — so verschwindet auch ein
   // verschachtelter Ausdruck vollständig.
-  while (vor !== s) { vor = s; s = s.replace(/\$\{[^{}]*\}/g, '\u0000'); }
+  while (vor !== s) {
+    vor = s;
+    s = s.replace(/\$\{[^{}]*\}/g, '\u0000');
+  }
   let out = '';
   for (let i = 0; i < s.length; i++) {
-    if (s[i] !== '\u0000') { out += s[i]; continue; }
-    if (out.endsWith('/')) { out += marke; continue; }
-    break;                       // Anhängsel, kein Abschnitt → hier endet der Pfad
+    if (s[i] !== '\u0000') {
+      out += s[i];
+      continue;
+    }
+    if (out.endsWith('/')) {
+      out += marke;
+      continue;
+    }
+    break; // Anhängsel, kein Abschnitt → hier endet der Pfad
   }
   return out.split('?')[0].replace(/'\s*\+.*$/, '');
 }
@@ -478,20 +604,32 @@ module.exports.pfadForm = pfadForm;
 function leseLiteral(src, i) {
   const anf = src[i];
   if (anf !== '`' && anf !== "'" && anf !== '"') return null;
-  let j = i + 1, tiefe = 0;
+  let j = i + 1,
+    tiefe = 0;
   while (j < src.length) {
     const c = src[j];
-    if (c === '\\') { j += 2; continue; }
-    if (anf === '`' && c === '$' && src[j + 1] === '{') { tiefe++; j += 2; continue; }
+    if (c === '\\') {
+      j += 2;
+      continue;
+    }
+    if (anf === '`' && c === '$' && src[j + 1] === '{') {
+      tiefe++;
+      j += 2;
+      continue;
+    }
     if (tiefe > 0) {
       if (c === '{') tiefe++;
       else if (c === '}') tiefe--;
       // Ein Literal in ${…} wird mitgelesen, damit es die Zählung nicht verwirrt.
       else if (c === '`' || c === "'" || c === '"') {
         const inner = leseLiteral(src, j);
-        if (inner) { j = inner.ende; continue; }
+        if (inner) {
+          j = inner.ende;
+          continue;
+        }
       }
-      j++; continue;
+      j++;
+      continue;
     }
     if (c === anf) return { text: src.slice(i + 1, j), ende: j + 1 };
     j++;
@@ -524,11 +662,12 @@ module.exports.v1Routen = v1Routen;
  *  Dateiliste zu führen, die beim nächsten Umzug veraltet. */
 function alleQuellen() {
   const raus = [];
-  const lauf = (rel) => {
+  const lauf = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const kind = rel ? path.posix.join(rel, e.name) : e.name;
-      if (e.isDirectory()) { if (!['node_modules', 'dist', 'test', 'scripts', 'public', 'docs', '.git'].includes(e.name)) lauf(kind); }
-      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) raus.push(kind);
+      if (e.isDirectory()) {
+        if (!['node_modules', 'dist', 'test', 'scripts', 'public', 'docs', '.git'].includes(e.name)) lauf(kind);
+      } else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) raus.push(kind);
     }
   };
   lauf('');
@@ -541,12 +680,15 @@ module.exports.alleQuellen = alleQuellen;
  * @param {string} rel Pfad relativ zu ROOT, z. B. 'src/sets/setMove.ts' */
 function dienstQuelle(rel) {
   const s = fs.readFileSync(path.join(ROOT, rel), 'utf8');
-  const repos = new Set([...ohneKommentare(s).matchAll(/(?:from\s+|import\(\s*|require\(\s*)['"](\.[^'"]*repository[^'"]*)['"]/g)]
-    .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''))
-    .map(z => fs.existsSync(path.join(ROOT, z + '.ts')) ? z + '.ts' : z + '/index.ts'));
+  const repos = new Set(
+    [...ohneKommentare(s).matchAll(/(?:from\s+|import\(\s*|require\(\s*)['"](\.[^'"]*repository[^'"]*)['"]/g)]
+      .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''))
+      .map(z => (fs.existsSync(path.join(ROOT, z + '.ts')) ? z + '.ts' : z + '/index.ts')),
+  );
   // Der Katalog bindet seine Repositories in einer Fabrik (src/katalog/bereich.ts).
   for (const m of ohneKommentare(s).matchAll(/\bkatalog\(\)\.(\w+)\./g))
-    if (fs.existsSync(path.join(ROOT, `src/katalog/repository/${m[1]}.ts`))) repos.add(`src/katalog/repository/${m[1]}.ts`);
+    if (fs.existsSync(path.join(ROOT, `src/katalog/repository/${m[1]}.ts`)))
+      repos.add(`src/katalog/repository/${m[1]}.ts`);
   // Die übrigen Bereiche ebenso (src/<b>/bereich.ts, Zugriff über <b>Bereich()).
   for (const m of ohneKommentare(s).matchAll(/\b(\w+)Bereich\(\)\.(\w+)\./g)) {
     const fabrik = path.join(ROOT, `src/${m[1]}/bereich.ts`);
@@ -562,19 +704,32 @@ module.exports.dienstQuelle = dienstQuelle;
  *  Text: für Prüfungen, die nicht an der Datei hängen sollen, in der eine
  *  Funktion gerade steht. */
 function frontendQuelle() {
-  const path = require('path'), fs = require('fs');
+  const path = require('node:path'),
+    fs = require('node:fs');
   const pub = path.join(__dirname, '..', '..', 'public');
-  return [...fs.readdirSync(path.join(pub, 'js')).filter(f => istAppModul(f)).sort().map(f => path.join(pub, 'js', f)),
-          path.join(pub, 'i18n.js')].map(f => fs.readFileSync(f, 'utf8')).join('\n');
+  return [
+    ...fs
+      .readdirSync(path.join(pub, 'js'))
+      .filter(f => istAppModul(f))
+      .sort()
+      .map(f => path.join(pub, 'js', f)),
+    path.join(pub, 'i18n.js'),
+  ]
+    .map(f => fs.readFileSync(f, 'utf8'))
+    .join('\n');
 }
 module.exports.frontendQuelle = frontendQuelle;
 
 /** Die Anmelderouten: routes/auth.ts setzt sie aus routes/auth/*.ts zusammen. */
 function anmeldeQuelle() {
-  const teile = fs.readdirSync(path.join(ROOT, 'routes', 'auth')).filter(n => n.endsWith('.ts')).sort();
+  const teile = fs
+    .readdirSync(path.join(ROOT, 'routes', 'auth'))
+    .filter(n => n.endsWith('.ts'))
+    .sort();
   // Die Abläufe nach der Prüfung stehen seit dem 09.11.2026 in src/konto/anmeldungAblauf.ts.
   return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`), 'src/konto/anmeldungAblauf.ts']
-    .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+    .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))
+    .join('\n');
 }
 module.exports.anmeldeQuelle = anmeldeQuelle;
 

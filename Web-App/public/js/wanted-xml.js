@@ -72,7 +72,11 @@ async function wantedXmlGewaehlt() {
   // Während ein Import läuft, keine neue Datei annehmen: Sie würde _datei mitten im laufenden Schreiben
   // austauschen. Der Knopf daneben lässt sich sperren, dieser hier ist ein <label> um ein verstecktes Feld —
   // er wird nicht grau, also wird die Eingabe hier abgewiesen.
-  if (_laeuft) { toast(tRaw('import.running'), 'info'); el.value = ''; return; }
+  if (_laeuft) {
+    toast(tRaw('import.running'), 'info');
+    el.value = '';
+    return;
+  }
   _datei = el.files[0];
   // Das Feld leeren: Sonst löst die GLEICHE Datei beim zweiten Mal kein change-Ereignis aus, und der Dialog
   // ginge nicht wieder auf.
@@ -84,17 +88,23 @@ async function wantedXmlGewaehlt() {
 
 function wantedXmlSchliessen() {
   G('wanted-xml-modal').classList.remove('open');
-  _datei = null; _bericht = null; _korrekturen = new Map();
+  _datei = null;
+  _bericht = null;
+  _korrekturen = new Map();
   // Ohne Datei und ohne Bericht sind beide Knöpfe tot — beim nächsten Öffnen schaltet die Vorschau sie wieder
   // frei.
   knoepfeStand();
 }
 
 /** Nochmal lesen — z. B. nachdem „über Rebrickable nachfragen" gesetzt wurde. */
-async function wantedXmlNeuLesen() { await lies(false); }
+async function wantedXmlNeuLesen() {
+  await lies(false);
+}
 
 /** Jetzt wirklich schreiben. */
-async function wantedXmlSchreiben() { await lies(true); }
+async function wantedXmlSchreiben() {
+  await lies(true);
+}
 
 /**
  * Der eine Weg zum Server, für beide Schritte.
@@ -126,8 +136,11 @@ async function lies(schreiben) {
 function zeichneFortschritt(stand) {
   const box = G('wanted-xml-fortschritt');
   if (!box) return;
-  if (!stand || !stand.gesamt) { box.style.display = 'none'; return; }
-  const anteil = Math.max(0, Math.min(100, Math.round(stand.fertig / stand.gesamt * 100)));
+  if (!stand?.gesamt) {
+    box.style.display = 'none';
+    return;
+  }
+  const anteil = Math.max(0, Math.min(100, Math.round((stand.fertig / stand.gesamt) * 100)));
   box.style.display = '';
   const balken = G('wanted-xml-balken');
   if (balken) balken.style.width = anteil + '%';
@@ -137,9 +150,10 @@ function zeichneFortschritt(stand) {
   if (txt) {
     // tRaw und nicht t: Das Ziel ist textContent, und t() maskiert für HTML — die Maskierung stünde als
     // Zeichenfolge da (test/frontend-escaping.test.js).
-    txt.textContent = tRaw(
-      stand.phase === 'rebrickable' ? 'wanted.progress_rb' : 'wanted.progress_write',
-      { done: stand.fertig, total: stand.gesamt });
+    txt.textContent = tRaw(stand.phase === 'rebrickable' ? 'wanted.progress_rb' : 'wanted.progress_write', {
+      done: stand.fertig,
+      total: stand.gesamt,
+    });
   }
 }
 
@@ -167,12 +181,25 @@ async function liesStrom(r) {
     for (const z of zeilen) {
       if (!z.trim()) continue;
       let o;
-      try { o = JSON.parse(z); } catch { continue; }
-      if (o.fortschritt) { zeichneFortschritt(o.fortschritt); continue; }
+      try {
+        o = JSON.parse(z);
+      } catch {
+        continue;
+      }
+      if (o.fortschritt) {
+        zeichneFortschritt(o.fortschritt);
+        continue;
+      }
       letzte = o;
     }
   }
-  if (rest.trim()) { try { letzte = JSON.parse(rest); } catch { /* unvollständig */ } }
+  if (rest.trim()) {
+    try {
+      letzte = JSON.parse(rest);
+    } catch {
+      /* unvollständig */
+    }
+  }
   return letzte ?? {};
 }
 
@@ -191,12 +218,17 @@ async function liesWirklich(schreiben) {
   if (schreiben && _korrekturen.size) {
     // Der Index reist MIT: Eine Liste darf denselben Posten zweimal enthalten, und ein Schlüssel aus Nummer
     // und Farbe träfe dann beide. Art und Nummer sind die Gegenprobe des Servers.
-    fd.append('korrekturen', JSON.stringify([..._korrekturen.entries()].map(([index, k]) => ({
-      index: Number(index),
-      blId: _bericht?.posten?.[index]?.blId ?? '',
-      art:  _bericht?.posten?.[index]?.art  ?? 'part',
-      ...k,
-    }))));
+    fd.append(
+      'korrekturen',
+      JSON.stringify(
+        [..._korrekturen.entries()].map(([index, k]) => ({
+          index: Number(index),
+          blId: _bericht?.posten?.[index]?.blId ?? '',
+          art: _bericht?.posten?.[index]?.art ?? 'part',
+          ...k,
+        })),
+      ),
+    );
   }
   const p = new URLSearchParams();
   if (schreiben) p.set('schreiben', '1');
@@ -209,7 +241,9 @@ async function liesWirklich(schreiben) {
   try {
     const r = await apiRoh('POST', `/v1/wanted-list/import/xml?${p}`, { body: fd });
     d = await liesStrom(r);
-  } catch { d = {}; }
+  } catch {
+    d = {};
+  }
   zeichneFortschritt(null);
   if (!d?.success) {
     if (ber) ber.textContent = '';
@@ -222,14 +256,16 @@ async function liesWirklich(schreiben) {
   zeichneBericht(bericht);
   zeichneTabelle(bericht);
   if (schreiben) {
-    toast(tRaw('import.summary', { added: d.angelegt, updated: d.aufgestockt, errors: d.fehler }),
-      d.fehler ? 'info' : 'success');
+    toast(
+      tRaw('import.summary', { added: d.angelegt, updated: d.aufgestockt, errors: d.fehler }),
+      d.fehler ? 'info' : 'success',
+    );
     // Was neu geladen wird, hängt daran, WAS die Liste enthielt — und das weiss der Bericht besser als der
     // Knopf, aus dem sie kam: Eine Wanted-Liste darf Teile, Figuren UND Sets gemischt enthalten.
     const arten = new Set((d.posten || []).map(x => x.art));
     if (arten.has('part')) loadManualParts().catch(() => {});
-    if (arten.has('fig'))  loadManualFigsTable().catch(() => {});
-    if (arten.has('set'))  loadGallery().catch(() => {});
+    if (arten.has('fig')) loadManualFigsTable().catch(() => {});
+    if (arten.has('set')) loadGallery().catch(() => {});
     _datei = null;
     _korrekturen = new Map();
   }
@@ -242,12 +278,14 @@ function zeichneBericht(d) {
   if (!el) return;
   // Die Stufen EINZELN und mit Worten statt Farben: Marco sieht Rot und Grün schlecht, und „wahrscheinlich"
   // ist eine Aussage, die dastehen muss und nicht angedeutet werden darf.
-  const stufe = (/** @type {string} */ k, /** @type {string} */ text) => (d.stufen?.[k]
-    ? html`<div>• ${text}: <strong>${d.stufen[k]}</strong></div>` : '');
+  const stufe = (/** @type {string} */ k, /** @type {string} */ text) =>
+    d.stufen?.[k] ? html`<div>• ${text}: <strong>${d.stufen[k]}</strong></div>` : '';
   G('wanted-xml-sub').textContent = _datei?.name || '';
   // Der Knopfzustand kommt aus knoepfeStand() — siehe die Begründung dort.
   knoepfeStand();
-  setzeHtml(el, html`
+  setzeHtml(
+    el,
+    html`
     <div data-stil="border:1px solid var(--bdr);border-radius:8px;padding:.6rem">
       <div><strong>${d.gelesen}</strong> ${tRaw('settings.wanted_read')}${d.vorschau ? html` — ${tRaw('settings.wanted_preview_only')}` : ''}</div>
       ${stufe('zuordnung', tRaw('settings.wanted_s1'))}
@@ -257,13 +295,20 @@ function zeichneBericht(d) {
       ${stufe('korrigiert', tRaw('wanted.s_corrected'))}
       ${d.offen?.length ? html`<div>${ico('warnung')} <strong>${d.offen.length}</strong> ${tRaw('settings.wanted_open')}</div>` : ''}
       ${d.farbeOffen ? html`<div>${ico('warnung')} <strong>${d.farbeOffen}</strong> ${tRaw('settings.wanted_color_open')}</div>` : ''}
-      ${Object.keys(d.fremdeArten || {}).length ? html`<div>${ico('warnung')} ${tRaw('settings.wanted_other_kinds')}: ${Object.entries(d.fremdeArten ?? {}).map(([k, n]) => `${k}=${n}`).join(', ')}</div>` : ''}
+      ${
+        Object.keys(d.fremdeArten || {}).length
+          ? html`<div>${ico('warnung')} ${tRaw('settings.wanted_other_kinds')}: ${Object.entries(d.fremdeArten ?? {})
+              .map(([k, n]) => `${k}=${n}`)
+              .join(', ')}</div>`
+          : ''
+      }
       ${d.rebrickable ? html`<div>${tRaw('settings.wanted_rb_asked')}: ${d.rebrickable.gefragt} → ${d.rebrickable.gefunden}</div>` : ''}
       ${d.rebrickable?.abgebrochen ? html`<div>${ico('warnung')} ${tRaw(RB_ABBRUCH[d.rebrickable.abgebrochen])}</div>` : ''}
       ${d.korrekturen?.abgewiesen?.length ? html`<div>${ico('warnung')} <strong>${d.korrekturen.abgewiesen.length}</strong> ${tRaw('wanted.corrections_rejected')}</div>` : ''}
       ${d.abgebrochen ? html`<div>${ico('warnung')} ${tRaw('wanted.cancelled')}</div>` : ''}
       ${!d.vorschau ? html`<div data-stil="margin-top:.4rem"><strong>${d.angelegt}</strong> ${tRaw('settings.wanted_written')}${d.aufgestockt ? html`, ${d.aufgestockt} ${tRaw('wanted.topped_up')}` : ''}${d.fehler ? html`, ${d.fehler} ${tRaw('settings.wanted_errors')}` : ''}</div>` : ''}
-    </div>`);
+    </div>`,
+  );
 }
 
 /** Was in einer Zeile steht. Siehe die Begründung an PostenErgebnis. */
@@ -279,19 +324,16 @@ function zeile(p, i) {
   // Der Ausgang in Worten, nicht nur als Farbe. In der Vorschau „wird angelegt“, nach dem Import „angelegt“:
   // Sonst stand nach dem Schreiben in jeder Zeile noch die Zukunftsform.
   const kuenftig = !!_bericht?.vorschau;
-  const ausgang = esc(tRaw(
-    p.ausgang === 'angelegt' && !kuenftig ? 'wanted.out_angelegt_fertig'
-                                          : `wanted.out_${p.ausgang}`) || p.ausgang);
+  const ausgang = esc(
+    tRaw(p.ausgang === 'angelegt' && !kuenftig ? 'wanted.out_angelegt_fertig' : `wanted.out_${p.ausgang}`) || p.ausgang,
+  );
   // Der Grund in der Sprache des Betrachters. `grund` vom Server ist ein deutscher Satz — richtig fürs
   // Protokoll, falsch in einer englischen Tabelle (genau so am laufenden Server gesehen). Fehlt die Kennung
   // (beim Ausgang 'fehler' steht dort die Meldung der Ausnahme), bleibt der Satz.
-  const grund = p.grundCode
-    ? t(`wanted.grund_${p.grundCode}`, { farbe: p.blFarbe })
-    : (p.grund ? esc(p.grund) : '');
+  const grund = p.grundCode ? t(`wanted.grund_${p.grundCode}`, { farbe: p.blFarbe }) : p.grund ? esc(p.grund) : '';
   // Der Zustand, der angelegt wird: aus der Datei, sonst der Standard des Kontos — mit dem Zusatz, dass er
   // von dort stammt. Ohne Zusatz läse sich „Gebraucht“ wie eine Angabe aus der Datei.
-  const zustandWert = p.zustand === 'N' || p.zustand === 'U'
-    ? p.zustand : (_bericht?.standardZustand || null);
+  const zustandWert = p.zustand === 'N' || p.zustand === 'U' ? p.zustand : _bericht?.standardZustand || null;
   const ausStandard = p.zustand !== 'N' && p.zustand !== 'U';
   const zustandZelle = zustandWert
     ? html`<span class="cond-badge ${zustandWert === 'U' ? 'cond-used' : 'cond-new'}">${tRaw(zustandWert === 'U' ? 'common.condition_used' : 'common.condition_new')}</span>${ausStandard ? html`<div data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('wanted.cond_default')}</div>` : ''}`
@@ -302,7 +344,13 @@ function zeile(p, i) {
   // Korrektur — anders als bei den leeren Korrekturfeldern rechts, wo leer „nicht angefasst“ heisst.
   // Jedes Feld nennt Spalte und Posten: Ein Vorleser hörte sonst „Drehfeld 1“ ohne Bezug zur Zeile.
   const id = p.blId;
-  const feld = (/** @type {string} */ name, /** @type {unknown} */ wert, extra = '', breit = 72, schluessel = 'wanted.feld_menge') =>
+  const feld = (
+    /** @type {string} */ name,
+    /** @type {unknown} */ wert,
+    extra = '',
+    breit = 72,
+    schluessel = 'wanted.feld_menge',
+  ) =>
     html`<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}" aria-label="${tRaw(schluessel, { id })}"
        value="${wert}" ${ungeprueft(extra)}
        data-breite-px="${breit}"
@@ -311,8 +359,13 @@ function zeile(p, i) {
   // Der Preis je Stück. Leer heisst „keiner" — dann holt der Import den Marktpreis, wie bei MAXPRICE=-1 in
   // der Datei.
   const preisWert = korr.kaufpreis !== undefined ? (korr.kaufpreis ?? '') : (p.maxPreis ?? '');
-  const preisZelle = feld('kaufpreis', preisWert,
-    `type="number" min="0" step="0.0001" placeholder="${esc(tRaw('wanted.price_ph'))}"`, 96, 'wanted.feld_preis');
+  const preisZelle = feld(
+    'kaufpreis',
+    preisWert,
+    `type="number" min="0" step="0.0001" placeholder="${esc(tRaw('wanted.price_ph'))}"`,
+    96,
+    'wanted.feld_preis',
+  );
   // Der Zustand als Auswahl mit DREI Möglichkeiten: Der leere Wert ist keine Lücke, sondern „Standard des
   // Kontos" — dieselbe Aussage wie CONDITION=X.
   const zustandJetzt = korr.zustand !== undefined ? (korr.zustand ?? '') : (p.zustand ?? '');
@@ -348,8 +401,13 @@ function zeichneTabelle(d) {
   const el = G('wanted-xml-tabelle');
   if (!el) return;
   const posten = d.posten || [];
-  if (!posten.length) { el.replaceChildren(); return; }
-  setzeHtml(el, html`<table class="dt" aria-label="${tRaw('wanted.preview_title')}" data-stil="font-size:var(--fs-2)"><thead><tr>
+  if (!posten.length) {
+    el.replaceChildren();
+    return;
+  }
+  setzeHtml(
+    el,
+    html`<table class="dt" aria-label="${tRaw('wanted.preview_title')}" data-stil="font-size:var(--fs-2)"><thead><tr>
       <th>${tRaw('col.image_th')}</th>
       <th>BrickLink</th>
       <th>${tRaw('col.name')}</th>
@@ -360,7 +418,8 @@ function zeichneTabelle(d) {
       <th>${tRaw('wanted.col_outcome')}</th>
       <th>${tRaw('wanted.col_rb_id')}</th>
       <th>${tRaw('wanted.col_set_color')}</th>
-    </tr></thead><tbody>${ungeprueft(posten.map(zeile).join(''))}</tbody></table>`);
+    </tr></thead><tbody>${ungeprueft(posten.map(zeile).join(''))}</tbody></table>`,
+  );
   fuelleFarbwahlen().catch(() => {});
 }
 
@@ -373,9 +432,12 @@ function zeichneTabelle(d) {
 async function fuelleFarbwahlen() {
   const farben = await loadBrickColors();
   if (!farben?.length) return;
-  const opts = farben.map(c =>
-    html`<option value="${c.id}" data-hex="${hexZiffern(c.hex)}">${colorName(c.name)}</option>`).join('');
-  for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (G('wanted-xml-tabelle').querySelectorAll('select[data-change="wantedKorrekturFarbe"]'))) {
+  const opts = farben
+    .map(c => html`<option value="${c.id}" data-hex="${hexZiffern(c.hex)}">${colorName(c.name)}</option>`)
+    .join('');
+  for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (
+    G('wanted-xml-tabelle').querySelectorAll('select[data-change="wantedKorrekturFarbe"]')
+  )) {
     const i = Number(sel.dataset.i);
     const gewaehlt = _korrekturen.get(i)?.rbFarbe;
     setzeHtml(sel, html`<option value="">${tRaw('wanted.keep')}</option>${ungeprueft(opts)}`);
@@ -392,7 +454,8 @@ function wantedKorrekturNummer() {
   const k = { ..._korrekturen.get(i) };
   // Leeres Feld heisst „nichts eintragen", nicht „Nummer löschen": Der Server unterscheidet `undefined`
   // (nicht angefasst) von `null` (ausdrücklich geleert), und hier ist das erste gemeint.
-  if (wert === '') delete k.rbId; else k.rbId = wert;
+  if (wert === '') delete k.rbId;
+  else k.rbId = wert;
   setzeKorrektur(i, k);
 }
 
@@ -402,7 +465,8 @@ function wantedKorrekturFarbe() {
   if (!el) return;
   const i = Number(el.dataset.i);
   const k = { ..._korrekturen.get(i) };
-  if (el.value === '') delete k.rbFarbe; else k.rbFarbe = parseInt(el.value, 10);
+  if (el.value === '') delete k.rbFarbe;
+  else k.rbFarbe = parseInt(el.value, 10);
   setzeKorrektur(i, k);
 }
 
@@ -426,11 +490,16 @@ function wantedKorrekturWert() {
     const m = parseInt(roh, 10);
     // Unbrauchbares nicht schicken: Der Server wiese die ganze Korrektur ab, und die Farbe daneben ginge mit
     // verloren. Das Feld zeigt stattdessen wieder, was gilt.
-    if (!Number.isFinite(m) || m < 1) { el.value = String(k.menge ?? p.menge); return; }
-    if (m === p.menge) delete k.menge; else k.menge = m;
+    if (!Number.isFinite(m) || m < 1) {
+      el.value = String(k.menge ?? p.menge);
+      return;
+    }
+    if (m === p.menge) delete k.menge;
+    else k.menge = m;
   } else if (name === 'zustand') {
     const w = roh === '' ? null : roh;
-    if (w === (p.zustand ?? null)) delete k.zustand; else k.zustand = w;
+    if (w === (p.zustand ?? null)) delete k.zustand;
+    else k.zustand = w;
   } else if (name === 'kaufpreis') {
     const alt = p.maxPreis ?? null;
     /** @type {number | null} */
@@ -444,7 +513,8 @@ function wantedKorrekturWert() {
       // 0 ist „keiner", wie MAXPRICE=-1 in der Datei.
       w = z > 0 ? z : null;
     }
-    if (w === alt) delete k.kaufpreis; else k.kaufpreis = w;
+    if (w === alt) delete k.kaufpreis;
+    else k.kaufpreis = w;
   } else return;
 
   setzeKorrektur(i, k);
@@ -464,8 +534,7 @@ function setzeKorrektur(i, k) {
   }
 }
 
-G('wanted-xml-modal')?.addEventListener('click',
-  e => e.target === e.currentTarget && wantedXmlSchliessen());
+G('wanted-xml-modal')?.addEventListener('click', e => e.target === e.currentTarget && wantedXmlSchliessen());
 
 // Das Symbol einmal hier an die drei Knöpfe hängen statt dreimal ins HTML. In ein eigenes <span> ohne
 // data-i18n: Die Übersetzung setzt textContent und würfe es beim Sprachwechsel hinaus.

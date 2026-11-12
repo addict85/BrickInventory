@@ -22,7 +22,7 @@ function normiereFingerabdruck(wert: unknown): string {
  * Fingerabdruck nagelt genau eines fest und ersetzt den Abgleich des Hostnamens. */
 async function getTransporter() {
   const host = await getSetting('smtp_host');
-  const port = parseInt((await getSetting('smtp_port')) || '587');
+  const port = parseInt((await getSetting('smtp_port')) || '587', 10);
   const user = await getSetting('smtp_user');
   const pass = await getSetting('smtp_pass');
   const secure = (await getSetting('smtp_secure')) === '1';

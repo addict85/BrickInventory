@@ -23,14 +23,19 @@ declare module 'express-session' {
 }
 
 declare global {
-
   namespace Express {
     interface Request {
       /**
        * Von der API-v1-Key-Middleware gesetzt: entweder der Session-Benutzer
        * oder der per X-Api-Key aufgelöste Benutzer (is_admin: Verwalterrecht dieses Zugangs).
        */
-      apiUser?: { user_id: number; is_admin: boolean; username?: string; created_at?: string | Date; muss_passwort_aendern?: boolean };
+      apiUser?: {
+        user_id: number;
+        is_admin: boolean;
+        username?: string;
+        created_at?: string | Date;
+        muss_passwort_aendern?: boolean;
+      };
       /** Von requireLoginOrToken gesetzt, wenn per Bearer-/Query-Token authentifiziert. */
       tokenUserId?: number;
       /** Warum ein vorgelegter Token nicht galt, wenn es mehr zu sagen gibt als „ungültig“. */
@@ -43,8 +48,6 @@ declare global {
   }
 }
 
-export {};
-
 /**
  * Request NACH requireToken/requireApiAdmin: `apiUser` ist dort gesetzt. Der
  * VertragsRouter gibt diesen Typ nur an Schritte hinter einem Wächter weiter,
@@ -53,6 +56,12 @@ export {};
  */
 declare global {
   type AuthedRequest = import('express').Request & {
-    apiUser: { user_id: number; is_admin: boolean; username?: string; created_at?: string | Date; muss_passwort_aendern?: boolean };
+    apiUser: {
+      user_id: number;
+      is_admin: boolean;
+      username?: string;
+      created_at?: string | Date;
+      muss_passwort_aendern?: boolean;
+    };
   };
 }

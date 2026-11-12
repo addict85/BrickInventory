@@ -1,7 +1,7 @@
 /** Aus den DATEIEN abgeleitet, nicht aus einer Zahl, die jemand setzen muss:
  * Eine vergessene Zahl liess den Browser alte Dateien zeigen. */
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /** Ohne Frist ein Dutzend `stat` je Seitenaufruf; zu lang, und ein Deploy ohne
  * Neustart zeigt minutenlang alte Adressen. */

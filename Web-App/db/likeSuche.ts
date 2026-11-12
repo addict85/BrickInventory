@@ -4,7 +4,7 @@
 export const LIKE_ESCAPE = ` ESCAPE '\\'`;
 
 export function likeWoertlich(text: string): string {
-  return text.replace(/[\\%_]/g, (z) => '\\' + z);
+  return text.replace(/[\\%_]/g, z => '\\' + z);
 }
 
 /** Das Muster für „enthält“, mit LIKE_ESCAPE hinter dem Vergleich zu benutzen. */

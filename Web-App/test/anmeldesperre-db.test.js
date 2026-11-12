@@ -24,10 +24,10 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
-const net    = require('node:net');
+const path = require('node:path');
+const net = require('node:net');
 const { spawn } = require('node:child_process');
 
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -42,16 +42,17 @@ const db = _req('db/database.js');
 const { proxyVertrauen } = _req('src/infra/proxyVertrauen.js');
 const { MAX_ATTEMPTS, wartezeitSekunden } = _req('src/konto/loginLimiter.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
-const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const NAME = `sperre_${process.pid}`, PASS = 'richtigesPasswort1';
+const NAME = `sperre_${process.pid}`,
+  PASS = 'richtigesPasswort1';
 const { warte } = require('./helpers/zeit');
 
 let UID = null;
 /** Schlüssel des Zählers je Konto (Name und E-Mail zählen gemeinsam). */
 const kontoSchluessel = () => `login-name|konto:${UID}`;
-const zaehlerLeeren = () => db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2',
-  [`%${NAME}%`, `%konto:${UID}`]);
+const zaehlerLeeren = () =>
+  db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [`%${NAME}%`, `%konto:${UID}`]);
 
 test.after(async () => {
   await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
@@ -60,16 +61,25 @@ test.after(async () => {
 });
 
 async function vorbereiten(t) {
-  try { await db.initSchema(); }
-  catch (e) {
-    keineDb(t, e); return false;
+  try {
+    await db.initSchema();
+  } catch (e) {
+    keineDb(t, e);
+    return false;
   }
   const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c);
+  } finally {
+    c.release();
+  }
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  UID = (await db.get(
-    'INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, $3, true, true) RETURNING id',
-    [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
+  UID = (
+    await db.get(
+      'INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, $3, true, true) RETURNING id',
+      [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)],
+    )
+  ).id;
   await zaehlerLeeren();
   return true;
 }
@@ -92,10 +102,27 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
   for (const nachbar of ['172.28.73.11', '172.28.73.1', '172.18.0.2', '127.0.0.1'])
     assert.equal(vertraut('172.28.73.10', nachbar), false, `nicht eingetragen und doch vertraut: ${nachbar}`);
   // Ganze Netze, Hop-Zahlen und Freibriefe verweigern den Start.
-  for (const falsch of ['docker', 'true', '1', '2', '172.16.0.0/12', '10.0.0.0/8', '0.0.0.0/0', '::/0',
-                        'fd00::/8', 'uniquelocal', 'proxy.example.org', '192.168.1.5/33', '172.28.73.10, docker'])
+  for (const falsch of [
+    'docker',
+    'true',
+    '1',
+    '2',
+    '172.16.0.0/12',
+    '10.0.0.0/8',
+    '0.0.0.0/0',
+    '::/0',
+    'fd00::/8',
+    'uniquelocal',
+    'proxy.example.org',
+    '192.168.1.5/33',
+    '172.28.73.10, docker',
+  ])
     assert.throws(() => proxyVertrauen(falsch), /TRUST_PROXY enthält/, `angenommen: ${falsch}`);
-  assert.deepEqual(proxyVertrauen('172.28.73.10, 192.168.1.0/24 fd00::7'), ['172.28.73.10', '192.168.1.0/24', 'fd00::7']);
+  assert.deepEqual(proxyVertrauen('172.28.73.10, 192.168.1.0/24 fd00::7'), [
+    '172.28.73.10',
+    '192.168.1.0/24',
+    'fd00::7',
+  ]);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
   // Rechner im Heimnetz geben ihre Adresse nicht selbst an.
@@ -107,30 +134,38 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
   assert.equal(vertraut('203.0.113.5', '127.0.0.1'), false);
 });
 
-test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, async (t) => {
-  if (!await vorbereiten(t)) return;
+test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, async t => {
+  if (!(await vorbereiten(t))) return;
   const app = express();
-  app.set('trust proxy', proxyVertrauen(undefined));   // Anfragen kommen von 127.0.0.1
+  app.set('trust proxy', proxyVertrauen(undefined)); // Anfragen kommen von 127.0.0.1
   app.use(express.json());
   app.use(AUTH, _req('routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const anmelden = async (password, ip) => (await fetch(`http://127.0.0.1:${srv.address().port}${AUTH}/login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
-    body: JSON.stringify({ username: NAME, password }),
-  })).status;
+  const anmelden = async (password, ip) =>
+    (
+      await fetch(`http://127.0.0.1:${srv.address().port}${AUTH}/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+        body: JSON.stringify({ username: NAME, password }),
+      })
+    ).status;
 
   // Je Adresse: nach MAX_ATTEMPTS ist für diese Adresse Schluss.
   for (let i = 0; i < MAX_ATTEMPTS; i++) assert.equal(await anmelden('falsch', '198.51.100.1'), 401);
   assert.equal(await anmelden(PASS, '198.51.100.1'), 429, 'keine Sperre je Adresse');
   // Je Konto: Ab MAX_ATTEMPTS Fehlversuchen wartet auch jede andere Adresse.
-  assert.equal(await anmelden(PASS, '198.51.100.2'), 429,
-    'mit wechselnden Adressen unbegrenzt raten — der Zähler je Konto fehlt');
+  assert.equal(
+    await anmelden(PASS, '198.51.100.2'),
+    429,
+    'mit wechselnden Adressen unbegrenzt raten — der Zähler je Konto fehlt',
+  );
   // Ist die Wartezeit um, geht es weiter — und sie verdoppelt sich.
-  const zurueck = (sek) => db.run(
-    `UPDATE rate_limit_attempts SET last_at = NOW() - make_interval(secs => $2) WHERE key = $1`,
-    [kontoSchluessel(), sek]);
+  const zurueck = sek =>
+    db.run(`UPDATE rate_limit_attempts SET last_at = NOW() - make_interval(secs => $2) WHERE key = $1`, [
+      kontoSchluessel(),
+      sek,
+    ]);
   assert.equal(wartezeitSekunden(MAX_ATTEMPTS), 1);
   assert.equal(wartezeitSekunden(MAX_ATTEMPTS + 1), 2);
   await zurueck(wartezeitSekunden(MAX_ATTEMPTS) + 0.5);
@@ -145,8 +180,8 @@ test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, asyn
   assert.equal(rest, undefined, 'erfolgreiche Anmeldung leert den Zähler je Konto nicht');
 });
 
-test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, async (t) => {
-  if (!await vorbereiten(t)) return;
+test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, async t => {
+  if (!(await vorbereiten(t))) return;
   await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%${NAME}%`]);
   const app = express();
   app.set('trust proxy', proxyVertrauen(undefined));
@@ -154,39 +189,70 @@ test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, asyn
   app.use(AUTH, _req('routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const anmelden = async (password, ip, name = NAME) => (await fetch(`http://127.0.0.1:${srv.address().port}${AUTH}/login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
-    body: JSON.stringify({ username: name, password }),
-  })).status;
+  const anmelden = async (password, ip, name = NAME) =>
+    (
+      await fetch(`http://127.0.0.1:${srv.address().port}${AUTH}/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+        body: JSON.stringify({ username: name, password }),
+      })
+    ).status;
 
   assert.equal(await anmelden(PASS, '198.51.100.7'), 200, 'Vorbedingung: der Inhaber war schon einmal da');
   // Ein Angreifer verteilt seine Fehlversuche — über Name UND E-Mail.
   for (let i = 0; i < MAX_ATTEMPTS; i++)
-    assert.equal(await anmelden('falsch', `203.0.113.${i + 1}`, i % 2 ? `${NAME}@example.org` : NAME), 401,
-      `Versuch ${i + 1}`);
-  assert.equal(await anmelden(PASS, '203.0.113.200'), 429,
-    'eine unbekannte Adresse wartet — Name und E-Mail zählen gemeinsam');
-  assert.equal(await anmelden(PASS, '198.51.100.7'), 200,
-    'der Inhaber kommt von seiner bekannten Adresse weiter herein');
+    assert.equal(
+      await anmelden('falsch', `203.0.113.${i + 1}`, i % 2 ? `${NAME}@example.org` : NAME),
+      401,
+      `Versuch ${i + 1}`,
+    );
+  assert.equal(
+    await anmelden(PASS, '203.0.113.200'),
+    429,
+    'eine unbekannte Adresse wartet — Name und E-Mail zählen gemeinsam',
+  );
+  assert.equal(
+    await anmelden(PASS, '198.51.100.7'),
+    200,
+    'der Inhaber kommt von seiner bekannten Adresse weiter herein',
+  );
 });
 
-test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concurrency: 1, timeout: 120_000 }, async (t) => {
-  if (!await vorbereiten(t)) return;
+test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concurrency: 1, timeout: 120_000 }, async t => {
+  if (!(await vorbereiten(t))) return;
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
-    await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
-                  ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`, [k]);
-  const port = await new Promise((auf) => {
-    const s = net.createServer().listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => auf(p)); });
+    await db.run(
+      `INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
+                  ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
+      [k],
+    );
+  const port = await new Promise(auf => {
+    const s = net.createServer().listen(0, '127.0.0.1', () => {
+      const p = s.address().port;
+      s.close(() => auf(p));
+    });
   });
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
-    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'sperre-test-geheimnis-lang-genug-1234',
-           PORT: String(port), NODE_ENV: 'production', TRUST_PROXY: 'false', DB_SUPERUSER_ERLAUBT: '1', APP_BASE_URL_FEHLT_OK: '1' },
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      DATABASE_URL: URL_DB,
+      SESSION_SECRET: 'sperre-test-geheimnis-lang-genug-1234',
+      PORT: String(port),
+      NODE_ENV: 'production',
+      TRUST_PROXY: 'false',
+      DB_SUPERUSER_ERLAUBT: '1',
+      APP_BASE_URL_FEHLT_OK: '1',
+    },
   });
   let log = '';
-  srv.stdout.on('data', d => { log += d; });
-  srv.stderr.on('data', d => { log += d; });
+  srv.stdout.on('data', d => {
+    log += d;
+  });
+  srv.stderr.on('data', d => {
+    log += d;
+  });
   t.after(async () => {
     srv.kill('SIGTERM');
     for (let i = 0; i < 40 && srv.exitCode === null && srv.signalCode === null; i++) await warte(100);
@@ -194,20 +260,29 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
   });
   const anmelden = async (password, ip) => {
     try {
-      return (await fetch(`http://127.0.0.1:${port}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
-        body: JSON.stringify({ username: NAME, password }),
-      })).status;
-    } catch { return 0; }
+      return (
+        await fetch(`http://127.0.0.1:${port}/api/v1/auth/login`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
+          body: JSON.stringify({ username: NAME, password }),
+        })
+      ).status;
+    } catch {
+      return 0;
+    }
   };
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(log); i++) await warte(250);
-  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
-  assert.equal((await fetch(`http://127.0.0.1:${port}/api/v1/`)).headers.get('x-powered-by'), null,
-    'Der Server verrät X-Powered-By');
+  for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++)
+    await warte(250);
+  assert.equal(
+    (await fetch(`http://127.0.0.1:${port}/api/v1/`)).headers.get('x-powered-by'),
+    null,
+    'Der Server verrät X-Powered-By',
+  );
 
   // Wechselnde X-Forwarded-For, aber derselbe Absender: Ohne Vertrauen zählt
   // alles auf 127.0.0.1, die Sperre greift nach MAX_ATTEMPTS.
-  for (let i = 0; i < MAX_ATTEMPTS; i++) assert.equal(await anmelden('falsch', `198.51.100.${i + 1}`), 401, log.slice(-1500));
+  for (let i = 0; i < MAX_ATTEMPTS; i++)
+    assert.equal(await anmelden('falsch', `198.51.100.${i + 1}`), 401, log.slice(-1500));
   assert.equal(await anmelden(PASS, '198.51.100.99'), 429, 'TRUST_PROXY=false wird nicht beachtet');
 });

@@ -5,7 +5,7 @@
  */
 
 /** @param {string} p */
-const gleichfoermig = (p) => p.replace(/\{\w+\}|:\w+/g, '{}');
+const gleichfoermig = p => p.replace(/\{\w+\}|:\w+/g, '{}');
 
 /**
  * @param {(rel: string) => any} _req  buildAndRequire() der Testdatei

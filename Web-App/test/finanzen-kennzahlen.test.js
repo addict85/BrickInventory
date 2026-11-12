@@ -23,33 +23,100 @@ const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 // Beide Schreibweisen: de-DE (1.097,93) und de-CH (1’097.93).
-const zahl = s => s.replace(/[’'’\s]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.');
+const zahl = s =>
+  s
+    .replace(/[’'’\s]/g, '')
+    .replace(/\.(?=\d{3}\b)/g, '')
+    .replace(',', '.');
 
 function antworten({ mitPreis }) {
   const setPreis = mitPreis ? 700 : 0;
   return {
-    '/v1/finance/valuation': { success: true, currency: 'EUR',
+    '/v1/finance/valuation': {
+      success: true,
+      currency: 'EUR',
       totals: { min: mitPreis ? '650' : '0', avg: String(setPreis), max: mitPreis ? '760' : '0' },
       sets: [
-        { set_number: '10294-1', name: 'Titanic', quantity: 1, purchase_price: 629, avg_price: setPreis, total_avg: String(setPreis), wert_gesamt: setPreis,
-          acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 629, avg_price: setPreis || null, wert_gesamt: setPreis }],
-          ...(mitPreis ? {} : { error: '10294-1 — kein BrickLink-Preis gefunden' }) },
-        { set_number: '42143-1', name: 'Ferrari', quantity: 1, purchase_price: 399, avg_price: 0, total_avg: '0', wert_gesamt: 0,
-          acquisitions: [{ id: 2, condition: 'N', quantity: 1, purchase_price: 399, wert_gesamt: 0 }], error: 'kein Preis' },
-      ] },
-    '/v1/finance/parts-valuation': { success: true, currency: 'EUR', total_value: '0',
-      parts: [{ part_number: '3001', part_name: 'Brick 2 x 4', color_name: 'Red', quantity: 7, purchase_price: 9.99, avg_price: 0,
-                acquisitions: [{ id: 3, condition: 'U', quantity: 7, purchase_price: 9.99 }] }] },
-    '/v1/finance/minifigs-valuation': { success: true, currency: 'EUR', total_value: '0',
-      figs: [{ fig_number: 'fig-1', fig_name: 'Chewbacca', quantity: 1, avg_price: 0, acquisitions: [] }] },
-    '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [],
-      totals: { purchase: '1097.93', sets_purchase: '1028.00', parts_purchase: '69.93', figs_purchase: '0.00',
-                grand_total: String(setPreis), pnl_pct: mitPreis ? '11.3' : null, pnl_prozent: mitPreis ? 11.3 : null,
-                pnl_purchase: mitPreis ? '629.00' : '0.00', pnl_current: mitPreis ? '700.00' : '0.00',
-                positionen: 4, positionen_bewertet: mitPreis ? 1 : 0, positionen_ohne_marktpreis: mitPreis ? 3 : 4,
-                positionen_ohne_kaufpreis: 0, basis_einstand: mitPreis ? '629.00' : '0.00',
-                basis_marktwert: mitPreis ? '700.00' : '0.00', basis_guv_betrag: mitPreis ? '71.00' : '0.00',
-                ohne_marktpreis_einstand: mitPreis ? '468.93' : '1097.93', ohne_kaufpreis_marktwert: '0.00' } },
+        {
+          set_number: '10294-1',
+          name: 'Titanic',
+          quantity: 1,
+          purchase_price: 629,
+          avg_price: setPreis,
+          total_avg: String(setPreis),
+          wert_gesamt: setPreis,
+          acquisitions: [
+            {
+              id: 1,
+              condition: 'N',
+              quantity: 1,
+              purchase_price: 629,
+              avg_price: setPreis || null,
+              wert_gesamt: setPreis,
+            },
+          ],
+          ...(mitPreis ? {} : { error: '10294-1 — kein BrickLink-Preis gefunden' }),
+        },
+        {
+          set_number: '42143-1',
+          name: 'Ferrari',
+          quantity: 1,
+          purchase_price: 399,
+          avg_price: 0,
+          total_avg: '0',
+          wert_gesamt: 0,
+          acquisitions: [{ id: 2, condition: 'N', quantity: 1, purchase_price: 399, wert_gesamt: 0 }],
+          error: 'kein Preis',
+        },
+      ],
+    },
+    '/v1/finance/parts-valuation': {
+      success: true,
+      currency: 'EUR',
+      total_value: '0',
+      parts: [
+        {
+          part_number: '3001',
+          part_name: 'Brick 2 x 4',
+          color_name: 'Red',
+          quantity: 7,
+          purchase_price: 9.99,
+          avg_price: 0,
+          acquisitions: [{ id: 3, condition: 'U', quantity: 7, purchase_price: 9.99 }],
+        },
+      ],
+    },
+    '/v1/finance/minifigs-valuation': {
+      success: true,
+      currency: 'EUR',
+      total_value: '0',
+      figs: [{ fig_number: 'fig-1', fig_name: 'Chewbacca', quantity: 1, avg_price: 0, acquisitions: [] }],
+    },
+    '/v1/finance/pnl': {
+      success: true,
+      currency: 'EUR',
+      sets: [],
+      totals: {
+        purchase: '1097.93',
+        sets_purchase: '1028.00',
+        parts_purchase: '69.93',
+        figs_purchase: '0.00',
+        grand_total: String(setPreis),
+        pnl_pct: mitPreis ? '11.3' : null,
+        pnl_prozent: mitPreis ? 11.3 : null,
+        pnl_purchase: mitPreis ? '629.00' : '0.00',
+        pnl_current: mitPreis ? '700.00' : '0.00',
+        positionen: 4,
+        positionen_bewertet: mitPreis ? 1 : 0,
+        positionen_ohne_marktpreis: mitPreis ? 3 : 4,
+        positionen_ohne_kaufpreis: 0,
+        basis_einstand: mitPreis ? '629.00' : '0.00',
+        basis_marktwert: mitPreis ? '700.00' : '0.00',
+        basis_guv_betrag: mitPreis ? '71.00' : '0.00',
+        ohne_marktpreis_einstand: mitPreis ? '468.93' : '1097.93',
+        ohne_kaufpreis_marktwert: '0.00',
+      },
+    },
   };
 }
 
@@ -73,7 +140,9 @@ test('ohne Marktpreise: Einstand oben und in den Summen, Hinweis statt „—“
     assert.match(zahl(text(setsFuss)), /1028\.00/, 'Die Summenzeile der Sets zeigt den Einstand nicht');
     const summe = d.querySelector('.dt-summe tfoot');
     assert.match(zahl(text(summe)), /1097\.93/, 'Die Gesamtsumme zeigt den Einstand nicht');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('mit Marktpreisen: Gesamtwert und G&V', async () => {
@@ -85,10 +154,15 @@ test('mit Marktpreisen: Gesamtwert und G&V', async () => {
     assert.match(text(d.getElementById('fin-total-pnl')), /11[.,]3/);
     // Betrag aus denselben Posten wie die Prozentzahl: 700 − 629, nicht 700 − 1097.93.
     // Dahinter steht, wogegen gerechnet ist; das Prozent im Diagramm rechnet gegen den Zeitraum.
-    assert.match(zahl(text(d.getElementById('fin-pnl-sub'))), /^\+[^0-9]*71\.00[^0-9]*$/,
-      `Betrag passt nicht zur Prozentzahl: ${text(d.getElementById('fin-pnl-sub'))}`);
+    assert.match(
+      zahl(text(d.getElementById('fin-pnl-sub'))),
+      /^\+[^0-9]*71\.00[^0-9]*$/,
+      `Betrag passt nicht zur Prozentzahl: ${text(d.getElementById('fin-pnl-sub'))}`,
+    );
     assert.match(text(d.getElementById('fin-pnl-sub')), /zum Kaufpreis/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('nichts erfasst: ein Leerzustand, kein „Preis fehlt“', async () => {
@@ -99,5 +173,7 @@ test('nichts erfasst: ein Leerzustand, kein „Preis fehlt“', async () => {
     const finanzen = text(o.d.getElementById('tab-finance'));
     assert.equal((finanzen.match(/fehlt/gi) || []).length, 0, `meldet „fehlt“: ${finanzen.slice(0, 300)}`);
     assert.match(text(o.d.querySelector('#fin-tbl .leer')), /Noch nichts zu bewerten/);
-  } finally { o.w.close(); }
+  } finally {
+    o.w.close();
+  }
 });

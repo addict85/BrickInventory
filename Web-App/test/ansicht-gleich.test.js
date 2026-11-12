@@ -18,9 +18,14 @@ test('dieselben Ansichtsknöpfe in allen drei Reitern', async () => {
       assert.ok(gruppe, `${tab}: keine Ansichtsknöpfe`);
       assert.equal(gruppe.querySelectorAll('button.vb[aria-pressed]').length, 2, `${tab}: nicht Karten und Tabelle`);
     }
-    assert.equal(d.querySelectorAll('select#parts-view:not(.vh), select#figs-view:not(.vh)').length, 0,
-      'ein sichtbares Auswahlfeld für die Ansicht ist geblieben');
-  } finally { w.close(); }
+    assert.equal(
+      d.querySelectorAll('select#parts-view:not(.vh), select#figs-view:not(.vh)').length,
+      0,
+      'ein sichtbares Auswahlfeld für die Ansicht ist geblieben',
+    );
+  } finally {
+    w.close();
+  }
 });
 
 test('Teile: die Tabelle lädt die Set-Zuordnung', async () => {
@@ -32,10 +37,14 @@ test('Teile: die Tabelle lädt die Set-Zuordnung', async () => {
     const knopf = d.querySelector('[data-click="ansichtWaehlen"][data-arg="parts-view"][data-arg2="table"]');
     knopf.click();
     await ruhig();
-    assert.ok(aufrufe.slice(vorher).some(a => /\/v1\/parts\?.*with_sets=1/.test(a.url)),
-      'der Wechsel hat nicht neu geladen');
+    assert.ok(
+      aufrufe.slice(vorher).some(a => /\/v1\/parts\?.*with_sets=1/.test(a.url)),
+      'der Wechsel hat nicht neu geladen',
+    );
     assert.equal(d.getElementById('parts-view').value, 'table');
     assert.equal(knopf.getAttribute('aria-pressed'), 'true');
     assert.equal(d.querySelector('[data-arg="parts-view"][data-arg2="grid"]').getAttribute('aria-pressed'), 'false');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

@@ -1,6 +1,14 @@
 import type { z } from 'zod';
 import { konfig } from '../infra/konfig';
-import { type SetCsvNutzlast, emitJobStatus, jobUpdate, setzeImportFort, type ImportErgebnis, AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
+import {
+  type SetCsvNutzlast,
+  emitJobStatus,
+  jobUpdate,
+  setzeImportFort,
+  type ImportErgebnis,
+  AuftragUnterbrochen,
+  type AuftragsKontext,
+} from '../auftraege';
 import { addSetWithDate, nacharbeitEinstellen } from './erfassen';
 import { fehlertext } from '../infra/fehler';
 import { Fachfehler, fehlerText, type FehlerCode } from '../infra/fehlerTexte';
@@ -18,10 +26,16 @@ async function importiereZeile(sk: SetsKontext, z: CsvZeile, userId: number): Pr
   const wo = z.zeile ? { zeile: z.zeile } : {};
   if (z.fehler) {
     const vars = z.fehler.wert !== undefined ? { wert: z.fehler.wert } : undefined;
-    return { set_number: z.sn, ...wo, success: false, code: z.fehler.code, ...(vars ? { vars } : {}),
-             error: fehlerText(z.fehler.code, 'de', vars) };
+    return {
+      set_number: z.sn,
+      ...wo,
+      success: false,
+      code: z.fehler.code,
+      ...(vars ? { vars } : {}),
+      error: fehlerText(z.fehler.code, 'de', vars),
+    };
   }
-  return { ...await bucheZeile(sk, z, userId), ...wo };
+  return { ...(await bucheZeile(sk, z, userId)), ...wo };
 }
 
 async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise<ImportErgebnis> {
@@ -30,11 +44,18 @@ async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise
     try {
       const r = await Promise.race([
         addSetWithDate(sk, z.sn, z.qty, userId, z.purchasePrice, z.condition, z.acquiredAt),
-        new Promise<never>((_, rej) => { wecker = setTimeout(() => rej(new Error('Timeout')), zeilenFrist()); }),
+        new Promise<never>((_, rej) => {
+          wecker = setTimeout(() => rej(new Error('Timeout')), zeilenFrist());
+        }),
       ]).finally(() => clearTimeout(wecker));
       await nacharbeitEinstellen(sk, r.set_number ?? z.sn, userId, 'csv');
-      return { set_number: z.sn, success: true, action: r.action, menge: z.qty,
-               ...('katalog_offen' in r && r.katalog_offen ? { katalog_offen: true } : {}) };
+      return {
+        set_number: z.sn,
+        success: true,
+        action: r.action,
+        menge: z.qty,
+        ...('katalog_offen' in r && r.katalog_offen ? { katalog_offen: true } : {}),
+      };
     } catch (e) {
       const msg = fehlertext(e) || 'Unbekannter Fehler';
       const isTimeout = msg.includes('Timeout');
@@ -48,39 +69,60 @@ async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise
       }
       const isWarning = isTimeout || isRateLimit;
       console[isWarning ? 'warn' : 'error'](`CSV: ${z.sn} ${isWarning ? 'WARNING' : 'FAILED'}: ${msg}`);
-      const code: FehlerCode | undefined = e instanceof Fachfehler ? e.code
-        : isTimeout ? 'import_zeitueberschreitung' : isRateLimit ? 'import_kontingent' : undefined;
-      return { set_number: z.sn, success: false, error: msg, isWarning,
-               ...(code ? { code, ...(e instanceof Fachfehler && e.vars ? { vars: e.vars } : {}) } : {}) };
+      const code: FehlerCode | undefined =
+        e instanceof Fachfehler
+          ? e.code
+          : isTimeout
+            ? 'import_zeitueberschreitung'
+            : isRateLimit
+              ? 'import_kontingent'
+              : undefined;
+      return {
+        set_number: z.sn,
+        success: false,
+        error: msg,
+        isWarning,
+        ...(code ? { code, ...(e instanceof Fachfehler && e.vars ? { vars: e.vars } : {}) } : {}),
+      };
     }
   }
 }
 
 async function fuehreCsvImportAus(sk: SetsKontext, n: CsvNutzlast, k: AuftragsKontext): Promise<void> {
-  const userId = Number(n.user_id), lauf = String(n.lauf), rows = n.rows ?? [];
+  const userId = Number(n.user_id),
+    lauf = String(n.lauf),
+    rows = n.rows ?? [];
   const stand = await setzeImportFort(userId, lauf);
   if (!stand) return;
   const results = stand.results;
-  const schreibe = () => jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
+  const schreibe = () =>
+    jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
 
   if (stand.current && results.length < rows.length) {
-    results.push({ set_number: rows[results.length]!.sn, success: false, isWarning: true,
-                   code: 'import_zeile_unterbrochen', error: fehlerText('import_zeile_unterbrochen', 'de') });
-    if (!await schreibe()) return;
+    results.push({
+      set_number: rows[results.length]!.sn,
+      success: false,
+      isWarning: true,
+      code: 'import_zeile_unterbrochen',
+      error: fehlerText('import_zeile_unterbrochen', 'de'),
+    });
+    if (!(await schreibe())) return;
   }
   for (let i = results.length; i < rows.length; i++) {
     if (k.beendet) throw new AuftragUnterbrochen();
     const z = rows[i]!;
     // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde Zeilen zu schreiben.
-    if (!await k.lebenszeichen() || !await jobUpdate(userId, { current: z.sn }, lauf)) return;
+    if (!(await k.lebenszeichen()) || !(await jobUpdate(userId, { current: z.sn }, lauf))) return;
     await emitJobStatus(userId);
     results.push(await importiereZeile(sk, z, userId));
-    if (!await schreibe()) return;
+    if (!(await schreibe())) return;
     await emitJobStatus(userId);
   }
   await jobUpdate(userId, { status: 'done', current: null }, lauf);
   await emitJobStatus(userId);
-  console.log(`CSV import done: ${results.filter(r => r.success).length} ok, ${results.filter(r => !r.success).length} errors`);
+  console.log(
+    `CSV import done: ${results.filter(r => r.success).length} ok, ${results.filter(r => !r.success).length} errors`,
+  );
 }
 
 /** Die Statuszeile zeigt den Fehler, statt ewig zu laufen. */

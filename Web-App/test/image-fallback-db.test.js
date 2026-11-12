@@ -21,15 +21,13 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 
-test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
   const USERNAME = 'img-fallback-test';
-  const OHNE = '60445-1';   // Bild nur im Katalog
-  const MIT  = '60446-1';   // eigene Adresse vorhanden
-  const CDN  = 'https://cdn.rebrickable.com/media/sets/60445-1.jpg';
+  const OHNE = '60445-1'; // Bild nur im Katalog
+  const MIT = '60446-1'; // eigene Adresse vorhanden
+  const CDN = 'https://cdn.rebrickable.com/media/sets/60445-1.jpg';
   const EIGEN = 'https://cdn.rebrickable.com/media/sets/eigen.jpg';
 
   await db.run(`DELETE FROM users WHERE username=$1`, [USERNAME]);
@@ -52,16 +50,22 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
     const { getSets } = require('./helpers/sources').handlerModul(_req);
     const r = await getSets([uid], {});
     const ohne = r.sets.find(s => s.set_number === OHNE);
-    const mit  = r.sets.find(s => s.set_number === MIT);
+    const mit = r.sets.find(s => s.set_number === MIT);
 
     assert.ok(ohne, 'das Set ohne eigene Bildadresse muss in der Liste sein');
     assert.equal(ohne.image_local, null, 'Vorbedingung: keine lokale Datei');
-    assert.equal(ohne.image_url, CDN,
+    assert.equal(
+      ohne.image_url,
+      CDN,
       'ohne eigene Adresse muss die CDN-Adresse aus dem gemeinsamen Katalog kommen — ' +
-      'sonst haben beide Clients nichts anzuzeigen');
+        'sonst haben beide Clients nichts anzuzeigen',
+    );
 
-    assert.equal(mit.image_url, EIGEN,
-      'eine vorhandene eigene Adresse hat Vorrang und wird NICHT vom Katalog überschrieben');
+    assert.equal(
+      mit.image_url,
+      EIGEN,
+      'eine vorhandene eigene Adresse hat Vorrang und wird NICHT vom Katalog überschrieben',
+    );
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USERNAME]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[OHNE, MIT]]).catch(() => {});

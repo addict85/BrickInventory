@@ -15,21 +15,27 @@ const { JSDOM } = require('jsdom');
  */
 function stripModuleSyntax(src) {
   const body = src
-    .replace(/^import[^;]*;\s*$/gm, '')   // import { a, b } from '…';
-    .replace(/^export\s+/gm, '');          // export function/const/let/class
+    .replace(/^import[^;]*;\s*$/gm, '') // import { a, b } from '…';
+    .replace(/^export\s+/gm, ''); // export function/const/let/class
   // registerActions() kommt sonst aus js/registry.js und ist nach dem
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
   // und test/bundle-smoke.test.js gegen den echten Quelltext. …
-  return 'function registerActions() {}\n'
-       + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n'
-       + body;
+  return (
+    'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
+  );
 }
 
 // Die Ansichts-Bausteine kommen MIT in die Sandbox, nicht als Attrappe.
-const BAUSTEINE = stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'bausteine.js'), 'utf8'));
-const CODE = BAUSTEINE + '\n' + stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8'));
-const dom = new JSDOM(`<!doctype html><html><body>
+const BAUSTEINE = stripModuleSyntax(
+  fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'bausteine.js'), 'utf8'),
+);
+const CODE =
+  BAUSTEINE +
+  '\n' +
+  stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8'));
+const dom = new JSDOM(
+  `<!doctype html><html><body>
   <input id="cat-search" />
   <select id="cat-theme"><option value=""></option></select>
   <select id="cat-year-from"><option value=""></option></select>
@@ -40,16 +46,39 @@ const dom = new JSDOM(`<!doctype html><html><body>
   <div id="app-scrollbar" style="display:none"><div id="app-scrollbar-thumb"></div>
     <div id="app-scrollbar-label"></div></div>
   <div id="cat-modal"></div><button id="cat-m-add"></button>
-</body></html>`, { runScripts: 'outside-only', pretendToBeVisual: true });
+</body></html>`,
+  { runScripts: 'outside-only', pretendToBeVisual: true },
+);
 
 const w = dom.window;
 
 // ── Mini-Backend: gleiche Semantik wie der (getestete) Server ────────────────
 const DATA = [];
-for (let y = 2000; y <= 2026; y++) for (let k = 0; k < 3; k++)
-  DATA.push({ set_number: `${y}${k}-1`, name: `Set ${y}-${k}`, year: y, theme_id: 1, theme_name: 'Star Wars', num_parts: 100, image_url: '', owned: false, owned_quantity: 0 });
+for (let y = 2000; y <= 2026; y++)
+  for (let k = 0; k < 3; k++)
+    DATA.push({
+      set_number: `${y}${k}-1`,
+      name: `Set ${y}-${k}`,
+      year: y,
+      theme_id: 1,
+      theme_name: 'Star Wars',
+      num_parts: 100,
+      image_url: '',
+      owned: false,
+      owned_quantity: 0,
+    });
 for (let k = 0; k < 4; k++)
-  DATA.push({ set_number: `900${k}-1`, name: `Future ${k}`, year: 2027, theme_id: 1, theme_name: 'Star Wars', num_parts: 500, image_url: '', owned: false, owned_quantity: 0 });
+  DATA.push({
+    set_number: `900${k}-1`,
+    name: `Future ${k}`,
+    year: 2027,
+    theme_id: 1,
+    theme_name: 'Star Wars',
+    num_parts: 500,
+    image_url: '',
+    owned: false,
+    owned_quantity: 0,
+  });
 
 const requests = [];
 function fakeApi(_method, url) {
@@ -60,7 +89,8 @@ function fakeApi(_method, url) {
     return Promise.resolve({
       success: true,
       themes: [{ id: 1, name: 'Star Wars', set_count: DATA.length }],
-      year_min: 2000, year_max: 2027,
+      year_min: 2000,
+      year_max: 2027,
       year_counts: Object.entries(counts).map(([y, n]) => ({ year: +y, n })),
     });
   }
@@ -69,20 +99,25 @@ function fakeApi(_method, url) {
     let rows = DATA.slice();
     if (p.get('q')) rows = rows.filter(s => s.name.includes(p.get('q')) || s.set_number.includes(p.get('q')));
     if (p.get('year_from')) rows = rows.filter(s => s.year >= parseInt(p.get('year_from'), 10));
-    if (p.get('year_to'))   rows = rows.filter(s => s.year <= parseInt(p.get('year_to'), 10));
-    const limit = parseInt(p.get('limit') || '60', 10), page = parseInt(p.get('page') || '1', 10);
+    if (p.get('year_to')) rows = rows.filter(s => s.year <= parseInt(p.get('year_to'), 10));
+    const limit = parseInt(p.get('limit') || '60', 10),
+      page = parseInt(p.get('page') || '1', 10);
     return Promise.resolve({
-      success: true, total: rows.length, page, pages: Math.max(1, Math.ceil(rows.length / limit)),
+      success: true,
+      total: rows.length,
+      page,
+      pages: Math.max(1, Math.ceil(rows.length / limit)),
       sets: rows.slice((page - 1) * limit, page * limit),
     });
   }
   if (url.startsWith('/v1/catalog/year-verteilung')) {
-    const p = new w.URLSearchParams((url.split('?')[1]) || '');
+    const p = new w.URLSearchParams(url.split('?')[1] || '');
     const absteigend = p.get('sort') !== 'year_asc';
     const counts = {};
     for (const s of DATA) counts[s.year] = (counts[s.year] || 0) + 1;
-    const years = Object.entries(counts).map(([y, n]) => ({ year: +y, n }))
-      .sort((a, b) => absteigend ? b.year - a.year : a.year - b.year);
+    const years = Object.entries(counts)
+      .map(([y, n]) => ({ year: +y, n }))
+      .sort((a, b) => (absteigend ? b.year - a.year : a.year - b.year));
     return Promise.resolve({ success: true, years });
   }
   return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
@@ -138,7 +173,7 @@ const bloecke = () => w.document.querySelectorAll('#catalog-grid .cat-page');
 const echteKacheln = () => w.document.querySelectorAll('#catalog-grid .sc:not(.cat-page-ph)').length;
 const platzhalter = () => w.document.querySelectorAll('#catalog-grid .cat-page-ph').length;
 /** Eine Seite ins Bild schieben — so, wie es der Beobachter meldet. */
-const zeigeSeite = (n) => {
+const zeigeSeite = n => {
   const el = w.document.querySelector(`#catalog-grid .cat-page[data-page="${n}"]`);
   for (const cb of w.__ioCallbacks) cb([{ isIntersecting: true, target: el }]);
 };
@@ -164,16 +199,17 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   const nachSeite2 = requests.length;
   zeigeSeite(2);
   await sleep(60);
-  check('geladene Seite wird nicht erneut geholt', requests.length === nachSeite2,
-    requests.length - nachSeite2);
+  check('geladene Seite wird nicht erneut geholt', requests.length === nachSeite2, requests.length - nachSeite2);
 
   // ── Der Jahresfilter über die Auswahlfelder BLEIBT ──────────────────────
-  w.G('cat-year-from').value = '2027'; fire(w.G('cat-year-from'), 'change');
+  w.G('cat-year-from').value = '2027';
+  fire(w.G('cat-year-from'), 'change');
   await sleep(80);
   check('Anfrage mit year_from=2027', lastSetsReq().includes('year_from=2027'), lastSetsReq());
   check('nur die 4 Zukunfts-Sets', echteKacheln() === 4, echteKacheln());
   check('ein einziger Block', bloecke().length === 1, bloecke().length);
-  w.G('cat-year-from').value = ''; fire(w.G('cat-year-from'), 'change');
+  w.G('cat-year-from').value = '';
+  fire(w.G('cat-year-from'), 'change');
   await sleep(80);
   check('ohne Filter wieder alles', hasYearFilter(lastSetsReq()) === false, lastSetsReq());
 
@@ -181,8 +217,7 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   check('Browser-Balken ausgeblendet (Firefox)', /html\{scrollbar-width:none/.test(css), null);
   check('Browser-Balken ausgeblendet (WebKit)', /html::-webkit-scrollbar\{width:0/.test(css), null);
-  check('eigener Balken am Fensterrand',
-    /#app-scrollbar\{[^}]*position:fixed[^}]*right:0/.test(css), null);
+  check('eigener Balken am Fensterrand', /#app-scrollbar\{[^}]*position:fixed[^}]*right:0/.test(css), null);
 
   const kern = require('./helpers/sources').coreQuelle();
   check('der Balken rollt die Seite', /window\.scrollTo\(/.test(kern), null);
@@ -197,28 +232,37 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   // Und der zweite Weg, der unabhängig vom Beobachter lädt — genau der Fehler,
   // den Marco gemeldet hat („beim Scrollen erscheinen keine Einträge").
   check('Seiten laden auch ohne Beobachter', /_ladeSichtbareSeiten/.test(quelle), null);
-  check('nach dem Füllen wird erneut nachgesehen',
-    /_catItems = _catItems\.concat\(d\.sets\);[\s\S]{0,200}_ladeSichtbareSeiten\(\)/.test(quelle), null);
+  check(
+    'nach dem Füllen wird erneut nachgesehen',
+    /_catItems = _catItems\.concat\(d\.sets\);[\s\S]{0,200}_ladeSichtbareSeiten\(\)/.test(quelle),
+    null,
+  );
   check('Kacheln tragen ihr Jahr', /data-year="/.test(quelle), null);
   // Ungeladene Seiten sind EIN leerer Block, nicht 60 Kachel-Platzhalter: Bei
   // 25 000 Sets wären das über 25 000 Elemente auf einmal.
-  check('leere Seite ist ein einzelner Block',
-    /class="cat-page cat-page-ph" data-page=/.test(quelle), null);
+  check('leere Seite ist ein einzelner Block', /class="cat-page cat-page-ph" data-page=/.test(quelle), null);
   // Und seine Höhe wird an der ERSTEN, echten Seite GEMESSEN. Geraten wäre sie
   // falsch, sobald das Fenster eine andere Spaltenzahl ergibt — dann springt
   // die Liste beim Nachladen und man verliert die Stelle.
-  check('Höhe wird gemessen, nicht geraten',
-    /erste\.offsetHeight/.test(quelle) && /_setzePlatzhalterHoehe\(\)/.test(quelle), null);
+  check(
+    'Höhe wird gemessen, nicht geraten',
+    /erste\.offsetHeight/.test(quelle) && /_setzePlatzhalterHoehe\(\)/.test(quelle),
+    null,
+  );
   // Der verlässliche Ladeweg: das Scroll-Ereignis selbst, gedrosselt.
-  check('Scrollen löst das Nachladen aus',
-    /addEventListener\('scroll', beiBewegung/.test(quelle), null);
-  check('gedrosselt über requestAnimationFrame',
-    /requestAnimationFrame\([\s\S]{0,120}_ladeSichtbareSeiten/.test(quelle), null);
+  check('Scrollen löst das Nachladen aus', /addEventListener\('scroll', beiBewegung/.test(quelle), null);
+  check(
+    'gedrosselt über requestAnimationFrame',
+    /requestAnimationFrame\([\s\S]{0,120}_ladeSichtbareSeiten/.test(quelle),
+    null,
+  );
   // Die Last beim Ziehen
-  check('Blocklagen kommen aus dem Gedächtnis',
-    /_catBlockLagen/.test(quelle) && /function _messeBloecke/.test(quelle), null);
-  check('beim Rollen wird NICHT neu gemessen',
-    !/requestAnimationFrame\([\s\S]{0,160}_messeBloecke/.test(quelle), null);
+  check(
+    'Blocklagen kommen aus dem Gedächtnis',
+    /_catBlockLagen/.test(quelle) && /function _messeBloecke/.test(quelle),
+    null,
+  );
+  check('beim Rollen wird NICHT neu gemessen', !/requestAnimationFrame\([\s\S]{0,160}_messeBloecke/.test(quelle), null);
   // 2. Geladen wird erst, wenn das Rollen zur Ruhe kommt. Sonst fordert ein Zug
   //    über die Leiste hunderte Seiten an, von denen nur die letzte zählt.
   //
@@ -227,8 +271,7 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   //    wirklicher Zug über die Leiste, und die Gegenprobe nimmt genau diese
   //    Ruhe heraus (2 Abrufe gegen 48). Beide sagen dasselbe, keine
   //    widerspricht der anderen; wer die Zeile umbenennt, muss dort nachziehen.
-  check('Laden wartet auf Ruhe',
-    /_catLadeTimer = setTimeout\(tun, \d+\)/.test(quelle), null);
+  check('Laden wartet auf Ruhe', /_catLadeTimer = setTimeout\(tun, \d+\)/.test(quelle), null);
   // Der Beobachter ist entfallen — ein Weg, der immer greift, statt zweier,
   // die sich ergänzen sollen.
   check('kein zweiter Ladeweg mehr', !/new IntersectionObserver/.test(quelle), null);
@@ -237,14 +280,16 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   // Und wo nichts geladen ist, wird über die tatsächliche VERTEILUNG gerechnet,
   // nicht linear geschätzt. Die lineare Fassung zeigte bei 90 % „1966", wo in
   // Wahrheit 1995 stand — Marcos Befund.
-  check('Etikett rechnet über die Verteilung',
-    /_catJahrVerteilung/.test(quelle) && /year-verteilung/.test(quelle), null);
-  check('keine lineare Schätzung mehr',
-    !/_catYearMax - anteil \* spanne/.test(quelle), null);
+  check(
+    'Etikett rechnet über die Verteilung',
+    /_catJahrVerteilung/.test(quelle) && /year-verteilung/.test(quelle),
+    null,
+  );
+  check('keine lineare Schätzung mehr', !/_catYearMax - anteil \* spanne/.test(quelle), null);
 
   // Und dasselbe in der App (Marcos Vorgabe: „die gleiche Leiste")
   const kotlin = [];
-  const gehen = (d) => {
+  const gehen = d => {
     if (!fs.existsSync(d)) return;
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const abs = path.join(d, e.name);
@@ -256,18 +301,17 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   check('die App-Quellen sind auffindbar', kotlin.length >= 40, kotlin.length);
   if (kotlin.length >= 40) {
     const kQuelle = kotlin.map(f => fs.readFileSync(f, 'utf8')).join('\n');
-    const ohneKommentar = kQuelle.replace(/\/\*[\s\S]*?\*\//g, '')
-                                 .replace(/^\s*\/\/[^\n]*$/gm, '');
-    check('die App holt dieselbe Verteilung',
-      /year-verteilung/.test(ohneKommentar), null);
-    check('die App rechnet ueber die Verteilung',
-      /fun jahrAnPosition\(/.test(ohneKommentar), null);
+    const ohneKommentar = kQuelle.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+    check('die App holt dieselbe Verteilung', /year-verteilung/.test(ohneKommentar), null);
+    check('die App rechnet ueber die Verteilung', /fun jahrAnPosition\(/.test(ohneKommentar), null);
     // Die alte lineare Rechnung: aus einem Anteil wurde direkt ein Jahr.
-    check('keine lineare Jahresschaetzung mehr in der App',
-      !/yearMax - frac \* \(yearMax - yearMin\)/.test(ohneKommentar), null);
+    check(
+      'keine lineare Jahresschaetzung mehr in der App',
+      !/yearMax - frac \* \(yearMax - yearMin\)/.test(ohneKommentar),
+      null,
+    );
     // Und die Leiste haengt an der STELLE, nicht mehr am Jahr.
-    check('die App springt nicht mehr auf year-offset',
-      !/year-offset/.test(ohneKommentar), null);
+    check('die App springt nicht mehr auf year-offset', !/year-offset/.test(ohneKommentar), null);
   }
   check('Etikett ist angemeldet', typeof w.__scrollLabelFn === 'function', typeof w.__scrollLabelFn);
 

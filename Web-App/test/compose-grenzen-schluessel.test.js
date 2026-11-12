@@ -34,18 +34,24 @@ function dienst(name) {
   }
   return block.join('\n');
 }
-const DIENSTE = [...compose.slice(compose.indexOf('\nservices:'), compose.indexOf('\nvolumes:')).matchAll(/^ {2}([a-z-]+):\s*$/gm)].map(m => m[1]);
+const DIENSTE = [
+  ...compose.slice(compose.indexOf('\nservices:'), compose.indexOf('\nvolumes:')).matchAll(/^ {2}([a-z-]+):\s*$/gm),
+].map(m => m[1]);
 
 /** Vorgabe aus `${VAR:-wert}` oder der Wert selbst, in Byte bzw. als Zahl. */
-const wert = (roh) => roh.replace(/^\$\{\w+:-(.*)\}$/, '$1');
-const byte = (roh) => { const m = wert(roh).match(/^(\d+)([kmg])?$/i); return m ? Number(m[1]) * { k: 2 ** 10, m: 2 ** 20, g: 2 ** 30 }[m[2]?.toLowerCase() ?? ''] || Number(m?.[1]) : NaN; };
+const wert = roh => roh.replace(/^\$\{\w+:-(.*)\}$/, '$1');
+const byte = roh => {
+  const m = wert(roh).match(/^(\d+)([kmg])?$/i);
+  return m ? Number(m[1]) * { k: 2 ** 10, m: 2 ** 20, g: 2 ** 30 }[m[2]?.toLowerCase() ?? ''] || Number(m?.[1]) : NaN;
+};
 
 test('jeder Dienst hat Grenzen für Speicher, Prozesse und CPU', () => {
   assert.ok(DIENSTE.length >= 6, `nur ${DIENSTE.join(', ')}`);
   const fehlt = [];
   for (const n of DIENSTE) {
     const b = dienst(n);
-    const mem = b.match(/^\s+mem_limit:\s*(\S+)/m)?.[1], pids = b.match(/^\s+pids_limit:\s*(\d+)/m)?.[1];
+    const mem = b.match(/^\s+mem_limit:\s*(\S+)/m)?.[1],
+      pids = b.match(/^\s+pids_limit:\s*(\d+)/m)?.[1];
     const cpus = b.match(/^\s+cpus:\s*(\S+)/m)?.[1];
     if (!mem || !(byte(mem) >= 32 * 2 ** 20 && byte(mem) <= 4 * 2 ** 30)) fehlt.push(`${n}: mem_limit ${mem}`);
     if (!pids || Number(pids) > 512) fehlt.push(`${n}: pids_limit ${pids}`);
@@ -58,7 +64,11 @@ test('app und jobs sehen den Datenschlüssel nur lesend', () => {
   for (const n of ['app', 'jobs']) {
     const b = dienst(n);
     assert.match(b, /^\s+- \.\/schluessel:\/app\/schluessel:ro\s*$/m, `${n}: ./schluessel nur lesend`);
-    assert.match(b, /schluessel:\s*\n\s+condition: service_completed_successfully/, `${n} wartet nicht auf den Schlüssel`);
+    assert.match(
+      b,
+      /schluessel:\s*\n\s+condition: service_completed_successfully/,
+      `${n} wartet nicht auf den Schlüssel`,
+    );
   }
   const s = dienst('schluessel');
   assert.match(s, /entrypoint: \["sh", "\/app\/schluessel-anlegen\.sh"\]/);
@@ -70,14 +80,22 @@ test('app und jobs sehen den Datenschlüssel nur lesend', () => {
 
 function sandkasten() {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'schluessel-'));
-  fs.mkdirSync(path.join(ort, 'schluessel')); fs.mkdirSync(path.join(ort, 'data'));
-  const lauf = () => spawnSync('sh', [path.join(ROOT, 'schluessel-anlegen.sh')], { encoding: 'utf8',
-    env: { ...process.env, SCHLUESSEL_ORDNER: path.join(ort, 'schluessel'), ALTER_SCHLUESSEL: path.join(ort, 'data', '.datenschluessel'),
-      SCHLUESSEL_EIGNER: os.userInfo().username } });
+  fs.mkdirSync(path.join(ort, 'schluessel'));
+  fs.mkdirSync(path.join(ort, 'data'));
+  const lauf = () =>
+    spawnSync('sh', [path.join(ROOT, 'schluessel-anlegen.sh')], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        SCHLUESSEL_ORDNER: path.join(ort, 'schluessel'),
+        ALTER_SCHLUESSEL: path.join(ort, 'data', '.datenschluessel'),
+        SCHLUESSEL_EIGNER: os.userInfo().username,
+      },
+    });
   return { ort, lauf, datei: path.join(ort, 'schluessel', 'datenschluessel') };
 }
 
-test('der Schlüssel entsteht einmal, nur der Eigentümer liest ihn', (t) => {
+test('der Schlüssel entsteht einmal, nur der Eigentümer liest ihn', t => {
   const { ort, lauf, datei } = sandkasten();
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   const r = lauf();
@@ -91,7 +109,7 @@ test('der Schlüssel entsteht einmal, nur der Eigentümer liest ihn', (t) => {
   assert.equal(fs.readFileSync(datei, 'utf8'), erster, 'ein zweiter Lauf ersetzt den Schlüssel');
 });
 
-test('ein alter Schlüssel in data/ bleibt der einzige', (t) => {
+test('ein alter Schlüssel in data/ bleibt der einzige', t => {
   const { ort, lauf, datei } = sandkasten();
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   fs.writeFileSync(path.join(ort, 'data', '.datenschluessel'), Buffer.alloc(32, 7).toString('base64'));

@@ -25,7 +25,12 @@ const USER = { id: null, username: 'parity-tester' };
 const TOKEN = 'parity-test-token-0123456789';
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Echte Schema-Initialisierung + Fixtures über alle Domänen. */
@@ -37,7 +42,11 @@ async function seed() {
   await db.initSchema();
   // Und die Migrationen, nicht nur initSchema()
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
 
   // Kein RETURNING: der SQLite-Kompat-Layer (toPostgres) hängt an INSERTs
   // "ON CONFLICT DO NOTHING" an, was hinter RETURNING ungültig wäre.
@@ -45,66 +54,87 @@ async function seed() {
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;
 
   // Bearer-Token wie ihn die Android-App nutzt — als HASH abgelegt.
-  await db.run(`INSERT INTO api_tokens (token, user_id, label) VALUES ($1, $2, 'parity') ON CONFLICT DO NOTHING`,
-    [_req('src/konto/geraeteToken.js').hashToken(TOKEN), USER.id]);
+  await db.run(`INSERT INTO api_tokens (token, user_id, label) VALUES ($1, $2, 'parity') ON CONFLICT DO NOTHING`, [
+    _req('src/konto/geraeteToken.js').hashToken(TOKEN),
+    USER.id,
+  ]);
 
   // Sets: eines mit gemischten Erfassungen (Zustand-Aggregat!), eines ohne
-  await haeltSet(db, USER.id, '75192-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
-  await haeltSet(db, USER.id, '6346-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltSet(db, USER.id, '75192-1', 0, { egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await haeltSet(db, USER.id, '6346-1', 0, { egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition)
-     VALUES ($1,'75192-1',649.99,'N'), ($1,'75192-1',420.00,'U'), ($1,'6346-1',25.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
-  await db.run(
-    `INSERT INTO instructions (user_id, set_number, url) VALUES ($1,'75192-1','https://ins/75192.pdf') ON CONFLICT DO NOTHING`,
-    [USER.id]).catch(() => {});
-  await db.run(
-    `INSERT INTO shared_instructions (set_number, url) VALUES ('6346-1','https://ins/6346-shared.pdf') ON CONFLICT DO NOTHING`)
+     VALUES ($1,'75192-1',649.99,'N'), ($1,'75192-1',420.00,'U'), ($1,'6346-1',25.00,'N') ON CONFLICT DO NOTHING`,
+    [USER.id],
+  );
+  await db
+    .run(
+      `INSERT INTO instructions (user_id, set_number, url) VALUES ($1,'75192-1','https://ins/75192.pdf') ON CONFLICT DO NOTHING`,
+      [USER.id],
+    )
+    .catch(() => {});
+  await db
+    .run(
+      `INSERT INTO shared_instructions (set_number, url) VALUES ('6346-1','https://ins/6346-shared.pdf') ON CONFLICT DO NOTHING`,
+    )
     .catch(() => {});
 
   // Teile + Minifiguren (je Set-Quelle und manuelle Position)
   await haeltTeil(db, USER.id, '3001', { setNumber: '75192-1', menge: 10, colorId: 4, egalWennDa: true });
-  await haeltTeil(db, USER.id, '3020', { menge: 0, colorId: 0, egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltTeil(db, USER.id, '3020', { menge: 0, colorId: 0, egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
   await haeltFigur(db, USER.id, 'sw0850', { setNumber: '75192-1', menge: 1, egalWennDa: true });
-  await haeltFigur(db, USER.id, 'sw0001', { menge: 0, egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltFigur(db, USER.id, 'sw0001', { menge: 0, egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
 
   // Erfassungen für Teile/Minifiguren (eigene Acquisition-Endpunkte)
   await db.run(
     `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition)
-     VALUES ($1,'3020',0,3,0.15,'N'), ($1,'3020',0,2,0.10,'U') ON CONFLICT DO NOTHING`, [USER.id]);
+     VALUES ($1,'3020',0,3,0.15,'N'), ($1,'3020',0,2,0.10,'U') ON CONFLICT DO NOTHING`,
+    [USER.id],
+  );
   await db.run(
     `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
-     VALUES ($1,'sw0001',2,12.50,'U') ON CONFLICT DO NOTHING`, [USER.id]);
+     VALUES ($1,'sw0001',2,12.50,'U') ON CONFLICT DO NOTHING`,
+    [USER.id],
+  );
 
   // Preisverlauf für den price-history-Vergleich
-  await db.run(
-    `INSERT INTO price_history (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, recorded_at)
+  await db
+    .run(
+      `INSERT INTO price_history (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, recorded_at)
      VALUES ('75192-1','N','CHF',700,850,1000,860,NOW() - INTERVAL '2 days'),
-            ('75192-1','N','CHF',710,860,1010,870,NOW() - INTERVAL '1 day') ON CONFLICT DO NOTHING`).catch(() => {});
+            ('75192-1','N','CHF',710,860,1010,870,NOW() - INTERVAL '1 day') ON CONFLICT DO NOTHING`,
+    )
+    .catch(() => {});
 
   // Zwei identische Wegwerf-Sets für die Schreib-Paritätstests (PUT/DELETE)
-  await haeltSet(db, USER.id, '40567-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
-  await haeltSet(db, USER.id, '40568-1', 0, { egalWennDa: true });  // Menge 0: die Erfassung dahinter traegt sie
+  await haeltSet(db, USER.id, '40567-1', 0, { egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await haeltSet(db, USER.id, '40568-1', 0, { egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
-     VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`, [USER.id]);
+     VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`,
+    [USER.id],
+  );
 
   // Einstellungen: die Vorlage muss BEIDE Wege abdecken
   await db.run(
     `INSERT INTO user_settings (user_id, key, value)
      VALUES ($1,'currency','CHF'), ($1,'user_default_condition','U') ON CONFLICT DO NOTHING`,
-    [USER.id]);
+    [USER.id],
+  );
   await db.run(
     `INSERT INTO global_settings (key, value)
      VALUES ('currency','USD'), ('price_cache_ttl','48'),
             ('default_price_condition','N'), ('app_theme','brick')
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+  );
 
   // Preis-Caches füllen, damit die Bewertungs-Endpunkte OHNE externe
   // Preis-API auskommen (wie in Produktion nach dem Preis-Job)
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity)
      VALUES ('75192-1','N','EUR',700,850,1000,860,40), ('75192-1','U','EUR',500,600,700,610,25),
-            ('6346-1','N','EUR',30,45,60,44,10),      ('6346-1','U','EUR',15,22,30,21,12) ON CONFLICT DO NOTHING`);
+            ('6346-1','N','EUR',30,45,60,44,10),      ('6346-1','U','EUR',15,22,30,21,12) ON CONFLICT DO NOTHING`,
+  );
 }
 
 /** Envelope-Felder entfernen — der Rest muss zwischen beiden APIs identisch sein. */
@@ -116,12 +146,11 @@ const VOLATILE = new Set(['rate_limit']);
 function core(body) {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) return body;
   const out = {};
-  for (const [k, v] of Object.entries(body))
-    if (!ENVELOPE.has(k) && !VOLATILE.has(k)) out[k] = v;
+  for (const [k, v] of Object.entries(body)) if (!ENVELOPE.has(k) && !VOLATILE.has(k)) out[k] = v;
   return out;
 }
 
-test('API-Parität Webapp ↔ Android', async (t) => {
+test('API-Parität Webapp ↔ Android', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t, DB_URL);
@@ -133,14 +162,12 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   app.use(express.json());
   // Session injizieren — die echten Middlewares beider Familien akzeptieren sie
   app.use((req, _res, next) => {
-    if (!req.headers['x-no-session'])
-      req.session = { userId: USER.id, username: USER.username, isAdmin: false };
+    if (!req.headers['x-no-session']) req.session = { userId: USER.id, username: USER.username, isAdmin: false };
     next();
   });
   // Die Einhaengepunkte kommen aus server.ts
-  app.use('/api/v1',       _req('routes/api_v1/index.js'));
-  for (const r of routerEinhaengungen())
-    app.use(r.mount, _req('routes/' + r.name + '.js'));
+  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  for (const r of routerEinhaengungen()) app.use(r.mount, _req('routes/' + r.name + '.js'));
 
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
@@ -151,13 +178,13 @@ test('API-Parität Webapp ↔ Android', async (t) => {
 
   // Zusammengelegte Routen: EINE Adresse, BEIDE Ausweise
   for (const [name, pfad] of [
-    ['Set-Erfassungen',     '/api/v1/sets/75192-1/acquisitions'],
-    ['Teil-Erfassungen',    '/api/v1/parts/3020/0/acquisitions'],
+    ['Set-Erfassungen', '/api/v1/sets/75192-1/acquisitions'],
+    ['Teil-Erfassungen', '/api/v1/parts/3020/0/acquisitions'],
     ['Minifig-Erfassungen', '/api/v1/minifigs/sw0001/acquisitions'],
     // Minifiguren-Liste und manuelle Minifiguren sind ebenfalls
     // zusammengelegt — vorher standen sie oben als PAAR, jetzt gehören sie
     // hierher, wo „eine Route, beide Ausweise" geprüft wird.
-    ['Minifiguren-Liste',   '/api/v1/minifigs'],
+    ['Minifiguren-Liste', '/api/v1/minifigs'],
     ['Manuelle Minifiguren', '/api/v1/minifigs/manual'],
     // dieselbe Umstellung für die Sets.
     ['Sets-Liste', '/api/v1/sets'],
@@ -174,29 +201,34 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // Preisverlaufs-Routen. Sie standen oben als PAAR — die Doppelung war die
     // Stelle, an der zuletzt das Blickfeld beim Minifiguren-Verlauf auf beiden
     // Wegen gleichzeitig fehlte.
-    ['Bewertung Sets',        '/api/v1/finance/valuation'],
-    ['Bewertung Teile',       '/api/v1/finance/parts-valuation'],
+    ['Bewertung Sets', '/api/v1/finance/valuation'],
+    ['Bewertung Teile', '/api/v1/finance/parts-valuation'],
     ['Bewertung Minifiguren', '/api/v1/finance/minifigs-valuation'],
-    ['GuV',                   '/api/v1/finance/pnl'],
-    ['Portfolio-Verlauf',     '/api/v1/finance/portfolio-history'],
-    ['Preisverlauf Set',      '/api/v1/sets/75192-1/price-history'],
-    ['Preisverlauf Teil',     '/api/v1/parts/3001/4/price-history'],
-    ['Preisverlauf Minifigur','/api/v1/minifigs/sw0001/price-history'],
+    ['GuV', '/api/v1/finance/pnl'],
+    ['Portfolio-Verlauf', '/api/v1/finance/portfolio-history'],
+    ['Preisverlauf Set', '/api/v1/sets/75192-1/price-history'],
+    ['Preisverlauf Teil', '/api/v1/parts/3001/4/price-history'],
+    ['Preisverlauf Minifigur', '/api/v1/minifigs/sw0001/price-history'],
     // Etappe 6: Statistik, Standard-Zustand und der Haushalt.
-    ['Statistik',              '/api/v1/stats'],
+    ['Statistik', '/api/v1/stats'],
     ['Standard-Zustand (global)', '/api/v1/settings/default-condition'],
     ['Standard-Zustand (effektiv)', '/api/v1/settings/user/default-condition'],
-    ['Haushalt',               '/api/v1/settings/household'],
+    ['Haushalt', '/api/v1/settings/household'],
   ]) {
     await t.test(`Zusammengelegt: ${name} — Sitzung und Token gleichwertig`, async () => {
       const mitSitzung = await get(pfad);
-      const mitToken   = await get(pfad, { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
-      assert.equal(mitSitzung.status, 200,
-        `${pfad} mit Sitzung -> ${mitSitzung.status}: ${JSON.stringify(mitSitzung.body)}`);
-      assert.equal(mitToken.status, 200,
-        `${pfad} mit Token -> ${mitToken.status}: ${JSON.stringify(mitToken.body)}`);
-      assert.deepEqual(core(mitToken.body), core(mitSitzung.body),
-        `${pfad}: Sitzung und Token liefern Verschiedenes — die Route hängt an der Auth-Art`);
+      const mitToken = await get(pfad, { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
+      assert.equal(
+        mitSitzung.status,
+        200,
+        `${pfad} mit Sitzung -> ${mitSitzung.status}: ${JSON.stringify(mitSitzung.body)}`,
+      );
+      assert.equal(mitToken.status, 200, `${pfad} mit Token -> ${mitToken.status}: ${JSON.stringify(mitToken.body)}`);
+      assert.deepEqual(
+        core(mitToken.body),
+        core(mitSitzung.body),
+        `${pfad}: Sitzung und Token liefern Verschiedenes — die Route hängt an der Auth-Art`,
+      );
     });
   }
 
@@ -205,30 +237,41 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // ACHTUNG: Hier stehen absichtlich die ALTEN Adressen — geprüft wird, dass
     // sie NICHT mehr antworten. Bei einer Massenumstellung von Pfaden diese
     // drei Zeilen auslassen (mir selbst beim Nachziehen einmal passiert).
-    for (const alt of ['/api/sets/75192-1/acquisitions',
-                       '/api/parts/3020/0/acquisitions',
-                       '/api/minifigs/sw0001/acquisitions',
-                       '/api/minifigs/',
-                       '/api/minifigs/manual',
-                       '/api/parts/', '/api/parts/manual',
-                       '/api/sets/', '/api/sets/household-members',
-                       // Etappe 5. `/combined-valuation` steht mit dabei: eine
-                       // dritte Bewertungsfassung, die niemand aufrief und die
-                       // im Haushalt falsch gerechnet hätte.
-                       '/api/finance/valuation', '/api/finance/parts-valuation',
-                       '/api/finance/minifigs-valuation', '/api/finance/pnl',
-                       '/api/finance/portfolio-history', '/api/finance/combined-valuation',
-                       '/api/finance/price-history/75192-1',
-                       '/api/finance/part-price-history/3001/4',
-                       '/api/finance/minifig-price-history/sw0001',
-                       // Etappe 6.
-                       '/api/settings/stats', '/api/settings/default-condition',
-                       '/api/settings/user/default-condition',
-                       '/api/settings/household']) {
+    for (const alt of [
+      '/api/sets/75192-1/acquisitions',
+      '/api/parts/3020/0/acquisitions',
+      '/api/minifigs/sw0001/acquisitions',
+      '/api/minifigs/',
+      '/api/minifigs/manual',
+      '/api/parts/',
+      '/api/parts/manual',
+      '/api/sets/',
+      '/api/sets/household-members',
+      // Etappe 5. `/combined-valuation` steht mit dabei: eine
+      // dritte Bewertungsfassung, die niemand aufrief und die
+      // im Haushalt falsch gerechnet hätte.
+      '/api/finance/valuation',
+      '/api/finance/parts-valuation',
+      '/api/finance/minifigs-valuation',
+      '/api/finance/pnl',
+      '/api/finance/portfolio-history',
+      '/api/finance/combined-valuation',
+      '/api/finance/price-history/75192-1',
+      '/api/finance/part-price-history/3001/4',
+      '/api/finance/minifig-price-history/sw0001',
+      // Etappe 6.
+      '/api/settings/stats',
+      '/api/settings/default-condition',
+      '/api/settings/user/default-condition',
+      '/api/settings/household',
+    ]) {
       const r = await get(alt);
-      assert.equal(r.status, 404,
+      assert.equal(
+        r.status,
+        404,
         `${alt} antwortet wieder — dann existiert die Logik erneut doppelt, und ` +
-        'genau das sollte der Umbau beenden');
+          'genau das sollte der Umbau beenden',
+      );
     }
   });
 
@@ -244,17 +287,19 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     assert.equal(v1.user_default_condition, web.user_default_condition);
     assert.equal(v1.default_price_condition, web.default_price_condition);
     assert.equal(v1.app_theme, web.app_theme);
-    assert.equal(v1.effective_condition, 'U');   // User-Wert schlägt global
+    assert.equal(v1.effective_condition, 'U'); // User-Wert schlägt global
 
     // Der Vergleich oben allein reicht nicht: Lieferten BEIDE die fest
     // verdrahtete Vorgabe, wäre er ebenfalls grün. Deshalb hier die
     // absoluten Werte aus der Vorlage — 48 kann nur aus global_settings
     // stammen, CHF nur aus user_settings.
-    assert.equal(v1.price_cache_ttl, '48',
+    assert.equal(
+      v1.price_cache_ttl,
+      '48',
       'Ein GLOBAL gesetzter Wert erreicht die App nicht — liest die v1-Route ' +
-      'wieder selbst auf user_settings statt über readSettings()?');
-    assert.equal(v1.currency, 'CHF',
-      'Der Wert des Nutzers muss den globalen überschreiben (global steht USD)');
+        'wieder selbst auf user_settings statt über readSettings()?',
+    );
+    assert.equal(v1.currency, 'CHF', 'Der Wert des Nutzers muss den globalen überschreiben (global steht USD)');
   });
 
   await t.test('v1 valuation: total_value ist Alias von totals.qty_avg', async () => {
@@ -265,15 +310,19 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   await t.test('Bewertung: gleiche Antwortform mit beiden Ausweisen', async () => {
     // Was hier vorher stand, und warum es weg ist
     const mitSitzung = (await get('/api/v1/finance/valuation')).body;
-    const mitToken = (await get('/api/v1/finance/valuation',
-      { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).body;
-    assert.deepEqual(Object.keys(mitToken).sort(), Object.keys(mitSitzung).sort(),
+    const mitToken = (await get('/api/v1/finance/valuation', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' }))
+      .body;
+    assert.deepEqual(
+      Object.keys(mitToken).sort(),
+      Object.keys(mitSitzung).sort(),
       'Sitzung und Token liefern verschiedene Felder — dann sieht die App etwas ' +
-      'anderes als die Webapp, je nachdem womit sie sich ausweist');
+        'anderes als die Webapp, je nachdem womit sie sich ausweist',
+    );
     assert.equal(mitToken.total_value, mitSitzung.total_value);
-    assert.ok(!('rate_limit' in mitToken),
-      'rate_limit ist wieder in der Bewertung — es liest niemand, und es kostet ' +
-      'drei Abfragen je Aufruf');
+    assert.ok(
+      !('rate_limit' in mitToken),
+      'rate_limit ist wieder in der Bewertung — es liest niemand, und es kostet ' + 'drei Abfragen je Aufruf',
+    );
   });
 
   await t.test('v1-Zusatzfelder sind konsistent (count = sets.length)', async () => {
@@ -289,8 +338,7 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     const b = (await get('/api/v1/sets/75192-1/price-history')).body;
     const pts = h => (h || []).filter(x => !x.is_purchase_price);
     assert.equal(b.success, true);
-    assert.ok(pts(b.history_new).length + pts(b.history_used).length >= 2,
-      'kein Verlauf geliefert');
+    assert.ok(pts(b.history_new).length + pts(b.history_used).length >= 2, 'kein Verlauf geliefert');
     assert.ok(b.chart && Array.isArray(b.chart.values), 'chart fehlt');
   });
 
@@ -300,12 +348,10 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // es hier auf, auch ohne zweite Route zum Vergleichen.
     const felder = ['currency', 'by_condition', 'history_new', 'history_used', 'chart'];
     const set = (await get('/api/v1/sets/75192-1/price-history')).body;
-    for (const pfad of ['/api/v1/parts/3001/4/price-history',
-                        '/api/v1/minifigs/sw0001/price-history']) {
+    for (const pfad of ['/api/v1/parts/3001/4/price-history', '/api/v1/minifigs/sw0001/price-history']) {
       const b = (await get(pfad)).body;
       assert.equal(b.success, true, `${pfad} antwortet nicht`);
-      for (const k of felder)
-        assert.ok(k in b, `${pfad}: Feld ${k} fehlt (das Set liefert es: ${typeof set[k]})`);
+      for (const k of felder) assert.ok(k in b, `${pfad}: Feld ${k} fehlt (das Set liefert es: ${typeof set[k]})`);
     }
   });
 
@@ -316,11 +362,13 @@ test('API-Parität Webapp ↔ Android', async (t) => {
     // Es gibt nur noch EINE Schreibroute. Geprüft wird deshalb,
     // dass sie über BEIDE Ausweise dieselbe Wirkung hat — mit Sitzung am einen
     // Set, mit Token am anderen.
-    const put = (p, extra = {}) =>
-      fetch(base + p, { method: 'PUT', headers: { ...hdr, ...extra }, body });
+    const put = (p, extra = {}) => fetch(base + p, { method: 'PUT', headers: { ...hdr, ...extra }, body });
     assert.equal((await put('/api/v1/sets/40567-1')).status, 200, 'Schreiben mit Sitzung');
-    assert.equal((await put('/api/v1/sets/40568-1',
-      { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).status, 200, 'Schreiben mit Token');
+    assert.equal(
+      (await put('/api/v1/sets/40568-1', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })).status,
+      200,
+      'Schreiben mit Token',
+    );
     const a = (await get('/api/v1/sets/40567-1')).body.set;
     const b = (await get('/api/v1/sets/40568-1')).body.set;
     for (const k of ['quantity', 'purchase_price', 'condition'])
@@ -329,53 +377,60 @@ test('API-Parität Webapp ↔ Android', async (t) => {
   });
 
   await t.test('PUT Erfassung: Webapp- und Android-Route bewirken dasselbe', async () => {
-    const idOf = async (sn) =>
-      (await get(`/api/v1/sets/${sn}/acquisitions`)).body.acquisitions[0].id;
+    const idOf = async sn => (await get(`/api/v1/sets/${sn}/acquisitions`)).body.acquisitions[0].id;
     const hdr = { 'content-type': 'application/json' };
     const body = JSON.stringify({ quantity: 2, purchase_price: 30, condition: 'U' });
     // Zusammengelegt: Es gibt nur noch EINE Schreibroute. Geprüft
     // wird deshalb, dass sie über BEIDE Ausweise dieselbe Wirkung hat — mit
     // Sitzung am einen Set, mit Token am anderen, danach müssen beide Sets
     // denselben Stand zeigen. Das ist die Aussage, die nach dem Umbau zählt: …
-    const rA = await fetch(base + `/api/v1/sets/40567-1/acquisitions/${await idOf('40567-1')}`,
-      { method: 'PUT', headers: hdr, body });
-    const rB = await fetch(base + `/api/v1/sets/40568-1/acquisitions/${await idOf('40568-1')}`,
-      { method: 'PUT',
-        headers: { ...hdr, authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' },
-        body });
+    const rA = await fetch(base + `/api/v1/sets/40567-1/acquisitions/${await idOf('40567-1')}`, {
+      method: 'PUT',
+      headers: hdr,
+      body,
+    });
+    const rB = await fetch(base + `/api/v1/sets/40568-1/acquisitions/${await idOf('40568-1')}`, {
+      method: 'PUT',
+      headers: { ...hdr, authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' },
+      body,
+    });
     assert.equal(rA.status, 200, 'Schreiben mit Sitzung');
     assert.equal(rB.status, 200, 'Schreiben mit Token');
     const strip = a => a.map(({ quantity, purchase_price, condition }) => ({ quantity, purchase_price, condition }));
     const a = (await get('/api/v1/sets/40567-1/acquisitions')).body.acquisitions;
     const b = (await get('/api/v1/sets/40568-1/acquisitions')).body.acquisitions;
-    assert.deepEqual(strip(a), strip(b),
-      'Sitzung und Token bewirken Verschiedenes auf derselben Route');
+    assert.deepEqual(strip(a), strip(b), 'Sitzung und Token bewirken Verschiedenes auf derselben Route');
   });
 
   await t.test('DELETE Set: Webapp- und Android-Route bewirken dasselbe', async () => {
     // Ebenfalls eine Route, beide Ausweise.
-    assert.equal((await fetch(base + '/api/v1/sets/40567-1',
-      { method: 'DELETE' })).status, 200, 'Löschen mit Sitzung');
-    assert.equal((await fetch(base + '/api/v1/sets/40568-1',
-      { method: 'DELETE', headers: { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' } })).status,
-      200, 'Löschen mit Token');
+    assert.equal((await fetch(base + '/api/v1/sets/40567-1', { method: 'DELETE' })).status, 200, 'Löschen mit Sitzung');
+    assert.equal(
+      (
+        await fetch(base + '/api/v1/sets/40568-1', {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' },
+        })
+      ).status,
+      200,
+      'Löschen mit Token',
+    );
     assert.equal((await get('/api/v1/sets/40567-1')).status, 404);
     assert.equal((await get('/api/v1/sets/40568-1')).status, 404);
     // Aufräumverhalten identisch: keine verwaisten Erfassungen
     for (const sn of ['40567-1', '40568-1']) {
-      const left = await db.get(
-        'SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id=$1 AND set_number=$2',
-        [USER.id, sn]);
+      const left = await db.get('SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [
+        USER.id,
+        sn,
+      ]);
       assert.equal(left.n, 0, `verwaiste Erfassungen bei ${sn}`);
     }
   });
 
   await t.test('Bearer-Token (Android-Auth) liefert dasselbe wie die Session', async () => {
     const viaSession = await get('/api/v1/sets');
-    const viaToken = await get('/api/v1/sets',
-      { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
-    assert.equal(viaToken.status, 200,
-      `Bearer-Auth fehlgeschlagen: ${JSON.stringify(viaToken.body)}`);
+    const viaToken = await get('/api/v1/sets', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
+    assert.equal(viaToken.status, 200, `Bearer-Auth fehlgeschlagen: ${JSON.stringify(viaToken.body)}`);
     assert.deepEqual(core(viaToken.body), core(viaSession.body));
   });
 

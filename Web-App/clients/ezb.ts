@@ -4,7 +4,7 @@
  * der EZB, keine Umleitungen — ein Kurs aus fremder Quelle verfälschte still
  * jede Bewertung.
  */
-import { inflateRawSync } from 'zlib';
+import { inflateRawSync } from 'node:zlib';
 import { hostErlaubt } from '../src/infra/fremdeAdressen';
 import { holeHttps } from '../src/infra/abruf';
 
@@ -13,7 +13,11 @@ export const EZB_TAGESKURSE = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxr
 export const ERLAUBTE_KURS_HOSTS = ['www.ecb.europa.eu'] as const;
 
 /** Ein Kurs: so viele Einheiten `waehrung` kostet ein Euro am `tag`. */
-export interface Kurs { tag: string; waehrung: string; je_eur: number }
+export interface Kurs {
+  tag: string;
+  waehrung: string;
+  je_eur: number;
+}
 
 /** Lädt eine Adresse; im Test ersetzt durch einen lokalen Server. */
 export type Abruf = (url: string, signal?: AbortSignal) => Promise<Buffer>;
@@ -22,8 +26,13 @@ export type Abruf = (url: string, signal?: AbortSignal) => Promise<Buffer>;
 export const ezbAbruf: Abruf = async (url, signal) => {
   if (!url.startsWith('https://') || !hostErlaubt(url, ERLAUBTE_KURS_HOSTS))
     throw new Error(`Kursabruf nur von https://${ERLAUBTE_KURS_HOSTS.join(', ')}: ${url.slice(0, 120)}`);
-  const r = await holeHttps(url, { hosts: ERLAUBTE_KURS_HOSTS, maxBytes: 16 * 1024 * 1024, zeitlimitMs: 60_000, umleitungen: 0,
-    ...(signal ? { signal } : {}) });
+  const r = await holeHttps(url, {
+    hosts: ERLAUBTE_KURS_HOSTS,
+    maxBytes: 16 * 1024 * 1024,
+    zeitlimitMs: 60_000,
+    umleitungen: 0,
+    ...(signal ? { signal } : {}),
+  });
   if (r.status !== 200) throw new Error(`EZB ${r.status} für ${url}`);
   return r.koerper;
 };
@@ -53,8 +62,10 @@ export function historieLesen(csv: string): Kurs[] {
     const tag = felder[0] ?? '';
     if (!TAG.test(tag)) continue;
     for (let i = 1; i < kopf.length; i++) {
-      const w = kopf[i] ?? '', je = Number(felder[i]);
-      if (WAEHRUNG.test(w) && w !== 'EUR' && felder[i] && Number.isFinite(je) && je > 0) aus.push({ tag, waehrung: w, je_eur: je });
+      const w = kopf[i] ?? '',
+        je = Number(felder[i]);
+      if (WAEHRUNG.test(w) && w !== 'EUR' && felder[i] && Number.isFinite(je) && je > 0)
+        aus.push({ tag, waehrung: w, je_eur: je });
     }
   }
   return aus;

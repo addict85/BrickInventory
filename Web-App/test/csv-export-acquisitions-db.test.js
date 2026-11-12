@@ -14,11 +14,16 @@ const db = _req('db/database.js');
 // Ohne das Schliessen des Verbindungspools endet der Testprozess nie: Der Pool
 // haelt offene Verbindungen, und node wartet darauf. Dieselbe Zeile steht aus
 // demselben Grund in den uebrigen -db-Tests.
-test.after(async () => { await db.pool.end().catch(() => {}); });
+test.after(async () => {
+  await db.pool.end().catch(() => {});
+});
 
 /** CSV-Text → Zeilen als Objekte (die Kopfzeile bestimmt die Namen). */
 function zeilen(csv) {
-  const [kopf, ...rest] = csv.trim().split('\n').map(z => z.replace(/\r$/, ''));
+  const [kopf, ...rest] = csv
+    .trim()
+    .split('\n')
+    .map(z => z.replace(/\r$/, ''));
   const namen = kopf.split(',');
   return rest.filter(Boolean).map(z => {
     const werte = z.split(',');
@@ -26,15 +31,12 @@ function zeilen(csv) {
   });
 }
 
-test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req)) return;
+test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const nutzer = `csvexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
-  const u = await db.get(
-    'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
+  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
   const uid = u.id;
 
   try {
@@ -46,11 +48,13 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, created_at)
        VALUES ($1,'0002-1',1,10.00,'N', NOW() - INTERVAL '2 days'),
               ($1,'0002-1',4,20.00,'U', NOW() - INTERVAL '1 day'),
-              ($1,'0003-1',1,NULL,'N', NOW())`, [uid]);
+              ($1,'0003-1',1,NULL,'N', NOW())`,
+      [uid],
+    );
 
     const csv = await _req('src/sets/index.js').buildSetsCsv(uid);
     const r = zeilen(csv);
-    const je = (sn) => r.filter(x => x.set_number === sn);
+    const je = sn => r.filter(x => x.set_number === sn);
 
     assert.equal(r.length, 5, `5 Zeilen erwartet (1+2+1+1), bekommen ${r.length}:\n${csv}`);
 
@@ -58,8 +62,9 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
     // Zustand 'N'. Hier stand quantity '3' — die Menge der Set-Spalte, die es
     // seit Migration 0036 nicht mehr gibt, und purchase_price '12.5' aus der
     // Spalte, die Migration 0032 geloescht hat.
-    assert.deepEqual(je('0001-1'),
-      [{ set_number: '0001-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' }]);
+    assert.deepEqual(je('0001-1'), [
+      { set_number: '0001-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' },
+    ]);
 
     // Zwei Erfassungen, aelteste zuerst — die Reihenfolge traegt die Bedeutung.
     const zwei = je('0002-1');
@@ -75,13 +80,13 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
     // Migration 0032 nicht mehr geben; die Aussage ueber die Ausgabe bleibt.
     const ohnePreis = je('0003-1');
     assert.equal(ohnePreis.length, 1);
-    assert.equal(ohnePreis[0].purchase_price, '',
-      'eine Erfassung ohne Preis muss ein leeres Feld ergeben');
+    assert.equal(ohnePreis[0].purchase_price, '', 'eine Erfassung ohne Preis muss ein leeres Feld ergeben');
     assert.equal(ohnePreis[0].condition, 'N', 'fehlender Zustand wird zu N');
 
     // Set ohne Erfassung: Menge 0, Zustand 'N', Preis leer.
-    assert.deepEqual(je('0004-1'),
-      [{ set_number: '0004-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' }]);
+    assert.deepEqual(je('0004-1'), [
+      { set_number: '0004-1', quantity: '0', purchase_price: '', condition: 'N', acquired_at: '' },
+    ]);
   } finally {
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM sets WHERE user_id = $1', [uid]).catch(() => {});
@@ -89,10 +94,8 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile',
   }
 });
 
-test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
   // ── Warum gezaehlt und nicht gestoppt wird ────────────────────────────────
   // Eine Zeitmessung waere hier die schlechtere Pruefung: Sie schwankt mit der
@@ -101,8 +104,7 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
   // um die es geht — sie darf mit dem Bestand nicht mitwachsen.
   const nutzer = `csvcnt-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
-  const u = await db.get(
-    'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
+  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
   const uid = u.id;
 
   // Gezaehlt wird an pool.query, NICHT an db.all
@@ -110,14 +112,19 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
   try {
     for (let i = 1; i <= 25; i++) {
       const sn = `9${String(i).padStart(3, '0')}-1`;
-      await haeltSet(db, uid, sn, 0);  // Menge 0: die Erfassung dahinter traegt sie
+      await haeltSet(db, uid, sn, 0); // Menge 0: die Erfassung dahinter traegt sie
       await db.run(
         `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
-         VALUES ($1,$2,1,5.00,'N')`, [uid, sn]);
+         VALUES ($1,$2,1,5.00,'N')`,
+        [uid, sn],
+      );
     }
 
     let abfragen = 0;
-    db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
+    db.pool.query = (...args) => {
+      abfragen++;
+      return echtesQuery(...args);
+    };
     const csv = await _req('src/sets/index.js').buildSetsCsv(uid);
     db.pool.query = echtesQuery;
 
@@ -125,11 +132,13 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
     // Untergrenze: Zaehlte der Patch gar nichts, waere die Obergrenze darunter
     // trivial erfuellt — genau der Zustand, in dem dieser Test zuerst war.
     assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
-    assert.ok(abfragen <= 2,
+    assert.ok(
+      abfragen <= 2,
       `${abfragen} Abfragen fuer 25 Sets. Der Export holte die Erfassungen frueher ` +
-      `je Set einzeln — bei 700 Sets waren das 701 Hin- und Rueckwege. Der LEFT JOIN ` +
-      `in SETS_CSV_SQL macht daraus einen; erlaubt sind 2, weil der Rueckfallweg ` +
-      `(fehlende Migration) eine zweite Abfrage kostet.`);
+        `je Set einzeln — bei 700 Sets waren das 701 Hin- und Rueckwege. Der LEFT JOIN ` +
+        `in SETS_CSV_SQL macht daraus einen; erlaubt sind 2, weil der Rueckfallweg ` +
+        `(fehlende Migration) eine zweite Abfrage kostet.`,
+    );
   } finally {
     db.pool.query = echtesQuery;
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1', [uid]).catch(() => {});
@@ -138,29 +147,29 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets',
   }
 });
 
-test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
   const nutzer = `figexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
-  const u = await db.get(
-    'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
+  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
   const uid = u.id;
 
   const echtesQuery = db.pool.query.bind(db.pool);
   try {
     // fig-a  ohne Erfassung        → Figuren-Zeile
     // fig-b  Erfassung ohne Preis  → leeres Feld
-    for (const [nr, name, menge] of [
-      ['fig-a', 'Aaa', 2], ['fig-b', 'Bbb', 1],
+    for (const [nr, name] of [
+      ['fig-a', 'Aaa', 2],
+      ['fig-b', 'Bbb', 1],
     ]) {
       // Der Name steht seit Migration 0034 im Katalog — und er ist hier
       // nicht nebensaechlich: Der Export sortiert danach.
       await db.run(
         `INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ($1,$2)
-         ON CONFLICT (fig_number) DO NOTHING`, [nr, name]);
+         ON CONFLICT (fig_number) DO NOTHING`,
+        [nr, name],
+      );
       // fig-a bekommt KEINE Erfassung — das ist der Fall, den der Export
       // unterscheiden muss. Die Erfassung fuer fig-b legt der Test darunter an.
       // Menge 0: fig-b bekommt ihre Erfassung darunter, fig-a bewusst keine.
@@ -168,10 +177,15 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
     }
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id, fig_number, quantity, unit_price, condition)
-       VALUES ($1,'fig-b',1,NULL,'U')`, [uid]);
+       VALUES ($1,'fig-b',1,NULL,'U')`,
+      [uid],
+    );
 
     let abfragen = 0;
-    db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
+    db.pool.query = (...args) => {
+      abfragen++;
+      return echtesQuery(...args);
+    };
     const csv = await _req('src/bestand/bestandExport.js').buildFigsCsv(uid);
     db.pool.query = echtesQuery;
 
@@ -188,15 +202,15 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
     assert.equal(a.acquired_at, '', 'ohne Erfassung kein Datum');
 
     const b = r.find(x => x.fig_number === 'fig-b');
-    assert.equal(b.unit_price, '',
-      'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
+    assert.equal(b.unit_price, '', 'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
     // Seit Migration 0047 ist der Zustand Pflicht; geprüft wird, dass er durchkommt.
     assert.equal(b.condition, 'U');
 
     assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
-    assert.ok(abfragen <= 2,
-      `${abfragen} Abfragen fuer 2 Figuren. Frueher lief eine Abfrage JE FIGUR; ` +
-      `FIGS_CSV_SQL macht daraus eine.`);
+    assert.ok(
+      abfragen <= 2,
+      `${abfragen} Abfragen fuer 2 Figuren. Frueher lief eine Abfrage JE FIGUR; ` + `FIGS_CSV_SQL macht daraus eine.`,
+    );
   } finally {
     db.pool.query = echtesQuery;
     await db.run('DELETE FROM minifig_acquisitions WHERE user_id = $1', [uid]).catch(() => {});
@@ -205,16 +219,13 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage',
   }
 });
 
-test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
-  { concurrency: 1 }, async (t) => {
-
+test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency: 1 }, async t => {
   // Warum dieser Fall spaeter kam
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
   const nutzer = `teilexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
-  const u = await db.get(
-    'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
+  const u = await db.get('INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id', [nutzer, 'x']);
   const uid = u.id;
 
   const echtesQuery = db.pool.query.bind(db.pool);
@@ -231,10 +242,14 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
       // stehen in der Exportspalte color_name bzw. in der Sortierung.
       await db.run(
         `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
-         ON CONFLICT (part_number) DO NOTHING`, [nr, `Teil ${nr}`]);
+         ON CONFLICT (part_number) DO NOTHING`,
+        [nr, `Teil ${nr}`],
+      );
       await db.run(
         `INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ($1,$2,$3)
-         ON CONFLICT (part_number, color_id) DO NOTHING`, [nr, farbe, farbname]);
+         ON CONFLICT (part_number, color_id) DO NOTHING`,
+        [nr, farbe, farbname],
+      );
       // Menge 0: die Erfassungen legt der Test darunter gezielt an, damit die
       // Faelle „mit" und „ohne Preis" unterscheidbar bleiben.
       await haeltTeil(db, uid, nr, { menge: 0, colorId: farbe });
@@ -243,10 +258,15 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition, created_at)
        VALUES ($1,'3001',4,2,0.50,'N', NOW() - INTERVAL '2 days'),
               ($1,'3001',4,3,1.50,'U', NOW() - INTERVAL '1 day'),
-              ($1,'3002',0,1,NULL,'U', NOW())`, [uid]);
+              ($1,'3002',0,1,NULL,'U', NOW())`,
+      [uid],
+    );
 
     let abfragen = 0;
-    db.pool.query = (...args) => { abfragen++; return echtesQuery(...args); };
+    db.pool.query = (...args) => {
+      abfragen++;
+      return echtesQuery(...args);
+    };
     const csv = await _req('src/bestand/bestandExport.js').buildPartsCsv(uid);
     db.pool.query = echtesQuery;
 
@@ -254,11 +274,10 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
     assert.equal(r.length, 4, `4 Zeilen erwartet (2+1+1), bekommen ${r.length}:\n${csv}`);
 
     // Der Fall, den nur die Teile haben: gleiche Nummer, andere Farbe.
-    const rot  = r.filter(x => x.part_number === '3001' && x.color_id === '4');
+    const rot = r.filter(x => x.part_number === '3001' && x.color_id === '4');
     const blau = r.filter(x => x.part_number === '3001' && x.color_id === '1');
     assert.equal(rot.length, 2, 'die rote Zeile hat zwei Erfassungen');
-    assert.equal(blau.length, 1,
-      'die blaue Zeile hat KEINE Erfassung — sie darf die der roten nicht erben');
+    assert.equal(blau.length, 1, 'die blaue Zeile hat KEINE Erfassung — sie darf die der roten nicht erben');
     // Wie bei fig-a oben: ohne Erfassung ist die Stueckzahl 0, die Zeile
     // bleibt aber im Export.
     assert.equal(blau[0].quantity, '0', 'ohne Erfassung ist die Stueckzahl 0');
@@ -271,14 +290,14 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage',
     assert.match(rot[0].acquired_at, /^\d{4}-\d{2}-\d{2}$/, 'Erfassungen tragen ihr Datum');
 
     const ohnePreis = r.find(x => x.part_number === '3002');
-    assert.equal(ohnePreis.unit_price, '',
-      'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
+    assert.equal(ohnePreis.unit_price, '', 'eine Erfassung ohne Preis muss leer exportieren — nicht als 0');
     assert.equal(ohnePreis.condition, 'U');
 
     assert.ok(abfragen >= 1, 'der Zaehler hat nichts erfasst — der Patch greift nicht mehr');
-    assert.ok(abfragen <= 2,
-      `${abfragen} Abfragen fuer 3 Teile. Frueher lief eine Abfrage JE TEIL; ` +
-      `PARTS_CSV_SQL macht daraus eine.`);
+    assert.ok(
+      abfragen <= 2,
+      `${abfragen} Abfragen fuer 3 Teile. Frueher lief eine Abfrage JE TEIL; ` + `PARTS_CSV_SQL macht daraus eine.`,
+    );
   } finally {
     db.pool.query = echtesQuery;
     await db.run('DELETE FROM part_acquisitions WHERE user_id = $1', [uid]).catch(() => {});

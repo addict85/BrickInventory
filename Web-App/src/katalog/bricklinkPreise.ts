@@ -29,7 +29,10 @@ export function katalogEintrag(setNumber: string, k: KatalogDienste = katalog())
 }
 
 /** Nicht gefunden oder ungültig: dann die nächste Art. */
-const weiterVersuchen = (e: unknown) => { const c = alsAbrufFehler(e).detail?.meta?.code; return c === 404 || c === 400; };
+const weiterVersuchen = (e: unknown) => {
+  const c = alsAbrufFehler(e).detail?.meta?.code;
+  return c === 404 || c === 400;
+};
 
 // Vorgabe 'N': Ohne Zustand wurde sonst der Gebrauchtpreis geholt und gecacht.
 async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
@@ -68,7 +71,9 @@ export async function getPriceGuide(setNumber: string, condition = 'N', guideTyp
   try {
     const alt = await getPriceGuideRaw(setNumber, condition, 'stock', currencyCode);
     if (hatPreis(alt)) return { ...alt, guide_used: 'stock', guide_fallback: true };
-  } catch (_) { /* Rückfall ist optional — dann bleibt es beim leeren Ergebnis */ }
+  } catch (_) {
+    /* Rückfall ist optional — dann bleibt es beim leeren Ergebnis */
+  }
   return { ...first, guide_used: guideType };
 }
 

@@ -39,11 +39,11 @@ test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
   assert.equal(ohneVersion('75192-2'), '75192');
 });
 
-test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
-  const BLANK = `g${process.pid}`;        // so fragt der Aufrufer
-  const MITV  = `${BLANK}-1`;             // so legt clients/bricklink.ts es ab
+  const BLANK = `g${process.pid}`; // so fragt der Aufrufer
+  const MITV = `${BLANK}-1`; // so legt clients/bricklink.ts es ab
   const aufraeumen = () =>
     db.run('DELETE FROM catalog_cache WHERE set_number = ANY($1)', [[BLANK, MITV]]).catch(() => {});
   await aufraeumen();
@@ -52,7 +52,9 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
     // Die Markierung genau so schreiben, wie clients/bricklink.ts sie schreibt.
     await db.run(
       `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,'NONE',true)
-       ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=true`, [MITV]);
+       ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=true`,
+      [MITV],
+    );
 
     const { fetchAndCachePrice } = _req('src/finanzen/preisLauf.js');
     const { fetchPrice } = _req('src/finanzen/financeCalc.js');
@@ -62,9 +64,12 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
     for (const nummer of [BLANK, MITV]) {
       abrufe = [];
       const r = await fetchAndCachePrice(nummer, 'N', 'sold', 'EUR', 24);
-      assert.equal(r, 'skipped_gear',
+      assert.equal(
+        r,
+        'skipped_gear',
         `„${nummer}": Der Job fragt BrickLink, obwohl im Katalog steht, dass es ` +
-        'keinen Preis gibt — und zaehlt das Ergebnis als Fehler statt als uebersprungen');
+          'keinen Preis gibt — und zaehlt das Ergebnis als Fehler statt als uebersprungen',
+      );
       assert.equal(abrufe.length, 0, `„${nummer}": ${abrufe.length} BrickLink-Abruf(e) umsonst`);
 
       abrufe = [];
@@ -81,7 +86,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
 test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
-  const gehen = (d) => {
+  const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', 'dist', 'test', 'scripts'].includes(e.name) || e.name.startsWith('.')) continue;
       const abs = path.join(d, e.name);
@@ -91,26 +96,39 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
   };
   gehen(ROOT);
   // Selbstnachweis: Faende die Suche nichts, waere die Regel leer wahr.
-  assert.ok(dateien.length >= 40,
-    `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
-  const eigene = [], vorpruefer = [];
+  const eigene = [],
+    vorpruefer = [];
   for (const f of dateien) {
-    const code = fs.readFileSync(f, 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+    const code = fs
+      .readFileSync(f, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/[^\n]*$/gm, '');
     const rel = path.relative(ROOT, f);
     // Warum drei Muster
-    for (const m of [/\.includes\('-'\)\s*\?/,             // die haeufigste Fassung
-                     /\/-\\d\+\$\/\.test\(/,                // bricklinkLink, setAdd, setService
-                     /\?\s*[\w.]+\s*:\s*`\$\{[^}]+\}-1`/,     // die Ergaenzung selbst
-                     /\.replace\(\/-(?:\\\\d|\[0-9\])\+\$\//])  // und das Abschneiden
-      if (m.test(code)) { eigene.push(rel); break; }
+    for (const m of [
+      /\.includes\('-'\)\s*\?/, // die haeufigste Fassung
+      /\/-\\d\+\$\/\.test\(/, // bricklinkLink, setAdd, setService
+      /\?\s*[\w.]+\s*:\s*`\$\{[^}]+\}-1`/, // die Ergaenzung selbst
+      /\.replace\(\/-(?:\\\\d|\[0-9\])\+\$\//,
+    ]) // und das Abschneiden
+      if (m.test(code)) {
+        eigene.push(rel);
+        break;
+      }
     if (/SELECT is_gear, bl_type(?:, fetched_at)? FROM catalog_cache/.test(code)) vorpruefer.push(rel);
   }
   // Keine Ausnahmen: Zwei Stellen, die dieselbe Schreibweise ausrechnen, laufen auseinander.
-  assert.deepEqual(eigene, ['src/infra/setNummer.ts'],
+  assert.deepEqual(
+    eigene,
+    ['src/infra/setNummer.ts'],
     'Die Schreibweise wird woanders noch einmal ausgerechnet — genau so laufen ' +
-    'zwei Stellen auseinander, die dasselbe meinen');
-  assert.deepEqual(vorpruefer, ['src/katalog/repository/katalogCache.ts'],
-    'Der Katalog wird an mehr als einer Stelle gelesen');
+      'zwei Stellen auseinander, die dasselbe meinen',
+  );
+  assert.deepEqual(
+    vorpruefer,
+    ['src/katalog/repository/katalogCache.ts'],
+    'Der Katalog wird an mehr als einer Stelle gelesen',
+  );
 });

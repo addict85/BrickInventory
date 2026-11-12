@@ -1,6 +1,6 @@
 /** Sicherung der Einstellungen (JSON) und der Bestandsdaten (ZIP mit CSVs), dazu
  * das Einspielen einer Einstellungsdatei. Die Routen reichen nur durch. */
-import type { Writable } from 'stream';
+import type { Writable } from 'node:stream';
 import {
   SECRET_KEYS,
   isMaskedValue,

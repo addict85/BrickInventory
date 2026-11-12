@@ -91,11 +91,20 @@ export async function katalogMeta() {
   return { themes, year_min: years?.year_min || null, year_max: years?.year_max || null, year_counts: yearCounts };
 }
 
-export interface KatalogFilter { q: string; themeId: number | null; yearFrom?: number | null; yearTo?: number | null }
+export interface KatalogFilter {
+  q: string;
+  themeId: number | null;
+  yearFrom?: number | null;
+  yearTo?: number | null;
+}
 
 async function waehle(f: KatalogFilter): Promise<repo.KatalogWahl> {
-  return { q: f.q, themenIds: f.themeId ? descendantIds(await getThemeTree(), f.themeId) : null,
-           vonJahr: f.yearFrom ?? null, bisJahr: f.yearTo ?? null };
+  return {
+    q: f.q,
+    themenIds: f.themeId ? descendantIds(await getThemeTree(), f.themeId) : null,
+    vonJahr: f.yearFrom ?? null,
+    bisJahr: f.yearTo ?? null,
+  };
 }
 
 /** NULL-Jahre stehen bei absteigender Sortierung vorn, wie in der Liste. */
@@ -106,12 +115,28 @@ export async function jahrVerteilung(f: KatalogFilter, absteigend: boolean) {
 export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
   const wahl = await waehle(f);
   const [total, sets] = await Promise.all([
-    katalog().katalogSuche.katalogAnzahl(wahl), katalog().katalogSuche.katalogZeilen(await haushaltBereich().haushalt.blickfeldIds(userId), wahl, sortRoh, limit, (page - 1) * limit)]);
+    katalog().katalogSuche.katalogAnzahl(wahl),
+    katalog().katalogSuche.katalogZeilen(
+      await haushaltBereich().haushalt.blickfeldIds(userId),
+      wahl,
+      sortRoh,
+      limit,
+      (page - 1) * limit,
+    ),
+  ]);
   const tree = await getThemeTree();
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
-  return { total, page, page_size: limit, pages: Math.max(1, Math.ceil(total / limit)),
-    sets: sets.map(s => ({ ...s, image_local: resolveImageLocal(s.image_local) ?? null,
-      theme_name: tree.pathName.get(s.theme_id) || null })) };
+  return {
+    total,
+    page,
+    page_size: limit,
+    pages: Math.max(1, Math.ceil(total / limit)),
+    sets: sets.map(s => ({
+      ...s,
+      image_local: resolveImageLocal(s.image_local) ?? null,
+      theme_name: tree.pathName.get(s.theme_id) || null,
+    })),
+  };
 }
 
 export const katalogGeladen = async () => !(await katalog().katalogSuche.katalogLeer());
@@ -138,6 +163,12 @@ export async function katalogSet(userId: number, roh: string) {
     image_local = r.ok ? r.wert : null;
     if (image_local) nacharbeit().bildVormerken(String(set.image_url || ''), set.set_number);
   }
-  return { ...set, image_local, theme_name: tree.pathName.get(set.theme_id) || null,
-           minifigs: m?.n || 0, bricklink, preisvergleich_url: fuerSet(set.set_number, set.name) };
+  return {
+    ...set,
+    image_local,
+    theme_name: tree.pathName.get(set.theme_id) || null,
+    minifigs: m?.n || 0,
+    bricklink,
+    preisvergleich_url: fuerSet(set.set_number, set.name),
+  };
 }

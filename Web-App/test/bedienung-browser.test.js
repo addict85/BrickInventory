@@ -31,23 +31,32 @@ const { LAYOUT } = require('./helpers/layout-messung');
 
 const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 
-test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }, async (t) => {
+test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }, async t => {
   const app = await starteApp(t, { name: `bedien_${process.pid}`, bestand: musterSammlung });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
-  const escape = async () => {
+  const druckeEscape = async () => {
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...ESC });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...ESC });
     await ruhig();
   };
-  const fokus = () => b.auswerten(`(() => { const a = document.activeElement; return a.id || a.tagName.toLowerCase() + '.' + a.className; })()`);
+  const fokus = () =>
+    b.auswerten(
+      `(() => { const a = document.activeElement; return a.id || a.tagName.toLowerCase() + '.' + a.className; })()`,
+    );
 
   await b.auswerten(`document.querySelector('#gallery .sc[data-click="openModal"]').click(); true`);
-  await bis(`document.getElementById('set-modal').classList.contains('open') && !!document.getElementById('m-det').querySelector('.dr')`, 'Set-Ansicht');
+  await bis(
+    `document.getElementById('set-modal').classList.contains('open') && !!document.getElementById('m-det').querySelector('.dr')`,
+    'Set-Ansicht',
+  );
 
   await t.test('Teile neu importieren: beschriftet, 24 px, ohne Inline-Stil', async () => {
     const k = await b.auswerten(`(() => { document.querySelector('#set-modal details.mehr-menue').open = true;
@@ -60,29 +69,43 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
 
   await t.test('Escape im Bestätigungsdialog: Fokus zurück auf „Weitere Aktionen“', async () => {
     // Das Menü klappt bei der Wahl zu; der sichtbare Auslöser ist dann sein Knopf.
-    await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open = true; document.getElementById('btn-md').focus(); document.getElementById('btn-md').click(); true`);
+    await b.auswerten(
+      `document.querySelector('#set-modal details.mehr-menue').open = true; document.getElementById('btn-md').focus(); document.getElementById('btn-md').click(); true`,
+    );
     await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
-    assert.equal(await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open`), false, 'Menü klappt bei der Wahl zu');
-    await escape();
+    assert.equal(
+      await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open`),
+      false,
+      'Menü klappt bei der Wahl zu',
+    );
+    await druckeEscape();
     assert.equal(await b.auswerten(`document.getElementById('confirm-modal').style.display`), 'none');
-    assert.equal(await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`), true,
-      `Fokus auf ${await fokus()}`);
+    assert.equal(
+      await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`),
+      true,
+      `Fokus auf ${await fokus()}`,
+    );
   });
 
   await t.test('Escape bei zugeklapptem Menü: Fokus auf Weitere Aktionen', async () => {
     await b.auswerten(`document.getElementById('btn-md').click(); true`);
     await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
     await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open = false; true`);
-    await escape();
-    assert.equal(await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`), true,
-      `Fokus auf ${await fokus()}`);
+    await druckeEscape();
+    assert.equal(
+      await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`),
+      true,
+      `Fokus auf ${await fokus()}`,
+    );
   });
-  await escape();
+  await druckeEscape();
 
   await t.test('Häkchen Passkeys 24 px', async () => {
     await b.auswerten(`document.querySelector('.umenu-item[data-arg="profil"]').click(); true`);
     await bis(`!!document.getElementById('pw-pk')?.checkVisibility()`, 'Konto');
-    const r = await b.auswerten(`(() => { const r = document.getElementById('pw-pk').getBoundingClientRect(); return [r.width, r.height]; })()`);
+    const r = await b.auswerten(
+      `(() => { const r = document.getElementById('pw-pk').getBoundingClientRect(); return [r.width, r.height]; })()`,
+    );
     assert.ok(r[0] >= 24 && r[1] >= 24, `nur ${r[0]}×${r[1]}`);
   });
 
@@ -109,14 +132,22 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
   // Erst wenn die jüngste Antwort eingetragen ist: Eine spätere blendete sonst
   // den eben eingeblendeten Passkey-Knopf wieder aus.
   await bis(`document.getElementById('login-screen').dataset.anmeldewege === 'geladen'`, 'Anmeldewege abgefragt');
-  await b.auswerten(`document.getElementById('btn-passkey').hidden = false; document.getElementById('link-forgot').hidden = false; true`);
+  await b.auswerten(
+    `document.getElementById('btn-passkey').hidden = false; document.getElementById('link-forgot').hidden = false; true`,
+  );
   for (const design of ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz']) {
     await t.test(`Anmeldemaske ${design}`, async () => {
       const funde = [];
       for (const dunkel of [false, true]) {
-        await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`);
+        await b.auswerten(
+          `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`,
+        );
         await warte(80);
-        assert.equal(await b.auswerten(`!!document.getElementById('btn-passkey')?.checkVisibility()`), true, 'Passkey-Knopf fehlt');
+        assert.equal(
+          await b.auswerten(`!!document.getElementById('btn-passkey')?.checkVisibility()`),
+          true,
+          'Passkey-Knopf fehlt',
+        );
         for (const f of await b.auswerten(LAYOUT(false))) funde.push(`${dunkel ? 'dunkel' : 'hell'}: ${f}`);
       }
       assert.deepEqual(funde, []);

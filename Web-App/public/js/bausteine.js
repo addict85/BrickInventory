@@ -30,7 +30,7 @@ export function detailZeile(label, wert, o = {}) {
   const zStil = o.zeilenStil ? ` data-stil="${o.zeilenStil}"` : '';
   const zKlasse = o.klasse ? ` ${o.klasse}` : '';
   const wStil = o.wertStil ? ` data-stil="${o.wertStil}"` : '';
-  const wId   = o.wertId ? ` id="${o.wertId}"` : '';
+  const wId = o.wertId ? ` id="${o.wertId}"` : '';
   return html`${html`<div class="dr${zKlasse}"${ungeprueft(zStil)}><span class="dl">${ungeprueft(label)}</span>`}${html`<span class="dv"${ungeprueft(wId)}${ungeprueft(wStil)}>${typeof wert === 'string' ? ungeprueft(wert) : wert}</span></div>`}`;
 }
 
@@ -44,9 +44,10 @@ export function ladeAnzeige(text, o = {}) {
   const stil = o.stil ? ` data-stil="${o.stil}"` : '';
   // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo daneben schon steht, worauf
   // gewartet wird.
-  const inhalt = o.klein ? '<div class="skelett-flaeche"></div>'
+  const inhalt = o.klein
+    ? '<div class="skelett-flaeche"></div>'
     : '<div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div>';
-  return html`${html`<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${ungeprueft(stil)}>`}${html`<span class="vh">${(text) ? ungeprueft(text) : tRaw('common.loading')}</span>${ungeprueft(inhalt)}</div>`}`;
+  return html`${html`<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${ungeprueft(stil)}>`}${html`<span class="vh">${text ? ungeprueft(text) : tRaw('common.loading')}</span>${ungeprueft(inhalt)}</div>`}`;
 }
 
 /**
@@ -68,7 +69,8 @@ export function skelettKacheln(anzahl, text, art = 'set') {
  * @param {string} text bereits übersetzt
  */
 export function skelettZeilen(anzahl, text) {
-  const zeile = '<div class="skelett-listenzeile" aria-hidden="true"><div class="skelett-bild"></div><div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div></div>';
+  const zeile =
+    '<div class="skelett-listenzeile" aria-hidden="true"><div class="skelett-bild"></div><div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div></div>';
   return html`<div class="skelett-liste" role="status" aria-busy="true"><span class="vh">${ungeprueft(text)}</span>${ungeprueft(zeile.repeat(anzahl))}</div>`;
 }
 
@@ -80,7 +82,7 @@ export function skelettZeilen(anzahl, text) {
  * @param {unknown} wert
  */
 export function oderStrich(wert) {
-  return (wert === null || wert === undefined || wert === '') ? '—' : String(wert);
+  return wert === null || wert === undefined || wert === '' ? '—' : String(wert);
 }
 
 /**
@@ -88,7 +90,7 @@ export function oderStrich(wert) {
  * @param {string} wert
  */
 export function textOderStrich(wert) {
-  return (wert === null || wert === undefined || wert === '') ? '—' : esc(String(wert));
+  return wert === null || wert === undefined || wert === '' ? '—' : esc(String(wert));
 }
 
 /**
@@ -98,7 +100,9 @@ export function textOderStrich(wert) {
  */
 export function fehlerZustand(o) {
   const arg = o.arg ? ` data-arg="${esc(o.arg)}"` : '';
-  const details = o.details ? html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${o.details}</code></details>` : '';
+  const details = o.details
+    ? html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${o.details}</code></details>`
+    : '';
   return html`${html`<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>`}${html`<h2>${o.titel || tRaw('liste.fehler_titel')}</h2><p>${o.grund || tRaw('common.unknown_error')}</p>${details}`}${html`<button type="button" class="btn bp" data-lesend data-click="${o.erneut}"${ungeprueft(arg)}>${ico('aktualisieren')}<span>${tRaw('liste.erneut')}</span></button></div>`}`;
 }
 
@@ -112,15 +116,27 @@ export function fehlerZustand(o) {
  * @returns {d is Extract<D, { success: false }>} true, wenn es ein Fehler war und der Aufrufer aufhören soll
  */
 export function listeLadefehler(ziel, d, o) {
-  const a = /** @type {{ success?: unknown, status?: number, error?: unknown, networkError?: boolean } | null | undefined} */ (d);
+  const a =
+    /** @type {{ success?: unknown, status?: number, error?: unknown, networkError?: boolean } | null | undefined} */ (
+      d
+    );
   if (a && a.success !== false) return false;
   // Die abgelaufene Sitzung meldet die Anmeldekarte; „Erneut versuchen“ hülfe dort nicht.
   if (a?.status === 401) return true;
   const { grund, details } = verstaendlicherGrund(a);
-  const nochmal = () => { const f = resolveAction(o.erneut); if (f) o.arg !== undefined ? f(o.arg) : f(); };
+  const nochmal = () => {
+    const f = resolveAction(o.erneut);
+    if (f) o.arg !== undefined ? f(o.arg) : f();
+  };
   // „Der letzte Stand bleibt“ nur, wenn einer dasteht: Über einem Fehlerzustand widerspräche der Toast der Liste.
   const alterStand = o.behalten && !ziel?.querySelector('.fehler-zustand, .lade-geruest, .skelett-raster');
-  if (alterStand) toast(tRaw('liste.alter_stand_kurz'), 'error', { text: tRaw('liste.erneut'), fn: nochmal }, [grund, details].filter(Boolean).join(' — '));
+  if (alterStand)
+    toast(
+      tRaw('liste.alter_stand_kurz'),
+      'error',
+      { text: tRaw('liste.erneut'), fn: nochmal },
+      [grund, details].filter(Boolean).join(' — '),
+    );
   else if (ziel) setzeHtml(ziel, fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg }));
   return true;
 }
@@ -133,7 +149,8 @@ export function listeLadefehler(ziel, d, o) {
  */
 export function verstaendlicherGrund(d) {
   if (d?.networkError) return { grund: tRaw('net.liste_offline') };
-  if (!d || (d.status ?? 0) >= 500 || !d.error) return { grund: tRaw('liste.server_fehler'), details: d?.error ? String(d.error) : undefined };
+  if (!d || (d.status ?? 0) >= 500 || !d.error)
+    return { grund: tRaw('liste.server_fehler'), details: d?.error ? String(d.error) : undefined };
   return { grund: String(d.error) };
 }
 
@@ -172,10 +189,11 @@ export function geschaetztKauf(markup) {
  * @param {number | string | null | undefined} pct
  * @param {unknown} [kauf]
  */
-export function pnlBadge(pct, kauf){
-  if(istGeschenk(kauf)) return html`<span class="pnl-geschenk">${tRaw('finance.gift')}</span>`;
-  if(pct===null||pct===undefined) return '';
-  const v=parseFloat(String(pct)); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
+export function pnlBadge(pct, kauf) {
+  if (istGeschenk(kauf)) return html`<span class="pnl-geschenk">${tRaw('finance.gift')}</span>`;
+  if (pct === null || pct === undefined) return '';
+  const v = parseFloat(String(pct));
+  const cls = v > 0 ? 'pnl-pos' : v < 0 ? 'pnl-neg' : 'pnl-neu';
   return html`<span class="${cls}">${fmtPct(v)}</span>`;
 }
 
@@ -196,12 +214,12 @@ export function ownerBadges(item) {
  * @param {{ conditions?: string[] | null, condition?: string | null } | null | undefined} item
  */
 export function condBadges(item) {
-  const list = Array.isArray(item?.conditions) && item.conditions.length
-    ? item.conditions
-    : [item?.condition === 'U' ? 'U' : 'N'];
-  return html`${list.map((/** @type {string} */ c) => c === 'U'
-    ? html`<span class="cond-badge cond-used"><span class="vh">${tRaw('common.condition')}: </span>${tRaw('common.condition_used')}</span>`
-    : html`<span class="cond-badge cond-new"><span class="vh">${tRaw('common.condition')}: </span>${tRaw('common.condition_badge_new')}</span>`
+  const list =
+    Array.isArray(item?.conditions) && item.conditions.length ? item.conditions : [item?.condition === 'U' ? 'U' : 'N'];
+  return html`${list.map((/** @type {string} */ c) =>
+    c === 'U'
+      ? html`<span class="cond-badge cond-used"><span class="vh">${tRaw('common.condition')}: </span>${tRaw('common.condition_used')}</span>`
+      : html`<span class="cond-badge cond-new"><span class="vh">${tRaw('common.condition')}: </span>${tRaw('common.condition_badge_new')}</span>`,
   )}`;
 }
 
@@ -212,12 +230,17 @@ const erfassenDialog = (/** @type {unknown} */ art) => G(`add-${typeof art === '
 /**
  * @param {string} [art]
  */
-export function oeffneErfassen(art){
+export function oeffneErfassen(art) {
   const dialog = erfassenDialog(art);
   // Das Kaufdatum steht auf heute und die Währung auf der des Kontos, solange niemand etwas anderes wählt.
-  dialog?.querySelectorAll('input[data-heute]').forEach(f => { if (f instanceof HTMLInputElement) { f.max = heuteIso(); if (!f.value) f.value = heuteIso(); } });
+  dialog?.querySelectorAll('input[data-heute]').forEach(f => {
+    if (f instanceof HTMLInputElement) {
+      f.max = heuteIso();
+      if (!f.value) f.value = heuteIso();
+    }
+  });
   const w = /** @type {HTMLSelectElement | null} */ (dialog?.querySelector('#add-currency') ?? null);
-  if (w && !/** @type {HTMLInputElement | null} */ (dialog?.querySelector('#add-price'))?.value) w.value = CURRENCY;
+  if (w && !(/** @type {HTMLInputElement | null} */ (dialog?.querySelector('#add-price'))?.value)) w.value = CURRENCY;
   dialog?.classList.add('open');
 }
 
@@ -230,7 +253,9 @@ export function heuteIso() {
 /**
  * @param {string} [art]
  */
-export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
+export function schliesseErfassen(art) {
+  erfassenDialog(art)?.classList.remove('open');
+}
 
 /**
  * Gewählte CSV-Datei hochladen und das Ergebnis melden — eine Fassung für Teile, Figuren, Merkliste und
@@ -253,11 +278,16 @@ export async function csvHochladen(o) {
   const d = await api('POST', o.pfad, fd);
   fi.value = '';
   o.zeige?.(false);
-  if (!d.success) { toast(d.error || tRaw('settings.error'), 'error'); return null; }
+  if (!d.success) {
+    toast(d.error || tRaw('settings.error'), 'error');
+    return null;
+  }
   const extra = (o.hinweise?.(d) ?? []).filter(Boolean);
   const zusatz = [d.skipped_hint, ...extra].filter(Boolean).join(' — ');
-  toast(tRaw('import.summary', { added: d.added, updated: d.updated, errors: d.errors }) + (zusatz ? ` — ${zusatz}` : ''),
-    (d.errors || d.skipped || extra.length) ? 'info' : 'success');
+  toast(
+    tRaw('import.summary', { added: d.added, updated: d.updated, errors: d.errors }) + (zusatz ? ` — ${zusatz}` : ''),
+    d.errors || d.skipped || extra.length ? 'info' : 'success',
+  );
   return d;
 }
 

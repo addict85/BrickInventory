@@ -20,10 +20,8 @@ const { dbOderSkip } = require('./helpers/db');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
-test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
@@ -51,14 +49,17 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
     const { redownloadMissingImages } = _req('src/katalog/teileAnreicherung.js');
     const r = await redownloadMissingImages();
 
-    assert.ok(r && typeof r.thumbs === 'number',
-      'der Lauf muss melden, wie viele Vorschauen er erzeugt hat');
-    assert.ok(r.thumbs >= 1,
+    assert.ok(r && typeof r.thumbs === 'number', 'der Lauf muss melden, wie viele Vorschauen er erzeugt hat');
+    assert.ok(
+      r.thumbs >= 1,
       'die fehlende Vorschau des SET-Bildes wurde nicht erzeugt — vermutlich lässt ' +
-      '_fsPathFromLocal() wieder alles ausser /images/parts/ fallen');
+        '_fsPathFromLocal() wieder alles ausser /images/parts/ fallen',
+    );
     assert.ok(fs.existsSync(vorschau), 'die Vorschau-Datei fehlt');
-    assert.ok(fs.statSync(vorschau).size < fs.statSync(original).size,
-      'die Vorschau muss kleiner sein als das Original');
+    assert.ok(
+      fs.statSync(vorschau).size < fs.statSync(original).size,
+      'die Vorschau muss kleiner sein als das Original',
+    );
   } finally {
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [name]).catch(() => {});
@@ -69,8 +70,11 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder',
 });
 
 test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'src/katalog/teileAnreicherung.ts'), 'utf8')
-    .split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n');
+  const src = fs
+    .readFileSync(path.join(ROOT, 'src/katalog/teileAnreicherung.ts'), 'utf8')
+    .split('\n')
+    .filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
+    .join('\n');
   const fn = src.slice(src.indexOf('function _fsPathFromLocal'));
   for (const art of ['/images/parts/', '/images/minifigs/', '/images/sets/']) {
     assert.ok(fn.includes(art), `_fsPathFromLocal kennt ${art} nicht — diese Bilder fallen still aus dem Lauf`);
@@ -80,10 +84,15 @@ test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
 });
 
 test('beide Vorschau-Erzeuger melden Fehlschläge', () => {
-  for (const [datei, muster] of [['src/katalog/bilder/thumbs.ts', /\[thumb\]/], ['src/katalog/bilder/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/]]) {
+  for (const [datei, muster] of [
+    ['src/katalog/bilder/thumbs.ts', /\[thumb\]/],
+    ['src/katalog/bilder/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/],
+  ]) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
-    assert.ok(muster.test(src),
+    assert.ok(
+      muster.test(src),
       `${datei}: ein Fehlschlag der Vorschau-Erzeugung bleibt still. Genau das hat den ` +
-      '.tmp-Fehler aus einer früheren Runde sieben Nachträge lang verdeckt');
+        '.tmp-Fehler aus einer früheren Runde sieben Nachträge lang verdeckt',
+    );
   }
 });

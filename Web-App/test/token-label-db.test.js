@@ -24,18 +24,24 @@ const _req = buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
 const db = _req('db/database.js');
-const express   = require(path.join(ROOT, 'node_modules', 'express'));
-const session   = require(path.join(ROOT, 'node_modules', 'express-session'));
+const express = require(path.join(ROOT, 'node_modules', 'express'));
+const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
-const bcrypt    = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const NAME = `label_${process.pid}`, PASS = 'label-Passwort-1';
+const NAME = `label_${process.pid}`,
+  PASS = 'label-Passwort-1';
 
-test('Token-Label beim Anmelden', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Token-Label beim Anmelden', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
-    VALUES ($1, $2, false, true, true) RETURNING id`, [NAME, await bcrypt.hash(PASS, 4)])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
+    VALUES ($1, $2, false, true, true) RETURNING id`,
+      [NAME, await bcrypt.hash(PASS, 4)],
+    )
+  ).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`%${uid}%`]).catch(() => {});
@@ -44,17 +50,24 @@ test('Token-Label beim Anmelden', { concurrency: 1 }, async (t) => {
 
   const app = express();
   app.use(express.json());
-  app.use(session({ store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
+  app.use(
+    session({
+      store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+    }),
+  );
   app.use(AUTH, _req('routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
 
   /** Anmelden und das Label des eben ausgestellten Tokens lesen. */
-  const labelNach = async (label) => {
+  const labelNach = async label => {
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
     const r = await fetch(`http://localhost:${srv.address().port}${AUTH}/login`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: NAME, password: PASS, label }),
     });
     const body = await r.json();

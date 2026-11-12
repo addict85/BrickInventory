@@ -22,8 +22,13 @@ async function liesDialog(d) {
   const modal = d.getElementById('confirm-modal');
   assert.ok(await warte(() => modal.style.display === 'flex'), 'der Bestätigungsdialog erscheint');
   const knopf = d.getElementById('cd-confirm');
-  const stand = { text: knopf.textContent.trim(), rot: knopf.classList.contains('bd'), haupt: knopf.classList.contains('bp'),
-    titel: d.getElementById('cd-title').textContent.trim(), meldung: d.getElementById('cd-msg').textContent.trim() };
+  const stand = {
+    text: knopf.textContent.trim(),
+    rot: knopf.classList.contains('bd'),
+    haupt: knopf.classList.contains('bp'),
+    titel: d.getElementById('cd-title').textContent.trim(),
+    meldung: d.getElementById('cd-msg').textContent.trim(),
+  };
   d.getElementById('cd-cancel').click();
   await warte(() => modal.style.display === 'none');
   await takt(10);
@@ -32,8 +37,16 @@ async function liesDialog(d) {
 
 test('Bestätigungsdialoge: Knopftext und Farbe je Aufrufer', async () => {
   const { w, d } = await oeffneOberflaeche({
-    '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }] },
-    '/v1/settings/household': { success: true, currency: 'EUR', sub_accounts: [{ id: 7, username: 'ben' }], parents: [] },
+    '/v1/vouchers': {
+      success: true,
+      vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }],
+    },
+    '/v1/settings/household': {
+      success: true,
+      currency: 'EUR',
+      sub_accounts: [{ id: 7, username: 'ben' }],
+      parents: [],
+    },
     '/v1/admin/cache-stats': { success: true, prices: 4, subsets: 2, catalog: 7 },
   });
   try {
@@ -58,19 +71,31 @@ test('Bestätigungsdialoge: Knopftext und Farbe je Aufrufer', async () => {
     d.getElementById('btn-clr-all-cache').click();
     const speicher = await liesDialog(d);
     assert.deepEqual([speicher.text, speicher.rot], ['Leeren', true], 'Zwischenspeicher: Knopf');
-    assert.match(speicher.meldung, /4 gespeicherte Preise, 2 Baulisten und 7 Katalog-Einträge/, 'Zwischenspeicher: was verloren geht');
+    assert.match(
+      speicher.meldung,
+      /4 gespeicherte Preise, 2 Baulisten und 7 Katalog-Einträge/,
+      'Zwischenspeicher: was verloren geht',
+    );
     assert.match(speicher.meldung, /kontingent/i, 'Zwischenspeicher: was der Neuabruf kostet');
 
     d.getElementById('btn-dall').click();
     const alles = await liesDialog(d);
     assert.deepEqual([alles.text, alles.rot], ['Alles löschen', true], 'Alles löschen bleibt rot');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Bestätigungsdialoge auf Englisch: dasselbe Verb übersetzt', async () => {
-  const { w, d } = await oeffneOberflaeche({
-    '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }] },
-  }, { sprache: 'en' });
+  const { w, d } = await oeffneOberflaeche(
+    {
+      '/v1/vouchers': {
+        success: true,
+        vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }],
+      },
+    },
+    { sprache: 'en' },
+  );
   try {
     d.getElementById('nu-n').value = 'carla';
     d.getElementById('nu-p').value = 'Ein-langes-Passwort-42';
@@ -81,5 +106,7 @@ test('Bestätigungsdialoge auf Englisch: dasselbe Verb übersetzt', async () => 
     assert.ok(await warte(() => d.querySelector('[data-click="gutscheinPinUmschalten"]')), 'Gutscheinliste');
     d.querySelector('[data-click="gutscheinPinUmschalten"]').click();
     assert.equal((await liesDialog(d)).text, 'Show');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

@@ -3,7 +3,8 @@
 
 // `summary` gehört dazu: Fehlt es, springt die Falle vor „Weitere Aktionen“
 // zurück an den Anfang, und alles dahinter ist per Tastatur unerreichbar.
-const FOKUSSIERBAR = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+const FOKUSSIERBAR =
+  'a[href], button, input:not([type="hidden"]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
 /**
  * Offen heisst: Klasse `open`, oder ein Inline-`display` ausser none (confirm, PDF).
@@ -25,7 +26,10 @@ export function obersterDialog() {
   for (const el of dialoge()) {
     if (!istOffen(el)) continue;
     const z = parseInt(el.style.zIndex || getComputedStyle(el).zIndex, 10) || 0;
-    if (z >= bestZ) { bester = el; bestZ = z; }
+    if (z >= bestZ) {
+      bester = el;
+      bestZ = z;
+    }
   }
   return bester;
 }
@@ -48,7 +52,10 @@ function fokusZiele(dialog) {
 function fokussiereHinein(dialog) {
   if (dialog.contains(document.activeElement)) return;
   const ziel = /** @type {HTMLElement | null} */ (dialog.querySelector('[data-erstfokus]'));
-  if (ziel && sichtbar(ziel)) { ziel.focus(); return; }
+  if (ziel && sichtbar(ziel)) {
+    ziel.focus();
+    return;
+  }
   fokussiereFlaeche(dialog);
 }
 
@@ -68,7 +75,9 @@ const _hoerer = [];
  * Rückruf für jedes Öffnen und Schliessen (der Router führt damit den Verlauf).
  * @param {(dialog: HTMLElement, offen: boolean) => void} fn
  */
-export function beiDialogWechsel(fn) { _hoerer.push(fn); }
+export function beiDialogWechsel(fn) {
+  _hoerer.push(fn);
+}
 
 /** @param {HTMLElement} dialog */
 function zustandGeaendert(dialog) {
@@ -89,12 +98,21 @@ function zustandGeaendert(dialog) {
     const verwaist = !aktiv || aktiv === document.body || dialog.contains(aktiv);
     if (!verwaist) return;
     const ziel = rueckziel(zurueck);
-    if (ziel) { ziel.focus({ preventScroll: true }); return; }
+    if (ziel) {
+      ziel.focus({ preventScroll: true });
+      return;
+    }
     const darunter = obersterDialog();
-    if (darunter) { fokussiereFlaeche(darunter); return; }
+    if (darunter) {
+      fokussiereFlaeche(darunter);
+      return;
+    }
     // Per Adresse geöffnet gibt es keinen Auslöser: dann die Überschrift der Ansicht statt <body>.
     const kopf = /** @type {HTMLElement|null} */ (document.querySelector('#app .tab.active h1'));
-    if (kopf && sichtbar(kopf)) { if (!kopf.hasAttribute('tabindex')) kopf.tabIndex = -1; kopf.focus({ preventScroll: true }); }
+    if (kopf && sichtbar(kopf)) {
+      if (!kopf.hasAttribute('tabindex')) kopf.tabIndex = -1;
+      kopf.focus({ preventScroll: true });
+    }
   }
 }
 
@@ -106,7 +124,9 @@ function zustandGeaendert(dialog) {
 function rueckziel(el) {
   if (!el?.isConnected) return null;
   if (sichtbar(el)) return el;
-  const summary = /** @type {HTMLElement | null | undefined} */ (el.closest('details:not([open])')?.querySelector(':scope > summary'));
+  const summary = /** @type {HTMLElement | null | undefined} */ (
+    el.closest('details:not([open])')?.querySelector(':scope > summary')
+  );
   return summary && sichtbar(summary) ? summary : null;
 }
 
@@ -131,7 +151,8 @@ function tasteGedrueckt(ev) {
     // nächste Escape schliesst den Dialog.
     const menue = /** @type {HTMLDetailsElement | null | undefined} */ (aktiv?.closest('details[open]'));
     if (menue && dialog.contains(menue)) {
-      ev.preventDefault(); ev.stopPropagation();
+      ev.preventDefault();
+      ev.stopPropagation();
       menue.open = false;
       /** @type {HTMLElement | null} */ (menue.querySelector(':scope > summary'))?.focus();
       return;
@@ -145,12 +166,23 @@ function tasteGedrueckt(ev) {
   }
   if (ev.key !== 'Tab') return;
   const ziele = fokusZiele(dialog);
-  if (!ziele.length) { ev.preventDefault(); return; }
-  const erstes = ziele[0], letztes = ziele[ziele.length - 1];
+  if (!ziele.length) {
+    ev.preventDefault();
+    return;
+  }
+  const erstes = ziele[0],
+    letztes = ziele[ziele.length - 1];
   const aktiv = document.activeElement;
-  if (!dialog.contains(aktiv)) { ev.preventDefault(); erstes.focus(); }
-  else if (ev.shiftKey && (aktiv === erstes || !ziele.includes(/** @type {HTMLElement} */ (aktiv)))) { ev.preventDefault(); letztes.focus(); }
-  else if (!ev.shiftKey && aktiv === letztes) { ev.preventDefault(); erstes.focus(); }
+  if (!dialog.contains(aktiv)) {
+    ev.preventDefault();
+    erstes.focus();
+  } else if (ev.shiftKey && (aktiv === erstes || !ziele.includes(/** @type {HTMLElement} */ (aktiv)))) {
+    ev.preventDefault();
+    letztes.focus();
+  } else if (!ev.shiftKey && aktiv === letztes) {
+    ev.preventDefault();
+    erstes.focus();
+  }
 }
 
 export function initDialoge() {

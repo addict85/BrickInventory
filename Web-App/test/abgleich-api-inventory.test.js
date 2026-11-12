@@ -16,8 +16,7 @@ const ROOT = path.join(__dirname, '..');
 
 function scan(file) {
   const src = fs.readFileSync(file, 'utf8');
-  return [...src.matchAll(/router\.(get|post|put|delete)\(\s*'([^']+)'/g)]
-    .map(m => [m[1].toUpperCase(), m[2]]);
+  return [...src.matchAll(/router\.(get|post|put|delete)\(\s*'([^']+)'/g)].map(m => [m[1].toUpperCase(), m[2]]);
 }
 
 function inventory() {
@@ -25,12 +24,10 @@ function inventory() {
   // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
   // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
   for (const r of routerEinhaengungen())
-    for (const [m, p] of scan(r.datei))
-      eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
+    for (const [m, p] of scan(r.datei)) eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')))
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
-      for (const [m, p] of scan(path.join(ROOT, 'routes/api_v1', f)))
-        eps.add(`${m} /api/v1${p}`);
+      for (const [m, p] of scan(path.join(ROOT, 'routes/api_v1', f))) eps.add(`${m} /api/v1${p}`);
   return eps;
 }
 
@@ -47,15 +44,15 @@ const C = {
   'GET /api/v1/parts/manual': 'paritaet',
   'GET /api/v1/minifigs': 'paritaet',
   'GET /api/v1/minifigs/manual': 'paritaet',
-  'GET /api/v1/settings': 'paritaet',                   'GET /api/v1/settings': 'paritaet',
-      'GET /api/v1/sets/:setNumber/acquisitions': 'paritaet',
- 'GET /api/v1/parts/:partNumber/:colorId/acquisitions': 'paritaet',
- 'GET /api/v1/minifigs/:figNumber/acquisitions': 'paritaet',
+  'GET /api/v1/settings': 'paritaet',
+  'GET /api/v1/sets/:setNumber/acquisitions': 'paritaet',
+  'GET /api/v1/parts/:partNumber/:colorId/acquisitions': 'paritaet',
+  'GET /api/v1/minifigs/:figNumber/acquisitions': 'paritaet',
 
   // Schreib-Paritäts-Paare (api-parity.test.js, Effekt-Vergleich)
   'PUT /api/v1/sets/:setNumber': 'paritaet-schreib',
   'DELETE /api/v1/sets/:setNumber': 'paritaet-schreib',
- 'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': 'paritaet-schreib',
+  'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': 'paritaet-schreib',
 
   // Paare mit externen API-Aufrufen — Parität nicht automatisiert prüfbar
   'POST /api/v1/sets': 'paar-extern',
@@ -65,11 +62,11 @@ const C = {
   'DELETE /api/v1/parts/:partNumber/:colorId': 'paar-extern',
   'PUT /api/v1/minifigs/:figNumber': 'paar-extern',
   'DELETE /api/v1/minifigs/:figNumber': 'paar-extern',
- 'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': 'paar-extern',
+  'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': 'paar-extern',
   'PUT /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': 'paar-extern',
   'PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId': 'paar-extern',
- 'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId': 'paar-extern',
- 'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': 'paar-extern',
+  'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId': 'paar-extern',
+  'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': 'paar-extern',
 
   // Nur /api/v1 — von beiden Clients (oder nur Android) genutzt
   // Etappe 6: zusammengelegt — nur noch die v1-Adresse, beide Clients rufen
@@ -191,9 +188,9 @@ const C = {
   // Android-App zeichnet dort (noch) kein Diagramm — deshalb kein v1-Gegenstück.
   // Seit hardened-96 gibt es beide auch für die Android-App — der
   // Detail-Dialog dort zeigte vorher weder Marktpreis je Zustand noch Verlauf. …
-  
+
   'GET /api/v1/sets/household-members': 'paritaet',
-  
+
   'POST /api/v1/sets/:sn/move': 'paritaet',
   // Haushalt: Konten verknüpfen. Beide Wege, damit die App dieselben Regeln
   // bekommt — die Grenzen (kein Kreis, gleiche Währung im ganzen
@@ -385,16 +382,20 @@ const VALID = new Set(['paritaet', 'paritaet-schreib', 'paar-extern', 'nur-v1', 
 test('jeder API-Endpunkt ist klassifiziert', () => {
   const eps = inventory();
   const missing = [...eps].filter(e => !(e in C)).sort();
-  assert.deepEqual(missing, [],
+  assert.deepEqual(
+    missing,
+    [],
     `Neue/unklassifizierte Endpunkte — bitte in test/abgleich-api-inventory.test.js einordnen ` +
-    `(und bei "paritaet" ein Paar in test/api-parity.test.js ergänzen):\n  ${missing.join('\n  ')}`);
+      `(und bei "paritaet" ein Paar in test/api-parity.test.js ergänzen):\n  ${missing.join('\n  ')}`,
+  );
 });
 
 test('keine verwaisten Klassifikations-Einträge', () => {
   const eps = inventory();
-  const stale = Object.keys(C).filter(e => !eps.has(e)).sort();
-  assert.deepEqual(stale, [],
-    `Klassifizierte Endpunkte existieren nicht mehr:\n  ${stale.join('\n  ')}`);
+  const stale = Object.keys(C)
+    .filter(e => !eps.has(e))
+    .sort();
+  assert.deepEqual(stale, [], `Klassifizierte Endpunkte existieren nicht mehr:\n  ${stale.join('\n  ')}`);
 });
 
 /**
@@ -402,21 +403,25 @@ test('keine verwaisten Klassifikations-Einträge', () => {
  */
 function androidAdressen() {
   const gefunden = new Set();
-  const lauf = (d) => {
+  const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const voll = path.join(d, e.name);
-      if (e.isDirectory()) { lauf(voll); continue; }
+      if (e.isDirectory()) {
+        lauf(voll);
+        continue;
+      }
       if (!e.name.endsWith('.kt')) continue;
-      const src = fs.readFileSync(voll, 'utf8')
-        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      const src = fs
+        .readFileSync(voll, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
       for (const m of src.matchAll(/@(GET|POST|PUT|PATCH|DELETE)\(\s*"([^"]+)"\s*\)/g))
         gefunden.add(`${m[1]} ${vergleichbar(m[2])}`);
       // Von Hand gebaut: die Methode steht dort nicht daneben, also unter
       // ALLEN Verben eintragen. Das kann eine Adresse zu viel entlasten —
       // aber niemals eine zu Unrecht anklagen, und darum geht es hier.
       for (const m of src.matchAll(/\$baseUrl(\/api\/[^"$?]+)/g))
-        for (const v of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
-          gefunden.add(`${v} ${vergleichbar(m[1])}`);
+        for (const v of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) gefunden.add(`${v} ${vergleichbar(m[1])}`);
     }
   };
   // Alle Module der App: Dienst-Interfaces in core-data, Adressen auch in den Bereichen.
@@ -426,9 +431,7 @@ function androidAdressen() {
 
 /** Retrofit schreibt `{x}` und laesst den Schraegstrich weg, Express nimmt `:x`. */
 function vergleichbar(p) {
-  return ('/' + p.trim().replace(/^\/+|\/+$/g, ''))
-    .replace(/\{[^}]+\}/g, ':X')
-    .replace(/:[A-Za-z_]\w*/g, ':X');
+  return ('/' + p.trim().replace(/^\/+|\/+$/g, '')).replace(/\{[^}]+\}/g, ':X').replace(/:[A-Za-z_]\w*/g, ':X');
 }
 
 test('kein „nur-web" wird in Wahrheit von der Android-App gerufen', () => {
@@ -438,18 +441,22 @@ test('kein „nur-web" wird in Wahrheit von der Android-App gerufen', () => {
   assert.ok(app.size >= 80, `Nur ${app.size} Android-Adressen gefunden — Muster veraltet?`);
 
   const falsch = Object.entries(C)
-    .filter(([e, k]) => k === 'nur-web')
+    .filter(([, k]) => k === 'nur-web')
     .map(([e]) => {
       const [verb, pfad] = e.split(' ');
       return app.has(`${verb} ${vergleichbar(pfad)}`) ? e : null;
     })
-    .filter(Boolean).sort();
+    .filter(Boolean)
+    .sort();
 
-  assert.deepEqual(falsch, [],
+  assert.deepEqual(
+    falsch,
+    [],
     'Diese Endpunkte sind als „nur-web" eingetragen, die Android-App ruft sie aber:\n  ' +
-    falsch.join('\n  ') +
-    '\nEntweder die Beschriftung ist veraltet (dann auf nur-v1 setzen), oder der ' +
-    'Aufruf in der App gehoert dort nicht hin.');
+      falsch.join('\n  ') +
+      '\nEntweder die Beschriftung ist veraltet (dann auf nur-v1 setzen), oder der ' +
+      'Aufruf in der App gehoert dort nicht hin.',
+  );
 });
 
 test('nur gültige Kategorien', () => {

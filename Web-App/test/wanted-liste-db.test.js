@@ -6,7 +6,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1. Die reinen Lesefälle brauchen keine DB und laufen immer.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -18,7 +18,9 @@ const { leseWantedListe } = _req('src/merkliste/wantedParser.js');
 const { loeseLokalAuf } = _req('src/merkliste/wantedAufloesung.js');
 const { importiereWantedListe } = _req('src/merkliste/wantedListe.js');
 
-test.after(async () => { await db.pool.end().catch(() => {}); });
+test.after(async () => {
+  await db.pool.end().catch(() => {});
+});
 
 /** Ein ITEM-Block in Marcos Schreibweise. */
 function item(typ, id, farbe, menge = 1, zustand = 'X', preis = '-1.0000') {
@@ -38,16 +40,21 @@ test('1. jeder Posten wird einzeln gelesen, nicht die Datei als Ganzes', () => {
   // legen. Dann gewinnt der erste Treffer je Feld, und aus 224 Posten wird
   // einer. Genau diese Form hat in diesem Baum schon zweimal etwas falsch
   // gemacht (siehe seitenweiseLesen in src/gutscheine/gutscheinPdfSchreiben.ts).
-  const xml = liste(
-    item('P', '41879', 7),
-    item('P', '973pb4536c01', 36, 2),
-    item('P', 'x126', 95, 14),
-  );
+  const xml = liste(item('P', '41879', 7), item('P', '973pb4536c01', 36, 2), item('P', 'x126', 95, 14));
   const r = leseWantedListe(xml);
   assert.equal(r.posten.length, 3, `${r.posten.length} Posten statt 3`);
-  assert.deepEqual(r.posten.map(p => p.blId), ['41879', '973pb4536c01', 'x126']);
-  assert.deepEqual(r.posten.map(p => p.blFarbe), [7, 36, 95]);
-  assert.deepEqual(r.posten.map(p => p.menge), [1, 2, 14]);
+  assert.deepEqual(
+    r.posten.map(p => p.blId),
+    ['41879', '973pb4536c01', 'x126'],
+  );
+  assert.deepEqual(
+    r.posten.map(p => p.blFarbe),
+    [7, 36, 95],
+  );
+  assert.deepEqual(
+    r.posten.map(p => p.menge),
+    [1, 2, 14],
+  );
 });
 
 test('2. CONDITION=X heisst „egal" und wird nicht zu N', () => {
@@ -55,17 +62,19 @@ test('2. CONDITION=X heisst „egal" und wird nicht zu N', () => {
   // Einträge). „Egal" als N zu lesen wäre eine Entscheidung dieser Datei über
   // etwas, das die Einstellung des Kontos bestimmt — dieselbe Regel wie beim
   // Merklisten-Import.
-  const r = leseWantedListe(liste(item('P', '3001', 4, 1, 'X'),
-                                  item('P', '3002', 4, 1, 'N'),
-                                  item('P', '3003', 4, 1, 'U')));
-  assert.deepEqual(r.posten.map(p => p.zustand), [null, 'N', 'U']);
+  const r = leseWantedListe(
+    liste(item('P', '3001', 4, 1, 'X'), item('P', '3002', 4, 1, 'N'), item('P', '3003', 4, 1, 'U')),
+  );
+  assert.deepEqual(
+    r.posten.map(p => p.zustand),
+    [null, 'N', 'U'],
+  );
 });
 
 test('3. MAXPRICE=-1 ist kein Preis', () => {
   // -1.0000 steht in ALLEN 224 Posten von Marcos Datei. Als Zahl übernommen
   // ergäbe das einen Kaufpreis von minus einem Franken.
-  const r = leseWantedListe(liste(item('P', '3001', 4, 1, 'X', '-1.0000'),
-                                  item('P', '3002', 4, 1, 'X', '2.5000')));
+  const r = leseWantedListe(liste(item('P', '3001', 4, 1, 'X', '-1.0000'), item('P', '3002', 4, 1, 'X', '2.5000')));
   assert.equal(r.posten[0].maxPreis, null, 'Aus -1 wurde ein Preis');
   assert.equal(r.posten[1].maxPreis, 2.5);
 });
@@ -74,18 +83,30 @@ test('4. fremde Arten werden gezählt, nicht verschluckt', () => {
   // B (Book), G (Gear), I (Instruction) führt diese Anwendung nicht. Wer eine
   // Liste mit Zubehör hochlädt, soll LESEN, dass davon etwas liegenblieb —
   // eine stille Lücke sieht aus wie ein vollständiger Import.
-  const r = leseWantedListe(liste(
-    item('P', '3001', 4), item('B', '5002', null), item('G', '6001', null),
-    item('B', '5003', null), item('M', 'sw0001', null), item('S', '75192-1', null)));
+  const r = leseWantedListe(
+    liste(
+      item('P', '3001', 4),
+      item('B', '5002', null),
+      item('G', '6001', null),
+      item('B', '5003', null),
+      item('M', 'sw0001', null),
+      item('S', '75192-1', null),
+    ),
+  );
   assert.equal(r.posten.length, 3, `${r.posten.length} brauchbare Posten statt 3`);
-  assert.deepEqual(r.posten.map(p => p.art), ['part', 'fig', 'set']);
-  assert.deepEqual(r.fremdeArten, { B: 2, G: 1 },
-    `Fremde Arten: ${JSON.stringify(r.fremdeArten)} — zwei Bücher und ein Zubehör`);
+  assert.deepEqual(
+    r.posten.map(p => p.art),
+    ['part', 'fig', 'set'],
+  );
+  assert.deepEqual(
+    r.fremdeArten,
+    { B: 2, G: 1 },
+    `Fremde Arten: ${JSON.stringify(r.fremdeArten)} — zwei Bücher und ein Zubehör`,
+  );
 });
 
 test('5. ein Posten ohne ITEMID wird gezählt, nicht geraten', () => {
-  const xml = liste(item('P', '3001', 4))
-    .replace('<ITEMID>3001</ITEMID>', '');
+  const xml = liste(item('P', '3001', 4)).replace('<ITEMID>3001</ITEMID>', '');
   const r = leseWantedListe(xml);
   assert.equal(r.posten.length, 0);
   assert.equal(r.ohneNummer, 1, 'Der Posten ohne Nummer wurde nicht gezählt');
@@ -97,20 +118,25 @@ test('6. Entitäten werden aufgelöst, und & zuletzt', () => {
   const r = leseWantedListe(liste(item('P', 'A&amp;B', 4)));
   assert.equal(r.posten[0].blId, 'A&B');
   const r2 = leseWantedListe(liste(item('P', 'A&amp;lt;B', 4)));
-  assert.equal(r2.posten[0].blId, 'A&lt;B',
-    'Aus &amp;lt; wurde „<" — die Reihenfolge der Ersetzungen stimmt nicht');
+  assert.equal(r2.posten[0].blId, 'A&lt;B', 'Aus &amp;lt; wurde „<" — die Reihenfolge der Ersetzungen stimmt nicht');
 });
 
-test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    keineDb(t, e); return;
+test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c);
+  } finally {
+    c.release();
+  }
 
   // Drei Lagen, eine je Stufe — und eine vierte ohne alles.
   await db.run(`INSERT INTO part_catalog (part_number, part_name)
@@ -121,20 +147,21 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
   await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES
                   (4,'Red',5), (15,'White',1)`);
 
-  const posten = leseWantedListe(liste(
-    item('P', '4162', 5),     // Stufe 1 — Zuordnung
-    item('P', '3001', 1),     // Stufe 2 — gleich vermerkt
-    item('P', '11111', 5),    // Stufe 3 — nur Katalogtreffer
-    item('P', '99999', 5),    // nichts
-    item('P', '3001', 77),    // Nummer ja, Farbe unbekannt
-  )).posten;
+  const posten = leseWantedListe(
+    liste(
+      item('P', '4162', 5), // Stufe 1 — Zuordnung
+      item('P', '3001', 1), // Stufe 2 — gleich vermerkt
+      item('P', '11111', 5), // Stufe 3 — nur Katalogtreffer
+      item('P', '99999', 5), // nichts
+      item('P', '3001', 77), // Nummer ja, Farbe unbekannt
+    ),
+  ).posten;
 
   const auf = await loeseLokalAuf(posten);
   assert.equal(auf.length, 5);
 
   await t.test('Stufe 1: die eingetragene abweichende Nummer', () => {
-    assert.equal(auf[0].rbId, '98765',
-      `4162 wurde zu ${auf[0].rbId} — erwartet 98765 aus bl_zuordnung`);
+    assert.equal(auf[0].rbId, '98765', `4162 wurde zu ${auf[0].rbId} — erwartet 98765 aus bl_zuordnung`);
     assert.equal(auf[0].sicherheit, 'zuordnung');
     assert.equal(auf[0].rbFarbe, 4, 'BL-Farbe 5 ist Rebrickable 4 (Red)');
   });
@@ -144,18 +171,24 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
     // nicht als Fehlen. Ihn wie einen Katalogtreffer zu zaehlen waere eine
     // Abbildung zur Vermutung herabgestuft.
     assert.equal(auf[1].rbId, '3001');
-    assert.equal(auf[1].sicherheit, 'gleich_vermerkt',
+    assert.equal(
+      auf[1].sicherheit,
+      'gleich_vermerkt',
       `Stufe „${auf[1].sicherheit}" — ein NULL-Vermerk in bl_zuordnung ist eine ` +
-      'Abbildung und kein blosser Katalogtreffer');
+        'Abbildung und kein blosser Katalogtreffer',
+    );
     assert.equal(auf[1].rbFarbe, 15);
   });
 
   await t.test('Stufe 3: der Katalogtreffer bleibt als Vermutung markiert', () => {
     assert.equal(auf[2].rbId, '11111');
-    assert.equal(auf[2].sicherheit, 'katalogtreffer',
+    assert.equal(
+      auf[2].sicherheit,
+      'katalogtreffer',
       `Stufe „${auf[2].sicherheit}" — niemand hat für 11111 bei BrickLink ` +
-      'nachgesehen. Als „zuordnung" gezählt sähe eine Vermutung wie eine ' +
-      'Abbildung aus, und genau diese Trennung soll die Vorschau zeigen.');
+        'nachgesehen. Als „zuordnung" gezählt sähe eine Vermutung wie eine ' +
+        'Abbildung aus, und genau diese Trennung soll die Vorschau zeigen.',
+    );
   });
 
   await t.test('ohne jeden Treffer bleibt es offen — es wird nichts geraten', () => {
@@ -170,10 +203,16 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
     // Farbe zu behaupten. Deshalb: Nummer ja, `farbeOffen` gesetzt.
     assert.equal(auf[4].rbId, '3001');
     assert.equal(auf[4].rbFarbe, null);
-    assert.equal(auf[4].farbeOffen, true,
-      'Die offene Farbe wird nicht gemeldet — dann legt der Import sie still falsch an');
+    assert.equal(
+      auf[4].farbeOffen,
+      true,
+      'Die offene Farbe wird nicht gemeldet — dann legt der Import sie still falsch an',
+    );
     // Gegenrichtung: Bei den vier anderen ist nichts offen.
-    assert.deepEqual(auf.slice(0, 4).map(a => a.farbeOffen), [false, false, false, false]);
+    assert.deepEqual(
+      auf.slice(0, 4).map(a => a.farbeOffen),
+      [false, false, false, false],
+    );
   });
 });
 
@@ -218,17 +257,23 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
  *        „nichts angegeben" (dann gilt der Marktpreis) von einer
  *        ausdrücklichen Null, und nur das Weglassen führt zum Marktpreis.
  */
-test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    keineDb(t, e); return;
+test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Derselbe Unterbau wie oben — der Fall läuft eigenständig.
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const c = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(c);
+  } finally {
+    c.release();
+  }
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('3001','Brick 2x4')`);
   await db.run(`INSERT INTO rb_colors (id, name, rgb, bl_color_id) VALUES (4,'Red','C91A09',5)`);
 
@@ -241,7 +286,10 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     return {
       gesehen,
       anleger: {
-        teil: async (_u, body) => { gesehen.push(body); return { action: zweiterLauf ? 'updated' : 'created' }; },
+        teil: async (_u, body) => {
+          gesehen.push(body);
+          return { action: zweiterLauf ? 'updated' : 'created' };
+        },
         figur: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
@@ -252,52 +300,69 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
   const bericht = await importiereWantedListe(1, xml, { anleger: z1.anleger });
 
   await t.test('eine offene Farbe wird nicht erfunden', () => {
-    assert.equal(z1.gesehen.length, 1,
+    assert.equal(
+      z1.gesehen.length,
+      1,
       `Der Anleger bekam ${z1.gesehen.length} Posten statt einem. Der zweite hat ` +
-      'eine Farbe, die der Katalog nicht kennt — ihn mit `color_id: 0` zu ' +
-      'schreiben heisst SCHWARZ, und daneben steht dasselbe Teil in seiner ' +
-      'richtigen Farbe. Das ist das Doppelte aus Marcos Bildschirmfoto.');
+        'eine Farbe, die der Katalog nicht kennt — ihn mit `color_id: 0` zu ' +
+        'schreiben heisst SCHWARZ, und daneben steht dasselbe Teil in seiner ' +
+        'richtigen Farbe. Das ist das Doppelte aus Marcos Bildschirmfoto.',
+    );
     const offen = bericht.posten.find(p => p.ausgang === 'offen');
     assert.ok(offen, 'Der Posten mit offener Farbe steht nicht als „offen" im Bericht');
-    assert.match(offen.grund || '', /BrickLink-Farbe 85/,
-      `Der Grund nennt die Farbe nicht: „${offen.grund}" — dann weiss Marco ` +
-      'nicht, was er nachtragen muss.');
+    assert.match(
+      offen.grund || '',
+      /BrickLink-Farbe 85/,
+      `Der Grund nennt die Farbe nicht: „${offen.grund}" — dann weiss Marco ` + 'nicht, was er nachtragen muss.',
+    );
   });
 
   await t.test('die Farbe reist mit Namen und Farbwert', () => {
     assert.equal(z1.gesehen[0].color_id, 4);
-    assert.equal(z1.gesehen[0].color_name, 'Red',
+    assert.equal(
+      z1.gesehen[0].color_name,
+      'Red',
       'Ohne `color_name` bleibt die Spalte leer. Die Teileliste liest den ' +
-      'Namen von dort — der Hex-Wert fällt auf den Katalog zurück, der Name ' +
-      'NICHT. Ergebnis ist ein Farbpunkt ohne Beschriftung.');
+        'Namen von dort — der Hex-Wert fällt auf den Katalog zurück, der Name ' +
+        'NICHT. Ergebnis ist ein Farbpunkt ohne Beschriftung.',
+    );
     assert.equal(z1.gesehen[0].color_hex, 'C91A09');
   });
 
   await t.test('MAXPRICE wird zum Kaufpreis — und -1 bleibt keiner', async () => {
     // Marcos Entscheidung vom 21.10.
     const z = zaehler();
-    await importiereWantedListe(1, liste(
-      item('P', '3001', 5, 2, 'N', '0.8578'),
-      item('P', '3001', 5, 2, 'N', '-1.0000'),
-    ), { anleger: z.anleger });
+    await importiereWantedListe(
+      1,
+      liste(item('P', '3001', 5, 2, 'N', '0.8578'), item('P', '3001', 5, 2, 'N', '-1.0000')),
+      { anleger: z.anleger },
+    );
     assert.equal(z.gesehen.length, 2, 'Beide Posten müssen beim Anleger ankommen');
-    assert.equal(z.gesehen[0].unit_price, 0.8578,
+    assert.equal(
+      z.gesehen[0].unit_price,
+      0.8578,
       `unit_price war ${JSON.stringify(z.gesehen[0].unit_price)}. Ohne den Wert ` +
-      'holt der Anleger den Marktpreis — und in der Finanzansicht steht dann ' +
-      'nicht, was Marco bezahlt hat.');
-    assert.ok(!('unit_price' in z.gesehen[1]),
+        'holt der Anleger den Marktpreis — und in der Finanzansicht steht dann ' +
+        'nicht, was Marco bezahlt hat.',
+    );
+    assert.ok(
+      !('unit_price' in z.gesehen[1]),
       `Bei MAXPRICE=-1 steht ${JSON.stringify(z.gesehen[1].unit_price)} im Rumpf. ` +
-      'Das Feld muss FEHLEN, nicht null sein: Die Anleger unterscheiden ' +
-      '„nichts angegeben" (dann gilt der Marktpreis) von einer ausdrücklichen Null.');
+        'Das Feld muss FEHLEN, nicht null sein: Die Anleger unterscheiden ' +
+        '„nichts angegeben" (dann gilt der Marktpreis) von einer ausdrücklichen Null.',
+    );
   });
 
   await t.test('ein zweiter Lauf stockt auf, statt anzulegen', async () => {
     const z2 = zaehler(true);
     const b2 = await importiereWantedListe(1, xml, { anleger: z2.anleger });
-    assert.equal(b2.angelegt, 0,
+    assert.equal(
+      b2.angelegt,
+      0,
       `angelegt: ${b2.angelegt} — der Anleger meldete „updated". Vorher zählte ` +
-      'der Import blind hoch: Ein zweiter Import derselben Liste meldete ' +
-      '„angelegt: 2, aufgestockt: 0", obwohl nichts Neues entstand.');
+        'der Import blind hoch: Ein zweiter Import derselben Liste meldete ' +
+        '„angelegt: 2, aufgestockt: 0", obwohl nichts Neues entstand.',
+    );
     assert.equal(b2.aufgestockt, 1);
   });
 
@@ -313,32 +378,43 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
   await t.test('ein Abbruch hält nach spätestens zehn Posten an', async () => {
     // 25 abbildbare Posten derselben Nummer in verschiedenen Mengen; die
     // Abbildung steht in der Datenbank (siehe oben, 3001 → Farbe 4).
-    const viele = `<INVENTORY>${Array.from({ length: 25 }, (_, i) =>
-      `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` +
-      `<MINQTY>${i + 1}</MINQTY></ITEM>`).join('')}</INVENTORY>`;
+    const viele = `<INVENTORY>${Array.from(
+      { length: 25 },
+      (_, i) =>
+        `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` + `<MINQTY>${i + 1}</MINQTY></ITEM>`,
+    ).join('')}</INVENTORY>`;
     const z = zaehler();
     let gefragt = 0;
     const b = await importiereWantedListe(1, viele, {
       anleger: z.anleger,
-      abbruch: async () => { gefragt++; return true; },
+      abbruch: async () => {
+        gefragt++;
+        return true;
+      },
     });
-    assert.equal(b.abgebrochen, true,
-      'Der Bericht muss sagen, dass abgebrochen wurde — sonst sieht ein ' +
-      'halber Import aus wie ein vollständiger');
-    assert.equal(z.gesehen.length, 10,
+    assert.equal(
+      b.abgebrochen,
+      true,
+      'Der Bericht muss sagen, dass abgebrochen wurde — sonst sieht ein ' + 'halber Import aus wie ein vollständiger',
+    );
+    assert.equal(
+      z.gesehen.length,
+      10,
       `Der Anleger bekam ${z.gesehen.length} Posten. Erwartet sind zehn: ` +
-      'Gefragt wird nach jedem zehnten, und beim ersten Ja ist Schluss.');
+        'Gefragt wird nach jedem zehnten, und beim ersten Ja ist Schluss.',
+    );
     assert.equal(gefragt, 1, `Die Frage fiel ${gefragt}-mal statt einmal`);
-    assert.equal(b.posten.length, 10,
-      'Der Bericht führt nur, was bearbeitet wurde — der Rest blieb liegen');
+    assert.equal(b.posten.length, 10, 'Der Bericht führt nur, was bearbeitet wurde — der Rest blieb liegen');
   });
 
   await t.test('ohne Abbruch läuft die Liste durch', async () => {
     // Die Gegenrichtung: Der Fall oben wäre auch grün, wenn der Import nach
     // zehn Posten IMMER anhielte.
-    const viele = `<INVENTORY>${Array.from({ length: 25 }, (_, i) =>
-      `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` +
-      `<MINQTY>${i + 1}</MINQTY></ITEM>`).join('')}</INVENTORY>`;
+    const viele = `<INVENTORY>${Array.from(
+      { length: 25 },
+      (_, i) =>
+        `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` + `<MINQTY>${i + 1}</MINQTY></ITEM>`,
+    ).join('')}</INVENTORY>`;
     const z = zaehler();
     const b = await importiereWantedListe(1, viele, {
       anleger: z.anleger,
@@ -351,13 +427,18 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
   await t.test('in der VORSCHAU wird gar nicht erst gefragt', async () => {
     // Eine Vorschau schreibt nichts; es gibt nichts abzubrechen, und eine
     // Datenbankabfrage alle zehn Posten wäre reine Last.
-    const viele = `<INVENTORY>${Array.from({ length: 25 }, (_, i) =>
-      `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` +
-      `<MINQTY>${i + 1}</MINQTY></ITEM>`).join('')}</INVENTORY>`;
+    const viele = `<INVENTORY>${Array.from(
+      { length: 25 },
+      (_, i) =>
+        `<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3001</ITEMID><COLOR>5</COLOR>` + `<MINQTY>${i + 1}</MINQTY></ITEM>`,
+    ).join('')}</INVENTORY>`;
     let gefragt = 0;
     const b = await importiereWantedListe(1, viele, {
       vorschau: true,
-      abbruch: async () => { gefragt++; return true; },
+      abbruch: async () => {
+        gefragt++;
+        return true;
+      },
     });
     assert.equal(gefragt, 0, `Die Vorschau fragte ${gefragt}-mal nach dem Abbruch`);
     assert.equal(b.posten.length, 25, 'Die Vorschau zeigt die ganze Liste');

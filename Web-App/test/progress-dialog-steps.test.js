@@ -12,7 +12,7 @@ const { ROOT, ohneKommentare } = require('./helpers/sources');
 function serverQuellen() {
   const dirs = ['src', 'routes', 'jobs', 'clients'];
   const out = [];
-  const lauf = (d) => {
+  const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) lauf(p);
@@ -32,14 +32,28 @@ function serverQuellen() {
  */
 function argumente(text) {
   const teile = [];
-  let tiefe = 0, akt = '', str = null;
+  let tiefe = 0,
+    akt = '',
+    str = null;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
-    if (str) { if (c === str && text[i - 1] !== '\\') str = null; akt += c; continue; }
-    if (c === '"' || c === "'" || c === '`') { str = c; akt += c; continue; }
+    if (str) {
+      if (c === str && text[i - 1] !== '\\') str = null;
+      akt += c;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      str = c;
+      akt += c;
+      continue;
+    }
     if ('([{'.includes(c)) tiefe++;
     if (')]}'.includes(c)) tiefe--;
-    if (c === ',' && tiefe === 0) { teile.push(akt.trim()); akt = ''; continue; }
+    if (c === ',' && tiefe === 0) {
+      teile.push(akt.trim());
+      akt = '';
+      continue;
+    }
     akt += c;
   }
   if (akt.trim()) teile.push(akt.trim());
@@ -48,13 +62,23 @@ function argumente(text) {
 
 /** Schneidet ab `start` die Klammer-Inhalte des Aufrufs heraus. */
 function klammerInhalt(src, start) {
-  let tiefe = 0, str = null;
+  let tiefe = 0,
+    str = null;
   for (let i = start; i < src.length; i++) {
     const c = src[i];
-    if (str) { if (c === str && src[i - 1] !== '\\') str = null; continue; }
-    if (c === '"' || c === "'" || c === '`') { str = c; continue; }
+    if (str) {
+      if (c === str && src[i - 1] !== '\\') str = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      str = c;
+      continue;
+    }
     if (c === '(') tiefe++;
-    else if (c === ')') { tiefe--; if (tiefe === 0) return src.slice(start + 1, i); }
+    else if (c === ')') {
+      tiefe--;
+      if (tiefe === 0) return src.slice(start + 1, i);
+    }
   }
   return null;
 }
@@ -77,20 +101,22 @@ function erreichbareSchritte() {
   for (const m of alles.matchAll(/\bsend\(\{\s*step\s*:\s*'([^']+)'/g)) erreichbar.add(m[1]);
   // Eine JSON-Antwort statt eines Stroms (Fachfehler, „exists“) macht readSSE() zu einem Ereignis.
   const lesen = fs.readFileSync(path.join(ROOT, 'public', 'js', 'fortschritt.js'), 'utf8');
-  for (const m of lesen.matchAll(/onEvent\(\{\s*step:[^,}]*\?\s*'(\w+)'\s*:\s*'(\w+)'/g)) { erreichbar.add(m[1]); erreichbar.add(m[2]); }
+  for (const m of lesen.matchAll(/onEvent\(\{\s*step:[^,}]*\?\s*'(\w+)'\s*:\s*'(\w+)'/g)) {
+    erreichbar.add(m[1]);
+    erreichbar.add(m[2]);
+  }
 
   for (const [datei, src] of quellen) {
     for (const m of src.matchAll(/(?:async\s+)?function\s+(\w+)\s*\(/g)) {
       const name = m[1];
       const params = klammerInhalt(src, m.index + m[0].length - 1);
       if (params === null || !/\bsendProgress\b/.test(params)) continue;
-      const idx = argumente(params).findIndex((a) => /^sendProgress\b/.test(a));
+      const idx = argumente(params).findIndex(a => /^sendProgress\b/.test(a));
       assert.notEqual(idx, -1, `${datei}: sendProgress-Parameter von ${name} nicht gefunden`);
 
       // Meldet diese Funktion überhaupt Schritte?
-      const rumpf = klammerInhalt(src, src.indexOf('{', m.index + m[0].length) ) ?? '';
-      const gemeldet = [...src.slice(m.index).matchAll(/sendProgress\(\{\s*step\s*:\s*'([^']+)'/g)]
-        .map((x) => x[1]);
+      const rumpf = klammerInhalt(src, src.indexOf('{', m.index + m[0].length)) ?? '';
+      const gemeldet = [...src.slice(m.index).matchAll(/sendProgress\(\{\s*step\s*:\s*'([^']+)'/g)].map(x => x[1]);
       if (!gemeldet.length) continue;
 
       // Übergibt irgendein Aufrufer etwas anderes als null?
@@ -101,7 +127,10 @@ function erreichbareSchritte() {
           const args = klammerInhalt(s2, c.index + c[0].length - 1);
           if (args === null) continue;
           const a = argumente(args)[idx];
-          if (a !== undefined && a !== 'null') { lebt = true; break; }
+          if (a !== undefined && a !== 'null') {
+            lebt = true;
+            break;
+          }
         }
         if (lebt) break;
       }
@@ -118,27 +147,29 @@ const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 test('jeder Schritt im Fortschrittsdialog kann den Browser auch erreichen', () => {
   const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));
   const rumpf = schalter.slice(0, schalter.indexOf('\n}\n'));
-  const faelle = [...rumpf.matchAll(/case\s+'([^']+)'/g)].map((m) => m[1]);
+  const faelle = [...rumpf.matchAll(/case\s+'([^']+)'/g)].map(m => m[1]);
   assert.ok(faelle.length >= 3, `handleSseEvent hat nur ${faelle.length} Fälle — Anker stimmt nicht mehr`);
 
   const erreichbar = erreichbareSchritte();
   assert.ok(erreichbar.size >= 4, `nur ${erreichbar.size} erreichbare Schritte gefunden — Anker stimmt nicht mehr`);
 
-  const tot = faelle.filter((f) => !erreichbar.has(f));
-  assert.deepEqual(tot, [],
+  const tot = faelle.filter(f => !erreichbar.has(f));
+  assert.deepEqual(
+    tot,
+    [],
     `Der Dialog behandelt Schritte, die keine Serverstelle mehr sendet: ${tot.join(', ')}. ` +
-    'Entweder sendet der Server sie wieder, oder der Fall gehört aus handleSseEvent entfernt.');
+      'Entweder sendet der Server sie wieder, oder der Fall gehört aus handleSseEvent entfernt.',
+  );
 });
 
 test('jede angesprochene ps-Kennung gibt es auch im Dialog', () => {
-  const ids = new Set([...galerie.matchAll(/'ps-([a-z-]+)'/g)].map((m) => 'ps-' + m[1]));
+  const ids = new Set([...galerie.matchAll(/'ps-([a-z-]+)'/g)].map(m => 'ps-' + m[1]));
   // setStep() setzt die Kennung aus 'ps-' + Name zusammen; beide Formen einsammeln.
   for (const m of galerie.matchAll(/setStep\('([a-z-]+)'/g)) ids.add('ps-' + m[1]);
   assert.ok(ids.size >= 2, `nur ${ids.size} ps-Kennungen gefunden — Anker stimmt nicht mehr`);
 
-  const fehlend = [...ids].filter((id) => !html.includes(`id="${id}"`));
-  assert.deepEqual(fehlend, [],
-    `Frontend spricht Elemente an, die es in index.html nicht gibt: ${fehlend.join(', ')}`);
+  const fehlend = [...ids].filter(id => !html.includes(`id="${id}"`));
+  assert.deepEqual(fehlend, [], `Frontend spricht Elemente an, die es in index.html nicht gibt: ${fehlend.join(', ')}`);
 });
 
 test('kein Sprachschlüssel für die entfernten Schritte bleibt zurück', () => {
@@ -157,13 +188,19 @@ test('kein Sprachschlüssel für die entfernten Schritte bleibt zurück', () => 
 test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
   // ── Sendereihenfolge, wie der Erfassungsstrom sie erzeugt ───────────────
   // Die Route meldet vor und nach dem Ergänzen selbst; dazwischen meldet katalogHolen().
-  const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-  const route = lies('routes/api_v1/sets.ts');
-  const strom = route.slice(route.indexOf("router.post('/sets/add-stream'"), route.indexOf("router.post('/sets/:setNumber/parts'"));
+  const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+  const route = require('./helpers/sources').kompakt(lies('routes/api_v1/sets.ts'));
+  const strom = route.slice(
+    route.indexOf("router.post('/sets/add-stream'"),
+    route.indexOf("router.post('/sets/:setNumber/parts'"),
+  );
   assert.ok(strom.includes('setErgaenzen('), 'Erfassungsstrom nicht gefunden — Anker stimmt nicht mehr');
   const erfassen = lies('src/sets/erfassen.ts');
-  const katalog = erfassen.slice(erfassen.indexOf('async function katalogHolen('), erfassen.indexOf('export async function setErgaenzen('));
-  const schritte = (t) => [...t.matchAll(/step\s*:\s*'([^']+)'/g)].map((m) => m[1]);
+  const katalog = erfassen.slice(
+    erfassen.indexOf('async function katalogHolen('),
+    erfassen.indexOf('export async function setErgaenzen('),
+  );
+  const schritte = t => [...t.matchAll(/step\s*:\s*'([^']+)'/g)].map(m => m[1]);
   const [vor, nach] = strom.split('setErgaenzen(');
   const folge = [...schritte(vor), ...schritte(katalog), ...schritte(nach)];
   assert.ok(folge.length >= 4, `der Strom meldet nur ${folge.length} Schritte — Anker stimmt nicht mehr`);
@@ -172,11 +209,10 @@ test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
   const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));
   const rumpf = schalter.slice(0, schalter.indexOf('\n}\n'));
   const wirkung = {};
-  for (const zeile of rumpf.split('\n')) {
-    const c = zeile.match(/case\s+'([^']+)'\s*:/);
+  for (const zweig of rumpf.split(/(?=\bcase\s+')/)) {
+    const c = zweig.match(/^case\s+'([^']+)'\s*:/);
     if (!c) continue;
-    wirkung[c[1]] = [...zeile.matchAll(/setStep\('([a-z-]+)'\s*,\s*'(\w+)'\)/g)]
-      .map((m) => [m[1], m[2]]);
+    wirkung[c[1]] = [...zweig.matchAll(/setStep\('([a-z-]+)'\s*,\s*'(\w+)'\)/g)].map(m => [m[1], m[2]]);
   }
 
   // ── Durchspielen ─────────────────────────────────────────────────────────
@@ -185,17 +221,25 @@ test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
     for (const [punkt, wert] of wirkung[ereignis] || []) zustand[punkt] = wert;
   }
 
-  const haengt = Object.entries(zustand).filter(([, w]) => w === 'active').map(([k]) => k);
-  assert.deepEqual(haengt, [],
+  const haengt = Object.entries(zustand)
+    .filter(([, w]) => w === 'active')
+    .map(([k]) => k);
+  assert.deepEqual(
+    haengt,
+    [],
     `Diese Punkte bleiben am Ende auf „aktiv" hängen: ${haengt.join(', ')}. ` +
-    'Entweder sendet der Server ein abschliessendes Ereignis dafür, oder der ' +
-    'Punkt gehört nicht in den Dialog — er zeigt sonst dauerhaft Arbeit an, ' +
-    'auf die niemand wartet.');
+      'Entweder sendet der Server ein abschliessendes Ereignis dafür, oder der ' +
+      'Punkt gehört nicht in den Dialog — er zeigt sonst dauerhaft Arbeit an, ' +
+      'auf die niemand wartet.',
+  );
 
   // Und jeder Punkt, den es im Dialog GIBT, muss der Ablauf auch erreichen.
-  const gezeigt = [...html.matchAll(/class="prog-step" id="ps-([a-z-]+)"/g)].map((m) => m[1]);
+  const gezeigt = [...html.matchAll(/class="prog-step" id="ps-([a-z-]+)"/g)].map(m => m[1]);
   assert.ok(gezeigt.length >= 2, `nur ${gezeigt.length} Punkte im Dialog — Anker stimmt nicht mehr`);
-  const nieBeruehrt = gezeigt.filter((g) => !(g in zustand));
-  assert.deepEqual(nieBeruehrt, [],
-    `Diese Punkte stehen im Dialog, werden aber nie geschaltet: ${nieBeruehrt.join(', ')}`);
+  const nieBeruehrt = gezeigt.filter(g => !(g in zustand));
+  assert.deepEqual(
+    nieBeruehrt,
+    [],
+    `Diese Punkte stehen im Dialog, werden aber nie geschaltet: ${nieBeruehrt.join(', ')}`,
+  );
 });

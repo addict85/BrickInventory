@@ -41,7 +41,7 @@ const { starteApp, warte } = require('./helpers/app-browser');
 const { haeltSet } = require('./helpers/bestand');
 
 /** Kleinste Schrift in px über alle Beschriftungen der Diagramme unter `wurzel`. */
-const DIAGRAMMSCHRIFT = (wurzel) => `(() => {
+const DIAGRAMMSCHRIFT = wurzel => `(() => {
   const svgs = [...document.querySelectorAll(${JSON.stringify(wurzel)} + ' svg.diagramm')];
   return svgs.map(svg => {
     const massstab = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
@@ -68,31 +68,76 @@ const KLEINES = `(() => {
   return { klein, schrift };
 })()`;
 
-test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
+test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
   const app = await starteApp(t, {
-    name: `telefon_${process.pid}`, telefon: true,
+    name: `telefon_${process.pid}`,
+    telefon: true,
     // Zwölf Teile in zwölf Farben — der Fall, der vorher zwölf fast leere Zeilen ergab.
     // Die Teile kommen 1,5 s später, damit das Skelett davor zu sehen ist.
-    abfangen: [{ muster: '*/api/v1/parts?*', enthaelt: '/api/v1/parts?', verzoegerung: 1500, antwort: { success: true, total: 12,
-      parts: ['Red', 'Blue', 'Yellow', 'Green', 'Black', 'White', 'Orange', 'Tan', 'Lime', 'Pink', 'Brown', 'Purple']
-        .map((farbe, i) => ({ part_number: `300${i}`, part_name: `Stein ${i}`, color_name: farbe, color_hex: '777777',
-                             color_id: i + 1, total_quantity: 2 })) } }],
+    abfangen: [
+      {
+        muster: '*/api/v1/parts?*',
+        enthaelt: '/api/v1/parts?',
+        verzoegerung: 1500,
+        antwort: {
+          success: true,
+          total: 12,
+          parts: [
+            'Red',
+            'Blue',
+            'Yellow',
+            'Green',
+            'Black',
+            'White',
+            'Orange',
+            'Tan',
+            'Lime',
+            'Pink',
+            'Brown',
+            'Purple',
+          ].map((farbe, i) => ({
+            part_number: `300${i}`,
+            part_name: `Stein ${i}`,
+            color_name: farbe,
+            color_hex: '777777',
+            color_id: i + 1,
+            total_quantity: 2,
+          })),
+        },
+      },
+    ],
     bestand: async (db, uid) => {
       await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
       await db.run(`DELETE FROM price_history WHERE set_number = '10300-1'`);
-      for (const [tage, preis] of [[90, 210], [60, 230], [30, 250], [1, 260]])
-        await db.run(`INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, recorded_at)
-                      VALUES ('10300-1', 'N', 'EUR', $1, $1, NOW() - ($2 || ' days')::interval)`, [preis, String(tage)]);
+      for (const [tage, preis] of [
+        [90, 210],
+        [60, 230],
+        [30, 250],
+        [1, 260],
+      ])
+        await db.run(
+          `INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, recorded_at)
+                      VALUES ('10300-1', 'N', 'EUR', $1, $1, NOW() - ($2 || ' days')::interval)`,
+          [preis, String(tage)],
+        );
     },
   });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, bis, ruhig } = app;
   // Gemessen wird der Endzustand: Ein Dialog, der gerade aufgeht (etwa die
   // Einrichtung nach der Anmeldung), steht im ersten Bild auf scale(.985).
-  const ruhe = () => b.auswerten(`Promise.all(document.getAnimations()
+  const ruhe = () =>
+    b.auswerten(`Promise.all(document.getAnimations()
     .filter(a => a.effect?.getComputedTiming().iterations !== Infinity)
     .map(a => a.finished.catch(() => {}))).then(() => true)`);
-  const reiter = async (name) => { await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`); await warte(400); await ruhe(); };
+  const reiter = async name => {
+    await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`);
+    await warte(400);
+    await ruhe();
+  };
 
   await t.test('Skelett beim Laden der Teile', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
@@ -101,19 +146,28 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     const s = await b.auswerten(`(() => { const r = document.querySelector('#parts-main .skelett-raster');
       return r && { kacheln: r.querySelectorAll('.part-card.skelett').length, rolle: r.getAttribute('role'), text: r.textContent.trim() }; })()`);
     assert.deepEqual(s, { kacheln: 12, rolle: 'status', text: 'Lade Teile…' });
-    await bis(`!document.querySelector('#parts-main .skelett-raster') && document.querySelectorAll('#parts-main .part-card').length === 12`, 'Teile statt Skelett');
+    await bis(
+      `!document.querySelector('#parts-main .skelett-raster') && document.querySelectorAll('#parts-main .part-card').length === 12`,
+      'Teile statt Skelett',
+    );
   });
 
   await t.test('Tippziele und Schrift je Reiter', async () => {
     const reiterListe = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
-    const klein = [], schrift = [];
+    const klein = [],
+      schrift = [];
     for (const r of reiterListe) {
       await reiter(r);
       // Die Einstellungen zeigen je einen Abschnitt; gemessen werden alle.
-      const seiten = r === 'settings'
-        ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`) : [null];
+      const seiten =
+        r === 'settings'
+          ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`)
+          : [null];
       for (const seite of seiten) {
-        if (seite) { await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`); await warte(100); }
+        if (seite) {
+          await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`);
+          await warte(100);
+        }
         await ruhe();
         const m = await b.auswerten(KLEINES);
         klein.push(...m.klein.map(k => `${r}: ${k}`));
@@ -130,7 +184,9 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     const falsch = [];
     for (const r of reiterListe) {
       await reiter(r);
-      const h1 = await b.auswerten(`[...document.querySelectorAll('h1')].filter(h => h.getClientRects().length > 0).map(h => h.textContent.trim())`);
+      const h1 = await b.auswerten(
+        `[...document.querySelectorAll('h1')].filter(h => h.getClientRects().length > 0).map(h => h.textContent.trim())`,
+      );
       if (h1.length !== 1) falsch.push(`${r}: ${JSON.stringify(h1)}`);
     }
     assert.deepEqual(falsch, []);
@@ -143,7 +199,10 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
       return { klasse: e.className, text: e.textContent.trim(), oben: r.top, hoehe: r.height }; })()`);
     assert.equal(fokus.klasse, 'sprunglink', `Erster Tab-Halt: ${JSON.stringify(fokus)}`);
     assert.equal(fokus.text, 'Zum Inhalt');
-    assert.ok(fokus.oben >= 0 && fokus.hoehe >= 24, `Der Sprunglink ist mit Fokus nicht sichtbar: ${JSON.stringify(fokus)}`);
+    assert.ok(
+      fokus.oben >= 0 && fokus.hoehe >= 24,
+      `Der Sprunglink ist mit Fokus nicht sichtbar: ${JSON.stringify(fokus)}`,
+    );
     await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await ruhig();
@@ -152,7 +211,8 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
 
   await t.test('Einstellungen: ein Abschnitt je Unterseite', async () => {
     await reiter('settings');
-    const stand = () => b.auswerten(`(() => {
+    const stand = () =>
+      b.auswerten(`(() => {
       const sichtbar = [...document.querySelectorAll('#global-settings-grid > .ssec')].filter(s => s.getClientRects().length > 0);
       const nav = document.querySelector('.einst-nav').getBoundingClientRect();
       return { sichtbar: sichtbar.map(s => s.id), aktuell: document.querySelector('.einst-nav a[aria-current="page"]')?.dataset.arg,
@@ -183,7 +243,12 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.equal(telefon.teileSichtbar, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
     // Am Rechner EINE Navigation: „Sammlung“ in der Leiste, Sets/Teile/
     // Minifiguren nur im Umschalter auf der Seite (vorher beides).
-    await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+    await b.tab('Emulation.setDeviceMetricsOverride', {
+      width: 1280,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
     await bis('innerWidth === 1280', 'Fensterbreite');
     await ruhig();
     const rechner = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
@@ -210,9 +275,12 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
         breit: [...document.querySelectorAll('#parts-main .part-card')].filter(k => k.getBoundingClientRect().width > liste.width * 0.6).length };
     })()`);
     assert.equal(raster.gruppen, 12);
-    assert.deepEqual({ schmal: raster.schmal, zerstreut: raster.zerstreut, breit: raster.breit }, { schmal: 0, zerstreut: 0, breit: 0 },
-      'Farbüberschrift nicht über die volle Breite, oder die Teile stehen nicht im Raster');
-    const sichtbar = (id) => `document.getElementById('${id}').getClientRects().length > 0`;
+    assert.deepEqual(
+      { schmal: raster.schmal, zerstreut: raster.zerstreut, breit: raster.breit },
+      { schmal: 0, zerstreut: 0, breit: 0 },
+      'Farbüberschrift nicht über die volle Breite, oder die Teile stehen nicht im Raster',
+    );
+    const sichtbar = id => `document.getElementById('${id}').getClientRects().length > 0`;
     assert.equal(await b.auswerten(sichtbar('parts-spare')), false, 'Die Auswahlfelder stehen offen da');
     await b.auswerten(`document.querySelector('#tab-parts .filter-knopf').click(); true`);
     const offen = await b.auswerten(`(() => ({
@@ -228,12 +296,21 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
 
   await t.test('Merkliste: Erfassen-Zeile bündig', async () => {
     await reiter('wanted');
-    const messen = () => b.auswerten(`['mk-num', 'mk-cond', 'mk-add', 'mk-csv-file'].map(id => {
+    const messen = () =>
+      b.auswerten(`['mk-num', 'mk-cond', 'mk-add', 'mk-csv-file'].map(id => {
       const e = document.getElementById(id); const z = (id === 'mk-csv-file' ? e.closest('label') : e).getBoundingClientRect();
       return { id, oben: Math.round(z.top), hoehe: Math.round(z.height) };
     })`);
-    for (const [breite, hoehe, mobil] of [[1280, 900, false], [390, 844, true]]) {
-      await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: mobil ? 2 : 1, mobile: mobil });
+    for (const [breite, hoehe, mobil] of [
+      [1280, 900, false],
+      [390, 844, true],
+    ]) {
+      await b.tab('Emulation.setDeviceMetricsOverride', {
+        width: breite,
+        height: hoehe,
+        deviceScaleFactor: mobil ? 2 : 1,
+        mobile: mobil,
+      });
       await bis(`innerWidth === ${breite}`, 'Fensterbreite');
       await ruhig();
       const m = await messen();
@@ -265,7 +342,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.match(d.name, /Preisverlauf, .+ bis .+: Neuware zuletzt/);
     // Set-Detail: Löschen steht hinter „Weitere Aktionen“, der Preisalarm in
     // einer eigenen Zeile über die volle Breite.
-    const sichtbar = (sel) => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;
+    const sichtbar = sel => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;
     assert.equal(await b.auswerten(sichtbar('#btn-md')), false, 'Löschen steht offen im Fuss');
     await b.auswerten(`document.querySelector('#set-modal .mehr-menue > summary').click(); true`);
     await ruhig();
@@ -283,24 +360,42 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
                  return w.top >= p.top - 1 && w.bottom <= p.bottom + 1 && w.left >= p.right - 1; })(),
                breite: Math.round((felder[1].right - felder[0].left) / z.width * 100) };
     })()`);
-    assert.deepEqual({ ...alarm, breite: alarm.breite >= 90 },
-      { unterTitel: true, zeilen: 2, beschriftung: 'Grenzpreis', hoehe: alarm.hoehe, waehrungNeben: true, breite: true }, `Preisalarm: ${JSON.stringify(alarm)}`);
+    assert.deepEqual(
+      { ...alarm, breite: alarm.breite >= 90 },
+      {
+        unterTitel: true,
+        zeilen: 2,
+        beschriftung: 'Grenzpreis',
+        hoehe: alarm.hoehe,
+        waehrungNeben: true,
+        breite: true,
+      },
+      `Preisalarm: ${JSON.stringify(alarm)}`,
+    );
     assert.ok(alarm.hoehe >= 44, `Preisalarm-Felder ${alarm.hoehe} px hoch`);
     await b.auswerten(`document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });
   await t.test('weniger Bewegung: Dialog und Reiter ohne Animation', async () => {
     // Ein Probe-Dialog ohne role="dialog", damit die Fokusführung der echten
     // Dialoge (js/dialoge.js) nicht anspringt.
-    const dauer = () => b.auswerten(`(() => { const o = document.createElement('div');
+    const dauer = () =>
+      b.auswerten(`(() => { const o = document.createElement('div');
       o.className = 'ovl open'; const m = document.createElement('div'); m.className = 'modal'; o.append(m); document.body.append(o);
       const d = getComputedStyle(o.firstElementChild).animationDuration; o.remove();
       return { dialog: parseFloat(d), reiter: parseFloat(getComputedStyle(document.querySelector('.tab.active')).animationDuration) }; })()`);
     const ruhig = await dauer();
-    await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+    await b.tab('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+    });
     const bewegt = await dauer();
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
-    assert.ok(bewegt.dialog >= 0.15 && bewegt.reiter >= 0.15, `ohne Einstellung keine Übergänge: ${JSON.stringify(bewegt)}`);
-    assert.ok(ruhig.dialog < 0.001 && ruhig.reiter < 0.001, `mit „weniger Bewegung“ trotzdem Animation: ${JSON.stringify(ruhig)}`);
+    assert.ok(
+      bewegt.dialog >= 0.15 && bewegt.reiter >= 0.15,
+      `ohne Einstellung keine Übergänge: ${JSON.stringify(bewegt)}`,
+    );
+    assert.ok(
+      ruhig.dialog < 0.001 && ruhig.reiter < 0.001,
+      `mit „weniger Bewegung“ trotzdem Animation: ${JSON.stringify(ruhig)}`,
+    );
   });
-
 });

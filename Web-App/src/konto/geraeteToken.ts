@@ -1,6 +1,6 @@
 /** Geräte-Tokens: ausstellen, prüfen, tauschen, widerrufen, aufräumen. */
 import { konfig } from '../infra/konfig';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import * as V from '../infra/validate';
 import * as repo from './repository/zugaenge';
 import type { TokenScope } from './repository/zugaenge';
@@ -260,7 +260,7 @@ export async function rotiereToken(alt: string, ip?: string | null): Promise<Tau
     if (!z) return null;
     const offen = z.ersetzt_durch ? await repo.unbenutzterNachfolger(tx, z.ersetzt_durch, altHash) : undefined;
     const bereich = ipBereich(ip);
-    if (offen && offen.ip_bereich && bereich && offen.ip_bereich !== bereich) {
+    if (offen?.ip_bereich && bereich && offen.ip_bereich !== bereich) {
       await repo.loescheFamilie(tx, z.user_id, z.created_at);
       kopie = { user_id: z.user_id, label: z.label };
       return null;

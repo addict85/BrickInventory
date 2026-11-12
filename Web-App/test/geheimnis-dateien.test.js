@@ -22,11 +22,17 @@ const { ladeKonfig, datenbankVerbindung, KonfigFehler } = _req('src/infra/konfig
 
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnis-datei-'));
 test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-const datei = (name, inhalt) => { const p = path.join(ordner, name); fs.writeFileSync(p, inhalt, { mode: 0o600 }); return p; };
+const datei = (name, inhalt) => {
+  const p = path.join(ordner, name);
+  fs.writeFileSync(p, inhalt, { mode: 0o600 });
+  return p;
+};
 
 test('das Sitzungsgeheimnis kommt aus der Datei', () => {
-  const env = { SESSION_SECRET_FILE: datei('sitzung', 'aus-der-datei-lang-genug-fuer-den-start-42\n'),
-    ADMIN_PASSWORD_FILE: datei('verwalter', 'Verwalter-aus-Datei-1') };
+  const env = {
+    SESSION_SECRET_FILE: datei('sitzung', 'aus-der-datei-lang-genug-fuer-den-start-42\n'),
+    ADMIN_PASSWORD_FILE: datei('verwalter', 'Verwalter-aus-Datei-1'),
+  };
   const k = ladeKonfig(env);
   assert.equal(k.sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
   assert.equal(k.adminPasswort, 'Verwalter-aus-Datei-1');
@@ -42,10 +48,14 @@ test('das Datenbankpasswort kommt aus der Datei', () => {
 });
 
 test('beide gesetzt ist ein Fehler, eine fehlende Datei auch', () => {
-  assert.throws(() => ladeKonfig({ SESSION_SECRET: 'x'.repeat(40), SESSION_SECRET_FILE: datei('s2', 'y'.repeat(40)) }),
-    (e) => e instanceof KonfigFehler && e.fehler.some(f => /SESSION_SECRET und SESSION_SECRET_FILE/.test(f)));
-  assert.throws(() => ladeKonfig({ PGPASSWORD_FILE: path.join(ordner, 'gibt-es-nicht') }),
-    (e) => e instanceof KonfigFehler && e.fehler.some(f => /PGPASSWORD_FILE=.*ENOENT/.test(f)));
+  assert.throws(
+    () => ladeKonfig({ SESSION_SECRET: 'x'.repeat(40), SESSION_SECRET_FILE: datei('s2', 'y'.repeat(40)) }),
+    e => e instanceof KonfigFehler && e.fehler.some(f => /SESSION_SECRET und SESSION_SECRET_FILE/.test(f)),
+  );
+  assert.throws(
+    () => ladeKonfig({ PGPASSWORD_FILE: path.join(ordner, 'gibt-es-nicht') }),
+    e => e instanceof KonfigFehler && e.fehler.some(f => /PGPASSWORD_FILE=.*ENOENT/.test(f)),
+  );
 });
 
 test('ohne X_FILE wie bisher', () => {

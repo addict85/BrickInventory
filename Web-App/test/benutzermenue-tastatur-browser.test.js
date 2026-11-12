@@ -21,23 +21,28 @@ const { musterSammlung } = require('./helpers/bestand');
 
 const TASTEN = { Enter: 13, Escape: 27, ArrowDown: 40, ArrowUp: 38, Home: 36, End: 35, Tab: 9 };
 
-test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, async (t) => {
+test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, async t => {
   const app = await starteApp(t, { name: `umenu_${process.pid}`, bestand: musterSammlung });
-  if (app.grund) { t.skip(app.grund); return; }
+  if (app.grund) {
+    t.skip(app.grund);
+    return;
+  }
   const { b, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
   // Der Einrichtungsassistent ist ein Dialog und finge Escape ab.
-  const taste = async (key) => {
+  const taste = async key => {
     const k = { key, code: key, windowsVirtualKeyCode: TASTEN[key] };
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...k });
     if (key === 'Enter') await b.tab('Input.dispatchKeyEvent', { type: 'char', text: '\r', ...k });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...k });
     await warte(60);
   };
-  const fokus = () => b.auswerten(`(() => { const a = document.activeElement;
+  const fokus = () =>
+    b.auswerten(`(() => { const a = document.activeElement;
     return a.id || a.getAttribute('data-arg') || a.className || a.tagName; })()`);
-  const offen = () => b.auswerten(`document.getElementById('umenu-pop').style.display !== 'none'
+  const offen = () =>
+    b.auswerten(`document.getElementById('umenu-pop').style.display !== 'none'
     && document.getElementById('btn-umenu').getAttribute('aria-expanded') === 'true'`);
   const eintraege = await b.auswerten(`[...document.querySelectorAll('#umenu-pop [role=menuitem]')]
     .filter(e => e.style.display !== 'none').map(e => e.id || e.getAttribute('data-arg'))`);
@@ -72,11 +77,15 @@ test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, asyn
   });
   await t.test('Wahl fokussiert die Überschrift der Sicht', async () => {
     await taste('Enter');
-    await taste('ArrowDown');            // Gutscheine
+    await taste('ArrowDown'); // Gutscheine
     await taste('Enter');
     await ruhig();
     assert.equal(await offen(), false);
-    assert.equal(await b.auswerten(`document.activeElement.classList.contains('ptitle')
-      && !!document.activeElement.closest('#tab-gutscheine')`), true, `Fokus auf ${await fokus()}`);
+    assert.equal(
+      await b.auswerten(`document.activeElement.classList.contains('ptitle')
+      && !!document.activeElement.closest('#tab-gutscheine')`),
+      true,
+      `Fokus auf ${await fokus()}`,
+    );
   });
 });

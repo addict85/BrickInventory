@@ -35,11 +35,11 @@ function server(t, antworten) {
   app.use(express.json());
   app.use('/api/v1/auth', router);
   const srv = app.listen(0);
-  t.after(() => new Promise((r) => srv.close(r)));
+  t.after(() => new Promise(r => srv.close(r)));
   return `http://127.0.0.1:${srv.address().port}/api/v1/auth`;
 }
 
-test('eine abweichende Antwort wird zur 500', async (t) => {
+test('eine abweichende Antwort wird zur 500', async t => {
   const basis = server(t, { rumpf: { enabled: 'ja' } });
   const r = await fetch(`${basis}/registration-status`);
   assert.equal(r.status, 500);
@@ -48,35 +48,39 @@ test('eine abweichende Antwort wird zur 500', async (t) => {
   assert.match(j.abweichungen.join(), /Antwort enabled/);
 });
 
-test('eine vertragsgemässe Antwort geht unverändert hinaus', async (t) => {
+test('eine vertragsgemässe Antwort geht unverändert hinaus', async t => {
   const basis = server(t, { rumpf: { enabled: true } });
   const r = await fetch(`${basis}/registration-status`);
   assert.deepEqual([r.status, await r.json()], [200, { enabled: true }]);
 });
 
-test('eine vertragswidrige Eingabe erreicht die Route nicht', async (t) => {
+test('eine vertragswidrige Eingabe erreicht die Route nicht', async t => {
   const basis = server(t, {});
-  const senden = (rumpf) => fetch(`${basis}/users/7/admin`, { method: 'PUT',
-    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rumpf) });
+  const senden = rumpf =>
+    fetch(`${basis}/users/7/admin`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rumpf),
+    });
   assert.equal((await senden({ is_admin: true })).status, 200);
   const r = await senden({ is_admin: 'vielleicht' });
   assert.equal(r.status, 400);
   assert.match((await r.json()).error, /is_admin/);
 });
 
-test('eine Fehlerantwort wird nicht gegen das Erfolgsschema geprüft', async (t) => {
+test('eine Fehlerantwort wird nicht gegen das Erfolgsschema geprüft', async t => {
   const basis = server(t, { status: 404, rumpf: { success: false, error: 'weg', code: 'x' } });
   assert.equal((await fetch(`${basis}/registration-status`)).status, 404);
 });
 
-test('eine Fehlerantwort ohne Code wird zur 500', async (t) => {
+test('eine Fehlerantwort ohne Code wird zur 500', async t => {
   const basis = server(t, { status: 404, rumpf: { success: false, error: 'Endpoint nicht gefunden' } });
   const r = await fetch(`${basis}/registration-status`);
   assert.equal(r.status, 500);
   assert.match((await r.json()).abweichungen.join(), /Fehlerantwort code/);
 });
 
-test('im Betrieb geht die Antwort ungeprüft hinaus', async (t) => {
+test('im Betrieb geht die Antwort ungeprüft hinaus', async t => {
   setzeKonfig({ vertragPruefen: false });
   t.after(() => setzeKonfig(null));
   const basis = server(t, { rumpf: { enabled: 'ja' } });
@@ -84,7 +88,7 @@ test('im Betrieb geht die Antwort ungeprüft hinaus', async (t) => {
   assert.deepEqual([r.status, await r.json()], [200, { enabled: 'ja' }]);
 });
 
-test('die Prüfung entscheidet sich beim Bau des Routers', async (t) => {
+test('die Prüfung entscheidet sich beim Bau des Routers', async t => {
   const basis = server(t, { rumpf: { enabled: 'ja' } });
   setzeKonfig({ vertragPruefen: false });
   t.after(() => setzeKonfig(null));

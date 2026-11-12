@@ -19,10 +19,25 @@ function funktion(src, name) {
 function markupHelfer() {
   const escapen = fs.readFileSync(path.join(JS, 'escapen.js'), 'utf8').replace(/^export /gm, '');
   const dom = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
-  const namen = ['esc', 'escJs', 'escUrl', 'sichereUrl', 'escHex', 'hexZiffern', 'escHtmlAttr',
-    'SicheresHtml', 'einsetzen', 'html', 'ungeprueft', 'setzeHtml', 'fuegeHtmlEin'];
+  const namen = [
+    'esc',
+    'escJs',
+    'escUrl',
+    'sichereUrl',
+    'escHex',
+    'hexZiffern',
+    'escHtmlAttr',
+    'SicheresHtml',
+    'einsetzen',
+    'html',
+    'ungeprueft',
+    'setzeHtml',
+    'fuegeHtmlEin',
+  ];
   // eslint-disable-next-line no-new-func
-  return new Function(`${escapen}\n${funktion(dom, 'setzeHtml')}\n${funktion(dom, 'fuegeHtmlEin')}\nreturn { ${namen.join(', ')} };`)();
+  return new Function(
+    `${escapen}\n${funktion(dom, 'setzeHtml')}\n${funktion(dom, 'fuegeHtmlEin')}\nreturn { ${namen.join(', ')} };`,
+  )();
 }
 
 module.exports = { markupHelfer };

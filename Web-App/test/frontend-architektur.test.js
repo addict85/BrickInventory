@@ -36,16 +36,28 @@ function graph() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fe-graph-'));
   try {
     const meta = path.join(dir, 'meta.json');
-    execFileSync(path.join(ROOT, 'node_modules', '.bin', 'esbuild'), [
-      path.join(JS, 'main.js'), '--bundle', '--format=iife', '--log-level=error',
-      '--define:__ERLAUBTE_STILE__=[]', `--metafile=${meta}`, `--outfile=${path.join(dir, 'out.js')}`,
-    ], { cwd: ROOT });
+    execFileSync(
+      path.join(ROOT, 'node_modules', '.bin', 'esbuild'),
+      [
+        path.join(JS, 'main.js'),
+        '--bundle',
+        '--format=iife',
+        '--log-level=error',
+        '--define:__ERLAUBTE_STILE__=[]',
+        `--metafile=${meta}`,
+        `--outfile=${path.join(dir, 'out.js')}`,
+      ],
+      { cwd: ROOT },
+    );
     const { inputs } = JSON.parse(fs.readFileSync(meta, 'utf8'));
     /** @type {Map<string, string[]>} */
     const g = new Map();
     const kurz = (/** @type {string} */ p) => path.relative(path.join(ROOT, 'public'), path.resolve(ROOT, p));
     for (const [datei, info] of Object.entries(inputs))
-      g.set(kurz(datei), info.imports.filter(i => !i.external).map(i => kurz(i.path)));
+      g.set(
+        kurz(datei),
+        info.imports.filter(i => !i.external).map(i => kurz(i.path)),
+      );
     // JSDoc-Typverweise `import('./x.js').Name` löscht esbuild; sie binden die Dateien für die Typprüfung
     // trotzdem aneinander, also zählen sie als Kanten.
     for (const [datei, ziele] of g) {
@@ -65,17 +77,31 @@ function graph() {
 /** Stark zusammenhängende Komponenten mit mehr als einem Knoten (Tarjan). */
 function kreise(/** @type {Map<string, string[]>} */ g) {
   let n = 0;
-  const index = new Map(), tief = new Map(), stapel = [], auf = new Set(), raus = [];
+  const index = new Map(),
+    tief = new Map(),
+    stapel = [],
+    auf = new Set(),
+    raus = [];
   const besuche = (/** @type {string} */ v) => {
-    index.set(v, n); tief.set(v, n); n++; stapel.push(v); auf.add(v);
+    index.set(v, n);
+    tief.set(v, n);
+    n++;
+    stapel.push(v);
+    auf.add(v);
     for (const w of g.get(v) ?? []) {
-      if (!index.has(w)) { besuche(w); tief.set(v, Math.min(tief.get(v), tief.get(w))); }
-      else if (auf.has(w)) tief.set(v, Math.min(tief.get(v), index.get(w)));
+      if (!index.has(w)) {
+        besuche(w);
+        tief.set(v, Math.min(tief.get(v), tief.get(w)));
+      } else if (auf.has(w)) tief.set(v, Math.min(tief.get(v), index.get(w)));
     }
     if (tief.get(v) === index.get(v)) {
       const k = [];
       let w;
-      do { w = stapel.pop(); auf.delete(w); k.push(w); } while (w !== v);
+      do {
+        w = stapel.pop();
+        auf.delete(w);
+        k.push(w);
+      } while (w !== v);
       if (k.length > 1 || (g.get(v) ?? []).includes(v)) raus.push(k.sort());
     }
   };
@@ -89,9 +115,12 @@ test('das Frontend-Bündel hat keinen Importkreis', () => {
   assert.ok(module.length >= 30, `nur ${module.length} Module im Graphen — greift die Auswertung noch?`);
   assert.ok([...g.values()].flat().length >= 150, 'kaum Kanten im Graphen — greift die Auswertung noch?');
   assert.ok(g.has('i18n.js'), 'i18n.js fehlt im Graphen — es ist Teil des Bündels');
-  assert.deepEqual(kreise(g), [],
+  assert.deepEqual(
+    kreise(g),
+    [],
     'Importkreis im Frontend. Rückwege nach oben über ereignisse.js (melde/abonniere) ' +
-    'oder ziele.js (springe), geteilter Zustand in zustand.js.');
+      'oder ziele.js (springe), geteilter Zustand in zustand.js.',
+  );
 });
 
 test('Kern und Bausteine (KERN, BAUSTEINE, i18n.js) importieren keine Ansicht', () => {
@@ -110,9 +139,11 @@ test('geteilter veränderlicher Zustand nur in zustand.js', () => {
   // stattdessen Lese- oder Stoppfunktionen (manuelleTeile(), stoppeMonitor()).
   const treffer = [];
   for (const f of fs.readdirSync(JS).filter(x => istAppModul(x) && x !== 'zustand.js')) {
-    fs.readFileSync(path.join(JS, f), 'utf8').split('\n').forEach((z, i) => {
-      if (/^export\s+let\b/.test(z)) treffer.push(`${f}:${i + 1}: ${z.trim()}`);
-    });
+    fs.readFileSync(path.join(JS, f), 'utf8')
+      .split('\n')
+      .forEach((z, i) => {
+        if (/^export\s+let\b/.test(z)) treffer.push(`${f}:${i + 1}: ${z.trim()}`);
+      });
   }
   assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, 'zustand.js'), 'utf8')), 'Zustandsmodul ohne Zustand?');
   assert.deepEqual(treffer, []);
@@ -124,8 +155,13 @@ test('kein fetch an der API-Hülle vorbei', () => {
   const AUSNAHMEN = new Set(['theme-boot.js', 'logviewer.js', 'app.bundle.js']);
   const treffer = [];
   let gesehen = 0;
-  for (const f of [...fs.readdirSync(JS).filter(x => x.endsWith('.js') && !AUSNAHMEN.has(x)).map(x => path.join(JS, x)),
-                   path.join(ROOT, 'public', 'i18n.js')]) {
+  for (const f of [
+    ...fs
+      .readdirSync(JS)
+      .filter(x => x.endsWith('.js') && !AUSNAHMEN.has(x))
+      .map(x => path.join(JS, x)),
+    path.join(ROOT, 'public', 'i18n.js'),
+  ]) {
     const zeilen = fs.readFileSync(f, 'utf8').split('\n');
     zeilen.forEach((z, i) => {
       if (/^\s*(\/\/|\*)/.test(z) || !/\bfetch\(/.test(z)) return;

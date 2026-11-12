@@ -22,7 +22,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 
-test('Nutzlasten der Aufträge', { concurrency: 1 }, async (t) => {
+test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -32,8 +32,10 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async (t) => {
   await db.run(`DELETE FROM auftraege WHERE art = 'brickset'`);
 
   await t.test('eine falsche Nutzlast wird beim Einstellen abgewiesen', async () => {
-    await assert.rejects(A.stelleAuftragEin('brickset', { set_numbr: '10179-1' }),
-      (e) => e instanceof NutzlastUngueltig && /brickset.*set_number/.test(e.message));
+    await assert.rejects(
+      A.stelleAuftragEin('brickset', { set_numbr: '10179-1' }),
+      e => e instanceof NutzlastUngueltig && /brickset.*set_number/.test(e.message),
+    );
     await assert.rejects(A.stelleAuftragEin('gibt-es-nicht', {}), NutzlastUngueltig);
     const n = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE art = 'brickset'`);
     assert.equal(n.n, 0);
@@ -41,20 +43,44 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async (t) => {
 
   await t.test('der Worker übergibt die geprüfte Nutzlast', async () => {
     // Ein Feld, das ein älterer Stand mitschrieb, erreicht den Bearbeiter nicht.
-    await db.run(`INSERT INTO auftraege (art, nutzlast, max_versuche) VALUES ('brickset', $1, 3)`,
-      [JSON.stringify({ set_number: '10179-1', versuch: 2, altfeld: 'x' })]);
+    await db.run(`INSERT INTO auftraege (art, nutzlast, max_versuche) VALUES ('brickset', $1, 3)`, [
+      JSON.stringify({ set_number: '10179-1', versuch: 2, altfeld: 'x' }),
+    ]);
     const gesehen = [];
-    const w = erzeugeWorker({ brickset: { ausfuehren: async (n) => { gesehen.push(n); } } }, { fristSek: 60 });
+    const w = erzeugeWorker(
+      {
+        brickset: {
+          ausfuehren: async n => {
+            gesehen.push(n);
+          },
+        },
+      },
+      { fristSek: 60 },
+    );
     assert.equal(await w.verarbeiteEinen(), true);
     assert.deepEqual(gesehen, [{ set_number: '10179-1', versuch: 2 }]);
   });
 
   await t.test('eine alte Nutzlast scheitert sofort endgültig', async () => {
-    const { id } = await db.get(`INSERT INTO auftraege (art, nutzlast, max_versuche) VALUES ('brickset', $1, 3) RETURNING id`,
-      [JSON.stringify({ setnummer: '10179-1' })]);
-    let gelaufen = 0, aufgegeben = 0;
-    const w = erzeugeWorker({ brickset: { ausfuehren: async () => { gelaufen++; }, aufgegeben: async () => { aufgegeben++; } } },
-      { fristSek: 60 });
+    const { id } = await db.get(
+      `INSERT INTO auftraege (art, nutzlast, max_versuche) VALUES ('brickset', $1, 3) RETURNING id`,
+      [JSON.stringify({ setnummer: '10179-1' })],
+    );
+    let gelaufen = 0,
+      aufgegeben = 0;
+    const w = erzeugeWorker(
+      {
+        brickset: {
+          ausfuehren: async () => {
+            gelaufen++;
+          },
+          aufgegeben: async () => {
+            aufgegeben++;
+          },
+        },
+      },
+      { fristSek: 60 },
+    );
     assert.equal(await w.verarbeiteEinen(), true);
     const z = await db.get('SELECT status, versuche, fehler FROM auftraege WHERE id = $1', [id]);
     assert.equal(gelaufen, 0, 'der Bearbeiter lief mit einer ungültigen Nutzlast');

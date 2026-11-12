@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-const FLAGGE = String.raw`^(is|has|must|never)_|_verified$`;
+const FLAGGE = '^(is|has|must|never)_|_verified$';
 
 /** Flaggen-Spalten, die nicht BOOLEAN sind, und Schranken auf 0/1 — im Schema `schema`. */
 async function zahlenFlaggen(db, schema) {
@@ -27,25 +27,34 @@ async function zahlenFlaggen(db, schema) {
     `SELECT table_name || '.' || column_name || ': ' || data_type AS z FROM information_schema.columns
       WHERE table_schema = $1 AND column_name ~ $2 AND data_type <> 'boolean'
         AND table_name IN (SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_type = 'BASE TABLE')
-      ORDER BY 1`, [schema, FLAGGE]);
+      ORDER BY 1`,
+    [schema, FLAGGE],
+  );
   const schranken = await db.all(
     `SELECT conname AS z FROM pg_constraint
       WHERE connamespace = $1::regnamespace AND contype = 'c'
         AND pg_get_constraintdef(oid) ~ 'ARRAY\\[0, 1\\]|IN \\(0, ?1\\)'
-      ORDER BY 1`, [schema]);
+      ORDER BY 1`,
+    [schema],
+  );
   return [...spalten, ...schranken].map(r => r.z);
 }
 
-test('keine Ja/Nein-Spalte trägt 0/1', async (t) => {
+test('keine Ja/Nein-Spalte trägt 0/1', async t => {
   const db = _req('db/database.js');
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    keineDb(t, e); return;
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   try {
     await t.test('die Suche greift', async () => {
-      const booleans = await db.get(`SELECT COUNT(*)::int AS n FROM information_schema.columns
-        WHERE table_schema = 'public' AND column_name ~ $1 AND data_type = 'boolean'`, [FLAGGE]);
+      const booleans = await db.get(
+        `SELECT COUNT(*)::int AS n FROM information_schema.columns
+        WHERE table_schema = 'public' AND column_name ~ $1 AND data_type = 'boolean'`,
+        [FLAGGE],
+      );
       assert.ok(booleans.n >= 10, `nur ${booleans.n} Flaggen-Spalten gefunden — greift das Muster noch?`);
       await db.exec(`DROP SCHEMA IF EXISTS schalter_probe CASCADE; CREATE SCHEMA schalter_probe;
         CREATE TABLE schalter_probe.p (is_probe integer NOT NULL DEFAULT 0, CONSTRAINT p_probe_null_eins CHECK (is_probe IN (0, 1)))`);

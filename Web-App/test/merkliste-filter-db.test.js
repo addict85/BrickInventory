@@ -32,8 +32,11 @@ async function seed() {
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const client = await db.pool.connect();
-  try { await _req('db/migrate.js').runMigrations(client); }
-  finally { client.release(); }
+  try {
+    await _req('db/migrate.js').runMigrations(client);
+  } finally {
+    client.release();
+  }
 
   for (const n of ['opa', 'enkel']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [n]);
@@ -58,11 +61,11 @@ async function seed() {
   await db.run(`INSERT INTO rb_sets (set_num, name, year) VALUES ('60001-1','Feuerwehr 5000er',2014)`);
 
   const posten = [
-    [U.opa,   '10179-1', 'N'],
-    [U.opa,   '10179-1', 'U'],
-    [U.opa,   '60000-1', 'N'],
-    [U.opa,   '60001-1', 'N'],
-    [U.opa,   '99999-1', 'N'],   // kein Katalogeintrag: Name und Jahr NULL
+    [U.opa, '10179-1', 'N'],
+    [U.opa, '10179-1', 'U'],
+    [U.opa, '60000-1', 'N'],
+    [U.opa, '60001-1', 'N'],
+    [U.opa, '99999-1', 'N'], // kein Katalogeintrag: Name und Jahr NULL
     [U.enkel, '75192-1', 'N'],
   ];
   // created_at absteigend gestaffelt, damit die Vorgabesortierung eine
@@ -71,25 +74,37 @@ async function seed() {
   for (const [uid, sn, c] of posten) {
     await db.run(
       `INSERT INTO wanted (user_id, set_number, condition, created_at)
-       VALUES ($1,$2,$3, NOW() - ($4 || ' days')::interval)`, [uid, sn, c, tage--]);
+       VALUES ($1,$2,$3, NOW() - ($4 || ' days')::interval)`,
+      [uid, sn, c, tage--],
+    );
   }
 
   // Preise nur für zwei Merkposten — der Rest hat keinen. Genau das prüft die
   // Preissortierung: Ein fehlender Preis gehört ans Ende, nicht an den Anfang.
-  for (const [sn, c, p] of [['10179-1', 'N', 500], ['60000-1', 'N', 80]]) {
+  for (const [sn, c, p] of [
+    ['10179-1', 'N', 500],
+    ['60000-1', 'N', 80],
+  ]) {
     await db.run(
       `INSERT INTO price_cache (set_number, condition, currency_code, avg_price)
-       VALUES ($1,$2,'EUR',$3)`, [sn, c, p]);
+       VALUES ($1,$2,'EUR',$3)`,
+      [sn, c, p],
+    );
   }
 }
 
 async function dbReachable() {
-  try { await db.get('SELECT 1 AS ok'); return true; } catch { return false; }
+  try {
+    await db.get('SELECT 1 AS ok');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-const nummern = (liste) => liste.map(w => `${w.set_number}/${w.condition}`);
+const nummern = liste => liste.map(w => `${w.set_number}/${w.condition}`);
 
-test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
+test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -124,8 +139,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
     // Das ist nicht kaputt, aber es ist nicht, wonach gefragt wurde; für den
     // Suchenden sieht es aus, als wirke der Filter nicht.
     const liste = await M.merkpostenVon(alle, undefined, 'EUR', { suche: '50%' });
-    assert.deepEqual(nummern(liste), ['60000-1/N'],
-      `Die Maskierung greift nicht: ${nummern(liste).join(', ')}`);
+    assert.deepEqual(nummern(liste), ['60000-1/N'], `Die Maskierung greift nicht: ${nummern(liste).join(', ')}`);
     // Die Gegenprobe dazu: OHNE Prozentzeichen findet dieselbe Suche beide.
     const beide = await M.merkpostenVon(alle, undefined, 'EUR', { suche: '50' });
     assert.equal(beide.length, 2, `„50" findet ${beide.length} statt 2 — Seed veraltet?`);
@@ -145,15 +159,17 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
   await t.test('5. Sortierung: der fehlende Wert steht hinten', async () => {
     // 99999-1 hat keinen Namen (nicht im Katalog).
     const nachName = await M.merkpostenVon(alle, undefined, 'EUR', { sortierung: 'name_asc' });
-    assert.equal(nachName[nachName.length - 1].set_number, '99999-1',
-      `Ohne Namen steht nicht hinten: ${nummern(nachName).join(', ')}`);
+    assert.equal(
+      nachName[nachName.length - 1].set_number,
+      '99999-1',
+      `Ohne Namen steht nicht hinten: ${nummern(nachName).join(', ')}`,
+    );
     assert.equal(nachName[0].name, 'Feuerwehr 5000er');
 
     const nachPreis = await M.merkpostenVon(alle, undefined, 'EUR', { sortierung: 'price_desc' });
     assert.equal(nachPreis[0].marktpreis, 500);
     assert.equal(nachPreis[1].marktpreis, 80);
-    assert.equal(nachPreis[nachPreis.length - 1].marktpreis, null,
-      'Ein Merkposten ohne Preis steht nicht am Ende.');
+    assert.equal(nachPreis[nachPreis.length - 1].marktpreis, null, 'Ein Merkposten ohne Preis steht nicht am Ende.');
 
     const nachNummer = await M.merkpostenVon(alle, undefined, 'EUR', { sortierung: 'num_asc' });
     assert.equal(nachNummer[0].set_number, '10179-1');
@@ -185,8 +201,11 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async (t) => {
     // Bauen hochgezählt, und die Währung hängt sich ganz am Ende an. Verrutscht
     // eine Nummer, bekäme Postgres die Währung als Setnummer und liefe still
     // leer — kein Fehler, nur eine leere Liste.
-    const liste = await M.merkpostenVon([U.opa], undefined, 'EUR',
-      { suche: 'falcon', zustand: 'N', sortierung: 'num_asc' });
+    const liste = await M.merkpostenVon([U.opa], undefined, 'EUR', {
+      suche: 'falcon',
+      zustand: 'N',
+      sortierung: 'num_asc',
+    });
     assert.deepEqual(nummern(liste), ['10179-1/N']);
     assert.equal(liste[0].marktpreis, 500, 'Die Währung ist beim Zählen verrutscht.');
   });

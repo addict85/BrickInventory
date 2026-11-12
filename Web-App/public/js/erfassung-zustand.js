@@ -37,7 +37,7 @@ export function setzeMitFokus(ziel, markup) {
  */
 export function isoTag(v) {
   const d = v ? new Date(v) : null;
-  return d && !isNaN(d.getTime())
+  return d && !Number.isNaN(d.getTime())
     ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     : '';
 }

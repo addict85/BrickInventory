@@ -16,15 +16,15 @@ test('alle ?v=-Verweise in index.html tragen die Version aus package.json', () =
   const verweise = [...html.matchAll(/(?:src|href)="([^"]*\?v=([^"&]*))"/g)];
   // Selbstbeweis: Findet das Muster nichts, wäre die Prüfung darunter still
   // grün. GEMESSEN sind es acht.
-  assert.ok(verweise.length >= 5,
-    `Nur ${verweise.length} versionierte Verweise gefunden — Muster veraltet?`);
+  assert.ok(verweise.length >= 5, `Nur ${verweise.length} versionierte Verweise gefunden — Muster veraltet?`);
 
-  const falsch = verweise
-    .filter(m => m[2] !== version)
-    .map(m => `${m[1]}   (erwartet ?v=${version})`);
-  assert.deepEqual(falsch, [],
+  const falsch = verweise.filter(m => m[2] !== version).map(m => `${m[1]}   (erwartet ?v=${version})`);
+  assert.deepEqual(
+    falsch,
+    [],
     'Diese Verweise tragen eine andere Version als package.json:\n  ' +
-    falsch.join('\n  ') +
-    '\nDer Browser holt sie bis zu sieben Tage lang aus dem Cache (server.ts, ' +
-    'maxAge 7d) — der Deploy bliebe für genau diese Datei wirkungslos.');
+      falsch.join('\n  ') +
+      '\nDer Browser holt sie bis zu sieben Tage lang aus dem Cache (server.ts, ' +
+      'maxAge 7d) — der Deploy bliebe für genau diese Datei wirkungslos.',
+  );
 });

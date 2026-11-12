@@ -1,7 +1,7 @@
-import path from 'path';
-import fsp from 'fs/promises';
-import fs from 'fs';
-import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+import path from 'node:path';
+import fsp from 'node:fs/promises';
+import fs from 'node:fs';
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import PDFDocument from 'pdfkit';
 import { IMAGES_DIR, resolveWebPath } from '../../infra/appPaths';
 import type { Nutzlast } from '../../auftraege';
@@ -17,7 +17,13 @@ export type PdfSet = Nutzlast<'pdf'>['sets'][number];
 function pdfBildPfad(p: PdfTeil): string | null {
   let src = p.image_local || p.image_url || '';
   const m = src.match(/\/api\/img-proxy\?url=(.+)/);
-  if (m) { try { src = decodeURIComponent(m[1] ?? ''); } catch { return null; } }
+  if (m) {
+    try {
+      src = decodeURIComponent(m[1] ?? '');
+    } catch {
+      return null;
+    }
+  }
   const roh = resolveWebPath(src);
   if (!roh) return null;
   const voll = path.resolve(roh);
@@ -38,15 +44,23 @@ function nachFarbe(parts: PdfTeil[]) {
     else deduped.set(key, { ...p, part_number: blNum, quantity: Number(p.quantity) || 0 });
   }
 
-  const colorOrder: string[] = [], byColor = new Map<string, (PdfTeil & { quantity: number })[]>();
+  const colorOrder: string[] = [],
+    byColor = new Map<string, (PdfTeil & { quantity: number })[]>();
   for (const p of deduped.values()) {
     const name = p.color_name ?? '';
-    if (!byColor.has(name)) { byColor.set(name, []); colorOrder.push(name); }
+    if (!byColor.has(name)) {
+      byColor.set(name, []);
+      colorOrder.push(name);
+    }
     byColor.get(name)!.push(p);
   }
   colorOrder.sort((a, b) => a.localeCompare(b, 'de'));
   for (const liste of byColor.values()) {
-    liste.sort((a, b) => (a.bl_part_number || a.part_number || '').localeCompare(b.bl_part_number || b.part_number || '', undefined, { numeric: true }));
+    liste.sort((a, b) =>
+      (a.bl_part_number || a.part_number || '').localeCompare(b.bl_part_number || b.part_number || '', undefined, {
+        numeric: true,
+      }),
+    );
   }
   return { colorOrder, byColor };
 }
@@ -59,24 +73,44 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
   const datei = fs.createWriteStream(teil);
   doc.pipe(datei);
   const pdfDone = new Promise((resolve, reject) => {
-    datei.on('finish', resolve); datei.on('error', reject); doc.on('error', reject); });
+    datei.on('finish', resolve);
+    datei.on('error', reject);
+    doc.on('error', reject);
+  });
 
   let seite = 1;
-  const PAGE_H = 841.89, PAGE_W = 595.28;
+  const PAGE_H = 841.89,
+    PAGE_W = 595.28;
   function addFooter() {
-    const savedY = doc.y, savedX = doc.x, savedSize = (doc as unknown as { _fontSize: number })._fontSize;
+    const savedY = doc.y,
+      savedX = doc.x,
+      savedSize = (doc as unknown as { _fontSize: number })._fontSize;
     const origMargins = doc.page.margins;
     doc.page.margins = { top: 40, left: 40, bottom: 0, right: 40 };
-    doc.fontSize(8).fillColor('#94a3b8').text(`Seite ${seite}`, 0, PAGE_H - 28, { width: PAGE_W, align: 'center', lineBreak: false });
+    doc
+      .fontSize(8)
+      .fillColor('#94a3b8')
+      .text(`Seite ${seite}`, 0, PAGE_H - 28, { width: PAGE_W, align: 'center', lineBreak: false });
     doc.page.margins = origMargins;
-    doc.y = savedY; doc.x = savedX; doc.fontSize(savedSize).fillColor("#1e293b");
+    doc.y = savedY;
+    doc.x = savedX;
+    doc.fontSize(savedSize).fillColor('#1e293b');
   }
-  function newPage() { addFooter(); seite++; doc.addPage(); doc.y = 40; }
+  function newPage() {
+    addFooter();
+    seite++;
+    doc.addPage();
+    doc.y = 40;
+  }
 
   doc.fontSize(18).font('Helvetica-Bold').text('Bauliste', { align: 'left' });
-  doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(`Sets: ${sets.map(s => s.set_number).join(', ')}`, { align: 'left' });
+  doc
+    .fontSize(10)
+    .font('Helvetica')
+    .fillColor('#64748b')
+    .text(`Sets: ${sets.map(s => s.set_number).join(', ')}`, { align: 'left' });
   doc.moveDown(0.5);
-  const totalQty = parts.reduce((s, p) => s + (parseInt(String(p.quantity)) || 0), 0);
+  const totalQty = parts.reduce((s, p) => s + (parseInt(String(p.quantity), 10) || 0), 0);
   doc.fontSize(9).fillColor('#64748b').text(`${parts.length} Teiletypen · ${totalQty.toLocaleString()} Teile total`);
   doc.moveDown(1);
 
@@ -90,7 +124,9 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
     for (let i = 0; i < pfade.length; i += 32) {
       const stueck = pfade.slice(i, i + 32);
       const bufs = await Promise.all(stueck.map(fp => fsp.readFile(fp).catch(ohneBild)));
-      stueck.forEach((fp, j) => bilder.set(fp, bufs[j] ?? null));
+      stueck.forEach((fp, j) => {
+        bilder.set(fp, bufs[j] ?? null);
+      });
     }
   };
 
@@ -101,9 +137,17 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
     if (doc.y > 700) newPage();
 
     const hexColor = colorParts[0]?.color_hex ? '#' + colorParts[0].color_hex : '#94a3b8';
-    const dotX = 40, dotY = doc.y + 3;
-    doc.circle(dotX + 5, dotY + 5, 5).fill(hexColor).fillColor('#1e293b');
-    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1e293b').text(colorName || '(Keine Farbe)', dotX + 14, dotY, { continued: false });
+    const dotX = 40,
+      dotY = doc.y + 3;
+    doc
+      .circle(dotX + 5, dotY + 5, 5)
+      .fill(hexColor)
+      .fillColor('#1e293b');
+    doc
+      .fontSize(10)
+      .font('Helvetica-Bold')
+      .fillColor('#1e293b')
+      .text(colorName || '(Keine Farbe)', dotX + 14, dotY, { continued: false });
     doc.moveDown(0.2);
 
     const startX = 40;
@@ -121,17 +165,26 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
       if (doc.y > 730 - rowHeight) newPage();
       const rowY = doc.y;
       const fp = pdfBildPfad(p);
-      const imgBuf = fp ? (bilder.get(fp) || null) : null;
+      const imgBuf = fp ? bilder.get(fp) || null : null;
       let imgOffset = 0;
       if (imgBuf) {
         // Ein Bild, das pdfkit nicht lesen kann, fällt weg; die Zeile bleibt.
-        try { doc.image(imgBuf, startX, rowY, { width: 30, height: 30, fit: [30, 30] }); imgOffset = 36; }
-        catch (e) { console.warn(`[PDF] Bild für ${p.part_number} unlesbar: ${(e as Error).message}`); }
+        try {
+          doc.image(imgBuf, startX, rowY, { width: 30, height: 30, fit: [30, 30] });
+          imgOffset = 36;
+        } catch (e) {
+          console.warn(`[PDF] Bild für ${p.part_number} unlesbar: ${(e as Error).message}`);
+        }
       }
       doc.fontSize(8).font('Helvetica').fillColor('#1e293b');
       doc.text(p.bl_part_number || p.part_number, startX + imgOffset, rowY, { width: COL.num + 60 });
       doc.text(p.part_name ?? '', startX + imgOffset + COL.num + 60, rowY, { width: COL.name - imgOffset });
-      doc.font('Helvetica-Bold').text(String(p.quantity), startX + imgOffset + COL.num + 60 + COL.name - imgOffset, rowY, { width: 50, align: 'right' });
+      doc
+        .font('Helvetica-Bold')
+        .text(String(p.quantity), startX + imgOffset + COL.num + 60 + COL.name - imgOffset, rowY, {
+          width: 50,
+          align: 'right',
+        });
       doc.y = rowY + rowHeight + 2;
     }
     doc.moveDown(0.6);
@@ -150,9 +203,11 @@ function zeichnePdfImFaden(sets: PdfSet[], parts: PdfTeil[], ziel: string): Prom
   if (__filename.endsWith('.ts')) return buildPdf(sets, parts, ziel);
   return new Promise((resolve, reject) => {
     const w = new Worker(__filename, { workerData: { art: 'pdf-zeichnen', sets, parts, ziel } satisfies FadenAuftrag });
-    w.once('message', (m: { ok: boolean; fehler?: string }) => m.ok ? resolve() : reject(new Error(m.fehler)));
+    w.once('message', (m: { ok: boolean; fehler?: string }) => (m.ok ? resolve() : reject(new Error(m.fehler))));
     w.once('error', reject);
-    w.once('exit', code => { if (code !== 0) reject(new Error(`PDF-Faden endete mit ${code}`)); });
+    w.once('exit', code => {
+      if (code !== 0) reject(new Error(`PDF-Faden endete mit ${code}`));
+    });
   });
 }
 
@@ -161,7 +216,8 @@ if (!isMainThread && parentPort && (workerData as FadenAuftrag | undefined)?.art
   const port = parentPort;
   buildPdf(sets, parts, ziel).then(
     () => port.postMessage({ ok: true }),
-    (e: unknown) => port.postMessage({ ok: false, fehler: e instanceof Error ? e.message : String(e) }));
+    (e: unknown) => port.postMessage({ ok: false, fehler: e instanceof Error ? e.message : String(e) }),
+  );
 }
 
 export { pdfBildPfad, buildPdf, zeichnePdfImFaden };

@@ -21,10 +21,7 @@ export async function ladeLagerortVerwaltung() {
   // Beide Listen zusammen: `locations` sagt, was zur WAHL steht, `storage`, was wirklich DRIN liegt. Ohne die
   // zweite stünde neben jedem Ort nichts, und die Absage beim Löschen („da liegt noch was") käme aus dem
   // Nichts.
-  const [v, b] = await Promise.all([
-    api('GET', '/v1/storage/locations'),
-    api('GET', '/v1/storage?accounts=own'),
-  ]);
+  const [v, b] = await Promise.all([api('GET', '/v1/storage/locations'), api('GET', '/v1/storage?accounts=own')]);
   if (!v?.success) return;
   // Ein neuer oder umbenannter Ort steht gleich in den Auswahlfeldern der Erfassung.
   ladeLagerorte().catch(() => {});
@@ -40,17 +37,26 @@ export async function ladeLagerortVerwaltung() {
   // Das Raster liegt an der Liste, die Zeilen sind display:contents: So teilen alle Zeilen dieselben
   // Spaltenbreiten, und das Namensfeld wird nicht vom Belegungstext daneben schmal gedrückt. minmax(0,1fr),
   // damit ein langer Name die Spalte nicht sprengt; der Trennstrich liegt darum an jeder Zelle.
-  setzeHtml(el, html`${html`<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">`}${orte.map(o => {
-    const n = belegung.get(o.name);
-    // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts): „18 Teilesorten" hiesse
-    // sonst mal 18 Teilesorten und mal 12 plus 6 Figuren, und niemand koennte der Zahl ansehen, was gemeint
-    // ist.
-    const wie = n ? [tRaw('storage.belegt.sets', { n: Number(n.sets) || 0 }), tRaw('storage.belegt.teile', { n: Number(n.teile) || 0 }),
-                     tRaw('storage.belegt.figuren', { n: Number(n.figuren) || 0 })].filter(x => !x.startsWith('0 ')).join(', ')
-                  : tRaw('storage.leer');
-    // Belegt: Der Server lehnte das Löschen erst nach der Rückfrage ab. Gesperrt sagt es vorher, mit dem Grund.
-    const belegt = !!n && (Number(n.sets) || 0) + (Number(n.teile) || 0) + (Number(n.figuren) || 0) > 0;
-    return html`<div data-stil="display:contents">
+  setzeHtml(
+    el,
+    html`${html`<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">`}${orte.map(
+      o => {
+        const n = belegung.get(o.name);
+        // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts): „18 Teilesorten" hiesse
+        // sonst mal 18 Teilesorten und mal 12 plus 6 Figuren, und niemand koennte der Zahl ansehen, was gemeint
+        // ist.
+        const wie = n
+          ? [
+              tRaw('storage.belegt.sets', { n: Number(n.sets) || 0 }),
+              tRaw('storage.belegt.teile', { n: Number(n.teile) || 0 }),
+              tRaw('storage.belegt.figuren', { n: Number(n.figuren) || 0 }),
+            ]
+              .filter(x => !x.startsWith('0 '))
+              .join(', ')
+          : tRaw('storage.leer');
+        // Belegt: Der Server lehnte das Löschen erst nach der Rückfrage ab. Gesperrt sagt es vorher, mit dem Grund.
+        const belegt = !!n && (Number(n.sets) || 0) + (Number(n.teile) || 0) + (Number(n.figuren) || 0) > 0;
+        return html`<div data-stil="display:contents">
       <span class="lager-feld" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${o.name}" aria-label="${tRaw('detail.storage')}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1" data-zaehler class="lager-eingabe" /></span>
       <span class="lager-belegt" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${n ? '' : ' lager-frei'}">${wie}</span></span>
@@ -63,16 +69,25 @@ export async function ladeLagerortVerwaltung() {
               aria-label="${tRaw('common.delete')}: ${o.name}${belegt ? ` (${tRaw('storage.erst_umraeumen', { wie })})` : ''}" title="${belegt ? tRaw('storage.erst_umraeumen', { wie }) : tRaw('common.delete')}"
               data-arg2="${o.name}"${belegt ? ' disabled' : ''}>${ico('loeschen')}</button></span>
     </div>`;
-  })}${html`</div>`}`);
+      },
+    )}${html`</div>`}`,
+  );
 }
 
 async function legeLagerortAn() {
   const feld = G('storage-new');
   const name = String(feld?.value || '').trim();
-  if (!name) { feldFehler('storage-new', tRaw('storage.name_fehlt')); return; }
+  if (!name) {
+    feldFehler('storage-new', tRaw('storage.name_fehlt'));
+    return;
+  }
   const d = await api('POST', '/v1/storage/locations', { name });
   if (!d?.success) {
-    antwortFehler(d, { lagerort_leer: 'storage-new', lagerort_zu_lang: 'storage-new', lagerort_doppelt: 'storage-new' }, tRaw('settings.error'));
+    antwortFehler(
+      d,
+      { lagerort_leer: 'storage-new', lagerort_zu_lang: 'storage-new', lagerort_doppelt: 'storage-new' },
+      tRaw('settings.error'),
+    );
     return;
   }
   feld.value = '';
@@ -81,11 +96,14 @@ async function legeLagerortAn() {
 
 /**
  * Enter im Eingabefeld legt an — dieselbe Geste wie überall sonst im Baum.
- * @param {string} id
+ * @param {string} _id
  * @param {KeyboardEvent} ev
  */
-function lagerortTaste(id, ev) {
-  if (ev?.key === 'Enter') { ev.preventDefault(); legeLagerortAn(); }
+function lagerortTaste(_id, ev) {
+  if (ev?.key === 'Enter') {
+    ev.preventDefault();
+    legeLagerortAn();
+  }
 }
 
 /**
@@ -97,10 +115,15 @@ async function benenneLagerortUm(id, wert) {
   // Leer heisst hier NICHT löschen: Beim Umbenennen ist ein leergeräumtes Feld fast immer ein Versehen, und
   // das Löschen hat seinen eigenen Knopf daneben. (Beim Lagerort AM SET ist es umgekehrt — dort ist Leeren
   // die natürliche Geste, um die Zuordnung loszuwerden.)
-  if (!name) { toast(tRaw('storage.name_fehlt'), 'error'); await ladeLagerortVerwaltung(); return; }
+  if (!name) {
+    toast(tRaw('storage.name_fehlt'), 'error');
+    await ladeLagerortVerwaltung();
+    return;
+  }
   const d = await api('PUT', `/v1/storage/locations/${encodeURIComponent(id)}`, { name });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); }
-  else toast(tRaw('storage.umbenannt', { name }), 'success');
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+  } else toast(tRaw('storage.umbenannt', { name }), 'success');
   await ladeLagerortVerwaltung();
   // Die Zuordnungen sind mitgewandert (benenneOrtUm im Server) — die Galerie zeigt sonst weiter den alten
   // Namen.
@@ -115,9 +138,11 @@ async function benenneLagerortUm(id, wert) {
  * @param {string} war
  */
 async function schalteLagerortVorgabe(id, war) {
-  const d = await api('PUT', '/v1/storage/default',
-                      { id: String(war) === '1' ? null : parseInt(id) });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  const d = await api('PUT', '/v1/storage/default', { id: String(war) === '1' ? null : parseInt(id, 10) });
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   await ladeLagerortVerwaltung();
   // Die Erfassungsformulare stehen schon — ohne das Nachziehen zeigten sie den alten Stand, bis jemand die
   // Seite neu laedt. Dieselbe Geste wie beim Erfassungs-Zustand, der nach dem Speichern
@@ -130,10 +155,13 @@ async function schalteLagerortVorgabe(id, war) {
  * @param {string} name
  */
 async function loescheLagerort(id, name) {
-  if (!await confirmDelete(tRaw('storage.delete_title'),
-                           `${name} — ${tRaw('storage.delete_text')}`, 'lagerort')) return;
+  if (!(await confirmDelete(tRaw('storage.delete_title'), `${name} — ${tRaw('storage.delete_text')}`, 'lagerort')))
+    return;
   const d = await api('DELETE', `/v1/storage/locations/${encodeURIComponent(id)}`);
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   await ladeLagerortVerwaltung();
 }
 

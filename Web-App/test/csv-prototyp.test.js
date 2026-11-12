@@ -22,17 +22,14 @@ test('eine Spalte __proto__ landet nicht in der Prototypenkette', () => {
     vorher,
     'Object.prototype wurde veraendert — die Kopfzeile hat die Kette getroffen',
   );
-  assert.ok(
-    !Object.prototype.hasOwnProperty.call(records[0], '__proto__'),
-    'Der Datensatz traegt einen __proto__-Schluessel',
-  );
+  assert.ok(!Object.hasOwn(records[0], '__proto__'), 'Der Datensatz traegt einen __proto__-Schluessel');
 });
 
 test('auch constructor und prototype werden verworfen', () => {
   for (const name of ['constructor', 'prototype']) {
     const r = einlesen(`set_number,${name}\n10497-1,x\n`);
     assert.equal(r[0].set_number, '10497-1');
-    assert.ok(!Object.prototype.hasOwnProperty.call(r[0], name), `Die Spalte "${name}" ist im Datensatz gelandet`);
+    assert.ok(!Object.hasOwn(r[0], name), `Die Spalte "${name}" ist im Datensatz gelandet`);
   }
 });
 

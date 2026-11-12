@@ -18,14 +18,12 @@ const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const { haeltFigur, haeltSet, haeltTeil, haltZeile, mengeVon } = require('./helpers/bestand');
 
-test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
-  { concurrency: 1 }, async (t) => {
-
-  if (!await dbOderSkip(t, _req)) return;
+test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   const NUTZER = `lk-${process.pid}`;
-  const WEG    = `80${process.pid % 900 + 100}-1`;   // hier wird gelöscht
-  const BLEIBT = `80${process.pid % 900 + 101}-1`;   // Kontrollgruppe
+  const WEG = `80${(process.pid % 900) + 100}-1`; // hier wird gelöscht
+  const BLEIBT = `80${(process.pid % 900) + 101}-1`; // Kontrollgruppe
 
   const aufraeumen = async () => {
     for (const sn of [WEG, BLEIBT])
@@ -36,16 +34,25 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
-  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
-                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`, [uid]);
+  await db.run(
+    `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
+                ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,
+    [uid],
+  );
   await aufraeumen();
 
   for (const sn of [WEG, BLEIBT]) {
-    await db.run(`INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
-                  VALUES ($1,'N','CHF',20,20,3)`, [sn]);
-    await haeltSet(db, uid, sn, 0);  // Menge 0: die Erfassung dahinter traegt sie
-    await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
-                  VALUES ($1,$2,15,'N',1)`, [uid, sn]);
+    await db.run(
+      `INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
+                  VALUES ($1,'N','CHF',20,20,3)`,
+      [sn],
+    );
+    await haeltSet(db, uid, sn, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await db.run(
+      `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
+                  VALUES ($1,$2,15,'N',1)`,
+      [uid, sn],
+    );
     // Abgeleitete Teile und Minifiguren — sie hängen am Set und müssen
     // mitgehen. Bleiben sie liegen, tauchen sie in Teileliste und
     // Finanzsummen weiter auf, ohne dass es ein Set dazu gäbe.
@@ -60,7 +67,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
     t,
   });
 
-  const H  = require('./helpers/sources').handlerModul(_req);
+  const H = require('./helpers/sources').handlerModul(_req);
   const FC = _req('src/finanzen/financeCalc.js');
 
   try {
@@ -74,8 +81,11 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
     await t.test('die Galerie zeigt es nicht mehr', async () => {
       const g = await H.getSets([uid], {});
       const nummern = g.sets.map(s => s.set_number);
-      assert.deepEqual(nummern, [BLEIBT],
-        `Galerie zeigt noch: ${nummern.join(', ')} — ein Set mit Menge 0 ist ein Geistereintrag`);
+      assert.deepEqual(
+        nummern,
+        [BLEIBT],
+        `Galerie zeigt noch: ${nummern.join(', ')} — ein Set mit Menge 0 ist ein Geistereintrag`,
+      );
       assert.equal(g.total, 1, 'die Gesamtzahl zählt es noch mit');
     });
 
@@ -94,15 +104,21 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
       // gelöschte Set trug mit 20 CHF zum Portfolio bei.
       const val = await FC.computeSetsValuation(uid, [uid]);
       const nummern = (val.sets || []).map(s => s.set_number);
-      assert.deepEqual(nummern, [BLEIBT],
-        `Bewertung enthält noch: ${nummern.join(', ')}`);
-      assert.equal(parseFloat(val.totals.avg), 20,
-        `Summe ${val.totals.avg} statt 20.00 — ein Set ohne Bestand wird mitbewertet`);
+      assert.deepEqual(nummern, [BLEIBT], `Bewertung enthält noch: ${nummern.join(', ')}`);
+      assert.equal(
+        parseFloat(val.totals.avg),
+        20,
+        `Summe ${val.totals.avg} statt 20.00 — ein Set ohne Bestand wird mitbewertet`,
+      );
     });
 
     await t.test('in der Datenbank bleibt keine Zeile zurück', async () => {
-      for (const [tab, spalte] of [['sets', 'set_number'], ['parts', 'set_number'],
-                                   ['minifigs', 'set_number'], ['set_acquisitions', 'set_number']]) {
+      for (const [tab, spalte] of [
+        ['sets', 'set_number'],
+        ['parts', 'set_number'],
+        ['minifigs', 'set_number'],
+        ['set_acquisitions', 'set_number'],
+      ]) {
         const n = (await db.get(`SELECT COUNT(*)::int c FROM ${tab} WHERE ${spalte}=$1`, [WEG])).c;
         assert.equal(n, 0, `${tab}: ${n} Zeile(n) übrig`);
       }
@@ -114,8 +130,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
       // Zwei Fragen, zwei Tabellen (Migration 0036): Steht die Bestandszeile
       // noch, und wie viele Exemplare sagen die Erfassungen? Vorher …
       assert.ok(await haltZeile(db, uid, BLEIBT), 'das andere Set wurde mitgelöscht');
-      assert.equal(await mengeVon(db, uid, BLEIBT), 1,
-        'das andere Set hat seine Erfassung verloren');
+      assert.equal(await mengeVon(db, uid, BLEIBT), 1, 'das andere Set hat seine Erfassung verloren');
       assert.equal((await db.get(`SELECT COUNT(*)::int c FROM parts WHERE set_number=$1`, [BLEIBT])).c, 1);
     });
 
@@ -123,13 +138,15 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz',
       // Die Regel greift NUR, wenn keine Erfassung mehr übrig ist.
       // Anderer TAG: Je Konto, Set und Tag ist genau eine Erfassung erlaubt
       // (idx_set_acq_tag_zustand) — zwei am selben Tag legt die Datenbank ab.
-      await db.run(`INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
-                    VALUES ($1,$2,9,'U',2, NOW() - INTERVAL '1 day')`, [uid, BLEIBT]);
+      await db.run(
+        `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
+                    VALUES ($1,$2,9,'U',2, NOW() - INTERVAL '1 day')`,
+        [uid, BLEIBT],
+      );
       const l = await (await fetch(`${base}/api/v1/sets/${BLEIBT}/acquisitions`)).json();
       const erste = l.acquisitions[0].id;
       await fetch(`${base}/api/v1/sets/${BLEIBT}/acquisitions/${erste}`, { method: 'DELETE' });
-      assert.ok(await haltZeile(db, uid, BLEIBT),
-        'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
+      assert.ok(await haltZeile(db, uid, BLEIBT), 'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
       const menge = await mengeVon(db, uid, BLEIBT);
       assert.ok(menge > 0, `Menge ${menge}`);
     });

@@ -1,9 +1,9 @@
 /** Bild-Proxy für fremde CDNs: Bilder kommen über den eigenen Server, damit die
  * CSP keine fremden Quellen braucht und jedes Bild nur einmal geholt wird.
  * Den Abruf macht clients/bildCdn.ts; hier stehen Cache, Drossel und Antwort. */
-import path from 'path';
+import path from 'node:path';
 import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
-import fs from 'fs';
+import fs from 'node:fs';
 import { zaehleAnfrage } from '../../konto';
 import { resolveUserId } from '../../konto/http/anmeldung';
 import { vorDem, ohneFehlendeDatei, fehlertext, logAndContinue } from '../../infra/fehler';
@@ -16,10 +16,10 @@ import { istBekanntFehlend, merkeFehlend } from '../bilder/imageMisses';
 import { proxyAdresse, proxyCacheSchluessel } from '../bilder/images';
 import { konfig } from '../../infra/konfig';
 import type { Request, Response } from 'express';
-import type { Readable } from 'stream';
+import type { Readable } from 'node:stream';
 import { AbrufFehler, type AbrufStrom } from '../../infra/abruf';
 import { oeffneBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../quellen';
-import zlib from 'zlib';
+import zlib from 'node:zlib';
 import { nacharbeit } from '../../auftraege';
 import { setBildVollstaendig } from '../bilder/setImages';
 import { setBildLokalEintragen } from '../bildlage';
@@ -301,7 +301,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const proxyUserId = await resolveUserId(req);
   if (!proxyUserId) return res.status(401).end();
   let url = String(req.query.url || '');
-  if (!url || !url.startsWith('https://')) return res.status(400).end();
+  if (!url?.startsWith('https://')) return res.status(400).end();
   // Rebrickable liefert manchmal vorkodierte Adressen — einmal dekodieren.
   const decoded = einmalDekodiert(url);
   if (decoded.startsWith('https://')) url = decoded;
@@ -416,7 +416,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
  * ein fremdes Bild als Set ab. */
 export function setNummerAusBildAdresse(adresse: string): string | null {
   const u = urlOderNull(adresse);
-  if (!u || u.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
+  if (u?.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
   const m = /^\/media\/sets\/([A-Za-z0-9-]{1,40})(?:\/\d{1,12})?\.(?:jpg|jpeg|png|webp)$/i.exec(u.pathname);
   return m?.[1] ?? null;
 }

@@ -35,7 +35,8 @@ export function platzhalterInhalt(art) {
 export function bildVorlaeufig(img) {
   if (img.previousElementSibling?.classList.contains('bild-ph-vorlaeufig')) return;
   bildPlatzhalter(img, true);
-  img.hidden = true; img.style.display = 'none';
+  img.hidden = true;
+  img.style.display = 'none';
   // Verborgen lädt ein lazy-Bild nie; der zweite Versuch soll aber laufen.
   img.setAttribute('loading', 'eager');
 }
@@ -47,7 +48,9 @@ export function bildVorlaeufig(img) {
 export function bildGeladen(img) {
   const ph = img.previousElementSibling;
   if (!ph?.classList.contains('bild-ph-vorlaeufig')) return;
-  ph.remove(); img.hidden = false; img.style.display = '';
+  ph.remove();
+  img.hidden = false;
+  img.style.display = '';
 }
 
 /**
@@ -56,7 +59,11 @@ export function bildGeladen(img) {
  */
 export function bildPlatzhalter(img, vorlaeufig = false) {
   const alt = img.previousElementSibling;
-  if (!vorlaeufig && alt?.classList.contains('bild-ph-vorlaeufig')) { alt.classList.remove('bild-ph-vorlaeufig'); img.remove(); return; }
+  if (!vorlaeufig && alt?.classList.contains('bild-ph-vorlaeufig')) {
+    alt.classList.remove('bild-ph-vorlaeufig');
+    img.remove();
+    return;
+  }
   const ph = document.createElement('span');
   ph.className = ('bild-ph ' + (img.getAttribute('class') || '').replace(/\bloaded\b/, '')).trim();
   ph.setAttribute('role', 'img');
@@ -64,9 +71,15 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
   if (!img.getAttribute('alt')) ph.setAttribute('aria-hidden', 'true');
   const cs = getComputedStyle(img);
   // In der Kachel füllt der Platzhalter die Bildfläche; ein kaputtes Bild misst nur sein Symbol.
-  if (!img.closest('.sci')) for (const k of /** @type {const} */ (['width', 'height', 'borderRadius', 'margin'])) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
+  if (!img.closest('.sci'))
+    for (const k of /** @type {const} */ (['width', 'height', 'borderRadius', 'margin']))
+      if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
   setzeHtml(ph, platzhalterInhalt(img.dataset.ph ?? ''));
-  if (vorlaeufig) { ph.classList.add('bild-ph-vorlaeufig'); img.before(ph); return; }
+  if (vorlaeufig) {
+    ph.classList.add('bild-ph-vorlaeufig');
+    img.before(ph);
+    return;
+  }
   img.replaceWith(ph);
 }
 
@@ -108,7 +121,9 @@ export const PLATZHALTER_SET = '/assets/set-placeholder.svg';
  */
 export function setzeDialogbild(el, src, orig) {
   const img = /** @type {HTMLImageElement} */ (el);
-  delete img.dataset.retried; delete img.dataset.origVersucht; delete img.dataset.fallbackDone;
+  delete img.dataset.retried;
+  delete img.dataset.origVersucht;
+  delete img.dataset.fallbackDone;
   if (orig !== undefined) img.dataset.orig = orig;
   img.src = src;
   zoomStand(img);
@@ -123,10 +138,17 @@ export function zoomStand(img) {
   const leer = !img.getAttribute('src') || img.getAttribute('src') === PLATZHALTER_SET;
   // Auch der Klick ruht: Eine Maus-Klickfläche ohne Tab-Halt wäre nur für die Maus da.
   if (leer) {
-    img.removeAttribute('role'); img.tabIndex = -1; img.setAttribute('aria-hidden', 'true');
-    if (img.dataset.click) { img.dataset.zoomKlick = img.dataset.click; delete img.dataset.click; }
+    img.removeAttribute('role');
+    img.tabIndex = -1;
+    img.setAttribute('aria-hidden', 'true');
+    if (img.dataset.click) {
+      img.dataset.zoomKlick = img.dataset.click;
+      delete img.dataset.click;
+    }
   } else {
-    img.setAttribute('role', 'button'); img.tabIndex = 0; img.removeAttribute('aria-hidden');
+    img.setAttribute('role', 'button');
+    img.tabIndex = 0;
+    img.removeAttribute('aria-hidden');
     if (img.dataset.zoomKlick && !img.dataset.click) img.dataset.click = img.dataset.zoomKlick;
   }
 }
@@ -156,7 +178,7 @@ export function imgUrl(src, thumb) {
     // Vorschauen entstehen im Proxy. `thumb` 'nur' nutzt eine vorhandene, rechnet aber keine neue: für den
     // Katalog mit 25 000 fremden Sets, an denen man vorbeiscrollt. Der eigene Bestand bekommt die Vorschau
     // (true).
-    const tp = thumb === 'nur' ? '&thumb=1&gen=0' : (thumb ? '&thumb=1' : '');
+    const tp = thumb === 'nur' ? '&thumb=1&gen=0' : thumb ? '&thumb=1' : '';
     return IMG_PROXY + '?url=' + encodeURIComponent(src) + tp;
   }
   return src;
@@ -198,20 +220,30 @@ export function thumbUrl(src) {
  * @param {ParentNode} [root]
  */
 export function observeLazyImages(root) {
-  const imgs = /** @type {NodeListOf<HTMLImageElement>} */ ((root||document).querySelectorAll('img[loading=lazy]:not(.observed)'));
-  if(!imgs.length) return;
+  const imgs = /** @type {NodeListOf<HTMLImageElement>} */ (
+    (root || document).querySelectorAll('img[loading=lazy]:not(.observed)')
+  );
+  if (!imgs.length) return;
   // Synchron, VOR dem nächsten Paint
-  imgs.forEach(img => { if(img.complete && img.naturalWidth > 0) img.classList.add('loaded'); });
-  window._imgObserver ??= new IntersectionObserver((entries, obs) => {
-    entries.forEach(e => {
-      if(e.isIntersecting){
-        const img = /** @type {HTMLImageElement} */ (e.target);
-        if(img.complete) img.classList.add('loaded');
-        img.addEventListener('load', ()=>img.classList.add('loaded'), {once:true});
-        obs.unobserve(img);
-      }
-    });
-  }, { rootMargin: '200px' });
+  imgs.forEach(img => {
+    if (img.complete && img.naturalWidth > 0) img.classList.add('loaded');
+  });
+  window._imgObserver ??= new IntersectionObserver(
+    (entries, obs) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          const img = /** @type {HTMLImageElement} */ (e.target);
+          if (img.complete) img.classList.add('loaded');
+          img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+          obs.unobserve(img);
+        }
+      });
+    },
+    { rootMargin: '200px' },
+  );
   const beobachter = window._imgObserver;
-  imgs.forEach(img => { img.classList.add('observed'); beobachter.observe(img); });
+  imgs.forEach(img => {
+    img.classList.add('observed');
+    beobachter.observe(img);
+  });
 }

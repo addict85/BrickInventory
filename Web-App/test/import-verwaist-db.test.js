@@ -9,7 +9,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -20,20 +20,28 @@ const { jobGet, starteAuftrag, VERWAIST_MIN } = _req('src/auftraege/importAuftra
 
 const NAME = `verwaist_${process.pid}`;
 
-test('verwaiste Importe', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('verwaiste Importe', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+                             VALUES ($1, 'x', true, true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const auftrag = (vorMin) => db.run(
-    `INSERT INTO import_stand (user_id, status, total, done, current, updated_at)
+  const auftrag = vorMin =>
+    db.run(
+      `INSERT INTO import_stand (user_id, status, total, done, current, updated_at)
      VALUES ($1, 'running', 10, 3, '10001-1', NOW() - make_interval(mins => $2))
      ON CONFLICT (user_id) DO UPDATE SET status = 'running', current = '10001-1', error = NULL,
-       updated_at = NOW() - make_interval(mins => $2)`, [uid, vorMin]);
+       updated_at = NOW() - make_interval(mins => $2)`,
+      [uid, vorMin],
+    );
 
   await t.test('ein laufender Auftrag bleibt', async () => {
     await auftrag(1);

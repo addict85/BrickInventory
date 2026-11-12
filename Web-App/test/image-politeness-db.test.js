@@ -14,26 +14,39 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Zeitpunkte und Gleichzeitigkeit der Downloads mitschreiben.
 const zeiten = [];
 const thumbZeiten = [];
-let gleichzeitig = 0, maxGleichzeitig = 0;
+let gleichzeitig = 0,
+  maxGleichzeitig = 0;
 const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = echtesRequire.apply(this, arguments);
+Module.prototype.require = function (name, ...rest) {
+  const m = echtesRequire.call(this, name, ...rest);
   // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
-    return new Proxy(m, { get: (t, k) => k === 'downloadSetImage'
-      ? (async (_u, sn) => {
-          zeiten.push(Date.now());
-          gleichzeitig++; maxGleichzeitig = Math.max(maxGleichzeitig, gleichzeitig);
-          await new Promise(r => setTimeout(r, 30));   // „Netzwerk"
-          gleichzeitig--;
-          return `/images/sets/${sn}.jpg`;
-        }) : t[k] });
+  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
+    return new Proxy(m, {
+      get: (t, k) =>
+        k === 'downloadSetImage'
+          ? async (_u, sn) => {
+              zeiten.push(Date.now());
+              gleichzeitig++;
+              maxGleichzeitig = Math.max(maxGleichzeitig, gleichzeitig);
+              await new Promise(r => setTimeout(r, 30)); // „Netzwerk"
+              gleichzeitig--;
+              return `/images/sets/${sn}.jpg`;
+            }
+          : t[k],
+    });
   }
-  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m && m.generateThumb) {
-    return new Proxy(m, { get: (t, k) => k === 'generateThumb'
-      ? (async () => { thumbZeiten.push(Date.now()); return true; }) : t[k] });
+  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m?.generateThumb) {
+    return new Proxy(m, {
+      get: (t, k) =>
+        k === 'generateThumb'
+          ? async () => {
+              thumbZeiten.push(Date.now());
+              return true;
+            }
+          : t[k],
+    });
   }
   return m;
 };
@@ -42,10 +55,12 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    keineDb(t, e); return;
+test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -54,33 +69,37 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => 
 
   const P = `TK${process.pid}`;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
-  await db.run(`INSERT INTO image_wanted (url, set_number)
+  await db.run(
+    `INSERT INTO image_wanted (url, set_number)
                 SELECT 'https://cdn/'||$1||'_'||g||'.jpg', $1||'_'||g
-                  FROM generate_series(1,10) g`, [P]);
+                  FROM generate_series(1,10) g`,
+    [P],
+  );
 
   try {
     const n = (await _req('src/katalog/bilder/bildbedarfLauf.js')._arbeiteStapel()).gesamt;
     const abstaende = zeiten.slice(1).map((z, i) => z - zeiten[i]);
 
     await t.test('nacheinander, nie gleichzeitig', () => {
-      assert.equal(maxGleichzeitig, 1,
+      assert.equal(
+        maxGleichzeitig,
+        1,
         `${maxGleichzeitig} Downloads liefen gleichzeitig — gefordert ist ` +
-        'sequenziell, gerade weil Parallelität einer Heuristik auffällt');
+          'sequenziell, gerade weil Parallelität einer Heuristik auffällt',
+      );
     });
 
     await t.test('mindestens eine halbe Sekunde Abstand', () => {
       assert.ok(abstaende.length >= 5, `nur ${abstaende.length} Abstände gemessen`);
       const kleinster = Math.min(...abstaende);
-      assert.ok(kleinster >= 500,
-        `kleinster Abstand ${kleinster} ms — gefordert sind mindestens 500`);
+      assert.ok(kleinster >= 500, `kleinster Abstand ${kleinster} ms — gefordert sind mindestens 500`);
     });
 
     await t.test('die Abstände sind nicht alle gleich', () => {
       // Ein exakt gleicher Abstand ist selbst ein Muster: Eine Heuristik, die
       // nach Maschinen sucht, erkennt Gleichmass leichter als Unregelmässigkeit.
       const einzig = new Set(abstaende.map(a => Math.round(a / 50)));
-      assert.ok(einzig.size > 1,
-        'Alle Abstände sind gleich — die Verzögerung muss zufällig streuen');
+      assert.ok(einzig.size > 1, 'Alle Abstände sind gleich — die Verzögerung muss zufällig streuen');
     });
 
     await t.test('höchstens 30 Anfragen je Minute', () => {
@@ -89,8 +108,7 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => 
       const { STAPEL: stapel, TAKT_MS: takt } = _req('src/katalog/bilder/bildbedarfLauf.js');
       assert.ok(stapel > 0 && takt > 0, 'STAPEL oder TAKT_MS nicht auffindbar');
       const jeMinute = stapel * (60_000 / takt);
-      assert.ok(jeMinute <= 30,
-        `${jeMinute} Anfragen je Minute — höchstens 30 sind gewollt`);
+      assert.ok(jeMinute <= 30, `${jeMinute} Anfragen je Minute — höchstens 30 sind gewollt`);
       assert.equal(n, stapel, `${n} Bilder in einem Durchgang statt ${stapel}`);
     });
   } finally {
@@ -101,11 +119,13 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async (t) => 
   }
 });
 
-test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) => {
+test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => {
   // Marcos Log
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    keineDb(t, e); return;
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -118,12 +138,16 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) =
   // Bilder liegen, Vorschauen fehlen — Marcos Lage.
   for (let i = 1; i <= 10; i++) {
     const f = path.join(SET_IMAGES_DIR, `${P}_${i}.jpg`);
-    fs.writeFileSync(f, 'x'); dateien.push(f);
+    fs.writeFileSync(f, 'x');
+    dateien.push(f);
   }
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
-  await db.run(`INSERT INTO image_wanted (url, set_number)
+  await db.run(
+    `INSERT INTO image_wanted (url, set_number)
                 SELECT 'https://cdn/'||$1||'_'||g||'.jpg', $1||'_'||g
-                  FROM generate_series(1,10) g`, [P]);
+                  FROM generate_series(1,10) g`,
+    [P],
+  );
   thumbZeiten.length = 0;
   try {
     const n = (await _req('src/katalog/bilder/bildbedarfLauf.js')._arbeiteStapel()).gesamt;
@@ -131,10 +155,12 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async (t) =
     const abst = thumbZeiten.slice(1).map((z, i) => z - thumbZeiten[i]);
     assert.ok(abst.length >= 5, `nur ${abst.length} Abstände`);
     const kleinster = Math.min(...abst);
-    assert.ok(kleinster >= 500,
+    assert.ok(
+      kleinster >= 500,
       `kleinster Abstand zwischen zwei Verkleinerungen: ${kleinster} ms. Ohne ` +
-      'Pause rechnet der Job zehn davon am Stück — auf schwacher Hardware ist ' +
-      'die CPU dann belegt, und Datenbankabfragen laufen in den Zeitfehler.');
+        'Pause rechnet der Job zehn davon am Stück — auf schwacher Hardware ist ' +
+        'die CPU dann belegt, und Datenbankabfragen laufen in den Zeitfehler.',
+    );
   } finally {
     for (const f of dateien) fs.rmSync(f, { force: true });
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});

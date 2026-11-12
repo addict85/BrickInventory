@@ -117,7 +117,6 @@ export const PnlResponse = z.looseObject({
   error: z.string().nullable().optional(),
 });
 
-
 export const PriceByCondition = z.looseObject({
   N: ConditionValuation.nullable().optional(),
   U: ConditionValuation.nullable().optional(),
@@ -254,16 +253,45 @@ export const ValuationResponse = z.looseObject({
 });
 
 export const routen = {
-  'GET /api/v1/sets/:setNumber/price': { antwort: SetPriceResponse, abfrage: abfrage({ accounts: Q.konten,
-    currency: Q.text(8).meta({ deprecated: true, description: 'wird nicht ausgewertet: Es gilt die Währung des Kontos' }) }) },
-  'GET /api/v1/sets/:setNumber/price-history': { klein: true, antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/parts/:partNumber/:colorId/price-history': { klein: true, antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/minifigs/:figNumber/price-history': { klein: true, antwort: PriceHistoryResponse, abfrage: abfrage({ accounts: Q.konten }) },
-  'GET /api/v1/finance/parts-valuation': { antwort: PartsValuationResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
-  'GET /api/v1/finance/minifigs-valuation': { antwort: FigsValuationResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
+  'GET /api/v1/sets/:setNumber/price': {
+    antwort: SetPriceResponse,
+    abfrage: abfrage({
+      accounts: Q.konten,
+      currency: Q.text(8).meta({
+        deprecated: true,
+        description: 'wird nicht ausgewertet: Es gilt die Währung des Kontos',
+      }),
+    }),
+  },
+  'GET /api/v1/sets/:setNumber/price-history': {
+    klein: true,
+    antwort: PriceHistoryResponse,
+    abfrage: abfrage({ accounts: Q.konten }),
+  },
+  'GET /api/v1/parts/:partNumber/:colorId/price-history': {
+    klein: true,
+    antwort: PriceHistoryResponse,
+    abfrage: abfrage({ accounts: Q.konten }),
+  },
+  'GET /api/v1/minifigs/:figNumber/price-history': {
+    klein: true,
+    antwort: PriceHistoryResponse,
+    abfrage: abfrage({ accounts: Q.konten }),
+  },
+  'GET /api/v1/finance/parts-valuation': {
+    antwort: PartsValuationResponse,
+    abfrage: abfrage({ accounts: Q.konten, ...SEITE }),
+  },
+  'GET /api/v1/finance/minifigs-valuation': {
+    antwort: FigsValuationResponse,
+    abfrage: abfrage({ accounts: Q.konten, ...SEITE }),
+  },
   'GET /api/v1/finance/pnl': { antwort: PnlResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
   'GET /api/v1/finance/valuation': { antwort: ValuationResponse, abfrage: abfrage({ accounts: Q.konten, ...SEITE }) },
-  'GET /api/v1/finance/portfolio-history': { klein: true, antwort: PortfolioHistoryResponse,
-    abfrage: abfrage({ accounts: Q.konten, period: Q.text(20) }) },
+  'GET /api/v1/finance/portfolio-history': {
+    klein: true,
+    antwort: PortfolioHistoryResponse,
+    abfrage: abfrage({ accounts: Q.konten, period: Q.text(20) }),
+  },
   'GET /api/v1/stats': { antwort: StatsResponse, abfrage: abfrage({ accounts: Q.konten }) },
 } satisfies Record<string, Route>;

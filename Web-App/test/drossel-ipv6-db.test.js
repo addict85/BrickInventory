@@ -27,34 +27,44 @@ const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 test.after(() => db.pool.end().catch(() => {}));
 
 async function dbDa(t) {
-  try { await db.initSchema(); return true; }
-  catch (e) {
-    keineDb(t, e); return false;
+  try {
+    await db.initSchema();
+    return true;
+  } catch (e) {
+    keineDb(t, e);
+    return false;
   }
 }
 
-test('ipThrottle: der sechste Versuch aus demselben /64 wird abgewiesen', async (t) => {
-  if (!await dbDa(t)) return;
+test('ipThrottle: der sechste Versuch aus demselben /64 wird abgewiesen', async t => {
+  if (!(await dbDa(t))) return;
   const raeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'v6-probe|%'`);
-  await raeumen(); t.after(raeumen);
+  await raeumen();
+  t.after(raeumen);
   const app = express();
-  app.set('trust proxy', true);   // X-Forwarded-For setzt req.ip
+  app.set('trust proxy', true); // X-Forwarded-For setzt req.ip
   app.post('/probe', ipThrottle('v6-probe', 5, 60 * 60 * 1000), (_req, res) => res.json({ ok: true }));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${srv.address().port}`;
-  const von = (ip) => fetch(`${basis}/probe`, { method: 'POST', headers: { 'x-forwarded-for': ip } }).then(r => r.status);
+  const von = ip => fetch(`${basis}/probe`, { method: 'POST', headers: { 'x-forwarded-for': ip } }).then(r => r.status);
 
   const status = [];
   for (let i = 1; i <= 6; i++) status.push(await von(`2001:db8:aa:bb:${i}::${i}`));
-  assert.deepEqual(status, [200, 200, 200, 200, 200, 429], 'ipThrottle: der sechste Versuch aus demselben /64 wird abgewiesen');
+  assert.deepEqual(
+    status,
+    [200, 200, 200, 200, 200, 429],
+    'ipThrottle: der sechste Versuch aus demselben /64 wird abgewiesen',
+  );
   assert.equal(await von('2001:db8:aa:cc::1'), 200, 'ein anderes /64 ist nicht betroffen');
 });
 
-test('Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse', async (t) => {
-  if (!await dbDa(t)) return;
-  const raeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE '%2001:db8:5:%' OR key LIKE '%v6\\_spray\\_%'`);
-  await raeumen(); t.after(raeumen);
+test('Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse', async t => {
+  if (!(await dbDa(t))) return;
+  const raeumen = () =>
+    db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE '%2001:db8:5:%' OR key LIKE '%v6\\_spray\\_%'`);
+  await raeumen();
+  t.after(raeumen);
   for (let i = 0; i < L.MAX_JE_ADRESSE; i++) {
     const ip = `2001:db8:5:0:${(i + 1).toString(16)}::1`;
     const name = `v6_spray_${i}`;

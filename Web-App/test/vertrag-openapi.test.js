@@ -29,7 +29,8 @@ const { openapi } = _req('src/vertrag/openapi.js');
 function routenVon(router, basis) {
   const aus = [];
   for (const schicht of router.stack) {
-    if (schicht.route) for (const m of Object.keys(schicht.route.methods)) aus.push(`${m.toUpperCase()} ${basis}${schicht.route.path}`);
+    if (schicht.route)
+      for (const m of Object.keys(schicht.route.methods)) aus.push(`${m.toUpperCase()} ${basis}${schicht.route.path}`);
     else if (schicht.handle?.stack) aus.push(...routenVon(schicht.handle, basis));
   }
   return aus;
@@ -38,16 +39,25 @@ const EXPRESS = [
   ...routenVon(_req('routes/api_v1/index.js'), '/api/v1'),
   ...routenVon(_req('routes/auth.js'), '/api/v1/auth'),
   // Direkt in server.ts: Sie antworten, bevor die Router stehen.
-  'GET /api/v1/startup-status', 'GET /api/v1/health', 'GET /api/v1/health/live', 'GET /api/v1/health/ready',
+  'GET /api/v1/startup-status',
+  'GET /api/v1/health',
+  'GET /api/v1/health/live',
+  'GET /api/v1/health/ready',
 ];
 
 test('jede Route hat einen Vertrag', () => {
   assert.ok(EXPRESS.length > 150, `nur ${EXPRESS.length} Routen gefunden — greift die Suche noch?`);
-  assert.deepEqual(EXPRESS.filter((k) => !Object.hasOwn(VERTRAG, k)), []);
+  assert.deepEqual(
+    EXPRESS.filter(k => !Object.hasOwn(VERTRAG, k)),
+    [],
+  );
 });
 
 test('kein Vertrag ohne Route', () => {
-  assert.deepEqual(Object.keys(VERTRAG).filter((k) => !EXPRESS.includes(k)), []);
+  assert.deepEqual(
+    Object.keys(VERTRAG).filter(k => !EXPRESS.includes(k)),
+    [],
+  );
 });
 
 test('kein Schlüssel doppelt', () => {
@@ -56,15 +66,18 @@ test('kein Schlüssel doppelt', () => {
 });
 
 test('die eingecheckte openapi.json ist erzeugt', () => {
-  assert.ok(fs.readFileSync(DATEI, 'utf8') === alsText(openapi()),
-    'docs/openapi.json weicht vom Vertrag ab — `npm run vertrag:openapi` ausführen und einchecken');
+  assert.ok(
+    fs.readFileSync(DATEI, 'utf8') === alsText(openapi()),
+    'docs/openapi.json weicht vom Vertrag ab — `npm run vertrag:openapi` ausführen und einchecken',
+  );
 });
 
 test('jede lange Liste nimmt Seiten', () => {
   // Eine Liste ohne Seiten wächst mit dem Bestand; `klein` sagt, dass sie das nicht tut.
   const o = openapi();
-  const schema = (s) => (s?.$ref ? o.components.schemas[s.$ref.split('/').pop()] : s);
-  const ohne = [], limit = [];
+  const schema = s => (s?.$ref ? o.components.schemas[s.$ref.split('/').pop()] : s);
+  const ohne = [],
+    limit = [];
   for (const [p, ops] of Object.entries(o.paths)) {
     const get = ops.get;
     if (!get) continue;

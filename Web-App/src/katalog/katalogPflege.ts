@@ -11,7 +11,7 @@ type Schreiber = stamm.Schreiber;
  * hat. Eingetipptes landet in dessen eigenen Angaben, nie im gemeinsamen Katalog. */
 type Von = number | null;
 
-const leer = (v: string | null | undefined): string | null => (v === undefined || v === null || v === '') ? null : v;
+const leer = (v: string | null | undefined): string | null => (v === undefined || v === null || v === '' ? null : v);
 /** Ein eingetipptes Bild nur von den Hosts, die der Bild-Proxy ohnehin zeigt. */
 const bildEingabe = (url: string | null, von: Von): string | null =>
   url !== null && von !== null && !hostErlaubt(url, ERLAUBTE_BILD_HOSTS) ? null : url;
@@ -28,7 +28,10 @@ export async function merkeTeil(
   // nicht blockieren.
   const name = leer(partName);
   const kategorie = leer(categoryName) === 'Unknown' ? null : leer(categoryName);
-  if (von !== null) { await stamm.schreibeTeilEigen(dbh, von, partNumber, name, kategorie); return; }
+  if (von !== null) {
+    await stamm.schreibeTeilEigen(dbh, von, partNumber, name, kategorie);
+    return;
+  }
   await stamm.schreibeTeilKatalog(dbh, partNumber, name, kategorie);
 }
 
@@ -46,10 +49,14 @@ export async function merkeTeilFarbe(
   if (!partNumber) return;
   // Ohne Angabe gilt KEINE_FARBE, nie 0 (Schwarz).
   const farbe = farbeLesen(colorId);
-  const name = leer(colorName), code = leer(colorHex);
+  const name = leer(colorName),
+    code = leer(colorHex);
   const bild = bildEingabe(leer(imageUrl), von);
   // image_local schreibt nur der Server selbst (heruntergeladene Datei).
-  if (von !== null) { await stamm.schreibeTeilFarbeEigen(dbh, von, partNumber, farbe, name, code, bild); return; }
+  if (von !== null) {
+    await stamm.schreibeTeilFarbeEigen(dbh, von, partNumber, farbe, name, code, bild);
+    return;
+  }
   await stamm.schreibeTeilFarbe(dbh, partNumber, farbe, name, code, bild, imageLocal ?? null);
 }
 
@@ -64,7 +71,10 @@ export async function merkeFigur(
   if (!figNumber) return;
   const name = leer(figName);
   const bild = bildEingabe(leer(imageUrl), von);
-  if (von !== null) { await stamm.schreibeFigurEigen(dbh, von, figNumber, name, bild); return; }
+  if (von !== null) {
+    await stamm.schreibeFigurEigen(dbh, von, figNumber, name, bild);
+    return;
+  }
   await stamm.schreibeFigurKatalog(dbh, figNumber, name, bild, imageLocal ?? null);
 }
 
@@ -83,18 +93,25 @@ export async function merkeSetTeil(
 }
 
 export interface SetTeilZeile {
-  partNumber: string; partName: string | null; kategorie: string | null;
-  colorId: number; colorName: string | null; colorHex: string | null;
-  imageUrl: string | null; imageLocal: string | null;
-  quantity: number; isSpare: boolean;
+  partNumber: string;
+  partName: string | null;
+  kategorie: string | null;
+  colorId: number;
+  colorName: string | null;
+  colorHex: string | null;
+  imageUrl: string | null;
+  imageLocal: string | null;
+  quantity: number;
+  isSpare: boolean;
   blNummer?: string | null;
 }
 
 function jeSchluessel<T>(zeilen: T[], schluessel: (z: T) => string, mische?: (a: T, b: T) => T): T[] {
   const m = new Map<string, T>();
   for (const z of zeilen) {
-    const k = schluessel(z), alt = m.get(k);
-    m.set(k, alt === undefined ? z : (mische ? mische(alt, z) : alt));
+    const k = schluessel(z),
+      alt = m.get(k);
+    m.set(k, alt === undefined ? z : mische ? mische(alt, z) : alt);
   }
   return [...m.values()];
 }
@@ -105,25 +122,58 @@ function jeSchluessel<T>(zeilen: T[], schluessel: (z: T) => string, mische?: (a:
 export async function merkeSetTeile(setNumber: string, zeilen: SetTeilZeile[], dbh: Schreiber = katalog().db) {
   if (!setNumber || !zeilen.length) return;
   const teile = jeSchluessel(zeilen, z => z.partNumber);
-  const kat = (v: string | null) => leer(v) === 'Unknown' ? null : leer(v);
-  await stamm.schreibeTeileKatalog(dbh, teile.map(z => z.partNumber), teile.map(z => leer(z.partName)), teile.map(z => kat(z.kategorie)));
+  const kat = (v: string | null) => (leer(v) === 'Unknown' ? null : leer(v));
+  await stamm.schreibeTeileKatalog(
+    dbh,
+    teile.map(z => z.partNumber),
+    teile.map(z => leer(z.partName)),
+    teile.map(z => kat(z.kategorie)),
+  );
 
   const farben = jeSchluessel(zeilen, z => `${z.partNumber}|${z.colorId}`);
-  await stamm.schreibeTeilFarben(dbh, farben.map(z => z.partNumber), farben.map(z => z.colorId), farben.map(z => leer(z.colorName)), farben.map(z => leer(z.colorHex)), farben.map(z => leer(z.imageUrl)), farben.map(z => z.imageLocal));
+  await stamm.schreibeTeilFarben(
+    dbh,
+    farben.map(z => z.partNumber),
+    farben.map(z => z.colorId),
+    farben.map(z => leer(z.colorName)),
+    farben.map(z => leer(z.colorHex)),
+    farben.map(z => leer(z.imageUrl)),
+    farben.map(z => z.imageLocal),
+  );
 
-  const liste = jeSchluessel(zeilen.map(z => ({ ...z })), z => `${z.partNumber}|${z.colorId}`, (a, b) => {
-    if (a.isSpare === b.isSpare) return { ...a, quantity: a.quantity + b.quantity };
-    return a.isSpare ? b : a;
-  });
-  await stamm.schreibeSetTeile(dbh, setNumber, liste.map(z => z.partNumber), liste.map(z => z.colorId), liste.map(z => z.quantity || 1), liste.map(z => z.isSpare));
+  const liste = jeSchluessel(
+    zeilen.map(z => ({ ...z })),
+    z => `${z.partNumber}|${z.colorId}`,
+    (a, b) => {
+      if (a.isSpare === b.isSpare) return { ...a, quantity: a.quantity + b.quantity };
+      return a.isSpare ? b : a;
+    },
+  );
+  await stamm.schreibeSetTeile(
+    dbh,
+    setNumber,
+    liste.map(z => z.partNumber),
+    liste.map(z => z.colorId),
+    liste.map(z => z.quantity || 1),
+    liste.map(z => z.isSpare),
+  );
 }
 
 export async function merkeFiguren(
-  figuren: { figNumber: string; figName: string | null; imageUrl: string | null }[], dbh: Schreiber = katalog().db,
+  figuren: { figNumber: string; figName: string | null; imageUrl: string | null }[],
+  dbh: Schreiber = katalog().db,
 ) {
-  const f = jeSchluessel(figuren.filter(x => x.figNumber), x => x.figNumber);
+  const f = jeSchluessel(
+    figuren.filter(x => x.figNumber),
+    x => x.figNumber,
+  );
   if (!f.length) return;
-  await stamm.schreibeFigurenKatalog(dbh, f.map(x => x.figNumber), f.map(x => leer(x.figName)), f.map(x => leer(x.imageUrl)));
+  await stamm.schreibeFigurenKatalog(
+    dbh,
+    f.map(x => x.figNumber),
+    f.map(x => leer(x.figName)),
+    f.map(x => leer(x.imageUrl)),
+  );
 }
 
 /** Ohne COALESCE: Nach einem echten Download ist der neue Pfad richtig, der
@@ -139,11 +189,21 @@ export async function setzeTeilBildLokal(
 }
 
 export async function merkeSetFiguren(
-  setNumber: string, figuren: { figNumber: string; quantity?: number | null | undefined }[], dbh: Schreiber = katalog().db,
+  setNumber: string,
+  figuren: { figNumber: string; quantity?: number | null | undefined }[],
+  dbh: Schreiber = katalog().db,
 ) {
-  const f = jeSchluessel(figuren.filter(x => x.figNumber), x => x.figNumber);
+  const f = jeSchluessel(
+    figuren.filter(x => x.figNumber),
+    x => x.figNumber,
+  );
   if (!setNumber || !f.length) return;
-  await stamm.schreibeSetFiguren(dbh, setNumber, f.map(x => x.figNumber), f.map(x => Math.max(1, Number(x.quantity) || 1)));
+  await stamm.schreibeSetFiguren(
+    dbh,
+    setNumber,
+    f.map(x => x.figNumber),
+    f.map(x => Math.max(1, Number(x.quantity) || 1)),
+  );
 }
 
 /** Nur dort, wo noch keine steht. */
@@ -153,11 +213,7 @@ export async function merkeFigurBildAdresse(figNumber: string, imageUrl: string,
 }
 
 /** ÜBERSCHREIBEN — wie setzeTeilBildLokal. */
-export async function setzeFigurBildLokal(
-  figNumber: string,
-  imageLocal: string,
-  dbh: Schreiber = katalog().db,
-) {
+export async function setzeFigurBildLokal(figNumber: string, imageLocal: string, dbh: Schreiber = katalog().db) {
   if (!figNumber || !imageLocal) return;
   await stamm.schreibeFigurBildLokal(dbh, figNumber, imageLocal);
 }
@@ -177,18 +233,17 @@ export interface KatalogTeil {
 /** `fuer`: Nur dessen eigene Angaben zählen als bekannt, die anderer Konten
  * sieht diese Abfrage nicht. */
 export async function katalogTeil(
-  partNumber: string, colorId: number | null, fuer: Von = null,
+  partNumber: string,
+  colorId: number | null,
+  fuer: Von = null,
 ): Promise<KatalogTeil | null> {
   if (!partNumber) return null;
   const z = await katalog().katalogStamm.teilAusKatalog(partNumber, colorId, fuer);
   if (!z) return null;
 
   const quelle: KatalogTeil['bildQuelle'] =
-      (z.farb_datei || z.farb_url) ? 'farbe'
-    : (colorId === null && z.bild_allgemein) ? 'allgemein'
-    : null;
-  const url   = quelle === 'farbe' ? z.farb_url
-              : quelle === 'allgemein' ? z.bild_allgemein : null;
+    z.farb_datei || z.farb_url ? 'farbe' : colorId === null && z.bild_allgemein ? 'allgemein' : null;
+  const url = quelle === 'farbe' ? z.farb_url : quelle === 'allgemein' ? z.bild_allgemein : null;
   const datei = quelle === 'farbe' ? z.farb_datei : null;
 
   return {
@@ -202,7 +257,8 @@ export async function katalogTeil(
 }
 
 export async function katalogFigur(
-  figNumber: string, fuer: Von = null,
+  figNumber: string,
+  fuer: Von = null,
 ): Promise<{ name: string | null; bild: string | null; hatBild: boolean } | null> {
   if (!figNumber) return null;
   const z = await katalog().katalogStamm.figurAusKatalog(figNumber, fuer);

@@ -15,12 +15,17 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-test('die Bilder der Tabellen duerfen offline aus dem Zwischenspeicher kommen', { concurrency: 1 }, async (t) => {
+test('die Bilder der Tabellen duerfen offline aus dem Zwischenspeicher kommen', { concurrency: 1 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   const NAME = `offline_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1,'x',true,true) RETURNING id`, [NAME])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1,'x',true,true) RETURNING id`,
+      [NAME],
+    )
+  ).id;
   // Teilebilder sind Katalog: Jedes angemeldete Konto bekommt sie.
   const datei = path.join(__dirname, '..', 'data', 'images', 'parts', `OFF${process.pid}_0.png`);
   fs.mkdirSync(path.dirname(datei), { recursive: true });

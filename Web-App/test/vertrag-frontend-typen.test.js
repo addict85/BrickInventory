@@ -24,12 +24,15 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const { QUELLE, ZIEL, erzeuge } = require('../scripts/vertrag-frontend-typen.js');
+const { QUELLE, ZIEL, erzeuge, formatiert } = require('../scripts/vertrag-frontend-typen.js');
 const TSC = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
 
 test('die eingecheckten Typen sind aus openapi.json erzeugt', () => {
-  const soll = erzeuge(JSON.parse(fs.readFileSync(QUELLE, 'utf8')));
-  assert.ok(fs.readFileSync(ZIEL, 'utf8') === soll, 'frontend-typen/vertrag.d.ts ist veraltet — npm run vertrag:frontend');
+  const soll = formatiert(erzeuge(JSON.parse(fs.readFileSync(QUELLE, 'utf8'))));
+  assert.ok(
+    fs.readFileSync(ZIEL, 'utf8') === soll,
+    'frontend-typen/vertrag.d.ts ist veraltet — npm run vertrag:frontend',
+  );
 });
 
 /** Prüft eine Probe gegen die Typen; liefert die Meldungen je Zeile. @param {string} probe */
@@ -37,18 +40,36 @@ function pruefe(probe) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vertrag-typen-'));
   try {
     fs.writeFileSync(path.join(dir, 'probe.js'), probe);
-    fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({
-      compilerOptions: { allowJs: true, checkJs: true, noEmit: true, target: 'es2022', module: 'es2022',
-        moduleResolution: 'bundler', moduleDetection: 'force', strict: true, types: [], skipLibCheck: true },
-      files: ['probe.js', path.join(ROOT, 'frontend-typen', 'api.d.ts')],
-    }));
+    fs.writeFileSync(
+      path.join(dir, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          allowJs: true,
+          checkJs: true,
+          noEmit: true,
+          target: 'es2022',
+          module: 'es2022',
+          moduleResolution: 'bundler',
+          moduleDetection: 'force',
+          strict: true,
+          types: [],
+          skipLibCheck: true,
+        },
+        files: ['probe.js', path.join(ROOT, 'frontend-typen', 'api.d.ts')],
+      }),
+    );
     const r = spawnSync(process.execPath, [TSC, '-p', dir], { encoding: 'utf8' });
     const zeilen = (r.stdout + r.stderr).split('\n').filter(z => /error TS/.test(z));
     /** @type {Record<number, string>} */
     const je = {};
-    for (const z of zeilen) { const m = z.match(/probe\.js\((\d+),/); if (m) je[+m[1]] = (je[+m[1]] ? je[+m[1]] + '\n' : '') + z; }
+    for (const z of zeilen) {
+      const m = z.match(/probe\.js\((\d+),/);
+      if (m) je[+m[1]] = (je[+m[1]] ? je[+m[1]] + '\n' : '') + z;
+    }
     return je;
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 const KOPF = `/**
@@ -84,7 +105,9 @@ test('api(): jeder Pfad bekommt die Antwort seiner Route', () => {
 });
 
 test('/v1/sets/:nr/parts-list trifft nur seine Route', () => {
-  const m = pruefe(KOPF + "api('GET', `/v1/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });\n");
+  const m = pruefe(
+    KOPF + "api('GET', `/v1/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });\n",
+  );
   assert.deepEqual(Object.values(m), []);
 });
 
@@ -102,9 +125,12 @@ test('api()-Pfade stehen als Literal oder Vorlage da', () => {
   const offen = [];
   for (const f of fs.readdirSync(js).filter(n => istAppModul(n))) {
     const src = fs.readFileSync(path.join(js, f), 'utf8');
-    for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*([^'"`\s])/g)) offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
-    for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*(['"])[^'"]*\2\s*\+/g)) offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
+    for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*([^'"`\s])/g))
+      offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
+    for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*(['"])[^'"]*\2\s*\+/g))
+      offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
   }
   assert.ok(offen.length <= SCHRANKE, `${offen.length} ungeprüfte Pfade (Schranke ${SCHRANKE}):\n${offen.join('\n')}`);
-  if (offen.length < SCHRANKE) console.log(`  ℹ ungeprüfte api()-Pfade: ${offen.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  if (offen.length < SCHRANKE)
+    console.log(`  ℹ ungeprüfte api()-Pfade: ${offen.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });

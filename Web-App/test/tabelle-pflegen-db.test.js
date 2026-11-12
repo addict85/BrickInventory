@@ -26,10 +26,11 @@ const { pflegeTabelle } = _req('db/tabellePflegen.js');
 
 /** Wann wurde die Tabelle zuletzt aufgeraeumt und vermessen? */
 async function stand(tabelle) {
-  const r = await db.get(
-    `SELECT last_vacuum, last_analyze FROM pg_stat_user_tables WHERE relname = $1`, [tabelle]);
-  return { vacuum: r?.last_vacuum ? new Date(r.last_vacuum).getTime() : 0,
-           analyze: r?.last_analyze ? new Date(r.last_analyze).getTime() : 0 };
+  const r = await db.get(`SELECT last_vacuum, last_analyze FROM pg_stat_user_tables WHERE relname = $1`, [tabelle]);
+  return {
+    vacuum: r?.last_vacuum ? new Date(r.last_vacuum).getTime() : 0,
+    analyze: r?.last_analyze ? new Date(r.last_analyze).getTime() : 0,
+  };
 }
 
 /**
@@ -46,8 +47,8 @@ async function wartenAufStand(tabelle, vorher, ms = 5000) {
   }
 }
 
-test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
   // Ein echtes Konto: parts_summary hat seit Migration 0043 einen Schlüssel auf users.
   const NAME = `pflege_${process.pid}`;
@@ -60,50 +61,72 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
 
   await t.test('pflegeTabelle raeumt auf UND vermisst neu', async () => {
     // Erst etwas einfuegen, damit es auch etwas zu tun gibt.
-    await db.run(`INSERT INTO parts_summary (user_id, part_key, color_id, part_number,
+    await db.run(
+      `INSERT INTO parts_summary (user_id, part_key, color_id, part_number,
         part_name, total_quantity, in_sets)
       SELECT $1, 'pflege'||g, 0, 'p'||g, 'Brick '||g, 1, 'x'
-      FROM generate_series(1, 200) g ON CONFLICT DO NOTHING`, [uid]);
+      FROM generate_series(1, 200) g ON CONFLICT DO NOTHING`,
+      [uid],
+    );
     const vorher = await stand('parts_summary');
-    await new Promise(r => setTimeout(r, 1100));   // Zeitstempel haben Sekunden-Auflösung in der Anzeige
+    await new Promise(r => setTimeout(r, 1100)); // Zeitstempel haben Sekunden-Auflösung in der Anzeige
 
-    const ok = await pflegeTabelle((sql) => db.exec(sql), 'parts_summary');
+    const ok = await pflegeTabelle(sql => db.exec(sql), 'parts_summary');
     assert.equal(ok, true, 'pflegeTabelle hat aufgegeben — laeuft der Test als Eigentuemer der Tabelle?');
 
     const nachher = await wartenAufStand('parts_summary', vorher);
-    assert.ok(nachher.vacuum > vorher.vacuum,
+    assert.ok(
+      nachher.vacuum > vorher.vacuum,
       `last_vacuum hat sich nicht bewegt (${nachher.vacuum} vs ${vorher.vacuum}). Ohne VACUUM ` +
-      `bleibt die Warteliste von GIN stehen, und jede Suche geht sie zusaetzlich durch.`);
-    assert.ok(nachher.analyze > vorher.analyze,
+        `bleibt die Warteliste von GIN stehen, und jede Suche geht sie zusaetzlich durch.`,
+    );
+    assert.ok(
+      nachher.analyze > vorher.analyze,
       `last_analyze hat sich nicht bewegt. Ohne frische Statistik schaetzt der Planer die ` +
-      `Tabelle auf eine Zeile und greift zum falschen Index.`);
+        `Tabelle auf eine Zeile und greift zum falschen Index.`,
+    );
   });
 
   await t.test('ein Name, der kein Tabellenname ist, fuehrt NICHTS aus', async () => {
     const gerufen = [];
-    const fuehreAus = async (sql) => { gerufen.push(sql); };
-    for (const name of ['parts_summary; DROP TABLE users', 'parts summary', '"parts"',
-                        'public.parts_summary', '', 'Parts_Summary']) {
+    const fuehreAus = async sql => {
+      gerufen.push(sql);
+    };
+    for (const name of [
+      'parts_summary; DROP TABLE users',
+      'parts summary',
+      '"parts"',
+      'public.parts_summary',
+      '',
+      'Parts_Summary',
+    ]) {
       const ok = await pflegeTabelle(fuehreAus, name);
       assert.equal(ok, false, `"${name}" haette abgelehnt werden muessen.`);
     }
-    assert.deepEqual(gerufen, [],
-      `Fuer einen abgelehnten Namen wurde trotzdem SQL ausgefuehrt: ${gerufen.join(' | ')}`);
+    assert.deepEqual(
+      gerufen,
+      [],
+      `Fuer einen abgelehnten Namen wurde trotzdem SQL ausgefuehrt: ${gerufen.join(' | ')}`,
+    );
   });
 
   await t.test('ein Fehlschlag bleibt ein Fehlschlag und wird kein Absturz', async () => {
     // VACUUM braucht Rechte. Ein Import, der an der NACHSORGE scheitert, waere
     // das falsche Ergebnis — die Daten sind dann vollstaendig da.
-    const ok = await pflegeTabelle(async () => { throw new Error('permission denied for table'); },
-      'parts_summary');
+    const ok = await pflegeTabelle(async () => {
+      throw new Error('permission denied for table');
+    }, 'parts_summary');
     assert.equal(ok, false);
   });
 
   await t.test('rebuild() frischt parts_summary auf', async () => {
     const { rebuild } = _req('src/teile/partsSummary.js');
     const nutzer = 90002;
-    await db.run(`INSERT INTO users (id, username, password_hash) VALUES ($1, $2, 'x')
-                  ON CONFLICT (id) DO NOTHING`, [nutzer, 'pflege-tester']);
+    await db.run(
+      `INSERT INTO users (id, username, password_hash) VALUES ($1, $2, 'x')
+                  ON CONFLICT (id) DO NOTHING`,
+      [nutzer, 'pflege-tester'],
+    );
     // Beschreibung in die Kataloge, Bestand in parts (Migration 0034).
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
       SELECT 'p'||g, 'Brick '||g FROM generate_series(1, 300) g
@@ -116,19 +139,24 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
     // — deshalb braucht es keine Katalogzeilen dazu; teilmengeAus() faellt auf
     // 1 zurueck, und 1 stand hier auch vorher.
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '75192-1') ON CONFLICT DO NOTHING`, [nutzer]);
-    await db.run(`INSERT INTO parts (user_id, set_number, part_number, color_id)
+    await db.run(
+      `INSERT INTO parts (user_id, set_number, part_number, color_id)
       SELECT $1, '75192-1', 'p'||g, 0
-      FROM generate_series(1, 300) g ON CONFLICT DO NOTHING`, [nutzer]);
+      FROM generate_series(1, 300) g ON CONFLICT DO NOTHING`,
+      [nutzer],
+    );
 
     const vorher = await stand('parts_summary');
     await new Promise(r => setTimeout(r, 1100));
     await rebuild(nutzer);
     const nachher = await wartenAufStand('parts_summary', vorher);
 
-    assert.ok(nachher.analyze > vorher.analyze,
+    assert.ok(
+      nachher.analyze > vorher.analyze,
       `rebuild() hat parts_summary nicht vermessen (analyze ${nachher.analyze} vs ` +
-      `${vorher.analyze}). DELETE + INSERT aller Zeilen eines Nutzers ist ein ` +
-      `Masseneinfuegen — danach ist die Statistik schief.`);
+        `${vorher.analyze}). DELETE + INSERT aller Zeilen eines Nutzers ist ein ` +
+        `Masseneinfuegen — danach ist die Statistik schief.`,
+    );
   });
 
   await t.test('die Trigramm-Indizes der Zusammenfassung führen keine Warteliste', async () => {
@@ -138,7 +166,9 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async (t) => {
       WHERE i.indrelid = 'parts_summary'::regclass AND a.amname = 'gin'`);
     assert.ok(idx.length >= 3, `zu wenige GIN-Indizes gefunden: ${idx.map(r => r.relname).join(', ')}`);
     for (const r of idx)
-      assert.ok((r.reloptions || []).includes('fastupdate=off'),
-        `${r.relname} sammelt Einträge in einer Warteliste, die nur VACUUM leert`);
+      assert.ok(
+        (r.reloptions || []).includes('fastupdate=off'),
+        `${r.relname} sammelt Einträge in einer Warteliste, die nur VACUUM leert`,
+      );
   });
 });

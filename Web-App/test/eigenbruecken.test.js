@@ -14,8 +14,16 @@ function ohneKommentare(s) {
   let imBlock = false;
   for (const z of String(s).split('\n')) {
     const t = z.trim();
-    if (imBlock) { zeilen.push(''); if (t.endsWith('*/')) imBlock = false; continue; }
-    if (t.startsWith('/*')) { zeilen.push(''); if (!t.includes('*/')) imBlock = true; continue; }
+    if (imBlock) {
+      zeilen.push('');
+      if (t.endsWith('*/')) imBlock = false;
+      continue;
+    }
+    if (t.startsWith('/*')) {
+      zeilen.push('');
+      if (!t.includes('*/')) imBlock = true;
+      continue;
+    }
     zeilen.push(t.startsWith('//') || t.startsWith('*') ? '' : z);
   }
   return zeilen.join('\n');
@@ -37,7 +45,10 @@ function existiertQuelle(rel) {
 const ORDNER = ['routes', 'src', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
 
 test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
-  const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.test.js')).sort();
+  const dateien = fs
+    .readdirSync(__dirname)
+    .filter(f => f.endsWith('.test.js'))
+    .sort();
   assert.ok(dateien.length > 100, `Nur ${dateien.length} Testdateien gefunden — Ordner umbenannt?`);
 
   const kaputt = [];
@@ -64,16 +75,22 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
 
     // ── Form 2: path.join(ROOT, 'src/konto/geraeteToken.ts') ────────────────────────
     for (const m of src.matchAll(/path\.join\(\s*ROOT\s*,([^)]*)\)/g)) {
-      const roh = m[1].split(',').map(s => s.trim()).filter(Boolean);
+      const roh = m[1]
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
       const segmente = roh.map(s => /^['"]([^'"]*)['"]$/.exec(s)?.[1]);
       if (segmente.some(s => s === undefined)) {
         // Nicht aufloesbar — gemeldet, nicht uebergangen.
-        offen.push(`${datei}: ${roh.find((s, i) => segmente[i] === undefined)}`);
+        offen.push(`${datei}: ${roh.find((_s, i) => segmente[i] === undefined)}`);
         continue;
       }
       const p = segmente.join('/');
       if (!QUELLE.test(p)) continue;
-      if (istAbwesenheitsPruefung(src, m.index)) { abwesend.push(`${datei}: ${p}`); continue; }
+      if (istAbwesenheitsPruefung(src, m.index)) {
+        abwesend.push(`${datei}: ${p}`);
+        continue;
+      }
       geprueft++;
       if (!existiertQuelle(p)) kaputt.push(`${datei}: ${p}`);
     }
@@ -83,30 +100,40 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // still gruen. GEMESSEN sind es ueber hundert.
   // GEMESSEN: 768. Die Schranke liegt bei der Haelfte — sie soll einen kaputten
   // Suchausdruck fangen, nicht bei jeder neuen Testdatei anschlagen.
-  assert.ok(geprueft > 380,
+  assert.ok(
+    geprueft > 380,
     `Nur ${geprueft} Quellpfade gefunden (gemessen waren es 768) — die Muster sind ` +
-    'veraltet, und diese Pruefung sieht damit fast nichts mehr an.');
+      'veraltet, und diese Pruefung sieht damit fast nichts mehr an.',
+  );
 
-  assert.deepEqual(kaputt, [],
+  assert.deepEqual(
+    kaputt,
+    [],
     'Diese Testdateien lesen eine Quelldatei, die es nicht (mehr) gibt. Je nach ' +
-    'Test heisst das ein Absturz — oder, schlimmer, eine Pruefung, die nichts ' +
-    'mehr findet und deshalb schweigt.');
+      'Test heisst das ein Absturz — oder, schlimmer, eine Pruefung, die nichts ' +
+      'mehr findet und deshalb schweigt.',
+  );
 
   // Zweite Schreibweise desselben Pfades ist erlaubt; ein VARIABLES Segment
   // nimmt der Pruefung aber die Sicht. Ein paar Faelle sind legitim (ein Test,
   // der eine Liste von Dateien durchgeht) — die Zahl darf nur nicht wachsen,
   // ohne dass es jemand merkt. …
-  assert.ok(abwesend.length <= 3,
-    `${abwesend.length} Abwesenheits-Zusicherungen (erlaubt: 3):\n  ` + abwesend.join('\n  '));
+  assert.ok(
+    abwesend.length <= 3,
+    `${abwesend.length} Abwesenheits-Zusicherungen (erlaubt: 3):\n  ` + abwesend.join('\n  '),
+  );
 
   // GEMESSEN: 62, und die Zahl ist nicht das Problem, das sie auf den ersten
   // Blick scheint. Fast alle sind SCHLEIFENVARIABLEN (`f`, `datei`, `rel`,
   // `ordner`) — Tests, die eine Liste von Dateien durchgehen. Das ist ein
   // gutes Muster; es auszuschreiben wuerde die Tests schlechter machen.
-  assert.ok(offen.length <= 76,
+  assert.ok(
+    offen.length <= 76,
     `${offen.length} Pfade mit variablem Segment (gemessen waren es 76):\n  ` +
-    offen.join('\n  ') + '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
-    'variables Segment nimmt dieser Pruefung die Sicht.');
+      offen.join('\n  ') +
+      '\nWo es geht, gehoert der Pfad ausgeschrieben — ein ' +
+      'variables Segment nimmt dieser Pruefung die Sicht.',
+  );
 });
 
 /**
@@ -127,8 +154,12 @@ test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
     // Kommentare raus: Die Erklaerbloecke dieser Dateien nennen die
     // Funktionsnamen im Fliesstext, sonst gilt eine Datei als betroffen,
     // weil sie ueber den Stapel SCHREIBT.
-    const code = src.split('\n')
-      .map(z => { const t = z.trim(); return (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) ? '' : z; })
+    const code = src
+      .split('\n')
+      .map(z => {
+        const t = z.trim();
+        return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') ? '' : z;
+      })
       .join('\n');
     if (!BENUTZT.test(code)) continue;
     betroffen.push(f);
@@ -136,16 +167,21 @@ test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
   }
 
   // Selbstbeweis: Ohne Fund prueft die Zusicherung darunter nichts.
-  assert.ok(betroffen.length >= 5,
+  assert.ok(
+    betroffen.length >= 5,
     `Nur ${betroffen.length} Dateien arbeiten die Warteschlange ab — Muster veraltet? ` +
-    'Ohne Fund besteht diese Pruefung stillschweigend.');
+      'Ohne Fund besteht diese Pruefung stillschweigend.',
+  );
 
-  assert.deepEqual(ohne, [],
+  assert.deepEqual(
+    ohne,
+    [],
     'Diese Testdateien arbeiten die Bild-Warteschlange ab, ohne sie vorher zu leeren:\n  ' +
-    ohne.join('\n  ') +
-    '\n\n_arbeiteStapel() nimmt die aeltesten Notizen der GANZEN Tabelle. Bleibt aus ' +
-    'einer frueher gelaufenen Datei etwas liegen, arbeitet der Stapel DEREN Zeilen ab ' +
-    'und der Test misst etwas anderes, als er glaubt — und zwar nur manchmal, je ' +
-    'nachdem, was vorher lief. Abhilfe: `await leereWarteschlange(db)` nach dem ' +
-    'Schema-Vorbau (helpers/bildwarteschlange.js).');
+      ohne.join('\n  ') +
+      '\n\n_arbeiteStapel() nimmt die aeltesten Notizen der GANZEN Tabelle. Bleibt aus ' +
+      'einer frueher gelaufenen Datei etwas liegen, arbeitet der Stapel DEREN Zeilen ab ' +
+      'und der Test misst etwas anderes, als er glaubt — und zwar nur manchmal, je ' +
+      'nachdem, was vorher lief. Abhilfe: `await leereWarteschlange(db)` nach dem ' +
+      'Schema-Vorbau (helpers/bildwarteschlange.js).',
+  );
 });

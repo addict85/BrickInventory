@@ -56,8 +56,14 @@ test('jeder CSV-Import normalisiert das Datum', () => {
   const { csvGemeinsameFelder } = _req('src/infra/csvExport.js');
   const { rows } = setCsvZeilen('set_number;acquired_at\n10001-1;01.02.2026\n');
   assert.equal(rows[0].acquiredAt, '2026-02-01', 'Sets: 01.02.2026 ist der 1. Februar');
-  assert.equal(csvGemeinsameFelder({ acquired_at: '01.02.2026' }).erfasstAm, '2026-02-01',
-    'Teile und Figuren: 01.02.2026 ist der 1. Februar');
-  assert.equal(csvGemeinsameFelder({ erfassungsdatum: '31.02.2026' }).erfasstAm, null,
-    'ein unmögliches Datum wird verworfen statt an die Datenbank gereicht');
+  assert.equal(
+    csvGemeinsameFelder({ acquired_at: '01.02.2026' }).erfasstAm,
+    '2026-02-01',
+    'Teile und Figuren: 01.02.2026 ist der 1. Februar',
+  );
+  assert.equal(
+    csvGemeinsameFelder({ erfassungsdatum: '31.02.2026' }).erfasstAm,
+    null,
+    'ein unmögliches Datum wird verworfen statt an die Datenbank gereicht',
+  );
 });

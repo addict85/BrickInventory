@@ -25,18 +25,31 @@ const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 // anna ist das angemeldete Konto: Gegen sich selbst gibt es keine Knöpfe.
-const NUTZER = { '/v1/auth/users': { success: true, users: [
-  { id: 1, username: 'anna', is_admin: true, is_active: true, created_at: '2026-10-01T00:00:00Z' },
-  { id: 2, username: 'ben', is_admin: false, is_active: false, created_at: '2026-10-02T00:00:00Z', zweiter_faktor: true },
-  { id: 3, username: 'carla', is_admin: true, is_active: true, created_at: '2026-10-03T00:00:00Z' },
-] } };
+const NUTZER = {
+  '/v1/auth/users': {
+    success: true,
+    users: [
+      { id: 1, username: 'anna', is_admin: true, is_active: true, created_at: '2026-10-01T00:00:00Z' },
+      {
+        id: 2,
+        username: 'ben',
+        is_admin: false,
+        is_active: false,
+        created_at: '2026-10-02T00:00:00Z',
+        zweiter_faktor: true,
+      },
+      { id: 3, username: 'carla', is_admin: true, is_active: true, created_at: '2026-10-03T00:00:00Z' },
+    ],
+  },
+};
 
 test('Speichern-Knöpfe sehen gleich aus', async () => {
   const { w, d } = await oeffneOberflaeche(NUTZER);
   try {
     await reiter(w, 'settings');
     const knoepfe = ['btn-save-theme', 'btn-sav-bl', 'btn-sav-rb', 'btn-sav-bs', 'btn-sav-smtp', 'btn-sav-prof']
-      .map(id => d.getElementById(id)).concat([d.querySelector('[data-click="gutscheinSpeichern"]')]);
+      .map(id => d.getElementById(id))
+      .concat([d.querySelector('[data-click="gutscheinSpeichern"]')]);
     assert.equal(knoepfe.filter(Boolean).length, 7, 'Nicht alle sieben Knöpfe gefunden');
     for (const k of knoepfe) {
       const name = k.id || k.dataset.click;
@@ -44,7 +57,9 @@ test('Speichern-Knöpfe sehen gleich aus', async () => {
       assert.equal(k.querySelector('use')?.getAttribute('href'), '#i-speichern', `${name}: anderes Symbol`);
       assert.ok(k.classList.contains('bp') && k.classList.contains('btn-speichern'), `${name}: andere Form`);
     }
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Aktionen der Benutzertabelle sind benannt', async () => {
@@ -52,7 +67,11 @@ test('Aktionen der Benutzertabelle sind benannt', async () => {
   try {
     await reiter(w, 'settings');
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
-    assert.equal(d.querySelectorAll('#users-tbl tbody tr')[0].querySelectorAll('button').length, 0, 'keine Knöpfe gegen das eigene Konto');
+    assert.equal(
+      d.querySelectorAll('#users-tbl tbody tr')[0].querySelectorAll('button').length,
+      0,
+      'keine Knöpfe gegen das eigene Konto',
+    );
     const knoepfe = [...d.querySelectorAll('#users-tbl .nutzer-aktionen button')];
     assert.equal(knoepfe.length, 9, '5 + 4 Knöpfe erwartet (ben hat einen zweiten Faktor)');
     for (const k of knoepfe) {
@@ -62,7 +81,9 @@ test('Aktionen der Benutzertabelle sind benannt', async () => {
       const zeile = k.closest('tr').querySelector('strong').textContent;
       assert.equal(k.getAttribute('aria-label'), `${wort}: ${zeile}`);
     }
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Admin-Rechte entziehen schickt is_admin:false', async () => {
@@ -80,7 +101,9 @@ test('Admin-Rechte entziehen schickt is_admin:false', async () => {
     const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/3/admin'));
     assert.ok(put, 'Kein Aufruf zum Rollenwechsel');
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Deaktivieren und Aktivieren schicken is_active mit dem Passwort', async () => {
@@ -90,7 +113,10 @@ test('Deaktivieren und Aktivieren schicken is_active mit dem Passwort', async ()
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
     const ben = d.querySelectorAll('#users-tbl tbody tr')[1];
     assert.match(ben.textContent, /Deaktiviert/);
-    for (const [id, soll] of [[3, false], [2, true]]) {
+    for (const [id, soll] of [
+      [3, false],
+      [2, true],
+    ]) {
       d.querySelector(`#users-tbl [data-click="toggleAktiv"][data-arg="${id}"]`).click();
       assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
       d.getElementById('cd-pw').value = 'mein-passwort';
@@ -101,13 +127,27 @@ test('Deaktivieren und Aktivieren schicken is_active mit dem Passwort', async ()
       assert.ok(put, `Kein Aufruf für Konto ${id}`);
       assert.deepEqual(JSON.parse(put.body), { is_active: soll, admin_password: 'mein-passwort' });
     }
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', async () => {
-  const roh = { success: true, settings: { language: 'de', smtp_host: 'mail.example', smtp_user: 'u',
-    smtp_insecure_tls: '1', smtp_tls_fingerprint: 'AB:CD' } };
-  const { w, d, aufrufe } = await oeffneOberflaeche({ ...NUTZER, '/v1/settings/raw': roh, '/v1/settings': { success: true } });
+  const roh = {
+    success: true,
+    settings: {
+      language: 'de',
+      smtp_host: 'mail.example',
+      smtp_user: 'u',
+      smtp_insecure_tls: '1',
+      smtp_tls_fingerprint: 'AB:CD',
+    },
+  };
+  const { w, d, aufrufe } = await oeffneOberflaeche({
+    ...NUTZER,
+    '/v1/settings/raw': roh,
+    '/v1/settings': { success: true },
+  });
   try {
     await reiter(w, 'settings');
     await warte(() => d.getElementById('smtp-host').value === 'mail.example');
@@ -124,13 +164,17 @@ test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', asy
     const post = aufrufe.find(istPost);
     assert.ok(post, 'Nicht gespeichert');
     const body = JSON.parse(post.body);
-    assert.deepEqual([body.smtp_tls_fingerprint, body.smtp_tls_ca, body.smtp_insecure_tls],
-      ['AB:CD', '-----BEGIN CERTIFICATE-----', undefined]);
+    assert.deepEqual(
+      [body.smtp_tls_fingerprint, body.smtp_tls_ca, body.smtp_insecure_tls],
+      ['AB:CD', '-----BEGIN CERTIFICATE-----', undefined],
+    );
     // Der Hinweis verschwindet erst nach der Antwort aufs Speichern; unter Last
     // dauert das länger als ein fester Takt.
     await warte(() => d.getElementById('smtp-tls-altlast').style.display === 'none');
     assert.equal(d.getElementById('smtp-tls-altlast').style.display, 'none');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Schlüssel verdeckt, mit Knopf zum Anzeigen', async () => {
@@ -148,7 +192,9 @@ test('Schlüssel verdeckt, mit Knopf zum Anzeigen', async () => {
     knopf.click();
     assert.equal(d.getElementById('rb-key').type, 'password');
     assert.equal(knopf.getAttribute('aria-pressed'), 'false');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Sprungleiste zu den Abschnitten', async () => {
@@ -171,5 +217,7 @@ test('Sprungleiste zu den Abschnitten', async () => {
     assert.equal(d.querySelectorAll('.einst-nav a[aria-current]').length, 1);
     // Die Karte mit dem Design heisst nicht mehr „Einstellungen“ in „Einstellungen“.
     assert.equal(d.querySelector('#einst-design .stit').textContent.trim(), 'Erscheinungsbild');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

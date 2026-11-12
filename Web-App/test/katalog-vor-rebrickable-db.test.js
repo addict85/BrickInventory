@@ -35,16 +35,16 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const path   = require('node:path');
+const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db   = _req('db/database.js');
+const db = _req('db/database.js');
 
 // Rebrickable vorgeben, BEVOR die Teile- und Figurenmodule die
 // Funktionen herausziehen. esbuild exportiert ueber Getter, ein
@@ -57,22 +57,24 @@ let abrufe = [];
 require.cache[rbPfad].exports = Object.assign({}, echtRb, {
   lookupPart: async (nr, farbe) => {
     abrufe.push(`lookupPart ${nr}/${farbe}`);
-    return { part_name: 'VON REBRICKABLE', category_name: '42',
-             image_url: 'https://cdn.example/rb.jpg' };
+    return { part_name: 'VON REBRICKABLE', category_name: '42', image_url: 'https://cdn.example/rb.jpg' };
   },
-  getMinifigInfo: async (nr) => {
+  getMinifigInfo: async nr => {
     abrufe.push(`getMinifigInfo ${nr}`);
-    return { fig_number: nr, fig_name: 'VON REBRICKABLE',
-             image_url: 'https://cdn.example/rb-fig.jpg' };
+    return { fig_number: nr, fig_name: 'VON REBRICKABLE', image_url: 'https://cdn.example/rb-fig.jpg' };
   },
 });
 
-test.after(async () => { await db.pool.end().catch(() => {}); });
+test.after(async () => {
+  await db.pool.end().catch(() => {});
+});
 
-test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    keineDb(t, e); return;
+test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -80,11 +82,14 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
   await db.initSchema();
   {
     const c = await db.pool.connect();
-    try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
   }
 
-  const UID = (await db.get(
-    `INSERT INTO users (username,password_hash) VALUES ('marco','x') RETURNING id`)).id;
+  const UID = (await db.get(`INSERT INTO users (username,password_hash) VALUES ('marco','x') RETURNING id`)).id;
 
   // Der Preisabruf ist hier nicht die Frage und soll nicht dazwischenreden:
   // Ohne BrickLink-Zugang bricht fetchPartPrice von sich aus ab, und
@@ -111,7 +116,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
                   ('fig-000456','Luke',NULL)`);
 
   const { addManualPart } = _req('src/teile/manuelleTeile.js');
-  const { addManualFig }  = _req('src/figuren/manuelleFiguren.js');
+  const { addManualFig } = _req('src/figuren/manuelleFiguren.js');
 
   /** Ein Teil anlegen und zaehlen, was dabei nach draussen ging. */
   const legeTeil = async (nr, farbe) => {
@@ -121,25 +126,35 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
   };
 
   await t.test('Name und Farbbild im Katalog — kein Abruf', async () => {
-    assert.deepEqual(await legeTeil('3001', 4), [],
-      'Beides steht lokal da. Jeder Abruf hier ist der, den Marco gemessen hat');
+    assert.deepEqual(
+      await legeTeil('3001', 4),
+      [],
+      'Beides steht lokal da. Jeder Abruf hier ist der, den Marco gemessen hat',
+    );
   });
 
   await t.test('Bild als Datei zaehlt auch', async () => {
-    assert.deepEqual(await legeTeil('3002', 4), [],
+    assert.deepEqual(
+      await legeTeil('3002', 4),
+      [],
       'image_local ist ein Pfad und darf nicht durch V.optionalImageUrl — ' +
-      'er beweist aber, dass der Abruf nichts mehr zu holen hat');
+        'er beweist aber, dass der Abruf nichts mehr zu holen hat',
+    );
   });
 
   await t.test('Name ja, Farbbild nein — es wird gefragt', async () => {
-    assert.deepEqual(await legeTeil('3003', 4), ['lookupPart 3003/4'],
+    assert.deepEqual(
+      await legeTeil('3003', 4),
+      ['lookupPart 3003/4'],
       'Gespart werden soll der ueberfluessige Abruf, nicht der noetige. ' +
-      'rb_parts.part_img_url liegt vor und darf den Farb-Abruf NICHT ersetzen');
-    const z = await db.get(
-      `SELECT image_url FROM part_color_catalog WHERE part_number='3003' AND color_id=4`);
-    assert.equal(z?.image_url, 'https://cdn.example/rb.jpg',
-      'Geschrieben wird, was lookupPart fuer DIESE Farbe geliefert hat — ' +
-      'nicht das allgemeine Bild aus rb_parts');
+        'rb_parts.part_img_url liegt vor und darf den Farb-Abruf NICHT ersetzen',
+    );
+    const z = await db.get(`SELECT image_url FROM part_color_catalog WHERE part_number='3003' AND color_id=4`);
+    assert.equal(
+      z?.image_url,
+      'https://cdn.example/rb.jpg',
+      'Geschrieben wird, was lookupPart fuer DIESE Farbe geliefert hat — ' + 'nicht das allgemeine Bild aus rb_parts',
+    );
   });
 
   await t.test('ohne Farbe zaehlt das allgemeine Bild', async () => {
@@ -148,13 +163,15 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     // allgemeine Bild. Dann ist der Abruf wirklich ueberfluessig.
     abrufe = [];
     await addManualPart(UID, { part_number: '3003', quantity: 1 });
-    assert.deepEqual(abrufe, [],
-      'rb_parts fuehrt Name und allgemeines Bild — mehr holt der Abruf hier nicht');
+    assert.deepEqual(abrufe, [], 'rb_parts fuehrt Name und allgemeines Bild — mehr holt der Abruf hier nicht');
   });
 
   await t.test('gar nicht im Katalog — es wird gefragt', async () => {
-    assert.deepEqual(await legeTeil('99999zzz', 4), ['lookupPart 99999zzz/4'],
-      'Ohne lokalen Eintrag ist Rebrickable die einzige Quelle');
+    assert.deepEqual(
+      await legeTeil('99999zzz', 4),
+      ['lookupPart 99999zzz/4'],
+      'Ohne lokalen Eintrag ist Rebrickable die einzige Quelle',
+    );
   });
 
   await t.test('der Name kommt aus dem Katalog, nicht von Rebrickable', async () => {
@@ -164,8 +181,11 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     await db.run("DELETE FROM parts WHERE user_id=$1 AND part_number='3001'", [UID]);
     abrufe = [];
     const r = await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
-    assert.equal(r.part_name, 'Brick 2 x 4',
-      'Der Katalogname, nicht der des Doppels — sonst waere nichts gespart, sondern verloren');
+    assert.equal(
+      r.part_name,
+      'Brick 2 x 4',
+      'Der Katalogname, nicht der des Doppels — sonst waere nichts gespart, sondern verloren',
+    );
     assert.deepEqual(abrufe, []);
   });
 
@@ -179,7 +199,6 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
   await t.test('Figur ohne Bild — es wird gefragt', async () => {
     abrufe = [];
     await addManualFig(UID, { fig_number: 'fig-000456', quantity: 1 });
-    assert.deepEqual(abrufe, ['getMinifigInfo fig-000456'],
-      'Der Name allein genuegt nicht: das Bild fehlt wirklich');
+    assert.deepEqual(abrufe, ['getMinifigInfo fig-000456'], 'Der Name allein genuegt nicht: das Bild fehlt wirklich');
   });
 });

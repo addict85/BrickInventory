@@ -23,8 +23,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const abruf = { extern: false, fehler: null, aufrufe: 0 };
 const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name) {
-  const m = echtesRequire.apply(this, arguments);
+Module.prototype.require = function (name, ...rest) {
+  const m = echtesRequire.call(this, name, ...rest);
   if (!/[/\\]instructions(\.js)?$/.test(name)) return m;
   return {
     ...m,
@@ -42,16 +42,24 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
-  try { await db.initSchemaOnce(); }
-  catch (e) {
-    keineDb(t, e); return;
+test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   const Q = _req('src/katalog/anleitungLaden.js');
-  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege });
+  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
+    ..._req('src/auftraege/dienst.js'),
+    ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+  });
   const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
   const pause = () => A.liesPause('anleitung');
-  const inSek = async () => { const p = await pause(); return p ? Math.round((new Date(p.bis) - Date.now()) / 1000) : null; };
+  const inSek = async () => {
+    const p = await pause();
+    return p ? Math.round((new Date(p.bis) - Date.now()) / 1000) : null;
+  };
   const zuruecksetzen = () => db.run(`DELETE FROM auftrag_pausen WHERE art = 'anleitung'`);
   t.after(async () => {
     Module.prototype.require = echtesRequire;
@@ -62,7 +70,8 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
 
   await t.test('nach einem versorgten Set wartet niemand', async () => {
     await zuruecksetzen();
-    abruf.extern = false; abruf.fehler = null;
+    abruf.extern = false;
+    abruf.fehler = null;
     await Q.anleitungLaden({ set_number: '10001-1' });
     assert.equal(await pause(), null, 'ohne fremden Abruf keine Pause');
     abruf.extern = true;
@@ -76,14 +85,18 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
     abruf.fehler = new Error('Cloudflare error 1015: rate limited');
     const gesehen = [];
     for (let i = 0; i < 5; i++) {
-      await assert.rejects(Q.anleitungLaden({ set_number: '10003-1' }), (e) => e instanceof AuftragVerschieben);
+      await assert.rejects(Q.anleitungLaden({ set_number: '10003-1' }), e => e instanceof AuftragVerschieben);
       gesehen.push(await inSek());
       await db.run(`UPDATE auftrag_pausen SET bis = NOW() WHERE art = 'anleitung'`);
     }
-    assert.deepEqual(gesehen.slice(0, 4).map(s => Math.round(s / 60)), [5, 10, 15, 20]);
+    assert.deepEqual(
+      gesehen.slice(0, 4).map(s => Math.round(s / 60)),
+      [5, 10, 15, 20],
+    );
     const morgen = Q.naechsterTag();
     assert.ok(Math.abs(gesehen[4] - (morgen - Date.now()) / 1000) < 5, 'nach der vierten Sperre bis morgen');
-    abruf.fehler = null; abruf.extern = false;
+    abruf.fehler = null;
+    abruf.extern = false;
     await Q.anleitungLaden({ set_number: '10003-1' });
     assert.equal(await pause(), null, 'ein Erfolg setzt die Leiter zurück');
   });
@@ -95,7 +108,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async (t) => {
     await fremd.query('SELECT pg_advisory_lock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
     const vorher = abruf.aufrufe;
     try {
-      await assert.rejects(Q.anleitungLaden({ set_number: '10004-1' }), (e) => e instanceof AuftragVerschieben);
+      await assert.rejects(Q.anleitungLaden({ set_number: '10004-1' }), e => e instanceof AuftragVerschieben);
       assert.equal(abruf.aufrufe, vorher, 'trotz fremder Sperre abgerufen');
     } finally {
       await fremd.query('SELECT pg_advisory_unlock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);

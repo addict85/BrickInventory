@@ -16,9 +16,7 @@ import { deleteManualPart } from './parts.js';
 // Ein delegierter Dispatcher für data-click & Co. statt onclick im Markup: So kommt die CSP ohne script-src
 // 'unsafe-inline' aus, und eine übersehene XSS-Lücke trifft noch auf diese Verteidigungslinie.
 
-(function () {
-  'use strict';
-
+(() => {
   /** Ereignisse, die per Delegation am document abgefangen werden. Kein
    * mouseenter/mouseleave: Ein Überfahren mit der Maus ist keine Absicht, und
    * eingeschleustes Markup löste damit Aktionen ohne Klick aus. */
@@ -31,16 +29,52 @@ import { deleteManualPart } from './parts.js';
   // test/aktionen-schutz.test.js gleicht die Liste ab.
   /** @type {Record<string, Set<string>>} */
   const NUR = {
-    change: new Set(['acqSave', 'aendereAlarmSchwelle', 'autosaveSet', 'benenneLagerortUm',
-      'gutscheinDateiGewaehlt', 'gutscheinLandSpeichern', 'importAlarmeCsv', 'importConfig', 'importFigsCsv',
-      'importMerklisteCsv', 'importPartsCsv', 'ladeMerkliste', 'lagerortGewaehlt', 'manAcqSave',
-      'manQtySave', 'merkpostenInhaberGewaehlt', 'onScopeChange', 'onStorageChange',
-      'plFuelleBestand', 'renderFigsAll', 'renderGallery', 'saveJobMinutes', 'saveJobTime',
-      'saveRegEnabled', 'setCatFilter', 'setColorFilter', 'setLangFromEl', 'setzeDunkel',
-      'setzeEigenesDesign', 'speichereAlarm', 'speichereWaehrung', 'speichereZustand', 'speichereSetLagerort', 'speichereTeilFarbe',
-      'speichereTeilLagerort', 'startSetCsvImport', 'updateColorDot', 'uploadInstr', 'waehrungPruefen',
-      'wantedKorrekturFarbe', 'wantedKorrekturNummer', 'wantedKorrekturWert',
-      'wantedXmlGewaehlt', 'wechsleAlarmZustand']),
+    change: new Set([
+      'acqSave',
+      'aendereAlarmSchwelle',
+      'autosaveSet',
+      'benenneLagerortUm',
+      'gutscheinDateiGewaehlt',
+      'gutscheinLandSpeichern',
+      'importAlarmeCsv',
+      'importConfig',
+      'importFigsCsv',
+      'importMerklisteCsv',
+      'importPartsCsv',
+      'ladeMerkliste',
+      'lagerortGewaehlt',
+      'manAcqSave',
+      'manQtySave',
+      'merkpostenInhaberGewaehlt',
+      'onScopeChange',
+      'onStorageChange',
+      'plFuelleBestand',
+      'renderFigsAll',
+      'renderGallery',
+      'saveJobMinutes',
+      'saveJobTime',
+      'saveRegEnabled',
+      'setCatFilter',
+      'setColorFilter',
+      'setLangFromEl',
+      'setzeDunkel',
+      'setzeEigenesDesign',
+      'speichereAlarm',
+      'speichereWaehrung',
+      'speichereZustand',
+      'speichereSetLagerort',
+      'speichereTeilFarbe',
+      'speichereTeilLagerort',
+      'startSetCsvImport',
+      'updateColorDot',
+      'uploadInstr',
+      'waehrungPruefen',
+      'wantedKorrekturFarbe',
+      'wantedKorrekturNummer',
+      'wantedKorrekturWert',
+      'wantedXmlGewaehlt',
+      'wechsleAlarmZustand',
+    ]),
     input: new Set(['alarmGetippt', 'filterFigs', 'finSuchen']),
     blur: new Set(['acqSave', 'lagerortGetippt', 'manAcqSave', 'saveManualFigBl']),
     keydown: new Set(['blurOnEnter', 'lagerortTaste']),
@@ -49,22 +83,54 @@ import { deleteManualPart } from './parts.js';
   // Löschen, Konto, Zugänge, Verwaltung: nur von Elementen, die unser Code erzeugt hat (istVertraut), nie aus
   // eingeschleustem Markup.
   const GEFAEHRLICH = new Set([
-    'delSet', 'delSetStop', 'delInstr', 'acqDelete', 'manAcqDelete', 'deleteManualFig',
-    'deleteManualFigStop', 'deleteManualPartStop', 'merkpostenLoeschen', 'merkpostenLoeschenStop',
-    'merkpostenDetailLoeschen', 'gutscheinLoeschen', 'loescheAlarm', 'loescheLagerort',
-    'papierkorbEndgueltig', 'papierkorbLeeren', 'deleteBricksetQueueEntry',
-    'revokeToken', 'revokeOtherTokens', 'passkeyHinzufuegen', 'passkeyLoeschen',
-    'qrKopplungBestaetigen', 'qrKopplungAblehnen',
-    'zfEinrichten', 'zfNeueCodes', 'zfAbschalten', 'zfZuruecksetzen',
-    'createHouseholdInvite', 'redeemHouseholdInvite', 'unlinkHousehold', 'unlinkFromParent',
-    'delUser', 'kontoFreischalten', 'toggleAdmin', 'toggleAktiv', 'openRpw', 'saveRegEnabled', 'importConfig',
-    'auftragAbbrechen', 'auftragsArtLeeren',
+    'delSet',
+    'delSetStop',
+    'delInstr',
+    'acqDelete',
+    'manAcqDelete',
+    'deleteManualFig',
+    'deleteManualFigStop',
+    'deleteManualPartStop',
+    'merkpostenLoeschen',
+    'merkpostenLoeschenStop',
+    'merkpostenDetailLoeschen',
+    'gutscheinLoeschen',
+    'loescheAlarm',
+    'loescheLagerort',
+    'papierkorbEndgueltig',
+    'papierkorbLeeren',
+    'deleteBricksetQueueEntry',
+    'revokeToken',
+    'revokeOtherTokens',
+    'passkeyHinzufuegen',
+    'passkeyLoeschen',
+    'qrKopplungBestaetigen',
+    'qrKopplungAblehnen',
+    'zfEinrichten',
+    'zfNeueCodes',
+    'zfAbschalten',
+    'zfZuruecksetzen',
+    'createHouseholdInvite',
+    'redeemHouseholdInvite',
+    'unlinkHousehold',
+    'unlinkFromParent',
+    'delUser',
+    'kontoFreischalten',
+    'toggleAdmin',
+    'toggleAktiv',
+    'openRpw',
+    'saveRegEnabled',
+    'importConfig',
+    'auftragAbbrechen',
+    'auftragsArtLeeren',
   ]);
 
   /**
    * @param {string} type
    */
-  function attrFor(type) { return 'data-' + type; }
+  function attrFor(type) {
+    return 'data-' + type;
+  }
 
   /**
    * Handlernamen über die Registry auflösen: Modul-Funktionen liegen nicht auf window. resolveAction() fällt
@@ -80,14 +146,20 @@ import { deleteManualPart } from './parts.js';
    * @param {Event} ev
    */
   function handle(type, ev) {
-    const el = /** @type {HTMLElement | null | undefined} */ (/** @type {Element | null} */ (ev.target)?.closest?.(`[${attrFor(type)}]`));
+    const el = /** @type {HTMLElement | null | undefined} */ (
+      /** @type {Element | null} */ (ev.target)?.closest?.(`[${attrFor(type)}]`)
+    );
     if (!el) return;
     const name = el.getAttribute(attrFor(type));
     if (name === null || (NUR[type] && !NUR[type].has(name)) || (GEFAEHRLICH.has(name) && !istVertraut(el))) {
-      console.warn('[actions] abgewiesen:', type, name); return;
+      console.warn('[actions] abgewiesen:', type, name);
+      return;
     }
     const fn = resolve(name);
-    if (!fn) { console.warn('[actions] unbekannter Handler:', name); return; }
+    if (!fn) {
+      console.warn('[actions] unbekannter Handler:', name);
+      return;
+    }
 
     // Argumente: data-arg, data-arg2, data-arg3 … in dieser Reihenfolge. data-val="1" hängt den aktuellen
     // Feldwert an — deckt die vielen Handler ab, die früher this.value gelesen haben.
@@ -101,8 +173,11 @@ import { deleteManualPart } from './parts.js';
     }
     if (el.dataset.val === '1') args.push(/** @type {HTMLInputElement} */ (el).value);
     args.push(ev);
-    try { fn.apply(el, args); }
-    catch (e) { console.error('[actions]', name, e); }
+    try {
+      fn.apply(el, args);
+    } catch (e) {
+      console.error('[actions]', name, e);
+    }
   }
 
   for (const type of DELEGATED) {
@@ -114,10 +189,24 @@ import { deleteManualPart } from './parts.js';
   const NATIV = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL', 'SUMMARY']);
   document.addEventListener('keydown', ev => {
     const el = ev.target;
-    if (!(el instanceof HTMLElement) || NATIV.has(el.tagName) || !el.hasAttribute?.('data-click') || !el.hasAttribute('tabindex')) return;
+    if (
+      !(el instanceof HTMLElement) ||
+      NATIV.has(el.tagName) ||
+      !el.hasAttribute?.('data-click') ||
+      !el.hasAttribute('tabindex')
+    )
+      return;
     // Das Lösch-Kreuz der Karte ist ein Mauskürzel (aria-hidden, in der Karte kein Knopf erlaubt); Entf ist sein Tastaturweg.
-    const kreuz = ev.key === 'Delete' && el.matches('[aria-keyshortcuts~="Delete"]') ? el.querySelector(':scope > .ca > .delbtn') : null;
-    if (kreuz?.checkVisibility()) { ev.preventDefault(); /** @type {HTMLElement} */ (kreuz).click(); return; }
+    const kreuz =
+      ev.key === 'Delete' && el.matches('[aria-keyshortcuts~="Delete"]')
+        ? el.querySelector(':scope > .ca > .delbtn')
+        : null;
+    if (kreuz?.checkVisibility()) {
+      ev.preventDefault();
+      /** @type {HTMLElement} */
+      (kreuz).click();
+      return;
+    }
     const leer = ev.key === ' ' && el.getAttribute('role') === 'button';
     if (ev.key !== 'Enter' && !leer) return;
     ev.preventDefault();
@@ -141,7 +230,8 @@ import { deleteManualPart } from './parts.js';
   document.addEventListener('keydown', ev => {
     if (ev.key !== 'Enter' || ev.isComposing || ev.defaultPrevented) return;
     const feld = ev.target;
-    if (!(feld instanceof HTMLInputElement) || /^(button|submit|reset|checkbox|radio|file|image)$/.test(feld.type)) return;
+    if (!(feld instanceof HTMLInputElement) || /^(button|submit|reset|checkbox|radio|file|image)$/.test(feld.type))
+      return;
     const id = feld.form?.getAttribute('data-submit');
     if (!id || feld.form?.querySelector('[type="submit"]')) return;
     ev.preventDefault();
@@ -152,43 +242,55 @@ import { deleteManualPart } from './parts.js';
   // ── Bilder: Fehler- und Ladezustand ───────────────────────────────────────
   // error und load steigen nicht auf, lassen sich aber in der Capture-Phase am document abfangen. Ersetzt die
   // zwölf onerror- und vier onload-Attribute in den Kachel-Templates.
-  document.addEventListener('error', ev => {
-    const el = ev.target;
-    if (!(el instanceof HTMLImageElement)) return;
+  document.addEventListener(
+    'error',
+    ev => {
+      const el = ev.target;
+      if (!(el instanceof HTMLImageElement)) return;
 
-    // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN) liess
-    // die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
-    if (!el.dataset.retried && el.src) {
-      el.dataset.retried = '1';
-      if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);
-      const src = el.src;
-      // removeAttribute statt src='': Ein leeres src zeigt auf die SEITE, und der Browser wuerde sie als Bild
-      // zu laden versuchen.
-      setTimeout(() => { el.removeAttribute('src'); el.src = src; }, 1000);
-      return;
-    }
+      // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN) liess
+      // die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
+      if (!el.dataset.retried && el.src) {
+        el.dataset.retried = '1';
+        if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);
+        const src = el.src;
+        // removeAttribute statt src='': Ein leeres src zeigt auf die SEITE, und der Browser wuerde sie als Bild
+        // zu laden versuchen.
+        setTimeout(() => {
+          el.removeAttribute('src');
+          el.src = src;
+        }, 1000);
+        return;
+      }
 
-    if (el.dataset.onerror === 'keep') {
-      // Der Zoom (#lightbox-img) behält die Adresse: Ein leeres Overlay sähe aus wie ein kaputter Zoom, so
-      // nennt die Konsole die Adresse.
-      console.warn('[img] konnte nicht geladen werden:', el.src);
-      return;
-    }
-    const orig = el.dataset.orig;
-    if (orig && !el.dataset.origVersucht && el.getAttribute('src') !== orig) {
-      el.dataset.origVersucht = '1';
-      el.src = orig;
-      zoomStand(el);
-      return;
-    }
-    if (el.dataset.fallbackDone) return;
-    el.dataset.fallbackDone = '1';
-    // Bilder aus Vorlagen (bildTag) bekommen den Platzhalter ihrer Art; die festen Dialogbilder den des Sets,
-    // sonst stünde ein kaputtes Bildsymbol da.
-    if (el.dataset.ph) bildPlatzhalter(el);
-    else if (el.classList.contains('zoombar')) { el.src = PLATZHALTER_SET; zoomStand(el); }
-    else { el.removeAttribute('src'); el.classList.add('loaded'); }
-  }, true);
+      if (el.dataset.onerror === 'keep') {
+        // Der Zoom (#lightbox-img) behält die Adresse: Ein leeres Overlay sähe aus wie ein kaputter Zoom, so
+        // nennt die Konsole die Adresse.
+        console.warn('[img] konnte nicht geladen werden:', el.src);
+        return;
+      }
+      const orig = el.dataset.orig;
+      if (orig && !el.dataset.origVersucht && el.getAttribute('src') !== orig) {
+        el.dataset.origVersucht = '1';
+        el.src = orig;
+        zoomStand(el);
+        return;
+      }
+      if (el.dataset.fallbackDone) return;
+      el.dataset.fallbackDone = '1';
+      // Bilder aus Vorlagen (bildTag) bekommen den Platzhalter ihrer Art; die festen Dialogbilder den des Sets,
+      // sonst stünde ein kaputtes Bildsymbol da.
+      if (el.dataset.ph) bildPlatzhalter(el);
+      else if (el.classList.contains('zoombar')) {
+        el.src = PLATZHALTER_SET;
+        zoomStand(el);
+      } else {
+        el.removeAttribute('src');
+        el.classList.add('loaded');
+      }
+    },
+    true,
+  );
 
   // .loaded an jedes img[loading=lazy], nicht nur an data-fade: styles.css blendet alle lazy-Bilder aus, und
   // ohne Zusatzattribut blieben sie sonst trotz geladenem Bild unsichtbar.
@@ -209,21 +311,30 @@ import { deleteManualPart } from './parts.js';
     for (const m of muts) {
       for (const node of m.addedNodes) {
         if (!(node instanceof Element)) continue;
-        if (node instanceof HTMLImageElement) { if (node.complete) markLoaded(node); continue; }
-        /** @type {NodeListOf<HTMLImageElement>} */ (node.querySelectorAll('img[loading=lazy]')).forEach(i => { if (i.complete) markLoaded(i); });
+        if (node instanceof HTMLImageElement) {
+          if (node.complete) markLoaded(node);
+          continue;
+        }
+        /** @type {NodeListOf<HTMLImageElement>} */ (node.querySelectorAll('img[loading=lazy]')).forEach(i => {
+          if (i.complete) markLoaded(i);
+        });
       }
     }
   });
 
   if (document.body) imgObserver.observe(document.body, { childList: true, subtree: true });
-  else document.addEventListener('DOMContentLoaded',
-    () => imgObserver.observe(document.body, { childList: true, subtree: true }));
+  else
+    document.addEventListener('DOMContentLoaded', () =>
+      imgObserver.observe(document.body, { childList: true, subtree: true }),
+    );
 })();
 
 // ── Kleine Helfer für Handler, die vorher als Ausdruck im Attribut standen ──
 // Der Dispatcher ruft mit `this` = auslösendes Element und dem Ereignis als letztem Argument auf.
 
-function closePwModal() { G('pw-modal')?.classList.remove('open'); }
+function closePwModal() {
+  G('pw-modal')?.classList.remove('open');
+}
 
 function closeImportProgress() {
   hideProgress();
@@ -246,25 +357,36 @@ function lightboxBackdrop(ev) {
  * @this {HTMLImageElement}
  */
 function openImageLightboxFromEl() {
-  const src = this.dataset.orig && this.dataset.orig !== '/assets/set-placeholder.svg'
-    ? this.dataset.orig : this.src;
+  const src = this.dataset.orig && this.dataset.orig !== '/assets/set-placeholder.svg' ? this.dataset.orig : this.src;
   // Der Titel des Dialogs nennt, was das Bild zeigt (Set, Teil, Figur), samt Untertitel mit der Nummer.
   const dialog = this.closest('.ovl');
-  const name = [dialog?.querySelector('.mtit')?.textContent, dialog?.querySelector('.muntertit, [id$="-sub"]')?.textContent]
-    .map(s => (s || '').trim()).filter(Boolean).join(' – ');
+  const name = [
+    dialog?.querySelector('.mtit')?.textContent,
+    dialog?.querySelector('.muntertit, [id$="-sub"]')?.textContent,
+  ]
+    .map(s => (s || '').trim())
+    .filter(Boolean)
+    .join(' – ');
   openImageLightbox(typeof fullUrl === 'function' ? fullUrl(src) : src, name);
 }
 
 /** @this {HTMLSelectElement} */
-function setLangFromEl() { setLang(this.value); }
+function setLangFromEl() {
+  setLang(this.value);
+}
 /** Darstellung je Gerät — die Logik steht in theme-boot.js. @this {HTMLSelectElement} */
-function setzeDunkel() { window.__bimDunkel?.(this.value); }
+function setzeDunkel() {
+  window.__bimDunkel?.(this.value);
+}
 
 /**
  * Der Ansichtsumschalter des Figuren-Reiters gilt für beide Listen: Er steht über beiden, also schaltet er
  * auch die manuell erfassten Figuren um.
  */
-function renderFigsAll() { renderFigs(alleFiguren()); renderManualFigsTable(); }
+function renderFigsAll() {
+  renderFigs(alleFiguren());
+  renderManualFigsTable();
+}
 
 // ── Wrapper für Handler, die vorher als Ausdruck im Attribut standen ────────
 // Alle bekommen `this` = auslösendes Element und das Ereignis als letztes Argument (siehe Dispatcher oben).
@@ -272,15 +394,21 @@ function renderFigsAll() { renderFigs(alleFiguren()); renderManualFigsTable(); }
 /**
  * @param {Event | undefined} ev
  */
-export function stopEvent(ev) { ev?.stopPropagation(); }
+export function stopEvent(ev) {
+  ev?.stopPropagation();
+}
 
 /**
  * @param {KeyboardEvent | undefined} ev
  * @this {HTMLElement}
  */
-export function blurOnEnter(ev) { if (ev?.key === 'Enter') this.blur(); }
+export function blurOnEnter(ev) {
+  if (ev?.key === 'Enter') this.blur();
+}
 
-export function clickJobTrigger() { document.getElementById('btn-job-trigger')?.click(); }
+export function clickJobTrigger() {
+  document.getElementById('btn-job-trigger')?.click();
+}
 
 /**
  * @param {string} k
@@ -290,7 +418,10 @@ export function saveJobTime(k) {
   const m = /^\s*(\d{1,2})\s*[:.]?\s*(\d{2})\s*$/.exec(this.value);
   const gueltig = !!m && +m[1] < 24 && +m[2] < 60;
   this.setAttribute('aria-invalid', String(!gueltig));
-  if (!gueltig) { toast(tRaw('monitor.sched.ungueltig'), 'error'); return; }
+  if (!gueltig) {
+    toast(tRaw('monitor.sched.ungueltig'), 'error');
+    return;
+  }
   this.value = m[1].padStart(2, '0') + ':' + m[2];
   saveJobSchedule(k, { time: this.value });
 }
@@ -299,7 +430,9 @@ export function saveJobTime(k) {
  * @param {string} k
  * @this {HTMLInputElement}
  */
-export function saveJobMinutes(k) { saveJobSchedule(k, { minutes: Number(this.value) }); }
+export function saveJobMinutes(k) {
+  saveJobSchedule(k, { minutes: Number(this.value) });
+}
 
 // owner: Besitzer der Karte. Ohne ihn schriebe der Server in die Zeile des Aufrufers statt in die angezeigte
 // — siehe openManDetail.
@@ -316,7 +449,10 @@ export function saveManualFigBl(id, owner) {
  * @param {string} sn
  * @param {Event | undefined} ev
  */
-export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
+export function delSetStop(sn, ev) {
+  ev?.stopPropagation();
+  delSet(sn);
+}
 
 /**
  * Löschen von einer Kachel aus, mit stopPropagation: Die Kachel hat selbst ein data-click, und ohne Stopp
@@ -325,7 +461,10 @@ export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
  * @param {string} owner
  * @param {Event | undefined} ev
  */
-export function deleteManualFigStop(n, owner, ev) { ev?.stopPropagation(); deleteManualFig(n, owner); }
+export function deleteManualFigStop(n, owner, ev) {
+  ev?.stopPropagation();
+  deleteManualFig(n, owner);
+}
 
 /**
  * @param {string} partNumber
@@ -335,7 +474,7 @@ export function deleteManualFigStop(n, owner, ev) { ev?.stopPropagation(); delet
  */
 export function deleteManualPartStop(partNumber, colorId, owner, ev) {
   ev?.stopPropagation();
-  deleteManualPart(partNumber, parseInt(colorId) || 0, owner);
+  deleteManualPart(partNumber, parseInt(colorId, 10) || 0, owner);
 }
 
 /**
@@ -357,12 +496,22 @@ export function merkpostenLoeschenStop(arg, ev) {
  * @param {string} desc
  * @param {Event | undefined} ev
  */
-export function openPdfViewerLink(href, desc, ev) { ev?.preventDefault(); openPdfViewer(href, desc || ''); }
+export function openPdfViewerLink(href, desc, ev) {
+  ev?.preventDefault();
+  openPdfViewer(href, desc || '');
+}
 
-export function mQtyDec() { const q = G('m-qty'); q.value = String(Math.max(1, parseInt(q.value || '1') - 1)); autosaveSet(); }
+export function mQtyDec() {
+  const q = G('m-qty');
+  q.value = String(Math.max(1, parseInt(q.value || '1', 10) - 1));
+  autosaveSet();
+}
 
-export function mQtyInc() { const q = G('m-qty'); q.value = String(parseInt(q.value || '1') + 1); autosaveSet(); }
-
+export function mQtyInc() {
+  const q = G('m-qty');
+  q.value = String(parseInt(q.value || '1', 10) + 1);
+  autosaveSet();
+}
 
 // ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
 registerActions({

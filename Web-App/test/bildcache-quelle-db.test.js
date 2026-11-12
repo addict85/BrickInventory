@@ -16,9 +16,9 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const https  = require('node:https');
+const https = require('node:https');
 const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -39,20 +39,38 @@ function abfangen(t) {
   https.get = (url, _opt, cb) => {
     abgerufen.push(String(url));
     const req = new EventEmitter();
-    req.setTimeout = () => req; req.destroy = () => {};
-    setImmediate(() => { const r = new EventEmitter(); r.statusCode = 404; r.headers = {}; r.resume = () => {}; cb(r); });
+    req.setTimeout = () => req;
+    req.destroy = () => {};
+    setImmediate(() => {
+      const r = new EventEmitter();
+      r.statusCode = 404;
+      r.headers = {};
+      r.resume = () => {};
+      cb(r);
+    });
     return req;
   };
-  t.after(() => { https.get = echt; });
+  t.after(() => {
+    https.get = echt;
+  });
   return abgerufen;
 }
 
-test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 }, async (t) => {
-  try { await db.initSchema(); }
-  catch (e) {
-    keineDb(t, e); return;
+test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchema();
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
-  { const c = await db.pool.connect(); try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); } }
+  {
+    const c = await db.pool.connect();
+    try {
+      await _req('db/migrate.js').runMigrations(c);
+    } finally {
+      c.release();
+    }
+  }
   const { neueJobId, pdfDateiPfad } = _req('src/auftraege/pdfAuftraege.js');
   const jobId = neueJobId();
   const aufraeumen = async () => {
@@ -62,13 +80,19 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
     require('node:fs').rmSync(pdfDateiPfad(jobId), { force: true });
   };
   await aufraeumen();
-  t.after(async () => { await aufraeumen(); await db.pool.end().catch(() => {}); });
+  t.after(async () => {
+    await aufraeumen();
+    await db.pool.end().catch(() => {});
+  });
 
   // Geprüfte Adresse im Katalog, eingetippte in den eigenen Angaben eines Kontos.
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url) VALUES ($1, 5, $2)`, [`${T}a`, GUT]);
   const konto = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [T])).id;
-  await db.run(`INSERT INTO teil_farbe_eigen (user_id, part_number, color_id, image_url) VALUES ($1, $2, 5, $3)`,
-    [konto, `${T}b`, GETIPPT]);
+  await db.run(`INSERT INTO teil_farbe_eigen (user_id, part_number, color_id, image_url) VALUES ($1, $2, 5, $3)`, [
+    konto,
+    `${T}b`,
+    GETIPPT,
+  ]);
 
   const { bilderAusKatalog, erzeugePdf } = _req('src/katalog/pdf/pdfErzeugung.js');
   const vomClient = () => [
@@ -106,5 +130,6 @@ test('Setnummer nur aus einer reinen Rebrickable-Setadresse', () => {
     'https://cdn.rebrickable.com/media/thumbs/media/sets/10294-1.jpg',
     'https://images.brickset.com/media/sets/10294-1.jpg',
     'https://cdn.rebrickable.com/media/sets/...jpg',
-  ]) assert.equal(sn(fremd), null, `${fremd} ergibt eine Setnummer`);
+  ])
+    assert.equal(sn(fremd), null, `${fremd} ergibt eine Setnummer`);
 });

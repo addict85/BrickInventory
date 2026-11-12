@@ -50,7 +50,7 @@ export function addScopeParam(p, view) {
  */
 export function scopeQuery(view) {
   const m = scopeMode(view);
-  return (m && m !== 'all') ? `?accounts=${m}` : '';
+  return m && m !== 'all' ? `?accounts=${m}` : '';
 }
 // Der Lagerortfilter steht hier, weil er derselbe Gegenstand ist wie der Kontofilter: eine Wahl je Ansicht,
 // am Server gefiltert, beim Anmelden zurückgesetzt — aus denselben Gründen.
@@ -71,7 +71,7 @@ export function lagerModus(view) {
  */
 export function setLagerModus(view, wert) {
   if (wert) localStorage.setItem('bim_lager_' + view, wert);
-  else      localStorage.removeItem('bim_lager_' + view);
+  else localStorage.removeItem('bim_lager_' + view);
 }
 
 /** Beim Anmelden zurücksetzen — dieselbe Begründung wie bei resetScopeModes(). */

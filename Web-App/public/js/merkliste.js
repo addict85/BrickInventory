@@ -3,7 +3,16 @@ import { locale, t, tRaw } from '../i18n.js';
 import { esc, html, ungeprueft } from './escapen.js';
 import { api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './bilder.js';
-import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, knopfBesetzt, zuruecksetzenKnopf, setzeHtml } from './dom.js';
+import {
+  leerZustand,
+  meldeTreffer,
+  ico,
+  G,
+  TRASH_ICON_SVG,
+  knopfBesetzt,
+  zuruecksetzenKnopf,
+  setzeHtml,
+} from './dom.js';
 import { fmtDatum, fmtN, leseBetrag } from './format.js';
 import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
@@ -61,30 +70,28 @@ function zeile(w) {
   // nachführt.
   const titel = w.name ? esc(w.name) : esc(w.set_number);
   // Ohne Namen steht die Nummer schon als Titel — nicht noch einmal darunter.
-  const unter = [
-    w.name ? esc(w.set_number) : null,
-    w.year ? String(w.year) : null,
-    zustandText(w.condition),
-  ].filter(Boolean).join(' · ');
+  const unter = [w.name ? esc(w.set_number) : null, w.year ? String(w.year) : null, zustandText(w.condition)]
+    .filter(Boolean)
+    .join(' · ');
 
   const alarm = w.alarm
     ? html`<span class="mk-etikett">
          ${ico(w.alarm.ausgeloest ? 'alarm' : 'uhr')}
          ${tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below')}
          ${fmtN(Number(w.alarm.schwelle), CURRENCY)}
-       </span>` : '';
+       </span>`
+    : '';
 
   // „Habe ich das inzwischen?" ist die Frage, die in der Liste sofort aufkommt — und sie meint das BLICKFELD:
   // Beim Grossvater heisst „ich habe es" auch „der Enkel hat es".
-  const schon = w.owned
-    ? html`<span class="mk-etikett mk-etikett-ok">${tRaw('wanted.owned')}</span>`
-    : '';
+  const schon = w.owned ? html`<span class="mk-etikett mk-etikett-ok">${tRaw('wanted.owned')}</span>` : '';
 
   // In der Zeile steht der Marktpreis, nicht „In die Galerie“: Übernehmen gibt es weiter im Detail, wo
   // Anzahl, Preis und Zustand ohnehin abgefragt werden.
-  const preis = w.marktpreis != null
-    ? html`<span title="${tRaw('detail.market_price')}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
-    : html`<span class="mk-preis text-mut mk-preis-offen" title="${tRaw('wanted.preis_offen_hint')}">${tRaw('wanted.preis_offen')}</span>`;
+  const preis =
+    w.marktpreis != null
+      ? html`<span title="${tRaw('detail.market_price')}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
+      : html`<span class="mk-preis text-mut mk-preis-offen" title="${tRaw('wanted.preis_offen_hint')}">${tRaw('wanted.preis_offen')}</span>`;
 
   const arg = `${w.set_number}|${w.condition}|${w.user_id}`;
   return html`
@@ -124,9 +131,12 @@ function zeile(w) {
  */
 function merklisteParams() {
   const p = new URLSearchParams();
-  const q  = G('mks')?.value?.trim();  if (q)  p.set('search', q);
-  const c  = G('mkcond')?.value;       if (c)  p.set('condition', c);
-  const so = G('mksort')?.value;       if (so) p.set('sort', so);
+  const q = G('mks')?.value?.trim();
+  if (q) p.set('search', q);
+  const c = G('mkcond')?.value;
+  if (c) p.set('condition', c);
+  const so = G('mksort')?.value;
+  if (so) p.set('sort', so);
   addScopeParam(p, 'merkliste');
   return p.toString();
 }
@@ -145,7 +155,8 @@ export async function ladeMerkliste() {
   // Das Fragezeichen steht HIER und nicht in merklisteParams(): Dieselbe Schreibweise wie bei der Galerie,
   // und test/frontend-api-paths.test.js liest den Pfad aus genau dieser Zeile — mit dem Fragezeichen im
   // Rueckgabe-wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
-  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) setzeHtml(ziel, skelettZeilen(4, tRaw('common.loading')));
+  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer'))
+    setzeHtml(ziel, skelettZeilen(4, tRaw('common.loading')));
   const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
   const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
   if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) {
@@ -162,12 +173,36 @@ export async function ladeMerkliste() {
   }
   // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die Liste, „Nichts gefunden“ über den Filter
   // — sonst sähe eine erfolglose Suche wie eine geleerte Liste aus. Die Sortierung zählt nicht als Filter.
-  const filter = new URLSearchParams(merklisteParams()); filter.delete('sort');
+  const filter = new URLSearchParams(merklisteParams());
+  filter.delete('sort');
   const gefiltert = !!filter.toString();
-  if (gefiltert) meldeTreffer(_merkposten.length ? tRaw('treffer.merkliste', { n: _merkposten.length })
-    : G('mks')?.value.trim() ? tRaw('common.no_hits', { query: G('mks').value.trim() }) : tRaw('wanted.no_results'));
-  setzeHtml(ziel, _merkposten.length ? ungeprueft(_merkposten.map(zeile).join('')) : gefiltert ? leerZustand({ ico: 'suche', titel: G('mks')?.value.trim() ? tRaw('common.no_hits', { query: G('mks').value.trim() }) : tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') }) : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint'),
-                      knopf: { text: tRaw('wanted.erster'), click: 'feldFokussieren', arg: 'mk-num', art: 'bs' } }));
+  if (gefiltert)
+    meldeTreffer(
+      _merkposten.length
+        ? tRaw('treffer.merkliste', { n: _merkposten.length })
+        : G('mks')?.value.trim()
+          ? tRaw('common.no_hits', { query: G('mks').value.trim() })
+          : tRaw('wanted.no_results'),
+    );
+  setzeHtml(
+    ziel,
+    _merkposten.length
+      ? ungeprueft(_merkposten.map(zeile).join(''))
+      : gefiltert
+        ? leerZustand({
+            ico: 'suche',
+            titel: G('mks')?.value.trim()
+              ? tRaw('common.no_hits', { query: G('mks').value.trim() })
+              : tRaw('wanted.no_results'),
+            knopf: zuruecksetzenKnopf('merkliste'),
+          })
+        : leerZustand({
+            ico: 'merkliste',
+            titel: tRaw('wanted.empty'),
+            text: tRaw('wanted.empty_hint'),
+            knopf: { text: tRaw('wanted.erster'), click: 'feldFokussieren', arg: 'mk-num', art: 'bs' },
+          }),
+  );
 }
 
 /**
@@ -181,16 +216,21 @@ export async function merkpostenHinzufuegen() {
   try {
     const d = await api('POST', '/v1/wanted', {
       set_number: num,
-      condition:  G('mk-cond')?.value || 'N',
+      condition: G('mk-cond')?.value || 'N',
       owner_user_id: selectedOwner('mk-owner'),
     });
-    if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+    if (!d?.success) {
+      toast(d?.error || tRaw('settings.error'), 'error');
+      return;
+    }
     // „war schon drauf" ist keine Fehlermeldung, aber auch kein Neuzugang — wer zweimal auf denselben Knopf
     // drückt, soll den Unterschied sehen.
     await merkMeldung(d.war_neu, num);
     G('mk-num').value = '';
     await ladeMerkliste();
-  } finally { frei(); }
+  } finally {
+    frei();
+  }
 }
 
 /**
@@ -201,11 +241,10 @@ export async function katalogAufMerkliste() {
   const sn = G('cat-modal')?.dataset.setNumber;
   if (!sn) return;
   const zustand = G('cat-m-cond')?.value === 'U' ? 'U' : 'N';
-  const owner   = selectedOwner('cat-m-owner');
+  const owner = selectedOwner('cat-m-owner');
   const frei = knopfBesetzt(G('cat-m-wish'));
   try {
-    const d = await api('POST', '/v1/wanted',
-      { set_number: sn, condition: zustand, owner_user_id: owner });
+    const d = await api('POST', '/v1/wanted', { set_number: sn, condition: zustand, owner_user_id: owner });
     if (!d?.success) return;
 
     // Der Alarm ist ein EIGENER Aufruf und nicht Teil des Merkpostens: Er lebt in price_alerts, gehört
@@ -214,13 +253,15 @@ export async function katalogAufMerkliste() {
     const schwelle = leseBetrag(G('cat-m-alert-val')?.value);
     if (schwelle != null && schwelle > 0) {
       await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
-        richtung:  G('cat-m-alert-dir')?.value || 'unter',
+        richtung: G('cat-m-alert-dir')?.value || 'unter',
         schwelle,
         condition: zustand,
       }).catch(() => null);
     }
     await merkMeldung(d.war_neu, sn);
-  } finally { frei(); }
+  } finally {
+    frei();
+  }
 }
 
 /**
@@ -232,14 +273,19 @@ async function merkMeldung(neu, num) {
   const nr = /-\d+$/.test(num) ? num : num + '-1';
   const eigen = neu ? await api('GET', `/v1/sets/${encodeURIComponent(nr)}`).catch(() => null) : null;
   const vorhanden = eigen?.success && eigen.set ? eigen.set : null;
-  toast(vorhanden ? tRaw('wanted.added_schon_da', { n: vorhanden.quantity || 1 }) : tRaw(neu ? 'wanted.added' : 'wanted.already'), 'success');
+  toast(
+    vorhanden
+      ? tRaw('wanted.added_schon_da', { n: vorhanden.quantity || 1 })
+      : tRaw(neu ? 'wanted.added' : 'wanted.already'),
+    'success',
+  );
 }
 
 /** setNumber|condition|user_id — der Schlüssel einer Zeile, wie ihn zeile() baut. */
 /** @param {string | null | undefined} arg */
 function zerlege(arg) {
   const [set_number, condition, owner] = String(arg || '').split('|');
-  return { set_number, condition, owner_user_id: parseInt(owner) };
+  return { set_number, condition, owner_user_id: parseInt(owner, 10) };
 }
 
 /** @param {string} arg */
@@ -247,16 +293,25 @@ export async function merkpostenLoeschen(arg) {
   const { set_number, condition, owner_user_id } = zerlege(arg);
   if (!set_number) return;
   const p = new URLSearchParams({ owner_user_id: String(owner_user_id) });
-  const d = await api('DELETE',
-    `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`);
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  const d = await api('DELETE', `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`);
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   // Rückgängig legt den Posten neu an; er hat ausser Nummer, Zustand und Inhaber nichts Eigenes.
-  toast(tRaw('wanted.deleted'), 'success', { text: tRaw('trash.undo'), bleibt: true, fn: async () => {
-    const r = await api('POST', '/v1/wanted', { set_number, condition, owner_user_id });
-    if (!r?.success) { toast(r?.error || tRaw('settings.error'), 'error'); return; }
-    toast(tRaw('trash.restored'), 'success');
-    await ladeMerkliste();
-  } });
+  toast(tRaw('wanted.deleted'), 'success', {
+    text: tRaw('trash.undo'),
+    bleibt: true,
+    fn: async () => {
+      const r = await api('POST', '/v1/wanted', { set_number, condition, owner_user_id });
+      if (!r?.success) {
+        toast(r?.error || tRaw('settings.error'), 'error');
+        return;
+      }
+      toast(tRaw('trash.restored'), 'success');
+      await ladeMerkliste();
+    },
+  });
   await ladeMerkliste();
 }
 
@@ -271,9 +326,9 @@ export function merkpostenUebernehmen(arg) {
   _uebernahme = arg;
   const w = _merkposten.find(x => x.set_number === set_number && x.condition === condition);
   G('mk-take-tit').textContent = w?.name || set_number;
-  G('mk-take-qty').value   = '1';
+  G('mk-take-qty').value = '1';
   G('mk-take-price').value = '';
-  G('mk-take-cond').value  = condition === 'U' ? 'U' : 'N';
+  G('mk-take-cond').value = condition === 'U' ? 'U' : 'N';
   leereLagerortFeld('mk-take-storage');
   G('mk-take-modal').classList.add('open');
 }
@@ -295,17 +350,19 @@ export async function bestaetigeUebernahme() {
   if (!preis.ok || !menge.ok) return;
   const frei = knopfBesetzt(G('mk-take-ok'));
   try {
-    const d = await api('POST',
+    const d = await api(
+      'POST',
       `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/uebernehmen`,
       {
         owner_user_id,
-        quantity:  menge.wert,
+        quantity: menge.wert,
         // Leer heisst „kein Kaufpreis" — der Server setzt dann den Marktpreis ein, genau wie auf dem normalen
         // Erfassungsweg.
         purchase_price: preis.wert ?? undefined,
         condition: G('mk-take-cond').value,
         storage: selectedStorage('mk-take-storage'),
-      });
+      },
+    );
     if (!d?.success) return;
     schliesseUebernahme();
     // 'exists' heisst: Das Set war schon im Blickfeld. Der Merkposten ist trotzdem erfüllt und verschwindet —
@@ -314,7 +371,9 @@ export async function bestaetigeUebernahme() {
     await ladeMerkliste();
     await loadGallery();
     await loadStats();
-  } finally { frei(); }
+  } finally {
+    frei();
+  }
 }
 
 /**
@@ -332,8 +391,7 @@ export async function oeffneMerkpostenDetail(arg) {
   G('mk-m-sub').textContent = [w.set_number, zustandText(w.condition)].join(' · ');
   // Volle Aufloesung, aber ebenfalls ueber den eigenen Server: fullUrl() schickt eine absolute CDN-Adresse
   // durch den Bild-Proxy (bilder.js). Das lokale Bild hat Vorrang — es liegt schon da.
-  const bild = (w.image_local || w.image_url)
-    ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
+  const bild = w.image_local || w.image_url ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
   setzeDialogbild(G('mk-m-img'), bild, bild);
   setzeHtml(G('mk-m-sparkline-content'), html`<span class="text-mut schrift-1">${tRaw('common.loading')}</span>`);
   G('mk-m-market-rows').replaceChildren();
@@ -353,31 +411,46 @@ export async function oeffneMerkpostenDetail(arg) {
   // Marcos Frage: „Wieso werden die Preise nicht sofort angezeigt?" Weil /price-history nur den Cache LIEST
   // und in den bis zu dieser Änderung niemand für Merkposten schrieb. Diese Route holt ihn (mit TTL, also
   // nicht bei jedem Öffnen neu) und füllt den Cache gleich mit.
-  api('GET', `/v1/wanted/${encodeURIComponent(set_number)}/preise`).then(pr => {
-    if (_detail !== arg || !pr?.success) return;
-    // Dieselbe Form wie `current` in /price-history — deshalb genügt hier dieselbe Zeichenfunktion.
-    renderMarketRows({ by_condition: umAufAnzeige(pr.current) }, 'mk-m-market-rows');
-  }).catch(() => {});
+  api('GET', `/v1/wanted/${encodeURIComponent(set_number)}/preise`)
+    .then(pr => {
+      if (_detail !== arg || !pr?.success) return;
+      // Dieselbe Form wie `current` in /price-history — deshalb genügt hier dieselbe Zeichenfunktion.
+      renderMarketRows({ by_condition: umAufAnzeige(pr.current) }, 'mk-m-market-rows');
+    })
+    .catch(() => {});
 
   // Katalog: Thema, Teile, Minifiguren, BrickLink. Schlägt er fehl (ein Set, das rb_sets nicht kennt), bleibt
   // der Block stehen, wie er ist — die Angaben aus der Zeile sind dann alles, was es gibt.
-  api('GET', `/v1/catalog/sets/${encodeURIComponent(set_number)}`).then(d => {
-    if (_detail !== arg || !d?.success) return;
-    katalogNachtragen(d.set, w);
-    zeigeAdresse('mk-m-bricklink', d.set?.bricklink?.url);
-    // Mit dem Katalognamen wird die Suche besser („LEGO 75192 Millennium Falcon" statt nur der Nummer) — aber
-    // nur, wenn wirklich einer kam.
-    zeigeAdresse('mk-m-vergleich', d.set?.preisvergleich_url || w.preisvergleich_url);
-  }).catch(() => {});
+  api('GET', `/v1/catalog/sets/${encodeURIComponent(set_number)}`)
+    .then(d => {
+      if (_detail !== arg || !d?.success) return;
+      katalogNachtragen(d.set, w);
+      zeigeAdresse('mk-m-bricklink', d.set?.bricklink?.url);
+      // Mit dem Katalognamen wird die Suche besser („LEGO 75192 Millennium Falcon" statt nur der Nummer) — aber
+      // nur, wenn wirklich einer kam.
+      zeigeAdresse('mk-m-vergleich', d.set?.preisvergleich_url || w.preisvergleich_url);
+    })
+    .catch(() => {});
 
   // Der VERLAUF — die Zeilen darüber stehen da schon. Er kommt aus price_history, das der stündliche
   // Preislauf füllt; für einen Merkposten seit dieser Änderung ebenfalls (src/finanzen/preisLauf.ts). Ein frischer
   // Merkposten hat deshalb erst einen Punkt, und eine Linie braucht zwei — das ist kein Fehler, sondern der
   // Anfang.
-  api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`).then(ph => {
-    if (_detail !== arg) return;
-    setzeHtml(G('mk-m-sparkline-content'), ph?.success ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(G('mk-m-sparkline-content'))) : html`<span class="text-mut schrift-1">${tRaw(ph?.networkError ? 'chart.offline' : 'detail.no_history')}</span>`);
-  }).catch(() => {});
+  api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`)
+    .then(ph => {
+      if (_detail !== arg) return;
+      setzeHtml(
+        G('mk-m-sparkline-content'),
+        ph?.success
+          ? priceChartSVG(
+              ph,
+              'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''),
+              diagrammBreite(G('mk-m-sparkline-content')),
+            )
+          : html`<span class="text-mut schrift-1">${tRaw(ph?.networkError ? 'chart.offline' : 'detail.no_history')}</span>`,
+      );
+    })
+    .catch(() => {});
 }
 
 /**
@@ -388,8 +461,13 @@ export async function oeffneMerkpostenDetail(arg) {
 function zeigeAdresse(id, url) {
   const el = G(id);
   if (!el) return;
-  if (url) { el.href = url; el.style.display = ''; }
-  else     { el.removeAttribute('href'); el.style.display = 'none'; }
+  if (url) {
+    el.href = url;
+    el.style.display = '';
+  } else {
+    el.removeAttribute('href');
+    el.style.display = 'none';
+  }
 }
 
 const STRICH = '—';
@@ -403,16 +481,16 @@ const zahl = (/** @type {unknown} */ n) => (n == null ? STRICH : Number(n).toLoc
 function zeilen(w) {
   /** @type {[string, string | import('./escapen.js').SicheresHtml, string | null][]} */
   const z = [
-    ['detail.year',     w.year != null ? String(w.year) : STRICH, null],
-    ['detail.theme',    STRICH, 'mk-m-theme'],
-    ['detail.pieces',   zahl(w.num_parts), 'mk-m-pieces'],
+    ['detail.year', w.year != null ? String(w.year) : STRICH, null],
+    ['detail.theme', STRICH, 'mk-m-theme'],
+    ['detail.pieces', zahl(w.num_parts), 'mk-m-pieces'],
     ['detail.minifigs', STRICH, 'mk-m-minifigs'],
     ['common.condition', esc(zustandText(w.condition)), null],
     ['household.for_account', inhaberWahl(w), null],
-    ['wanted.since',  w.created_at ? `${ico('kalender')} ${esc(fmtDatum(w.created_at))}` : STRICH, null],
+    ['wanted.since', w.created_at ? `${ico('kalender')} ${esc(fmtDatum(w.created_at))}` : STRICH, null],
     // Derselbe Block wie im Set-Dialog, nicht ein zweiter: Es ist derselbe Eintrag in price_alerts, am selben
     // Schlüssel (Konto, Set, Zustand). Gefüllt wird er von ladeAlarm() beim Öffnen.
-    ['detail.alert',    alarmBlock(w.set_number, 'mk-m'), null],
+    ['detail.alert', alarmBlock(w.set_number, 'mk-m'), null],
   ];
   return z.map(([k, v, id]) => detailZeile(t(k), v, id ? { wertId: id } : {})).join('');
 }
@@ -439,12 +517,16 @@ function inhaberWahl(w) {
 export async function merkpostenInhaberGewaehlt(arg) {
   const { set_number, condition, owner_user_id } = zerlege(arg);
   const sel = G('mk-m-owner');
-  const neu = parseInt(sel?.value || '');
+  const neu = parseInt(sel?.value || '', 10);
   if (!Number.isFinite(neu) || neu === owner_user_id) return;
-  const d = await api('PUT',
-    `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/inhaber`,
-    { owner_user_id, neuer_inhaber: neu });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  const d = await api('PUT', `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}/inhaber`, {
+    owner_user_id,
+    neuer_inhaber: neu,
+  });
+  if (!d?.success) {
+    toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   // „stand dort schon" ist kein Fehler, aber auch kein Umzug — wie beim Eintragen unterscheidet die Meldung
   // die beiden Fälle. settings.saved statt eines neuen Textes: „Gespeichert" steht schon in der Sprachdatei,
   // und zwei gleichlautende Eintraege laufen beim naechsten Feinschliff auseinander.
@@ -464,9 +546,12 @@ export async function merkpostenInhaberGewaehlt(arg) {
  */
 /** @param {import('../../frontend-typen/vertrag').CatalogSetDetail | null | undefined} katalog @param {Merkposten} w */
 function katalogNachtragen(katalog, w) {
-  const setze = (/** @type {string} */ id, /** @type {string} */ wert) => { const el = G(id); if (el) el.textContent = wert; };
-  setze('mk-m-theme',    katalog?.theme_name || STRICH);
-  setze('mk-m-pieces',   zahl(katalog?.num_parts ?? w.num_parts));
+  const setze = (/** @type {string} */ id, /** @type {string} */ wert) => {
+    const el = G(id);
+    if (el) el.textContent = wert;
+  };
+  setze('mk-m-theme', katalog?.theme_name || STRICH);
+  setze('mk-m-pieces', zahl(katalog?.num_parts ?? w.num_parts));
   setze('mk-m-minifigs', zahl(katalog?.minifigs));
 }
 
@@ -505,17 +590,32 @@ G('mks')?.addEventListener('input', () => {
 async function importMerklisteCsv() {
   const owner = selectedOwner('mk-owner');
   const status = G('mk-status');
-  const d = await csvHochladen({ feld: 'mk-csv-file', pfad: '/v1/wanted/import/csv',
+  const d = await csvHochladen({
+    feld: 'mk-csv-file',
+    pfad: '/v1/wanted/import/csv',
     felder: owner ? { owner_user_id: String(owner) } : {},
-    zeige: (l) => { if (status) status.textContent = l ? tRaw('import.running') : ''; } });
+    zeige: l => {
+      if (status) status.textContent = l ? tRaw('import.running') : '';
+    },
+  });
   if (d) ladeMerkliste();
 }
 
-registerActions({ ladeMerkliste, merkpostenHinzufuegen, katalogAufMerkliste, merkpostenLoeschen,
-                  merkpostenUebernehmen, schliesseUebernahme, bestaetigeUebernahme,
-                  oeffneMerkpostenDetail, schliesseMerkpostenDetail,
-                  merkpostenDetailLoeschen, merkpostenDetailUebernehmen,
-                  merkpostenInhaberGewaehlt, importMerklisteCsv });
+registerActions({
+  ladeMerkliste,
+  merkpostenHinzufuegen,
+  katalogAufMerkliste,
+  merkpostenLoeschen,
+  merkpostenUebernehmen,
+  schliesseUebernahme,
+  bestaetigeUebernahme,
+  oeffneMerkpostenDetail,
+  schliesseMerkpostenDetail,
+  merkpostenDetailLoeschen,
+  merkpostenDetailUebernehmen,
+  merkpostenInhaberGewaehlt,
+  importMerklisteCsv,
+});
 
 /**
  * `current` der Preisantwort in die Form von renderMarketRows() bringen: Dieselbe Zahl heisst dort

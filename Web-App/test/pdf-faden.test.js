@@ -22,15 +22,29 @@ test('die Ereignisschleife bleibt frei, während das PDF entsteht', async () => 
   const ziel = path.join(dir, 'liste.pdf');
   // Eine Farbe: pdfkit zeichnet die ganze Gruppe ohne Unterbrechung.
   const parts = Array.from({ length: 6000 }, (_, i) => ({
-    part_number: `p${i}`, part_name: `Teil ${i}`, color_id: 1, color_name: 'Rot', color_hex: 'C91A09', quantity: 1 + (i % 3),
+    part_number: `p${i}`,
+    part_name: `Teil ${i}`,
+    color_id: 1,
+    color_name: 'Rot',
+    color_hex: 'C91A09',
+    quantity: 1 + (i % 3),
   }));
-  let letzte = Date.now(), laengste = 0;
-  const uhr = setInterval(() => { const j = Date.now(); laengste = Math.max(laengste, j - letzte); letzte = j; }, 5);
+  let letzte = Date.now(),
+    laengste = 0;
+  const uhr = setInterval(() => {
+    const j = Date.now();
+    laengste = Math.max(laengste, j - letzte);
+    letzte = j;
+  }, 5);
   try {
     await zeichnePdfImFaden([{ set_number: '1-1' }], parts, ziel);
-  } finally { clearInterval(uhr); }
+  } finally {
+    clearInterval(uhr);
+  }
   try {
     assert.equal(fs.readFileSync(ziel).subarray(0, 5).toString(), '%PDF-');
     assert.ok(laengste < 150, `längste Pause der Ereignisschleife: ${laengste} ms`);
-  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

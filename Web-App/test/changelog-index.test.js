@@ -1,14 +1,14 @@
 /**
  * Der Index der Fix-Historie und die Teile in CHANGELOG/ müssen zusammenpassen.
  */
-const test   = require('node:test');
+const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs     = require('node:fs');
-const path   = require('node:path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { ROOT } = require('./helpers/sources');
 const INDEX = path.join(ROOT, 'CHANGELOG-fixes.md');
-const DIR   = path.join(ROOT, 'CHANGELOG');
+const DIR = path.join(ROOT, 'CHANGELOG');
 
 /** Die Dateinamen, die die Tabelle im Index nennt. */
 function ausTabelle() {
@@ -18,21 +18,22 @@ function ausTabelle() {
 
 /** Die Dateien, die es wirklich gibt. */
 function aufPlatte() {
-  return fs.readdirSync(DIR).filter(f => f.endsWith('.md')).sort();
+  return fs
+    .readdirSync(DIR)
+    .filter(f => f.endsWith('.md'))
+    .sort();
 }
 
 test('jeder Teil steht im Index und umgekehrt', () => {
   const tabelle = ausTabelle().sort();
-  const platte  = aufPlatte();
+  const platte = aufPlatte();
 
-  assert.ok(platte.length >= 5,
-    `Nur ${platte.length} Teile gefunden — liegt die Historie noch in CHANGELOG/?`);
-  assert.deepEqual(tabelle, platte,
-    'Tabelle in CHANGELOG-fixes.md und Ordner CHANGELOG/ laufen auseinander');
+  assert.ok(platte.length >= 5, `Nur ${platte.length} Teile gefunden — liegt die Historie noch in CHANGELOG/?`);
+  assert.deepEqual(tabelle, platte, 'Tabelle in CHANGELOG-fixes.md und Ordner CHANGELOG/ laufen auseinander');
 });
 
 test('kein Nachtrag steht in zwei Teilen', () => {
-  const gesehen = new Map();          // Nummer → Datei
+  const gesehen = new Map(); // Nummer → Datei
   const doppelt = [];
   for (const f of aufPlatte()) {
     const src = fs.readFileSync(path.join(DIR, f), 'utf8');
@@ -47,8 +48,7 @@ test('kein Nachtrag steht in zwei Teilen', () => {
   // Untergrenze aus demselben Grund wie in require-exports.test.js: Bricht das
   // Suchmuster (etwa weil Überschriften anders heissen), prüfte diese Regel
   // stillschweigend nichts mehr und bliebe grün.
-  assert.ok(gesehen.size > 100,
-    `Nur ${gesehen.size} nummerierte Nachträge gefunden — greift das Muster noch?`);
+  assert.ok(gesehen.size > 100, `Nur ${gesehen.size} nummerierte Nachträge gefunden — greift das Muster noch?`);
 });
 
 test('der Dateiname deckt sich mit dem Inhalt', () => {
@@ -59,7 +59,7 @@ test('der Dateiname deckt sich mit dem Inhalt', () => {
   const daneben = [];
   for (const f of aufPlatte()) {
     const spanne = f.match(/nachtraege-(\d+)-(\d+)\.md$/);
-    if (!spanne) continue;                       // 01-frueh-N.md
+    if (!spanne) continue; // 01-frueh-N.md
     const [von, bis] = [Number(spanne[1]), Number(spanne[2])];
     const src = fs.readFileSync(path.join(DIR, f), 'utf8');
     for (const m of src.matchAll(/^## Nachtrag (\d+)\b/gm)) {
@@ -67,24 +67,29 @@ test('der Dateiname deckt sich mit dem Inhalt', () => {
       if (n < von || n > bis) daneben.push(`${f} enthält Nachtrag ${n} (Spanne ${von}–${bis})`);
     }
   }
-  assert.deepEqual(daneben, [],
+  assert.deepEqual(
+    daneben,
+    [],
     'Eintrag in der falschen Datei — beim Überschreiten einer Fünfundzwanziger-' +
-    'Grenze gehört eine neue Datei angelegt:\n  ' + daneben.join('\n  '));
+      'Grenze gehört eine neue Datei angelegt:\n  ' +
+      daneben.join('\n  '),
+  );
 });
 
 test('jeder Teil nennt am Anfang, wohin er gehört', () => {
-  const ohne = aufPlatte().filter(f =>
-    !fs.readFileSync(path.join(DIR, f), 'utf8')
-       .slice(0, 400).includes('CHANGELOG-fixes.md'));
-  assert.deepEqual(ohne, [],
-    'Diese Teile verweisen nicht zurück auf den Index: ' + ohne.join(', '));
+  const ohne = aufPlatte().filter(
+    f => !fs.readFileSync(path.join(DIR, f), 'utf8').slice(0, 400).includes('CHANGELOG-fixes.md'),
+  );
+  assert.deepEqual(ohne, [], 'Diese Teile verweisen nicht zurück auf den Index: ' + ohne.join(', '));
 });
 
 test('der Index selbst bleibt kurz', () => {
   // Der ganze Zweck der Aufteilung. 20 KB sind grosszügig — die Tabelle wächst
   // um eine Zeile je 25 Nachträge.
   const kb = fs.statSync(INDEX).size / 1024;
-  assert.ok(kb < 20,
+  assert.ok(
+    kb < 20,
     `CHANGELOG-fixes.md ist wieder auf ${kb.toFixed(0)} KB gewachsen — ` +
-    'gehören die neuen Einträge in einen Teil unter CHANGELOG/?');
+      'gehören die neuen Einträge in einen Teil unter CHANGELOG/?',
+  );
 });

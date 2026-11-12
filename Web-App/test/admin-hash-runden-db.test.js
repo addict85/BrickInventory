@@ -20,17 +20,23 @@ const { keineDb } = require('./helpers/db');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-test('Verwalterkonto mit derselben Rundenzahl', async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch (e) {
-    keineDb(t, e); return;
+test('Verwalterkonto mit derselben Rundenzahl', async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch (e) {
+    keineDb(t, e);
+    return;
   }
   t.after(() => db.pool.end().catch(() => {}));
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   const echt = console.log;
   console.log = () => {};
-  try { await db.initSchema(); } finally { console.log = echt; }
+  try {
+    await db.initSchema();
+  } finally {
+    console.log = echt;
+  }
   const admin = await db.get("SELECT password_hash FROM users WHERE username = 'admin'");
   assert.ok(admin, 'kein Verwalterkonto angelegt');
   assert.equal(bcrypt.getRounds(admin.password_hash), _req('src/konto/anmeldepruefung.js').BCRYPT_ROUNDS);

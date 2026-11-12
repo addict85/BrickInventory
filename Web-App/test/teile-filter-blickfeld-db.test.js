@@ -12,20 +12,22 @@ const { testServer } = require('./helpers/server');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = _req('db/database.js');
 
-test.after(async () => { await db.pool.end().catch(() => {}); });
+test.after(async () => {
+  await db.pool.end().catch(() => {});
+});
 
-test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
-  { concurrency: 1 }, async (t) => {
+test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  if (!await dbOderSkip(t, _req)) return;
-
-  const hauptName = `tfhaupt-${process.pid}`, kindName = `tfkind-${process.pid}`;
-  for (const n of [hauptName, kindName])
-    await db.run('DELETE FROM users WHERE username = $1', [n]).catch(() => {});
-  const haupt = (await db.get(
-    'INSERT INTO users (username, password_hash) VALUES ($1,$2) RETURNING id', [hauptName, 'x'])).id;
-  const kind = (await db.get(
-    'INSERT INTO users (username, password_hash) VALUES ($1,$2) RETURNING id', [kindName, 'x'])).id;
+  const hauptName = `tfhaupt-${process.pid}`,
+    kindName = `tfkind-${process.pid}`;
+  for (const n of [hauptName, kindName]) await db.run('DELETE FROM users WHERE username = $1', [n]).catch(() => {});
+  const haupt = (
+    await db.get('INSERT INTO users (username, password_hash) VALUES ($1,$2) RETURNING id', [hauptName, 'x'])
+  ).id;
+  const kind = (
+    await db.get('INSERT INTO users (username, password_hash) VALUES ($1,$2) RETURNING id', [kindName, 'x'])
+  ).id;
 
   try {
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [haupt, kind]);
@@ -52,29 +54,34 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand',
       routen: { '/api/v1': 'routes/api_v1/index.js' },
       t,
     });
-    const hole = async (pfad) => (await fetch(base + pfad)).json();
+    const hole = async pfad => (await fetch(base + pfad)).json();
 
     for (const modus of ['all', 'own']) {
       const farben = await hole(`/api/v1/parts/colors?accounts=${modus}`);
-      const kats   = await hole(`/api/v1/parts/categories?accounts=${modus}`);
+      const kats = await hole(`/api/v1/parts/categories?accounts=${modus}`);
       assert.ok(farben.success, `Farben (${modus}): ${JSON.stringify(farben)}`);
-      assert.ok(kats.success,   `Kategorien (${modus}): ${JSON.stringify(kats)}`);
+      assert.ok(kats.success, `Kategorien (${modus}): ${JSON.stringify(kats)}`);
 
       const summe = (l, f) => l.reduce((a, x) => a + Number(x[f] || 0), 0);
-      assert.equal(summe(kats.categories, 'unique_parts'), summe(farben.colors, 'unique_parts'),
+      assert.equal(
+        summe(kats.categories, 'unique_parts'),
+        summe(farben.colors, 'unique_parts'),
         `${modus}: Farb- und Kategorienliste zaehlen verschieden viele Teile — ` +
-        `sie lesen dann verschiedene Blickfelder.\n` +
-        `Farben: ${JSON.stringify(farben.colors)}\n` +
-        `Kategorien: ${JSON.stringify(kats.categories)}`);
+          `sie lesen dann verschiedene Blickfelder.\n` +
+          `Farben: ${JSON.stringify(farben.colors)}\n` +
+          `Kategorien: ${JSON.stringify(kats.categories)}`,
+      );
     }
 
     // Und der Unterschied zwischen den Modi muss ueberhaupt da sein — sonst
     // waere die Gleichheit oben zweimal dieselbe Aussage.
     const alle = await hole('/api/v1/parts/categories?accounts=all');
     const eigen = await hole('/api/v1/parts/categories?accounts=own');
-    assert.ok(alle.categories.length > eigen.categories.length,
+    assert.ok(
+      alle.categories.length > eigen.categories.length,
       'Mit dem Haushalt muessen mehr Kategorien da sein als ohne — sonst greift ' +
-      '`accounts` gar nicht und der Vergleich darueber ist wertlos');
+        '`accounts` gar nicht und der Vergleich darueber ist wertlos',
+    );
   } finally {
     await db.run('DELETE FROM parts WHERE user_id = ANY($1)', [[haupt, kind]]).catch(() => {});
     await db.run('DELETE FROM sets WHERE user_id = ANY($1)', [[haupt, kind]]).catch(() => {});

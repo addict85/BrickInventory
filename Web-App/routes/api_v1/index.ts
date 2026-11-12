@@ -19,20 +19,20 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 
 const router = vertragsRouter();
 
-router.use(einrichtungRouter);  // /einrichtung/stand — öffentlich, vor der Anmeldung
-router.use(pdfRouter);          // /sets/partslist-pdf/* (literale Pfade)
-router.use(setsRouter);         // /sets, /sets/barcode, /sets/:setNumber/*
+router.use(einrichtungRouter); // /einrichtung/stand — öffentlich, vor der Anmeldung
+router.use(pdfRouter); // /sets/partslist-pdf/* (literale Pfade)
+router.use(setsRouter); // /sets, /sets/barcode, /sets/:setNumber/*
 router.use(acquisitionsRouter); // Kaufpreis-Erfassungen für Sets/Teile/Figuren
 router.use(partsRouter);
 router.use(minifigsRouter);
 router.use(financeRouter);
-router.use(settingsRouter);     // /settings — Einstellungen, Zugänge, Haushalt
+router.use(settingsRouter); // /settings — Einstellungen, Zugänge, Haushalt
 router.use(adminRouter);
-router.use(catalogRouter);      // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
-router.use(wantedRouter);     // /wanted — Merkliste (eigene Tabelle, siehe 0021)
-router.use(vouchersRouter);     // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
-router.use(papierkorbRouter);   // /papierkorb — gelöschte Elemente (siehe 0041)
-router.use(geraetRouter);       // /geraet — Geräteschlüssel und Schrittfreigabe der App (siehe 0103)
-router.use(miscRouter);         // /stats + Endpoint-Übersicht unter /
+router.use(catalogRouter); // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
+router.use(wantedRouter); // /wanted — Merkliste (eigene Tabelle, siehe 0021)
+router.use(vouchersRouter); // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
+router.use(papierkorbRouter); // /papierkorb — gelöschte Elemente (siehe 0041)
+router.use(geraetRouter); // /geraet — Geräteschlüssel und Schrittfreigabe der App (siehe 0103)
+router.use(miscRouter); // /stats + Endpoint-Übersicht unter /
 
 export = router;

@@ -29,19 +29,27 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 
-test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const NAME = `katalog-bild-${process.pid}`, FREMD = `katalog-fremd-${process.pid}`;
-  const MIT = 'KB/1-1', OHNE = 'KB2-1';
+  const NAME = `katalog-bild-${process.pid}`,
+    FREMD = `katalog-fremd-${process.pid}`;
+  const MIT = 'KB/1-1',
+    OHNE = 'KB2-1';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, FREMD]]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const fremd = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [FREMD])).id;
   await db.run('INSERT INTO wanted (user_id, set_number) VALUES ($1, $2), ($1, $3)', [uid, MIT, OHNE]);
   await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[MIT, OHNE]]);
-  await db.run(`INSERT INTO rb_sets (set_num, name, year, num_parts, set_img_url)
-                VALUES ($1,'Mit Bild',2001,10,'https://cdn.rebrickable.com/media/sets/kb1.jpg'), ($2,'Ohne Bild',2002,5,NULL)`, [MIT, OHNE]);
-  await db.run(`INSERT INTO set_catalog (set_number, image_local) VALUES ($1, '/images/sets/KB_1-1.jpg'), ($2, NULL)`, [MIT, OHNE]);
+  await db.run(
+    `INSERT INTO rb_sets (set_num, name, year, num_parts, set_img_url)
+                VALUES ($1,'Mit Bild',2001,10,'https://cdn.rebrickable.com/media/sets/kb1.jpg'), ($2,'Ohne Bild',2002,5,NULL)`,
+    [MIT, OHNE],
+  );
+  await db.run(`INSERT INTO set_catalog (set_number, image_local) VALUES ($1, '/images/sets/KB_1-1.jpg'), ($2, NULL)`, [
+    MIT,
+    OHNE,
+  ]);
   const ordner = path.join(process.env.APP_ROOT, 'data', 'images', 'sets');
   fs.mkdirSync(ordner, { recursive: true });
   fs.writeFileSync(path.join(ordner, 'KB_1-1.jpg'), 'JPG');
@@ -49,7 +57,7 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async (t) => {
 
   const nacharbeit = _req('src/auftraege/nacharbeit.js');
   const vorgemerkt = [];
-  nacharbeit.verdrahteNacharbeit({ ...nacharbeit.nacharbeit(), bildVormerken: (url, sn) => vorgemerkt.push(sn) });
+  nacharbeit.verdrahteNacharbeit({ ...nacharbeit.nacharbeit(), bildVormerken: (_url, sn) => vorgemerkt.push(sn) });
 
   t.after(async () => {
     await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[MIT, OHNE]]);
@@ -60,8 +68,13 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async (t) => {
 
   const { katalogSeite, katalogSet } = _req('src/katalog/dienst.js');
 
-  const bilder = async (wer) => Object.fromEntries((await katalogSeite(wer, { q: 'KB', themeId: null }, 'num_asc', 1, 60))
-    .sets.map(s => [s.set_number, s.image_local]));
+  const bilder = async wer =>
+    Object.fromEntries(
+      (await katalogSeite(wer, { q: 'KB', themeId: null }, 'num_asc', 1, 60)).sets.map(s => [
+        s.set_number,
+        s.image_local,
+      ]),
+    );
 
   await t.test('die Liste nennt das Bild aus set_catalog — und die Vorschau hat Vorrang', async () => {
     const bild = await bilder(uid);

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+'use strict';
 /**
  * noImplicitAny — gestaffelt, mit einer Liste, die nur kürzer werden darf.
  */
-'use strict';
+
 const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
@@ -21,9 +22,11 @@ const OFFEN = new Set([]);
 function meldungenJeDatei() {
   let ausgabe = '';
   try {
-    execFileSync(process.execPath,
+    execFileSync(
+      process.execPath,
       [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '--noImplicitAny'],
-      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    );
   } catch (e) {
     // execFileSync haengt stdout/stderr an den geworfenen Fehler — genau die
     // brauchen wir hier, denn tsc meldet seine Funde ueber die Ausgabe und
@@ -92,9 +95,7 @@ function main() {
     console.error('mitschrumpft, verliert genau den Zweck, für den es sie gibt.');
   }
 
-  const offeneMeldungen = [...jeDatei.entries()]
-    .filter(([d]) => OFFEN.has(d))
-    .reduce((n, [, z]) => n + z.length, 0);
+  const offeneMeldungen = [...jeDatei.entries()].filter(([d]) => OFFEN.has(d)).reduce((n, [, z]) => n + z.length, 0);
 
   if (neu.length || verwaist.length) process.exit(1);
 
@@ -102,8 +103,10 @@ function main() {
     console.log('✅ noImplicitAny: in tsconfig.json scharf, Ausnahmeliste leer — der ganze Baum ist sauber.');
     return;
   }
-  console.log(`✅ noImplicitAny: alle Dateien ausser den ${OFFEN.size} bekannten sind sauber ` +
-              `(${offeneMeldungen} Meldungen stehen dort noch offen).`);
+  console.log(
+    `✅ noImplicitAny: alle Dateien ausser den ${OFFEN.size} bekannten sind sauber ` +
+      `(${offeneMeldungen} Meldungen stehen dort noch offen).`,
+  );
 }
 
 main();

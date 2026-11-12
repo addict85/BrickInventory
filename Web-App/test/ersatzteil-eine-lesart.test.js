@@ -20,7 +20,7 @@ after(() => db.pool.end().catch(() => {}));
 /** Alle .ts-Dateien der Server-Ordner. */
 function serverDateien() {
   const out = [];
-  const lauf = (d) => {
+  const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) lauf(p);
@@ -41,23 +41,23 @@ test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
   // Zwei Formen, beide OHNE Fenster — ein Fenster von 200 Zeichen hat beim
   // ersten Versuch quer über den Zeilenumbruch hinweg den FILTER-Parameter
   // (`spare === '1'`) mitgefangen und drei von vier Treffern waren falsch.
-  const verdaechtig = [
-    /\bis_spare\s*===?\s*'(?:t|true|True|1)'/,
-    /===?\s*'True'/,
-  ];
+  const verdaechtig = [/\bis_spare\s*===?\s*'(?:t|true|True|1)'/, /===?\s*'True'/];
   const gefunden = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei).split(path.sep).join('/');
-    if (rel === 'src/infra/validate.ts') continue;   // DIE eine Stelle
+    if (rel === 'src/infra/validate.ts') continue; // DIE eine Stelle
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     if (verdaechtig.some(r => r.test(src))) gefunden.push(rel);
   }
-  assert.deepEqual(gefunden, [],
+  assert.deepEqual(
+    gefunden,
+    [],
     'Hier wird wieder selbst entschieden, was ein Ersatzteil ist:\n  ' +
-    gefunden.join('\n  ') +
-    '\nDie Lesart steht in src/infra/validate.ts, istErsatzteil(). Sechs Fassungen ' +
-    'mit vier verschiedenen Bedeutungen waren der Grund, warum die ' +
-    'Ersatzteil-Plakette jahrelang nicht gezeichnet wurde.');
+      gefunden.join('\n  ') +
+      '\nDie Lesart steht in src/infra/validate.ts, istErsatzteil(). Sechs Fassungen ' +
+      'mit vier verschiedenen Bedeutungen waren der Grund, warum die ' +
+      'Ersatzteil-Plakette jahrelang nicht gezeichnet wurde.',
+  );
 
   // Selbstbeweis: Der Helfer muss die Schreibweisen wirklich kennen — sonst
   // wäre die Prüfung oben grün, weil es nirgends mehr etwas zu finden gibt.
@@ -66,14 +66,15 @@ test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
   const i = helfer.indexOf('export function istJa(');
   assert.ok(i > 0, 'istJa() fehlt');
   const rumpf = helfer.slice(i, helfer.indexOf('\n}', i));
-  for (const form of ["'1'", "'t'", "'true'"])
-    assert.ok(rumpf.includes(form), `istJa() kennt ${form} nicht`);
+  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `istJa() kennt ${form} nicht`);
 });
 
-test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
-  try { await db.get('SELECT 1'); }
-  catch {
-    keineDb(t); return;
+test('die Antwort traegt einen echten Wahrheitswert', async t => {
+  try {
+    await db.get('SELECT 1');
+  } catch {
+    keineDb(t);
+    return;
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -102,10 +103,13 @@ test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
   const parts = (await getParts([uid], { page_size: 60 })).parts || [];
   assert.equal(parts.length, 2, 'Vorlage');
   for (const p of parts) {
-    assert.equal(typeof p.is_spare, 'boolean',
+    assert.equal(
+      typeof p.is_spare,
+      'boolean',
       `${p.part_number}: is_spare ist ${JSON.stringify(p.is_spare)} (${typeof p.is_spare}). ` +
-      'Als Zeichenkette "0" wäre der Wert in JavaScript WAHR — genau die Falle, ' +
-      'wegen der die Plakette nie gezeichnet wurde.');
+        'Als Zeichenkette "0" wäre der Wert in JavaScript WAHR — genau die Falle, ' +
+        'wegen der die Plakette nie gezeichnet wurde.',
+    );
   }
   assert.equal(parts.find(p => p.part_number === '3001').is_spare, true);
   assert.equal(parts.find(p => p.part_number === '3020').is_spare, false);

@@ -1,5 +1,4 @@
 'use strict';
-
 /**
  * Die Bild-Warteschlange leeren, bevor ein Test sie benutzt.
  * @param {{ run: (sql: string, p?: unknown[]) => Promise<unknown> }} db

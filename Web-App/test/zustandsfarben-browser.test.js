@@ -23,10 +23,13 @@ const { chrome } = require('./helpers/app-browser');
 
 function testseite() {
   const css = ['tokens.css', 'styles.css', ...DESIGNS.filter(d => d !== 'classic').map(d => `themes/${d}.css`)]
-    .map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
-  const abschnitte = DESIGNS.map(d => `<section data-theme="${d}" data-design="${d}">
+    .map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`)
+    .join('\n');
+  const abschnitte = DESIGNS.map(
+    d => `<section data-theme="${d}" data-design="${d}">
     <span class="cond-badge cond-new">Neu</span><span class="cond-badge cond-used">Gebraucht</span>
-    <i class="linie-neu" style="background:var(--chart-new)"></i><i class="linie-gebr" style="background:var(--chart-used)"></i></section>`).join('\n');
+    <i class="linie-neu" style="background:var(--chart-new)"></i><i class="linie-gebr" style="background:var(--chart-used)"></i></section>`,
+  ).join('\n');
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}</head><body>${abschnitte}
 <pre id="ergebnis"></pre>
 <script>
@@ -50,25 +53,43 @@ window.addEventListener('load', () => {
 </script></body></html>`;
 }
 
-test('Zustandsfarben in allen Designs', (t) => {
+test('Zustandsfarben in allen Designs', t => {
   const bin = chrome();
-  if (!bin) { t.skip('kein Chrome gefunden'); return; }
+  if (!bin) {
+    t.skip('kein Chrome gefunden');
+    return;
+  }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'zustand-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
   fs.writeFileSync(datei, testseite());
-  const dom = execFileSync(bin, ['--headless', '--no-sandbox', '--disable-gpu', '--allow-file-access-from-files',
-    '--window-size=800,800', '--virtual-time-budget=3000', '--dump-dom', `file://${datei}`],
-    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] });
+  const dom = execFileSync(
+    bin,
+    [
+      '--headless',
+      '--no-sandbox',
+      '--disable-gpu',
+      '--allow-file-access-from-files',
+      '--window-size=800,800',
+      '--virtual-time-budget=3000',
+      '--dump-dom',
+      `file://${datei}`,
+    ],
+    { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'ignore'] },
+  );
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const e = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
   assert.equal(e.length, DESIGNS.length);
-  const blau = h => h >= 190 && h <= 250, bernstein = h => h >= 20 && h <= 55;
+  const blau = h => h >= 190 && h <= 250,
+    bernstein = h => h >= 20 && h <= 55;
   for (const d of e) {
     assert.ok(blau(d.neu), `${d.design}: Neu ist nicht blau (Farbton ${d.neu})`);
     assert.ok(blau(d.linieNeu), `${d.design}: Diagrammlinie Neu ist nicht blau (Farbton ${d.linieNeu})`);
     assert.ok(bernstein(d.gebr), `${d.design}: Gebraucht ist nicht bernstein (Farbton ${d.gebr})`);
-    assert.ok(bernstein(d.linieGebr), `${d.design}: Diagrammlinie Gebraucht ist nicht bernstein (Farbton ${d.linieGebr})`);
+    assert.ok(
+      bernstein(d.linieGebr),
+      `${d.design}: Diagrammlinie Gebraucht ist nicht bernstein (Farbton ${d.linieGebr})`,
+    );
   }
 });

@@ -16,10 +16,15 @@ const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
 
 const SERVERFEHLER = { $status: 500, success: false, error: 'Interner Fehler', code: 'interner_fehler' };
-const ZWEI_SETS = { success: true, total: 2, themes: [], sets: [
-  { set_number: '10294-1', name: 'Titanic', quantity: 1, year: 2021 },
-  { set_number: '42143-1', name: 'Ferrari', quantity: 1, year: 2022 },
-] };
+const ZWEI_SETS = {
+  success: true,
+  total: 2,
+  themes: [],
+  sets: [
+    { set_number: '10294-1', name: 'Titanic', quantity: 1, year: 2021 },
+    { set_number: '42143-1', name: 'Ferrari', quantity: 1, year: 2022 },
+  ],
+};
 
 test('Sammlung: Serverfehler beim ersten Laden zeigt den Grund und „Erneut versuchen“', async () => {
   let antwort = SERVERFEHLER;
@@ -36,7 +41,9 @@ test('Sammlung: Serverfehler beim ersten Laden zeigt den Grund und „Erneut ver
     knopf.click();
     await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
     assert.equal(d.querySelectorAll('#gallery .sc').length, 2, 'Erneut versuchen lädt nicht neu');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Sammlung: scheitert das Neuladen, bleibt die alte Liste stehen', async () => {
@@ -48,19 +55,34 @@ test('Sammlung: scheitert das Neuladen, bleibt die alte Liste stehen', async () 
     await reiter(w, 'gallery');
     await warte(() => d.querySelector('#toasts .toast.error'));
     assert.equal(d.querySelectorAll('#gallery .sc').length, 2, 'die alte Liste ist weg');
-    assert.match(d.querySelector('#toasts .toast.error').textContent, /letzte Stand bleibt sichtbar.*Details.*Server konnte die Daten gerade nicht liefern/);
-  } finally { w.close(); }
+    assert.match(
+      d.querySelector('#toasts .toast.error').textContent,
+      /letzte Stand bleibt sichtbar.*Details.*Server konnte die Daten gerade nicht liefern/,
+    );
+  } finally {
+    w.close();
+  }
 });
 
 test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
-  const kaputt = () => { throw new TypeError('Failed to fetch'); };
+  const kaputt = () => {
+    throw new TypeError('Failed to fetch');
+  };
   const { w, d } = await oeffneOberflaeche({
-    '/v1/wanted': kaputt, '/v1/parts': kaputt, '/v1/minifigs': kaputt,
-    '/v1/catalog/sets': kaputt, '/v1/finance/valuation': kaputt,
+    '/v1/wanted': kaputt,
+    '/v1/parts': kaputt,
+    '/v1/minifigs': kaputt,
+    '/v1/catalog/sets': kaputt,
+    '/v1/finance/valuation': kaputt,
   });
   try {
-    for (const [tab, ziel] of [['wanted', '#mk-list'], ['parts', '#parts-main'], ['minifigs', '#figs-list'],
-                              ['catalog', '#catalog-grid'], ['finance', '#fin-tbl']]) {
+    for (const [tab, ziel] of [
+      ['wanted', '#mk-list'],
+      ['parts', '#parts-main'],
+      ['minifigs', '#figs-list'],
+      ['catalog', '#catalog-grid'],
+      ['finance', '#fin-tbl'],
+    ]) {
       await reiter(w, tab);
       await warte(() => d.querySelector(`${ziel} .fehler-zustand`));
       const box = d.querySelector(`${ziel} .fehler-zustand`);
@@ -69,11 +91,17 @@ test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
       assert.doesNotMatch(box.textContent, /Failed to fetch/, `${tab}: roher Browsertext`);
       assert.ok(box.querySelector('button[data-click]'), `${tab}: kein „Erneut versuchen“`);
     }
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Netzfehler beim Erfassen: „Keine Verbindung zum Server“ statt „Failed to fetch“', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/sets/add-stream': () => { throw new TypeError('Failed to fetch'); } });
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/sets/add-stream': () => {
+      throw new TypeError('Failed to fetch');
+    },
+  });
   try {
     d.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click();
     d.getElementById('add-num').value = '10497-1';
@@ -82,7 +110,9 @@ test('Netzfehler beim Erfassen: „Keine Verbindung zum Server“ statt „Faile
     const text = d.querySelector('#toasts .toast.error')?.textContent || '';
     assert.match(text, /Keine Verbindung zum Server/);
     assert.doesNotMatch(text, /Failed to fetch/);
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });
 
 test('Band ohne Verbindung: „Keine Verbindung seit …“', async () => {
@@ -99,5 +129,7 @@ test('Band ohne Verbindung: „Keine Verbindung seit …“', async () => {
     w.dispatchEvent(new w.Event('online'));
     await takt(10);
     assert.equal(band.hidden, true, 'das Band bleibt nach der Rückkehr stehen');
-  } finally { w.close(); }
+  } finally {
+    w.close();
+  }
 });

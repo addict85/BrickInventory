@@ -56,19 +56,26 @@ async function fundstellen(text) {
   const tabellen = await db.all(`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`);
   const treffer = [];
   for (const { tablename } of tabellen) {
-    const n = (await db.get(`SELECT count(*)::int n FROM "${tablename}" x WHERE x::text LIKE '%' || $1 || '%'`, [text])).n;
+    const n = (await db.get(`SELECT count(*)::int n FROM "${tablename}" x WHERE x::text LIKE '%' || $1 || '%'`, [text]))
+      .n;
     if (n) treffer.push(`${tablename}: ${n}`);
   }
   return treffer;
 }
 
-test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req)) return;
+test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req))) return;
 
-  const NAME = `idem_geheim_${process.pid}`, PASS = 'Geheim-Pruefung-1';
+  const NAME = `idem_geheim_${process.pid}`,
+    PASS = 'Geheim-Pruefung-1';
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-    VALUES ($1, $2, true, true) RETURNING id`, [NAME, bcrypt.hashSync(PASS, 4)])).id;
+  const uid = (
+    await db.get(
+      `INSERT INTO users (username, password_hash, is_active, email_verified)
+    VALUES ($1, $2, true, true) RETURNING id`,
+      [NAME, bcrypt.hashSync(PASS, 4)],
+    )
+  ).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
@@ -86,14 +93,21 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async (
   app.use('/api/v1', _req('routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const post = (pfad, schluessel, body, methode = 'POST') => fetch(`http://127.0.0.1:${srv.address().port}/api/v1${pfad}`, {
-    method: methode, body: JSON.stringify(body),
-    headers: { 'content-type': 'application/json', 'idempotency-key': schluessel },
-  }).then(async r => ({ status: r.status, replay: r.headers.get('idempotent-replay'), body: await r.json() }));
-  const zeile = (k) => db.get('SELECT status, antwort FROM idempotenz WHERE user_id = $1 AND schluessel = $2', [uid, k]);
+  const post = (pfad, schluessel, body, methode = 'POST') =>
+    fetch(`http://127.0.0.1:${srv.address().port}/api/v1${pfad}`, {
+      method: methode,
+      body: JSON.stringify(body),
+      headers: { 'content-type': 'application/json', 'idempotency-key': schluessel },
+    }).then(async r => ({ status: r.status, replay: r.headers.get('idempotent-replay'), body: await r.json() }));
+  const zeile = k => db.get('SELECT status, antwort FROM idempotenz WHERE user_id = $1 AND schluessel = $2', [uid, k]);
 
   await t.test('die Wiederholung mit falschem Passwort bekommt weder PIN noch Antwort', async () => {
-    const neu = await post('/vouchers', 'v-1', { number: '1234567890123456', pin: '4321', amount: 20, currency: 'CHF' });
+    const neu = await post('/vouchers', 'v-1', {
+      number: '1234567890123456',
+      pin: '4321',
+      amount: 20,
+      currency: 'CHF',
+    });
     assert.equal(neu.status, 200, JSON.stringify(neu.body));
     const pfad = `/vouchers/${neu.body.voucher.id}/klartext`;
     const erst = await post(pfad, 'k-1', { password: PASS });
@@ -138,7 +152,10 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async (
     assert.equal(erst.replay, null);
     const z = await zeile('p-1');
     assert.ok(z.antwort.startsWith('v2:'), z.antwort);
-    assert.equal(geheimnis.entschluessele(z.antwort, _req('src/idempotenz/dienst.js').antwortKontext(uid, 'p-1')), JSON.stringify(erst.body));
+    assert.equal(
+      geheimnis.entschluessele(z.antwort, _req('src/idempotenz/dienst.js').antwortKontext(uid, 'p-1')),
+      JSON.stringify(erst.body),
+    );
     const nochmal = await post('/storage/locations', 'p-1', { name: 'Kiste 1' });
     assert.deepEqual(nochmal, { ...erst, replay: 'true' });
   });
@@ -146,31 +163,60 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async (
   await t.test('der Fingerabdruck verrät das Passwort nicht', async () => {
     const dienst = _req('src/idempotenz/dienst.js');
     const pfad = '/api/v1/auth/zweiter-faktor/einrichten';
-    const alt = require('node:crypto').createHash('sha256').update(`POST ${pfad}\n${JSON.stringify({ password: PASS })}`).digest('hex');
+    const alt = require('node:crypto')
+      .createHash('sha256')
+      .update(`POST ${pfad}\n${JSON.stringify({ password: PASS })}`)
+      .digest('hex');
     assert.deepEqual(await fundstellen(alt), [], 'der SHA-256 des Rumpfs mit Passwort liegt in der Tabelle');
-    assert.match((await db.get("SELECT anfrage FROM idempotenz WHERE user_id = $1 AND schluessel = 'zf-1'", [uid])).anfrage, /^h1:[0-9a-f]{64}$/);
-    const abdruck = (rumpf) => dienst.fingerabdruck('POST', pfad, rumpf);
-    assert.equal(abdruck({ password: 'a', current: 'b', admin_password: 'c', code: '1', faktor_code: '2', pin: '3', x: 1 }),
-      abdruck({ password: 'z', current: 'y', admin_password: 'w', code: '9', faktor_code: '8', pin: '7', x: 1 }));
-    assert.notEqual(abdruck({ password: 'a', x: 1 }), abdruck({ password: 'a', x: 2 }), 'der übrige Inhalt zählt weiter');
+    assert.match(
+      (await db.get("SELECT anfrage FROM idempotenz WHERE user_id = $1 AND schluessel = 'zf-1'", [uid])).anfrage,
+      /^h1:[0-9a-f]{64}$/,
+    );
+    const abdruck = rumpf => dienst.fingerabdruck('POST', pfad, rumpf);
+    assert.equal(
+      abdruck({ password: 'a', current: 'b', admin_password: 'c', code: '1', faktor_code: '2', pin: '3', x: 1 }),
+      abdruck({ password: 'z', current: 'y', admin_password: 'w', code: '9', faktor_code: '8', pin: '7', x: 1 }),
+    );
+    assert.notEqual(
+      abdruck({ password: 'a', x: 1 }),
+      abdruck({ password: 'a', x: 2 }),
+      'der übrige Inhalt zählt weiter',
+    );
     const vorher = abdruck({ x: 1 });
     umgebung({ DATA_KEY: Buffer.alloc(32, 8).toString('base64') });
     geheimnis._vergissSchluessel();
-    try { assert.notEqual(abdruck({ x: 1 }), vorher, 'ohne Datenschlüssel nachrechenbar'); }
-    finally { umgebung({ DATA_KEY: Buffer.alloc(32, 7).toString('base64') }); geheimnis._vergissSchluessel(); }
+    try {
+      assert.notEqual(abdruck({ x: 1 }), vorher, 'ohne Datenschlüssel nachrechenbar');
+    } finally {
+      umgebung({ DATA_KEY: Buffer.alloc(32, 7).toString('base64') });
+      geheimnis._vergissSchluessel();
+    }
 
-    await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status) VALUES ($1, 'sha-1', $2, 200)`, [uid, alt]);
-    assert.ok(await dienst.alteAbdrueckeLoeschen() >= 1);
-    const uebrig = (await db.all('SELECT schluessel FROM idempotenz WHERE user_id = $1 ORDER BY 1', [uid])).map(z => z.schluessel);
+    await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status) VALUES ($1, 'sha-1', $2, 200)`, [
+      uid,
+      alt,
+    ]);
+    assert.ok((await dienst.alteAbdrueckeLoeschen()) >= 1);
+    const uebrig = (await db.all('SELECT schluessel FROM idempotenz WHERE user_id = $1 ORDER BY 1', [uid])).map(
+      z => z.schluessel,
+    );
     assert.ok(!uebrig.includes('sha-1') && uebrig.includes('zf-1'), uebrig.join(', '));
   });
 
   await t.test('die Migration entfernt Klartext und die Wiederholung wird abgesagt', async () => {
-    const abdruck = _req('src/idempotenz/dienst.js').fingerabdruck('POST', '/api/v1/storage/locations', { name: 'Alt' });
-    await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort)
-                  VALUES ($1, 'alt-1', $2, 200, '{"token":"klartext-aus-frueher"}')`, [uid, abdruck]);
+    const abdruck = _req('src/idempotenz/dienst.js').fingerabdruck('POST', '/api/v1/storage/locations', {
+      name: 'Alt',
+    });
+    await db.run(
+      `INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort)
+                  VALUES ($1, 'alt-1', $2, 200, '{"token":"klartext-aus-frueher"}')`,
+      [uid, abdruck],
+    );
     // Zur Zeit von 0086 war verschlüsselt gleich v1.
-    await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort) VALUES ($1, 'v1-1', 'x', 200, 'v1:AAAA')`, [uid]);
+    await db.run(
+      `INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort) VALUES ($1, 'v1-1', 'x', 200, 'v1:AAAA')`,
+      [uid],
+    );
     await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0086-idempotenz-ohne-klartext.sql'), 'utf8'));
     assert.deepEqual(await fundstellen('klartext-aus-frueher'), []);
     assert.equal((await zeile('v1-1')).antwort, 'v1:AAAA', 'verschlüsselte Zeilen bleiben');
@@ -183,7 +229,8 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async (
 test('jede schreibende Route mit Zugang oder Code steht auf der Liste', () => {
   // `code` ist sonst der Fehlercode; der Einladungscode steht deshalb unten einzeln.
   const GEHEIME_FELDER = ['token', 'codes', 'geheimnis', 'otpauth'];
-  const gefunden = [], fehlt = [];
+  const gefunden = [],
+    fehlt = [];
   for (const [schluessel, route] of Object.entries(VERTRAG)) {
     const [methode, pfad] = schluessel.split(' ');
     if (methode === 'GET' || !route.antwort?.shape) continue;
@@ -200,8 +247,10 @@ test('jede schreibende Route mit Zugang oder Code steht auf der Liste', () => {
 test('jede Route mit Bestätigung ist nicht wiederholbar', () => {
   const mitBestaetigung = Object.entries(VERTRAG).filter(([, r]) => r.bestaetigung);
   assert.ok(mitBestaetigung.length >= 20, `nur ${mitBestaetigung.length} Routen mit Bestätigung`);
-  const wiederholbar = mitBestaetigung.map(([k]) => k.split(' '))
-    .filter(([m, p]) => !antwortIstGeheim(m, p.replace(/:\w+/g, '1'))).map(x => x.join(' '));
+  const wiederholbar = mitBestaetigung
+    .map(([k]) => k.split(' '))
+    .filter(([m, p]) => !antwortIstGeheim(m, p.replace(/:\w+/g, '1')))
+    .map(x => x.join(' '));
   assert.deepEqual(wiederholbar, []);
   assert.equal(nichtWiederholbar({ antwort: undefined }), false);
 });

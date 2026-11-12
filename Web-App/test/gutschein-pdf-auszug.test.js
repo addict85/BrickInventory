@@ -14,7 +14,7 @@ const PDFDocument = require('pdfkit');
 
 /** Ein PDF mit den uebergebenen Zeilen bauen — je Zeile ein Textoperator. */
 function pdfMit(zeilen) {
-  return new Promise((fertig) => {
+  return new Promise(fertig => {
     const doc = new PDFDocument({ compress: true });
     const stuecke = [];
     doc.on('data', s => stuecke.push(s));
@@ -25,8 +25,7 @@ function pdfMit(zeilen) {
   });
 }
 
-test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async (t) => {
-
+test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async t => {
   await t.test('ein Gutschein in der Form von Marcos Beispiel', async () => {
     const buf = await pdfMit([
       'Bauen und spielen!',
@@ -76,7 +75,7 @@ test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async (t) =
   });
 });
 
-test('Gutschein-PDF: Zahlen in allen drei Schreibweisen', async (t) => {
+test('Gutschein-PDF: Zahlen in allen drei Schreibweisen', async t => {
   // Dieselbe Summe, drei Laender. Ohne diese Zuordnung wuerde aus 1'234.50
   // je nach Schreibweise 123450 oder 1.234 — beides stillschweigend falsch.
   await t.test('Schweiz, Deutschland, USA ergeben dieselbe Zahl', () => {
@@ -105,7 +104,7 @@ test('Gutschein-PDF: Zahlen in allen drei Schreibweisen', async (t) => {
   });
 });
 
-test('Gutschein-PDF: der Betrag wird an der benannten Stelle gelesen', async (t) => {
+test('Gutschein-PDF: der Betrag wird an der benannten Stelle gelesen', async t => {
   await t.test('die englische Formulierung ebenso', () => {
     const w = werteAusText('Your LEGO gift card with a value of 75 GBP:\n5045076374450011111\nPIN: 1234');
     assert.equal(w.betrag, 75);

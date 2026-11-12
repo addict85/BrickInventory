@@ -20,14 +20,22 @@ export function merkeEigeneBlNummer(uid: number, art: BlArt, rbId: string, blId:
   return katalog().blZuordnung.schreibeBlNummerEigen(uid, art, rbId, blId || rbId);
 }
 
-const konten = (k: number | number[] | null | undefined): number[] => k == null ? [] : Array.isArray(k) ? k : [k];
+const konten = (k: number | number[] | null | undefined): number[] => (k == null ? [] : Array.isArray(k) ? k : [k]);
 
 /** Je Nummer die letzte Angabe. */
-export async function merkeBlNummern(art: BlArt, paare: { rbId: string; blId: string }[],
-                                     dbh?: { run: (sql: string, p?: unknown[]) => Promise<unknown> }) {
+export async function merkeBlNummern(
+  art: BlArt,
+  paare: { rbId: string; blId: string }[],
+  dbh?: { run: (sql: string, p?: unknown[]) => Promise<unknown> },
+) {
   const eindeutig = [...new Map(paare.filter(p => p.rbId && p.blId).map(p => [p.rbId, p])).values()];
   if (!eindeutig.length) return;
-  await schreibeBlNummern(dbh ?? katalog().db, art, eindeutig.map(p => p.rbId), eindeutig.map(p => p.blId));
+  await schreibeBlNummern(
+    dbh ?? katalog().db,
+    art,
+    eindeutig.map(p => p.rbId),
+    eindeutig.map(p => p.blId),
+  );
 }
 
 /** Damit dasselbe Teil nicht immer wieder abgefragt wird; eine gefundene
@@ -49,7 +57,11 @@ export function blAbrufNummer(art: BlArt, rbId: string, konto?: number | number[
 }
 
 // Eine Abfrage für viele Nummern; jede Zeile kommt zurück, damit nichts zweimal gefragt wird.
-export async function blAbrufNummern(art: BlArt, rbIds: string[], konto?: number | number[] | null): Promise<Map<string, string>> {
+export async function blAbrufNummern(
+  art: BlArt,
+  rbIds: string[],
+  konto?: number | number[] | null,
+): Promise<Map<string, string>> {
   const raus = new Map<string, string>();
   if (!rbIds.length) return raus;
   const zeilen = await katalog().blZuordnung.wirksameNummern(art, rbIds, konten(konto));

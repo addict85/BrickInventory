@@ -14,8 +14,15 @@ const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 
 const DATEN = {
-  username: 'marco', lang: 'de', setNumber: '10179-1', setName: 'Millennium Falcon',
-  condition: 'N', richtung: 'unter', schwelle: 200, preis: 180, waehrung: 'CHF',
+  username: 'marco',
+  lang: 'de',
+  setNumber: '10179-1',
+  setName: 'Millennium Falcon',
+  condition: 'N',
+  richtung: 'unter',
+  schwelle: 200,
+  preis: 180,
+  waehrung: 'CHF',
 };
 
 /** console.warn einsammeln, statt den Testlauf zuzumuellen. */
@@ -23,11 +30,15 @@ async function warnungenVon(fn) {
   const echt = console.warn;
   const gesammelt = [];
   console.warn = (...a) => gesammelt.push(a.join(' '));
-  try { await fn(); } finally { console.warn = echt; }
+  try {
+    await fn();
+  } finally {
+    console.warn = echt;
+  }
   return gesammelt;
 }
 
-test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
+test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
   // Frisch laden, damit der „einmal je Prozess"-Merker dieser Prüfung gehört
   // und nicht einem früheren Test.
   const mailer = _req('src/mail/mailer.js');
@@ -37,8 +48,11 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
     umgebung({ APP_BASE_URL: 'https://lego.example.test/' });
     const m = await mailer.baueAlarmMail(DATEN);
     // Der abschliessende Schrägstrich der Variablen darf sich nicht verdoppeln.
-    assert.match(m.html, /https:\/\/lego\.example\.test\/\?set=10179-1/,
-      `Der Link fehlt oder ist falsch zusammengesetzt:\n${m.html.slice(0, 400)}`);
+    assert.match(
+      m.html,
+      /https:\/\/lego\.example\.test\/\?set=10179-1/,
+      `Der Link fehlt oder ist falsch zusammengesetzt:\n${m.html.slice(0, 400)}`,
+    );
     assert.match(m.html, /Set ansehen/, 'Der Knopf trägt keine Beschriftung.');
     assert.match(m.html, /class="btn-link"/, 'Der Link steht nicht als Knopf da.');
   });
@@ -50,7 +64,9 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
     // Schritt davor haette den Merker verbraucht — genau das ist beim ersten …
     umgebung({ APP_BASE_URL: undefined });
     let m;
-    const gesammelt = await warnungenVon(async () => { m = await mailer.baueAlarmMail(DATEN); });
+    const gesammelt = await warnungenVon(async () => {
+      m = await mailer.baueAlarmMail(DATEN);
+    });
 
     assert.ok(!/\?set=/.test(m.html), 'Ohne bekannte Adresse steht trotzdem ein Link in der Mail.');
     assert.ok(!/Set ansehen/.test(m.html), 'Der Knopf ist da, kann aber nirgends hinfuehren.');
@@ -61,8 +77,10 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
     // Genau das fehlte: Marco sah einen fehlenden Knopf, der Betreiber sah
     // nichts. Dieselbe Luecke hat getBaseUrl() in routes/auth.ts laengst
     // geschlossen — mit demselben Mittel.
-    assert.ok(gesammelt.some(z => z.includes('APP_BASE_URL')),
-      `Kein Hinweis im Protokoll. Gesammelt: ${JSON.stringify(gesammelt)}`);
+    assert.ok(
+      gesammelt.some(z => z.includes('APP_BASE_URL')),
+      `Kein Hinweis im Protokoll. Gesammelt: ${JSON.stringify(gesammelt)}`,
+    );
   });
 
   await t.test('3. aber nur EINMAL, nicht je Alarm', async () => {
@@ -88,11 +106,17 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async (t) => {
     umgebung({ APP_BASE_URL: 'https://lego.example.org' });
     const m = await mailer.baueAlarmMail(DATEN);
     const breiten = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));
-    assert.equal(breiten.length, 3,
-      `Erwartet: zwei Kacheln und ein Abstand, alle in Prozent. Gefunden: ${breiten.length}.`);
+    assert.equal(
+      breiten.length,
+      3,
+      `Erwartet: zwei Kacheln und ein Abstand, alle in Prozent. Gefunden: ${breiten.length}.`,
+    );
     const [links, mitte, rechts] = breiten;
-    assert.equal(links + mitte + rechts, 100,
-      `Die Breiten ergeben ${links + mitte + rechts} % — der Klient muss dann etwas stauchen.`);
+    assert.equal(
+      links + mitte + rechts,
+      100,
+      `Die Breiten ergeben ${links + mitte + rechts} % — der Klient muss dann etwas stauchen.`,
+    );
     assert.equal(links, rechts, 'Die beiden Kacheln sind unterschiedlich breit.');
     assert.ok(mitte > 0, 'In der Mitte steht kein Abstand.');
   });

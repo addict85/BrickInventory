@@ -37,7 +37,7 @@ Module.prototype.require = function (name) {
   return m;
 };`;
 
-test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, timeout: 90_000 }, async (t) => {
+test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, timeout: 90_000 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   const { liesZustand, loescheZustand } = _req('src/auftraege/prozess.js').auftraegeBereich().laufzustand;
@@ -51,15 +51,26 @@ test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, 
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 
   const srv = spawn(process.execPath, ['--require', vorladen, path.join(ROOT, 'dist', 'server.js')], {
-    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATABASE_URL: URL_DB, ROLLE: 'jobs' },
   });
   let log = '';
-  srv.stdout.on('data', d => { log += d; });
-  srv.stderr.on('data', d => { log += d; });
-  const ende = await new Promise((fertig) => {
-    const frist = setTimeout(() => { srv.kill('SIGKILL'); fertig('lief weiter'); }, 20_000);
-    srv.on('exit', (code) => { clearTimeout(frist); fertig(code); });
+  srv.stdout.on('data', d => {
+    log += d;
+  });
+  srv.stderr.on('data', d => {
+    log += d;
+  });
+  const ende = await new Promise(fertig => {
+    const frist = setTimeout(() => {
+      srv.kill('SIGKILL');
+      fertig('lief weiter');
+    }, 20_000);
+    srv.on('exit', code => {
+      clearTimeout(frist);
+      fertig(code);
+    });
   });
 
   await t.test('der Prozess endet mit Exit-Code 1', () => {

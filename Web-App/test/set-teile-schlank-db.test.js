@@ -26,8 +26,8 @@ const db = _req('db/database.js');
 const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0062-set-teile-schlank.sql'), 'utf8');
 const SCHEMA = `probe0062_${process.pid}`;
 
-test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async (t) => {
-  if (!await dbOderSkip(t, _req, { migrieren: false })) return;
+test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async t => {
+  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});
@@ -42,7 +42,9 @@ test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async (t) => {
   await c.query(`CREATE TABLE part_color_catalog (LIKE public.part_color_catalog INCLUDING ALL)`);
   // Die Herkunftsspalten von 0060 bis 0093.
   await c.query(`ALTER TABLE part_catalog ADD COLUMN name_von integer, ADD COLUMN kategorie_von integer`);
-  await c.query(`ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer, ADD COLUMN bild_von integer`);
+  await c.query(
+    `ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer, ADD COLUMN bild_von integer`,
+  );
   await c.query(`CREATE TABLE set_parts_catalog (
     set_number text NOT NULL, part_number text NOT NULL, part_name text, color_id integer NOT NULL,
     color_name text, color_hex text, category_name text, image_url text, image_local text,
@@ -60,11 +62,17 @@ test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async (t) => {
   await c.query(`INSERT INTO part_catalog (part_number, part_name, name_von) VALUES ('3003', 'Brunos Stein', 43)`);
   await c.query(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('75192-1', '3003', 0, 1)`);
 
-  const zeile = async (nr) => (await c.query(`SELECT * FROM set_parts_catalog WHERE set_number = '75192-1' AND part_number = $1`, [nr])).rows[0];
+  const zeile = async nr =>
+    (await c.query(`SELECT * FROM set_parts_catalog WHERE set_number = '75192-1' AND part_number = $1`, [nr])).rows[0];
 
   await t.test('die Setliste hat nur noch ihre eigenen Spalten', async () => {
-    const spalten = (await c.query(`SELECT column_name FROM information_schema.columns
-      WHERE table_schema = $1 AND table_name = 'set_teile' ORDER BY column_name`, [SCHEMA])).rows.map(r => r.column_name);
+    const spalten = (
+      await c.query(
+        `SELECT column_name FROM information_schema.columns
+      WHERE table_schema = $1 AND table_name = 'set_teile' ORDER BY column_name`,
+        [SCHEMA],
+      )
+    ).rows.map(r => r.column_name);
     assert.deepEqual(spalten, ['color_id', 'is_spare', 'part_number', 'quantity', 'set_number', 'updated_at']);
   });
 

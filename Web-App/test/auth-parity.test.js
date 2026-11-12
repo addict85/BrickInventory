@@ -30,10 +30,11 @@ const { ohneKommentare } = require('./helpers/sources');
  * Jeden Anmelde-Handler SUCHEN statt zwei aufzuzählen.
  */
 function anmeldeHandler() {
-  const dateien = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
-    const p = path.join(dir, e.name);
-    return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
-  });
+  const dateien = dir =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+      const p = path.join(dir, e.name);
+      return e.isDirectory() ? dateien(p) : e.name.endsWith('.ts') ? [p] : [];
+    });
   const alle = [...dateien(path.join(ROOT, 'routes')), path.join(ROOT, 'server.ts')];
   const treffer = [];
   for (const datei of alle) {
@@ -64,35 +65,53 @@ test('deaktiviertes Konto wird abgelehnt — egal ob 0 oder false', () => {
 });
 
 test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
-  const r = assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: true });
+  const r = assertLoginAllowed({
+    is_active: 1,
+    email_verified: 0,
+    email: null,
+    is_admin: 0,
+    registrierung_offen: true,
+  });
   assert.equal(r?.art, 'verboten');
   assert.equal(r?.unverified, true);
-  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }), null);
-  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }), null,
-    'ein vom Verwalter angelegtes Konto ohne Adresse');
+  assert.equal(
+    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }),
+    null,
+  );
+  assert.equal(
+    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }),
+    null,
+    'ein vom Verwalter angelegtes Konto ohne Adresse',
+  );
 });
 
 test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
   const gefunden = anmeldeHandler();
   // Selbstbeweis: Findet das Muster nichts, wäre die Fehlerliste leer und der
   // Test grün, ohne etwas geprüft zu haben.
-  assert.ok(gefunden.length >= 2,
-    `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
+  assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
   const mitPasswort = gefunden.filter(h => /password/.test(h.koerper));
-  assert.equal(mitPasswort.length, 1,
+  assert.equal(
+    mitPasswort.length,
+    1,
     `${mitPasswort.length} passwortbasierte Anmeldungen: ` +
-    mitPasswort.map(h => `${h.datei} ${h.pfad}`).join(', ') +
-    ' — es soll genau eine geben.');
+      mitPasswort.map(h => `${h.datei} ${h.pfad}`).join(', ') +
+      ' — es soll genau eine geben.',
+  );
 
   const abweichler = mitPasswort
     .filter(h => !/\b(pruefeAnmeldedaten|anmelden)\(/.test(h.koerper))
     .map(h => `${h.datei}  ${h.pfad}`);
-  assert.deepEqual(abweichler, [],
+  assert.deepEqual(
+    abweichler,
+    [],
     'Diese Anmeldungen prüfen die Zugangsdaten selbst statt über ' +
-    'pruefeAnmeldedaten() aus src/konto/anmeldepruefung.ts:\n  ' + abweichler.join('\n  ') +
-    '\nEine zweite Fassung ist schon zweimal auseinandergelaufen: erst fehlten ' +
-    'die Konto-Vorbedingungen, dann der Vergleich gegen den Dummy-Hash ' +
-    '(415 ms Unterschied, siehe test/login-zeitgleich-db.test.js).');
+      'pruefeAnmeldedaten() aus src/konto/anmeldepruefung.ts:\n  ' +
+      abweichler.join('\n  ') +
+      '\nEine zweite Fassung ist schon zweimal auseinandergelaufen: erst fehlten ' +
+      'die Konto-Vorbedingungen, dann der Vergleich gegen den Dummy-Hash ' +
+      '(415 ms Unterschied, siehe test/login-zeitgleich-db.test.js).',
+  );
 });
 
 test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
@@ -102,21 +121,25 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
   const zaehler = /\b(checkLoginAllowed|recordLoginFailure|recordLoginSuccess)\s*\(/;
   const erlaubt = new Set(['src/konto/anmeldepruefung.ts', 'src/konto/loginLimiter.ts']);
 
-  const sammle = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
-    const p = path.join(dir, e.name);
-    return e.isDirectory() ? sammle(p) : (e.name.endsWith('.ts') ? [p] : []);
-  });
-  const alle = [...sammle(path.join(ROOT, 'routes')), ...sammle(path.join(ROOT, 'src')),
-                path.join(ROOT, 'server.ts')];
+  const sammle = dir =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+      const p = path.join(dir, e.name);
+      return e.isDirectory() ? sammle(p) : e.name.endsWith('.ts') ? [p] : [];
+    });
+  const alle = [...sammle(path.join(ROOT, 'routes')), ...sammle(path.join(ROOT, 'src')), path.join(ROOT, 'server.ts')];
   assert.ok(alle.length >= 30, `Nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
 
   const fremd = alle
     .map(d => path.relative(ROOT, d))
     .filter(rel => !erlaubt.has(rel))
     .filter(rel => zaehler.test(ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'))));
-  assert.deepEqual(fremd, [],
-    'Diese Dateien bedienen den Anmelde-Zähler selbst: ' + fremd.join(', ') +
-    ' — die Anmeldung gehört ganz in pruefeAnmeldedaten() (src/konto/anmeldepruefung.ts).');
+  assert.deepEqual(
+    fremd,
+    [],
+    'Diese Dateien bedienen den Anmelde-Zähler selbst: ' +
+      fremd.join(', ') +
+      ' — die Anmeldung gehört ganz in pruefeAnmeldedaten() (src/konto/anmeldepruefung.ts).',
+  );
 
   // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
   const zentral = require('./helpers/sources').dienstQuelle('src/konto/anmeldepruefung.ts');
