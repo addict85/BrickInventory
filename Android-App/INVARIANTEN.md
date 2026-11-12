@@ -661,7 +661,7 @@ Handlungsmacht.
 |---|---|---|
 | geheim | Token | nur AES-GCM mit Keystore-Schlüssel (`TokenTresor`) |
 | geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), ein Gutschein-PDF liegt nur im Speicher (memfd, `PdfViewerScreen`) |
-| vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
+| vertraulich | Sets, Teile, Figuren, Merkliste, Preisalarme, Lagerorte, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
 | vertraulich | API-Antworten, Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt); Anleitungen angezeigt aus memfd oder namenloser Datei |
 | vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
 | Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre` (AES-GCM, eigener Ablageschlüssel, überlebt das Abmelden); unlesbar heisst „nicht vertraut“ (`VertrauenVerschluesseltTest`) |

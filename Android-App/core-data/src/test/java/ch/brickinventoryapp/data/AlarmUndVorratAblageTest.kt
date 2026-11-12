@@ -66,7 +66,8 @@ class AlarmUndVorratAblageTest {
     @Test
     fun `ohne Netz bleibt die zuletzt geholte Liste der Alarme`() = runBlocking {
         alarme.aktualisiereAlarme()
-        pfade.server.shutdown()
+        // Im Takt antwortet PfadServer ohne Netz; abschalten hiesse hier nichts.
+        pfade.vorrang = { _, _ -> 503 to """{"success":false}""" }
         assertTrue(alarme.aktualisiereAlarme() is Ergebnis.Error)
         assertEquals(2, alarme.beobachteAlarme().first().liste.size)
     }
