@@ -265,7 +265,8 @@ const MINDESTSTAND = '0050-teilezaehler-nur-bestehende-konten.sql';
 /** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
  * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
 export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
-  const pool = new Pool({ ...k.verbindung, ...k.pool });
+  // Pipeline: abfrage() schickt BEGIN mit Kontext, Abfrage und COMMIT zugleich, ein Roundtrip statt drei.
+  const pool = new Pool({ ...k.verbindung, ...k.pool, pipeline: true });
   // Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
   pool.on('error', err => {
     console.error('[db-pool] idle client error:', err.message);
@@ -289,7 +290,10 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   const txClient = (): PoolClient | null => txStand()?.client ?? null;
 
   /** Ausserhalb einer Transaktion: ohne Konto und Systemrahmen direkt über den
-   * Pool, sonst in einer kurzen eigenen, damit set_config(…, true) gilt. */
+   * Pool, sonst in einer kurzen eigenen, damit set_config(…, true) gilt. Die drei
+   * Teile gehen in der Pipeline zugleich hinaus; scheitert die Abfrage, beendet das
+   * COMMIT die abgebrochene Transaktion als ROLLBACK. Zurück in den Pool geht die
+   * Verbindung nur im Leerlauf, also ohne Kontext. */
   async function abfrage(sql: string, params?: unknown[]): Promise<QueryResult> {
     const stand = txStand();
     if (stand) {
@@ -306,17 +310,14 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     };
     client.on('error', abriss);
     try {
-      await client.query(`BEGIN; ${kontext}`);
-      const r = await client.query(sql, params);
-      await client.query('COMMIT');
-      return r;
-    } catch (e) {
-      try {
-        await client.query('ROLLBACK');
-      } catch (r) {
-        kaputt = r instanceof Error ? r : new Error(String(r));
-      }
-      throw e;
+      const [anfang, r, ende] = await Promise.allSettled([
+        client.query(`BEGIN; ${kontext}`),
+        client.query(sql, params),
+        client.query('COMMIT'),
+      ]);
+      if (client.getTransactionStatus() !== 'I') kaputt ??= new Error('Verbindung nach COMMIT nicht im Leerlauf');
+      for (const x of [anfang, r, ende]) if (x.status === 'rejected') throw x.reason;
+      return (r as PromiseFulfilledResult<QueryResult>).value;
     } finally {
       client.off('error', abriss);
       client.release(kaputt);
@@ -367,8 +368,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     };
     client.on('error', abriss);
     try {
-      await client.query('BEGIN');
-      await kontextAbgleich(stand);
+      // Der Kontext im selben Roundtrip wie BEGIN; kontextAbgleich() folgt danach Wechseln.
+      stand.kontext = kontextSql();
+      await client.query(stand.kontext ? `BEGIN; ${stand.kontext}` : 'BEGIN');
       const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(stand)));
       await commitBegleiter.getStore()?.(txSchnittstelle(stand));
       stand.offen = false;
