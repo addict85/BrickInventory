@@ -1999,3 +1999,12 @@ wird). Hinweise:
 - Wer `app` mehrfach betreibt (etwa `docker compose up --scale app=2`), sieht
   diese Meldung; es bleibt bei einem `app` und einem `jobs`. Sonst nichts von
   Hand zu tun.
+
+## 57. Image startet als `brickinv`; Proxy vor Caddy
+
+- Das App-Image startet jetzt ohne `--user` als `brickinv`, nicht mehr als
+  root. Mit compose ist nichts zu tun: `schluessel` und `daten-rechte` laufen
+  dort ausdrücklich als root, `app`, `jobs` und `migration` als `brickinv`.
+  Wer das Image mit einem einzelnen `docker run` betreibt und `/app/data`
+  vom Entrypoint einrichten lässt, startet es dafür mit `--user root`; der
+  Entrypoint gibt die Rechte danach an `brickinv` ab.

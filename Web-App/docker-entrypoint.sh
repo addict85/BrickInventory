@@ -1,10 +1,9 @@
 #!/bin/sh
 set -e
 
-# compose.yaml startet app und jobs als brickinv; ./data hat der Dienst
-# daten-rechte vorher eingerichtet, ohne dass dieser Container je root war.
-# Als root (ein einzelnes `docker run` ohne compose) richtet der Start es
-# selbst ein und gibt die Rechte danach ab.
+# Das Image startet als brickinv; ./data richtet in compose.yaml der Dienst
+# daten-rechte vorher ein. Nur mit `--user root` (ein einzelnes `docker run`
+# ohne compose) richtet der Start es selbst ein und gibt die Rechte danach ab.
 if [ "$(id -u)" = 0 ]; then
   echo "[entrypoint] Als root gestartet: Datenverzeichnisse werden vorbereitet …"
   # Der Datenschlüssel liegt ausserhalb von /app/data; Docker legt den Ordner
@@ -14,6 +13,11 @@ if [ "$(id -u)" = 0 ]; then
   done
   sh /app/daten-rechte.sh
   exec su-exec brickinv "$0" "$@"
+fi
+
+if [ -d /app/data ] && [ ! -w /app/data ]; then
+  echo "[entrypoint] /app/data ist für $(id -un 2>/dev/null || id -u) nicht beschreibbar. Einmal mit" >&2
+  echo "[entrypoint]   docker run --user root … starten oder den Dienst daten-rechte (compose.yaml) laufen lassen." >&2
 fi
 
 # Was der Server anlegt (Uploads können Rechnungen sein), liest auf dem Host nur sein Konto.
