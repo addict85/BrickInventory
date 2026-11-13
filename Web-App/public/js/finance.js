@@ -110,10 +110,9 @@ function unterKauf(stueck, menge, cur) {
   return html`<span class="fin-unter-kauf"> · ${tRaw('finance.col.purchase')} ${betrag}</span>`;
 }
 
-/** Wert ohne Marktpreis: am Rechner ein Strich unter der Spalte, am Telefon (ohne Spaltenkopf) in Worten. */
+/** Ohne Marktpreis: am Rechner ein Strich unter dem Spaltenkopf, am Telefon in Worten und ohne leere G/V-Zelle. */
 const ohneMarkt = () =>
   html`<span class="fin-strich">${ohneWert()}</span><span class="fin-kein-markt">${tRaw('finance.kein_marktpreis')}</span>`;
-/** G/V ohne Wert: Am Telefon fällt die Zelle weg, statt einen zweiten Strich neben den ersten zu stellen. */
 const ohneGuv = () => html`<span class="text-mut fin-guv-leer">—</span>`;
 
 /** @param {ManPosten} it @param {string} label @param {ManKauf | null} acq @param {Zeilenlage} lage @param {string} text sichtbarer Name ohne Markup */
@@ -261,8 +260,7 @@ function finanzenLaedt() {
 /** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {{ status?: number, networkError?: boolean } | null | undefined} d */
 function finanzenFehlen(d) {
   if (d?.status === 401) return;
-  // Grund und „Erneut versuchen“ stehen einmal, bei der Liste darunter: Vier Karten mit „Keine Verbindung“
-  // und Zeitraumknöpfe, die nur einen zweiten Fehlerblock öffneten, sagten dasselbe noch fünfmal.
+  // Grund und „Erneut versuchen“ stehen einmal, bei der Liste; Karten und Zeitraum sagten es sonst fünfmal.
   if (!kurveDa()) {
     setzeHtml(G('portfolio-chart'), html`<p class="fehler-zustand text-mut">${tRaw('chart.unavailable')}</p>`);
     // Wieder frei gibt sie loadPortfolioChart(), sobald ein Verlauf da ist.
@@ -573,10 +571,7 @@ function finMehr() {
   _finGrenze += FIN_BLOCK;
   zeichneFinanzTabellen();
 }
-/**
- * Was das Zeichen in der Spalte „Status“ heisst — ein Häkchen allein sagt es nicht. Zeichen und Text stehen je
- * in einem Eintrag, der nicht umbricht: Sonst stand „⚠“ am Zeilenende und sein Text in der nächsten Zeile.
- */
+/** Was die Zeichen der Spalte „Status“ heissen; je Eintrag ohne Umbruch, sonst stand „⚠“ allein am Zeilenende. */
 function legende() {
   const eintrag = (
     /** @type {string} */ klasse,
@@ -666,8 +661,7 @@ function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehru
   const teilweise = mitBasis && Math.abs(einstandAlle - basis.einstand) >= 0.005;
   G('fin-einstand-titel').textContent = tRaw(teilweise ? 'finance.stat.purchase_basis' : 'finance.stat.purchase');
   G('fin-einstand').textContent = einstand > 0 || mitBasis ? fmtN(einstand, cur) : '—';
-  // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse). Kaufpreise in anderer Währung
-  // zählt der Server nicht mit (keine Kurse); die Zahl dazu steht unter der Summe statt still zu fehlen.
+  // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse); ihre Zahl steht darunter.
   G('fin-einstand-sub').textContent =
     fremdeWaehrung > 0
       ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung })

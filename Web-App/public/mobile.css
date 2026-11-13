@@ -342,7 +342,7 @@
   .dt-fin td.fin-guv  { grid-area: guv;  text-align: right; }
   .dt-fin .fin-jahr { display: none; }
   .fin-unter { display: block !important; font-size: var(--fs-0); font-weight: 400; color: var(--mut); margin-top: 2px; }
-  .fin-unter-kauf { display: inline; white-space: nowrap; }
+  .fin-unter-kauf { display: inline; }
   .dt-fin .fin-kein-markt { display: inline; font-size: var(--fs-1); font-weight: 400; color: var(--mut); }
   .dt-fin .fin-strich, .dt-fin td.fin-guv:has(.fin-guv-leer) { display: none; }
   /* Summen: Name oben, darunter Einstand und Marktwert mit eigener Beschriftung. */

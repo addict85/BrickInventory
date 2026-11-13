@@ -68,8 +68,7 @@ export function feldFehler(id, text) {
     el.id = id + '-fehler';
     el.className = 'feld-fehler';
     el.setAttribute('role', 'alert');
-    // In einer Tabellenzelle drückte die Meldung die Nachbarspalten aus dem Bild; sie bekommt eine eigene
-    // Zeile über alle Spalten. In einer Flex-Zeile (Preis mit Währung) steht sie hinter der Zeile.
+    // In der Tabelle eine eigene Zeile (in der Zelle schob sie Spalten aus dem Bild), sonst hinter Feld/Zeile.
     const zeile = feld.closest('td')?.parentElement;
     if (zeile instanceof HTMLTableRowElement) {
       const tr = document.createElement('tr');
