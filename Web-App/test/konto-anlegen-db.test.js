@@ -49,7 +49,7 @@ test('Konto anlegen', { concurrency: 1 }, async t => {
   const app = express();
   app.use(express.json());
   app.use(session({ secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
   t.after(async () => {

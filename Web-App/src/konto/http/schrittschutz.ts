@@ -2,10 +2,11 @@
  * src/konto/geraeteChallenge.ts. Browser-Sitzungen bleiben beim Passwort und
  * zweiten Faktor: Sie haben keinen Keystore. */
 import type { Request, Response, NextFunction } from 'express';
-import { familieAus, pruefeFreigabe, type Schrittaktion } from '../geraeteChallenge';
+import { familieAus, type Schrittaktion } from '../geraeteChallenge';
 import { meldeFehler } from '../../infra/fehler';
 import { sendeFehler } from '../../http/httpAntwort';
 import { istVerwalter } from './anmeldung';
+import { kontoBereich } from '../prozess';
 
 /** Die Schritte, vor denen die App ihren Schrittschutz zeigt. Die Verwaltung
  * prüft requireApiAdmin selbst, damit keine Verwalter-Route an der Liste vorbeigeht. */
@@ -34,7 +35,7 @@ export async function freigegeben(req: Request, res: Response, aktion: Schrittak
   const f = familieAus(req.apiUser);
   try {
     // Ohne Familie (kein created_at) gibt es keinen Schlüssel: zu, nicht offen.
-    const p = f ? await pruefeFreigabe(f, aktion) : 'kein_schluessel';
+    const p = f ? await kontoBereich().pruefeFreigabe(f, aktion) : 'kein_schluessel';
     if (p === 'frei') return true;
     sendeFehler(req, res, 403, p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
   } catch (e) {
@@ -50,7 +51,7 @@ export async function alsVerwalter(req: Request): Promise<boolean> {
   if (!istVerwalter(req)) return false;
   if (!istAppToken(req)) return true;
   const f = familieAus(req.apiUser);
-  return !!f && (await pruefeFreigabe(f, 'verwaltung')) === 'frei';
+  return !!f && (await kontoBereich().pruefeFreigabe(f, 'verwaltung')) === 'frei';
 }
 
 /** Hinter anmeldungAmEingang, vor dem Lesen des Rumpfs. */

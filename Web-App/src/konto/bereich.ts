@@ -1,76 +1,132 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeKonto bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeImSystemrahmen, bindeZugang } from '../infra/bereich';
-import * as altgeheimnisse from './repository/altgeheimnisse';
-import * as anmeldezaehler from './repository/anmeldezaehler';
-import * as einrichtung from './repository/einrichtung';
-import * as geraeteSchluessel from './repository/geraeteSchluessel';
-import * as konten from './repository/konten';
-import * as passkeys from './repository/passkeys';
-import * as protokoll from './repository/protokoll';
-import * as qrKopplung from './repository/qrKopplung';
-import * as startVerwalter from './repository/startVerwalter';
-import * as zugaenge from './repository/zugaenge';
-import * as zweiterFaktor from './repository/zweiterFaktor';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeKonto bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
+import * as anmeldepruefung from './anmeldepruefung';
+import * as anmeldungAblauf from './anmeldungAblauf';
+import * as geheimnisAltbestand from './geheimnisAltbestand';
+import * as geraeteChallenge from './geraeteChallenge';
+import * as geraeteToken from './geraeteToken';
+import * as kontoEntfernen from './kontoEntfernen';
+import * as kontoHinweis from './kontoHinweis';
+import * as loginLimiter from './loginLimiter';
+import * as registrierungAblauf from './registrierungAblauf';
+import * as tokenCache from './tokenCache';
+import * as tokenWunsch from './tokenWunsch';
+import * as verwalterAktionen from './verwalterAktionen';
+import * as verwalterProtokoll from './verwalterProtokoll';
+import * as zugangsende from './zugangsende';
+import * as nutzerEinstellung from './nutzerEinstellung';
+import * as einrichtungStand from './einrichtungStand';
+import * as zielDrossel from './zielDrossel';
+import * as passwortBestaetigung from './passwortBestaetigung';
+import * as sitzungsVersion from './sitzungsVersion';
+import * as indexHtml from './indexHtml';
+import * as zweiterFaktorDienst from './zweiterFaktor';
+import * as zugaengeDienst from './zugaenge';
+import * as startVerwalterDienst from './startVerwalter';
+import * as qrKopplungDienst from './qrKopplung';
+import * as passkeysDienst from './passkeys';
+import * as kontenDienst from './konten';
+import { zugang, type KontoAbhaengigkeiten, type KontoKontext } from './kontext';
 
-export interface KontoKontext {
-  db: Db;
-}
+export type { KontoAbhaengigkeiten, KontoKontext } from './kontext';
 
-export function erzeugeKonto(k: KontoKontext) {
-  const { db } = k;
-  // Zugangsdaten sucht die Anmeldung, bevor es ein Konto gibt; sonst sieht sie niemand (0112).
+export function erzeugeKonto(a: KontoAbhaengigkeiten) {
+  const k: KontoKontext = baueKontext(a, zugang);
   return {
-    db,
-    altgeheimnisse: bindeImSystemrahmen(db, altgeheimnisse, 'zugangsdaten'),
-    anmeldezaehler: bindeZugang(db, anmeldezaehler, [
-      'erhoehe',
-      'gibLaufplatzFrei',
-      'kontoZumNamen',
-      'lies',
-      'loescheZaehler',
-      'loescheZaehlerMitPraefix',
-      'raeumeAuf',
-      'zaehleHoch',
+    ...k,
+    ...bindeZugang(k, anmeldepruefung, ['verifiziereEmailToken', 'pruefeAnmeldedaten']),
+    ...bindeZugang(k, anmeldungAblauf, [
+      'profilAendern',
+      'eigenesPasswortAendern',
+      'anmeldeAntwort',
+      'geraeteTokenAusstellen',
+      'qrZugangErzeugen',
     ]),
-    einrichtung: bindeZugang(db, einrichtung),
-    geraeteSchluessel: bindeImSystemrahmen(db, geraeteSchluessel, 'zugangsdaten'),
-    konten: bindeImSystemrahmen(db, konten, 'zugangsdaten'),
-    passkeys: bindeImSystemrahmen(db, passkeys, 'zugangsdaten'),
-    protokoll: bindeZugang(db, protokoll),
-    qrKopplung: bindeImSystemrahmen(db, qrKopplung, 'zugangsdaten'),
-    startVerwalter: bindeZugang(db, startVerwalter),
-    zugaenge: bindeImSystemrahmen(db, zugaenge, 'zugangsdaten', [
-      'beendeUeberlappung',
-      'beruehreToken',
-      'gueltigerToken',
-      'kappeSitzungen',
-      'kappeTokens',
-      'kontoZurAnmeldung',
-      'legeTokenAn',
-      'loescheAbgelaufene',
-      'loescheSitzungenDesKontos',
-      'loescheToken',
-      'loescheTokensDesKontos',
-      'loescheUngenutzte',
-      'loescheVerwaisteVerbrauchte',
-      'passwortHash',
-      'sitzungsVersion',
-      'sperreFamilie',
-      'zaehleSitzungsVersionHoch',
-      'ziehAltzeilenNach',
+    ...bindeZugang(k, geheimnisAltbestand, ['verschluesseleAltbestand']),
+    ...bindeZugang(k, geraeteChallenge, [
+      'neueNonce',
+      'hinterlegeSchluessel',
+      'neueChallenge',
+      'loeseEin',
+      'pruefeFreigabe',
     ]),
-    zweiterFaktor: bindeImSystemrahmen(db, zweiterFaktor, 'zugangsdaten', [
-      'aktiv',
-      'aktivesGeheimnis',
-      'entferne',
-      'faktorStand',
-      'legeGeheimnisAn',
-      'verbraucheCode',
-      'verbraucheSchritt',
+    ...bindeZugang(k, geraeteToken, [
+      'pruefeToken',
+      'rotiereToken',
+      'deleteToken',
+      'purgeExpiredTokens',
+      'validateToken',
     ]),
+    ...bindeZugang(k, kontenDienst, [
+      'andereSitzungenBeenden',
+      'meldeUngueltigeAdressen',
+      'meldeAusstehendeAdressen',
+      'kontenListe',
+      'profil',
+      'kontoKurzVon',
+      'kontoVollVon',
+      'gibtKonto',
+      'kontoAnzeigeName',
+      'passwortWechselFaellig',
+      'setzeFremdesPasswort',
+      'setzePasswortZurueck',
+      'raeumeOffeneRegistrierungenAuf',
+      'legeKontoAn',
+      'registriere',
+      'setzeAktiv',
+      'setzeVerwalterRolle',
+    ]),
+    ...bindeZugang(k, kontoEntfernen, ['kontoEntfernen']),
+    ...bindeZugang(k, kontoHinweis, ['verwalterHinweisNebenher', 'hinweisNebenher']),
+    ...bindeZugang(k, loginLimiter, ['raeumeAnmeldezaehlerAuf', 'zaehleAnfrage']),
+    ...bindeZugang(k, passkeysDienst, [
+      'registrierungsOptionen',
+      'registrierungPruefen',
+      'anmeldungPruefen',
+      'passkeysDesKontos',
+      'loeschePasskey',
+      'anmeldeOptionen',
+    ]),
+    ...bindeZugang(k, qrKopplungDienst, [
+      'meldeGeraet',
+      'holeQrTokenAb',
+      'verwirfAbholung',
+      'kopplungsStand',
+      'bestaetigeKopplung',
+      'lehneKopplungAb',
+    ]),
+    ...bindeZugang(k, registrierungAblauf, [
+      'registrierungVersuchen',
+      'bestaetigungErneutAnfordern',
+      'ruecksetzLinkAnfordern',
+      'nameZuBestaetigung',
+      'kontoZumRuecksetzLink',
+    ]),
+    ...bindeZugang(k, startVerwalterDienst, ['legeStartVerwalterAn']),
+    ...bindeZugang(k, tokenCache, ['horcheAufTokenWiderruf', 'leereTokenCache']),
+    ...bindeZugang(k, tokenWunsch, ['tokenAngaben']),
+    ...bindeZugang(k, verwalterAktionen, [
+      'registrierungFreischalten',
+      'zweitenFaktorEntfernen',
+      'aktivSetzen',
+      'verwalterRolleSetzen',
+    ]),
+    ...bindeZugang(k, verwalterProtokoll, ['verwalterAktionMerken', 'verwaltungsProtokoll']),
+    ...bindeZugang(k, zugaengeDienst, ['zugaengeListe', 'zugangBeenden', 'andereZugaengeBeenden']),
+    ...bindeZugang(k, zugangsende, ['beendeAndereZugaenge', 'begrenzeSitzungen']),
+    ...bindeZugang(k, zweiterFaktorDienst, ['istAktiv', 'stand', 'beginneEinrichtung', 'schalteAb', 'erneuereCodes']),
+    ...bindeZugang(k, nutzerEinstellung, ['setUserSetting', 'setzeEigenesDesign']),
+    ...bindeZugang(k, einrichtungStand, ['einrichtungStand']),
+    ...bindeZugang(k, zielDrossel, ['zielGedrosselt', 'kontoGedrosselt']),
+    ...bindeZugang(k, passwortBestaetigung, [
+      'bestaetigeEinrichtungGebremst',
+      'pruefeBestaetigung',
+      'pruefeCodeBestaetigung',
+    ]),
+    ...bindeZugang(k, sitzungsVersion, ['sitzungsVersionAusDb', 'aktuelleSitzungsVersion']),
+    ...bindeZugang(k, indexHtml, ['renderIndexHtml']),
   };
 }
 

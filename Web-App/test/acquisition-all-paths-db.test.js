@@ -47,7 +47,7 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
   });
   // Die Erfassungs-Routen liegen seit einer früheren Runde nur noch hier — eine
   // Adresse für Webapp UND App.
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
 

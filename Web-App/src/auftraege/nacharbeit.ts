@@ -1,7 +1,6 @@
-/** src/ importiert jobs/ nicht; startup/verdrahtung.ts setzt die Ausführung
- * beim Start ein. Ohne Verdrahtung wirft ein Aufruf: Eine still ausgelassene
- * Nacharbeit fiel erst auf, wenn Bilder und Preise fehlten. Wer bewusst ohne
- * läuft (Skripte), verdrahtet OHNE_NACHARBEIT ausdrücklich. */
+/** src/ importiert jobs/ nicht; startup/verdrahtung.ts gibt die Ausführung jedem
+ * Bereich als Teil seines Kontexts. Wer bewusst ohne läuft (Skripte, Tests), gibt
+ * OHNE_NACHARBEIT ausdrücklich. */
 export interface Nacharbeit {
   /** Etwa nach einem Währungswechsel. */
   preisJobAnstossen(): void;
@@ -20,14 +19,3 @@ export const OHNE_NACHARBEIT: Nacharbeit = Object.freeze({
   async figurenAnreichern() {},
   async setBilderLaden() {},
 });
-
-let _aktuell: Nacharbeit | null = null;
-
-export function verdrahteNacharbeit(n: Nacharbeit | null): void {
-  _aktuell = n;
-}
-
-export function nacharbeit(): Nacharbeit {
-  if (!_aktuell) throw new Error('Nacharbeit ist nicht verdrahtet (startup/verdrahtung.ts, verdrahte())');
-  return _aktuell;
-}

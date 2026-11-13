@@ -6,7 +6,7 @@ import { imgProxyFailures } from './imgProxyStats';
 import { isDecodable } from './imageGuard';
 import { LOCKS } from '../../infra/lockNamespaces';
 import * as sperre from '../repository/sitzungsSperre';
-import { katalog } from '../prozess';
+import type { KatalogKontext } from '../kontext';
 
 // Warteschlange, Sperre und Verkleinern gehören zusammen.
 
@@ -21,7 +21,7 @@ const THUMB_MAX_QUEUE = 40;
 let _thumbRunning = 0;
 const _thumbQueue: [string, string][] = [];
 
-export function queueThumb(srcFile: string, thumbFile: string) {
+export function queueThumb(k: KatalogKontext, srcFile: string, thumbFile: string) {
   if (_thumbInFlight.has(thumbFile)) return;
   // Gescheiterte Verkleinerungen (webp) nicht bei jedem Ansehen wiederholen.
   if (istBekanntFehlend('thumb:' + thumbFile)) return;
@@ -30,19 +30,19 @@ export function queueThumb(srcFile: string, thumbFile: string) {
   if (_thumbQueue.length >= THUMB_MAX_QUEUE) return;
   _thumbInFlight.set(thumbFile, true);
   _thumbQueue.push([srcFile, thumbFile]);
-  drainThumbQueue();
+  drainThumbQueue(k);
 }
 
-export function drainThumbQueue() {
+export function drainThumbQueue(k: KatalogKontext) {
   while (_thumbRunning < THUMB_MAX_PARALLEL && _thumbQueue.length) {
     const [src, dst] = _thumbQueue.shift()!;
     _thumbRunning++;
-    makeProxyThumb(src, dst)
+    makeProxyThumb(k, src, dst)
       .catch(logAndContinue('proxy-vorschau:erzeugen'))
       .finally(() => {
         _thumbRunning--;
         _thumbInFlight.delete(dst);
-        drainThumbQueue();
+        drainThumbQueue(k);
       });
   }
 }
@@ -53,12 +53,12 @@ const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 /** EINMAL aufgebaut, dann wiederverwendet. */
 let _sperrClient: Client | null = null;
 
-export async function mitVorschauSperre<T>(arbeit: () => Promise<T>): Promise<T | false> {
+export async function mitVorschauSperre<T>(k: KatalogKontext, arbeit: () => Promise<T>): Promise<T | false> {
   // NICHT aus dem Pool: Eine dort gehaltene Sperre nahm gewöhnlichen Anfragen
   // die Verbindung.
   if (!_sperrClient) {
     try {
-      _sperrClient = await katalog().db.eigeneVerbindung();
+      _sperrClient = await k.db.eigeneVerbindung();
     } catch (_) {
       return false;
     }
@@ -80,8 +80,8 @@ export async function mitVorschauSperre<T>(arbeit: () => Promise<T>): Promise<T 
   }
 }
 
-export async function makeProxyThumb(srcFile: string, thumbFile: string) {
-  const p = mitVorschauSperre(async () => {
+export async function makeProxyThumb(k: KatalogKontext, srcFile: string, thumbFile: string) {
+  const p = mitVorschauSperre(k, async () => {
     try {
       // Abmessungen zuerst (imageGuard.ts): Die 5-MB-Grenze misst die KOMPRIMIERTE
       // Grösse und fängt eine Dekompressionsbombe nicht ab.

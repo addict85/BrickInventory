@@ -374,7 +374,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
     const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/katalog/bilder/bildbedarfLauf.js'))});
     (async () => {
       await db.initSchemaOnce();
-      await IQ._taktDurchgang();
+      await IQ._taktDurchgang(V.prozessDienste().katalog);
       await db.pool.end();
     })().catch(e => { console.error(e); process.exit(1); });
   `,
@@ -409,7 +409,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
     req.apiUser = { user_id: uid, is_admin: 1 };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   try {
     const kachel = (await (await fetch(`http://localhost:${srv.address().port}/api/v1/admin/jobs`)).json()).jobs?.imgDl;

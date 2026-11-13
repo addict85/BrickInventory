@@ -8,7 +8,7 @@ import { Abstriche } from '../infra/ergebnis';
 import { recordAcquisitionForDay } from './acquisitions';
 import * as repo from './repository/manuelleMengen';
 import type { ManuelleArt } from './repository/manuelleMengen';
-import { bestandBereich } from './prozess';
+import type { BestandKontext } from './kontext';
 
 /** Ein manueller Eintrag verschwindet nur über Löschen, nie über die Menge. */
 const MINDESTENS = 1;
@@ -32,6 +32,7 @@ const ziel = (w: Mengenwunsch, bisher: number) => ('absolut' in w ? w.absolut : 
  * @param marktpreis wird VOR der Sperre und nur bei steigender Menge gefragt
  * @returns die Menge danach */
 export async function passeManuelleMengeAn(
+  k: BestandKontext,
   art: ManuelleArt,
   uid: number,
   schluessel: (string | number)[],
@@ -40,14 +41,15 @@ export async function passeManuelleMengeAn(
   marktpreis: () => Promise<number | null>,
   ab = new Abstriche(),
 ): Promise<number> {
-  const vorab = await bestandBereich().manuelleMengen.summeDerErfassungen(art, uid, schluessel);
+  const vorab = await k.manuelleMengen.summeDerErfassungen(art, uid, schluessel);
   const mp = ziel(wunsch, vorab) > vorab ? await ab.oder('kaufpreis', marktpreis, null) : null;
-  return mitInventarSperre(bestandBereich().db, uid, bestandsSchluessel(art, schluessel), async tx => {
+  return mitInventarSperre(k.db, uid, bestandsSchluessel(art, schluessel), async tx => {
     const erfassungen = await repo.erfassungenNeuesteZuerst(tx, art, uid, schluessel);
     const bisher = erfassungen.reduce((s, r) => s + r.quantity, 0);
     const soll = ziel(wunsch, bisher);
     if (soll > bisher) {
       await recordAcquisitionForDay(
+        k,
         art,
         uid,
         schluessel,

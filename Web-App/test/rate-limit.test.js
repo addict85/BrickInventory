@@ -35,7 +35,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   assert.match(rl, /async function consumeRebrickableDaily/, 'Der Verbrauch muss über den gemeinsamen Zähler laufen');
   assert.match(
     rl,
-    /checkAndIncrementRateLimit\('rebrickable'\)/,
+    /checkAndIncrementRateLimit\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'rebrickable'\)/,
     'Derselbe Mechanismus wie bei BrickLink und Brickset — kein dritter Weg',
   );
   assert.doesNotMatch(rl, /new DailyLimiter\(/, 'Keine prozesslokale Instanz mehr für ein Tagesbudget');
@@ -76,7 +76,7 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   const fn = fc.slice(fc.indexOf('async function getLimitForApi'), fc.indexOf('const grenzeJeKonto'));
   assert.match(
     fn,
-    /await getGlobalSetting\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
+    /await k\.einstellungen\.getGlobalSetting\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
     'Die Grenze muss bei jedem Aufruf gelesen werden, nicht aus dem Prozessspeicher kommen',
   );
 });
@@ -232,7 +232,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   const route = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8');
   assert.match(
     route,
-    /await preisJobJetzt\(\)/,
+    /await d\.verwaltung\.preisJobJetzt\(\)/,
     'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"',
   );
 

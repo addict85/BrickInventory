@@ -8,9 +8,10 @@ import { pfadSegmente } from '../../http/httpAntwort';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from '../../http/dateiAusliefern';
 import { logAndContinue } from '../../infra/fehler';
 import { bildFreigegeben } from '../bilder/bildBlickfeld';
-import { cdnFuerFehlendesBild } from '../bilder/bildNachschlagen';
 import { generateThumb } from '../bilder/thumbs';
 import { IMG_PROXY_PFAD } from '../bilder/images';
+import { katalog } from '../prozess';
+import { cdnFuerFehlendesBild } from '../bilder/bildNachschlagen';
 
 /** Fehlt die Vorschau, geht sofort das Original hinaus und die Vorschau entsteht
  * nebenher; scheiterte sie beim Erfassen, gäbe es sonst keinen zweiten Anlauf. */
@@ -52,7 +53,7 @@ export async function liefereBild(req: Request, res: Response) {
     if (status && status !== 404) return antwortAufDateiFehler(res, err);
     if (await originalStattVorschau(res, segmente)) return;
     // Fehlt die Datei, über den Bild-Proxy zur CDN-Adresse: heilt ohne Aufräumen in der DB.
-    const cdn = await cdnFuerFehlendesBild('/images/' + segmente.join('/'));
+    const cdn = await cdnFuerFehlendesBild(katalog(), '/images/' + segmente.join('/'));
     if (cdn && !res.headersSent) return res.redirect(302, IMG_PROXY_PFAD + '?url=' + encodeURIComponent(cdn));
     antwortAufDateiFehler(res, err);
   });

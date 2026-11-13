@@ -12,10 +12,10 @@ import {
 } from '@simplewebauthn/server';
 import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import { basisUrl } from '../infra/basisUrl';
-import { androidHerkuenfte } from './androidApp';
 import { fehlertext } from '../infra/fehler';
 import { fachfehler } from '../infra/fehlerTexte';
-import { kontoBereich } from './prozess';
+import type { KontoKontext } from './kontext';
+import { androidHerkuenfte } from './androidApp';
 
 function abgewiesen(e: unknown): null {
   console.warn('[passkey] Antwort abgewiesen:', fehlertext(e));
@@ -52,9 +52,14 @@ const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
  * nicht auf. Darüber 503 statt einer Tabelle, die ohne Grenze wächst. */
 export const OFFENE_CHALLENGES_HOECHSTENS = 5000;
 
-async function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: number | null): Promise<void> {
+async function merkeChallenge(
+  k: KontoKontext,
+  challenge: string,
+  zweck: PasskeyZweck,
+  uid: number | null,
+): Promise<void> {
   if (
-    !(await kontoBereich().passkeys.speichereChallenge(
+    !(await k.passkeys.speichereChallenge(
       hash(challenge),
       zweck,
       uid,
@@ -67,6 +72,7 @@ async function merkeChallenge(challenge: string, zweck: PasskeyZweck, uid: numbe
 
 /** Genau einmal: Eine wiederholte Antwort findet ihre Zeile nicht mehr. */
 async function loeseChallengeEin(
+  k: KontoKontext,
   clientDataJSON: unknown,
   zweck: PasskeyZweck,
   uid: number | null,
@@ -78,17 +84,17 @@ async function loeseChallengeEin(
   } catch (e) {
     return abgewiesen(e);
   }
-  return (await kontoBereich().passkeys.verbraucheChallenge(hash(challenge), zweck, uid)) ? challenge : null;
+  return (await k.passkeys.verbraucheChallenge(hash(challenge), zweck, uid)) ? challenge : null;
 }
 
 /** Nicht sprechend: Der Authenticator soll keine Konto-ID speichern. */
 const nutzerKennung = (uid: number) =>
   new Uint8Array(crypto.createHash('sha256').update(`bim:${uid}`).digest().subarray(0, 16));
 
-export async function registrierungsOptionen(uid: number, name: string) {
+export async function registrierungsOptionen(k: KontoKontext, uid: number, name: string) {
   const rp = vertrauenspartei();
   if (!rp) return null;
-  const vorhanden = await kontoBereich().passkeys.kennungenDesKontos(uid);
+  const vorhanden = await k.passkeys.kennungenDesKontos(uid);
   const optionen = await generateRegistrationOptions({
     rpName: rp.rpName,
     rpID: rp.rpID,
@@ -99,11 +105,12 @@ export async function registrierungsOptionen(uid: number, name: string) {
     authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
     excludeCredentials: vorhanden.map(v => ({ id: v.credential_id, ...transporte(v.transports) })),
   });
-  await merkeChallenge(optionen.challenge, 'registrieren', uid);
+  await merkeChallenge(k, optionen.challenge, 'registrieren', uid);
   return optionen;
 }
 
 export async function registrierungPruefen(
+  k: KontoKontext,
   uid: number,
   roh: unknown,
   name: string,
@@ -111,7 +118,7 @@ export async function registrierungPruefen(
   const rp = vertrauenspartei();
   const antwort = alsAntwort<RegistrationResponseJSON>(roh);
   if (!rp || !antwort) return null;
-  const challenge = await loeseChallengeEin(antwort.response.clientDataJSON, 'registrieren', uid);
+  const challenge = await loeseChallengeEin(k, antwort.response.clientDataJSON, 'registrieren', uid);
   if (!challenge) return null;
   const v = await verifyRegistrationResponse({
     response: antwort,
@@ -122,7 +129,7 @@ export async function registrierungPruefen(
   }).catch(abgewiesen);
   if (!v?.verified) return null;
   const c = v.registrationInfo.credential;
-  return kontoBereich().passkeys.legeAn(
+  return k.passkeys.legeAn(
     uid,
     c.id,
     Buffer.from(c.publicKey),
@@ -132,7 +139,7 @@ export async function registrierungPruefen(
   );
 }
 
-export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
+export async function anmeldeOptionen(k: KontoKontext, zweck: 'anmelden' | 'zweiter_faktor') {
   const rp = vertrauenspartei();
   if (!rp) return null;
   // Leere allowCredentials: Der Browser bietet die auffindbaren Passkeys an,
@@ -141,7 +148,7 @@ export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
     rpID: rp.rpID,
     userVerification: zweck === 'anmelden' ? 'required' : 'preferred',
   });
-  await merkeChallenge(optionen.challenge, zweck, null);
+  await merkeChallenge(k, optionen.challenge, zweck, null);
   return optionen;
 }
 
@@ -149,6 +156,7 @@ export async function anmeldeOptionen(zweck: 'anmelden' | 'zweiter_faktor') {
  * der Passkey allein ein einziger Faktor.
  * @param uid beim zweiten Faktor das Konto, dessen Passwort schon stimmte. */
 export async function anmeldungPruefen(
+  kx: KontoKontext,
   roh: unknown,
   zweck: 'anmelden' | 'zweiter_faktor',
   uid: number | null = null,
@@ -156,9 +164,9 @@ export async function anmeldungPruefen(
   const rp = vertrauenspartei();
   const antwort = alsAntwort<AuthenticationResponseJSON>(roh);
   if (!rp || !antwort) return null;
-  const challenge = await loeseChallengeEin(antwort.response.clientDataJSON, zweck, null);
+  const challenge = await loeseChallengeEin(kx, antwort.response.clientDataJSON, zweck, null);
   if (!challenge) return null;
-  const k = await kontoBereich().passkeys.schluessel(antwort.id, uid);
+  const k = await kx.passkeys.schluessel(antwort.id, uid);
   if (!k) return null;
   const v = await verifyAuthenticationResponse({
     // Registriert wird nur im Browser; anmelden darf auch die eingetragene App.
@@ -175,11 +183,9 @@ export async function anmeldungPruefen(
     requireUserVerification: zweck === 'anmelden',
   }).catch(abgewiesen);
   if (!v?.verified) return null;
-  return (await kontoBereich().passkeys.zaehlerWeiter(k.id, v.authenticationInfo.newCounter, k.sign_count))
-    ? k.user_id
-    : null;
+  return (await kx.passkeys.zaehlerWeiter(k.id, v.authenticationInfo.newCounter, k.sign_count)) ? k.user_id : null;
 }
 
-export const passkeysDesKontos = (uid: number) => kontoBereich().passkeys.desKontos(uid);
-export const hatPasskeys = (uid: number) => kontoBereich().passkeys.hatWelche(uid);
-export const loeschePasskey = (uid: number, id: number) => kontoBereich().passkeys.loeschePasskeyZeile(uid, id);
+export const passkeysDesKontos = (k: KontoKontext, uid: number) => k.passkeys.desKontos(uid);
+export const hatPasskeys = (k: KontoKontext, uid: number) => k.passkeys.hatWelche(uid);
+export const loeschePasskey = (k: KontoKontext, uid: number, id: number) => k.passkeys.loeschePasskeyZeile(uid, id);

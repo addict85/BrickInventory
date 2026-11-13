@@ -43,7 +43,7 @@ test('Einstellungen: Prüfung der Werte und Export je Rolle', { concurrency: 1 }
       req.session = { userId: uid, isAdmin };
       next();
     });
-    app.use('/api/v1', _req('routes/api_v1/settings.js'));
+    app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/settings.js'));
     return app.listen(0);
   };
   const nutzer = appFuer(false),

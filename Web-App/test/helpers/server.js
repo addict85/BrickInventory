@@ -31,7 +31,7 @@ function testServer(_req, { sitzung = {}, apiNutzer, routen, t, kette = false })
   // Wie startup/app.ts: Das Konto der Anfrage gilt bis in die Datenbank (Zeilenschutz).
   app.use(_req('src/http/kontoMerken.js').merkeAnfrage);
   if (kette) _req('startup/app.js').apiEingang(app);
-  for (const [pfad, modul] of Object.entries(routen)) app.use(pfad, _req(modul));
+  for (const [pfad, modul] of Object.entries(routen)) app.use(pfad, require('./sources').routerAus(_req, modul));
   const srv = app.listen(0);
   const schliessen = () => new Promise(r => srv.close(r));
   if (t && typeof t.after === 'function') t.after(schliessen);

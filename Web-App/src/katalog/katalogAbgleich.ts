@@ -18,24 +18,24 @@ import fs from 'node:fs';
 import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';
 import { rebrickableBackgroundLimiter as rebrickableLimiter } from './rateLimiter';
 import { KEINE_FARBE } from '../infra/validate';
-import { katalog } from './prozess';
-async function syncSetCatalog(setNumber: string) {
+import type { KatalogKontext } from './kontext';
+async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
   // mitVersion(): Sonst ergäbe `alt` denselben Wert wie `n`, und die blanke
   // Nummer würde nie geprüft.
   const n = mitVersion(setNumber);
 
-  const stand = await katalog().csvKatalog.katalogBildstand(n);
+  const stand = await k.csvKatalog.katalogBildstand(n);
   const total = stand.total,
     withImg = stand.mitBild;
   if (total > 0 && withImg >= total) {
     return;
   }
-  const invId = await neuestesInventar(n);
+  const invId = await neuestesInventar(k, n);
   if (!invId) {
     return;
   }
 
-  const parts = await katalog().csvKatalog.inventarTeileOhneErsatz(invId);
+  const parts = await k.csvKatalog.inventarTeileOhneErsatz(invId);
 
   if (!parts.length) {
     // Noch keine Teile im CSV-Zwischenspeicher — still überspringen.
@@ -65,8 +65,9 @@ async function syncSetCatalog(setNumber: string) {
     if (total === 0) {
       // Name, Farbe und Bild in die Kataloge, Menge in die Setliste.
       const melde = logAndContinue('katalogSync:setteil');
-      await merkeTeil(p.part_number, p.part_name).catch(melde);
+      await merkeTeil(k, p.part_number, p.part_name).catch(melde);
       await merkeTeilFarbe(
+        k,
         p.part_number,
         p.color_id ?? KEINE_FARBE,
         p.color_name,
@@ -74,33 +75,35 @@ async function syncSetCatalog(setNumber: string) {
         p.image_url,
         imageLocal,
       ).catch(melde);
-      await merkeSetTeil(n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(melde);
+      await merkeSetTeil(k, n, p.part_number, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(melde);
     } else if (imageLocal) {
-      await setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, imageLocal).catch(
+      await setzeTeilBildLokal(k, p.part_number, p.color_id ?? KEINE_FARBE, imageLocal).catch(
         logAndContinue('katalogSync:bild'),
       );
     }
   }
 
-  const figs = await katalog().csvKatalog.inventarFiguren(invId);
+  const figs = await k.csvKatalog.inventarFiguren(invId);
 
-  await merkeFiguren(figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url }))).catch(
-    logAndContinue('katalog-sync:figur merken'),
-  );
+  await merkeFiguren(
+    k,
+    figs.map(f => ({ figNumber: f.fig_number, figName: f.fig_name, imageUrl: f.image_url })),
+  ).catch(logAndContinue('katalog-sync:figur merken'));
   await merkeSetFiguren(
+    k,
     n,
     figs.map(f => ({ figNumber: f.fig_number, quantity: f.quantity })),
   ).catch(logAndContinue('katalog-sync:setfigur merken'));
 }
 
-async function syncAllMissing() {
-  const sets = await katalog().csvKatalog.setsOhneTeilekatalog();
-  for (const s of sets) await syncSetCatalog(s);
+async function syncAllMissing(k: KatalogKontext) {
+  const sets = await k.csvKatalog.setsOhneTeilekatalog();
+  for (const s of sets) await syncSetCatalog(k, s);
 }
 
 /** Die gewählte Farbe, nicht das oft falschfarbige Standardbild. */
-async function teilfarbenbilderNachtragen() {
-  const rows = await katalog().csvKatalog.manuelleFarbteile();
+async function teilfarbenbilderNachtragen(k: KatalogKontext) {
+  const rows = await k.csvKatalog.manuelleFarbteile();
   if (!rows.length) return;
   console.log(`  [purchase-price-backfill] Teile mit Farbbild zu prüfen: ${rows.length}`);
   let done = 0;
@@ -108,7 +111,7 @@ async function teilfarbenbilderNachtragen() {
     try {
       const info = await lookupPart(row.part_number, row.color_id);
       if (info?.image_url) {
-        await katalog().csvKatalog.ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
+        await k.csvKatalog.ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
         done++;
       }
     } catch (e) {

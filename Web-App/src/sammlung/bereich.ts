@@ -1,25 +1,21 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeSammlung bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
-import * as erfassungen from './repository/erfassungen';
-import * as loeschen from './repository/loeschen';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeSammlung bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
+import * as erfassungenDienst from './erfassungen';
+import * as loeschenDienst from './loeschen';
+import * as importAuftraege from './importAuftraege';
+import { zugang, type SammlungAbhaengigkeiten, type SammlungKontext } from './kontext';
 
-export interface SammlungKontext {
-  db: Db;
-}
+export type { SammlungAbhaengigkeiten, SammlungKontext } from './kontext';
 
-export function erzeugeSammlung(k: SammlungKontext) {
-  const { db } = k;
+export function erzeugeSammlung(a: SammlungAbhaengigkeiten) {
+  const k: SammlungKontext = baueKontext(a, zugang);
   return {
-    db,
-    erfassungen: bindeZugang(db, erfassungen, [
-      'kontoDerErfassung',
-      'setErfassungenImBlickfeld',
-      'zustandDerErfassung',
-    ]),
-    loeschen: bindeZugang(db, loeschen, ['manuelleFigurenDesKontos', 'manuelleTeileDesKontos', 'setsDesKontos']),
+    ...k,
+    ...bindeZugang(k, erfassungenDienst, ['erfassungAendern', 'erfassungLoeschen', 'setErfassungen']),
+    ...bindeZugang(k, loeschenDienst, ['loescheTeil', 'loescheFigur', 'loescheAllesEigene']),
+    ...bindeZugang(k, importAuftraege, ['fuehreImportAus']),
   };
 }
 

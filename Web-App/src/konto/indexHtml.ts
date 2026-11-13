@@ -3,13 +3,14 @@
 import { konfig } from '../infra/konfig';
 
 import fs from 'node:fs';
-import { createHash } from 'node:crypto';
 import { PUBLIC_DIR } from '../infra/appPaths';
 import path from 'node:path';
-import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen';
+import { createHash } from 'node:crypto';
+import { DESIGNS } from '../einstellungen';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';
 import { versuche } from '../infra/ergebnis';
+import type { KontoKontext } from './kontext';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 
@@ -82,14 +83,14 @@ export function ohneKommentare(html: string): string {
 }
 
 /** Nur die Vorgabe liegt im Zwischenspeicher; angemeldet zählt das eigene Design. */
-async function currentTheme(userId?: number): Promise<string> {
+async function currentTheme(k: KontoKontext, userId?: number): Promise<string> {
   if (userId) {
-    const { eigenes } = await designFuer(userId);
+    const { eigenes } = await k.einstellungen.designFuer(userId);
     if (eigenes) return eigenes;
   }
   if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
   // Die Startseite kommt auch bei gestörter Datenbank, dann klassisch und ohne Zwischenspeicher.
-  const gelesen = await versuche('index-html:design', getGlobalSetting('app_theme'));
+  const gelesen = await versuche('index-html:design', k.einstellungen.getGlobalSetting('app_theme'));
   if (!gelesen.ok) return 'classic';
   const gespeichert = gelesen.wert;
   const gewaehlt: string = gespeichert && DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
@@ -116,19 +117,19 @@ export function designStileFreigeben(html: string, theme: string): string {
 }
 
 /** Ohne Sitzung (Login-Seite) 'de'. */
-async function currentLang(userId?: number): Promise<string> {
+async function currentLang(k: KontoKontext, userId?: number): Promise<string> {
   if (!userId) return 'de';
   // Nur die eigene Einstellung: Ohne sie gilt Deutsch, nicht eine globale Vorgabe.
   // Ein Lesefehler geht an renderIndexHtml(), das dann die Datei unverändert liefert.
-  const sprache = String((await nutzerEinstellungen(userId)).language ?? 'de');
+  const sprache = String((await k.einstellungen.nutzerEinstellungen(userId)).language ?? 'de');
   return LANGS.includes(sprache) ? sprache : 'de';
 }
 
 // Theme und Sprache schon im HTML.
-export async function renderIndexHtml(userId?: number): Promise<string> {
+export async function renderIndexHtml(k: KontoKontext, userId?: number): Promise<string> {
   const html = await readIndex();
   try {
-    const theme = await currentTheme(userId);
+    const theme = await currentTheme(k, userId);
     let out = /<html[^>]*\sdata-theme=/i.test(html)
       ? html.replace(/(<html[^>]*\sdata-theme=")[^"]*(")/i, `$1${theme}$2`)
       : html.replace(/<html\b/i, `<html data-theme="${theme}"`);
@@ -139,7 +140,7 @@ export async function renderIndexHtml(userId?: number): Promise<string> {
     if (userId == null) out = out.replace(/<html\b/i, '<html data-abgemeldet');
 
     // data-i18n-locale markiert das Tag, damit kein Skript-Pfad geraten werden muss.
-    const lang = await currentLang(userId);
+    const lang = await currentLang(k, userId);
     if (lang !== 'de') {
       out = out.replace(/(<script src="\/locales\/)[a-z]{2}(\.js)/i, `$1${lang}$2`);
       out = out.replace(/(<html[^>]*\slang=")[^"]*(")/i, `$1${lang}$2`);

@@ -47,7 +47,6 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       c.release();
     }
   }
-  const pdf = _req('routes/api_v1/pdf.js');
   const auftraege = _req('src/auftraege/pdfAuftraege.js');
   const { PDF_JOB_DIR } = _req('src/infra/appPaths.js');
 
@@ -76,7 +75,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
   const app = express();
   // Den Rumpf liest wie im Betrieb der Parser des Servers, nicht der Router.
   app.use(express.json({ limit: '4mb' })); // wie server.ts für diese Route
-  app.use('/api/v1', pdf.default || pdf);
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/pdf.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 

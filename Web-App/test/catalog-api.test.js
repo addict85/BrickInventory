@@ -135,7 +135,7 @@ test('Katalog-API (Postgres-Integration)', async t => {
   }
   await seed();
   const app = express();
-  app.use('/api/v1', _req('routes/api_v1/catalog.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/catalog.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}/api/v1`;
   const get = async p => {

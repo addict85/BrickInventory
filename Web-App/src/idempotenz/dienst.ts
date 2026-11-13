@@ -10,8 +10,8 @@ import {
   umschluesseln,
   suchwert,
 } from '../infra/geheimnis';
-import { idempotenzBereich } from './prozess';
 import { mitWirkungsVermerk as vermerkeWirkung } from './repository';
+import type { IdempotenzKontext } from './kontext';
 
 /** Die App wiederholt innerhalb von Stunden, nicht Tagen. */
 export const FRIST_STUNDEN = 24;
@@ -41,8 +41,8 @@ export function fingerabdruck(methode: string, pfad: string, rumpf: unknown, ver
   return ABDRUCK + suchwert('idempotenz', verwalter ? `${inhalt}\nverwalter` : inhalt);
 }
 
-export function alteAbdrueckeLoeschen(): Promise<number> {
-  return idempotenzBereich().repository.loescheAndereAbdruecke(ABDRUCK);
+export function alteAbdrueckeLoeschen(k: IdempotenzKontext): Promise<number> {
+  return k.repository.loescheAndereAbdruecke(ABDRUCK);
 }
 
 export type Ausgang =
@@ -53,14 +53,17 @@ export type Ausgang =
   | { art: 'anders' };
 
 /** Ohne lesbaren Rumpf lieber eine klare Absage als eine zweite Wirkung. */
-export async function beginne(uid: number, schluessel: string, abdruck: string): Promise<Ausgang> {
-  if (await idempotenzBereich().repository.belege(uid, schluessel, abdruck, VERWAIST_NACH_S)) return { art: 'neu' };
-  const e = await idempotenzBereich().repository.eintrag(uid, schluessel, VERWAIST_NACH_S);
+export async function beginne(
+  k: IdempotenzKontext,
+  uid: number,
+  schluessel: string,
+  abdruck: string,
+): Promise<Ausgang> {
+  if (await k.repository.belege(uid, schluessel, abdruck, VERWAIST_NACH_S)) return { art: 'neu' };
+  const e = await k.repository.eintrag(uid, schluessel, VERWAIST_NACH_S);
   // Zwischen Belegen und Lesen freigegeben (die erste scheiterte): neu versuchen.
   if (!e)
-    return (await idempotenzBereich().repository.belege(uid, schluessel, abdruck, VERWAIST_NACH_S))
-      ? { art: 'neu' }
-      : { art: 'laeuft' };
+    return (await k.repository.belege(uid, schluessel, abdruck, VERWAIST_NACH_S)) ? { art: 'neu' } : { art: 'laeuft' };
   if (e.anfrage !== abdruck) return { art: 'anders' };
   // Verwaist mit Wirkung: Die erste hat gewirkt, ihre Antwort ging verloren.
   if (e.status === null) return e.wirkung && e.verwaist ? { art: 'nicht_wiederholbar' } : { art: 'laeuft' };
@@ -71,10 +74,16 @@ export async function beginne(uid: number, schluessel: string, abdruck: string):
 
 /** Ein 5xx wird nicht gemerkt, sondern freigegeben: Ohne vermerkte Wirkung soll
  * eine Wiederholung es noch einmal versuchen dürfen; mit ihr wäre es eine zweite. */
-export async function beende(uid: number, schluessel: string, status: number, antwort: string | null): Promise<void> {
-  if (status >= 500) await idempotenzBereich().repository.loescheLaufenden(uid, schluessel, status);
+export async function beende(
+  k: IdempotenzKontext,
+  uid: number,
+  schluessel: string,
+  status: number,
+  antwort: string | null,
+): Promise<void> {
+  if (status >= 500) await k.repository.loescheLaufenden(uid, schluessel, status);
   else
-    await idempotenzBereich().repository.schliesseAb(
+    await k.repository.schliesseAb(
       uid,
       schluessel,
       status,
@@ -82,29 +91,29 @@ export async function beende(uid: number, schluessel: string, status: number, an
     );
 }
 
-export function gibFrei(uid: number, schluessel: string, status: number): Promise<void> {
-  return idempotenzBereich().repository.loescheLaufenden(uid, schluessel, status);
+export function gibFrei(k: IdempotenzKontext, uid: number, schluessel: string, status: number): Promise<void> {
+  return k.repository.loescheLaufenden(uid, schluessel, status);
 }
 
 /** Die Wirkung der Route und ihr Vermerk am Schlüssel gelten zusammen oder gar nicht. */
-export const mitWirkungsVermerk = <T>(uid: number, schluessel: string, arbeit: () => T): T =>
-  vermerkeWirkung(idempotenzBereich().db, uid, schluessel, arbeit);
+export const mitWirkungsVermerk = <T>(k: IdempotenzKontext, uid: number, schluessel: string, arbeit: () => T): T =>
+  vermerkeWirkung(k.db, uid, schluessel, arbeit);
 
 /** v1-Antworten von vor dem Kontext; der Start schlüsselt sie um. */
-export async function antwortenUmschluesseln(): Promise<number> {
+export async function antwortenUmschluesseln(k: IdempotenzKontext): Promise<number> {
   let n = 0;
-  for (const z of await idempotenzBereich().repository.alteAntworten()) {
+  for (const z of await k.repository.alteAntworten()) {
     const neu = umschluesseln(z.antwort, antwortKontext(z.user_id, z.schluessel));
-    if (neu) n += await idempotenzBereich().repository.ersetzeAntwort(z.user_id, z.schluessel, z.antwort, neu);
+    if (neu) n += await k.repository.ersetzeAntwort(z.user_id, z.schluessel, z.antwort, neu);
   }
   return n;
 }
 
 /** Nach einem Schlüsselwechsel: Abdrücke und Antworten gehören zum vorigen Schlüssel. */
-export function alleVergessen(): Promise<number> {
-  return idempotenzBereich().repository.loescheAelterAls(0);
+export function alleVergessen(k: IdempotenzKontext): Promise<number> {
+  return k.repository.loescheAelterAls(0);
 }
 
-export function raeumeIdempotenzAuf(): Promise<number> {
-  return idempotenzBereich().repository.loescheAelterAls(FRIST_STUNDEN);
+export function raeumeIdempotenzAuf(k: IdempotenzKontext): Promise<number> {
+  return k.repository.loescheAelterAls(FRIST_STUNDEN);
 }

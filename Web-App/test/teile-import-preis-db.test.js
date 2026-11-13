@@ -32,7 +32,7 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
     req.session = { userId: uid };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
 

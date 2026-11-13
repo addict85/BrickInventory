@@ -45,8 +45,8 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token', { co
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, _req('routes/auth.js'));
-  app.use('/api/v1', _req('routes/api_v1/settings.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/settings.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 

@@ -3,7 +3,7 @@
 import { holeGuthaben, BotSchutz, LAND_STANDARD, verdecke, type Abruf, type Guthaben } from './gutscheinGuthaben';
 import { Fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/guthabenSchranke';
-import { gutscheineBereich } from './prozess';
+import type { GutscheineKontext } from './kontext';
 
 export const ABSTAND_SEK = 30;
 
@@ -21,14 +21,17 @@ export interface Gesperrt {
 export type Abfrage = { art: 'guthaben'; guthaben: Guthaben } | ({ art: 'gesperrt' } & Gesperrt);
 
 /** In der Datenbank, damit die Grenze über alle Prozesse gilt. */
-export async function belegePlatz(uid: number): Promise<{ frei: true } | ({ frei: false } & Gesperrt)> {
-  return gutscheineBereich().db.transaction(async tx => {
+export async function belegePlatz(
+  k: GutscheineKontext,
+  uid: number,
+): Promise<{ frei: true } | ({ frei: false } & Gesperrt)> {
+  return k.transaktion(async t => {
     // Falls eine ältere Sicherung die Zeile nicht hat. NULL heisst „noch nie" —
     // ein Datum wäre eine Behauptung.
-    await repo.legeSchrankeAn(tx);
+    await repo.legeSchrankeAn(t.db);
 
     // In SQL: EINE Zeile, EINE Sperre, EINE Uhr.
-    const z = (await repo.schrankenStand(tx, ABSTAND_SEK)) as
+    const z = (await repo.schrankenStand(t.db, ABSTAND_SEK)) as
       | { sperre_sek?: unknown; abstand_sek?: unknown }
       | undefined;
 
@@ -38,7 +41,7 @@ export async function belegePlatz(uid: number): Promise<{ frei: true } | ({ frei
       return Number.isFinite(n) ? n : 0;
     };
 
-    const konto = await repo.kontoStand(tx, uid);
+    const konto = await repo.kontoStand(t.db, uid);
     if (rest(konto?.anzahl) >= KONTO_JE_STUNDE)
       return { frei: false as const, grund: 'konto' as const, wartenSek: Math.max(1, rest(konto?.warten_sek)) };
 
@@ -50,30 +53,31 @@ export async function belegePlatz(uid: number): Promise<{ frei: true } | ({ frei
     const abstand = rest(z?.abstand_sek);
     if (abstand > 0) return { frei: false as const, grund: 'abstand' as const, wartenSek: abstand };
 
-    await repo.merkeAbruf(tx);
-    await repo.zaehleKonto(tx, uid);
+    await repo.merkeAbruf(t.db);
+    await repo.zaehleKonto(t.db, uid);
     return { frei: true as const };
   });
 }
 
 /** @returns die Pause in Sekunden, wie sie der Oberfläche gemeldet wird */
-export async function sperreWegenBotschutz(): Promise<number> {
-  await gutscheineBereich().guthabenSchranke.sperreSchranke(BOTSCHUTZ_PAUSE_MIN);
+export async function sperreWegenBotschutz(k: GutscheineKontext): Promise<number> {
+  await k.guthabenSchranke.sperreSchranke(BOTSCHUTZ_PAUSE_MIN);
   return BOTSCHUTZ_PAUSE_MIN * 60;
 }
 
-export async function vergesseSchranke(): Promise<void> {
-  await gutscheineBereich().guthabenSchranke.oeffneSchranke();
+export async function vergesseSchranke(k: GutscheineKontext): Promise<void> {
+  await k.guthabenSchranke.oeffneSchranke();
 }
 
 // Der einzige Weg zur Abfrage, damit niemand die Schranke umgeht.
 export async function frageGuthabenAb(
+  k: GutscheineKontext,
   uid: number,
   nummer: string,
   pin: string,
   opt: { locale?: string; abruf?: Abruf } = {},
 ): Promise<Abfrage> {
-  const platz = await belegePlatz(uid);
+  const platz = await belegePlatz(k, uid);
   if (!platz.frei) {
     return { art: 'gesperrt', grund: platz.grund, wartenSek: platz.wartenSek };
   }
@@ -86,7 +90,7 @@ export async function frageGuthabenAb(
     return { art: 'guthaben', guthaben };
   } catch (e) {
     if (e instanceof BotSchutz) {
-      const wartenSek = await sperreWegenBotschutz();
+      const wartenSek = await sperreWegenBotschutz(k);
       console.warn(
         `[guthaben] Bot-Schutz — ${BOTSCHUTZ_PAUSE_MIN} Minuten Pause: ${e.message}`
           .replace(/\r?\n/g, ' ⏎ ')

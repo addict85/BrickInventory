@@ -8,28 +8,23 @@ import * as repo from './repository/konten';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { leereTokenCache } from './tokenCache';
 import { meldeHaushaltsaenderung } from '../haushalt';
-import { stelleAuftragEin } from '../auftraege';
 import { meldeFehler } from '../infra/fehler';
-import { kontoBereich } from './prozess';
+import type { KontoKontext } from './kontext';
 
 export type KontoEntfernt = 'entfernt' | 'nicht_gefunden' | typeof repo.LETZTER_VERWALTER;
 
 /** @param durch der Verwalter, der löscht; null, wenn das Konto sich selbst löscht */
-export async function kontoEntfernen(ziel: number, durch: number | null): Promise<KontoEntfernt> {
-  const r = await kontoBereich()
-    .db.transaction(async () => {
+export async function kontoEntfernen(k: KontoKontext, ziel: number, durch: number | null): Promise<KontoEntfernt> {
+  const r = await k
+    .transaktion(async t => {
       // Vor dem Löschen: Danach ist der Name für das Protokoll nicht mehr zu ermitteln.
-      if (durch !== null && durch !== ziel)
-        await kontoBereich().protokoll.protokolliere(durch, ziel, 'konto_geloescht');
-      const weg =
-        durch === null
-          ? await kontoBereich().konten.loescheEigenesKonto(ziel)
-          : await kontoBereich().konten.loescheKonto(ziel, durch);
+      if (durch !== null && durch !== ziel) await t.protokoll.protokolliere(durch, ziel, 'konto_geloescht');
+      const weg = durch === null ? await t.konten.loescheEigenesKonto(ziel) : await t.konten.loescheKonto(ziel, durch);
       if (weg === repo.LETZTER_VERWALTER) throw new Abbruch(weg);
       if (!weg) throw new Abbruch(durch === null ? repo.LETZTER_VERWALTER : 'nicht_gefunden');
       // user_sessions hat keinen Fremdschlüssel auf users.
-      await erhoeheSitzungsVersion(ziel);
-      await kontoBereich().zugaenge.loescheSitzungenDesKontos(ziel);
+      await erhoeheSitzungsVersion(t, ziel);
+      await t.zugaenge.loescheSitzungenDesKontos(ziel);
       return 'entfernt' as const;
     })
     .catch((e: unknown) => {
@@ -38,21 +33,21 @@ export async function kontoEntfernen(ziel: number, durch: number | null): Promis
     });
   if (r !== 'entfernt') return r;
   // Nach dem Festschreiben: Caches und Nachbarprozesse sollen das Konto erst vergessen, wenn es weg ist.
-  leereTokenCache();
-  meldeHaushaltsaenderung(kontoBereich().db);
-  await kontoDateienEntfernen(ziel);
+  leereTokenCache(k);
+  meldeHaushaltsaenderung(k.db);
+  await kontoDateienEntfernen(k, ziel);
   return r;
 }
 
 /** Ausgleich statt Fehlschlag: Das Konto ist gelöscht, nur seine Dateien liegen
  * noch da. Ein Auftrag versucht es wieder, bis Platte oder Rechte es zulassen. */
-export async function kontoDateienEntfernen(ziel: number): Promise<'entfernt' | 'eingereiht'> {
+export async function kontoDateienEntfernen(k: KontoKontext, ziel: number): Promise<'entfernt' | 'eingereiht'> {
   try {
     await loescheKontoDateien(ziel);
     return 'entfernt';
   } catch (e) {
     meldeFehler(`konto:dateien ${ziel}`, e);
-    await stelleAuftragEin(
+    await k.auftraege.stelleAuftragEin(
       'konto_dateien',
       { user_id: ziel },
       { schluessel: `konto_dateien:${ziel}`, maxVersuche: 10, nachSekunden: 60 },

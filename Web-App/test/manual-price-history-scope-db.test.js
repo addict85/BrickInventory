@@ -106,7 +106,7 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { con
       req.apiUser = { user_id: userId, is_admin: 0 };
       next();
     });
-    app.use('/api/v1', _req('routes/api_v1/index.js'));
+    app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
     return app;
   };
   const srv = appFuer(hauptId).listen(0);

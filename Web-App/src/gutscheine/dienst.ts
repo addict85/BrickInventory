@@ -5,8 +5,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { alsDoppelt, fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { ohneFehlendeDatei } from '../infra/fehler';
-import { getGlobalSetting, getSetting } from '../einstellungen';
-import { verwalterAktionMerken } from '../konto';
 import type { GutscheinZeile } from './repository/gutscheine';
 import {
   VOUCHER_DIR,
@@ -21,7 +19,7 @@ import type { GutscheinWerte } from './gutscheinPdf';
 import { verbindeGutscheine } from './gutscheinPdfSchreiben';
 import { stelleTicketAus } from './pdfTicket';
 import { HOECHSTENS_SEITEN, liesImHintergrund } from './pdfLesen';
-import { gutscheineBereich } from './prozess';
+import type { GutscheineKontext } from './kontext';
 
 export type { GutscheinZeile } from './repository/gutscheine';
 
@@ -61,23 +59,23 @@ function geprueft(roh: Roh, opt?: { nullBetragErlaubt?: boolean }): Geprueft {
   return w;
 }
 
-const repo = () => gutscheineBereich().gutscheine;
+const repo = (k: GutscheineKontext) => k.gutscheine;
 
-export function gutscheinListe(uid: number, ordnung?: 'neueste' | 'aelteste') {
-  return repo().gutscheineDesKontos(uid, ordnung);
+export function gutscheinListe(k: GutscheineKontext, uid: number, ordnung?: 'neueste' | 'aelteste') {
+  return repo(k).gutscheineDesKontos(uid, ordnung);
 }
 
-async function vorhanden(uid: number, id: number): Promise<GutscheinZeile> {
-  return (await repo().gutschein(uid, id)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
+async function vorhanden(k: GutscheineKontext, uid: number, id: number): Promise<GutscheinZeile> {
+  return (await repo(k).gutschein(uid, id)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
 }
 
 /** Keine Zeile heisst „war schon da" — als Erfolg sähe der Nutzer nichts passieren. */
-export async function gutscheinErfassen(uid: number, roh: Roh): Promise<GutscheinZeile> {
-  return (await repo().gutscheinAnlegen(uid, geprueft(roh))) ?? fachfehler('konflikt', 'gutschein_existiert');
+export async function gutscheinErfassen(k: GutscheineKontext, uid: number, roh: Roh): Promise<GutscheinZeile> {
+  return (await repo(k).gutscheinAnlegen(uid, geprueft(roh))) ?? fachfehler('konflikt', 'gutschein_existiert');
 }
 
 /** Der Stapelfall eines Sammel-PDFs: Was es schon gibt, wird ersetzt. */
-export async function stapelAnlegen(uid: number, gefunden: GutscheinWerte[]) {
+export async function stapelAnlegen(k: GutscheineKontext, uid: number, gefunden: GutscheinWerte[]) {
   let added = 0,
     updated = 0,
     errors = 0;
@@ -89,7 +87,7 @@ export async function stapelAnlegen(uid: number, gefunden: GutscheinWerte[]) {
       results.push({ number: String(g.nummer ?? ''), action: 'error', error: w.code });
       continue;
     }
-    const warNeu = await repo().gutscheinErsetzen(uid, w);
+    const warNeu = await repo(k).gutscheinErsetzen(uid, w);
     if (warNeu) added++;
     else updated++;
     results.push({ number: w.number, action: warNeu ? 'added' : 'updated' });
@@ -100,17 +98,22 @@ export async function stapelAnlegen(uid: number, gefunden: GutscheinWerte[]) {
 /** Zeile und Datei zusammen oder gar nicht: Die Datei entsteht in der Transaktion
  * vor dem COMMIT und fällt wieder, wenn danach etwas scheitert. Sonst bliebe eine
  * Zeile ohne PDF oder ein verschlüsseltes PDF ohne Zeile. */
-export async function gutscheinMitPdfAnlegen(uid: number, roh: Roh, pdf: Buffer): Promise<GutscheinZeile> {
+export async function gutscheinMitPdfAnlegen(
+  k: GutscheineKontext,
+  uid: number,
+  roh: Roh,
+  pdf: Buffer,
+): Promise<GutscheinZeile> {
   const w = geprueft(roh);
   const geschrieben: string[] = [];
   try {
-    return await gutscheineBereich().db.transaction(async () => {
-      const z = (await repo().gutscheinAnlegen(uid, w)) ?? fachfehler('konflikt', 'gutschein_existiert');
+    return await k.transaktion(async t => {
+      const z = (await repo(t).gutscheinAnlegen(uid, w)) ?? fachfehler('konflikt', 'gutschein_existiert');
       // Dateiname aus der ID, nicht aus dem Upload: Ein Name vom Klienten müsste gegen Pfadanteile geprüft werden.
       const relPfad = `${uid}/${z.id}.pdf`;
       geschrieben.push(path.join(VOUCHER_DIR, relPfad));
       await schreibeGutscheinPdf(geschrieben[0]!, pdf);
-      await repo().gutscheinPdfMerken(uid, z.id, relPfad);
+      await repo(t).gutscheinPdfMerken(uid, z.id, relPfad);
       return { ...z, pdf_path: relPfad };
     });
   } catch (e) {
@@ -130,12 +133,17 @@ const NICHTS_GELESEN: GutscheinWerte = { nummer: null, pin: null, betrag: null, 
 
 /** Ein Weg für beide Apps: Getippte Felder gewinnen gegen das Ausgelesene. Erst ab
  * zwei Seiten ein Stapel; bei einer bleibt der 422-Vertrag der Formulare. */
-export async function gutscheinAusPdf(uid: number, pdf: Buffer, getippt: GutscheinAenderung): Promise<AusPdf> {
+export async function gutscheinAusPdf(
+  k: GutscheineKontext,
+  uid: number,
+  pdf: Buffer,
+  getippt: GutscheinAenderung,
+): Promise<AusPdf> {
   const lesung = await liesImHintergrund(pdf);
   if (lesung.art === 'zu_viele_seiten')
     return { art: 'abgelehnt', code: 'pdf_zu_viele_seiten', vars: { seiten: lesung.seiten, max: HOECHSTENS_SEITEN } };
   if (lesung.art === 'unlesbar') return { art: 'abgelehnt', code: 'pdf_unlesbar' };
-  if (lesung.stapel.length >= 2) return { art: 'stapel', bericht: await stapelAnlegen(uid, lesung.stapel) };
+  if (lesung.stapel.length >= 2) return { art: 'stapel', bericht: await stapelAnlegen(k, uid, lesung.stapel) };
   // Der Medientyp ist eine Behauptung des Klienten: Geprüft wird die Signatur, denn
   // die Datei geht später als application/pdf hinaus. Eine Entpackbombe gäbe der
   // Export an pdf-lib, das ohne Grenze entpackt.
@@ -149,7 +157,7 @@ export async function gutscheinAusPdf(uid: number, pdf: Buffer, getippt: Gutsche
     currency: getippt.currency ?? gelesen.waehrung,
   };
   const w = pruefeWerte(roh);
-  if (w.ok) return { art: 'angelegt', zeile: await gutscheinMitPdfAnlegen(uid, w, pdf), gelesen };
+  if (w.ok) return { art: 'angelegt', zeile: await gutscheinMitPdfAnlegen(k, uid, w, pdf), gelesen };
   // Drei Absagen, weil der Nutzer bei jeder etwas anderes tun muss.
   const nichtsGetippt = !getippt.number && !getippt.pin && !getippt.amount;
   const nichtsGelesen = gelesen.nummer == null && gelesen.betrag == null;
@@ -168,10 +176,15 @@ export interface GutscheinAenderung {
 /** Lesen, mischen, schreiben unter der Zeilensperre: Zwei gleichzeitige Änderungen
  * an verschiedenen Feldern gehen sonst eine verloren. Was nicht mitkommt oder
  * maskiert zurückkommt, bleibt stehen: Das Formular kennt nur die Maske. */
-export function gutscheinBearbeiten(uid: number, id: number, e: GutscheinAenderung): Promise<GutscheinZeile> {
-  return gutscheineBereich()
-    .db.transaction(async () => {
-      const alt = (await repo().gutscheinGesperrt(uid, id)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
+export function gutscheinBearbeiten(
+  k: GutscheineKontext,
+  uid: number,
+  id: number,
+  e: GutscheinAenderung,
+): Promise<GutscheinZeile> {
+  return k
+    .transaktion(async t => {
+      const alt = (await repo(t).gutscheinGesperrt(uid, id)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
       const maske = maskiert(alt);
       const w = geprueft(
         {
@@ -182,50 +195,50 @@ export function gutscheinBearbeiten(uid: number, id: number, e: GutscheinAenderu
         },
         { nullBetragErlaubt: e.amount === undefined },
       );
-      return (await repo().gutscheinAendern(uid, id, w)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
+      return (await repo(t).gutscheinAendern(uid, id, w)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
     })
     .catch(alsDoppelt('gutschein_existiert'));
 }
 
 /** Erst die Zeile, dann die Datei: lieber eine verwaiste Datei als eine Zeile ins Leere. */
-export async function gutscheinEntfernen(uid: number, id: number): Promise<void> {
-  const pdfPfad = await repo().gutscheinLoeschen(uid, id);
+export async function gutscheinEntfernen(k: GutscheineKontext, uid: number, id: number): Promise<void> {
+  const pdfPfad = await repo(k).gutscheinLoeschen(uid, id);
   if (pdfPfad === undefined) fachfehler('nicht_gefunden', 'nicht_gefunden');
   const datei = pdfPfad ? gutscheinDatei(uid, pdfPfad) : null;
   if (datei) await fs.promises.unlink(datei).catch(ohneFehlendeDatei('gutschein:pdf löschen'));
 }
 
-export async function gutscheinKlartext(uid: number, id: number): Promise<GutscheinZeile> {
-  const z = await vorhanden(uid, id);
-  await verwalterAktionMerken(uid, uid, 'gutschein_klartext', maskiert(z).number);
+export async function gutscheinKlartext(k: GutscheineKontext, uid: number, id: number): Promise<GutscheinZeile> {
+  const z = await vorhanden(k, uid, id);
+  await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_klartext', maskiert(z).number);
   return z;
 }
 
 /** Die PDFs tragen Nummer und PIN: erst protokollieren, dann ein Ticket für genau einen Abruf. */
-export async function pdfFreigeben(uid: number, id: number): Promise<string> {
-  const z = await vorhanden(uid, id);
+export async function pdfFreigeben(k: GutscheineKontext, uid: number, id: number): Promise<string> {
+  const z = await vorhanden(k, uid, id);
   if (!z.pdf_path) fachfehler('nicht_gefunden', 'nicht_gefunden');
-  await verwalterAktionMerken(uid, uid, 'gutschein_pdf', maskiert(z).number);
+  await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_pdf', maskiert(z).number);
   return stelleTicketAus(uid, String(id));
 }
 
-export async function exportFreigeben(uid: number): Promise<string> {
-  const n = (await gutscheinListe(uid)).length;
+export async function exportFreigeben(k: GutscheineKontext, uid: number): Promise<string> {
+  const n = (await gutscheinListe(k, uid)).length;
   if (!n) fachfehler('nicht_gefunden', 'keine_gutscheine');
-  await verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);
+  await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);
   return stelleTicketAus(uid, 'export');
 }
 
-export async function gutscheinPdf(uid: number, id: number): Promise<Buffer> {
-  const z = await vorhanden(uid, id);
+export async function gutscheinPdf(k: GutscheineKontext, uid: number, id: number): Promise<Buffer> {
+  const z = await vorhanden(k, uid, id);
   const datei = z.pdf_path ? gutscheinDatei(uid, z.pdf_path) : null;
   const pdf = datei ? await liesGutscheinPdf(datei).catch(ohneFehlendeDatei('gutschein:pdf lesen', null)) : null;
   return pdf ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
 }
 
 /** Eine fehlende Datei bricht den Export nicht ab, sonst nähme sie alle anderen Gutscheine mit. */
-export async function gutscheineExportieren(uid: number) {
-  const zeilen = await gutscheinListe(uid, 'aelteste');
+export async function gutscheineExportieren(k: GutscheineKontext, uid: number) {
+  const zeilen = await gutscheinListe(k, uid, 'aelteste');
   if (!zeilen.length) fachfehler('nicht_gefunden', 'keine_gutscheine');
   const gutscheine = [];
   for (const z of zeilen)
@@ -247,19 +260,20 @@ export type GuthabenErgebnis =
 /** Die PIN und das Land prüft es VOR der Schranke: Ein Aufruf, der nicht stattfinden
  * kann, soll den einen Platz je 30 Sekunden nicht verbrauchen. Das Land gilt für
  * die ganze Installation, weil eine Karte nur im Shop ihres Ausgabelandes gilt. */
-export async function guthabenAbfragen(uid: number, id: number): Promise<GuthabenErgebnis> {
-  const alt = await vorhanden(uid, id);
+export async function guthabenAbfragen(k: GutscheineKontext, uid: number, id: number): Promise<GuthabenErgebnis> {
+  const alt = await vorhanden(k, uid, id);
   if (!alt.pin) fachfehler('ungueltig', 'guthaben_pin_fehlt');
   const land = String(
-    (await getGlobalSetting('gutschein_land', '')) || landFuerWaehrung(await getSetting(uid, 'currency', 'EUR')),
+    (await k.einstellungen.getGlobalSetting('gutschein_land', '')) ||
+      landFuerWaehrung(await k.einstellungen.getSetting(uid, 'currency', 'EUR')),
   );
   if (!landErlaubt(land)) fachfehler('ungueltig', 'guthaben_land_ungueltig');
-  const ergebnis = await frageGuthabenAb(uid, alt.number, alt.pin, { locale: land });
+  const ergebnis = await frageGuthabenAb(k, uid, alt.number, alt.pin, { locale: land });
   if (ergebnis.art === 'gesperrt') return ergebnis;
   const g = ergebnis.guthaben;
   // Die Währung der Gegenseite gewinnt; eine unbrauchbare Angabe zerstörte sonst die Summe der Liste.
   const waehrung = /^[A-Z]{3}$/.test(g.waehrung) ? g.waehrung : alt.currency;
   const zeile =
-    (await repo().guthabenMerken(uid, id, g.betrag, waehrung)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
+    (await repo(k).guthabenMerken(uid, id, g.betrag, waehrung)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
   return { art: 'guthaben', zeile, angezeigt: g.angezeigt, waehrungGeaendert: waehrung !== alt.currency };
 }

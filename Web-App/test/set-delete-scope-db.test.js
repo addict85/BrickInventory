@@ -54,7 +54,7 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht', { concurrency
       req.session = req.headers.authorization ? {} : { userId };
       next();
     });
-    app.use('/api/v1', _req('routes/api_v1/index.js'));
+    app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
     return app;
   };
   const srvHaupt = appFuer(hauptId).listen(0);

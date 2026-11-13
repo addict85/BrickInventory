@@ -5,7 +5,7 @@
  * Ersetzte Token einer Familie zählen nicht mit (Wiederverwendungserkennung). */
 import { drosselAdresse, zaehleAnfrage } from './loginLimiter';
 import { meldeFehler } from '../infra/fehler';
-import { kontoBereich } from './prozess';
+import type { KontoKontext } from './kontext';
 
 export const FEHLVERSUCH_FENSTER_MS = 60_000;
 export const FEHLVERSUCH_MAX = 60;
@@ -14,9 +14,13 @@ const BUCKET = 'token-fehlversuch';
 /** Adresse → Ende der Sperre, nur als Abkürzung: Die Zählung steht in der Datenbank. */
 const gesperrtBis = new Map<string, number>();
 
-export async function zaehleFehlversuch(ip: string | null | undefined, jetzt = Date.now()): Promise<void> {
+export async function zaehleFehlversuch(
+  kx: KontoKontext,
+  ip: string | null | undefined,
+  jetzt = Date.now(),
+): Promise<void> {
   if (!ip) return;
-  const st = await zaehleAnfrage(BUCKET, ip, FEHLVERSUCH_FENSTER_MS);
+  const st = await zaehleAnfrage(kx, BUCKET, ip, FEHLVERSUCH_FENSTER_MS);
   if (st.count <= FEHLVERSUCH_MAX) return;
   gesperrtBis.set(drosselAdresse(ip), jetzt + Math.min(st.waitMin * 60_000, FEHLVERSUCH_FENSTER_MS));
   if (gesperrtBis.size > 5000) for (const [k, bis] of gesperrtBis) if (bis <= jetzt) gesperrtBis.delete(k);
@@ -33,9 +37,9 @@ export function vergissSperrenImProzess(): void {
   gesperrtBis.clear();
 }
 
-export async function vergissFehlversuche(): Promise<void> {
+export async function vergissFehlversuche(k: KontoKontext): Promise<void> {
   gesperrtBis.clear();
-  await kontoBereich()
-    .anmeldezaehler.loescheZaehlerMitPraefix(`${BUCKET}|`)
+  await k.anmeldezaehler
+    .loescheZaehlerMitPraefix(`${BUCKET}|`)
     .catch((e: unknown) => meldeFehler('token-fehlversuch:vergessen', e));
 }

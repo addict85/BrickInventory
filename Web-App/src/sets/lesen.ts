@@ -1,4 +1,4 @@
-import { resolveOne, fuerSet, resolveImageLocal, anleitungenZuSet, anleitungenZusammenlegen } from '../katalog';
+import { fuerSet, resolveImageLocal, anleitungenZusammenlegen } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
 import * as repo from './repository/sets';
 import { asIds, besitzerAnhaengen, blickfeldAus, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
@@ -109,7 +109,7 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
     // über das Blickfeld.
     repo.setDetailZeile(sk.db, uids, setNumber, uids[0]),
-    anleitungenZuSet(setNumber, sk.katalog),
+    sk.katalog.anleitungenZuSet(setNumber),
     repo.eigeneAnleitungenDesSets(sk.db, uids, setNumber),
   ]);
   if (!set) return null;
@@ -118,7 +118,7 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
   const agg = await getSetConditionAggregate(sk, uids, setNumber);
   // Die Kaufadressen vom Server: Eine Adresse an vier Stellen wären vier Wahrheiten.
   const [bricklink, preisvergleich] = await Promise.all([
-    resolveOne(setNumber).catch((e: unknown) => {
+    sk.katalog.resolveOne(setNumber).catch((e: unknown) => {
       meldeFehler('setdetail:bricklink', e);
       return null;
     }),

@@ -1,6 +1,4 @@
-import { nacharbeit } from '../auftraege';
 import { getSetValue } from './setValue';
-import { nutzerStandardZustand as userDefaultCondition, getGlobalSetting, getSetting } from '../einstellungen';
 import {
   DEFAULT_PRICE_CONDITION,
   fetchPartPrice,
@@ -11,18 +9,23 @@ import {
   resolveBlColorId,
 } from './rechnung/preise';
 import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
-import { getMinifigParts, marktpreisAus } from '../katalog';
+import { marktpreisAus } from '../katalog';
 import { KEINE_FARBE, zustand } from '../infra/validate';
-import { finanzenBereich } from './prozess';
+import type { FinanzenKontext } from './kontext';
 
 // Ein Blatt ohne Rückbezug, damit die Aufrufer echt importieren statt spät mit require().
-export async function getCurrentMarketPrice(setNumber: string, userId: number, condition: string | null = null) {
-  const currency = String(await getSetting(userId, 'currency', 'EUR'));
+export async function getCurrentMarketPrice(
+  k: FinanzenKontext,
+  setNumber: string,
+  userId: number,
+  condition: string | null = null,
+) {
+  const currency = String(await k.einstellungen.getSetting(userId, 'currency', 'EUR'));
   // Parameter → Nutzer → global → 'N'.
-  const effectiveCond = condition || (await userDefaultCondition(userId));
+  const effectiveCond = condition || (await k.einstellungen.nutzerStandardZustand(userId));
   // condition als Hinweis: Beim Anlegen gibt es noch keine Erfassung, aus der
   // der Preislauf den Zustand ablesen könnte.
-  await nacharbeit()
+  await k.nacharbeit
     .preisFuerSetHolen(setNumber, userId, condition)
     .catch(logAndContinue('marktpreis:preisFuerSetHolen'));
 
@@ -30,12 +33,12 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
   // noch keine Erfassung, aus der getSetValue() ihn ableiten könnte.
   if (!condition) {
     // Ohne ausdrücklichen Wunsch: Bewertung je Erfassung nach deren Zustand.
-    const v = await getSetValue(userId, setNumber, currency);
+    const v = await getSetValue(k, userId, setNumber, currency);
     if (v.unit_price !== null) return v.unit_price;
   }
 
   // Angefragter Zustand zuerst; der andere nur, wenn dort kein Preis steht.
-  const cached = await finanzenBereich().marktpreise.setPreisAusCache(setNumber, effectiveCond, currency);
+  const cached = await k.marktpreise.setPreisAusCache(setNumber, effectiveCond, currency);
   return cached ? Number(cached.marktpreis) : null;
 }
 
@@ -43,18 +46,19 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
 // nicht je Art auseinanderläuft.
 
 /** 'U' sobald eine Erfassung gebraucht ist; ohne Erfassung der Standard. */
-export async function resolvePartCondition(userId: number, partNumber: string, colorId: number) {
+export async function resolvePartCondition(k: FinanzenKontext, userId: number, partNumber: string, colorId: number) {
   try {
-    const row = await finanzenBereich().marktpreise.teilErfassungsZustand(userId, partNumber, colorId);
+    const row = await k.marktpreise.teilErfassungsZustand(userId, partNumber, colorId);
     if (row && parseInt(row.cnt, 10) > 0) return Number(row.any_used) > 0 ? 'U' : 'N';
   } catch (e) {
     meldeFehler('teile:zustand-ermitteln', e);
   }
-  return userDefaultCondition(userId);
+  return k.einstellungen.nutzerStandardZustand(userId);
 }
 
 /** Nur aus dem Cache, ohne Abruf: Die Liste soll nicht auf BrickLink warten. */
 export async function marktpreiseAusCacheFuerFiguren(
+  kx: FinanzenKontext,
   figuren: Array<{ fig_number?: string | null; bl_fig_number?: string | null; condition?: string | null }>,
   viewerId: number,
 ): Promise<Map<string, number>> {
@@ -62,8 +66,8 @@ export async function marktpreiseAusCacheFuerFiguren(
   if (!figuren.length) return treffer;
 
   const [currency, ttlRoh] = await Promise.all([
-    getSetting(viewerId, 'currency', 'EUR'),
-    getGlobalSetting('price_cache_ttl', '24'),
+    kx.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
+    kx.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(String(ttlRoh), 10));
 
@@ -73,7 +77,7 @@ export async function marktpreiseAusCacheFuerFiguren(
   if (!schluessel.length) return treffer;
 
   // Ohne Fang: Die Liste fasst den Fehler als `degradiert` (Abstriche) und zeigt sie ohne Preis.
-  const zeilen = await finanzenBereich().marktpreise.figurenpreiseAusCache(schluessel, String(currency), ttl);
+  const zeilen = await kx.marktpreise.figurenpreiseAusCache(schluessel, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -103,6 +107,7 @@ export async function marktpreiseAusCacheFuerFiguren(
 
 // Der Teile-Cache ist nach BrickLink-Nummer und -Farbe verschlüsselt; beides wird vorher übersetzt.
 export async function marktpreiseAusCacheFuerTeile(
+  k: FinanzenKontext,
   teile: Array<{
     part_number?: string | null;
     bl_part_number?: string | null;
@@ -115,12 +120,15 @@ export async function marktpreiseAusCacheFuerTeile(
   if (!teile.length) return treffer;
 
   const [currency, ttlRoh] = await Promise.all([
-    getSetting(viewerId, 'currency', 'EUR'),
-    getGlobalSetting('price_cache_ttl', '24'),
+    k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
+    k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(String(ttlRoh), 10));
 
-  await ladeBlNummernVor(teile.map(t => String(t.bl_part_number || t.part_number || '')));
+  await ladeBlNummernVor(
+    k,
+    teile.map(t => String(t.bl_part_number || t.part_number || '')),
+  );
 
   // Die Schlüssel, unter denen fetchPartPrice geschrieben hätte.
   const auflösung = new Map<string, { nummer: string; farbe: number }>();
@@ -130,14 +138,14 @@ export async function marktpreiseAusCacheFuerTeile(
     const schluessel = `${t.part_number}|${t.color_id ?? KEINE_FARBE}`;
     if (auflösung.has(schluessel)) continue;
     auflösung.set(schluessel, {
-      nummer: await resolveBlPartNumber(roh),
-      farbe: Number(await resolveBlColorId(Number(t.color_id ?? KEINE_FARBE))) || 0,
+      nummer: await resolveBlPartNumber(k, roh),
+      farbe: Number(await resolveBlColorId(k, Number(t.color_id ?? KEINE_FARBE))) || 0,
     });
   }
 
   const nummern = [...new Set([...auflösung.values()].map(a => a.nummer))];
   if (!nummern.length) return treffer;
-  const zeilen = await finanzenBereich().marktpreise.teilepreiseAusCache(nummern, String(currency), ttl);
+  const zeilen = await k.marktpreise.teilepreiseAusCache(nummern, String(currency), ttl);
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
@@ -163,16 +171,17 @@ export async function marktpreiseAusCacheFuerTeile(
 
 /** Mit Herkunft für die eine Stelle, die sie zeigt; alle anderen nehmen die Zahl. */
 export async function marktpreisMitHerkunft(
+  k: FinanzenKontext,
   partNumber: string,
   colorId: number,
   userId: number,
   condition: string | null = null,
 ) {
-  const currency = await getSetting(userId, 'currency', 'EUR');
-  const ttlHours = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
-  const effCond = condition || (await resolvePartCondition(userId, partNumber, colorId));
+  const currency = await k.einstellungen.getSetting(userId, 'currency', 'EUR');
+  const ttlHours = (await k.einstellungen.getGlobalSetting('price_cache_ttl', '24')) || '24';
+  const effCond = condition || (await resolvePartCondition(k, userId, partNumber, colorId));
   const priceData = await preisOderKeiner(
-    fetchPartPrice(partNumber, colorId, effCond, currency, ttlHours, null, userId),
+    fetchPartPrice(k, partNumber, colorId, effCond, currency, ttlHours, null, userId),
   );
   const price = marktpreisAus(priceData);
   if (price === null) return { preis: null, ausZustand: null };
@@ -185,35 +194,38 @@ export async function marktpreisMitHerkunft(
 }
 
 export async function getCurrentPartMarketPrice(
+  k: FinanzenKontext,
   partNumber: string,
   colorId: number,
   userId: number,
   condition: string | null = null,
 ) {
-  return (await marktpreisMitHerkunft(partNumber, colorId, userId, condition)).preis;
+  return (await marktpreisMitHerkunft(k, partNumber, colorId, userId, condition)).preis;
 }
 
 export async function estimateFigPriceFromParts(
+  k: FinanzenKontext,
   figNumber: string,
   userId: number,
   condition = DEFAULT_PRICE_CONDITION,
 ) {
-  return (await schaetzeFigurenpreis(figNumber, userId, condition))?.preis ?? null;
+  return (await schaetzeFigurenpreis(k, figNumber, userId, condition))?.preis ?? null;
 }
 
 /** Die Abdeckung (Anteil der Teile mit Preis) sagt, wie belastbar die Zahl ist. */
 export async function schaetzeFigurenpreis(
+  k: FinanzenKontext,
   figNumber: string,
   userId: number,
   condition = DEFAULT_PRICE_CONDITION,
 ): Promise<{ preis: number; abdeckung: number | null } | null> {
   try {
-    const currency = await getSetting(userId, 'currency', 'EUR');
+    const currency = await k.einstellungen.getSetting(userId, 'currency', 'EUR');
     const cond0 = zustand(condition, DEFAULT_PRICE_CONDITION);
 
     // Erst im Cache nachsehen: Sonst kostete jede Figur je Teil einen Abruf.
-    const ttl = Math.max(1, parseInt(await getGlobalSetting('price_cache_ttl', '24'), 10));
-    const cached = await finanzenBereich().marktpreise.geschaetzterFigurenpreis(figNumber, cond0, currency, ttl);
+    const ttl = Math.max(1, parseInt(await k.einstellungen.getGlobalSetting('price_cache_ttl', '24'), 10));
+    const cached = await k.marktpreise.geschaetzterFigurenpreis(figNumber, cond0, currency, ttl);
     const zwischengespeichert = Number(cached?.marktpreis) || 0;
     if (zwischengespeichert > 0)
       return {
@@ -221,7 +233,7 @@ export async function schaetzeFigurenpreis(
         abdeckung: cached?.abdeckung != null ? parseFloat(String(cached.abdeckung)) : null,
       };
 
-    const parts = await getMinifigParts(figNumber);
+    const parts = await k.katalog.getMinifigParts(figNumber);
     if (!parts.length) {
       console.log(`[minifig-price-estimate] ${figNumber}: keine Teile-Zusammensetzung von Rebrickable erhalten`);
       return null;
@@ -229,6 +241,7 @@ export async function schaetzeFigurenpreis(
 
     // In EINER Abfrage statt je Teil.
     await ladeBlNummernVor(
+      k,
       parts.filter((p: { bl_part_num?: string | null }) => !p.bl_part_num).map((p: { part_num: string }) => p.part_num),
     );
 
@@ -242,7 +255,7 @@ export async function schaetzeFigurenpreis(
       const blPartNum = p.bl_part_num || p.part_num;
       try {
         const priceData = await preisOderKeiner(
-          fetchPartPrice(blPartNum, p.color_id ?? KEINE_FARBE, cond, currency, 24),
+          fetchPartPrice(k, blPartNum, p.color_id ?? KEINE_FARBE, cond, currency, 24),
         );
         const unitPrice = marktpreisAus(priceData);
         if (unitPrice !== null) {
@@ -261,12 +274,12 @@ export async function schaetzeFigurenpreis(
     // In Cache und Verlauf, markiert als geschätzt: fetchMinifigPrice liest nur
     // unmarkierte Zeilen, die Anzeige kennzeichnet sie.
     const abdeckung = Math.round((priced / parts.length) * 1000) / 1000;
-    await finanzenBereich()
-      .marktpreise.merkeGeschaetztenFigurenpreis(figNumber, cond, currency, total, abdeckung)
+    await k.marktpreise
+      .merkeGeschaetztenFigurenpreis(figNumber, cond, currency, total, abdeckung)
       .catch(e => console.warn(`[minifig-price-estimate] Cache ${figNumber}: ${e.message}`));
     // Nur mit echtem Preis: Ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
-    await finanzenBereich()
-      .marktpreise.merkeGeschaetztenFigurenverlauf(figNumber, cond, currency, total, abdeckung)
+    await k.marktpreise
+      .merkeGeschaetztenFigurenverlauf(figNumber, cond, currency, total, abdeckung)
       .catch(logAndContinue('marktpreis:figurverlauf schreiben'));
 
     return { preis: total, abdeckung };
@@ -279,28 +292,29 @@ export async function schaetzeFigurenpreis(
 }
 
 export async function figMarktpreisMitHerkunft(
+  k: FinanzenKontext,
   figNumber: string,
   userId: number,
   blFigNumber?: string | null,
   condition: string | null = null,
 ) {
-  const currency = await getSetting(userId, 'currency', 'EUR');
+  const currency = await k.einstellungen.getSetting(userId, 'currency', 'EUR');
   // Eine „Gebraucht"-Erfassung genügt für 'U'; ohne Erfassung der Standard.
   let effCond = condition;
   if (!effCond) {
     try {
-      const row = await finanzenBereich().marktpreise.figurErfassungsZustand(userId, figNumber);
+      const row = await k.marktpreise.figurErfassungsZustand(userId, figNumber);
       if (row && parseInt(row.cnt, 10) > 0) effCond = Number(row.any_used) > 0 ? 'U' : 'N';
     } catch (e) {
       meldeFehler('minifiguren:zustand-ermitteln', e);
     }
-    if (!effCond) effCond = await userDefaultCondition(userId);
+    if (!effCond) effCond = await k.einstellungen.nutzerStandardZustand(userId);
   }
   // BrickLink zuerst, auch ohne eigene bl_fig_number: Meist stimmt die eigene
   // Nummer mit der BrickLink-Nummer überein.
   for (const num of [blFigNumber, figNumber]) {
     if (!num) continue;
-    const priceData = await preisOderKeiner(fetchMinifigPrice(num, effCond, currency, 24));
+    const priceData = await preisOderKeiner(fetchMinifigPrice(k, num, effCond, currency, 24));
     // Der Rückfall wird übernommen, aber benannt — wie bei den Teilen.
     const price = marktpreisAus(priceData);
     if (price !== null)
@@ -312,7 +326,7 @@ export async function figMarktpreisMitHerkunft(
     if (num === blFigNumber && blFigNumber === figNumber) break; // nicht doppelt fragen
   }
   // Ohne Herkunftsangabe: Die Schätzung stammt nicht aus dem anderen Zustand.
-  const schaetzung = await schaetzeFigurenpreis(figNumber, userId, effCond);
+  const schaetzung = await schaetzeFigurenpreis(k, figNumber, userId, effCond);
   return {
     preis: schaetzung?.preis ?? null,
     ausZustand: null,
@@ -322,10 +336,11 @@ export async function figMarktpreisMitHerkunft(
 }
 
 export async function getCurrentFigMarketPrice(
+  k: FinanzenKontext,
   figNumber: string,
   userId: number,
   blFigNumber?: string | null,
   condition: string | null = null,
 ) {
-  return (await figMarktpreisMitHerkunft(figNumber, userId, blFigNumber, condition)).preis;
+  return (await figMarktpreisMitHerkunft(k, figNumber, userId, blFigNumber, condition)).preis;
 }

@@ -44,9 +44,6 @@ const _req = quellen.buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const { erzeugeSets } = _req('src/sets/bereich.js');
 const { erzeugeDb } = _req('db/database.js');
-const { erzeugeKatalog } = _req('src/katalog/bereich.js');
-const { erzeugeFinanzen } = _req('src/finanzen/bereich.js');
-const { erzeugeAuftraege } = _req('src/auftraege/bereich.js');
 const H = _req('src/haushalt/haushalt.js');
 const N = _req('src/auftraege/nacharbeit.js');
 
@@ -111,13 +108,12 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     `INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare) VALUES (77, '3001', 0, 4, false)`,
   );
 
-  N.verdrahteNacharbeit(N.OHNE_NACHARBEIT);
-  const dienste = {
-    katalog: erzeugeKatalog({ db: zweite }),
-    finanzen: erzeugeFinanzen({ db: zweite }),
-    auftraege: erzeugeAuftraege({ db: zweite }),
-  };
-  const sets = erzeugeSets({ db: zweite, nacharbeit: N.OHNE_NACHARBEIT, ...dienste });
+  // Wie der Server (startup/verdrahtung.ts), nur über den zweiten Zugang.
+  const { baueDienste } = _req('startup/verdrahtung.js');
+  const alle = baueDienste(zweite, N.OHNE_NACHARBEIT);
+  const { finanzen, auftraege, bestand, einstellungen, konto } = alle;
+  const dienste = { finanzen, auftraege, bestand, einstellungen, konto };
+  const sets = alle.sets;
   const prozess = zaehle(db.standardDb());
   t.after(() => prozess.zurueck());
 
@@ -195,7 +191,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
           db: zweite,
           nacharbeit: N.OHNE_NACHARBEIT,
           ...dienste,
-          katalog: erzeugeKatalog({ db: db.standardDb() }),
+          katalog: baueDienste(db.standardDb(), N.OHNE_NACHARBEIT).katalog,
         }),
       /katalog/,
     );

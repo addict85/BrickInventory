@@ -2,24 +2,18 @@ import { fuelleAusBrickset } from './bildlage';
 import { downloadSetInstructions, anzahlAnleitungen } from './instructions';
 import { getLimitForApi, getRateLimitStatus } from './apiKontingent';
 import { logAndContinue, meldeFehler } from '../infra/fehler';
-import {
-  auftraegeBereich,
-  bricksetFaelligAb,
-  type Nutzlast,
-  pruefeAbbruch,
-  type AuftragsLauf,
-  AuftragVerschieben,
-} from '../auftraege';
+import { type Nutzlast, pruefeAbbruch, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
+import type { KatalogKontext } from './kontext';
 
 /** Ist das Tageskontingent aufgebraucht, wartet die ganze Art bis zur
  * eingestellten Uhrzeit; der Versuch zählt dann nicht. */
-async function bricksetNachlauf(n: Nutzlast<'brickset'>, lauf?: AuftragsLauf): Promise<void> {
+async function bricksetNachlauf(k: KatalogKontext, n: Nutzlast<'brickset'>, lauf?: AuftragsLauf): Promise<void> {
   const sn = n.set_number;
   try {
-    const [limit, status] = await Promise.all([getLimitForApi('brickset'), getRateLimitStatus('brickset')]);
+    const [limit, status] = await Promise.all([getLimitForApi(k, 'brickset'), getRateLimitStatus(k, 'brickset')]);
     if (Math.max(0, limit - (status.count || 0)) <= 0) {
-      const bis = await bricksetFaelligAb(false);
-      await auftraegeBereich().auftraege.pausiereArt('brickset', bis, 'Brickset-Tageskontingent erschöpft');
+      const bis = await k.auftraege.bricksetFaelligAb(false);
+      await k.auftraege.auftraege.pausiereArt('brickset', bis, 'Brickset-Tageskontingent erschöpft');
       throw new AuftragVerschieben(bis, 'Brickset-Tageskontingent erschöpft');
     }
   } catch (e) {
@@ -29,16 +23,12 @@ async function bricksetNachlauf(n: Nutzlast<'brickset'>, lauf?: AuftragsLauf): P
 
   pruefeAbbruch(lauf);
   // Ist das Kontingent mittendrin weg, merkt getSetInfo das Set selbst erneut vor.
-  if (await fuelleAusBrickset(sn)) console.log(`[brickset] Retry OK: ${sn}`);
+  if (await fuelleAusBrickset(k, sn)) console.log(`[brickset] Retry OK: ${sn}`);
   pruefeAbbruch(lauf);
-  if ((await anzahlAnleitungen(sn)) === 0) {
-    await downloadSetInstructions(sn).catch(logAndContinue('brickset-retry:downloadSetInstructions'));
+  if ((await anzahlAnleitungen(k, sn)) === 0) {
+    await downloadSetInstructions(k, sn).catch(logAndContinue('brickset-retry:downloadSetInstructions'));
   }
-  await auftraegeBereich().auftraege.pausiereArt(
-    'brickset',
-    new Date(Date.now() + 1000),
-    'Abstand zwischen zwei Abrufen',
-  );
+  await k.auftraege.auftraege.pausiereArt('brickset', new Date(Date.now() + 1000), 'Abstand zwischen zwei Abrufen');
 }
 
 export { bricksetNachlauf };

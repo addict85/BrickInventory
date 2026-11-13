@@ -1,26 +1,53 @@
 /** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
  * damit die Aufteilung der Dateien darunter frei bleibt. */
+import { einstellungenBereich } from './prozess';
+import { dienstePerAufruf } from '../infra/bereich';
 export {
   DESIGNS,
   SECRET_KEYS,
   beiGlobalerAenderung,
-  deleteUserSetting,
-  designFuer,
-  getGlobalSetting,
-  getSetting,
-  globaleWerteOhneGeheimnisse,
   globalerWertGueltig,
   isMaskedValue,
+  nutzerWertGueltig,
+} from './settings';
+export { meldeGlobaleAenderung, einstellungMitZugang } from './settings';
+export { erzeugeEinstellungen } from './bereich';
+export type { EinstellungenDienste, EinstellungenKontext } from './bereich';
+export { einstellungenBereich } from './prozess';
+
+/** Für Wege ohne eigenen Kontext (HTTP-Seiten, Tests): die Dienste des Prozesses. */
+export const {
+  deleteGlobalSetting,
+  deleteUserSetting,
+  designFuer,
+  einstellungenAlsEinheit,
+  getGlobalSetting,
+  getSetting,
+  globalDefaultCondition,
+  globaleWerteOhneGeheimnisse,
   nutzerEinstellungen,
   nutzerStandardZustand,
-  nutzerWertGueltig,
+  readSettings,
+  registrierungOffen,
   schreibeNutzerEinstellung,
   setGlobalSetting,
   verschluesseleGlobaleAltwerte,
   zustandFuerPreis,
-} from './settings';
-export { deleteGlobalSetting, globalDefaultCondition, readSettings, registrierungOffen } from './settings';
-export { meldeGlobaleAenderung, einstellungenAlsEinheit, einstellungMitZugang } from './settings';
-export { erzeugeEinstellungen } from './bereich';
-export type { EinstellungenDienste, EinstellungenKontext } from './bereich';
-export { einstellungenBereich, verdrahteEinstellungen } from './prozess';
+} = dienstePerAufruf(einstellungenBereich, [
+  'deleteGlobalSetting',
+  'deleteUserSetting',
+  'designFuer',
+  'einstellungenAlsEinheit',
+  'getGlobalSetting',
+  'getSetting',
+  'globalDefaultCondition',
+  'globaleWerteOhneGeheimnisse',
+  'nutzerEinstellungen',
+  'nutzerStandardZustand',
+  'readSettings',
+  'registrierungOffen',
+  'schreibeNutzerEinstellung',
+  'setGlobalSetting',
+  'verschluesseleGlobaleAltwerte',
+  'zustandFuerPreis',
+]);

@@ -139,7 +139,7 @@ test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, asyn
   const app = express();
   app.set('trust proxy', proxyVertrauen(undefined)); // Anfragen kommen von 127.0.0.1
   app.use(express.json());
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const anmelden = async (password, ip) =>
@@ -186,7 +186,7 @@ test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, asyn
   const app = express();
   app.set('trust proxy', proxyVertrauen(undefined));
   app.use(express.json());
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const anmelden = async (password, ip, name = NAME) =>

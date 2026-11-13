@@ -1,27 +1,19 @@
 /** Hier wird nur aus dem Request gelesen und in die Antwort geschrieben; die
  * Regeln stehen in src/konto/anmeldepruefung.ts und loginLimiter.ts. */
 import type { Request, Response, NextFunction } from 'express';
-import { pruefeToken, rotationFaellig, type TokenPruefung } from '../geraeteToken';
-import { pruefeAnmeldedaten, type AnmeldeErgebnis } from '../anmeldepruefung';
-import { begrenzeSitzungen } from '../zugangsende';
-import { zaehleAnfrage } from '../loginLimiter';
-import {
-  pruefeBestaetigung,
-  pruefeCodeBestaetigung,
-  type BestaetigungsAbsage,
-  type Faktor,
-} from '../passwortBestaetigung';
+import { rotationFaellig, type TokenPruefung } from '../geraeteToken';
+import type { AnmeldeErgebnis } from '../anmeldepruefung';
+import type { BestaetigungsAbsage, Faktor } from '../passwortBestaetigung';
 import { createHash } from 'node:crypto';
 import { konfig } from '../../infra/konfig';
 import { routeZu } from '../../vertrag';
 import { fehlerText, antwortSprache } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/fehler';
-import { sitzungsVersionAusDb } from '../sitzungsVersion';
-import { istAktiv } from '../zweiterFaktor';
 import { nutzerId, angemeldeteNutzerId } from '../../http/nutzerId';
 import { sendeFehler } from '../../http/httpAntwort';
 import { STATUS_DER_ART } from '../../http/fehlerArt';
 import { versuche } from '../../infra/ergebnis';
+import { kontoBereich } from '../prozess';
 
 /** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
  * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
@@ -29,7 +21,7 @@ import { versuche } from '../../infra/ergebnis';
 export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
   const uid = nutzerId(req);
   const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
-  return uid !== null && verwalter && !(await istAktiv(uid));
+  return uid !== null && verwalter && !(await kontoBereich().istAktiv(uid));
 }
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
@@ -45,7 +37,7 @@ export function anmelden(
   code?: string | number | null | undefined,
   passkeyAntwort?: unknown,
 ): Promise<AnmeldeErgebnis> {
-  return pruefeAnmeldedaten({ ip: adresse(req) }, username, password, code, passkeyAntwort);
+  return kontoBereich().pruefeAnmeldedaten({ ip: adresse(req) }, username, password, code, passkeyAntwort);
 }
 
 /** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
@@ -62,8 +54,9 @@ export async function establishSession(
 ): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
   const sitzungsVersion =
-    (await sitzungsVersionAusDb(data.userId).catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0))) ??
-    0;
+    (await kontoBereich()
+      .sitzungsVersionAusDb(data.userId)
+      .catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0))) ?? 0;
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {
       // Nur in Tests ohne express-session: Im Betrieb steht die Middleware davor.
@@ -80,9 +73,10 @@ export async function establishSession(
       req.session.save((e2?: Error) =>
         e2
           ? reject(e2)
-          : versuche('anmeldung:sitzungen-begrenzen', begrenzeSitzungen(data.userId, req.sessionID)).then(() =>
-              resolve(undefined),
-            ),
+          : versuche(
+              'anmeldung:sitzungen-begrenzen',
+              kontoBereich().begrenzeSitzungen(data.userId, req.sessionID),
+            ).then(() => resolve(undefined)),
       );
     });
   });
@@ -109,9 +103,9 @@ export async function resolveUserId(req: Request): Promise<number | null> {
   const auth = req.headers.authorization || '';
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
-  const pruefung = await pruefeToken(token, { ip: req.ip }).catch(
-    meldeUndLiefere<TokenPruefung>('auth:validateToken', { nutzer: null }),
-  );
+  const pruefung = await kontoBereich()
+    .pruefeToken(token, { ip: req.ip })
+    .catch(meldeUndLiefere<TokenPruefung>('auth:validateToken', { nutzer: null }));
   const user = pruefung.nutzer;
   if (pruefung.grund) req.tokenAbsage = pruefung.grund;
   // Der Hinweis reist mit jeder Antwort; die App tauscht dann von selbst.
@@ -175,7 +169,7 @@ export function istVerwalter(req: Request): boolean {
 
 export function ipThrottle(bucket: string, max: number, windowMs: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const st = await zaehleAnfrage(bucket, adresse(req), windowMs);
+    const st = await kontoBereich().zaehleAnfrage(bucket, adresse(req), windowMs);
     if (st.count > max) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: st.waitMin });
     next();
   };
@@ -222,7 +216,7 @@ export async function bestaetigeMitFaktor(
   // Der geprüfte Rumpf (eingabePruefen): Felder der Bestätigung stehen im Vertrag (bestaetigt()).
   const eingabe = (req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {};
   const faktor = { code: eingabe[codeFeld], passkey: eingabe.passkey } as Faktor;
-  const absage = await pruefeBestaetigung(uid, zugangVon(req), passwort, faktor);
+  const absage = await kontoBereich().pruefeBestaetigung(uid, zugangVon(req), passwort, faktor);
   if (absage) absagen(req, res, absage);
   return !absage;
 }
@@ -233,7 +227,7 @@ export async function bestaetigeCode(
   uid: number,
   code: string | number | null | undefined,
 ): Promise<boolean> {
-  const absage = await pruefeCodeBestaetigung(uid, zugangVon(req), code);
+  const absage = await kontoBereich().pruefeCodeBestaetigung(uid, zugangVon(req), code);
   if (absage) absagen(req, res, absage);
   return !absage;
 }

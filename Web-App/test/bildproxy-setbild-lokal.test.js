@@ -22,17 +22,15 @@ const _req = require('./helpers/sources').buildAndRequire();
 test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
   const express = require('express');
   const { bildDurchreichen } = _req('src/katalog/http/bildProxy.js');
-  const { verdrahteNacharbeit, nacharbeit } = _req('src/auftraege/nacharbeit.js');
+  // Ein Objekt für alle Bereiche (test/helpers/sources.js): die Methode darin ersetzen.
+  const nacharbeit = _req('src/infra/bereich.js').prozessDienste().katalog.nacharbeit;
   const { proxyAdresse, proxyCacheSchluessel } = _req('src/katalog/bilder/images.js');
   const { DATA_DIR, SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
-  const vorher = nacharbeit();
+  const vorher = nacharbeit.bildVormerken;
   /** @type {[string, string][]} */
   const notizen = [];
-  verdrahteNacharbeit({
-    ...vorher,
-    bildVormerken: (/** @type {string} */ url, /** @type {string} */ sn) => notizen.push([url, sn]),
-  });
+  nacharbeit.bildVormerken = (/** @type {string} */ url, /** @type {string} */ sn) => notizen.push([url, sn]);
 
   const cacheDir = path.join(DATA_DIR, 'img_proxy_cache');
   fs.mkdirSync(cacheDir, { recursive: true });
@@ -52,7 +50,7 @@ test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
   const server = app.listen(0);
   t.after(() => {
     server.close();
-    verdrahteNacharbeit(vorher);
+    nacharbeit.bildVormerken = vorher;
     for (const f of angelegt) fs.rmSync(f, { force: true });
   });
   const hole = async (/** @type {string} */ anfrage) => {

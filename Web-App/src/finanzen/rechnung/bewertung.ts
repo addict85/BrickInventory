@@ -4,8 +4,7 @@
 
 import { logAndContinue } from '../../infra/fehler';
 import type * as repo from '../repository/bewertung';
-import { haushaltBereich, asIds, type Sicht } from '../../haushalt';
-import { getGlobalSetting, getSetting } from '../../einstellungen';
+import { asIds, type Sicht } from '../../haushalt';
 import { resolveImageLocal, proxyImageUrl, hatPreis, marktpreisAus } from '../../katalog';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../infra/setNummer';
@@ -25,19 +24,19 @@ import { zaehle } from './abfragen';
 import type { ladeSetErfassungen } from '../repository/erfassungen';
 import { KEINE_FARBE, zustand } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
-import { merkePreiseVor, PREISPOSTEN_HOECHSTENS, type Nutzlast } from '../../auftraege';
+import { PREISPOSTEN_HOECHSTENS, type Nutzlast } from '../../auftraege';
 import { fehlerText } from '../../infra/fehlerTexte';
-import { finanzenBereich } from '../prozess';
+import type { FinanzenKontext } from '../kontext';
 
 type Zustand = 'N' | 'U';
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
 type FigurPreis = PreisDaten & { estimated_from_parts?: true; abdeckung?: number | null };
 
 /** @returns Map key → Erfassungszeilen; key ist `konto|nummer|farbe` bzw. `konto|nummer` */
-async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
+async function loadManualAcquisitions(k: FinanzenKontext, uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
   // Ein Hauptkonto bewertet den ganzen Haushalt; die Währung ist beim
   // Verknüpfen erzwungen gleich, sonst summierte das zwei Währungen.
-  const rows = await finanzenBereich().bewertung.manuelleErfassungen(kind, asIds(uid), waehrung);
+  const rows = await k.bewertung.manuelleErfassungen(kind, asIds(uid), waehrung);
   const out = new Map<string, repo.ManuelleErfassung[]>();
   for (const r of rows) {
     const key =
@@ -56,11 +55,16 @@ function fremdeKaufpreise(jeEintrag: Map<string, Array<{ kaufpreis_fremd?: boole
 }
 
 /** Die Bewertung meldet alles, was fehlt; der Auftrag je Konto und Währung nimmt es auf. */
-async function merkePreiseFuerKontoVor(viewerId: number, waehrung: string, posten: Posten[]): Promise<number> {
+async function merkePreiseFuerKontoVor(
+  k: FinanzenKontext,
+  viewerId: number,
+  waehrung: string,
+  posten: Posten[],
+): Promise<number> {
   if (!posten.length) return 0;
-  await merkePreiseVor({ user_id: viewerId, waehrung, posten: posten.slice(0, PREISPOSTEN_HOECHSTENS) }).catch(
-    logAndContinue('bewertung:preise vormerken'),
-  );
+  await k.auftraege
+    .merkePreiseVor({ user_id: viewerId, waehrung, posten: posten.slice(0, PREISPOSTEN_HOECHSTENS) })
+    .catch(logAndContinue('bewertung:preise vormerken'));
   return posten.length;
 }
 
@@ -162,14 +166,14 @@ function bewertungsSummen(
 }
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
+export async function computeSetsValuation(kx: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten" fehlt das fragende Konto in ids.
-  const uids = await haushaltBereich().haushalt.blickfeldAus(idsWahl);
+  const uids = await kx.haushalt.haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours, guideType] = await Promise.all([
-    getSetting(viewerId, 'currency', 'EUR'),
-    getSetting(viewerId, 'price_cache_ttl', '24'),
-    getSetting(viewerId, 'price_guide_type', 'sold'),
+    kx.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
+    kx.einstellungen.getSetting(viewerId, 'price_cache_ttl', '24'),
+    kx.einstellungen.getSetting(viewerId, 'price_guide_type', 'sold'),
   ]);
   const kopf = {
     currency,
@@ -179,7 +183,7 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     // ttl_hours bleibt für ältere Clients Text.
     ttl_stunden: Number(ttlHours) || 24,
   };
-  const sets = await finanzenBereich().bewertung.setsZurBewertung(uids);
+  const sets = await kx.bewertung.setsZurBewertung(uids);
   if (!sets.length)
     return {
       ...kopf,
@@ -195,14 +199,17 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
   const [catRows, cacheRows, acqRows] = await Promise.all([
     // catalog_cache führt Nummern mit Versionsanhang, price_cache unter der Schreibweise des Aufrufers.
-    finanzenBereich().bewertung.katalogMerkmale(setNumbers.map(mitVersion)),
-    finanzenBereich().preisCache.setPreiseFrisch(setNumbers, currency, ttl),
-    finanzenBereich().erfassungen.ladeSetErfassungen(uids, currency),
+    kx.bewertung.katalogMerkmale(setNumbers.map(mitVersion)),
+    kx.preisCache.setPreiseFrisch(setNumbers, currency, ttl),
+    kx.erfassungen.ladeSetErfassungen(uids, currency),
   ]);
   // Ohne BrickLink-Zugang kann der Auftrag nichts holen: Das steht dann an der Zeile.
-  const ohneZugang = (await getGlobalSetting('bricklink_consumer_key'))
+  const ohneZugang = (await kx.einstellungen.getGlobalSetting('bricklink_consumer_key'))
     ? null
-    : fehlerText('kein_bricklink_zugang', (await getSetting(viewerId, 'language', 'de')) === 'en' ? 'en' : 'de');
+    : fehlerText(
+        'kein_bricklink_zugang',
+        (await kx.einstellungen.getSetting(viewerId, 'language', 'de')) === 'en' ? 'en' : 'de',
+      );
   const lage: Bewertungslage = {
     ttl,
     fehlt: [],
@@ -220,7 +227,7 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     if (l) l.push(a);
     else jeKontoUndSet.set(k, [a]);
   }
-  const results = await haushaltBereich().haushalt.besitzerAnhaengen(
+  const results = await kx.haushalt.haushalt.besitzerAnhaengen(
     uids,
     sets.map(set => bewerteSet(set, jeKontoUndSet.get(`${set.user_id}|${set.set_number}`) || [], lage)),
   );
@@ -231,7 +238,7 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     kaufpreise_umgerechnet: zaehle(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
     totals: bewertungsSummen(results),
-    preise_ausstehend: await merkePreiseFuerKontoVor(viewerId, currency, lage.fehlt),
+    preise_ausstehend: await merkePreiseFuerKontoVor(kx, viewerId, currency, lage.fehlt),
   };
 }
 
@@ -288,14 +295,14 @@ function gesamt(zeilen: Array<{ total_value: string }>) {
 }
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const uids = asIds(await haushaltBereich().haushalt.blickfeldAus(idsWahl));
+export async function computeMinifigsValuation(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
+  const uids = asIds(await k.haushalt.haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
-    getSetting(viewerId, 'currency', 'EUR'),
-    getGlobalSetting('price_cache_ttl', '24'),
+    k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
+    k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
-  const manualFigs = await finanzenBereich().bewertung.manuelleFigurenZurBewertung(uids);
+  const manualFigs = await k.bewertung.manuelleFigurenZurBewertung(uids);
   if (!manualFigs.length)
     return {
       currency,
@@ -306,15 +313,16 @@ export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht 
       preise_ausstehend: 0,
     };
 
-  const acqByFig = await loadManualAcquisitions(uids, 'fig', currency);
+  const acqByFig = await loadManualAcquisitions(k, uids, 'fig', currency);
   const mitBl = manualFigs.filter(f => f.bl_fig_number);
   const [figVorrat, schaetzungen] = await Promise.all([
     ladeFigurenpreiseVor(
+      k,
       mitBl.map(f => String(f.bl_fig_number)),
       currency,
       ttlHours,
     ),
-    finanzenBereich().marktpreise.geschaetzteFigurenpreise(
+    k.marktpreise.geschaetzteFigurenpreise(
       manualFigs.filter(f => !f.bl_fig_number).map(f => f.fig_number),
       currency,
       ttl,
@@ -322,7 +330,7 @@ export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht 
   ]);
   const fehlt: Posten[] = [];
 
-  const results = await haushaltBereich().haushalt.besitzerAnhaengen(
+  const results = await k.haushalt.haushalt.besitzerAnhaengen(
     uids,
     manualFigs.map(fig => {
       // Je vorkommendem Zustand: Ein neu gekauftes Exemplar bekommt den Neupreis,
@@ -366,18 +374,18 @@ export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht 
     ...gesamt(results),
     kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByFig),
     kaufpreise_umgerechnet: zaehle([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await merkePreiseFuerKontoVor(viewerId, currency, fehlt),
+    preise_ausstehend: await merkePreiseFuerKontoVor(k, viewerId, currency, fehlt),
   };
 }
 
-export async function computePartsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const uids = asIds(await haushaltBereich().haushalt.blickfeldAus(idsWahl));
+export async function computePartsValuation(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
+  const uids = asIds(await k.haushalt.haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
-    getSetting(viewerId, 'currency', 'EUR'),
-    getGlobalSetting('price_cache_ttl', '24'),
+    k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
+    k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
-  const manualParts = await finanzenBereich().bewertung.manuelleTeileZurBewertung(uids);
+  const manualParts = await k.bewertung.manuelleTeileZurBewertung(uids);
   if (!manualParts.length)
     return {
       currency,
@@ -389,9 +397,10 @@ export async function computePartsValuation(viewerId: number, idsWahl: Sicht | B
     };
 
   const blNummer = (p: repo.ManuellesTeil) => String(p.bl_part_number || p.part_number);
-  await ladeBlNummernVor(manualParts.map(blNummer));
-  const acqByPart = await loadManualAcquisitions(uids, 'part', currency);
+  await ladeBlNummernVor(k, manualParts.map(blNummer));
+  const acqByPart = await loadManualAcquisitions(k, uids, 'part', currency);
   const teilVorrat = await ladeTeilepreiseVor(
+    k,
     manualParts.map(p => ({
       partNumber: blNummer(p),
       rbColorId: p.color_id ?? KEINE_FARBE,
@@ -404,7 +413,7 @@ export async function computePartsValuation(viewerId: number, idsWahl: Sicht | B
   const tasks = manualParts.map(part => async () => {
     const key = `${part.part_number}|${part.color_id ?? KEINE_FARBE}`;
     const acqs = acqByPart.get(`${part.user_id}|${key}`) || [];
-    const vorratsSchluessel = await teilSchluessel(blNummer(part), part.color_id ?? KEINE_FARBE);
+    const vorratsSchluessel = await teilSchluessel(k, blNummer(part), part.color_id ?? KEINE_FARBE);
     const { priceMap, priceData } = preiseJeZustand(key, conditionsOf(acqs), cond => {
       const p = preisAusVorrat(c => teilVorrat.get(`${vorratsSchluessel}|${c}`), cond, ttl);
       if (p.ausstehend)
@@ -432,13 +441,13 @@ export async function computePartsValuation(viewerId: number, idsWahl: Sicht | B
     };
   });
 
-  const results = await haushaltBereich().haushalt.besitzerAnhaengen(uids, await parallelLimit(tasks, 5));
+  const results = await k.haushalt.haushalt.besitzerAnhaengen(uids, await parallelLimit(tasks, 5));
   return {
     currency,
     parts: results,
     ...gesamt(results),
     kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart),
     kaufpreise_umgerechnet: zaehle([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await merkePreiseFuerKontoVor(viewerId, currency, fehlt),
+    preise_ausstehend: await merkePreiseFuerKontoVor(k, viewerId, currency, fehlt),
   };
 }

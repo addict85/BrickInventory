@@ -1,5 +1,4 @@
-import { haushaltBereich, type Sicht } from '../../haushalt';
-import { getGlobalSetting, getSetting } from '../../einstellungen';
+import type { Sicht } from '../../haushalt';
 import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';
@@ -8,8 +7,8 @@ import { zaehle } from './abfragen';
 import type { ladeSetErfassungen } from '../repository/erfassungen';
 import { aufRappen, inZehntel4, summeAus } from '../../infra/geld';
 import type * as repo from '../repository/gewinnVerlust';
-import { finanzenBereich } from '../prozess';
 import { marktpreisAus } from '../../katalog';
+import type { FinanzenKontext } from '../kontext';
 
 type PnlSet = Awaited<ReturnType<typeof repo.setsMitErfassungen>>[number];
 type Erfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
@@ -34,6 +33,7 @@ function preiseDesSets(sn: string, jeSchluessel: Map<string, { avg_price?: unkno
 /** Je Erfassung mit dem Preis IHRES Zustands, erst danach verdichten — dieselbe
  * Rechnung wie im Finanzen-Reiter. Ungerundet; gerundet wird in der Antwort. */
 async function setMarktwerte(
+  k: FinanzenKontext,
   sets: PnlSet[],
   jeSet: Map<string, Erfassung[]>,
   currency: string,
@@ -43,8 +43,8 @@ async function setMarktwerte(
   const nummern = sets.map(s => s.set_number);
   if (!nummern.length) return w;
   const [aktuell, verlauf] = await Promise.all([
-    finanzenBereich().gewinnVerlust.frischeMarktpreise(nummern, currency, ttl),
-    finanzenBereich().gewinnVerlust.letzteMarktpreiseAusVerlauf(nummern, currency),
+    k.gewinnVerlust.frischeMarktpreise(nummern, currency, ttl),
+    k.gewinnVerlust.letzteMarktpreiseAusVerlauf(nummern, currency),
   ]);
   type Preiszeile = { set_number: string; condition: string; avg_price?: unknown; qty_avg_price?: unknown };
   const nachSchluessel = (rows: Preiszeile[]) => new Map(rows.map(r => [`${r.set_number}|${r.condition}`, r]));
@@ -120,30 +120,30 @@ function postenZeile(p: { quantity?: number | null; avg_price?: unknown; purchas
 const kaufsumme = (rs: Array<{ purchase_price: number | null; quantity: number }>) =>
   summeAus(rs.map(r => ({ preis: r.purchase_price || 0, menge: r.quantity || 1 })));
 
-export async function computePnl(viewerId: number, idsWahl: Sicht | Blickfeld) {
+export async function computePnl(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   // Zwei Grössen: viewerId — wessen EINSTELLUNGEN gelten; ids — WESSEN DATEN
   // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
-  const uids = await haushaltBereich().haushalt.blickfeldAus(idsWahl);
+  const uids = await k.haushalt.haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours] = await Promise.all([
-    getSetting(viewerId, 'currency', 'EUR'),
-    getGlobalSetting('price_cache_ttl', '24'),
+    k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
+    k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
   ]);
-  const sets = await finanzenBereich().gewinnVerlust.setsMitErfassungen(uids);
+  const sets = await k.gewinnVerlust.setsMitErfassungen(uids);
   // Aus den Erfassungen, damit Galerie, Detail und Finanzen dieselben Zahlen zeigen.
-  const acqRows = sets.length ? await finanzenBereich().erfassungen.ladeSetErfassungen(uids, currency) : [];
+  const acqRows = sets.length ? await k.erfassungen.ladeSetErfassungen(uids, currency) : [];
   const jeSet = new Map<string, Erfassung[]>();
   for (const a of acqRows) {
     const l = jeSet.get(a.set_number);
     if (l) l.push(a);
     else jeSet.set(a.set_number, [a]);
   }
-  const werte = await setMarktwerte(sets, jeSet, currency, Math.max(1, parseInt(ttlHours, 10)));
+  const werte = await setMarktwerte(k, sets, jeSet, currency, Math.max(1, parseInt(ttlHours, 10)));
 
   const setResults = sets.map(s => pnlSetZeile(s, werte));
   const kachel = kachelWerte(setResults);
   const [partsVal, figsVal] = await Promise.all([
-    computePartsValuation(viewerId, uids),
-    computeMinifigsValuation(viewerId, uids),
+    computePartsValuation(k, viewerId, uids),
+    computeMinifigsValuation(k, viewerId, uids),
   ]);
   const partsResults = partsVal.parts.map(postenZeile),
     figsResults = figsVal.figs.map(postenZeile);

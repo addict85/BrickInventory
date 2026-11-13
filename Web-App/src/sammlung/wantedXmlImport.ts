@@ -1,23 +1,13 @@
 /** Der Wanted-XML-Import als Auftrag: Er legt Teile, Figuren und Sets an und
  * fragt auf Wunsch Rebrickable — beides gehört nicht in den Web-Prozess. */
-import { importiereWantedListe } from '../merkliste';
-import { merkeBlNummer, merkeEigeneBlNummer } from '../katalog';
-import {
-  starteAuftrag,
-  meldeAuftrag,
-  beendeAuftrag,
-  istAbgebrochen,
-  type Nutzlast,
-  type AuftragsKontext,
-} from '../auftraege';
-import { addManualPart } from '../teile';
-import { addManualFig } from '../figuren';
-import { addSet } from '../sets';
+import type { Nutzlast, AuftragsKontext } from '../auftraege';
 import { logAndContinue } from '../infra/fehler';
+import type { SammlungKontext } from './kontext';
 
 export type WantedXmlEingabe = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
 
 async function importiereWantedXml(
+  kx: SammlungKontext,
   uid: number,
   e: WantedXmlEingabe,
   k: AuftragsKontext,
@@ -33,17 +23,19 @@ async function importiereWantedXml(
   const anDenBalken = (stand: { fertig: number; gesamt: number }, unbedingt = false) => {
     if (!auftragLaeuft) return;
     kette = kette
-      .then(() => meldeAuftrag(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt))
+      .then(() => kx.auftraege.meldeAuftrag(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt))
       .catch(logAndContinue('wanted-import:auftrag'));
   };
   try {
-    const bericht = await importiereWantedListe(uid, e.xml, {
+    const bericht = await kx.merkliste.importiereWantedListe(uid, e.xml, {
       vorschau: !e.schreiben,
       ueberRebrickable: e.ueberRebrickable,
       ...(e.korrekturen ? { korrekturen: e.korrekturen } : {}),
       // Eine Korrektur des Kontos gilt nur für dieses; gemeinsam nur, was Rebrickable bestätigt hat.
       merkeNummer: (art, rbId, blId, quelle) =>
-        quelle === 'korrigiert' ? merkeEigeneBlNummer(uid, art, rbId, blId) : merkeBlNummer(art, rbId, blId),
+        quelle === 'korrigiert'
+          ? kx.katalog.merkeEigeneBlNummer(uid, art, rbId, blId)
+          : kx.katalog.merkeBlNummer(art, rbId, blId),
       fortschritt: stand => {
         // Der Stand reist über den Auftrag zur wartenden Anfrage (und deren Strom);
         // höchstens fünfmal je Sekunde, der letzte jeder Phase immer.
@@ -59,7 +51,7 @@ async function importiereWantedXml(
           auftragAngefragt = true;
           kette = kette
             .then(async () => {
-              auftragLaeuft = await starteAuftrag(uid, { total: stand.gesamt, current: e.dateiName });
+              auftragLaeuft = await kx.auftraege.starteAuftrag(uid, { total: stand.gesamt, current: e.dateiName });
             })
             .catch(f => {
               auftragLaeuft = false;
@@ -68,35 +60,38 @@ async function importiereWantedXml(
         }
         anDenBalken(stand);
       },
-      ...(e.schreiben ? { abbruch: async () => auftragLaeuft && (await istAbgebrochen(uid)) } : {}),
+      ...(e.schreiben ? { abbruch: async () => auftragLaeuft && (await kx.auftraege.istAbgebrochen(uid)) } : {}),
       anleger: {
-        teil: (u, body) => addManualPart(u, body),
-        figur: (u, body) => addManualFig(u, body),
+        teil: (u, body) => kx.teile.addManualPart(u, body),
+        figur: (u, body) => kx.figuren.addManualFig(u, body),
         // Kaufpreis ist MAXPRICE aus der Datei.
-        set: (u, sn, menge, zustand, kaufpreis) => addSet({ setNumber: sn, menge, konto: u, kaufpreis, zustand }),
+        set: (u, sn, menge, zustand, kaufpreis) =>
+          kx.sets.addSet({ setNumber: sn, menge, konto: u, kaufpreis, zustand }),
       },
     });
     // Erst die Kette abwarten, dann schliessen: Sonst stünde der Balken anderswo noch auf „läuft".
     await kette;
     if (auftragLaeuft) {
-      await beendeAuftrag(
-        uid,
-        {
-          ok: bericht.angelegt + bericht.aufgestockt,
-          // Offene Posten sind eine Anmerkung (⚠), weder angelegt noch gescheitert.
-          warn: bericht.posten.filter(p => p.ausgang === 'offen').length,
-          fehler: bericht.fehler,
-          // Die BEARBEITETEN Posten, sonst bliebe der Balken vor dem Ende stehen.
-          done: bericht.posten.length,
-          abgebrochen: !!bericht.abgebrochen,
-        },
-        // Je Posten eine lesbare Zeile fürs Protokoll des Balkens.
-        bericht.posten.map(p =>
-          p.ausgang === 'angelegt' || p.ausgang === 'aufgestockt'
-            ? { success: true, set_number: p.blId, action: p.ausgang === 'angelegt' ? 'added' : 'updated' }
-            : { success: false, isWarning: p.ausgang === 'offen', set_number: p.blId, error: p.grund || '' },
-        ),
-      ).catch(logAndContinue('wanted-import:auftrag-ende'));
+      await kx.auftraege
+        .beendeAuftrag(
+          uid,
+          {
+            ok: bericht.angelegt + bericht.aufgestockt,
+            // Offene Posten sind eine Anmerkung (⚠), weder angelegt noch gescheitert.
+            warn: bericht.posten.filter(p => p.ausgang === 'offen').length,
+            fehler: bericht.fehler,
+            // Die BEARBEITETEN Posten, sonst bliebe der Balken vor dem Ende stehen.
+            done: bericht.posten.length,
+            abgebrochen: !!bericht.abgebrochen,
+          },
+          // Je Posten eine lesbare Zeile fürs Protokoll des Balkens.
+          bericht.posten.map(p =>
+            p.ausgang === 'angelegt' || p.ausgang === 'aufgestockt'
+              ? { success: true, set_number: p.blId, action: p.ausgang === 'angelegt' ? 'added' : 'updated' }
+              : { success: false, isWarning: p.ausgang === 'offen', set_number: p.blId, error: p.grund || '' },
+          ),
+        )
+        .catch(logAndContinue('wanted-import:auftrag-ende'));
     }
     return { ...bericht };
   } catch (f) {
@@ -104,9 +99,9 @@ async function importiereWantedXml(
     // einen Import, den es nicht mehr gibt.
     await kette;
     if (auftragLaeuft) {
-      await beendeAuftrag(uid, { ok: 0, fehler: 0, done: 0, abgebrochen: true }).catch(
-        logAndContinue('wanted-import:auftrag-ende (Fehler)'),
-      );
+      await kx.auftraege
+        .beendeAuftrag(uid, { ok: 0, fehler: 0, done: 0, abgebrochen: true })
+        .catch(logAndContinue('wanted-import:auftrag-ende (Fehler)'));
     }
     throw f;
   }

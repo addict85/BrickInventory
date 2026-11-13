@@ -1,6 +1,6 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen nur Anfrage und Antwort kennen. */
 import { schreibziel } from '../haushalt';
-import { normalisiereLagerort, setzeLagerort, orteFuer, vorgabeVon } from '../bestand';
+import { normalisiereLagerort, setzeLagerort, vorgabeVon } from '../bestand';
 import { normalizeSetNumber } from './erfassen';
 import { mitVersion } from '../infra/setNummer';
 import { verschiebeSet } from './setMove';
@@ -35,7 +35,7 @@ export async function lagerortDesSetsSetzen(
 /** Die Liste kann über mehrere Konten spannen, die Vorgabe ist immer die des
  * Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung. */
 export async function lagerorteMitVorgabe(sk: SetsKontext, uid: number, owner: string | undefined) {
-  const [orte, vorgabe] = await Promise.all([orteFuer(sk.db, uid, owner), vorgabeVon(sk.db, uid)]);
+  const [orte, vorgabe] = await Promise.all([sk.bestand.orteFuer(uid, owner), vorgabeVon(sk.db, uid)]);
   return { orte, vorgabe };
 }
 

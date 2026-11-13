@@ -1,28 +1,22 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { haushaltBereich, type Sicht } from '../haushalt';
+import type { Sicht } from '../haushalt';
 import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
-import { bestandBereich, recordAcquisitionForDay, mengenwunsch, passeManuelleMengeAn } from '../bestand';
-import { getMinifigInfo, merkeFigur, katalogFigur, merkeEigeneBlNummer } from '../katalog';
-import { zustandFuerPreis } from '../einstellungen';
-import {
-  figMarktpreisMitHerkunft,
-  getCurrentFigMarketPrice,
-  kaufpreisAusEingabe,
-  manuellerKaufpreis,
-} from '../finanzen';
+import { mengenwunsch } from '../bestand';
+import { getMinifigInfo } from '../katalog';
 import * as V from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
-import { figurenBereich } from './prozess';
+import type { FigurenKontext } from './kontext';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
 
 // Preis und Zustand einmal für Einzelerfassung und CSV-Import; ohne Preis gilt der Marktpreis.
 export async function resolveManualFigPurchase(
+  k: FigurenKontext,
   uid: number,
   {
     figNumber,
@@ -33,8 +27,8 @@ export async function resolveManualFigPurchase(
 ) {
   // Dieselbe Regel wie bei den Teilen (src/finanzen/preisRegel.ts), damit eine
   // Figur ohne Marktpreis nicht anders zählt als ein Teil.
-  const r = await manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
-    figMarktpreisMitHerkunft(figNumber, uid, blFigNumber || null, zustand),
+  const r = await k.finanzen.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
+    k.finanzen.figMarktpreisMitHerkunft(figNumber, uid, blFigNumber || null, zustand),
   );
   return {
     effectiveUnitPrice: r.unitPrice,
@@ -47,17 +41,17 @@ export async function resolveManualFigPurchase(
 }
 
 /** Zwilling zu addManualPart — eine Umsetzung für Webapp und App. */
-export async function addManualFig(uid: number, body: Record<string, unknown>) {
+export async function addManualFig(k: FigurenKontext, uid: number, body: Record<string, unknown>) {
   // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos.
-  const ort = await bestandBereich().lagerortDienst.ortFuerNeuerfassung(uid, body?.storage);
-  const ergebnis = await addManualFigIntern(uid, body);
+  const ort = await k.bestand.lagerortDienst.ortFuerNeuerfassung(uid, body?.storage);
+  const ergebnis = await addManualFigIntern(k, uid, body);
   if (ort && ergebnis?.fig_number) {
-    await bestandBereich().lagerortDienst.setzeLagerort('fig', [uid], [String(ergebnis.fig_number)], ort);
+    await k.bestand.lagerortDienst.setzeLagerort('fig', [uid], [String(ergebnis.fig_number)], ort);
   }
   return ergebnis;
 }
 
-async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
+async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<string, unknown>) {
   // Gleiche Eingangsvalidierung wie bei manuellen Teilen: Die Felder werden gerendert.
   const num = V.requireItemNumber(body?.fig_number, 'fig_number');
   const blNum = body?.bl_fig_number ? V.requireItemNumber(body.bl_fig_number, 'bl_fig_number') : null;
@@ -68,21 +62,21 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
   const acquiredAt = String(body?.acquired_at || '').trim() || null;
   // Nur Nachgeschlagenes geht als geprüft in den Katalog.
   const eingabe = { name: V.optionalText(body?.fig_name, 200), bild: V.optionalImageUrl(body?.image_url) };
-  const { fig_name, gefunden } = await figurBeschreibung(uid, num, eingabe);
+  const { fig_name, gefunden } = await figurBeschreibung(k, uid, num, eingabe);
 
-  const existing = await manuelleFigur(uid, num);
+  const existing = await manuelleFigur(k, uid, num);
 
   if (existing) {
     // Auch eine erneut erfasste Figur bekommt eine Erfassung (Kaufpreis, Datum);
     // die Menge ergibt sich daraus beim Lesen.
-    const re = await resolveManualFigPurchase(uid, {
+    const re = await resolveManualFigPurchase(k, uid, {
       figNumber: num,
       blFigNumber: blNum,
       unitPrice: unit_price,
       condition,
     });
     // Pro Tag und Zustand EINE Erfassung (src/bestand/acquisitions.ts).
-    await recordAcquisitionForDay('fig', uid, [num], {
+    await k.bestand.recordAcquisitionForDay('fig', uid, [num], {
       quantity,
       // In der Stammzeile ist die 0 ein Anzeigewert, in der Erfassung hiesse sie
       // „für null gekauft".
@@ -95,7 +89,7 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
     return { action: 'updated', fig_number: num };
   }
 
-  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await resolveManualFigPurchase(uid, {
+  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await resolveManualFigPurchase(k, uid, {
     figNumber: num,
     blFigNumber: blNum,
     unitPrice: unit_price,
@@ -103,14 +97,15 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
   });
   // Der Katalog zuerst: Fällt die Anfrage dazwischen aus, ist eine Beschreibung
   // ohne Bestand unsichtbar, ein Bestand ohne Namen nicht.
-  await merkeFigur(num, gefunden?.fig_name, gefunden?.image_url);
-  await merkeFigur(num, eingabe.name, eingabe.bild, null, figurenBereich().db, uid);
+  await k.katalog.merkeFigur(num, gefunden?.fig_name, gefunden?.image_url);
+  await k.katalog.merkeFigur(num, eingabe.name, eingabe.bild, null, k.db, uid);
   // Ohne Menge, Preis und Zustand: Sie stehen in der Erfassung darunter.
-  await figurenBereich().manuelleFiguren.legeFigurManuellAn(uid, num);
-  if (blNum) await merkeEigeneBlNummer(uid, 'fig', num, blNum).catch(logAndContinue(`minifiguren:bl-nummer ${num}`));
+  await k.manuelleFiguren.legeFigurManuellAn(uid, num);
+  if (blNum)
+    await k.katalog.merkeEigeneBlNummer(uid, 'fig', num, blNum).catch(logAndContinue(`minifiguren:bl-nummer ${num}`));
   // Mit dem tatsächlich verwendeten Kaufpreis (Marktpreis oder Schätzung), damit
   // Erfassungshistorie und G&V stimmen.
-  await recordAcquisitionForDay('fig', uid, [num], {
+  await k.bestand.recordAcquisitionForDay('fig', uid, [num], {
     quantity,
     price: erfassungsPreis,
     geschaetzt,
@@ -123,13 +118,18 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
 
 /** Ohne Namen erst der eigene Katalog, dann der fremde Dienst: minifigs_catalog führt
  * Name und Bild, ein Abruf je Figur wäre unnötig. */
-async function figurBeschreibung(uid: number, num: string, eingabe: { name: string | null; bild: string | null }) {
+async function figurBeschreibung(
+  k: FigurenKontext,
+  uid: number,
+  num: string,
+  eingabe: { name: string | null; bild: string | null },
+) {
   let fig_name = eingabe.name;
   let image_url = eingabe.bild;
   let gefunden: Awaited<ReturnType<typeof getMinifigInfo>> | null = null;
   if (fig_name) return { fig_name, gefunden };
 
-  const lokal = await katalogFigur(num, uid);
+  const lokal = await k.katalog.katalogFigur(num, uid);
   if (lokal) {
     fig_name = lokal.name;
     image_url = image_url || lokal.bild;
@@ -149,11 +149,12 @@ async function figurBeschreibung(uid: number, num: string, eingabe: { name: stri
 /** Zwilling zu updateManualPart.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
 export async function updateManualFig(
+  k: FigurenKontext,
   uid: number,
   figNumber: string,
   body: Record<string, unknown>,
 ): Promise<{ quantity?: number; degradiert?: string[] }> {
-  const existing = await figurenBereich().manuelleFiguren.figurZeileMitZustand(uid, figNumber);
+  const existing = await k.manuelleFiguren.figurZeileMitZustand(uid, figNumber);
   if (!existing) fachfehler('nicht_gefunden', 'minifig_nicht_manuell');
 
   const raus: { quantity?: number } = {};
@@ -161,14 +162,14 @@ export async function updateManualFig(
   const ab = new Abstriche();
   const wunsch = mengenwunsch(body);
   if (wunsch) {
-    const cond = await zustandFuerPreis(undefined, existing.condition, uid);
-    raus.quantity = await passeManuelleMengeAn(
+    const cond = await k.einstellungen.zustandFuerPreis(undefined, existing.condition, uid);
+    raus.quantity = await k.bestand.passeManuelleMengeAn(
       'fig',
       uid,
       [figNumber],
       wunsch,
       cond,
-      () => getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond),
+      () => k.finanzen.getCurrentFigMarketPrice(figNumber, uid, existing.bl_fig_number, cond),
       ab,
     );
   }
@@ -176,35 +177,39 @@ export async function updateManualFig(
   if (body.bl_fig_number !== undefined) {
     newBlNum = body.bl_fig_number ? String(body.bl_fig_number).trim() : null;
     // Geleert heisst „keine abweichende Nummer", nicht „nie nachgesehen".
-    await merkeEigeneBlNummer(uid, 'fig', figNumber, newBlNum || figNumber);
+    await k.katalog.merkeEigeneBlNummer(uid, 'fig', figNumber, newBlNum || figNumber);
   }
   if (body.unit_price !== undefined) {
     // Dieselbe Regel wie bei den Teilen (src/finanzen/preisRegel.ts).
-    const { unitPrice } = await kaufpreisAusEingabe(body.unit_price, body.condition, existing.condition, uid, zustand =>
-      getCurrentFigMarketPrice(figNumber, uid, newBlNum, zustand),
+    const { unitPrice } = await k.finanzen.kaufpreisAusEingabe(
+      body.unit_price,
+      body.condition,
+      existing.condition,
+      uid,
+      zustand => k.finanzen.getCurrentFigMarketPrice(figNumber, uid, newBlNum, zustand),
     );
     // In die NEUESTE Erfassung, wie bei den Teilen.
-    await figurenBereich().manuelleFiguren.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
+    await k.manuelleFiguren.setzeFigurpreisNeueste(uid, figNumber, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V.zustand(body.condition);
-    await figurenBereich().manuelleFiguren.setzeFigurzustandNeueste(uid, figNumber, cond);
+    await k.manuelleFiguren.setzeFigurzustandNeueste(uid, figNumber, cond);
   }
   return { ...raus, ...ab.angabe() };
 }
 
 /** `uid` ist das Blickfeld (Liste). */
-export async function getFigAcquisitions(uidWahl: Sicht | number[], figNumber: string) {
-  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
-  return figurenBereich().manuelleFiguren.figurErfassungen(uid, figNumber);
+export async function getFigAcquisitions(k: FigurenKontext, uidWahl: Sicht | number[], figNumber: string) {
+  const uid = await k.haushalt.haushalt.blickfeldAus(uidWahl);
+  return k.manuelleFiguren.figurErfassungen(uid, figNumber);
 }
 
-export function manuelleFigur(uid: number, figNumber: string): Promise<{ id: number } | undefined> {
-  return figurenBereich().manuelleFiguren.figurZeileManuell(uid, figNumber);
+export function manuelleFigur(k: FigurenKontext, uid: number, figNumber: string): Promise<{ id: number } | undefined> {
+  return k.manuelleFiguren.figurZeileManuell(uid, figNumber);
 }
 
 /** Dieselbe Preisregel wie beim Anlegen von Hand, samt Schätzung aus den Teilen. */
-export async function importiereFigurenCsv(uid: number, text: string) {
+export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
   let added = 0,
     updated = 0,
@@ -230,7 +235,7 @@ export async function importiereFigurenCsv(uid: number, text: string) {
           imageUrl = info.image_url;
         }
       }
-      const { erfassungsPreis, effectiveCondition, geschaetzt } = await resolveManualFigPurchase(uid, {
+      const { erfassungsPreis, effectiveCondition, geschaetzt } = await resolveManualFigPurchase(k, uid, {
         figNumber,
         blFigNumber,
         unitPrice,
@@ -244,20 +249,20 @@ export async function importiereFigurenCsv(uid: number, text: string) {
         createdAt: acquiredAt || new Date().toISOString().slice(0, 10),
       };
 
-      if (await manuelleFigur(uid, figNumber)) {
-        await recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
+      if (await manuelleFigur(k, uid, figNumber)) {
+        await k.bestand.recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
         updated++;
         results.push({ fig_number: figNumber, action: 'updated' });
         continue;
       }
       // Ein Name aus der Datei ist eine Eingabe dieses Kontos (katalogPflege.ts).
-      await merkeFigur(figNumber, figName, imageUrl, null, figurenBereich().db, eingetippt ? uid : null);
-      await figurenBereich().manuelleFiguren.legeFigurManuellAn(uid, figNumber);
+      await k.katalog.merkeFigur(figNumber, figName, imageUrl, null, k.db, eingetippt ? uid : null);
+      await k.manuelleFiguren.legeFigurManuellAn(uid, figNumber);
       if (blFigNumber)
-        await merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber).catch(
-          logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`),
-        );
-      await recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
+        await k.katalog
+          .merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber)
+          .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
+      await k.bestand.recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
       added++;
       results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
     } catch (e) {

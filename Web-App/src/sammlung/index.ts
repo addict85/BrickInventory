@@ -1,9 +1,27 @@
 /** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
  * damit die Aufteilung der Dateien darunter frei bleibt. */
-export { erfassungAendern, erfassungLoeschen, setErfassungen } from './erfassungen';
+import { sammlungBereich } from './prozess';
+import { dienstePerAufruf } from '../infra/bereich';
 export type { ErfassungsArt } from './erfassungen';
-export { fuehreImportAus } from './importAuftraege';
-export { loescheAllesEigene, loescheFigur, loescheTeil } from './loeschen';
 export { erzeugeSammlung } from './bereich';
 export type { SammlungDienste, SammlungKontext } from './bereich';
-export { sammlungBereich, verdrahteSammlung } from './prozess';
+export { sammlungBereich } from './prozess';
+
+/** Für Wege ohne eigenen Kontext (HTTP-Seiten, Tests): die Dienste des Prozesses. */
+export const {
+  erfassungAendern,
+  erfassungLoeschen,
+  fuehreImportAus,
+  loescheAllesEigene,
+  loescheFigur,
+  loescheTeil,
+  setErfassungen,
+} = dienstePerAufruf(sammlungBereich, [
+  'erfassungAendern',
+  'erfassungLoeschen',
+  'fuehreImportAus',
+  'loescheAllesEigene',
+  'loescheFigur',
+  'loescheTeil',
+  'setErfassungen',
+]);

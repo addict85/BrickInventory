@@ -261,9 +261,9 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     req.apiUser = { user_id: uid, username: NAME, is_admin: 1 };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   for (const r of routerEinhaengungen())
-    app.use(r.mount, _req(r.name.startsWith('api_v1') ? `routes/${r.name}.js` : `routes/${r.name}.js`));
+    app.use(r.mount, require('./helpers/sources').routerAus(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;

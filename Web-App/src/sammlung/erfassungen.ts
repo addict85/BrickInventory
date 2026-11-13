@@ -2,17 +2,15 @@
 import { geldEingabe } from '../infra/geld';
 import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
-import { haushaltBereich, type Sicht } from '../haushalt';
-import { findSameDayAcquisition, loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
+import type { Sicht } from '../haushalt';
+import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
 import { Abstriche } from '../infra/ergebnis';
 import { mitInventarSperre, bestandsSchluessel } from '../../db/txLock';
-import { moveSetBetweenAccounts, moveManualAcquisition, withSetAggregate, deleteSetRows } from '../sets';
-import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen';
+import { deleteSetRows } from '../sets';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
-import { blAbrufNummer } from '../katalog';
 import { mengeDesSets, mengeDerPosition, preisSpalte, type ErfassungsArt } from '../../db/bestandsmenge';
 import { bestandsMenge, zustand } from '../infra/validate';
-import { sammlungBereich } from './prozess';
+import type { SammlungKontext } from './kontext';
 
 export type { ErfassungsArt } from '../../db/bestandsmenge';
 type Schluessel = Array<string | number>;
@@ -24,27 +22,27 @@ interface Art {
   cleanupWhenEmpty: (tx: DbSchnittstelle, ownerId: number, keys: Schluessel) => Promise<unknown>;
 }
 
-const ARTEN: Record<ErfassungsArt, Art> = {
+const arten = (k: SammlungKontext): Record<ErfassungsArt, Art> => ({
   set: {
     notFound: 'erfassung_nicht_gefunden',
-    resolvePrice: (uid, [sn], cond) => getCurrentMarketPrice(String(sn), uid, cond || null),
+    resolvePrice: (uid, [sn], cond) => k.finanzen.getCurrentMarketPrice(String(sn), uid, cond || null),
     // Wie beim ausdrücklichen Löschen: Teile und Figuren des Sets stünden sonst
     // ohne Set in Teileliste und Finanzsummen.
     cleanupWhenEmpty: (tx, ownerId, [sn]) => deleteSetRows(tx, [ownerId], String(sn)),
   },
   part: {
     notFound: 'nicht_gefunden',
-    resolvePrice: (uid, [pn, cid], cond) => getCurrentPartMarketPrice(String(pn), Number(cid), uid, cond),
+    resolvePrice: (uid, [pn, cid], cond) => k.finanzen.getCurrentPartMarketPrice(String(pn), Number(cid), uid, cond),
     // Nur die manuelle Position; Set-Teile gehen mit ihrem Set.
     cleanupWhenEmpty: (tx, ownerId, [pn, cid]) => loescheManuellesTeil(tx, ownerId, String(pn), Number(cid)),
   },
   fig: {
     notFound: 'nicht_gefunden',
     resolvePrice: async (uid, [fn], cond) =>
-      getCurrentFigMarketPrice(String(fn), uid, await blAbrufNummer('fig', String(fn), uid), cond),
+      k.finanzen.getCurrentFigMarketPrice(String(fn), uid, await k.katalog.blAbrufNummer('fig', String(fn), uid), cond),
     cleanupWhenEmpty: (tx, ownerId, [fn]) => loescheManuelleFigur(tx, ownerId, String(fn)),
   },
-};
+});
 
 interface Zeile {
   id: number;
@@ -57,8 +55,8 @@ interface Zeile {
 }
 
 /** Nur für den Sperrschlüssel; die Rechte prüft danach die Abfrage im Schreib-Blickfeld. */
-async function besitzerDerZeile(art: ErfassungsArt, id: number, fallback: number): Promise<number> {
-  return (await sammlungBereich().erfassungen.kontoDerErfassung(art, id)) ?? fallback;
+async function besitzerDerZeile(k: SammlungKontext, art: ErfassungsArt, id: number, fallback: number): Promise<number> {
+  return (await k.erfassungen.kontoDerErfassung(art, id)) ?? fallback;
 }
 
 /** 0 heisst „leer", null „keine Zeile"; beides räumt auf. Ein Lesefehler ist
@@ -76,20 +74,27 @@ const leer = (q: number | null) => q === null || q <= 0;
 
 /** Schreib-Blickfeld: Ein Unterkonto darf nicht rückwärts schreiben. */
 async function zeileImSchreibfeld(
+  k: SammlungKontext,
   tx: DbSchnittstelle,
   art: ErfassungsArt,
   wids: number[],
   id: number,
   keys: Schluessel,
 ): Promise<Zeile> {
-  const a = ARTEN[art];
+  const a = arten(k)[art];
   const z = await repo.erfassungImSchreibfeld(tx, art, id, wids, keys);
   if (!z) fachfehler('nicht_gefunden', a.notFound);
   return z;
 }
 
-async function antwort(art: ErfassungsArt, uid: number, keys: Schluessel, payload: Record<string, unknown>) {
-  return art === 'set' ? withSetAggregate(uid, String(keys[0]), payload) : payload;
+async function antwort(
+  k: SammlungKontext,
+  art: ErfassungsArt,
+  uid: number,
+  keys: Schluessel,
+  payload: Record<string, unknown>,
+) {
+  return art === 'set' ? k.sets.withSetAggregate(uid, String(keys[0]), payload) : payload;
 }
 
 export interface Aenderung {
@@ -100,26 +105,33 @@ export interface Aenderung {
   [preis: string]: unknown;
 }
 
-export async function erfassungAendern(art: ErfassungsArt, uid: number, id: number, keys: Schluessel, body: Aenderung) {
-  const a = ARTEN[art];
+export async function erfassungAendern(
+  k: SammlungKontext,
+  art: ErfassungsArt,
+  uid: number,
+  id: number,
+  keys: Schluessel,
+  body: Aenderung,
+) {
+  const a = arten(k)[art];
   const { quantity, condition, date } = body;
   const rawPrice = body[preisSpalte(art)];
 
   const ownerReq = body.owner_user_id;
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
-    const from = await haushaltBereich().haushalt.umzugsQuelle(uid, art, id);
-    const to = await haushaltBereich().haushalt.schreibzielOderNull(uid, ownerReq);
+    const from = await k.haushalt.haushalt.umzugsQuelle(uid, art, id);
+    const to = await k.haushalt.haushalt.schreibzielOderNull(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
     const moved = await mitInventarSperre(
-      sammlungBereich().db,
+      k.db,
       from,
       bestandsSchluessel(art, keys),
       tx =>
         art === 'set'
-          ? moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id])
-          : moveManualAcquisition(tx, art, keys, id, from, to),
+          ? k.sets.moveSetBetweenAccounts(tx, String(keys[0]), from, to, [id])
+          : k.sets.moveManualAcquisition(tx, art, keys, id, from, to),
       { wiederholeBeiKonflikt: true },
     );
     return { from_user_id: from, to_user_id: to, ...moved };
@@ -135,16 +147,16 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     let p = geldEingabe(rawPrice, preisSpalte(art) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
     if (p === null) {
       preisGeschaetzt = true;
-      const bisher = condition ? null : await sammlungBereich().erfassungen.zustandDerErfassung(art, id);
+      const bisher = condition ? null : await k.erfassungen.zustandDerErfassung(art, id);
       p = await ab.oder('marktpreis', a.resolvePrice(uid, keys, String(condition || bisher || '') || null), null);
     }
     priceVal = p;
   }
 
-  const besitzer = await besitzerDerZeile(art, id, uid);
-  await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async tx => {
-    const wids = await haushaltBereich().haushalt.schreibbereich(uid);
-    const acq = await zeileImSchreibfeld(tx, art, wids, id, keys);
+  const besitzer = await besitzerDerZeile(k, art, id, uid);
+  await mitInventarSperre(k.db, besitzer, bestandsSchluessel(art, keys), async tx => {
+    const wids = await k.haushalt.haushalt.schreibbereich(uid);
+    const acq = await zeileImSchreibfeld(k, tx, art, wids, id, keys);
     // Ab hier zählt der Besitzer der Zeile, nicht der Betrachter.
     const ownerId = Number(acq.user_id);
     let neuesDatum: string | null = null;
@@ -157,11 +169,20 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     const zielGeschaetzt = rawPrice !== undefined ? preisGeschaetzt && priceVal != null : !!acq.price_estimated;
     // Geprüft gegen die Werte NACH dieser Änderung.
     if (neuesDatum || rawPrice !== undefined || hatZustand) {
-      const clash = await findSameDayAcquisition(art, ownerId, keys, neuesDatum || acq.tag, id, zielZustand, tx, {
-        preis: rawPrice !== undefined ? priceVal : acq.preis,
-        geschaetzt: zielGeschaetzt,
-        waehrung: acq.currency,
-      });
+      const clash = await k.bestand.findSameDayAcquisition(
+        art,
+        ownerId,
+        keys,
+        neuesDatum || acq.tag,
+        id,
+        zielZustand,
+        tx,
+        {
+          preis: rawPrice !== undefined ? priceVal : acq.preis,
+          geschaetzt: zielGeschaetzt,
+          waehrung: acq.currency,
+        },
+      );
       if (clash) fachfehler('konflikt', 'datum_belegt');
     }
     if (quantity !== undefined && quantity !== null) {
@@ -173,27 +194,30 @@ export async function erfassungAendern(art: ErfassungsArt, uid: number, id: numb
     if (hatZustand) await repo.setzeErfassungsZustand(tx, art, id, zielZustand, wids);
     if (neuesDatum) await repo.setzeErfassungsDatum(tx, art, id, neuesDatum, wids);
   });
-  return antwort(art, uid, keys, { ...ab.angabe() });
+  return antwort(k, art, uid, keys, { ...ab.angabe() });
 }
 
 /** Ist danach nichts mehr da, geht die Bestandszeile mit. */
-export async function erfassungLoeschen(art: ErfassungsArt, uid: number, id: number, keys: Schluessel) {
-  const a = ARTEN[art];
-  const besitzer = await besitzerDerZeile(art, id, uid);
-  const menge = await mitInventarSperre(sammlungBereich().db, besitzer, bestandsSchluessel(art, keys), async tx => {
-    const acq = await zeileImSchreibfeld(tx, art, await haushaltBereich().haushalt.schreibbereich(uid), id, keys);
+export async function erfassungLoeschen(
+  k: SammlungKontext,
+  art: ErfassungsArt,
+  uid: number,
+  id: number,
+  keys: Schluessel,
+) {
+  const a = arten(k)[art];
+  const besitzer = await besitzerDerZeile(k, art, id, uid);
+  const menge = await mitInventarSperre(k.db, besitzer, bestandsSchluessel(art, keys), async tx => {
+    const acq = await zeileImSchreibfeld(k, tx, art, await k.haushalt.haushalt.schreibbereich(uid), id, keys);
     const ownerId = Number(acq.user_id);
     await repo.loescheErfassung(tx, art, id, ownerId);
     const q = await mengeDesBestands(tx, art, ownerId, keys);
     if (leer(q)) await a.cleanupWhenEmpty(tx, ownerId, keys);
     return q;
   });
-  return antwort(art, uid, keys, { new_quantity: menge ?? 0 });
+  return antwort(k, art, uid, keys, { new_quantity: menge ?? 0 });
 }
 
-export async function setErfassungen(sicht: Sicht | number[], setNumber: string) {
-  return sammlungBereich().erfassungen.setErfassungenImBlickfeld(
-    await haushaltBereich().haushalt.blickfeldAus(sicht),
-    setNumber,
-  );
+export async function setErfassungen(k: SammlungKontext, sicht: Sicht | number[], setNumber: string) {
+  return k.erfassungen.setErfassungenImBlickfeld(await k.haushalt.haushalt.blickfeldAus(sicht), setNumber);
 }

@@ -5,41 +5,42 @@ import { fehlerAntwort } from '../src/http/httpAntwort';
 import { logAndContinue } from '../src/infra/fehler';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import { resolveUserId, istVerwalter } from '../src/konto/http/anmeldung';
-import { aktuellerStartZustand, oeffentlicherStartZustand } from '../src/auftraege';
-import { gesundheitsBericht, datenbankBereit } from '../src/verwaltung';
+import { oeffentlicherStartZustand } from '../src/auftraege';
+import type { Dienste } from '../startup/verdrahtung';
 
-// Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
-const router = express.Router({ caseSensitive: true });
+export function baueGesundheitRouter(d: Dienste) {
+  // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
+  const router = express.Router({ caseSensitive: true });
 
-router.get('/startup-status', async (req, res) => {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  const angemeldet = !!(await resolveUserId(req).catch(logAndContinue('startup-status:anmeldung')));
-  res.json(oeffentlicherStartZustand(await aktuellerStartZustand(), angemeldet));
-});
-
-// live = Prozess, ready = Datenbank.
-router.get('/health/live', (_req, res) => {
-  res.json({ status: 'ok' });
-});
-router.get('/health/ready', async (req, res) => {
-  if (await datenbankBereit()) return void res.json({ status: 'ok' });
-  res.status(503).json({
-    success: false,
-    code: 'datenbank_nicht_erreichbar',
-    status: 'unavailable',
-    error: fehlerText('datenbank_nicht_erreichbar', antwortSprache(req)),
+  router.get('/startup-status', async (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    const angemeldet = !!(await resolveUserId(req).catch(logAndContinue('startup-status:anmeldung')));
+    res.json(oeffentlicherStartZustand(await d.auftraege.aktuellerStartZustand(), angemeldet));
   });
-});
-// Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
-// Bewusst ohne Schrittschutz: Die Details tragen nichts Geheimes, und eine
-// Überwachung fragt mit einem Token ohne Geräteschlüssel.
-router.get('/health', async (req, res) => {
-  const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
-  res.json(await gesundheitsBericht(verwalter));
-});
 
-router.use(fehlerAntwort);
+  // live = Prozess, ready = Datenbank.
+  router.get('/health/live', (_req, res) => {
+    res.json({ status: 'ok' });
+  });
+  router.get('/health/ready', async (req, res) => {
+    if (await d.verwaltung.datenbankBereit()) return void res.json({ status: 'ok' });
+    res.status(503).json({
+      success: false,
+      code: 'datenbank_nicht_erreichbar',
+      status: 'unavailable',
+      error: fehlerText('datenbank_nicht_erreichbar', antwortSprache(req)),
+    });
+  });
+  // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
+  // Bewusst ohne Schrittschutz: Die Details tragen nichts Geheimes, und eine
+  // Überwachung fragt mit einem Token ohne Geräteschlüssel.
+  router.get('/health', async (req, res) => {
+    const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
+    res.json(await d.verwaltung.gesundheitsBericht(verwalter));
+  });
 
-export = router;
+  router.use(fehlerAntwort);
+  return router;
+}

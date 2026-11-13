@@ -79,7 +79,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
       req.session.besuch = 1;
       res.json({});
     });
-    app.use('/api/v1/auth', _req('routes/auth.js'));
+    app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
     const srv = app.listen(0);
     t.after(() => new Promise(r => srv.close(r)));
     const base = `http://127.0.0.1:${srv.address().port}`;
@@ -110,7 +110,8 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     delete require.cache[datei];
     const b = require(datei);
     assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
-    assert.equal((await b.checkLoginAllowed(IP, ZAEHLER))?.code, 'zu_viele_fehlversuche');
+    const konto = _req('src/infra/bereich.js').prozessDienste().konto;
+    assert.equal((await b.checkLoginAllowed(konto, IP, ZAEHLER))?.code, 'zu_viele_fehlversuche');
   });
 
   await t.test('Anmeldezähler: ohne Datenbank bremst der Speicher', async () => {

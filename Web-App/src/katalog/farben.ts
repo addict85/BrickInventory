@@ -3,8 +3,8 @@
 import { getBrickColors } from './quellen';
 
 import { KEINE_FARBE } from '../infra/validate';
-import { katalog } from './prozess';
 import { versuche } from '../infra/ergebnis';
+import type { KatalogKontext } from './kontext';
 
 export { KEINE_FARBE };
 
@@ -31,8 +31,8 @@ const NOTLISTE: Farbe[] = [
   { id: 72, name: 'Dark Bluish Gray', hex: '6C6E68' },
 ];
 
-export async function farbliste(): Promise<Farbe[]> {
-  const geladen = await katalog().katalogStamm.geladeneFarben();
+export async function farbliste(k: KatalogKontext): Promise<Farbe[]> {
+  const geladen = await k.katalogStamm.geladeneFarben();
   if (geladen.length) return geladen;
   // Ohne Rebrickable bleibt die eingebaute Notliste; sie ist als solche kurz.
   const abgerufen = await versuche('farben:rebrickable', getBrickColors());

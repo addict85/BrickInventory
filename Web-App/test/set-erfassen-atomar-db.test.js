@@ -34,7 +34,7 @@ Module.prototype.require = function (name, ...rest) {
     return new Proxy(m, {
       get: (t, k) =>
         k === 'getSetInfo'
-          ? async sn => {
+          ? async (_k, sn) => {
               netz.push(`rebrickable ${sn}`);
               return { name: 'Testset', year: 2020, theme: 'Test', pieces: 10, image_url: null };
             }
@@ -44,7 +44,7 @@ Module.prototype.require = function (name, ...rest) {
     return new Proxy(m, {
       get: (t, k) =>
         k === 'getCurrentMarketPrice'
-          ? async sn => {
+          ? async (_k, sn) => {
               netz.push(`preis ${sn}`);
               return 42;
             }

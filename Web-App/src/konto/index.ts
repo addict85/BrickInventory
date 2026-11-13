@@ -1,103 +1,204 @@
 /** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
  * damit die Aufteilung der Dateien darunter frei bleibt. */
-export { purgeExpiredTokens } from './geraeteToken';
-export { verschluesseleAltbestand } from './geheimnisAltbestand';
-export { raeumeOffeneRegistrierungenAuf } from './konten';
-export { raeumeAnmeldezaehlerAuf, zaehleAnfrage } from './loginLimiter';
-export { setUserSetting } from './nutzerEinstellung';
+import { kontoBereich } from './prozess';
+import { dienstePerAufruf } from '../infra/bereich';
 export { assetlinks } from './androidApp';
-export {
-  Angemeldet,
-  TokenWunsch,
-  anmeldeAntwort,
-  eigenesPasswortAendern,
-  emailWirdGeaendert,
-  geraeteTokenAusstellen,
-  profilAendern,
-  qrZugangErzeugen,
-} from './anmeldungAblauf';
-export {
-  UEBERLAPPUNG_MS,
-  deleteToken,
-  hashToken,
-  pruefeToken,
-  rotationFaellig,
-  rotiereToken,
-  validateToken,
-} from './geraeteToken';
-export { leereTokenCache } from './tokenCache';
-export { assertLoginAllowed, verifiziereEmailToken } from './anmeldepruefung';
+export { Angemeldet, TokenWunsch, emailWirdGeaendert } from './anmeldungAblauf';
+export { UEBERLAPPUNG_MS, hashToken, rotationFaellig } from './geraeteToken';
+export { assertLoginAllowed } from './anmeldepruefung';
 export { USERNAME_RE, emailGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig, nameGueltig } from './namensRegeln';
-export { beendeAndereZugaenge } from './zugangsende';
-export { einrichtungStand } from './einrichtungStand';
-export { familieAus, hinterlegeSchluessel, loeseEin, neueChallenge } from './geraeteChallenge';
+export { familieAus } from './geraeteChallenge';
 export { invalidateTheme, startStilHash } from './indexHtml';
-export {
-  LETZTER_VERWALTER,
+export { LETZTER_VERWALTER, rechneWieRegistrierung } from './konten';
+export { loescheKontoDateien } from './kontoEntfernen';
+export { meldeAnmeldung } from './loginLimiter';
+export { vertrauenspartei } from './passkeys';
+export { QR_TTL_MS } from './qrKopplung';
+export { drossleBeruehren } from './sitzungsBeruehrung';
+export { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './sitzungsFrist';
+export { otpauthAdresse } from './zweiterFaktor';
+export type { VerwalterAktion } from './verwalterProtokoll';
+export { erzeugeKonto } from './bereich';
+export type { KontoDienste, KontoKontext } from './bereich';
+export { kontoBereich } from './prozess';
+
+/** Für Wege ohne eigenen Kontext (HTTP-Seiten, Tests): die Dienste des Prozesses. */
+export const {
+  aktivSetzen,
+  aktuelleSitzungsVersion,
   andereSitzungenBeenden,
-  kontenListe,
+  andereZugaengeBeenden,
+  anmeldeAntwort,
+  anmeldeOptionen,
+  anmeldungPruefen,
+  beendeAndereZugaenge,
+  beginneEinrichtung,
+  begrenzeSitzungen,
+  bestaetigeEinrichtungGebremst,
+  bestaetigeKopplung,
+  bestaetigungErneutAnfordern,
+  deleteToken,
+  eigenesPasswortAendern,
+  einrichtungStand,
+  erneuereCodes,
+  geraeteTokenAusstellen,
   gibtKonto,
-  kontoKurzVon,
+  hinterlegeSchluessel,
+  hinweisNebenher,
+  holeQrTokenAb,
+  horcheAufTokenWiderruf,
+  istAktiv,
+  kontenListe,
   kontoAnzeigeName,
+  kontoEntfernen,
+  kontoGedrosselt,
+  kontoKurzVon,
   kontoVollVon,
+  kontoZumRuecksetzLink,
+  kopplungsStand,
+  leereTokenCache,
   legeKontoAn,
+  legeStartVerwalterAn,
+  lehneKopplungAb,
+  loeschePasskey,
+  loeseEin,
+  meldeAusstehendeAdressen,
+  meldeGeraet,
+  meldeUngueltigeAdressen,
+  nameZuBestaetigung,
+  neueChallenge,
+  neueNonce,
+  passkeysDesKontos,
   passwortWechselFaellig,
   profil,
-  rechneWieRegistrierung,
+  profilAendern,
+  pruefeAnmeldedaten,
+  pruefeBestaetigung,
+  pruefeCodeBestaetigung,
+  pruefeFreigabe,
+  pruefeToken,
+  purgeExpiredTokens,
+  qrZugangErzeugen,
+  raeumeAnmeldezaehlerAuf,
+  raeumeOffeneRegistrierungenAuf,
   registriere,
+  registrierungFreischalten,
+  registrierungPruefen,
+  registrierungVersuchen,
+  registrierungsOptionen,
+  renderIndexHtml,
+  rotiereToken,
+  ruecksetzLinkAnfordern,
+  schalteAb,
+  setUserSetting,
   setzeAktiv,
+  setzeEigenesDesign,
   setzeFremdesPasswort,
   setzePasswortZurueck,
   setzeVerwalterRolle,
-} from './konten';
-export { kontoEntfernen, loescheKontoDateien } from './kontoEntfernen';
-export { hinweisNebenher, verwalterHinweisNebenher } from './kontoHinweis';
-export { meldeAnmeldung } from './loginLimiter';
-export { setzeEigenesDesign } from './nutzerEinstellung';
-export {
-  anmeldeOptionen,
-  anmeldungPruefen,
-  loeschePasskey,
-  passkeysDesKontos,
-  registrierungPruefen,
-  registrierungsOptionen,
-  vertrauenspartei,
-} from './passkeys';
-export { bestaetigeEinrichtungGebremst } from './passwortBestaetigung';
-export {
-  QR_TTL_MS,
-  bestaetigeKopplung,
-  holeQrTokenAb,
-  kopplungsStand,
-  lehneKopplungAb,
-  meldeGeraet,
-  verwirfAbholung,
-} from './qrKopplung';
-export { drossleBeruehren } from './sitzungsBeruehrung';
-export { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './sitzungsFrist';
-export { legeStartVerwalterAn } from './startVerwalter';
-export { tokenAngaben } from './tokenWunsch';
-export { kontoGedrosselt, zielGedrosselt } from './zielDrossel';
-export { beginneEinrichtung, erneuereCodes, istAktiv, otpauthAdresse, schalteAb, stand } from './zweiterFaktor';
-export { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './konten';
-export { horcheAufTokenWiderruf } from './tokenCache';
-export { neueNonce } from './geraeteChallenge';
-export { verwalterAktionMerken, verwaltungsProtokoll } from './verwalterProtokoll';
-export type { VerwalterAktion } from './verwalterProtokoll';
-export {
-  aktivSetzen,
-  registrierungFreischalten,
+  sitzungsVersionAusDb,
+  stand,
+  tokenAngaben,
+  validateToken,
+  verifiziereEmailToken,
+  verschluesseleAltbestand,
+  verwalterAktionMerken,
+  verwalterHinweisNebenher,
   verwalterRolleSetzen,
+  verwaltungsProtokoll,
+  verwirfAbholung,
+  zaehleAnfrage,
+  zielGedrosselt,
+  zugaengeListe,
+  zugangBeenden,
   zweitenFaktorEntfernen,
-} from './verwalterAktionen';
-export { andereZugaengeBeenden, zugangBeenden, zugaengeListe } from './zugaenge';
-export {
-  bestaetigungErneutAnfordern,
-  kontoZumRuecksetzLink,
-  nameZuBestaetigung,
-  registrierungVersuchen,
-  ruecksetzLinkAnfordern,
-} from './registrierungAblauf';
-export { erzeugeKonto } from './bereich';
-export type { KontoDienste, KontoKontext } from './bereich';
-export { kontoBereich, verdrahteKonto } from './prozess';
+} = dienstePerAufruf(kontoBereich, [
+  'aktivSetzen',
+  'aktuelleSitzungsVersion',
+  'andereSitzungenBeenden',
+  'andereZugaengeBeenden',
+  'anmeldeAntwort',
+  'anmeldeOptionen',
+  'anmeldungPruefen',
+  'beendeAndereZugaenge',
+  'beginneEinrichtung',
+  'begrenzeSitzungen',
+  'bestaetigeEinrichtungGebremst',
+  'bestaetigeKopplung',
+  'bestaetigungErneutAnfordern',
+  'deleteToken',
+  'eigenesPasswortAendern',
+  'einrichtungStand',
+  'erneuereCodes',
+  'geraeteTokenAusstellen',
+  'gibtKonto',
+  'hinterlegeSchluessel',
+  'hinweisNebenher',
+  'holeQrTokenAb',
+  'horcheAufTokenWiderruf',
+  'istAktiv',
+  'kontenListe',
+  'kontoAnzeigeName',
+  'kontoEntfernen',
+  'kontoGedrosselt',
+  'kontoKurzVon',
+  'kontoVollVon',
+  'kontoZumRuecksetzLink',
+  'kopplungsStand',
+  'leereTokenCache',
+  'legeKontoAn',
+  'legeStartVerwalterAn',
+  'lehneKopplungAb',
+  'loeschePasskey',
+  'loeseEin',
+  'meldeAusstehendeAdressen',
+  'meldeGeraet',
+  'meldeUngueltigeAdressen',
+  'nameZuBestaetigung',
+  'neueChallenge',
+  'neueNonce',
+  'passkeysDesKontos',
+  'passwortWechselFaellig',
+  'profil',
+  'profilAendern',
+  'pruefeAnmeldedaten',
+  'pruefeBestaetigung',
+  'pruefeCodeBestaetigung',
+  'pruefeFreigabe',
+  'pruefeToken',
+  'purgeExpiredTokens',
+  'qrZugangErzeugen',
+  'raeumeAnmeldezaehlerAuf',
+  'raeumeOffeneRegistrierungenAuf',
+  'registriere',
+  'registrierungFreischalten',
+  'registrierungPruefen',
+  'registrierungVersuchen',
+  'registrierungsOptionen',
+  'renderIndexHtml',
+  'rotiereToken',
+  'ruecksetzLinkAnfordern',
+  'schalteAb',
+  'setUserSetting',
+  'setzeAktiv',
+  'setzeEigenesDesign',
+  'setzeFremdesPasswort',
+  'setzePasswortZurueck',
+  'setzeVerwalterRolle',
+  'sitzungsVersionAusDb',
+  'stand',
+  'tokenAngaben',
+  'validateToken',
+  'verifiziereEmailToken',
+  'verschluesseleAltbestand',
+  'verwalterAktionMerken',
+  'verwalterHinweisNebenher',
+  'verwalterRolleSetzen',
+  'verwaltungsProtokoll',
+  'verwirfAbholung',
+  'zaehleAnfrage',
+  'zielGedrosselt',
+  'zugaengeListe',
+  'zugangBeenden',
+  'zweitenFaktorEntfernen',
+]);

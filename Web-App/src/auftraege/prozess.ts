@@ -33,7 +33,5 @@ export function meldeProzessAb(): void {
   s.client = null;
 }
 
-/** Die Dienste des Bereichs im Prozess (src/infra/bereich.ts). */
-const stelle = prozessStelle<AuftraegeDienste>('Auftraege');
-export const verdrahteAuftraege = stelle.verdrahte;
-export const auftraegeBereich = stelle.hole;
+/** Die Dienste des Prozesses (startup/verdrahtung.ts) für Wege ohne eigenen Kontext. */
+export const auftraegeBereich = prozessStelle<AuftraegeDienste>('auftraege');

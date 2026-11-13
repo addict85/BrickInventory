@@ -8,7 +8,7 @@ import type { AKTIONEN } from '../vertrag/geraet';
 import { konfig } from '../infra/konfig';
 import { GOOGLE_WURZELN } from './attestation/googleWurzeln';
 import { pruefeKette } from './attestation/schluesselAttestation';
-import { kontoBereich } from './prozess';
+import type { KontoKontext } from './kontext';
 
 export type { Familie };
 
@@ -50,13 +50,13 @@ export function leseSchluessel(b64: string): KeyObject | null {
 
 /** Was die App als Attestation-Challenge einsetzt; gilt bis zum Ende von SCHLUESSEL_FRIST_S.
  * Eine Familie aus der QR-Kopplung bekommt nur die Nonce ihrer Abholung. */
-export async function neueNonce(f: Familie, ausQr = false): Promise<string | null> {
+export async function neueNonce(k: KontoKontext, f: Familie, ausQr = false): Promise<string | null> {
   if (!ausQr) {
-    const qr = await kontoBereich().geraeteSchluessel.qrNonceDer(f);
+    const qr = await k.geraeteSchluessel.qrNonceDer(f);
     if (qr) return qr.nonce;
   }
   const nonce = randomBytes(32).toString('base64url');
-  const ok = await kontoBereich().geraeteSchluessel.legeNonceAn(f, nonce, {
+  const ok = await k.geraeteSchluessel.legeNonceAn(f, nonce, {
     fristS: SCHLUESSEL_FRIST_S,
     offen: NONCES_OFFEN,
     ausQr,
@@ -82,47 +82,42 @@ function wurzeln(): X509Certificate[] {
 export type Registrierung = 'neu' | 'gleich' | 'anderer' | 'frist_vorbei' | 'ungueltig' | { abgewiesen: string };
 
 /** Die Kette muss die Prüfung bestehen und eine noch offene Nonce dieser Familie tragen. */
-export async function hinterlegeSchluessel(f: Familie, kette: readonly string[]): Promise<Registrierung> {
+export async function hinterlegeSchluessel(
+  kx: KontoKontext,
+  f: Familie,
+  kette: readonly string[],
+): Promise<Registrierung> {
   const k = konfig();
   const p = pruefeKette(kette, { wurzeln: wurzeln(), paket: k.androidPaket, digests: k.androidZertifikate });
   if (!p.ok) return { abgewiesen: p.grund };
   const kanonisch = (p.oeffentlich.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
   if (!leseSchluessel(kanonisch)) return 'ungueltig';
-  const da = await kontoBereich().geraeteSchluessel.eintragDer(f);
+  const da = await kx.geraeteSchluessel.eintragDer(f);
   if (da?.attestiert) return da.oeffentlich === kanonisch ? 'gleich' : 'anderer';
-  if (!(await kontoBereich().geraeteSchluessel.nimmNonce(f, p.challenge.toString('base64url'))))
-    return { abgewiesen: 'challenge' };
-  if (await kontoBereich().geraeteSchluessel.legeSchluesselAn(f, kanonisch, SCHLUESSEL_FRIST_S)) return 'neu';
-  return (await kontoBereich().geraeteSchluessel.eintragDer(f))?.oeffentlich === kanonisch ? 'gleich' : 'frist_vorbei';
+  if (!(await kx.geraeteSchluessel.nimmNonce(f, p.challenge.toString('base64url')))) return { abgewiesen: 'challenge' };
+  if (await kx.geraeteSchluessel.legeSchluesselAn(f, kanonisch, SCHLUESSEL_FRIST_S)) return 'neu';
+  return (await kx.geraeteSchluessel.eintragDer(f))?.oeffentlich === kanonisch ? 'gleich' : 'frist_vorbei';
 }
 
 export type Challenge = { challenge: string; nachricht: string; gueltig_bis: Date } | 'kein_schluessel';
 
-export async function neueChallenge(f: Familie, aktion: Schrittaktion): Promise<Challenge> {
-  if (!(await kontoBereich().geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis)))
-    return 'kein_schluessel';
+export async function neueChallenge(k: KontoKontext, f: Familie, aktion: Schrittaktion): Promise<Challenge> {
+  if (!(await k.geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis))) return 'kein_schluessel';
   const challenge = randomBytes(32).toString('base64url');
-  const bis = await kontoBereich().geraeteSchluessel.legeChallengeAn(
-    f,
-    challenge,
-    aktion,
-    CHALLENGE_FRIST_S,
-    CHALLENGES_OFFEN,
-  );
+  const bis = await k.geraeteSchluessel.legeChallengeAn(f, challenge, aktion, CHALLENGE_FRIST_S, CHALLENGES_OFFEN);
   return { challenge, nachricht: nachricht(aktion, challenge), gueltig_bis: bis };
 }
 
 /** Die Challenge ist danach verbraucht, auch bei falscher Signatur: Raten kostet je Versuch eine neue. */
 export async function loeseEin(
+  kx: KontoKontext,
   f: Familie,
   challenge: string,
   signaturB64: string,
 ): Promise<{ aktion: Schrittaktion; bis: Date } | null> {
-  const aktion = (await kontoBereich().geraeteSchluessel.nimmChallenge(f, challenge)) as Schrittaktion | null;
+  const aktion = (await kx.geraeteSchluessel.nimmChallenge(f, challenge)) as Schrittaktion | null;
   if (!aktion) return null;
-  const k = leseSchluessel(
-    (await kontoBereich().geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis)) ?? '',
-  );
+  const k = leseSchluessel((await kx.geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis)) ?? '');
   let passt = false;
   try {
     passt =
@@ -139,15 +134,15 @@ export async function loeseEin(
   if (!passt) return null;
   return {
     aktion,
-    bis: await kontoBereich().geraeteSchluessel.oeffneFreigabe(f, aktion, FREIGABE_LEERLAUF_S, FREIGABE_HOECHSTENS_S),
+    bis: await kx.geraeteSchluessel.oeffneFreigabe(f, aktion, FREIGABE_LEERLAUF_S, FREIGABE_HOECHSTENS_S),
   };
 }
 
 export type Pruefung = 'frei' | 'kein_schluessel' | 'freigabe_noetig';
 
-export async function pruefeFreigabe(f: Familie, aktion: Schrittaktion): Promise<Pruefung> {
-  if (await kontoBereich().geraeteSchluessel.nutzeFreigabe(f, aktion, FREIGABE_LEERLAUF_S)) return 'frei';
-  return (await kontoBereich().geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis))
+export async function pruefeFreigabe(k: KontoKontext, f: Familie, aktion: Schrittaktion): Promise<Pruefung> {
+  if (await k.geraeteSchluessel.nutzeFreigabe(f, aktion, FREIGABE_LEERLAUF_S)) return 'frei';
+  return (await k.geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis))
     ? 'freigabe_noetig'
     : 'kein_schluessel';
 }

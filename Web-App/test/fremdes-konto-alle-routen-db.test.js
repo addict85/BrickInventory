@@ -189,8 +189,9 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
     req.apiUser = { user_id: als, username: name, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  for (const r of S.routerEinhaengungen()) app.use(r.mount, _req(`routes/${r.name}.js`));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  for (const r of S.routerEinhaengungen())
+    app.use(r.mount, require('./helpers/sources').routerAus(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(async () => {
     srv.closeAllConnections?.();

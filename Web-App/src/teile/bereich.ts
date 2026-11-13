@@ -1,37 +1,34 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeTeile bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
-import * as manuelleTeile from './repository/manuelleTeile';
-import * as teileListe from './repository/teileListe';
-import * as teileZusammenfassung from './repository/teileZusammenfassung';
-import * as teilFarbe from './repository/teilFarbe';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeTeile bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
+import * as abfragen from './abfragen';
+import * as manuelleTeileDienst from './manuelleTeile';
+import * as teilFarbeAendern from './teilFarbeAendern';
+import { zugang, type TeileAbhaengigkeiten, type TeileKontext } from './kontext';
 
-export interface TeileKontext {
-  db: Db;
-}
+export type { TeileAbhaengigkeiten, TeileKontext } from './kontext';
 
-export function erzeugeTeile(k: TeileKontext) {
-  const { db } = k;
+export function erzeugeTeile(a: TeileAbhaengigkeiten) {
+  const k: TeileKontext = baueKontext(a, zugang);
   return {
-    db,
-    manuelleTeile: bindeZugang(db, manuelleTeile),
-    teileListe: bindeZugang(db, teileListe, [
-      'besitzteFiguren',
-      'besitzteTeile',
-      'farbenDesBestands',
-      'gebrauchteManuelle',
-      'hatUngeseheneBlNummer',
-      'inventarAlsTeile',
-      'kategorien',
-      'kennzahlen',
-      'manuelleTeile',
-      'seiteAusZusammenfassung',
-      'seiteLive',
+    ...k,
+    ...bindeZugang(k, abfragen, [
+      'getPartsColors',
+      'getParts',
+      'getPartsCategories',
+      'getPartsStats',
+      'getManualParts',
+      'getOwnedQuantities',
+      'getBlColorMap',
     ]),
-    teileZusammenfassung: bindeZugang(db, teileZusammenfassung, ['analysiere', 'gebauterStand', 'rohstand']),
-    teilFarbe: bindeZugang(db, teilFarbe, ['rbFarbe']),
+    ...bindeZugang(k, manuelleTeileDienst, [
+      'addManualPart',
+      'updateManualPart',
+      'getPartAcquisitions',
+      'importiereTeileCsv',
+    ]),
+    ...bindeZugang(k, teilFarbeAendern, ['aendereTeilFarbe']),
   };
 }
 

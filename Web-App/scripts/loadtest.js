@@ -197,7 +197,10 @@ function buildApp() {
   });
   app.use(require(path.join(ROOT, 'dist/src/http/kontoMerken.js')).merkeAnfrage);
   require(path.join(ROOT, 'dist/startup/app.js')).apiEingang(app);
-  app.use('/api/v1', require(path.join(ROOT, 'dist/routes/api_v1/index.js')));
+  app.use(
+    '/api/v1',
+    require(path.join(ROOT, 'dist/routes/api_v1/index.js')).baueApiRouter(verdrahtung.prozessDienste()),
+  );
   return app;
 }
 

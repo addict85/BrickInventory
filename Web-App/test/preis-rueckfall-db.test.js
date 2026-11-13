@@ -40,7 +40,7 @@ const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPre
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {
-  getPriceGuide: async (_sn, cond) => {
+  getPriceGuide: async (_k, _sn, cond) => {
     abrufe.push(cond);
     return cond === 'N'
       ? { min_price: '100', avg_price: '111', max_price: '120', qty_avg_price: '110', total_quantity: '7' }

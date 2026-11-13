@@ -324,7 +324,7 @@ test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {
   assert.match(px, /const notiere = \(\) => \{/, 'Der Proxy hinterlässt keine Notiz');
   assert.match(
     px,
-    /if \(darfErzeugen\) queueThumb\(cacheFile, thumbFile\); else notiere\(\);/,
+    /if \(darfErzeugen\) queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\); else notiere\(\);/,
     'Im gen=0-Fall wird weiter sofort verkleinert statt notiert',
   );
   // Und die Notiz braucht die Setnummer — ohne sie weiss der Job nicht, wohin.

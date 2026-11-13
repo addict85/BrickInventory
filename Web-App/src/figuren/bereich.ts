@@ -1,23 +1,26 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeFiguren bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
-import * as figurenListe from './repository/figurenListe';
-import * as figurTeile from './repository/figurTeile';
-import * as manuelleFiguren from './repository/manuelleFiguren';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeFiguren bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
+import * as abfragen from './abfragen';
+import * as dienst from './dienst';
+import * as manuelleFigurenDienst from './manuelleFiguren';
+import { zugang, type FigurenAbhaengigkeiten, type FigurenKontext } from './kontext';
 
-export interface FigurenKontext {
-  db: Db;
-}
+export type { FigurenAbhaengigkeiten, FigurenKontext } from './kontext';
 
-export function erzeugeFiguren(k: FigurenKontext) {
-  const { db } = k;
+export function erzeugeFiguren(a: FigurenAbhaengigkeiten) {
+  const k: FigurenKontext = baueKontext(a, zugang);
   return {
-    db,
-    figurenListe: bindeZugang(db, figurenListe),
-    figurTeile: bindeZugang(db, figurTeile),
-    manuelleFiguren: bindeZugang(db, manuelleFiguren),
+    ...k,
+    ...bindeZugang(k, abfragen, ['getMinifigs', 'getMinifigStats', 'getManualMinifigs']),
+    ...bindeZugang(k, dienst, ['teileDerFigur']),
+    ...bindeZugang(k, manuelleFigurenDienst, [
+      'addManualFig',
+      'updateManualFig',
+      'getFigAcquisitions',
+      'importiereFigurenCsv',
+    ]),
   };
 }
 

@@ -1,63 +1,39 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeBestand bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
-import * as bestandExport from './repository/bestandExport';
-import * as gemeinsam from './repository/gemeinsam';
-import * as kaufErfassungen from './repository/kaufErfassungen';
-import * as kennzahlen from './repository/kennzahlen';
-import * as lagerort from './repository/lagerort';
-import * as lagerortDienst from './lagerort';
-import * as manuelleMengen from './repository/manuelleMengen';
-import * as nachtrag from './repository/nachtrag';
-import * as papierkorb from './repository/papierkorb';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeBestand bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeGenerisch, bindeZugang } from '../infra/bereich';
+import * as acquisitions from './acquisitions';
+import * as bestandExportDienst from './bestandExport';
+import * as gemeinsamDienst from './gemeinsam';
+import * as kennzahlenDienst from './kennzahlen';
+import * as manuelleMenge from './manuelleMenge';
+import * as papierkorbDienst from './papierkorb';
+import * as kaufpreisNachtrag from './kaufpreisNachtrag';
+import * as lagerortRechte from './lagerortRechte';
+import { zugang, type BestandAbhaengigkeiten, type BestandKontext } from './kontext';
 
-export interface BestandKontext {
-  db: Db;
-}
+export type { BestandAbhaengigkeiten, BestandKontext } from './kontext';
 
-export function erzeugeBestand(k: BestandKontext) {
-  const { db } = k;
+export function erzeugeBestand(a: BestandAbhaengigkeiten) {
+  const k: BestandKontext = baueKontext(a, zugang);
   return {
-    db,
-    bestandExport: bindeZugang(db, bestandExport),
-    gemeinsam: bindeZugang(db, gemeinsam, ['erfassungsKennzahlen', 'setsMitBestandteil']),
-    kaufErfassungen: bindeZugang(db, kaufErfassungen, ['inWaehrungDesKontos']),
-    kennzahlen: bindeZugang(db, kennzahlen),
-    lagerort: bindeZugang(db, lagerort, [
-      'andererOrtGleichenNamens',
-      'entferneOrt',
-      'fuegeOrtEin',
-      'ortBelegung',
-      'ortDesKontos',
-      'ortNachName',
-      'ortName',
-      'orteDerKonten',
-      'orteMitBestand',
-      'schreibeOrtNamen',
-      'vorgabeOrt',
+    ...k,
+    ...bindeZugang(k, acquisitions, ['recordAcquisitionForDay', 'findSameDayAcquisition', 'setzeGeschaetztenPreis']),
+    erfassungenInKontowaehrung: bindeGenerisch(k)(acquisitions.erfassungenInKontowaehrung),
+    ...bindeZugang(k, bestandExportDienst, ['buildPartsCsv', 'buildFigsCsv']),
+    ...bindeZugang(k, gemeinsamDienst, ['verwendendeSets']),
+    applyManualCondition: bindeGenerisch(k)(gemeinsamDienst.applyManualCondition),
+    ...bindeZugang(k, kennzahlenDienst, ['getStats']),
+    ...bindeZugang(k, manuelleMenge, ['passeManuelleMengeAn']),
+    ...bindeZugang(k, papierkorbDienst, [
+      'listePapierkorb',
+      'stelleWiederHer',
+      'loescheEndgueltig',
+      'leerePapierkorb',
+      'raeumePapierkorbAuf',
     ]),
-    lagerortDienst: bindeZugang(db, lagerortDienst, [
-      'benenneOrtUm',
-      'lagerorte',
-      'legeOrtAn',
-      'loescheOrt',
-      'ortFuerNeuerfassung',
-      'orteFuer',
-      'orteVon',
-      'setzeLagerort',
-      'setzeVorgabe',
-      'vorgabeVon',
-    ]),
-    manuelleMengen: bindeZugang(db, manuelleMengen, ['summeDerErfassungen']),
-    nachtrag: bindeZugang(db, nachtrag),
-    papierkorb: bindeZugang(db, papierkorb, [
-      'eintraege',
-      'entferneAeltere',
-      'entferneAlle',
-      'entferneEintragDesKontos',
-    ]),
+    ...bindeZugang(k, kaufpreisNachtrag, ['run']),
+    ...bindeZugang(k, lagerortRechte, ['setzeVorgabe', 'lagerSchreibkonto', 'orteFuer']),
   };
 }
 

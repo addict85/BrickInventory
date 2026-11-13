@@ -48,7 +48,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 

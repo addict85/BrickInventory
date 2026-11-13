@@ -103,7 +103,7 @@ const woher = new Map();
 /** @type {[string, string][]} */
 const texte = quellen.map(p => [path.relative(ROOT, p), fs.readFileSync(p, 'utf8')]);
 // Routen antworten mit `{ success: true, ...(await dienst(…)) }`: Die Felder stehen im return des Dienstes.
-const gespreizt = new Set(texte.flatMap(([, s]) => [...s.matchAll(/\.\.\.\(await (?:\w+\.)?(\w+)\(/g)].map(m => m[1])));
+const gespreizt = new Set(texte.flatMap(([, s]) => [...s.matchAll(/\.\.\.\(await (?:\w+\.)*(\w+)\(/g)].map(m => m[1])));
 for (const [rel, s] of texte) {
   const rumpfe = [...s.matchAll(/function (\w+)\s*[(<]/g)]
     .filter(m => gespreizt.has(m[1]))

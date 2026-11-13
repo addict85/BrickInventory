@@ -4,6 +4,7 @@ import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/fehler';
 import { konfig } from '../../infra/konfig';
 import path from 'node:path';
 import { APP_ROOT } from '../../infra/appPaths';
+import type { KatalogKontext } from '../kontext';
 
 const BILDTYPEN = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']);
 
@@ -24,13 +25,16 @@ export interface CacheTreffer {
 }
 
 /** null heisst: nicht im Cache, der Aufrufer holt beim CDN. */
-export async function cacheTreffer(opts: {
-  cacheFile: string;
-  thumbFile: string;
-  wantThumb: boolean;
-  darfErzeugen: boolean;
-  notiere: () => void;
-}): Promise<CacheTreffer | null> {
+export async function cacheTreffer(
+  k: KatalogKontext,
+  opts: {
+    cacheFile: string;
+    thumbFile: string;
+    wantThumb: boolean;
+    darfErzeugen: boolean;
+    notiere: () => void;
+  },
+): Promise<CacheTreffer | null> {
   const { cacheFile, thumbFile, wantThumb, darfErzeugen, notiere } = opts;
 
   if (wantThumb) {
@@ -62,7 +66,7 @@ export async function cacheTreffer(opts: {
     if (wantThumb) {
       // NICHT auf die Verkleinerung warten: Das Original geht sofort hinaus, sonst
       // reihten sich bei einer Kachelwand Sekunden Jimp aneinander.
-      if (darfErzeugen) queueThumb(cacheFile, thumbFile);
+      if (darfErzeugen) queueThumb(k, cacheFile, thumbFile);
       else notiere();
     }
 

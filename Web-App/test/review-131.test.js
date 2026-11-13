@@ -239,7 +239,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
     };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const fehler = [];
   app.use((e, _req2, res, _next) => {
     fehler.push(e);

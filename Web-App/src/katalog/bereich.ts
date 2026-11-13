@@ -1,48 +1,122 @@
-/** Die Fabrik des Bereichs: Die Repositories nehmen den Zugang als ersten
- * Parameter; erzeugeKatalog bindet ihn einmal für alle, und die Dienste lesen und
- * schreiben nur über das Ergebnis (katalog(), prozess.ts). Wer eine eigene
- * Transaktion oder Sperrverbindung hält, ruft das Repository direkt damit auf. */
-import { bindeZugang } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeKatalog bindet ihn einmal für alle. Wer eine eigene
+ * Sperrverbindung hält, ruft das Repository direkt damit auf. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
-import type { KatalogKontext } from './kontext';
-import * as anleitungen from './repository/anleitungen';
-import * as apiKontingent from './repository/apiKontingent';
-import * as apiTakt from './repository/apiTakt';
-import * as bildBlickfeld from './repository/bildBlickfeld';
-import * as bildFehlschlaege from './repository/bildFehlschlaege';
-import * as bildStammCdn from './repository/bildStammCdn';
-import * as bildbedarf from './repository/bildbedarf';
-import * as bildlage from './repository/bildlage';
-import * as blZuordnung from './repository/blZuordnung';
-import * as csvKatalog from './repository/csvKatalog';
-import * as katalogCache from './repository/katalogCache';
-import * as katalogStamm from './repository/katalogStamm';
-import * as katalogSuche from './repository/katalogSuche';
-import * as rebrickableCache from './repository/rebrickableCache';
-import * as setInhalt from './repository/setInhalt';
-import * as teileAnreicherung from './repository/teileAnreicherung';
+import * as anleitungLaden from './anleitungLaden';
+import * as apiKontingentDienst from './apiKontingent';
+import * as bildlageDienst from './bildlage';
+import * as blZuordnungDienst from './blZuordnung';
+import * as bricklinkLink from './bricklinkLink';
+import * as bricklinkPreise from './bricklinkPreise';
+import * as bricksetNachlauf from './bricksetNachlauf';
+import * as csvAbgleich from './csvAbgleich';
+import * as dienst from './dienst';
+import * as farben from './farben';
+import * as instructions from './instructions';
+import * as katalogAbgleich from './katalogAbgleich';
+import * as katalogPflege from './katalogPflege';
+import * as minifigsImport from './minifigsImport';
+import * as partsImport from './partsImport';
+import * as rbInventar from './rbInventar';
+import * as rebrickableKatalog from './rebrickableKatalog';
+import * as teileAnreicherungDienst from './teileAnreicherung';
+import * as bildbedarfDienst from './bilder/bildbedarf';
+import * as bildbedarfLauf from './bilder/bildbedarfLauf';
+import * as imageMisses from './bilder/imageMisses';
+import * as rateLimiter from './rateLimiter';
+import * as bildNachlauf from './bildNachlauf';
+import * as pdfErzeugung from './pdf/pdfErzeugung';
+import * as bildBlickfeldDienst from './bilder/bildBlickfeld';
+import * as bildNachschlagen from './bilder/bildNachschlagen';
+import * as proxyThumbs from './bilder/proxyThumbs';
+import * as imgCacheServe from './bilder/imgCacheServe';
+import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
 
-export function erzeugeKatalog(kk: KatalogKontext) {
-  const { db } = kk;
+export type { KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
+
+export function erzeugeKatalog(a: Omit<KatalogAbhaengigkeiten, 'faecher'>) {
+  const k: KatalogKontext = baueKontext({ ...a, faecher: new Faecher() }, zugang);
   return {
-    db,
-    faecher: new Faecher(),
-    anleitungen: bindeZugang(db, anleitungen),
-    apiKontingent: bindeZugang(db, apiKontingent),
-    apiTakt: bindeZugang(db, apiTakt),
-    bildBlickfeld: bindeZugang(db, bildBlickfeld),
-    bildFehlschlaege: bindeZugang(db, bildFehlschlaege),
-    bildStammCdn: bindeZugang(db, bildStammCdn),
-    bildbedarf: bindeZugang(db, bildbedarf),
-    bildlage: bindeZugang(db, bildlage),
-    blZuordnung: bindeZugang(db, blZuordnung),
-    csvKatalog: bindeZugang(db, csvKatalog),
-    katalogCache: bindeZugang(db, katalogCache),
-    katalogStamm: bindeZugang(db, katalogStamm),
-    katalogSuche: bindeZugang(db, katalogSuche),
-    rebrickableCache: bindeZugang(db, rebrickableCache),
-    setInhalt: bindeZugang(db, setInhalt),
-    teileAnreicherung: bindeZugang(db, teileAnreicherung),
+    ...k,
+    ...bindeZugang(k, anleitungLaden, ['anleitungLaden']),
+    ...bindeZugang(k, apiKontingentDienst, [
+      'checkAndIncrementRateLimit',
+      'getRateLimitStatus',
+      'kontingentFrei',
+      'setzeKontingentZurueck',
+      'getLimitForApi',
+    ]),
+    ...bindeZugang(k, bildlageDienst, [
+      'fuelleAusBrickset',
+      'anleitungenNachtragen',
+      'setBilderNachladen',
+      'vorschaubilderNachtragen',
+      'setBildLokalEintragen',
+    ]),
+    ...bindeZugang(k, blZuordnungDienst, [
+      'merkeBlNummer',
+      'merkeEigeneBlNummer',
+      'blNummerVon',
+      'blAbrufNummer',
+      'blAbrufNummern',
+      'merkeBlFarbnummer',
+    ]),
+    ...bindeZugang(k, bricklinkLink, ['resolveMany', 'resolveOne']),
+    ...bindeZugang(k, bricklinkPreise, [
+      'setBekanntImKatalog',
+      'katalogEintrag',
+      'clearSubsetsCache',
+      'clearCatalogCache',
+      'getCacheStats',
+      'getPriceGuide',
+    ]),
+    ...bindeZugang(k, bricksetNachlauf, ['bricksetNachlauf']),
+    ...bindeZugang(k, csvAbgleich, ['csvAbgleich']),
+    ...bindeZugang(k, dienst, ['katalogMeta', 'jahrVerteilung', 'katalogSeite', 'katalogGeladen', 'katalogSet']),
+    ...bindeZugang(k, farben, ['farbliste']),
+    ...bindeZugang(k, instructions, [
+      'anzahlAnleitungen',
+      'anleitungenZuSet',
+      'anleitungNeuLadenErlaubt',
+      'loescheAnleitungen',
+      'downloadSetInstructions',
+    ]),
+    ...bindeZugang(k, katalogAbgleich, ['syncAllMissing', 'teilfarbenbilderNachtragen']),
+    ...bindeZugang(k, katalogPflege, [
+      'merkeTeil',
+      'merkeTeilFarbe',
+      'merkeFigur',
+      'merkeSetFiguren',
+      'katalogTeil',
+      'katalogFigur',
+    ]),
+    ...bindeZugang(k, minifigsImport, ['figurenAusKatalog', 'importiereFiguren']),
+    ...bindeZugang(k, partsImport, ['importiereTeile', 'fetchMissingBlIds', 'importPartsForSet']),
+    ...bindeZugang(k, rbInventar, ['inventarFuerKandidaten', 'neuestesInventar']),
+    ...bindeZugang(k, rebrickableKatalog, ['getSetInfo', 'getAllSetParts', 'getMinifigParts']),
+    ...bindeZugang(k, teileAnreicherungDienst, [
+      'enrichSetParts',
+      'downloadSetImages',
+      'enrichSetMinifigs',
+      'redownloadMissingImages',
+    ]),
+    ...bindeZugang(k, bildbedarfDienst, [
+      'loescheVerfallene',
+      'katalogBilderVormerken',
+      'offenerBildbedarf',
+      'leereBildbedarf',
+      'bildbedarfAnstossen',
+    ]),
+    ...bindeZugang(k, bildbedarfLauf, ['bildbedarfAbarbeiten']),
+    ...bindeZugang(k, imageMisses, ['vergissFehlend']),
+    ...bindeZugang(k, rateLimiter, ['rebrickableDailyStatus']),
+    ...bindeZugang(k, bildNachlauf, ['bildNachlauf']),
+    ...bindeZugang(k, pdfErzeugung, ['erzeugePdf']),
+    ...bindeZugang(k, bildBlickfeldDienst, ['anleitungFreigegeben', 'setNummerImBlickfeld']),
+    ...bindeZugang(k, bildNachschlagen, ['cdnFuerFehlendesBild']),
+    ...bindeZugang(k, proxyThumbs, ['queueThumb']),
+    ...bindeZugang(k, imgCacheServe, ['cacheTreffer']),
   };
 }
 

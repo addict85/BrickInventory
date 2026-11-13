@@ -81,8 +81,8 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
     if (sid) req.sessionID = String(sid);
     next();
   });
-  app.use('/api/v1/auth', _req('routes/auth.js'));
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const base = `http://localhost:${srv.address().port}`;

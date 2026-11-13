@@ -1,5 +1,5 @@
 /** Als Auftrag, damit ein Fehlschlag wiederholt wird und sichtbar bleibt. */
-import { stelleAuftragEin, type AuftragsLauf } from '../auftraege';
+import type { AuftragsLauf } from '../auftraege';
 import {
   EZB_HISTORIE,
   EZB_TAGESKURSE,
@@ -10,16 +10,16 @@ import {
   type Abruf,
   type Kurs,
 } from '../katalog';
-import { finanzenBereich } from './prozess';
+import type { FinanzenKontext } from './kontext';
 
 const BLOCK = 5000;
 
 /** Ein vorhandener Tag wird überschrieben: Die EZB korrigiert selten, aber sie tut es. */
-export async function speichereKurse(kurse: Kurs[]): Promise<number> {
+export async function speichereKurse(kx: FinanzenKontext, kurse: Kurs[]): Promise<number> {
   let n = 0;
   for (let i = 0; i < kurse.length; i += BLOCK) {
     const teil = kurse.slice(i, i + BLOCK);
-    const r = await finanzenBereich().wechselkurse.schreibeKurse(
+    const r = await kx.wechselkurse.schreibeKurse(
       teil.map(k => k.tag),
       teil.map(k => k.waehrung),
       teil.map(k => String(k.je_eur)),
@@ -30,25 +30,26 @@ export async function speichereKurse(kurse: Kurs[]): Promise<number> {
 }
 
 export async function kurseNachladen(
+  k: FinanzenKontext,
   abruf: Abruf = ezbAbruf,
   signal?: AbortSignal,
 ): Promise<{ quelle: 'historie' | 'tag'; kurse: number }> {
-  const leer = !(await finanzenBereich().wechselkurse.gibtEsKurse());
+  const leer = !(await k.wechselkurse.gibtEsKurse());
   const kurse = leer
     ? historieLesen(ersteZipDatei(await abruf(EZB_HISTORIE, signal)).toString('utf8'))
     : tageskurseLesen((await abruf(EZB_TAGESKURSE, signal)).toString('utf8'));
   if (!kurse.length) throw new Error(`EZB lieferte keine Kurse (${leer ? 'Historie' : 'Tageskurse'})`);
-  return { quelle: leer ? 'historie' : 'tag', kurse: await speichereKurse(kurse) };
+  return { quelle: leer ? 'historie' : 'tag', kurse: await speichereKurse(k, kurse) };
 }
 
 /** 15:30 UTC liegt nach der Veröffentlichung der EZB. Je Tag ein eigener
  * Schlüssel: Ein gescheiterter Versuch darf den nächsten Tag nicht sperren. */
-export async function planeKursabruf(jetzt = new Date(), morgen = false): Promise<string | null> {
+export async function planeKursabruf(k: FinanzenKontext, jetzt = new Date(), morgen = false): Promise<string | null> {
   const ziel = new Date(
     Date.UTC(jetzt.getUTCFullYear(), jetzt.getUTCMonth(), jetzt.getUTCDate() + (morgen ? 1 : 0), 15, 30),
   );
   const sek = Math.max(0, Math.round((ziel.getTime() - jetzt.getTime()) / 1000));
-  return stelleAuftragEin(
+  return k.auftraege.stelleAuftragEin(
     'wechselkurse',
     {},
     {
@@ -60,8 +61,8 @@ export async function planeKursabruf(jetzt = new Date(), morgen = false): Promis
 }
 
 /** Erst den nächsten Tag einplanen, dann laden: Scheitert das Laden, steht der Plan schon. */
-export async function kursauftrag(abruf: Abruf = ezbAbruf, lauf?: AuftragsLauf): Promise<void> {
-  await planeKursabruf(new Date(), true);
-  const r = await kurseNachladen(abruf, lauf?.signal);
+export async function kursauftrag(k: FinanzenKontext, abruf: Abruf = ezbAbruf, lauf?: AuftragsLauf): Promise<void> {
+  await planeKursabruf(k, new Date(), true);
+  const r = await kurseNachladen(k, abruf, lauf?.signal);
   console.log(`[wechselkurse] ${r.kurse} Kurse aus der EZB-${r.quelle === 'historie' ? 'Historie' : 'Tagesdatei'}`);
 }
