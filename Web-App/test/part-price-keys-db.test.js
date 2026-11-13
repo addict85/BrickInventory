@@ -1,6 +1,7 @@
 /**
  * Der Marktpreis eines manuell erfassten Teils erreicht das Detailfenster.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

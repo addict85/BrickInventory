@@ -1,6 +1,7 @@
 /**
  * Manuell erfasste Teile und Figuren tragen ihren Marktpreis mit.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

@@ -1,6 +1,7 @@
 /**
  * Eine Erfassung löschen → Preis und Zustand der ANTWORT werden NEU bestimmt.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

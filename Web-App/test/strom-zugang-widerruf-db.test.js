@@ -17,6 +17,7 @@
  *   D  setInterval in wacheUeberZugang() gestrichen → rot: „ohne Ereignis endet
  *      der Strom im Takt“
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

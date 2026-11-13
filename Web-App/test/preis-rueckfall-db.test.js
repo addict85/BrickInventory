@@ -22,6 +22,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');

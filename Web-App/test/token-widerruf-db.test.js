@@ -16,6 +16,8 @@
  *   E  (09.11.) in pgNotify.retire() `_lauscht.clear()` entfernt → rot: dieselbe Stelle
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

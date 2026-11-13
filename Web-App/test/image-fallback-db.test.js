@@ -11,6 +11,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

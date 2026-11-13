@@ -24,6 +24,7 @@
  *      ratschen.test.js „stille Faenge …“ (deckt den gestrichenen Fall „kein
  *      stiller Fehler mehr auf Bestandstabellen“)
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

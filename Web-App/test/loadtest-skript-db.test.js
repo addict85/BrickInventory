@@ -8,6 +8,8 @@
  *      zurückgesetzt → rot (Exit-Code 1, „Galerie (Seite 1) → HTTP 404“)
  *   B  im Seed das Einfügen in set_teile weggelassen → rot (die Zählung nennt „parts 0“;
  *      leer gemessen wäre die Teile-Liste nichts wert)
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

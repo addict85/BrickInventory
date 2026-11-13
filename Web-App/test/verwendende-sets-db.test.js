@@ -1,6 +1,7 @@
 /**
  * Welche Sets verwenden dieses Teil / diese Figur?
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const { after } = require('node:test');
 const assert = require('node:assert/strict');

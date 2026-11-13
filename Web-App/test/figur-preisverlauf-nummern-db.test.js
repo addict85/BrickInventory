@@ -2,6 +2,7 @@
  * Der Preisverlauf einer Minifigur findet ihre Preise auch unter der
  * BrickLink-Nummer.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

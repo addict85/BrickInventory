@@ -1,6 +1,7 @@
 /**
  * Der Lagerort am Bestand ist eine ID — und was das rettet.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

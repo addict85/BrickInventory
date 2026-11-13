@@ -31,9 +31,9 @@ const SCHLUESSEL = 7_654_321;
 
 /** Die nächste geliehene Verbindung lässt pg_advisory_unlock scheitern. */
 function unlockScheitertEinmal() {
-  const echt = db.pool.connect.bind(db.pool);
+  const echt = db.standardDb().pool.connect.bind(db.standardDb().pool);
   const vorfall = { freigabeMitFehler: /** @type {unknown} */ (undefined), freigegeben: false };
-  db.pool.connect = async () => {
+  db.standardDb().pool.connect = async () => {
     const c = await echt();
     const query = c.query.bind(c);
     const release = c.release.bind(c);
@@ -44,7 +44,7 @@ function unlockScheitertEinmal() {
     c.release = (/** @type {any} */ err) => {
       vorfall.freigegeben = true;
       vorfall.freigabeMitFehler = err;
-      db.pool.connect = echt;
+      db.standardDb().pool.connect = echt;
       return release(err);
     };
     return c;
@@ -54,7 +54,7 @@ function unlockScheitertEinmal() {
 
 /** Hält irgendeine Verbindung die Sperre noch? Von einer frischen Sitzung aus gefragt. */
 async function sperreFrei() {
-  const c = await db.pool.connect();
+  const c = await db.standardDb().pool.connect();
   try {
     const { rows } = await c.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [SCHLUESSEL]);
     if (rows[0].ok) await c.query('SELECT pg_advisory_unlock($1, 0)', [SCHLUESSEL]);
@@ -68,10 +68,10 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
   if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
   // Der Pool soll genau eine Verbindung haben, sonst bekäme die Prüfung eine andere
   // als die, die die Sperre hält, und fände sie "frei".
-  const maxVorher = db.pool.options.max;
-  db.pool.options.max = 1;
+  const maxVorher = db.standardDb().pool.options.max;
+  db.standardDb().pool.options.max = 1;
   t.after(() => {
-    db.pool.options.max = maxVorher;
+    db.standardDb().pool.options.max = maxVorher;
   });
 
   await t.test('mitSitzungsSperre: das Ergebnis des Laufs bleibt', async () => {

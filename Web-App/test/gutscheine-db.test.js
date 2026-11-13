@@ -4,6 +4,7 @@
  * Gegenprobe (11.11.2026 gemessen): in GET /vouchers/:id/pdf den Kopf
  *   Content-Security-Policy gestrichen → rot: „das PDF kommt wieder heraus …“
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');

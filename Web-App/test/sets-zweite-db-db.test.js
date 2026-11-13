@@ -29,6 +29,8 @@
  *      rot: „Haushaltsgedächtnis je Zugang“
  *   I  die Prüfung der Zugänge in erzeugeSets() entfernt → rot: „Katalog über
  *      einen anderen Zugang wird abgelehnt“
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

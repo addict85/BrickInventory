@@ -103,6 +103,7 @@ function baueDist() {
 /** Der Zugang der Testdatei: db/database kennt keinen Zugang des Prozesses mehr;
  *  ein Test bekommt ihn wie der Server von seinem Einstieg, hier also von hier. */
 let _testDb = null;
+let _eigenDb = null;
 /** Erzeugt den Zugang; gesetzt von buildAndRequire(). */
 let _zugangFabrik = null;
 
@@ -110,7 +111,7 @@ function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
   // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
-  // die Test-DB läuft als Superuser, und gestartete Server erben diese Umgebung.
+  // ausserhalb von npm test (und mit `@superuser`) ist die Test-DB Superuser, und gestartete Server erben das.
   process.env.NODE_ENV ??= 'test';
   baueDist();
   // Wie server.ts: Ohne Verdrahtung prüften Tests eine stumme Fassung der Nacharbeit.
@@ -144,9 +145,12 @@ function buildAndRequire() {
   require(path.join(ROOT, 'dist', 'src/infra/bereich.js')).verdrahteDienste(() =>
     require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueDienste(testDb(), faul),
   );
-  // db/database.js mit den Funktionen des Testzugangs, wie es früher der Prozesszugang war.
+  // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
+  // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
+  const eigenDb = () => (_eigenDb ??= eigentuemerZugang(dbModul, testDb, () => echt().erststart()));
+  // db/database.js mit den Funktionen des Eigentümerzugangs, wie es früher der Prozesszugang war.
   const fassade = Object.create(dbModul, {
-    pool: { get: () => testDb().pool },
+    pool: { get: () => eigenDb().pool },
     standardDb: { value: testDb },
   });
   for (const f of [
@@ -163,8 +167,12 @@ function buildAndRequire() {
     'eigeneVerbindung',
     'inTransaktion',
   ])
-    fassade[f] = (...a) => testDb()[f](...a);
-  return rel => (rel === 'db/database.js' ? fassade : mitKontext(rel, require(path.join(ROOT, 'dist', rel))));
+    fassade[f] = (...a) => eigenDb()[f](...a);
+  return rel => {
+    if (rel === 'db/database.js') return fassade;
+    const m = mitKontext(rel, require(path.join(ROOT, 'dist', rel)));
+    return rel.startsWith('routes/') ? mitKontoDerAnfrage(m) : m;
+  };
 }
 
 /** Innere Dienste eines Bereichs nehmen den Kontext als ersten Parameter (src/infra/bereich.ts).
@@ -212,6 +220,39 @@ function mitKontext(rel, modul) {
   return _mitKontext.get(rel);
 }
 
+/** Der Zugang der Eigentümerin, wenn der Lauf Rollen trennt, sonst der Testzugang selbst.
+ * Wer einen der beiden Pools schliesst, schliesst beide: Früher war es einer. */
+function eigentuemerZugang(dbModul, testDb, erststart) {
+  const url = process.env.TEST_DB_EIGEN_URL;
+  if (!url || url === process.env.DATABASE_URL) return testDb();
+  const k = dbModul.dbKonfigAusUmgebung();
+  // Wie server.ts: Der Erststart legt das erste Konto im Systemrahmen an.
+  const { imSystemkontext } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  const eigen = dbModul.erzeugeDb(
+    { ...k, verbindung: { connectionString: url }, system: null },
+    { erststart: () => imSystemkontext('start', erststart) },
+  );
+  const app = testDb();
+  const enden = [eigen.pool, app.pool].map(p => {
+    const ende = p.end.bind(p);
+    let zu = null;
+    return { p, schliesse: () => (zu ??= ende()) };
+  });
+  for (const { p } of enden) p.end = () => Promise.all(enden.map(e => e.schliesse())).then(() => undefined);
+  return eigen;
+}
+
+/** Wie startup/app.ts (merkeAnfrage vor allen Routen): Ein Router aus routes/, den ein Test
+ * selbst einhängt, läuft im Konto seiner Anfrage, sonst sähe er unter dem Zeilenschutz nichts. */
+function mitKontoDerAnfrage(m) {
+  const istRouter = x => typeof x === 'function' && Array.isArray(x.stack) && typeof x.handle === 'function';
+  if (!istRouter(m)) return m;
+  const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  return new Proxy(m, {
+    apply: (ziel, ich, [req, res, next]) => alsAnfrage(req, () => ziel.call(ich, req, res, next)),
+  });
+}
+
 module.exports.buildAndRequire = buildAndRequire;
 
 /** Ein Routenmodul mit Fabrik (baueXRouter(d)) als Router, mit den Diensten des Prozesses
@@ -219,7 +260,8 @@ module.exports.buildAndRequire = buildAndRequire;
 function routerAus(_req, rel) {
   const m = _req(rel);
   const baue = Object.entries(m).find(([n, f]) => /^baue\w*Router$/.test(n) && typeof f === 'function');
-  return baue ? baue[1](_req('src/infra/bereich.js').prozessDienste()) : m;
+  // Wie startup/app.ts: Der gebaute Router läuft im Konto seiner Anfrage.
+  return baue ? mitKontoDerAnfrage(baue[1](_req('src/infra/bereich.js').prozessDienste())) : m;
 }
 module.exports.routerAus = routerAus;
 

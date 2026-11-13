@@ -9,6 +9,7 @@
  *      → rot: Die fremde Zeile ist weg und der Stand steht auf 7.
  *   b) in sperreKonto() LOCKS.TEILE_KATALOG statt LOCKS.TEILE_SUMMARY → rot (wie a).
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

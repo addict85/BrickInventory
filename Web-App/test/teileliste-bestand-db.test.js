@@ -4,6 +4,7 @@
  * Gegenprobe (durchgeführt): den LEFT JOIN samt Multiplikation zurück auf
  * `SUM(p.quantity)` gesetzt → Schritt 1 wird rot, die anderen bleiben grün.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

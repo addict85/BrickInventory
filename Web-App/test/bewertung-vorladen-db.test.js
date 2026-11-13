@@ -16,6 +16,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -28,11 +29,15 @@ const { haeltTeil, haeltFigur, haeltSet } = require('./helpers/bestand');
 
 const gesehen = [];
 let zaehlen = false;
-const altQuery = db.pool.query.bind(db.pool);
-db.pool.query = (text, ...rest) => {
-  if (zaehlen) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
-  return altQuery(text, ...rest);
-};
+// Gezählt in den Pools der App (Laufzeit- und Systemrolle), nicht im Zugang der Testdaten.
+const zugang = require('./helpers/sources').testZugang();
+const pools = [...new Set([zugang.pool, zugang.systemPool])];
+const altQuery = pools.map(p => p.query);
+for (const [i, p] of pools.entries())
+  p.query = (text, ...rest) => {
+    if (zaehlen) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
+    return altQuery[i].call(p, text, ...rest);
+  };
 /** Die Abfragen während fn, gefiltert auf ein Muster. */
 async function abfragen(muster, fn) {
   gesehen.length = 0;
@@ -56,7 +61,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   const teile = Array.from({ length: 12 }, (_, i) => `bw${ID}t${i}`);
   const figuren = Array.from({ length: 6 }, (_, i) => `bw${ID}f${i}`);
   t.after(async () => {
-    db.pool.query = altQuery;
+    for (const [i, p] of pools.entries()) p.query = altQuery[i];
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, fremd]]);
     await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [teile]);
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number = ANY($1)', [figuren.map(f => f + 'bl')]);

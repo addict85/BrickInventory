@@ -1,6 +1,7 @@
 /**
  * Beim Aufstocken eines Sets müssen Preis und vermerkter Zustand ZUSAMMEN passen.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

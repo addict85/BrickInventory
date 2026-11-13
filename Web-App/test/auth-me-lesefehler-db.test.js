@@ -44,16 +44,19 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
   };
   /** Jede Abfrage scheitert, solange `arbeit` läuft. */
   const mitFehler = async arbeit => {
-    // Mit Konto holt sich die Datenbankschicht eine eigene Verbindung (Zeilenschutz): beide Wege.
-    const echt = { query: db.pool.query, connect: db.pool.connect };
+    // Mit Konto holt sich die Datenbankschicht eine eigene Verbindung (Zeilenschutz): beide Wege,
+    // in beiden Pools der App (Laufzeit- und Systemrolle).
+    const zugang = require('./helpers/sources').testZugang();
+    const pools = [...new Set([zugang.pool, zugang.systemPool])];
+    const echt = pools.map(p => ({ query: p.query, connect: p.connect }));
     const fehler = async () => {
       throw new Error('Verbindung zur Datenbank verloren');
     };
-    Object.assign(db.pool, { query: fehler, connect: fehler });
+    for (const p of pools) Object.assign(p, { query: fehler, connect: fehler });
     try {
       return await arbeit();
     } finally {
-      Object.assign(db.pool, echt);
+      for (const [i, p] of pools.entries()) Object.assign(p, echt[i]);
     }
   };
 

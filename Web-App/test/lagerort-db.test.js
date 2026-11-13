@@ -1,6 +1,7 @@
 /**
  * Lagerort gegen eine echte Datenbank.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

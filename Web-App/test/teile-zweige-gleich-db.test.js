@@ -1,6 +1,7 @@
 /**
  * Die Teileliste hat ZWEI Wege — sie müssen dieselben Typen liefern.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');

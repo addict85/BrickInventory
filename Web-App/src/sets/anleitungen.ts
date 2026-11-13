@@ -7,6 +7,7 @@ import { anleitungenZusammenlegen } from '../katalog';
 import { findSetInScope } from './erfassen';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
+import { imSystemkontext } from '../infra/kontoKontext';
 import * as repo from './repository/setDetail';
 import { versuche, wertOder } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
@@ -22,9 +23,14 @@ export async function anleitungLoeschen(sk: SetsKontext, uid: number, id: string
   if (!instr) return false;
   await repo.loescheAnleitung(sk.db, id, uid);
   if (!instr.local_path?.startsWith('/data/uploads/')) return true;
-  // Weiss die Datenbank nicht, ob noch jemand die Datei braucht, bleibt sie liegen.
+  // Weiss die Datenbank nicht, ob noch jemand die Datei braucht, bleibt sie liegen. Die
+  // Zeile eines anderen Kontos verbirgt der Zeilenschutz; gefragt wird deshalb im Systemrahmen.
+  const pfad = instr.local_path;
   const rest = wertOder(
-    await versuche('sets:anleitung-noch-benutzt', repo.anleitungsdateiBenutzt(sk.db, instr.local_path)),
+    await versuche(
+      'sets:anleitung-noch-benutzt',
+      imSystemkontext('geteilte Anleitungsdatei', () => repo.anleitungsdateiBenutzt(sk.db, pfad)),
+    ),
     { ok: 1 },
   );
   // Der Eintrag ist schon weg; eine liegen gebliebene Datei kostet nur Platz.

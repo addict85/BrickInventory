@@ -20,6 +20,8 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, deren Benutzer Datenbanken
  * anlegen darf.
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

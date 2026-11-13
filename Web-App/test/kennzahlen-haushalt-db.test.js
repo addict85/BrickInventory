@@ -1,6 +1,7 @@
 /**
  * Die Zahl über der Galerie muss zu dem passen, was darunter steht.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const { after } = require('node:test');
 const assert = require('node:assert/strict');

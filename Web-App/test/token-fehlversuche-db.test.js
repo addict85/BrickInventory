@@ -56,14 +56,18 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   });
 
   // Gezählt wird die Token-Abfrage an der Verbindung, nicht ein Aufruf im Quelltext.
-  const echt = db.pool.query.bind(db.pool);
+  // In den Pools der App (Laufzeit- und Systemrolle), nicht im Zugang der Testdaten.
+  const zugang = require('./helpers/sources').testZugang();
+  const pools = [...new Set([zugang.pool, zugang.systemPool])];
+  const echt = pools.map(p => p.query);
   let abfragen = 0;
-  db.pool.query = (sql, ...rest) => {
-    if (typeof sql === 'string' && /FROM api_tokens t JOIN users u/.test(sql)) abfragen++;
-    return echt(sql, ...rest);
-  };
+  for (const [i, p] of pools.entries())
+    p.query = (sql, ...rest) => {
+      if (typeof sql === 'string' && /FROM api_tokens t JOIN users u/.test(sql)) abfragen++;
+      return echt[i].call(p, sql, ...rest);
+    };
   t.after(() => {
-    db.pool.query = echt;
+    for (const [i, p] of pools.entries()) p.query = echt[i];
   });
 
   const ruf = async token => {

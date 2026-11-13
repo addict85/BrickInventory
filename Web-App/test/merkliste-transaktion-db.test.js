@@ -13,6 +13,7 @@
  *   D  uebertrageAlarm() ohne NOT EXISTS → rot: „Ziel mit eigenem Alarm“
  *      (Primärschlüsselverletzung)
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

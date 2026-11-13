@@ -2,6 +2,7 @@
  * Der Papierkorb steht nur an SELBST hochgeladenen Anleitungen.
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');

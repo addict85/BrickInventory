@@ -2,7 +2,7 @@
  * den Job-Prozess nicht trifft. Die Arbeit macht src/katalog/csvImport.ts. */
 import { Pool } from 'pg';
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
-import { datenbankVerbindung } from '../src/infra/konfig';
+import { datenbankVerbindung, systemVerbindung } from '../src/infra/konfig';
 import { katalogImporte, parseCsvLine } from '../src/katalog';
 
 // Ohne IPC-Kanal nach stderr statt TypeError.
@@ -11,7 +11,9 @@ function send(msg: Record<string, unknown>) {
   else console.error('[csv-worker] kein IPC-Kanal — Meldung verworfen:', JSON.stringify(msg).slice(0, 200));
 }
 
-const pool = new Pool(datenbankVerbindung());
+// Der Abgleich von rb_sets fragt, ob irgendein Konto ein Set hält: über Kontogrenzen,
+// also als Systemrolle; die Laufzeitrolle sähe ohne Konto keine Zeile und löschte es.
+const pool = new Pool(systemVerbindung() ?? datenbankVerbindung());
 const TASKS = katalogImporte(pool, send);
 
 type Aufgabe = keyof typeof TASKS;

@@ -1,6 +1,7 @@
 /**
  * Der Teile-Preis-Cache hat EINEN Schlüsselraum.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
