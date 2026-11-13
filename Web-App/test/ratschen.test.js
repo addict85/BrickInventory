@@ -586,8 +586,8 @@ const NUTZT_FASSADE =
  * wird an der Verdrahtung (testBildwerk(), Nacharbeit, verdrahteKlienten). routerServer steckt
  * eigene Router zusammen statt baueApp, an Sitzungs- und Verwalterprüfungen vorbei. */
 const ERSATZWEGE = {
-  'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 10 },
-  'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, schranke: 12 },
+  'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 11 },
+  'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, schranke: 13 },
 };
 
 test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weniger', () => {
@@ -597,6 +597,9 @@ test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weni
   // Gegenproben (13.11.2026): in indizes-db.test.js wieder `_req('db/database.js')` → rot
   // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14);
   // in app-kette-db.test.js testServer → routerServer → rot (14 statt 13).
+  // Seit dem 13.11.2026 zählt test/helpers/ mit (helpers/systemrahmen.js, die Definition in
+  // helpers/server.js; je +1 gegenüber der Zählung nur der Testdateien); Gegenprobe:
+  // `Module._load = l;` in helpers/zeit.js → rot (12 statt 11).
   assert.ok(NUTZT_FASSADE.test("const db = _req('db/database.js');") && !NUTZT_FASSADE.test('zugangOderSkip(t)'));
   assert.ok(!NUTZT_FASSADE.test("const { erzeugeDb } = _req('db/database.js');"), 'Exporte bleiben erlaubt');
   assert.ok(ERSATZWEGE['biegen Module um'].muster.test('Module.prototype.require = function () {}'));
@@ -610,8 +613,9 @@ test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weni
     [],
     'Testdaten über testDaten(), Code unter Test über testZugang()',
   );
+  // Auch die Helfer: Ein Umbiegen in test/helpers/ träfe jede Datei, die ihn lädt.
   for (const [was, { muster, schranke }] of Object.entries(ERSATZWEGE)) {
-    const ist = tests.filter(n => muster.test(lies(n))).length;
+    const ist = [...tests, ...helfer].filter(n => muster.test(lies(n))).length;
     assert.ok(ist > 0, `keine Datei ${was} — greift das Muster noch? Dann Schranke und Eintrag entfernen`);
     assert.ok(ist <= schranke, `${ist} Testdateien ${was}, erlaubt sind ${schranke}`);
     if (ist < schranke) console.log(`  ℹ ${ist} Testdateien ${was} (Schranke ${schranke}) — Schranke nachziehen`);
