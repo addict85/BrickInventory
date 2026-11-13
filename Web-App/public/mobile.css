@@ -614,6 +614,8 @@
      unsichtbar für Vorleser erhalten, Pfad und Untertitel sagen daneben nichts Neues. Zwei Zeilen Kopf
      schoben die erste Karte unter 40 % der Höhe. */
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { position: absolute; opacity: 0; pointer-events: none; }
+  /* Absolut nähme er die Breite seines längsten Worts; „Sammlung (Haushalt)“ bei 200 % weitete so das Fenster. */
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { left: 0; right: 0; overflow: hidden; }
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph :is(.ptitle-unter, .brotkrume) { display: none; }
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph .sammlung-wahl { width: auto; flex: 1 1 auto; margin-right: 52px; }
   .erfassen-leiste { margin: 0; position: static; }
