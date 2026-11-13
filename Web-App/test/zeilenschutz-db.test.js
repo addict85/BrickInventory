@@ -1,12 +1,9 @@
 /**
- * Zeilenschutz (Migration 0110): Vergisst eine Abfrage den Filter auf
- * user_id, liefert und ändert die Datenbank trotzdem nur Zeilen des Kontos der
- * Anfrage und seiner direkten Unterkonten. Ohne Konto und ohne Systemrahmen
- * gibt es keine Zeile; Aufträge laufen im Systemrahmen.
- *
- * Geprüft über einen Zugang aus erzeugeDb() als eigene Rolle ohne Eigentum
- * und ohne BYPASSRLS, wie die Laufzeitrolle im Betrieb: Der Testbenutzer ist
- * Superuser und sähe sonst alles.
+ * Zeilenschutz (Migration 0110): Ohne Filter auf user_id sieht und ändert eine
+ * Anfrage nur Zeilen ihres Kontos und seiner direkten Unterkonten, ohne Konto
+ * und Systemrahmen keine. Geprüft als eigene Rolle ohne Eigentum und ohne
+ * BYPASSRLS über erzeugeDb(), wie die Laufzeitrolle im Betrieb (der
+ * Testbenutzer ist Superuser und sähe alles).
  *
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
  *   A  vor den Tests `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` → rot:
@@ -18,7 +15,7 @@
  *      Verbindung trägt Konto A weiter) und „im Systemrahmen …“
  *   D  zeilenschutz_konten() ohne die Unterkonten → rot: „mit Konto A …“,
  *      „ohne Konto …“, „fremde user_id …“, „ein Signal-Handler …“
- *   E  im Auftrags-Worker imSystemkontext() weggelassen → rot: „ein Auftrag …“
+ *   E  im Auftrags-Worker imAuftragsrahmen() weggelassen → rot: „ein Auftrag …“
  *   F  nach ROLLBACK TO SAVEPOINT stand.kontext nicht zurückgesetzt → rot:
  *      „der Rahmen folgt … Sicherungspunkt“
  *   G  in Benachrichtigung.listen() AsyncResource.bind weggelassen → rot: „ein

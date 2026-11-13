@@ -8,6 +8,7 @@ import {
   AuftragUnterbrochen,
   AuftragVerloren,
   AuftragVerschieben,
+  imAuftragsrahmen,
   imNamenDesAuftrags,
   verschoben,
   fehlgeschlagen,
@@ -23,7 +24,6 @@ import {
 } from '../src/auftraege';
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { konfig } from '../src/infra/konfig';
-import { imSystemkontext } from '../src/infra/kontoKontext';
 
 /** Die Nutzlast kommt geprüft an (src/auftraege/nutzlasten.ts). */
 export interface Bearbeiter<A extends AuftragsArt = AuftragsArt> {
@@ -197,15 +197,9 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     const ac = new AbortController();
     const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
     laufend.set(a.id, lauf);
-    // Aufträge gehen über Kontogrenzen (Preise aller Sets, Aufräumen, Katalog):
-    // Der Zeilenschutz der Datenbank lässt sie im Systemrahmen durch.
-    lauf.fertig = imSystemkontext(`auftrag ${a.art}`, () =>
-      fuehreAuftragAus(a, ac, bearbeiter[a.art], fristSek, () => beendet),
-    )
+    lauf.fertig = imAuftragsrahmen(a, () => fuehreAuftragAus(a, ac, bearbeiter[a.art], fristSek, () => beendet))
       .catch(logAndContinue(`auftraege:${a.art}`))
-      .finally(() => {
-        laufend.delete(a.id);
-      });
+      .finally(() => laufend.delete(a.id));
     return lauf;
   }
 
