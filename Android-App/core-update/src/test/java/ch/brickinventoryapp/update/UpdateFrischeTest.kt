@@ -15,6 +15,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.security.cert.CertificateFactory
 import java.util.Base64
 
 /**
@@ -108,8 +109,9 @@ class UpdateFrischeTest {
     @Test
     fun `Frist und Ausstellung kommen aus der signierten Beschreibung`() {
         // Signiert wie im Job `signieren` (openssl dgst -sha256 -sign), ECDSA-Testschlüssel.
-        val zert = Base64.getDecoder().decode(ZERT)
-        val b = gepruefteBeschreibung("""{"daten":"$DATEN","signatur":"$SIG"}""", listOf(zert), emptyList())
+        val schluessel = CertificateFactory.getInstance("X.509")
+            .generateCertificate(Base64.getDecoder().decode(ZERT).inputStream()).publicKey.encoded
+        val b = gepruefteBeschreibung("""{"daten":"$DATEN","beschreibungssignatur":"$SIG"}""", listOf(schluessel))
         assertNotNull(b)
         assertEquals(1_793_750_400L, b!!.ausgestellt)
         assertEquals(1_793_750_400L + 30 * tag, b.gueltigBis)
