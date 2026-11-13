@@ -13,11 +13,15 @@
  *      Import setzt fort“ (der als verwaist markierte Lauf blieb stehen)
  *   C  in fuehreCsvImportAus `stand.current` nicht beachtet → rot: „ein
  *      unterbrochener Import setzt fort“ (r2 wurde ein zweites Mal gebucht)
+ *   D  (13.11.2026) im Worker den Auftrag ohne sein Konto (imNamenDesAuftrags mit
+ *      alsAnfrage({})) → rot: beide Teiltests (der Import sieht seinen Stand nicht)
+ *
+ * Wie im Betrieb: Der Code unter Test fragt als Laufzeitrolle im Konto (alsKonto,
+ * der Worker über imNamenDesAuftrags), Testdaten schreibt die Eigentümerin.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne API-Schlüssel und ohne
  * Bildabruf, damit addSet() kein Netz braucht.
  */
-require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -47,7 +51,7 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testZugang, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
@@ -95,27 +99,25 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
       });
       const lauf = `lauf-${process.pid}-1`;
       const rows = [{ sn: '76001-1', qty: 1, purchasePrice: null, condition: null, acquiredAt: null }];
-      await jobSet(a, {
-        status: 'running',
-        total: 1,
-        done: 0,
-        current: null,
-        results: '[]',
-        error: null,
-        run_id: lauf,
-      });
+      await alsKonto(a, () =>
+        jobSet(a, {
+          status: 'running',
+          total: 1,
+          done: 0,
+          current: null,
+          results: '[]',
+          error: null,
+          run_id: lauf,
+        }),
+      );
       await stelleAuftragEin('csv_import', { user_id: a, lauf, rows }, { userId: a });
       for (let i = 0; i < 100 && !aufrufe.length; i++) await warte(20);
       assert.deepEqual(aufrufe, ['76001-1'], 'der Import steckt im ersten Set');
 
       const SN = `7${process.pid % 10000}-1`;
-      const r = await _req('src/sets/index.js').addSet({
-        setNumber: SN,
-        menge: 1,
-        konto: b,
-        kaufpreis: 10,
-        zustand: 'N',
-      });
+      const r = await alsKonto(b, () =>
+        _req('src/sets/index.js').addSet({ setNumber: SN, menge: 1, konto: b, kaufpreis: 10, zustand: 'N' }),
+      );
       assert.equal(r.action, 'added');
       assert.deepEqual(await nacharbeit(b), [{ sn: SN, art: 'neu' }]);
 
@@ -141,15 +143,17 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
       }));
       // So sieht es nach einem Absturz mitten in r2 aus: jobGet() hat den Lauf
       // als verwaist markiert, der Auftrag steht auf 'laeuft' mit abgelaufener Frist.
-      await jobSet(a, {
-        status: 'error',
-        total: 3,
-        done: 1,
-        current: 'r2',
-        error: 'unterbrochen',
-        results: JSON.stringify([{ set_number: 'r1', success: true, action: 'added' }]),
-        run_id: lauf,
-      });
+      await alsKonto(a, () =>
+        jobSet(a, {
+          status: 'error',
+          total: 3,
+          done: 1,
+          current: 'r2',
+          error: 'unterbrochen',
+          results: JSON.stringify([{ set_number: 'r1', success: true, action: 'added' }]),
+          run_id: lauf,
+        }),
+      );
       await db.run(
         `INSERT INTO auftraege (art, nutzlast, user_id, status, versuche, frist_bis)
                     VALUES ('csv_import', $1, $2, 'laeuft', 1, NOW() - INTERVAL '1 minute')`,

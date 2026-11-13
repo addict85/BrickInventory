@@ -56,6 +56,7 @@ module.exports = {
   testZugang,
   testDaten,
   testBildwerk,
+  alsKonto,
 };
 
 /**
@@ -277,6 +278,14 @@ function testBildwerk(t, ersatz = {}) {
   Object.assign(_bildwerk, ersatz);
   t?.after(() => Object.assign(_bildwerk, vorher));
   return _bildwerk;
+}
+
+/** Ruft f im Namen eines Kontos wie eine Anfrage (alsAnfrage): Der Code unter Test sieht
+ *  unter dem Zeilenschutz nur dessen Haushalt, wie im Betrieb.
+ *  @template T @param {number} uid @param {() => T} f @param {{ verwalter?: boolean }} [o] @returns {T} */
+function alsKonto(uid, f, o = {}) {
+  const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  return alsAnfrage({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
 }
 
 /** Der Zugang der Eigentümerin für Testdaten: Er schreibt am Zeilenschutz vorbei, damit

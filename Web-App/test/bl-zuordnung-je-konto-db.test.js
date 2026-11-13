@@ -15,15 +15,17 @@
  *   E  manuelleFiguren.ts schreibt die BrickLink-Nr. wieder mit merkeBlNummer →
  *      rot: „die BrickLink-Nr. einer eigenen Figur …“
  *
+ * Wie im Betrieb fragt jeder Dienst im Namen seines Kontos (alsKonto) als Laufzeitrolle;
+ * Testdaten schreibt die Eigentümerin.
+ *
  * REQUIRE_DB=1.
  */
-require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
@@ -93,8 +95,10 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   // Bruno hält dieselben Dinge, damit seine Bewertung Zeilen hat.
   const { addManualPart } = _req('src/teile/manuelleTeile.js');
   const { addManualFig, updateManualFig } = _req('src/figuren/manuelleFiguren.js');
-  await addManualPart(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
-  await addManualFig(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
+  await alsKonto(BRUNO, async () => {
+    await addManualPart(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
+    await addManualFig(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
+  });
 
   const anna = testServer(_req, { sitzung: { userId: ANNA }, t });
 
@@ -117,25 +121,28 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   const { blNummerVon } = _req('src/katalog/blZuordnung.js');
 
   await t.test('Preisabruf: Anna fragt BrickLink nach 3001, Bruno nach 3003', async () => {
-    assert.equal(await resolveBlPartNumber('3003', ANNA), '3001');
-    assert.equal(await resolveBlPartNumber('3003', BRUNO), '3003');
+    assert.equal(await alsKonto(ANNA, () => resolveBlPartNumber('3003', ANNA)), '3001');
+    assert.equal(await alsKonto(BRUNO, () => resolveBlPartNumber('3003', BRUNO)), '3003');
     assert.equal(await resolveBlPartNumber('3003'), '3003', 'ohne Konto gilt die gemeinsame Zuordnung');
     // Der Abruf selbst liest den Preis unter der übersetzten Nummer.
     await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, fetched_at)
                   VALUES ('3001',5,'N','EUR',7,NOW()), ('3003',5,'N','EUR',2,NOW())`);
-    assert.equal(Number((await fetchPartPrice('3003', 4, 'N', 'EUR', 24, null, ANNA))?.avg_price), 7);
-    assert.equal(Number((await fetchPartPrice('3003', 4, 'N', 'EUR', 24, null, BRUNO))?.avg_price), 2);
+    const preis = uid => alsKonto(uid, () => fetchPartPrice('3003', 4, 'N', 'EUR', 24, null, uid));
+    assert.equal(Number((await preis(ANNA))?.avg_price), 7);
+    assert.equal(Number((await preis(BRUNO))?.avg_price), 2);
   });
 
   await t.test('Figurenpreis: jedes Konto nach seiner Nummer', async () => {
-    assert.equal(await blNummerVon('fig', 'fig-000001', ANNA), 'sw0001a');
-    assert.equal(await blNummerVon('fig', 'fig-000001', BRUNO), 'sw0001');
+    assert.equal(await alsKonto(ANNA, () => blNummerVon('fig', 'fig-000001', ANNA)), 'sw0001a');
+    assert.equal(await alsKonto(BRUNO, () => blNummerVon('fig', 'fig-000001', BRUNO)), 'sw0001');
   });
 
   await t.test('Bewertung: Nummern je Konto', async () => {
     const repo = _req('src/finanzen/prozess.js').finanzenBereich().bewertung;
-    const figuren = await repo.manuelleFigurenZurBewertung([ANNA, BRUNO]);
-    const teile = await repo.manuelleTeileZurBewertung([ANNA, BRUNO]);
+    // Jedes Konto bewertet seinen Bestand; zwei fremde Konten stehen nie in einer Bewertung.
+    const je2 = async f => [...(await alsKonto(ANNA, () => f([ANNA]))), ...(await alsKonto(BRUNO, () => f([BRUNO])))];
+    const figuren = await je2(ids => repo.manuelleFigurenZurBewertung(ids));
+    const teile = await je2(ids => repo.manuelleTeileZurBewertung(ids));
     const je = (zeilen, feld) => Object.fromEntries(zeilen.map(z => [z.user_id, z[feld]]));
     assert.deepEqual(je(figuren, 'bl_fig_number'), { [ANNA]: 'sw0001a', [BRUNO]: 'sw0001' });
     assert.deepEqual(je(teile, 'bl_part_number'), { [ANNA]: '3001', [BRUNO]: '3003' });
@@ -145,17 +152,17 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
     const { loeseLokalAuf } = _req('src/merkliste/wantedAufloesung.js');
     const { leseWantedListe } = _req('src/merkliste/wantedParser.js');
     const { posten } = leseWantedListe(liste(item('P', '3001', 5)));
-    assert.equal((await loeseLokalAuf(posten, ANNA))[0].rbId, '3003');
-    const bruno = (await loeseLokalAuf(posten, BRUNO))[0];
+    assert.equal((await alsKonto(ANNA, () => loeseLokalAuf(posten, ANNA)))[0].rbId, '3003');
+    const bruno = (await alsKonto(BRUNO, () => loeseLokalAuf(posten, BRUNO)))[0];
     assert.equal(bruno.rbId, '3001');
     assert.equal(bruno.sicherheit, 'katalogtreffer');
   });
 
   await t.test('die BrickLink-Nr. einer eigenen Figur bleibt beim Konto', async () => {
-    await updateManualFig(BRUNO, 'fig-000001', { bl_fig_number: 'sw9999' });
+    await alsKonto(BRUNO, () => updateManualFig(BRUNO, 'fig-000001', { bl_fig_number: 'sw9999' }));
     assert.deepEqual(await gemeinsam(), vorher);
-    assert.equal(await blNummerVon('fig', 'fig-000001', BRUNO), 'sw9999');
-    assert.equal(await blNummerVon('fig', 'fig-000001', ANNA), 'sw0001a');
+    assert.equal(await alsKonto(BRUNO, () => blNummerVon('fig', 'fig-000001', BRUNO)), 'sw9999');
+    assert.equal(await alsKonto(ANNA, () => blNummerVon('fig', 'fig-000001', ANNA)), 'sw0001a');
   });
 
   await t.test('die gemeinsame Zuordnung wird nur gefüllt, nie ersetzt', async () => {

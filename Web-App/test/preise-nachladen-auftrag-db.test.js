@@ -18,26 +18,30 @@
  *   G  in fortschrittsKette `.then(melde, melde)` wieder `.then(melde)` → rot: derselbe Test
  *      (die Meldung nach der gescheiterten scheitert auch)
  *
+ * Wie im Betrieb: Eine Bewertung merkt Preise im Konto vor (alsKonto), Testdaten
+ * schreibt und liest die Eigentümerin.
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { zugangOderSkip } = require('./helpers/db');
+const { buildAndRequire, alsKonto } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 
 const set = n => ({ art: 'set', nummer: `${n}-1`, zustand: 'N' });
 
 test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 1 }, async t => {
-  const db = await zugangOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const NAME = `pna-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
-  const D = _req('src/auftraege/dienst.js');
+  const D_ = _req('src/auftraege/dienst.js');
+  const D = { ...D_, merkePreiseVor: n => alsKonto(uid, () => D_.merkePreiseVor(n)) };
   const repo = _req('src/auftraege/prozess.js').auftraegeBereich().auftraege;
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const leeren = () => db.run(`DELETE FROM auftraege WHERE art = 'preise_nachladen'`);
