@@ -142,7 +142,7 @@ export function teilpreisFrisch(
   ttlStunden: number,
 ) {
   return db.get<Preiszeile>(
-    `SELECT avg_price, qty_avg_price FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
+    `SELECT avg_price, qty_avg_price, fetched_at FROM part_price_cache WHERE part_number=$1 AND color_id=$2 AND condition=$3 AND currency_code=$4 AND fetched_at > NOW() - make_interval(hours => $5)`,
     [blPartNumber, blColorId, condition, currency, ttlStunden],
   );
 }
@@ -155,7 +155,7 @@ export function figurpreisFrisch(
   ttlStunden: number,
 ) {
   return db.get<Preiszeile>(
-    `SELECT avg_price, qty_avg_price FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT geschaetzt AND fetched_at > NOW() - make_interval(hours => $4)`,
+    `SELECT avg_price, qty_avg_price, fetched_at FROM minifig_price_cache WHERE fig_number=$1 AND condition=$2 AND currency_code=$3 AND NOT geschaetzt AND fetched_at > NOW() - make_interval(hours => $4)`,
     [figNumber, condition, currency, ttlStunden],
   );
 }

@@ -164,8 +164,8 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   assert.equal(cacheUsable({ avg_price: '12.5', fetched_at: vor(20) }, 24), true, 'ein Preis gilt das volle Fenster');
   assert.equal(
     cacheUsable({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24),
-    false,
-    'qty_avg_price allein ist kein Preis',
+    true,
+    'ein Mengenschnitt allein ist ein Preis (marktpreisAus) und gilt das volle Fenster',
   );
 });
 

@@ -219,7 +219,7 @@ export async function pruefeSet(
       meldeFehler('preisalarm:preis-lesen', e);
       return null;
     });
-    const preis = preisZeile?.avg_price == null ? null : parseFloat(String(preisZeile.avg_price));
+    const preis = preisZeile?.marktpreis == null ? null : parseFloat(String(preisZeile.marktpreis));
     // Kein Preis in DIESER Währung: Der Alarm bleibt, der Merker auch.
     if (preis == null || !(preis > 0)) continue;
 

@@ -1,5 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { kaufpreisIn, mittelUeber } from '../../../db/geldSql';
+import { kaufpreisIn, marktpreisSql, mittelUeber } from '../../../db/geldSql';
 
 export function tagespreiseDesSets(db: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
   return db.all<{
@@ -23,13 +23,14 @@ export function cachePreiseDesSets(db: DbSchnittstelle, setNumber: string, curre
   return db.all<{
     condition: string;
     avg_price: number | null;
+    qty_avg_price: number | null;
     min_price: number | null;
     max_price: number | null;
     fetched_at: Date;
   }>(
-    `SELECT condition, avg_price, min_price, max_price, fetched_at
+    `SELECT condition, avg_price, qty_avg_price, min_price, max_price, fetched_at
        FROM price_cache
-      WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0`,
+      WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL`,
     [setNumber, currency],
   );
 }
@@ -99,9 +100,9 @@ export function cachePreiseNachSchluessel(
   keyVals: unknown[],
   currency: string,
 ) {
-  return db.all<{ condition: string; avg_price: number | null }>(
-    `SELECT condition, avg_price FROM ${cacheTable}
-      WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND avg_price > 0
+  return db.all<{ condition: string; avg_price: number | null; qty_avg_price: number | null }>(
+    `SELECT condition, avg_price, qty_avg_price FROM ${cacheTable}
+      WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND ${marktpreisSql()} IS NOT NULL
       ORDER BY fetched_at DESC`,
     [...keyVals, currency],
   );

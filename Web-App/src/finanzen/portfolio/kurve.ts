@@ -62,8 +62,7 @@ export async function rekonstruiereKurve(opts: {
         const k = r.day;
         buckets[k] ??= { day: r.day, month: r.month, sets: {} };
         const b = buckets[k];
-        const p = Number(r.avg_price ?? 0) || Number(r.qty_avg_price ?? 0);
-        if (p > 0) b.sets[r.set_number] = p;
+        b.sets[r.set_number] = Number(r.marktpreis);
       }
       // Jedes Set mit seinem ERSTEN bekannten Preis von Anfang an im Korb, sonst
       // begänne die Kurve zu tief und meldete den Zuwachs der Sammlung.

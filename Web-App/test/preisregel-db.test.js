@@ -2,9 +2,9 @@
  * Die Regel „hat einen Preis" gilt an JEDER Stelle gleich.
  *
  * Gegenproben (durchgeführt):
- *   a) hatPreis() auf „avg > 0 || qty_avg > 0" geweitet → Teilschritt 2 rot:
- *      Der Leser gibt dann eine Zeile mit avg_price = 0 heraus, und die
- *      Clients zeigen „0.00" statt eines Preises.
+ *   a) (13.11.2026) in ausZeile() (src/finanzen/rechnung/preise.ts) avg_price wieder roh
+ *      statt marktpreisAus() → Teilschritt 2 rot: avg_price 0 neben qty_avg_price 12.34,
+ *      die Clients zeigten „0.00“.
  *   b) In fetchPrice den Cache-Treffer wieder auf `parseFloat(avg_price) > 0`
  *      gestellt → Teilschritt 1 bleibt grün (die Regel ist dieselbe), aber
  *      Teilschritt 3 wird rot: Die Regel steht dann wieder zweimal da.
@@ -33,9 +33,8 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
     assert.equal(hatPreis({ avg_price: 12.34, qty_avg_price: 0 }), true);
     assert.equal(
       hatPreis({ avg_price: 0, qty_avg_price: 12.34 }),
-      false,
-      'Ein Datensatz ohne avg_price hat keinen anzeigbaren Preis — die Clients ' +
-        'lesen genau dieses Feld, und 0 ist nicht null',
+      true,
+      'Der Mengenschnitt ist der Rückfall: 0 ist kein Preis, 12.34 schon',
     );
     assert.equal(hatPreis({ avg_price: null, qty_avg_price: null }), false);
     assert.equal(hatPreis(null), false, 'kein Datensatz, kein Preis');
@@ -56,6 +55,7 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
     );
     const { fetchPrice } = _req('src/finanzen/financeCalc.js');
     const pd = await fetchPrice(SN, 'N', 'sold', 'EUR', '24');
+    assert.equal(pd.avg_price, 12.34, 'avg_price trägt den Marktpreis, hier den Mengenschnitt');
     assert.ok(
       pd.no_price === true || Number(pd.avg_price) > 0,
       'fetchPrice gibt eine Zeile heraus, die keinen anzeigbaren Preis trägt: ' + JSON.stringify(pd),

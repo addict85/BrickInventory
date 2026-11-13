@@ -46,6 +46,7 @@ export {
   getCacheStats,
   getPriceGuide,
   hatPreis,
+  marktpreisAus,
   katalogEintrag,
   setBekanntImKatalog,
 } from './bricklinkPreise';

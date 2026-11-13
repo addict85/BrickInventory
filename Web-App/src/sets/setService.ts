@@ -41,7 +41,7 @@ async function priceForNewAcquisition(
     await versuche('set-service:cached', repo.marktpreisAusCache(dbh, setNumber, currency, cond)),
     null,
   );
-  let pp = Number(cached?.avg_price ?? 0) || null;
+  let pp = Number(cached?.marktpreis ?? 0) || null;
   if (!pp)
     pp = wertOder(
       await versuche('set-service:getCurrentMarketPrice', getCurrentMarketPrice(setNumber, userId, cond)),
@@ -54,7 +54,7 @@ async function priceForNewAcquisition(
       await versuche('set-service:hist', repo.marktpreisAusVerlauf(dbh, setNumber, currency, cond)),
       null,
     );
-    pp = Number(hist?.avg_price ?? 0) || null;
+    pp = Number(hist?.marktpreis ?? 0) || null;
   }
   return { price: pp, condition: cond, geschaetzt: pp != null, currency };
 }

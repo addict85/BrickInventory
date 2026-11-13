@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { marktpreisSql } from '../../../db/geldSql';
 import { LIKE_ESCAPE, enthaeltMuster } from '../../../db/likeSuche';
 import { ausTabelle } from '../../infra/validate';
 
@@ -37,8 +38,8 @@ const MERK_SORTS = {
   name_asc: 'rb.name ASC NULLS LAST',
   num_asc: 'w.set_number ASC',
   year_desc: 'rb.year DESC NULLS LAST',
-  price_desc: 'pc.avg_price DESC NULLS LAST',
-  price_asc: 'pc.avg_price ASC NULLS LAST',
+  price_desc: `${marktpreisSql('pc')} DESC NULLS LAST`,
+  price_asc: `${marktpreisSql('pc')} ASC NULLS LAST`,
 };
 
 export interface MerkAuswahl {
@@ -75,7 +76,7 @@ export function merklisteImBlickfeld(db: DbSchnittstelle, userIds: number[], f: 
             sc.image_url,
             pa.richtung AS alarm_richtung, pa.schwelle AS alarm_schwelle,
             pa.ausgeloest AS alarm_ausgeloest,
-            pc.avg_price AS marktpreis,
+            ${marktpreisSql('pc')} AS marktpreis,
             EXISTS (SELECT 1 FROM sets s
                      WHERE s.user_id = ANY($1) AND s.set_number = w.set_number) AS owned
        FROM wanted w
