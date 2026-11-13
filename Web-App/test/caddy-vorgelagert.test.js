@@ -1,10 +1,8 @@
 /**
- * Ein Proxy vor Caddy (Nginx Proxy Manager): Mit VORGELAGERTER_PROXY glaubt
- * Caddy dessen X-Forwarded-For, von rechts gelesen, und gibt der App genau eine
- * Adresse weiter, die des Clients. Ohne die Angabe bleibt es beim Bisherigen:
- * Die App sieht, wer Caddy erreicht. Das echte Caddyfile läuft in einem echten
- * Caddy (CADDY_BIN oder `caddy` im Pfad) vor einem Node-Server, der den Kopf
- * zurückgibt; ohne Caddy wird übersprungen.
+ * Mit VORGELAGERTER_PROXY glaubt Caddy dem Proxy davor X-Forwarded-For, von
+ * rechts gelesen, und gibt der App genau die Client-Adresse weiter; ohne bleibt
+ * es beim Bisherigen. Das echte Caddyfile läuft in einem echten Caddy (CADDY_BIN
+ * oder `caddy` im Pfad) vor einem Echo-Server; ohne Caddy wird übersprungen.
  *
  * Gegenproben (13.11.2026 gemessen mit Caddy v2.11.8, je einzeln):
  *   A  `trusted_proxies static {$VORGELAGERTER_PROXY}` gestrichen → rot:
@@ -121,7 +119,7 @@ test('Caddy gibt der App die Client-Adresse hinter einem vorgelagerten Proxy', {
     req.resume();
     req.on('end', () => res.end(String(req.headers['x-forwarded-for'] ?? '')));
   });
-  await new Promise(r => app.listen(0, '127.0.0.1', r));
+  await new Promise(r => app.listen(0, '127.0.0.1', () => r(undefined)));
   t.after(() => app.close());
   const appPort = /** @type {import('node:net').AddressInfo} */ (app.address()).port;
 

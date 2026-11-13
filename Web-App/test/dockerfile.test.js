@@ -154,20 +154,19 @@ test('Install-Skripte laufen nur gezielt, für genau die Pakete, die eines haben
   }
 });
 
-// Gegenprobe (13.11.2026 gemessen): `USER brickinv` gestrichen → rot „das Image
-// startet ohne --user als root“; `USER root` dahinter ergänzt → ebenso.
-test('das Laufzeit-Image startet ohne --user nicht als root', () => {
-  const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
-  const laufzeit = df.split(/^FROM /m).pop() ?? '';
+// Das Image startet als brickinv; der Entrypoint mit Ersatz für id, su-exec und node, /app im Sandkasten.
+// Gegenproben (13.11.2026 gemessen, je einzeln): `USER brickinv` gestrichen → rot „das Image startet
+// ohne --user als root“; die Bedingung `[ "$(id -u)" = 0 ]` durch `true` ersetzt → rot „ohne root
+// startet node direkt, ohne su-exec“.
+test('das Image startet als brickinv, der Entrypoint läuft so und als root', () => {
+  const laufzeit =
+    fs
+      .readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8')
+      .split(/^FROM /m)
+      .pop() ?? '';
   const nutzer = [...laufzeit.matchAll(/^USER\s+(\S+)/gm)].map(m => m[1]);
   assert.equal(nutzer.at(-1), 'brickinv', 'das Image startet ohne --user als root');
   assert.match(laufzeit, /adduser -S brickinv/, 'der Nutzer entsteht im Laufzeit-Stage');
-});
-
-// Der Entrypoint mit Ersatz für id, su-exec und node, /app im Sandkasten.
-// Gegenprobe (13.11.2026 gemessen): die Bedingung `[ "$(id -u)" = 0 ]` durch
-// `true` ersetzt → rot „ohne root startet node direkt, ohne su-exec“.
-test('der Entrypoint läuft als brickinv und als root', () => {
   const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'entrypoint-'));
   try {
     const app = path.join(ort, 'app'),

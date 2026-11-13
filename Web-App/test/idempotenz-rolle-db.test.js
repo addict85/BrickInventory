@@ -17,14 +17,14 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { zugangOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
 
 const ROUTEN = { '/api/v1': 'routes/api_v1/index.js' };
 
 test('Idempotenz: Verwalter-Antworten nur für die Verwalterrolle', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await zugangOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const name = `idem_rolle_${process.pid}`;

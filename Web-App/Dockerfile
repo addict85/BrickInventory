@@ -100,9 +100,6 @@ ENV PG_STMT_MS=30000
 
 EXPOSE 3000
 
-# Ohne `--user` startet der Container nicht als root. Wer /app/data in einem
-# einzelnen `docker run` erst einrichten lässt, startet ausdrücklich mit
-# `--user root`; der Entrypoint gibt die Rechte danach ab.
 USER brickinv
 
 CMD ["./docker-entrypoint.sh"]

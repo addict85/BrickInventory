@@ -265,10 +265,10 @@ test('ein umgehängter Tag bricht ab', t => {
   assert.match(r.log, /zeigt auf sha256:b+ statt auf/);
 });
 
-// Struktur: Ein Job, der die Docker-Hub-Zugangsdaten liest, läuft in der
-// geschützten Umgebung; sonst gäbe es sie ohne deren Freigabe.
-// Gegenprobe (13.11.2026 gemessen): `environment: docker-hub` im Job build
-// gestrichen → rot „build liest DOCKERHUB_* ohne Umgebung docker-hub“.
+// Jeder Job, der die Docker-Hub-Zugangsdaten liest, läuft in der geschützten Umgebung; die Prüfung im
+// Build-Job verweist auf deren Secrets. Gegenproben (13.11.2026 gemessen, je einzeln): `environment:
+// docker-hub` im Job build gestrichen → rot „build liest DOCKERHUB_* ohne Umgebung docker-hub“; die
+// Meldung wieder auf „Secrets and variables -> Actions“ → rot „… nennt die Environment-Secrets“.
 test('Docker-Hub-Zugangsdaten nur in Jobs mit der Umgebung docker-hub', () => {
   const jobs = YML.slice(YML.indexOf('\njobs:\n'));
   const bloecke = jobs.split(/^ {2}(?=[\w-]+:\s*$)/m).slice(1);
@@ -278,4 +278,19 @@ test('Docker-Hub-Zugangsdaten nur in Jobs mit der Umgebung docker-hub', () => {
     const name = b.split(':')[0];
     assert.match(b, /^ {4}environment: docker-hub\s*$/m, `${name} liest DOCKERHUB_* ohne Umgebung docker-hub`);
   }
+  const zeilen = YML.split('\n');
+  const ab = zeilen.findIndex(z => z.trim() === '- name: Zugangsdaten vorhanden?');
+  const run = zeilen.findIndex((z, i) => i > ab && z.trim() === 'run: |');
+  const rumpf = [];
+  for (let i = run + 1; i < zeilen.length && (zeilen[i].startsWith('          ') || !zeilen[i].trim()); i++)
+    rumpf.push(zeilen[i].slice(10));
+  const pruefe = (nutzer, token) =>
+    spawnSync('bash', ['-c', rumpf.join('\n')], {
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH, NUTZER: nutzer, TOKEN: token },
+    });
+  assert.equal(pruefe('n', 't').status, 0, 'mit beiden Secrets geht es weiter');
+  const ohne = pruefe('', '');
+  assert.equal(ohne.status, 1, 'ohne Secrets bricht der Schritt ab');
+  assert.match(ohne.stdout, /Environments -> docker-hub/, 'die Meldung nennt die Environment-Secrets');
 });
