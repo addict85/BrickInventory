@@ -11,6 +11,9 @@
  *      und „… auch in einem Sicherungspunkt“
  *   B  `stand.innerster = rahmen` im finally gestrichen → rot: „nacheinander und
  *      verschachtelt bleibt erlaubt“ (die zweite der Reihe wurde abgewiesen)
+ *   C  (13.11.2026) die Prüfungen nochOffen() in database.ts gestrichen → rot: „ein
+ *      Nachzügler verdirbt nicht …“ (25P02 in der fremden Transaktion); vorher war
+ *      die Datei im Volllauf und einzeln etwa jedes fünfte Mal rot
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -77,6 +80,34 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
       modul.GleichzeitigerSicherungspunkt,
     );
     assert.deepEqual(await werte(), []);
+  });
+
+  await t.test('ein Nachzügler verdirbt nicht die nächste Transaktion seiner Verbindung', async () => {
+    // Ein Pool mit einer Verbindung: Die nächste Transaktion bekommt sicher dieselbe.
+    const k = modul.dbKonfigAusUmgebung();
+    const eng = modul.erzeugeDb({ ...k, pool: { ...k.pool, max: 1 } });
+    try {
+      let nachzuegler;
+      await assert.rejects(
+        eng.transaction(async () => {
+          nachzuegler = eng.transaction(async inner => {
+            await warte(80);
+            await schreibe(inner, 'nachzuegler');
+          });
+          nachzuegler.catch(() => {});
+          throw new Error('aussen scheitert sofort');
+        }),
+        /aussen scheitert sofort/,
+      );
+      await eng.transaction(async tx => {
+        await warte(160);
+        await schreibe(tx, 'fremd');
+      });
+      await assert.rejects(nachzuegler, modul.TransaktionBeendet);
+      assert.deepEqual(await werte(), ['fremd']);
+    } finally {
+      await eng.pool.end();
+    }
   });
 
   await t.test('nacheinander und verschachtelt bleibt erlaubt', async () => {

@@ -154,6 +154,7 @@ async function kontextAbgleich(stand: TxStand): Promise<void> {
 
 function txSchnittstelle(stand: TxStand): DbSchnittstelle {
   const q = async (sql: string, p?: unknown[]) => {
+    nochOffen(stand);
     await kontextAbgleich(stand);
     return stand.client.query(sql, p);
   };
@@ -171,6 +172,18 @@ type CommitBegleiter = (tx: DbSchnittstelle) => Promise<void>;
 const commitBegleiter = new AsyncLocalStorage<CommitBegleiter>();
 export function mitCommitBegleiter<T>(begleiter: CommitBegleiter, arbeit: () => T): T {
   return commitBegleiter.run(begleiter, arbeit);
+}
+
+/** Die Verbindung einer beendeten Transaktion ist schon zurück im Pool: Ein Nachzügler
+ * (Promise.all bricht beim ersten Fehler ab, die anderen laufen weiter) verdürbe dort
+ * die Transaktion eines Fremden. */
+export class TransaktionBeendet extends Error {
+  constructor() {
+    super('Abfrage nach dem Ende ihrer Transaktion (Nachzügler aus Promise.all?)');
+  }
+}
+function nochOffen(stand: TxStand): void {
+  if (!stand.offen) throw new TransaktionBeendet();
 }
 
 export class GleichzeitigerSicherungspunkt extends Error {
@@ -197,12 +210,15 @@ function innereTransaktion<T>(stand: TxStand, nummer: number, fn: (tx: DbSchnitt
     // ROLLBACK TO nimmt auch ein set_config() aus dem Sicherungspunkt zurück.
     const kontextVorher = stand.kontext;
     try {
+      nochOffen(stand);
       await client.query(`SAVEPOINT ${name}`);
       try {
         const r = await fn(txSchnittstelle(stand));
+        nochOffen(stand);
         await client.query(`RELEASE SAVEPOINT ${name}`);
         return r;
       } catch (e) {
+        if (!stand.offen) throw e;
         await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
         stand.kontext = kontextVorher;
         if (e !== null && typeof e === 'object') vomSicherungspunktAufgefangen.add(e);
