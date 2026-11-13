@@ -15,7 +15,7 @@ function importWorker(t, _req) {
   // Auch die LISTEN-Verbindung: Sie hielte den Testprozess sonst am Leben.
   t.after(async () => {
     await stoppeAuftragsWorker();
-    await _req('db/database.js').standardDb().benachrichtigung.close();
+    await require('./sources').testZugang().benachrichtigung.close();
   });
 }
 

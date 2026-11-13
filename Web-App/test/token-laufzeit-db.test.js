@@ -22,12 +22,12 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 // test/qr-adresse.test.js.
 process.env.APP_BASE_URL = 'https://lego.example.org';
 
-const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, einhaengung, ohneKommentare, testDaten } = require('./helpers/sources');
 const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -42,7 +42,7 @@ const NAME = `qr_laufzeit_${process.pid}`,
 const tageVoraus = wert => (new Date(wert).getTime() - Date.now()) / 86400_000;
 
 test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
@@ -61,7 +61,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}${AUTH}`;
 

@@ -1,12 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { logAndContinue } from '../../infra/fehler';
-import { downloadSetImage } from './setImages';
 import { setBildLokalEintragen } from '../bildlage';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
-import { generateThumb } from './thumbs';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
-import { auftraegeBereich, AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege';
+import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege';
 import {
   STAPEL,
   TAKT_MS,
@@ -21,6 +19,7 @@ import {
   nimmBildwuensche,
 } from './bildbedarf';
 import { versuche } from '../../infra/ergebnis';
+import type { KatalogKontext } from '../kontext';
 
 /** Über den Proxy angefragte Bilder im HINTERGRUND lokal ablegen, samt
  * Vorschau — damit die Anfrage selbst nie auf das CDN wartet. */
@@ -63,10 +62,10 @@ async function pauseVorArbeit(): Promise<void> {
 
 /** Ein Fehlschlag wird gemerkt, sonst kostet jede nicht lesbare Datei bei
  * jedem Durchgang einen vergeblichen Lauf. */
-async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<boolean> {
+async function vorschauErzeugen(k: KatalogKontext, relPfad: string, schluessel: string): Promise<boolean> {
   if (istBekanntFehlend('thumb:' + schluessel)) return false;
   // Auch ein Fehler wird gemerkt: Die Datei käme sonst bei jedem Durchgang wieder.
-  const r = await versuche('bild-job:generateThumb', () => generateThumb(relPfad));
+  const r = await versuche('bild-job:generateThumb', () => k.bildwerk.vorschauErzeugen(relPfad));
   const ok = r.ok && !!r.wert;
   if (!ok) merkeFehlend('thumb:' + schluessel, 'Vorschau konnte nicht erzeugt werden');
   return ok;
@@ -126,11 +125,11 @@ function merkeLauf(erg: StapelErgebnis): void {
 }
 
 /** Einmal je Takt, nicht je Stapel: Die Kachel liest Minuten, und eine SD-Karte schont das. */
-async function speichereLauf(erg: StapelErgebnis): Promise<void> {
+async function speichereLauf(k: KatalogKontext, erg: StapelErgebnis): Promise<void> {
   // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne await meldete die Kachel „noch
   // nicht gelaufen".
-  await auftraegeBereich()
-    .laufzustand.setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
+  await k.auftraege.laufzustand
+    .setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
     .catch(logAndContinue('bild-job:setzeZustand'));
 }
 
@@ -139,7 +138,7 @@ type StapelStand = { erg: StapelErgebnis; gruende: string[]; etwasZuTun: boolean
 
 /** Die Datei ist da, höchstens die Vorschau fehlt. Bekannt gescheiterte nicht
  * anfassen: Jedes webp-Bild kostete sonst bei JEDEM Durchgang einen Lauf. */
-async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand): Promise<void> {
+async function nurVorschau(k: KatalogKontext, setNummer: string, vorschau: string, st: StapelStand): Promise<void> {
   if (fs.existsSync(vorschau)) {
     st.erg.uebersprungen++;
     return;
@@ -151,7 +150,7 @@ async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand)
   // Auch hier warten: Eine Verkleinerung kostet mehr als ein Download.
   await pauseVorArbeit();
   st.arbeit++;
-  if (await vorschauErzeugen(`/images/sets/${setNummer}.jpg`, vorschau)) {
+  if (await vorschauErzeugen(k, `/images/sets/${setNummer}.jpg`, vorschau)) {
     st.erg.vorschau++;
     return;
   }
@@ -161,12 +160,17 @@ async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand)
 }
 
 /** @returns true, wenn das CDN drosselt und der Stapel abbricht */
-async function nachFehlschlag(setNummer: string, info: { status?: number }, st: StapelStand): Promise<boolean> {
+async function nachFehlschlag(
+  k: KatalogKontext,
+  setNummer: string,
+  info: { status?: number },
+  st: StapelStand,
+): Promise<boolean> {
   const status = info.status;
   // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures Weiterfragen verlängert die Sperre.
   if (status === 403 || status === 429) {
     const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
-    await auftraegeBereich().auftraege.pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
+    await k.auftraege.auftraege.pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
     console.error(`[image-queue] CDN drosselt (HTTP ${status}) — Pause bis ${bis.toLocaleTimeString()}`);
     return true;
   }
@@ -184,11 +188,11 @@ async function nachFehlschlag(setNummer: string, info: { status?: number }, st: 
   return false;
 }
 
-async function arbeiteStapel(): Promise<StapelErgebnis> {
+async function arbeiteStapel(k: KatalogKontext): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
-  const pause = await auftraegeBereich().auftraege.liesPause('bildbedarf');
+  const pause = await k.auftraege.auftraege.liesPause('bildbedarf');
   if (pause && new Date(pause.bis).getTime() > Date.now()) return erg; // CDN hat gedrosselt, siehe unten
-  const rows = await nimmBildwuensche(NOTIZ_GILT_MS, STAPEL);
+  const rows = await nimmBildwuensche(k, NOTIZ_GILT_MS, STAPEL);
   if (!rows.length) {
     merkeLauf(erg);
     return erg;
@@ -208,8 +212,8 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     const vorschau = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
     if (fs.existsSync(datei)) {
       // kein zweiter Download
-      await nurVorschau(r.set_number, vorschau, st);
-      await setBildLokalEintragen(r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
+      await nurVorschau(k, r.set_number, vorschau, st);
+      await setBildLokalEintragen(k, r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
       continue;
     }
 
@@ -231,14 +235,15 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
 
     const info: { status?: number } = {};
     // Ein Fehler zählt wie ein vergeblicher Abruf; über die Wiederholung entscheidet nachFehlschlag().
-    const abruf = await versuche('bild-job:downloadSetImage', downloadSetImage(r.url, r.set_number, info));
+    const abruf = await versuche('bild-job:downloadSetImage', k.bildwerk.setBildLaden(r.url, r.set_number, info));
     const lokal = abruf.ok ? abruf.wert : null;
     if (!lokal) {
-      if (await nachFehlschlag(r.set_number, info, st)) {
+      if (await nachFehlschlag(k, r.set_number, info, st)) {
         // ALLE unbearbeiteten Notizen zurücklegen: Der Stapel kam per DELETE … RETURNING, der Rest wäre sonst
         // still verloren.
         const rest = rows.slice(idx);
         await notiereBildbedarf(
+          k,
           rest.map(x => x.url),
           rest.map(x => x.set_number),
         ).catch(logAndContinue('bild-job:map'));
@@ -249,9 +254,9 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     }
     // Die Vorschau entsteht NICHT in downloadSetImage(); ohne diesen Aufruf bliebe es bei der grossen
     // Originaldatei.
-    await vorschauErzeugen(lokal, vorschau);
+    await vorschauErzeugen(k, lokal, vorschau);
     // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
-    await setBildLokalEintragen(r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
+    await setBildLokalEintragen(k, r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
     erg.geholt++;
   }
   // Zurückgelegte Zeilen sind NICHT bearbeitet.
@@ -270,10 +275,10 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
 }
 
 /** Der Abbruch hängt an echter Arbeit, nicht an angefassten Notizen. */
-async function taktDurchgang(): Promise<StapelErgebnis> {
+async function taktDurchgang(k: KatalogKontext): Promise<StapelErgebnis> {
   const summe = leeresErgebnis();
   while (summe.gesamt < DURCHGANG_MAX_NOTIZEN && summe.arbeit < STAPEL) {
-    const e = await arbeiteStapel();
+    const e = await arbeiteStapel(k);
     summe.geholt += e.geholt;
     summe.vorschau += e.vorschau;
     summe.uebersprungen += e.uebersprungen;
@@ -287,18 +292,18 @@ async function taktDurchgang(): Promise<StapelErgebnis> {
     if (!e.gesamt) break;
   }
   // Auch ein Takt, der nichts vorfand, ist ein Lebenszeichen für die Kachel.
-  await speichereLauf(summe);
+  await speichereLauf(k, summe);
   return summe;
 }
 
 /** Drosselt das CDN, geht der Auftrag bis zum Ende der Pause zurück in die Tabelle. */
-export async function bildbedarfAbarbeiten(k: AuftragsKontext): Promise<void> {
+export async function bildbedarfAbarbeiten(kx: KatalogKontext, k: AuftragsKontext): Promise<void> {
   await schreibePuffer();
   for (;;) {
     if (k.beendet) throw new AuftragUnterbrochen();
-    const e = await taktDurchgang();
+    const e = await taktDurchgang(kx);
     if (e.gesamt || e.zurueckgelegt) console.log(`[image-queue] ${meldung(e)}`);
-    const pause = await auftraegeBereich().auftraege.liesPause('bildbedarf');
+    const pause = await kx.auftraege.auftraege.liesPause('bildbedarf');
     if (pause && new Date(pause.bis).getTime() > Date.now())
       throw new AuftragVerschieben(new Date(pause.bis), pause.grund ?? 'CDN drosselt');
     if (!e.gesamt) return;

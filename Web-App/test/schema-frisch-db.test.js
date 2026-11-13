@@ -22,6 +22,8 @@
  *      Lauf …" (die Basis scheitert an vorhandenen Tabellen)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (darf Datenbanken anlegen).
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +39,8 @@ ziel.pathname = '/' + NAME;
 process.env.DATABASE_URL = ziel.toString();
 
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 const KONTOSPALTEN = ['user_id', 'main_user_id', 'sub_user_id'];
@@ -69,7 +72,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
   await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
 
-  const db = _req('db/database.js');
+  const db = testDaten();
   // Derselbe Weg wie beim Serverstart: initSchema nur beim ersten Mal, die
   // Migrationen immer.
   const starte = () => db.initSchemaOnce();

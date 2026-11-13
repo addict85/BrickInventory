@@ -19,17 +19,18 @@ const express = require('express');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 
 // Eine offene Verbindung aus dem Pool hält den Prozess am Leben; im Volllauf steht dann
 // die ganze Datei still, statt zu enden. Deshalb schliesst die Datei ihren Pool selbst.
 after(() => db.pool.end().catch(() => {}));
 
 test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
@@ -54,7 +55,7 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]));
 
-  const srv = testServer(_req, { sitzung: {}, routen: { '/api/v1': 'routes/api_v1/einrichtung.js' }, t });
+  const srv = testServer(_req, { sitzung: {}, t });
   const r = await fetch(srv.base + '/api/v1/einrichtung/stand');
   assert.equal(r.status, 200);
   const d = await r.json();
@@ -71,11 +72,7 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
   const konto = d.schritte.find(s => s.id === 'konto');
   assert.equal(konto.ok, true, 'ohne Verwalter verrät der Stand kein Startpasswort');
   assert.equal(d.basis_url, null, 'ohne Verwalter keine Basis-URL');
-  const verwalter = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v1': 'routes/api_v1/einrichtung.js' },
-    t,
-  });
+  const verwalter = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const dv = await (await fetch(verwalter.base + '/api/v1/einrichtung/stand')).json();
   assert.equal(
     dv.schritte.find(s => s.id === 'konto').ok,
@@ -96,7 +93,7 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
 });
 
 test('der Eingang lässt ohne Sitzung nur den Stand durch', async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   const app = express();
   const mw = _req('routes/api_v1/middleware.js');
   app.use('/api/v1', mw.anmeldungAmEingang);

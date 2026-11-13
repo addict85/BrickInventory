@@ -15,6 +15,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -23,9 +24,10 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -35,7 +37,7 @@ const NAMEN = ['sv_chef', 'sv_zweiter', 'sv_nutzer'];
 const PW = 'sitzungsVersion-1';
 
 test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   for (const n of NAMEN) await db.run('DELETE FROM users WHERE username = $1', [n]);
   const hash = await bcrypt.hash(PW, 4);
@@ -70,8 +72,8 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
   );
   app.use(_req('src/konto/http/sitzungsPruefung.js').sitzungsVersionPruefen());
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  app.use('/api/v1/auth', _req('routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 

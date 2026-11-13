@@ -1,14 +1,6 @@
 import type { z } from 'zod';
 import { konfig } from '../infra/konfig';
-import {
-  type SetCsvNutzlast,
-  emitJobStatus,
-  jobUpdate,
-  setzeImportFort,
-  type ImportErgebnis,
-  AuftragUnterbrochen,
-  type AuftragsKontext,
-} from '../auftraege';
+import { type SetCsvNutzlast, type ImportErgebnis, AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
 import { addSetWithDate, nacharbeitEinstellen } from './erfassen';
 import { fehlertext } from '../infra/fehler';
 import { Fachfehler, fehlerText, type FehlerCode } from '../infra/fehlerTexte';
@@ -92,11 +84,11 @@ async function fuehreCsvImportAus(sk: SetsKontext, n: CsvNutzlast, k: AuftragsKo
   const userId = Number(n.user_id),
     lauf = String(n.lauf),
     rows = n.rows ?? [];
-  const stand = await setzeImportFort(userId, lauf);
+  const stand = await sk.auftraege.setzeImportFort(userId, lauf);
   if (!stand) return;
   const results = stand.results;
   const schreibe = () =>
-    jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
+    sk.auftraege.jobUpdate(userId, { done: results.length, results: JSON.stringify(results), current: null }, lauf);
 
   if (stand.current && results.length < rows.length) {
     results.push({
@@ -112,24 +104,24 @@ async function fuehreCsvImportAus(sk: SetsKontext, n: CsvNutzlast, k: AuftragsKo
     if (k.beendet) throw new AuftragUnterbrochen();
     const z = rows[i]!;
     // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde Zeilen zu schreiben.
-    if (!(await k.lebenszeichen()) || !(await jobUpdate(userId, { current: z.sn }, lauf))) return;
-    await emitJobStatus(userId);
+    if (!(await k.lebenszeichen()) || !(await sk.auftraege.jobUpdate(userId, { current: z.sn }, lauf))) return;
+    await sk.auftraege.emitJobStatus(userId);
     results.push(await importiereZeile(sk, z, userId));
     if (!(await schreibe())) return;
-    await emitJobStatus(userId);
+    await sk.auftraege.emitJobStatus(userId);
   }
-  await jobUpdate(userId, { status: 'done', current: null }, lauf);
-  await emitJobStatus(userId);
+  await sk.auftraege.jobUpdate(userId, { status: 'done', current: null }, lauf);
+  await sk.auftraege.emitJobStatus(userId);
   console.log(
     `CSV import done: ${results.filter(r => r.success).length} ok, ${results.filter(r => !r.success).length} errors`,
   );
 }
 
 /** Die Statuszeile zeigt den Fehler, statt ewig zu laufen. */
-async function csvImportAufgegeben(n: CsvNutzlast, fehler: string): Promise<void> {
+async function csvImportAufgegeben(k: SetsKontext, n: CsvNutzlast, fehler: string): Promise<void> {
   console.error(`CSV import fatal error: ${fehler}`);
-  await jobUpdate(Number(n.user_id), { status: 'error', error: fehler, current: null }, String(n.lauf));
-  await emitJobStatus(Number(n.user_id));
+  await k.auftraege.jobUpdate(Number(n.user_id), { status: 'error', error: fehler, current: null }, String(n.lauf));
+  await k.auftraege.emitJobStatus(Number(n.user_id));
 }
 
 export { fuehreCsvImportAus, csvImportAufgegeben };

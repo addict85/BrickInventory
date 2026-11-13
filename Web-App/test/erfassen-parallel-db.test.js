@@ -4,14 +4,16 @@
  * Deshalb hier: echte parallele Aufrufe gegen echte Postgres-Verbindungen.
  * Ohne Sperre schlagen die Prüfungen sofort an — nachgewiesen per Gegenprobe.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const { haeltSet } = require('./helpers/bestand');
 
 test('Erfassen unter Last', { concurrency: 1 }, async t => {
@@ -50,7 +52,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     await haeltSet(db, uid, '70001-1', 0);
     await Promise.all(
       Array.from({ length: 10 }, () =>
-        mitInventarSperre(db.standardDb(), uid, '70001-1', tx =>
+        mitInventarSperre(testZugang(), uid, '70001-1', tx =>
           recordAcquisitionForDay('set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }, tx),
         ),
       ),

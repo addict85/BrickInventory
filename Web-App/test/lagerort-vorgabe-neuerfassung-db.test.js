@@ -29,6 +29,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -36,9 +37,10 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 
 // Rebrickable vorgeben: Ohne Namen im Rumpf fragt addManualPart/addManualFig
 // den Katalog und danach notfalls Rebrickable. Hier geht es um den Lagerort,
@@ -90,9 +92,11 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   const ortId = async name =>
     (await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, name])).id;
 
+  const bestand = _req('src/bestand/prozess.js').bestandBereich();
   const { setzeVorgabe, ortFuerNeuerfassung } = {
     ..._req('src/bestand/lagerort.js'),
-    ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst,
+    ...bestand.lagerortDienst,
+    setzeVorgabe: bestand.setzeVorgabe,
   };
   const { addManualPart } = _req('src/teile/manuelleTeile.js');
   const { addManualFig } = _req('src/figuren/manuelleFiguren.js');

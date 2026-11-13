@@ -13,16 +13,17 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 
 const A = `fremd_a_${process.pid}`,
   B = `fremd_b_${process.pid}`;
 
 test('fremde Erfassungen löschen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[A, B]]);
   const neu = async n =>
     (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id;
@@ -49,12 +50,7 @@ test('fremde Erfassungen löschen', { concurrency: 1 }, async t => {
     )
   ).id;
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: a },
-    apiNutzer: { user_id: a, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: a }, t });
   const loesche = pfad => fetch(base + pfad, { method: 'DELETE' }).then(r => r.status);
 
   await t.test('Teil', async () => {

@@ -14,6 +14,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
@@ -22,9 +23,10 @@ const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const H = require('./helpers/sources').handlerModul(_req);
 const PS = _req('src/teile/partsSummary.js');
 

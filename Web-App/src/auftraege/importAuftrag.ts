@@ -5,7 +5,7 @@ import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../in
 
 // Der Ereignisbus schiebt den Stand ohne Polling an verbundene Ströme; /status bleibt als Rückfall.
 import EventEmitter from 'node:events';
-import { auftraegeBereich } from './prozess';
+import type { AuftraegeKontext } from './kontext';
 export const csvImportBus = new EventEmitter();
 csvImportBus.setMaxListeners(0); // beliebig viele gleichzeitige Streams
 
@@ -63,48 +63,52 @@ export function buildJobStatus(
   };
 }
 
-export async function emitJobStatus(userId: number) {
+export async function emitJobStatus(k: AuftraegeKontext, userId: number) {
   try {
-    const job = await jobGet(userId);
+    const job = await jobGet(k, userId);
     // Ohne Request ist die Sprache des Empfängers unbekannt; `code` reist mit.
     csvImportBus.emit(`progress:${userId}`, buildJobStatus(job));
   } catch (_) {
     /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */
   }
   // Der Bus ist prozesslokal, der Import läuft im Job-Prozess: NOTIFY trägt den Stand in den Web-Prozess.
-  auftraegeBereich()
-    .db.benachrichtigung.notify('csv_import_progress', String(userId))
-    .catch(logAndContinue('import-auftrag:notify'));
+  k.db.benachrichtigung.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
 export const VERWAIST_MIN = 10;
 
-export async function jobGet(userId: number) {
-  await auftraegeBereich().importStand.markiereVerwaist(userId, fehlerText('import_unterbrochen', 'de'), VERWAIST_MIN);
-  const row = await auftraegeBereich().importStand.importStand(userId);
+export async function jobGet(k: AuftraegeKontext, userId: number) {
+  await k.importStand.markiereVerwaist(userId, fehlerText('import_unterbrochen', 'de'), VERWAIST_MIN);
+  const row = await k.importStand.importStand(userId);
   if (!row) return null;
   return { ...row, results: row.results || [] };
 }
 
-export async function jobSet(userId: number, fields: Record<string, unknown>) {
-  await auftraegeBereich().importStand.schreibeImportStand(userId, fields);
+export async function jobSet(k: AuftraegeKontext, userId: number, fields: Record<string, unknown>) {
+  await k.importStand.schreibeImportStand(userId, fields);
 }
 
 /** Mit `lauf` schreibt nur der Import, dessen Kennung noch eingetragen ist;
  * ein abgelöster Lauf hört an der Rückgabe auf. */
-export async function jobUpdate(userId: number, fields: Record<string, unknown>, lauf?: string): Promise<boolean> {
+export async function jobUpdate(
+  k: AuftraegeKontext,
+  userId: number,
+  fields: Record<string, unknown>,
+  lauf?: string,
+): Promise<boolean> {
   if (!fields || !Object.keys(fields).length) return true;
-  const n = await auftraegeBereich().importStand.aendereImportStand(userId, fields, lauf);
+  const n = await k.importStand.aendereImportStand(userId, fields, lauf);
   return !lauf || n > 0;
 }
 
 /** Nach einem Neustart auch dann, wenn die Zeile als verwaist markiert wurde;
  * abgebrochen oder abgelöst bleibt sie (dann: null). */
 export async function setzeImportFort(
+  k: AuftraegeKontext,
   userId: number,
   lauf: string,
 ): Promise<{ results: ImportErgebnis[]; current: string | null } | null> {
-  const z = await auftraegeBereich().importStand.setzeLaufFort(userId, lauf);
+  const z = await k.importStand.setzeLaufFort(userId, lauf);
   return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;
 }
 
@@ -115,17 +119,18 @@ const MELDE_ABSTAND_MS = 300;
 /** `false`, wenn schon ein Auftrag LÄUFT: Der Balken bleibt bei dem, der zuerst
  * da war; der Import läuft trotzdem. */
 export async function starteAuftrag(
+  k: AuftraegeKontext,
   userId: number,
   angaben: { total: number; current?: string | null },
 ): Promise<boolean> {
   // Scheitert das Lesen, wird NICHT gestartet: Einen fremden Import im Zweifel
   // zu überschreiben ist der teurere Fehler.
-  const laufend = await jobGet(userId).catch(e => {
+  const laufend = await jobGet(k, userId).catch(e => {
     meldeFehler('import-auftrag:stand lesen', e);
     return { status: 'running' };
   });
   if (laufend && (laufend.status === 'running' || laufend.status === 'pending')) return false;
-  await jobSet(userId, {
+  await jobSet(k, userId, {
     status: 'running',
     total: angaben.total,
     done: 0,
@@ -134,13 +139,14 @@ export async function starteAuftrag(
     error: null,
     started_at: new Date().toISOString(),
   });
-  await emitJobStatus(userId);
+  await emitJobStatus(k, userId);
   return true;
 }
 
 /** Gedrosselt, damit ein schneller Import nicht jede Zeile in die Datenbank schreibt. */
 const _zuletzt = new Map<number, number>();
 export async function meldeAuftrag(
+  k: AuftraegeKontext,
   userId: number,
   angaben: { done: number; total?: number; current?: string | null },
   unbedingt = false,
@@ -148,16 +154,17 @@ export async function meldeAuftrag(
   const jetzt = Date.now();
   if (!unbedingt && jetzt - (_zuletzt.get(userId) ?? 0) < MELDE_ABSTAND_MS) return;
   _zuletzt.set(userId, jetzt);
-  await jobUpdate(userId, {
+  await jobUpdate(k, userId, {
     done: angaben.done,
     ...(angaben.total !== undefined ? { total: angaben.total } : {}),
     ...(angaben.current !== undefined ? { current: angaben.current } : {}),
   });
-  await emitJobStatus(userId);
+  await emitJobStatus(k, userId);
 }
 
 // Ergebnisse je Posten, sonst zeigt der Balken „0 ok“; offen bleibt ein eigener Ausgang (warn).
 export async function beendeAuftrag(
+  k: AuftraegeKontext,
   userId: number,
   angaben: { ok: number; warn?: number; fehler: number; done: number; abgebrochen?: boolean },
   zeilen?: ImportErgebnis[],
@@ -167,19 +174,19 @@ export async function beendeAuftrag(
     ...Array.from({ length: angaben.warn ?? 0 }, () => ({ success: false, isWarning: true })),
     ...Array.from({ length: angaben.fehler }, () => ({ success: false })),
   ];
-  await jobUpdate(userId, {
+  await jobUpdate(k, userId, {
     status: angaben.abgebrochen ? 'cancelled' : 'done',
     current: null,
     done: angaben.done,
     results: JSON.stringify(results),
   });
   _zuletzt.delete(userId);
-  await emitJobStatus(userId);
+  await emitJobStatus(k, userId);
 }
 
 // Ohne diese Frage hätte der Balken ein Kreuz, das lügt; auch eine fehlende Zeile heisst abgebrochen.
-export async function istAbgebrochen(userId: number): Promise<boolean> {
-  const stand = await jobGet(userId).catch(e => {
+export async function istAbgebrochen(k: AuftraegeKontext, userId: number): Promise<boolean> {
+  const stand = await jobGet(k, userId).catch(e => {
     meldeFehler('import-auftrag:abbruch pruefen', e);
     return null;
   });
@@ -187,7 +194,7 @@ export async function istAbgebrochen(userId: number): Promise<boolean> {
 }
 
 /** Weckt, wenn ein anderer Prozess den Stand eines Kontos schrieb; gibt das Abmelden zurück. */
-export function beiImportStand(f: (konto?: string) => void): () => void {
-  auftraegeBereich().db.benachrichtigung.listen('csv_import_progress', f);
-  return () => auftraegeBereich().db.benachrichtigung.unlisten('csv_import_progress', f);
+export function beiImportStand(k: AuftraegeKontext, f: (konto?: string) => void): () => void {
+  k.db.benachrichtigung.listen('csv_import_progress', f);
+  return () => k.db.benachrichtigung.unlisten('csv_import_progress', f);
 }

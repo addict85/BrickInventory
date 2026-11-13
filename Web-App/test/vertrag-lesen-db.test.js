@@ -18,6 +18,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -27,12 +28,12 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const { routerEinhaengungen } = require('./helpers/sources');
+const { datenOderSkip } = require('./helpers/db');
+const { routerEinhaengungen, testDaten } = require('./helpers/sources');
 const { haeltSet, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
 const { apiRouten } = require(path.join(ROOT, 'scripts', 'kotlin-vertrag.js'));
 const { vertragZu } = require('./helpers/vertrag');
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 const NAME = `kvertrag_${process.pid}`;
@@ -58,7 +59,7 @@ const ZUSATZ = new Map([['/api/v1/alerts/pending', 'since=2000-01-01T00:00:00Z']
 const MIN_GEPRUEFT = 58;
 
 test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -261,9 +262,9 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     req.apiUser = { user_id: uid, username: NAME, is_admin: 1 };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   for (const r of routerEinhaengungen())
-    app.use(r.mount, _req(r.name.startsWith('api_v1') ? `routes/${r.name}.js` : `routes/${r.name}.js`));
+    app.use(r.mount, require('./helpers/sources').routerAus(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;

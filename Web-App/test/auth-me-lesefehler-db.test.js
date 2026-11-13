@@ -14,15 +14,16 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 
 test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `me_lesefehler_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -37,23 +38,26 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const me = async (kopf = {}) => {
     const r = await fetch(`${base}/api/v1/auth/me`, { headers: kopf });
     return { status: r.status, body: await r.json() };
   };
   /** Jede Abfrage scheitert, solange `arbeit` läuft. */
   const mitFehler = async arbeit => {
-    // Mit Konto holt sich die Datenbankschicht eine eigene Verbindung (Zeilenschutz): beide Wege.
-    const echt = { query: db.pool.query, connect: db.pool.connect };
+    // Mit Konto holt sich die Datenbankschicht eine eigene Verbindung (Zeilenschutz): beide Wege,
+    // in beiden Pools der App (Laufzeit- und Systemrolle).
+    const zugang = require('./helpers/sources').testZugang();
+    const pools = [...new Set([zugang.pool, zugang.systemPool])];
+    const echt = pools.map(p => ({ query: p.query, connect: p.connect }));
     const fehler = async () => {
       throw new Error('Verbindung zur Datenbank verloren');
     };
-    Object.assign(db.pool, { query: fehler, connect: fehler });
+    for (const p of pools) Object.assign(p, { query: fehler, connect: fehler });
     try {
       return await arbeit();
     } finally {
-      Object.assign(db.pool, echt);
+      for (const [i, p] of pools.entries()) Object.assign(p, echt[i]);
     }
   };
 

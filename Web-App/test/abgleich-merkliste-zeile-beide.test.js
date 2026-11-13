@@ -15,6 +15,7 @@
  *   F  in MerklisteZeile.kt `marktpreis` umbenannt → rot: „die App: …“
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -23,11 +24,12 @@ const { androidDatei } = require('./helpers/android');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { haeltTeil } = require('./helpers/bestand');
 test.after(() =>
-  _req('db/database.js')
+  testDaten()
     .pool.end()
     .catch(() => {}),
 );
@@ -90,7 +92,7 @@ test('manuelle Einträge: Papierkorb auf der Kachel, Lagerort und Löschen im De
 });
 
 test('die Abfrage der manuellen Teile liefert den Lagerort', async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const U = 990900 + (process.pid % 90);
   const weg = async () => {

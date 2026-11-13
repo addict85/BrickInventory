@@ -10,16 +10,18 @@
  *   C  den Cache-Eintrag der Schätzung nicht mehr geschrieben → rot: „die
  *      Schätzung wird zwischengespeichert“
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 
 test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency: 1 }, async t => {
-  const db = _req('db/database.js');
-  if (!(await dbOderSkip(t, _req))) return;
+  const db = testDaten();
+  if (!(await datenOderSkip(t, _req))) return;
   const { figMarktpreisMitHerkunft } = _req('src/finanzen/marketPrice.js');
   const P = process.pid,
     NAME = `schaetzung-${P}`;

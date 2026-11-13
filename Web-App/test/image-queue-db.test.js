@@ -5,7 +5,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
-const Module = require('node:module');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -14,45 +13,27 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // werden, nicht was sie tun.
 let geladen = 0,
   verkleinert = 0;
-const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = echtesRequire.call(this, name, ...rest);
-  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
-  // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
-  // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'downloadSetImage'
-          ? async () => {
-              geladen++;
-              return '/images/sets/test.jpg';
-            }
-          : t[k],
-    });
-  }
-  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m?.generateThumb) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'generateThumb'
-          ? async () => {
-              verkleinert++;
-              return true;
-            }
-          : t[k],
-    });
-  }
-  return m;
-};
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip, keineDb } = require('./helpers/db');
+const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const _req = buildAndRequire();
+testBildwerk(null, {
+  setBildLaden: async () => {
+    geladen++;
+    return '/images/sets/test.jpg';
+  },
+  vorschauErzeugen: async () => {
+    verkleinert++;
+    return true;
+  },
+});
+const { datenOderSkip, keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
+const db = testDaten();
 
 test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
@@ -106,7 +87,6 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
     await weg();
     // Den Pool NICHT hier schliessen: Der Kachel-Test weiter unten braucht ihn
     // noch. Er schliesst als letzter DB-Test.
-    Module.prototype.require = echtesRequire;
   }
 });
 
@@ -128,12 +108,8 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
   await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: 1 },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
   const kachel = async () => (await (await fetch(`${base}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
 
   try {
@@ -324,7 +300,7 @@ test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {
   assert.match(px, /const notiere = \(\) => \{/, 'Der Proxy hinterlässt keine Notiz');
   assert.match(
     px,
-    /if \(darfErzeugen\) queueThumb\(cacheFile, thumbFile\); else notiere\(\);/,
+    /if \(darfErzeugen\) queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\); else notiere\(\);/,
     'Im gen=0-Fall wird weiter sofort verkleinert statt notiert',
   );
   // Und die Notiz braucht die Setnummer — ohne sie weiss der Job nicht, wohin.

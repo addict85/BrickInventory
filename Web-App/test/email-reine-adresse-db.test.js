@@ -33,10 +33,11 @@ nodemailer.createTransport = () => ({
   },
 });
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -53,7 +54,7 @@ const UNREIN = [
 ];
 
 test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user', 'smtp_from'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   const setze = (k, v) =>
@@ -82,11 +83,7 @@ test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot|bestaetigung)'");
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    t,
-    routen: { '/api/v1/auth': 'routes/auth.js' },
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   // Die IP-Drossel (5/h) soll die Prüfung der Adresse nicht verdecken.
   const rufe = async (methode, pfad, body) => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot|bestaetigung)'");

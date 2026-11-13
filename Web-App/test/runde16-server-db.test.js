@@ -20,14 +20,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const db = _req('db/database.js');
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const db = testDaten();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 
 test('UI-Prüfung 16: Server', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `r16s_${process.pid}`,
     KIND = `${NAME}_kind`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, KIND]]);
@@ -47,12 +48,7 @@ test('UI-Prüfung 16: Server', { concurrency: 1, timeout: 120_000 }, async t => 
     await db.run(`DELETE FROM rb_sets WHERE set_num = '99161-1'`).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const hole = async (pfad, o = {}) => {
     const r = await fetch(`${base}/api/v1${pfad}`, {
       ...o,

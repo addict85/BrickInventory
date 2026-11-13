@@ -4,7 +4,7 @@ import type { DbSchnittstelle } from '../../db/database';
 import { preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';
 import * as repo from './repository/kaufErfassungen';
 import { zustand } from '../infra/validate';
-import { bestandBereich } from './prozess';
+import type { BestandKontext } from './kontext';
 
 export type AcquisitionKind = 'set' | 'part' | 'fig';
 
@@ -31,11 +31,12 @@ const num = (v: unknown): number | null => {
  * @param dbh       Transaktions-Handle, falls der Aufrufer eines hat
  * @returns { merged } — true, wenn eine bestehende Zeile aufgestockt wurde */
 export async function recordAcquisitionForDay(
+  k: BestandKontext,
   kind: AcquisitionKind,
   userId: number,
   keyValues: (string | number)[],
   input: AcquisitionInput,
-  dbh: DbSchnittstelle = bestandBereich().db,
+  dbh: DbSchnittstelle = k.db,
 ): Promise<{ merged: boolean }> {
   const qty = Math.max(1, parseInt(String(input.quantity), 10) || 1);
   const price = num(input.price);
@@ -59,13 +60,14 @@ export async function recordAcquisitionForDay(
  * @param condition der Zustand, den die Zeile NACH der Bearbeitung hat
  * @returns die kollidierende id, oder null */
 export async function findSameDayAcquisition(
+  k: BestandKontext,
   kind: AcquisitionKind,
   userId: number,
   keyValues: unknown[],
   day: string,
   excludeId: number | null,
   condition: string | null = null,
-  dbh: DbSchnittstelle = bestandBereich().db,
+  dbh: DbSchnittstelle = k.db,
   merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {},
 ): Promise<number | null> {
   const cond = zustand(condition);
@@ -116,7 +118,7 @@ type MitPreis = {
 
 /** Summe in der Währung des Betrachters, zum Kurs des Kauftags wie in den Finanzen: Sonst stünden
  * 3 × 260,66 USD als Euro darin. Ohne Kurs zählt die Zeile in `ohne_kurs`, nicht in der Summe. */
-export async function erfassungenInKontowaehrung<T extends MitPreis>(rows: T[], betrachter: number) {
+export async function erfassungenInKontowaehrung<T extends MitPreis>(k: BestandKontext, rows: T[], betrachter: number) {
   const preise = rows.map(r => {
     const roh = r.purchase_price ?? r.unit_price;
     return roh === null || roh === undefined ? null : Number(roh);
@@ -125,7 +127,7 @@ export async function erfassungenInKontowaehrung<T extends MitPreis>(rows: T[], 
     const d = r.created_at ? new Date(String(r.created_at)) : null;
     return d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null;
   });
-  const umgerechnet = await bestandBereich().kaufErfassungen.inWaehrungDesKontos(
+  const umgerechnet = await k.kaufErfassungen.inWaehrungDesKontos(
     betrachter,
     preise,
     rows.map(r => r.currency ?? null),
@@ -145,19 +147,24 @@ export async function erfassungenInKontowaehrung<T extends MitPreis>(rows: T[], 
 /** Gibt es am selben Tag schon eine gleiche Zeile, wandert die Menge dorthin,
  * statt am eindeutigen Index zu scheitern.
  * @returns true, wenn etwas geändert wurde */
-export async function setzeGeschaetztenPreis(kind: AcquisitionKind, id: number, preis: number): Promise<boolean> {
-  return bestandBereich().db.transaction(
-    async tx => {
-      const z = await repo.erfassungSperren(tx, kind, id);
+export async function setzeGeschaetztenPreis(
+  kx: BestandKontext,
+  kind: AcquisitionKind,
+  id: number,
+  preis: number,
+): Promise<boolean> {
+  return kx.transaktion(
+    async t => {
+      const z = await repo.erfassungSperren(t.db, kind, id);
       if (!z || z[preisSpalte(kind)] != null) return false;
       const keys = schluesselSpalten(kind).map(k => z[k]);
-      const ziel = await findSameDayAcquisition(kind, z.user_id, keys, z.tag, id, z.condition, tx, {
+      const ziel = await findSameDayAcquisition(t, kind, z.user_id, keys, z.tag, id, z.condition, t.db, {
         preis,
         geschaetzt: true,
         waehrung: z.currency,
       });
-      if (ziel) await repo.legeErfassungZusammen(tx, kind, id, ziel, z.quantity);
-      else await repo.setzePreisGeschaetzt(tx, kind, id, preis);
+      if (ziel) await repo.legeErfassungZusammen(t.db, kind, id, ziel, z.quantity);
+      else await repo.setzePreisGeschaetzt(t.db, kind, id, preis);
       return true;
     },
     { wiederholeBeiKonflikt: true },

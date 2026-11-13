@@ -28,7 +28,7 @@ test.after(() => fs.rmSync(WURZEL, { recursive: true, force: true }));
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 
 // Die Quelle nennt zwei Adressen; was dort liegt, bestimmt der Test.
 const URLS = ['https://cdn.rebrickable.com/media/echt.pdf', 'https://cdn.rebrickable.com/media/seite.pdf'];
@@ -45,7 +45,7 @@ const INHALT = {
 };
 
 test('Anleitungen nur mit PDF-Anfang', async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const sn = '99981-1';
   await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [sn]);

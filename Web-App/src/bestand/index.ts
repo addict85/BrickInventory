@@ -3,13 +3,10 @@
 import { dienstePerAufruf } from '../infra/bereich';
 import { bestandBereich } from './prozess';
 
-export { findSameDayAcquisition, recordAcquisitionForDay, setzeGeschaetztenPreis } from './acquisitions';
-export { buildFigsCsv, buildPartsCsv } from './bestandExport';
 export {
   MAX_PAGE_SIZE,
   SET_PARTS_MAX_PAGE_SIZE,
   UNPAGED_LIMIT,
-  applyManualCondition,
   clampPageSize,
   conditionFromAcquisitions,
   conditionsFromAcquisitions,
@@ -19,21 +16,60 @@ export {
   loescheManuelleFigur,
   loescheManuellesTeil,
 } from './gemeinsam';
-export { run } from './kaufpreisNachtrag';
-export { normalisiereLagerort, ortFuerNeuerfassung, orteFuer, setzeLagerort, vorgabeVon } from './lagerort';
-export { mengenwunsch, passeManuelleMengeAn } from './manuelleMenge';
-export { legeInPapierkorb, legeKaeufeInPapierkorb, raeumePapierkorbAuf } from './papierkorb';
-export { acquisitionTotals, erfassungenInKontowaehrung } from './acquisitions';
-export { verwendendeSets } from './gemeinsam';
-export { getStats } from './kennzahlen';
-export { benenneOrtUm, lagerSchreibkonto, lagerorte, legeOrtAn, loescheOrt, setzeVorgabe } from './lagerort';
-export { leerePapierkorb, listePapierkorb, loescheEndgueltig, stelleWiederHer } from './papierkorb';
+export { normalisiereLagerort, ortFuerNeuerfassung, setzeLagerort, vorgabeVon } from './lagerort';
+export { mengenwunsch } from './manuelleMenge';
+export { legeInPapierkorb, legeKaeufeInPapierkorb } from './papierkorb';
+export { acquisitionTotals } from './acquisitions';
+export { benenneOrtUm, lagerorte, legeOrtAn, loescheOrt } from './lagerort';
 export { erzeugeBestand } from './bereich';
 export type { BestandDienste, BestandKontext } from './bereich';
-export { bestandBereich, verdrahteBestand } from './prozess';
+export { bestandBereich } from './prozess';
 
 /** Für Routen: die Lagerort-Dienste des Prozesses ohne Zugang als ersten Parameter. */
 export const lagerort = dienstePerAufruf(
   () => bestandBereich().lagerortDienst,
-  ['benenneOrtUm', 'lagerorte', 'legeOrtAn', 'loescheOrt', 'setzeLagerort', 'setzeVorgabe'],
+  ['benenneOrtUm', 'lagerorte', 'legeOrtAn', 'loescheOrt', 'setzeLagerort'],
 );
+
+/** Für Wege ohne eigenen Kontext (HTTP-Seiten, Tests): die Dienste des Prozesses. */
+export const {
+  applyManualCondition,
+  buildFigsCsv,
+  buildPartsCsv,
+  erfassungenInKontowaehrung,
+  findSameDayAcquisition,
+  getStats,
+  lagerSchreibkonto,
+  leerePapierkorb,
+  listePapierkorb,
+  loescheEndgueltig,
+  orteFuer,
+  passeManuelleMengeAn,
+  raeumePapierkorbAuf,
+  recordAcquisitionForDay,
+  run,
+  setzeGeschaetztenPreis,
+  setzeVorgabe,
+  stelleWiederHer,
+  verwendendeSets,
+} = dienstePerAufruf(bestandBereich, [
+  'applyManualCondition',
+  'buildFigsCsv',
+  'buildPartsCsv',
+  'erfassungenInKontowaehrung',
+  'findSameDayAcquisition',
+  'getStats',
+  'lagerSchreibkonto',
+  'leerePapierkorb',
+  'listePapierkorb',
+  'loescheEndgueltig',
+  'orteFuer',
+  'passeManuelleMengeAn',
+  'raeumePapierkorbAuf',
+  'recordAcquisitionForDay',
+  'run',
+  'setzeGeschaetztenPreis',
+  'setzeVorgabe',
+  'stelleWiederHer',
+  'verwendendeSets',
+]);

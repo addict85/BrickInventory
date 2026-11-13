@@ -1,18 +1,7 @@
 /** Als Auftrag im Job-Prozess: Ein Neustart verliert nichts, und ein
  * gescheiterter Import von Teilen oder Figuren wird wiederholt. Die
  * Anreicherungen danach melden ihren Fehler, ohne den Auftrag scheitern zu lassen. */
-import {
-  importiereTeile,
-  fetchMissingBlIds,
-  importiereFiguren,
-  downloadSetInstructions,
-  fuelleAusBrickset,
-  enrichSetParts,
-  enrichSetMinifigs,
-  downloadSetImages,
-} from '../katalog';
-import { anleitungEinreihen, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
-import { refreshPriceForSet } from '../finanzen';
+import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import { versuche } from '../infra/ergebnis';
 import { setErgaenzen } from './erfassen';
 import type { SetsKontext } from './kontext';
@@ -41,31 +30,31 @@ async function zieheNach(
   };
   // Die Figuren in jedem Zweig: Der Import behält den Lagerort vorhandener
   // Figuren, und so holt ein Zweiterfassen nach, was beim ersten Mal scheiterte.
-  await importiereFiguren(setNumber, userId);
-  await importiereTeile(setNumber, userId);
+  await sk.katalog.importiereFiguren(setNumber, userId);
+  await sk.katalog.importiereTeile(setNumber, userId);
   pruefeAbbruch(lauf);
 
-  if (art === 'zweit') await schritt('bl-nummern', () => fetchMissingBlIds(lauf));
+  if (art === 'zweit') await schritt('bl-nummern', () => sk.katalog.fetchMissingBlIds(lauf));
   if (art === 'neu') {
-    await schritt('preis', () => refreshPriceForSet(setNumber, userId));
-    await schritt('anleitung', () => downloadSetInstructions(setNumber));
+    await schritt('preis', () => sk.finanzen.refreshPriceForSet(setNumber, userId));
+    await schritt('anleitung', () => sk.katalog.downloadSetInstructions(setNumber));
   } else {
-    await schritt('anleitung-einreihen', () => anleitungEinreihen(setNumber));
+    await schritt('anleitung-einreihen', () => sk.auftraege.anleitungEinreihen(setNumber));
   }
   pruefeAbbruch(lauf);
-  await schritt('teile-anreichern', () => enrichSetParts(setNumber));
-  await schritt('figuren-anreichern', () => enrichSetMinifigs(setNumber));
+  await schritt('teile-anreichern', () => sk.katalog.enrichSetParts(setNumber));
+  await schritt('figuren-anreichern', () => sk.katalog.enrichSetMinifigs(setNumber));
   // Brickset füllt nur Lücken; der CSV-Import fragt es beim Anlegen nicht.
-  if (art === 'csv') await schritt('brickset', () => fuelleAusBrickset(setNumber));
+  if (art === 'csv') await schritt('brickset', () => sk.katalog.fuelleAusBrickset(setNumber));
   pruefeAbbruch(lauf);
-  await schritt('bilder', () => downloadSetImages(setNumber));
+  await schritt('bilder', () => sk.katalog.downloadSetImages(setNumber));
   if (ohne.length) await lauf?.fortschritt?.({ text: `ohne ${ohne.join(', ')}`, ohne });
 }
 
-async function ladeSetBilder(setNumber: string, lauf?: AuftragsLauf): Promise<void> {
-  await downloadSetImages(setNumber);
+async function ladeSetBilder(k: SetsKontext, setNumber: string, lauf?: AuftragsLauf): Promise<void> {
+  await k.katalog.downloadSetImages(setNumber);
   pruefeAbbruch(lauf);
-  await enrichSetMinifigs(setNumber);
+  await k.katalog.enrichSetMinifigs(setNumber);
 }
 
 export { zieheNach, ladeSetBilder };

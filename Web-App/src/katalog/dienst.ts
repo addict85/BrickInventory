@@ -4,27 +4,24 @@ import { resolveIfExists, resolveImageLocal } from './bilder/images';
 import { dateiStamm } from './bilder/bildBlickfeld';
 import { resolveOne, resolveViaApi } from './bricklinkLink';
 import { fuerSet } from './preisvergleich';
-import { downloadSetImage } from './bilder/setImages';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
-import { nacharbeit } from '../auftraege';
-import { haushaltBereich } from '../haushalt';
-import { katalog } from './prozess';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
 import { versuche } from '../infra/ergebnis';
+import type { KatalogKontext } from './kontext';
 
 // rb_themes ändert sich höchstens täglich; der Baum wird je Zugang eine
 // Stunde gemerkt, weil jeder Filter ihn braucht.
 type ThemeNode = repo.Thema;
 type ThemeBaum = { byId: Map<number, ThemeNode>; children: Map<number, number[]>; pathName: Map<number, string> };
 const THEME_CACHE_TTL = 60 * 60 * 1000;
-const themenSpeicher = () =>
-  katalog().faecher.fach('themenbaum', () => new Zwischenspeicher<0, ThemeBaum>(1, THEME_CACHE_TTL));
+const themenSpeicher = (k: KatalogKontext) =>
+  k.faecher.fach('themenbaum', () => new Zwischenspeicher<0, ThemeBaum>(1, THEME_CACHE_TTL));
 
-async function getThemeTree(): Promise<ThemeBaum> {
-  const gemerkt = themenSpeicher().hole(0);
+async function getThemeTree(k: KatalogKontext): Promise<ThemeBaum> {
+  const gemerkt = themenSpeicher(k).hole(0);
   if (gemerkt) return gemerkt;
-  const rows = await katalog().katalogSuche.themen();
+  const rows = await k.katalogSuche.themen();
   const byId = new Map<number, ThemeNode>();
   const children = new Map<number, number[]>();
   for (const r of rows) {
@@ -52,7 +49,7 @@ async function getThemeTree(): Promise<ThemeBaum> {
   };
   for (const id of byId.keys()) resolvePath(id, new Set([id]));
   const baum = { byId, children, pathName };
-  themenSpeicher().setze(0, baum);
+  themenSpeicher(k).setze(0, baum);
   return baum;
 }
 
@@ -72,12 +69,12 @@ function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: n
   return out;
 }
 
-export async function katalogMeta() {
-  const tree = await getThemeTree();
+export async function katalogMeta(k: KatalogKontext) {
+  const tree = await getThemeTree(k);
   const [counts, years, yearCounts] = await Promise.all([
-    katalog().katalogSuche.setsJeThema(),
-    katalog().katalogSuche.jahresspanne(),
-    katalog().katalogSuche.setsJeJahr(),
+    k.katalogSuche.setsJeThema(),
+    k.katalogSuche.jahresspanne(),
+    k.katalogSuche.setsJeJahr(),
   ]);
   const direct = new Map<number, number>();
   for (const c of counts) direct.set(c.theme_id, c.n);
@@ -98,33 +95,40 @@ export interface KatalogFilter {
   yearTo?: number | null;
 }
 
-async function waehle(f: KatalogFilter): Promise<repo.KatalogWahl> {
+async function waehle(k: KatalogKontext, f: KatalogFilter): Promise<repo.KatalogWahl> {
   return {
     q: f.q,
-    themenIds: f.themeId ? descendantIds(await getThemeTree(), f.themeId) : null,
+    themenIds: f.themeId ? descendantIds(await getThemeTree(k), f.themeId) : null,
     vonJahr: f.yearFrom ?? null,
     bisJahr: f.yearTo ?? null,
   };
 }
 
 /** NULL-Jahre stehen bei absteigender Sortierung vorn, wie in der Liste. */
-export async function jahrVerteilung(f: KatalogFilter, absteigend: boolean) {
-  return katalog().katalogSuche.setsJeJahrGefiltert(await waehle({ q: f.q, themeId: f.themeId }), absteigend);
+export async function jahrVerteilung(k: KatalogKontext, f: KatalogFilter, absteigend: boolean) {
+  return k.katalogSuche.setsJeJahrGefiltert(await waehle(k, { q: f.q, themeId: f.themeId }), absteigend);
 }
 
-export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
-  const wahl = await waehle(f);
+export async function katalogSeite(
+  k: KatalogKontext,
+  userId: number,
+  f: KatalogFilter,
+  sortRoh: unknown,
+  page: number,
+  limit: number,
+) {
+  const wahl = await waehle(k, f);
   const [total, sets] = await Promise.all([
-    katalog().katalogSuche.katalogAnzahl(wahl),
-    katalog().katalogSuche.katalogZeilen(
-      await haushaltBereich().haushalt.blickfeldIds(userId),
+    k.katalogSuche.katalogAnzahl(wahl),
+    k.katalogSuche.katalogZeilen(
+      await k.haushalt.haushalt.blickfeldIds(userId),
       wahl,
       sortRoh,
       limit,
       (page - 1) * limit,
     ),
   ]);
-  const tree = await getThemeTree();
+  const tree = await getThemeTree(k);
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
   return {
     total,
@@ -139,29 +143,29 @@ export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: un
   };
 }
 
-export const katalogGeladen = async () => !(await katalog().katalogSuche.katalogLeer());
+export const katalogGeladen = async (k: KatalogKontext) => !(await k.katalogSuche.katalogLeer());
 
-export async function katalogSet(userId: number, roh: string) {
+export async function katalogSet(k: KatalogKontext, userId: number, roh: string) {
   const n = mitVersion(roh.trim());
-  const set = await katalog().katalogSuche.katalogZeile(await haushaltBereich().haushalt.blickfeldIds(userId), n);
+  const set = await k.katalogSuche.katalogZeile(await k.haushalt.haushalt.blickfeldIds(userId), n);
   if (!set) return null;
-  const invId = await neuestesInventar(n);
-  const m = invId ? await katalog().katalogSuche.figurenImInventar(invId) : undefined;
-  const tree = await getThemeTree();
+  const invId = await neuestesInventar(k, n);
+  const m = invId ? await k.katalogSuche.figurenImInventar(invId) : undefined;
+  const tree = await getThemeTree(k);
   // Geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.
-  let bricklink = await resolveOne(set.set_number);
+  let bricklink = await resolveOne(k, set.set_number);
   // Scheitert die Prüfung, bleibt der Link als ungeprüft (resolved: false) gekennzeichnet.
   if (!bricklink.resolved) {
-    const r = await versuche('katalog:bricklink', resolveViaApi(set.set_number));
+    const r = await versuche('katalog:bricklink', resolveViaApi(k, set.set_number));
     if (r.ok) bricklink = r.wert;
   }
   let image_local = resolveIfExists(set.image_local ?? `/images/sets/${dateiStamm(set.set_number)}.jpg`);
   // Jetzt dauerhaft ablegen; die Vorschau und den Eintrag in set_catalog macht der Bild-Job.
   if (!image_local && set.image_url) {
     // Ohne Datei zeigt die Seite image_url; der Bild-Job holt sie nach.
-    const r = await versuche('katalog:downloadSetImage', downloadSetImage(set.image_url, set.set_number));
+    const r = await versuche('katalog:downloadSetImage', k.bildwerk.setBildLaden(set.image_url, set.set_number));
     image_local = r.ok ? r.wert : null;
-    if (image_local) nacharbeit().bildVormerken(String(set.image_url || ''), set.set_number);
+    if (image_local) k.nacharbeit.bildVormerken(String(set.image_url || ''), set.set_number);
   }
   return {
     ...set,

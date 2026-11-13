@@ -34,15 +34,17 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 const { bis } = require('./helpers/zeit');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const db = _req('db/database.js');
+const db = testDaten();
 
 const NAME = `haerte_${process.pid}`,
   PASS = 'Haerte-Passwort-1';
@@ -51,7 +53,7 @@ const ZAEHLER = `${NAME}_zaehler`;
 let uid = 0;
 
 test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const aufraeumen = async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_v`]]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', ['%203.0.113.%']);
@@ -66,6 +68,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     ).id;
   uid = await anlegen(NAME, false);
   const verwalter = await anlegen(`${NAME}_v`, true);
+  await verwalterMitFaktor(_req, verwalter);
   t.after(async () => {
     await aufraeumen().catch(() => {});
   });
@@ -79,7 +82,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
       req.session.besuch = 1;
       res.json({});
     });
-    app.use('/api/v1/auth', _req('routes/auth.js'));
+    app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
     const srv = app.listen(0);
     t.after(() => new Promise(r => srv.close(r)));
     const base = `http://127.0.0.1:${srv.address().port}`;
@@ -110,7 +113,8 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     delete require.cache[datei];
     const b = require(datei);
     assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
-    assert.equal((await b.checkLoginAllowed(IP, ZAEHLER))?.code, 'zu_viele_fehlversuche');
+    const konto = _req('src/infra/bereich.js').prozessDienste().konto;
+    assert.equal((await b.checkLoginAllowed(konto, IP, ZAEHLER))?.code, 'zu_viele_fehlversuche');
   });
 
   await t.test('Anmeldezähler: ohne Datenbank bremst der Speicher', async () => {
@@ -134,11 +138,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
   });
 
   await t.test('ein Token zählt nur im Kopf, nicht in der Adresszeile', async () => {
-    const { base } = testServer(_req, {
-      sitzung: {},
-      t,
-      routen: { '/api/v1/auth': 'routes/auth.js', '/api/v1': 'routes/api_v1/index.js' },
-    });
+    const { base } = testServer(_req, { sitzung: {}, t });
     const login = await fetch(`${base}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -158,12 +158,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
       SN,
     ]);
     const leeren = async (id, admin) => {
-      const { base } = testServer(_req, {
-        sitzung: { userId: id },
-        apiNutzer: { user_id: id, is_admin: admin },
-        t,
-        routen: { '/api/v1': 'routes/api_v1/index.js' },
-      });
+      const { base } = testServer(_req, { sitzung: { userId: id, isAdmin: !!admin }, t });
       return (
         await fetch(`${base}/api/v1/admin/cache-clear`, {
           method: 'POST',

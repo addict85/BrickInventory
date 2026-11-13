@@ -17,6 +17,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -25,9 +26,10 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const zf = _req('src/konto/zweiterFaktor.js');
 const { createToken } = _req('src/konto/geraeteToken.js');
 const { entschluessele } = _req('src/infra/geheimnis.js');
@@ -47,7 +49,7 @@ async function konto(name) {
 }
 
 test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `bb_${process.pid}`,
     KARL = `bb_karl_${process.pid}`;
   const uid = await konto(NAME),
@@ -81,8 +83,8 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
     if (sid) req.sessionID = String(sid);
     next();
   });
-  app.use('/api/v1/auth', _req('routes/auth.js'));
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const base = `http://localhost:${srv.address().port}`;

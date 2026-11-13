@@ -2,6 +2,7 @@
  * Ein NEU angelegtes Set wird in beiden Erfassungs-Routen gleich beantwortet.
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -17,8 +18,6 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
   const m = _echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
   // Gestellt wird das Anlegen; das Ergänzen im Strom ohne Netz.
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
@@ -35,14 +34,14 @@ Module.prototype.require = function (name, ...rest) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { ohneKommentare } = require('./helpers/sources');
+const { ohneKommentare, testDaten } = require('./helpers/sources');
 const { haeltSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const NUTZER = `neu-form-${process.pid}`;
   const basis = 96000 + (process.pid % 900);
@@ -68,12 +67,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
     [uid, DA],
   );
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   try {
     // ── 1. Die Praemisse, mit der ECHTEN Funktion ────────────────────────────

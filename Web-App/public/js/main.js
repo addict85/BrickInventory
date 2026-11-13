@@ -69,6 +69,7 @@ import './einrichtung.js';
 import './passkeys.js';
 import './router.js';
 import './navigation.js';
+import './startkasten.js';
 import './sitzung.js';
 import './einrichtung-stand.js';
 

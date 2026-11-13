@@ -13,19 +13,21 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const USER = `spiegel-${process.pid}`;
   const SN = `31142-${process.pid}`;
@@ -33,12 +35,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concur
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   // Ausgangslage jedes Mal frisch herstellen — inklusive der Erfassungen.
   const aufbauen = async () => {

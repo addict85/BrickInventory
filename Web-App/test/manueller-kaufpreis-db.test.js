@@ -1,17 +1,19 @@
 /**
  * Teil und Minifigur ohne Marktpreis hinterlassen DASSELBE.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const name = `mkp_${process.pid}`;
   const TEIL = `mkpP${String(process.pid).slice(-5)}`;

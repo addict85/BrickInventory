@@ -27,8 +27,9 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
@@ -47,7 +48,6 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       c.release();
     }
   }
-  const pdf = _req('routes/api_v1/pdf.js');
   const auftraege = _req('src/auftraege/pdfAuftraege.js');
   const { PDF_JOB_DIR } = _req('src/infra/appPaths.js');
 
@@ -76,7 +76,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
   const app = express();
   // Den Rumpf liest wie im Betrieb der Parser des Servers, nicht der Router.
   app.use(express.json({ limit: '4mb' })); // wie server.ts für diese Route
-  app.use('/api/v1', pdf.default || pdf);
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/pdf.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
@@ -253,8 +253,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
     await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`).catch(() => {});
-    await _req('db/database.js')
-      .standardDb()
+    await testZugang()
       .benachrichtigung.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});

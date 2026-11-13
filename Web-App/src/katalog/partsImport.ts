@@ -1,18 +1,17 @@
 import path from 'node:path';
-import { type AuftragsLauf, stelleAuftragEin } from '../auftraege';
+import type { AuftragsLauf } from '../auftraege';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
 import { type RbSetTeil, ersteBlNummer, parseThrottleWait, rebrickableRoh } from './quellen';
 import { getAllSetParts } from './rebrickableKatalog';
 import { fehlertext, logAndContinue, meldeFehler } from '../infra/fehler';
-import { getGlobalSetting } from '../einstellungen';
 import { mitVersion } from '../infra/setNummer';
 import { nummernListe } from '../infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
 import { rebrickableBackgroundLimiter, consumeRebrickableDaily } from './rateLimiter';
 import * as inhalt from './repository/setInhalt';
-import { katalog } from './prozess';
+import type { KatalogKontext } from './kontext';
 
 /** Nach Teil und Farbe sortiert: eine feste Sperrreihenfolge gegen Verklemmungen. */
 function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
@@ -54,9 +53,9 @@ function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
 /** In einer Transaktion, damit ein Fehler nie ein Set ohne Teile hinterlässt;
  * vorhandene Zeilen behalten Lagerort und Datum.
  * @returns die Zahl der Zeilen; wirft bei Fehlern (der Auftrag wiederholt dann) */
-export async function importiereTeile(setNumber: string, userId: number): Promise<number> {
+export async function importiereTeile(k: KatalogKontext, setNumber: string, userId: number): Promise<number> {
   const n = mitVersion(setNumber);
-  const roh: RbSetTeil[] | null = await getAllSetParts(n);
+  const roh: RbSetTeil[] | null = await getAllSetParts(k, n);
   if (!roh?.length) return 0;
   const zeilen = setTeilZeilen(roh);
   if (!zeilen.length) return 0;
@@ -65,14 +64,15 @@ export async function importiereTeile(setNumber: string, userId: number): Promis
 
   for (let versuch = 1; ; versuch++) {
     try {
-      await katalog().db.transaction(async tx => {
-        await inhalt.fuegeSetTeileEin(tx, userId, n, teile, farben);
-        await inhalt.entferneFremdeSetTeile(tx, userId, n, teile, farben);
-        await merkeSetTeile(n, zeilen, tx);
+      await k.transaktion(async t => {
+        await inhalt.fuegeSetTeileEin(t.db, userId, n, teile, farben);
+        await inhalt.entferneFremdeSetTeile(t.db, userId, n, teile, farben);
+        await merkeSetTeile(t, n, zeilen, t.db);
         await merkeBlNummern(
+          t,
           'part',
           zeilen.map(z => ({ rbId: z.partNumber, blId: z.blNummer ?? '' })),
-          tx,
+          t.db,
         );
       });
       break;
@@ -85,15 +85,15 @@ export async function importiereTeile(setNumber: string, userId: number): Promis
   }
 
   if (zeilen.some(z => z.imageUrl && !z.imageLocal))
-    await stelleAuftragEin('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxVersuche: 3 });
+    await k.auftraege.stelleAuftragEin('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxVersuche: 3 });
   console.log(`[parts] ${n}: ${zeilen.length} importiert`);
   return zeilen.length;
 }
 
 /** Ohne zu werfen — für die Route, die nur die Zahl zeigt. */
-export async function importPartsForSet(setNumber: string, userId: number): Promise<number> {
+export async function importPartsForSet(k: KatalogKontext, setNumber: string, userId: number): Promise<number> {
   try {
-    return await importiereTeile(setNumber, userId);
+    return await importiereTeile(k, setNumber, userId);
   } catch (e) {
     console.error(`[parts] Import fehlgeschlagen für ${mitVersion(setNumber)}:`, fehlertext(e));
     return 0;
@@ -105,11 +105,11 @@ function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: 
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
-export async function fetchMissingBlIds(lauf: AuftragsLauf = {}) {
+export async function fetchMissingBlIds(k: KatalogKontext, lauf: AuftragsLauf = {}) {
   try {
-    const rbKey = await getGlobalSetting('rebrickable_api_key');
+    const rbKey = await k.einstellungen.getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
-    const missing = await katalog().setInhalt.teileOhneBlZuordnung();
+    const missing = await k.setInhalt.teileOhneBlZuordnung();
     if (!missing.length) return;
 
     const stand = (n: number) =>
@@ -123,7 +123,7 @@ export async function fetchMissingBlIds(lauf: AuftragsLauf = {}) {
     const BATCH = 500;
     let serverErrors = 0;
     for (let i = 0; i < missing.length; i += BATCH) {
-      if (lauf.signal?.aborted || !(await consumeRebrickableDaily())) break;
+      if (lauf.signal?.aborted || !(await consumeRebrickableDaily(k))) break;
       await rebrickableBackgroundLimiter.waitForSlot();
       const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
       const result = await holeSeite(
@@ -155,11 +155,12 @@ export async function fetchMissingBlIds(lauf: AuftragsLauf = {}) {
       for (const part of data?.results || []) {
         const blIds = part.external_ids?.BrickLink;
         const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0]! : part.part_num;
-        await merkeBlNummer('part', part.part_num, blNum).catch(logAndContinue('bl-nummern:merken'));
+        await merkeBlNummer(k, 'part', part.part_num, blNum).catch(logAndContinue('bl-nummern:merken'));
       }
       const returned = new Set((data?.results || []).map(p => p.part_num));
       for (const pn of batch) {
-        if (!returned.has(pn)) await merkeBlNummerUnveraendert('part', pn).catch(logAndContinue('bl-nummern:merken'));
+        if (!returned.has(pn))
+          await merkeBlNummerUnveraendert(k, 'part', pn).catch(logAndContinue('bl-nummern:merken'));
       }
     }
   } catch (e) {

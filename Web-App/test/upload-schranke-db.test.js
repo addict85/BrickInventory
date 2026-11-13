@@ -30,9 +30,10 @@ const { bis } = require('./helpers/zeit');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const { testServer } = require('./helpers/server');
 const { PDFDocument } = require(path.join(ROOT, 'node_modules', '@cantoo/pdf-lib'));
 
@@ -97,19 +98,12 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
     B = await neu(`schranke_b_${process.pid}`);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]);
-    await _req('db/database.js')
-      .standardDb()
+    await testZugang()
       .benachrichtigung.close()
       .catch(() => {}); // der CSV-Strom hört auf NOTIFY
     await db.pool.end().catch(() => {});
   });
-  const server = uid =>
-    testServer(_req, {
-      sitzung: { userId: uid },
-      apiNutzer: { user_id: uid, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+  const server = uid => testServer(_req, { sitzung: { userId: uid }, t });
   const a = server(A),
     b = server(B);
 

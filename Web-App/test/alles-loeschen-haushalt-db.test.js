@@ -14,11 +14,12 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 async function erreichbar() {
   try {
@@ -68,12 +69,7 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async t => {
   await haeltFigur(db, kind, 'fig2', { menge: 1 });
   await haeltTeil(db, haupt, '3004', { colorId: 1, menge: 2 });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: haupt },
-    apiNutzer: { user_id: haupt, is_admin: 0, username: 'haupt' },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: haupt, username: 'haupt' }, t });
   const hole = async (pfad, methode = 'GET', body) =>
     (
       await fetch(base + pfad, {

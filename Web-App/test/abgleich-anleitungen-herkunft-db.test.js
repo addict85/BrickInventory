@@ -2,6 +2,7 @@
  * Der Papierkorb steht nur an SELBST hochgeladenen Anleitungen.
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -10,15 +11,15 @@ const fs = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, ohneKommentare, testDaten } = require('./helpers/sources');
 const { haeltSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { getSet, getSets } = _req('src/sets/index.js');
 
 test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const USER = `anlh-${process.pid}`;
   // Endet auf "-<Ziffern>", damit mitVersion() nichts anhaengt: shared_

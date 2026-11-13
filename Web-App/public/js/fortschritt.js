@@ -276,9 +276,8 @@ export async function gibCheckOnLoad() {
       _gibCheckTimer = null;
       return;
     }
-    // Ohne Anmeldung gibt es nichts zu prüfen — vorher lief die Abfrage auch auf dem Login-Screen im
-    // Drei-Sekunden-Takt weiter.
-    if (!ME) return;
+    // Ohne Anmeldung gibt es nichts zu prüfen; im verborgenen Tab zählte jede Abfrage gegen das Budget.
+    if (!ME || document.hidden) return;
     try {
       const r = await apiRoh('GET', '/v1/sets/import/csv/status');
 
@@ -309,8 +308,9 @@ export async function gibCheckOnLoad() {
       if (++failures === 3) console.warn('[gibCheck] nicht erreichbar — Abfrage verlangsamt');
     }
   }
-  doCheck(); // fire immediately on login
-  _gibCheckTimer = setInterval(doCheck, 3000); // then every 3s
+  doCheck();
+  // Alle 10 s: Ein Import aus einem anderen Fenster erscheint etwas später, der eigene startet den Balken selbst.
+  _gibCheckTimer = setInterval(doCheck, 10000);
 }
 /** @type {number | null} */
 let _gibCheckTimer = null;

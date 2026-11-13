@@ -25,6 +25,7 @@
  * dort rot).
  */
 const { istAppModul } = require('../scripts/build-frontend');
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -109,13 +110,17 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
   // Leere zeigte.
   const proxy = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/imgCacheServe.ts'), 'utf8');
   assert.doesNotMatch(proxy, /await makeProxyThumb/, 'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
-  assert.match(proxy, /queueThumb\(cacheFile, thumbFile\)/, 'Die Verkleinerung gehört in den Hintergrund');
+  assert.match(
+    proxy,
+    /queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\)/,
+    'Die Verkleinerung gehört in den Hintergrund',
+  );
 });
 
 test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden Wegen', { concurrency: 1 }, async t => {
   const _req = require('./helpers/sources').buildAndRequire();
-  const { dbOderSkip } = require('./helpers/db');
-  const db = await dbOderSkip(t, _req);
+  const { datenOderSkip } = require('./helpers/db');
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const H = require('./helpers/sources').handlerModul(_req);
   const PS = _req('src/teile/partsSummary.js');

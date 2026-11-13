@@ -3,7 +3,6 @@
  * Bereiche mit Fabrik. Jeder Prozess baut es beim Start und reicht es weiter
  * (server.ts, Skripte, Testhilfen). */
 import {
-  verdrahteNacharbeit,
   type Nacharbeit,
   ziehePlanVor,
   stelleAuftragEin,
@@ -11,24 +10,21 @@ import {
   bricksetAusWiedervorlage,
   BRICKSET_HOECHSTENS,
   erzeugeAuftraege,
-  verdrahteAuftraege,
-  auftraegeBereich,
 } from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
-import { erzeugeSets, verdrahteSets } from '../src/sets';
-import { erzeugeHaushalt, verdrahteHaushalt } from '../src/haushalt';
-import { erzeugeIdempotenz, verdrahteIdempotenz } from '../src/idempotenz';
-import { erzeugeBestand, verdrahteBestand } from '../src/bestand';
-import { erzeugeTeile, verdrahteTeile } from '../src/teile';
-import { erzeugeFiguren, verdrahteFiguren } from '../src/figuren';
-import { erzeugeMerkliste, verdrahteMerkliste } from '../src/merkliste';
-import { erzeugeGutscheine, verdrahteGutscheine } from '../src/gutscheine';
-import { erzeugeSammlung, verdrahteSammlung } from '../src/sammlung';
-import { erzeugeVerwaltung, verdrahteVerwaltung } from '../src/verwaltung';
+import { erzeugeSets } from '../src/sets';
+import { erzeugeHaushalt } from '../src/haushalt';
+import { erzeugeIdempotenz } from '../src/idempotenz';
+import { erzeugeBestand } from '../src/bestand';
+import { erzeugeTeile } from '../src/teile';
+import { erzeugeFiguren } from '../src/figuren';
+import { erzeugeMerkliste } from '../src/merkliste';
+import { erzeugeGutscheine } from '../src/gutscheine';
+import { erzeugeSammlung } from '../src/sammlung';
+import { erzeugeVerwaltung } from '../src/verwaltung';
 import {
+  type Bildwerk,
   erzeugeKatalog,
-  verdrahteKatalog,
-  katalog,
   merkeGebraucht,
   enrichSetParts,
   enrichSetMinifigs,
@@ -38,12 +34,13 @@ import {
   rebrickableBackgroundLimiter,
   rebrickableDailyStatus,
 } from '../src/katalog';
-import { erzeugeFinanzen, verdrahteFinanzen, finanzenBereich, refreshPriceForSet } from '../src/finanzen';
+import { erzeugeFinanzen, refreshPriceForSet } from '../src/finanzen';
 import { mitVersion } from '../src/infra/setNummer';
-import { erzeugeKonto, verdrahteKonto, legeStartVerwalterAn } from '../src/konto';
+import { erzeugeKonto, legeStartVerwalterAn } from '../src/konto';
 import { meldeFehler } from '../src/infra/fehler';
+import { prozessDienste as alleDienste, verdrahteDienste } from '../src/infra/bereich';
 import { verdrahteKlienten, type KlientenZugang } from '../clients/zugang';
-import { erzeugeEinstellungen, verdrahteEinstellungen, getGlobalSetting } from '../src/einstellungen';
+import { erzeugeEinstellungen, getGlobalSetting } from '../src/einstellungen';
 
 export interface Verdrahtung {
   nacharbeit: Nacharbeit;
@@ -87,33 +84,74 @@ export function baueKlientenZugang(): KlientenZugang {
   };
 }
 
+/** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
+ * der tieferen, die er braucht, als Teil seines Kontexts. Die eine Stelle, an der
+ * verdrahtet wird; Testhilfen rufen sie auch und geben dabei ihr `bildwerk` mit. */
+export function baueDienste(db: Db, nacharbeit: Nacharbeit, bildwerk?: Bildwerk) {
+  const einstellungen = erzeugeEinstellungen({ db });
+  const auftraege = erzeugeAuftraege({ db, einstellungen });
+  const haushalt = erzeugeHaushalt({ db });
+  const konto = erzeugeKonto({ db, einstellungen, auftraege, haushalt, nacharbeit });
+  const idempotenz = erzeugeIdempotenz({ db });
+  const katalog = erzeugeKatalog({ db, einstellungen, auftraege, haushalt, nacharbeit, bildwerk });
+  const finanzen = erzeugeFinanzen({ db, einstellungen, auftraege, haushalt, katalog, nacharbeit });
+  const bestand = erzeugeBestand({ db, einstellungen, haushalt, konto, katalog, finanzen });
+  const sets = erzeugeSets({ db, nacharbeit, katalog, finanzen, auftraege, bestand, einstellungen, konto });
+  const teile = erzeugeTeile({ db, einstellungen, haushalt, katalog, finanzen, bestand });
+  const figuren = erzeugeFiguren({ db, einstellungen, haushalt, katalog, finanzen, bestand, nacharbeit });
+  const merkliste = erzeugeMerkliste({ db, einstellungen, haushalt, katalog, finanzen, sets, nacharbeit });
+  const gutscheine = erzeugeGutscheine({ db, einstellungen, konto });
+  const sammlung = erzeugeSammlung({
+    db,
+    haushalt,
+    auftraege,
+    katalog,
+    finanzen,
+    bestand,
+    sets,
+    teile,
+    figuren,
+    merkliste,
+  });
+  const verwaltung = erzeugeVerwaltung({
+    db,
+    einstellungen,
+    auftraege,
+    konto,
+    idempotenz,
+    katalog,
+    finanzen,
+    bestand,
+    sets,
+    merkliste,
+  });
+  return {
+    einstellungen,
+    auftraege,
+    haushalt,
+    konto,
+    idempotenz,
+    katalog,
+    finanzen,
+    bestand,
+    sets,
+    teile,
+    figuren,
+    merkliste,
+    gutscheine,
+    sammlung,
+    verwaltung,
+  };
+}
+export type Dienste = ReturnType<typeof baueDienste>;
+
+/** Die Dienste, die verdrahte() dem Prozess gegeben hat: für den Einstieg (server.ts). */
+export const prozessDienste = (): Dienste => alleDienste() as Dienste;
+
 /** Der Zugang zur Datenbank kommt immer vom Einstieg; einen Rückfall gibt es nicht. */
 export function verdrahte(v: Verdrahtung, db: Db): void {
-  verdrahteNacharbeit(v.nacharbeit);
   verdrahteKlienten(baueKlientenZugang());
-  verdrahteVerwaltung(() => erzeugeVerwaltung({ db }));
-  verdrahteSammlung(() => erzeugeSammlung({ db }));
-  verdrahteGutscheine(() => erzeugeGutscheine({ db }));
-  verdrahteMerkliste(() => erzeugeMerkliste({ db }));
-  verdrahteFiguren(() => erzeugeFiguren({ db }));
-  verdrahteTeile(() => erzeugeTeile({ db }));
-  verdrahteBestand(() => erzeugeBestand({ db }));
-  verdrahteFinanzen(() => erzeugeFinanzen({ db }));
-  verdrahteIdempotenz(() => erzeugeIdempotenz({ db }));
-  verdrahteKonto(() => erzeugeKonto({ db }));
-  verdrahteHaushalt(() => erzeugeHaushalt({ db }));
-  verdrahteAuftraege(() => erzeugeAuftraege({ db }));
-  verdrahteEinstellungen(() => erzeugeEinstellungen({ db }));
-  verdrahteKatalog(() => erzeugeKatalog({ db }));
-  verdrahteSets(() =>
-    erzeugeSets({
-      db,
-      nacharbeit: v.nacharbeit,
-      katalog: katalog(),
-      finanzen: finanzenBereich(),
-      auftraege: auftraegeBereich(),
-    }),
-  );
+  verdrahteDienste(() => baueDienste(db, v.nacharbeit));
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet; der Einstieg hält ihn. */

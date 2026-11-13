@@ -233,7 +233,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // auch nur EINE Zeile, die darauf zeigt.
   assert.match(
     SERVER,
-    /setzeFigurBildLokal\(f\.fig_number, local\)/,
+    /setzeFigurBildLokal\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?f\.fig_number, local\)/,
     'Ein Download muss den Katalogeintrag der Figur setzen',
   );
 

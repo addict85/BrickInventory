@@ -28,10 +28,10 @@ const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const { katalogSet } = require('./helpers/bestand');
 const _req = S.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { mailAttrappe } = require('./helpers/mail-attrappe');
 mailAttrappe();
-const db = _req('db/database.js');
+const db = S.testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -120,7 +120,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   concurrency: 1,
   timeout: 600_000,
 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[OPFER, FREMD]]);
   const hash = await bcrypt.hash(PASS, 4);
@@ -189,15 +189,15 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
     req.apiUser = { user_id: als, username: name, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  for (const r of S.routerEinhaengungen()) app.use(r.mount, _req(`routes/${r.name}.js`));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  for (const r of S.routerEinhaengungen())
+    app.use(r.mount, require('./helpers/sources').routerAus(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(async () => {
     srv.closeAllConnections?.();
     await new Promise(r => srv.close(r));
     // LISTEN-Verbindung und Zeitgeber, die Routen nebenher anstossen, hielten den Prozess sonst offen.
-    await _req('db/database.js')
-      .standardDb()
+    await S.testZugang()
       .benachrichtigung.close()
       .catch(() => {});
   });

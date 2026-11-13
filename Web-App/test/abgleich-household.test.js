@@ -36,7 +36,7 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').dbOderSkip(t, _req);
+  const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
   const hh = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
   const namen = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];
@@ -197,7 +197,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
   const acq = read('routes/api_v1/acquisitions.ts');
   const calls =
-    (mv.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length +
+    (mv.match(/moveSetBetweenAccounts\((?:sk, )?tx, sn/g) || []).length +
     (acq.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length;
   assert.ok(
     calls >= 1,
@@ -232,7 +232,8 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   );
 
   const fc = kompakt(require('./helpers/sources').finanzQuelle());
-  const uses = (fc.match(/await (?:haushaltBereich\(\)\.haushalt\.)?besitzerAnhaengen\(uids,/g) || []).length;
+  const uses = (fc.match(/await (?:(?:haushaltBereich\(\)|kx?\.haushalt)\.haushalt\.)?besitzerAnhaengen\(uids,/g) || [])
+    .length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });
@@ -264,7 +265,7 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
   // Frisch ist die Sicht nur, wenn sie es für JEDES Konto ist — „zwei von drei
   // sind aktuell" ergäbe eine Summe aus frischen und alten Beständen.
   const ps = read('src/teile/partsSummary.ts');
-  assert.match(ps, /const results = await Promise\.all\(ids\.map\(id => ensureFresh\(id, opts\)\)\);/);
+  assert.match(ps, /const results = await Promise\.all\(ids\.map\(id => ensureFresh\((?:k, )?id, opts\)\)\);/);
   assert.match(ps, /return results\.every\(Boolean\);/);
 });
 

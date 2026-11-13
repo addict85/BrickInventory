@@ -1,21 +1,11 @@
 /** Die Kacheln der Überwachungsseite: Stand je Hintergrundauftrag und Zeitplan. */
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  auftraegeBereich,
-  DAILY_JOBS,
-  zaehleArt,
-  bricksetZahlen,
-  all as alleMonitore,
-  get as monitorStand,
-  imgDlPending,
-  imgDlReset,
-} from '../auftraege';
+import { DAILY_JOBS } from '../auftraege';
 import { PDF_JOB_DIR } from '../infra/appPaths';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { getGlobalSetting } from '../einstellungen';
-import { verwaltungBereich } from './prozess';
+import type { VerwaltungKontext } from './kontext';
 
 // Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
 const JOB_FRISCH_MS = 3 * 60_000;
@@ -32,8 +22,8 @@ type Kacheln = Record<string, Kachel>;
 const zahl = (ab: Abstriche, p: Promise<number>, ort: string) => ab.oder(ort, p, 0);
 
 /** Ein JSON-Stand aus laufzustand; ein beschädigter zählt wie keiner. */
-async function liesStand<T>(ab: Abstriche, schluessel: string): Promise<T | null> {
-  const roh = await ab.oder(schluessel, auftraegeBereich().laufzustand.liesZustand(schluessel), null);
+async function liesStand<T>(k: VerwaltungKontext, ab: Abstriche, schluessel: string): Promise<T | null> {
+  const roh = await ab.oder(schluessel, k.auftraege.laufzustand.liesZustand(schluessel), null);
   try {
     return roh ? (JSON.parse(roh) as T) : null;
   } catch {
@@ -54,8 +44,8 @@ function blIdsKachel(alt: Kachel, gemappt: number, gesamt: number): Kachel | nul
 }
 
 /** Einmal gezählt: offen, erledigt und gescheitert aus derselben Abfrage. */
-async function anleitungsAuftraege(ab: Abstriche) {
-  const z = await ab.oder('anleitungen', zaehleArt('anleitung'), null);
+async function anleitungsAuftraege(k: VerwaltungKontext, ab: Abstriche) {
+  const z = await ab.oder('anleitungen', k.auftraege.zaehleArt('anleitung'), null);
   return { offen: z ? z.offen + z.laeuft : 0, erledigt: z?.erledigt ?? 0, fehler: z?.fehler ?? 0 };
 }
 
@@ -72,8 +62,8 @@ function anleitungsKachel(alt: Kachel, a: { offen: number; erledigt: number; feh
   };
 }
 
-async function bricksetKachel(ab: Abstriche): Promise<Kachel> {
-  const { wartend, faellig } = await ab.oder('brickset', bricksetZahlen(), { wartend: 0, faellig: 0 });
+async function bricksetKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> {
+  const { wartend, faellig } = await ab.oder('brickset', k.auftraege.bricksetZahlen(), { wartend: 0, faellig: 0 });
   return {
     label: 'Brickset Retry Queue',
     status: wartend === 0 ? 'done' : 'idle',
@@ -101,25 +91,26 @@ const frisch = (zeit: unknown) => typeof zeit === 'number' && Date.now() - zeit 
 
 /** Bestand, Neuladen und Katalog in EINER Kachel, sonst meldete sie „alle gecacht",
  * während der Hintergrund-Job nachlädt. */
-async function bildKachel(ab: Abstriche): Promise<Kachel> {
+async function bildKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> {
   const [teileOffen, fertig, setFiguren, bestandsFiguren, katalogOffen] = await Promise.all([
-    zahl(ab, verwaltungBereich().verwaltung.teilbilderOffen(), 'bilder'),
-    zahl(ab, verwaltungBereich().verwaltung.teilbilderFertig(), 'bilder'),
-    zahl(ab, verwaltungBereich().verwaltung.setFigurenbilderOffen(), 'bilder'),
+    zahl(ab, k.verwaltung.teilbilderOffen(), 'bilder'),
+    zahl(ab, k.verwaltung.teilbilderFertig(), 'bilder'),
+    zahl(ab, k.verwaltung.setFigurenbilderOffen(), 'bilder'),
     // Figuren des Bestands legt derselbe Lauf lokal ab; sie gehören in die offene Menge.
-    zahl(ab, verwaltungBereich().verwaltung.bestandsFigurenbilderOffen(), 'bilder'),
-    zahl(ab, verwaltungBereich().verwaltung.katalogBilderOffen(), 'bilder'),
+    zahl(ab, k.verwaltung.bestandsFigurenbilderOffen(), 'bilder'),
+    zahl(ab, k.verwaltung.katalogBilderOffen(), 'bilder'),
   ]);
   const offen = teileOffen + setFiguren + bestandsFiguren;
-  const job = await ab.oder('bilder', monitorStand('imgDl'), null);
+  const job = await ab.oder('bilder', k.auftraege.get('imgDl'), null);
   // Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz.
-  let aktiv = await ab.oder('bilder', imgDlPending(), 0);
+  let aktiv = await ab.oder('bilder', k.auftraege.imgDlPending(), 0);
   if (offen === 0 && aktiv > 0) {
-    await imgDlReset().catch(logAndContinue('verwaltung:imgDlReset'));
+    await k.auftraege.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset'));
     aktiv = 0;
   }
   aktiv = Math.min(aktiv, offen);
   const reDl = await liesStand<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>(
+    k,
     ab,
     'imgredl_status',
   );
@@ -130,7 +121,7 @@ async function bildKachel(ab: Abstriche): Promise<Kachel> {
       ? '↻ suche fehlende Bilder…'
       : `↻ ${reDl?.done || 0}/${reDl?.total || 0} fehlende neu geladen`;
   // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
-  const letzterLauf = await liesStand<{ zeit?: number }>(ab, 'imgqueue_last_run');
+  const letzterLauf = await liesStand<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
   const jobLaeuft = frisch(letzterLauf?.zeit);
   const katalogSub =
@@ -228,38 +219,43 @@ function pdfKachel(): Kachel {
   };
 }
 
-async function zeitplaene(): Promise<Record<string, { type: string; time?: string; minutes?: number }>> {
+async function zeitplaene(
+  k: VerwaltungKontext,
+): Promise<Record<string, { type: string; time?: string; minutes?: number }>> {
   const aus: Record<string, { type: string; time?: string; minutes?: number }> = {};
   for (const dj of DAILY_JOBS)
-    aus[dj.monitorKey] = { type: 'daily', time: (await getGlobalSetting(`job_time_${dj.name}`)) || dj.default };
+    aus[dj.monitorKey] = {
+      type: 'daily',
+      time: (await k.einstellungen.getGlobalSetting(`job_time_${dj.name}`)) || dj.default,
+    };
   aus.priceJob = {
     type: 'interval',
-    minutes: parseInt((await getGlobalSetting('price_job_interval_minutes')) || '60', 10),
+    minutes: parseInt((await k.einstellungen.getGlobalSetting('price_job_interval_minutes')) || '60', 10),
   };
   return aus;
 }
 
 /** Ergänzt um Zahlen, die nur die Datenbank kennt; je Kachel eine Funktion. */
-export async function jobUebersicht() {
-  const jobs: Kacheln = await alleMonitore(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
+export async function jobUebersicht(k: VerwaltungKontext) {
+  const jobs: Kacheln = await k.auftraege.all(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
   const ab = new Abstriche();
   const [anleitungen, gemappt, blGesamt, rbTeile, rbInventar, lastSync] = await Promise.all([
-    anleitungsAuftraege(ab),
-    zahl(ab, verwaltungBereich().verwaltung.zugeordneteTeile(), 'bl_zuordnung'),
-    zahl(ab, verwaltungBereich().verwaltung.bricklinkTeile(), 'bl_zuordnung'),
-    zahl(ab, verwaltungBereich().verwaltung.rbTeile(), 'katalog'),
-    zahl(ab, verwaltungBereich().verwaltung.rbInventarTeile(), 'katalog'),
-    auftraegeBereich().laufzustand.liesZustand('rb_csv_last_sync'),
+    anleitungsAuftraege(k, ab),
+    zahl(ab, k.verwaltung.zugeordneteTeile(), 'bl_zuordnung'),
+    zahl(ab, k.verwaltung.bricklinkTeile(), 'bl_zuordnung'),
+    zahl(ab, k.verwaltung.rbTeile(), 'katalog'),
+    zahl(ab, k.verwaltung.rbInventarTeile(), 'katalog'),
+    k.auftraege.laufzustand.liesZustand('rb_csv_last_sync'),
   ]);
   const blIds = blIdsKachel(jobs.blIds ?? {}, gemappt, blGesamt);
   if (blIds) jobs.blIds = blIds;
   const anleitung = anleitungsKachel(jobs.instrQueue ?? {}, anleitungen);
   if (anleitung) jobs.instrQueue = anleitung;
-  [jobs.bricksetRetry, jobs.imgDl] = await Promise.all([bricksetKachel(ab), bildKachel(ab)]);
+  [jobs.bricksetRetry, jobs.imgDl] = await Promise.all([bricksetKachel(k, ab), bildKachel(k, ab)]);
   jobs.pdfJobs = pdfKachel();
   return {
     jobs,
-    schedules: await zeitplaene(),
+    schedules: await zeitplaene(k),
     db: {
       instrQueue: { pending: anleitungen.offen, done: anleitungen.erledigt, failed: anleitungen.fehler },
       blMapping: { mapped: gemappt, total: blGesamt },

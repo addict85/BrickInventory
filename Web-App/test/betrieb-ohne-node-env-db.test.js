@@ -9,6 +9,8 @@
  * „ein 5xx …“. Je ein roter Teil zu jeder Stelle.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (als Superuser verbunden).
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
@@ -20,7 +22,7 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { startVerbote, ladeKonfig, cookieSicher } = _req('src/infra/konfig.js');
 
 /** Ohne NODE_ENV starten; `PATH` allein, damit nichts aus der Testumgebung hineinfällt. */
@@ -70,7 +72,7 @@ test('MAIL_KONSOLE_MIT_TOKEN=1 ohne NODE_ENV: Start verweigert', { timeout: 40_0
 });
 
 test('als Superuser ohne NODE_ENV: Start verweigert', { timeout: 60_000 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const istSuper = (await db.get('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rolsuper;

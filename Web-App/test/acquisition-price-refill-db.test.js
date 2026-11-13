@@ -6,19 +6,21 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND App', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const HAUPT = `cp-h-${process.pid}`,
     SUB = `cp-s-${process.pid}`;
@@ -43,12 +45,7 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','CHF')
                 ON CONFLICT (key) DO UPDATE SET value='CHF'`);
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: hauptId },
-    apiNutzer: { user_id: hauptId, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: hauptId }, t });
 
   // Ausgangslage: Set des UNTERKONTOS mit zwei Erfassungen (gebraucht + neu).
   const aufbauen = async () => {

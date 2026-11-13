@@ -23,10 +23,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.APP_BASE_URL = 'http://localhost';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const { ipThrottle } = _req('src/konto/http/anmeldung.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
@@ -80,7 +81,7 @@ test('2. dasselbe an der echten Route /forgot-password', async t => {
   if (!(await dbDa(t))) return;
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`);
   t.after(() => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`));
-  const base = starte(t, app => app.use(AUTH, _req('routes/auth.js')));
+  const base = starte(t, app => app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js')));
   const status = await parallel(25, () =>
     fetch(`${base}${AUTH}/forgot-password`, {
       method: 'POST',

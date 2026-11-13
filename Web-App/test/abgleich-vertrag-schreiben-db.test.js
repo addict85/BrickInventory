@@ -33,9 +33,9 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { katalogSet } = require('./helpers/bestand');
 const { importWorker } = require('./helpers/auftraege');
-const { dbOderSkip } = require('./helpers/db');
-const { routerEinhaengungen } = require('./helpers/sources');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const { routerEinhaengungen, testDaten } = require('./helpers/sources');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
@@ -104,7 +104,7 @@ function formular(inhalt, typ, name, felder = {}) {
 }
 
 test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   importWorker(t, _req);
 
   // ── Drei Konten: Haupt, Unterkonto, ein drittes für die Einladung ──────
@@ -210,8 +210,9 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     req.apiUser = { user_id: als.id, username: als.name, is_admin: als.admin ? 1 : 0 };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  for (const r of routerEinhaengungen()) app.use(r.mount, _req(`routes/${r.name}.js`));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  for (const r of routerEinhaengungen())
+    app.use(r.mount, require('./helpers/sources').routerAus(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;

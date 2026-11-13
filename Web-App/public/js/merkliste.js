@@ -155,7 +155,8 @@ export async function ladeMerkliste() {
   // Das Fragezeichen steht HIER und nicht in merklisteParams(): Dieselbe Schreibweise wie bei der Galerie,
   // und test/frontend-api-paths.test.js liest den Pfad aus genau dieser Zeile — mit dem Fragezeichen im
   // Rueckgabe-wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
-  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer'))
+  // Ein Fehlerzustand trägt auch .leer; er weicht dem Gerüst, sonst sähe der neue Versuch wie der alte Fehler aus.
+  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer:not(.fehler-zustand)'))
     setzeHtml(ziel, skelettZeilen(4, tRaw('common.loading')));
   const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
   const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
@@ -388,7 +389,8 @@ export async function oeffneMerkpostenDetail(arg) {
   _detail = arg;
 
   G('mk-m-tit').textContent = w.name || w.set_number;
-  G('mk-m-sub').textContent = [w.set_number, zustandText(w.condition)].join(' · ');
+  // Ohne Namen steht die Nummer schon im Titel.
+  G('mk-m-sub').textContent = [w.name ? w.set_number : '', zustandText(w.condition)].filter(Boolean).join(' · ');
   // Volle Aufloesung, aber ebenfalls ueber den eigenen Server: fullUrl() schickt eine absolute CDN-Adresse
   // durch den Bild-Proxy (bilder.js). Das lokale Bild hat Vorrang — es liegt schon da.
   const bild = w.image_local || w.image_url ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
@@ -401,6 +403,7 @@ export async function oeffneMerkpostenDetail(arg) {
   // Ein Set, das rb_sets nicht kennt, beantwortet /catalog/sets/:nr mit 404 — dann blieb dieser Knopf aus,
   // obwohl die Adresse aus der Setnummer allein zu bilden ist.
   zeigeAdresse('mk-m-vergleich', w.preisvergleich_url);
+  document.querySelector('#mk-detail-modal .mehr-menue')?.removeAttribute('open');
   G('mk-detail-modal').classList.add('open');
   // Ab hier meinen die Alarm-Handler DIESEN Dialog.
   setzeAlarmFeld('mk-m');

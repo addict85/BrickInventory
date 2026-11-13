@@ -21,9 +21,10 @@ const { Readable } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 /** @type {string[]} */
 const aufrufe = [];
@@ -43,7 +44,7 @@ https.get = (url, _opts, cb) => {
 };
 
 test('Merkposten-Preise rufen BrickLink nur für Sets des Katalogs', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const ERFUNDEN = '98765-1';
   const BEKANNT = '98766-1';

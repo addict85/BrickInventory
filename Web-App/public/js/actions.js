@@ -60,6 +60,7 @@ import { deleteManualPart } from './parts.js';
       'setzeDunkel',
       'setzeEigenesDesign',
       'speichereAlarm',
+      'speichereAppDesign',
       'speichereCacheTtl',
       'speichereWaehrung',
       'speichereZustand',

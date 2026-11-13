@@ -17,9 +17,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const { testServer } = require('./helpers/server');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 
@@ -154,12 +155,7 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
   }
   await aufbau();
 
-  const srv = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
 
   /**
    * Nimmt die Sperre auf eigener Verbindung, führt `fn` aus, gibt sie frei.

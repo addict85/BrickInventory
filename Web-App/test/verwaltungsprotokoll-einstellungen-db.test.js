@@ -21,14 +21,15 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATA_KEY = Buffer.alloc(32, 5).toString('base64');
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const { routerServer } = require('./helpers/server');
+const db = testDaten();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const CHEF = `protokoll_${process.pid}`,
     PASS = 'Protokoll-Pruefung-3';
   const SCHLUESSEL = ['smtp_host', 'rebrickable_api_key', 'registration_enabled'];
@@ -49,7 +50,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
     await db.pool.end().catch(() => {});
   });
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-  const { base } = testServer(_req, {
+  const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
     apiNutzer: { user_id: uid, is_admin: 1 },
     routen: { '/api/v1': 'routes/api_v1/index.js' },

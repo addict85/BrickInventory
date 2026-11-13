@@ -15,9 +15,10 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { pruefeAnmeldedaten, BCRYPT_ROUNDS } = _req('src/konto/anmeldepruefung.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
@@ -32,7 +33,7 @@ async function dauer(fn) {
 }
 
 test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   // Die Kosten müssen denen echter Passwörter entsprechen — mit weniger Runden
   // wäre der BEKANNTE Fall der schnellere und der Vergleich stünde auf dem

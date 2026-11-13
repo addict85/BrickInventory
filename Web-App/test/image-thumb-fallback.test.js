@@ -24,8 +24,9 @@ const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bildroute-'));
 process.env.APP_ROOT = wurzel;
 const express = require('express');
 const sharp = require('sharp');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const { liefereBild } = _req('src/katalog/http/bildAuslieferung.js');
 
@@ -34,17 +35,17 @@ const NR = `zz-vorschau-${process.pid}`;
 const CDN = `https://cdn.rebrickable.com/media/parts/elements/${NR}.jpg`;
 
 test.after(async () => {
-  await _req('db/database.js')
+  await testDaten()
     .run('DELETE FROM part_color_catalog WHERE part_number = $1', [NR])
     .catch(() => {});
-  await _req('db/database.js')
+  await testDaten()
     .pool?.end?.()
     .catch(() => {});
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
 test('fehlt die Vorschau, kommt das Original vor dem CDN', async t => {
-  const db = await dbOderSkip(t, _req, { migrieren: false });
+  const db = await datenOderSkip(t, _req, { migrieren: false });
   if (!db) return;
   // Die CDN-Adresse ist bekannt: Ohne den Rückfall ginge die Anfrage zum Bild-Proxy.
   await db.run(

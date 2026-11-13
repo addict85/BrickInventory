@@ -6,18 +6,19 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
 test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const hauptName = `tfhaupt-${process.pid}`,
     kindName = `tfkind-${process.pid}`;
@@ -48,12 +49,7 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand', { concurre
     await haeltTeil(db, haupt, '3001', { setNumber: '0001-1', menge: 2, colorId: 4 });
     await haeltTeil(db, kind, '3002', { setNumber: '0002-1', menge: 5, colorId: 1 });
 
-    const { base } = testServer(_req, {
-      sitzung: { userId: haupt },
-      apiNutzer: { user_id: haupt, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+    const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
     const hole = async pfad => (await fetch(base + pfad)).json();
 
     for (const modus of ['all', 'own']) {

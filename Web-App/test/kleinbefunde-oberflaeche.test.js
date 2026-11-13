@@ -65,7 +65,11 @@ test('Kennzahlen mit Trennzeichen, auch englisch ganz', async () => {
   } finally {
     en.w.close();
   }
-  assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', 'public', 'locales', 'en.js'), 'utf8'), /colour/i);
+  // Britisch wie „catalogue“ (Prüfung 21): Die Werte schreiben „colour“, die Schlüssel bleiben.
+  assert.doesNotMatch(
+    fs.readFileSync(path.join(__dirname, '..', 'public', 'locales', 'en.js'), 'utf8'),
+    /:\s*'[^']*\bcolor/i,
+  );
 });
 
 test('Titel ohne weiche Trennstriche', async () => {

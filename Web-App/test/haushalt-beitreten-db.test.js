@@ -17,6 +17,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -24,10 +25,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const PASS = 'eigenes-Passwort-1';
@@ -36,7 +38,7 @@ const HAUPT = `beitritt_haupt_${process.pid}`,
   HAUPT2 = `beitritt_haupt2_${process.pid}`;
 
 test('Haushalt beitreten', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND, HAUPT2]]);
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async n =>
@@ -64,12 +66,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
     ..._req('src/haushalt/haushalt.js'),
     ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
   };
-  const { base } = testServer(_req, {
-    sitzung: { userId: kind },
-    apiNutzer: { user_id: kind, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: kind }, t });
   const einloesen = body =>
     fetch(`${base}/api/v1/settings/household/redeem`, {
       method: 'POST',

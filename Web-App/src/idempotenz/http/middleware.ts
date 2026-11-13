@@ -8,6 +8,7 @@ import * as dienst from '../dienst';
 import { routeFuerAnfrage } from '../../vertrag';
 import { nichtWiederholbar } from '../../vertrag/grund';
 import { sendeFehler } from '../../http/httpAntwort';
+import { idempotenzBereich } from '../prozess';
 
 const SCHREIBEND = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -29,7 +30,7 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
   const uid = nutzerId(req);
   if (uid === null) return next();
 
-  const ausgang = await dienst.beginne(
+  const ausgang = await idempotenzBereich().beginne(
     uid,
     schluessel,
     dienst.fingerabdruck(req.method, req.originalUrl, req.body, req.apiUser?.is_admin === true),
@@ -50,7 +51,7 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
   const json = res.json.bind(res);
   res.json = (rumpf: unknown) => {
     gemerkt = true;
-    void dienst
+    void idempotenzBereich()
       .beende(uid, schluessel, res.statusCode, geheim ? null : JSON.stringify(rumpf))
       .catch((e: unknown) => meldeFehler('idempotenz:merken', e))
       .finally(() => json(rumpf));
@@ -59,8 +60,10 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
   // Keine JSON-Antwort (Datei, Strom): nichts zu wiederholen, der Schlüssel wird frei.
   res.on('finish', () => {
     if (!gemerkt)
-      dienst.gibFrei(uid, schluessel, res.statusCode).catch((e: unknown) => meldeFehler('idempotenz:freigeben', e));
+      idempotenzBereich()
+        .gibFrei(uid, schluessel, res.statusCode)
+        .catch((e: unknown) => meldeFehler('idempotenz:freigeben', e));
   });
   // Jede Transaktion der Route vermerkt ihre Wirkung am Schlüssel, im selben COMMIT.
-  dienst.mitWirkungsVermerk(uid, schluessel, next);
+  idempotenzBereich().mitWirkungsVermerk(uid, schluessel, next);
 }

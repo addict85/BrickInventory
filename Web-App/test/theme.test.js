@@ -223,7 +223,7 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   process.env.SESSION_SECRET ??= 'test-secret-lang-genug-fuer-die-pruefung';
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').dbOderSkip(t, _req);
+  const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
   const { invalidateTheme } = _req('src/konto/indexHtml.js');
@@ -236,6 +236,7 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
       [name],
     )
   ).id;
+  await require('./helpers/verwalter').verwalterMitFaktor(_req, admin);
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [admin]).catch(() => {});
@@ -267,7 +268,6 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
   // zum Ablauf (THEME_TTL_MS) das alte Design.
   const { base } = require('./helpers/server').testServer(_req, {
     sitzung: { userId: admin, username: name, isAdmin: true },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
   const r = await fetch(base + '/api/v1/settings/admin/theme', {

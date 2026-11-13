@@ -18,17 +18,17 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-const ROUTEN = { '/api/v1': 'routes/api_v1/index.js', '/api/v1/auth': 'routes/auth.js' };
 const json = n => JSON.stringify({ username: 'x', password: 'y', fuell: 'a'.repeat(n) });
 const post = (base, pfad, rumpf) =>
   fetch(base + pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: rumpf });
 
 test('Anmeldung und Rumpflimit in der echten Kette', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const name = `kette_${process.pid}`;
@@ -36,8 +36,8 @@ test('Anmeldung und Rumpflimit in der echten Kette', { concurrency: 1 }, async t
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [name])).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
 
-  const ohne = testServer(_req, { sitzung: {}, routen: ROUTEN, t, kette: true });
-  const mit = testServer(_req, { sitzung: { userId: uid, username: name }, routen: ROUTEN, t, kette: true });
+  const ohne = testServer(_req, { sitzung: {}, t });
+  const mit = testServer(_req, { sitzung: { userId: uid, username: name }, t });
 
   await t.test('unangemeldet: 401 vor dem Rumpf', async () => {
     const r = await post(ohne.base, '/api/v1/sets', json(300 * 1024));

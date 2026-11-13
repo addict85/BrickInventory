@@ -31,7 +31,7 @@ export {
 } from './haushalt';
 export { erzeugeHaushalt } from './bereich';
 export type { HaushaltDienste, HaushaltKontext } from './bereich';
-export { haushaltBereich, verdrahteHaushalt } from './prozess';
+export { haushaltBereich } from './prozess';
 
 /** Für Routen: die Dienste des Prozesses ohne Zugang als ersten Parameter. */
 export const haushalt = dienstePerAufruf(

@@ -1,7 +1,6 @@
 /** Eine BrickLink-Wanted-Liste importieren: lesen (wantedParser), auflösen
  * (wantedAufloesung), schreiben (wantedSchreiber). Die Datei trägt BL-Nummern,
  * der Bestand führt RB-Nummern. */
-import { nutzerStandardZustand } from '../einstellungen';
 import { leseWantedListe, type WantedArt, type WantedPosten } from './wantedParser';
 import {
   loeseLokalAuf,
@@ -15,6 +14,7 @@ import {
 } from './wantedAufloesung';
 import type { RebrickableAbbruch } from './wantedAufloesung';
 import { berichtsZeile, schreibePosten, type PostenErgebnis, type SchreibOptionen } from './wantedSchreiber';
+import type { MerklisteKontext } from './kontext';
 
 export interface WantedBericht {
   gelesen: number;
@@ -49,8 +49,8 @@ function zaehleStufen(auf: Aufloesung[]): Record<string, number> {
 
 /** Nach dem Auflösen die Korrekturen, weil sie es überstimmen; vor dem Zählen,
  * weil der Bericht sonst Zahlen von vor der Korrektur nennt. */
-async function loeseVollstaendigAuf(posten: WantedPosten[], uid: number, opt: WantedOptionen) {
-  let auf = await loeseLokalAuf(posten, uid);
+async function loeseVollstaendigAuf(kx: MerklisteKontext, posten: WantedPosten[], uid: number, opt: WantedOptionen) {
+  let auf = await loeseLokalAuf(kx, posten, uid);
   let rebrickable: WantedBericht['rebrickable'];
   if (opt.ueberRebrickable) {
     const r = await loeseUeberRebrickableAuf(auf, 250, opt.fortschritt);
@@ -65,7 +65,7 @@ async function loeseVollstaendigAuf(posten: WantedPosten[], uid: number, opt: Wa
   let korrekturen: WantedBericht['korrekturen'];
   if (opt.korrekturen?.length) {
     const k = wendeKorrekturenAn(auf, opt.korrekturen);
-    auf = await farbenNachtragen(k.auf);
+    auf = await farbenNachtragen(kx, k.auf);
     korrekturen = { angewandt: k.angewandt, abgewiesen: k.abgewiesen };
   }
   return { auf, rebrickable, korrekturen };
@@ -85,12 +85,13 @@ export interface WantedOptionen extends SchreibOptionen {
 /** Vorschau und Ernstfall gehen denselben Weg, damit die Vorschau nichts
  * verspricht, was der Import nicht tut. */
 export async function importiereWantedListe(
+  k: MerklisteKontext,
   uid: number,
   xml: string,
   opt: WantedOptionen = {},
 ): Promise<WantedBericht> {
   const gelesen = leseWantedListe(xml);
-  const { auf, rebrickable, korrekturen } = await loeseVollstaendigAuf(gelesen.posten, uid, opt);
+  const { auf, rebrickable, korrekturen } = await loeseVollstaendigAuf(k, gelesen.posten, uid, opt);
 
   const bericht: WantedBericht = {
     gelesen: gelesen.posten.length,
@@ -107,7 +108,7 @@ export async function importiereWantedListe(
     aufgestockt: 0,
     fehler: 0,
     vorschau: !!opt.vorschau,
-    standardZustand: await nutzerStandardZustand(uid),
+    standardZustand: await k.einstellungen.nutzerStandardZustand(uid),
     posten: [],
   };
 
@@ -151,14 +152,14 @@ export async function importiereWantedListe(
     melde();
   }
 
-  await beschreibeZeilen(bericht.posten, auf);
+  await beschreibeZeilen(k, bericht.posten, auf);
   return bericht;
 }
 
 /** Auch nach dem Schreiben: Der Dialog zeichnet dieselbe Tabelle mit der
  * Antwort neu und zeigte sonst leere Zellen. */
-async function beschreibeZeilen(zeilen: PostenErgebnis[], auf: Aufloesung[]): Promise<void> {
-  const beschreibung = await beschreibePosten(auf);
+async function beschreibeZeilen(k: MerklisteKontext, zeilen: PostenErgebnis[], auf: Aufloesung[]): Promise<void> {
+  const beschreibung = await beschreibePosten(k, auf);
   zeilen.forEach((zeile, i) => {
     const b = beschreibung.get(i);
     if (!b) return;

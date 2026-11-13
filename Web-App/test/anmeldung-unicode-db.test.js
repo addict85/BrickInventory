@@ -25,10 +25,10 @@ process.env.APP_BASE_URL = 'http://localhost';
 process.env.MAIL_KONSOLE_MIT_TOKEN = '1';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung } = require('./helpers/sources');
+const { buildAndRequire, einhaengung, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
@@ -37,7 +37,7 @@ const MAIL = `opfer${process.pid}@mailbox.example`;
 const VARIANTE = MAIL.replace('mailbox', 'maİlbox');
 
 test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -73,7 +73,7 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
   await t.test('die Rücksetz-Mail geht an die gespeicherte Adresse', async () => {
     const app = express();
     app.use(express.json());
-    app.use(einhaengung('auth'), _req('routes/auth.js'));
+    app.use(einhaengung('auth'), require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
     const srv = app.listen(0);
     const zeilen = [];
     const echt = console.log;

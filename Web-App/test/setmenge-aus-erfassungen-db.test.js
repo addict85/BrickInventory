@@ -8,6 +8,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -16,10 +17,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { katalogSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 // Dieselbe Begruendung wie in test/teilepreise-nur-erfassungen-db.test.js:
 // Diese Datei baut die Datenbank mehrfach von null auf. Wer danach laeuft,

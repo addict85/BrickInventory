@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
 const { testServer } = require('./helpers/server');
 
@@ -42,11 +42,8 @@ ersetze('src/merkliste/repository/merkliste.js', {
   },
 });
 // Angelegt wird ohne Netz; scheitern kann danach nur das Ergänzen im offenen Strom.
-// Die Sets-Dienste des Prozesses mit zwei ersetzten (src/sets/prozess.ts).
-const setsProzess = _req('src/sets/prozess.js');
-const echteSets = setsProzess.sets();
-setsProzess.verdrahteSets(() => ({
-  ...echteSets,
+// Die Sets-Dienste des Prozesses mit zwei ersetzten; die Routen bekommen dieselben (routerAus).
+Object.assign(_req('src/infra/bereich.js').prozessDienste().sets, {
   setErfassen: async e => {
     if (e.setNumber === 'FACH-1') throw dateiFehler('ungueltig', 'setnummer_ungueltig');
     return {
@@ -61,12 +58,12 @@ setsProzess.verdrahteSets(() => ({
   setErgaenzen: async () => {
     throw new Error(GEHEIM);
   },
-}));
+});
 
-const db = _req('db/database.js');
+const db = quellen.testDaten();
 
 test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `fehlertext_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -78,7 +75,7 @@ test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
   });
 
   importWorker(t, _req);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t, routen: { '/api/v1': 'routes/api_v1/index.js' } });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const strom = async (setNumber, sprache = 'de') => {
     const r = await fetch(`${base}/api/v1/sets/add-stream`, {
       method: 'POST',

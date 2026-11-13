@@ -17,15 +17,17 @@
  *
  * REQUIRE_DB=1.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
-const db = _req('db/database.js');
+const db = testDaten();
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
@@ -94,12 +96,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   await addManualPart(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
   await addManualFig(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
 
-  const anna = testServer(_req, {
-    sitzung: { userId: ANNA },
-    apiNutzer: { user_id: ANNA, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const anna = testServer(_req, { sitzung: { userId: ANNA }, t });
 
   await t.test('der Import schreibt nur Annas Zuordnung', async () => {
     const { status, body } = await hochladen(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [

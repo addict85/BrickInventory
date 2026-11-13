@@ -16,6 +16,8 @@
  *   E  (13.11.2026) ohne `database =` in halter(), während eine ANDERE Datenbank
  *      im Cluster die Sperre hält → rot: „ein zweiter Zugang …“ (2 statt 1); mit
  *      der Bedingung unter derselben Störung grün
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

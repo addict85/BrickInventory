@@ -11,6 +11,8 @@
  *      Leerzeichen wird abgewiesen“ (danach hängt der Lauf am ungültigen Kanal)
  *   C  `listen('csv_sync_trigger', …)` wieder in startup/jobsProzess.ts →
  *      rot: „kein Planer fragt mehr nach Auslösern“
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,7 +20,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const ROOT = path.join(__dirname, '..');
@@ -34,14 +37,14 @@ test('kein Planer fragt mehr nach Auslösern', () => {
 });
 
 test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, async t => {
-  const db = _req('db/database.js');
+  const db = testDaten();
   try {
     await db.get('SELECT 1');
   } catch (e) {
     keineDb(t, e);
     return;
   }
-  const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
+  const pgNotify = testZugang().benachrichtigung;
   t.after(async () => {
     await pgNotify.close();
     await db.pool.end().catch(() => {});

@@ -36,8 +36,13 @@ export function bindGlobalErrorHandlers() {
   });
   // Ressourcenfehler (Bilder) laufen ebenfalls über 'error', blubbern aber nicht bis window hoch — hier
   // kommen nur echte Skriptfehler an.
+  // Ohne Fehlerobjekt meldet der Browser selbst, etwa „ResizeObserver loop …“ bei grosser Schrift: Daran kann
+  // der Nutzer nichts tun, und ein roter Toast liesse ihn einen Fehler suchen, der keiner ist.
   window.addEventListener('error', ev => {
-    const fehler = ev.error || ev.message;
-    if (vonUns(ev.error)) meldeUnerwartet('script', fehler);
+    if (!ev.error || /^ResizeObserver loop/.test(ev.message || '')) {
+      console.warn('[script]', ev.message);
+      return;
+    }
+    if (vonUns(ev.error)) meldeUnerwartet('script', ev.error);
   });
 }

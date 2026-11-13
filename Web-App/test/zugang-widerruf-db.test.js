@@ -39,17 +39,17 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
   },
 });
 
-const db = _req('db/database.js');
+const db = S.testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const { testServer } = require('./helpers/server');
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Widerruf-Passwort-1';
 const NAMEN = [`widerruf_a_${process.pid}`, `widerruf_b_${process.pid}`];
 
 test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
   for (const n of NAMEN)
@@ -71,7 +71,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: {}, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, { sitzung: {}, t });
   const ruf = async (methode, weg, token, body) => {
     const r = await fetch(base + '/api/v1' + weg, {
       method: methode,

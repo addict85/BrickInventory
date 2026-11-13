@@ -37,16 +37,16 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { warte } = require('./helpers/zeit');
 
 test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 1 }, async t => {
-  const db = _req('db/database.js');
+  const db = testDaten();
   t.after(async () => {
     await _req('startup/jobsProzess.js').stoppeJobs();
-    await _req('db/database.js')
-      .standardDb()
+    await testZugang()
       .benachrichtigung.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});

@@ -36,9 +36,10 @@ fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });
 fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}');
 process.env.APP_ROOT = SANDKASTEN;
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const { pdfText, werteAusPdf, PdfZuGross, STROM_MAX_BYTES, ENTPACKT_MAX_BYTES, STROEME_MAX } = _req(
   'src/gutscheine/gutscheinPdf.js',
 );
@@ -198,12 +199,7 @@ test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { co
   }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
-  const srv = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const srv = testServer(_req, { sitzung: { userId: uid }, t });
 
   // Mit getippten Werten: Die Route legt dann auch ein unlesbares PDF ab.
   async function hochladen(pdf, nummer) {

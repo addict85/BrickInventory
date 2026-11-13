@@ -29,6 +29,8 @@
  *      rot: „Haushaltsgedächtnis je Zugang“
  *   I  die Prüfung der Zugänge in erzeugeSets() entfernt → rot: „Katalog über
  *      einen anderen Zugang wird abgelehnt“
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,12 +43,9 @@ const { testName, raeumeReste, id } = require('./helpers/testnamen');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { erzeugeSets } = _req('src/sets/bereich.js');
 const { erzeugeDb } = _req('db/database.js');
-const { erzeugeKatalog } = _req('src/katalog/bereich.js');
-const { erzeugeFinanzen } = _req('src/finanzen/bereich.js');
-const { erzeugeAuftraege } = _req('src/auftraege/bereich.js');
 const H = _req('src/haushalt/haushalt.js');
 const N = _req('src/auftraege/nacharbeit.js');
 
@@ -71,7 +70,7 @@ function zaehle(zugang) {
 }
 
 test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const admin = new Client({ connectionString: process.env.DATABASE_URL });
   await admin.connect();
@@ -111,14 +110,13 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     `INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare) VALUES (77, '3001', 0, 4, false)`,
   );
 
-  N.verdrahteNacharbeit(N.OHNE_NACHARBEIT);
-  const dienste = {
-    katalog: erzeugeKatalog({ db: zweite }),
-    finanzen: erzeugeFinanzen({ db: zweite }),
-    auftraege: erzeugeAuftraege({ db: zweite }),
-  };
-  const sets = erzeugeSets({ db: zweite, nacharbeit: N.OHNE_NACHARBEIT, ...dienste });
-  const prozess = zaehle(db.standardDb());
+  // Wie der Server (startup/verdrahtung.ts), nur über den zweiten Zugang.
+  const { baueDienste } = _req('startup/verdrahtung.js');
+  const alle = baueDienste(zweite, N.OHNE_NACHARBEIT);
+  const { finanzen, auftraege, bestand, einstellungen, konto } = alle;
+  const dienste = { finanzen, auftraege, bestand, einstellungen, konto };
+  const sets = alle.sets;
+  const prozess = zaehle(quellen.testZugang());
   t.after(() => prozess.zurueck());
 
   await t.test('Währung aus der zweiten Datenbank', async () => {
@@ -195,7 +193,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
           db: zweite,
           nacharbeit: N.OHNE_NACHARBEIT,
           ...dienste,
-          katalog: erzeugeKatalog({ db: db.standardDb() }),
+          katalog: baueDienste(quellen.testZugang(), N.OHNE_NACHARBEIT).katalog,
         }),
       /katalog/,
     );
@@ -208,7 +206,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     await zweite.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, UNTER]);
     H.leereHaushaltCache();
     assert.deepEqual((await H.haushaltVon(zweite, uid)).memberIds, [uid, UNTER]);
-    const imProzess = await H.haushaltVon(db.standardDb(), uid);
+    const imProzess = await H.haushaltVon(quellen.testZugang(), uid);
     assert.ok(
       !imProzess.memberIds.includes(UNTER),
       `Gedächtnis der zweiten Datenbank geliehen: ${imProzess.memberIds}`,

@@ -35,10 +35,11 @@ process.env.DATABASE_URL = URL_DB;
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const { proxyVertrauen } = _req('src/infra/proxyVertrauen.js');
 const { MAX_ATTEMPTS, wartezeitSekunden } = _req('src/konto/loginLimiter.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -139,7 +140,7 @@ test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, asyn
   const app = express();
   app.set('trust proxy', proxyVertrauen(undefined)); // Anfragen kommen von 127.0.0.1
   app.use(express.json());
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const anmelden = async (password, ip) =>
@@ -186,7 +187,7 @@ test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, asyn
   const app = express();
   app.set('trust proxy', proxyVertrauen(undefined));
   app.use(express.json());
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const anmelden = async (password, ip, name = NAME) =>

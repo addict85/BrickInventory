@@ -12,9 +12,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const { LOCKS } = _req('src/infra/lockNamespaces.js');
 
 async function dbReachable() {
@@ -146,7 +147,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
     const SET = '60511-1';
     const zweiter = (await db.get('SELECT hashtext($1) AS h', [SET])).h;
     const frei = {};
-    await mitInventarSperre(db.standardDb(), LOCKS.BILD_DOWNLOAD, SET, async () => {
+    await mitInventarSperre(testZugang(), LOCKS.BILD_DOWNLOAD, SET, async () => {
       frei.bild = await nochFrei(LOCKS.BILD_DOWNLOAD, zweiter);
       // Auf eigener Verbindung: db.get liefe hier über die Transaktion, die die Sperre schon hält.
       frei.selbst = await nochFrei(

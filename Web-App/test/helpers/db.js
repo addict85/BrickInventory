@@ -4,15 +4,16 @@
  * Datenbank wird der Test übersprungen — unter REQUIRE_DB=1 (CI) ist das
  * ein Fehler, sonst wäre die Suite dort grün, wo niemand hinschaut.
  *
- *   if (!await dbOderSkip(t, _req)) return;
+ *   const db = await datenOderSkip(t, _req);
+ *   if (!db) return;
  *
  * @param {import('node:test').TestContext} t
  * @param {(pfad: string) => any} _req  buildAndRequire() der Testdatei
  * @param {{ migrieren?: boolean }} [o]
- * @returns {Promise<any>} das db-Modul, oder null, wenn übersprungen
+ * @returns {Promise<any>} der Zugang für Testdaten (sources testDaten()), oder null, wenn übersprungen
  */
-async function dbOderSkip(t, _req, { migrieren = true } = {}) {
-  const db = _req('db/database.js');
+async function datenOderSkip(t, _req, { migrieren = true } = {}) {
+  const db = require('./sources').testDaten();
   try {
     await db.initSchema();
   } catch (e) {
@@ -30,12 +31,12 @@ async function dbOderSkip(t, _req, { migrieren = true } = {}) {
   return db;
 }
 
-/** Wie dbOderSkip, liefert aber den Zugang aus erzeugeDb() (helpers/sources
- * testZugang) statt der Fassade; dieselben Methoden (all, get, run, transaction, pool).
+/** Wie datenOderSkip, liefert aber den Zugang des Codes unter Test (helpers/sources
+ * testZugang), der als Laufzeitrolle fragt; dieselben Methoden (all, get, run, transaction, pool).
  * @param {import('node:test').TestContext} t @param {(pfad: string) => any} _req
  * @param {{ migrieren?: boolean }} [o] */
 async function zugangOderSkip(t, _req, o) {
-  if (!(await dbOderSkip(t, _req, o))) return null;
+  if (!(await datenOderSkip(t, _req, o))) return null;
   return require('./sources').testZugang();
 }
 
@@ -56,4 +57,4 @@ function fehltVoraussetzung(t, grund, meldung = grund) {
   t.skip(grund);
 }
 
-module.exports = { dbOderSkip, zugangOderSkip, keineDb, fehltVoraussetzung };
+module.exports = { datenOderSkip, zugangOderSkip, keineDb, fehltVoraussetzung };

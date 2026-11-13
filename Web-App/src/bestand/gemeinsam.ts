@@ -2,8 +2,8 @@ import * as repo from './repository/gemeinsam';
 export { entferneSetInhalt, kopiereSetInhalt, legeManuellAn } from './repository/gemeinsam';
 import type { DbSchnittstelle } from '../../db/database';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
-import { haushaltBereich, asIds, type Sicht } from '../haushalt';
-import { bestandBereich } from './prozess';
+import { asIds, type Sicht } from '../haushalt';
+import type { BestandKontext } from './kontext';
 
 // Was Sets, Teile und Figuren gemeinsam brauchen.
 
@@ -49,6 +49,7 @@ export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehl
 // Wie bei Sets: Eine gebrauchte Erfassung macht den Eintrag gebraucht; eine Abfrage je Seite.
 type Schluessel = { part_number?: string; color_id?: number | null; fig_number?: string };
 export async function applyManualCondition<R extends Schluessel>(
+  k: BestandKontext,
   userId: number | number[],
   rows: R[],
   kind: 'part' | 'fig',
@@ -60,7 +61,7 @@ export async function applyManualCondition<R extends Schluessel>(
   const isPart = kind === 'part';
   const keyOf = (r: Schluessel) => (isPart ? `${r.part_number}|${r.color_id ?? KEINE_FARBE}` : String(r.fig_number));
 
-  const acq = await bestandBereich().gemeinsam.erfassungsKennzahlen(isPart ? 'part' : 'fig', uids);
+  const acq = await k.gemeinsam.erfassungsKennzahlen(isPart ? 'part' : 'fig', uids);
 
   const byKey = new Map(acq.map(a => [keyOf(a), a]));
 
@@ -113,12 +114,13 @@ export interface BestandteilAntwort {
 }
 
 export async function verwendendeSets(
+  k: BestandKontext,
   uidsWahl: Sicht | number[],
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
 ): Promise<BestandteilAntwort> {
-  const uids = await haushaltBereich().haushalt.blickfeldAus(uidsWahl);
-  const rows = await bestandBereich().gemeinsam.setsMitBestandteil(uids, tabelle, schluessel);
+  const uids = await k.haushalt.haushalt.blickfeldAus(uidsWahl);
+  const rows = await k.gemeinsam.setsMitBestandteil(uids, tabelle, schluessel);
 
   const sets: VerwendendesSet[] = rows.map(r => ({
     set_number: String(r.set_number),

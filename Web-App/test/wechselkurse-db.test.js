@@ -16,6 +16,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
@@ -23,9 +24,10 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { haeltSet, erfasse, haeltTeil, katalogSet } = require('./helpers/bestand');
 const { ZipArchive } = require(path.join(__dirname, '..', 'node_modules', 'archiver'));
 
@@ -54,7 +56,7 @@ const TAG = `<?xml version="1.0" encoding="UTF-8"?>
 </Cube></Cube></gesmes:Envelope>`;
 
 test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const abgerufen = [];
   const srv = http

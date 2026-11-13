@@ -1,14 +1,10 @@
 /** Jeder Schritt meldet seinen Fehler und lässt die übrigen laufen; scheitert
  * einer, wiederholt der Worker den ganzen Lauf — alle Schritte vertragen das. */
-import { kontoBereich, purgeExpiredTokens, raeumeAnmeldezaehlerAuf, raeumeOffeneRegistrierungenAuf } from '../konto';
-import { raeumePapierkorbAuf } from '../bestand';
-import { auftraegeBereich, cleanOldPdfJobs, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
-import { purgeAltePreise } from '../finanzen';
-import { raeumeBildCacheAuf, loescheVerfallene } from '../katalog';
+import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
+import { raeumeBildCacheAuf } from '../katalog';
 import { fehlertext } from '../infra/fehler';
-import { raeumeIdempotenzAuf } from '../idempotenz';
 import { raeumeAlteSicherungenAuf } from '../../db/migrate';
-import { verwaltungBereich } from './prozess';
+import type { VerwaltungKontext } from './kontext';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 
@@ -26,29 +22,29 @@ async function fuehreAus(schritte: Schritt[], auftrag?: AuftragsLauf): Promise<v
   if (fehler.length) throw new Error(fehler.join('; '));
 }
 
-function aufraeumen(lauf?: AuftragsLauf): Promise<void> {
+function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus(
     [
-      ['abgelaufene Tokens', purgeExpiredTokens],
-      ['Anmeldezähler', raeumeAnmeldezaehlerAuf],
-      ['Papierkorb', raeumePapierkorbAuf],
-      ['PDF-Aufträge', cleanOldPdfJobs],
-      ['alte Aufträge', auftraegeBereich().auftraege.raeumeErledigteAuf],
-      ['verfallene Bildwünsche', loescheVerfallene],
-      ['Idempotenzschlüssel', raeumeIdempotenzAuf],
+      ['abgelaufene Tokens', k.konto.purgeExpiredTokens],
+      ['Anmeldezähler', k.konto.raeumeAnmeldezaehlerAuf],
+      ['Papierkorb', k.bestand.raeumePapierkorbAuf],
+      ['PDF-Aufträge', k.auftraege.cleanOldPdfJobs],
+      ['alte Aufträge', k.auftraege.auftraege.raeumeErledigteAuf],
+      ['verfallene Bildwünsche', k.katalog.loescheVerfallene],
+      ['Idempotenzschlüssel', k.idempotenz.raeumeIdempotenzAuf],
     ],
     lauf,
   );
 }
 
-function aufraeumenTaeglich(lauf?: AuftragsLauf): Promise<void> {
+function aufraeumenTaeglich(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus(
     [
-      ['Preisverlauf', purgeAltePreise],
-      ['unbestätigte Registrierungen', raeumeOffeneRegistrierungenAuf],
+      ['Preisverlauf', k.finanzen.purgeAltePreise],
+      ['unbestätigte Registrierungen', k.konto.raeumeOffeneRegistrierungenAuf],
       ['Bild-Cache', raeumeBildCacheAuf],
-      ['Verwaltungsprotokoll', () => kontoBereich().protokoll.raeumeProtokollAuf()],
-      ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(verwaltungBereich().db)],
+      ['Verwaltungsprotokoll', () => k.konto.protokoll.raeumeProtokollAuf()],
+      ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(k.db)],
     ],
     lauf,
   );

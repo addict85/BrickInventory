@@ -40,7 +40,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const mails = [];
 const echterMailer = _req('src/mail/mailer.js');
 require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports = Object.assign({}, echterMailer, {
@@ -50,15 +50,15 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
     return { success: true };
   },
 });
-const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const { routerServer } = require('./helpers/server');
+const db = S.testDaten();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const NAME = `smtp_chef_${process.pid}`,
   PASS = 'chef-Passwort-1';
 
 test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -85,7 +85,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
+  const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
     routen: { '/api/v1': 'routes/api_v1/settings.js' },
     t,

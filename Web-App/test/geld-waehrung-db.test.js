@@ -19,14 +19,16 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   const geld = _req('src/infra/geld.js');
@@ -48,7 +50,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
     assert.equal(v.unit_price, 120.33);
   });
 
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const NAME = `geld-${process.pid}`,
     SN = `GW${process.pid}-1`;

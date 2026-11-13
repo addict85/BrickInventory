@@ -1,38 +1,40 @@
 /** Die Mount-Reihenfolge ist unkritisch: Die Module haben keine überlappenden
  * Pfad-Muster. Die Anmeldung hängt als eigener Router unter /api/v1/auth. */
-import setsRouter from './sets';
-import pdfRouter from './pdf';
-import acquisitionsRouter from './acquisitions';
-import partsRouter from './parts';
-import minifigsRouter from './minifigs';
-import financeRouter from './finance';
-import settingsRouter from './settings';
-import adminRouter from './admin';
-import miscRouter from './misc';
-import catalogRouter from './catalog';
-import wantedRouter from './wanted';
-import vouchersRouter from './vouchers';
-import papierkorbRouter from './papierkorb';
-import geraetRouter from './geraet';
-import einrichtungRouter from './einrichtung';
+import { baueSetsRouter } from './sets';
+import { bauePdfRouter } from './pdf';
+import { baueAcquisitionsRouter } from './acquisitions';
+import { bauePartsRouter } from './parts';
+import { baueMinifigsRouter } from './minifigs';
+import { baueFinanceRouter } from './finance';
+import { baueSettingsRouter } from './settings';
+import { baueAdminRouter } from './admin';
+import { baueMiscRouter } from './misc';
+import { baueCatalogRouter } from './catalog';
+import { baueWantedRouter } from './wanted';
+import { baueVouchersRouter } from './vouchers';
+import { bauePapierkorbRouter } from './papierkorb';
+import { baueGeraetRouter } from './geraet';
+import { baueEinrichtungRouter } from './einrichtung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
+import type { Dienste } from '../../startup/verdrahtung';
 
-const router = vertragsRouter();
+export function baueApiRouter(d: Dienste) {
+  const router = vertragsRouter();
 
-router.use(einrichtungRouter); // /einrichtung/stand — öffentlich, vor der Anmeldung
-router.use(pdfRouter); // /sets/partslist-pdf/* (literale Pfade)
-router.use(setsRouter); // /sets, /sets/barcode, /sets/:setNumber/*
-router.use(acquisitionsRouter); // Kaufpreis-Erfassungen für Sets/Teile/Figuren
-router.use(partsRouter);
-router.use(minifigsRouter);
-router.use(financeRouter);
-router.use(settingsRouter); // /settings — Einstellungen, Zugänge, Haushalt
-router.use(adminRouter);
-router.use(catalogRouter); // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
-router.use(wantedRouter); // /wanted — Merkliste (eigene Tabelle, siehe 0021)
-router.use(vouchersRouter); // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
-router.use(papierkorbRouter); // /papierkorb — gelöschte Elemente (siehe 0041)
-router.use(geraetRouter); // /geraet — Geräteschlüssel und Schrittfreigabe der App (siehe 0103)
-router.use(miscRouter); // /stats + Endpoint-Übersicht unter /
-
-export = router;
+  router.use(baueEinrichtungRouter(d)); // /einrichtung/stand — öffentlich, vor der Anmeldung
+  router.use(bauePdfRouter(d)); // /sets/partslist-pdf/* (literale Pfade)
+  router.use(baueSetsRouter(d)); // /sets, /sets/barcode, /sets/:setNumber/*
+  router.use(baueAcquisitionsRouter(d)); // Kaufpreis-Erfassungen für Sets/Teile/Figuren
+  router.use(bauePartsRouter(d));
+  router.use(baueMinifigsRouter(d));
+  router.use(baueFinanceRouter(d));
+  router.use(baueSettingsRouter(d)); // /settings — Einstellungen, Zugänge, Haushalt
+  router.use(baueAdminRouter(d));
+  router.use(baueCatalogRouter(d)); // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
+  router.use(baueWantedRouter(d)); // /wanted — Merkliste (eigene Tabelle, siehe 0021)
+  router.use(baueVouchersRouter(d)); // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
+  router.use(bauePapierkorbRouter(d)); // /papierkorb — gelöschte Elemente (siehe 0041)
+  router.use(baueGeraetRouter(d)); // /geraet — Geräteschlüssel und Schrittfreigabe der App (siehe 0103)
+  router.use(baueMiscRouter(d)); // /stats + Endpoint-Übersicht unter /
+  return router;
+}

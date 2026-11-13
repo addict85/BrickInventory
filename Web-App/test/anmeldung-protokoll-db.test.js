@@ -22,6 +22,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -31,7 +32,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 const mails = [];
@@ -44,7 +45,7 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
   },
 });
 
-const db = _req('db/database.js');
+const db = S.testDaten();
 const zf = _req('src/konto/zweiterFaktor.js');
 const protokoll = _req('src/infra/protokoll.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -53,7 +54,7 @@ const P = process.pid,
   FALSCH = 'Geheim-Falsch-987';
 
 test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `prot_${P}`,
     FAKTOR = `prot_zf_${P}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, FAKTOR]]);
@@ -99,11 +100,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    t,
-    routen: { '/api/v1/auth': 'routes/auth.js' },
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const ruf = (weg, body) =>
     fetch(`${base}/api/v1/auth${weg}`, {
       method: 'POST',

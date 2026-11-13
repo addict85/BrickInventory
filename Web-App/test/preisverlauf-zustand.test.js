@@ -9,16 +9,18 @@
  *   B  history_new auf die gezeichneten Zustände gekürzt → rot: „die
  *      Rohdaten bleiben vollständig“
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 
 test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurrency: 1 }, async t => {
-  const db = _req('db/database.js');
-  if (!(await dbOderSkip(t, _req))) return;
+  const db = testDaten();
+  if (!(await datenOderSkip(t, _req))) return;
   const { preisverlaufFigur, zustaendeFuerVerlauf } = _req('src/finanzen/priceHistory.js');
   const NAME = `verlauf-${process.pid}`,
     FN = `fig-vl${process.pid}`;

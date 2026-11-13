@@ -20,9 +20,10 @@ const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -52,7 +53,7 @@ https.get = (url, opt, cb) => {
 };
 
 test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const S = _req('src/einstellungen/settings.js');
   const vorher = await S.getGlobalSetting('rebrickable_api_key');
   await S.setGlobalSetting('rebrickable_api_key', 'geheim-123');

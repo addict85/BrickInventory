@@ -1,31 +1,29 @@
 import { logAndContinue } from '../infra/fehler';
-import { inventarFuerKandidaten } from '../katalog';
-import { nacharbeit } from '../auftraege';
 import type { KatalogZeile } from './zeilen';
-import { figurenBereich } from './prozess';
+import type { FigurenKontext } from './kontext';
 export type { FigurTeil, KatalogZeile } from './zeilen';
 
-function katalogTeile(figNumber: string): Promise<KatalogZeile[]> {
-  return figurenBereich().figurTeile.katalogTeileDerFigur(figNumber);
+function katalogTeile(k: FigurenKontext, figNumber: string): Promise<KatalogZeile[]> {
+  return k.figurTeile.katalogTeileDerFigur(figNumber);
 }
 
 /** Fehlen BrickLink-Nummern, wird vor der Antwort angereichert; die Bilder
  * lädt danach ein Nachlauf, damit die Antwort nicht auf sie wartet. */
-export async function teileDerFigur(figNumber: string) {
+export async function teileDerFigur(kx: FigurenKontext, figNumber: string) {
   // Figuren haben keinen Versionsanhang, sondern ein 'fig-' davor.
   // Ein Lesefehler ist nicht „unbekannte Figur“ (not_found): Er geht weiter.
-  const invId = await inventarFuerKandidaten([figNumber, figNumber.replace('fig-', '')]);
+  const invId = await kx.katalog.inventarFuerKandidaten([figNumber, figNumber.replace('fig-', '')]);
   if (!invId) return { parts: [], source: 'not_found' };
 
-  const teile = await figurenBereich().figurTeile.inventarTeileDerFigur(invId);
+  const teile = await kx.figurTeile.inventarTeileDerFigur(invId);
 
-  let kat = await katalogTeile(figNumber);
+  let kat = await katalogTeile(kx, figNumber);
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
-    const elternSet = await figurenBereich().figurTeile.setMitFigur(figNumber);
+    const elternSet = await kx.figurTeile.setMitFigur(figNumber);
     if (elternSet)
-      await nacharbeit().figurenAnreichern(elternSet.set_number).catch(logAndContinue('figuren:enrichSetMinifigs'));
-    else await nacharbeit().setTeileAnreichern(figNumber).catch(logAndContinue('figuren:enrichSetParts'));
-    kat = await katalogTeile(figNumber);
+      await kx.nacharbeit.figurenAnreichern(elternSet.set_number).catch(logAndContinue('figuren:enrichSetMinifigs'));
+    else await kx.nacharbeit.setTeileAnreichern(figNumber).catch(logAndContinue('figuren:enrichSetParts'));
+    kat = await katalogTeile(kx, figNumber);
   }
   const jeTeil = new Map(kat.map(r => [`${r.part_number}|${r.color_id}`, r]));
   const parts = teile.map(p => {
@@ -37,7 +35,7 @@ export async function teileDerFigur(figNumber: string) {
     };
   });
   setImmediate(() => {
-    nacharbeit().setBilderLaden(figNumber).catch(logAndContinue('figuren:downloadSetImages'));
+    kx.nacharbeit.setBilderLaden(figNumber).catch(logAndContinue('figuren:downloadSetImages'));
   });
   return { parts, source: kat.length ? 'enriched' : 'csv_cache' };
 }

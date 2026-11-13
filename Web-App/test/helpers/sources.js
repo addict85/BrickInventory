@@ -45,11 +45,22 @@ const finanzQuelle = () => {
   return teile.join('\n');
 };
 
-module.exports = { ROOT, serverOnly, imgProxy, serverAll, finanzQuelle, umgebung };
+module.exports = {
+  ROOT,
+  serverOnly,
+  imgProxy,
+  serverAll,
+  finanzQuelle,
+  umgebung,
+  buildAndRequire,
+  testZugang,
+  testDaten,
+  testBildwerk,
+};
 
 /**
  * Baut die .ts-Quellen nach dist/ (nie neben die Quellen) und liefert einen
- * require-Helfer darauf: `buildAndRequire()('db/database.js')`.
+ * require-Helfer darauf: `buildAndRequire()('src/sets/index.js')`.
  */
 let _built = false;
 
@@ -103,30 +114,39 @@ function baueDist() {
 /** Der Zugang der Testdatei: db/database kennt keinen Zugang des Prozesses mehr;
  *  ein Test bekommt ihn wie der Server von seinem Einstieg, hier also von hier. */
 let _testDb = null;
-/** Erzeugt den Zugang; gesetzt von buildAndRequire(). */
+let _eigenDb = null;
+/** Erzeugen die Zugänge; gesetzt von buildAndRequire(). */
 let _zugangFabrik = null;
+let _datenFabrik = null;
+/** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
+ *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
+const _bildwerk = {
+  setBildLaden: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/setImages.js')).downloadSetImage(...a),
+  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/thumbs.js')).generateThumb(...a),
+};
 
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
   // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
-  // die Test-DB läuft als Superuser, und gestartete Server erben diese Umgebung.
+  // ausserhalb von npm test (und mit `@superuser`) ist die Test-DB Superuser, und gestartete Server erben das.
   process.env.NODE_ENV ??= 'test';
   baueDist();
   // Wie server.ts: Ohne Verdrahtung prüften Tests eine stumme Fassung der Nacharbeit.
   // Die Bauteile erst beim ersten Gebrauch: Viele Tests stellen Klienten nach diesem
   // Aufruf über require.cache; ein früher geladener Dienst hielte die echten fest.
   const echt = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueVerdrahtung();
-  const faul = new Proxy(
-    {},
-    {
-      get:
-        (_z, k) =>
-        (...a) =>
-          echt().nacharbeit[k](...a),
-    },
+  // Ein Objekt für alle Bereiche: Ein Test ersetzt eine Methode darin (prozessDienste().katalog.nacharbeit).
+  const faul = Object.fromEntries(
+    [
+      'preisJobAnstossen',
+      'preisFuerSetHolen',
+      'bildVormerken',
+      'setTeileAnreichern',
+      'figurenAnreichern',
+      'setBilderLaden',
+    ].map(k => [k, (...a) => echt().nacharbeit[k](...a)]),
   );
-  require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
   const testDb = () =>
@@ -139,71 +159,134 @@ function buildAndRequire() {
   require(path.join(ROOT, 'dist', 'clients/zugang.js')).verdrahteKlienten(
     new Proxy({}, { get: (_z, k) => klientenEcht()[k] }),
   );
-  // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
-  const BEREICHE = [
-    ['einstellungen', 'Einstellungen'],
-    ['auftraege', 'Auftraege'],
-    ['haushalt', 'Haushalt'],
-    ['konto', 'Konto'],
-    ['idempotenz', 'Idempotenz'],
-    ['finanzen', 'Finanzen'],
-    ['bestand', 'Bestand'],
-    ['teile', 'Teile'],
-    ['figuren', 'Figuren'],
-    ['merkliste', 'Merkliste'],
-    ['gutscheine', 'Gutscheine'],
-    ['sammlung', 'Sammlung'],
-    ['verwaltung', 'Verwaltung'],
-  ];
-  for (const [b, B] of BEREICHE)
-    require(path.join(ROOT, 'dist', `src/${b}/prozess.js`))[`verdrahte${B}`](() =>
-      require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: testDb() }),
-    );
-  require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
-    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: testDb() }),
+  // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch.
+  require(path.join(ROOT, 'dist', 'src/infra/bereich.js')).verdrahteDienste(() =>
+    require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueDienste(testDb(), faul, _bildwerk),
   );
-  require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
-    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({
-      db: testDb(),
-      nacharbeit: faul,
-      katalog: require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).katalog(),
-      finanzen: require(path.join(ROOT, 'dist', 'src/finanzen/prozess.js')).finanzenBereich(),
-      auftraege: require(path.join(ROOT, 'dist', 'src/auftraege/prozess.js')).auftraegeBereich(),
-    }),
-  );
-  // db/database.js mit den Funktionen des Testzugangs, wie es früher der Prozesszugang war.
-  const fassade = Object.create(dbModul, {
-    pool: { get: () => testDb().pool },
-    standardDb: { value: testDb },
-  });
-  for (const f of [
-    'all',
-    'get',
-    'run',
-    'exec',
-    'transaction',
-    'initSchema',
-    'initSchemaOnce',
-    'getPoolStats',
-    'datenbankAntwortet',
-    'alsSuperuserVerbunden',
-    'eigeneVerbindung',
-    'inTransaktion',
-  ])
-    fassade[f] = (...a) => testDb()[f](...a);
-  return rel => (rel === 'db/database.js' ? fassade : require(path.join(ROOT, 'dist', rel)));
+  // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
+  // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
+  const eigenDb = () => (_eigenDb ??= eigentuemerZugang(dbModul, testDb, () => echt().erststart()));
+  _datenFabrik = eigenDb;
+  return rel => {
+    const m = mitKontext(rel, require(path.join(ROOT, 'dist', rel)));
+    return rel.startsWith('routes/') ? mitKontoDerAnfrage(m) : m;
+  };
 }
 
-module.exports.buildAndRequire = buildAndRequire;
+/** Innere Dienste eines Bereichs nehmen den Kontext als ersten Parameter (src/infra/bereich.ts).
+ *  Ein Test, der ein solches Modul direkt lädt, ruft sie mit dem Kontext des Prozesses,
+ *  wie es die Fassade der index.ts für die exportierten tut. */
+const _mitKontext = new Map();
+const KONTEXT_FN =
+  /^(?:export )?(?:async )?function (\w+)(?:<[^(]*>)?\(\s*kx?: \w+Kontext\b|^(?:export )?const (\w+) = (?:async )?\(\s*kx?: \w+Kontext\b/gm;
+/** Die Namen der Kontext-Dienste einer Quelle, auch weitergereichte (export { a as b } [from './x']). */
+function kontextNamen(ts, tiefe = 0) {
+  const quelle = fs.existsSync(ts) ? fs.readFileSync(ts, 'utf8') : '';
+  const namen = new Set([...quelle.matchAll(KONTEXT_FN)].map(x => x[1] || x[2]));
+  if (tiefe < 2)
+    for (const i of quelle.matchAll(/^import \{([^}]*)\} from '(\.[^']+)';/gm)) {
+      const dort = kontextNamen(path.join(path.dirname(ts), `${i[2]}.ts`), tiefe + 1);
+      for (const n of i[1].split(',').map(x => x.trim())) if (dort.has(n)) namen.add(n);
+    }
+  for (const e of quelle.matchAll(/^export \{([^}]*)\}(?: from '(\.[^']+)')?;/gm)) {
+    const quellNamen = e[2] && tiefe < 2 ? kontextNamen(path.join(path.dirname(ts), `${e[2]}.ts`), tiefe + 1) : namen;
+    for (const teil of e[1].split(',')) {
+      const [a, b = a] = teil.trim().split(/\s+as\s+/);
+      if (a && quellNamen.has(a)) namen.add(b);
+    }
+  }
+  return namen;
+}
+function mitKontext(rel, modul) {
+  const m = /^src\/(\w+)\/(?!index\.js$|bereich\.js$|prozess\.js$|repository\/|http\/)[\w/]+\.js$/.exec(rel);
+  if (!m || !fs.existsSync(path.join(ROOT, 'src', m[1], 'prozess.ts'))) return modul;
+  if (!_mitKontext.has(rel)) {
+    const namen = kontextNamen(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
+    const bereich = () => require(path.join(ROOT, 'dist', 'src/infra/bereich.js')).prozessDienste()[m[1]];
+    _mitKontext.set(
+      rel,
+      namen.size
+        ? new Proxy(modul, {
+            get: (z, n) =>
+              typeof n === 'string' && namen.has(n) && typeof z[n] === 'function'
+                ? (...a) => z[n](bereich(), ...a)
+                : z[n],
+          })
+        : modul,
+    );
+  }
+  return _mitKontext.get(rel);
+}
+
+/** Der Zugang der Eigentümerin, wenn der Lauf Rollen trennt, sonst der Testzugang selbst.
+ * Wer einen der beiden Pools schliesst, schliesst beide: Früher war es einer. */
+function eigentuemerZugang(dbModul, testDb, erststart) {
+  const url = process.env.TEST_DB_EIGEN_URL;
+  if (!url || url === process.env.DATABASE_URL) return testDb();
+  const k = dbModul.dbKonfigAusUmgebung();
+  // Wie server.ts: Der Erststart legt das erste Konto im Systemrahmen an.
+  const { imSystemkontext } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  const eigen = dbModul.erzeugeDb(
+    { ...k, verbindung: { connectionString: url }, system: null },
+    { erststart: () => imSystemkontext('start', erststart) },
+  );
+  const app = testDb();
+  const enden = [eigen.pool, app.pool].map(p => {
+    const ende = p.end.bind(p);
+    let zu = null;
+    return { p, schliesse: () => (zu ??= ende()) };
+  });
+  for (const { p } of enden) p.end = () => Promise.all(enden.map(e => e.schliesse())).then(() => undefined);
+  return eigen;
+}
+
+/** Wie startup/app.ts (merkeAnfrage vor allen Routen): Ein Router aus routes/, den ein Test
+ * selbst einhängt, läuft im Konto seiner Anfrage, sonst sähe er unter dem Zeilenschutz nichts. */
+function mitKontoDerAnfrage(m) {
+  const istRouter = x => typeof x === 'function' && Array.isArray(x.stack) && typeof x.handle === 'function';
+  if (!istRouter(m)) return m;
+  const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  return new Proxy(m, {
+    apply: (ziel, ich, [req, res, next]) => alsAnfrage(req, () => ziel.call(ich, req, res, next)),
+  });
+}
+
+/** Ein Routenmodul mit Fabrik (baueXRouter(d)) als Router, mit den Diensten des Prozesses
+ *  (dieselben, die baueDienste() für diese Testdatei gebaut hat); ein Modul ohne Fabrik unverändert. */
+function routerAus(_req, rel) {
+  const m = _req(rel);
+  const baue = Object.entries(m).find(([n, f]) => /^baue\w*Router$/.test(n) && typeof f === 'function');
+  // Wie startup/app.ts: Der gebaute Router läuft im Konto seiner Anfrage.
+  return baue ? mitKontoDerAnfrage(baue[1](_req('src/infra/bereich.js').prozessDienste())) : m;
+}
+module.exports.routerAus = routerAus;
 
 /** Der Zugang aus erzeugeDb(), den auch die verdrahteten Dienste dieser Testdatei
- *  benutzen: für neue Tests statt der Fassade `_req('db/database.js')`, die so
- *  tut, als gäbe es noch einen Zugang des Prozesses. Erst nach buildAndRequire(). */
+ *  benutzen: für Code unter Test, der als Laufzeitrolle fragen soll wie im Betrieb.
+ *  Erst nach buildAndRequire(). */
 function testZugang() {
   if (!_zugangFabrik) throw new Error('testZugang() erst nach buildAndRequire()');
   return _zugangFabrik();
 }
-module.exports.testZugang = testZugang;
+
+/** Das Bildwerk, das baueDienste() dieser Datei bekommen hat: Ein Test ersetzt einen Teil
+ *  darin, statt das Modul beim Laden umzubiegen. Mit `t` gilt der Ersatz bis zum Ende des Tests.
+ *  @param {{ after: (f: () => void) => void } | null} [t] @param {Record<string, Function>} [ersatz] */
+function testBildwerk(t, ersatz = {}) {
+  const vorher = { ..._bildwerk };
+  Object.assign(_bildwerk, ersatz);
+  t?.after(() => Object.assign(_bildwerk, vorher));
+  return _bildwerk;
+}
+
+/** Der Zugang der Eigentümerin für Testdaten: Er schreibt am Zeilenschutz vorbei, damit
+ *  ein Test Zeilen beliebiger Konten anlegt. Erst beim ersten Gebrauch gebaut, damit eine
+ *  Testdatei die Umgebung noch nach dem Aufruf stellen kann. Erst nach buildAndRequire(). */
+function testDaten() {
+  if (!_datenFabrik) throw new Error('testDaten() erst nach buildAndRequire()');
+  return _datenGriff;
+}
+const _datenGriff = new Proxy(/** @type {any} */ ({}), { get: (_z, k) => _datenFabrik()[k] });
 
 /** Stellt Umgebungsvariablen um (undefined löscht) und lässt konfig() sie neu
  *  lesen: Der Server liest sie einmal beim Start (src/infra/konfig.ts). */
@@ -511,10 +594,14 @@ function routerEinhaengungen(o = {}) {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
   // `import xRouter from '../routes/x'` oben, `app.use('/api/…', xRouter)` unten.
   const dateiJeName = new Map(
-    [...src.matchAll(/import\s+(\w+)\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)].map(m => [m[1], m[2]]),
+    [...src.matchAll(/import\s+(?:\{\s*)?(\w+)(?:\s*\})?\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)].map(m => [
+      m[1],
+      m[2],
+    ]),
   );
   const out = [];
-  for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)\s*\)/g)) {
+  // Ein Router mit Fabrik hängt als `baueXRouter(d)` ein.
+  for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)(?:\(\w+\))?\s*\)/g)) {
     const datei = dateiJeName.get(m[2]);
     if (!datei || datei.startsWith('routes/api_v1')) continue;
     out.push({
@@ -707,6 +794,18 @@ function dienstQuelle(rel) {
     if (!fs.existsSync(fabrik)) continue;
     const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
     if (ziel && /repository/.test(ziel[1])) repos.add(`src/${m[1]}/${ziel[1]}.ts`);
+  }
+  // Über den Kontext des Dienstes (k.repo., k.<bereich>.repo.; t in einer Transaktion).
+  const eigener = /^src\/(\w+)\//.exec(rel)?.[1];
+  const ueber = (b, name) => {
+    const fabrik = path.join(ROOT, `src/${b}/kontext.ts`);
+    if (!b || !fs.existsSync(fabrik)) return;
+    const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${name} from '\\./([^']+)'`));
+    if (ziel && /repository/.test(ziel[1])) repos.add(`src/${b}/${ziel[1]}.ts`);
+  };
+  for (const m of ohneKommentare(s).matchAll(/\b(?:k|kx|sk|t)\.(\w+)\.(\w+)?/g)) {
+    ueber(eigener, m[1]);
+    if (m[2]) ueber(m[1], m[2]);
   }
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }

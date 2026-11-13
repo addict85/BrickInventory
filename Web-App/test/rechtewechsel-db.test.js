@@ -18,11 +18,11 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung } = require('./helpers/sources');
+const { buildAndRequire, einhaengung, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -33,7 +33,7 @@ const CHEF = 'rechte_chef',
   PASS = 'richtigesPasswort1';
 
 test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username IN ($1,$2)', [CHEF, ZIEL]);
   const hash = await bcrypt.hash(PASS, 4);
@@ -57,7 +57,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 

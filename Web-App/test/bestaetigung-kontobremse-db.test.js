@@ -34,8 +34,8 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
     return { success: true };
   },
 });
-const db = _req('db/database.js');
-const { dbOderSkip } = require('./helpers/db');
+const db = S.testDaten();
+const { datenOderSkip } = require('./helpers/db');
 const protokoll = _req('src/infra/protokoll.js');
 const { pruefeBestaetigung } = _req('src/konto/passwortBestaetigung.js');
 const { STATUS_DER_ART } = _req('src/http/fehlerArt.js');
@@ -44,7 +44,7 @@ const PASS = 'Konto-Bremse-Passwort-1',
   FALSCH = 'Falsch-geraten-0815';
 
 test('Bremse für Bestätigungen je Konto', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `kbremse_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (

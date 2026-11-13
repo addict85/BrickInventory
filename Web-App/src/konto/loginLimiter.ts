@@ -6,7 +6,7 @@ import { fehlertext, meldeUndLiefere } from '../infra/fehler';
 import { suchwert } from '../infra/geheimnis';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/anmeldezaehler';
-import { kontoBereich } from './prozess';
+import type { KontoKontext } from './kontext';
 
 /** Typisiert: Ein vertippter Feldname ergäbe `undefined >= MAX_ATTEMPTS`, also keine Sperre. */
 interface Zaehlerstand {
@@ -90,9 +90,9 @@ function _prune() {
 const _restMin = (firstAt: number, windowMin: number, now = Date.now()) =>
   Math.max(1, Math.ceil((firstAt + windowMin * 60000 - now) / 60000));
 
-async function _read(key: string, windowMin: number): Promise<Zaehlerstand | null> {
+async function _read(k: KontoKontext, key: string, windowMin: number): Promise<Zaehlerstand | null> {
   try {
-    const row = await kontoBereich().anmeldezaehler.lies(key, windowMin);
+    const row = await k.anmeldezaehler.lies(key, windowMin);
     if (!row) return null;
     return {
       count: parseInt(row.count, 10) || 0,
@@ -111,9 +111,9 @@ async function _read(key: string, windowMin: number): Promise<Zaehlerstand | nul
   }
 }
 
-async function _bump(key: string, windowMin: number): Promise<number> {
+async function _bump(k: KontoKontext, key: string, windowMin: number): Promise<number> {
   try {
-    return await kontoBereich().anmeldezaehler.erhoehe(key, windowMin);
+    return await k.anmeldezaehler.erhoehe(key, windowMin);
   } catch (fehler) {
     imSpeicher('zählen', fehler);
     const now = Date.now();
@@ -134,13 +134,14 @@ type Stand = Zaehlerstand & { laufend: number };
 
 /** BEVOR geprüft wird, unter einer Zeilensperre, damit gleichzeitige Versuche einander sehen. */
 async function _reserviere(
+  k: KontoKontext,
   key: string,
   windowMin: number,
   erlaubt: (s: Stand) => boolean,
 ): Promise<{ ok: boolean; stand: Stand }> {
   try {
-    return await kontoBereich().db.transaction(async tx => {
-      const r = await repo.sperre(tx, key, windowMin, LAUFEND_VERFALL_S);
+    return await k.transaktion(async t => {
+      const r = await repo.sperre(t.db, key, windowMin, LAUFEND_VERFALL_S);
       const neu = !!r.abgelaufen;
       const stand: Stand = {
         count: neu ? 0 : parseInt(r.count, 10) || 0,
@@ -149,7 +150,7 @@ async function _reserviere(
         seitLetztem: Math.max(0, parseFloat(r.seit) || 0),
       };
       if (!erlaubt(stand)) return { ok: false, stand };
-      await repo.belegeLaufplatz(tx, key, stand.laufend + 1, neu);
+      await repo.belegeLaufplatz(t.db, key, stand.laufend + 1, neu);
       return { ok: true, stand };
     });
   } catch (fehler) {
@@ -174,9 +175,9 @@ async function _reserviere(
   }
 }
 
-async function _freigeben(key: string): Promise<void> {
+async function _freigeben(k: KontoKontext, key: string): Promise<void> {
   try {
-    await kontoBereich().anmeldezaehler.gibLaufplatzFrei(key);
+    await k.anmeldezaehler.gibLaufplatzFrei(key);
   } catch (fehler) {
     imSpeicher('freigeben', fehler);
     const e = _attempts.get(key);
@@ -184,9 +185,9 @@ async function _freigeben(key: string): Promise<void> {
   }
 }
 
-async function _clear(key: string): Promise<void> {
+async function _clear(k: KontoKontext, key: string): Promise<void> {
   try {
-    await kontoBereich().anmeldezaehler.loescheZaehler(key);
+    await k.anmeldezaehler.loescheZaehler(key);
   } catch (e) {
     imSpeicher('löschen', e);
     _attempts.delete(key);
@@ -196,11 +197,11 @@ async function _clear(key: string): Promise<void> {
 /** Name und E-Mail desselben Kontos zählen gemeinsam, sonst gälte jede Grenze
  * doppelt. Kleinschreibung in PostgreSQL wie beim Login: JS macht aus „İ"
  * zwei Zeichen. */
-async function kontoKennung(username: string): Promise<string> {
+async function kontoKennung(k: KontoKontext, username: string): Promise<string> {
   // Ausnahme: Bei gestörter Datenbank zählt die Drossel im Speicher weiter
   // (imSpeicher); ohne Konto dann nach dem Namen, statt die Anmeldung zu sperren.
-  const z = await kontoBereich()
-    .anmeldezaehler.kontoZumNamen(einzelwert(username))
+  const z = await k.anmeldezaehler
+    .kontoZumNamen(einzelwert(username))
     .catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
   return `name:${namensAbdruck(z?.kennung ?? einzelwert(username).toLowerCase())}`;
@@ -220,46 +221,46 @@ function namensAbdruck(name: string): string {
 export type Sperre = { code: FehlerCode; vars: { minuten: number } };
 
 /** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder gibAnmeldeplatzFrei geben ihn frei. */
-export async function checkLoginAllowed(ip: string, username: string): Promise<Sperre | null> {
-  const kennung = await kontoKennung(username);
+export async function checkLoginAllowed(k: KontoKontext, ip: string, username: string): Promise<Sperre | null> {
+  const kennung = await kontoKennung(k, username);
   // Bekannt: nur die Sperre je Adresse und Konto. Gesamtsperre und Wartezeit liessen sich sonst
   // gegen den Inhaber richten, hinter einem Proxy teilen sich alle eine Adresse.
-  const bekannt = !!(await _read(_bekanntKey(ip, kennung), BEKANNT_MIN));
-  const gesamt = await _reserviere(_adressKey(ip), WINDOW_MIN, s => bekannt || s.count + s.laufend < MAX_JE_ADRESSE);
+  const bekannt = !!(await _read(k, _bekanntKey(ip, kennung), BEKANNT_MIN));
+  const gesamt = await _reserviere(k, _adressKey(ip), WINDOW_MIN, s => bekannt || s.count + s.laufend < MAX_JE_ADRESSE);
   if (!gesamt.ok) return { code: 'zu_viele_fehlversuche', vars: { minuten: gesamt.stand.waitMin } };
-  const adresse = await _reserviere(_key(ip, kennung), WINDOW_MIN, s => s.count + s.laufend < MAX_ATTEMPTS);
+  const adresse = await _reserviere(k, _key(ip, kennung), WINDOW_MIN, s => s.count + s.laufend < MAX_ATTEMPTS);
   if (!adresse.ok) {
-    await _freigeben(_adressKey(ip));
+    await _freigeben(k, _adressKey(ip));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: adresse.stand.waitMin } };
   }
   if (bekannt) return null;
   let rest = 0;
-  const konto = await _reserviere(_nameKey(kennung), WINDOW_MIN, s => {
+  const konto = await _reserviere(k, _nameKey(kennung), WINDOW_MIN, s => {
     rest = wartezeitSekunden(s.count) - s.seitLetztem;
     // In der Wartezeit-Phase höchstens ein Versuch zugleich je Konto.
     return rest <= 0 && (s.count < MAX_ATTEMPTS || s.laufend === 0);
   });
   if (!konto.ok) {
-    await _freigeben(_key(ip, kennung));
-    await _freigeben(_adressKey(ip));
+    await _freigeben(k, _key(ip, kennung));
+    await _freigeben(k, _adressKey(ip));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: Math.max(1, Math.ceil(Math.max(rest, 1) / 60)) } };
   }
   return null;
 }
 
-export async function gibAnmeldeplatzFrei(ip: string, username: string): Promise<void> {
-  const kennung = await kontoKennung(username);
-  await _freigeben(_key(ip, kennung));
-  await _freigeben(_nameKey(kennung));
-  await _freigeben(_adressKey(ip));
+export async function gibAnmeldeplatzFrei(k: KontoKontext, ip: string, username: string): Promise<void> {
+  const kennung = await kontoKennung(k, username);
+  await _freigeben(k, _key(ip, kennung));
+  await _freigeben(k, _nameKey(kennung));
+  await _freigeben(k, _adressKey(ip));
 }
 
 /** @returns die Fehlversuche des Kontos im Fenster */
-export async function recordLoginFailure(ip: string, username: string): Promise<number> {
-  const kennung = await kontoKennung(username);
-  await _bump(_key(ip, kennung), WINDOW_MIN);
-  const n = await _bump(_nameKey(kennung), WINDOW_MIN);
-  await _bump(_adressKey(ip), WINDOW_MIN);
+export async function recordLoginFailure(k: KontoKontext, ip: string, username: string): Promise<number> {
+  const kennung = await kontoKennung(k, username);
+  await _bump(k, _key(ip, kennung), WINDOW_MIN);
+  const n = await _bump(k, _nameKey(kennung), WINDOW_MIN);
+  await _bump(k, _adressKey(ip), WINDOW_MIN);
   return n;
 }
 
@@ -297,14 +298,14 @@ export function meldeAnmeldung(angaben: { ip?: string | undefined; konto: number
   });
 }
 
-export async function recordLoginSuccess(ip: string, username: string): Promise<void> {
-  const kennung = await kontoKennung(username);
-  await _clear(_key(ip, kennung));
-  await _clear(_nameKey(kennung));
+export async function recordLoginSuccess(k: KontoKontext, ip: string, username: string): Promise<void> {
+  const kennung = await kontoKennung(k, username);
+  await _clear(k, _key(ip, kennung));
+  await _clear(k, _nameKey(kennung));
   // Nur freigeben: Ein Erfolg setzt den Zähler der Adresse nach Fehlversuchen gegen andere Konten nicht zurück.
-  await _freigeben(_adressKey(ip));
-  await _bump(_bekanntKey(ip, kennung), BEKANNT_MIN);
-  await _bump(_erfolgKey(ip, kennung), WINDOW_MIN);
+  await _freigeben(k, _adressKey(ip));
+  await _bump(k, _bekanntKey(ip, kennung), BEKANNT_MIN);
+  await _bump(k, _erfolgKey(ip, kennung), WINDOW_MIN);
 }
 
 /** Weiche Grenze: Wer sich öfter anmeldet, verliert nur den Vorrang. Eine harte träfe
@@ -312,19 +313,20 @@ export async function recordLoginSuccess(ip: string, username: string): Promise<
 export const ERFOLGE_MIT_VORRANG = 30;
 
 /** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet, und nicht zu oft. */
-export async function bekannteAnmeldung(ip: string, username: string): Promise<boolean> {
-  const kennung = await kontoKennung(username);
-  if (!(await _read(_bekanntKey(ip, kennung), BEKANNT_MIN))) return false;
-  return ((await _read(_erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
+export async function bekannteAnmeldung(k: KontoKontext, ip: string, username: string): Promise<boolean> {
+  const kennung = await kontoKennung(k, username);
+  if (!(await _read(k, _bekanntKey(ip, kennung), BEKANNT_MIN))) return false;
+  return ((await _read(k, _erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
 }
 
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */
-export async function raeumeAnmeldezaehlerAuf(): Promise<number> {
-  return kontoBereich().anmeldezaehler.raeumeAuf(BEKANNT_MIN);
+export async function raeumeAnmeldezaehlerAuf(k: KontoKontext): Promise<number> {
+  return k.anmeldezaehler.raeumeAuf(BEKANNT_MIN);
 }
 
 /** In einem Schritt, sonst kamen gleichzeitige Anfragen durch. Abgewiesene zählen, verlängern aber nicht. */
 export async function zaehleAnfrage(
+  k: KontoKontext,
   bucket: string,
   ip: string,
   windowMs: number,
@@ -332,7 +334,7 @@ export async function zaehleAnfrage(
   const key = `${bucket}|${drosselAdresse(ip)}`;
   const windowMin = windowMs / 60000;
   try {
-    const r = await kontoBereich().anmeldezaehler.zaehleHoch(key, windowMin);
+    const r = await k.anmeldezaehler.zaehleHoch(key, windowMin);
     return { count: parseInt(r.count, 10) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
   } catch (fehler) {
     imSpeicher('anfrage', fehler);
@@ -365,10 +367,16 @@ const KONTO_FENSTER_MIN = 24 * 60;
 const _kontoBestaetigungKey = (art: Bremse, uid: number) =>
   `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen-konto|${uid}`;
 
-export async function bestaetigungGesperrt(art: Bremse, uid: number, zugang: string): Promise<Sperre | null> {
-  const konto = await _read(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
+export async function bestaetigungGesperrt(
+  k: KontoKontext,
+  art: Bremse,
+  uid: number,
+  zugang: string,
+): Promise<Sperre | null> {
+  const konto = await _read(k, _kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
   const kontoVoll = !!konto && konto.count >= MAX_BESTAETIGUNG_JE_KONTO;
   const r = await _reserviere(
+    k,
     _bestaetigungKey(art, uid, zugang),
     fenster(art),
     s => s.count + s.laufend < MAX_ATTEMPTS && !(kontoVoll && s.count > 0),
@@ -378,23 +386,28 @@ export async function bestaetigungGesperrt(art: Bremse, uid: number, zugang: str
   return { code: 'zu_viele_fehlversuche', vars: { minuten } };
 }
 /** @returns true, wenn dieser Fehlversuch eine Bremse (Zugang oder Konto) gerade erreicht hat */
-export async function bestaetigungFehlgeschlagen(art: Bremse, uid: number, zugang: string): Promise<boolean> {
-  const jeZugang = await _bump(_bestaetigungKey(art, uid, zugang), fenster(art));
-  const jeKonto = await _bump(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
+export async function bestaetigungFehlgeschlagen(
+  k: KontoKontext,
+  art: Bremse,
+  uid: number,
+  zugang: string,
+): Promise<boolean> {
+  const jeZugang = await _bump(k, _bestaetigungKey(art, uid, zugang), fenster(art));
+  const jeKonto = await _bump(k, _kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
   return jeZugang === MAX_ATTEMPTS || jeKonto === MAX_BESTAETIGUNG_JE_KONTO;
 }
-export async function bestaetigungGelungen(art: Bremse, uid: number, zugang: string): Promise<void> {
-  await _clear(_bestaetigungKey(art, uid, zugang));
+export async function bestaetigungGelungen(k: KontoKontext, art: Bremse, uid: number, zugang: string): Promise<void> {
+  await _clear(k, _bestaetigungKey(art, uid, zugang));
 }
 
 /** Wer das Passwort kennt, riete den Code sonst langsam unter jeder Wartezeit durch;
  * über der Schranke (24 h je Konto) gelten nur Wiederherstellungscode und Passkey. */
 export const MAX_FAKTOR_ANMELDUNG_JE_KONTO = 20;
 const _faktorAnmeldungKey = (uid: number) => `faktor-anmeldung-konto|${uid}`;
-export async function faktorCodeGesperrt(uid: number): Promise<boolean> {
-  return ((await _read(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_FAKTOR_ANMELDUNG_JE_KONTO;
+export async function faktorCodeGesperrt(k: KontoKontext, uid: number): Promise<boolean> {
+  return ((await _read(k, _faktorAnmeldungKey(uid), KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_FAKTOR_ANMELDUNG_JE_KONTO;
 }
 /** @returns true, wenn dieser Fehlversuch die Schranke gerade erreicht hat */
-export async function faktorCodeFalsch(uid: number): Promise<boolean> {
-  return (await _bump(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN)) === MAX_FAKTOR_ANMELDUNG_JE_KONTO;
+export async function faktorCodeFalsch(k: KontoKontext, uid: number): Promise<boolean> {
+  return (await _bump(k, _faktorAnmeldungKey(uid), KONTO_FENSTER_MIN)) === MAX_FAKTOR_ANMELDUNG_JE_KONTO;
 }

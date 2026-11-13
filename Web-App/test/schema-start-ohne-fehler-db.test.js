@@ -6,9 +6,10 @@ const assert = require('node:assert/strict');
 // damit auf die echte Datenbank.
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 /**
  * Der Schemastart darf keinen Fehler verschlucken.
@@ -31,7 +32,7 @@ test('der Schemastart meldet keinen verschluckten Fehler', async t => {
   };
 
   try {
-    if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+    if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   } finally {
     console.warn = echtesWarn;
   }

@@ -16,13 +16,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const bcrypt = require('bcryptjs');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `sitzapp_${process.pid}`,
     PASS = 'Sitzung-in-der-App-1';
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -43,6 +44,7 @@ test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
     pool: db.pool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 'p'.repeat(48),
+    dienste: _req('src/infra/bereich.js').prozessDienste(),
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));

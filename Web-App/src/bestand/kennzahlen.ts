@@ -1,24 +1,23 @@
-import { haushaltBereich, asIds, type Sicht } from '../haushalt';
-import { getGlobalSetting } from '../einstellungen';
-import { bestandBereich } from './prozess';
+import { asIds, type Sicht } from '../haushalt';
+import type { BestandKontext } from './kontext';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
-export async function getStats(userIdWahl: Sicht | number | number[]) {
-  const userId = await haushaltBereich().haushalt.blickfeldAus(userIdWahl);
+export async function getStats(k: BestandKontext, userIdWahl: Sicht | number | number[]) {
+  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, einzelnRow] = await Promise.all([
     // COUNT(DISTINCT set_number): Im Haushalt besitzen mehrere Konten dasselbe Set.
-    bestandBereich().kennzahlen.setZahlen(uids),
-    bestandBereich().kennzahlen.anleitungsZahlen(uids, uids),
+    k.kennzahlen.setZahlen(uids),
+    k.kennzahlen.anleitungsZahlen(uids, uids),
     // `fehlt = 1` in einer Multiplikation: Ein manuelles Teil ohne Set zählt einfach.
-    bestandBereich().kennzahlen.teileImBestand(uids),
-    bestandBereich().kennzahlen.figurenImBestand(uids),
-    bestandBereich().kennzahlen.waehrungImBlickfeld(uids),
-    bestandBereich().kennzahlen.teileEinzeln(uids),
+    k.kennzahlen.teileImBestand(uids),
+    k.kennzahlen.figurenImBestand(uids),
+    k.kennzahlen.waehrungImBlickfeld(uids),
+    k.kennzahlen.teileEinzeln(uids),
   ]);
-  const userCondRow = await bestandBereich().kennzahlen.vorgabeZustandImBlickfeld(uids);
-  const globalCond = await getGlobalSetting('default_price_condition');
+  const userCondRow = await k.kennzahlen.vorgabeZustandImBlickfeld(uids);
+  const globalCond = await k.einstellungen.getGlobalSetting('default_price_condition');
   const effectiveCondition =
     userCondRow?.value && ['N', 'U'].includes(userCondRow.value) ? userCondRow.value : globalCond || 'N';
   const pieces = Number(partsRow?.t ?? 0);

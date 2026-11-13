@@ -16,11 +16,11 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ROOT, buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { ROOT, buildAndRequire, ohneKommentare, testDaten, testZugang } = require('./helpers/sources');
 const _reqCsv = buildAndRequire();
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 
 /** Datei ohne Kommentare lesen (siehe ohneKommentare() in helpers/sources.js). */
 function quelle(...teile) {
@@ -239,7 +239,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
     };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const fehler = [];
   app.use((e, _req2, res, _next) => {
     fehler.push(e);
@@ -248,7 +248,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   // Der Strom hört auf NOTIFY anderer Worker; die Verbindung dafür hielte den Prozess offen.
-  t.after(() => _req('db/database.js').standardDb().benachrichtigung.close());
+  t.after(() => testZugang().benachrichtigung.close());
   const { csvImportBus } = _req('src/auftraege/importAuftrag.js');
   const r = await fetch(`http://localhost:${srv.address().port}/api/v1/sets/import/csv/stream`, {
     signal: AbortSignal.timeout(10_000),

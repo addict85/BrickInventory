@@ -15,10 +15,10 @@ process.env.DATABASE_URL = DB_URL;
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { routerEinhaengungen } = require('./helpers/sources');
+const { routerEinhaengungen, testDaten } = require('./helpers/sources');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 const USER = { id: null, username: 'parity-tester' };
@@ -166,8 +166,9 @@ test('API-Parität Webapp ↔ Android', async t => {
     next();
   });
   // Die Einhaengepunkte kommen aus server.ts
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
-  for (const r of routerEinhaengungen()) app.use(r.mount, _req('routes/' + r.name + '.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  for (const r of routerEinhaengungen())
+    app.use(r.mount, require('./helpers/sources').routerAus(_req, 'routes/' + r.name + '.js'));
 
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;

@@ -66,7 +66,7 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
   },
 });
 
-const db = _req('db/database.js');
+const db = S.testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const P = `en${process.pid}`,
   PASS = 'Passwort-Carol-2026';
@@ -122,11 +122,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: `carol_${P}` },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: `carol_${P}` }, t });
   const ruf = async (methode, weg, body) => {
     const r = await fetch(`${base}/api/v1/auth${weg}`, {
       method: methode,

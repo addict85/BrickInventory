@@ -1,34 +1,33 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeGutscheine bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
-import * as guthabenSchranke from './repository/guthabenSchranke';
-import * as gutscheine from './repository/gutscheine';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeGutscheine bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
+import * as dienst from './dienst';
+import * as gutscheinGuthabenSchranke from './gutscheinGuthabenSchranke';
+import { zugang, type GutscheineAbhaengigkeiten, type GutscheineKontext } from './kontext';
 
-export interface GutscheineKontext {
-  db: Db;
-}
+export type { GutscheineAbhaengigkeiten, GutscheineKontext } from './kontext';
 
-export function erzeugeGutscheine(k: GutscheineKontext) {
-  const { db } = k;
+export function erzeugeGutscheine(a: GutscheineAbhaengigkeiten) {
+  const k: GutscheineKontext = baueKontext(a, zugang);
   return {
-    db,
-    guthabenSchranke: bindeZugang(db, guthabenSchranke, ['oeffneSchranke', 'sperreSchranke']),
-    gutscheine: bindeZugang(db, gutscheine, [
-      'guthabenMerken',
-      'gutschein',
-      'gutscheinAendern',
-      'gutscheinAnlegen',
-      'gutscheinErsetzen',
-      'gutscheinGesperrt',
-      'gutscheinLoeschen',
-      'gutscheinPdfMerken',
-      'gutscheineDesKontos',
-      'gutscheineNeuVerschluesseln',
-      'kopienVerschluesseln',
-      'nummernNachverschluesseln',
+    ...k,
+    ...bindeZugang(k, dienst, [
+      'gutscheinMitPdfAnlegen',
+      'gutscheinBearbeiten',
+      'gutscheinKlartext',
+      'pdfFreigeben',
+      'exportFreigeben',
+      'guthabenAbfragen',
+      'gutscheinListe',
+      'gutscheinErfassen',
+      'stapelAnlegen',
+      'gutscheinEntfernen',
+      'gutscheinAusPdf',
+      'gutscheineExportieren',
+      'gutscheinPdf',
     ]),
+    ...bindeZugang(k, gutscheinGuthabenSchranke, ['frageGuthabenAb']),
   };
 }
 

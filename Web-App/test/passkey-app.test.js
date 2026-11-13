@@ -40,7 +40,7 @@ function mitUmgebung(t, werte) {
 
 test('ohne Eintrag gibt es kein Dokument und keine App-Herkunft', async t => {
   mitUmgebung(t, { PASSKEY_ANDROID_ZERTIFIKATE: '' });
-  const { base } = testServer(_req, { routen: { '/': 'routes/wellKnown.js' }, t });
+  const { base } = testServer(_req, { t });
   const r = await fetch(`${base}/.well-known/assetlinks.json`);
   assert.equal(r.status, 404);
   assert.match(await r.text(), /PASSKEY_ANDROID_ZERTIFIKATE/);
@@ -52,7 +52,7 @@ test('das Dokument nennt Paket und Fingerabdruck, nur für die Anmeldedaten', as
     PASSKEY_ANDROID_ZERTIFIKATE: HASH.toString('hex'),
     PASSKEY_ANDROID_PAKET: 'ch.brickinventoryapp.debug',
   });
-  const { base } = testServer(_req, { routen: { '/': 'routes/wellKnown.js' }, t });
+  const { base } = testServer(_req, { t });
   const r = await fetch(`${base}/.well-known/assetlinks.json`);
   assert.equal(r.status, 200);
   assert.match(r.headers.get('content-type'), /^application\/json/);

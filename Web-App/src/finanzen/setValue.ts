@@ -2,7 +2,7 @@
  * einen falschen Durchschnitt bekämen. */
 import { inZehntel4, aufRappen, alsText } from '../infra/geld';
 import { zustand } from '../infra/validate';
-import { finanzenBereich } from './prozess';
+import type { FinanzenKontext } from './kontext';
 
 export interface SetValue {
   unit_price: number | null;
@@ -22,6 +22,7 @@ function num(v: unknown): number {
 /** In EINER Abfrage für viele Sets.
  * @returns Map "setNumber|condition" → Marktpreis */
 export async function loadConditionPrices(
+  k: FinanzenKontext,
   setNumbers: string[],
   currency: string,
   ttlHours?: number,
@@ -34,7 +35,7 @@ export async function loadConditionPrices(
   const params: (string[] | string | number)[] = [list, currency];
   if (ttlHours) params.push(ttlHours);
 
-  const rows = await finanzenBereich().setWert.cachePreiseFuerSets(params, ttlClause);
+  const rows = await k.setWert.cachePreiseFuerSets(params, ttlClause);
 
   for (const r of rows) {
     const p = num(r.marktpreis);
@@ -101,9 +102,14 @@ export function valueSet(
 }
 
 /** Für Listen loadConditionPrices() + valueSet(), damit es bei einer Abfrage bleibt. */
-export async function getSetValue(userId: number, setNumber: string, currency: string): Promise<SetValue> {
-  const acqs = await finanzenBereich().setWert.setErfassungenZumWert(userId, setNumber);
-  const prices = await loadConditionPrices([setNumber], currency);
+export async function getSetValue(
+  k: FinanzenKontext,
+  userId: number,
+  setNumber: string,
+  currency: string,
+): Promise<SetValue> {
+  const acqs = await k.setWert.setErfassungenZumWert(userId, setNumber);
+  const prices = await loadConditionPrices(k, [setNumber], currency);
   return valueSet(setNumber, acqs, prices, 'N', 1);
 }
 

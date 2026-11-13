@@ -61,7 +61,10 @@ function kurveNachzeichnen() {
 window.addEventListener('resize', kurveNachzeichnen);
 {
   const el = G('portfolio-chart');
-  if (el && typeof ResizeObserver === 'function') new ResizeObserver(kurveNachzeichnen).observe(el);
+  // Erst im nächsten Bild: Das Neuzeichnen ändert die Höhe des beobachteten Elements, und im selben Durchlauf
+  // meldete Chrome dafür „ResizeObserver loop …“.
+  if (el && typeof ResizeObserver === 'function')
+    new ResizeObserver(() => requestAnimationFrame(kurveNachzeichnen)).observe(el);
 }
 
 /** Hinweis statt Kurve, wenn der Verlauf nicht zu holen war — im selben

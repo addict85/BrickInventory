@@ -18,7 +18,7 @@
  * Ohne DB: skip.
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
@@ -29,10 +29,10 @@ umgebung({ APP_BASE_URL: 'http://localhost' });
 umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 // Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
@@ -41,7 +41,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 test.after(() => db.pool.end().catch(() => {}));
 
 test('forgot-password findet die E-Mail unabhängig von der Schreibweise', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const USERNAME = 'forgotcasetest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
@@ -64,7 +64,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise', { con
     req.session = {};
     next();
   });
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const port = srv.address().port;
 
@@ -110,7 +110,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise', { con
 test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserhalb des Betriebs', {
   concurrency: 1,
 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   const USERNAME = 'forgothosttest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-%'`).catch(() => {});
@@ -143,7 +143,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     req.session = {};
     next();
   });
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const port = srv.address().port;
   const forgot = async email => {
@@ -211,7 +211,7 @@ test('höchstens ein Link je Konto in 15 Minuten, und jede Antwort braucht gleic
     req.session = {};
     next();
   });
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(async () => {
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);

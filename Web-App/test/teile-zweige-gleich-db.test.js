@@ -1,8 +1,9 @@
 /**
  * Die Teileliste hat ZWEI Wege — sie müssen dieselben Typen liefern.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
@@ -16,7 +17,7 @@ try {
   const _req = require('./helpers/sources').buildAndRequire();
   process.env.DATABASE_URL = DB_URL;
   umgebung({ SESSION_SECRET: 'test' });
-  db = _req('db/database.js');
+  db = testDaten();
   H = require('./helpers/sources').handlerModul(_req);
   PS = _req('src/teile/partsSummary.js');
 } catch (e) {

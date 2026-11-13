@@ -33,13 +33,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { warte, bis } = require('./helpers/zeit');
 
 test('Auftragstabelle', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
     ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
@@ -322,7 +323,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
     });
   } finally {
     await leeren();
-    await _req('db/database.js').standardDb().benachrichtigung.close();
+    await testZugang().benachrichtigung.close();
     await db.pool.end().catch(() => {});
   }
 });

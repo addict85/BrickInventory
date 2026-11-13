@@ -166,6 +166,9 @@
      Breite. Die max-width aus den Inline-Styles passt nur auf den Desktop. */
   .frow > .fg         { flex: 1 1 calc(50% - .25rem); max-width: none !important; }
   .frow > .fg:first-child, .frow > .btn { flex: 1 1 100%; }
+  /* Neuer Benutzer: Passwort und Häkchen je eine volle Zeile; zu zweit bräche die Passwortregel dreizeilig. */
+  .nutzer-neu > .fg { flex-basis: 100%; max-width: none; }
+  .nutzer-neu > .nutzer-rolle { margin-top: 0; }
   /* In Rastern gibt die Spalte die Breite vor, nicht die Mindestbreite von .fg */
   [style*="display:grid"] > .fg, .raster-160 > .fg { min-width: 0; }
 
@@ -299,7 +302,13 @@
   .dt td > * { max-width: 100%; }
   .mon-tabelle td { justify-content: flex-start; text-align: left; column-gap: .75rem; }
   .mon-tabelle td::before { flex-basis: 100%; }
-  .ptitle { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+  /* break-word statt anywhere: anywhere macht jedes Zeichen zur Bruchstelle, der Titel schrumpfte neben dem
+     Symbol und brach „Backg|round“ ohne Strich. So bricht er an Leerzeichen und weichen Trennungen. */
+  .ptitle { min-width: 0; max-width: 100%; overflow-wrap: break-word; hyphens: auto; }
+  .ptitle > span { min-width: 0; }
+  /* break-word senkt die Mindestbreite nicht: Ohne min-width 0 hielte der Kopf ein langes Titelwort
+     („Einstellungen“ bei 200 %) in voller Breite und weitete das Fenster. */
+  .ph > div { min-width: 0; }
 
   .dt td::before {
     content: attr(data-label);
@@ -608,6 +617,8 @@
      unsichtbar für Vorleser erhalten, Pfad und Untertitel sagen daneben nichts Neues. Zwei Zeilen Kopf
      schoben die erste Karte unter 40 % der Höhe. */
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { position: absolute; opacity: 0; pointer-events: none; }
+  /* Absolut nähme er die Breite seines längsten Worts; „Sammlung (Haushalt)“ bei 200 % weitete so das Fenster. */
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { left: 0; right: 0; overflow: hidden; }
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph :is(.ptitle-unter, .brotkrume) { display: none; }
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph .sammlung-wahl { width: auto; flex: 1 1 auto; margin-right: 52px; }
   .erfassen-leiste { margin: 0; position: static; }

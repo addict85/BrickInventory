@@ -3,21 +3,9 @@
  * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag. */
 import type { DbSchnittstelle } from '../../db/database';
 import { blickfeldIds, schreibziel } from '../haushalt';
-import { recordAcquisitionForDay, setzeGeschaetztenPreis, setzeLagerort, ortFuerNeuerfassung } from '../bestand';
+import { setzeLagerort, ortFuerNeuerfassung } from '../bestand';
 import { mitInventarSperre } from '../../db/txLock';
-import {
-  downloadSetImage,
-  rebrickableSetBild,
-  getSetInfo,
-  brickset,
-  generateThumb,
-  katalogStand,
-  merkeKatalogPlatzhalter,
-  merkeSetKatalog,
-} from '../katalog';
-import { getCurrentMarketPrice } from '../finanzen';
-import { zustandFuerPreis } from '../einstellungen';
-import { stelleAuftragEin } from '../auftraege';
+import { rebrickableSetBild, brickset, katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/sets';
@@ -40,7 +28,7 @@ export interface Erfassung {
 export async function recordAcquisition(sk: SetsKontext, e: Erfassung, dbh: DbSchnittstelle = sk.db) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
-  await recordAcquisitionForDay(
+  await sk.bestand.recordAcquisitionForDay(
     'set',
     e.konto,
     [e.setNumber],
@@ -122,18 +110,18 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
   const sn = normalizeSetNumber(roh);
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const besitzer = await schreibziel(sk.db, e.anfragender, e.besitzerWunsch);
-  const zustand = await zustandFuerPreis(e.zustand ?? null, null, besitzer);
+  const zustand = await sk.einstellungen.zustandFuerPreis(e.zustand ?? null, null, besitzer);
   const ort = await ortFuerNeuerfassung(sk.db, besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
 
-  return sk.db.transaction(async tx => {
-    await repo.sperreSetErfassen(tx, sn, besitzer);
-    const vorhanden = await findSetInScope(sk, e.anfragender, sn);
+  return sk.transaktion(async t => {
+    await repo.sperreSetErfassen(t.db, sn, besitzer);
+    const vorhanden = await findSetInScope(t, e.anfragender, sn);
     if (vorhanden) return { action: 'exists' as const, ...vorhanden };
-    const katalog = await merkeKatalogPlatzhalter(tx, sn);
-    await repo.legeSetZeileAn(tx, besitzer, sn);
+    const katalog = await merkeKatalogPlatzhalter(t.db, sn);
+    await repo.legeSetZeileAn(t.db, besitzer, sn);
     await recordAcquisition(
-      sk,
+      t,
       {
         konto: besitzer,
         setNumber: sn,
@@ -143,11 +131,11 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
         waehrung: kaufpreis === null ? null : (e.waehrung ?? null),
         erfasstAm: e.erfasstAm ?? null,
       },
-      tx,
+      t.db,
     );
-    if (ort) await setzeLagerort(sk.db, 'set', [besitzer], [sn], ort);
+    if (ort) await setzeLagerort(t.db, 'set', [besitzer], [sn], ort);
     // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
-    await stelleAuftragEin(
+    await t.auftraege.stelleAuftragEin(
       'nacharbeit',
       { set_number: sn, user_id: besitzer, art: 'ergaenzen' },
       {
@@ -156,7 +144,6 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
         maxVersuche: 5,
         nachSekunden: e.ergaenzenNachSekunden ?? 0,
       },
-      sk.auftraege,
     );
     const offen = !katalog || katalog.platzhalter;
     return {
@@ -182,7 +169,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     minifigs: number | null = null,
     imageUrl: string | null = null,
     themeId: number | null = null;
-  const rbErgebnis = await versuche('set-service:getSetInfo', getSetInfo(sn));
+  const rbErgebnis = await versuche('set-service:getSetInfo', sk.katalog.getSetInfo(sn));
   const rb = wertOder(rbErgebnis, null);
   if (rb) {
     name = rb.name;
@@ -205,9 +192,12 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   imageUrl ??= rebrickableSetBild(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche('set-anlegen:bild-laden', Promise.race([downloadSetImage(imageUrl, sn), frist]));
+  const bild = await versuche(
+    'set-anlegen:bild-laden',
+    Promise.race([sk.katalog.bildwerk.setBildLaden(imageUrl, sn), frist]),
+  );
   const lokal = wertOder(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
+  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.bildwerk.vorschauErzeugen(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   await merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
@@ -229,8 +219,8 @@ export async function setErgaenzen(
     name = k.name ?? name;
   }
   for (const z of await repo.erfassungenOhnePreisDesSets(sk.db, konto, sn)) {
-    const preis = await getCurrentMarketPrice(sn, konto, z.condition || null);
-    if (preis) await setzeGeschaetztenPreis('set', z.id, preis);
+    const preis = await sk.finanzen.getCurrentMarketPrice(sn, konto, z.condition || null);
+    if (preis) await sk.bestand.setzeGeschaetztenPreis('set', z.id, preis);
   }
   return { name };
 }
@@ -282,11 +272,10 @@ export async function nacharbeitEinstellen(
 ) {
   await versuche(
     `set-anlegen:nacharbeit ${setNumber}`,
-    stelleAuftragEin(
+    sk.auftraege.stelleAuftragEin(
       'nacharbeit',
       { set_number: setNumber, user_id: userId, art },
       { userId, schluessel: `nacharbeit:${userId}:${setNumber}`, maxVersuche: 3 },
-      sk.auftraege,
     ),
   );
 }
@@ -298,7 +287,7 @@ async function addSetIntern(sk: SetsKontext, s: SetHinzufuegen) {
   if (!moeglicheSetNummer(normalized)) fachfehler('ungueltig', 'setnummer_ungueltig');
   fortschritt?.({ step: 'meta', set: normalized });
   // Einmal für beide Zweige, damit Neuanlage und Aufstocken nicht verschieden rechnen.
-  const zustand = await zustandFuerPreis(s.zustand ?? null, null, userId);
+  const zustand = await sk.einstellungen.zustandFuerPreis(s.zustand ?? null, null, userId);
   const kaufpreis = s.kaufpreis ?? null;
   // Ohne Angabe gilt der Marktpreis des gewählten Zustands, geholt VOR der Sperre:
   // Ein Netzaufruf in der Sperre blockierte jeden anderen Schreiber.
@@ -306,7 +295,10 @@ async function addSetIntern(sk: SetsKontext, s: SetHinzufuegen) {
   const marktpreis = async () =>
     geschaetzt
       ? wertOder(
-          await versuche('set-service:getCurrentMarketPrice', getCurrentMarketPrice(normalized, userId, zustand)),
+          await versuche(
+            'set-service:getCurrentMarketPrice',
+            sk.finanzen.getCurrentMarketPrice(normalized, userId, zustand),
+          ),
           null,
         )
       : kaufpreis;

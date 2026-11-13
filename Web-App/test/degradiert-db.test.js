@@ -11,6 +11,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -46,12 +47,13 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 
 test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const NAME = `degr-${process.pid}`,
     SN = `${60000 + (process.pid % 9000)}-1`;
@@ -86,6 +88,16 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
       [uid, SN],
     );
     const { updateSet } = _req('src/sets/index.js');
+    // Sets fragt den Zustand über die Finanzdienste seines Kontexts (sk.finanzen).
+    const finanzen = _req('src/infra/bereich.js').prozessDienste().finanzen;
+    const zustandEcht = finanzen.resolveSetCondition;
+    finanzen.resolveSetCondition = async (...a) => {
+      if (preisKaputt) throw new Error('Zustand nicht lesbar');
+      return zustandEcht(...a);
+    };
+    t.after(() => {
+      finanzen.resolveSetCondition = zustandEcht;
+    });
     preisKaputt = true;
     let r;
     try {

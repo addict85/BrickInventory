@@ -14,14 +14,16 @@
  *   D  in teil-erfassen.js den Hinweis weggelassen → rot: „die Webapp nennt …“
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche');
 
 const U = 990811,
@@ -38,13 +40,13 @@ function ohneKommentare(text) {
 }
 
 test.after(() =>
-  _req('db/database.js')
+  testDaten()
     .pool.end()
     .catch(() => {}),
 );
 
 async function aufbau(t) {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return null;
   const weg = async () => {
     for (const tab of ['part_acquisitions', 'minifig_acquisitions', 'parts', 'minifigs'])

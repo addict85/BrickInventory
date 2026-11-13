@@ -1,14 +1,15 @@
 /**
  * Manuell erfasste Teile und Figuren tragen ihren Marktpreis mit.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, handlerModul } = require('./helpers/sources');
+const { buildAndRequire, handlerModul, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = _req('db/database.js');
+const db = testDaten();
 const H = handlerModul(_req);
 const MF = _req('src/figuren/abfragen.js');
 const { haeltFigur, haeltTeil } = require('./helpers/bestand');

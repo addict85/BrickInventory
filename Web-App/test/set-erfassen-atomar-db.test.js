@@ -18,6 +18,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -34,7 +35,7 @@ Module.prototype.require = function (name, ...rest) {
     return new Proxy(m, {
       get: (t, k) =>
         k === 'getSetInfo'
-          ? async sn => {
+          ? async (_k, sn) => {
               netz.push(`rebrickable ${sn}`);
               return { name: 'Testset', year: 2020, theme: 'Test', pieces: 10, image_url: null };
             }
@@ -44,7 +45,7 @@ Module.prototype.require = function (name, ...rest) {
     return new Proxy(m, {
       get: (t, k) =>
         k === 'getCurrentMarketPrice'
-          ? async sn => {
+          ? async (_k, sn) => {
               netz.push(`preis ${sn}`);
               return 42;
             }
@@ -65,12 +66,13 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const sets = _req('src/sets/index.js');
   const P = process.pid % 100000;
@@ -118,12 +120,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
 
   await t.test('die Anfrage fragt kein Netz und stellt den Auftrag ein', async () => {
     netz.length = 0;
-    const { base } = testServer(_req, {
-      sitzung: {},
-      apiNutzer: { user_id: haupt, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+    const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
     const r = await fetch(`${base}/api/v1/sets`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

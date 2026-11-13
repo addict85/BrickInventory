@@ -1,21 +1,28 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeMerkliste bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
-import * as merkliste from './repository/merkliste';
-import * as wantedListe from './repository/wantedListe';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeMerkliste bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
+import * as merklisteDienst from './merkliste';
+import * as wantedListeDienst from './wantedListe';
+import { zugang, type MerklisteAbhaengigkeiten, type MerklisteKontext } from './kontext';
 
-export interface MerklisteKontext {
-  db: Db;
-}
+export type { MerklisteAbhaengigkeiten, MerklisteKontext } from './kontext';
 
-export function erzeugeMerkliste(k: MerklisteKontext) {
-  const { db } = k;
+export function erzeugeMerkliste(a: MerklisteAbhaengigkeiten) {
+  const k: MerklisteKontext = baueKontext(a, zugang);
   return {
-    db,
-    merkliste: bindeZugang(db, merkliste),
-    wantedListe: bindeZugang(db, wantedListe),
+    ...k,
+    ...bindeZugang(k, merklisteDienst, [
+      'legeMerkpostenAn',
+      'loescheMerkposten',
+      'verschiebeMerkposten',
+      'merkpostenVon',
+      'uebernimm',
+      'buildMerklisteCsv',
+      'preiseBeiderZustaende',
+      'importiereMerklisteCsv',
+    ]),
+    ...bindeZugang(k, wantedListeDienst, ['importiereWantedListe']),
   };
 }
 

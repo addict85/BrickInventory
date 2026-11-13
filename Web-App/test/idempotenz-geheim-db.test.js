@@ -30,8 +30,9 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -41,8 +42,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 umgebung({ DATA_KEY: Buffer.alloc(32, 7).toString('base64') });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const zf = _req('src/konto/zweiterFaktor.js');
 const geheimnis = _req('src/infra/geheimnis.js');
 const { idempotenz, antwortIstGeheim } = _req('src/idempotenz/http/middleware.js');
@@ -64,7 +65,7 @@ async function fundstellen(text) {
 }
 
 test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const NAME = `idem_geheim_${process.pid}`,
     PASS = 'Geheim-Pruefung-1';
@@ -89,8 +90,8 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     next();
   });
   app.use('/api/v1', idempotenz);
-  app.use('/api/v1/auth', _req('routes/auth.js'));
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const post = (pfad, schluessel, body, methode = 'POST') =>

@@ -14,6 +14,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const net = require('node:net');
@@ -23,10 +24,11 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = _req('db/database.js');
+const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { bis } = require('./helpers/zeit');
 const freierPort = () =>
@@ -41,7 +43,7 @@ test('vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel', {
   concurrency: 1,
   timeout: 180_000,
 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const P = process.pid,
     CHEF = `vpe_chef_${P}`,
     ALT = `vpe_alt_${P}`,

@@ -2,42 +2,20 @@
  * damit die Routen keine Schichten überspringen. */
 import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
-import {
-  auftraegeBereich,
-  naechsteUhrzeit,
-  taeglicheUhrzeit,
-  DAILY_JOBS,
-  ziehePlanVor,
-  zeitplanGeaendert,
-  stelleAuftragEin,
-  anleitungEinreihen,
-  bricksetJetzt,
-  bricksetTermineVorziehen,
-} from '../auftraege';
+import { naechsteUhrzeit, DAILY_JOBS } from '../auftraege';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeFehler, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
-import { leerePreisCache } from '../finanzen';
 import {
-  getRateLimitStatus,
-  setzeKontingentZurueck,
-  clearCatalogCache,
-  clearSubsetsCache,
-  getCacheStats,
-  loescheAnleitungen,
-  vergissFehlend,
   anfragenJeMinute,
-  bildbedarfAnstossen,
-  katalogBilderVormerken,
   alsAbrufFehler,
   pruefeBricklinkZugang,
   ausRetryWarteschlange,
   pruefeBricksetZugang,
   pruefeRebrickableZugang,
 } from '../katalog';
-import { setGlobalSetting } from '../einstellungen';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
-import { verwaltungBereich } from './prozess';
+import type { VerwaltungKontext } from './kontext';
 
 const QUELLEN: Record<string, () => Promise<void>> = {
   rebrickable: pruefeRebrickableZugang,
@@ -80,57 +58,57 @@ export async function quellePruefen(
   }
 }
 
-export async function cacheStatistik() {
+export async function cacheStatistik(k: VerwaltungKontext) {
   const leer = { count: 0, limit: 0, remaining: 0 };
   const ab = new Abstriche();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-    ab.oder('cache', getCacheStats(), { prices: 0, subsets: 0, catalog: 0 }),
-    ab.oder('veraltete_preise', verwaltungBereich().verwaltung.veraltetePreise(), 0),
-    ab.oder('kontingent_bricklink', getRateLimitStatus('bricklink'), leer),
-    ab.oder('kontingent_rebrickable', getRateLimitStatus('rebrickable'), leer),
-    ab.oder('kontingent_brickset', getRateLimitStatus('brickset'), leer),
+    ab.oder('cache', k.katalog.getCacheStats(), { prices: 0, subsets: 0, catalog: 0 }),
+    ab.oder('veraltete_preise', k.verwaltung.veraltetePreise(), 0),
+    ab.oder('kontingent_bricklink', k.katalog.getRateLimitStatus('bricklink'), leer),
+    ab.oder('kontingent_rebrickable', k.katalog.getRateLimitStatus('rebrickable'), leer),
+    ab.oder('kontingent_brickset', k.katalog.getRateLimitStatus('brickset'), leer),
   ]);
   return {
     ...stats,
     price_stale: stale,
     rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS },
-    db_pool: verwaltungBereich().db.getPoolStats(),
+    db_pool: k.db.getPoolStats(),
     ...ab.angabe(),
   };
 }
 
-export async function cachesLeeren(alle: boolean) {
-  await leerePreisCache();
+export async function cachesLeeren(k: VerwaltungKontext, alle: boolean) {
+  await k.finanzen.leerePreisCache();
   if (alle) {
-    await clearSubsetsCache();
-    await clearCatalogCache();
+    await k.katalog.clearSubsetsCache();
+    await k.katalog.clearCatalogCache();
   }
 }
 
 /** Ist heute noch Kontingent da, gleich abarbeiten statt bis morgen zu warten. */
-export async function bricksetLimitGesetzt(alt: number, neu: number) {
+export async function bricksetLimitGesetzt(k: VerwaltungKontext, alt: number, neu: number) {
   if (!(neu > alt)) return;
   // Das neue Limit ist gespeichert; ohne Zählerstand wartet die Schlange auf den nächsten Lauf.
-  const rl = await versuche('verwaltung:getRateLimitStatus', getRateLimitStatus('brickset'));
+  const rl = await versuche('verwaltung:getRateLimitStatus', k.katalog.getRateLimitStatus('brickset'));
   if (!rl.ok) return;
   const rest = Math.max(0, neu - (rl.wert.count || 0));
   if (rest <= 0) return;
   console.log(`[brickset] Limit erhöht ${alt}→${neu}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
-  await bricksetJetzt();
+  await k.auftraege.bricksetJetzt();
 }
 
-export async function anleitungenNeuEinreihen() {
-  const fehlend = await verwaltungBereich().verwaltung.setsOhneAnleitung();
+export async function anleitungenNeuEinreihen(k: VerwaltungKontext) {
+  const fehlend = await k.verwaltung.setsOhneAnleitung();
   for (const { set_number } of fehlend) {
-    await loescheAnleitungen(set_number).catch(logAndContinue('verwaltung:loescheAnleitungen'));
-    await anleitungEinreihen(set_number);
+    await k.katalog.loescheAnleitungen(set_number).catch(logAndContinue('verwaltung:loescheAnleitungen'));
+    await k.auftraege.anleitungEinreihen(set_number);
   }
   return fehlend.length;
 }
 
 /** Im Format von früher, damit die Oberfläche unverändert bleibt. */
-export async function preisJobStand() {
-  const plan = await verwaltungBereich().verwaltung.letzterLaufDerArt();
+export async function preisJobStand(k: VerwaltungKontext) {
+  const plan = await k.verwaltung.letzterLaufDerArt();
   let letzter: {
     lastRun?: string | null;
     lastDuration?: number | null;
@@ -139,7 +117,7 @@ export async function preisJobStand() {
     log?: unknown;
   } = {};
   try {
-    letzter = JSON.parse((await auftraegeBereich().laufzustand.liesZustand('preis_job_stand')) ?? '{}');
+    letzter = JSON.parse((await k.auftraege.laufzustand.liesZustand('preis_job_stand')) ?? '{}');
   } catch (e) {
     meldeFehler('verwaltung:preis-stand', e);
   }
@@ -161,64 +139,65 @@ export async function preisJobStand() {
         : null,
     log: Array.isArray(letzter.log) ? letzter.log : [],
   };
-  return { job, rate_limit: await getRateLimitStatus('bricklink') };
+  return { job, rate_limit: await k.katalog.getRateLimitStatus('bricklink') };
 }
 
 /** false, wenn er schon läuft. */
-export const preisJobJetzt = () => ziehePlanVor('preise');
-export const fehlendeBilderNachladen = () => {
-  void stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 }).catch(
-    logAndContinue('verwaltung:bilder nachladen'),
-  );
+export const preisJobJetzt = (k: VerwaltungKontext) => k.auftraege.ziehePlanVor('preise');
+export const fehlendeBilderNachladen = (k: VerwaltungKontext) => {
+  void k.auftraege
+    .stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 })
+    .catch(logAndContinue('verwaltung:bilder nachladen'));
 };
 
-export const katalogAbgleichJetzt = () => ziehePlanVor('csv_sync');
+export const katalogAbgleichJetzt = (k: VerwaltungKontext) => k.auftraege.ziehePlanVor('csv_sync');
 
 export { bricksetListe } from '../auftraege';
 
 /** Auch über das Tageskontingent hinweg. */
-export async function bricksetWiederholen(sn: string) {
-  await setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
-  await bricksetJetzt(sn);
+export async function bricksetWiederholen(k: VerwaltungKontext, sn: string) {
+  await k.katalog.setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
+  await k.auftraege.bricksetJetzt(sn);
 }
 
-export async function bricksetEntfernen(sn: string) {
+export async function bricksetEntfernen(k: VerwaltungKontext, sn: string) {
   await ausRetryWarteschlange(sn).catch(logAndContinue('verwaltung:ausRetryWarteschlange'));
-  await anleitungEinreihen(sn, { nurAusweichquelle: true });
+  await k.auftraege.anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 
 /** Der offene geplante Auftrag bekommt sofort den neuen Termin. */
-export async function jobZeitplanSetzen(name: unknown, time: unknown, minutes: unknown) {
+export async function jobZeitplanSetzen(k: VerwaltungKontext, name: unknown, time: unknown, minutes: unknown) {
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
     const m = /^(\d{1,2}):(\d{2})$/.exec(String(time || '').trim());
     if (!m || +(m[1] ?? '') > 23 || +(m[2] ?? '') > 59) fachfehler('ungueltig', 'uhrzeit_ungueltig');
-    await setGlobalSetting(
+    await k.einstellungen.setGlobalSetting(
       `job_time_${daily.name}`,
       `${String(+(m[1] ?? '')).padStart(2, '0')}:${String(+(m[2] ?? '')).padStart(2, '0')}`,
     );
   } else if (name === 'priceJob') {
-    await setGlobalSetting('price_job_interval_minutes', String(Math.max(5, parseInt(String(minutes), 10) || 60)));
+    await k.einstellungen.setGlobalSetting(
+      'price_job_interval_minutes',
+      String(Math.max(5, parseInt(String(minutes), 10) || 60)),
+    );
   } else {
     fachfehler('ungueltig', 'unbekannter_job');
   }
-  await zeitplanNeuPlanen();
+  await zeitplanNeuPlanen(k);
 }
 
-export async function zeitplanNeuPlanen() {
-  await zeitplanGeaendert('csv_sync');
-  await zeitplanGeaendert('preise');
-  const bis = naechsteUhrzeit(await taeglicheUhrzeit('brickset_retry'));
-  await bricksetTermineVorziehen(bis);
+export async function zeitplanNeuPlanen(k: VerwaltungKontext) {
+  await k.auftraege.zeitplanGeaendert('csv_sync');
+  await k.auftraege.zeitplanGeaendert('preise');
+  const bis = naechsteUhrzeit(await k.auftraege.taeglicheUhrzeit('brickset_retry'));
+  await k.auftraege.bricksetTermineVorziehen(bis);
 }
 
 /** Fertig ist ein Set mit Original UND Vorschau; zurückgenommene Fehlanzeigen
  * werden mitgezählt. */
-export async function katalogBilderEinreihen(alleErneut: boolean) {
-  const zuVergessen = await (alleErneut
-    ? verwaltungBereich().verwaltung.setFehlanzeigen()
-    : verwaltungBereich().verwaltung.setFehlanzeigenOhne404());
-  const verworfen = zuVergessen.length ? await vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
+export async function katalogBilderEinreihen(kx: VerwaltungKontext, alleErneut: boolean) {
+  const zuVergessen = await (alleErneut ? kx.verwaltung.setFehlanzeigen() : kx.verwaltung.setFehlanzeigenOhne404());
+  const verworfen = zuVergessen.length ? await kx.katalog.vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
   // Was schon fertig ist, wird nicht wieder eingereiht.
   const vorhanden: Set<string> = new Set();
   try {
@@ -235,7 +214,7 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     ohneFehlendeDatei('verwaltung:vorschauen lesen')(e);
   }
 
-  const kandidaten = await verwaltungBereich().verwaltung.katalogBildKandidaten();
+  const kandidaten = await kx.verwaltung.katalogBildKandidaten();
 
   // Dieselbe Namensregel wie downloadSetImage(), sonst fände der Vergleich nichts.
   const dateiname = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
@@ -249,10 +228,10 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
 
   let neuEingereiht = 0;
   if (offenUrls.length) {
-    neuEingereiht = await katalogBilderVormerken(offenUrls, offenSets);
-    await bildbedarfAnstossen();
+    neuEingereiht = await kx.katalog.katalogBilderVormerken(offenUrls, offenSets);
+    await kx.katalog.bildbedarfAnstossen();
   }
-  const offen = await verwaltungBereich().verwaltung.offeneBildauftraege();
+  const offen = await kx.verwaltung.offeneBildauftraege();
   // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
   const proMinute = anfragenJeMinute();
   return {
@@ -266,15 +245,19 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
 }
 /** Ohne Setliste nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen
  * anderen Zweck und verschwinden nur auf Wunsch (`vorschauen`). */
-export async function bildFehlanzeigenVergessen(sets: string[] | null, vorschauen: boolean): Promise<number> {
-  const v = verwaltungBereich().verwaltung;
+export async function bildFehlanzeigenVergessen(
+  k: VerwaltungKontext,
+  sets: string[] | null,
+  vorschauen: boolean,
+): Promise<number> {
+  const v = k.verwaltung;
   const schluessel = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setFehlanzeigen()).map(r => r.cache_key);
   if (vorschauen) schluessel.push(...(await v.vorschauFehlanzeigen()).map(r => r.cache_key));
-  return schluessel.length ? vergissFehlend(schluessel) : 0;
+  return schluessel.length ? k.katalog.vergissFehlend(schluessel) : 0;
 }
 
-export function serverProtokollSeit(minuten: number) {
-  return verwaltungBereich().verwaltung.protokollSeit(minuten);
+export function serverProtokollSeit(k: VerwaltungKontext, minuten: number) {
+  return k.verwaltung.protokollSeit(minuten);
 }
 
 export { KontoBildzeile } from './repository/verwaltung';

@@ -20,13 +20,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async t => {
-  const db = _req('db/database.js');
-  if (!(await dbOderSkip(t, _req))) return;
+  const db = testDaten();
+  if (!(await datenOderSkip(t, _req))) return;
   const P = process.pid,
     NAME = `waehrung-${P}`,
     SN = '10326-1',
@@ -48,12 +49,7 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
     [uid, SN, GS],
   );
   await db.run(`UPDATE set_acquisitions SET price_estimated = true WHERE user_id=$1 AND set_number=$2`, [uid, GS]);
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const hole = async pfad => (await fetch(`${base}/api/v1/${pfad}`)).json();
 
   await t.test('Summe in Kontowährung wie die Finanzen', async () => {

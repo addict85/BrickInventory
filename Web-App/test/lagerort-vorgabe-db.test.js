@@ -1,15 +1,17 @@
 /**
  * Die Lagerort-VORGABE gegen eine echte Datenbank.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 const U = {};
 
@@ -48,7 +50,8 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
     return;
   }
   await seed();
-  const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
+  const bestand = _req('src/bestand/prozess.js').bestandBereich();
+  const L = { ..._req('src/bestand/lagerort.js'), ...bestand.lagerortDienst, setzeVorgabe: bestand.setzeVorgabe };
 
   const estrich = (await L.legeOrtAn(U.ich, 'Estrich')).ort;
   const keller = (await L.legeOrtAn(U.ich, 'Keller')).ort;

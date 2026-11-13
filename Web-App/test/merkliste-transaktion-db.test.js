@@ -13,14 +13,16 @@
  *   D  uebertrageAlarm() ohne NOT EXISTS → rot: „Ziel mit eigenem Alarm“
  *      (Primärschlüsselverletzung)
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 const U = {};
 
@@ -64,7 +66,7 @@ async function mitBremse(fn) {
 }
 
 test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   await seed();
   const W = _req('src/merkliste/merkliste.js');

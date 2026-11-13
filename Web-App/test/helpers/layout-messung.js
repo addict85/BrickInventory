@@ -70,7 +70,22 @@ const LAYOUT = telefon => `(() => {
   const zu = [...wurzel.querySelectorAll('*')].filter(e => { const r = e.getBoundingClientRect();
     return r.width > 2 && (r.right > breite + 1 || r.left < -1) && sichtbar(e) && !rollt(e); });
   if (document.documentElement.scrollWidth > breite + 1 || zu.length)
-    funde.push('Überlauf ' + Math.max(0, document.documentElement.scrollWidth - breite) + ' px: ' + zu.slice(0, 3).map(name).join(', '));
+  {
+    // Zuerst, was im Fluss am weitesten hinausragt: Es zieht die Seite breit; feste Leisten folgen nur.
+    const rechts = (e) => e.getBoundingClientRect().right;
+    const zieher = zu.filter(e => !fest(e)).sort((a, b) => rechts(b) - rechts(a));
+    const liste = [...zieher.slice(0, 2), ...zu.filter(e => !zieher.slice(0, 2).includes(e)).slice(0, 3 - Math.min(2, zieher.length))];
+    // Ragt nichts Sichtbares hinaus, zieht ein verborgenes Element die Seite breit: das äusserste nennen.
+    let aussen = null;
+    if (!zieher.length) for (const e of document.body.querySelectorAll('*')) { const r = e.getBoundingClientRect(); if (r.width > 0 && r.right > breite + 1 && !fest(e) && !rollt(e) && (!aussen || r.right > aussen.r)) aussen = { e, r: r.right }; }
+    const verborgen = aussen ? '; verborgen: ' + name(aussen.e) + ' bis ' + Math.round(aussen.r) + ' px' : '';
+    // Die Reiterleiste ist fest und kann das Fenster selbst aufweiten: dann ihre Masse dazu.
+    const leiste = liste.find(e => e.matches('nav:not(.einst-nav)'));
+    const ls = leiste && getComputedStyle(leiste);
+    const reiter = leiste ? [...leiste.querySelectorAll('.ntab')].filter(sichtbar) : [];
+    const masse = leiste ? '; Leiste ' + Math.round(leiste.getBoundingClientRect().width) + ' px, Schrift ' + ls.fontSize + ', ' + ls.flexWrap + ', ' + reiter.length + ' Reiter je ' + (reiter[0] ? getComputedStyle(reiter[0]).flexBasis : '?') + ' (' + reiter.map(r => Math.round(r.getBoundingClientRect().width)).join('/') + ')' : '';
+    funde.push('Überlauf ' + Math.max(0, document.documentElement.scrollWidth - breite) + ' px (Fenster ' + innerWidth + ', Seite ' + breite + '): ' + liste.map(name).join(', ') + verborgen + masse);
+  }
 
   // 2. Bedienelemente: Tippziele und Überlappung.
   const SEL = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab], [tabindex]:not([tabindex="-1"])';

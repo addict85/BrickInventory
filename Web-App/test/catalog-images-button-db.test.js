@@ -5,7 +5,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
-const Module = require('node:module');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -13,42 +12,24 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Herunterladen und Verkleinern abfangen — hier zählt, WAS aufgerufen wird.
 let geladen = 0;
 const verkleinert = [];
-const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = echtesRequire.call(this, name, ...rest);
-  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
-  // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
-  // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'downloadSetImage'
-          ? async (_u, sn) => {
-              geladen++;
-              return `/images/sets/${sn}.jpg`;
-            }
-          : t[k],
-    });
-  }
-  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m?.generateThumb) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'generateThumb'
-          ? async p => {
-              verkleinert.push(p);
-              return true;
-            }
-          : t[k],
-    });
-  }
-  return m;
-};
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const _req = buildAndRequire();
+testBildwerk(null, {
+  setBildLaden: async (_u, sn) => {
+    geladen++;
+    return `/images/sets/${sn}.jpg`;
+  },
+  vorschauErzeugen: async p => {
+    verkleinert.push(p);
+    return true;
+  },
+});
 const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
+const db = testDaten();
 
 test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
   try {
@@ -90,12 +71,8 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
   await db.run(`INSERT INTO image_misses (cache_key, reason) VALUES ($1,$2)`, [`set:${P}_3`, 'HTTP 404 vom CDN']);
   await db.run(`INSERT INTO image_misses (cache_key) VALUES ($1)`, [`set:${P}_4`]);
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: 1 },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
 
   try {
     await t.test('der Knopf reiht ein, ohne bekannte Fehlanzeigen', async () => {
@@ -234,7 +211,6 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
-    Module.prototype.require = echtesRequire;
   }
 });
 

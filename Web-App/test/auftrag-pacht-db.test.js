@@ -45,11 +45,12 @@ Module.prototype.require = function (name, ...rest) {
   };
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 
 test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const A = Object.assign(
     {},
@@ -57,7 +58,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
   );
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   t.after(async () => {
-    await _req('db/database.js').standardDb().benachrichtigung.close();
+    await testZugang().benachrichtigung.close();
     await db.pool.end().catch(() => {});
   });
 

@@ -5,8 +5,7 @@ import { bricklinkRequest, alsAbrufFehler } from './quellen';
 import { mitVersion, ohneBricklinkPreis, ohneVersion } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import type { KatalogEintrag } from './repository/katalogCache';
-import { katalog } from './prozess';
-import type { KatalogDienste } from './bereich';
+import type { KatalogKontext } from './kontext';
 
 export type PreisDatensatz = { avg_price?: unknown; qty_avg_price?: unknown } | null | undefined;
 
@@ -25,12 +24,12 @@ export function hatPreis(row: PreisDatensatz): boolean {
 
 export type { KatalogEintrag };
 
-export function setBekanntImKatalog(setNumber: string): Promise<boolean> {
-  return katalog().katalogCache.setImKatalog(mitVersion(setNumber));
+export function setBekanntImKatalog(k: KatalogKontext, setNumber: string): Promise<boolean> {
+  return k.katalogCache.setImKatalog(mitVersion(setNumber));
 }
 
 /** Unter der Schreibweise, unter der er abgelegt wird. */
-export function katalogEintrag(setNumber: string, k: KatalogDienste = katalog()): Promise<KatalogEintrag | null> {
+export function katalogEintrag(k: KatalogKontext, setNumber: string): Promise<KatalogEintrag | null> {
   return k.katalogCache.katalogEintragZu(mitVersion(setNumber));
 }
 
@@ -41,11 +40,17 @@ const weiterVersuchen = (e: unknown) => {
 };
 
 // Vorgabe 'N': Ohne Zustand wurde sonst der Gebrauchtpreis geholt und gecacht.
-async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
+async function getPriceGuideRaw(
+  k: KatalogKontext,
+  setNumber: string,
+  condition = 'N',
+  guideType = 'sold',
+  currencyCode = 'EUR',
+) {
   const n = mitVersion(setNumber);
   const bare = ohneVersion(n);
   const params = { guide_type: guideType, new_or_used: condition, currency_code: currencyCode, vat: 'N' };
-  const cached = await katalogEintrag(n);
+  const cached = await katalogEintrag(k, n);
   if (cached?.bl_type === 'GEAR') return await bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
   if (cached?.bl_type === 'BOOK') return await bricklinkRequest('GET', `/items/book/${bare}/price`, params);
   if (ohneBricklinkPreis(cached)) fachfehler('nicht_gefunden', 'kein_bricklink_preis');
@@ -57,25 +62,31 @@ async function getPriceGuideRaw(setNumber: string, condition = 'N', guideType = 
   for (const art of ['GEAR', 'BOOK'] as const) {
     try {
       const result = await bricklinkRequest('GET', `/items/${art.toLowerCase()}/${bare}/price`, params);
-      await katalog().katalogCache.merkeBricklinkArt(n, art);
+      await k.katalogCache.merkeBricklinkArt(n, art);
       return result;
     } catch (e) {
       if (!weiterVersuchen(e)) throw e;
     }
   }
-  await katalog().katalogCache.merkeBricklinkArt(n, 'NONE');
+  await k.katalogCache.merkeBricklinkArt(n, 'NONE');
   throw new Error(`${n} nicht auf BrickLink gefunden (Set/Gear/Book) — kein Preis`);
 }
 
 // Erst Verkäufe, sonst Angebote: Selten gehandelte Artikel hätten sonst nie einen Preis.
-export async function getPriceGuide(setNumber: string, condition = 'N', guideType = 'sold', currencyCode = 'EUR') {
-  const first = await getPriceGuideRaw(setNumber, condition, guideType, currencyCode);
+export async function getPriceGuide(
+  k: KatalogKontext,
+  setNumber: string,
+  condition = 'N',
+  guideType = 'sold',
+  currencyCode = 'EUR',
+) {
+  const first = await getPriceGuideRaw(k, setNumber, condition, guideType, currencyCode);
   if (hatPreis(first) || guideType !== 'sold') {
     return { ...first, guide_used: guideType };
   }
   // Kein Verkauf in sechs Monaten → aktuelle Angebote heranziehen.
   try {
-    const alt = await getPriceGuideRaw(setNumber, condition, 'stock', currencyCode);
+    const alt = await getPriceGuideRaw(k, setNumber, condition, 'stock', currencyCode);
     if (hatPreis(alt)) return { ...alt, guide_used: 'stock', guide_fallback: true };
   } catch (_) {
     /* Rückfall ist optional — dann bleibt es beim leeren Ergebnis */
@@ -84,12 +95,12 @@ export async function getPriceGuide(setNumber: string, condition = 'N', guideTyp
 }
 
 // Ohne Nummer der ganze Speicher.
-export async function clearSubsetsCache(sn: string | null = null) {
-  await katalog().katalogCache.leereSubsetsCache(sn ? mitVersion(sn) : null);
+export async function clearSubsetsCache(k: KatalogKontext, sn: string | null = null) {
+  await k.katalogCache.leereSubsetsCache(sn ? mitVersion(sn) : null);
 }
 
-export async function clearCatalogCache(sn: string | null = null) {
-  await katalog().katalogCache.leereKatalogCache(sn ? mitVersion(sn) : null);
+export async function clearCatalogCache(k: KatalogKontext, sn: string | null = null) {
+  await k.katalogCache.leereKatalogCache(sn ? mitVersion(sn) : null);
 }
 
-export const getCacheStats = () => katalog().katalogCache.cacheZahlen();
+export const getCacheStats = (k: KatalogKontext) => k.katalogCache.cacheZahlen();

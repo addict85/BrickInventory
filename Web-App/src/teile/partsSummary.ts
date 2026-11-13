@@ -2,21 +2,21 @@
  * Sekunden braucht. */
 import { fehlertext } from '../infra/fehler';
 import * as repo from './repository/teileZusammenfassung';
-import { teileBereich } from './prozess';
+import type { TeileKontext } from './kontext';
 
-const currentVersion = (userId: number) => teileBereich().teileZusammenfassung.rohstand(userId);
+const currentVersion = (k: TeileKontext, userId: number) => k.teileZusammenfassung.rohstand(userId);
 
-export async function rebuild(userId: number, version?: { v: number }): Promise<void> {
-  const stand = version ?? (await currentVersion(userId));
+export async function rebuild(k: TeileKontext, userId: number, version?: { v: number }): Promise<void> {
+  const stand = version ?? (await currentVersion(k, userId));
   // Ob DIESER Aufruf gebaut hat: Hält ein anderer die Sperre, gibt es nichts
   // nachzupflegen.
   let gebaut = false;
-  await teileBereich().db.transaction(async tx => {
+  await k.transaktion(async t => {
     // Sperre über die Datenbank, nicht nur über _rebuilding: Mehrere Prozesse.
-    if (!(await repo.sperreKonto(tx, userId))) {
+    if (!(await repo.sperreKonto(t.db, userId))) {
       return;
     }
-    await repo.baueNeu(tx, userId, stand.v);
+    await repo.baueNeu(t.db, userId, stand.v);
     gebaut = true;
   });
 
@@ -24,9 +24,7 @@ export async function rebuild(userId: number, version?: { v: number }): Promise<
   // Index. Höchstens alle zehn Minuten, weil ANALYZE die Tabelle aller Konten vermisst.
   if (gebaut && Date.now() - _letzteAnalyse > 10 * 60_000) {
     _letzteAnalyse = Date.now();
-    await teileBereich()
-      .teileZusammenfassung.analysiere()
-      .catch((e: Error) => console.warn('[partsSummary] ANALYZE:', e.message));
+    await k.teileZusammenfassung.analysiere().catch((e: Error) => console.warn('[partsSummary] ANALYZE:', e.message));
   }
 }
 
@@ -34,9 +32,9 @@ let _letzteAnalyse = 0;
 
 const _rebuilding = new Map<number, Promise<void>>();
 
-function rebuildInBackground(userId: number, v: { v: number }) {
+function rebuildInBackground(k: TeileKontext, userId: number, v: { v: number }) {
   if (_rebuilding.has(userId)) return;
-  const p = rebuild(userId, v)
+  const p = rebuild(k, userId, v)
     .catch(e => console.error('[partsSummary] Hintergrundaufbau:', e.message))
     .finally(() => {
       _rebuilding.delete(userId);
@@ -45,24 +43,28 @@ function rebuildInBackground(userId: number, v: { v: number }) {
 }
 
 // Baut nicht im Request auf: Der Neuaufbau kostete den Teile-Reiter Sekunden.
-export async function ensureFresh(userId: number | number[], opts?: { strict?: boolean }): Promise<boolean> {
+export async function ensureFresh(
+  k: TeileKontext,
+  userId: number | number[],
+  opts?: { strict?: boolean },
+): Promise<boolean> {
   // Frisch ist die Haushaltssicht nur, wenn sie es für JEDES beteiligte Konto ist.
   const ids = Array.isArray(userId) ? userId : [userId];
   if (ids.length > 1) {
-    const results = await Promise.all(ids.map(id => ensureFresh(id, opts)));
+    const results = await Promise.all(ids.map(id => ensureFresh(k, id, opts)));
     return results.every(Boolean);
   }
   userId = ids[0] ?? 0;
   try {
     const [v, state] = await Promise.all([
-      currentVersion(userId as number),
-      teileBereich().teileZusammenfassung.gebauterStand(userId),
+      currentVersion(k, userId as number),
+      k.teileZusammenfassung.gebauterStand(userId),
     ]);
     // Hält ein anderer Prozess die Sperre, ist der Stand nicht gesichert.
-    const katalogNachgezogen = !v.katalogOffen || (await katalogEinmalNachziehen()) !== null;
+    const katalogNachgezogen = !v.katalogOffen || (await katalogEinmalNachziehen(k)) !== null;
     if (state === v.v && katalogNachgezogen) return true;
 
-    rebuildInBackground(userId, v);
+    rebuildInBackground(k, userId, v);
 
     // strict: Nur ein AKTUELLER Stand zählt, damit Kennzahlen überall übereinstimmen.
     if (opts?.strict) return false;
@@ -79,8 +81,8 @@ export async function ensureFresh(userId: number | number[], opts?: { strict?: b
 
 /** Ein Nachzug je Prozess: Die Konten eines Haushalts fragen gleichzeitig. */
 let _nachzug: ReturnType<typeof zieheKatalogNach> | null = null;
-function katalogEinmalNachziehen() {
-  _nachzug ??= zieheKatalogNach().finally(() => {
+function katalogEinmalNachziehen(k: TeileKontext) {
+  _nachzug ??= zieheKatalogNach(k).finally(() => {
     _nachzug = null;
   });
   return _nachzug;
@@ -91,31 +93,31 @@ const KATALOG_EINZELN_BIS = 5000;
 /** Je Konto nur die Gruppen mit einer geänderten Nummer — vorher wie nachher,
  * denn eine neue BL-Zuordnung verschiebt ein Teil in eine andere Gruppe.
  * @returns null, wenn ein anderer Prozess gerade nachzieht */
-export async function zieheKatalogNach(): Promise<{ konten: number; gruppen: number } | null> {
-  return teileBereich().db.transaction(async tx => {
-    if (!(await repo.sperreKatalogNachzug(tx))) return null;
-    const nummern = await repo.holeOffeneNummern(tx);
+export async function zieheKatalogNach(k: TeileKontext): Promise<{ konten: number; gruppen: number } | null> {
+  return k.transaktion(async t => {
+    if (!(await repo.sperreKatalogNachzug(t.db))) return null;
+    const nummern = await repo.holeOffeneNummern(t.db);
     if (!nummern.length) return { konten: 0, gruppen: 0 };
-    if (nummern.length > KATALOG_EINZELN_BIS) return { konten: await repo.verwirfAlleStaende(tx), gruppen: -1 };
-    const betroffen = await repo.betroffeneGruppen(tx, nummern);
+    if (nummern.length > KATALOG_EINZELN_BIS) return { konten: await repo.verwirfAlleStaende(t.db), gruppen: -1 };
+    const betroffen = await repo.betroffeneGruppen(t.db, nummern);
     const jeKonto = new Map<number, string[]>();
     for (const b of betroffen) jeKonto.set(b.user_id, [...(jeKonto.get(b.user_id) ?? []), b.part_key]);
     for (const [uid, gruppen] of jeKonto) {
       // Ein laufender Neuaufbau wird abgewartet, damit er nicht mit älterem Katalog
       // überschreibt.
-      await repo.warteAufKonto(tx, uid);
-      await repo.baueGruppenNeu(tx, uid, gruppen);
+      await repo.warteAufKonto(t.db, uid);
+      await repo.baueGruppenNeu(t.db, uid, gruppen);
     }
     return { konten: jeKonto.size, gruppen: betroffen.length };
   });
 }
 
 /** Für Stellen, die danach garantiert aktuelle Zahlen brauchen (Ende eines CSV-Imports). */
-export async function rebuildNow(userId: number): Promise<void> {
+export async function rebuildNow(k: TeileKontext, userId: number): Promise<void> {
   const running = _rebuilding.get(userId);
   if (running) return running;
-  const v = await currentVersion(userId);
-  const p = rebuild(userId, v).finally(() => {
+  const v = await currentVersion(k, userId);
+  const p = rebuild(k, userId, v).finally(() => {
     _rebuilding.delete(userId);
   });
   _rebuilding.set(userId, p);

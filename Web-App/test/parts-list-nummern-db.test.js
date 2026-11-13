@@ -11,9 +11,10 @@ const express = require('express');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 
 async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
@@ -66,7 +67,7 @@ test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, 
     req.apiUser = { user_id: 1, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(async () => {
     srv.close();

@@ -97,7 +97,7 @@ test('die Import-Abfrage läuft nicht ungebremst und nicht vor dem Login', () =>
   // Versuch "Unexpected token '<'".
   const core = stripModuleSyntax(require('./helpers/sources').coreQuelle());
   const fn = core.slice(core.indexOf('async function gibCheckOnLoad'), core.indexOf('let _gibCheckTimer = null;'));
-  assert.match(fn, /if \(!ME\) return;/, 'Ohne Anmeldung gibt es nichts zu prüfen');
+  assert.match(fn, /if \(!ME( \|\| document\.hidden)?\) return;/, 'Ohne Anmeldung gibt es nichts zu prüfen');
   assert.match(fn, /ct\.includes\('application\/json'\)/, 'Die Antwort muss vor dem Parsen geprüft werden');
   assert.match(fn, /setInterval\(doCheck, 30000\)/, 'Nach mehreren Fehlschlägen muss die Abfrage langsamer werden');
   assert.doesNotMatch(

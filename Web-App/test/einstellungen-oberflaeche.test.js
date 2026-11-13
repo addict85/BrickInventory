@@ -47,10 +47,10 @@ test('Speichern-Knöpfe sehen gleich aus', async () => {
   const { w, d } = await oeffneOberflaeche(NUTZER);
   try {
     await reiter(w, 'settings');
-    const knoepfe = ['btn-save-theme', 'btn-sav-bl', 'btn-sav-rb', 'btn-sav-bs', 'btn-sav-smtp', 'btn-sav-prof']
+    const knoepfe = ['btn-sav-bl', 'btn-sav-rb', 'btn-sav-bs', 'btn-sav-smtp', 'btn-sav-prof']
       .map(id => d.getElementById(id))
       .concat([d.querySelector('[data-click="gutscheinSpeichern"]')]);
-    assert.equal(knoepfe.filter(Boolean).length, 7, 'Nicht alle sieben Knöpfe gefunden');
+    assert.equal(knoepfe.filter(Boolean).length, 6, 'Nicht alle sechs Knöpfe gefunden');
     for (const k of knoepfe) {
       const name = k.id || k.dataset.click;
       assert.equal(k.textContent.trim(), 'Speichern', `${name}: „${k.textContent.trim()}“`);

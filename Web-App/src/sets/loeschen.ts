@@ -26,16 +26,16 @@ export async function loescheSet(sk: SetsKontext, userId: Blickfeld, setNumber: 
   const uids = asIds(userId);
   // Atomar: Ein abgebrochenes DELETE liesse sonst Teile und Figuren ohne Set in
   // Teileliste und Finanzsummen zurück.
-  return sk.db.transaction(async tx => {
-    const besitzer = await repo.besitzerDesSets(tx, uids, setNumber);
+  return sk.transaktion(async t => {
+    const besitzer = await repo.besitzerDesSets(t.db, uids, setNumber);
     if (!besitzer.length) return null;
     // Ein Eintrag je Konto: Wiederhergestellt wird in das Konto, dem es gehörte.
     const papierkorb: number[] = [];
     for (const b of besitzer) {
-      const id = await legeInPapierkorb(tx, 'set', b.user_id, setNumber);
+      const id = await legeInPapierkorb(t.db, 'set', b.user_id, setNumber);
       if (id !== null) papierkorb.push(id);
     }
-    await deleteSetRows(tx, uids, setNumber);
+    await deleteSetRows(t.db, uids, setNumber);
     return papierkorb;
   });
 }

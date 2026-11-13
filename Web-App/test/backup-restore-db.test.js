@@ -13,6 +13,8 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL UND die PostgreSQL-Klienten
  * (pg_dump/psql). Ohne DB: skip, ausser REQUIRE_DB=1.
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,11 +31,11 @@ const AUFRUF_FRIST = 120_000;
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ROOT } = require('./helpers/sources');
+const { ROOT, testDaten } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb, fehltVoraussetzung } = require('./helpers/db');
 const { haeltSet, haeltTeil, mengeVon, teilmengeVon, katalogSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 /** pg_dump/psql finden — auf dem PATH oder in einer Distributions-Installation. */
 function klient(name) {

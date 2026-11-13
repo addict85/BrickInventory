@@ -29,7 +29,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
@@ -38,7 +38,7 @@ umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Versandte Hinweise mitschreiben, bevor routes/auth die Mail-Funktionen bindet.
@@ -63,13 +63,13 @@ require.cache[mailerPfad].exports = Object.assign({}, echt, {
   },
 });
 
-const db = _req('db/database.js');
+const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `mailneu_${process.pid}`,
   PASS = 'Passwort12345';
 
 test('E-Mail ändern', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_b`]]);
   const anderes = (
@@ -90,11 +90,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const profil = async body => {
     const r = await fetch(`${base}/api/v1/auth/profile`, {
       method: 'PUT',

@@ -17,6 +17,7 @@
  *   D  setInterval in wacheUeberZugang() gestrichen → rot: „ohne Ereignis endet
  *      der Strom im Takt“
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -51,6 +52,7 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
     pool: db.pool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 's'.repeat(48),
+    dienste: _req('src/infra/bereich.js').prozessDienste(),
   });
   const srv = app.listen(0);
   t.after(() => {

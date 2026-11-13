@@ -29,7 +29,7 @@ const { keineDb } = require('./helpers/db');
 // Der Pfad muss auf das GEBAUTE Modul in dist/ zeigen — dort lädt der Router
 // seine Abhängigkeit, und nur ein Treffer im selben require-Cache-Eintrag
 // ersetzt sie wirksam.
-const { DIST } = require('./helpers/sources');
+const { DIST, testDaten } = require('./helpers/sources');
 const mwPath = require.resolve(path.join(DIST, 'routes/api_v1', 'middleware.js'));
 require.cache[mwPath] = {
   id: mwPath,
@@ -43,7 +43,7 @@ require.cache[mwPath] = {
   },
 };
 
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 async function dbReachable() {
@@ -135,7 +135,7 @@ test('Katalog-API (Postgres-Integration)', async t => {
   }
   await seed();
   const app = express();
-  app.use('/api/v1', _req('routes/api_v1/catalog.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/catalog.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}/api/v1`;
   const get = async p => {

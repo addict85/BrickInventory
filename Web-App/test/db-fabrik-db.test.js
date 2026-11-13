@@ -13,6 +13,8 @@
  *      in db/database.ts → rot: „db/database führt keinen Zugang des Prozesses“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,7 +22,8 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const DIST = require('./helpers/sources').DIST;
 const { keineDb } = require('./helpers/db');
 
@@ -44,15 +47,16 @@ test('der Import öffnet keinen Pool', () => {
 });
 
 test('zwei Zugänge, zwei Transaktionen', async t => {
-  const db = _req('db/database.js');
+  const db = testDaten();
   try {
     await db.get('SELECT 1');
   } catch (e) {
     keineDb(t, e);
     return;
   }
-  const a = db.erzeugeDb(db.dbKonfigAusUmgebung()),
-    b = db.erzeugeDb(db.dbKonfigAusUmgebung());
+  const modul = require(path.join(DIST, 'db', 'database.js'));
+  const a = modul.erzeugeDb(modul.dbKonfigAusUmgebung()),
+    b = modul.erzeugeDb(modul.dbKonfigAusUmgebung());
   t.after(async () => {
     await a.pool.end();
     await b.pool.end();

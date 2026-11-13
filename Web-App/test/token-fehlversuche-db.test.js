@@ -27,22 +27,22 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const { routerServer } = require('./helpers/server');
+const db = require('./helpers/sources').testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const bremse = _req('src/konto/tokenFehlversuche.js');
 const { anmeldungAmEingang } = _req('routes/api_v1/middleware.js');
-const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
+const pgNotify = require('./helpers/sources').testZugang().benachrichtigung;
 const { bis } = require('./helpers/zeit');
 
 const NAME = `fehlversuch_${process.pid}`;
 
 test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const server = testServer(_req, { t, sitzung: {}, routen: {} });
+  const server = routerServer(_req, { t, sitzung: {}, routen: {} });
   server.app.use('/api/v1', anmeldungAmEingang);
   server.app.get('/api/v1/probe', (_req2, res) => res.json({ ok: true }));
   // Den Cache gibt es nur mit stehender Horch-Verbindung für Widerrufe (fail closed).
@@ -56,14 +56,18 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   });
 
   // Gezählt wird die Token-Abfrage an der Verbindung, nicht ein Aufruf im Quelltext.
-  const echt = db.pool.query.bind(db.pool);
+  // In den Pools der App (Laufzeit- und Systemrolle), nicht im Zugang der Testdaten.
+  const zugang = require('./helpers/sources').testZugang();
+  const pools = [...new Set([zugang.pool, zugang.systemPool])];
+  const echt = pools.map(p => p.query);
   let abfragen = 0;
-  db.pool.query = (sql, ...rest) => {
-    if (typeof sql === 'string' && /FROM api_tokens t JOIN users u/.test(sql)) abfragen++;
-    return echt(sql, ...rest);
-  };
+  for (const [i, p] of pools.entries())
+    p.query = (sql, ...rest) => {
+      if (typeof sql === 'string' && /FROM api_tokens t JOIN users u/.test(sql)) abfragen++;
+      return echt[i].call(p, sql, ...rest);
+    };
   t.after(() => {
-    db.pool.query = echt;
+    for (const [i, p] of pools.entries()) p.query = echt[i];
   });
 
   const ruf = async token => {
