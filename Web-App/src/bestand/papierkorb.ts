@@ -1,6 +1,7 @@
 import { haushaltBereich, type Schreiber } from '../haushalt';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/papierkorb';
+import * as kauf from './repository/kaufErfassungen';
 import type { PapierArt } from './repository/papierkorb';
 import { bestandBereich } from './prozess';
 
@@ -35,6 +36,42 @@ export async function legeInPapierkorb(
   const name = await repo.bezeichnung(tx, art, userId, nummer, farbeId);
   return repo.legeEintragAn(tx, userId, art, nummer, art === 'teil' ? farbeId : null, name, zeilen);
 }
+
+/** Einzelne Käufe eines Sets, die eine Mengenverringerung wegnahm: Die Bestandszeile bleibt, darum ein
+ * Eintrag ohne `sets`-Zeile. Wiederherstellen legt die Mengen zurück (stelleKaeufeWiederHer).
+ * @param zeilen je Kauf die ganze Zeile, `quantity` = die weggenommene Menge */
+export async function legeKaeufeInPapierkorb(
+  tx: DbSchnittstelle,
+  userId: number,
+  nummer: string,
+  zeilen: Record<string, unknown>[],
+): Promise<number | null> {
+  if (!zeilen.length) return null;
+  const name = await repo.bezeichnung(tx, 'set', userId, nummer, null);
+  const leer = Object.fromEntries(repo.tabellenDerArt('set').map(t => [t, [] as unknown[]]));
+  return repo.legeEintragAn(tx, userId, 'set', nummer, null, name, { ...leer, set_acquisitions: zeilen });
+}
+
+/** Zurück in die Zeile, aus der die Menge kam; gibt es sie nicht mehr, in eine gleiche Zeile desselben Tages
+ * (der eindeutige Index erlaubt keine zweite), sonst als neue Zeile. Ohne Bestandszeile ging das Set
+ * inzwischen ganz weg: Dann zuerst dessen Eintrag wiederherstellen. */
+async function stelleKaeufeWiederHer(tx: DbSchnittstelle, e: { user_id: number; nummer: string }, kaeufe: Kauf[]) {
+  if (!(await repo.hatSetZeile(tx, e.user_id, e.nummer))) return false;
+  for (const k of kaeufe) {
+    const menge = Number(k.quantity) || 0;
+    if (await kauf.stockeErfassungAuf(tx, 'set', Number(k.id), e.user_id, menge)) continue;
+    const gleich = await kauf.gleicheErfassungAmTag(tx, 'set', e.user_id, [e.nummer], String(k.tag), -1, {
+      zustand: String(k.condition ?? 'N'),
+      preis: k.purchase_price == null ? null : Number(k.purchase_price),
+      geschaetzt: !!k.price_estimated,
+      waehrung: k.currency == null ? null : String(k.currency),
+    });
+    if (gleich && (await kauf.stockeErfassungAuf(tx, 'set', gleich, e.user_id, menge))) continue;
+    await repo.schreibeZurueck(tx, 'set_acquisitions', [k]);
+  }
+  return true;
+}
+type Kauf = Record<string, unknown>;
 
 export interface PapierkorbEintrag {
   id: number;
@@ -71,6 +108,12 @@ export async function stelleWiederHer(uidsWahl: Schreiber | number[], id: number
       const e = await repo.eintragSperren(tx, id, uids);
       if (!e) return { ok: false, code: 'nicht_gefunden' };
       const art = e.art as Art;
+      const kaeufe = art === 'set' && !e.zeilen?.sets?.length ? (e.zeilen?.set_acquisitions ?? []) : null;
+      if (kaeufe) {
+        if (!(await stelleKaeufeWiederHer(tx, e, kaeufe))) return { ok: false, code: 'nicht_gefunden' };
+        await repo.entferneEintrag(tx, id);
+        return { ok: true, art, nummer: e.nummer, user_id: e.user_id };
+      }
       for (const tabelle of repo.tabellenDerArt(art))
         await repo.schreibeZurueck(tx, tabelle, e.zeilen?.[tabelle] ?? []);
       await repo.entferneEintrag(tx, id);

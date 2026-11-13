@@ -60,9 +60,11 @@ import { deleteManualPart } from './parts.js';
       'setzeDunkel',
       'setzeEigenesDesign',
       'speichereAlarm',
+      'speichereCacheTtl',
       'speichereWaehrung',
       'speichereZustand',
       'speichereSetLagerort',
+      'speichereStandardZustand',
       'speichereTeilFarbe',
       'speichereTeilLagerort',
       'startSetCsvImport',
@@ -201,7 +203,8 @@ import { deleteManualPart } from './parts.js';
       ev.key === 'Delete' && el.matches('[aria-keyshortcuts~="Delete"]')
         ? el.querySelector(':scope > .ca > .delbtn')
         : null;
-    if (kreuz?.checkVisibility()) {
+    // Gesperrt ist es nur, wenn der Knopf selbst fehlt (ohne Netz); ohne Überfahren ist bloss die Ecke leer.
+    if (kreuz && getComputedStyle(kreuz).display !== 'none') {
       ev.preventDefault();
       /** @type {HTMLElement} */
       (kreuz).click();
@@ -423,7 +426,7 @@ export function saveJobTime(k) {
     return;
   }
   this.value = m[1].padStart(2, '0') + ':' + m[2];
-  saveJobSchedule(k, { time: this.value });
+  saveJobSchedule(k, { time: this.value }, this);
 }
 
 /**
@@ -431,7 +434,7 @@ export function saveJobTime(k) {
  * @this {HTMLInputElement}
  */
 export function saveJobMinutes(k) {
-  saveJobSchedule(k, { minutes: Number(this.value) });
+  saveJobSchedule(k, { minutes: Number(this.value) }, this);
 }
 
 // owner: Besitzer der Karte. Ohne ihn schriebe der Server in die Zeile des Aufrufers statt in die angezeigte

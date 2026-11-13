@@ -54,6 +54,22 @@ export function setErfassungenNeuesteZuerst(dbh: DbSchnittstelle, userId: number
   );
 }
 
+/** Die ganze Zeile, für den Papierkorb: Wiederherstellen schreibt sie Spalte für Spalte zurück. */
+export async function setErfassungAlsJson(dbh: DbSchnittstelle, id: number) {
+  return (
+    await dbh.get<{ z: Record<string, unknown> }>('SELECT to_jsonb(t) AS z FROM set_acquisitions t WHERE id = $1', [id])
+  )?.z;
+}
+
+export async function setErfassungenAlsJson(dbh: DbSchnittstelle, userId: number, setNumber: string) {
+  return (
+    await dbh.all<{ z: Record<string, unknown> }>(
+      'SELECT to_jsonb(t) AS z FROM set_acquisitions t WHERE user_id = $1 AND set_number = $2 ORDER BY created_at DESC, id DESC',
+      [userId, setNumber],
+    )
+  ).map(r => r.z);
+}
+
 export function loescheSetErfassungNachId(dbh: DbSchnittstelle, id: number) {
   return dbh.run('DELETE FROM set_acquisitions WHERE id=$1', [id]);
 }

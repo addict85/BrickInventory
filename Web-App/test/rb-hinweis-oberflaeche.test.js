@@ -1,7 +1,7 @@
 /**
  * Fehlt der Rebrickable-Schlüssel, öffnet der Verwalter trotzdem seine
  * Sammlung. Ein Band weist darauf hin, führt auf Wunsch zum Feld und lässt
- * sich für 30 Tage wegklicken. Am echten Bündel in jsdom.
+ * sich je Konto dauerhaft wegklicken. Am echten Bündel in jsdom.
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in checkRbKey wieder der Sprung auf den Reiter „settings“ → rot:
@@ -13,6 +13,9 @@
  *   D  rbHinweisOeffnen ohne Klick auf den Abschnitt → rot: „Link führt zum Feld“
  *   E  einrichtungSpaeter ohne rbHinweisZeigen() → rot: „nach „Später“ im
  *      Assistenten erscheint das Band“
+ *   F  (12.11.2026, UX-Prüfung 19 M4: dauerhaft je Konto) Schlüssel wieder
+ *      ohne Konto → rot: „ein anderes Konto sieht es wieder“; mit Frist von
+ *      30 Tagen → rot: „auch nach 31 Tagen bleibt es weg“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -67,13 +70,13 @@ test('weggeklickt bleibt es weg — auch in einer neuen Sitzung', async () => {
     await warte(() => !band.hidden, 2000);
     band.querySelector('[data-click="rbHinweisWeg"]').click();
     assert.equal(band.hidden, true);
-    gemerkt = erst.w.localStorage.getItem('bim_rb_hinweis_weg');
+    gemerkt = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hinweis_weg:'));
     assert.ok(gemerkt, 'nichts in localStorage gemerkt');
   } finally {
     erst.w.close();
   }
   const zweit = await oeffneOberflaeche(OHNE_SCHLUESSEL, {
-    vorher: w => w.localStorage.setItem('bim_rb_hinweis_weg', gemerkt),
+    vorher: w => w.localStorage.setItem(gemerkt, '1'),
   });
   try {
     assert.ok(await zweit.ruhig());
@@ -83,17 +86,50 @@ test('weggeklickt bleibt es weg — auch in einer neuen Sitzung', async () => {
   }
 });
 
-test('nach 30 Tagen kommt es wieder', async () => {
-  const vor31 = String(Date.now() - 31 * 24 * 3600 * 1000);
-  const { w, d } = await oeffneOberflaeche(OHNE_SCHLUESSEL, {
-    vorher: f => f.localStorage.setItem('bim_rb_hinweis_weg', vor31),
-  });
+test('auch nach 31 Tagen bleibt es weg, ein anderes Konto sieht es wieder', async t => {
+  const erst = await oeffneOberflaeche(OHNE_SCHLUESSEL);
+  let schluessel;
   try {
-    await warte(() => !d.getElementById('rb-hinweis').hidden, 2000);
-    assert.equal(d.getElementById('rb-hinweis').hidden, false);
+    await warte(() => !erst.d.getElementById('rb-hinweis').hidden, 2000);
+    erst.d.querySelector('#rb-hinweis [data-click="rbHinweisWeg"]').click();
+    schluessel = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hinweis_weg:'));
   } finally {
-    w.close();
+    erst.w.close();
   }
+  await t.test('auch nach 31 Tagen bleibt es weg', async () => {
+    const vor31 = Date.now() - 31 * 24 * 3600 * 1000;
+    const { w, d, ruhig } = await oeffneOberflaeche(OHNE_SCHLUESSEL, {
+      vorher: f => {
+        f.localStorage.setItem(schluessel, String(vor31));
+        f.Date.now = () => vor31 + 62 * 24 * 3600 * 1000;
+      },
+    });
+    try {
+      assert.ok(await ruhig());
+      assert.equal(d.getElementById('rb-hinweis').hidden, true);
+    } finally {
+      w.close();
+    }
+  });
+  await t.test('ein anderes Konto sieht es wieder', async () => {
+    const { w, d } = await oeffneOberflaeche(
+      {
+        ...OHNE_SCHLUESSEL,
+        '/v1/auth/me': {
+          success: true,
+          loggedIn: true,
+          user: { id: 2, username: 'bert', is_admin: true, zweiterFaktorPflicht: false },
+        },
+      },
+      { vorher: f => f.localStorage.setItem(schluessel, '1') },
+    );
+    try {
+      await warte(() => !d.getElementById('rb-hinweis').hidden, 2000);
+      assert.equal(d.getElementById('rb-hinweis').hidden, false);
+    } finally {
+      w.close();
+    }
+  });
 });
 
 test('nach „Später“ im Assistenten erscheint das Band', async () => {

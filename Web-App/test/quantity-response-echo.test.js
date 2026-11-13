@@ -6,7 +6,9 @@
  * routes/api_v1/sets.ts `...(r || {})` aus der PUT-Antwort entfernt → rot:
  * „die Route liefert die Menge“ (undefined statt 3). Am 08.11.2026
  * gemessen: in autosaveSet `const echt = qty` → rot: „die Webapp übernimmt
- * die Menge aus der Antwort“ (Feld bleibt auf 1).
+ * die Menge aus der Antwort“ (Feld bleibt auf 1). Am 12.11.2026 gemessen (das
+ * Detail liest nach dem Speichern neu): in frischeDetailAuf das Setzen von
+ * m-qty aus d.set.quantity entfernt → rot: ebenda (Feld leer).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -53,11 +55,14 @@ test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t =
 
 test('die Webapp übernimmt die Menge aus der Antwort', async () => {
   // Der Server deckelt das Verringern (Erfassungen anderer Konten im Haushalt): Er schreibt 2, nicht 1.
+  // Danach liest das Detail das Set neu; der Server nennt dort dieselbe Menge.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 3 };
   const { w, d, aufrufe } = await oeffneOberflaeche({
     '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
-    '/v1/sets/10294-1': (_url, o) =>
-      o?.method === 'PUT' ? { success: true, quantity: 2 } : { success: true, set: SET },
+    '/v1/sets/10294-1': (_url, o) => {
+      if (o?.method === 'PUT') SET.quantity = 2;
+      return o?.method === 'PUT' ? { success: true, quantity: 2 } : { success: true, set: { ...SET } };
+    },
     '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
   });
   try {

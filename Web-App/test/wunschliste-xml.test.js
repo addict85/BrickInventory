@@ -1,12 +1,16 @@
 /**
- * Der Zeitplan im Monitor setzt die Werte des Servers maskiert ein — wie
- * data-arg in derselben Zeile. Echtes Bündel in jsdom, Verwalterkonto.
+ * Der Zeitplan setzt die Werte des Servers maskiert ein: als Text unter
+ * „Hintergrundarbeiten“, als Feld in den Einstellungen. Echtes Bündel in
+ * jsdom, Verwalterkonto.
  * Die Maskierung der BrickLink-Wunschliste selbst läuft am Modul in
  * bricklink-wanted-xml.test.js.
  *
  * Gegenprobe (10.11.2026 gemessen, Bündel neu gebaut): in monitor.js
  * schedInput `value="${sc.time}"` per ungeprueft() eingesetzt → rot (ein
  * fremdes <img> steht in der Tabelle, der Wert ist abgeschnitten).
+ * 12.11.2026 gemessen (Felder jetzt in den Einstellungen): dasselbe in
+ * schedInput → rot „Einstellungen“; in schedText `${wann}` per ungeprueft()
+ * → rot „Hintergrundarbeiten“.
  */
 const test = require('node:test');
 const assert = require('node:assert');
@@ -14,7 +18,7 @@ const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const BOESE = '03:00"><img id="eingeschleust" src="x">';
 
-test('der Zeitplan im Monitor setzt Serverwerte maskiert ein', async () => {
+test('der Zeitplan setzt Serverwerte maskiert ein', async () => {
   const o = await oeffneOberflaeche({
     '/v1/admin/job-status': { success: true, job: { running: false } },
     '/v1/admin/auftraege': {
@@ -34,8 +38,18 @@ test('der Zeitplan im Monitor setzt Serverwerte maskiert ein', async () => {
   });
   try {
     await reiter(o.w, 'monitor');
-    assert.ok(await warte(() => o.d.querySelectorAll('.job-sched-input').length === 2), 'keine Zeitplanfelder');
-    assert.equal(o.d.getElementById('eingeschleust'), null, 'ein Wert des Servers wurde zu Markup');
+    assert.ok(
+      await warte(() => o.d.querySelectorAll('#monitor-content .mon-plan').length === 2),
+      'Hintergrundarbeiten',
+    );
+    assert.equal(o.d.getElementById('eingeschleust'), null, 'Hintergrundarbeiten: ein Wert wurde zu Markup');
+    assert.ok(o.d.querySelector('#monitor-content .mon-plan').textContent.includes(BOESE));
+    await reiter(o.w, 'settings');
+    assert.ok(
+      await warte(() => o.d.querySelectorAll('#einst-zeitplaene .job-sched-input').length === 2),
+      'Einstellungen',
+    );
+    assert.equal(o.d.getElementById('eingeschleust'), null, 'Einstellungen: ein Wert wurde zu Markup');
     assert.equal(o.d.querySelector('.mon-minuten').value, '15');
     assert.equal(o.d.querySelector('.mon-zeit').value, BOESE, 'der Wert kam nicht unverändert ins Feld');
     assert.equal(o.d.querySelector('.mon-zeit').dataset.arg, 'priceJob');

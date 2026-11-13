@@ -1,6 +1,6 @@
 /**
- * Bauliste im echten Bündel (jsdom): Hauptknopf ist der nächste Schritt, gesperrt
- * mit sichtbarem Grund; „Zurücksetzen“ nicht rot; Feld und Zustandswahl beschriftet.
+ * Bauliste im echten Bündel (jsdom): „Hinzufügen“ rechnet die Liste sofort, „Neu
+ * berechnen“ gesperrt mit sichtbarem Grund; „Zurücksetzen“ nicht rot; beschriftet.
  * Export und Optionen erst mit Teilen; das leere Ergebnis nennt den Grund, eine
  * Nummer, die der Katalog nicht kennt, steht als solche da und zählt nicht als Set.
  *
@@ -17,6 +17,10 @@
  *   F  (12.11.2026) plSchritt() in plRenderSets nicht gerufen → rot: „ein
  *      Hauptknopf …“; in plGenerate die getippte Nummer nicht übernommen →
  *      rot: ebenda (Fehler am Feld statt Liste)
+ *   G  (12.11.2026, UX-Prüfung 19 M6) in plAddSet `await plGenerate()`
+ *      entfernt → rot: „Hinzufügen rechnet sofort …“ und jede Prüfung über
+ *      erstelle() (keine Liste ohne zweiten Schritt); in plRemoveSet das
+ *      Neurechnen entfernt → rot: „Entfernen rechnet neu“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,12 +49,11 @@ async function erstelle(teile, nummern = '10294') {
   await reiter(o.w, 'partslist');
   o.d.getElementById('pl-setnr').value = nummern;
   o.d.querySelector('[data-click="plAddSet"]').click();
-  await warte(() => o.d.querySelector('#pl-sets .pl-chip-name')?.textContent.trim(), 3000);
-  o.d.getElementById('btn-pl-gen').click();
-  assert.ok(
-    await warte(() => / aus \d+ Set/.test(o.d.getElementById('pl-status').textContent), 3000),
-    'Liste erstellt',
-  );
+  // Ohne Liste das Fenster schliessen: Offen hielte jsdom den Testprozess am Leben.
+  if (!(await warte(() => / aus \d+ Set/.test(o.d.getElementById('pl-status').textContent), 3000))) {
+    o.w.close();
+    assert.fail('Liste erstellt');
+  }
   return o;
 }
 
@@ -59,7 +62,7 @@ test('Aufbau: Beschriftungen, Zurücksetzen nicht rot', async () => {
   try {
     assert.equal(text(d.querySelector('label[for="pl-setnr"]')), 'Setnummern (mehrere mit Komma trennen)');
     assert.equal(text(d.querySelector('label[for="pl-bl-condition"]')), 'Zustand für BrickLink');
-    assert.equal(text(d.getElementById('btn-pl-gen')), 'Bauliste erstellen');
+    assert.equal(text(d.getElementById('btn-pl-gen')), 'Neu berechnen');
     assert.equal(d.getElementById('btn-pl-reset').classList.contains('bd'), false, 'Zurücksetzen ist rot');
     assert.equal(d.getElementById('pl-export').hidden, true, 'Exportieren vor dem ersten Ergebnis');
   } finally {
@@ -67,7 +70,7 @@ test('Aufbau: Beschriftungen, Zurücksetzen nicht rot', async () => {
   }
 });
 
-test('ein Hauptknopf: erst Hinzufügen, dann Erstellen; gesperrt mit sichtbarem Grund', async () => {
+test('Hinzufügen rechnet sofort, ohne zweiten Schritt; „Neu berechnen“ gesperrt mit Grund', async () => {
   const o = await oeffneOberflaeche({
     '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
     '/v1/sets/10294-1/parts-list': { success: true, parts: [TEIL] },
@@ -83,18 +86,32 @@ test('ein Hauptknopf: erst Hinzufügen, dann Erstellen; gesperrt mit sichtbarem 
     assert.deepEqual(haupt(), ['Hinzufügen'], 'ohne Sets');
     assert.equal(gen.getAttribute('aria-disabled'), 'true');
     assert.equal(hinweis.hidden, false, 'der Grund steht nicht da');
-    assert.match(text(hinweis), /Setnummer eintragen/);
+    assert.match(text(hinweis), /entsteht sofort/);
     assert.ok(gen.getAttribute('aria-describedby').split(' ').includes('pl-gen-hinweis'));
     assert.equal(d.querySelector('#pl-sets button'), null, 'der Leerzustand hat einen eigenen Knopf');
 
-    // Getippt, aber nicht hinzugefügt: „Erstellen“ nimmt die Nummer mit.
     d.getElementById('pl-setnr').value = '10294';
-    gen.click();
+    d.getElementById('btn-pl-add').click();
     assert.ok(await warte(() => / aus 1 Set/.test(d.getElementById('pl-status').textContent), 3000), 'keine Liste');
-    assert.deepEqual(haupt(), ['Bauliste erstellen'], 'mit Set');
+    assert.ok(d.querySelector('#pl-result .pl-have-input'), 'die Tabelle fehlt');
+    assert.deepEqual(haupt(), ['Hinzufügen'], 'mit Set');
     assert.equal(gen.hasAttribute('aria-disabled'), false);
     assert.equal(hinweis.hidden, true);
     assert.equal((gen.getAttribute('aria-describedby') || '').includes('pl-gen-hinweis'), false);
+  } finally {
+    w.close();
+  }
+});
+
+test('Entfernen rechnet neu', async () => {
+  const { w, d } = await erstelle([TEIL], '10294, 99999-1');
+  try {
+    d.querySelector('#pl-sets .pl-chip:nth-child(2) [data-click="plRemoveSet"]').click();
+    assert.ok(
+      await warte(() => text(d.getElementById('pl-status')) === '1 Sorte (6 Teile) aus 1 Set', 3000),
+      text(d.getElementById('pl-status')),
+    );
+    assert.ok(d.querySelector('#pl-result .pl-have-input'), 'die Tabelle fehlt');
   } finally {
     w.close();
   }

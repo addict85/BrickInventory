@@ -139,3 +139,36 @@ export function verwirfToasts() {
 export function merkeSitzungsende(text) {
   _meldungenDerAbgelaufenenSitzung.add(text);
 }
+
+/** @type {WeakMap<Element, ReturnType<typeof setTimeout>>} */
+const _feldFristen = new WeakMap();
+
+/**
+ * Die eine Regel fürs Speichern: Einzelne Werte speichern sofort, Formulare mit „Speichern“ — und beide
+ * bestätigen an der Stelle, an der geändert wurde („Gespeichert ✓“, vorgelesen). Ein Toast am Bildrand
+ * lag weit weg vom Feld, und beim Autosave kam oft gar keiner.
+ * @param {Element | null | undefined} feld das Feld oder der Knopf; ein Vorfahr mit data-rueckmeldung
+ *   bestimmt den Ort, sonst steht die Meldung direkt dahinter
+ * @param {string} [text]
+ */
+export function meldeAmFeld(feld, text = tRaw('feld.gespeichert')) {
+  if (!feld) return;
+  const halter = feld.closest('[data-rueckmeldung]');
+  let ort = halter ? halter.querySelector('.feld-status') : feld.nextElementSibling;
+  if (!ort?.classList.contains('feld-status')) {
+    const neu = document.createElement('span');
+    neu.className = 'feld-status';
+    neu.setAttribute('role', 'status');
+    (halter || feld).insertAdjacentElement(halter ? 'beforeend' : 'afterend', neu);
+    ort = neu;
+  }
+  const stelle = ort;
+  stelle.textContent = text;
+  clearTimeout(_feldFristen.get(stelle));
+  _feldFristen.set(
+    stelle,
+    setTimeout(() => {
+      stelle.textContent = '';
+    }, 5000),
+  );
+}

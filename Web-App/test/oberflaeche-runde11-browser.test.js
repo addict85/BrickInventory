@@ -21,6 +21,9 @@
  *   H  die Wertlinie wieder fest var(--chart-new) → rot: „Wertlinie in der
  *      Akzentfarbe“
  *   I  in doLogin wieder ['lp','lu'] → rot: „leere Anmeldung: Fokus ins erste Feld“
+ *   J  (12.11.2026, UX-Prüfung 19 N4) finance.stat.purchase_von wieder „von
+ *      {betrag} Kaufpreis gesamt“ → rot: „Kaufpreis-Karte nennt ihren Bezug“
+ *      (der Bezug ist nicht erklärt)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -47,7 +50,12 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
       gesamt: document.querySelector('#fin-tbl .dt-summe tfoot td.fin-fuss-wert').textContent.trim(),
       basis: document.getElementById('fin-basis').hidden })`);
     assert.equal(z.basis, false, 'Testdaten: Positionen ohne Marktpreis');
-    assert.equal(z.titel, 'Kaufpreis (nur bewertete Posten)', 'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“');
+    assert.equal(z.titel, 'Kaufpreis der Posten mit Marktpreis', 'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“');
+    assert.match(
+      z.unter,
+      /^Verglichen wird nur, was einen Marktpreis hat\./,
+      'der Bezug ist erklärt (UX-Prüfung 19 N4)',
+    );
     assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
   });
 

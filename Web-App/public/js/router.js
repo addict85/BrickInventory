@@ -42,6 +42,7 @@ const ABSCHNITTE = {
   'einst-bs': 'brickset',
   usermgmt: 'benutzer',
   'einst-smtp': 'e-mail',
+  'einst-hintergrund': 'hintergrund',
   'einst-konfig': 'konfiguration',
 };
 const ABSCHNITT_ID = Object.fromEntries(Object.entries(ABSCHNITTE).map(([i, p]) => [p, i]));

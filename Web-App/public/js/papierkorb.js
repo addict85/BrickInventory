@@ -106,8 +106,9 @@ export async function papierkorbLeeren() {
  * Die Erfolgsmeldung nach dem Löschen, mit „Rückgängig".
  * @param {string} meldung
  * @param {{papierkorb?: number[]}} antwort die Antwort des DELETE
+ * @param {() => unknown} [nachher] was danach neu zu zeichnen ist, etwa das offene Set-Detail
  */
-export function geloeschtMitRueckgaengig(meldung, antwort) {
+export function geloeschtMitRueckgaengig(meldung, antwort, nachher) {
   const ids = antwort?.papierkorb || [];
   toast(
     meldung,
@@ -120,6 +121,7 @@ export function geloeschtMitRueckgaengig(meldung, antwort) {
             if (!(await wiederherstellen(ids))) return;
             toast(tRaw('trash.restored'), 'success');
             bestandNeuLaden();
+            nachher?.();
           },
         }
       : undefined,
