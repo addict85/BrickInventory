@@ -7,7 +7,7 @@ import { safeDataPath } from '../src/infra/datenPfad';
 
 import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
 import { eingangsSperre } from './api_v1/middleware';
-import { haushaltBereich } from '../src/haushalt';
+import { haushalt } from '../src/haushalt';
 import { anleitungFreigegeben } from '../src/katalog';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
@@ -32,8 +32,7 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, eingangsSperre, async (re
   const besitzer = Number(segments[0]);
   // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
   // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
-  if (!(await haushaltBereich().haushalt.siehtKonto(userId, besitzer)))
-    return res.status(404).send('Datei nicht gefunden');
+  if (!(await haushalt.siehtKonto(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
   alsAnhang(res, filePath);
   liefereDatei(res, filePath);
 });

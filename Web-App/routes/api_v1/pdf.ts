@@ -3,8 +3,7 @@
 import { meldeFehler, ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort, streamFileToResponse, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
-import { registerSse } from '../../src/http/sseRegistry';
-import { SSE_ZUGANG_BEENDET, wacheUeberZugang } from '../../src/konto/http/zugangsWache';
+import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
 import _pdfFs from 'node:fs/promises';
 import _fsSync from 'node:fs';
 import {
@@ -17,6 +16,7 @@ import {
   beiAuftragsStand,
 } from '../../src/auftraege';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
+import type { Request, Response } from 'express';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 const router = vertragsRouter();
 
@@ -42,6 +42,17 @@ async function pdfJobReadFor(id: string, userId: number) {
   if (job.user_id !== userId) return null;
   return job;
 }
+/** Die Beugung steht als Platzhalter in der Tabelle, nicht hier. */
+function laufendeAuftraege(anzahl: number, sprache: string) {
+  const en = sprache === 'en',
+    eins = anzahl === 1;
+  return {
+    anzahl,
+    laufenVerb: eins ? (en ? 'is' : 'läuft') : en ? 'are' : 'laufen',
+    auftragWort: eins ? (en ? 'job' : 'Auftrag') : en ? 'jobs' : 'Aufträge',
+  };
+}
+
 router.post(
   '/sets/partslist-pdf',
   requireToken,
@@ -52,26 +63,7 @@ router.post(
 
     const r = await pdfAuftragStarten(uid, sets, parts);
     if ('laufend' in r) {
-      const laufend = r.laufend;
-      // Die Beugung steht als Platzhalter in der Tabelle, nicht hier.
-      const eins = laufend === 1;
-      return sendeFehler(req, res, 429, 'pdf_auftrag_laeuft', {
-        anzahl: laufend,
-        laufenVerb: eins
-          ? antwortSprache(req) === 'en'
-            ? 'is'
-            : 'läuft'
-          : antwortSprache(req) === 'en'
-            ? 'are'
-            : 'laufen',
-        auftragWort: eins
-          ? antwortSprache(req) === 'en'
-            ? 'job'
-            : 'Auftrag'
-          : antwortSprache(req) === 'en'
-            ? 'jobs'
-            : 'Aufträge',
-      });
+      return sendeFehler(req, res, 429, 'pdf_auftrag_laeuft', laufendeAuftraege(r.laufend, antwortSprache(req)));
     }
 
     res.json({ success: true, jobId: r.jobId });
@@ -98,7 +90,24 @@ router.get(
   },
 );
 
-// SSE statt Polling; der Rückfall sendet nur bei Änderung.
+const fertig = (s: string | undefined) => s === 'done' || s === 'error';
+
+/** NOTIFY meldet den Stand, gleich in welchem Prozess der Auftrag läuft; ohne
+ * Nutzlast (beim Wiederverbinden) und im Rückfalltakt wird ebenfalls nachgesehen,
+ * falls ein Signal während einer Verbindungsstörung verloren ging. */
+function folgeAuftrag(strom: Strom, jobId: string, uid: number) {
+  const pruefe = async () => {
+    const job = await pdfJobReadFor(jobId, uid);
+    if (strom.zu) return;
+    if (job) strom.sende({ status: job.status, error: job.error || null } satisfies PdfJobStatus);
+    if (!job || fertig(job.status)) strom.ende();
+  };
+  strom.beiEnde(beiAuftragsStand(nutzlast => (!nutzlast || nutzlast === pdfSchluessel(jobId) ? pruefe() : undefined)));
+  const rueckfall = setInterval(pruefe, 15000);
+  strom.beiEnde(() => clearInterval(rueckfall));
+}
+
+// SSE statt Polling; der Strom sendet nur bei Änderung.
 router.get(
   '/sets/partslist-pdf/stream/:jobId',
   requireToken,
@@ -108,82 +117,30 @@ router.get(
     if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
     const initial = await pdfJobReadFor(jobId, req.apiUser.user_id);
     if (!initial) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
-
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-store, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders?.();
-
-    // Anmelden, sonst wartet httpServer.close() beim Herunterfahren auf diesen Strom.
-    const unregisterSse = registerSse(res);
-    const wache = wacheUeberZugang(req, () => {
-      res.write(SSE_ZUGANG_BEENDET);
-      cleanup();
-    });
-
-    let closed = false;
-    let lastSent = '';
-    const send = (data: PdfJobStatus) => {
-      if (closed) return;
-      const payload = JSON.stringify(data);
-      if (payload === lastSent) return; // Duplikate unterdrücken
-      lastSent = payload;
-      res.write(`data: ${payload}\n\n`);
-    };
-    const isDone = (s: string | undefined) => s === 'done' || s === 'error';
-
-    send({
+    const strom = oeffneStrom(req, res, { nurAenderungen: true });
+    strom.sende({
       status: initial.status,
       error: initial.error || null,
       etaSeconds: initial.etaSeconds ?? null,
       missingImages: initial.missingImages ?? null,
-    });
-    if (isDone(initial.status)) {
-      closed = true;
-      wache();
-      unregisterSse();
-      return res.end();
-    }
-
-    // NOTIFY, gleich in welchem Prozess der Auftrag läuft; ohne Nutzlast (beim
-    // Wiederverbinden) wird ebenfalls nachgesehen.
-    const pruefe = async () => {
-      const job = await pdfJobReadFor(jobId, req.apiUser.user_id);
-      if (closed) return;
-      if (!job) {
-        cleanup();
-        return;
-      }
-      send({ status: job.status, error: job.error || null });
-      if (isDone(job.status)) cleanup();
-    };
-    const onStatus = (nutzlast?: string) => {
-      if (!nutzlast || nutzlast === pdfSchluessel(jobId)) return pruefe();
-    };
-    const abmelden = beiAuftragsStand(onStatus);
-
-    // Rückfall, falls ein Signal während einer Verbindungsstörung verloren geht.
-    const fallback = setInterval(pruefe, 15000);
-
-    const heartbeat = setInterval(() => {
-      if (!closed) res.write(': keep-alive\n\n');
-    }, 20000);
-
-    function cleanup() {
-      if (closed) return;
-      closed = true;
-      wache();
-      abmelden();
-      clearInterval(fallback);
-      clearInterval(heartbeat);
-      unregisterSse();
-      res.end();
-    }
-
-    req.on('close', cleanup);
+    } satisfies PdfJobStatus);
+    if (fertig(initial.status)) strom.ende();
+    else folgeAuftrag(strom, jobId, req.apiUser.user_id);
   },
 );
+
+/** streamFileToResponse statt pipe(): Das Aufräumen kann die Datei zwischen Prüfung
+ * und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
+ * Aufgeräumt wird nur nach vollständiger Auslieferung. */
+function liefereUndRaeumeAuf(req: Request, res: Response, jobId: string, pdfPath: string) {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
+  const aufraeumen = () => {
+    _pdfFs.unlink(pdfPath).catch(ohneFehlendeDatei('pdf:datei loeschen'));
+    loescheAuftrag(jobId).catch((e: unknown) => meldeFehler('pdf:auftrag-loeschen', e));
+  };
+  streamFileToResponse(res, pdfPath, aufraeumen, req);
+}
 
 router.get(
   '/sets/partslist-pdf/download/:jobId',
@@ -204,20 +161,7 @@ router.get(
     }
     const pdfPath = pdfDateiPfad(jobId);
     if (!pdfPath || !_fsSync.existsSync(pdfPath)) return sendeFehler(req, res, 410, 'pdf_nicht_verfuegbar');
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
-    // streamFileToResponse statt pipe(): Das Aufräumen kann die Datei zwischen
-    // Prüfung und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet
-    // den Prozess. Aufgeräumt wird nur nach vollständiger Auslieferung.
-    streamFileToResponse(
-      res,
-      pdfPath,
-      () => {
-        _pdfFs.unlink(pdfPath).catch(ohneFehlendeDatei('pdf:datei loeschen'));
-        loescheAuftrag(jobId).catch((e: unknown) => meldeFehler('pdf:auftrag-loeschen', e));
-      },
-      req,
-    );
+    liefereUndRaeumeAuf(req, res, jobId, pdfPath);
   },
 );
 

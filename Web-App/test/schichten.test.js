@@ -506,6 +506,26 @@ test('Routen, Aufträge und Clients importieren keine Repositories', () => {
   for (const d of tsUnter('routes', 'jobs', 'clients', 'startup').concat('server.ts'))
     for (const z of aufgeloesteImporte(d)) if (istRepository(z)) treffer.push(`${d} -> ${z}`);
   assert.deepEqual(treffer, []);
+
+  // xBereich() liefert gebundene Repositories und den Zugang (db); eine Route nimmt
+  // die Dienste, die der Bereich in seiner index.ts anbietet. Gegenproben (13.11.2026):
+  // `await kontoBereich().protokoll.protokolliere(…)` zurück in routes/auth/benutzer.ts
+  // → rot „routes/auth/benutzer.ts: kontoBereich()“; `gutscheineBereich` als Import in
+  // routes/api_v1/vouchers.ts → rot „…: gutscheineBereich (Import)“.
+  const AUFRUF = /\b\w+Bereich\s*\(\s*\)/g;
+  const IMPORT = /import\s*\{([^}]*)\}\s*from\s*'[./]+\/src\/[^']+'/g;
+  for (const d of tsUnter('routes')) {
+    const s = quelltext(d);
+    for (const m of s.matchAll(AUFRUF)) treffer.push(`${d}: ${m[0].replace(/\s/g, '')}`);
+    for (const m of s.matchAll(IMPORT))
+      for (const n of m[1].split(',').map(x => x.trim().split(/\s+as\s+/)[0]))
+        if (/Bereich$/.test(n)) treffer.push(`${d}: ${n} (Import)`);
+  }
+  assert.ok(
+    AUFRUF.test('await kontoBereich().konten.kontoKurz(1)') && tsUnter('routes').length > 15,
+    'Selbstbeweis: das Muster findet einen Aufruf, und es gibt Routen',
+  );
+  assert.deepEqual(treffer, []);
 });
 
 test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und index.ts zu', () => {

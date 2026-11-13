@@ -39,7 +39,8 @@ import {
   tokenAngaben,
   meldeAnmeldung,
   hinweisNebenher,
-  kontoBereich,
+  kontoKurz,
+  kontoVoll,
   type Angemeldet,
   type TokenWunsch,
   anmeldeAntwort,
@@ -67,6 +68,7 @@ import {
 } from '../src/konto';
 
 const router = vertragsRouter();
+type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
 
 // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
 // einem reinen Sitzungswächter von Routen ausgesperrt.
@@ -94,6 +96,20 @@ async function angemeldetAntworten(
   res.json({ success: true, ...(await anmeldeAntwort(user, wunsch, mitToken, req.ip)) });
 }
 
+/** `zweiter_faktor` zeigt das Codefeld (oder `passkey`), `unverified` blendet
+ * „E-Mail erneut senden?" ein; sendeFehler kennt beide Felder nicht. */
+function anmeldungAbsagen(req: Request, res: Response, absage: Absage) {
+  const { art, code, vars, unverified, zweiterFaktor, passkey } = absage;
+  const status = STATUS_DER_ART[art];
+  if (!zweiterFaktor && !unverified) return sendeFehler(req, res, status, code, vars);
+  res.status(status).json({
+    success: false,
+    code,
+    ...(zweiterFaktor ? { zweiter_faktor: true, ...(passkey ? { passkey: true } : {}) } : { unverified: true }),
+    error: fehlerText(code, antwortSprache(req), vars),
+  });
+}
+
 /** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen. */
 router.post(
   '/login',
@@ -101,30 +117,7 @@ router.post(
     const { username, password, code: zweiterCode, ohne_token, passkey } = req.eingabe;
     if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
     const pruefung = await anmelden(req, username, password, zweiterCode, passkey);
-    if (!pruefung.ok) {
-      const { art, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
-      const status = STATUS_DER_ART[art];
-      // `zweiter_faktor`: Codefeld zeigen und erneut senden (oder `passkey`).
-      if (zweiterFaktor) {
-        return res.status(status).json({
-          success: false,
-          code,
-          zweiter_faktor: true,
-          ...(mitPasskey ? { passkey: true } : {}),
-          error: fehlerText(code, antwortSprache(req), vars),
-        });
-      }
-      // `unverified` blendet „E-Mail erneut senden?" ein; sendeFehler kennt das Feld nicht.
-      if (unverified) {
-        return res.status(status).json({
-          success: false,
-          code,
-          unverified: true,
-          error: fehlerText(code, antwortSprache(req), vars),
-        });
-      }
-      return sendeFehler(req, res, status, code, vars);
-    }
+    if (!pruefung.ok) return anmeldungAbsagen(req, res, pruefung.absage);
     await angemeldetAntworten(req, res, pruefung.user as Angemeldet, req.eingabe, ohne_token !== true, true);
   },
 );
@@ -148,11 +141,62 @@ router.post(
   },
 );
 
+type GeprueftesToken = NonNullable<Awaited<ReturnType<typeof pruefeToken>>['nutzer']>;
+
+/** is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false. */
+async function tokenNutzer(res: Response, u: GeprueftesToken) {
+  const faellig = rotationFaellig(u);
+  if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
+  return {
+    success: true,
+    loggedIn: true,
+    user: {
+      id: u.user_id,
+      username: u.username,
+      is_admin: u.is_admin === true,
+      mustChangePassword: u.muss_passwort_aendern === true,
+      zweiterFaktorPflicht: u.is_admin === true && !(await istAktiv(u.user_id)),
+    },
+    token_expires: u.expires_at,
+    token_last_used: u.last_used,
+    token_info: {
+      scope: u.scope,
+      expires_at: u.expires_at,
+      hard_expires_at: u.hard_expires_at ?? null,
+      never_expires: u.never_expires === true,
+      rotiert_am: u.rotiert_am,
+      rotation_faellig: faellig,
+    },
+  } as const;
+}
+
+async function sitzungsNutzer(req: Request, uid: number) {
+  const user = await kontoKurz(uid);
+  if (!user) return null;
+  return {
+    success: true,
+    loggedIn: true,
+    user: {
+      id: user.id,
+      username: user.username,
+      is_admin: user.is_admin,
+      mustChangePassword: user.must_change_password,
+      zweiterFaktorPflicht: await zweiterFaktorPflicht(req),
+    },
+  } as const;
+}
+
 /** Sitzung ODER Token; ohne Anmeldung 200 für den Browser, 401 bei Token. */
 router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort<'GET /api/v1/auth/me'>) => {
   const auth = String(req.headers.authorization || '');
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  const ungueltig = (code: 'token_ungueltig' | 'token_rotation_noetig' | 'zu_viele_anfragen') =>
+  const antworte = async () => {
+    const sitzung = req.session?.userId ? await sitzungsNutzer(req, req.session.userId) : null;
+    if (sitzung) return res.json(sitzung);
+    const p = token ? await pruefeToken(token, { ip: req.ip }) : { nutzer: null };
+    if (p.nutzer) return res.json(await tokenNutzer(res, p.nutzer));
+    if (!token) return res.json({ success: true, loggedIn: false, user: null });
+    const code = 'grund' in p && p.grund ? p.grund : 'token_ungueltig';
     res.status(code === 'zu_viele_anfragen' ? 429 : 401).json({
       success: false,
       loggedIn: false,
@@ -160,52 +204,6 @@ router.get('/me', async (req: OffeneAnfrage<'GET /api/v1/auth/me'>, res: Antwort
       code,
       error: fehlerText(code, antwortSprache(req), code === 'zu_viele_anfragen' ? { minuten: 1 } : undefined),
     });
-  const antworte = async () => {
-    if (req.session?.userId) {
-      const user = await kontoBereich().konten.kontoKurz(req.session.userId);
-      if (user)
-        return res.json({
-          success: true,
-          loggedIn: true,
-          user: {
-            id: user.id,
-            username: user.username,
-            is_admin: user.is_admin,
-            mustChangePassword: user.must_change_password,
-            zweiterFaktorPflicht: await zweiterFaktorPflicht(req),
-          },
-        });
-    }
-    const p = token ? await pruefeToken(token, { ip: req.ip }) : { nutzer: null };
-    const u = p.nutzer;
-    if (u) {
-      const faellig = rotationFaellig(u);
-      if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
-      // is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false.
-      return res.json({
-        success: true,
-        loggedIn: true,
-        user: {
-          id: u.user_id,
-          username: u.username,
-          is_admin: u.is_admin === true,
-          mustChangePassword: u.muss_passwort_aendern === true,
-          zweiterFaktorPflicht: u.is_admin === true && !(await istAktiv(u.user_id)),
-        },
-        token_expires: u.expires_at,
-        token_last_used: u.last_used,
-        token_info: {
-          scope: u.scope,
-          expires_at: u.expires_at,
-          hard_expires_at: u.hard_expires_at ?? null,
-          never_expires: u.never_expires === true,
-          rotiert_am: u.rotiert_am,
-          rotation_faellig: faellig,
-        },
-      });
-    }
-    if (token) return ungueltig('grund' in p && p.grund ? p.grund : 'token_ungueltig');
-    return res.json({ success: true, loggedIn: false, user: null });
   };
   await antworte().catch((e: unknown) => {
     // Ein Lesefehler ist keine Abmeldung: Mit 401 oder „nicht angemeldet“
@@ -275,7 +273,7 @@ router.put(
   requireLogin,
   async (req: OffeneAnfrage<'PUT /api/v1/auth/profile'>, res: Antwort<'PUT /api/v1/auth/profile'>) => {
     const { username, email, first_name, last_name, password, password_current } = req.eingabe;
-    const user = await kontoBereich().konten.kontoVoll(nutzerId(req)!);
+    const user = await kontoVoll(nutzerId(req)!);
     if (!user) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
 
     // Das Passwort nur über /change-password: Nur dort werden danach alle
@@ -359,7 +357,7 @@ router.post(
 
 /** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */
 async function darfAnmelden(uid: number): Promise<boolean> {
-  const user = await kontoBereich().konten.kontoVoll(uid);
+  const user = await kontoVoll(uid);
   return !!user && !assertLoginAllowed(user);
 }
 
@@ -377,6 +375,21 @@ router.post(
   },
 );
 
+/** Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei. */
+async function qrAbgeholt(user: { id: number; username: string }, token: string, nonce?: string | null) {
+  return {
+    success: true,
+    wartet: false,
+    token,
+    username: user.username,
+    isAdmin: false,
+    userId: user.id,
+    user: { id: user.id, username: user.username },
+    token_info: await tokenAngaben(token),
+    ...(nonce ? { schluessel_nonce: nonce } : {}),
+  } as const;
+}
+
 // Die App fragt alle paar Sekunden, bis die Web-Sitzung bestätigt oder ablehnt.
 // Mit `vorschau` steht danach nur das Konto in der Antwort; den Token holt das Ja der App.
 router.post(
@@ -391,23 +404,12 @@ router.post(
     if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
     if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
     if (a.stand === 'ungueltig') return sendeFehler(req, res, 401, 'token_ungueltig');
-    const user = await kontoBereich().konten.kontoKurz(a.uid);
+    const user = await kontoKurz(a.uid);
     if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
     if (a.stand === 'bereit')
       return res.json({ success: true, wartet: false, vorschau: true, username: user.username });
     meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
-    // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
-    res.json({
-      success: true,
-      wartet: false,
-      token: a.token,
-      username: user.username,
-      isAdmin: false,
-      userId: user.id,
-      user: { id: user.id, username: user.username },
-      token_info: await tokenAngaben(a.token),
-      ...(a.schluesselNonce ? { schluessel_nonce: a.schluesselNonce } : {}),
-    });
+    res.json(await qrAbgeholt(user, a.token, a.schluesselNonce));
   },
 );
 
@@ -504,7 +506,7 @@ router.post(
     if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
     const uid = angemeldeteNutzerId(req);
     if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
-    const konto = await kontoBereich().konten.kontoKurz(uid);
+    const konto = await kontoKurz(uid);
     const optionen = await registrierungsOptionen(uid, konto?.username ?? String(uid));
     if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
     res.json({ success: true, optionen });
@@ -569,7 +571,7 @@ router.post(
     if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
     const uid = await anmeldungPruefen(req.eingabe.antwort, 'anmelden');
     if (!uid) return sendeFehler(req, res, 401, 'passkey_ungueltig');
-    const user = await kontoBereich().konten.kontoVoll(uid);
+    const user = await kontoVoll(uid);
     if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
     const gesperrt = assertLoginAllowed(user);
     if (gesperrt) return sendeFehler(req, res, STATUS_DER_ART[gesperrt.art], gesperrt.code);

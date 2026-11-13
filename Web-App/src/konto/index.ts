@@ -36,7 +36,12 @@ export {
   LETZTER_VERWALTER,
   andereSitzungenBeenden,
   kontenListe,
+  kontoExistiert,
+  kontoKurz,
+  kontoName,
+  kontoVoll,
   legeKontoAn,
+  mussPasswortAendern,
   profil,
   rechneWieRegistrierung,
   registriere,
@@ -77,6 +82,22 @@ export { beginneEinrichtung, erneuereCodes, istAktiv, otpauthAdresse, schalteAb,
 export { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './konten';
 export { horcheAufTokenWiderruf } from './tokenCache';
 export { neueNonce } from './geraeteChallenge';
+export { protokolliere, verwaltungsProtokoll } from './verwalterProtokoll';
+export type { VerwalterAktion } from './verwalterProtokoll';
+export {
+  aktivSetzen,
+  registrierungFreischalten,
+  verwalterRolleSetzen,
+  zweitenFaktorEntfernen,
+} from './verwalterAktionen';
+export { andereZugaengeBeenden, zugangBeenden, zugaengeDesKontos } from './zugaenge';
+export {
+  bestaetigungErneutAnfordern,
+  kontoZumRuecksetzLink,
+  nameZuBestaetigung,
+  registrierungVersuchen,
+  ruecksetzLinkAnfordern,
+} from './registrierungAblauf';
 export { erzeugeKonto } from './bereich';
 export type { KontoDienste, KontoKontext } from './bereich';
 export { kontoBereich, verdrahteKonto } from './prozess';

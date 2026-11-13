@@ -5,9 +5,9 @@ import path from 'node:path';
 import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { haushaltBereich } from '../../src/haushalt';
-import { bestandBereich, lagerSchreibkonto } from '../../src/bestand';
-import { finanzenBereich } from '../../src/finanzen';
+import { haushalt } from '../../src/haushalt';
+import { lagerort, lagerSchreibkonto } from '../../src/bestand';
+import { preisalarm } from '../../src/finanzen';
 import {
   csvEmpfang,
   uploadKontingentBytes,
@@ -20,8 +20,7 @@ import { uebersprungenHinweis } from '../../src/infra/csvExport';
 import { sendeCsv } from '../../src/http/csvAntwort';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
 import * as sets from '../../src/sets';
-import { registerSse } from '../../src/http/sseRegistry';
-import { SSE_ZUGANG_BEENDET, wacheUeberZugang } from '../../src/konto/http/zugangsWache';
+import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { freigegeben } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
@@ -110,14 +109,14 @@ router.get(
   '/alerts/pending',
   requireToken,
   async (req: Anfrage<'GET /api/v1/alerts/pending'>, res: Antwort<'GET /api/v1/alerts/pending'>) => {
-    const r = await finanzenBereich().preisalarm.ausgeloesteSeit(req.apiUser.user_id, req.abfrage.since);
+    const r = await preisalarm.ausgeloesteSeit(req.apiUser.user_id, req.abfrage.since);
     res.json({ success: true, alerts: r.alerts, now: r.now });
   },
 );
 
 // Was gesetzt ist; ausgelöst: /alerts/pending.
 router.get('/alerts', requireToken, async (req: Anfrage<'GET /api/v1/alerts'>, res: Antwort<'GET /api/v1/alerts'>) => {
-  res.json({ success: true, alerts: await finanzenBereich().preisalarm.alleAlarme(req.apiUser.user_id) });
+  res.json({ success: true, alerts: await preisalarm.alleAlarme(req.apiUser.user_id) });
 });
 
 router.post(
@@ -151,7 +150,7 @@ router.put(
     // Fehlt das Feld, meint der Client dasselbe wie null.
     const roh = req.eingabe.id;
     const id = roh === null || roh === undefined ? null : Number(roh);
-    res.json({ success: true, vorgabe: await bestandBereich().lagerortDienst.setzeVorgabe(req.apiUser.user_id, id) });
+    res.json({ success: true, vorgabe: await lagerort.setzeVorgabe(req.apiUser.user_id, id) });
   },
 );
 
@@ -160,7 +159,7 @@ router.post(
   requireToken,
   async (req: Anfrage<'POST /api/v1/storage/locations'>, res: Antwort<'POST /api/v1/storage/locations'>) => {
     const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
-    const { ort, war_neu } = await bestandBereich().lagerortDienst.legeOrtAn(konto, req.eingabe.name);
+    const { ort, war_neu } = await lagerort.legeOrtAn(konto, req.eingabe.name);
     if (!war_neu) return sendeFehler(req, res, 409, 'lagerort_doppelt');
     res.json({ success: true, ort });
   },
@@ -173,7 +172,7 @@ router.put(
     const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
     res.json({
       success: true,
-      ort: await bestandBereich().lagerortDienst.benenneOrtUm(konto, req.pfad.id, req.eingabe.name),
+      ort: await lagerort.benenneOrtUm(konto, req.pfad.id, req.eingabe.name),
     });
   },
 );
@@ -186,7 +185,7 @@ router.delete(
     res: Antwort<'DELETE /api/v1/storage/locations/:id'>,
   ) => {
     const konto = await lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner);
-    await bestandBereich().lagerortDienst.loescheOrt(konto, req.pfad.id);
+    await lagerort.loescheOrt(konto, req.pfad.id);
     res.json({ success: true });
   },
 );
@@ -197,7 +196,7 @@ router.get(
   requireToken,
   async (req: Anfrage<'GET /api/v1/storage'>, res: Antwort<'GET /api/v1/storage'>) => {
     const ids = sichtVon(req);
-    res.json({ success: true, orte: await bestandBereich().lagerortDienst.lagerorte(ids) });
+    res.json({ success: true, orte: await lagerort.lagerorte(ids) });
   },
 );
 
@@ -272,7 +271,7 @@ router.get(
   '/sets/household-members',
   requireToken,
   async (req: Anfrage<'GET /api/v1/sets/household-members'>, res: Antwort<'GET /api/v1/sets/household-members'>) => {
-    res.json({ success: true, members: await haushaltBereich().haushalt.haushaltsMitglieder(req.apiUser.user_id) });
+    res.json({ success: true, members: await haushalt.haushaltsMitglieder(req.apiUser.user_id) });
   },
 );
 
@@ -375,60 +374,17 @@ router.get(
 // Offene Ströme je Konto zählt kontoSchranke('strom') für alle Ströme gemeinsam.
 router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), async (req, res) => {
   const uid = angemeldeteNutzerId(req);
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-store, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders?.();
-  // Beim Herunterfahren muss der Strom enden, sonst hält er httpServer.close() auf.
-  const unregisterSse = registerSse(res);
-  const wache = wacheUeberZugang(req, () => {
-    res.write(SSE_ZUGANG_BEENDET);
-    cleanup();
-  });
-
-  let closed = false,
-    lastJson = '';
-  const send = (payload: unknown) => {
-    if (closed) return;
-    const json = JSON.stringify(payload);
-    if (json === lastJson) return;
-    lastJson = json;
-    // Gegendruck: Ein hängender Client liesse Node unbegrenzt puffern.
-    if (!res.write(`data: ${json}\n\n`)) {
-      console.warn(`[csv-stream] Gegendruck bei Nutzer ${uid} — Verbindung wird geschlossen`);
-      cleanup();
-    }
-  };
+  const strom = oeffneStrom(req, res, { nurAenderungen: true, gegendruck: `csv-import ${uid}` });
   // EventSource setzt keine Kopfzeilen, die Sprache kommt deshalb als ?sprache=.
   const gewaehlt = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
   const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : antwortSprache(req);
-  const stand = () => sets.csvImportStandFuerStrom(uid, req, sprache);
-  // Erst anmelden, dann den ersten Stand schicken: Sonst geht ein Ereignis
-  // zwischen Lesen und Anmelden verloren.
-  // Andere Worker melden über LISTEN/NOTIFY; der Takt fängt Verpasstes auf.
-  const abmelden = sets.csvImportStandAbonnieren(uid, async () => {
-    send(await stand());
-  });
-  const fallbackTimer = setInterval(async () => {
-    send(await stand());
-  }, 120000);
-  const heartbeat = setInterval(() => {
-    if (!closed) res.write(': keep-alive\n\n');
-  }, 20000);
-  send(await stand());
-
-  function cleanup() {
-    if (closed) return;
-    closed = true;
-    wache();
-    abmelden();
-    clearInterval(fallbackTimer);
-    clearInterval(heartbeat);
-    unregisterSse();
-    res.end();
-  }
-  req.on('close', cleanup);
+  const sendeStand = async () => strom.sende(await sets.csvImportStandFuerStrom(uid, req, sprache));
+  // Erst anmelden, dann den ersten Stand schicken: Sonst geht ein Ereignis zwischen
+  // Lesen und Anmelden verloren. Andere Worker melden über LISTEN/NOTIFY; der Takt fängt Verpasstes auf.
+  strom.beiEnde(sets.csvImportStandAbonnieren(uid, sendeStand));
+  const takt = setInterval(sendeStand, 120000);
+  strom.beiEnde(() => clearInterval(takt));
+  await sendeStand();
 });
 
 router.post(
@@ -477,6 +433,43 @@ router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
   );
 });
 
+/** Das Set ist angelegt; endet der Zugang oder trennt der Client, bricht nur die
+ * Ergänzung ab. Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein
+ * Statuscode mehr. `success` gehört dazu: Die Clients lesen es wie eine Antwort. */
+async function ergaenzeImStrom(
+  strom: Strom,
+  req: express.Request,
+  r: { set_number: string; besitzer: number; name?: string | null },
+) {
+  const fertig = (name: string | null | undefined, offen: boolean, ergaenzung: 'erledigt' | 'ausstehend') => ({
+    step: 'done',
+    success: true,
+    action: 'added',
+    set_number: r.set_number,
+    name,
+    katalog_offen: offen,
+    ergaenzung,
+  });
+  strom.sende({ step: 'meta', set: r.set_number });
+  await sets
+    .setErgaenzen(r.set_number, r.besitzer, d => {
+      if (strom.zu) throw new Error('CANCELLED');
+      strom.sende(d);
+    })
+    .then(
+      k => {
+        strom.sende({ step: 'done_meta', set: r.set_number });
+        strom.sende(fertig(k.name ?? r.name, !k.name, 'erledigt'));
+      },
+      (f: unknown) => {
+        if (fehlertext(f) === 'CANCELLED') return;
+        oeffentlicherFehler(f, 'sets:add-stream', req);
+        strom.sende(fertig(r.name, true, 'ausstehend'));
+      },
+    );
+  strom.ende();
+}
+
 router.post(
   '/sets/add-stream',
   requireToken,
@@ -502,62 +495,7 @@ router.post(
       res.json({ success: true, ...r });
       return;
     }
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-    const unregisterAddSse = registerSse(res);
-    let cancelled = false;
-    req.on('close', () => {
-      cancelled = true;
-    });
-    // Das Set ist angelegt; endet der Zugang, bricht nur die Ergänzung ab, wie beim Trennen.
-    const wache = wacheUeberZugang(req, () => {
-      cancelled = true;
-      res.write(SSE_ZUGANG_BEENDET);
-      res.end();
-    });
-    const send = (d: unknown) => {
-      if (!cancelled && !res.destroyed) res.write(`data: ${JSON.stringify(d)}\n\n`);
-    };
-    send({ step: 'meta', set: r.set_number });
-    // Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein Statuscode mehr. Angelegt ist das Set schon.
-    await sets
-      .setErgaenzen(r.set_number, r.besitzer, d => {
-        if (cancelled) throw new Error('CANCELLED');
-        send(d);
-      })
-      .then(
-        // success gehört dazu: Die Clients lesen das letzte Ereignis wie eine Antwort.
-        k => {
-          send({ step: 'done_meta', set: r.set_number });
-          send({
-            step: 'done',
-            success: true,
-            action: 'added',
-            set_number: r.set_number,
-            name: k.name ?? r.name,
-            katalog_offen: !k.name,
-            ergaenzung: 'erledigt',
-          });
-        },
-        (f: unknown) => {
-          if (fehlertext(f) === 'CANCELLED') return;
-          oeffentlicherFehler(f, 'sets:add-stream', req);
-          send({
-            step: 'done',
-            success: true,
-            action: 'added',
-            set_number: r.set_number,
-            name: r.name,
-            katalog_offen: true,
-            ergaenzung: 'ausstehend',
-          });
-        },
-      );
-    wache();
-    unregisterAddSse();
-    if (!res.writableEnded) res.end();
+    await ergaenzeImStrom(oeffneStrom(req, res, { herzschlag: false }), req, r);
   },
 );
 

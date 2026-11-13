@@ -10,6 +10,8 @@ import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
 import { kontoBereich } from './prozess';
+import { protokolliere } from './verwalterProtokoll';
+import { alsDoppelt } from '../infra/fehlerTexte';
 
 export { LETZTER_VERWALTER } from './repository/konten';
 
@@ -52,6 +54,27 @@ export async function profil(id: number) {
   return kontoBereich().konten.profilZeile(id);
 }
 
+export function kontoKurz(id: number) {
+  return kontoBereich().konten.kontoKurz(id);
+}
+
+export function kontoVoll(id: number) {
+  return kontoBereich().konten.kontoVoll(id);
+}
+
+export function kontoExistiert(id: number): Promise<boolean> {
+  return kontoBereich().konten.kontoExistiert(id);
+}
+
+/** Für Hinweise an Verwalter: Ein gerade gelöschtes Konto heisst wenigstens nach seiner ID. */
+export async function kontoName(id: number): Promise<string> {
+  return (await kontoBereich().konten.kontoKurz(id))?.username ?? String(id);
+}
+
+export function mussPasswortAendern(id: number): Promise<boolean> {
+  return kontoBereich().konten.mussPasswortAendern(id);
+}
+
 const hashe = (passwort: string) => hashePasswort(passwort, BCRYPT_ROUNDS);
 
 async function zugaengeBeenden(uid: number): Promise<void> {
@@ -63,11 +86,17 @@ async function startpasswortErledigt(uid: number): Promise<void> {
   if ((await kontoBereich().konten.kontoKurz(uid))?.is_admin) entferneStartpasswort();
 }
 
-export async function setzeFremdesPasswort(uid: number, passwort: string): Promise<boolean> {
+/** Passwort, Zugänge und Protokolleintrag des Verwalters `durch` zusammen oder gar nicht. */
+export async function setzeFremdesPasswort(
+  uid: number,
+  passwort: string,
+  durch: number | null = null,
+): Promise<boolean> {
   const hash = await hashe(passwort);
   return mitZugangsende(uid, async () => {
     if (!(await kontoBereich().konten.setzePasswortHash(uid, hash))) return false;
     await zugaengeBeenden(uid);
+    if (durch !== null) await protokolliere(durch, uid, 'passwort_gesetzt');
     return true;
   });
 }
@@ -117,8 +146,27 @@ export function raeumeOffeneRegistrierungenAuf(): Promise<number> {
   return kontoBereich().konten.loescheOffeneRegistrierungen(REGISTRIERUNG_FRIST_TAGE);
 }
 
-export async function legeKontoAn(username: string, passwort: string, verwalter: boolean): Promise<number | null> {
-  return kontoBereich().konten.fuegeKontoEin(username, await hashe(passwort), verwalter);
+/** Konto und Protokolleintrag in einer Transaktion: Ein Konto ohne Eintrag
+ * verschwiege, wer es angelegt hat. Gehasht wird vorher, damit bcrypt keine
+ * Verbindung hält. @returns die neue ID, oder null, wenn der Name vergeben ist */
+export async function legeKontoAn(
+  verwalter: number,
+  username: string,
+  passwort: string,
+  alsVerwalter: boolean,
+): Promise<number | null> {
+  const hash = await hashe(passwort);
+  return kontoBereich()
+    .db.transaction(async () => {
+      // Auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
+      if (await kontoBereich().konten.nameVergeben(username, 0)) return null;
+      const neu = await kontoBereich().konten.fuegeKontoEin(username, hash, alsVerwalter);
+      if (neu === null) return null;
+      await protokolliere(verwalter, neu, 'konto_angelegt');
+      if (alsVerwalter) await protokolliere(verwalter, neu, 'verwalter_ernannt');
+      return neu;
+    })
+    .catch(alsDoppelt('benutzername_vergeben'));
 }
 
 export async function registriere(d: {
