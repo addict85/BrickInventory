@@ -110,7 +110,7 @@ export function linkFuerKonsole(
 ): string | null {
   const url = link && /^https?:\/\/\S+$/.test(link) ? link : null;
   if (!url) return null;
-  return schalter === '1' ? url : url.replace(/([?&]token=)[^&#\s]+/g, '$1…');
+  return schalter === '1' ? url : url.replace(/([?&#]token=)[^&#\s]+/g, '$1…');
 }
 
 /** Die Konsole landet in app_logs, das jeder Verwalter liest; voll nur mit dem Entwicklerschalter wie die Links. */

@@ -180,7 +180,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     assert.equal(mit.status, 200);
     assert.equal(mit.token, true);
     const link = await warteAufLink();
-    assert.match(link, /https:\/\/lego\.example\.org\/reset-password\?token=/);
+    assert.match(link, /https:\/\/lego\.example\.org\/reset-password#token=…$/, 'der Token steht im Fragment');
     assert.doesNotMatch(link, /boese/);
   } finally {
     console.log = altLog;

@@ -19,6 +19,14 @@
  *   E  der Zweig `verify.fremdes_konto` gestrichen → rot: „ein fremder Link …“
  *   F  die Vorschau-Route löst den Link ein (verifiziereEmailToken) → rot: „das
  *      Öffnen des Links bestätigt nichts“
+ *
+ * Der Token steht im Fragment (#token=), das kein Browser an den Server schickt.
+ * Gegenproben (13.11.2026 gemessen, je einzeln, Bündel neu gebaut):
+ *   G  sitzung.js liest den Token wieder nur aus location.search → rot:
+ *      „angemeldet …“ (Zeitüberschreitung: Bestätigungsseite)
+ *   H  den hashchange-Lauscher in sitzung.js gestrichen → rot: „abgemeldet …“
+ *      (Zeitüberschreitung: Fehlertext bei falschem Link; ein zweiter Link im
+ *      selben Tab ändert nur das Fragment)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -44,7 +52,7 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
       `UPDATE users SET email_neu = $3, email_neu_token = $2, email_neu_bis = NOW() + INTERVAL '1 day' WHERE id = $1`,
       [uid, crypto.createHash('sha256').update(roh).digest('hex'), `neu${uid}_${process.pid}@example.org`],
     );
-    return `http://127.0.0.1:${app.port}/verify?token=${roh}`;
+    return `http://127.0.0.1:${app.port}/verify#token=${roh}`;
   };
   const bestaetigt = async uid =>
     (
@@ -59,7 +67,11 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
     await app.bis(`${sichtbar('login-screen')} && ${sichtbar('panel-verify')}`, 'Bestätigungsseite');
     await app.bis(kontoGenannt(`bestaetigen_${process.pid}`), 'eigenes Konto genannt');
     assert.equal(await bestaetigt(app.uid), false, 'das Öffnen des Links bestätigt nichts');
-    assert.equal(await app.b.auswerten(`location.search`), '', 'das Token bleibt nicht in der Adresszeile');
+    assert.equal(
+      await app.b.auswerten(`location.search + location.hash`),
+      '',
+      'das Token bleibt nicht in der Adresszeile',
+    );
     await app.b.auswerten(`document.getElementById('btn-verify').click(); true`);
     await app.bis(`location.pathname === '/' && ${sichtbar('app')} && !${sichtbar('login-screen')}`, 'Anwendung', 300);
     assert.equal(await bestaetigt(app.uid), true);

@@ -1,10 +1,19 @@
 import express from 'express';
-import type { Request, Response, NextFunction } from 'express';
+import type { Application, Request, Response, NextFunction } from 'express';
 import { proxyVertrauen, ohneV4Huelle, imDockerNetz, istDockerGateway } from '../infra/proxyVertrauen';
 
 /** Ab hier gilt „immer dieselbe Client-Adresse“ nicht mehr als Zufall eines
  * einzelnen Nutzers, sondern als Zeichen eines weiteren Proxys vor Caddy. */
 export const EINE_ADRESSE = { anfragen: 300, ms: 60 * 60_000 };
+
+export type ProxyStand =
+  | { art: 'gateway' | 'docker_netz'; vars: { ip: string } }
+  | { art: 'eine_adresse'; vars: { ip: string; minuten: number; anzahl: number } };
+/** Der Verwalter liest das Protokoll selten; Hintergrundarbeiten zeigt den Hinweis des Hinweisgebers,
+ * den startup/app.ts in app.locals ablegt (GET /admin/jobs). */
+export function proxyHinweisStand(app: Application): ProxyStand | null {
+  return (app.locals.proxyHinweis as ReturnType<typeof proxyHinweis> | undefined)?.stand() ?? null;
+}
 
 /** Über das Gateway kommen auch Clients herein; geraten wird deshalb nie zu
  * ihm, sondern zu einer festen Proxy-Adresse. */
@@ -24,13 +33,17 @@ export function proxyHinweis(
   pruefer.set('trust proxy', vertrauen);
   const vertraut = pruefer.get('trust proxy fn') as (adresse: string, hop: number) => boolean;
   let gewarnt = vertrauen === false;
-  const eineAdresse = einzigeClientAdresse(Array.isArray(vertrauen), warne, uhr);
-  return (req: Request, _res: Response, next: NextFunction) => {
+  let stand: ProxyStand | null = null;
+  const eineAdresse = einzigeClientAdresse(Array.isArray(vertrauen), warne, uhr, s => {
+    stand = s;
+  });
+  const mw = (req: Request, _res: Response, next: NextFunction) => {
     const von = req.socket?.remoteAddress || '';
     if (req.headers['x-forwarded-for'] && vertraut(von, 0)) eineAdresse(req.ip, von);
     if (!gewarnt && req.headers['x-forwarded-for'] && imDockerNetz(von) && !vertraut(von, 0)) {
       gewarnt = true;
       const ip = ohneV4Huelle(von);
+      stand = { art: istDockerGateway(von) ? 'gateway' : 'docker_netz', vars: { ip } };
       warne(
         istDockerGateway(von)
           ? `⚠️ [sicherheit] X-Forwarded-For kommt über das Docker-Gateway ${ip} und wird verworfen. Über das Gateway ` +
@@ -44,11 +57,17 @@ export function proxyHinweis(
     }
     next();
   };
+  return Object.assign(mw, { stand: () => stand });
 }
 
 /** Steht ein zweiter Proxy vor Caddy, kommt immer dessen Adresse an; gemeldet wird
  * erst nach vielen Anfragen über lange Zeit, damit ein einzelner Nutzer nicht zählt. */
-function einzigeClientAdresse(aktiv: boolean, warne: (text: string) => void, uhr: () => number) {
+function einzigeClientAdresse(
+  aktiv: boolean,
+  warne: (text: string) => void,
+  uhr: () => number,
+  merke: (s: ProxyStand) => void,
+) {
   let fertig = !aktiv;
   let erste: string | undefined;
   let seit = 0;
@@ -68,6 +87,7 @@ function einzigeClientAdresse(aktiv: boolean, warne: (text: string) => void, uhr
     const minuten = Math.floor((uhr() - seit) / 60_000);
     if (anzahl < EINE_ADRESSE.anfragen || uhr() - seit < EINE_ADRESSE.ms) return;
     fertig = true;
+    merke({ art: 'eine_adresse', vars: { ip: ohneV4Huelle(ip), minuten, anzahl } });
     warne(
       `⚠️ [sicherheit] Seit ${minuten} Minuten kommen alle ${anzahl} Anfragen über den Proxy mit derselben ` +
         `Client-Adresse ${ohneV4Huelle(ip)}. Steht vor Caddy ein weiterer Proxy (z. B. Nginx Proxy Manager), ` +

@@ -2,6 +2,7 @@
  * Prüfung vergessen kann. */
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin } from './middleware';
+import { proxyHinweisStand } from '../../src/http/proxyHinweis';
 import { getLimitForApi } from '../../src/katalog';
 import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen';
 import {
@@ -306,8 +307,8 @@ router.delete(
   },
 );
 
-router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/jobs'>) => {
-  res.json({ success: true, ...(await jobUebersicht()) });
+router.get('/admin/jobs', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'GET /api/v1/admin/jobs'>) => {
+  res.json({ success: true, ...(await jobUebersicht()), proxy_hinweis: proxyHinweisStand(req.app) });
 });
 
 // Body: { name, time: "HH:MM" } für tägliche Jobs oder { name: 'priceJob',

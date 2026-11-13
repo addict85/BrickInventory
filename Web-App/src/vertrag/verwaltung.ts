@@ -178,6 +178,13 @@ export const JobsResponse = z.looseObject({
   jobs: z.record(z.string(), JobStatus),
   schedules: z.record(z.string(), JobSchedule),
   degradiert: z.array(z.string()).optional(),
+  proxy_hinweis: z
+    .object({
+      art: z.enum(['gateway', 'docker_netz', 'eine_adresse']),
+      vars: z.object({ ip: z.string(), minuten: ganz.optional(), anzahl: ganz.optional() }),
+    })
+    .nullable()
+    .optional(),
 });
 
 export const ProtokollZeile = z.looseObject({
