@@ -330,7 +330,9 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
   // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
   // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
   // Gegenprobe (05.11.2026): `get<T = any>` in DbSchnittstelle → rot.
-  const quelle = ['database.ts', 'typen.ts'].map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8')).join('\n');
+  const quelle = ['database.ts', 'transaktion.ts', 'typen.ts']
+    .map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8'))
+    .join('\n');
   assert.equal(
     (quelle.match(/\b(?:all|get)\s*(?::\s*)?<T = unknown>/g) || []).length,
     6,
@@ -1102,7 +1104,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
   // src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026).
   const SCHRANKE_80 = 22,
     SCHRANKE_150 = 1,
-    BEKANNT_100 = ['db/database.ts erzeugeDb', 'src/finanzen/preisLauf.ts runPriceRefresh'];
+    BEKANNT_100 = ['db/database.ts erzeugeDb'];
   const dateien = quellen().filter(
     f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f),
   );
