@@ -16,12 +16,12 @@ const { spawnSync } = require('node:child_process');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { zugangOderSkip } = require('./helpers/db');
 
 const SKRIPT = path.join(__dirname, '..', 'scripts', 'loadtest.js');
 
 test('das Lastskript läuft mit kleiner Last ohne Fehler durch', async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await zugangOderSkip(t, _req, { migrieren: false }))) return;
   const r = spawnSync(process.execPath, [SKRIPT, '--users', '2', '--dauer', '1', '--sets', '20'], {
     encoding: 'utf8',
     env: { ...process.env },

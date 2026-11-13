@@ -300,14 +300,9 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Ohne Login-Pflicht ein offener Proxy (Bandbreite, IP-Verschleierung).
   const proxyUserId = await resolveUserId(req);
   if (!proxyUserId) return res.status(401).end();
-  let url = String(req.query.url || '');
-  if (!url?.startsWith('https://')) return res.status(400).end();
-  // Rebrickable liefert manchmal vorkodierte Adressen — einmal dekodieren.
-  const decoded = einmalDekodiert(url);
-  if (decoded.startsWith('https://')) url = decoded;
-  // Nur bekannte Bild-CDNs; eine unlesbare Adresse ist ebenfalls 403.
-  if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return res.status(403).end();
-  url = proxyAdresse(url) ?? url;
+  const ziel = proxyZiel(String(req.query.url || ''));
+  if (typeof ziel === 'number') return res.status(ziel).end();
+  const url = ziel;
   // Jedes Bild nur einmal holen; Content-Type liegt daneben (.ct).
   const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
   const cacheKey = proxyCacheSchluessel(url);
@@ -357,6 +352,38 @@ export async function bildDurchreichen(req: Request, res: Response) {
 
   const r = await vomCdn(url, cacheKey, res, ersatz);
   if (!r) return;
+  const setZiel = setFehlt ? setNummer : null;
+  return weiterreichen(r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, setZiel });
+}
+
+/** Die Adresse aus ?url=, oder der Status, mit dem abgewiesen wird. */
+function proxyZiel(roh: string): string | number {
+  let url = roh;
+  if (!url?.startsWith('https://')) return 400;
+  // Rebrickable liefert manchmal vorkodierte Adressen — einmal dekodieren.
+  const decoded = einmalDekodiert(url);
+  if (decoded.startsWith('https://')) url = decoded;
+  // Nur bekannte Bild-CDNs; eine unlesbare Adresse ist ebenfalls 403.
+  if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return 403;
+  return proxyAdresse(url) ?? url;
+}
+
+/** Die Antwort des CDN an den Client und zugleich in den Cache. */
+function weiterreichen(
+  r: AbrufStrom,
+  res: Response,
+  o: {
+    url: string;
+    cacheDir: string;
+    cacheFile: string;
+    thumbFile: string;
+    wantThumb: boolean;
+    darfErzeugen: boolean;
+    notiere: () => void;
+    setZiel: string | null;
+  },
+) {
+  const { url, cacheDir, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, setZiel } = o;
   const rohTyp = String(r.kopf['content-type'] || 'image/jpeg');
 
   // Nur Bilder: Auf den erlaubten CDNs liegen teils Nutzer-Uploads, und ein SVG
@@ -394,7 +421,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
     wantThumb,
     darfErzeugen,
     notiere,
-    setNummer: setFehlt ? setNummer : null,
+    setNummer: setZiel,
   });
 
   // Abbruch beim Scrollen: Die CDN-Verbindung muss sofort zurück in den Pool.

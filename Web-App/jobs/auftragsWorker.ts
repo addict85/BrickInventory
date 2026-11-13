@@ -166,6 +166,33 @@ async function nachFehler(
   }
 }
 
+/** Ein Abbruch über die Verwaltung meldet sich per NOTIFY: sofort nachsehen, nicht erst beim nächsten Lebenszeichen. */
+function pruefeZugehoerigkeit(laufend: Map<string, Lauf>, schluessel?: string): void {
+  for (const { a, ac } of laufend.values()) {
+    if (ac.signal.aborted || (schluessel !== undefined && schluessel !== (a.schluessel ?? a.id))) continue;
+    void auftraegeBereich()
+      .auftraege.gehoertNoch(a)
+      .then(
+        ja => {
+          if (!ja && !ac.signal.aborted) ac.abort(new AuftragVerloren());
+        },
+        logAndContinue(`auftraege:stand ${a.art}`),
+      );
+  }
+}
+
+/** Beim Abschalten: alle Läufe unterbrechen, kurz auf sie warten, und was dann noch
+ * läuft, zurückgeben — sonst stünde es bis zum Ablauf der Frist auf 'laeuft'. */
+async function unterbrichLaufende(laufend: Map<string, Lauf>, wartenMs: number): Promise<Lauf[]> {
+  const alle = [...laufend.values()];
+  for (const l of alle) if (!l.ac.signal.aborted) l.ac.abort(new AuftragUnterbrochen());
+  await Promise.race([Promise.all(alle.map(l => l.fertig)), new Promise(r => setTimeout(r, wartenMs).unref())]);
+  const rest = [...laufend.values()];
+  for (const { a } of rest)
+    await auftraegeBereich().auftraege.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+  return rest;
+}
+
 /** Mehrere Worker teilen sich die Arbeit über SKIP LOCKED; das NOTIFY beim Einstellen weckt früher als der Takt. */
 function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const arten = Object.keys(bearbeiter);
@@ -242,20 +269,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     void pumpe();
   };
 
-  /** Ein Abbruch über die Verwaltung meldet sich per NOTIFY: sofort nachsehen, nicht erst beim nächsten Lebenszeichen. */
-  const standGeaendert = (schluessel?: string) => {
-    for (const { a, ac } of laufend.values()) {
-      if (ac.signal.aborted || (schluessel !== undefined && schluessel !== (a.schluessel ?? a.id))) continue;
-      void auftraegeBereich()
-        .auftraege.gehoertNoch(a)
-        .then(
-          ja => {
-            if (!ja && !ac.signal.aborted) ac.abort(new AuftragVerloren());
-          },
-          logAndContinue(`auftraege:stand ${a.art}`),
-        );
-    }
-  };
+  const standGeaendert = (schluessel?: string) => pruefeZugehoerigkeit(laufend, schluessel);
 
   function starte(): void {
     if (gestartet) return;
@@ -272,12 +286,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     if (takt) clearInterval(takt);
     for (const ab of abmelden) ab();
     await pumpLauf;
-    const alle = [...laufend.values()];
-    for (const l of alle) if (!l.ac.signal.aborted) l.ac.abort(new AuftragUnterbrochen());
-    await Promise.race([Promise.all(alle.map(l => l.fertig)), new Promise(r => setTimeout(r, wartenMs).unref())]);
-    const rest = [...laufend.values()];
-    for (const { a } of rest)
-      await auftraegeBereich().auftraege.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+    const rest = await unterbrichLaufende(laufend, wartenMs);
     console.log(`[auftraege] beendet, ${rest.length} laufende Aufträge zurückgegeben`);
   }
 
