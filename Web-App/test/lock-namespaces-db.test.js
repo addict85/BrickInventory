@@ -33,18 +33,16 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
     return;
   }
 
-  /** Eine Sperre auf einer eigenen Verbindung halten; gibt den Freigeber zurück. */
+  /** Eine Sperre auf einer eigenen Verbindung halten (nicht aus dem Pool: es gibt mehr
+   * Namensräume als Pool-Plätze); gibt den Freigeber zurück. */
   async function halten(ns, zweiter = 0) {
-    const c = await db.pool.connect();
+    const c = await db.eigeneVerbindung();
     const { rows } = await c.query('SELECT pg_try_advisory_lock($1, $2) AS ok', [ns, zweiter]);
     if (!rows[0].ok) {
-      c.release();
+      await c.end();
       throw new Error(`Namensraum ${ns} war schon belegt`);
     }
-    return async () => {
-      await c.query('SELECT pg_advisory_unlock($1, $2)', [ns, zweiter]).catch(() => {});
-      c.release();
-    };
+    return () => c.end();
   }
 
   /** Bekommt eine ZWEITE Verbindung diese Sperre noch? */

@@ -782,6 +782,7 @@ export type Fehlercode =
   | 'pdf_auftrag_laeuft'
   | 'job_id_ungueltig'
   | 'job_nicht_gefunden'
+  | 'zugang_beendet'
   | 'unbekannter_job'
   | 'auftrag_nicht_aenderbar'
   | 'nummer_ungueltig'

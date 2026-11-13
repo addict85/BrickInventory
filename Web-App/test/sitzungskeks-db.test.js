@@ -123,8 +123,9 @@ test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, as
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('mit TLS: __Host-bim.sid, Secure, Path=/, ohne Domain', async () => {
-    const server = await starteServer(t, {});
+  // Je Fall ein Server, der mit dem Fall endet: Auf einer Datenbank läuft nur ein Web-Prozess.
+  await t.test('mit TLS: __Host-bim.sid, Secure, Path=/, ohne Domain', async st => {
+    const server = await starteServer(st, {});
     const d = await durchlauf(server, { 'x-forwarded-proto': 'https' });
     assert.match(d.setzen, /^__Host-bim\.sid=/, d.setzen);
     assert.match(d.setzen, /; Path=\/(;|$)/, d.setzen);
@@ -138,8 +139,8 @@ test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, as
     assert.equal(d.danach.loggedIn, false);
   });
 
-  await t.test('ohne TLS: bim.sid ohne Präfix und ohne Secure', async () => {
-    const server = await starteServer(t, { COOKIE_SECURE: '0' });
+  await t.test('ohne TLS: bim.sid ohne Präfix und ohne Secure', async st => {
+    const server = await starteServer(st, { COOKIE_SECURE: '0' });
     const d = await durchlauf(server, {});
     assert.match(d.setzen, /^bim\.sid=/, d.setzen);
     assert.doesNotMatch(d.setzen, /Secure/i, d.setzen);

@@ -36,7 +36,7 @@ async function schliesse(c: Client): Promise<void> {
   }
 }
 
-async function versuche(db: Db, o: Required<Pick<Warten, 'wartenMs' | 'taktMs'>>): Promise<Client> {
+async function belegeSperre(db: Db, o: Required<Pick<Warten, 'wartenMs' | 'taktMs'>>): Promise<Client> {
   const c = await db.eigeneVerbindung();
   // Ohne Zuhörer beendete ein Abriss während des Wartens den Prozess ungefragt.
   c.on('error', () => {});
@@ -68,17 +68,25 @@ export async function halteWebSperre(db: Db, o: Warten = {}): Promise<() => Prom
     });
   let client: Client | null = null;
   let frei = false;
-  // Reisst die Verbindung ab (Neustart der Datenbank), ist die Sperre weg: zurückholen
-  // oder aufgeben, sonst könnte inzwischen ein zweiter Web-Prozess starten.
+  // Reisst die Verbindung ab (Neustart der Datenbank), ist die Sperre weg: zurückholen,
+  // solange die Datenbank fehlt immer wieder (live bleibt 200), aufgeben erst, wenn
+  // inzwischen ein anderer Web-Prozess sie hält.
+  const zurueckholen = () => {
+    if (frei) return;
+    belegeSperre(db, frist).then(halte, (e: unknown) =>
+      e instanceof ZweiterWebProzess ? verloren(e) : setTimeout(zurueckholen, frist.taktMs),
+    );
+  };
   const halte = (c: Client) => {
+    if (frei) return void schliesse(c);
     client = c;
     c.on('error', () => {
       if (frei || client !== c) return;
       client = null;
-      versuche(db, frist).then(halte, verloren);
+      zurueckholen();
     });
   };
-  halte(await versuche(db, frist));
+  halte(await belegeSperre(db, frist));
   return async () => {
     frei = true;
     if (client) await schliesse(client);

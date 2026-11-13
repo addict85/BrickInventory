@@ -11,6 +11,8 @@
  *      „ein zweiter Zugang bekommt die Sperre nicht …“
  *   C  im Fehlerzuhörer von halte() nichts zurückholen (nur `client = null`) → rot:
  *      „nach einem Abriss holt der Prozess die Sperre zurück“
+ *   D  bei einem Verbindungsfehler aufgeben statt es erneut zu versuchen → rot: „fehlt
+ *      die Datenbank eine Weile, holt er die Sperre danach zurück“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -111,6 +113,30 @@ test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
       await fremd.end();
       await frei();
     }
+  });
+
+  await t.test('fehlt die Datenbank eine Weile, holt er die Sperre danach zurück', async () => {
+    const verluste = [];
+    const frei = await halteWebSperre(a, { ...KURZ, beiVerlust: e => verluste.push(e) });
+    const [{ pid }] = await halter();
+    const name = new URL(process.env.DATABASE_URL).pathname.slice(1);
+    const wartung = new URL(process.env.DATABASE_URL);
+    wartung.pathname = '/postgres';
+    const { Client } = require('pg');
+    const admin = new Client({ connectionString: wartung.toString() });
+    await admin.connect();
+    try {
+      await admin.query(`ALTER DATABASE "${name}" ALLOW_CONNECTIONS false`);
+      await admin.query('SELECT pg_terminate_backend($1)', [pid]);
+      // Länger als die Wartefrist (300 ms): Ein Verbindungsfehler ist kein zweiter Prozess.
+      await bis(() => false, 800);
+    } finally {
+      await admin.query(`ALTER DATABASE "${name}" ALLOW_CONNECTIONS true`);
+      await admin.end();
+    }
+    assert.ok(await bis(async () => (await halter().catch(() => [])).length === 1, 5000), 'Sperre zurückgeholt');
+    assert.deepEqual(verluste, []);
+    await frei();
   });
 
   await t.test('der echte Server wartet, solange ein anderer die Sperre hält', async () => {

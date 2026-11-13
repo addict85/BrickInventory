@@ -479,7 +479,7 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
     "const { serverOnly } = require('./helpers/sources');",
     "const { testServer } = require('./helpers/server');",
     "const SRC = fs.readFileSync('x.ts', 'utf8');",
-    "const modul = _req('src/x.js');",
+    "const modul = _req('src/infra/fehler.js');",
     'function starte() {',
     '  return testServer();',
     '}',
