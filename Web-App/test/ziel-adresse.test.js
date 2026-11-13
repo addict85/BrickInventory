@@ -15,6 +15,9 @@
  *      zählt wie die IPv4-Adresse darin“ (64:ff9b::7f00:1 galt als öffentlich)
  *      und „… Container-Netz auch über NAT64“
  *   F  '2002::/16' aus INTERN gestrichen → rot: „6to4 und Teredo …“
+ *   G  in normalisiert() die IPv4-kompatiblen (::/96) nicht erkannt → rot:
+ *      „IPv4-kompatible Adressen …“ (::127.0.0.1 galt als öffentlich und
+ *      erreichte den Mailserver im Container)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -164,4 +167,19 @@ test('der Mailserver erreicht das Container-Netz auch über NAT64 nicht', () => 
   assert.equal(pruefe('::ffff:172.28.73.20'), false);
   assert.equal(pruefe('64:ff9b::7f00:1'), false, 'Loopback über NAT64');
   assert.equal(pruefe('64:ff9b::c0a8:10a'), true, 'ein Mailserver im eigenen LAN bleibt erlaubt');
+});
+
+test('IPv4-kompatible Adressen (::a.b.c.d) zählen wie die IPv4-Adresse darin', () => {
+  assert.equal(Z.normalisiert('::127.0.0.1'), '127.0.0.1');
+  assert.equal(Z.normalisiert('::a9fe:a9fe'), '169.254.169.254');
+  for (const ip of ['::', '::1']) assert.equal(Z.normalisiert(ip), ip, `${ip} bleibt IPv6`);
+  for (const ip of ['::127.0.0.1', '::7f00:1', '::10.0.0.1', '::a9fe:a9fe', '64:ff9b::7f00:1'])
+    assert.equal(Z.oeffentlicheAdresse(ip), false, ip);
+  const schnittstellen = {
+    eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
+  };
+  const pruefe = ip => Z.mailserverAdresse(ip, { imContainer: true, schnittstellen });
+  assert.equal(pruefe('::127.0.0.1'), false, 'Loopback über ::/96');
+  assert.equal(pruefe('::172.28.73.20'), false, 'Container-Netz über ::/96');
+  assert.equal(Z.mailserverAdresse('::1', { imContainer: false, schnittstellen }), true, '::1 ohne Container');
 });
