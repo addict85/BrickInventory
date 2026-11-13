@@ -81,7 +81,7 @@
     .llogo .llogo-name{font-size:var(--fs-6);font-weight:800;min-width:0;text-align:center;overflow-wrap:break-word;hyphens:auto}
     .llogo .llogo-name span{color:var(--b600)}
     /* Fehlermeldung direkt am Feld (feldFehler in 01-core.js). */
-    .feld-fehler{color:var(--r700);font-size:var(--fs-2);margin-top:4px;flex-basis:100%}
+    .feld-fehler{color:var(--r700);font-size:var(--fs-2);margin-top:4px;flex-basis:100%;grid-column:1/-1;contain:inline-size;min-width:100%}
     /* Meldung unter einer Tabellenzeile (feldFehler): über alle Spalten, dicht an der Zeile darüber. */
     .feld-fehler-zeile > td{padding-top:0;white-space:normal}
     .feld-fehler-zeile > td > .feld-fehler{margin-top:0}
