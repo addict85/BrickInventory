@@ -15,18 +15,9 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/**
- * Wo eine feste Zeichenkette bleiben DARF — und warum.
- *
- * Alle drei sind keine Meldungen an einen Menschen vor einem Bildschirm.
- */
-const ERLAUBT = {
-  'src/finanzen/rechnung/preise.ts':
-    'Ein Merkmal des Preisergebnisses, an dem der Preis-Job „übersprungen" von „Fehler" ' +
-    'unterscheidet — wird nirgends angezeigt.',
-};
-
-// Drei Eintraege standen hier und beschrieben nichts mehr
+/** Wo eine feste Zeichenkette bleiben DARF — und warum. Zurzeit nirgends. */
+/** @type {Record<string, string>} */
+const ERLAUBT = {};
 
 /** Alle .ts unter den angegebenen Ordnern, auch in Unterordnern. */
 function tsDateien(dir, praefix = '') {
