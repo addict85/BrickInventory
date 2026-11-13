@@ -214,11 +214,6 @@ CREATE FUNCTION public.zeilenschutz_konten() RETURNS integer[]
     FROM (SELECT NULLIF(current_setting('app.konto', true), '')::integer AS id) k
 $$;
 
-CREATE FUNCTION public.zeilenschutz_system() RETURNS boolean
-    LANGUAGE sql STABLE
-    SET search_path TO 'pg_catalog', 'pg_temp'
-    AS $$ SELECT COALESCE(current_setting('app.system', true), '') = 'an' $$;
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -2087,9 +2082,19 @@ ALTER TABLE ONLY public.zweiter_faktor_codes
 ALTER TABLE ONLY public.zweiter_faktor
     ADD CONSTRAINT zweiter_faktor_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
+ALTER TABLE public.api_tokens ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.api_tokens_verbraucht ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.auftraege ENABLE ROW LEVEL SECURITY;
+
 ALTER TABLE public.bl_zuordnung_eigen ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.figur_eigen ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.geraete_nonces ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.geraete_schluessel ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.idempotenz ENABLE ROW LEVEL SECURITY;
 
@@ -2113,7 +2118,15 @@ ALTER TABLE public.parts_summary_state ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.parts_version_user ENABLE ROW LEVEL SECURITY;
 
+ALTER TABLE public.passkeys ENABLE ROW LEVEL SECURITY;
+
 ALTER TABLE public.price_alerts ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.qr_login_tokens ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.schritt_challenges ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.schritt_freigaben ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.set_acquisitions ENABLE ROW LEVEL SECURITY;
 
@@ -2131,49 +2144,79 @@ ALTER TABLE public.vouchers ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.wanted ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY zeilenschutz ON public.bl_zuordnung_eigen USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+ALTER TABLE public.webauthn_challenges ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY zeilenschutz ON public.figur_eigen USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.api_tokens USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.idempotenz USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.api_tokens_verbraucht USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.import_stand USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.auftraege USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.instructions USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.bl_zuordnung_eigen USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.minifig_acquisitions USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.figur_eigen USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.minifigs USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.geraete_nonces USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.papierkorb USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.geraete_schluessel USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.part_acquisitions USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.idempotenz USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.parts USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.import_stand USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.parts_summary USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.instructions USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.parts_summary_state USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.minifig_acquisitions USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.parts_version_user USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.minifigs USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.price_alerts USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.papierkorb USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.set_acquisitions USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.part_acquisitions USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.sets USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.parts USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.storage_locations USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.parts_summary USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.teil_eigen USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.parts_summary_state USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.teil_farbe_eigen USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.parts_version_user USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.user_settings USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.passkeys USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.vouchers USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.price_alerts USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
 
-CREATE POLICY zeilenschutz ON public.wanted USING ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT public.zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
+CREATE POLICY zeilenschutz ON public.qr_login_tokens USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.schritt_challenges USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.schritt_freigaben USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.set_acquisitions USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.sets USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.storage_locations USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.teil_eigen USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.teil_farbe_eigen USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.user_settings USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.vouchers USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.wanted USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.webauthn_challenges USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.zweiter_faktor USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+CREATE POLICY zeilenschutz ON public.zweiter_faktor_codes USING ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT public.zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+
+ALTER TABLE public.zweiter_faktor ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE public.zweiter_faktor_codes ENABLE ROW LEVEL SECURITY;
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2346,3 +2389,4 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('010
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0109-zustand-und-auftragsart-pruefen.sql', '2026-11-11 13:56:56.205616+00', 'c16ce444add67b79f46521d52f6a3ad81a9cb104a1380593f1592ff55c572a28');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0110-auftrag-wartet.sql', '2026-11-13 08:15:29.409994+00', '144dd4e64404412bded58c0a01a256f12f9da8e6e018bfc487b7471866e321ba');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0111-zeilenschutz.sql', '2026-11-13 08:15:29.414676+00', '94bf278ba825a71a09801adf588e35c17bf490a2779e81012b24f4b6b025f49d');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0112-systemrolle-statt-schalter.sql', '2026-11-13 12:22:41.93136+00', 'd5ef5798fa53feb853627eeb1fcece726dfb3e6c48fe9718ca75029d70c0dee9');

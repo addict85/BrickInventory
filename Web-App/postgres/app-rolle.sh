@@ -1,8 +1,9 @@
 #!/bin/sh
-# Zwei Rollen ohne Superuser-Rechte: Die Migrationsrolle besitzt Datenbank,
-# Schema und alle Objekte (Erststart, Migrationen, Restore); die Laufzeitrolle
-# von app und jobs darf nur Zeilen lesen und schreiben. Ein Einbruch in die App
-# kann so weder Tabellen ändern oder löschen noch COPY … PROGRAM erreichen.
+# Rollen ohne Superuser-Rechte: Die Migrationsrolle besitzt Datenbank, Schema
+# und alle Objekte (Erststart, Migrationen, Restore); die Laufzeitrolle von app
+# und jobs darf nur Zeilen lesen und schreiben, die Systemrolle ebenso, aber am
+# Zeilenschutz vorbei (Arbeit über Kontogrenzen). Ein Einbruch in die App kann
+# so weder Tabellen ändern oder löschen noch COPY … PROGRAM erreichen.
 # Läuft mit dem Superuser bei jedem `docker compose up` (Dienst db-rolle) und
 # beim Anlegen einer neuen Datenbank (docker-entrypoint-initdb.d); wiederholbar.
 #
@@ -24,9 +25,11 @@ aus_datei() {
 aus_datei PGPASSWORD
 aus_datei DB_APP_PASSWORD
 aus_datei DB_MIGRATION_PASSWORD
+aus_datei DB_SYSTEM_PASSWORD
 aus_datei PGWEB_DB_PASSWORD
 : "${DB_APP_PASSWORD:?DB_APP_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md}"
 : "${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md#migrationsrolle}"
+: "${DB_SYSTEM_PASSWORD:?DB_SYSTEM_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md#systemrolle}"
 SU_PASSWORT="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
 if [ "$DB_APP_PASSWORD" = "$SU_PASSWORT" ]; then
   echo "[db-rolle] DB_APP_PASSWORD muss sich von DB_PASSWORD unterscheiden." >&2
@@ -36,11 +39,17 @@ if [ "$DB_MIGRATION_PASSWORD" = "$SU_PASSWORT" ] || [ "$DB_MIGRATION_PASSWORD" =
   echo "[db-rolle] DB_MIGRATION_PASSWORD muss sich von DB_PASSWORD und DB_APP_PASSWORD unterscheiden." >&2
   exit 1
 fi
+for anderes in "$SU_PASSWORT" "$DB_APP_PASSWORD" "$DB_MIGRATION_PASSWORD"; do
+  if [ "$DB_SYSTEM_PASSWORD" = "$anderes" ]; then
+    echo "[db-rolle] DB_SYSTEM_PASSWORD muss sich von DB_PASSWORD, DB_APP_PASSWORD und DB_MIGRATION_PASSWORD unterscheiden." >&2
+    exit 1
+  fi
+done
 export PGWEB_DB_PASSWORD="${PGWEB_DB_PASSWORD:-}"
 if [ -n "$PGWEB_DB_PASSWORD" ]; then
-  for anderes in "$SU_PASSWORT" "$DB_APP_PASSWORD" "$DB_MIGRATION_PASSWORD"; do
+  for anderes in "$SU_PASSWORT" "$DB_APP_PASSWORD" "$DB_MIGRATION_PASSWORD" "$DB_SYSTEM_PASSWORD"; do
     if [ "$PGWEB_DB_PASSWORD" = "$anderes" ]; then
-      echo "[db-rolle] PGWEB_DB_PASSWORD muss sich von DB_PASSWORD, DB_APP_PASSWORD und DB_MIGRATION_PASSWORD unterscheiden." >&2
+      echo "[db-rolle] PGWEB_DB_PASSWORD muss sich von DB_PASSWORD, DB_APP_PASSWORD, DB_MIGRATION_PASSWORD und DB_SYSTEM_PASSWORD unterscheiden." >&2
       exit 1
     fi
   done
@@ -48,6 +57,7 @@ fi
 export DB_APP_USER="${DB_APP_USER:-brickinventory_app}"
 export DB_MIGRATION_USER="${DB_MIGRATION_USER:-brickinventory_migration}"
 export DB_LESEN_USER="${DB_LESEN_USER:-brickinventory_lesen}"
+export DB_SYSTEM_USER="${DB_SYSTEM_USER:-brickinventory_system}"
 
 # Was die Leserolle (pgweb) lesen darf, je Tabelle: eine Allowlist. Eine neue
 # Tabelle oder Spalte bleibt unlesbar, bis sie hier bewusst steht; eine neue
@@ -136,18 +146,24 @@ SET ROLE NONE;
 \getenv lesen_rolle DB_LESEN_USER
 \getenv lesen_passwort PGWEB_DB_PASSWORD
 \getenv lesen_spalten LESEN_SPALTEN
+\getenv system_rolle DB_SYSTEM_USER
+\getenv system_passwort DB_SYSTEM_PASSWORD
 SELECT pg_catalog.set_config('brickinventory.app_rolle', :'app_rolle', false) AS r,
        pg_catalog.set_config('brickinventory.app_passwort', :'app_passwort', false) AS p,
        pg_catalog.set_config('brickinventory.migration_rolle', :'migration_rolle', false) AS mr,
        pg_catalog.set_config('brickinventory.migration_passwort', :'migration_passwort', false) AS mp,
        pg_catalog.set_config('brickinventory.lesen_rolle', :'lesen_rolle', false) AS lr,
        pg_catalog.set_config('brickinventory.lesen_passwort', :'lesen_passwort', false) AS lp,
-       pg_catalog.set_config('brickinventory.lesen_spalten', :'lesen_spalten', false) AS ls \gset
+       pg_catalog.set_config('brickinventory.lesen_spalten', :'lesen_spalten', false) AS ls,
+       pg_catalog.set_config('brickinventory.system_rolle', :'system_rolle', false) AS sr,
+       pg_catalog.set_config('brickinventory.system_passwort', :'system_passwort', false) AS sp \gset
 DO $$
 DECLARE
   rolle text := pg_catalog.current_setting('brickinventory.app_rolle');
   migration text := pg_catalog.current_setting('brickinventory.migration_rolle');
   lesen text := pg_catalog.current_setting('brickinventory.lesen_rolle');
+  sysrolle text := pg_catalog.current_setting('brickinventory.system_rolle');
+  schreiber text;
   lesen_pw text := pg_catalog.current_setting('brickinventory.lesen_passwort');
   liste text := pg_catalog.current_setting('brickinventory.lesen_spalten');
   spalten text[];
@@ -163,10 +179,9 @@ BEGIN
   IF NOT (SELECT rolsuper FROM pg_catalog.pg_roles WHERE rolname = current_user) THEN
     RAISE EXCEPTION 'db-rolle muss als Superuser laufen, nicht als %', current_user;
   END IF;
-  IF rolle = current_user OR lesen = current_user OR migration = current_user
-     OR rolle = lesen OR rolle = migration OR lesen = migration THEN
-    RAISE EXCEPTION 'Laufzeitrolle %, Migrationsrolle %, Leserolle % und Superuser % müssen verschieden sein',
-      rolle, migration, lesen, current_user;
+  IF (SELECT pg_catalog.count(DISTINCT n) FROM pg_catalog.unnest(ARRAY[rolle, migration, lesen, sysrolle, current_user::text]) n) <> 5 THEN
+    RAISE EXCEPTION 'Laufzeitrolle %, Migrationsrolle %, Leserolle %, Systemrolle % und Superuser % müssen verschieden sein',
+      rolle, migration, lesen, sysrolle, current_user;
   END IF;
   -- Event-Trigger feuern bei jedem ALTER … OWNER unten mit Superuser-Rechten.
   IF EXISTS (SELECT FROM pg_catalog.pg_event_trigger WHERE evtenabled <> 'D') THEN
@@ -174,16 +189,20 @@ BEGIN
   END IF;
   EXECUTE pg_catalog.format('ALTER DATABASE %I RESET ALL', db);
 
-  -- Beide Rollen ohne Sonderrechte, ohne eigene Einstellungen und in keiner
-  -- anderen Rolle Mitglied (auch nicht die Laufzeit- in der Migrationsrolle).
-  FOR konto IN SELECT * FROM (VALUES (migration, pg_catalog.current_setting('brickinventory.migration_passwort')),
-                                     (rolle, pg_catalog.current_setting('brickinventory.app_passwort'))) AS k(name, pw) LOOP
+  -- Ohne Sonderrechte, ohne eigene Einstellungen und in keiner anderen Rolle
+  -- Mitglied (auch nicht die Laufzeit- in der Migrationsrolle). Allein die
+  -- Systemrolle umgeht den Zeilenschutz: Das ist ein Attribut der Rolle, keine
+  -- Einstellung, die eine eingeschleuste Abfrage der Laufzeitrolle setzen könnte.
+  FOR konto IN SELECT * FROM (VALUES (migration, pg_catalog.current_setting('brickinventory.migration_passwort'), 'NOBYPASSRLS'),
+                                     (rolle, pg_catalog.current_setting('brickinventory.app_passwort'), 'NOBYPASSRLS'),
+                                     (sysrolle, pg_catalog.current_setting('brickinventory.system_passwort'), 'BYPASSRLS'))
+                              AS k(name, pw, rls) LOOP
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = konto.name) THEN
       EXECUTE pg_catalog.format('CREATE ROLE %I LOGIN', konto.name);
       RAISE NOTICE '[db-rolle] Rolle % angelegt', konto.name;
     END IF;
-    EXECUTE pg_catalog.format('ALTER ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS',
-                   konto.name, konto.pw);
+    EXECUTE pg_catalog.format('ALTER ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION %s',
+                   konto.name, konto.pw, konto.rls);
     EXECUTE pg_catalog.format('ALTER ROLE %I RESET ALL', konto.name);
     EXECUTE pg_catalog.format('ALTER ROLE %I IN DATABASE %I RESET ALL', konto.name, db);
     FOR r IN SELECT g.rolname FROM pg_catalog.pg_auth_members m JOIN pg_catalog.pg_roles g ON g.oid = m.roleid
@@ -234,33 +253,37 @@ BEGIN
               WHERE c.relnamespace = r.oid AND c.relkind = 'r' AND c.relowner <> ziel LOOP
       EXECUTE pg_catalog.format('ALTER TABLE %s OWNER TO %I', kopie.name, migration);
     END LOOP;
-    EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA %I TO %I', r.nspname, rolle);
-    EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA %I FROM %I', r.nspname, rolle);
-    EXECUTE pg_catalog.format('GRANT SELECT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO %I', r.nspname, rolle);
+    FOREACH schreiber IN ARRAY ARRAY[rolle, sysrolle] LOOP
+      EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA %I TO %I', r.nspname, schreiber);
+      EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA %I FROM %I', r.nspname, schreiber);
+      EXECUTE pg_catalog.format('GRANT SELECT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO %I', r.nspname, schreiber);
+    END LOOP;
   END LOOP;
 
-  -- Laufzeitrolle: Zeilen lesen und schreiben, Sequenzen weiterzählen, temporäre
-  -- Tabellen (Schatten des Katalog-Imports); kein CREATE in Datenbank und Schema.
-  -- Erst alles weg, dann genau das: Aus der Zeit als Eigentümerin bleibt nichts.
-  EXECUTE pg_catalog.format('REVOKE ALL ON DATABASE %I FROM %I', db, rolle);
-  EXECUTE pg_catalog.format('GRANT CONNECT, TEMPORARY ON DATABASE %I TO %I', db, rolle);
-  EXECUTE pg_catalog.format('REVOKE ALL ON SCHEMA public FROM %I', rolle);
-  EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA public TO %I', rolle);
-  EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', rolle);
-  EXECUTE pg_catalog.format('GRANT SELECT, INSERT, UPDATE, DELETE%s ON ALL TABLES IN SCHEMA public TO %I', pflege, rolle);
-  EXECUTE pg_catalog.format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', rolle);
-  EXECUTE pg_catalog.format('GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO %I', rolle);
-  -- Für alles, was die Migrationsrolle künftig anlegt (Migrationen, Kopien,
-  -- Restore), gilt dasselbe ohne erneuten Lauf; ohne IN SCHEMA, damit auch neue
-  -- vor_migration_*-Schemas erfasst sind.
-  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I REVOKE ALL ON TABLES FROM %I', migration, rolle);
-  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT SELECT, INSERT, UPDATE, DELETE%s ON TABLES TO %I',
-                 migration, pflege, rolle);
-  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I', migration, rolle);
-  EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT USAGE ON SCHEMAS TO %I', migration, rolle);
+  -- Laufzeit- und Systemrolle: Zeilen lesen und schreiben, Sequenzen weiterzählen,
+  -- temporäre Tabellen (Schatten des Katalog-Imports); kein CREATE in Datenbank
+  -- und Schema. Erst alles weg, dann genau das: Aus der Zeit als Eigentümerin bleibt nichts.
+  FOREACH schreiber IN ARRAY ARRAY[rolle, sysrolle] LOOP
+    EXECUTE pg_catalog.format('REVOKE ALL ON DATABASE %I FROM %I', db, schreiber);
+    EXECUTE pg_catalog.format('GRANT CONNECT, TEMPORARY ON DATABASE %I TO %I', db, schreiber);
+    EXECUTE pg_catalog.format('REVOKE ALL ON SCHEMA public FROM %I', schreiber);
+    EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA public TO %I', schreiber);
+    EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', schreiber);
+    EXECUTE pg_catalog.format('GRANT SELECT, INSERT, UPDATE, DELETE%s ON ALL TABLES IN SCHEMA public TO %I', pflege, schreiber);
+    EXECUTE pg_catalog.format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', schreiber);
+    EXECUTE pg_catalog.format('GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO %I', schreiber);
+    -- Für alles, was die Migrationsrolle künftig anlegt (Migrationen, Kopien,
+    -- Restore), gilt dasselbe ohne erneuten Lauf; ohne IN SCHEMA, damit auch neue
+    -- vor_migration_*-Schemas erfasst sind.
+    EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I REVOKE ALL ON TABLES FROM %I', migration, schreiber);
+    EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT SELECT, INSERT, UPDATE, DELETE%s ON TABLES TO %I',
+                   migration, pflege, schreiber);
+    EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I', migration, schreiber);
+    EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT USAGE ON SCHEMAS TO %I', migration, schreiber);
+  END LOOP;
 
   -- Leserolle für pgweb: nur SELECT auf die Allowlist oben. BYPASSRLS, weil
-  -- pgweb keinen Kontext setzt und der Zeilenschutz (Migration 0110) ihr sonst
+  -- pgweb keinen Kontext setzt und der Zeilenschutz (Migration 0111) ihr sonst
   -- jede Zeile der Kontotabellen verbärge; was sie liest, begrenzt die Allowlist.
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = lesen) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I NOLOGIN', lesen);
@@ -301,4 +324,4 @@ BEGIN
   END LOOP;
 END $$;
 SQL
-echo "[db-rolle] ${DB_MIGRATION_USER} besitzt die Datenbank, ${DB_APP_USER} liest und schreibt nur Zeilen, ${DB_LESEN_USER} liest nur die Allowlist."
+echo "[db-rolle] ${DB_MIGRATION_USER} besitzt die Datenbank, ${DB_APP_USER} liest und schreibt nur Zeilen, ${DB_SYSTEM_USER} ebenso über alle Konten, ${DB_LESEN_USER} liest nur die Allowlist."

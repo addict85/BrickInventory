@@ -3,7 +3,7 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { passwortMangel } from '../../src/infra/passwortRegel';
-import { requireApiAdmin } from '../api_v1/middleware';
+import { requireApiAdminUeberKonten } from '../api_v1/middleware';
 import { alsDoppelt } from '../../src/infra/fehlerTexte';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import {
@@ -22,7 +22,7 @@ import {
 } from '../../src/konto';
 
 const router = vertragsRouter();
-const requireAdmin = requireApiAdmin;
+const requireAdmin = requireApiAdminUeberKonten;
 
 router.get('/users', requireAdmin, async (_req, res: Antwort<'GET /api/v1/auth/users'>) => {
   const users = await kontenListe();

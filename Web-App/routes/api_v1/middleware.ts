@@ -112,14 +112,20 @@ export const requireToken = waechter<AuthedRequest>((req, res, next) => {
     });
 });
 
-export const requireApiAdmin = waechter<AuthedRequest>((req, res, next) => {
-  requireToken(req, res, () => {
-    if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
-    // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
-    // Die Verwaltung arbeitet über alle Konten (Diagnose, Kontenliste): Zeilenschutz aus.
-    verlangeFreigabe(req, res, () => imSystemkontext('verwaltung', next), 'verwaltung');
+function verwalterPruefung(ueberKonten: boolean) {
+  return waechter<AuthedRequest>((req, res, next) => {
+    requireToken(req, res, () => {
+      if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
+      // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
+      verlangeFreigabe(req, res, ueberKonten ? () => imSystemkontext('kontenverwaltung', next) : next, 'verwaltung');
+    });
   });
-});
+}
+
+/** Ohne Systemrahmen: Was über Konten geht, fragen Verwaltung und Warteschlange selbst darin. */
+export const requireApiAdmin = verwalterPruefung(false);
+/** Für Routen, die ein anderes Konto ändern (Kontenverwaltung): ganz im Systemrahmen. */
+export const requireApiAdminUeberKonten = verwalterPruefung(true);
 
 const nurWenn =
   (soll: (req: Request) => boolean, schritt: RequestHandler): RequestHandler =>

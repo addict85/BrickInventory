@@ -1,10 +1,25 @@
 /**
- * Zeilenschutz (Migration 0110): Ohne Filter auf user_id sieht und ändert eine
- * Anfrage nur Zeilen ihres Kontos und seiner direkten Unterkonten, ohne Konto
- * und Systemrahmen keine. Geprüft als eigene Rolle ohne Eigentum und ohne
- * BYPASSRLS über erzeugeDb(), wie die Laufzeitrolle im Betrieb (der
- * Testbenutzer ist Superuser und sähe alles).
+ * Zeilenschutz (Migrationen 0111, 0112): Ohne Filter auf user_id sieht und
+ * ändert eine Anfrage nur Zeilen ihres Kontos und seiner direkten Unterkonten,
+ * ohne Konto keine. Den Systemrahmen trägt eine Rolle mit BYPASSRLS, keine
+ * Einstellung der Sitzung. Geprüft mit zwei Rollen ohne Eigentum über
+ * erzeugeDb(), wie im Betrieb (der Testbenutzer ist Superuser).
  *
+ * Gegenproben Systemrolle (am 13.11.2026 gemessen, je einzeln):
+ *   K  Policy wieder mit `current_setting('app.system') = 'an' OR …` (0112
+ *      geändert, Datenbank neu) → rot: „kein Schalter der Sitzung …“
+ *   L  in erzeugeDb() den Systempool weggelassen (immer pool) → rot: „kein
+ *      Schalter …“, „im Systemrahmen …“, „ein Auftrag …“, „der Rahmen folgt …“,
+ *      „wer einem Haushalt …“, „ein Währungswechsel …“, „Aufträge und …“,
+ *      „die Anmeldung …“
+ *   M  auftraege aus der Liste in 0112 gestrichen → rot: „Aufträge und
+ *      Zugangsdaten …“
+ *   N  in erzeugeKonto() zugaenge wieder mit bindeZugang → rot: „die Anmeldung
+ *      findet den Token …“ (Token ungültig, Widerruf löscht nichts)
+ *   O  in txStand() die Prüfung des Pools gestrichen → rot: „der Rahmen folgt …“
+ *      und „wer einem Haushalt beitritt …“ (das Hauptkonto liest sich als EUR)
+ *
+ * Gegenproben Zeilenschutz (13.11.2026, vor der Systemrolle):
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
  *   A  vor den Tests `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` → rot:
  *      „mit Konto A …“, „ein Unterkonto …“, „ohne Konto …“, „fremde user_id …“,
@@ -42,6 +57,7 @@ const { erzeugeDb, dbKonfigAusUmgebung } = require(path.join(q.DIST, 'db', 'data
 const { imNamenVon, imSystemkontext, alsAnfrage } = _req('src/infra/kontoKontext.js');
 
 const ROLLE = testName('zeilen');
+const SYSTEM = testName('zeilsys');
 const als = (uid, f) => imNamenVon({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
@@ -50,21 +66,31 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   if (!su) return;
   if (!(await su.alsSuperuserVerbunden())) return fehltVoraussetzung(t, 'kein Superuser');
   await raeumeReste(su.pool, 'zeilen');
-  await su.exec(`DROP ROLE IF EXISTS ${id(ROLLE)}`);
-  await su.exec(`CREATE ROLE ${id(ROLLE)} NOLOGIN NOSUPERUSER NOBYPASSRLS`);
-  await su.exec(`GRANT USAGE ON SCHEMA public TO ${id(ROLLE)};
-    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${id(ROLLE)};
-    GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${id(ROLLE)}`);
+  // Konten eines abgebrochenen Laufs (zs_…) sähe der Systemrahmen sonst mit.
+  await su.run("DELETE FROM users WHERE username LIKE 'zs\\_%'");
+  for (const [r, rls] of [
+    [ROLLE, 'NOBYPASSRLS'],
+    [SYSTEM, 'BYPASSRLS'],
+  ]) {
+    await su.exec(`DROP OWNED BY ${id(r)}`).catch(() => {});
+    await su.exec(`DROP ROLE IF EXISTS ${id(r)}`);
+    await su.exec(`CREATE ROLE ${id(r)} NOLOGIN NOSUPERUSER ${rls}`);
+    await su.exec(`GRANT USAGE ON SCHEMA public TO ${id(r)};
+      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${id(r)};
+      GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${id(r)}`);
+  }
   // Eine Verbindung: So zeigt sich, ob ein Konto an ihr hängen bleibt.
   const k = dbKonfigAusUmgebung();
   const app = erzeugeDb({
     verbindung: k.verbindung,
     pool: { ...k.pool, max: 1, options: `${k.pool.options} -c role=${ROLLE}` },
+    system: { ...k.verbindung, options: `${k.pool.options} -c role=${SYSTEM}` },
   });
   t.after(async () => {
     await app.benachrichtigung.close();
     await app.pool.end().catch(() => {});
-    await su.exec(`DROP OWNED BY ${id(ROLLE)}; DROP ROLE IF EXISTS ${id(ROLLE)}`).catch(() => {});
+    for (const r of [ROLLE, SYSTEM])
+      await su.exec(`DROP OWNED BY ${id(r)}; DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
     await su.pool.end().catch(() => {});
   });
 
@@ -97,6 +123,33 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   await t.test('ein Unterkonto sieht nur sich selbst, nicht sein Hauptkonto', async () => {
     assert.deepEqual(ids(await als(B, alleSets)), [B]);
     assert.equal(await als(B, () => app.get('SELECT 1 AS da FROM sets WHERE user_id = $1', [A])), undefined);
+  });
+
+  await t.test('kein Schalter der Sitzung hebt den Zeilenschutz der Laufzeitrolle auf', async () => {
+    const schalter = `SELECT set_config('app.system', 'an', true), set_config('app.rolle', 'system', true),
+                             set_config('app.bypass', 'on', true)`;
+    const nachSchalter = (vorher, sql) =>
+      app.transaction(async tx => {
+        await tx.exec(vorher);
+        return tx.all(sql);
+      });
+    assert.deepEqual(await nachSchalter(schalter, 'SELECT user_id FROM sets'), []);
+    assert.deepEqual(ids(await als(A, () => nachSchalter(schalter, 'SELECT user_id FROM sets'))), [A, B]);
+    await assert.rejects(
+      als(A, () =>
+        app.transaction(async tx => {
+          await tx.exec(schalter);
+          await tx.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10003-1')`, [C]);
+        }),
+      ),
+      /row-level security/,
+    );
+    // row_security = off macht aus dem stillen Filter einen Fehler, nicht einen Freibrief.
+    await assert.rejects(
+      nachSchalter('SET LOCAL row_security = off', 'SELECT user_id FROM sets'),
+      /row-level security/,
+    );
+    assert.deepEqual(ids(await imSystemkontext('test', alleSets)), [A, B, C]);
   });
 
   await t.test('ohne Konto und ohne Systemrahmen keine Zeile, auch nach einer Anfrage mit Konto', async () => {
@@ -148,6 +201,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.deepEqual(gesehen, [A, B, C]);
   });
 
+  // Mitten in einer Konto-Transaktion fragt der Systemrahmen über die Systemrolle neben ihr.
   await t.test(
     'der Rahmen folgt imSystemkontext mitten in der Transaktion, auch nach einem Sicherungspunkt',
     async () => {
@@ -218,5 +272,42 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
 
   await t.test('eine Anfrage erbt keinen Systemrahmen', async () => {
     assert.deepEqual(ids(await imSystemkontext('test', () => alsAnfrage({ apiUser: { user_id: C } }, alleSets))), [C]);
+  });
+  await t.test('Aufträge und Zugangsdaten anderer Konten bleiben der Laufzeitrolle verborgen', async () => {
+    await su.run("DELETE FROM auftraege WHERE art = 'wechselkurse'");
+    await su.run(`INSERT INTO auftraege (art, nutzlast, schluessel) VALUES ('wechselkurse', '{}', $1)`, [
+      `zeilen-sys-${process.pid}`,
+    ]);
+    await su.run(`INSERT INTO auftraege (art, nutzlast, user_id, schluessel) VALUES ('wechselkurse', '{}', $1, $2)`, [
+      C,
+      `zeilen-c-${process.pid}`,
+    ]);
+    await su.run(`INSERT INTO api_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
+      `zeilen-${process.pid}`,
+      C,
+    ]);
+    for (const tabelle of ['auftraege', 'api_tokens']) {
+      assert.deepEqual(await als(A, () => app.all(`SELECT user_id FROM ${tabelle}`)), [], tabelle);
+      assert.deepEqual(ids(await als(C, () => app.all(`SELECT user_id FROM ${tabelle}`))), [C], tabelle);
+    }
+    assert.equal(
+      (await imSystemkontext('test', () => app.all("SELECT 1 FROM auftraege WHERE art = 'wechselkurse'"))).length,
+      2,
+    );
+    await su.run("DELETE FROM auftraege WHERE art = 'wechselkurse'");
+    await su.run('DELETE FROM api_tokens WHERE user_id = $1', [C]);
+  });
+
+  await t.test('die Anmeldung findet den Token ohne Konto, der Widerruf löscht ihn', async () => {
+    _req('src/konto/prozess.js').verdrahteKonto(() => _req('src/konto/bereich.js').erzeugeKonto({ db: app }));
+    const K = _req('src/konto/index.js');
+    const token = `zeilen-token-${process.pid}`;
+    await su.run(`INSERT INTO api_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
+      K.hashToken(token),
+      C,
+    ]);
+    assert.equal((await K.validateToken(token))?.user_id, C);
+    await _req('src/konto/geraeteToken.js').revokeAllTokens(C);
+    assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });
 });

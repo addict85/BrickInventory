@@ -3,6 +3,7 @@ import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersio
 import { kontoBereich } from './prozess';
 import { hashToken, ZUGAENGE_HOECHSTENS } from './geraeteToken';
 import { leereTokenCache } from './tokenCache';
+import { imSystemkontext } from '../infra/kontoKontext';
 
 export function begrenzeSitzungen(userId: number, eigene: string): Promise<number> {
   return kontoBereich().zugaenge.kappeSitzungen(userId, eigene, ZUGAENGE_HOECHSTENS - 1);
@@ -14,12 +15,13 @@ export async function revokeAllSessions(userId: number): Promise<void> {
   await kontoBereich().zugaenge.loescheSitzungenDesKontos(userId);
 }
 
-/** Passwort, Zugänge und Passkeys zusammen: Sonst gälte nach einem Fehler das
- * neue Passwort, während die alten Zugänge weiterleben. Die Zwischenspeicher
- * leeren sich nach dem COMMIT noch einmal, weil eine Anfrage dazwischen den
- * alten Stand wieder aufgenommen haben kann. */
+/** Passwort, Zugänge und Passkeys zusammen, im Systemrahmen (auch ohne Anmeldung: Passwort
+ * vergessen). Die Zwischenspeicher leeren sich nach dem COMMIT noch einmal, weil eine Anfrage
+ * dazwischen den alten Stand wieder aufgenommen haben kann. */
 export async function mitZugangsende<T>(konto: number | ((r: T) => number | null), fn: () => Promise<T>): Promise<T> {
-  const r = await kontoBereich().db.transaction(fn, { wiederholeBeiKonflikt: true });
+  const r = await imSystemkontext('zugangsende', () =>
+    kontoBereich().db.transaction(fn, { wiederholeBeiKonflikt: true }),
+  );
   leereTokenCache();
   const uid = typeof konto === 'function' ? konto(r) : konto;
   if (uid) vergissSitzungsVersion(uid);

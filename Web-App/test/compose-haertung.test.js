@@ -318,10 +318,14 @@ test('nur postgres und db-rolle kennen den Superuser, nur migration die Migratio
   const dienste = ['postgres', 'db-rolle', 'app', 'jobs'];
   const mitSuperuser = dienste.filter(d => geheimnisse(leseDienst(compose, d)).includes('db_password'));
   assert.deepEqual(mitSuperuser, ['postgres', 'db-rolle']);
-  assert.deepEqual(geheimnisse(leseDienst(compose, 'app')), ['db_app_password', 'session_secret']);
+  assert.deepEqual(geheimnisse(leseDienst(compose, 'app')), [
+    'db_app_password',
+    'db_system_password',
+    'session_secret',
+  ]);
   assert.deepEqual(
     geheimnisse(leseDienst(compose, 'jobs')),
-    ['db_app_password'],
+    ['db_app_password', 'db_system_password'],
     'jobs kennt das Passwort des Superusers',
   );
   for (const d of ['app', 'jobs']) {
@@ -332,7 +336,15 @@ test('nur postgres und db-rolle kennen den Superuser, nur migration die Migratio
       /^\s*PGPASSWORD_FILE:\s*\/run\/secrets\/db_app_password\s*$/m,
       `${d}: PGPASSWORD_FILE nicht aus db_app_password`,
     );
+    assert.match(block, /^\s*PGSYSTEM_USER:\s*brickinventory_system\s*$/m, `${d} ohne Systemrolle`);
+    assert.match(block, /^\s*PGSYSTEM_PASSWORD_FILE:\s*\/run\/secrets\/db_system_password\s*$/m);
   }
+  for (const d of ['postgres', 'db-rolle'])
+    assert.match(
+      leseDienst(compose, d),
+      /^\s*DB_SYSTEM_PASSWORD_FILE:\s*\/run\/secrets\/db_system_password\s*$/m,
+      `${d} legt die Systemrolle ohne Passwort an`,
+    );
   assert.match(
     leseDienst(compose, 'db-rolle'),
     /^\s*PGWEB_DB_PASSWORD_FILE:\s*\/run\/secrets\/pgweb_db_password\s*$/m,

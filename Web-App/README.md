@@ -154,13 +154,16 @@ alles.
 `db_app_password` (Laufzeitrolle `brickinventory_app`, mit der sich App und
 Jobs verbinden: nur Zeilen lesen und schreiben), `db_migration_password`
 (Migrationsrolle `brickinventory_migration`, Eigentümerin von Datenbank und
-Tabellen, nur im Dienst `migration`), `session_secret` und das der Leserolle.
+Tabellen, nur im Dienst `migration`), `db_system_password` (Systemrolle
+`brickinventory_system` für App und Jobs: dieselben Rechte wie die
+Laufzeitrolle, aber am Zeilenschutz vorbei, für Aufträge, Verwaltung und
+Anmeldung), `session_secret` und das der Leserolle.
 Vorhandene Dateien bleiben; fehlende übernimmt es aus einer alten `.env`
 (`DB_PASSWORD`, `DB_APP_PASSWORD`, `SESSION_SECRET`) oder
 erzeugt sie zufällig. Eine **bestehende** Datenbank behält ihr Passwort aus dem
 ersten Start: Liegt `./pgdata18` schon da und steht kein `DB_PASSWORD` in
 `.env`, bricht das Skript ab, statt ein unpassendes zu erzeugen. `db-rolle`
-setzt die Passwörter von Laufzeit- und Migrationsrolle bei jedem
+setzt die Passwörter von Laufzeit-, System- und Migrationsrolle bei jedem
 `docker compose up` neu; zum Wechseln genügt es, die Datei zu ersetzen.
 
 Läuft die Datenbank noch mit dem alten Beispielpasswort `brickinventory_secret`,
