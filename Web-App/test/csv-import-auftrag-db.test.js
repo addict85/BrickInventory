@@ -13,45 +13,30 @@
  *      Import setzt fort“ (der als verwaist markierte Lauf blieb stehen)
  *   C  in fuehreCsvImportAus `stand.current` nicht beachtet → rot: „ein
  *      unterbrochener Import setzt fort“ (r2 wurde ein zweites Mal gebucht)
+ *   C' (13.11.2026) C mit echtem Erfassen und gestelltem Rebrickable wiederholt
+ *      → rot: „ein unterbrochener Import setzt fort“ (91002-1 ein zweites Mal)
  *   D  (13.11.2026) im Worker den Auftrag ohne sein Konto (imNamenDesAuftrags mit
  *      alsAnfrage({})) → rot: beide Teiltests (der Import sieht seinen Stand nicht)
  *
  * Wie im Betrieb: Der Code unter Test fragt als Laufzeitrolle im Konto (alsKonto,
  * der Worker über imNamenDesAuftrags), Testdaten schreibt die Eigentümerin.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne API-Schlüssel und ohne
- * Bildabruf, damit addSet() kein Netz braucht.
+ * Rebrickable und der Bildabruf sind an der Verdrahtung gestellt (testQuellen,
+ * testBildwerk); das Erfassen läuft echt.
+ *
+ * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// addSetWithDate gestellt: Jeder Aufruf wird gezählt und wartet auf `freigabe`.
+// Rebrickable gestellt: Jede Katalogfrage wird gezählt und wartet auf `freigabe`.
 const aufrufe = [];
 let freigabe = Promise.resolve();
 let loslassen = () => {};
-const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
-    return new Proxy(m, {
-      get: (t, k) =>
-        k !== 'addSetWithDate'
-          ? t[k]
-          : async (_sk, sn) => {
-              aufrufe.push(sn);
-              await freigabe;
-              return { action: 'added', set_number: sn };
-            },
-    });
-  if (typeof name === 'string' && /(^|[/\\])setImages(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'downloadSetImage' ? async () => null : t[k]) });
-  return m;
-};
 
-const { buildAndRequire, testDaten, testZugang, alsKonto } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testZugang, alsKonto, testQuellen, testBildwerk } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
@@ -59,6 +44,15 @@ const { warte } = require('./helpers/zeit');
 
 test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
+  testQuellen(t, {
+    // Nur das Set des Imports wartet; das Set des anderen Kontos geht durch.
+    holeSet: async sn => {
+      aufrufe.push(sn);
+      if (sn === '76001-1') await freigabe;
+      return null;
+    },
+  });
+  testBildwerk(t, { setBildLaden: async () => null });
 
   const schluessel = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consumer_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
@@ -134,7 +128,8 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
       aufrufe.length = 0;
       freigabe = Promise.resolve();
       const lauf = `lauf-${process.pid}-2`;
-      const rows = ['r1', 'r2', 'r3'].map(sn => ({
+      const [r1, r2, r3] = ['91001-1', '91002-1', '91003-1'];
+      const rows = [r1, r2, r3].map(sn => ({
         sn,
         qty: 1,
         purchasePrice: null,
@@ -148,9 +143,9 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
           status: 'error',
           total: 3,
           done: 1,
-          current: 'r2',
+          current: r2,
           error: 'unterbrochen',
-          results: JSON.stringify([{ set_number: 'r1', success: true, action: 'added' }]),
+          results: JSON.stringify([{ set_number: r1, success: true, action: 'added' }]),
           run_id: lauf,
         }),
       );
@@ -161,13 +156,13 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
       );
       const s = await bisFertig();
       assert.equal(s.status, 'done');
-      assert.deepEqual(aufrufe, ['r3'], 'r1 ist fertig, r2 ungewiss — gebucht wird nur r3');
+      assert.deepEqual(aufrufe, [r3], 'r1 ist fertig, r2 ungewiss — gebucht wird nur r3');
       assert.deepEqual(
         s.results.map(z => [z.set_number, z.success, !!z.isWarning]),
         [
-          ['r1', true, false],
-          ['r2', false, true],
-          ['r3', true, false],
+          [r1, true, false],
+          [r2, false, true],
+          [r3, true, false],
         ],
       );
     });
