@@ -62,7 +62,6 @@ export const SCHREIBENDE_AKTIONEN = new Set([
   'auftragAbbrechen',
   'auftragsArtJetzt',
   'auftragsArtLeeren',
-  'auftragWiederholen',
   'autosaveSet',
   'benenneLagerortUm',
   'bestaetigeUebernahme',

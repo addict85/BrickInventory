@@ -2,7 +2,6 @@
  * trägt die Gewinnrechnung, nicht umgekehrt. Gelesen wird nur der Preis-Cache:
  * Fehlende Preise holt der Auftrag „preise_nachladen“, nicht die Anfrage. */
 
-import { createHash } from 'node:crypto';
 import { logAndContinue } from '../../infra/fehler';
 import type * as repo from '../repository/bewertung';
 import { haushaltBereich, asIds, type Sicht } from '../../haushalt';
@@ -26,7 +25,7 @@ import { zaehle } from './abfragen';
 import type { ladeSetErfassungen } from '../repository/erfassungen';
 import { KEINE_FARBE, zustand } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
-import { stelleAuftragEin, type Nutzlast } from '../../auftraege';
+import { merkePreiseVor, PREISPOSTEN_HOECHSTENS, type Nutzlast } from '../../auftraege';
 import { fehlerText } from '../../infra/fehlerTexte';
 import { finanzenBereich } from '../prozess';
 
@@ -56,21 +55,12 @@ function fremdeKaufpreise(jeEintrag: Map<string, Array<{ kaufpreis_fremd?: boole
   return n;
 }
 
-/** Ein Auftrag je Satz fehlender Preise: Dieselbe Liste stellt keinen zweiten ein. */
-async function merkePreiseVor(viewerId: number, waehrung: string, posten: Posten[]): Promise<number> {
+/** Die Bewertung meldet alles, was fehlt; der Auftrag je Konto und Währung nimmt es auf. */
+async function merkePreiseFuerKontoVor(viewerId: number, waehrung: string, posten: Posten[]): Promise<number> {
   if (!posten.length) return 0;
-  const liste = posten.slice(0, 2000);
-  const schluessel =
-    'preise_nachladen:' +
-    createHash('sha256')
-      .update(`${viewerId}|${waehrung}|${JSON.stringify(liste)}`)
-      .digest('hex')
-      .slice(0, 32);
-  await stelleAuftragEin(
-    'preise_nachladen',
-    { user_id: viewerId, waehrung, posten: liste },
-    { schluessel, userId: viewerId },
-  ).catch(logAndContinue('bewertung:preise vormerken'));
+  await merkePreiseVor({ user_id: viewerId, waehrung, posten: posten.slice(0, PREISPOSTEN_HOECHSTENS) }).catch(
+    logAndContinue('bewertung:preise vormerken'),
+  );
   return posten.length;
 }
 
@@ -240,7 +230,7 @@ export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Bl
     kaufpreise_umgerechnet: zaehle(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
     totals: bewertungsSummen(results),
-    preise_ausstehend: await merkePreiseVor(viewerId, currency, lage.fehlt),
+    preise_ausstehend: await merkePreiseFuerKontoVor(viewerId, currency, lage.fehlt),
   };
 }
 
@@ -376,7 +366,7 @@ export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht 
     ...gesamt(results),
     kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByFig),
     kaufpreise_umgerechnet: zaehle([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await merkePreiseVor(viewerId, currency, fehlt),
+    preise_ausstehend: await merkePreiseFuerKontoVor(viewerId, currency, fehlt),
   };
 }
 
@@ -449,6 +439,6 @@ export async function computePartsValuation(viewerId: number, idsWahl: Sicht | B
     ...gesamt(results),
     kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart),
     kaufpreise_umgerechnet: zaehle([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await merkePreiseVor(viewerId, currency, fehlt),
+    preise_ausstehend: await merkePreiseFuerKontoVor(viewerId, currency, fehlt),
   };
 }

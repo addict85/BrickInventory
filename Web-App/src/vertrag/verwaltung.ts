@@ -34,6 +34,8 @@ export const Auftrag = z.looseObject({
   fortschritt: AuftragFortschritt.nullable(),
   fehler: z.string().nullable(),
   geplant: z.boolean(),
+  /** Verschoben (Kontingent, Drosselung): wartet bis faellig_ab, `fehler` nennt den Grund. */
+  wartet: z.boolean(),
   set_number: z.string().nullable(),
 });
 

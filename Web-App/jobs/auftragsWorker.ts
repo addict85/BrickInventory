@@ -68,16 +68,16 @@ function haltePacht(a: AuftragsZeile, ac: AbortController, fristSek: number): ()
   return () => clearInterval(t);
 }
 
-/** Meldungen eines Laufs nacheinander, sonst überholte ein später Stand einen früheren. */
+/** Meldungen eines Laufs nacheinander, sonst überholte ein später Stand einen früheren.
+ * Eine gescheiterte Meldung scheitert für ihren Aufrufer, nicht für alle folgenden. */
 function fortschrittsKette(a: AuftragsZeile, ac: AbortController, fristSek: number) {
   let kette: Promise<boolean> = Promise.resolve(true);
   return (f: Fortschritt): Promise<boolean> => {
-    kette = kette
-      .then(() => setzeFortschritt(a, f, fristSek))
-      .then(ok => {
-        if (!ok && !ac.signal.aborted) ac.abort(new AuftragVerloren());
-        return ok;
-      });
+    const melde = () => setzeFortschritt(a, f, fristSek);
+    kette = kette.then(melde, melde).then(ok => {
+      if (!ok && !ac.signal.aborted) ac.abort(new AuftragVerloren());
+      return ok;
+    });
     return kette;
   };
 }
