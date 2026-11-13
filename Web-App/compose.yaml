@@ -526,6 +526,9 @@ services:
       BRICK_TLS: ${BRICK_TLS:-intern}
       ACME_EMAIL: ${ACME_EMAIL:-}
       CA_OHNE_NAMENSBESCHRAENKUNG: ${CA_OHNE_NAMENSBESCHRAENKUNG:-nein}
+      # Adresse(n) eines Proxys VOR Caddy, durch Leerzeichen getrennt (README.md,
+      # „Proxy vor Caddy“). Leer: Caddy glaubt keinem X-Forwarded-For.
+      VORGELAGERTER_PROXY: ${VORGELAGERTER_PROXY:-}
     ports:
       - "${HTTPS_BIND:-0.0.0.0}:443:443"
       - "${HTTPS_BIND:-0.0.0.0}:80:80"

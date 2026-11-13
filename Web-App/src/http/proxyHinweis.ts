@@ -2,9 +2,17 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { proxyVertrauen, ohneV4Huelle, imDockerNetz, istDockerGateway } from '../infra/proxyVertrauen';
 
+/** Ab hier gilt „immer dieselbe Client-Adresse“ nicht mehr als Zufall eines
+ * einzelnen Nutzers, sondern als Zeichen eines weiteren Proxys vor Caddy. */
+export const EINE_ADRESSE = { anfragen: 300, ms: 60 * 60_000 };
+
 /** Über das Gateway kommen auch Clients herein; geraten wird deshalb nie zu
  * ihm, sondern zu einer festen Proxy-Adresse. */
-export function proxyHinweis(trustProxy: string | undefined, warne: (text: string) => void = console.warn) {
+export function proxyHinweis(
+  trustProxy: string | undefined,
+  warne: (text: string) => void = console.warn,
+  uhr: () => number = Date.now,
+) {
   let vertrauen: ReturnType<typeof proxyVertrauen>;
   try {
     vertrauen = proxyVertrauen(trustProxy);
@@ -16,8 +24,10 @@ export function proxyHinweis(trustProxy: string | undefined, warne: (text: strin
   pruefer.set('trust proxy', vertrauen);
   const vertraut = pruefer.get('trust proxy fn') as (adresse: string, hop: number) => boolean;
   let gewarnt = vertrauen === false;
+  const eineAdresse = einzigeClientAdresse(Array.isArray(vertrauen), warne, uhr);
   return (req: Request, _res: Response, next: NextFunction) => {
     const von = req.socket?.remoteAddress || '';
+    if (req.headers['x-forwarded-for'] && vertraut(von, 0)) eineAdresse(req.ip, von);
     if (!gewarnt && req.headers['x-forwarded-for'] && imDockerNetz(von) && !vertraut(von, 0)) {
       gewarnt = true;
       const ip = ohneV4Huelle(von);
@@ -33,5 +43,39 @@ export function proxyHinweis(trustProxy: string | undefined, warne: (text: strin
       );
     }
     next();
+  };
+}
+
+/** Der vertraute Proxy reicht die Adresse weiter, die er selbst sieht. Steht ein
+ * zweiter Proxy davor, ist das immer dessen Adresse, und der Gateway-Hinweis oben
+ * schweigt, weil der Kopf von einem vertrauten Absender kommt. Erst nach vielen
+ * Anfragen über lange Zeit, damit ein einzelner Nutzer nicht gemeldet wird. */
+function einzigeClientAdresse(aktiv: boolean, warne: (text: string) => void, uhr: () => number) {
+  let fertig = !aktiv;
+  let erste: string | undefined;
+  let seit = 0;
+  let anzahl = 0;
+  return (ip: string | undefined, von: string) => {
+    // Ohne ausgewertetes X-Forwarded-For (ausserhalb der Produktion) gibt es nichts zu zählen.
+    if (fertig || !ip || ip === von) return;
+    if (erste === undefined) {
+      erste = ip;
+      seit = uhr();
+    }
+    if (ip !== erste) {
+      fertig = true;
+      return;
+    }
+    anzahl++;
+    const minuten = Math.floor((uhr() - seit) / 60_000);
+    if (anzahl < EINE_ADRESSE.anfragen || uhr() - seit < EINE_ADRESSE.ms) return;
+    fertig = true;
+    warne(
+      `⚠️ [sicherheit] Seit ${minuten} Minuten kommen alle ${anzahl} Anfragen über den Proxy mit derselben ` +
+        `Client-Adresse ${ohneV4Huelle(ip)}. Steht vor Caddy ein weiterer Proxy (z. B. Nginx Proxy Manager), ` +
+        'teilen sich alle Clients diese Adresse: Fehlversuche eines Fremden sperren alle aus, Registrierung und ' +
+        '„Passwort vergessen“ sind für alle zusammen gedrosselt. Die Adresse dieses Proxys in VORGELAGERTER_PROXY ' +
+        '(.env) eintragen — siehe README.md, Abschnitt „Proxy vor Caddy“.',
+    );
   };
 }

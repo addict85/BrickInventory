@@ -15,6 +15,11 @@
 		timeouts {
 			read_header 10s
 		}
+		# Ein Proxy vor Caddy (Nginx Proxy Manager o. ä.): Nur seiner Adresse
+		# glaubt Caddy X-Forwarded-For, von rechts gelesen (strict), damit ein
+		# Client keinen eigenen Eintrag voranstellen kann. Leer: niemandem.
+		trusted_proxies static {$VORGELAGERTER_PROXY}
+		trusted_proxies_strict
 	}
 	# Ein Gerät, das per IP-Adresse kommt, schickt keinen Namen (SNI).
 	default_sni {$BRICK_HOST}
@@ -44,6 +49,7 @@
 		}
 		reverse_proxy app:3000 {
 			header_up X-Request-Id {http.request.uuid}
+			header_up X-Forwarded-For {client_ip}
 			# Erst den ganzen Rumpf lesen, dann zur App: Ein langsamer Rumpf
 			# belegt dort keine Verbindung. Grösser als max_size, damit ein
 			# überlanger Rumpf hier mit 413 endet, statt ab der Puffergrenze
@@ -67,6 +73,9 @@ https://{$BRICK_HOST} {
 		reverse_proxy app:3000 {
 			# Eine eigene Kennung je Anfrage; die des Clients wird ersetzt.
 			header_up X-Request-Id {http.request.uuid}
+			# Genau eine Adresse: die des Clients nach trusted_proxies oben. Die
+			# App vertraut nur Caddy und liest damit diese, nicht die des Proxys davor.
+			header_up X-Forwarded-For {client_ip}
 		}
 	}
 	header -Server
