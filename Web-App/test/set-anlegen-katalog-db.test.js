@@ -17,6 +17,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne API-Schlüssel, damit
  * keine Quelle antwortet.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

@@ -9,6 +9,7 @@
  * Frist ist kürzer als die längste Anfrage“; ohne diese erste Zusicherung rot an
  * „nach 130 s läuft die erste Anfrage noch“ (art: 'neu', die Wirkung käme doppelt).
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

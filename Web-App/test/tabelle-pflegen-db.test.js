@@ -12,6 +12,8 @@
  *      wird rot (last_analyze bewegt sich nicht).
  *   d) einen Index per ALTER INDEX … SET (fastupdate = on) zurückgestellt →
  *      der Fall „keine Warteliste" wird rot (c und d am 28.10.2026 gemessen).
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -4,6 +4,7 @@
  * Deshalb hier: echte parallele Aufrufe gegen echte Postgres-Verbindungen.
  * Ohne Sperre schlagen die Prüfungen sofort an — nachgewiesen per Gegenprobe.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

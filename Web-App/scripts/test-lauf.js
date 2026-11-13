@@ -13,6 +13,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
+const { rollen, alsRolle } = require(path.join(ROOT, 'test', 'helpers', 'rollen.js'));
 const args = process.argv.slice(2);
 const seriell = args.includes('--seriell');
 const abdeckung = args.includes('--abdeckung');
@@ -238,6 +239,9 @@ async function main() {
     await a.connect();
     await raeumeAuf(a, vorlage, true);
     await a.query(`CREATE DATABASE ${id(vorlage)}`);
+    // Wie im Betrieb: erst die Rollen (db-rolle), dann das Schema als Eigentümerin (migration).
+    const r = rollen(vorlage);
+    rollenAnlegen(basis, vorlage, r);
     execFileSync(
       process.execPath,
       [
@@ -247,9 +251,11 @@ async function main() {
       {
         cwd: ROOT,
         stdio: ['ignore', 'ignore', 'inherit'],
-        env: { ...process.env, DATABASE_URL: mitDb(basis, vorlage) },
+        env: { ...process.env, DATABASE_URL: alsRolle(mitDb(basis, vorlage), r.eigen) },
       },
     );
+    // Die Leserolle bekommt ihre Spalten erst, wenn die Tabellen stehen (wie beim nächsten `compose up`).
+    rollenAnlegen(basis, vorlage, r);
     env = { ...env, TEST_DB_VORLAGE: vorlage, TEST_DB_BASIS: basis };
   }
   let code = 0;
@@ -276,6 +282,32 @@ async function main() {
       `${Math.round((Date.now() - start) / 1000)} s; ${ohneWerkzeug(browser, dateien, quelle)}`,
   );
   process.exit(code);
+}
+
+/** postgres/app-rolle.sh gegen die Vorlage, als Superuser der Basis.
+ * @param {string} basis @param {string} vorlage @param {ReturnType<typeof rollen>} r */
+function rollenAnlegen(basis, vorlage, r) {
+  const u = new URL(basis);
+  execFileSync('sh', [path.join(ROOT, 'postgres', 'app-rolle.sh')], {
+    cwd: ROOT,
+    stdio: ['ignore', 'ignore', 'inherit'],
+    env: {
+      ...process.env,
+      PGHOST: u.hostname,
+      PGPORT: u.port || '5432',
+      PGUSER: decodeURIComponent(u.username),
+      PGPASSWORD: decodeURIComponent(u.password),
+      PGDATABASE: vorlage,
+      DB_APP_USER: r.app.name,
+      DB_APP_PASSWORD: r.app.passwort,
+      DB_MIGRATION_USER: r.eigen.name,
+      DB_MIGRATION_PASSWORD: r.eigen.passwort,
+      DB_SYSTEM_USER: r.system.name,
+      DB_SYSTEM_PASSWORD: r.system.passwort,
+      DB_LESEN_USER: r.lesen.name,
+      PGWEB_DB_PASSWORD: '',
+    },
+  });
 }
 
 /**

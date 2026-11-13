@@ -71,6 +71,8 @@ jobs:
           --health-retries 20
 
     env:
+      # Der Superuser legt nur Datenbanken und Rollen an; die Tests verbinden wie im
+      # Betrieb als Laufzeit-, System- und Eigentümerrolle (scripts/test-lauf.js).
       TEST_DATABASE_URL: postgres://tester:tester@localhost:5432/cattest
       REQUIRE_DB: '1'
       # Ohne Chrome schlagen die Browser-Tests fehl statt zu überspringen

@@ -12,6 +12,7 @@
  *   B  in ARTEN.part.resolvePrice cond nicht weitergegeben → rot bei „part“
  *      (100 statt 60); „set“ bleibt grün
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

@@ -25,6 +25,7 @@
  * dort rot).
  */
 const { istAppModul } = require('../scripts/build-frontend');
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

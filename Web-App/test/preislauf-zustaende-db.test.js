@@ -7,6 +7,7 @@
  *   B  ergebnis.set(sn, ['N', 'U']) für jedes Set → rot: „ein reines Set kostet nur einen Abruf“
  *   C  den Hinweis beim Erfassen übergangen → rot: „der Zustand einer noch nicht geschriebenen Erfassung zählt“
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

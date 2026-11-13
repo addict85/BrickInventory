@@ -42,6 +42,8 @@
  *      Währungswechsel erreicht …“ (row-level security beim Enkelkonto)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL mit Superuser (legt eine Rolle an).
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -30,6 +30,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');

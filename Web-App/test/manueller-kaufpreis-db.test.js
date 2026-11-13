@@ -1,6 +1,7 @@
 /**
  * Teil und Minifigur ohne Marktpreis hinterlassen DASSELBE.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

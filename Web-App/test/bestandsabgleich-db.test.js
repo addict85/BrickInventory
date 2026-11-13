@@ -1,6 +1,7 @@
 /**
  * „Kann ich das bauen?" — der Abgleich zwischen Teileliste und eigenem Bestand.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

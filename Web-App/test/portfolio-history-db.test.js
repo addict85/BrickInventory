@@ -2,6 +2,7 @@
  * Portfolio-Kurve: Rechnet die SQL-Fassung dasselbe wie eine unabhängige
  * JavaScript-Fassung derselben Regel?
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');

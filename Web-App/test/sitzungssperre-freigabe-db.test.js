@@ -13,6 +13,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -31,9 +32,9 @@ const SCHLUESSEL = 7_654_321;
 
 /** Die nächste geliehene Verbindung lässt pg_advisory_unlock scheitern. */
 function unlockScheitertEinmal() {
-  const echt = db.pool.connect.bind(db.pool);
+  const echt = db.standardDb().pool.connect.bind(db.standardDb().pool);
   const vorfall = { freigabeMitFehler: /** @type {unknown} */ (undefined), freigegeben: false };
-  db.pool.connect = async () => {
+  db.standardDb().pool.connect = async () => {
     const c = await echt();
     const query = c.query.bind(c);
     const release = c.release.bind(c);
@@ -44,7 +45,7 @@ function unlockScheitertEinmal() {
     c.release = (/** @type {any} */ err) => {
       vorfall.freigegeben = true;
       vorfall.freigabeMitFehler = err;
-      db.pool.connect = echt;
+      db.standardDb().pool.connect = echt;
       return release(err);
     };
     return c;

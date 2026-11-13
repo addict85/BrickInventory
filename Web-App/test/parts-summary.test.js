@@ -1,6 +1,7 @@
 /**
  * Vorberechnete Teile-Zusammenfassung (src/teile/partsSummary.ts).
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');

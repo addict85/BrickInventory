@@ -15,6 +15,7 @@
  *   k) DISTINCT ON entfernt → Schritt 9 rot (Alarm steht doppelt)
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

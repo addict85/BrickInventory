@@ -1,6 +1,7 @@
 /**
  * Wo ein Client eine Besitzer-Plakette zeichnet, muss die Antwort sie tragen.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const { after } = require('node:test');
 const assert = require('node:assert/strict');

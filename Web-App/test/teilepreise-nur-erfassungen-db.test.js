@@ -3,6 +3,7 @@
  * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
  * der Endstand und die Lesewege.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

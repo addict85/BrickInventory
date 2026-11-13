@@ -1,5 +1,7 @@
 /**
  * Der CSV-Export gibt je Erfassung eine Zeile — und braucht dafür EINE Abfrage.
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

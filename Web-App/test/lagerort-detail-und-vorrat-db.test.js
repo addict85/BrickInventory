@@ -1,6 +1,7 @@
 /**
  * Der Lagerort muss im DETAIL stehen — und nur in den Konten, die ihn haben.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

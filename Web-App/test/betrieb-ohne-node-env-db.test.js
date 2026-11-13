@@ -9,6 +9,8 @@
  * „ein 5xx …“. Je ein roter Teil zu jeder Stelle.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (als Superuser verbunden).
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');

@@ -14,6 +14,7 @@
  *   D  in teil-erfassen.js den Hinweis weggelassen → rot: „die Webapp nennt …“
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');

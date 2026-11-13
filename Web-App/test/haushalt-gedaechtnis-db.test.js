@@ -1,5 +1,7 @@
 /**
  * Das Blickfeld wird gemerkt — und bei jeder Änderung sofort vergessen.
+ *
+ * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

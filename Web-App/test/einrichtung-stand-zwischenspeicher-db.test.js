@@ -53,13 +53,17 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
   const stand = _req('src/konto/einrichtungStand.js');
   // Am Pool statt am Repository: Importe sind gebunden, ein ersetzter Export käme nie an.
   const gelesen = [];
-  const echt = db.pool.query.bind(db.pool);
-  db.pool.query = (sql, params) => {
-    if (/FROM global_settings/i.test(String(sql))) gelesen.push(params?.[0]);
-    return echt(sql, params);
-  };
+  // In den Pools der App (Laufzeit- und Systemrolle), nicht im Zugang der Testdaten.
+  const zugang = require('./helpers/sources').testZugang();
+  const pools = [...new Set([zugang.pool, zugang.systemPool])];
+  const echt = pools.map(p => p.query);
+  for (const [i, p] of pools.entries())
+    p.query = (sql, params) => {
+      if (/FROM global_settings/i.test(String(sql))) gelesen.push(params?.[0]);
+      return echt[i].call(p, sql, params);
+    };
   t.after(() => {
-    db.pool.query = echt;
+    for (const [i, p] of pools.entries()) p.query = echt[i];
   });
 
   await t.test('innerhalb des Fensters rechnet nur der erste Aufruf', async () => {

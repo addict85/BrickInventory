@@ -1,6 +1,7 @@
 /**
  * Was ein Ersatzteil ist, entscheidet EINE Stelle.
  */
+require('./helpers/systemrahmen');
 const test = require('node:test');
 const { after } = require('node:test');
 const assert = require('node:assert/strict');
