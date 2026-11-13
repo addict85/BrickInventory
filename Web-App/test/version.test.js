@@ -10,6 +10,8 @@
  *      Build-Argument geht vor, sonst Git“
  *   C  in src/infra/appVersion.ts den Rückgriff auf dist/version.json entfernt →
  *      rot: „der Server meldet die gebaute Version“ („unbekannt“)
+ *   D  (13.11.2026) in scripts/version.js die beiden --exclude entfernt → rot: „Android-Etiketten
+ *      nennen nicht die Web-Version“ („android-v2026.11.12.4-1-g…“)
  */
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
@@ -59,5 +61,24 @@ test('der Server meldet die gebaute Version', () => {
   } finally {
     if (alt === undefined) umgebung({ APP_VERSION: undefined });
     else umgebung({ APP_VERSION: alt });
+  }
+});
+
+test('Android-Etiketten nennen nicht die Web-Version', () => {
+  const { bauVersion } = require('../scripts/version');
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'version-git-'));
+  const git = (...a) =>
+    execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.org', ...a], { cwd: repo, stdio: 'ignore' });
+  try {
+    git('init', '-q');
+    git('commit', '-q', '--allow-empty', '-m', 'eins');
+    git('tag', 'v2026.11.01');
+    git('commit', '-q', '--allow-empty', '-m', 'zwei');
+    git('tag', 'android-v2026.11.12.4');
+    git('tag', 'apk-neuste');
+    git('commit', '-q', '--allow-empty', '-m', 'drei');
+    assert.match(bauVersion({}, repo), /^v2026\.11\.01-2-g[0-9a-f]+$/);
+  } finally {
+    fs.rmSync(repo, { recursive: true, force: true });
   }
 });

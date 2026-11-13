@@ -14,16 +14,21 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 
 /** @param {Record<string, string | undefined>} env @returns {string} */
-function bauVersion(env = process.env) {
+function bauVersion(env = process.env, cwd = ROOT) {
   const gesetzt = (env.APP_VERSION || '').trim();
   if (gesetzt) return gesetzt;
+  // Die Android-Etiketten (android-v…, apk-neuste) gehören zur App; die Web-App nannte sonst deren Nummer.
   try {
     return (
-      execFileSync('git', ['describe', '--tags', '--always', '--dirty'], {
-        cwd: ROOT,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim() || 'unbekannt'
+      execFileSync(
+        'git',
+        ['describe', '--tags', '--exclude', 'android-*', '--exclude', 'apk-*', '--always', '--dirty'],
+        {
+          cwd,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        },
+      ).trim() || 'unbekannt'
     );
   } catch {
     // Kein Git (Docker-Kontext ohne .git): Ohne Build-Argument bleibt es offen.
