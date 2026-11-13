@@ -1,16 +1,16 @@
 /** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext als ersten Parameter;
  * erzeugeEinstellungen bindet ihn einmal für alle. So greift kein Modul selbst auf
  * den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import { baueKontext, bindeZugang } from '../infra/bereich';
+import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import * as settings from './settings';
 import { zugang, type EinstellungenAbhaengigkeiten, type EinstellungenKontext } from './kontext';
 
 export type { EinstellungenAbhaengigkeiten, EinstellungenKontext } from './kontext';
 
-export function erzeugeEinstellungen(a: EinstellungenAbhaengigkeiten) {
+export function erzeugeEinstellungen(a: EinstellungenAbhaengigkeiten, einblick?: Einblick<EinstellungenKontext>) {
   const k: EinstellungenKontext = baueKontext(a, zugang);
+  einblick?.(k);
   return {
-    ...k,
     ...bindeZugang(k, settings, [
       'schreibeNutzerEinstellung',
       'nutzerStandardZustand',

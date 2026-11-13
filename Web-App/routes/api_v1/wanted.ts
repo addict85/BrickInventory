@@ -3,7 +3,7 @@
 import type express from 'express';
 import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken, kontoSchranke, sichtVon } from './middleware';
+import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { wacheUeberZugang } from '../../src/konto/http/zugangsWache';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import type { Korrektur } from '../../src/merkliste';
@@ -50,7 +50,7 @@ async function importImStrom(
     res.write(JSON.stringify(o) + '\n');
     (res as unknown as { flush?: () => void }).flush?.();
   };
-  const wache = wacheUeberZugang(req, () => {
+  const wache = wacheUeberZugang(d.konto, req, () => {
     zeile({ success: false, error: fehlerText('zugang_beendet', antwortSprache(req)), code: 'zugang_beendet' });
     res.end();
   });
@@ -63,6 +63,7 @@ async function importImStrom(
 }
 
 export function baueWantedRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   // Blickfeld wie überall: Wer ein Geschenk sucht, sieht die Merkposten der Enkel.

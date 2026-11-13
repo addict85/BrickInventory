@@ -12,12 +12,11 @@ import { startVerbote, startWarnungen } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
-import { prozessDienste, verdrahteProzess } from './startup/verdrahtung';
+import { verdrahteProzess, type Dienste } from './startup/verdrahtung';
 import { baueApp } from './startup/app';
 import { HTTP_FRISTEN } from './src/infra/httpFristen';
 import { closeAllSse } from './src/http/sseRegistry';
 
-import { meldeUngueltigeAdressen, meldeAusstehendeAdressen, horcheAufTokenWiderruf } from './src/konto';
 import { schliessePufferUndTakte } from './startup/abschluss';
 import { halteWebSperre } from './startup/einzelinstanz';
 import { imSystemkontext } from './src/infra/kontoKontext';
@@ -73,6 +72,7 @@ async function herunterfahren(
   httpServer: Server | null,
   jobs: boolean,
   zugang: Db,
+  dienste: Dienste,
   webSperreFrei: (() => Promise<void>) | null,
 ): Promise<void> {
   if (_beendetWird) return;
@@ -92,8 +92,8 @@ async function herunterfahren(
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
     }
     // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
-    if (jobs) await stoppeJobs();
-    await schliessePufferUndTakte(zugang);
+    if (jobs) await stoppeJobs(dienste);
+    await schliessePufferUndTakte(zugang, dienste);
     await webSperreFrei?.();
     await zugang.pool.end().catch(logAndContinue('server:end'));
     console.log('[shutdown] Datenbankverbindungen geschlossen');
@@ -134,11 +134,11 @@ async function starte(): Promise<void> {
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Datenbankzugang und Verdrahtung entstehen hier, nicht beim Import eines Moduls;
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
-  const zugang = verdrahteProzess();
+  const { db: zugang, dienste } = verdrahteProzess();
 
   try {
     // Migrationen, Erststart und Umschlüsselung gehen über alle Konten.
-    await imSystemkontext('start', () => bereiteDatenbankVor(zugang));
+    await imSystemkontext('start', () => bereiteDatenbankVor(zugang, dienste));
   } catch (e) {
     console.error('❌ Database initialisation failed:', fehlertext(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
@@ -151,30 +151,30 @@ async function starte(): Promise<void> {
         process.exit(1);
       })
     : null;
-  if (web) await prozessDienste().mail.meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
-  if (web) await meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
-  if (web) await meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
-  if (web) horcheAufTokenWiderruf();
+  if (web) await dienste.mail.meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
+  if (web) await dienste.konto.meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
+  if (web) await dienste.konto.meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
+  if (web) dienste.konto.horcheAufTokenWiderruf();
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
   const httpServer = web
     ? http
         .createServer(
           { ...HTTP_FRISTEN },
-          baueApp({ pool: zugang.pool, konfig: k, sitzungsGeheimnis: geheimnis, dienste: prozessDienste() }),
+          baueApp({ pool: zugang.pool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
         )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
         })
     : null;
   process.on('SIGTERM', () => {
-    void herunterfahren('SIGTERM', httpServer, jobs, zugang, webSperreFrei);
+    void herunterfahren('SIGTERM', httpServer, jobs, zugang, dienste, webSperreFrei);
   });
   process.on('SIGINT', () => {
-    void herunterfahren('SIGINT', httpServer, jobs, zugang, webSperreFrei);
+    void herunterfahren('SIGINT', httpServer, jobs, zugang, dienste, webSperreFrei);
   });
   // Aufträge arbeiten über Kontogrenzen; HTTP-Anfragen erben diesen Rahmen nicht.
-  if (jobs) await imSystemkontext('auftraege', () => starteJobs(web));
+  if (jobs) await imSystemkontext('auftraege', () => starteJobs(dienste, web));
 }
 
 // Ohne Worker weiterzulaufen täuschte einen Dienst vor.

@@ -4,12 +4,11 @@ import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
+import { bearerToken, kontoSchranke, waechterFuer } from './middleware';
 import { hashToken, invalidateTheme } from '../../src/konto';
 import { quellePruefen, hatGlobaleWerte } from '../../src/verwaltung';
 import {
   resolveUserId,
-  requireLoginOrToken,
   istVerwalter,
   nutzerName,
   bestaetigeMitFaktor,
@@ -25,6 +24,7 @@ import type { Dienste } from '../../startup/verdrahtung';
 const kennung = (v: string | number | null | undefined) => (v == null ? null : Number(v));
 
 export function baueSettingsRouter(d: Dienste) {
+  const { requireApiAdmin: requireAdmin, requireToken, requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   const requireLogin = requireLoginOrToken;
@@ -34,7 +34,7 @@ export function baueSettingsRouter(d: Dienste) {
   router.get(
     '/settings/theme',
     async (req: OffeneAnfrage<'GET /api/v1/settings/theme'>, res: Antwort<'GET /api/v1/settings/theme'>) => {
-      const uid = await resolveUserId(req);
+      const uid = await resolveUserId(d.konto, req);
       res.set('Cache-Control', 'no-cache');
       res.set('Vary', 'Cookie, Authorization');
       res.json({ success: true, ...(await d.einstellungen.designFuer(uid)) });
@@ -85,7 +85,7 @@ export function baueSettingsRouter(d: Dienste) {
       const uid = req.apiUser.user_id;
       const eigener = bearerToken(req);
       const eigenesGeraet = !!eigener && hashToken(eigener).startsWith(req.pfad.tokenId);
-      if (!eigenesGeraet && !(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
+      if (!eigenesGeraet && !(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       res.json({ success: true, deleted: await d.konto.zugangBeenden(uid, req.pfad.tokenId, eigenesGeraet) });
     },
   );
@@ -100,7 +100,7 @@ export function baueSettingsRouter(d: Dienste) {
       res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>,
     ) => {
       const uid = req.apiUser.user_id;
-      if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       const { beendet, version } = await d.konto.andereSitzungenBeenden(uid, req.sessionID);
       // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
       if (perSitzung(req)) req.session.sitzungsVersion = version;
@@ -260,7 +260,7 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       const uid = req.apiUser.user_id;
       // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
-      if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password, 'faktor_code'))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password, 'faktor_code'))) return;
       const r = await d.haushalt.einladungEinloesen(uid, String(req.eingabe.code || ''));
       if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
       const ich = await d.konto.profil(uid);
@@ -322,12 +322,12 @@ export function baueSettingsRouter(d: Dienste) {
       const uid = req.apiUser.user_id;
       // Globale Werte eines Verwalters gehen wie jede Verwalter-Route über den Schrittschutz.
       const verwalter = istVerwalter(req) && hatGlobaleWerte(req.eingabe);
-      if (verwalter && !(await freigegeben(req, res, 'verwaltung'))) return;
+      if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
       const fertig = await d.verwaltung.einstellungenSpeichern(req.eingabe, {
         uid,
         verwalter,
         name: nutzerName(req) ?? '',
-        bestaetige: passwort => bestaetigeMitFaktor(req, res, uid, passwort),
+        bestaetige: passwort => bestaetigeMitFaktor(d.konto, req, res, uid, passwort),
       });
       if (fertig) res.json({ success: true });
     },
@@ -340,7 +340,7 @@ export function baueSettingsRouter(d: Dienste) {
     async (req: Anfrage<'GET /api/v1/settings/raw'>, res: Antwort<'GET /api/v1/settings/raw'>) => {
       res.json({
         success: true,
-        settings: await d.einstellungen.readSettings(req.apiUser.user_id, await alsVerwalter(req)),
+        settings: await d.einstellungen.readSettings(req.apiUser.user_id, await alsVerwalter(d.konto, req)),
       });
     },
   );
@@ -349,7 +349,7 @@ export function baueSettingsRouter(d: Dienste) {
     '/settings/export',
     requireToken,
     async (req: Anfrage<'GET /api/v1/settings/export'>, res: Antwort<'GET /api/v1/settings/export'>) => {
-      const verwalter = await alsVerwalter(req);
+      const verwalter = await alsVerwalter(d.konto, req);
       res.setHeader('Content-Type', 'application/json');
       res.setHeader(
         'Content-Disposition',
@@ -384,7 +384,7 @@ export function baueSettingsRouter(d: Dienste) {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
       // Als Verwalter schreibt der Import globale Werte und plant die Aufträge neu.
       const verwalter = istVerwalter(req);
-      if (verwalter && !(await freigegeben(req, res, 'verwaltung'))) return;
+      if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
       res.json({
         success: true,
         ...(await d.verwaltung.konfigImport(req.apiUser.user_id, verwalter, req.file.buffer)),
@@ -409,7 +409,7 @@ export function baueSettingsRouter(d: Dienste) {
       // Wie das Ändern der Mail-Einstellungen: an eine fremde Adresse nur mit Passwort.
       if (
         to.toLowerCase() !== eigene.toLowerCase() &&
-        !(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))
+        !(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))
       )
         return;
 

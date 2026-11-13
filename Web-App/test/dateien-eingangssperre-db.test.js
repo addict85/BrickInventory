@@ -67,8 +67,8 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
 
   const sitzung = {};
   const { app, base } = testServer(_req, { sitzung, t });
-  _req('routes/imgProxy.js').registerImgProxy(app);
-  app.use('/', _req('routes/seiten.js'));
+  _req('routes/imgProxy.js').registerImgProxy(app, require('./helpers/sources').testDienste());
+  app.use('/', _req('routes/seiten.js').baueSeitenRouter(require('./helpers/sources').testDienste()));
   const hole = async (uid, weg) => {
     const k = await db.get('SELECT is_admin FROM users WHERE id = $1', [uid]);
     Object.assign(sitzung, { userId: uid, isAdmin: k.is_admin === true });

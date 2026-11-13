@@ -1,6 +1,5 @@
 import type { ServerResponse } from 'node:http';
-import { katalog } from '../prozess';
-import { cacheTreffer } from '../bilder/imgCacheServe';
+import type { KatalogDienste } from '../bereich';
 
 type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };
 interface BildAnfrage {
@@ -9,18 +8,21 @@ interface BildAnfrage {
 }
 
 /** Aus dem Platten-Cache, falls vorhanden; true heisst beantwortet. */
-export async function liefereAusCache(opts: {
-  res: BildAntwort;
-  req: BildAnfrage;
-  cacheFile: string;
-  thumbFile: string;
-  wantThumb: boolean;
-  darfErzeugen: boolean;
-  notiere: () => void;
-  streamFileToResponse(res: BildAntwort, datei: string, onEnd?: () => void, req?: BildAnfrage): unknown;
-}): Promise<boolean> {
+export async function liefereAusCache(
+  katalog: Pick<KatalogDienste, 'cacheTreffer'>,
+  opts: {
+    res: BildAntwort;
+    req: BildAnfrage;
+    cacheFile: string;
+    thumbFile: string;
+    wantThumb: boolean;
+    darfErzeugen: boolean;
+    notiere: () => void;
+    streamFileToResponse(res: BildAntwort, datei: string, onEnd?: () => void, req?: BildAnfrage): unknown;
+  },
+): Promise<boolean> {
   const { res, req, streamFileToResponse } = opts;
-  const treffer = await cacheTreffer(katalog(), opts);
+  const treffer = await katalog.cacheTreffer(opts);
   if (!treffer) return false;
   res.setHeader('Content-Type', treffer.typ);
   // Länge mitgeben: Eine chunked-Antwort kann ein Reverse-Proxy puffern.

@@ -79,7 +79,7 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
                           NOW() - INTERVAL '1 min')`);
     // Der nächste geplante Lauf ist jünger, aber nicht der, der gerade arbeitet.
     await db.run(`INSERT INTO auftraege (art, nutzlast, schluessel) VALUES ('preise', '{}', 'plan:preise')`);
-    const k = (await jm.all()).priceJob;
+    const k = (await jm.kacheln()).priceJob;
     assert.deepEqual(
       { status: k.status, progress: k.progress, total: k.total, sub: k.sub },
       { status: 'running', progress: 3, total: 9, sub: '10001-1' },

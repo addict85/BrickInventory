@@ -4,7 +4,7 @@ import type express from 'express';
 import path from 'node:path';
 import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken, kontoSchranke, sichtVon } from './middleware';
+import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import {
   csvEmpfang,
   uploadKontingentBytes,
@@ -74,6 +74,7 @@ const vorDemUpload =
   };
 
 export function baueSetsRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -418,7 +419,7 @@ export function baueSetsRouter(d: Dienste) {
   // ── CSV-Import: Fortschritt als Abfrage und als Strom ───────────────────────
   // 503 nach 3 s statt zu warten: Die Zustandsrouten hängen an jeder geöffneten
   // Seite und dürfen bei voller Datenbank nicht stauen.
-  const zustandsWaechter = loginOrTokenGuard({ timeoutMs: 3000 });
+  const zustandsWaechter = loginOrTokenGuard(d.konto, { timeoutMs: 3000 });
 
   router.get(
     '/sets/import/csv/status',
@@ -434,7 +435,7 @@ export function baueSetsRouter(d: Dienste) {
   // Offene Ströme je Konto zählt kontoSchranke('strom') für alle Ströme gemeinsam.
   router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), async (req, res) => {
     const uid = angemeldeteNutzerId(req);
-    const strom = oeffneStrom(req, res, { nurAenderungen: true, gegendruck: `csv-import ${uid}` });
+    const strom = oeffneStrom(d.konto, req, res, { nurAenderungen: true, gegendruck: `csv-import ${uid}` });
     // EventSource setzt keine Kopfzeilen, die Sprache kommt deshalb als ?sprache=.
     const gewaehlt = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
     const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : antwortSprache(req);
@@ -518,7 +519,7 @@ export function baueSetsRouter(d: Dienste) {
         res.json({ success: true, ...r });
         return;
       }
-      await ergaenzeImStrom(d, oeffneStrom(req, res, { herzschlag: false }), req, r);
+      await ergaenzeImStrom(d, oeffneStrom(d.konto, req, res, { herzschlag: false }), req, r);
     },
   );
 
@@ -543,7 +544,7 @@ export function baueSetsRouter(d: Dienste) {
     ) => {
       // Der Verwalter löscht geteilte Anleitungen: derselbe Schrittschutz wie jede Verwalter-Route.
       const verwalter = istVerwalter(req);
-      if (verwalter && !(await freigegeben(req, res, 'verwaltung'))) return;
+      if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
       const { instructions, auftrag } = await d.sets.anleitungenNeuLaden(
         req.apiUser.user_id,
         req.pfad.setNumber,

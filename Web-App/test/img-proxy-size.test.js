@@ -33,7 +33,8 @@ const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
-const { bildDurchreichen } = _req('routes/imgProxy.js');
+const bildDurchreichen = (...a) =>
+  _req('routes/imgProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
 const { SET_IMG_MAX_BYTES, downloadSetImage } = _req('src/katalog/bilder/setImages.js');
 const { imgProxyFailures } = _req('src/katalog/bilder/imgProxyStats.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');

@@ -225,7 +225,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   // /admin/auftraege keine leeren Listen liefert.
   const auftrag = await {
     ..._req('src/auftraege/dienst.js'),
-    ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+    ...require('./helpers/sources').testBereich('auftraege').auftraege,
   }.stelleAuftragEin('anleitung', { set_number: SET }, { schluessel: `vertrag-get:${process.pid}` });
   await db.run(`UPDATE auftraege SET fortschritt = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [
     auftrag,
@@ -245,8 +245,8 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   const ort = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal A') RETURNING id`, [uid]))
     .id;
   await db.run('UPDATE sets SET storage_id = $2 WHERE user_id = $1 AND set_number = $3', [uid, ort, SET]);
-  await _req('src/gutscheine/prozess.js')
-    .gutscheineBereich()
+  await require('./helpers/sources')
+    .testBereich('gutscheine')
     .gutscheine.gutscheinAnlegen(uid, { number: '50451230', pin: null, amount: 25, currency: 'CHF' });
   await db.run(
     `INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code, ausgeloest, zuletzt_am, zuletzt_preis)

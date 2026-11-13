@@ -109,7 +109,11 @@ test('makeProxyThumb schreibt über eine temporäre Datei', async t => {
 });
 
 test('eine unbrauchbar kleine Vorschau wird verworfen, ausgeliefert wird das Original', async t => {
-  const { liefereAusCache } = _req('src/katalog/http/bildCacheAuslieferung.js');
+  const liefereAusCache = (...a) =>
+    _req('src/katalog/http/bildCacheAuslieferung.js').liefereAusCache(
+      require('./helpers/sources').testDienste().katalog,
+      ...a,
+    );
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'cachevorschau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const cacheFile = path.join(ordner, 'b'.repeat(40)),

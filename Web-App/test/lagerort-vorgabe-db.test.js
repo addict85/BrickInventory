@@ -50,7 +50,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
     return;
   }
   await seed();
-  const bestand = _req('src/bestand/prozess.js').bestandBereich();
+  const bestand = require('./helpers/sources').testBereich('bestand');
   const L = { ..._req('src/bestand/lagerort.js'), ...bestand.lagerortDienst, setzeVorgabe: bestand.setzeVorgabe };
 
   const estrich = (await L.legeOrtAn(U.ich, 'Estrich')).ort;

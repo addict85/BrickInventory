@@ -77,10 +77,13 @@ test('Lagerort gegen echte Datenbank', async t => {
     return;
   }
   await seed();
-  const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
+  const L = {
+    ..._req('src/bestand/lagerort.js'),
+    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+  };
   const household = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich(),
+    ...require('./helpers/sources').testBereich('haushalt'),
   };
   const schreibbar = await household.schreibbereich(U.ich);
 

@@ -38,7 +38,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
-  const hh = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich() };
+  const hh = { ..._req('src/haushalt/haushalt.js'), ...require('./helpers/sources').testBereich('haushalt') };
   const namen = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
@@ -379,7 +379,7 @@ test('Verschieben geht NUR über den Kaufpreis', async () => {
   // tatsächlich wandert: Drei Erfassungen sind drei Käufe, die im Haushalt
   // verschiedenen Kindern gehören können. Wer alles verschieben will, ändert
   // jede Zeile — und sieht dabei, wie viele es sind. …
-  const { setVerschieben } = require('./helpers/sources').buildAndRequire()('src/sets/index.js');
+  const { setVerschieben } = require('./helpers/sources').bereichsSeite('sets');
   await assert.rejects(
     setVerschieben(1, '10294-1', 1, 2, []),
     (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'kaufpreise_angeben',

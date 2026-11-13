@@ -68,14 +68,17 @@ test('Preisalarm gegen echte Datenbank', async t => {
   // TypeScript übersetzt `export { sendMail }` zu einem Getter auf dem
   // Modulobjekt, und eine Zuweisung darauf tut nichts. Der Test lief gegen den
   // echten Versand, zählte null Meldungen — und die Ursache stand nirgends.
-  const A = { ..._req('src/finanzen/preisalarm.js'), ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm };
+  const A = {
+    ..._req('src/finanzen/preisalarm.js'),
+    ...require('./helpers/sources').testBereich('finanzen').preisalarm,
+  };
   let versandt = [];
   let versandFehler = null;
   const versende = async m => {
     if (versandFehler) throw new Error(versandFehler);
     versandt.push(m);
   };
-  const pruefe = sn => A.pruefeSet(sn, versende);
+  const pruefe = sn => A.pruefeSet(sn, { ...require('./helpers/sources').testDienste().mail, sendMail: versende });
 
   await t.test('die Richtung bedeutet, was sie sagt', () => {
     // Die einzige Stelle im Modul, an der ein Vorzeichenfehler entsteht.

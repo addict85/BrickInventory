@@ -61,9 +61,9 @@ async function anleitungLaden(k: KatalogKontext, n: Nutzlast<'anleitung'>, lauf?
       // Den Abstand hält die Pause der Art, nicht die Funktion.
       const anzahl = await downloadSetInstructions(k, sn, true);
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
-      if (await k.auftraege.auftraege.liesPause('anleitung')) await k.auftraege.beendePause('anleitung');
+      if (await k.auftraege.liesPause('anleitung')) await k.auftraege.beendePause('anleitung');
       if (letzterAbrufWarExtern())
-        await k.auftraege.auftraege.pausiereArt(
+        await k.auftraege.pausiereArt(
           'anleitung',
           new Date(Date.now() + TAKT_NACH_ABRUF_MS),
           'Abstand zwischen zwei Abrufen',
@@ -73,20 +73,20 @@ async function anleitungLaden(k: KatalogKontext, n: Nutzlast<'anleitung'>, lauf?
       const f = alsAbrufFehler(e);
       const msg = fehlertext(e) || '';
       if (f.isCloudflare || msg.includes('1015')) {
-        const stufe = (await k.auftraege.auftraege.liesPause('anleitung'))?.stufe ?? 0;
+        const stufe = (await k.auftraege.liesPause('anleitung'))?.stufe ?? 0;
         const bis = stufe < CF_PAUSEN_MS.length ? new Date(Date.now() + CF_PAUSEN_MS[stufe]!) : naechsterTag();
         const grund =
           stufe < CF_PAUSEN_MS.length
             ? `Cloudflare-Sperre: ${Math.round(CF_PAUSEN_MS[stufe]! / 60000)} min warten (Versuch ${stufe + 1})`
             : 'Cloudflare-Sperre: bis morgen pausiert';
-        await k.auftraege.auftraege.pausiereArt('anleitung', bis, grund, stufe < CF_PAUSEN_MS.length ? stufe + 1 : 0);
+        await k.auftraege.pausiereArt('anleitung', bis, grund, stufe < CF_PAUSEN_MS.length ? stufe + 1 : 0);
         await lauf?.fortschritt?.({ text: grund });
         console.log(`[instr-queue] ${grund}`);
         throw new AuftragVerschieben(bis, grund);
       }
       if (msg.includes('Tageslimit') || msg.includes('rate limit') || msg.includes('429')) {
         const bis = naechsterTag();
-        await k.auftraege.auftraege.pausiereArt('anleitung', bis, 'Tageskontingent erschöpft');
+        await k.auftraege.pausiereArt('anleitung', bis, 'Tageskontingent erschöpft');
         throw new AuftragVerschieben(bis, 'Tageskontingent erschöpft');
       }
       throw e;

@@ -1,7 +1,7 @@
 /** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
  * Parameter; erzeugeKatalog bindet ihn einmal für alle. Wer eine eigene
  * Sperrverbindung hält, ruft das Repository direkt damit auf. */
-import { baueKontext, bindeZugang } from '../infra/bereich';
+import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as anleitungLaden from './anleitungLaden';
 import * as apiKontingentDienst from './apiKontingent';
@@ -25,6 +25,7 @@ import * as bildbedarfDienst from './bilder/bildbedarf';
 import * as bildbedarfLauf from './bilder/bildbedarfLauf';
 import * as imageMisses from './bilder/imageMisses';
 import * as rateLimiter from './rateLimiter';
+import * as apiTaktRepo from './repository/apiTakt';
 import * as bildNachlauf from './bildNachlauf';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
 import * as bildBlickfeldDienst from './bilder/bildBlickfeld';
@@ -39,12 +40,14 @@ export type { Bildwerk, KatalogAbhaengigkeiten, KatalogKontext } from './kontext
 
 /** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/verdrahtung.ts baueDienste). */
 export function erzeugeKatalog(
-  a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'bildwerk'> & { bildwerk?: Bildwerk | undefined },
+  a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'bildwerk' | 'drossel'> & { bildwerk?: Bildwerk | undefined },
+  einblick?: Einblick<KatalogKontext>,
 ) {
   const bildwerk = a.bildwerk ?? { setBildLaden: downloadSetImage, vorschauErzeugen: generateThumb };
-  const k: KatalogKontext = baueKontext({ ...a, bildwerk, faecher: new Faecher() }, zugang);
+  const drossel = rateLimiter.rebrickableDrosseln(bindeZugang(a.db, apiTaktRepo));
+  const k: KatalogKontext = baueKontext({ ...a, bildwerk, drossel, faecher: new Faecher() }, zugang);
+  einblick?.(k);
   return {
-    ...k,
     ...bindeZugang(k, anleitungLaden, ['anleitungLaden']),
     ...bindeZugang(k, apiKontingentDienst, [
       'checkAndIncrementRateLimit',
@@ -114,8 +117,16 @@ export function erzeugeKatalog(
       'leereBildbedarf',
       'bildbedarfAnstossen',
     ]),
-    ...bindeZugang(k, bildbedarfLauf, ['bildbedarfAbarbeiten']),
-    ...bindeZugang(k, imageMisses, ['vergissFehlend']),
+    ...bindeZugang(k, bildbedarfLauf, ['bildbedarfAbarbeiten', 'initImageQueue', 'stoppeBildbedarf']),
+    merkeGebraucht: bildbedarfDienst.merkeGebraucht,
+    // Über die Nacharbeit, damit ein Test sie an einer Stelle ersetzt.
+    bildVormerken: (url: string, setNummer: string) => k.nacharbeit.bildVormerken(url, setNummer),
+    // Beim Aufruf nachgeschlagen: Ein Test ersetzt Teile des Bildwerks nach dem Bau.
+    setBildLaden: (...a: Parameters<Bildwerk['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
+    vorschauErzeugen: (relPfad: string) => k.bildwerk.vorschauErzeugen(relPfad),
+    /** Dieselben Drosseln wie im Katalog: Klienten und Abgleich teilen den Takt. */
+    drossel: k.drossel,
+    ...bindeZugang(k, imageMisses, ['vergissFehlend', 'initImageMisses', 'stoppeFehlanzeige']),
     ...bindeZugang(k, rateLimiter, ['rebrickableDailyStatus']),
     ...bindeZugang(k, bildNachlauf, ['bildNachlauf']),
     ...bindeZugang(k, pdfErzeugung, ['erzeugePdf']),

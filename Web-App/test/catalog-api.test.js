@@ -36,10 +36,12 @@ require.cache[mwPath] = {
   filename: mwPath,
   loaded: true,
   exports: {
-    requireToken: (req, _res, next) => {
-      req.apiUser = { user_id: 1 };
-      next();
-    },
+    waechterFuer: () => ({
+      requireToken: (req, _res, next) => {
+        req.apiUser = { user_id: 1 };
+        next();
+      },
+    }),
   },
 };
 

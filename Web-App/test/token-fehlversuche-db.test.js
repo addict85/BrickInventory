@@ -33,7 +33,10 @@ const db = require('./helpers/sources').testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const bremse = _req('src/konto/tokenFehlversuche.js');
-const { anmeldungAmEingang } = _req('routes/api_v1/middleware.js');
+const anmeldungAmEingang = (...a) =>
+  _req('routes/api_v1/middleware.js')
+    .waechterFuer(require('./helpers/sources').testDienste().konto)
+    .anmeldungAmEingang(...a);
 const pgNotify = require('./helpers/sources').testZugang().benachrichtigung;
 const { bis } = require('./helpers/zeit');
 

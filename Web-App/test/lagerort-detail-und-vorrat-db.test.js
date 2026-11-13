@@ -58,11 +58,14 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
   }
   await seed();
 
-  const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
-  const S = _req('src/sets/index.js');
+  const L = {
+    ..._req('src/bestand/lagerort.js'),
+    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+  };
+  const S = require('./helpers/sources').bereichsSeite('sets');
   const household = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich(),
+    ...require('./helpers/sources').testBereich('haushalt'),
   };
   const schreibbar = await household.schreibbereich(HAUPT);
   // Vorbedingung: Das Blickfeld umfasst wirklich BEIDE Konten, sonst prüft
@@ -213,7 +216,10 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
   }
   await seed();
 
-  const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
+  const L = {
+    ..._req('src/bestand/lagerort.js'),
+    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+  };
   // Ein zweites Set OHNE Lagerort — ohne es hätte der Filter nichts
   // auszusieben, und „alle" wäre von „die richtigen" nicht zu unterscheiden.
   const OHNE = '21058-1';

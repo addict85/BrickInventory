@@ -1,6 +1,5 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { getPartColorList } from '../../src/teile';
+import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { normalisiereLagerort } from '../../src/bestand';
@@ -10,6 +9,7 @@ import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertr
 import type { Dienste } from '../../startup/verdrahtung';
 
 export function bauePartsRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {
@@ -49,7 +49,7 @@ export function bauePartsRouter(d: Dienste) {
     '/parts/brick-colors',
     requireToken,
     async (_req: AuthedRequest, res: Antwort<'GET /api/v1/parts/brick-colors'>) => {
-      const colors = await getPartColorList();
+      const colors = await d.katalog.farbliste();
       res.json({ success: true, colors });
     },
   );

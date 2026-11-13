@@ -6,11 +6,11 @@ export class RateLimiter {
   lastCall: number;
   queue: Array<() => void>;
   _scheduled: boolean;
-  takt: { api: string; abstandMs: number } | null;
+  takt: Takt | null;
 
   /** @param takt Prozessübergreifender Takt (Tabelle api_takt); ohne ihn
    *             drosselt die Instanz nur sich selbst. */
-  constructor(maxRequests: number, windowMs: number, takt: { api: string; abstandMs: number } | null = null) {
+  constructor(maxRequests: number, windowMs: number, takt: Takt | null = null) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
     this.lastCall = 0; // timestamp of last allowed call
@@ -24,7 +24,7 @@ export class RateLimiter {
       this.queue.push(resolve);
       this._schedule();
     });
-    if (this.takt) await warteAufTakt(this.takt.api, this.takt.abstandMs);
+    if (this.takt) await warteAufTakt(this.takt);
   }
 
   _schedule() {
@@ -46,7 +46,7 @@ export class RateLimiter {
 
   throttle(waitMs: number) {
     this.lastCall = Date.now() + waitMs - this.windowMs;
-    if (this.takt) taktAussetzen(this.takt.api, waitMs);
+    if (this.takt) taktAussetzen(this.takt, waitMs);
     if (!this._scheduled && this.queue.length) this._schedule();
   }
 
@@ -57,7 +57,8 @@ export class RateLimiter {
 
 import { meldeFehler } from '../infra/fehler';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
-import { katalog } from './prozess';
+import type * as apiTaktRepo from './repository/apiTakt';
+import type { Gebunden } from '../infra/bereich';
 import { versuche } from '../infra/ergebnis';
 import type { KatalogKontext } from './kontext';
 
@@ -67,10 +68,10 @@ let taktGestoertBis = 0;
 
 /** Ein einziges UPDATE schiebt den Zeitpunkt weiter — zwei Prozesse bekommen
  * nie denselben Platz, ohne dass einer eine Sperre hält, während er wartet. */
-export async function warteAufTakt(api: string, abstandMs: number): Promise<void> {
+export async function warteAufTakt({ api, abstandMs, apiTakt }: Takt): Promise<void> {
   if (Date.now() < taktGestoertBis) return;
   try {
-    const r = await katalog().apiTakt.belegeTakt(api, abstandMs);
+    const r = await apiTakt.belegeTakt(api, abstandMs);
     const warte = Math.ceil(Number(r?.warte_ms) || 0);
     if (warte > 0) await new Promise(res => setTimeout(res, warte));
   } catch (e) {
@@ -80,18 +81,25 @@ export async function warteAufTakt(api: string, abstandMs: number): Promise<void
 }
 
 /** Ein 429 gilt für alle Prozesse. */
-function taktAussetzen(api: string, waitMs: number) {
+function taktAussetzen({ api, apiTakt }: Takt, waitMs: number) {
   if (Date.now() < taktGestoertBis) return;
-  katalog()
-    .apiTakt.schiebeTakt(api, waitMs)
-    .catch(e => meldeFehler('drossel:takt-aussetzen', e));
+  apiTakt.schiebeTakt(api, waitMs).catch(e => meldeFehler('drossel:takt-aussetzen', e));
 }
 
 // Ein Aufruf je Sekunde für ALLE Prozesse zusammen; die Drosseln ordnen nur
 // innerhalb des Prozesses, den Abstand hält der gemeinsame Takt.
-const REBRICKABLE_TAKT = { api: 'rebrickable', abstandMs: 1000 };
-export const rebrickableLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
-export const rebrickableBackgroundLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
+/** Der gemeinsame Takt läuft über die Tabelle api_takt; der Zugang dazu kommt vom Bauenden. */
+export interface Takt {
+  api: string;
+  abstandMs: number;
+  apiTakt: Gebunden<typeof apiTaktRepo>;
+}
+
+/** Je Satz Dienste einmal (erzeugeKatalog): Vordergrund und Hintergrund teilen den Takt. */
+export function rebrickableDrosseln(apiTakt: Takt['apiTakt']) {
+  const takt: Takt = { api: 'rebrickable', abstandMs: 1000, apiTakt };
+  return { vordergrund: new RateLimiter(1, 1500, takt), hintergrund: new RateLimiter(1, 1500, takt) };
+}
 
 // Gezählt in der Datenbank: Je Prozess gezählt vervielfachte sich das Limit.
 export async function consumeRebrickableDaily(k: KatalogKontext): Promise<boolean> {

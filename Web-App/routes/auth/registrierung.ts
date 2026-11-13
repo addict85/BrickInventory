@@ -36,7 +36,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/register',
-    ipThrottle('register', 5, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'register', 5, 60 * 60 * 1000),
     async (req: OffeneAnfrage<'POST /api/v1/auth/register'>, res: Antwort<'POST /api/v1/auth/register'>) => {
       const { username, email, first_name, last_name, password, language } = req.eingabe;
       if (!(await d.einstellungen.registrierungOffen()) || !(await d.mail.mailBereit()))
@@ -68,7 +68,7 @@ export function baueRegistrierungRouter(d: Dienste) {
   // Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
   router.post(
     '/bestaetigung-erneut',
-    ipThrottle('bestaetigung-erneut', 5, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'bestaetigung-erneut', 5, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/bestaetigung-erneut'>,
       res: Antwort<'POST /api/v1/auth/bestaetigung-erneut'>,
@@ -86,7 +86,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/email-bestaetigen/vorschau',
-    ipThrottle('email-vorschau', 30, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'email-vorschau', 30, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/email-bestaetigen/vorschau'>,
       res: Antwort<'POST /api/v1/auth/email-bestaetigen/vorschau'>,
@@ -100,7 +100,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/email-bestaetigen',
-    ipThrottle('email-bestaetigen', 30, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'email-bestaetigen', 30, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/email-bestaetigen'>,
       res: Antwort<'POST /api/v1/auth/email-bestaetigen'>,
@@ -114,7 +114,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/forgot-password',
-    ipThrottle('forgot-password', 5, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'forgot-password', 5, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/forgot-password'>,
       res: Antwort<'POST /api/v1/auth/forgot-password'>,
@@ -134,7 +134,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/reset-password',
-    ipThrottle('reset-password', 10, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'reset-password', 10, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/reset-password'>,
       res: Antwort<'POST /api/v1/auth/reset-password'>,

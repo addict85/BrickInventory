@@ -23,9 +23,10 @@ const _req = require('./helpers/sources').buildAndRequire();
 
 test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   const express = require('express');
-  const { bildDurchreichen } = _req('src/katalog/http/bildProxy.js');
+  const bildDurchreichen = (...a) =>
+    _req('src/katalog/http/bildProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
   // Ein Objekt für alle Bereiche (test/helpers/sources.js): die Methode darin ersetzen.
-  const nacharbeit = _req('src/infra/bereich.js').prozessDienste().katalog.nacharbeit;
+  const nacharbeit = require('./helpers/sources').testNacharbeit();
   const { proxyAdresse, proxyCacheSchluessel } = _req('src/katalog/bilder/images.js');
   const { DATA_DIR, SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 

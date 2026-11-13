@@ -53,7 +53,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   const Z = _req('src/auftraege/zeitplan.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+    ...require('./helpers/sources').testBereich('auftraege').auftraege,
   });
   t.after(async () => {
     await db.run('DELETE FROM auftraege');

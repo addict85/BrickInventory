@@ -1,12 +1,13 @@
 /** Sichtbar ist, was der Aufrufer schreiben darf: das eigene Konto und, als
  * Hauptkonto, die Unterkonten. */
+import { waechterFuer } from './middleware';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../startup/verdrahtung';
 
 export function bauePapierkorbRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   router.get(
@@ -39,7 +40,7 @@ export function bauePapierkorbRouter(d: Dienste) {
     async (req: Anfrage<'DELETE /api/v1/papierkorb/:id'>, res: Antwort<'DELETE /api/v1/papierkorb/:id'>) => {
       const id = req.pfad.id;
       if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-      if (!(await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
       if (!(await d.bestand.loescheEndgueltig({ schreiber: req.apiUser.user_id }, id)))
         return sendeFehler(req, res, 404, 'nicht_gefunden');
       res.json({ success: true });
@@ -51,7 +52,7 @@ export function bauePapierkorbRouter(d: Dienste) {
     '/bestand',
     requireToken,
     async (req: Anfrage<'DELETE /api/v1/bestand'>, res: Antwort<'DELETE /api/v1/bestand'>) => {
-      if (!(await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
       res.json({ success: true, ...(await d.sammlung.loescheAllesEigene(req.apiUser.user_id)) });
     },
   );
@@ -60,7 +61,7 @@ export function bauePapierkorbRouter(d: Dienste) {
     '/papierkorb',
     requireToken,
     async (req: Anfrage<'DELETE /api/v1/papierkorb'>, res: Antwort<'DELETE /api/v1/papierkorb'>) => {
-      if (!(await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
       res.json({ success: true, entfernt: await d.bestand.leerePapierkorb({ schreiber: req.apiUser.user_id }) });
     },
   );

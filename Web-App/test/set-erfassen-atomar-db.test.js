@@ -74,7 +74,7 @@ const { testServer } = require('./helpers/server');
 test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
   if (!db) return;
-  const sets = _req('src/sets/index.js');
+  const sets = require('./helpers/sources').bereichsSeite('sets');
   const P = process.pid % 100000;
   const HAUPT = `erf-haupt-${P}`,
     KIND = `erf-kind-${P}`;

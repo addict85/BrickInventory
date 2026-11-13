@@ -3,7 +3,7 @@
  * greift kein Dienst auf den Zugang des Prozesses zu. Gesucht wird beim Aufruf,
  * damit ein Test eine Funktion des Moduls ersetzen kann. */
 import type { SetsAbhaengigkeiten, SetsKontext } from './kontext';
-import { baueKontext } from '../infra/bereich';
+import { baueKontext, type Einblick } from '../infra/bereich';
 import * as erfassen from './erfassen';
 import * as setService from './setService';
 import * as lesen from './lesen';
@@ -31,12 +31,9 @@ function binde<M, N extends keyof M & string>(
   return gebunden as { [K in N]: Gebunden<M[K]> };
 }
 
-export function erzeugeSets(a: SetsAbhaengigkeiten) {
+export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKontext>) {
   const sk: SetsKontext = baueKontext(a, () => ({}));
-  const fremd = (['katalog', 'finanzen', 'auftraege', 'bestand', 'einstellungen', 'konto'] as const).filter(
-    b => sk[b].db !== sk.db,
-  );
-  if (fremd.length) throw new Error(`erzeugeSets: ${fremd.join(', ')} über einen anderen Zugang als db`);
+  einblick?.(sk);
   return {
     ...binde(sk, erfassen, [
       'recordAcquisition',

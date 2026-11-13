@@ -52,7 +52,8 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concur
   // Was die Kachel zeigt: das Aggregat aus den Erfassungen. Hier stand
   // `SELECT purchase_price FROM sets` — die gespiegelte Spalte, die es seit
   // Migration 0032 nicht mehr gibt.
-  const kachel = async () => (await _req('src/sets/index.js').getSetConditionAggregate([uid], SN)).avg_purchase_price;
+  const kachel = async () =>
+    (await require('./helpers/sources').bereichsSeite('sets').getSetConditionAggregate([uid], SN)).avg_purchase_price;
 
   try {
     for (const [name, pfad] of [

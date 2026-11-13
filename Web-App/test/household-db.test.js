@@ -151,7 +151,7 @@ test('Haushalt gegen echte Datenbank', async t => {
 
   const household = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich(),
+    ...require('./helpers/sources').testBereich('haushalt'),
   };
   const handlers = require('./helpers/sources').handlerModul(_req);
 

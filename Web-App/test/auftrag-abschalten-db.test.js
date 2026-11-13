@@ -25,7 +25,7 @@ const { warte } = require('./helpers/zeit');
 
 test('Abschalten während einer Belegung', async t => {
   if (!(await datenOderSkip(t, _req))) return;
-  const A = { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege };
+  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege };
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
@@ -52,6 +52,7 @@ test('Abschalten während einer Belegung', async t => {
   let angefangen = false;
   // Hängt bis zum Testende: Ein angelaufener Auftrag bliebe so auf 'laeuft'.
   const w = erzeugeWorker(
+    require('./helpers/sources').testDienste().auftraege,
     {
       [ART]: {
         ausfuehren: () => {

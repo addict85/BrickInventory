@@ -34,7 +34,7 @@ test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
   });
   const [GEMISCHT, REIN, GEMERKT, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
   for (const sn of [GEMISCHT, REIN, GEMERKT]) await katalogSet(db, sn, { name: 'Probe' });
-  const { recordAcquisition } = _req('src/sets/index.js');
+  const { recordAcquisition } = require('./helpers/sources').bereichsSeite('sets');
   for (const [sn, z] of [
     [GEMISCHT, 'N'],
     [GEMISCHT, 'U'],

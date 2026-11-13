@@ -60,10 +60,10 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
 
   const { blickfeldIds } = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich(),
+    ...require('./helpers/sources').testBereich('haushalt'),
   };
   const uids = await blickfeldIds(haupt, 'all');
-  const S = _req('src/sets/index.js');
+  const S = require('./helpers/sources').bereichsSeite('sets');
   const P = _req('src/teile/abfragen.js');
   const M = _req('src/figuren/abfragen.js');
 
@@ -130,10 +130,10 @@ test('im Einzelkonto steht keine Plakette', async t => {
 
   const { blickfeldIds } = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich(),
+    ...require('./helpers/sources').testBereich('haushalt'),
   };
   const uids = await blickfeldIds(allein, 'all');
-  const S = _req('src/sets/index.js');
+  const S = require('./helpers/sources').bereichsSeite('sets');
   const M = _req('src/figuren/abfragen.js');
 
   // „gehört mir" an jeder Kachel wäre nur Rauschen — und zusätzliche Felder in

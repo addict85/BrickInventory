@@ -52,7 +52,7 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
     pool: db.pool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 's'.repeat(48),
-    dienste: _req('src/infra/bereich.js').prozessDienste(),
+    dienste: require('./helpers/sources').testDienste(),
   });
   const srv = app.listen(0);
   t.after(() => {
@@ -127,7 +127,8 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
 
   await t.test('ohne Ereignis endet der Strom im Takt', async () => {
     const kopf = await token();
-    const { wacheUeberZugang } = _req('src/konto/http/zugangsWache.js');
+    const wacheUeberZugang = (...a) =>
+      _req('src/konto/http/zugangsWache.js').wacheUeberZugang(require('./helpers/sources').testDienste().konto, ...a);
     let beendet = 0;
     const abmelden = wacheUeberZugang({ session: {}, headers: kopf }, () => beendet++, 50);
     t.after(abmelden);

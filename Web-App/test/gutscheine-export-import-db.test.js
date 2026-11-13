@@ -76,7 +76,7 @@ async function aufbau() {
 
   const dir = path.join(DATEN_DIR, 'vouchers', String(HAUPT));
   await fs.promises.mkdir(dir, { recursive: true });
-  const { gutscheinAnlegen } = _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine;
+  const { gutscheinAnlegen } = require('./helpers/sources').testBereich('gutscheine').gutscheine;
   for (const k of KARTEN) {
     const z = await gutscheinAnlegen(HAUPT, { number: k.nr, pin: k.pin, amount: k.app, currency: 'CHF' });
     await _req('src/gutscheine/gutscheinDateien.js').schreibeGutscheinPdf(

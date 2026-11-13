@@ -3,7 +3,7 @@ import type express from 'express';
 import { acquisitionTotals } from '../../src/bestand';
 import { Abstriche } from '../../src/infra/ergebnis';
 import { fehlerAntwort } from '../../src/http/httpAntwort';
-import { requireToken, sichtVon } from './middleware';
+import { sichtVon, waechterFuer } from './middleware';
 import type { ErfassungsArt } from '../../src/sammlung';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../startup/verdrahtung';
@@ -55,6 +55,7 @@ const teilSchluessel: Schluessel = p => [String(p.partNumber), Number(p.colorId)
 const figurSchluessel: Schluessel = p => [String(p.figNumber)];
 
 export function baueAcquisitionsRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   router.get(

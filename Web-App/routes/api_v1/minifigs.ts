@@ -1,5 +1,5 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken, kontoSchranke, sichtVon } from './middleware';
+import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { normalisiereLagerort } from '../../src/bestand';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
@@ -9,6 +9,7 @@ import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertr
 import type { Dienste } from '../../startup/verdrahtung';
 
 export function baueMinifigsRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   router.get(

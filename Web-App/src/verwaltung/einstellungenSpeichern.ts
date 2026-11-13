@@ -51,8 +51,7 @@ async function schreibeGlobal(kx: VerwaltungKontext, uid: number, e: Einstellung
     if (String(e[key]) !== String((await kx.einstellungen.getGlobalSetting(key)) ?? '')) geaendert.push(key);
     await kx.einstellungen.setGlobalSetting(key, e[key]);
   }
-  if (geaendert.length)
-    await kx.konto.protokoll.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
+  if (geaendert.length) await kx.konto.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
   // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
   if (GLOBALE_EINSTELLUNGEN.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await kx.einstellungen.deleteGlobalSetting('smtp_insecure_tls');
