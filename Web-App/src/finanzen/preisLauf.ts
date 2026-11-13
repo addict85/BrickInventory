@@ -3,7 +3,7 @@ import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { auftraegeBereich, AuftragVerschieben, type AuftragsKontext } from '../auftraege';
 import { getGlobalSetting, getSetting } from '../einstellungen';
 import { ohneBricklinkPreis } from '../infra/setNummer';
-import { katalogEintrag, getPriceGuide, BricklinkNichtErreichbar } from '../katalog';
+import { katalogEintrag, getPriceGuide, BricklinkNichtErreichbar, hatPreis } from '../katalog';
 import { belegeSitzungsSperre } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
 import { versuche } from '../infra/ergebnis';
@@ -73,7 +73,7 @@ async function fetchAndCachePrice(
   // dasselbe Set jedes Mal zwei Abrufe.
   const p = await speicherePreis(setNumber, condition, currency, g);
 
-  if (p.avg === 0 && p.qavg === 0) {
+  if (!hatPreis({ avg_price: p.avg, qty_avg_price: p.qavg })) {
     const rl2 = await kontingentFrei('bricklink');
     if (rl2.allowed) {
       try {
@@ -87,139 +87,145 @@ async function fetchAndCachePrice(
   return 'updated';
 }
 
+/** Zähler und Abbruchgründe eines Laufs, geteilt von allen parallelen Sets. */
+interface Laufstand {
+  updated: number;
+  skipped: number;
+  errors: number;
+  ausgelassen: number;
+  // Ist das Kontingent aufgebraucht, käme jedes weitere Set mit derselben Antwort zurück.
+  limitErreicht?: boolean;
+  nichtErreichbar?: boolean;
+  current: number;
+  total: number;
+}
+
+/** Auch Merkposten: /price-history liest den Cache nur, ohne diesen Lauf bliebe ihr Verlauf leer. */
+async function preisPlaetzeJeKonto(): Promise<Map<number, string[]>> {
+  const eigene = await finanzenBereich().preisLauf.bestandsPlaetze();
+  const gewuenschte = await versuche('preis-job:gewuenschte', finanzenBereich().preisLauf.merklistenPlaetze());
+  if (!gewuenschte.ok) log('Merkliste nicht lesbar — nur eigene Sets');
+  const jeKonto = new Map<number, string[]>();
+  for (const r of [...eigene, ...(gewuenschte.ok ? gewuenschte.wert : [])].sort((a, b) => a.user_id - b.user_id)) {
+    const liste = jeKonto.get(r.user_id) ?? [];
+    if (!liste.includes(r.set_number)) liste.push(r.set_number);
+    jeKonto.set(r.user_id, liste);
+  }
+  return jeKonto;
+}
+
+/** Ein Set in allen Zuständen, die es braucht; das Ergebnis zählt in `st`. */
+async function aktualisiereSet(sn: string, zustaende: string[], currency: string, ttl: string, st: Laufstand) {
+  let last = 'skipped';
+  for (const c of zustaende) {
+    try {
+      const r = await fetchAndCachePrice(sn, c, 'sold', currency, ttl);
+      if (r === 'updated') {
+        st.updated++;
+        last = 'updated';
+      } else if (r === 'rate_limited' || r === 'nicht_erreichbar') {
+        const limit = r === 'rate_limited';
+        if (limit ? !st.limitErreicht : !st.nichtErreichbar)
+          log(
+            `${limit ? 'BrickLink-Tageslimit erreicht' : 'BrickLink nicht erreichbar (Wartung)'} — die übrigen Sets folgen im nächsten Lauf`,
+          );
+        if (limit) st.limitErreicht = true;
+        else st.nichtErreichbar = true;
+        st.ausgelassen++;
+        return 'rate_limited';
+      } else if (last !== 'updated') st.skipped++;
+    } catch (e) {
+      st.errors++;
+      log(`Error ${sn} (${c}): ${fehlertext(e).substring(0, 80)}`);
+      last = 'error';
+    }
+  }
+  return last;
+}
+
+/** 'sold' = tatsächlich erzielte Preise der letzten sechs Monate; fünf Sets parallel. */
+async function aktualisiereKonto(userId: number, setNumbers: string[], st: Laufstand, k?: AuftragsKontext) {
+  const currency = await getSetting(userId, 'currency', 'EUR');
+  const ttlHours = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
+  const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
+  // Drei Abfragen je Konto statt je Set.
+  const zustaende = await zustaendeJeSet(userId, valid);
+  const tasks = valid.map(sn => async () => {
+    st.current++;
+    k?.signal.throwIfAborted();
+    if (st.limitErreicht || st.nichtErreichbar) {
+      st.ausgelassen++;
+      return 'rate_limited';
+    }
+    if (k && st.current % 10 === 1)
+      await k.fortschritt({ erledigt: st.current, gesamt: st.total, text: `${sn} (${st.current}/${st.total})` });
+    return aktualisiereSet(sn, zustaende.get(sn) ?? ['N'], currency, ttlHours, st);
+  });
+  await parallelLimit(tasks, 5);
+}
+
+/** Tagespunkt und Preisalarme einmal je Lauf: Je Abruf liefe die Prüfung tausendfach und meldete doppelt. */
+async function nachDemLauf() {
+  log('Writing daily price_history snapshot from price_cache...');
+  try {
+    log(`Daily snapshot: ${await finanzenBereich().preisLauf.schreibeTagesstand()} price history entries inserted`);
+  } catch (e) {
+    log(`Daily snapshot error: ${fehlertext(e)}`);
+  }
+  try {
+    const wartende = await finanzenBereich().preisLauf.setsMitAlarm();
+    let gemeldet = 0;
+    for (const sn of wartende) gemeldet += await finanzenBereich().preisalarm.pruefeSet(sn);
+    if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
+  } catch (e) {
+    log(`Preisalarm error: ${fehlertext(e)}`);
+  }
+}
+
+async function meldeErgebnis(st: Laufstand, dur: number, k?: AuftragsKontext) {
+  const grund = st.nichtErreichbar ? 'BrickLink nicht erreichbar' : 'Tageslimit';
+  log(
+    `Done: ${st.updated} updated, ${st.skipped} skipped, ${st.errors} errors${st.ausgelassen ? `, ${st.ausgelassen} wegen ${grund} ausgelassen` : ''} — ${(dur / 1000).toFixed(1)}s`,
+  );
+  await merkeStand({
+    lastRun: new Date().toISOString(),
+    lastDuration: dur,
+    lastUpdated: st.updated,
+    lastErrors: st.errors,
+  });
+  await k?.fortschritt({
+    erledigt: st.total,
+    gesamt: st.total,
+    text: `${st.updated} aktualisiert, ${st.errors} Fehler — ${(dur / 1000).toFixed(1)}s`,
+  });
+}
+
 /** Hält ein anderer Prozess die Sperre, wird der Auftrag eine Minute später neu versucht. */
 async function runPriceRefresh(k?: AuftragsKontext) {
-  const ck = await getGlobalSetting('bricklink_consumer_key', '');
-  if (!ck) {
+  if (!(await getGlobalSetting('bricklink_consumer_key', ''))) {
     log('BrickLink credentials not configured, skipping');
     await merkeStand({});
     return;
   }
-
   const releaseLock = await acquireRunLock();
   if (!releaseLock)
     throw new AuftragVerschieben(new Date(Date.now() + 60_000), 'Läuft bereits in einem anderen Prozess');
-
   const t0 = Date.now();
-  let updated = 0,
-    skipped = 0,
-    errors = 0,
-    ausgelassen = 0;
-  // Ist das Kontingent aufgebraucht, käme jedes weitere Set mit derselben Antwort zurück.
-  let limitErreicht = false,
-    nichtErreichbar = false;
-  const fortschritt = { current: 0, total: 0, set: null as string | null };
+  const st: Laufstand = { updated: 0, skipped: 0, errors: 0, ausgelassen: 0, current: 0, total: 0 };
   await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
-    // Auch Merkposten: /price-history liest den Cache nur, und ohne diesen Lauf bliebe ihr Preisverlauf leer.
-    const eigene = await finanzenBereich().preisLauf.bestandsPlaetze();
-    // Ohne Merkliste laufen wenigstens die eigenen Sets; das Protokoll nennt die Lücke.
-    const gewuenschte = await versuche('preis-job:gewuenschte', finanzenBereich().preisLauf.merklistenPlaetze());
-    if (!gewuenschte.ok) log('Merkliste nicht lesbar — nur eigene Sets');
-    const allSets = [...eigene, ...(gewuenschte.ok ? gewuenschte.wert : [])]
-      .filter((r, i, a) => a.findIndex(x => x.user_id === r.user_id && x.set_number === r.set_number) === i)
-      .sort((a, b) => a.user_id - b.user_id);
-    if (!allSets.length) {
+    const jeKonto = await preisPlaetzeJeKonto();
+    st.total = [...jeKonto.values()].reduce((n, l) => n + l.length, 0);
+    if (!st.total) {
       log('No sets, nothing to do');
       await merkeStand({ lastRun: new Date().toISOString() });
       return;
     }
-    log(`Starting: ${allSets.length} set-slots`);
-    fortschritt.total = allSets.length;
-    await k?.fortschritt({ erledigt: 0, gesamt: allSets.length, text: `0/${allSets.length} Sets` });
-    const byUser: Record<string, string[]> = {};
-    for (const row of allSets) {
-      const liste = byUser[row.user_id] ?? [];
-      byUser[row.user_id] = liste;
-      liste.push(row.set_number);
-    }
-    for (const [userId, setNumbers] of Object.entries(byUser)) {
-      // Number(): Object.entries() liefert Schlüssel als Zeichenketten.
-      const currency = await getSetting(Number(userId), 'currency', 'EUR');
-      // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
-      const guideType = 'sold';
-      const ttlHours = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
-      const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
-
-      // Drei Abfragen je Nutzer statt je Set; jeder überflüssige Abruf ginge auf das
-      // BrickLink-Tageskontingent.
-      const zustaende = await zustaendeJeSet(Number(userId), valid);
-
-      const tasks = valid.map(sn => async () => {
-        fortschritt.current++;
-        fortschritt.set = sn;
-        k?.signal.throwIfAborted();
-        if (limitErreicht || nichtErreichbar) {
-          ausgelassen++;
-          return 'rate_limited';
-        }
-        if (k && fortschritt.current % 10 === 1)
-          await k.fortschritt({
-            erledigt: fortschritt.current,
-            gesamt: fortschritt.total,
-            text: `${sn} (${fortschritt.current}/${fortschritt.total})`,
-          });
-        const conditions = zustaende.get(sn) ?? ['N'];
-        let last = 'skipped';
-        for (const c of conditions) {
-          try {
-            const r = await fetchAndCachePrice(sn, c, guideType, currency, ttlHours);
-            if (r === 'updated') {
-              updated++;
-              last = 'updated';
-            } else if (r === 'rate_limited') {
-              if (!limitErreicht) log('BrickLink-Tageslimit erreicht — die übrigen Sets folgen im nächsten Lauf');
-              limitErreicht = true;
-              ausgelassen++;
-              return 'rate_limited';
-            } else if (r === 'nicht_erreichbar') {
-              if (!nichtErreichbar)
-                log('BrickLink nicht erreichbar (Wartung) — die übrigen Sets folgen im nächsten Lauf');
-              nichtErreichbar = true;
-              ausgelassen++;
-              return 'rate_limited';
-            } else if (last !== 'updated') {
-              skipped++;
-            }
-          } catch (e) {
-            errors++;
-            log(`Error ${sn} (${c}): ${fehlertext(e).substring(0, 80)}`);
-            last = 'error';
-          }
-        }
-        return last;
-      });
-      await parallelLimit(tasks, 5);
-    }
-    const dur = Date.now() - t0;
-    const grund = nichtErreichbar ? 'BrickLink nicht erreichbar' : 'Tageslimit';
-    log(
-      `Done: ${updated} updated, ${skipped} skipped, ${errors} errors${ausgelassen ? `, ${ausgelassen} wegen ${grund} ausgelassen` : ''} — ${(dur / 1000).toFixed(1)}s`,
-    );
-    const lastRun = new Date().toISOString();
-    await merkeStand({ lastRun, lastDuration: dur, lastUpdated: updated, lastErrors: errors });
-    await k?.fortschritt({
-      erledigt: fortschritt.total,
-      gesamt: fortschritt.total,
-      text: `${updated} aktualisiert, ${errors} Fehler — ${(dur / 1000).toFixed(1)}s`,
-    });
-
-    log('Writing daily price_history snapshot from price_cache...');
-    try {
-      log(`Daily snapshot: ${await finanzenBereich().preisLauf.schreibeTagesstand()} price history entries inserted`);
-    } catch (e) {
-      log(`Daily snapshot error: ${fehlertext(e)}`);
-    }
-
-    // Preisalarme hier und nicht je Abruf: Dort liefe die Prüfung tausendfach und meldete dasselbe mehrmals.
-    try {
-      const wartende = await finanzenBereich().preisLauf.setsMitAlarm();
-      let gemeldet = 0;
-      for (const sn of wartende) gemeldet += await finanzenBereich().preisalarm.pruefeSet(sn);
-      if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
-    } catch (e) {
-      log(`Preisalarm error: ${fehlertext(e)}`);
-    }
+    log(`Starting: ${st.total} set-slots`);
+    await k?.fortschritt({ erledigt: 0, gesamt: st.total, text: `0/${st.total} Sets` });
+    for (const [userId, setNumbers] of jeKonto) await aktualisiereKonto(userId, setNumbers, st, k);
+    await meldeErgebnis(st, Date.now() - t0, k);
+    await nachDemLauf();
   } catch (e) {
     log(`Fatal: ${fehlertext(e)}`);
     await merkeStand({});
