@@ -25,6 +25,11 @@ import ch.brickinventoryapp.data.util.raeumeKlartextAnleitungenAuf
 import ch.brickinventoryapp.sicherheit.raeumeKlartextBildcachesAuf
 import ch.brickinventoryapp.data.util.raeumeVertraulichePdfsAuf
 import android.os.Build
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {
@@ -58,6 +63,14 @@ class BrickInventoryApp : Application(), Configuration.Provider {
             sitzungLazy.get().starte()
             ausgangsmelderLazy.get().starte(bereiche.anwendung)
         })
+
+        // Ein Token, das bei gesperrtem Gerät unter dem schwächeren Schlüssel landete (Tausch im
+        // Hintergrund), kommt gleich nach dem Entsperren unter den strengen, nicht erst beim nächsten Start.
+        ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                bereiche.anwendung.launch { fangeAusserAbbruch { tokenuebernahme.stufeTokenHoch() } }
+            }
+        }, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
 
         // Aufräumen im Hintergrund; ein Klartext-Token älterer Fassungen gilt nie, es geht nur weg.
         bereiche.anwendung.launch {

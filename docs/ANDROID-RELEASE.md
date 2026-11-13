@@ -55,6 +55,12 @@ eigenen Job und verschlüsselt mit einer eigenen Passphrase.
 Der öffentliche Schlüssel in `core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem`
 bleibt, wie er ist.
 
+Seit 12.11.2026 trägt die Beschreibung nur noch diese Signatur; der APK-Schlüssel
+signiert keine Beschreibung mehr. Fehlt eines der beiden Secrets, bricht *Beschreibung
+signieren* ab, statt ein Release ohne gültige Beschreibung zu veröffentlichen. Die
+Beschreibung gilt **7 Tage**: Spätestens wöchentlich ein Etikett setzen (notfalls auf
+denselben Commit), sonst meldet die App „veraltet oder manipuliert“.
+
 ## 3. Tag-Ruleset für `android-v*` und `apk-neuste`
 
 *Settings → Rules → Rulesets → New ruleset → New tag ruleset*

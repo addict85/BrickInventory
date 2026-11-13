@@ -88,7 +88,7 @@ class ReleasePruefenTest {
         assertEquals("Einer der beiden Schlüssel der App", 0, pruefe("schluessel", datei(neu).path, app))
         assertEquals("Ein fremder Schlüssel", 1, pruefe("schluessel", datei(pem()).path, app))
         assertEquals("Keine Beschreibungssignatur, obwohl die App eine verlangt", 1, pruefe("schluessel", "/gibt/es/nicht.pem", app))
-        assertEquals("Die App kennt noch keinen: Übergangsweg, eigens gemeldet", 3,
+        assertEquals("Die App kennt noch keinen: sie nähme nichts an, eigens gemeldet", 3,
             pruefe("schluessel", datei(neu).path, datei("# leer\n").path))
         assertEquals("Ein kaputter Block", 2, pruefe("schluessel", datei(neu).path, datei("-----BEGIN PUBLIC KEY-----\n%%%\n-----END PUBLIC KEY-----").path))
     }

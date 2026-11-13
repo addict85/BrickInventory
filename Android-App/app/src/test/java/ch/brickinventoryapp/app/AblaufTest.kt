@@ -135,6 +135,23 @@ class AblaufTest {
     }
 
     /**
+     * Jedes Feld von „Set hinzufügen“ trägt eine Hilfezeile; ohne sie standen die Felder
+     * ungleich weit auseinander, und der Hinweis zum Preis verschwand als Platzhalter beim Tippen.
+     * Gegenprobe: Mengenfeld wieder ohne Hilfezeile (nur bei Fehler) → rot, „Anzahl“ fehlt
+     * (gegenproben/erfassen-menge-ohne-hilfezeile.patch).
+     */
+    @Test
+    fun `jedes Feld beim Set erfassen hat eine Hilfezeile, auch beim Tippen`() {
+        zeige { AddSetDialog(onDismiss = {}, onAdd = {}, sofortFokus = false) }
+        compose.onNodeWithText(ctx.getString(R.string.gallery_purchase_price)).performTextInput("12")
+        compose.waitForIdle()
+        for (id in listOf(R.string.gallery_set_number_placeholder, R.string.gallery_quantity_hint,
+                R.string.common_unit_price_placeholder)) {
+            compose.onNodeWithText(ctx.getString(id), useUnmergedTree = true).assertExists()
+        }
+    }
+
+    /**
      * Eine Nummer, die keine Setnummer ist ("--"), wird nicht erfasst und am Feld erklärt.
      * Gegenprobe: in nummerFehler() den Zweig `!NumericInput.istSetnummer(nummer)` entfernt
      * → erfasst steht auf 1 und der Hinweis fehlt, beide Prüfungen rot.

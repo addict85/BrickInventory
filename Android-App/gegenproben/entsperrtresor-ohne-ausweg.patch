@@ -6,12 +6,16 @@ Rot: kann der Entsperr-Schluessel nicht verschluesseln
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
-@@ -38,8 +38,7 @@
+@@ -41,12 +41,7 @@
      private val immer: TokenVerschluesselung,
  ) : TokenVerschluesselung {
      override fun verschluessle(klartext: String): String =
 -        fangeAusserAbbruch { ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext) }
--            .getOrElse { immer.verschluessle(klartext) }
+-            .getOrElse {
+-                // Nicht still: Wer im Debug-Log sucht, warum ein Token schwächer liegt, findet es hier.
+-                Protokoll.warnung("Tresor", "Token unter dem Schlüssel ohne Entsperr-Bedingung abgelegt", it)
+-                immer.verschluessle(klartext)
+-            }
 +        ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext)
  
      override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext

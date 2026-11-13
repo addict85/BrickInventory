@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.konto.ui.screens
 
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import java.text.SimpleDateFormat
-import java.util.Date
+import ch.brickinventoryapp.model.util.DatumJahr
+import ch.brickinventoryapp.model.util.fmtStand
+import ch.brickinventoryapp.ui.util.appNumberLocale
+import ch.brickinventoryapp.ui.util.vierundzwanzigStunden
 import androidx.compose.material.icons.filled.Share
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
@@ -156,7 +157,7 @@ internal fun HouseholdCard(
             )
             state.inviteGueltigBis?.let { bis ->
                 Text(stringResource(R.string.household_invite_gueltig_bis,
-                        SimpleDateFormat("dd.MM. HH:mm", LocalConfiguration.current.locales[0]).format(Date(bis))),
+                        fmtStand(bis, appNumberLocale(), vierundzwanzig = vierundzwanzigStunden(), jahr = DatumJahr.OHNE)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // Der Code gehört auf ein anderes Gerät: teilen wie kopieren, beide gleich gewichtet.

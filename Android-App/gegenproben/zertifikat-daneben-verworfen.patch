@@ -1,0 +1,17 @@
+Gegenprobe: Ein Tipp neben den Zertifikatsdialog schliesst ihn wieder und verwirft die Abschrift
+Modul: app
+Test: ch.brickinventoryapp.app.ZertifikatDialogTest
+Rot: daneben tippen schliesst den Dialog nie
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+@@ -153,7 +153,7 @@
+  * nichts getippt ist; daneben tippen nie — Abbrechen bleibt der ausdrückliche Weg.
+  */
+ internal fun schliessbar(eingabe: String) =
+-    DialogProperties(dismissOnBackPress = eingabe.isEmpty(), dismissOnClickOutside = false)
++    DialogProperties(dismissOnBackPress = eingabe.isEmpty(), dismissOnClickOutside = true)
+ 
+ /** „Zu kurz“ sagt, wie viel fehlt; „passt nicht“ heisst, die Zeichen stimmen nicht. */
+ @Composable

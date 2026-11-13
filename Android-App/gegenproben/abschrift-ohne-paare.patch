@@ -1,0 +1,17 @@
+Gegenprobe: Das Fingerabdruckfeld setzt beim Tippen keine Doppelpunkte
+Modul: app
+Test: ch.brickinventoryapp.app.ZertifikatDialogTest
+Rot: die Abschrift bekommt beim Tippen Doppelpunkte
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt
+@@ -43,7 +43,7 @@
+         shape = Formen.feld,
+         value = TextFieldValue(eingabe, TextRange(cursor)),
+         onValueChange = { neu ->
+-            val (text, stelle) = abschriftInPaaren(neu.text, neu.selection.end)
++            val (text, stelle) = neu.text to neu.selection.end
+             cursor = stelle
+             onEingabe(text)
+         },

@@ -19,6 +19,7 @@ import javax.net.ssl.SSLEngine
 import javax.net.ssl.SSLSession
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509ExtendedTrustManager
+import javax.security.auth.x500.X500Principal
 
 /**
  * Welchen Zertifizierungsstellen die Clients des eigenen Servers vertrauen: nur
@@ -72,7 +73,7 @@ fun istFingerabdruck(text: String?): Boolean =
 /**
  * Was der Dialog vor dem Abtippen zeigt: nur die ersten 8 Hex-Zeichen, zur
  * Orientierung, welche Zeile in der Webapp gemeint ist. Abgetippt werden die
- * letzten 24 ([bestaetigtFingerabdruck]); stünden sie hier, schriebe man sie vom
+ * letzten 24 ([Abschrift.bestaetigt]); stünden sie hier, schriebe man sie vom
  * Bildschirm des Angreifers ab statt aus der zweiten Quelle.
  */
 fun fingerabdruckAnfang(fp: String): String = fingerabdruckLesbar(fp).take(11) + " …"
@@ -174,13 +175,13 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
     /**
      * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Ohne bekannte CA
      * oder bei geändertem Schlüssel nur mit [eingabe] aus einer zweiten Quelle
-     * ([bestaetigtFingerabdruck]): Dort prüft sonst niemand die Kette, und ein Tipp
+     * ([Abschrift.bestaetigt]): Dort prüft sonst niemand die Kette, und ein Tipp
      * allein wäre genau das, was ein Angreifer dazwischen braucht.
      */
     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
         val f = _offen.value ?: return false
         if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
-        if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
+        if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
         pins.merkePin(f.schluessel, f.fingerabdruck)
         _offen.value = null
         return true
@@ -247,16 +248,25 @@ class PinVertrauen(
     }
 
     /**
-     * Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel: Wechselt die CA
-     * ihre Wurzel (Let's Encrypt X1 → X2), fragt die App nicht neu. Nennt der Code eine System-Wurzel,
-     * muss sie die Kette auch tragen. Eine gepinnte Nutzer-CA gilt, wenn die Kette eben bis zu ihr galt.
+     * Ein öffentlicher Pin bindet an die gepinnte Wurzel oder eine andere desselben Betreibers:
+     * Ohne CT-Pflicht (Android 11–15) genügte sonst jede fehlausgestellte Kette irgendeiner CA.
+     * Zwischenstellen (R10 → R11) und Wurzeln einer Familie (ISRG X1 → X2) wechseln still;
+     * ein anderer Betreiber fragt wie ein geänderter Schlüssel. Ein Code verlangt genau seine Wurzel.
      */
     private fun traegtPin(lage: Kettenlage, pin: String, oeffentlicherPin: Boolean, ausCode: Boolean): Boolean =
-        if (oeffentlicherPin) lage.oeffentlich && (!ausCode || lage.fingerabdruck == pin)
+        if (oeffentlicherPin) lage.oeffentlich && (lage.fingerabdruck == pin || !ausCode && gleicherBetreiber(pin, lage.fingerabdruck))
         else lage.ueberNutzerCa && lage.wurzel != null && lage.fingerabdruck == pin
 
-    /** Fingerabdrücke der System-Wurzeln: Ein Pin auf eine davon heisst „öffentlich gültig“. */
-    private val systemWurzeln: Set<String> by lazy { fremdeHosts.acceptedIssuers.map(::spkiFingerabdruck).toSet() }
+    /** Beide sind System-Wurzeln, und ihr Subjekt nennt dieselbe Organisation (O=). */
+    private fun gleicherBetreiber(a: String, b: String): Boolean {
+        val betreiberA = systemWurzeln[a]?.let(::betreiber) ?: return false
+        return betreiberA == systemWurzeln[b]?.let(::betreiber)
+    }
+
+    /** Die System-Wurzeln nach Fingerabdruck: Ein Pin auf eine davon heisst „öffentlich gültig“. */
+    private val systemWurzeln: Map<String, X509Certificate> by lazy {
+        fremdeHosts.acceptedIssuers.associateBy(::spkiFingerabdruck)
+    }
 
     private fun gemeldet(f: ZertifikatUngeklaert): ZertifikatUngeklaert = f.also { frage.melde(it) }
 
@@ -278,8 +288,13 @@ class PinVertrauen(
      */
     private fun ohneHost(chain: Array<X509Certificate>, system: () -> Unit) {
         val pin = eigenerServer()?.let(pins::pin)
-        if (pin == null || pin in systemWurzeln) return system()
-        if (!passtZumPin(chain, pin)) throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
+        if (pin == null) return system()
+        if (pin in systemWurzeln) {
+            system()
+            val wurzel = spkiFingerabdruck(anker(chain, fremdeHosts.acceptedIssuers) ?: chain.last())
+            if (wurzel == pin || gleicherBetreiber(pin, wurzel)) return
+        } else if (passtZumPin(chain, pin)) return
+        throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
     }
 
     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket?) =
@@ -342,6 +357,14 @@ internal fun fuerServer(blatt: X509Certificate): Boolean {
     return EKU_SERVER in zwecke || EKU_JEDER in zwecke
 }
 
+/** Die Organisation (O=) im Subjekt; ohne sie ist eine Wurzel mit keiner anderen verwandt. */
+internal fun betreiber(zert: X509Certificate): String? =
+    zert.subjectX500Principal.getName(X500Principal.RFC2253)
+        .split(UNMASKIERTES_KOMMA).map { it.trim() }
+        .firstOrNull { it.startsWith("O=") }?.removePrefix("O=")?.takeIf { it.isNotBlank() }
+
+private val UNMASKIERTES_KOMMA = Regex("""(?<!\\),""")
+
 private const val EKU_SERVER = "1.3.6.1.5.5.7.3.1"
 private const val EKU_JEDER = "2.5.29.37.0"
 
@@ -363,13 +386,32 @@ fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509
  */
 internal const val FINGERABDRUCK_ABTIPPEN = 24
 
-fun bestaetigtFingerabdruck(eingabe: String?, fp: String): Boolean {
-    val roh = eingabe?.trim().orEmpty()
-    if (roh.isEmpty()) return false
-    if (roh == fp) return true
-    val hex = fingerabdruckLesbar(fp).replace(":", "")
-    val getippt = roh.uppercase().filter { it.isLetterOrDigit() }
-    return getippt.length >= FINGERABDRUCK_ABTIPPEN && getippt.all { it in "0123456789ABCDEF" } && hex.endsWith(getippt)
+/**
+ * Was eine Abschrift taugt. Der Dialog sagt „zu kurz“ anders als „passt nicht“: Die Webapp
+ * zeigt `AB:CD:…`, und wer 24 sichtbare Zeichen samt Doppelpunkten abschrieb, hatte nur 16 Hex.
+ */
+enum class Abschrift {
+    LEER, ZU_KURZ, PASST_NICHT, PASST;
+
+    companion object {
+        /** So viele Hex-Zeichen vom Ende des Fingerabdrucks; Doppelpunkte und Leerzeichen zählen nicht. */
+        const val NOETIG = FINGERABDRUCK_ABTIPPEN
+
+        fun bestaetigt(eingabe: String?, fp: String): Boolean = von(eingabe, fp) == PASST
+
+        fun von(eingabe: String?, fp: String): Abschrift {
+            val roh = eingabe?.trim().orEmpty()
+            if (roh.isNotEmpty() && roh == fp) return PASST
+            val getippt = roh.uppercase().filter { it.isLetterOrDigit() }
+            return when {
+                getippt.isEmpty() -> LEER
+                getippt.any { it !in "0123456789ABCDEF" } -> PASST_NICHT
+                getippt.length < FINGERABDRUCK_ABTIPPEN -> ZU_KURZ
+                fingerabdruckLesbar(fp).replace(":", "").endsWith(getippt) -> PASST
+                else -> PASST_NICHT
+            }
+        }
+    }
 }
 
 /** Wie eine Kette gilt: allein mit den System-CAs, nur über eine Nutzer-CA oder gar nicht; dazu ihr Anker. */

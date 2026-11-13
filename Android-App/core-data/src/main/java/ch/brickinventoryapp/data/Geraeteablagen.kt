@@ -77,6 +77,8 @@ interface Tokenspiegel {
     val serverUrlState: StateFlow<String?>
     val authTokenState: StateFlow<String?>
     val tokenHerkunftState: StateFlow<String?>
+    /** Während einer QR-Kopplung mit einem anderen Server dessen Adresse, sonst null (Anmeldeablage.kopplungsziel). */
+    val kopplungszielState: StateFlow<String?>
     fun tokenGeneration(): Long
     fun warteAufStart()
     fun beimServerwechsel(hoerer: () -> Unit)
@@ -87,6 +89,9 @@ interface Tokenspiegel {
 /** Einmal beim Start: ein Klartext-Token älterer Fassungen entfernen, einen alten Geheimtext umschlüsseln. */
 fun interface Tokenuebernahme {
     suspend fun uebernehmeAltesToken(): Boolean
+
+    /** Nach dem Entsperren: nur das Umschlüsseln, ohne die übrigen Aufräumarbeiten des Starts. */
+    suspend fun stufeTokenHoch() = Unit
 }
 
 /** Was der Preisalarm-Arbeiter liest und schreibt: Schalter und Marke des letzten Abrufs. */

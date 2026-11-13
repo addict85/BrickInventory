@@ -1,0 +1,16 @@
+Gegenprobe: Der Rückfall auf den schwächeren Schlüssel geschieht wieder still, ohne Protokollzeile
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.TresorSperreTest
+Rot: der Rueckfall auf den schwaecheren Schluessel wird protokolliert
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
+@@ -44,7 +44,6 @@
+         fangeAusserAbbruch { ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext) }
+             .getOrElse {
+                 // Nicht still: Wer im Debug-Log sucht, warum ein Token schwächer liegt, findet es hier.
+-                Protokoll.warnung("Tresor", "Token unter dem Schlüssel ohne Entsperr-Bedingung abgelegt", it)
+                 immer.verschluessle(klartext)
+             }
+ 

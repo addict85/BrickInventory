@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -102,18 +101,14 @@ fun SucheMitFilter(
             Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically) { knoepfe() }
-        } else Row(verticalAlignment = Alignment.CenterVertically) {
-            // Höchstens SUCHE_MAX breit, die Knöpfe gleich daneben: Über die ganze Tabletbreite
-            // war das Feld 1 800 px lang und die Knöpfe standen weit weg.
-            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter,
-                modifier = Modifier.weight(1f, fill = false).widthIn(max = SUCHE_MAX).fillMaxWidth())
+        } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // Über die ganze Breite, die Knöpfe am rechten Rand des Rasters: Auf 720 dp begrenzt
+            // endete die Zeile auf dem Tablet mitten über den Kacheln, rechts davon leer.
+            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
             knoepfe()
         }
     }
 }
-
-/** Breiteste Suchzeile: genug für jeden Suchbegriff, ohne über das ganze Tablet zu laufen. */
-private val SUCHE_MAX = 720.dp
 
 @Composable
 private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {

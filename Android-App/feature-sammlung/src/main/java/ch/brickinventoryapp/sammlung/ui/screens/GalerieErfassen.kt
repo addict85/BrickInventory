@@ -162,7 +162,11 @@ fun AddSetDialog(
             onValueChange = { quantity = NumericInput.quantity(it) },
             label = { Text(stringResource(R.string.common_quantity)) },
             isError = NumericInput.mengeUngueltig(quantity),
-            supportingText = { if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
+            // Jedes Feld mit einer Hilfezeile: Ohne sie standen die Felder ungleich weit auseinander.
+            supportingText = {
+                if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen())
+                else Text(stringResource(R.string.gallery_quantity_hint))
+            },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = NumericInput.ganzzahlTastatur()
@@ -171,9 +175,12 @@ fun AddSetDialog(
             value = purchasePrice,
             onValueChange = { purchasePrice = NumericInput.price(it) },
             label = { Text(stringResource(R.string.gallery_purchase_price)) },
-            placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
             isError = NumericInput.preisUngueltig(purchasePrice),
-            supportingText = { if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
+            // Der Hinweis als Hilfezeile statt Platzhalter: Der verschwand mit dem ersten Tippen.
+            supportingText = {
+                if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen())
+                else Text(stringResource(R.string.common_unit_price_placeholder))
+            },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = NumericInput.preisTastatur(),

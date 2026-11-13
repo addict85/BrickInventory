@@ -34,4 +34,5 @@ internal class KontoAblage @Inject constructor(
     override fun gemerkterPin(schluessel: String): String? = geraet.gemerkterPin(schluessel)
     override fun halteVor(schluessel: String, fingerabdruck: String) = geraet.halteVor(schluessel, fingerabdruck)
     override fun vergissVorgehaltenen(schluessel: String) = geraet.vergissVorgehaltenen(schluessel)
+    override fun kopplungsziel(url: String?) = token.kopplungsziel(url)
 }

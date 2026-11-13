@@ -690,19 +690,19 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 - **`version-signiert.json`** (in der Release jedes Etiketts; die App liest sie über
   `releases/latest/download/`): Der Job *APK signieren*
   schreibt versionCode, versionName, Commit, die Adresse des
-  Fassungsanhangs, Grösse und SHA-256 des APK und signiert das zweimal
-  (`openssl dgst -sha256`): mit dem eigenen **Beschreibungsschlüssel**
-  (`beschreibungssignatur`, unten) und mit dem APK-Schlüssel (`signatur`, nur
-  noch für Fassungen ohne Beschreibungsschlüssel). Die App liest nur diese Datei
+  Fassungsanhangs, Grösse und SHA-256 des APK; signiert wird das nur mit dem
+  eigenen **Beschreibungsschlüssel** (`beschreibungssignatur`, unten,
+  `openssl dgst -sha256`). Der APK-Schlüssel signiert keine Beschreibung mehr
+  (seit 12.11.2026; der Übergangsweg `signatur` ist entfernt). Die App liest nur diese Datei
   und prüft das geladene APK danach gegen die Prüfsumme. Wer nur Schreibrecht am
   Repository hat, kann so kein Update umleiten oder eine ältere Fassung
   anbieten. `apk-pruefen` prüft Signaturen und Inhalt vor dem Veröffentlichen.
 - **Frist (sec10 N1):** Die Beschreibung trägt `ausgestellt` und `gueltigBis`
-  (30 Tage, Sekunden seit 1970, UTC). Die App merkt sich den höchsten gesehenen
+  (7 Tage, Sekunden seit 1970, UTC). Die App merkt sich den höchsten gesehenen
   versionCode und den spätesten Ausstellungszeitpunkt. Eine ältere oder
   abgelaufene Beschreibung meldet sie in den Einstellungen („veraltet oder
   manipuliert“) statt „aktuell“; ein Zurückhalten, etwa indem eine ältere Release
-  wieder „Latest“ wird, bleibt so nicht mehr still. **Auffrischen:** Spätestens alle 30
+  wieder „Latest“ wird, bleibt so nicht mehr still. **Auffrischen:** Spätestens alle 7
   Tage ein neues Etikett `android-v…` setzen, notfalls auf denselben Commit von
   `main`. Gleicher versionCode und Commit gelten dabei als Wiederholung, die App
   bietet nichts an und sieht nur die neue Frist.
@@ -713,18 +713,17 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 - **Prüfsumme des Baus:** Der Baujob misst das unsignierte APK und Bundle gleich
   nach `assembleRelease`, bevor Lint und weitere Gradle-Läufe Projektcode
   ausführen; signiert werden nur genau diese Bytes (bezeugt vom Job *Übergabe an das Signieren*).
-- **Schlüsselrotation:** Mit Beschreibungsschlüssel hängt das Finden von Updates
-  nicht mehr am APK-Schlüssel; eine v3-Rotation betrifft nur noch Fassungen ohne
-  ihn. Für die muss eine Fassung lang auch die Beschreibung mit dem alten
-  APK-Schlüssel signiert sein (sie kennen nur ihren Signierer).
+- **Schlüsselrotation:** Das Finden von Updates hängt nicht am APK-Schlüssel; eine
+  v3-Rotation des APK-Schlüssels braucht keine Rücksicht auf die Beschreibung.
+  Fassungen ohne Beschreibungsschlüssel (vor dem 10.11.2026) finden kein Update
+  mehr und brauchen es einmal von Hand.
 
 ### Beschreibungsschlüssel (sec11 H1)
 
 Ein Schlüssel signiert Daten nur für einen Zweck: Der APK-Schlüssel signiert
 APKs, die Beschreibung bekommt einen eigenen ECDSA-Schlüssel (P-256). Kennt die
 App einen solchen Schlüssel (`core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem`),
-nimmt sie nur noch dessen Signatur an; solange die Datei leer ist, gilt der
-Übergangsweg über die Signierer der App.
+nimmt sie nur dessen Signatur an. Ist die Datei leer, nimmt sie keine Beschreibung an.
 
 **Stand:** Eingerichtet (10.11.2026): ein Schlüssel in
 `beschreibungs_schluessel.pem`. Das Secret `BESCHREIBUNG_SCHLUESSEL` gehört
@@ -739,8 +738,8 @@ Einrichten (einmalig, in dieser Reihenfolge):
 2. Den Schlüssel mit eigener Passphrase verschlüsseln
    (`openssl pkey -in beschreibung.pem -aes256 -out beschreibung-verschluesselt.pem`)
    und als `BESCHREIBUNG_SCHLUESSEL`, die Passphrase als `BESCHREIBUNG_PASS` in die
-   Environment `release-beschreibung` legen. Ab dem nächsten Etikett trägt die
-   Beschreibung beide Signaturen.
+   Environment `release-beschreibung` legen. Fehlt eines davon, bricht der Job
+   *Beschreibung signieren* ab.
 3. Den öffentlichen Teil (`openssl pkey -in beschreibung.pem -pubout`) an
    `beschreibungs_schluessel.pem` anhängen und veröffentlichen. Ab dieser
    Fassung gilt für die App nur noch die Beschreibungssignatur. Fehlt das Secret
@@ -751,9 +750,9 @@ Wechseln: den neuen öffentlichen Schlüssel dazuschreiben und veröffentlichen,
 erst danach das Secret tauschen, den alten Eintrag später entfernen. Die App
 nimmt jeden Schlüssel der Datei an.
 
-Die Signatur mit dem APK-Schlüssel (`signatur`) bleibt, bis keine Fassung ohne
-Beschreibungsschlüssel mehr verbreitet ist; danach in `android-signieren.yml` diese
-Signatur und in `apk-pruefen` ihre Prüfung entfernen.
+Die Signatur mit dem APK-Schlüssel (`signatur`) ist entfernt (12.11.2026): Der
+Signierjob exportiert den APK-Schlüssel nicht mehr als PEM, `apk-pruefen` lehnt eine
+Beschreibung ab, die das Feld wieder trägt.
 
 Dazu gehört eine Branch-Protection (oder ein Ruleset) auf `main`: Merge nur
 über Pull-Request mit grüner CI, kein Force-Push. Sonst genügt ein direkter

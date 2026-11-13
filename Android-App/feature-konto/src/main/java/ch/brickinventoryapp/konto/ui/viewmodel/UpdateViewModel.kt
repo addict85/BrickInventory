@@ -104,7 +104,7 @@ class UpdateViewModel @Inject constructor(
                 // reicht dann nicht, um ein Update zu unterdrücken oder umzuleiten. Danach
                 // wird die Adresse trotzdem geprüft, nicht geglaubt.
                 val beschreibung = withContext(io) {
-                    gepruefteBeschreibung(roh, geraet.eigeneZertifikate(), geraet.beschreibungsSchluessel())
+                    gepruefteBeschreibung(roh, geraet.beschreibungsSchluessel())
                 }
                 if (beschreibung == null || !istErlaubteApkAdresse(beschreibung.apkUrl)) {
                     _state.update {

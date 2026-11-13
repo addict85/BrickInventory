@@ -92,6 +92,8 @@ import ch.brickinventoryapp.testing.TeileRepository
  *   bauliste-plus-ohne-wirkung   „+“ im Feld nimmt das Set nicht auf → rot „Bauliste nimmt Sets …“
  *   konto-profil-ohne-rueckfrage Speichern ohne Passwortdialog → rot „Konto fragt beim Speichern …“
  *   konto-email-ohne-ausstehend  die beantragte Adresse nicht unter dem Feld → rot „Konto nennt …“
+ *   abmelden-mitten-im-konto     Abmelden wieder als letzter Eintrag von „Konto und App“, vor der
+ *                                Servergruppe → rot „Abmelden steht abgesetzt …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -157,6 +159,17 @@ class UnterseitenTest {
         imDialog(abmelden).performClick()
         compose.waitForIdle()
         assertEquals("Bestätigt meldet ab", 1, abgemeldet)
+    }
+
+    /** Zwischen „Einstellungen“ und der Servergruppe lag Abmelden dort, wo man weitertippt. */
+    @Test
+    fun `Abmelden steht abgesetzt als letzter Eintrag, nach der Servergruppe`() {
+        zeige { MehrBildschirm({}, isAdmin = true, updateVerfuegbar = false, onAbmelden = {}) }
+        fun lage(id: Int) = compose.onNodeWithText(ctx.getString(id)).fetchSemanticsNode().boundsInRoot
+        val abmelden = lage(R.string.main_menu_logout)
+        for (id in listOf(R.string.nav_settings, R.string.main_menu_monitoring, R.string.konto_title, R.string.vouchers_title)) {
+            assertTrue("„${ctx.getString(id)}“ steht unter Abmelden", lage(id).bottom <= abmelden.top)
+        }
     }
 
     /** Der Punkt an den Einstellungen sagt in Worten, wofür er steht. */
