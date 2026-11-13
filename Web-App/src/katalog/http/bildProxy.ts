@@ -8,7 +8,6 @@ import { zaehleAnfrage } from '../../konto';
 import { resolveUserId } from '../../konto/http/anmeldung';
 import { vorDem, ohneFehlendeDatei, fehlertext, logAndContinue } from '../../infra/fehler';
 import { streamFileToResponse } from '../../http/httpAntwort';
-import { queueThumb } from '../bilder/proxyThumbs';
 import { merkeCacheZuwachs, bildTyp } from '../bilder/imgCacheServe';
 import { liefereAusCache } from './bildCacheAuslieferung';
 import { imgProxyFailures } from '../bilder/imgProxyStats';
@@ -20,12 +19,13 @@ import type { Readable } from 'node:stream';
 import { AbrufFehler, type AbrufStrom } from '../../infra/abruf';
 import { oeffneBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../quellen';
 import zlib from 'node:zlib';
-import { nacharbeit } from '../../auftraege';
 import { setBildVollstaendig } from '../bilder/setImages';
-import { setBildLokalEintragen } from '../bildlage';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
 
 import { einmalDekodiert, urlOderNull } from '../../infra/validate';
+import { katalog } from '../prozess';
+import { queueThumb } from '../bilder/proxyThumbs';
+import { setBildLokalEintragen } from '../bildlage';
 /** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten. */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 
@@ -199,7 +199,7 @@ function inDenCache(
       if (o.setNummer) await setBildAusCache(url, o.setNummer, cacheFile).catch(logAndContinue('img-proxy:setbild'));
       // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
       if (wantThumb) {
-        if (darfErzeugen) queueThumb(cacheFile, thumbFile);
+        if (darfErzeugen) queueThumb(katalog(), cacheFile, thumbFile);
         else notiere();
       }
     } catch (_) {
@@ -254,7 +254,7 @@ async function setBildFehlt(setNummer: string, quelle: string): Promise<boolean>
   if (!(await setBildVollstaendig(setNummer))) return true;
   // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht
   // mehr hier. Ohne Warten — ein Schreibfehler darf die Auslieferung nicht aufhalten.
-  void setBildLokalEintragen(setNummer, quelle).catch(logAndContinue('img-proxy:setBildLokal'));
+  void setBildLokalEintragen(katalog(), setNummer, quelle).catch(logAndContinue('img-proxy:setBildLokal'));
   return false;
 }
 
@@ -269,7 +269,7 @@ function vormerkenEinmal(url: string, setNummer: string): void {
   if (_vorgemerkt.size >= 5000)
     for (const [sn, t] of _vorgemerkt) if (jetzt - t >= VORMERKEN_FRIST_MS) _vorgemerkt.delete(sn);
   _vorgemerkt.set(setNummer, jetzt);
-  nacharbeit().bildVormerken(url, setNummer);
+  katalog().nacharbeit.bildVormerken(url, setNummer);
 }
 
 function ausSetBildern(req: Request, res: Response, setNummer: string, wantThumb: boolean): Promise<boolean> {
@@ -315,7 +315,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const setAusUrl = () => setNummerAusBildAdresse(String(url || ''));
   const notiere = () => {
     const sn = setAusUrl();
-    if (sn) nacharbeit().bildVormerken(String(url), sn);
+    if (sn) katalog().nacharbeit.bildVormerken(String(url), sn);
   };
   const thumbFile = cacheFile + '_thumb.jpg';
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,

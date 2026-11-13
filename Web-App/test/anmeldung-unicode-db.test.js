@@ -73,7 +73,7 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
   await t.test('die Rücksetz-Mail geht an die gespeicherte Adresse', async () => {
     const app = express();
     app.use(express.json());
-    app.use(einhaengung('auth'), _req('routes/auth.js'));
+    app.use(einhaengung('auth'), require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
     const srv = app.listen(0);
     const zeilen = [];
     const echt = console.log;

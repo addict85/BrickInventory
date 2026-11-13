@@ -75,6 +75,7 @@ test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t 
       pool: db.pool,
       konfig: _req('src/infra/konfig.js').konfig(),
       sitzungsGeheimnis: 'p'.repeat(48),
+      dienste: _req('src/infra/bereich.js').prozessDienste(),
     });
     const { proxyHinweisStand } = _req('src/http/proxyHinweis.js');
     assert.equal(proxyHinweisStand(echt), null);

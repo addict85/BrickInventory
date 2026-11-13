@@ -73,7 +73,7 @@ test('QR-Nonce nur per POST', async t => {
     req.session = { userId: _uid };
     next();
   });
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 

@@ -7,11 +7,9 @@ import { safeDataPath } from '../src/infra/datenPfad';
 
 import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
 import { eingangsSperre } from './api_v1/middleware';
-import { haushalt } from '../src/haushalt';
-import { anleitungFreigegeben } from '../src/katalog';
+import type { Dienste } from '../startup/verdrahtung';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
-const router = express.Router();
 
 /** Fremd Hochgeladenes (nur die ersten Bytes geprüft) läuft so nie unter der Herkunft
  * der App; der eigene Betrachter lädt per fetch und braucht keine Inline-Anzeige. */
@@ -20,39 +18,48 @@ function alsAnhang(res: Response, datei: string): void {
   res.attachment(path.basename(datei));
 }
 
-// Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht umgekehrt. Ein
-// erstes Segment ohne Benutzer-ID wird abgewiesen.
-router.get('/data/uploads/*pfad', requireLoginOrToken, eingangsSperre, async (req: WildcardRequest, res: Response) => {
-  const userId = angemeldeteNutzerId(req);
-  // Rechnungen und Gutscheine: nie in einen Zwischenspeicher, auch keine Absage.
-  res.setHeader('Cache-Control', 'private, no-store');
-  const segments = pfadSegmente(req, 'pfad');
-  const filePath = safeDataPath('uploads', segments);
-  if (!filePath || !/^\d+$/.test(segments[0] ?? '')) return res.status(404).send('Datei nicht gefunden');
-  const besitzer = Number(segments[0]);
-  // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
-  // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
-  if (!(await haushalt.siehtKonto(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
-  alsAnhang(res, filePath);
-  liefereDatei(res, filePath);
-});
+export function baueDatenDateienRouter(d: Dienste) {
+  const router = express.Router();
 
-// Geteilt abgelegt, aber unter der Setnummer: nur zu Sets im eigenen Blickfeld,
-// sonst dieselbe 404 wie für eine fehlende Datei.
-router.get(
-  '/data/instructions/*pfad',
-  requireLoginOrToken,
-  eingangsSperre,
-  async (req: WildcardRequest, res: Response) => {
-    const segmente = pfadSegmente(req, 'pfad');
-    const filePath = safeDataPath('instructions', segmente);
-    if (!filePath || !(await anleitungFreigegeben(angemeldeteNutzerId(req), segmente)))
-      return res.status(404).send('Datei nicht gefunden');
-    alsAnhang(res, filePath);
-    liefereDatei(res, filePath);
-  },
-);
+  // Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht umgekehrt. Ein
+  // erstes Segment ohne Benutzer-ID wird abgewiesen.
+  router.get(
+    '/data/uploads/*pfad',
+    requireLoginOrToken,
+    eingangsSperre,
+    async (req: WildcardRequest, res: Response) => {
+      const userId = angemeldeteNutzerId(req);
+      // Rechnungen und Gutscheine: nie in einen Zwischenspeicher, auch keine Absage.
+      res.setHeader('Cache-Control', 'private, no-store');
+      const segments = pfadSegmente(req, 'pfad');
+      const filePath = safeDataPath('uploads', segments);
+      if (!filePath || !/^\d+$/.test(segments[0] ?? '')) return res.status(404).send('Datei nicht gefunden');
+      const besitzer = Number(segments[0]);
+      // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
+      // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
+      if (!(await d.haushalt.haushalt.siehtKonto(userId, besitzer)))
+        return res.status(404).send('Datei nicht gefunden');
+      alsAnhang(res, filePath);
+      liefereDatei(res, filePath);
+    },
+  );
 
-router.use(fehlerAntwort);
+  // Geteilt abgelegt, aber unter der Setnummer: nur zu Sets im eigenen Blickfeld,
+  // sonst dieselbe 404 wie für eine fehlende Datei.
+  router.get(
+    '/data/instructions/*pfad',
+    requireLoginOrToken,
+    eingangsSperre,
+    async (req: WildcardRequest, res: Response) => {
+      const segmente = pfadSegmente(req, 'pfad');
+      const filePath = safeDataPath('instructions', segmente);
+      if (!filePath || !(await d.katalog.anleitungFreigegeben(angemeldeteNutzerId(req), segmente)))
+        return res.status(404).send('Datei nicht gefunden');
+      alsAnhang(res, filePath);
+      liefereDatei(res, filePath);
+    },
+  );
 
-export = router;
+  router.use(fehlerAntwort);
+  return router;
+}

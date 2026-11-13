@@ -2,25 +2,33 @@
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
 import { mailEingerichtet, sendKontoHinweisMail, type KontoHinweis } from '../mail';
 import { logAndContinue } from '../infra/fehler';
-import { haushaltBereich } from '../haushalt';
-import { getSetting } from '../einstellungen';
-import { kontoBereich } from './prozess';
 import { imSystemkontext } from '../infra/kontoKontext';
+import type { KontoKontext } from './kontext';
 
 type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };
 
 // Läuft auch vor der Anmeldung und für andere Konten (alle Verwalter): Sprache
 // und Haushalt des Empfängers liest es daher im Systemrahmen.
-export function meldeKontoaenderung(uid: number, art: KontoHinweis, angaben: Angaben = {}): Promise<boolean> {
-  return imSystemkontext('kontohinweis', () => meldeKontoaenderungFuer(uid, art, angaben));
+export function meldeKontoaenderung(
+  k: KontoKontext,
+  uid: number,
+  art: KontoHinweis,
+  angaben: Angaben = {},
+): Promise<boolean> {
+  return imSystemkontext('kontohinweis', () => meldeKontoaenderungFuer(k, uid, art, angaben));
 }
 
-async function meldeKontoaenderungFuer(uid: number, art: KontoHinweis, angaben: Angaben): Promise<boolean> {
+async function meldeKontoaenderungFuer(
+  kx: KontoKontext,
+  uid: number,
+  art: KontoHinweis,
+  angaben: Angaben,
+): Promise<boolean> {
   if (!(await mailEingerichtet())) return false;
-  const k = await kontoBereich().konten.profilZeile(uid);
+  const k = await kx.konten.profilZeile(uid);
   if (!k?.email) return false;
-  const lang = String(await getSetting(uid, 'language', 'de'));
-  const haushalt = (await haushaltBereich().haushalt.haushaltsStand(uid)).parents.map(p => p.username);
+  const lang = String(await kx.einstellungen.getSetting(uid, 'language', 'de'));
+  const haushalt = (await kx.haushalt.haushalt.haushaltsStand(uid)).parents.map(p => p.username);
   const r = await sendKontoHinweisMail(k.email, k.username, art, {
     lang,
     haushalt,
@@ -32,16 +40,22 @@ async function meldeKontoaenderungFuer(uid: number, art: KontoHinweis, angaben: 
 }
 
 /** Nebenher: Die Antwort wartet nicht auf den Mailserver, und ein Fehler macht die Änderung nicht rückgängig. */
-export function hinweisNebenher(uid: number, art: KontoHinweis, name?: string, angaben: Angaben = {}): void {
+export function hinweisNebenher(
+  k: KontoKontext,
+  uid: number,
+  art: KontoHinweis,
+  name?: string,
+  angaben: Angaben = {},
+): void {
   // Auch ohne Mailadresse eine Spur im Protokoll; ohne Namen und Label, die frei getippt sind.
   console.info(`[konto] ${art}`, { ereignis: art, konto: uid });
-  meldeKontoaenderung(uid, art, { ...angaben, name }).catch(logAndContinue(`konto:hinweismail ${art}`));
+  meldeKontoaenderung(k, uid, art, { ...angaben, name }).catch(logAndContinue(`konto:hinweismail ${art}`));
 }
 
 /** An alle Verwalter: Keiner soll unbemerkt einen Verwalter ernennen oder Schutz abbauen. */
-export function verwalterHinweisNebenher(art: KontoHinweis, angaben: Angaben): void {
-  kontoBereich()
-    .konten.aktiveVerwalter()
-    .then(ids => Promise.all(ids.map(id => meldeKontoaenderung(id, art, angaben))))
+export function verwalterHinweisNebenher(k: KontoKontext, art: KontoHinweis, angaben: Angaben): void {
+  k.konten
+    .aktiveVerwalter()
+    .then(ids => Promise.all(ids.map(id => meldeKontoaenderung(k, id, art, angaben))))
     .catch(logAndContinue(`konto:verwalterhinweis ${art}`));
 }

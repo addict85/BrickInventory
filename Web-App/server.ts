@@ -12,7 +12,7 @@ import { startVerbote, startWarnungen } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
-import { verdrahteProzess } from './startup/verdrahtung';
+import { prozessDienste, verdrahteProzess } from './startup/verdrahtung';
 import { baueApp } from './startup/app';
 import { HTTP_FRISTEN } from './src/infra/httpFristen';
 import { closeAllSse } from './src/http/sseRegistry';
@@ -159,7 +159,10 @@ async function starte(): Promise<void> {
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
   const httpServer = web
     ? http
-        .createServer({ ...HTTP_FRISTEN }, baueApp({ pool: zugang.pool, konfig: k, sitzungsGeheimnis: geheimnis }))
+        .createServer(
+          { ...HTTP_FRISTEN },
+          baueApp({ pool: zugang.pool, konfig: k, sitzungsGeheimnis: geheimnis, dienste: prozessDienste() }),
+        )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
         })

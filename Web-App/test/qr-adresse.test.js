@@ -156,7 +156,7 @@ test('3. eine Quelle fuer QR-Code, Mail-Knopf und Reset-Links', () => {
   const auth = lies('routes/auth.ts');
   const i = auth.search(/router\.post\(\s*'\/qr-token'/);
   assert.ok(i > 0, 'Die Route /qr-token ist verschwunden — umbenannt?');
-  const rumpf = auth.slice(i, auth.indexOf('\nrouter.', i + 10));
+  const rumpf = auth.slice(i, auth.indexOf('\n  router.', i + 10));
   assert.ok(
     !/headers\['x-forwarded-host'\]|headers\.host/.test(rumpf),
     'Die Route faellt auf den Host-Header zurueck — genau das soll sie nicht.',

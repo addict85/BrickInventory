@@ -24,7 +24,7 @@ const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPre
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {
-  getPriceGuide: async (sn, cond) => {
+  getPriceGuide: async (_k, sn, cond) => {
     abrufe.push(`${sn}|${cond}`);
     throw new Error(`${sn} — kein BrickLink-Preis verfuegbar`);
   },

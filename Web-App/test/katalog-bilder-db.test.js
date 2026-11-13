@@ -8,7 +8,7 @@
  *      → rot: „… die Vorschau hat Vorrang“ (Originalpfad statt _thumb)
  *   B  in katalogSuche.ts c.image_local aus SET_SPALTEN entfernt → rot: „die Liste
  *      nennt das Bild aus set_catalog …“ (undefined)
- *   C  in katalogSeite() je Zeile nacharbeit().bildVormerken() → rot: „die
+ *   C  in katalogSeite() je Zeile k.nacharbeit.bildVormerken() → rot: „die
  *      Liste stösst keine Bildarbeit an“
  *   D  in katalogSet() image_local nur für eigene Sets (`set.owned ? … : null`)
  *      → rot: „auch ein fremdes Konto bekommt die lokale Datei“
@@ -55,9 +55,13 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
   fs.writeFileSync(path.join(ordner, 'KB_1-1.jpg'), 'JPG');
   fs.writeFileSync(path.join(ordner, 'KB_1-1_thumb.jpg'), 'JPG');
 
-  const nacharbeit = _req('src/auftraege/nacharbeit.js');
+  const nacharbeit = _req('src/infra/bereich.js').prozessDienste().katalog.nacharbeit;
   const vorgemerkt = [];
-  nacharbeit.verdrahteNacharbeit({ ...nacharbeit.nacharbeit(), bildVormerken: (_url, sn) => vorgemerkt.push(sn) });
+  const vorher = nacharbeit.bildVormerken;
+  nacharbeit.bildVormerken = (_url, sn) => vorgemerkt.push(sn);
+  t.after(() => {
+    nacharbeit.bildVormerken = vorher;
+  });
 
   t.after(async () => {
     await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[MIT, OHNE]]);

@@ -2,8 +2,8 @@
  * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert;
  * gelten darf er nur, solange ein Widerruf ihn sicher erreicht. */
 import type { TokenScope } from './repository/zugaenge';
-import { kontoBereich } from './prozess';
 import { meldeZugangsAenderung } from './zugangsAenderung';
+import type { KontoKontext } from './kontext';
 
 /** Typisiert, weil ein vertippter Feldname `undefined` liefert und das in einer
  * Sicherheitsprüfung still als „nein" durchgeht. */
@@ -53,8 +53,8 @@ function _pruneCache() {
 }
 
 /** Der Stand vor dem Lesen, oder null, wenn der Cache gerade nicht gelten darf. */
-export function cacheStand(): number | null {
-  return cacheNutzbar() ? _stand : null;
+export function cacheStand(k: KontoKontext): number | null {
+  return cacheNutzbar(k) ? _stand : null;
 }
 
 export function tokenAusCache(token: string, stand: number | null, jetzt: number): CacheEintrag | undefined {
@@ -74,12 +74,12 @@ export function vergissEintrag(token: string): void {
 }
 
 /** Damit der Token sofort ungültig wird, nicht erst nach Ablauf des Caches. */
-export function invalidateToken(token: string | null | undefined): void {
+export function invalidateToken(k: KontoKontext, token: string | null | undefined): void {
   if (!token) return;
   _tokenCache.delete(token);
   _stand++;
   meldeZugangsAenderung();
-  meldeWiderruf();
+  meldeWiderruf(k);
 }
 
 /** Jeder Web-Prozess hält seinen eigenen Cache; ein Widerruf leert ihn in allen.
@@ -87,22 +87,22 @@ export function invalidateToken(token: string | null | undefined): void {
  * nur die Datenbank (fail closed). */
 const WIDERRUF_KANAL = 'token_widerrufen';
 let _verteilt = false;
-export function horcheAufTokenWiderruf(): void {
+export function horcheAufTokenWiderruf(k: KontoKontext): void {
   _verteilt = true;
-  kontoBereich().db.benachrichtigung.listen(WIDERRUF_KANAL, leere);
+  k.db.benachrichtigung.listen(WIDERRUF_KANAL, leere);
 }
-function cacheNutzbar(): boolean {
-  if (_verteilt && kontoBereich().db.benachrichtigung.hoertZu(WIDERRUF_KANAL)) return true;
+function cacheNutzbar(k: KontoKontext): boolean {
+  if (_verteilt && k.db.benachrichtigung.hoertZu(WIDERRUF_KANAL)) return true;
   leere();
   return false;
 }
-function meldeWiderruf(): void {
-  if (_verteilt) void kontoBereich().db.benachrichtigung.notify(WIDERRUF_KANAL);
+function meldeWiderruf(k: KontoKontext): void {
+  if (_verteilt) void k.db.benachrichtigung.notify(WIDERRUF_KANAL);
 }
 
 /** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den
  * Hash-Anfang). Den Cache hält nur der Web-Prozess. */
-export function leereTokenCache(): void {
+export function leereTokenCache(k: KontoKontext): void {
   leere();
-  meldeWiderruf();
+  meldeWiderruf(k);
 }

@@ -60,7 +60,7 @@ async function startApi() {
     req.session = { userId: _actingAs };
     next();
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 }

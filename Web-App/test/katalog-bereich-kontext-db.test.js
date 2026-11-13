@@ -10,7 +10,7 @@
  *      Zugang“ (gezählt: nichts) und „ohne Verdrahtung wirft katalog()“
  *   B  in src/katalog/apiKontingent.ts die Transaktion über standardDb() → rot:
  *      „die Transaktion geht über den übergebenen Zugang“
- *   C  in startup/verdrahtung.ts verdrahte() ohne verdrahteKatalog(…) → rot:
+ *   C  in startup/verdrahtung.ts verdrahte() ohne verdrahteDienste(…) → rot:
  *      „Lesen geht …“ und „die Transaktion geht …“ (gezählt: nichts)
  *   D  katalog() baut ohne Verdrahtung erzeugeKatalog({ db: standardDb() }) → rot:
  *      „ohne Verdrahtung wirft katalog()“
@@ -85,8 +85,8 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
   });
 
   await t.test('ohne Verdrahtung wirft katalog()', async () => {
-    K.verdrahteKatalog(null);
+    _req('src/infra/bereich.js').verdrahteDienste(null);
     assert.throws(() => K.katalog(), /nicht verdrahtet/);
-    await assert.rejects(neuestesInventar(SN), /nicht verdrahtet/);
+    await assert.rejects(async () => neuestesInventar(SN), /nicht verdrahtet/);
   });
 });

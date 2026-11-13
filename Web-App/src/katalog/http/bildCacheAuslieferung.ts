@@ -1,4 +1,5 @@
 import type { ServerResponse } from 'node:http';
+import { katalog } from '../prozess';
 import { cacheTreffer } from '../bilder/imgCacheServe';
 
 type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };
@@ -19,7 +20,7 @@ export async function liefereAusCache(opts: {
   streamFileToResponse(res: BildAntwort, datei: string, onEnd?: () => void, req?: BildAnfrage): unknown;
 }): Promise<boolean> {
   const { res, req, streamFileToResponse } = opts;
-  const treffer = await cacheTreffer(opts);
+  const treffer = await cacheTreffer(katalog(), opts);
   if (!treffer) return false;
   res.setHeader('Content-Type', treffer.typ);
   // Länge mitgeben: Eine chunked-Antwort kann ein Reverse-Proxy puffern.

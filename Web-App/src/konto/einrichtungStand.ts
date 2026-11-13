@@ -6,8 +6,8 @@
 import { konfig } from '../infra/konfig';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { tlsStand } from '../infra/tlsWurzel';
-import { getGlobalSetting, beiGlobalerAenderung } from '../einstellungen';
-import { kontoBereich } from './prozess';
+import { beiGlobalerAenderung } from '../einstellungen';
+import type { KontoKontext } from './kontext';
 
 export type SchrittId = 'datenbank' | 'basis_url' | 'https' | 'ca' | 'konto' | 'quelle';
 export interface Schrittzustand {
@@ -41,11 +41,11 @@ beiGlobalerAenderung(einrichtungStandVergessen);
  * Ohne Verwalter (`verwalter: false`) fehlen Basis-URL und Startpasswort: Wer die
  * Seite nur erreicht, soll nicht erfahren, dass ein Konto noch das Startpasswort trägt.
  * Beide Antworten werden getrennt gemerkt, sonst sähe die öffentliche Seite die des Verwalters. */
-export function einrichtungStand({ verwalter = false } = {}): Promise<EinrichtungStandAntwort> {
+export function einrichtungStand(k: KontoKontext, { verwalter = false } = {}): Promise<EinrichtungStandAntwort> {
   const jetzt = Date.now();
   const alt = _gemerkt.get(verwalter);
   if (alt && alt.bis > jetzt) return alt.antwort;
-  const antwort = berechne(verwalter);
+  const antwort = berechne(k, verwalter);
   _gemerkt.set(verwalter, { bis: jetzt + ZWISCHENSPEICHER_MS, antwort });
   antwort.catch(() => {
     if (_gemerkt.get(verwalter)?.antwort === antwort) _gemerkt.delete(verwalter);
@@ -53,7 +53,7 @@ export function einrichtungStand({ verwalter = false } = {}): Promise<Einrichtun
   return antwort;
 }
 
-async function berechne(verwalter: boolean): Promise<EinrichtungStandAntwort> {
+async function berechne(kx: KontoKontext, verwalter: boolean): Promise<EinrichtungStandAntwort> {
   const ca = await tlsStand();
   const k = konfig();
   const grund = {
@@ -69,12 +69,12 @@ async function berechne(verwalter: boolean): Promise<EinrichtungStandAntwort> {
   // Was sich nicht lesen liess, steht auf „fehlt“ und in `degradiert`; nur die
   // Datenbankzeile ist selbst die Probe.
   const ab = new Abstriche();
-  const erledigt = !!(await ab.oder('erledigt', getGlobalSetting('einrichtung_erledigt'), null));
+  const erledigt = !!(await ab.oder('erledigt', kx.einstellungen.getGlobalSetting('einrichtung_erledigt'), null));
   // Nach der Einrichtung entfällt das Entschlüsseln der Schlüssel.
   if (erledigt) return { ...grund, erledigt: true, konfiguriert: true, schritte: [] };
 
   // BrickLink zählt erst mit allen vier Werten, wie in /settings/einrichtung.
-  const da = async (key: string) => !!(await ab.oder('quelle', getGlobalSetting(key), null));
+  const da = async (key: string) => !!(await ab.oder('quelle', kx.einstellungen.getGlobalSetting(key), null));
   const rebrickable = await da('rebrickable_api_key');
   const bricklink = (
     await Promise.all(
@@ -83,12 +83,12 @@ async function berechne(verwalter: boolean): Promise<EinrichtungStandAntwort> {
   ).every(Boolean);
 
   const schritte: Schrittzustand[] = [];
-  const datenbank = (await versuche('einrichtung:datenbank', kontoBereich().einrichtung.datenbankErreichbar())).ok;
+  const datenbank = (await versuche('einrichtung:datenbank', kx.einrichtung.datenbankErreichbar())).ok;
   schritte.push({ id: 'datenbank', ok: datenbank, pflicht: true });
   schritte.push({ id: 'basis_url', ok: !!k.appBaseUrl, pflicht: true });
   schritte.push({ id: 'https', ok: k.hinterTls, pflicht: false });
   schritte.push({ id: 'ca', ok: !!ca, pflicht: !!k.hinterTls });
-  const konten = await ab.oder('konten', kontoBereich().einrichtung.kontenStand(), {
+  const konten = await ab.oder('konten', kx.einrichtung.kontenStand(), {
     vorhanden: false,
     startpasswort: false,
   });

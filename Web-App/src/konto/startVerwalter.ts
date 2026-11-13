@@ -7,11 +7,11 @@ import { konfig } from '../infra/konfig';
 import { passwortMangel } from '../infra/passwortRegel';
 import { entferneStartpasswort, schreibeStartpasswort } from '../infra/startpasswort';
 import { BCRYPT_ROUNDS } from './anmeldepruefung';
-import { kontoBereich } from './prozess';
+import type { KontoKontext } from './kontext';
 
-export async function legeStartVerwalterAn(): Promise<void> {
-  if (await kontoBereich().startVerwalter.kontenVorhanden()) {
-    if (!(await kontoBereich().startVerwalter.startpasswortOffen())) entferneStartpasswort();
+export async function legeStartVerwalterAn(k: KontoKontext): Promise<void> {
+  if (await k.startVerwalter.kontenVorhanden()) {
+    if (!(await k.startVerwalter.startpasswortOffen())) entferneStartpasswort();
     return;
   }
   const envPasswort = konfig().adminPasswort;
@@ -25,7 +25,7 @@ export async function legeStartVerwalterAn(): Promise<void> {
   const datei = ausUmgebung ? null : schreibeStartpasswort('admin', passwort);
   // Dieselben Runden wie jedes Konto: Mit weniger antwortete ein Fehlversuch gegen „admin“ messbar schneller.
   const hash = bcrypt.hashSync(passwort, BCRYPT_ROUNDS);
-  await kontoBereich().startVerwalter.legeVerwalterAn(hash, !ausUmgebung);
+  await k.startVerwalter.legeVerwalterAn(hash, !ausUmgebung);
   if (!datei) console.log('✅ Standard-Admin erstellt (Passwort aus ADMIN_PASSWORD).');
   else
     console.log(

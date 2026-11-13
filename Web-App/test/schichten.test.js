@@ -464,6 +464,7 @@ const DB_AUSSERHALB = new Set([
   'Db',
   'erzeugeDb',
   'dbKonfigAusUmgebung',
+  'TxOptionen',
 ]);
 
 test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
@@ -497,6 +498,7 @@ test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => 
   }
   assert.ok(gesehen > 20, `nur ${gesehen} Importe von db/database gefunden — greift die Suche noch?`);
   assert.deepEqual(treffer, []);
+  arbeitseinheitAmAufrufort();
 });
 
 test('Routen, Aufträge und Clients importieren keine Repositories', () => {
@@ -526,7 +528,67 @@ test('Routen, Aufträge und Clients importieren keine Repositories', () => {
     'Selbstbeweis: das Muster findet einen Aufruf, und es gibt Routen',
   );
   assert.deepEqual(treffer, []);
+  routenNurUeberFabrik();
 });
+
+/** Die gebundenen Dienste je Bereich, wie src/<bereich>/bereich.ts sie anbietet. */
+function gebundeneDienste() {
+  const raus = new Map();
+  for (const b of fs.readdirSync(path.join(ROOT, 'src'))) {
+    const f = path.join(ROOT, 'src', b, 'bereich.ts');
+    if (!fs.existsSync(f)) continue;
+    const s = fs.readFileSync(f, 'utf8');
+    const namen = new Set();
+    for (const m of s.matchAll(/binde(?:Zugang)?\((?:k|sk), \w+, \[([^\]]*)\]\)/g))
+      for (const n of m[1].match(/\w+/g) || []) namen.add(n);
+    for (const m of s.matchAll(/^ {4}(\w+): (?:bindeGenerisch|\(\(|\(<)/gm)) namen.add(m[1]);
+    raus.set(b, namen);
+  }
+  return raus;
+}
+
+/** Routen nehmen Dienste nur über ihre Fabrik (baueXRouter(d)). */
+function routenNurUeberFabrik() {
+  // Ein Import aus der index.ts liefe über die Fassade des Prozesses; die Route sähe
+  // nicht, welche Dienste sie braucht. Ausgenommen: die Wächter vor allen Routern.
+  // Gegenprobe (13.11.2026): `import { getParts } from '../../src/teile'` in
+  // routes/api_v1/parts.ts → rot „routes/api_v1/parts.ts: teile.getParts“.
+  const dienste = gebundeneDienste();
+  assert.ok(dienste.get('teile')?.has('getParts') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
+  const treffer = [];
+  for (const d of tsUnter('routes')) {
+    if (d === 'routes/api_v1/middleware.ts') continue;
+    for (const m of quelltext(d).matchAll(/import\s*\{([^}]*)\}\s*from\s*'[./]+\/src\/(\w+)'/g))
+      for (const n of m[1]
+        .split(',')
+        .map(x => x.trim())
+        .filter(x => x && !x.startsWith('type ')))
+        if (dienste.get(m[2])?.has(n.split(/\s+as\s+/)[0])) treffer.push(`${d}: ${m[2]}.${n}`);
+  }
+  assert.deepEqual(treffer, []);
+}
+
+/** Eine Arbeitseinheit steht am Aufrufort: k.transaktion(t => …). */
+function arbeitseinheitAmAufrufort() {
+  // Der Rumpf bekommt den Kontext der Transaktion (t) und schreibt über ihn; bei
+  // db.transaction(async () => …) sah man nur am Aufrufpfad, was zusammen gilt.
+  // Ausgenommen die Module, deren Kontext der Zugang selbst ist (tx als Parameter).
+  // Gegenprobe (13.11.2026): in src/sammlung/loeschen.ts wieder
+  // `k.db.transaction(async tx =>` → rot „src/sammlung/loeschen.ts: .transaction(“.
+  const ZUGANG_ALS_KONTEXT = new Set(['src/haushalt/haushalt.ts', 'src/bestand/lagerort.ts', 'src/infra/bereich.ts']);
+  const treffer = [];
+  for (const d of tsUnter('src')) {
+    if (/\/repository/.test(d) || ZUGANG_ALS_KONTEXT.has(d)) continue;
+    const s = quelltext(d);
+    if (/\.transaction\(/.test(s)) treffer.push(`${d}: .transaction(`);
+    if (/transaktion\(\s*(?:async\s*)?\(\)/.test(s)) treffer.push(`${d}: transaktion ohne Kontext`);
+  }
+  assert.ok(
+    tsUnter('src').some(d => /\.transaktion\(async t\b/.test(quelltext(d))),
+    'Selbstbeweis: es gibt Arbeitseinheiten',
+  );
+  assert.deepEqual(treffer, []);
+}
 
 test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und index.ts zu', () => {
   // Das Repository eines Bereichs ist sein Inneres; andere Bereiche nutzen die

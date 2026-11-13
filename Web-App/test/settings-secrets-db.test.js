@@ -129,7 +129,7 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
       req.session = { userId: uid, isAdmin };
       next();
     });
-    app.use('/api/v1', _req('routes/api_v1/settings.js'));
+    app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/settings.js'));
     return app;
   };
   const srvUser = appFuer(false).listen(0);

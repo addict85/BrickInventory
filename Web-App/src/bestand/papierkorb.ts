@@ -1,9 +1,9 @@
-import { haushaltBereich, type Schreiber } from '../haushalt';
+import type { Schreiber } from '../haushalt';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/papierkorb';
 import * as kauf from './repository/kaufErfassungen';
 import type { PapierArt } from './repository/papierkorb';
-import { bestandBereich } from './prozess';
+import type { BestandKontext } from './kontext';
 
 export type Art = PapierArt;
 export const AUFBEWAHRUNG_TAGE = 30;
@@ -85,9 +85,9 @@ export interface PapierkorbEintrag {
   endgueltig_am: string;
 }
 
-export async function listePapierkorb(uidsWahl: Schreiber | number[]): Promise<PapierkorbEintrag[]> {
-  const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
-  const rows = await bestandBereich().papierkorb.eintraege(uids, AUFBEWAHRUNG_TAGE);
+export async function listePapierkorb(k: BestandKontext, uidsWahl: Schreiber | number[]): Promise<PapierkorbEintrag[]> {
+  const uids = await k.haushalt.haushalt.schreibbereichAus(uidsWahl);
+  const rows = await k.papierkorb.eintraege(uids, AUFBEWAHRUNG_TAGE);
   return rows.map(r => {
     const erfassungen = r.zeilen?.[ERFASSUNGEN[r.art]] ?? [];
     const { zeilen: _z, ...rest } = r;
@@ -101,22 +101,26 @@ export type Wiederherstellung =
 
 /** Gibt es das Element inzwischen wieder, greift ein eindeutiger Index — dann
  * wird nichts verändert und der Eintrag bleibt. */
-export async function stelleWiederHer(uidsWahl: Schreiber | number[], id: number): Promise<Wiederherstellung> {
-  const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
+export async function stelleWiederHer(
+  k: BestandKontext,
+  uidsWahl: Schreiber | number[],
+  id: number,
+): Promise<Wiederherstellung> {
+  const uids = await k.haushalt.haushalt.schreibbereichAus(uidsWahl);
   try {
-    return await bestandBereich().db.transaction(async (tx): Promise<Wiederherstellung> => {
-      const e = await repo.eintragSperren(tx, id, uids);
+    return await k.transaktion(async (t): Promise<Wiederherstellung> => {
+      const e = await repo.eintragSperren(t.db, id, uids);
       if (!e) return { ok: false, code: 'nicht_gefunden' };
       const art = e.art as Art;
       const kaeufe = art === 'set' && !e.zeilen?.sets?.length ? (e.zeilen?.set_acquisitions ?? []) : null;
       if (kaeufe) {
-        if (!(await stelleKaeufeWiederHer(tx, e, kaeufe))) return { ok: false, code: 'nicht_gefunden' };
-        await repo.entferneEintrag(tx, id);
+        if (!(await stelleKaeufeWiederHer(t.db, e, kaeufe))) return { ok: false, code: 'nicht_gefunden' };
+        await repo.entferneEintrag(t.db, id);
         return { ok: true, art, nummer: e.nummer, user_id: e.user_id };
       }
       for (const tabelle of repo.tabellenDerArt(art))
-        await repo.schreibeZurueck(tx, tabelle, e.zeilen?.[tabelle] ?? []);
-      await repo.entferneEintrag(tx, id);
+        await repo.schreibeZurueck(t.db, tabelle, e.zeilen?.[tabelle] ?? []);
+      await repo.entferneEintrag(t.db, id);
       return { ok: true, art, nummer: e.nummer, user_id: e.user_id };
     });
   } catch (err) {
@@ -125,16 +129,20 @@ export async function stelleWiederHer(uidsWahl: Schreiber | number[], id: number
   }
 }
 
-export async function loescheEndgueltig(uidsWahl: Schreiber | number[], id: number): Promise<boolean> {
-  const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
-  return (await bestandBereich().papierkorb.entferneEintragDesKontos(id, uids)) > 0;
+export async function loescheEndgueltig(
+  k: BestandKontext,
+  uidsWahl: Schreiber | number[],
+  id: number,
+): Promise<boolean> {
+  const uids = await k.haushalt.haushalt.schreibbereichAus(uidsWahl);
+  return (await k.papierkorb.entferneEintragDesKontos(id, uids)) > 0;
 }
 
-export async function leerePapierkorb(uidsWahl: Schreiber | number[]): Promise<number> {
-  const uids = await haushaltBereich().haushalt.schreibbereichAus(uidsWahl);
-  return bestandBereich().papierkorb.entferneAlle(uids);
+export async function leerePapierkorb(k: BestandKontext, uidsWahl: Schreiber | number[]): Promise<number> {
+  const uids = await k.haushalt.haushalt.schreibbereichAus(uidsWahl);
+  return k.papierkorb.entferneAlle(uids);
 }
 
-export async function raeumePapierkorbAuf(): Promise<number> {
-  return bestandBereich().papierkorb.entferneAeltere(AUFBEWAHRUNG_TAGE);
+export async function raeumePapierkorbAuf(k: BestandKontext): Promise<number> {
+  return k.papierkorb.entferneAeltere(AUFBEWAHRUNG_TAGE);
 }

@@ -103,7 +103,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     req.session.isAdmin = req.params.admin === '1';
     res.json({ ok: true });
   });
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   const basis = `http://127.0.0.1:${srv.address().port}`;
 

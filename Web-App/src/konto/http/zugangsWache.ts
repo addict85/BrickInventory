@@ -6,7 +6,6 @@ import type { Request } from 'express';
 import { meldeFehler } from '../../infra/fehler';
 import { kontoBereich } from '../prozess';
 import { hashToken } from '../geraeteToken';
-import { sitzungsVersionAusDb } from '../sitzungsVersion';
 import { beiZugangsAenderung } from '../zugangsAenderung';
 
 export { meldeZugangsAenderung } from '../zugangsAenderung';
@@ -27,7 +26,7 @@ function sitzungLebt(req: Request): Promise<boolean> {
 export async function zugangGiltNoch(req: Request): Promise<boolean> {
   const s = req.session;
   if (s?.userId) {
-    if ((await sitzungsVersionAusDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
+    if ((await kontoBereich().sitzungsVersionAusDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
     // Abmelden löscht nur diese eine Sitzung, die Version bleibt.
     return sitzungLebt(req);
   }

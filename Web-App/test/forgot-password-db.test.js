@@ -64,7 +64,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise', { con
     req.session = {};
     next();
   });
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const port = srv.address().port;
 
@@ -143,7 +143,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     req.session = {};
     next();
   });
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const port = srv.address().port;
   const forgot = async email => {
@@ -211,7 +211,7 @@ test('höchstens ein Link je Konto in 15 Minuten, und jede Antwort braucht gleic
     req.session = {};
     next();
   });
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(async () => {
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);

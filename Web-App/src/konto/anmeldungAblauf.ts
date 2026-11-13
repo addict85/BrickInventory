@@ -9,16 +9,15 @@ import { hinweisNebenher } from './kontoHinweis';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as QR from './qrKopplung';
-import { getSetting } from '../einstellungen';
 import { sendEmailGeaendertMail, sendRegistrierungsVersuchMail, sendVerificationMail } from '../mail';
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl, ueberTls, unbegrenztNurMitTls } from '../infra/basisUrl';
 import { tlsStand } from '../infra/tlsWurzel';
 import { fachfehler } from '../infra/fehlerTexte';
 import { passwortMangel } from '../infra/passwortRegel';
 import { versuche, wertOder } from '../infra/ergebnis';
-import { kontoBereich } from './prozess';
 import { imSystemkontext } from '../infra/kontoKontext';
 import type { Konto as KontoZeile } from './repository/konten';
+import type { KontoKontext } from './kontext';
 
 export type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
 /** Wie der Token heissen und gelten soll; beide Anmeldewege prüft der Vertrag. */
@@ -26,7 +25,13 @@ export type TokenWunsch = { label?: unknown; never_expires?: boolean | undefined
 
 /** Die Antwort nach Passwort oder Passkey. Ohne `mitToken` trägt die Sitzung
  * (httpOnly-Keks); ein Token wäre im Browser per Skript auslesbar. */
-export async function anmeldeAntwort(user: Angemeldet, wunsch: TokenWunsch, mitToken: boolean, ip: string | undefined) {
+export async function anmeldeAntwort(
+  k: KontoKontext,
+  user: Angemeldet,
+  wunsch: TokenWunsch,
+  mitToken: boolean,
+  ip: string | undefined,
+) {
   const uid = Number(user.id);
   let token: string | null = null;
   if (mitToken) {
@@ -35,6 +40,7 @@ export async function anmeldeAntwort(user: Angemeldet, wunsch: TokenWunsch, mitT
     const neu = await versuche(
       'login:token',
       createToken(
+        k,
         uid,
         tokenLabel(wunsch.label, 'webapp-session'),
         dauerhaft,
@@ -44,12 +50,12 @@ export async function anmeldeAntwort(user: Angemeldet, wunsch: TokenWunsch, mitT
     );
     token = wertOder(neu, null);
     if (!token) fachfehler('intern', 'token_nicht_ausgestellt');
-    hinweisNebenher(uid, 'token_neu', tokenLabel(wunsch.label, 'webapp-session'));
+    hinweisNebenher(k, uid, 'token_neu', tokenLabel(wunsch.label, 'webapp-session'));
   }
   // Verwalterrechte trägt die Sitzung und ein Token mit Scope `voll`, nicht `app`.
   const verwalter = user.is_admin && (!mitToken || tokenScope(wunsch.scope) === 'voll');
   return {
-    ...(token ? { token, token_info: await tokenAngaben(token) } : {}),
+    ...(token ? { token, token_info: await tokenAngaben(k, token) } : {}),
     // Mit gleitender Frist ist nichts unbegrenzt.
     never_expires: false as const,
     user: {
@@ -57,22 +63,28 @@ export async function anmeldeAntwort(user: Angemeldet, wunsch: TokenWunsch, mitT
       username: user.username,
       is_admin: user.is_admin,
       mustChangePassword: user.must_change_password,
-      zweiterFaktorPflicht: verwalter && !(await zf.istAktiv(uid)),
+      zweiterFaktorPflicht: verwalter && !(await zf.istAktiv(k, uid)),
     },
   };
 }
 
 /** Ein dauerhafter Gerätezugang; die Mail meldet ihn dem Inhaber. */
-export async function geraeteTokenAusstellen(uid: number, label: unknown, scope: unknown, ip: string | undefined) {
+export async function geraeteTokenAusstellen(
+  k: KontoKontext,
+  uid: number,
+  label: unknown,
+  scope: unknown,
+  ip: string | undefined,
+) {
   const name = tokenLabel(label, 'Android App');
-  const token = await createToken(uid, name, true, null, { scope: tokenScope(scope), ip });
-  hinweisNebenher(uid, 'token_neu', name);
-  return { token, label: name, token_info: await tokenAngaben(token) };
+  const token = await createToken(k, uid, name, true, null, { scope: tokenScope(scope), ip });
+  hinweisNebenher(k, uid, 'token_neu', name);
+  return { token, label: name, token_info: await tokenAngaben(k, token) };
 }
 
 /** Ohne Adresse verweigern statt raten: Eine falsche Adresse im QR-Code fiele
  * erst später in einem anderen Netz auf. */
-export async function qrZugangErzeugen(uid: number, gueltigkeit: unknown) {
+export async function qrZugangErzeugen(k: KontoKontext, uid: number, gueltigkeit: unknown) {
   const basis = basisUrl();
   if (!basis) {
     hinweisOhneBasisUrl('auth:qr', 'der QR-Code zur Verknuepfung der App laesst sich nicht erzeugen.');
@@ -80,8 +92,8 @@ export async function qrZugangErzeugen(uid: number, gueltigkeit: unknown) {
   }
   const tage = laufzeitTage(gueltigkeit) ?? APP_HOECHSTDAUER_TAGE;
   if (tage === UNBEGRENZT) unbegrenztNurMitTls(basis);
-  const { token, kopplung } = await QR.erzeuge(uid, tage);
-  hinweisNebenher(uid, 'qr_zugang_neu');
+  const { token, kopplung } = await QR.erzeuge(k, uid, tage);
+  hinweisNebenher(k, uid, 'qr_zugang_neu');
   // `fp` nur mit TLS: Die App pinnt damit die Wurzel der internen CA.
   const ca = ueberTls(basis) ? await tlsStand() : null;
   return {
@@ -109,6 +121,7 @@ export function emailWirdGeaendert(user: Konto, email: string | null | undefined
 /** Nach bestätigtem Passwort. Eine neue Adresse gilt erst nach dem Link; bis
  * dahin gilt die alte, und die neue belegt nichts. */
 export async function profilAendern(
+  k: KontoKontext,
   user: Konto,
   e: ProfilEingabe,
 ): Promise<{ emailChanged: boolean; emailSent?: boolean }> {
@@ -116,9 +129,9 @@ export async function profilAendern(
   const emailNeu = emailWirdGeaendert(user, e.email);
   if (nameNeu || emailNeu) {
     // Jede Vergabeprüfung verrät, ob es ein Konto gibt; die Registrierung verbirgt das.
-    const zuOft = await kontoGedrosselt('profil-vergabe', user.id, 10, 60 * 60 * 1000);
+    const zuOft = await kontoGedrosselt(k, 'profil-vergabe', user.id, 10, 60 * 60 * 1000);
     if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-    if (nameNeu && e.username && (await kontoBereich().konten.nameVergeben(e.username, user.id)))
+    if (nameNeu && e.username && (await k.konten.nameVergeben(e.username, user.id)))
       fachfehler('ungueltig', 'benutzername_vergeben');
   }
   const felder: Record<string, unknown> = {};
@@ -126,31 +139,26 @@ export async function profilAendern(
   if (e.first_name !== undefined) felder.first_name = e.first_name || null;
   if (e.last_name !== undefined) felder.last_name = e.last_name || null;
   if (!emailNeu) {
-    await kontoBereich().konten.aendereProfil(user.id, felder);
+    await k.konten.aendereProfil(user.id, felder);
     return { emailChanged: false };
   }
   const email = String(e.email);
   const token = crypto.randomBytes(32).toString('hex');
-  await kontoBereich().konten.merkeEmailNeu(
-    user.id,
-    email,
-    hashToken(token),
-    new Date(Date.now() + 24 * 60 * 60 * 1000),
-  );
-  await kontoBereich().konten.aendereProfil(user.id, felder);
-  return { emailChanged: true, emailSent: await adressMails(user, email, token) };
+  await k.konten.merkeEmailNeu(user.id, email, hashToken(token), new Date(Date.now() + 24 * 60 * 60 * 1000));
+  await k.konten.aendereProfil(user.id, felder);
+  return { emailChanged: true, emailSent: await adressMails(k, user, email, token) };
 }
 
 /** Sprache des Kontos, nicht die Vorgabe. Belegt antwortet wie frei, sonst
  * liessen sich Adressen abfragen; der Inhaber bekommt einen Hinweis statt des Links. */
-async function adressMails(user: Konto, email: string, token: string): Promise<boolean> {
+async function adressMails(k: KontoKontext, user: Konto, email: string, token: string): Promise<boolean> {
   // Auch die des Inhabers einer Adresse, eines anderen Kontos: im Systemrahmen.
   const sprache = async (uid: number) =>
     String(
       wertOder(
         await versuche(
           'anmeldung:sprache',
-          imSystemkontext('adressmail', () => getSetting(uid, 'language', 'de')),
+          imSystemkontext('adressmail', () => k.einstellungen.getSetting(uid, 'language', 'de')),
         ),
         'de',
       ),
@@ -158,7 +166,7 @@ async function adressMails(user: Konto, email: string, token: string): Promise<b
   const lang = await sprache(user.id);
   const basis = mailBasisUrl();
   let gesendet = false;
-  const inhaber = await kontoBereich().konten.kontoMitEmail(email);
+  const inhaber = await k.konten.kontoMitEmail(email);
   if (inhaber && inhaber.id !== user.id) {
     if (basis)
       gesendet = wertOder(
@@ -181,11 +189,11 @@ async function adressMails(user: Konto, email: string, token: string): Promise<b
 }
 
 /** Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt. */
-export async function eigenesPasswortAendern(uid: number, neu: string, passkeysWiderrufen: boolean) {
-  const konto = await kontoBereich().konten.kontoKurz(uid);
+export async function eigenesPasswortAendern(k: KontoKontext, uid: number, neu: string, passkeysWiderrufen: boolean) {
+  const konto = await k.konten.kontoKurz(uid);
   const mangel = passwortMangel(neu, konto?.username);
   if (mangel) fachfehler('ungueltig', mangel);
-  await K.aendereEigenesPasswort(uid, neu, { passkeysWiderrufen });
-  hinweisNebenher(uid, 'passwort_geaendert');
+  await K.aendereEigenesPasswort(k, uid, neu, { passkeysWiderrufen });
+  hinweisNebenher(k, uid, 'passwort_geaendert');
   return konto;
 }

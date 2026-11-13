@@ -1,28 +1,21 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { haushaltBereich, type Sicht } from '../haushalt';
+import type { Sicht } from '../haushalt';
 import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
-import { bestandBereich, recordAcquisitionForDay, mengenwunsch, passeManuelleMengeAn } from '../bestand';
-import {
-  kaufpreisAusEingabe,
-  manuellerKaufpreis,
-  resolvePartCondition,
-  marktpreisMitHerkunft,
-  getCurrentPartMarketPrice,
-} from '../finanzen';
-import { zustandFuerPreis } from '../einstellungen';
-import { lookupPart, farbliste, KEINE_FARBE, merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog';
+import { mengenwunsch } from '../bestand';
+import { lookupPart, farbliste, KEINE_FARBE } from '../katalog';
 import * as V0 from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
-import { teileBereich } from './prozess';
+import type { TeileKontext } from './kontext';
 
 export const getPartColorList = farbliste;
 
 // Eine Rechnung für Anlegen, Bearbeiten und CSV-Import; ohne Angabe bleibt Preis/Stk leer.
 export async function resolveManualPartPurchase(
+  k: TeileKontext,
   uid: number,
   {
     partNumber,
@@ -33,8 +26,8 @@ export async function resolveManualPartPurchase(
 ) {
   // Die Regel steht in src/finanzen/preisRegel.ts; hier bleibt nur, was ein
   // TEIL anders macht als eine Figur: der Schlüssel der Abfrage.
-  const r = await manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
-    marktpreisMitHerkunft(partNumber, colorId, uid, zustand),
+  const r = await k.finanzen.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
+    k.finanzen.marktpreisMitHerkunft(partNumber, colorId, uid, zustand),
   );
   return {
     effectiveUnitPrice: r.unitPrice,
@@ -49,20 +42,20 @@ export async function resolveManualPartPurchase(
 
 /** Eine Umsetzung für Webapp und App, damit Kaufpreis und Lagerort überall
  * gleich behandelt werden. */
-export async function addManualPart(uid: number, rawBody: Record<string, unknown>) {
+export async function addManualPart(k: TeileKontext, uid: number, rawBody: Record<string, unknown>) {
   // Ohne mitgegebenen Ort gilt der Vorgabeort des Kontos (src/bestand/lagerort.ts).
-  const ort = await bestandBereich().lagerortDienst.ortFuerNeuerfassung(uid, rawBody?.storage);
+  const ort = await k.bestand.lagerortDienst.ortFuerNeuerfassung(uid, rawBody?.storage);
   // DIESELBE Umwandlung wie im Rumpf, auf derselben Eingabe — sie kann nicht
   // auseinanderlaufen.
   const farbe = V0.colorId(rawBody?.color_id);
-  const ergebnis = await addManualPartIntern(uid, rawBody);
+  const ergebnis = await addManualPartIntern(k, uid, rawBody);
   if (ort && ergebnis?.part_number) {
-    await bestandBereich().lagerortDienst.setzeLagerort('part', [uid], [ergebnis.part_number, String(farbe)], ort);
+    await k.bestand.lagerortDienst.setzeLagerort('part', [uid], [ergebnis.part_number, String(farbe)], ort);
   }
   return ergebnis;
 }
 
-async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>) {
+async function addManualPartIntern(k: TeileKontext, uid: number, rawBody: Record<string, unknown>) {
   // Alle Felder geprüft: Sie werden später gerendert, ungeprüft waren sie die
   // Server-Hälfte einer Stored-XSS-Kette. image_url ist zwingend https.
   const V = V0;
@@ -81,33 +74,33 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
   const name = V.optionalText(rawBody?.part_name, 200);
   const bild = V.optionalImageUrl(rawBody?.image_url);
   const eingabe = { name, kategorie: V.optionalText(rawBody?.category_name, 100), bild };
-  const { part_name, gefunden } = await teilBeschreibung(uid, part_number, color_id, eingabe);
+  const { part_name, gefunden } = await teilBeschreibung(k, uid, part_number, color_id, eingabe);
 
   // Nur die Existenz zählt: Die Menge addiert sich über eine zweite Erfassung.
-  if (await manuellesTeil(uid, part_number, color_id)) {
-    await weitereErfassung(uid, part_number, color_id, { condition, unit_price, quantity, acquiredAt });
+  if (await manuellesTeil(k, uid, part_number, color_id)) {
+    await weitereErfassung(k, uid, part_number, color_id, { condition, unit_price, quantity, acquiredAt });
     return { action: 'updated', part_number };
   }
 
   // Eine Rechnung an einer Stelle, dieselbe wie im CSV-Import.
-  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await resolveManualPartPurchase(uid, {
+  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await resolveManualPartPurchase(k, uid, {
     partNumber: part_number,
     colorId: color_id,
     unitPrice: unit_price,
     condition,
   });
   // Ohne Farbcode bliebe der Farbpunkt in der Oberfläche grau.
-  const rbFarbcode = await teileBereich().manuelleTeile.rbFarbcode(color_id);
+  const rbFarbcode = await k.manuelleTeile.rbFarbcode(color_id);
 
   // Beschreibung gilt für ALLE Konten (Katalog), der Bestand für eines.
-  await merkeTeil(part_number, gefunden?.part_name, gefunden?.category_name);
-  await merkeTeil(part_number, eingabe.name, eingabe.kategorie, teileBereich().db, uid);
-  await merkeTeilFarbe(part_number, color_id, null, rbFarbcode, gefunden?.image_url);
-  await merkeTeilFarbe(part_number, color_id, color_name, color_hex, eingabe.bild, null, teileBereich().db, uid);
+  await k.katalog.merkeTeil(part_number, gefunden?.part_name, gefunden?.category_name);
+  await k.katalog.merkeTeil(part_number, eingabe.name, eingabe.kategorie, k.db, uid);
+  await k.katalog.merkeTeilFarbe(part_number, color_id, null, rbFarbcode, gefunden?.image_url);
+  await k.katalog.merkeTeilFarbe(part_number, color_id, color_name, color_hex, eingabe.bild, null, k.db, uid);
 
   // Preis, Zustand und Menge stehen in der Erfassung, nicht an der Zeile.
-  await teileBereich().manuelleTeile.legeTeilManuellAn(uid, part_number, color_id);
-  await recordAcquisitionForDay('part', uid, [part_number, color_id], {
+  await k.manuelleTeile.legeTeilManuellAn(uid, part_number, color_id);
+  await k.bestand.recordAcquisitionForDay('part', uid, [part_number, color_id], {
     quantity,
     price: erfassungsPreis,
     geschaetzt,
@@ -123,6 +116,7 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
 /** Eingetipptes und Nachgeschlagenes getrennt: Nur was Rebrickable liefert, geht als
  * geprüft in den gemeinsamen Katalog. Ohne Namen erst der eigene Katalog, dann Rebrickable. */
 async function teilBeschreibung(
+  k: TeileKontext,
   uid: number,
   part_number: string,
   color_id: number,
@@ -134,7 +128,7 @@ async function teilBeschreibung(
   if (part_name) return { part_name, gefunden };
 
   const hasColor = color_id !== KEINE_FARBE;
-  const lokal = await katalogTeil(part_number, hasColor ? color_id : null, uid);
+  const lokal = await k.katalog.katalogTeil(part_number, hasColor ? color_id : null, uid);
   if (lokal) {
     part_name = lokal.name;
     image_url = image_url || lokal.bild;
@@ -154,6 +148,7 @@ async function teilBeschreibung(
 
 /** Ein schon erfasstes Teil: nur eine weitere Erfassung, ohne Zustand den des Bestands. */
 async function weitereErfassung(
+  k: TeileKontext,
   uid: number,
   part_number: string,
   color_id: number,
@@ -162,12 +157,13 @@ async function weitereErfassung(
   const reCond =
     e.condition && ['N', 'U'].includes(e.condition)
       ? e.condition
-      : await resolvePartCondition(uid, part_number, color_id);
+      : await k.finanzen.resolvePartCondition(uid, part_number, color_id);
   const reEntered = e.unit_price;
-  const rePrice = reEntered !== null ? reEntered : await getCurrentPartMarketPrice(part_number, color_id, uid, reCond);
+  const rePrice =
+    reEntered !== null ? reEntered : await k.finanzen.getCurrentPartMarketPrice(part_number, color_id, uid, reCond);
 
   // Pro Tag und Zustand EINE Erfassung (src/bestand/acquisitions.ts).
-  await recordAcquisitionForDay('part', uid, [part_number, color_id], {
+  await k.bestand.recordAcquisitionForDay('part', uid, [part_number, color_id], {
     quantity: e.quantity,
     price: (rePrice ?? 0) > 0 ? rePrice : null,
     condition: reCond,
@@ -179,12 +175,13 @@ async function weitereErfassung(
 /** Für Webapp und App derselbe Weg.
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
 export async function updateManualPart(
+  k: TeileKontext,
   uid: number,
   partNumber: string,
   colorId: number,
   body: Record<string, unknown>,
 ): Promise<{ quantity?: number; degradiert?: string[] }> {
-  const existing = await teileBereich().manuelleTeile.teilZeileMitZustand(uid, partNumber, colorId);
+  const existing = await k.manuelleTeile.teilZeileMitZustand(uid, partNumber, colorId);
   if (!existing) fachfehler('nicht_gefunden', 'teil_nicht_manuell');
 
   const raus: { quantity?: number } = {};
@@ -192,47 +189,61 @@ export async function updateManualPart(
   const ab = new Abstriche();
   const wunsch = mengenwunsch(body);
   if (wunsch) {
-    const cond = await zustandFuerPreis(undefined, existing.condition, uid);
-    raus.quantity = await passeManuelleMengeAn(
+    const cond = await k.einstellungen.zustandFuerPreis(undefined, existing.condition, uid);
+    raus.quantity = await k.bestand.passeManuelleMengeAn(
       'part',
       uid,
       [partNumber, colorId],
       wunsch,
       cond,
-      () => getCurrentPartMarketPrice(partNumber, colorId, uid, cond),
+      () => k.finanzen.getCurrentPartMarketPrice(partNumber, colorId, uid, cond),
       ab,
     );
   }
   if (body.unit_price !== undefined) {
     // Die Regel steht in src/finanzen/preisRegel.ts; hier nur Abfrage und Tabelle.
-    const { unitPrice } = await kaufpreisAusEingabe(body.unit_price, body.condition, existing.condition, uid, zustand =>
-      getCurrentPartMarketPrice(partNumber, colorId, uid, zustand),
+    const { unitPrice } = await k.finanzen.kaufpreisAusEingabe(
+      body.unit_price,
+      body.condition,
+      existing.condition,
+      uid,
+      zustand => k.finanzen.getCurrentPartMarketPrice(partNumber, colorId, uid, zustand),
     );
     // In die NEUESTE Erfassung: Dort heisst NULL „kein Preis bekannt", die 0 der
     // Anzeige bildet die Leseabfrage.
-    await teileBereich().manuelleTeile.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
+    await k.manuelleTeile.setzeTeilpreisNeueste(uid, partNumber, colorId, unitPrice);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V0.zustand(body.condition);
-    await teileBereich().manuelleTeile.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
+    await k.manuelleTeile.setzeTeilzustandNeueste(uid, partNumber, colorId, cond);
   }
   return { ...raus, ...ab.angabe() };
 }
 
-export async function getPartAcquisitions(uidWahl: Sicht | number[], partNumber: string, colorId: string | number) {
-  const uid = await haushaltBereich().haushalt.blickfeldAus(uidWahl);
+export async function getPartAcquisitions(
+  k: TeileKontext,
+  uidWahl: Sicht | number[],
+  partNumber: string,
+  colorId: string | number,
+) {
+  const uid = await k.haushalt.haushalt.blickfeldAus(uidWahl);
   // Das BLICKFELD: Je Zeile kommt der Eigentümer mit, sonst wüsste die Auswahl
   // im Dialog nicht, worauf sie steht.
-  return teileBereich().manuelleTeile.teilErfassungen(uid, partNumber, V0.colorId(colorId));
+  return k.manuelleTeile.teilErfassungen(uid, partNumber, V0.colorId(colorId));
 }
 
-export function manuellesTeil(uid: number, partNumber: string, colorId: number): Promise<{ id: number } | undefined> {
-  return teileBereich().manuelleTeile.teilZeileManuell(uid, partNumber, colorId);
+export function manuellesTeil(
+  k: TeileKontext,
+  uid: number,
+  partNumber: string,
+  colorId: number,
+): Promise<{ id: number } | undefined> {
+  return k.manuelleTeile.teilZeileManuell(uid, partNumber, colorId);
 }
 
 /** Dieselbe Preisregel wie beim Anlegen von Hand; eine fehlerhafte Zeile
  * bricht den Rest nicht ab. */
-export async function importiereTeileCsv(uid: number, text: string) {
+export async function importiereTeileCsv(k: TeileKontext, uid: number, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
   let added = 0,
     updated = 0,
@@ -263,7 +274,7 @@ export async function importiereTeileCsv(uid: number, text: string) {
           categoryName = info.category_name;
         }
       }
-      const { erfassungsPreis, effectiveCondition, geschaetzt } = await resolveManualPartPurchase(uid, {
+      const { erfassungsPreis, effectiveCondition, geschaetzt } = await resolveManualPartPurchase(k, uid, {
         partNumber,
         colorId,
         unitPrice,
@@ -277,20 +288,20 @@ export async function importiereTeileCsv(uid: number, text: string) {
         createdAt: acquiredAt || new Date().toISOString().slice(0, 10),
       };
 
-      if (await manuellesTeil(uid, partNumber, colorId)) {
-        await recordAcquisitionForDay('part', uid, [partNumber, colorId], erfassung);
+      if (await manuellesTeil(k, uid, partNumber, colorId)) {
+        await k.bestand.recordAcquisitionForDay('part', uid, [partNumber, colorId], erfassung);
         updated++;
         results.push({ part_number: partNumber, action: 'updated' });
         continue;
       }
       // Katalog vor Bestand: lieber eine Beschreibung ohne Bestand als umgekehrt.
-      const colorHex = await teileBereich().manuelleTeile.rbFarbcode(colorId);
-      if (eingetippt) await merkeTeil(partNumber, partName, null, teileBereich().db, uid);
-      else await merkeTeil(partNumber, partName, categoryName);
-      await merkeTeilFarbe(partNumber, colorId, null, colorHex, imageUrl);
-      await merkeTeilFarbe(partNumber, colorId, colorName, null, null, null, teileBereich().db, uid);
-      await teileBereich().manuelleTeile.legeTeilManuellAn(uid, partNumber, colorId);
-      await recordAcquisitionForDay('part', uid, [partNumber, colorId], erfassung);
+      const colorHex = await k.manuelleTeile.rbFarbcode(colorId);
+      if (eingetippt) await k.katalog.merkeTeil(partNumber, partName, null, k.db, uid);
+      else await k.katalog.merkeTeil(partNumber, partName, categoryName);
+      await k.katalog.merkeTeilFarbe(partNumber, colorId, null, colorHex, imageUrl);
+      await k.katalog.merkeTeilFarbe(partNumber, colorId, colorName, null, null, null, k.db, uid);
+      await k.manuelleTeile.legeTeilManuellAn(uid, partNumber, colorId);
+      await k.bestand.recordAcquisitionForDay('part', uid, [partNumber, colorId], erfassung);
       added++;
       results.push({ part_number: partNumber, action: 'added' });
     } catch (e) {

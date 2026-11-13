@@ -61,7 +61,7 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
 
   const app = express();
   app.use(express.json());
-  app.use('/api/v1/auth', _req('routes/auth.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}/api/v1/auth`;
   t.after(async () => {

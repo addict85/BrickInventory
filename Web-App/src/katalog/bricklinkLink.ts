@@ -1,9 +1,8 @@
 // Gear und Bücher führt BrickLink anders als Rebrickable; der Link muss das wissen.
 import { logAndContinue } from '../infra/fehler';
 import { bricklinkRequest } from './quellen';
-import { getGlobalSetting } from '../einstellungen';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
-import { katalog } from './prozess';
+import type { KatalogKontext } from './kontext';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';
 
@@ -62,12 +61,12 @@ function toLink(setNumber: string, blType: string | null | undefined): BlLink {
 
 /** Eine Abfrage statt N Einzelabfragen, für Listen- und Katalogseiten.
  * @returns Map, geschlüsselt auf die Rebrickable-Schreibweise (mit -N) */
-export async function resolveMany(setNumbers: string[]): Promise<Map<string, BlLink>> {
+export async function resolveMany(kx: KatalogKontext, setNumbers: string[]): Promise<Map<string, BlLink>> {
   const out = new Map<string, BlLink>();
   const keys = [...new Set((setNumbers || []).filter(Boolean).map(withVariant))];
   if (keys.length === 0) return out;
 
-  const rows = await katalog().katalogCache.blTypenDerSets(keys);
+  const rows = await kx.katalogCache.blTypenDerSets(keys);
 
   const byNumber = new Map<string, string | null>();
   for (const r of rows) byNumber.set(r.set_number, r.bl_type);
@@ -76,19 +75,19 @@ export async function resolveMany(setNumbers: string[]): Promise<Map<string, BlL
 }
 
 /** Dünn über resolveMany, damit es nur eine Logik gibt. */
-export async function resolveOne(setNumber: string): Promise<BlLink> {
-  const m = await resolveMany([setNumber]);
+export async function resolveOne(k: KatalogKontext, setNumber: string): Promise<BlLink> {
+  const m = await resolveMany(k, [setNumber]);
   return m.get(withVariant(setNumber)) as BlLink;
 }
 
 /** Dieselbe Kette wie beim Preisabruf (set → gear → book → NONE), aber über
  * /items — günstiger, wenn nur der Typ zählt. */
-export async function resolveViaApi(setNumber: string): Promise<BlLink> {
+export async function resolveViaApi(k: KatalogKontext, setNumber: string): Promise<BlLink> {
   const n = withVariant(setNumber);
   const bare = bareNumber(setNumber);
 
   // Ohne Zugang bei der Annahme bleiben, nichts cachen.
-  if (!(await getGlobalSetting('bricklink_consumer_key'))) return toLink(n, null);
+  if (!(await k.einstellungen.getGlobalSetting('bricklink_consumer_key'))) return toLink(n, null);
 
   const notFound = (e: unknown) =>
     [404, 400].includes((e as { detail?: { meta?: { code?: number } } } | null)?.detail?.meta?.code ?? 0);
@@ -116,8 +115,6 @@ export async function resolveViaApi(setNumber: string): Promise<BlLink> {
     return toLink(n, null);
   }
 
-  await katalog()
-    .katalogCache.merkeBlTyp(n, found, found === 'NONE')
-    .catch(logAndContinue('bl-link:probe'));
+  await k.katalogCache.merkeBlTyp(n, found, found === 'NONE').catch(logAndContinue('bl-link:probe'));
   return toLink(n, found);
 }

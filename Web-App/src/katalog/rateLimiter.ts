@@ -59,6 +59,7 @@ import { meldeFehler } from '../infra/fehler';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import { katalog } from './prozess';
 import { versuche } from '../infra/ergebnis';
+import type { KatalogKontext } from './kontext';
 
 // Nach einem Datenbankfehler eine Minute ohne gemeinsamen Takt: Jeder Aufruf
 // liefe sonst erst in den Verbindungs-Timeout. Die eigene Drossel bleibt.
@@ -93,15 +94,17 @@ export const rebrickableLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
 export const rebrickableBackgroundLimiter = new RateLimiter(1, 1500, REBRICKABLE_TAKT);
 
 // Gezählt in der Datenbank: Je Prozess gezählt vervielfachte sich das Limit.
-export async function consumeRebrickableDaily(): Promise<boolean> {
-  const rl = await versuche('takt:checkAndIncrementRateLimit', checkAndIncrementRateLimit('rebrickable'));
+export async function consumeRebrickableDaily(k: KatalogKontext): Promise<boolean> {
+  const rl = await versuche('takt:checkAndIncrementRateLimit', checkAndIncrementRateLimit(k, 'rebrickable'));
   // Im Zweifel durchlassen: Ein überschrittenes Tageskontingent kostet bloss
   // Aufrufe — umgekehrt als beim Login-Zähler, wo der Rückfall sperrt.
   return rl.ok ? rl.wert.allowed : true;
 }
 
-export async function rebrickableDailyStatus(): Promise<{ count: number; limit: number; remaining: number }> {
-  return getRateLimitStatus('rebrickable');
+export async function rebrickableDailyStatus(
+  k: KatalogKontext,
+): Promise<{ count: number; limit: number; remaining: number }> {
+  return getRateLimitStatus(k, 'rebrickable');
 }
 
 /** Zwei gleichzeitige Downloads, aber höchstens einer neu je Sekunde: Das CDN

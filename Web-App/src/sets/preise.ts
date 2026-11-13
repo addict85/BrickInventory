@@ -1,8 +1,7 @@
 /** Marktpreis, Preisverlauf und Preisalarm eines Sets. */
 import { blickfeldAus, type Sicht } from '../haushalt';
 import { einstellungMitZugang } from '../einstellungen';
-import { alarmeFuer, loescheAlarm, setzeAlarm, fetchPrice, resolveSetCondition, preisverlaufSet } from '../finanzen';
-import { importAlsAuftrag } from '../auftraege';
+import { alarmeFuer, loescheAlarm, setzeAlarm } from '../finanzen';
 import { normalizeSetNumber } from './erfassen';
 import type { Zustand } from '../infra/validate';
 import type { CsvImportBericht } from '../infra/csvExport';
@@ -21,17 +20,13 @@ export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sich
   const guideType = String(await einstellungMitZugang(sk.db, uid, 'price_guide_type', 'sold'));
   const ttlHours = String(await einstellungMitZugang(sk.db, uid, 'price_cache_ttl', '24'));
   const preis = await versuche('sets:preis', async () =>
-    fetchPrice(
+    sk.finanzen.fetchPrice(
       sn,
-      await resolveSetCondition(blickfeld, sn, undefined, sk.finanzen),
+      await sk.finanzen.resolveSetCondition(blickfeld, sn, undefined),
       guideType,
       currency,
       ttlHours,
       null,
-      {
-        finanzen: sk.finanzen,
-        katalog: sk.katalog,
-      },
     ),
   );
   if (!preis.ok)
@@ -82,15 +77,14 @@ export function alarmDesSetsLoeschen(sk: SetsKontext, uid: number, sn: string, c
 }
 
 export async function alarmCsvImportStarten(sk: SetsKontext, uid: number, text: string) {
-  return importAlsAuftrag<CsvImportBericht>(
+  return sk.auftraege.importAlsAuftrag<CsvImportBericht>(
     uid,
     'alarme_csv',
     { waehrung: await waehrungVon(sk, uid), text },
     {},
-    sk.auftraege,
   );
 }
 
 export async function setPreisVerlauf(sk: SetsKontext, uid: number, sicht: Sicht | number[], sn: string) {
-  return preisverlaufSet(sicht, sn, await waehrungVon(sk, uid), sk.finanzen);
+  return sk.finanzen.preisverlaufSet(sicht, sn, await waehrungVon(sk, uid));
 }

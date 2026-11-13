@@ -1,6 +1,7 @@
 import { logAndContinue } from '../../infra/fehler';
 import { katalog } from '../prozess';
 import { versuche } from '../../infra/ergebnis';
+import type { KatalogKontext } from '../kontext';
 
 /** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt. */
 const ERNEUT_PRUEFEN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -75,10 +76,10 @@ export function grundFuer(key: string): string {
 }
 
 // Der Weg zurück aus der Sperre.
-export async function vergissFehlend(keys?: string[]): Promise<number> {
+export async function vergissFehlend(kx: KatalogKontext, keys?: string[]): Promise<number> {
   const r = keys?.length
-    ? await katalog().bildFehlschlaege.vergissFehlschlaege(keys)
-    : await katalog().bildFehlschlaege.vergissAlleFehlschlaege();
+    ? await kx.bildFehlschlaege.vergissFehlschlaege(keys)
+    : await kx.bildFehlschlaege.vergissAlleFehlschlaege();
   if (keys?.length)
     for (const k of keys) {
       _vorne.delete(k);

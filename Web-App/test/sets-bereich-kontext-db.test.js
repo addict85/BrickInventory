@@ -1,8 +1,8 @@
 /**
  * Der Bereich Sets bekommt Datenbank und Nacharbeit übergeben (src/sets/bereich.ts):
  * Seine Dienste nehmen, was der Kontext ihnen gibt, nicht den Zugang des
- * Prozesses. Ohne Verdrahtung werfen sets() und nacharbeit(), statt still
- * auf den Prozesszugang zu fallen oder nichts zu tun.
+ * Prozesses. Ohne Verdrahtung werfen die Fassaden, statt still auf den
+ * Prozesszugang zu fallen oder nichts zu tun.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln):
  *   A  in src/sets/repository/setDetail.ts setStamm() über `standardDb().get`
@@ -10,10 +10,8 @@
  *      übergebenen Zugang“ (keine Abfrage auf rb_sets gezählt)
  *   B  in teilelisteMitNacharbeit() wieder `nacharbeit().setTeileAnreichern(sn)` →
  *      rot: „die Nacharbeit kommt aus dem Kontext“ (Prozess-Nacharbeit gerufen)
- *   C  nacharbeit() liefert ohne Verdrahtung wieder OHNE_NACHARBEIT → rot:
- *      „ohne Verdrahtung werfen nacharbeit() und sets()“
- *   D  sets() baut ohne Verdrahtung erzeugeSets({ db: standardDb(), … }) → rot:
- *      dieselbe Prüfung
+ *   D  prozessDienste() (src/infra/bereich.ts) baut ohne Verdrahtung mit einem
+ *      Rückfall → rot: „ohne Verdrahtung werfen die Fassaden“ (13.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,9 +21,9 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
-const { erzeugeSets } = _req('src/sets/bereich.js');
 const S = _req('src/sets/index.js');
 const N = _req('src/auftraege/nacharbeit.js');
+const B = _req('src/infra/bereich.js');
 
 const SN = '99871-1';
 const INVENTAR = 987654;
@@ -78,14 +76,9 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
     notiz = [],
     prozessNotiz = [];
   const zugang = zaehlenderZugang(db.standardDb(), sql);
-  const sets = erzeugeSets({
-    db: zugang,
-    nacharbeit: aufzeichnendeNacharbeit(notiz),
-    katalog: _req('src/katalog/bereich.js').erzeugeKatalog({ db: zugang }),
-    finanzen: _req('src/finanzen/bereich.js').erzeugeFinanzen({ db: zugang }),
-    auftraege: _req('src/auftraege/bereich.js').erzeugeAuftraege({ db: zugang }),
-  });
-  N.verdrahteNacharbeit(aufzeichnendeNacharbeit(prozessNotiz));
+  const { baueDienste } = _req('startup/verdrahtung.js');
+  const sets = baueDienste(zugang, aufzeichnendeNacharbeit(notiz)).sets;
+  Object.assign(B.prozessDienste().katalog.nacharbeit, aufzeichnendeNacharbeit(prozessNotiz));
 
   await t.test('Lesen geht über den übergebenen Zugang', async () => {
     assert.equal(await sets.setInfo(SN), null);
@@ -103,10 +96,8 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
     assert.deepEqual(prozessNotiz, []);
   });
 
-  await t.test('ohne Verdrahtung werfen nacharbeit() und sets()', () => {
-    N.verdrahteNacharbeit(null);
-    S.verdrahteSets(null);
-    assert.throws(() => N.nacharbeit(), /nicht verdrahtet/);
+  await t.test('ohne Verdrahtung werfen die Fassaden', () => {
+    B.verdrahteDienste(null);
     assert.throws(() => S.setInfo(SN), /nicht verdrahtet/);
   });
 });

@@ -1,4 +1,4 @@
-import { finanzenBereich } from '../prozess';
+import type { FinanzenKontext } from '../kontext';
 
 /** Ein Punkt der Wertkurve; fullDay ist der genaue Tag eines Monatspunkts. */
 export interface KurvenPunkt {
@@ -8,17 +8,20 @@ export interface KurvenPunkt {
   total: number;
 }
 // Aus dem globalen Preisverlauf, darum stimmt die Kurve auch rückwirkend.
-export async function rekonstruiereKurve(opts: {
-  db?: unknown;
-  setNumbers: string[];
-  setQty: Record<string, number>;
-  placeholders: string;
-  dateFilter: string;
-  bucketExpr: string;
-  condition: string;
-  currency: string;
-  monatsAufloesung: boolean;
-}): Promise<{ rawPoints: KurvenPunkt[]; monatsAufloesung: boolean }> {
+export async function rekonstruiereKurve(
+  kx: FinanzenKontext,
+  opts: {
+    db?: unknown;
+    setNumbers: string[];
+    setQty: Record<string, number>;
+    placeholders: string;
+    dateFilter: string;
+    bucketExpr: string;
+    condition: string;
+    currency: string;
+    monatsAufloesung: boolean;
+  },
+): Promise<{ rawPoints: KurvenPunkt[]; monatsAufloesung: boolean }> {
   const { setNumbers, setQty, placeholders, dateFilter, condition, currency } = opts;
   // `let`: Bei Verdichtung auf Monate wird bucketExpr unterwegs umgestellt.
   let bucketExpr = opts.bucketExpr;
@@ -29,7 +32,7 @@ export async function rekonstruiereKurve(opts: {
   {
     const mengen = setNumbers.map(sn => setQty[sn] || 1);
     const hauptAbfrage = (bExpr: string) =>
-      finanzenBereich().portfolioKurve.tageswerteAusVerlauf(
+      kx.portfolioKurve.tageswerteAusVerlauf(
         currency,
         condition,
         setNumbers,
@@ -51,12 +54,7 @@ export async function rekonstruiereKurve(opts: {
     }
     // Letzte Zuflucht price_cache; eine Zeile je Set, der Umweg über SQL lohnt nicht.
     if (!rows.length) {
-      const roh = await finanzenBereich().portfolioKurve.cachePreiseDerSets(
-        currency,
-        condition,
-        setNumbers,
-        placeholders,
-      );
+      const roh = await kx.portfolioKurve.cachePreiseDerSets(currency, condition, setNumbers, placeholders);
       const buckets: Record<string, { day: string; month: string; sets: Record<string, number> }> = {};
       for (const r of roh) {
         const k = r.day;
@@ -94,7 +92,7 @@ export async function rekonstruiereKurve(opts: {
     if (monatsAufloesung && erster) {
       const ersterTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || erster.fullDay;
       erster.fullDay = ersterTag;
-      const start = await finanzenBereich().portfolioKurve.letzteWerteVorBeginn(
+      const start = await kx.portfolioKurve.letzteWerteVorBeginn(
         currency,
         condition,
         setNumbers,

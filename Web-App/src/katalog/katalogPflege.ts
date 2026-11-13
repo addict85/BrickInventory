@@ -1,7 +1,7 @@
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
 import { colorId as farbeLesen } from '../infra/validate';
 import * as stamm from './repository/katalogStamm';
-import { katalog } from './prozess';
+import type { KatalogKontext } from './kontext';
 
 type Schreiber = stamm.Schreiber;
 
@@ -17,10 +17,11 @@ const bildEingabe = (url: string | null, von: Von): string | null =>
   url !== null && von !== null && !hostErlaubt(url, ERLAUBTE_BILD_HOSTS) ? null : url;
 
 export async function merkeTeil(
+  k: KatalogKontext,
   partNumber: string,
   partName?: string | null,
   categoryName?: string | null,
-  dbh: Schreiber = katalog().db,
+  dbh: Schreiber = k.db,
   von: Von = null,
 ) {
   if (!partNumber) return;
@@ -37,13 +38,14 @@ export async function merkeTeil(
 
 /** Je Teil UND Farbe — ein roter Stein sieht anders aus als ein blauer. */
 export async function merkeTeilFarbe(
+  k: KatalogKontext,
   partNumber: string,
   colorId: number | null | undefined,
   colorName?: string | null,
   colorHex?: string | null,
   imageUrl?: string | null,
   imageLocal?: string | null,
-  dbh: Schreiber = katalog().db,
+  dbh: Schreiber = k.db,
   von: Von = null,
 ) {
   if (!partNumber) return;
@@ -61,11 +63,12 @@ export async function merkeTeilFarbe(
 }
 
 export async function merkeFigur(
+  k: KatalogKontext,
   figNumber: string,
   figName?: string | null,
   imageUrl?: string | null,
   imageLocal?: string | null,
-  dbh: Schreiber = katalog().db,
+  dbh: Schreiber = k.db,
   von: Von = null,
 ) {
   if (!figNumber) return;
@@ -81,12 +84,13 @@ export async function merkeFigur(
 /** Nur Menge und Ersatzteil-Kennzeichen; Name, Farbe und Bild stehen je Teil
  * in den Katalogen. */
 export async function merkeSetTeil(
+  k: KatalogKontext,
   setNumber: string,
   partNumber: string,
   colorId: number | string | null | undefined,
   quantity: number,
   isSpare = false,
-  dbh: Schreiber = katalog().db,
+  dbh: Schreiber = k.db,
 ) {
   if (!setNumber || !partNumber) return;
   await stamm.schreibeSetTeil(dbh, setNumber, partNumber, farbeLesen(colorId), quantity || 1, isSpare);
@@ -119,7 +123,12 @@ function jeSchluessel<T>(zeilen: T[], schluessel: (z: T) => string, mische?: (a:
 /** Drei Anweisungen statt drei je Teil. ON CONFLICT DO UPDATE darf eine Zeile
  * nicht zweimal treffen, darum vorher je Schlüssel zusammengefasst: Die
  * Bauteilmenge zählt; Ersatzteil ist es nur, wenn alle es sind. */
-export async function merkeSetTeile(setNumber: string, zeilen: SetTeilZeile[], dbh: Schreiber = katalog().db) {
+export async function merkeSetTeile(
+  k: KatalogKontext,
+  setNumber: string,
+  zeilen: SetTeilZeile[],
+  dbh: Schreiber = k.db,
+) {
   if (!setNumber || !zeilen.length) return;
   const teile = jeSchluessel(zeilen, z => z.partNumber);
   const kat = (v: string | null) => (leer(v) === 'Unknown' ? null : leer(v));
@@ -160,8 +169,9 @@ export async function merkeSetTeile(setNumber: string, zeilen: SetTeilZeile[], d
 }
 
 export async function merkeFiguren(
+  k: KatalogKontext,
   figuren: { figNumber: string; figName: string | null; imageUrl: string | null }[],
-  dbh: Schreiber = katalog().db,
+  dbh: Schreiber = k.db,
 ) {
   const f = jeSchluessel(
     figuren.filter(x => x.figNumber),
@@ -179,19 +189,21 @@ export async function merkeFiguren(
 /** Ohne COALESCE: Nach einem echten Download ist der neue Pfad richtig, der
  * alte kann ins Leere zeigen. */
 export async function setzeTeilBildLokal(
+  k: KatalogKontext,
   partNumber: string,
   colorId: number | string,
   imageLocal: string,
-  dbh: Schreiber = katalog().db,
+  dbh: Schreiber = k.db,
 ) {
   if (!partNumber || !imageLocal) return;
   await stamm.schreibeTeilbildLokal(dbh, partNumber, farbeLesen(colorId), imageLocal);
 }
 
 export async function merkeSetFiguren(
+  k: KatalogKontext,
   setNumber: string,
   figuren: { figNumber: string; quantity?: number | null | undefined }[],
-  dbh: Schreiber = katalog().db,
+  dbh: Schreiber = k.db,
 ) {
   const f = jeSchluessel(
     figuren.filter(x => x.figNumber),
@@ -207,13 +219,23 @@ export async function merkeSetFiguren(
 }
 
 /** Nur dort, wo noch keine steht. */
-export async function merkeFigurBildAdresse(figNumber: string, imageUrl: string, dbh: Schreiber = katalog().db) {
+export async function merkeFigurBildAdresse(
+  k: KatalogKontext,
+  figNumber: string,
+  imageUrl: string,
+  dbh: Schreiber = k.db,
+) {
   if (!figNumber || !imageUrl) return;
   await stamm.schreibeFigurBildAdresse(dbh, figNumber, imageUrl);
 }
 
 /** ÜBERSCHREIBEN — wie setzeTeilBildLokal. */
-export async function setzeFigurBildLokal(figNumber: string, imageLocal: string, dbh: Schreiber = katalog().db) {
+export async function setzeFigurBildLokal(
+  k: KatalogKontext,
+  figNumber: string,
+  imageLocal: string,
+  dbh: Schreiber = k.db,
+) {
   if (!figNumber || !imageLocal) return;
   await stamm.schreibeFigurBildLokal(dbh, figNumber, imageLocal);
 }
@@ -233,12 +255,13 @@ export interface KatalogTeil {
 /** `fuer`: Nur dessen eigene Angaben zählen als bekannt, die anderer Konten
  * sieht diese Abfrage nicht. */
 export async function katalogTeil(
+  k: KatalogKontext,
   partNumber: string,
   colorId: number | null,
   fuer: Von = null,
 ): Promise<KatalogTeil | null> {
   if (!partNumber) return null;
-  const z = await katalog().katalogStamm.teilAusKatalog(partNumber, colorId, fuer);
+  const z = await k.katalogStamm.teilAusKatalog(partNumber, colorId, fuer);
   if (!z) return null;
 
   const quelle: KatalogTeil['bildQuelle'] =
@@ -257,11 +280,12 @@ export async function katalogTeil(
 }
 
 export async function katalogFigur(
+  k: KatalogKontext,
   figNumber: string,
   fuer: Von = null,
 ): Promise<{ name: string | null; bild: string | null; hatBild: boolean } | null> {
   if (!figNumber) return null;
-  const z = await katalog().katalogStamm.figurAusKatalog(figNumber, fuer);
+  const z = await k.katalogStamm.figurAusKatalog(figNumber, fuer);
   if (!z) return null;
   return {
     name: z.fig_name ?? null,

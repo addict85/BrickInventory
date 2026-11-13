@@ -42,11 +42,8 @@ ersetze('src/merkliste/repository/merkliste.js', {
   },
 });
 // Angelegt wird ohne Netz; scheitern kann danach nur das Ergänzen im offenen Strom.
-// Die Sets-Dienste des Prozesses mit zwei ersetzten (src/sets/prozess.ts).
-const setsProzess = _req('src/sets/prozess.js');
-const echteSets = setsProzess.sets();
-setsProzess.verdrahteSets(() => ({
-  ...echteSets,
+// Die Sets-Dienste des Prozesses mit zwei ersetzten; die Routen bekommen dieselben (routerAus).
+Object.assign(_req('src/infra/bereich.js').prozessDienste().sets, {
   setErfassen: async e => {
     if (e.setNumber === 'FACH-1') throw dateiFehler('ungueltig', 'setnummer_ungueltig');
     return {
@@ -61,7 +58,7 @@ setsProzess.verdrahteSets(() => ({
   setErgaenzen: async () => {
     throw new Error(GEHEIM);
   },
-}));
+});
 
 const db = _req('db/database.js');
 

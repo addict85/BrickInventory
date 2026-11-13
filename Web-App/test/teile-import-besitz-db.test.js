@@ -40,7 +40,7 @@ ersetze('clients/rebrickable.js', {
   },
 });
 ersetze('src/katalog/partsImport.js', {
-  importPartsForSet: async (sn, uid) => {
+  importPartsForSet: async (_k, sn, uid) => {
     importe.push([sn, uid]);
     return 3;
   },

@@ -1,12 +1,5 @@
 /** Proben für Verwalter: Bild- und Preisabruf und die Fragen zu einer leeren Kachel. */
-import {
-  proxyCacheSchluessel,
-  proxyCachePathFor,
-  katalogEintrag,
-  getPriceGuide,
-  imgProxyFailures,
-  oeffneBild,
-} from '../katalog';
+import { proxyCacheSchluessel, proxyCachePathFor, imgProxyFailures, oeffneBild } from '../katalog';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
 import { urlOderNull } from '../infra/validate';
 import type { KontoBildzeile } from './repository/verwaltung';
@@ -16,11 +9,9 @@ import path from 'node:path';
 import { DATA_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { fetchPrice } from '../finanzen';
 import { ohneBricklinkPreis } from '../infra/setNummer';
-import { getGlobalSetting, getSetting } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
-import { verwaltungBereich } from './prozess';
+import type { VerwaltungKontext } from './kontext';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -139,15 +130,15 @@ function bildArt(b: Buffer): string {
 }
 
 /** Mit `live` auch die Antwort von BrickLink. */
-export async function preisProbe(uid: number, setNumber: string, live: boolean) {
+export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: string, live: boolean) {
   const ab = new Abstriche();
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
-    verwaltungBereich().verwaltung.probeSet(uid, setNumber),
-    verwaltungBereich().verwaltung.probeErfassungen(uid, setNumber),
-    verwaltungBereich().verwaltung.probePreisCache(setNumber),
-    verwaltungBereich().verwaltung.probePreisVerlauf(setNumber),
-    ab.oder('waehrung', verwaltungBereich().verwaltung.probeWaehrung(uid), null),
-    getGlobalSetting('price_cache_ttl'),
+    k.verwaltung.probeSet(uid, setNumber),
+    k.verwaltung.probeErfassungen(uid, setNumber),
+    k.verwaltung.probePreisCache(setNumber),
+    k.verwaltung.probePreisVerlauf(setNumber),
+    ab.oder('waehrung', k.verwaltung.probeWaehrung(uid), null),
+    k.einstellungen.getGlobalSetting('price_cache_ttl'),
   ]);
 
   // Dieselbe Regel wie conditionFromAcquisitions(): Eine gebrauchte Erfassung genügt.
@@ -174,13 +165,13 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
   };
 
   // Dieselbe Währung wie die Bewertung, sonst zeigte die Probe andere Cache-Zeilen.
-  out.currency = await getSetting(uid, 'currency', 'EUR');
+  out.currency = await k.einstellungen.getSetting(uid, 'currency', 'EUR');
   // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
-  const katalog = await katalogEintrag(setNumber);
+  const katalog = await k.katalog.katalogEintrag(setNumber);
   out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
   // Genau der Aufruf, den Finanzen macht.
   try {
-    out.finanzen_preis = await fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
+    out.finanzen_preis = await k.finanzen.fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
   } catch (e) {
     out.finanzen_preis = { error: fehlertext(e) };
   }
@@ -191,7 +182,7 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
     out.live = liveWerte;
     for (const cond of ['N', 'U']) {
       try {
-        const g = await getPriceGuide(setNumber, cond, 'sold', cur);
+        const g = await k.katalog.getPriceGuide(setNumber, cond, 'sold', cur);
         liveWerte[cond] = {
           avg_price: g?.avg_price,
           qty_avg_price: g?.qty_avg_price,
@@ -208,14 +199,14 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
 }
 
 /** Die wiederkehrenden Fragen zu einer leeren Kachel in einer Antwort: Datenbank, Platte, Proxy, Fehlanzeige. */
-export async function bildDiagnose(sn: string) {
+export async function bildDiagnose(kx: VerwaltungKontext, sn: string) {
   const ab = new Abstriche();
-  const konten: KontoBildzeile = await ab.oder('konten', verwaltungBereich().verwaltung.bildZeilenDerKonten(sn), {
+  const konten: KontoBildzeile = await ab.oder('konten', kx.verwaltung.bildZeilenDerKonten(sn), {
     anzahl_konten: 0,
     image_local: null,
     image_url: null,
   });
-  const katalog = await ab.oder('katalog', verwaltungBereich().verwaltung.katalogBild(sn), null);
+  const katalog = await ab.oder('katalog', kx.verwaltung.katalogBild(sn), null);
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const datei = async (p: string) => {
@@ -237,12 +228,8 @@ export async function bildDiagnose(sn: string) {
     }
   }
 
-  const merker = await ab.oder('fehlanzeige', verwaltungBereich().verwaltung.fehlanzeigeDesSets(sn), null);
-  const vorschauMerker = await ab.oder(
-    'fehlanzeige',
-    verwaltungBereich().verwaltung.fehlanzeigeDerVorschau(safe),
-    null,
-  );
+  const merker = await ab.oder('fehlanzeige', kx.verwaltung.fehlanzeigeDesSets(sn), null);
+  const vorschauMerker = await ab.oder('fehlanzeige', kx.verwaltung.fehlanzeigeDerVorschau(safe), null);
 
   // Eine Diagnose aus Ersatzwerten führte in die Irre: zuerst sagen, was nicht lesbar war.
   const hinweise: string[] = ab.teile.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.teile.join(', ')}.`] : [];

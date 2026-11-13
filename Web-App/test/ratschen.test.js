@@ -169,16 +169,73 @@ test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, n
     console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
   // Modulweite let: Zustand, den alle Aufrufer eines Prozesses teilen; ein Bereich
-  // bekommt seinen über die Fabrik. Gemessen 45 am 11.11.2026 (Fächer je Bereich, src/infra/zwischenspeicher.ts).
+  // bekommt seinen über die Fabrik. Gemessen 44 am 13.11.2026 (Fächer je Bereich, src/infra/zwischenspeicher.ts).
   // Gegenprobe (10.11.2026): `let _probe = 0;` in src/katalog/kontext.ts → rot mit 59.
-  const LET_SCHRANKE = 45;
+  const LET_SCHRANKE = 44;
   const lets = quellen().reduce(
     (n, f) => n + (fs.readFileSync(f, 'utf8').match(/^(?:export )?let /gm) || []).length,
     0,
   );
   assert.ok(lets > 20 && lets <= LET_SCHRANKE, `${lets} modulweite let, erlaubt sind ${LET_SCHRANKE}`);
   if (lets < LET_SCHRANKE) console.log(`  ℹ modulweite let: ${lets} (Schranke ${LET_SCHRANKE}) — Schranke nachziehen`);
+  wegeAnDenKontextenVorbei();
 });
+
+/** Wege an den Kontexten vorbei werden weniger, nie mehr. */
+function wegeAnDenKontextenVorbei() {
+  // Ein Dienst bekommt seine Abhängigkeiten über den Kontext (src/<bereich>/kontext.ts);
+  // xBereich() und die Fassaden der index.ts holen sie vom Prozess. Gemessen am 13.11.2026:
+  // 35 Aufrufe in src/ (vorher 629), 67 Fassaden-Importe ausserhalb des eigenen Bereichs.
+  // Gegenproben (13.11.2026): `teileBereich()` zurück in getPartsStats() → rot (36);
+  // `import { getParts } from '../teile'` in src/sammlung/loeschen.ts → rot (68).
+  const SCHRANKE_AUFRUFE = 35,
+    SCHRANKE_FASSADEN = 67;
+  const ohneKommentare = require('./helpers/sources').ohneKommentare;
+  const src = path.join(WEB, 'src');
+  const bereiche = fs.readdirSync(src).filter(b => fs.existsSync(path.join(src, b, 'prozess.ts')));
+  const holer = bereiche.flatMap(b =>
+    [...fs.readFileSync(path.join(src, b, 'prozess.ts'), 'utf8').matchAll(/export const (\w+) = prozessStelle/g)].map(
+      m => m[1],
+    ),
+  );
+  assert.ok(
+    holer.length >= 14 && holer.includes('katalog'),
+    `nur ${holer.length} Holer gefunden — greift die Suche noch?`,
+  );
+  const AUFRUF = new RegExp(`\\b(?:${holer.join('|')})\\(\\)`, 'g');
+  const dienste = new Map(
+    bereiche.map(b => {
+      const s = fs.readFileSync(path.join(src, b, 'bereich.ts'), 'utf8');
+      const n = new Set();
+      for (const m of s.matchAll(/binde(?:Zugang)?\((?:k|sk), \w+, \[([^\]]*)\]\)/g))
+        for (const x of m[1].match(/\w+/g) || []) n.add(x);
+      for (const m of s.matchAll(/^ {4}(\w+): (?:bindeGenerisch|\(\(|\(<)/gm)) n.add(m[1]);
+      return [b, n];
+    }),
+  );
+  let aufrufe = 0,
+    fassaden = 0;
+  for (const f of quellen()) {
+    const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
+    if (f.startsWith(src + path.sep)) aufrufe += (s.match(AUFRUF) || []).length;
+    for (const m of s.matchAll(/^import \{([^}]*)\} from '([^']+)';/gm)) {
+      const b = path.relative(src, path.resolve(path.dirname(f), m[2]));
+      if (!dienste.has(b) || f.startsWith(path.join(src, b) + path.sep)) continue;
+      for (const x of m[1].split(',').map(y => y.trim()))
+        if (x && !x.startsWith('type ') && dienste.get(b).has(x.split(/\s+as\s+/)[0])) fassaden++;
+    }
+  }
+  assert.ok(
+    aufrufe <= SCHRANKE_AUFRUFE,
+    `${aufrufe} Aufrufe der Dienste des Prozesses in src/, erlaubt sind ${SCHRANKE_AUFRUFE}`,
+  );
+  assert.ok(
+    fassaden > 10 && fassaden <= SCHRANKE_FASSADEN,
+    `${fassaden} Fassaden-Importe, erlaubt sind ${SCHRANKE_FASSADEN}`,
+  );
+  if (aufrufe < SCHRANKE_AUFRUFE || fassaden < SCHRANKE_FASSADEN)
+    console.log(`  ℹ an den Kontexten vorbei: ${aufrufe} Aufrufe, ${fassaden} Fassaden — Schranke nachziehen`);
+}
 
 test('any wird weniger, nie mehr', () => {
   // Gemessen 1 am 12.11.2026 (die Lint-Korrekturen ersetzten die übrigen).
@@ -1012,7 +1069,10 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
   const dateien = quellen().filter(
     f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f),
   );
-  const oben = topLevelLaengen(dateien);
+  // Eine Router-Fabrik (baueXRouter) ist die Liste ihrer Routen wie früher der Modulrumpf;
+  // ihre Handler zählen einzeln weiter.
+  const keineFabrik = x => !/ baue\w*Router$/.test(x.ort);
+  const oben = topLevelLaengen(dateien).filter(keineFabrik);
   assert.ok(oben.length > 1500, `nur ${oben.length} Top-Level-Funktionen gefunden — greift die Suche noch?`);
   const ab100 = oben.filter(x => x.zeilen >= 100).map(x => x.ort);
   assert.deepEqual(
@@ -1021,7 +1081,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
     'ab 100 Zeilen: in benannte Teile zerlegen',
   );
   if (ab100.length < BEKANNT_100.length) console.log(`  ℹ ab 100 Zeilen: ${ab100.join(', ')} — BEKANNT_100 nachziehen`);
-  const alle = funktionsLaengen(dateien);
+  const alle = funktionsLaengen(dateien).filter(keineFabrik);
   assert.ok(alle.length > 1000, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
   const ueber = n => alle.filter(x => x.zeilen > n);
   assert.ok(

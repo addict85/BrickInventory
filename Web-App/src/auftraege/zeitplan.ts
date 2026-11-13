@@ -1,8 +1,7 @@
-import { getGlobalSetting } from '../einstellungen';
 import type { AuftragsArt } from './auftraege';
 import { AUFTRAG_KANAL, stelleAuftragEin } from './dienst';
 import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
-import { auftraegeBereich } from './prozess';
+import type { AuftraegeKontext } from './kontext';
 
 /** Je geplanter Art genau ein offener Auftrag `plan:<art>`; eine geänderte
  * Uhrzeit verschiebt nur faellig_ab — kein Zeitgeber muss neu gestellt werden. */
@@ -46,48 +45,60 @@ export function naechsteUhrzeit(zeit: { h: number; min: number }, jetzt = new Da
   return z;
 }
 
-export async function taeglicheUhrzeit(name: (typeof DAILY_JOBS)[number]['name']): Promise<{ h: number; min: number }> {
+export async function taeglicheUhrzeit(
+  k: AuftraegeKontext,
+  name: (typeof DAILY_JOBS)[number]['name'],
+): Promise<{ h: number; min: number }> {
   const meta = DAILY_JOBS.find(j => j.name === name)!;
-  return leseUhrzeit(await getGlobalSetting(`job_time_${name}`), meta.default);
+  return leseUhrzeit(await k.einstellungen.getGlobalSetting(`job_time_${name}`), meta.default);
 }
 
-export async function naechsterLauf(art: GeplanteArt, jetzt = new Date()): Promise<Date> {
+export async function naechsterLauf(k: AuftraegeKontext, art: GeplanteArt, jetzt = new Date()): Promise<Date> {
   const plan = ZEITPLAENE[art];
   if ('taeglich' in plan) {
     return naechsteUhrzeit(
-      leseUhrzeit(await getGlobalSetting(plan.taeglich.einstellung), plan.taeglich.vorgabe),
+      leseUhrzeit(await k.einstellungen.getGlobalSetting(plan.taeglich.einstellung), plan.taeglich.vorgabe),
       jetzt,
     );
   }
-  const roh = plan.minuten.einstellung ? await getGlobalSetting(plan.minuten.einstellung) : null;
+  const roh = plan.minuten.einstellung ? await k.einstellungen.getGlobalSetting(plan.minuten.einstellung) : null;
   const min = Math.max(plan.minuten.mindestens ?? 1, parseInt(String(roh ?? ''), 10) || plan.minuten.vorgabe);
   return new Date(jetzt.getTime() + min * 60_000);
 }
 
-export async function planeNaechsten(art: GeplanteArt, nutzlast: PlanNutzlast = {}): Promise<string | null> {
-  return stelleAuftragEin(art, nutzlast, {
+export async function planeNaechsten(
+  k: AuftraegeKontext,
+  art: GeplanteArt,
+  nutzlast: PlanNutzlast = {},
+): Promise<string | null> {
+  return stelleAuftragEin(k, art, nutzlast, {
     schluessel: planSchluessel(art),
-    faelligAb: await naechsterLauf(art),
+    faelligAb: await naechsterLauf(k, art),
     maxVersuche: 3,
   });
 }
 
-export async function planeAlle(): Promise<void> {
-  for (const art of Object.keys(ZEITPLAENE) as GeplanteArt[]) await planeNaechsten(art);
+export async function planeAlle(k: AuftraegeKontext): Promise<void> {
+  for (const art of Object.keys(ZEITPLAENE) as GeplanteArt[]) await planeNaechsten(k, art);
 }
 
-export async function zeitplanGeaendert(art: GeplanteArt): Promise<void> {
-  await auftraegeBereich().auftraege.setzeFaelligkeit(planSchluessel(art), await naechsterLauf(art));
-  await auftraegeBereich().db.benachrichtigung.notify(AUFTRAG_KANAL, art);
+export async function zeitplanGeaendert(k: AuftraegeKontext, art: GeplanteArt): Promise<void> {
+  await k.auftraege.setzeFaelligkeit(planSchluessel(art), await naechsterLauf(k, art));
+  await k.db.benachrichtigung.notify(AUFTRAG_KANAL, art);
 }
 
 /** @returns false, wenn er gerade läuft */
-export async function ziehePlanVor(art: GeplanteArt, sekunden = 0, nutzlast: PlanNutzlast = {}): Promise<boolean> {
-  if (await auftraegeBereich().auftraege.zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) {
-    await auftraegeBereich().db.benachrichtigung.notify(AUFTRAG_KANAL, art);
+export async function ziehePlanVor(
+  k: AuftraegeKontext,
+  art: GeplanteArt,
+  sekunden = 0,
+  nutzlast: PlanNutzlast = {},
+): Promise<boolean> {
+  if (await k.auftraege.zieheTerminVor(planSchluessel(art), sekunden, pruefeNutzlast(art, nutzlast))) {
+    await k.db.benachrichtigung.notify(AUFTRAG_KANAL, art);
     return true;
   }
-  if (await auftraegeBereich().auftraege.laeuftArt(art)) return false;
-  await stelleAuftragEin(art, nutzlast, { schluessel: planSchluessel(art), nachSekunden: sekunden, maxVersuche: 3 });
+  if (await k.auftraege.laeuftArt(art)) return false;
+  await stelleAuftragEin(k, art, nutzlast, { schluessel: planSchluessel(art), nachSekunden: sekunden, maxVersuche: 3 });
   return true;
 }

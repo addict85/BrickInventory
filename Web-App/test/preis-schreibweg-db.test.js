@@ -36,7 +36,7 @@ const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPre
 const echt = require(blPfad);
 let abrufe = [];
 require.cache[blPfad].exports = Object.assign({}, echt, {
-  getPriceGuide: async (_sn, cond) => {
+  getPriceGuide: async (_k, _sn, cond) => {
     abrufe.push(cond);
     // 'N' ohne Preis, 'U' mit — genau die Lage, in der der Rueckfall greift.
     return cond === 'U'

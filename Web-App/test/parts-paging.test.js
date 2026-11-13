@@ -109,7 +109,11 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
   // Leere zeigte.
   const proxy = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/imgCacheServe.ts'), 'utf8');
   assert.doesNotMatch(proxy, /await makeProxyThumb/, 'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
-  assert.match(proxy, /queueThumb\(cacheFile, thumbFile\)/, 'Die Verkleinerung gehört in den Hintergrund');
+  assert.match(
+    proxy,
+    /queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\)/,
+    'Die Verkleinerung gehört in den Hintergrund',
+  );
 });
 
 test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden Wegen', { concurrency: 1 }, async t => {

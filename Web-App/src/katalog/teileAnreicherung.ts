@@ -28,7 +28,7 @@ type JobHttpResult = { status: number; body: string };
 // bekommt deshalb die Art mit.
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
 import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
-import { auftraegeBereich, pruefeAbbruch, type AuftragsLauf, imgDlAdd } from '../auftraege';
+import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'node:fs';
 import type { PoolClient } from 'pg';
@@ -36,13 +36,13 @@ import path from 'node:path';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { generateThumb } from './bilder/thumbs';
 import { KEINE_FARBE } from '../infra/validate';
-import { katalog } from './prozess';
 import { versuche } from '../infra/ergebnis';
+import type { KatalogKontext } from './kontext';
 
-async function apiGet(url: string, rbKey: string) {
+async function apiGet(k: KatalogKontext, url: string, rbKey: string) {
   let serverErrors = 0;
   while (true) {
-    if (!(await consumeRebrickableDaily())) return null;
+    if (!(await consumeRebrickableDaily(k))) return null;
     await rebrickableLimiter.waitForSlot();
     const result: JobHttpResult = await rebrickableRoh(url, rbKey);
     if (result.status === 429) {
@@ -97,16 +97,16 @@ async function downloadImage(
   return rel;
 }
 
-async function enrichSetParts(setNumber: string) {
+async function enrichSetParts(k: KatalogKontext, setNumber: string) {
   const n = mitVersion(setNumber);
 
-  const invId = await neuestesInventar(setNumber);
+  const invId = await neuestesInventar(k, setNumber);
   if (!invId) return;
 
-  const csvParts = await katalog().teileAnreicherung.teileDesInventars(invId);
+  const csvParts = await k.teileAnreicherung.teileDesInventars(invId);
   if (!csvParts.length) return;
 
-  const catalogRows = await katalog().teileAnreicherung.setTeileKatalog(n);
+  const catalogRows = await k.teileAnreicherung.setTeileKatalog(n);
   const catalogMap: Record<
     string,
     { image_url: string | null; image_local: string | null; bl_part_number?: string | null }
@@ -115,7 +115,7 @@ async function enrichSetParts(setNumber: string) {
 
   // Die ZEILE in bl_zuordnung zählt, nicht ihr Wert: leer heisst „nachgesehen,
   // keine abweichende Nummer".
-  const lookedUp = await katalog().teileAnreicherung.blZuordnungen(csvParts.map(p => p.part_num));
+  const lookedUp = await k.teileAnreicherung.blZuordnungen(csvParts.map(p => p.part_num));
   const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
 
   // Nur Teile, die noch nie nachgesehen wurden — jeder Abruf kostet Kontingent.
@@ -135,10 +135,10 @@ async function enrichSetParts(setNumber: string) {
     return;
   }
 
-  const apiParts = await holeApiTeile(n, rbKey);
-  await ergaenzeBlNummern(apiParts, [...new Set(csvParts.map(p => p.part_num))], rbKey);
-  await merkeTeileDesSets(n, csvParts, apiParts);
-  await ergaenzeSetFiguren(n, rbKey);
+  const apiParts = await holeApiTeile(k, n, rbKey);
+  await ergaenzeBlNummern(k, apiParts, [...new Set(csvParts.map(p => p.part_num))], rbKey);
+  await merkeTeileDesSets(k, n, csvParts, apiParts);
+  await ergaenzeSetFiguren(k, n, rbKey);
 }
 
 type ApiTeil = {
@@ -151,11 +151,11 @@ type ApiTeil = {
 };
 
 /** Die Teile des Sets laut Rebrickable, je "part_num|color_id". */
-async function holeApiTeile(n: string, rbKey: string): Promise<Record<string, ApiTeil>> {
+async function holeApiTeile(k: KatalogKontext, n: string, rbKey: string): Promise<Record<string, ApiTeil>> {
   const apiParts: Record<string, ApiTeil> = {};
   let url = `https://rebrickable.com/api/v3/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   while (url) {
-    const data = await apiGet(url, rbKey);
+    const data = await apiGet(k, url, rbKey);
     if (!data) break;
     for (const item of data.results || []) {
       const p = item.part,
@@ -177,12 +177,17 @@ async function holeApiTeile(n: string, rbKey: string): Promise<Record<string, Ap
 
 /** Alle Nummern aus der CSV, nicht nur aus der API-Antwort: Die kann
  * unvollständig sein. */
-async function ergaenzeBlNummern(apiParts: Record<string, ApiTeil>, missingBl: string[], rbKey: string): Promise<void> {
+async function ergaenzeBlNummern(
+  kx: KatalogKontext,
+  apiParts: Record<string, ApiTeil>,
+  missingBl: string[],
+  rbKey: string,
+): Promise<void> {
   const BATCH = 500;
   for (let i = 0; i < missingBl.length; i += BATCH) {
     const batch = missingBl.slice(i, i + BATCH);
     const blUrl = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`;
-    const blData = await apiGet(blUrl, rbKey);
+    const blData = await apiGet(kx, blUrl, rbKey);
     if (!blData) continue;
     for (const part of blData.results || []) {
       const blId = part.external_ids?.BrickLink?.[0] || null;
@@ -194,18 +199,19 @@ async function ergaenzeBlNummern(apiParts: Record<string, ApiTeil>, missingBl: s
           const key = `${part.part_num}|${colorId}`;
           if (apiParts[key]) apiParts[key].bl_part_num = blId;
         }
-        await merkeBlNummer('part', part.part_num, blId).catch(logAndContinue('teile-enrich:merkeBlNummer'));
+        await merkeBlNummer(kx, 'part', part.part_num, blId).catch(logAndContinue('teile-enrich:merkeBlNummer'));
       }
     }
   }
 }
 
 async function merkeTeileDesSets(
+  k: KatalogKontext,
   n: string,
   csvParts: Awaited<ReturnType<typeof repo.teileDesInventars>>,
   apiParts: Record<string, ApiTeil>,
 ): Promise<void> {
-  const blMapRows = await katalog().teileAnreicherung.blZuordnungen(csvParts.map(p => p.part_num));
+  const blMapRows = await k.teileAnreicherung.blZuordnungen(csvParts.map(p => p.part_num));
   const blMap: Record<string, string | null> = {};
   for (const r of blMapRows) blMap[r.rb_id] = r.bl_id;
 
@@ -215,22 +221,28 @@ async function merkeTeileDesSets(
     const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
     // In die ZUORDNUNG: Die Nummer hängt am Teil, nicht an Set, Teil und Farbe.
     if (blPartNum)
-      await merkeBlNummer('part', p.part_num, blPartNum).catch(logAndContinue('teile-enrich:merkeBlNummer'));
+      await merkeBlNummer(k, 'part', p.part_num, blPartNum).catch(logAndContinue('teile-enrich:merkeBlNummer'));
     // Ohne Rebrickable-Antwort kein Name — die Teilenummer gehört nicht als geprüfter Name in den Katalog.
     const melde = logAndContinue('katalog:setteil');
-    await merkeTeil(p.part_num, info.part_name).catch(melde);
-    await merkeTeilFarbe(p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url).catch(
-      melde,
-    );
-    await merkeSetTeil(n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(melde);
+    await merkeTeil(k, p.part_num, info.part_name).catch(melde);
+    await merkeTeilFarbe(
+      k,
+      p.part_num,
+      p.color_id ?? KEINE_FARBE,
+      info.color_name,
+      info.color_hex,
+      info.image_url,
+    ).catch(melde);
+    await merkeSetTeil(k, n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(melde);
   }
 }
 
-async function ergaenzeSetFiguren(n: string, rbKey: string): Promise<void> {
-  const existingFigs = await katalog().teileAnreicherung.figurenImSetkatalog(n);
+async function ergaenzeSetFiguren(k: KatalogKontext, n: string, rbKey: string): Promise<void> {
+  const existingFigs = await k.teileAnreicherung.figurenImSetkatalog(n);
 
   if (!existingFigs) {
     const figsData = await apiGet(
+      k,
       `https://rebrickable.com/api/v3/lego/sets/${pfadSegment(n)}/minifigs/?page_size=100`,
       rbKey,
     );
@@ -238,9 +250,11 @@ async function ergaenzeSetFiguren(n: string, rbKey: string): Promise<void> {
       type RbFigur = { set_num: string; set_name?: string; quantity?: number; set_img_url?: string };
       const figs: RbFigur[] = figsData.results;
       await merkeFiguren(
+        k,
         figs.map(f => ({ figNumber: f.set_num, figName: f.set_name || null, imageUrl: f.set_img_url || null })),
       ).catch(logAndContinue('teile-enrich:figuren merken'));
       await merkeSetFiguren(
+        k,
         n,
         figs.map(f => ({ figNumber: f.set_num, quantity: f.quantity })),
       ).catch(logAndContinue('teile-enrich:setfiguren merken'));
@@ -249,7 +263,7 @@ async function ergaenzeSetFiguren(n: string, rbKey: string): Promise<void> {
 }
 
 /** Ein Bild vom CDN in den Teile-Ordner, dann in den Katalog. */
-async function ladeTeilbild(p: repo.Bildwunsch): Promise<void> {
+async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void> {
   const rawUrl = p.image_url || '';
   let cdnUrl = rawUrl;
   // Beide Schreibweisen: Altzeilen tragen noch /api/img-proxy.
@@ -281,9 +295,9 @@ async function ladeTeilbild(p: repo.Bildwunsch): Promise<void> {
   }
 
   if (p.kind === 'fig') {
-    await setzeFigurBildLokal(p.id, rel).catch(logAndContinue('teile-enrich:figurbild'));
+    await setzeFigurBildLokal(k, p.id, rel).catch(logAndContinue('teile-enrich:figurbild'));
   } else {
-    await setzeTeilBildLokal(p.id, p.color_id, rel).catch(logAndContinue('katalog:teilbild'));
+    await setzeTeilBildLokal(k, p.id, p.color_id, rel).catch(logAndContinue('katalog:teilbild'));
   }
 }
 
@@ -291,13 +305,14 @@ async function ladeTeilbild(p: repo.Bildwunsch): Promise<void> {
  * der Session, über den Pool würde er unzuverlässig freigegeben. waitIfBusy (PDF)
  * wartet auf den anderen Prozess, sonst fehlten Bilder im PDF. */
 async function holeBildSperre(
+  k: KatalogKontext,
   n: string,
   waitIfBusy: boolean,
 ): Promise<'belegt' | { lockClient: import('pg').PoolClient | null; haveXlock: boolean }> {
   let lockClient: import('pg').PoolClient | null = null,
     haveXlock = false;
   try {
-    lockClient = await katalog().teileAnreicherung.sperrVerbindung();
+    lockClient = await k.teileAnreicherung.sperrVerbindung();
   } catch (_) {
     lockClient = null;
   }
@@ -327,7 +342,7 @@ async function holeBildSperre(
 // Je Set eine Sperre: Gleichzeitige Aufrufe für dasselbe Set warten auf den ersten.
 const _downloadLocks = new Map();
 
-async function downloadSetImages(setNumber: string, waitIfBusy = false) {
+async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBusy = false) {
   const n = mitVersion(setNumber);
 
   if (_downloadLocks.has(n)) {
@@ -342,7 +357,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   });
   _downloadLocks.set(n, lock);
 
-  const sperre = await holeBildSperre(n, waitIfBusy);
+  const sperre = await holeBildSperre(k, n, waitIfBusy);
   if (sperre === 'belegt') {
     resolveLock();
     _downloadLocks.delete(n);
@@ -354,14 +369,14 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   let _flushed = 0; // davon bereits an den Zähler gemeldet (Rest im finally)
   let _lastFlush = Date.now();
   try {
-    const needsImg = await katalog().teileAnreicherung.bilderOhneDatei(n);
+    const needsImg = await k.teileAnreicherung.bilderOhneDatei(n);
     if (!needsImg.length) return;
 
     console.log(`[img-dl] ${n}: lade ${needsImg.length} Bilder`);
     // Zum globalen Zähler ADDIEREN statt ihn zu überschreiben, sonst zeigte die
     // Überwachung nur den zuletzt gestarteten Stapel.
     _pendingAdded = needsImg.length;
-    await imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    await k.auftraege.imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
 
     let done = 0;
     // Höchstens ein Schreibvorgang je Sekunde statt einer je Bild, das entlastet
@@ -372,11 +387,11 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
       if (!force && Date.now() - _lastFlush < 1000) return;
       _flushed += delta;
       _lastFlush = Date.now();
-      await imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
+      await k.auftraege.imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
     };
     await Promise.all(
       needsImg.map(async p => {
-        await ladeTeilbild(p);
+        await ladeTeilbild(k, p);
         done++;
         await flushProgress(false);
       }),
@@ -387,7 +402,7 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
     // Nur den noch nicht gemeldeten Rest verrechnen — deckt Abbruch ab, ohne im
     // Normalfall doppelt abzuziehen.
     const _rest = _pendingAdded - _flushed;
-    if (_rest > 0) await imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
+    if (_rest > 0) await k.auftraege.imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
     if (lockClient) {
       if (haveXlock) await repo.gibBildSperreFrei(lockClient, n).catch(logAndContinue('teile-enrich:hashtext'));
       lockClient.release();
@@ -397,16 +412,16 @@ async function downloadSetImages(setNumber: string, waitIfBusy = false) {
   }
 }
 
-async function enrichSetMinifigs(setNumber: string) {
+async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
   const n = mitVersion(setNumber);
   const rbKey = await getRbKey();
   if (!rbKey) return;
 
-  const figs = await katalog().teileAnreicherung.figurenDesSets(n);
+  const figs = await k.teileAnreicherung.figurenDesSets(n);
   if (!figs.length) return;
 
   const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
-  const invRows = await katalog().teileAnreicherung.inventareDerFiguren(figNums);
+  const invRows = await k.teileAnreicherung.inventareDerFiguren(figNums);
 
   // Je set_num die höchste Version (erste wegen ORDER BY DESC).
   const invMap: Record<string, number> = {};
@@ -421,7 +436,7 @@ async function enrichSetMinifigs(setNumber: string) {
     const invId = invMap[fig.fig_number];
     if (!invId) continue;
 
-    const parts = await katalog().teileAnreicherung.teileDesInventars(invId);
+    const parts = await k.teileAnreicherung.teileDesInventars(invId);
 
     figPartsMap[fig.fig_number] = { parts, figQty: fig.quantity };
     for (const p of parts) allPartNums.add(p.part_num);
@@ -430,7 +445,7 @@ async function enrichSetMinifigs(setNumber: string) {
   if (!allPartNums.size) return;
 
   // bl_zuordnung: die Nummer, einmal je Teil.
-  const rbBlRows = await katalog().teileAnreicherung.blZuordnungen([...allPartNums]);
+  const rbBlRows = await k.teileAnreicherung.blZuordnungen([...allPartNums]);
   const rbBlMap: Record<string, string> = {};
   for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
 
@@ -443,14 +458,14 @@ async function enrichSetMinifigs(setNumber: string) {
     for (let i = 0; i < needsBl.length; i += BATCH) {
       const batch = needsBl.slice(i, i + BATCH);
       const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`;
-      const data = await apiGet(url, rbKey);
+      const data = await apiGet(k, url, rbKey);
       if (!data) continue;
       for (const p of data.results || []) {
         const blId = p.external_ids?.BrickLink?.[0] || null;
         const finalId = blId || p.part_num;
         apiBlMap[p.part_num] = finalId;
 
-        await merkeBlNummer('part', p.part_num, finalId).catch(logAndContinue('teile-enrich:merkeBlNummer'));
+        await merkeBlNummer(k, 'part', p.part_num, finalId).catch(logAndContinue('teile-enrich:merkeBlNummer'));
       }
     }
   }
@@ -464,7 +479,7 @@ async function enrichSetMinifigs(setNumber: string) {
   for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
       // Ohne BrickLink-Nummer: Sie steht einmal je Teil in bl_zuordnung.
-      await merkeSetTeil(figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(
+      await merkeSetTeil(k, figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false).catch(
         logAndContinue('katalog:figurteil'),
       );
     }
@@ -495,18 +510,18 @@ function _fsPathFromLocal(imageLocal: string) {
 }
 
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
-async function _redlSetStatus(obj: Record<string, unknown>) {
-  await auftraegeBereich()
-    .laufzustand.setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
+async function _redlSetStatus(k: KatalogKontext, obj: Record<string, unknown>) {
+  await k.auftraege.laufzustand
+    .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 
-async function redownloadMissingImages(lauf?: AuftragsLauf) {
+async function redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) {
   if (_redlRunning) return { alreadyRunning: true };
   // Sperre auf EIGENER Verbindung: Advisory-Locks hängen an der Session.
   let lockClient: PoolClient;
   try {
-    lockClient = await katalog().teileAnreicherung.sperrVerbindung();
+    lockClient = await k.teileAnreicherung.sperrVerbindung();
   } catch (e) {
     return { error: fehlertext(e) || 'keine Verbindung' };
   }
@@ -521,7 +536,7 @@ async function redownloadMissingImages(lauf?: AuftragsLauf) {
   }
   _redlRunning = true;
   try {
-    return await _redownloadMissingImages(lauf);
+    return await _redownloadMissingImages(k, lauf);
   } finally {
     _redlRunning = false;
     await repo.gibNachlaufSperreFrei(lockClient).catch(logAndContinue('teile-enrich:pg_advisory_unlock'));
@@ -531,16 +546,16 @@ async function redownloadMissingImages(lauf?: AuftragsLauf) {
 
 type FehlendesBild = { image_local: string; image_url: string | null; fp: string };
 
-async function _redownloadMissingImages(lauf?: AuftragsLauf) {
+async function _redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
-    await _redlSetStatus({ running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
-    const { missing, ohneVorschau } = await fehlendeDateienSuchen();
-    const thumbsErzeugt = await vorschauenNachholen(ohneVorschau);
+    await _redlSetStatus(k, { running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
+    const { missing, ohneVorschau } = await fehlendeDateienSuchen(k);
+    const thumbsErzeugt = await vorschauenNachholen(k, ohneVorschau);
     const total = missing.length;
-    await _redlSetStatus({ running: true, phase: 'downloading', total, done: 0, redownloaded: 0, cleared: 0 });
+    await _redlSetStatus(k, { running: true, phase: 'downloading', total, done: 0, redownloaded: 0, cleared: 0 });
     if (!total) {
-      await _redlSetStatus({
+      await _redlSetStatus(k, {
         running: false,
         phase: 'done',
         total: 0,
@@ -552,16 +567,24 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
       return { total: 0, redownloaded: 0, cleared: 0, thumbs: thumbsErzeugt };
     }
 
-    const { done, redownloaded, cleared } = await fehlendeNachladen(missing, lauf);
+    const { done, redownloaded, cleared } = await fehlendeNachladen(k, missing, lauf);
     pruefeAbbruch(lauf);
 
-    await _redlSetStatus({ running: false, phase: 'done', total, done, redownloaded, cleared, thumbs: thumbsErzeugt });
+    await _redlSetStatus(k, {
+      running: false,
+      phase: 'done',
+      total,
+      done,
+      redownloaded,
+      cleared,
+      thumbs: thumbsErzeugt,
+    });
     console.log(
       `[img-redl] fertig: ${redownloaded} neu geladen, ${cleared} geleert (von ${total} fehlenden), ${thumbsErzeugt} Vorschauen erzeugt`,
     );
     return { total, redownloaded, cleared, thumbs: thumbsErzeugt };
   } catch (e) {
-    await _redlSetStatus({ running: false, phase: 'error', error: fehlertext(e) });
+    await _redlSetStatus(k, { running: false, phase: 'error', error: fehlertext(e) });
     if (lauf?.signal?.aborted) throw e;
     console.error('[img-redl] Fehler:', fehlertext(e));
     return { error: fehlertext(e) };
@@ -576,8 +599,8 @@ const gibtDatei = (fp: string) =>
 
 /** Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
  * keinen zweiten Anlauf. */
-async function fehlendeDateienSuchen() {
-  const rows = await katalog().teileAnreicherung.lokaleBilderMitAdresse();
+async function fehlendeDateienSuchen(k: KatalogKontext) {
+  const rows = await k.teileAnreicherung.lokaleBilderMitAdresse();
   const missing: FehlendesBild[] = [];
   const ohneVorschau: string[] = [];
   for (const r of rows) {
@@ -593,10 +616,10 @@ async function fehlendeDateienSuchen() {
 }
 
 /** Vorschauen zuerst: Sie brauchen kein Netz und wirken sofort auf jede Kachelwand. */
-async function vorschauenNachholen(ohneVorschau: string[]): Promise<number> {
+async function vorschauenNachholen(k: KatalogKontext, ohneVorschau: string[]): Promise<number> {
   let thumbsErzeugt = 0;
   if (!ohneVorschau.length) return 0;
-  await _redlSetStatus({
+  await _redlSetStatus(k, {
     running: true,
     phase: 'thumbs',
     total: ohneVorschau.length,
@@ -614,7 +637,7 @@ async function vorschauenNachholen(ohneVorschau: string[]): Promise<number> {
 
 /** Neu laden, was eine Adresse hat; sonst den Verweis leeren, damit die Kachel nicht
  * auf eine Datei zeigt, die es nicht gibt. */
-async function fehlendeNachladen(missing: FehlendesBild[], lauf?: AuftragsLauf) {
+async function fehlendeNachladen(k: KatalogKontext, missing: FehlendesBild[], lauf?: AuftragsLauf) {
   const total = missing.length;
   let done = 0,
     redownloaded = 0,
@@ -624,7 +647,7 @@ async function fehlendeNachladen(missing: FehlendesBild[], lauf?: AuftragsLauf) 
     const now = Date.now();
     if (!force && now - _lastFlush < 1000) return;
     _lastFlush = now;
-    await _redlSetStatus({ running: true, phase: 'downloading', total, done, redownloaded, cleared });
+    await _redlSetStatus(k, { running: true, phase: 'downloading', total, done, redownloaded, cleared });
   };
 
   let idx = 0;
@@ -636,8 +659,8 @@ async function fehlendeNachladen(missing: FehlendesBild[], lauf?: AuftragsLauf) 
       else {
         // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
         for (const tbl of repo.KATALOGE_MIT_BILD) {
-          await katalog()
-            .teileAnreicherung.vergissLokalesBild(tbl, m.image_local)
+          await k.teileAnreicherung
+            .vergissLokalesBild(tbl, m.image_local)
             .catch(logAndContinue(`img-redl:leeren ${tbl}`));
         }
         cleared++;

@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { konfig } from '../infra/konfig';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/zweiterFaktor';
-import { kontoBereich } from './prozess';
+import type { KontoKontext } from './kontext';
 
 const SCHRITT_S = 30;
 /** Ein Schritt vor und zurück: Uhren von Telefon und Server gehen nie gleich. */
@@ -113,37 +113,36 @@ async function codesErsetzen(tx: DbSchnittstelle, uid: number): Promise<string[]
   return codes;
 }
 
-export function istAktiv(uid: number): Promise<boolean> {
-  return kontoBereich().zweiterFaktor.aktiv(uid);
+export function istAktiv(k: KontoKontext, uid: number): Promise<boolean> {
+  return k.zweiterFaktor.aktiv(uid);
 }
 
-export async function stand(uid: number): Promise<{ aktiv: boolean; codes_uebrig: number }> {
-  const r = await kontoBereich().zweiterFaktor.faktorStand(uid);
+export async function stand(k: KontoKontext, uid: number): Promise<{ aktiv: boolean; codes_uebrig: number }> {
+  const r = await k.zweiterFaktor.faktorStand(uid);
   return { aktiv: r.aktiv, codes_uebrig: r.uebrig };
 }
 
 /** Noch nicht aktiv. @returns null, wenn der Faktor schon aktiv ist */
-export async function beginneEinrichtung(uid: number): Promise<string | null> {
+export async function beginneEinrichtung(k: KontoKontext, uid: number): Promise<string | null> {
   const geheimnis = base32(crypto.randomBytes(20));
-  return (await kontoBereich().zweiterFaktor.legeGeheimnisAn(uid, verschluessele(geheimnis, faktorKontext(uid))))
-    ? geheimnis
-    : null;
+  return (await k.zweiterFaktor.legeGeheimnisAn(uid, verschluessele(geheimnis, faktorKontext(uid)))) ? geheimnis : null;
 }
 
-export async function bestaetigeEinrichtung(uid: number, code: string): Promise<string[] | null> {
-  return kontoBereich().db.transaction(async tx => {
-    const z = await repo.unbestaetigtesGeheimnisSperren(tx, uid);
+export async function bestaetigeEinrichtung(k: KontoKontext, uid: number, code: string): Promise<string[] | null> {
+  return k.transaktion(async t => {
+    const z = await repo.unbestaetigtesGeheimnisSperren(t.db, uid);
     if (!z) return null;
     const schritt = passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', String(code ?? '').trim());
     if (schritt === null) return null;
-    await repo.aktiviere(tx, uid, schritt);
-    return codesErsetzen(tx, uid);
+    await repo.aktiviere(t.db, uid, schritt);
+    return codesErsetzen(t.db, uid);
   });
 }
 
 /** Einmalcode und Wiederherstellungscode gelten genau einmal.
  * @param mitEinmalcode false (Tagesschranke): Ein sechsstelliger Code wird nicht geprüft, Raten verrät nichts. */
 export async function pruefeCode(
+  k: KontoKontext,
   uid: number,
   code: string | number | null | undefined,
   mitEinmalcode = true,
@@ -152,23 +151,23 @@ export async function pruefeCode(
   if (!eingabe) return null;
   if (/^\d{6}$/.test(eingabe)) {
     if (!mitEinmalcode) return null;
-    const z = await kontoBereich().zweiterFaktor.aktivesGeheimnis(uid);
+    const z = await k.zweiterFaktor.aktivesGeheimnis(uid);
     const schritt = z ? passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', eingabe) : null;
     if (schritt === null) return null;
-    return (await kontoBereich().zweiterFaktor.verbraucheSchritt(uid, schritt)) ? 'totp' : null;
+    return (await k.zweiterFaktor.verbraucheSchritt(uid, schritt)) ? 'totp' : null;
   }
-  if (await kontoBereich().zweiterFaktor.verbraucheCode(uid, hashCode(uid, eingabe))) return 'wiederherstellung';
+  if (await k.zweiterFaktor.verbraucheCode(uid, hashCode(uid, eingabe))) return 'wiederherstellung';
   // Codes aus der Zeit vor einem Schlüsselwechsel: Ihr Klartext ist nicht gespeichert, neu hashen geht nicht.
   const vorWechsel = suchwertAlt('zweiter-faktor-code', `${uid}:${normiereCode(eingabe)}`);
-  if (vorWechsel && (await kontoBereich().zweiterFaktor.verbraucheCode(uid, vorWechsel))) return 'wiederherstellung';
+  if (vorWechsel && (await k.zweiterFaktor.verbraucheCode(uid, vorWechsel))) return 'wiederherstellung';
   if (normiereCode(eingabe).length !== ALT_LAENGE) return null;
-  return (await kontoBereich().zweiterFaktor.verbraucheCode(uid, alterHash(eingabe))) ? 'wiederherstellung' : null;
+  return (await k.zweiterFaktor.verbraucheCode(uid, alterHash(eingabe))) ? 'wiederherstellung' : null;
 }
 
-export function schalteAb(uid: number): Promise<void> {
-  return kontoBereich().zweiterFaktor.entferne(uid);
+export function schalteAb(k: KontoKontext, uid: number): Promise<void> {
+  return k.zweiterFaktor.entferne(uid);
 }
 
-export async function erneuereCodes(uid: number): Promise<string[]> {
-  return kontoBereich().db.transaction(tx => codesErsetzen(tx, uid));
+export async function erneuereCodes(k: KontoKontext, uid: number): Promise<string[]> {
+  return k.transaktion(t => codesErsetzen(t.db, uid));
 }

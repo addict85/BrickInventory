@@ -3,19 +3,6 @@
 import { dienstePerAufruf } from '../infra/bereich';
 import { finanzenBereich } from './prozess';
 
-export { farbkarte, fetchPrice, leerePreisCache, resolveSetCondition } from './financeCalc';
-export {
-  figMarktpreisMitHerkunft,
-  getCurrentFigMarketPrice,
-  getCurrentMarketPrice,
-  getCurrentPartMarketPrice,
-  marktpreisMitHerkunft,
-  marktpreiseAusCacheFuerFiguren,
-  marktpreiseAusCacheFuerTeile,
-  resolvePartCondition,
-} from './marketPrice';
-export { refreshPriceForSet } from './preisLauf';
-export { kaufpreisAusEingabe, manuellerKaufpreis } from './preisRegel';
 export {
   alarmUebertragen,
   alarmeAusCsv,
@@ -24,17 +11,71 @@ export {
   loescheAlarm,
   setzeAlarm,
 } from './preisalarm';
-export { preisverlaufSet, purgeAltePreise } from './priceHistory';
-export { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from './financeCalc';
-export { getPortfolioHistory } from './portfolioHistory';
-export { runPriceRefresh } from './preisLauf';
 export { alleAlarme, ausgeloesteSeit } from './preisalarm';
-export { preiseNachladen } from './preiseNachladen';
-export { preisverlaufFigur, preisverlaufTeil } from './priceHistory';
-export { kursauftrag, planeKursabruf } from './wechselkurse';
 export { erzeugeFinanzen } from './bereich';
 export type { FinanzenDienste, FinanzenKontext } from './bereich';
-export { finanzenBereich, verdrahteFinanzen } from './prozess';
+export { finanzenBereich } from './prozess';
 
 /** Für Routen: die Preisalarm-Dienste des Prozesses ohne Zugang als ersten Parameter. */
 export const preisalarm = dienstePerAufruf(() => finanzenBereich().preisalarm, ['alleAlarme', 'ausgeloesteSeit']);
+
+/** Für Wege ohne eigenen Kontext (HTTP-Seiten, Tests): die Dienste des Prozesses. */
+export const {
+  computeMinifigsValuation,
+  computePartsValuation,
+  computePnl,
+  computeSetsValuation,
+  farbkarte,
+  fetchPrice,
+  figMarktpreisMitHerkunft,
+  getCurrentFigMarketPrice,
+  getCurrentMarketPrice,
+  getCurrentPartMarketPrice,
+  getPortfolioHistory,
+  kaufpreisAusEingabe,
+  kursauftrag,
+  leerePreisCache,
+  manuellerKaufpreis,
+  marktpreisMitHerkunft,
+  marktpreiseAusCacheFuerFiguren,
+  marktpreiseAusCacheFuerTeile,
+  planeKursabruf,
+  preiseNachladen,
+  preisverlaufFigur,
+  preisverlaufSet,
+  preisverlaufTeil,
+  purgeAltePreise,
+  refreshPriceForSet,
+  resolvePartCondition,
+  resolveSetCondition,
+  runPriceRefresh,
+} = dienstePerAufruf(finanzenBereich, [
+  'computeMinifigsValuation',
+  'computePartsValuation',
+  'computePnl',
+  'computeSetsValuation',
+  'farbkarte',
+  'fetchPrice',
+  'figMarktpreisMitHerkunft',
+  'getCurrentFigMarketPrice',
+  'getCurrentMarketPrice',
+  'getCurrentPartMarketPrice',
+  'getPortfolioHistory',
+  'kaufpreisAusEingabe',
+  'kursauftrag',
+  'leerePreisCache',
+  'manuellerKaufpreis',
+  'marktpreisMitHerkunft',
+  'marktpreiseAusCacheFuerFiguren',
+  'marktpreiseAusCacheFuerTeile',
+  'planeKursabruf',
+  'preiseNachladen',
+  'preisverlaufFigur',
+  'preisverlaufSet',
+  'preisverlaufTeil',
+  'purgeAltePreise',
+  'refreshPriceForSet',
+  'resolvePartCondition',
+  'resolveSetCondition',
+  'runPriceRefresh',
+]);

@@ -1,65 +1,81 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeAuftraege bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeImSystemrahmen, bindeZugang } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext als ersten Parameter;
+ * erzeugeAuftraege bindet ihn einmal für alle. So greift kein Modul selbst auf
+ * den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
+import { baueKontext, bindeGenerisch, bindeZugang } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
-import * as auftraege from './repository/auftraege';
-import * as importStand from './repository/importStand';
-import * as laufzustand from './repository/laufzustand';
-import * as pdfAuftraege from './repository/pdfAuftraege';
+import * as anleitungsAuftrag from './anleitungsAuftrag';
+import * as bricksetAuftrag from './bricksetAuftrag';
+import * as dienst from './dienst';
+import * as hintergrund from './hintergrund';
+import * as importAlsAuftrag from './importAlsAuftrag';
+import * as importAuftrag from './importAuftrag';
+import * as jobMonitor from './jobMonitor';
+import * as pdfDienste from './pdfAuftraege';
+import * as startZustand from './startZustand';
+import * as zeitplan from './zeitplan';
+import { zugang, type AuftraegeAbhaengigkeiten, type AuftraegeKontext } from './kontext';
 
-export interface AuftraegeKontext {
-  db: Db;
-}
+export type { AuftraegeAbhaengigkeiten, AuftraegeKontext } from './kontext';
 
-export function erzeugeAuftraege(k: AuftraegeKontext) {
-  const { db } = k;
+export function erzeugeAuftraege(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>) {
+  const k: AuftraegeKontext = baueKontext({ ...a, faecher: new Faecher() }, zugang);
   return {
-    db,
-    faecher: new Faecher(),
-    // Eine Warteschlange für alle Konten; eine Konto-Anfrage sieht per Zeilenschutz nur eigene.
-    auftraege: bindeImSystemrahmen(db, auftraege, 'auftragsschlange', [
-      'auftragsListe',
-      'auftragsStand',
-      'belegeAuftrag',
-      'bricksetWartende',
-      'bricksetWiedervorlage',
-      'ergaenzePreisAuftrag',
-      'fuegeAuftragEin',
-      'gehoertNoch',
-      'gibZurueck',
-      'hoechsterBricksetVersuch',
-      'kontoRolle',
-      'laeuftArt',
-      'laufendePausen',
-      'lebenszeichen',
-      'leereArt',
-      'letzteJeArt',
-      'liesPause',
-      'loescheOffenen',
-      'loeschePause',
-      'macheFaellig',
-      'merkeBricksetVor',
-      'merkeExklusive',
-      'pausiereArt',
-      'raeumeErledigteAuf',
-      'schreibeErgebnis',
-      'schreibeFortschritt',
-      'setzeAbgebrochen',
-      'setzeErledigt',
-      'setzeFaelligkeit',
-      'setzeFehlgeschlagen',
-      'setzeVerschoben',
-      'statusZahlen',
-      'stelleWiederEin',
-      'zahlenJeArtUndStatus',
-      'zieheBricksetTermineVor',
-      'zieheTerminVor',
+    ...k,
+    ...bindeZugang(k, bricksetAuftrag, [
+      'bricksetVormerken',
+      'bricksetAusWiedervorlage',
+      'bricksetTermineVorziehen',
+      'bricksetListe',
+      'bricksetZahlen',
+      'bricksetJetzt',
+      'bricksetFaelligAb',
     ]),
-    importStand: bindeZugang(db, importStand),
-    laufzustand: bindeZugang(db, laufzustand),
-    pdfAuftraege: bindeImSystemrahmen(db, pdfAuftraege, 'auftragsschlange'),
+    ...bindeZugang(k, dienst, [
+      'merkePreiseVor',
+      'setzeFortschritt',
+      'erledigt',
+      'fehlgeschlagen',
+      'verschoben',
+      'beendePause',
+      'zaehleArt',
+      'beiAuftragsStand',
+      'beiNeuemAuftrag',
+      'pruefeZugehoerigkeit',
+    ]),
+    stelleAuftragEin: bindeGenerisch(k)(dienst.stelleAuftragEin),
+    imNamenDesAuftrags: bindeGenerisch(k)(dienst.imNamenDesAuftrags),
+    ...bindeZugang(k, hintergrund, [
+      'auftraegeImUeberblick',
+      'leereAuftragsArt',
+      'auftragsArtJetzt',
+      'auftragAbbrechen',
+      'auftragWiederholen',
+    ]),
+    ...bindeZugang(k, importAlsAuftrag, ['setzeErgebnis', 'setzeFachfehler']),
+    importAlsAuftrag: bindeGenerisch(k)(importAlsAuftrag.importAlsAuftrag),
+    ...bindeZugang(k, importAuftrag, [
+      'emitJobStatus',
+      'jobGet',
+      'jobSet',
+      'jobUpdate',
+      'setzeImportFort',
+      'beiImportStand',
+      'starteAuftrag',
+      'meldeAuftrag',
+      'beendeAuftrag',
+      'istAbgebrochen',
+    ]),
+    ...bindeZugang(k, jobMonitor, ['all', 'imgDlAdd', 'imgDlPending', 'imgDlReset', 'get']),
+    ...bindeZugang(k, pdfDienste, ['liesAuftrag', 'loescheAuftrag', 'pdfAuftragStarten', 'cleanOldPdfJobs']),
+    ...bindeZugang(k, startZustand, ['meldeStartZustand', 'aktuellerStartZustand']),
+    ...bindeZugang(k, zeitplan, [
+      'zeitplanGeaendert',
+      'ziehePlanVor',
+      'planeNaechsten',
+      'planeAlle',
+      'taeglicheUhrzeit',
+    ]),
+    ...bindeZugang(k, anleitungsAuftrag, ['anleitungEinreihen']),
   };
 }
 

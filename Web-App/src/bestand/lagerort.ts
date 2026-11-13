@@ -3,18 +3,8 @@
 import type { Db, DbSchnittstelle } from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
-import {
-  haushaltBereich,
-  asIds,
-  blickfeldAus,
-  type Sicht,
-  schreibbereichAus,
-  type Schreiber,
-  type BlickfeldEingabe,
-} from '../haushalt';
+import { asIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber, type BlickfeldEingabe } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
-import { deleteUserSetting } from '../einstellungen';
-import { setUserSetting } from '../konto';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
  * Kachel passen, und eine Absage ist besser als ein abgeschnittener Name. */
@@ -65,35 +55,6 @@ function nameOderFehler(v: unknown): string {
   if (!s) fachfehler('ungueltig', 'lagerort_leer');
   if (s.length > LAGERORT_MAX_ZEICHEN) fachfehler('ungueltig', 'lagerort_zu_lang');
   return s;
-}
-
-/** Schnittmenge statt Absage; ohne Ansichtsfilter, denn die Frage ist „darf ich?“. */
-export async function lagerKonten(
-  nutzer: number,
-  wunsch: string | number | undefined,
-  schreiben: boolean,
-): Promise<number[]> {
-  const gewuenscht = String(wunsch ?? '')
-    .split(',')
-    .map(x => parseInt(x.trim(), 10))
-    .filter(Number.isFinite);
-  if (!gewuenscht.length) return [nutzer];
-  const erlaubt = schreiben
-    ? await haushaltBereich().haushalt.schreibbereich(nutzer)
-    : await haushaltBereich().haushalt.blickfeldIds(nutzer);
-  return gewuenscht.filter(id => erlaubt.includes(id));
-}
-
-/** EIN Konto je Schreibaufruf, damit jeder Ort für sich scheitern kann; 403 ohne Recht. */
-export async function lagerSchreibkonto(nutzer: number, wunsch: string | number | undefined): Promise<number> {
-  const konto = (await lagerKonten(nutzer, wunsch, true))[0];
-  if (konto === undefined) fachfehler('verboten', 'kein_schreibrecht');
-  return konto;
-}
-
-/** Der Vorrat der gewünschten Konten, soweit das Konto sie sehen darf. */
-export async function orteFuer(db: DbSchnittstelle, nutzer: number, wunsch: string | undefined): Promise<Lagerort[]> {
-  return orteVon(db, await lagerKonten(nutzer, wunsch, false));
 }
 
 /** Wer wessen Liste sehen darf, entscheidet der Haushalt; die IDs kommen mit. */
@@ -192,18 +153,4 @@ export async function ortFuerNeuerfassung(
   if (ort) return ort;
   if (mitgegeben !== undefined && mitgegeben !== null) return null;
   return (await vorgabeVon(db, userId))?.name ?? null;
-}
-
-/** `null` löscht sie. Ein fremder Ort wird abgelehnt, nicht ignoriert: Der
- * Stern stünde sonst am falschen Eintrag. */
-export async function setzeVorgabe(db: DbSchnittstelle, userId: number, id: number | null): Promise<Lagerort | null> {
-  if (id === null) {
-    await deleteUserSetting(userId, VORGABE_SCHLUESSEL);
-    return null;
-  }
-  const ort = await orte.ortDesKontos(db, id, userId);
-  if (!ort) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
-  // Über die Einstellungen des Kontos: user_settings gehört dorthin.
-  await setUserSetting(userId, VORGABE_SCHLUESSEL, String(id));
-  return { id: parseInt(String(ort.id), 10), user_id: userId, name: ort.name };
 }

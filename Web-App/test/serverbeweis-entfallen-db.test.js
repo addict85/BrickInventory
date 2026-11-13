@@ -32,7 +32,7 @@ test('POST /api/v1/auth/serverbeweis gibt es nicht mehr', { concurrency: 1 }, as
     next();
   });
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
-  app.use('/api/v1/auth', _req('routes/auth.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const frage = (kopf = {}) =>

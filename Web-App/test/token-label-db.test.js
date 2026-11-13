@@ -58,7 +58,7 @@ test('Token-Label beim Anmelden', { concurrency: 1 }, async t => {
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, _req('routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
 

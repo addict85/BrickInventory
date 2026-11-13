@@ -1,19 +1,26 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeIdempotenz bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
-import * as repository from './repository';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeIdempotenz bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
+import * as dienst from './dienst';
+import { zugang, type IdempotenzAbhaengigkeiten, type IdempotenzKontext } from './kontext';
 
-export interface IdempotenzKontext {
-  db: Db;
-}
+export type { IdempotenzAbhaengigkeiten, IdempotenzKontext } from './kontext';
 
-export function erzeugeIdempotenz(k: IdempotenzKontext) {
-  const { db } = k;
+export function erzeugeIdempotenz(a: IdempotenzAbhaengigkeiten) {
+  const k: IdempotenzKontext = baueKontext(a, zugang);
   return {
-    db,
-    repository: bindeZugang(db, repository),
+    ...k,
+    ...bindeZugang(k, dienst, [
+      'alteAbdrueckeLoeschen',
+      'antwortenUmschluesseln',
+      'alleVergessen',
+      'raeumeIdempotenzAuf',
+      'beginne',
+      'beende',
+      'gibFrei',
+      'mitWirkungsVermerk',
+    ]),
   };
 }
 

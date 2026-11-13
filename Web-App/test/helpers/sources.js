@@ -117,16 +117,17 @@ function buildAndRequire() {
   // Die Bauteile erst beim ersten Gebrauch: Viele Tests stellen Klienten nach diesem
   // Aufruf über require.cache; ein früher geladener Dienst hielte die echten fest.
   const echt = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueVerdrahtung();
-  const faul = new Proxy(
-    {},
-    {
-      get:
-        (_z, k) =>
-        (...a) =>
-          echt().nacharbeit[k](...a),
-    },
+  // Ein Objekt für alle Bereiche: Ein Test ersetzt eine Methode darin (prozessDienste().katalog.nacharbeit).
+  const faul = Object.fromEntries(
+    [
+      'preisJobAnstossen',
+      'preisFuerSetHolen',
+      'bildVormerken',
+      'setTeileAnreichern',
+      'figurenAnreichern',
+      'setBilderLaden',
+    ].map(k => [k, (...a) => echt().nacharbeit[k](...a)]),
   );
-  require(path.join(ROOT, 'dist', 'src/auftraege/nacharbeit.js')).verdrahteNacharbeit(faul);
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
   const testDb = () =>
@@ -139,37 +140,9 @@ function buildAndRequire() {
   require(path.join(ROOT, 'dist', 'clients/zugang.js')).verdrahteKlienten(
     new Proxy({}, { get: (_z, k) => klientenEcht()[k] }),
   );
-  // prozess.js lädt nichts; bereich.js erst beim ersten Gebrauch der Dienste.
-  const BEREICHE = [
-    ['einstellungen', 'Einstellungen'],
-    ['auftraege', 'Auftraege'],
-    ['haushalt', 'Haushalt'],
-    ['konto', 'Konto'],
-    ['idempotenz', 'Idempotenz'],
-    ['finanzen', 'Finanzen'],
-    ['bestand', 'Bestand'],
-    ['teile', 'Teile'],
-    ['figuren', 'Figuren'],
-    ['merkliste', 'Merkliste'],
-    ['gutscheine', 'Gutscheine'],
-    ['sammlung', 'Sammlung'],
-    ['verwaltung', 'Verwaltung'],
-  ];
-  for (const [b, B] of BEREICHE)
-    require(path.join(ROOT, 'dist', `src/${b}/prozess.js`))[`verdrahte${B}`](() =>
-      require(path.join(ROOT, 'dist', `src/${b}/bereich.js`))[`erzeuge${B}`]({ db: testDb() }),
-    );
-  require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).verdrahteKatalog(() =>
-    require(path.join(ROOT, 'dist', 'src/katalog/bereich.js')).erzeugeKatalog({ db: testDb() }),
-  );
-  require(path.join(ROOT, 'dist', 'src/sets/prozess.js')).verdrahteSets(() =>
-    require(path.join(ROOT, 'dist', 'src/sets/bereich.js')).erzeugeSets({
-      db: testDb(),
-      nacharbeit: faul,
-      katalog: require(path.join(ROOT, 'dist', 'src/katalog/prozess.js')).katalog(),
-      finanzen: require(path.join(ROOT, 'dist', 'src/finanzen/prozess.js')).finanzenBereich(),
-      auftraege: require(path.join(ROOT, 'dist', 'src/auftraege/prozess.js')).auftraegeBereich(),
-    }),
+  // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch.
+  require(path.join(ROOT, 'dist', 'src/infra/bereich.js')).verdrahteDienste(() =>
+    require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueDienste(testDb(), faul),
   );
   // db/database.js mit den Funktionen des Testzugangs, wie es früher der Prozesszugang war.
   const fassade = Object.create(dbModul, {
@@ -191,10 +164,64 @@ function buildAndRequire() {
     'inTransaktion',
   ])
     fassade[f] = (...a) => testDb()[f](...a);
-  return rel => (rel === 'db/database.js' ? fassade : require(path.join(ROOT, 'dist', rel)));
+  return rel => (rel === 'db/database.js' ? fassade : mitKontext(rel, require(path.join(ROOT, 'dist', rel))));
+}
+
+/** Innere Dienste eines Bereichs nehmen den Kontext als ersten Parameter (src/infra/bereich.ts).
+ *  Ein Test, der ein solches Modul direkt lädt, ruft sie mit dem Kontext des Prozesses,
+ *  wie es die Fassade der index.ts für die exportierten tut. */
+const _mitKontext = new Map();
+const KONTEXT_FN =
+  /^(?:export )?(?:async )?function (\w+)(?:<[^(]*>)?\(\s*kx?: \w+Kontext\b|^(?:export )?const (\w+) = (?:async )?\(\s*kx?: \w+Kontext\b/gm;
+/** Die Namen der Kontext-Dienste einer Quelle, auch weitergereichte (export { a as b } [from './x']). */
+function kontextNamen(ts, tiefe = 0) {
+  const quelle = fs.existsSync(ts) ? fs.readFileSync(ts, 'utf8') : '';
+  const namen = new Set([...quelle.matchAll(KONTEXT_FN)].map(x => x[1] || x[2]));
+  if (tiefe < 2)
+    for (const i of quelle.matchAll(/^import \{([^}]*)\} from '(\.[^']+)';/gm)) {
+      const dort = kontextNamen(path.join(path.dirname(ts), `${i[2]}.ts`), tiefe + 1);
+      for (const n of i[1].split(',').map(x => x.trim())) if (dort.has(n)) namen.add(n);
+    }
+  for (const e of quelle.matchAll(/^export \{([^}]*)\}(?: from '(\.[^']+)')?;/gm)) {
+    const quellNamen = e[2] && tiefe < 2 ? kontextNamen(path.join(path.dirname(ts), `${e[2]}.ts`), tiefe + 1) : namen;
+    for (const teil of e[1].split(',')) {
+      const [a, b = a] = teil.trim().split(/\s+as\s+/);
+      if (a && quellNamen.has(a)) namen.add(b);
+    }
+  }
+  return namen;
+}
+function mitKontext(rel, modul) {
+  const m = /^src\/(\w+)\/(?!index\.js$|bereich\.js$|prozess\.js$|repository\/|http\/)[\w/]+\.js$/.exec(rel);
+  if (!m || !fs.existsSync(path.join(ROOT, 'src', m[1], 'prozess.ts'))) return modul;
+  if (!_mitKontext.has(rel)) {
+    const namen = kontextNamen(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
+    const bereich = () => require(path.join(ROOT, 'dist', 'src/infra/bereich.js')).prozessDienste()[m[1]];
+    _mitKontext.set(
+      rel,
+      namen.size
+        ? new Proxy(modul, {
+            get: (z, n) =>
+              typeof n === 'string' && namen.has(n) && typeof z[n] === 'function'
+                ? (...a) => z[n](bereich(), ...a)
+                : z[n],
+          })
+        : modul,
+    );
+  }
+  return _mitKontext.get(rel);
 }
 
 module.exports.buildAndRequire = buildAndRequire;
+
+/** Ein Routenmodul mit Fabrik (baueXRouter(d)) als Router, mit den Diensten des Prozesses
+ *  (dieselben, die baueDienste() für diese Testdatei gebaut hat); ein Modul ohne Fabrik unverändert. */
+function routerAus(_req, rel) {
+  const m = _req(rel);
+  const baue = Object.entries(m).find(([n, f]) => /^baue\w*Router$/.test(n) && typeof f === 'function');
+  return baue ? baue[1](_req('src/infra/bereich.js').prozessDienste()) : m;
+}
+module.exports.routerAus = routerAus;
 
 /** Der Zugang aus erzeugeDb(), den auch die verdrahteten Dienste dieser Testdatei
  *  benutzen: für neue Tests statt der Fassade `_req('db/database.js')`, die so
@@ -511,10 +538,14 @@ function routerEinhaengungen(o = {}) {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
   // `import xRouter from '../routes/x'` oben, `app.use('/api/…', xRouter)` unten.
   const dateiJeName = new Map(
-    [...src.matchAll(/import\s+(\w+)\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)].map(m => [m[1], m[2]]),
+    [...src.matchAll(/import\s+(?:\{\s*)?(\w+)(?:\s*\})?\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)].map(m => [
+      m[1],
+      m[2],
+    ]),
   );
   const out = [];
-  for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)\s*\)/g)) {
+  // Ein Router mit Fabrik hängt als `baueXRouter(d)` ein.
+  for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)(?:\(\w+\))?\s*\)/g)) {
     const datei = dateiJeName.get(m[2]);
     if (!datei || datei.startsWith('routes/api_v1')) continue;
     out.push({
@@ -707,6 +738,18 @@ function dienstQuelle(rel) {
     if (!fs.existsSync(fabrik)) continue;
     const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
     if (ziel && /repository/.test(ziel[1])) repos.add(`src/${m[1]}/${ziel[1]}.ts`);
+  }
+  // Über den Kontext des Dienstes (k.repo., k.<bereich>.repo.; t in einer Transaktion).
+  const eigener = /^src\/(\w+)\//.exec(rel)?.[1];
+  const ueber = (b, name) => {
+    const fabrik = path.join(ROOT, `src/${b}/kontext.ts`);
+    if (!b || !fs.existsSync(fabrik)) return;
+    const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${name} from '\\./([^']+)'`));
+    if (ziel && /repository/.test(ziel[1])) repos.add(`src/${b}/${ziel[1]}.ts`);
+  };
+  for (const m of ohneKommentare(s).matchAll(/\b(?:k|kx|sk|t)\.(\w+)\.(\w+)?/g)) {
+    ueber(eigener, m[1]);
+    if (m[2]) ueber(m[1], m[2]);
   }
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }

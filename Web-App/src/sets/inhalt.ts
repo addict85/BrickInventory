@@ -1,20 +1,5 @@
 /** Stammdaten, Teile- und Figurenliste eines Sets. */
-import { stelleAuftragEin } from '../auftraege';
-import {
-  proxyImageUrl,
-  importPartsForSet,
-  setNummerImBlickfeld,
-  neuestesInventar,
-  figurenAusKatalog,
-  getMinifigInfo,
-  getSetMinifigs,
-  getAllSetParts,
-  type RbSetTeil,
-  ersteBlNummer,
-  merkeFigur,
-  merkeSetFiguren,
-} from '../katalog';
-import { zaehleAnfrage } from '../konto';
+import { proxyImageUrl, getMinifigInfo, getSetMinifigs, type RbSetTeil, ersteBlNummer } from '../katalog';
 import { findSetInScope } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
@@ -34,7 +19,7 @@ export async function setInfo(sk: SetsKontext, setNumber: string): Promise<SetSt
 export async function setInfoFuerKonto(sk: SetsKontext, uid: number, setNumber: string) {
   const n = mitVersion(setNumber);
   const stamm = await setInfo(sk, n);
-  const fremderPlatzhalter = !!stamm?.platzhalter && !(await setNummerImBlickfeld(uid, n));
+  const fremderPlatzhalter = !!stamm?.platzhalter && !(await sk.katalog.setNummerImBlickfeld(uid, n));
   if (!stamm || fremderPlatzhalter) return { set_number: n, name: n, im_katalog: false as const };
   const { platzhalter: _platzhalter, ...row } = stamm;
   return { set_number: n, ...row, name: row.name || n, im_katalog: true as const };
@@ -52,7 +37,7 @@ export const QUELLE_GESTOERT = 'quelle_gestoert';
 export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreichern: (sn: string) => Promise<unknown>) {
   const n = mitVersion(setNum),
     bare = ohneVersion(n);
-  const invId = await neuestesInventar(setNum, sk.katalog);
+  const invId = await sk.katalog.neuestesInventar(setNum);
   let teile: ListenTeil[] = [];
   let source = 'db';
   if (invId) {
@@ -61,8 +46,8 @@ export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreich
   if (!teile.length) {
     source = 'api';
     // Ist Rebrickable gestört, sagt die Antwort das; eine leere Liste hiesse „das Set hat keine Teile“.
-    const mit = await versuche('sets:getAllSetParts', getAllSetParts(n));
-    const rb = mit.ok && mit.wert ? mit : await versuche('sets:getAllSetParts', getAllSetParts(bare));
+    const mit = await versuche('sets:getAllSetParts', sk.katalog.getAllSetParts(n));
+    const rb = mit.ok && mit.wert ? mit : await versuche('sets:getAllSetParts', sk.katalog.getAllSetParts(bare));
     if (!rb.ok) return { parts: [], source: QUELLE_GESTOERT, error: rb.fehler.grund, ...eineSeite(0) };
     teile = (rb.wert || []).map((r: RbSetTeil) => ({
       part_number: r.part.part_num,
@@ -130,7 +115,7 @@ export async function teilelisteDesSets(sk: SetsKontext, setNum: string, anreich
   }
   await versuche(
     `sets:bilder einstellen ${setNum}`,
-    stelleAuftragEin('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxVersuche: 3 }, sk.auftraege),
+    sk.auftraege.stelleAuftragEin('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxVersuche: 3 }),
   );
   return { parts: [...zeilen.values()], source, ...eineSeite(zeilen.size) };
 }
@@ -156,12 +141,12 @@ export async function figurenlisteDesSets(sk: SetsKontext, setNum: string) {
     owners: [] as { id: number; username: string }[],
   });
 
-  const katalog = await figurenAusKatalog(setNum, sk.katalog);
+  const katalog = await sk.katalog.figurenAusKatalog(setNum);
   if (katalog.length) return { figs: katalog.map(ausgabe), source: 'catalog' };
 
   type Fig = { fig_number: string; fig_name: string | null; quantity: number; image_url: string | null };
   let figs: Fig[] = [];
-  const invId = await neuestesInventar(setNum, sk.katalog);
+  const invId = await sk.katalog.neuestesInventar(setNum);
   if (invId) {
     figs = await repo.inventarFigurenDesSets(sk.db, invId);
   }
@@ -173,12 +158,13 @@ export async function figurenlisteDesSets(sk: SetsKontext, setNum: string) {
   }
   if (!figs.length) return { figs: [], source: 'not_found' };
   setImmediate(() => {
-    void versuche('sets:figurenkatalog schreiben', figurenMerken(n, figs));
+    void versuche('sets:figurenkatalog schreiben', figurenMerken(sk, n, figs));
   });
   return { figs: figs.map(ausgabe), source: 'csv_cache' };
 }
 
 async function figurenMerken(
+  k: SetsKontext,
   n: string,
   figs: Array<{ fig_number: string; fig_name: string | null; quantity: number; image_url: string | null }>,
 ) {
@@ -186,8 +172,8 @@ async function figurenMerken(
     let bild = f.image_url || null;
     if (!bild)
       bild = wertOder(await versuche('sets:minifigur-info', getMinifigInfo(f.fig_number)), null)?.image_url || null;
-    await merkeFigur(f.fig_number, f.fig_name, bild);
-    await merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
+    await k.katalog.merkeFigur(f.fig_number, f.fig_name, bild);
+    await k.katalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
   }
 }
 
@@ -195,9 +181,9 @@ async function figurenMerken(
 export async function teileDesSetsImportieren(sk: SetsKontext, uid: number, sn: string): Promise<number> {
   const set = await findSetInScope(sk, uid, sn);
   if (!set) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
-  const takt = await zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
+  const takt = await sk.konto.zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
   if (takt.count > 30) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: takt.waitMin });
-  return importPartsForSet(set.set_number, set.owner_user_id);
+  return sk.katalog.importPartsForSet(set.set_number, set.owner_user_id);
 }
 
 /** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */

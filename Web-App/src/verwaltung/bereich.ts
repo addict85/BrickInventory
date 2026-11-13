@@ -1,48 +1,48 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeVerwaltung bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeImSystemrahmen } from '../infra/bereich';
-import * as verwaltung from './repository/verwaltung';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeVerwaltung bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
+import * as aufraeumen from './aufraeumen';
+import * as datenexport from './datenexport';
+import * as diagnose from './diagnose';
+import * as dienst from './dienst';
+import * as gesundheit from './gesundheit';
+import * as jobUebersicht from './jobUebersicht';
+import * as einstellungenSpeichern from './einstellungenSpeichern';
+import * as hintergrund from './hintergrund';
+import * as startNachlaeufe from './startNachlaeufe';
+import { zugang, type VerwaltungAbhaengigkeiten, type VerwaltungKontext } from './kontext';
 
-export interface VerwaltungKontext {
-  db: Db;
-}
+export type { VerwaltungAbhaengigkeiten, VerwaltungKontext } from './kontext';
 
-export function erzeugeVerwaltung(k: VerwaltungKontext) {
-  const { db } = k;
+export function erzeugeVerwaltung(a: VerwaltungAbhaengigkeiten) {
+  const k: VerwaltungKontext = baueKontext(a, zugang);
   return {
-    db,
-    // Diagnose und Zählungen gehen über alle Konten; die Routen selbst laufen ohne Systemrahmen.
-    verwaltung: bindeImSystemrahmen(db, verwaltung, 'verwaltung', [
-      'bestandsFigurenbilderOffen',
-      'bildZeilenDerKonten',
-      'bricklinkTeile',
-      'fehlanzeigeDerVorschau',
-      'fehlanzeigeDesSets',
-      'katalogBild',
-      'katalogBildKandidaten',
-      'katalogBilderOffen',
-      'letzterLaufDerArt',
-      'offeneBildauftraege',
-      'probeErfassungen',
-      'probePreisCache',
-      'probePreisVerlauf',
-      'probeSet',
-      'probeWaehrung',
-      'protokollSeit',
-      'rbInventarTeile',
-      'rbTeile',
-      'setFehlanzeigen',
-      'setFehlanzeigenOhne404',
-      'setFigurenbilderOffen',
-      'setsOhneAnleitung',
-      'teilbilderFertig',
-      'teilbilderOffen',
-      'veraltetePreise',
-      'vorschauFehlanzeigen',
-      'zugeordneteTeile',
+    ...k,
+    ...bindeZugang(k, aufraeumen, ['aufraeumen', 'aufraeumenTaeglich']),
+    ...bindeZugang(k, datenexport, ['datenZip', 'konfigImport', 'konfigExport']),
+    ...bindeZugang(k, diagnose, ['preisProbe', 'bildDiagnose']),
+    ...bindeZugang(k, dienst, [
+      'cacheStatistik',
+      'anleitungenNeuEinreihen',
+      'preisJobStand',
+      'katalogBilderEinreihen',
+      'bildFehlanzeigenVergessen',
+      'serverProtokollSeit',
+      'cachesLeeren',
+      'bricksetLimitGesetzt',
+      'preisJobJetzt',
+      'fehlendeBilderNachladen',
+      'katalogAbgleichJetzt',
+      'bricksetWiederholen',
+      'bricksetEntfernen',
+      'jobZeitplanSetzen',
     ]),
+    ...bindeZugang(k, gesundheit, ['gesundheitsBericht', 'datenbankBereit']),
+    ...bindeZugang(k, jobUebersicht, ['jobUebersicht']),
+    ...bindeZugang(k, einstellungenSpeichern, ['einstellungenSpeichern']),
+    ...bindeZugang(k, hintergrund, ['auftragsUebersicht', 'auftragsArtLeeren']),
+    ...bindeZugang(k, startNachlaeufe, ['nachlauf']),
   };
 }
 

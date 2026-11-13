@@ -1,9 +1,8 @@
-import { haushaltBereich, type Sicht } from '../haushalt';
-import { getSetting as getSettingStandard } from '../einstellungen';
+import type { Sicht } from '../haushalt';
 import { baueDiagrammdaten } from './portfolio/diagrammdaten';
 import { rekonstruiereKurve, type KurvenPunkt } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
-import { finanzenBereich } from './prozess';
+import type { FinanzenKontext } from './kontext';
 /** Je Monat der letzte Punkt; der erste bleibt exakt, damit alle Zeiträume beim selben Start beginnen. */
 function aufMonate(rawPoints: KurvenPunkt[]): KurvenPunkt[] {
   const byMonth = new Map<string, KurvenPunkt>();
@@ -34,13 +33,14 @@ function mitStartpunkt(rawPoints: KurvenPunkt[], period: string, purchaseTotal: 
 /** `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
  * Datenbank prüfbar bleibt. */
 export async function getPortfolioHistory(
+  k: FinanzenKontext,
   viewerId: number,
   idsWahl: Sicht | number[],
   period: string,
-  db: unknown = finanzenBereich().db,
-  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = getSettingStandard,
+  db: unknown = k.db,
+  getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.getSetting,
 ) {
-  const ids = await haushaltBereich().haushalt.blickfeldAus(idsWahl);
+  const ids = await k.haushalt.haushalt.blickfeldAus(idsWahl);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
   // Währung darf dann nicht aus ids[0] kommen.
   const uids = Array.isArray(ids) ? ids.map(n => parseInt(String(n), 10)) : [parseInt(String(ids), 10)];
@@ -48,7 +48,7 @@ export async function getPortfolioHistory(
   const condition = DEFAULT_PRICE_CONDITION;
 
   // Ein Set, EINE Zeile, auch bei zwei Besitzern — sonst käme es zweimal in die Summe.
-  const sets = await finanzenBereich().portfolioKurve.setsMitKaufsumme(uids);
+  const sets = await k.portfolioKurve.setsMitKaufsumme(uids);
   if (!sets.length) {
     return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
   }
@@ -70,7 +70,7 @@ export async function getPortfolioHistory(
   // Die Kurve zeigt den HEUTIGEN Bestand über die Zeit: Sonst erschiene jedes
   // Erfassen als Kurssprung.
 
-  const kurve = await rekonstruiereKurve({
+  const kurve = await rekonstruiereKurve(k, {
     db,
     setNumbers,
     setQty,

@@ -1,5 +1,5 @@
 import { logAndContinue, meldeFehler } from '../infra/fehler';
-import { auftraegeBereich } from './prozess';
+import type { AuftraegeKontext } from './kontext';
 
 /** Den Katalog lädt der Job-Prozess; der Web-Prozess liest den Stand aus
  * laufzustand nach. */
@@ -21,10 +21,10 @@ export function setzeStartZustand(s: StartZustand): void {
   _stand = s;
 }
 
-export async function meldeStartZustand(s: StartZustand): Promise<void> {
+export async function meldeStartZustand(k: AuftraegeKontext, s: StartZustand): Promise<void> {
   _stand = s;
-  await auftraegeBereich()
-    .laufzustand.setzeZustand('startup_status', JSON.stringify(s))
+  await k.laufzustand
+    .setzeZustand('startup_status', JSON.stringify(s))
     .catch(logAndContinue('start:zustand schreiben'));
 }
 
@@ -43,10 +43,10 @@ export function oeffentlicherStartZustand(
 }
 
 /** Bereit bleibt bereit — darum endet das Nachlesen danach. */
-export async function aktuellerStartZustand(): Promise<StartZustand> {
+export async function aktuellerStartZustand(k: AuftraegeKontext): Promise<StartZustand> {
   if (_stand.ready) return _stand;
   try {
-    const roh = await auftraegeBereich().laufzustand.liesZustand('startup_status');
+    const roh = await k.laufzustand.liesZustand('startup_status');
     if (roh) _stand = JSON.parse(roh) as StartZustand;
   } catch (e) {
     meldeFehler('start:zustand lesen', e);

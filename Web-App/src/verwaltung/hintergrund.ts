@@ -1,16 +1,21 @@
 /** Aufträge plus Bildbedarf des Katalogs: Die Warteschlange kennt den Katalog nicht. */
-import * as auftraege from '../auftraege';
-import { leereBildbedarf, offenerBildbedarf } from '../katalog';
+import type { VerwaltungKontext } from './kontext';
 
 export { auftragAbbrechen, auftragWiederholen, auftragsArtJetzt } from '../auftraege';
 
-export async function auftragsUebersicht(filter: { status?: string | undefined; art?: string | undefined } = {}) {
-  const [uebersicht, bildbedarf] = await Promise.all([auftraege.auftraegeImUeberblick(filter), offenerBildbedarf()]);
+export async function auftragsUebersicht(
+  k: VerwaltungKontext,
+  filter: { status?: string | undefined; art?: string | undefined } = {},
+) {
+  const [uebersicht, bildbedarf] = await Promise.all([
+    k.auftraege.auftraegeImUeberblick(filter),
+    k.katalog.offenerBildbedarf(),
+  ]);
   return { ...uebersicht, bildbedarf };
 }
 
 /** Beim Bildbedarf gehen auch die Notizen. */
-export async function auftragsArtLeeren(artRoh: string) {
-  const r = await auftraege.leereAuftragsArt(artRoh);
-  return r.art === 'bildbedarf' ? { ...r, entfernt: r.entfernt + (await leereBildbedarf()) } : r;
+export async function auftragsArtLeeren(k: VerwaltungKontext, artRoh: string) {
+  const r = await k.auftraege.leereAuftragsArt(artRoh);
+  return r.art === 'bildbedarf' ? { ...r, entfernt: r.entfernt + (await k.katalog.leereBildbedarf()) } : r;
 }

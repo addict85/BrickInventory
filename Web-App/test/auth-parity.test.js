@@ -42,7 +42,7 @@ function anmeldeHandler() {
     for (const m of src.matchAll(/(?:router|app)\.(post|put)\(\s*'([^']*login[^']*)'/g)) {
       // Der Rumpf reicht bis zur nächsten Routendefinition. Kommentare sind
       // schon weg — sonst zählte ein Erklärtext, der „password" erwähnt, mit.
-      const rel = src.slice(m.index + 1).search(/\n(?:router|app)\.[a-z]+\(/);
+      const rel = src.slice(m.index + 1).search(/\n\s*(?:router|app)\.[a-z]+\(/);
       const koerper = rel < 0 ? src.slice(m.index) : src.slice(m.index, m.index + 1 + rel);
       treffer.push({ datei: path.relative(ROOT, datei), pfad: m[2], koerper });
     }
@@ -144,7 +144,7 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
   // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
   const zentral = require('./helpers/sources').dienstQuelle('src/konto/anmeldepruefung.ts');
   for (const name of ['checkLoginAllowed', 'recordLoginFailure', 'recordLoginSuccess'])
-    assert.match(zentral, new RegExp(`\\b${name}\\(ip`), `src/konto/anmeldepruefung.ts ruft ${name} nicht auf`);
+    assert.match(zentral, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/konto/anmeldepruefung.ts ruft ${name} nicht auf`);
 });
 
 test('die Benutzernamen-Regel', () => {

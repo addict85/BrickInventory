@@ -59,9 +59,17 @@ Absicht, solange es nur von unten gebraucht wird:
   ein Aufruf in der Bearbeitertabelle. Was ein Auftrag tut, steht in
   `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `katalog` …); die
   Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/auftraege`.
-- Routen rufen Dienste aus der `index.ts` eines Bereichs, nie `xBereich()`: Darin
-  stehen gebundene Repositories und der Zugang. Mehrstufige Schreibvorgänge
-  (Änderung und Protokoll, Zeile und Datei) sind ein Dienst mit einer Transaktion.
+- Jeder Bereich hat eine Fabrik (`erzeugeX` in `bereich.ts`) und einen Kontext
+  (`kontext.ts`): gebundene Repositories, die Dienste tieferer Bereiche und die
+  Arbeitseinheit. Ein Dienst nimmt den Kontext als ersten Parameter (`k`) und holt
+  alles daraus, nichts vom Prozess. `startup/verdrahtung.ts` baut alle Bereiche in
+  `baueDienste(db, nacharbeit)`; Server und Testhilfe rufen dieselbe Funktion.
+- Routen sind Fabriken (`baueXRouter(d)`) und rufen Dienste nur über `d`. Die
+  Fassaden der `index.ts` und `xBereich()` holen die Dienste des Prozesses; sie
+  bleiben für HTTP-Seiten, Jobs, den Start und Tests (gezählt in `test/ratschen.test.js`).
+- Mehrstufige Schreibvorgänge (Änderung und Protokoll, Zeile und Datei) sind ein
+  Dienst mit `k.transaktion(async t => …)`: Der Rumpf schreibt über `t`, einen
+  Kontext an der Verbindung der Transaktion. So steht am Aufrufort, was zusammen gilt.
 - Routen importieren nichts aus `db/`, `jobs/` oder `clients/`. Sie umhüllen
   nichts mit `try/catch`; der Fehlerweg des Routers antwortet. Ein `.catch(…)`
   gibt es nur dort, wo die Antwort einen Ersatzwert braucht (etwa der Token
@@ -74,8 +82,9 @@ Absicht, solange es nur von unten gebraucht wird:
   den HTTP-Status wählt `src/http/fehlerArt.ts`.
 - Clients erreicht man nur über `src/katalog/quellen.ts`; Schlüssel und
   Kontingent bekommen sie dort übergeben (`clients/zugang.ts`).
-- Eine Transaktion (`db.transaction`) gilt für den ganzen Aufrufpfad, auch
-  für Repositories ohne `tx`-Parameter.
+- Eine Transaktion gilt zusätzlich für den ganzen Aufrufpfad (AsyncLocalStorage),
+  auch für Repositories ohne `tx`-Parameter: Sicherung gegen eine zweite
+  Verbindung mitten in der Arbeitseinheit, nicht der Weg, sie zu erkennen.
 
 ## Rangfolge der Bereiche
 

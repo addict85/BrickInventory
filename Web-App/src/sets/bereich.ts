@@ -2,7 +2,8 @@
  * ersten Parameter (SetsKontext); erzeugeSets bindet ihn einmal für alle. So
  * greift kein Dienst auf den Zugang des Prozesses zu. Gesucht wird beim Aufruf,
  * damit ein Test eine Funktion des Moduls ersetzen kann. */
-import type { SetsKontext } from './kontext';
+import type { SetsAbhaengigkeiten, SetsKontext } from './kontext';
+import { baueKontext } from '../infra/bereich';
 import * as erfassen from './erfassen';
 import * as setService from './setService';
 import * as lesen from './lesen';
@@ -30,8 +31,11 @@ function binde<M, N extends keyof M & string>(
   return gebunden as { [K in N]: Gebunden<M[K]> };
 }
 
-export function erzeugeSets(sk: SetsKontext) {
-  const fremd = (['katalog', 'finanzen', 'auftraege'] as const).filter(b => sk[b].db !== sk.db);
+export function erzeugeSets(a: SetsAbhaengigkeiten) {
+  const sk: SetsKontext = baueKontext(a, () => ({}));
+  const fremd = (['katalog', 'finanzen', 'auftraege', 'bestand', 'einstellungen', 'konto'] as const).filter(
+    b => sk[b].db !== sk.db,
+  );
   if (fremd.length) throw new Error(`erzeugeSets: ${fremd.join(', ')} über einen anderen Zugang als db`);
   return {
     ...binde(sk, erfassen, [
@@ -45,7 +49,7 @@ export function erzeugeSets(sk: SetsKontext) {
     ...binde(sk, setService, ['updateSet', 'buildSetsCsv']),
     ...binde(sk, lesen, ['getSets', 'getSet', 'getSetConditionAggregate', 'withSetAggregate']),
     ...binde(sk, loeschen, ['loescheSet', 'loescheSetFuer']),
-    ...binde(sk, setMove, ['verschiebeSet']),
+    ...binde(sk, setMove, ['verschiebeSet', 'moveSetBetweenAccounts', 'moveManualAcquisition']),
     ...binde(sk, inhalt, [
       'setInfo',
       'setInfoFuerKonto',
@@ -65,7 +69,13 @@ export function erzeugeSets(sk: SetsKontext) {
       'setPreisVerlauf',
     ]),
     ...binde(sk, anleitungen, ['anleitungMerken', 'anleitungLoeschen', 'anleitungenNeuLaden']),
-    ...binde(sk, csvImport, ['setCsvImportStarten']),
+    ...binde(sk, csvImport, [
+      'setCsvImportStarten',
+      'setCsvImportAbbrechen',
+      'csvImportStand',
+      'csvImportStandFuerStrom',
+      'csvImportStandAbonnieren',
+    ]),
     ...binde(sk, dienst, [
       'rebrickableListe',
       'setGehoertKonto',
@@ -73,8 +83,8 @@ export function erzeugeSets(sk: SetsKontext) {
       'lagerortDesSetsSetzen',
       'lagerorteMitVorgabe',
     ]),
-    ...binde(sk, nachErfassung, ['zieheNach']),
-    ...binde(sk, csvImportLauf, ['fuehreCsvImportAus']),
+    ...binde(sk, nachErfassung, ['zieheNach', 'ladeSetBilder']),
+    ...binde(sk, csvImportLauf, ['fuehreCsvImportAus', 'csvImportAufgegeben']),
   };
 }
 

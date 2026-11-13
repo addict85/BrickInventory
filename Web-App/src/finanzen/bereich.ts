@@ -1,53 +1,45 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeFinanzen bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
+ * Parameter; erzeugeFinanzen bindet ihn einmal für alle. So greift kein Dienst auf den
+ * Prozess zu, und ein Test gibt einen eigenen Zugang. */
+import { baueKontext, bindeZugang } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
-import * as bewertung from './repository/bewertung';
-import * as erfassungen from './repository/erfassungen';
-import * as gewinnVerlust from './repository/gewinnVerlust';
-import * as marktpreise from './repository/marktpreise';
-import * as portfolioKurve from './repository/portfolioKurve';
-import * as preisalarm from './preisalarm';
-import * as preisalarme from './repository/preisalarme';
-import * as preisCache from './repository/preisCache';
-import * as preisLauf from './repository/preisLauf';
-import * as preisverlauf from './repository/preisverlauf';
-import * as setWert from './repository/setWert';
-import * as wechselkurse from './repository/wechselkurse';
+import * as marketPrice from './marketPrice';
+import * as portfolioHistory from './portfolioHistory';
+import * as priceHistory from './priceHistory';
+import * as bewertungDienst from './rechnung/bewertung';
+import * as gewinnVerlustDienst from './rechnung/gewinnVerlust';
+import * as preise from './rechnung/preise';
+import * as preisLaufDienst from './preisLauf';
+import * as preisRegel from './preisRegel';
+import * as preiseNachladen from './preiseNachladen';
+import * as wechselkurseDienst from './wechselkurse';
+import { zugang, type FinanzenAbhaengigkeiten, type FinanzenKontext } from './kontext';
 
-export interface FinanzenKontext {
-  db: Db;
-}
+export type { FinanzenAbhaengigkeiten, FinanzenKontext } from './kontext';
 
-export function erzeugeFinanzen(k: FinanzenKontext) {
-  const { db } = k;
+export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>) {
+  const k: FinanzenKontext = baueKontext({ ...a, faecher: new Faecher() }, zugang);
   return {
-    db,
-    faecher: new Faecher(),
-    bewertung: bindeZugang(db, bewertung),
-    erfassungen: bindeZugang(db, erfassungen),
-    gewinnVerlust: bindeZugang(db, gewinnVerlust),
-    marktpreise: bindeZugang(db, marktpreise),
-    portfolioKurve: bindeZugang(db, portfolioKurve),
-    preisalarm: bindeZugang(db, preisalarm, [
-      'alarmUebertragen',
-      'alarmeAusCsv',
-      'alarmeFuer',
-      'alleAlarme',
-      'ausgeloesteSeit',
-      'buildPreisalarmeCsv',
-      'loescheAlarm',
-      'pruefeSet',
-      'setzeAlarm',
+    ...k,
+    ...bindeZugang(k, marketPrice, [
+      'getCurrentMarketPrice',
+      'resolvePartCondition',
+      'marktpreiseAusCacheFuerFiguren',
+      'marktpreiseAusCacheFuerTeile',
+      'figMarktpreisMitHerkunft',
+      'marktpreisMitHerkunft',
+      'getCurrentFigMarketPrice',
+      'getCurrentPartMarketPrice',
     ]),
-    preisalarme: bindeZugang(db, preisalarme),
-    preisCache: bindeZugang(db, preisCache),
-    preisLauf: bindeZugang(db, preisLauf),
-    preisverlauf: bindeZugang(db, preisverlauf),
-    setWert: bindeZugang(db, setWert),
-    wechselkurse: bindeZugang(db, wechselkurse),
+    ...bindeZugang(k, portfolioHistory, ['getPortfolioHistory']),
+    ...bindeZugang(k, priceHistory, ['preisverlaufSet', 'preisverlaufTeil', 'preisverlaufFigur', 'purgeAltePreise']),
+    ...bindeZugang(k, bewertungDienst, ['computeSetsValuation', 'computeMinifigsValuation', 'computePartsValuation']),
+    ...bindeZugang(k, gewinnVerlustDienst, ['computePnl']),
+    ...bindeZugang(k, preise, ['resolveSetCondition', 'leerePreisCache', 'fetchPrice', 'farbkarte']),
+    ...bindeZugang(k, preisLaufDienst, ['runPriceRefresh', 'refreshPriceForSet']),
+    ...bindeZugang(k, preisRegel, ['kaufpreisAusEingabe', 'manuellerKaufpreis']),
+    ...bindeZugang(k, preiseNachladen, ['preiseNachladen']),
+    ...bindeZugang(k, wechselkurseDienst, ['planeKursabruf', 'kursauftrag']),
   };
 }
 

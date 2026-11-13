@@ -257,7 +257,11 @@ test('der Neuaufbau blockiert den Request nicht', () => {
     /await rebuild\(/,
     'ensureFresh darf nicht im Request aufbauen — genau das waren die drei Sekunden',
   );
-  assert.match(fn, /rebuildInBackground\(/, 'Der Aufbau muss in den Hintergrund');
+  assert.match(
+    fn,
+    /rebuildInBackground\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
+    'Der Aufbau muss in den Hintergrund',
+  );
   assert.match(
     fn,
     /return state !== null/,
@@ -284,9 +288,17 @@ test('Kennzahlen benutzen keinen veralteten Stand', () => {
   const h = require('./helpers/sources').handlerQuelle();
   // Seit der Haushaltssicht bekommt der Helfer eine LISTE von Konten (uids)
   // und prüft jedes einzeln; strict gilt unverändert.
-  assert.match(h, /await ensureFresh\(uids, \{ strict: true \}\)/, 'getPartsStats muss strict aufrufen');
+  assert.match(
+    h,
+    /await ensureFresh\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uids, \{ strict: true \}\)/,
+    'getPartsStats muss strict aufrufen',
+  );
   // Die Liste darf weiterhin den veralteten Stand nehmen — dort ist es egal
-  assert.match(h, /tryPartsSummary\(userId/, 'Der Listenpfad bleibt unverändert');
+  assert.match(
+    h,
+    /tryPartsSummary\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?userId/,
+    'Der Listenpfad bleibt unverändert',
+  );
 });
 
 test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen', { skip: skip || undefined }, async t => {

@@ -11,7 +11,7 @@ import * as zf from './zweiterFaktor';
 import * as P from './passkeys';
 import { kontoGedrosselt } from './zielDrossel';
 import { hinweisNebenher } from './kontoHinweis';
-import { kontoBereich } from './prozess';
+import type { KontoKontext } from './kontext';
 
 /** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/fehlerArt.ts). */
 export type BestaetigungsAbsage = {
@@ -25,13 +25,14 @@ export type Faktor = { code?: string | number | null | undefined; passkey?: unkn
 const leer = (w: unknown) => w === undefined || w === null || String(w).trim() === '';
 
 async function gebremst(
+  k: KontoKontext,
   art: Bremse,
   uid: number,
   zugang: string,
   pruefung: () => Promise<boolean>,
   absage: FehlerCode,
 ): Promise<BestaetigungsAbsage | null> {
-  const gesperrt = await bestaetigungGesperrt(art, uid, zugang);
+  const gesperrt = await bestaetigungGesperrt(k, art, uid, zugang);
   if (gesperrt) {
     meldeAnmeldeereignis('bestaetigung_gesperrt', { konto: uid, art, zugang });
     return { art: 'zu_viele', ...gesperrt };
@@ -39,14 +40,14 @@ async function gebremst(
   if (!(await pruefung())) {
     meldeAnmeldeereignis('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
     // Wer in einer laufenden Sitzung rät, hat einen Zugang erbeutet: Der Inhaber erfährt es (1×/Tag).
-    if (await bestaetigungFehlgeschlagen(art, uid, zugang)) {
+    if (await bestaetigungFehlgeschlagen(k, art, uid, zugang)) {
       meldeAnmeldeereignis('bestaetigung_gebremst', { konto: uid, art, zugang });
-      if (!(await kontoGedrosselt('bestaetigung-hinweis', uid, 1, 86_400_000)))
-        hinweisNebenher(uid, 'bestaetigung_gebremst');
+      if (!(await kontoGedrosselt(k, 'bestaetigung-hinweis', uid, 1, 86_400_000)))
+        hinweisNebenher(k, uid, 'bestaetigung_gebremst');
     }
     return { art: 'ungueltig', code: absage };
   }
-  await bestaetigungGelungen(art, uid, zugang);
+  await bestaetigungGelungen(k, art, uid, zugang);
   return null;
 }
 
@@ -55,24 +56,26 @@ async function gebremst(
  * Absage vor jeder Prüfung, damit kein Erfolg eine Bremse zurücksetzt.
  * @returns null, wenn alles stimmt */
 export async function pruefeBestaetigung(
+  k: KontoKontext,
   uid: number,
   zugang: string,
   passwort: string | null | undefined,
   faktor: Faktor,
 ): Promise<BestaetigungsAbsage | null> {
-  const mitFaktor = await zf.istAktiv(uid);
+  const mitFaktor = await zf.istAktiv(k, uid);
   if (mitFaktor && leer(faktor.code) && leer(faktor.passkey))
     return {
       art: 'ungueltig',
       code: 'zweiter_faktor_noetig',
-      ...((await P.hatPasskeys(uid)) ? { passkey: true } : {}),
+      ...((await P.hatPasskeys(k, uid)) ? { passkey: true } : {}),
     };
   const pw = await gebremst(
+    k,
     'passwort',
     uid,
     zugang,
     async () => {
-      const u = await kontoBereich().zugaenge.passwortHash(uid);
+      const u = await k.zugaenge.passwortHash(uid);
       return !!u && typeof passwort === 'string' && passwort !== '' && passwortPasst(passwort, u.password_hash);
     },
     'aktuelles_passwort_falsch',
@@ -83,40 +86,51 @@ export async function pruefeBestaetigung(
   });
   if (pw || !mitFaktor) return pw;
   return leer(faktor.passkey)
-    ? gebremst('faktor', uid, zugang, async () => !!(await zf.pruefeCode(uid, faktor.code)), 'zweiter_faktor_falsch')
-    : gebremst(
+    ? gebremst(
+        k,
         'faktor',
         uid,
         zugang,
-        async () => (await P.anmeldungPruefen(faktor.passkey, 'zweiter_faktor', uid)) === uid,
+        async () => !!(await zf.pruefeCode(k, uid, faktor.code)),
+        'zweiter_faktor_falsch',
+      )
+    : gebremst(
+        k,
+        'faktor',
+        uid,
+        zugang,
+        async () => (await P.anmeldungPruefen(k, faktor.passkey, 'zweiter_faktor', uid)) === uid,
         'passkey_ungueltig',
       );
 }
 
 /** Nur der Code, mit der Bremse für Codes. */
 export function pruefeCodeBestaetigung(
+  k: KontoKontext,
   uid: number,
   zugang: string,
   code: string | number | null | undefined,
 ): Promise<BestaetigungsAbsage | null> {
-  return gebremst('faktor', uid, zugang, async () => !!(await zf.pruefeCode(uid, code)), 'zweiter_faktor_falsch');
+  return gebremst(k, 'faktor', uid, zugang, async () => !!(await zf.pruefeCode(k, uid, code)), 'zweiter_faktor_falsch');
 }
 
 /** Das Bestätigen der Einrichtung prüft ebenfalls einen Code; ohne Bremse
  * liesse er sich in einer übernommenen Sitzung beliebig oft raten.
  * @returns die Wiederherstellungscodes oder die Absage */
 export async function bestaetigeEinrichtungGebremst(
+  k: KontoKontext,
   uid: number,
   zugang: string,
   code: string | number | null | undefined,
 ): Promise<string[] | BestaetigungsAbsage> {
   let codes: string[] | null = null;
   const absage = await gebremst(
+    k,
     'faktor',
     uid,
     zugang,
     async () => {
-      codes = await zf.bestaetigeEinrichtung(uid, String(code ?? ''));
+      codes = await zf.bestaetigeEinrichtung(k, uid, String(code ?? ''));
       return !!codes;
     },
     'zweiter_faktor_falsch',

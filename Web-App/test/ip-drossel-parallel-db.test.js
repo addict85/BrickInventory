@@ -80,7 +80,7 @@ test('2. dasselbe an der echten Route /forgot-password', async t => {
   if (!(await dbDa(t))) return;
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`);
   t.after(() => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`));
-  const base = starte(t, app => app.use(AUTH, _req('routes/auth.js')));
+  const base = starte(t, app => app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js')));
   const status = await parallel(25, () =>
     fetch(`${base}${AUTH}/forgot-password`, {
       method: 'POST',

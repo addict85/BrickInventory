@@ -10,6 +10,7 @@ import { zeichnePdfImFaden, type PdfTeil } from './pdfZeichnen';
 import { KEINE_FARBE } from '../../infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../katalogPflege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../../infra/setNummer';
+import type { KatalogKontext } from '../kontext';
 
 /** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
 export type PdfNutzlast = Nutzlast<'pdf'>;
@@ -21,9 +22,9 @@ const cdnAdresse = (url: string) => {
 };
 
 /** Nur geprüfte Bildquellen aus dem Katalog (src/katalog/bildlage.ts). */
-export const bilderAusKatalog = (parts: PdfTeil[]) => katalogbilder(parts, istFigur);
+export const bilderAusKatalog = (k: KatalogKontext, parts: PdfTeil[]) => katalogbilder(k, parts, istFigur);
 
-async function figurenOhneAdresse(parts: PdfTeil[]) {
+async function figurenOhneAdresse(k: KatalogKontext, parts: PdfTeil[]) {
   for (const p of parts.filter(
     p => istFigur(p) && !p.image_url && !p.image_local && /^fig-\d{1,8}$/.test(p.part_number),
   )) {
@@ -31,7 +32,7 @@ async function figurenOhneAdresse(parts: PdfTeil[]) {
       const info = await getMinifigInfo(p.part_number);
       if (!info?.image_url) continue;
       p.image_url = info.image_url;
-      await merkeFigurBildAdresse(p.part_number, info.image_url).catch(logAndContinue('pdf:figurbild merken'));
+      await merkeFigurBildAdresse(k, p.part_number, info.image_url).catch(logAndContinue('pdf:figurbild merken'));
     } catch (e) {
       meldeFehler('pdf:figurbild holen', e);
     }
@@ -39,7 +40,7 @@ async function figurenOhneAdresse(parts: PdfTeil[]) {
 }
 
 /** Figurenbilder lagen unter zwei Schreibweisen auf der Platte; die gefundene merken. */
-async function figurenAufDerPlatte(parts: PdfTeil[]) {
+async function figurenAufDerPlatte(k: KatalogKontext, parts: PdfTeil[]) {
   for (const p of parts.filter(p => istFigur(p) && !p.image_local && p.image_url)) {
     const cdn = cdnAdresse(p.image_url || '');
     const ext = ((cdn.split('.').pop() || '').split('?')[0] || 'jpg').substring(0, 4).toLowerCase();
@@ -54,13 +55,13 @@ async function figurenAufDerPlatte(parts: PdfTeil[]) {
       );
       if (!da) continue;
       p.image_local = `/images/minifigs/${name}`;
-      await setzeFigurBildLokal(p.part_number, p.image_local).catch(logAndContinue('pdf:figurbild pfad merken'));
+      await setzeFigurBildLokal(k, p.part_number, p.image_local).catch(logAndContinue('pdf:figurbild pfad merken'));
       break;
     }
   }
 }
 
-async function erzeugePdf(n: PdfNutzlast, lauf?: AuftragsLauf): Promise<void> {
+async function erzeugePdf(k: KatalogKontext, n: PdfNutzlast, lauf?: AuftragsLauf): Promise<void> {
   const { job_id: jobId, user_id: uid, sets = [], parts = [] } = n;
   const ziel = pdfDateiPfad(jobId);
   if (!ziel) throw new Error(`ungültige Auftragskennung ${jobId}`);
@@ -68,11 +69,11 @@ async function erzeugePdf(n: PdfNutzlast, lauf?: AuftragsLauf): Promise<void> {
   // Warten, falls ein anderer Prozess dieselben Bilder lädt — sonst fehlten sie im PDF.
   for (const sn of setNumbers) {
     pruefeAbbruch(lauf);
-    await downloadSetImages(sn, true).catch(logAndContinue(`pdf:bilder ${sn}`));
+    await downloadSetImages(k, sn, true).catch(logAndContinue(`pdf:bilder ${sn}`));
   }
-  await bilderAusKatalog(parts);
-  await figurenOhneAdresse(parts);
-  await figurenAufDerPlatte(parts);
+  await bilderAusKatalog(k, parts);
+  await figurenOhneAdresse(k, parts);
+  await figurenAufDerPlatte(k, parts);
   // Was dann noch fehlt (Teil nicht im Set-Katalog, abweichende Farbe), einzeln.
   for (const p of parts.filter(p => !p.image_local && p.image_url)) {
     pruefeAbbruch(lauf);
@@ -86,8 +87,8 @@ async function erzeugePdf(n: PdfNutzlast, lauf?: AuftragsLauf): Promise<void> {
     if (!lokal) continue;
     p.image_local = lokal;
     await (figur
-      ? setzeFigurBildLokal(p.part_number, lokal)
-      : setzeTeilBildLokal(p.part_number, p.color_id ?? KEINE_FARBE, lokal)
+      ? setzeFigurBildLokal(k, p.part_number, lokal)
+      : setzeTeilBildLokal(k, p.part_number, p.color_id ?? KEINE_FARBE, lokal)
     ).catch(logAndContinue(`pdf:bildpfad ${p.part_number}`));
   }
   const mitBild = parts.filter(p => p.image_local).length;

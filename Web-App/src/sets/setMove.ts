@@ -2,7 +2,7 @@
  * beim Lesen, hier wird keine Menge geschrieben. */
 import type { DbSchnittstelle } from '../../db/database';
 import { mitInventarSperre } from '../../db/txLock';
-import { recordAcquisitionForDay, kopiereSetInhalt, legeManuellAn } from '../bestand';
+import { kopiereSetInhalt, legeManuellAn } from '../bestand';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/verschieben';
 import type { SetsKontext } from './kontext';
@@ -32,6 +32,7 @@ async function copyContents(tx: DbSchnittstelle, sn: string, fromId: number, toI
 
 /** @param acquisitionIds leer = das ganze Set; sonst nur diese Kaufpreis-Zeilen */
 export async function moveSetBetweenAccounts(
+  k: SetsKontext,
   tx: DbSchnittstelle,
   sn: string,
   fromId: number,
@@ -55,7 +56,7 @@ export async function moveSetBetweenAccounts(
   if (!dst) await repo.legeSetAn(tx, toId, sn, src.added_at);
 
   for (const a of wanted) {
-    await recordAcquisitionForDay(
+    await k.bestand.recordAcquisitionForDay(
       'set',
       toId,
       [sn],
@@ -85,6 +86,7 @@ export async function moveSetBetweenAccounts(
 /** Über den KAUFPREIS, nicht über den Eintrag; was beim Absender bleibt, folgt
  * aus seinen Erfassungen. */
 export async function moveManualAcquisition(
+  k: SetsKontext,
   tx: DbSchnittstelle,
   kind: 'part' | 'fig',
   keyValues: (string | number)[],
@@ -104,7 +106,7 @@ export async function moveManualAcquisition(
   const dst = await repo.manuelleZeile(tx, kind, toId, keyValues);
   if (!dst) await legeManuellAn(tx, kind, toId, keyValues);
 
-  await recordAcquisitionForDay(
+  await k.bestand.recordAcquisitionForDay(
     kind,
     toId,
     keyValues,
@@ -134,7 +136,7 @@ export function verschiebeSet(
   erfassungen: number[],
 ): Promise<MoveResult> {
   // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
-  return mitInventarSperre(sk.db, fromId, sn, tx => moveSetBetweenAccounts(tx, sn, fromId, toId, erfassungen), {
+  return mitInventarSperre(sk.db, fromId, sn, tx => moveSetBetweenAccounts(sk, tx, sn, fromId, toId, erfassungen), {
     wiederholeBeiKonflikt: true,
   });
 }

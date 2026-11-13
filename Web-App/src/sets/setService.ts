@@ -2,7 +2,6 @@ import type { DbSchnittstelle } from '../../db/database';
 import { fehlertext } from '../infra/fehler';
 import { blickfeldIds, schreibbereich } from '../haushalt';
 import { mitInventarSperre } from '../../db/txLock';
-import { getCurrentMarketPrice, resolveSetCondition } from '../finanzen';
 import { einstellungMitZugang } from '../einstellungen';
 import { deleteSetRows } from './loeschen';
 import { legeInPapierkorb, legeKaeufeInPapierkorb } from '../bestand';
@@ -34,7 +33,7 @@ async function priceForNewAcquisition(
 ) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
   const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', blickfeldIds(sk.db, userId)), [userId]);
-  const cond = await resolveSetCondition(blickfeld, setNumber, dbh, sk.finanzen);
+  const cond = await sk.finanzen.resolveSetCondition(blickfeld, setNumber, dbh);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
   const currency = String(await einstellungMitZugang(sk.db, userId, 'currency', 'EUR'));
   const cached = wertOder(
@@ -44,7 +43,7 @@ async function priceForNewAcquisition(
   let pp = Number(cached?.marktpreis ?? 0) || null;
   if (!pp)
     pp = wertOder(
-      await versuche('set-service:getCurrentMarketPrice', getCurrentMarketPrice(setNumber, userId, cond)),
+      await versuche('set-service:getCurrentMarketPrice', sk.finanzen.getCurrentMarketPrice(setNumber, userId, cond)),
       null,
     );
   if (!pp) {
@@ -225,7 +224,7 @@ export async function updateSet(
       // Zustand der LETZTEN Erfassung, sonst käme der Preis für „Neu". Ohne Fang: Nach einem Lesefehler käme
       // sonst der Neupreis in ein gebrauchtes Set.
       const lastCond = await repo.zustandNeuesteSetErfassung(sk.db, ownerId, sn);
-      pp = await getCurrentMarketPrice(sn, ownerId, lastCond?.condition || null);
+      pp = await sk.finanzen.getCurrentMarketPrice(sn, ownerId, lastCond?.condition || null);
     }
     const val = pp !== null && !Number.isNaN(pp) ? pp : null;
     await schreibeInLetzteErfassung(sk, 'purchase_price', val, ownerId, sn);

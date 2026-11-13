@@ -46,12 +46,12 @@ test('ein Router je Einhängepunkt', () => {
   const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
   // Router heissen in startup/app.ts `…Router`; Middleware (anmeldungAmEingang) darf daneben stehen.
   const je = new Map();
-  for (const m of server.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*(\w+Router)\s*\)/g))
+  for (const m of server.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*(\w+Router)(?:\(d\))?\s*\)/g))
     je.set(m[1], [...(je.get(m[1]) || []), m[2]]);
   assert.ok(je.size >= 2, `nur ${je.size} Router-Einhängungen in startup/app.ts gefunden`);
   // Gesundheit und Startstatus antworten VOR dem Eingang (anmeldungAmEingang),
   // der Router der API dahinter: zwei Stellen im Stapel, deshalb zwei Router.
-  const VOR_DEM_EINGANG = new Set(['gesundheitRouter']);
+  const VOR_DEM_EINGANG = new Set(['baueGesundheitRouter']);
   const doppelt = [...je]
     .map(([p, r]) => [p, r.filter(n => !VOR_DEM_EINGANG.has(n))])
     .filter(([, r]) => r.length > 1)
@@ -62,7 +62,7 @@ test('ein Router je Einhängepunkt', () => {
 test('jede Route genau einmal', () => {
   const alle = [];
   for (const e of einhaengungen()) {
-    const modul = _req(path.relative(ROOT, e.datei).replace(/\.ts$/, '.js'));
+    const modul = require('./helpers/sources').routerAus(_req, path.relative(ROOT, e.datei).replace(/\.ts$/, '.js'));
     alle.push(...routen(modul.default || modul, e.mount));
   }
   assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);

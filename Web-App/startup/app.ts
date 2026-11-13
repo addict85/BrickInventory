@@ -24,15 +24,16 @@ import { anmeldungAmEingang, rumpfLesen } from '../routes/api_v1/middleware';
 import { schrittschutzAmEingang } from '../src/konto/http/schrittschutz';
 import { apiDrossel } from '../src/http/apiDrossel';
 import { idempotenz } from '../src/idempotenz/http/middleware';
-import datenDateien from '../routes/datenDateien';
-import apiV1Router from '../routes/api_v1/index';
-import authRouter from '../routes/auth';
+import { baueDatenDateienRouter } from '../routes/datenDateien';
+import { baueApiRouter } from '../routes/api_v1/index';
+import { baueAuthRouter } from '../routes/auth';
 import zertifikatRouter from '../routes/zertifikat';
 import cspBerichtRouter from '../src/http/cspBericht';
 import wellKnownRouter from '../routes/wellKnown';
-import gesundheitRouter from '../routes/gesundheit';
+import { baueGesundheitRouter } from '../routes/gesundheit';
 import seitenRouter from '../routes/seiten';
 import { vertragPruefen } from '../src/http/vertragsRouter';
+import type { Dienste } from './verdrahtung';
 
 export interface AppZutaten {
   /** Für den Sitzungsspeicher (user_sessions). */
@@ -40,10 +41,12 @@ export interface AppZutaten {
   konfig: Konfig;
   /** Geprüft in server.ts: Ein Platzhalter beendet dort den Start. */
   sitzungsGeheimnis: string;
+  /** Die Routen bekommen ihre Dienste von hier (startup/verdrahtung.ts, baueDienste). */
+  dienste: Dienste;
 }
 
 /** Die Abschnitte stehen in der Reihenfolge der Middleware. */
-export function baueApp({ pool, konfig, sitzungsGeheimnis }: AppZutaten): express.Express {
+export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste }: AppZutaten): express.Express {
   const app = express();
   // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
   app.disable('x-powered-by');
@@ -51,8 +54,8 @@ export function baueApp({ pool, konfig, sitzungsGeheimnis }: AppZutaten): expres
   app.set('case sensitive routing', true);
   grundschutz(app, konfig);
   sitzung(app, pool, sitzungsGeheimnis);
-  dateienUndBilder(app);
-  apiRouten(app);
+  dateienUndBilder(app, dienste);
+  apiRouten(app, dienste);
   rueckfaelle(app);
   return app;
 }
@@ -208,8 +211,8 @@ function sitzung(app: express.Express, pool: Pool, geheimnis: string): void {
   app.use(sitzungsHoechstdauer());
 }
 
-function dateienUndBilder(app: express.Express): void {
-  app.use(datenDateien);
+function dateienUndBilder(app: express.Express, d: Dienste): void {
+  app.use(baueDatenDateienRouter(d));
   app.use(zertifikatRouter);
   app.use(wellKnownRouter);
   registerImgProxy(app);
@@ -230,14 +233,14 @@ function dateienUndBilder(app: express.Express): void {
   );
 }
 
-function apiRouten(app: express.Express): void {
+function apiRouten(app: express.Express, d: Dienste): void {
   const pruefung = vertragPruefen();
   if (pruefung) app.use('/api/v1', pruefung);
   // Vor dem Eingang: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
-  app.use('/api/v1', gesundheitRouter);
+  app.use('/api/v1', baueGesundheitRouter(d));
   apiEingang(app);
-  app.use('/api/v1', apiV1Router);
-  app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1', baueApiRouter(d));
+  app.use('/api/v1/auth', baueAuthRouter(d));
 }
 
 /** Der Eingang vor allen /api/v1-Routern; auch testServer({ kette: true }) baut ihn so. */

@@ -86,6 +86,16 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
       [uid, SN],
     );
     const { updateSet } = _req('src/sets/index.js');
+    // Sets fragt den Zustand über die Finanzdienste seines Kontexts (sk.finanzen).
+    const finanzen = _req('src/infra/bereich.js').prozessDienste().finanzen;
+    const zustandEcht = finanzen.resolveSetCondition;
+    finanzen.resolveSetCondition = async (...a) => {
+      if (preisKaputt) throw new Error('Zustand nicht lesbar');
+      return zustandEcht(...a);
+    };
+    t.after(() => {
+      finanzen.resolveSetCondition = zustandEcht;
+    });
     preisKaputt = true;
     let r;
     try {

@@ -46,7 +46,7 @@ async function startApi() {
   });
   // Die Erfassungs-Routen liegen seit einer früheren Runde nur noch in der gemeinsamen
   // Fabrik — eine Adresse für Webapp UND App.
-  app.use('/api/v1', _req('routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 }
