@@ -37,20 +37,23 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
   if (!(await zugangOderSkip(t, _req))) return;
   const { baueDienste } = _req('startup/verdrahtung.js');
   const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
+  // Testdaten als Eigentümerin (am Zeilenschutz vorbei), der Dienst fragt als Laufzeitrolle.
+  const eigen = _req('db/database.js');
+  const { imNamenVon } = _req('src/infra/kontoKontext.js');
   const db = testZugang();
   const name = `kontext_${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = $1', [name]);
+  await eigen.run('DELETE FROM users WHERE username = $1', [name]);
   const uid = (
-    await db.get("INSERT INTO users (username, password_hash, email_verified) VALUES ($1, 'x', true) RETURNING id", [
+    await eigen.get("INSERT INTO users (username, password_hash, email_verified) VALUES ($1, 'x', true) RETURNING id", [
       name,
     ])
   ).id;
-  t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]));
-  await haeltTeil(db, uid, '3001', { menge: 4 });
+  t.after(() => eigen.run('DELETE FROM users WHERE id = $1', [uid]));
+  await haeltTeil(eigen, uid, '3001', { menge: 4 });
 
   const { zaehler, zugang } = zaehlend(db);
   const d = baueDienste(zugang, OHNE_NACHARBEIT);
-  const stats = await d.teile.getPartsStats(uid);
+  const stats = await imNamenVon({ session: { userId: uid } }, () => d.teile.getPartsStats(uid));
   assert.equal(Number(stats.unique_parts), 1, 'das angelegte Teil kommt an');
   assert.ok(zaehler.n > 0, 'getPartsStats fragt über den übergebenen Zugang');
 });
