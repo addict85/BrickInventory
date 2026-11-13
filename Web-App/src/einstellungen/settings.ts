@@ -38,11 +38,6 @@ export async function einstellungMitZugang(
   return klar(key, await repo.globalerWert(db, key)) || fallback;
 }
 
-/** Mehrere Schreibvorgänge als eine Einheit, über den Zugang des Prozesses. */
-export function einstellungenAlsEinheit<T>(k: EinstellungenKontext, arbeit: () => Promise<T>): Promise<T> {
-  return repo.alsEinheit(k.db, arbeit);
-}
-
 /** Geheime Werte liegen verschlüsselt (src/infra/geheimnis.ts). */
 function klar(key: string, wert: string | null | undefined): string | null | undefined {
   return SECRET_KEYS.has(key) ? entschluessele(wert, globalerKontext(key)) : wert;

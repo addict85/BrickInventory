@@ -2,7 +2,8 @@
 import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
-import type { Db, DbSchnittstelle } from '../../db/database';
+import type { DbSchnittstelle } from '../../db/database';
+import type { HaushaltKontext } from './bereich';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { getSetting } from '../einstellungen';
 import * as repo from './repository';
@@ -154,7 +155,8 @@ export async function pruefeEinladung(db: DbSchnittstelle, uid: number, code: st
 }
 
 // Atomar entwertet, bei Fehlschlag frei.
-export async function einladungEinloesen(db: Db, uid: number, code: string) {
+export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: string) {
+  const { db } = k;
   const subId = parseInt(String(uid), 10);
   if (typeof code !== 'string' || code.length < 8) {
     return { fehler: 'einladungscode_ungueltig' as const };
@@ -192,17 +194,20 @@ export async function einladungEinloesen(db: Db, uid: number, code: string) {
   }
 
   // Zwei Währungen ergäben eine Summe, der man den Fehler nicht ansieht. Unter
-  // derselben Sperre wie ein Währungswechsel, damit keiner dazwischenrutscht.
-  const ungleich = await db.transaction(async tx => {
-    await sperreHaushaltswaehrung(tx);
-    // Das Hauptkonto ist (noch) nicht im Blickfeld des Einlösenden: Zeilenschutz aus.
-    const [curMain, curSub] = await imSystemkontext('haushalt beitreten', () =>
-      Promise.all([getSetting(mainId, 'currency', 'EUR'), getSetting(subId, 'currency', 'EUR')]),
-    );
-    if (String(curMain) !== String(curSub)) return { haupt: String(curMain), unter: String(curSub) };
-    await repo.verknuepfe(tx, mainId, subId);
-    return null;
-  });
+  // derselben Sperre wie ein Währungswechsel, damit keiner dazwischenrutscht. Im
+  // Systemrahmen, weil das Hauptkonto (noch) nicht im Blickfeld des Einlösenden ist.
+  const ungleich = await imSystemkontext('haushalt beitreten', () =>
+    k.transaktion(async t => {
+      await sperreHaushaltswaehrung(t.db);
+      const [curMain, curSub] = await Promise.all([
+        getSetting(mainId, 'currency', 'EUR'),
+        getSetting(subId, 'currency', 'EUR'),
+      ]);
+      if (String(curMain) !== String(curSub)) return { haupt: String(curMain), unter: String(curSub) };
+      await t.repository.verknuepfe(mainId, subId);
+      return null;
+    }),
+  );
   if (ungleich) {
     await release();
     return { fehler: 'waehrung_ungleich' as const, vars: ungleich };

@@ -8,9 +8,12 @@
  *   A  protokolliere() in POST /settings gestrichen → rot: beide Fälle
  *   B  der Vergleich mit dem alten Wert gestrichen (jeder gesendete Schlüssel
  *      zählt) → rot: „unverändert …"
- *   C  in einstellungenSpeichern() die Schreibvorgänge ohne alsEinheit()
+ *   C  in einstellungenSpeichern() die Schreibvorgänge ohne kx.transaktion()
  *      (direkt nacheinander) → rot: „scheitert ein Kontowert …“ (smtp_host
- *      und Protokolleintrag blieben stehen)
+ *      und Protokolleintrag blieben stehen; 13.11.2026 mit `language: 'xx'`)
+ *   D  (13.11.2026) die Währung wieder in der Schleife innerhalb von kx.transaktion()
+ *      → rot: „eine gültige Währung …“ (500: NebenDerTransaktion, weil der
+ *      Haushaltswechsel den Systemrahmen braucht)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -95,6 +98,16 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
   });
 
   await t.test('scheitert ein Kontowert, bleiben globale Werte und Protokoll wie vorher', async () => {
+    const [status, b] = await speichere({ smtp_host: 'mail.halb.example', language: 'xx' });
+    assert.deepEqual([status, b.code], [400, 'wert_ungueltig']);
+    assert.equal(
+      (await db.get(`SELECT value FROM global_settings WHERE key = 'smtp_host'`))?.value,
+      'mail.neu.example',
+    );
+    assert.equal((await eigene()).length, 1, 'kein Eintrag für eine Änderung, die nicht gilt');
+  });
+
+  await t.test('… auch bei einer ungültigen Währung, die vor der Transaktion geprüft wird', async () => {
     const [status, b] = await speichere({ smtp_host: 'mail.halb.example', currency: 'XYZ' });
     assert.deepEqual([status, b.code], [400, 'wert_ungueltig']);
     assert.equal(
@@ -102,5 +115,18 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
       'mail.neu.example',
     );
     assert.equal((await eigene()).length, 1, 'kein Eintrag für eine Änderung, die nicht gilt');
+  });
+
+  await t.test('eine gültige Währung gilt zusammen mit den übrigen Kontowerten', async () => {
+    const [status, b] = await speichere({ currency: 'USD', language: 'en' });
+    assert.equal(status, 200, JSON.stringify(b));
+    const werte = await db.all(
+      `SELECT key, value FROM user_settings WHERE user_id = $1 AND key IN ('currency', 'language') ORDER BY key`,
+      [uid],
+    );
+    assert.deepEqual(
+      werte.map(w => `${w.key}=${w.value}`),
+      ['currency=USD', 'language=en'],
+    );
   });
 });

@@ -81,14 +81,18 @@ export async function einstellungenSpeichern(
   if (heikel.length && !e.admin_password) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
   if (heikel.length && !(await o.bestaetige(e.admin_password))) return false;
 
-  const bricksetAlt = await kx.einstellungen.einstellungenAlsEinheit(async () => {
+  // Die Währung gilt für den ganzen Haushalt und braucht deshalb den Systemrahmen, der
+  // sich in einer Transaktion nicht betreten lässt: vorher und für sich. Scheitert sie,
+  // ist noch nichts geschrieben; der Preis-Job folgt nur einer echten Änderung.
+  if (e.currency !== undefined) await kx.konto.setUserSetting(o.uid, 'currency', e.currency);
+  const bricksetAlt = await kx.transaktion(async t => {
     const alt =
       global && e.api_limit_brickset !== undefined
-        ? parseInt((await kx.einstellungen.getGlobalSetting('api_limit_brickset')) || '100', 10)
+        ? parseInt((await t.einstellungen.getGlobalSetting('api_limit_brickset')) || '100', 10)
         : null;
-    if (global) await schreibeGlobal(kx, o.uid, e);
-    // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
-    for (const key of KONTO_EINSTELLUNGEN) if (e[key] !== undefined) await kx.konto.setUserSetting(o.uid, key, e[key]);
+    if (global) await schreibeGlobal(t, o.uid, e);
+    for (const key of KONTO_EINSTELLUNGEN)
+      if (key !== 'currency' && e[key] !== undefined) await t.konto.setUserSetting(o.uid, key, e[key]);
     return alt;
   });
   if (!global) return true;

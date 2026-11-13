@@ -201,6 +201,17 @@ function nochOffen(stand: TxStand): void {
   if (!stand.offen) throw new TransaktionBeendet();
 }
 
+export class NebenDerTransaktion extends Error {
+  constructor(transaktionImSystemrahmen: boolean) {
+    super(
+      transaktionImSystemrahmen
+        ? 'Abfrage ohne Systemrahmen in einer Transaktion des Systemrahmens: Sie liefe über eine zweite Verbindung neben ihr.'
+        : 'Systemrahmen (imSystemkontext) mitten in einer Transaktion: Die Abfrage liefe über eine zweite ' +
+            'Verbindung neben ihr. Den Rahmen vor der Transaktion betreten.',
+    );
+  }
+}
+
 export class GleichzeitigerSicherungspunkt extends Error {
   constructor(offen: string) {
     super(
@@ -281,13 +292,18 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   const ich = {};
   let sicherungspunkte = 0;
   const poolDesRahmens = (): Pool => (zeilenKontext().system ? systemPool : pool);
-  /** Eine Transaktion auf der Verbindung der anderen Rolle gilt nicht: Wer mitten
-   * in einer Konto-Transaktion den Systemrahmen betritt, fragt neben ihr. */
-  const txStand = (): TxStand | null => {
+  /** Eine Transaktion auf der Verbindung der anderen Rolle gilt nicht; wer mitten in
+   * ihr den Rahmen wechselt, fragte über eine zweite Verbindung neben ihr (ohne ihren
+   * Stand, womöglich gegen ihre Sperren). Das ist ein Fehler: Rahmen vor der Transaktion wählen. */
+  const offeneTx = (): TxStand | null => {
     const t = laufendeTx.getStore();
-    return t?.offen && t.db === ich && t.pool === poolDesRahmens() ? t : null;
+    return t?.offen && t.db === ich ? t : null;
   };
-  const txClient = (): PoolClient | null => txStand()?.client ?? null;
+  const txStand = (): TxStand | null => {
+    const t = offeneTx();
+    if (t && t.pool !== poolDesRahmens()) throw new NebenDerTransaktion(t.pool === systemPool);
+    return t;
+  };
 
   /** Ausserhalb einer Transaktion: ohne Konto und Systemrahmen direkt über den
    * Pool, sonst in einer kurzen eigenen, damit set_config(…, true) gilt. Die drei
@@ -477,7 +493,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     mitCommitBegleiter,
     benachrichtigung: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
     darfSchemaAendern: async () => (await get<{ d: boolean }>(DARF_SCHEMA_AENDERN))?.d === true,
-    inTransaktion: () => txClient() !== null,
+    inTransaktion: () => offeneTx() !== null,
     getPoolStats: () => ({
       total: pool.totalCount,
       idle: pool.idleCount,

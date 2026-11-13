@@ -9,21 +9,21 @@
  *   K  Policy wieder mit `current_setting('app.system') = 'an' OR …` (0112
  *      geändert, Datenbank neu) → rot: „kein Schalter der Sitzung …“
  *   L  in erzeugeDb() den Systempool weggelassen (immer pool) → rot: „kein
- *      Schalter …“, „im Systemrahmen …“, „ein Auftrag …“, „der Rahmen folgt …“,
+ *      Schalter …“, „im Systemrahmen …“, „ein Auftrag …“,
  *      „wer einem Haushalt …“, „ein Währungswechsel …“, „Aufträge und …“,
  *      „die Anmeldung …“
  *   M  auftraege aus der Liste in 0112 gestrichen → rot: „Aufträge und
  *      Zugangsdaten …“
  *   N  in erzeugeKonto() zugaenge wieder mit bindeZugang → rot: „die Anmeldung
  *      findet den Token …“ (Token ungültig, Widerruf löscht nichts)
- *   O  in txStand() die Prüfung des Pools gestrichen → rot: „der Rahmen folgt …“
- *      und „wer einem Haushalt beitritt …“ (das Hauptkonto liest sich als EUR)
+ *   O  in txStand() die Prüfung des Pools gestrichen → rot: „imSystemkontext
+ *      mitten in der Transaktion …“ (lief in ihr, ohne Fehler)
  *
  * Gegenproben Zeilenschutz (13.11.2026, vor der Systemrolle):
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
  *   A  vor den Tests `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` → rot:
  *      „mit Konto A …“, „ein Unterkonto …“, „ohne Konto …“, „fremde user_id …“,
- *      „der Rahmen folgt …“, „ein Signal-Handler …“, „eine Anfrage erbt …“;
+ *      „imSystemkontext mitten …“, „ein Signal-Handler …“, „eine Anfrage erbt …“;
  *      nur die Policy entfernt (RLS an) → dieselben und „ein Auftrag …“ (0 Zeilen)
  *   B  in kontextSql() (db/database.ts) immer '' → rot: alle Teiltests
  *   C  set_config(…, false) statt true für app.konto → rot: „ohne Konto …“ (die
@@ -32,7 +32,7 @@
  *      „ohne Konto …“, „fremde user_id …“, „ein Signal-Handler …“
  *   E  im Auftrags-Worker imAuftragsrahmen() weggelassen → rot: „ein Auftrag …“
  *   F  nach ROLLBACK TO SAVEPOINT stand.kontext nicht zurückgesetzt → rot:
- *      „der Rahmen folgt … Sicherungspunkt“
+ *      „imSystemkontext mitten … Sicherungspunkt“ (Konto A sah nur B)
  *   G  in Benachrichtigung.listen() AsyncResource.bind weggelassen → rot: „ein
  *      Signal-Handler …“ (er fragt im Rahmen von C)
  *   H  alsAnfrage() ohne Leeren des Systemrahmens → rot: „eine Anfrage erbt …“
@@ -208,27 +208,28 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.deepEqual(gesehen, [A, B, C]);
   });
 
-  // Mitten in einer Konto-Transaktion fragt der Systemrahmen über die Systemrolle neben ihr.
+  // Mitten in einer Konto-Transaktion fragte der Systemrahmen über die Systemrolle neben ihr: abgewiesen.
   await t.test(
-    'der Rahmen folgt imSystemkontext mitten in der Transaktion, auch nach einem Sicherungspunkt',
+    'imSystemkontext mitten in der Transaktion wird abgewiesen; ein Kontowechsel folgt auch nach einem Sicherungspunkt',
     async () => {
       const n = async d => (await d.all('SELECT user_id FROM sets')).length;
       const stand = await als(B, () =>
         app.transaction(async tx => {
           const vorher = await n(tx);
-          const drinnen = await imSystemkontext('test', async () => {
-            await app
-              .transaction(async inner => {
-                await n(inner);
-                throw new Error('zurück');
-              })
-              .catch(() => {});
-            return n(app);
-          });
-          return [vorher, drinnen, await n(tx)];
+          const neben = await imSystemkontext('test', () => n(app)).then(
+            () => 'lief neben der Transaktion',
+            e => e.constructor.name,
+          );
+          await als(A, () =>
+            app.transaction(async inner => {
+              await n(inner);
+              throw new Error('zurück');
+            }),
+          ).catch(() => {});
+          return [vorher, neben, await als(A, () => n(app)), await n(tx)];
         }),
       );
-      assert.deepEqual(stand, [1, 3, 1]);
+      assert.deepEqual(stand, [1, 'NebenDerTransaktion', 2, 1]);
     },
   );
 
