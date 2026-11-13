@@ -115,7 +115,7 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
     detailZeile(
       t('detail.purchase_price'),
       html`
-      ${ungeprueft(renderManAcqSummary(acqs, type, id, colorId))}
+      ${renderManAcqSummary(acqs, type, id, colorId)}
       <button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>
     `,
       {
