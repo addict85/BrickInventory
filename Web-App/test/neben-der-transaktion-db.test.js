@@ -1,11 +1,8 @@
 /**
- * Wer mitten in einer Transaktion den Rahmen wechselt (imSystemkontext in einer
- * Konto-Transaktion, alsAnfrage in einer des Systemrahmens), fragte über den Pool
- * der anderen Rolle, also neben der Transaktion: ohne ihren Stand und womöglich
- * gegen ihre Sperren. db/database.ts weist das ab (NebenDerTransaktion). Den Rahmen
- * vor der Transaktion zu betreten bleibt erlaubt; dann geht alles über sie.
- * Eigener Zugang aus erzeugeDb() mit eigenem Systempool (dieselbe Rolle genügt:
- * Es kommt auf die zweite Verbindung an, nicht auf ihre Rechte).
+ * Ein Rahmenwechsel mitten in einer Transaktion (imSystemkontext in einer des Kontos,
+ * alsAnfrage in einer des Systemrahmens) fragte über den Pool der anderen Rolle neben
+ * ihr; db/database.ts weist das ab (NebenDerTransaktion). Vorher gewählt bleibt erlaubt.
+ * Eigener Systempool mit derselben Rolle: Es kommt auf die zweite Verbindung an.
  *
  * Gegenproben (13.11.2026 gemessen, je einzeln):
  *   A  in txStand() die Zeile `throw new NebenDerTransaktion(…)` gestrichen → rot:

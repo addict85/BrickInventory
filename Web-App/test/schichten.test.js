@@ -570,22 +570,23 @@ function routenNurUeberFabrik() {
 
 /** Eine Arbeitseinheit steht am Aufrufort: k.transaktion(t => …). */
 function arbeitseinheitAmAufrufort() {
-  // Der Rumpf bekommt den Kontext der Transaktion (t) und schreibt über ihn; bei
-  // db.transaction(async () => …) sah man nur am Aufrufpfad, was zusammen gilt.
-  // Ausgenommen die Module, deren Kontext der Zugang selbst ist (tx als Parameter).
-  // Gegenprobe (13.11.2026): in src/sammlung/loeschen.ts wieder
-  // `k.db.transaction(async tx =>` → rot „src/sammlung/loeschen.ts: .transaction(“.
-  const ZUGANG_ALS_KONTEXT = new Set(['src/haushalt/haushalt.ts', 'src/bestand/lagerort.ts', 'src/infra/bereich.ts']);
+  // Eine Transaktionsform: Dienste öffnen sie mit k.transaktion, der Rumpf bekommt den
+  // Kontext der Transaktion (t); Repositories nehmen den tx des Aufrufers. `.transaction(`
+  // steht nur in src/infra/bereich.ts und db/.
+  // Gegenproben: (13.11.2026) in src/sammlung/loeschen.ts wieder `k.db.transaction(async tx =>`
+  // → rot; (13.11.2026) ebenso in src/bestand/lagerortSetzen.ts und in
+  // src/konto/repository/zweiterFaktor.ts → rot „…: .transaction(“.
   const treffer = [];
-  for (const d of tsUnter('src')) {
-    if (/\/repository/.test(d) || ZUGANG_ALS_KONTEXT.has(d)) continue;
+  const alle = [...tsUnter('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts'];
+  for (const d of alle) {
     const s = quelltext(d);
-    if (/\.transaction\(/.test(s)) treffer.push(`${d}: .transaction(`);
+    if (d !== 'src/infra/bereich.ts' && /\.transaction\s*(?:<[^>]*>)?\(/.test(s)) treffer.push(`${d}: .transaction(`);
     if (/transaktion\(\s*(?:async\s*)?\(\)/.test(s)) treffer.push(`${d}: transaktion ohne Kontext`);
   }
   assert.ok(
-    tsUnter('src').some(d => /\.transaktion\(async t\b/.test(quelltext(d))),
-    'Selbstbeweis: es gibt Arbeitseinheiten',
+    tsUnter('src').some(d => /\.transaktion\(async t\b/.test(quelltext(d))) &&
+      /\.transaction\(/.test(quelltext('src/infra/bereich.ts')),
+    'Selbstbeweis: es gibt Arbeitseinheiten, und die Suche findet die eine Stelle',
   );
   assert.deepEqual(treffer, []);
 }
@@ -830,21 +831,4 @@ test('docs/architektur.md nennt die Rangfolge der Bereiche wie STUFEN', () => {
   );
   assert.ok(stufen.length > 5, 'Die Tabelle der Rangfolge ist nicht zu finden');
   assert.deepEqual(stufen, STUFEN);
-});
-
-test('eine Transaktionsform: .transaction( nur in src/infra/bereich.ts und db/', () => {
-  // Dienste öffnen Transaktionen mit k.transaktion, Repositories nehmen den übergebenen tx.
-  // Gemessen 0 am 13.11.2026 (vorher sieben in src/konto, src/haushalt, src/bestand, src/einstellungen).
-  // Gegenprobe (13.11.2026): in src/bestand/lagerortSetzen.ts wieder `k.db.transaction(async tx => …)` → rot.
-  const erlaubt = rel => rel === 'src/infra/bereich.ts' || rel.startsWith('db/');
-  const alle = [...tsUnter('src', 'routes', 'jobs', 'db', 'clients', 'startup'), 'server.ts'];
-  const finde = rel => /\.transaction\s*(?:<[^>]*>)?\(/.test(quelltext(rel));
-  // Selbstbeweis: Die Suche muss die erlaubten Stellen finden.
-  assert.deepEqual(['src/infra/bereich.ts', 'db/txLock.ts'].filter(finde), ['src/infra/bereich.ts', 'db/txLock.ts']);
-  assert.ok(alle.length > 300, `nur ${alle.length} Dateien gefunden — greift die Suche noch?`);
-  assert.deepEqual(
-    alle.filter(rel => !erlaubt(rel) && finde(rel)),
-    [],
-    'Eine Transaktion öffnet ein Dienst mit k.transaktion; ein Repository nimmt den tx des Aufrufers.',
-  );
 });
