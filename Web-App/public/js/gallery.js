@@ -300,7 +300,7 @@ export async function loadGallery(opts = {}) {
   enrichGalleryWithPrices();
 }
 export function renderGallery() {
-  // Filtern und Sortieren macht der Server (getSets in utils/handlers.ts) — hier wird nur noch gezeichnet,
+  // Filtern und Sortieren macht der Server (getSets in src/sets/lesen.ts) — hier wird nur noch gezeichnet,
   // was geladen ist. Andernfalls würde ein Filter bloss die aktuell geladene Seite durchsuchen.
   const q = G('gs')?.value?.toLowerCase() || '';
   const list = allSets;

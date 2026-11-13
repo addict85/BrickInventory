@@ -423,7 +423,7 @@ set_number,quantity
 ```bash
 export TEST_DATABASE_URL=postgres://tester:tester@127.0.0.1:5432/cattest
 REQUIRE_DB=1 npm test                         # ganze Suite, parallel
-REQUIRE_DB=1 npm test -- test/datei.test.js   # einzelne Dateien, gleicher Aufbau
+REQUIRE_DB=1 npm test -- test/ratschen.test.js   # einzelne Dateien, gleicher Aufbau
 npm run test:seriell                          # alles nacheinander auf der Basis-DB
 ```
 

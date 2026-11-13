@@ -271,7 +271,7 @@ export function renderInstructions(instr, sn) {
       const href = i.local_path || i.url;
       const isLocal = !!i.local_path;
       // Selbst hochgeladen oder automatisch importiert? Das sagt der Server (is_manual, siehe
-      // utils/instructions.anleitungenZusammenlegen). Vorher stand die Regel hier als Pfadvergleich — eine
+      // anleitungenZusammenlegen in src/katalog/instructions.ts). Vorher stand die Regel hier als Pfadvergleich — eine
       // zweite Fassung derselben Frage, die die Android-App gar nicht erst nachbauen konnte.
       const isUpload = !!i.is_manual;
       const label = esc(i.description) || t('instr.label');

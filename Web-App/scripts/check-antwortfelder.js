@@ -62,7 +62,7 @@ function dateien(wurzel, endungen, aus) {
 
 /**
  * Schlüssel der obersten Ebene aus allen res.json({…}) einer Quelle — und aus
- * `return { success: true, … }`: So geben die Dienste in utils/dienste/ die
+ * `return { success: true, … }`: So geben die Dienste unter src/ die
  * Antwort zurück, die eine Route unverändert weiterreicht.
  */
 /** @param {string} s @param {RegExp} [re] */

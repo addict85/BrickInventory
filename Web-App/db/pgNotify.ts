@@ -10,7 +10,7 @@ import { AsyncResource } from 'node:async_hooks';
  * seinen Zustand aus der Datenbank nach, statt einem Signal zu folgen. */
 type Handler = (payload?: string) => void | Promise<void>;
 /** Der Handler läuft im Rahmen seines listen(): Ein Strom einer Anfrage fragt
- * dann mit deren Konto, ein Auftrag im Systemrahmen (Zeilenschutz, Migration 0110). */
+ * dann mit deren Konto, ein Auftrag im Systemrahmen (Zeilenschutz, Migration 0111). */
 type Eintrag = { roh: Handler; lauf: Handler };
 
 /** Kanalnamen sind Bezeichner und können nicht als Parameter gebunden werden. */

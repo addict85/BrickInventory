@@ -15,7 +15,7 @@ import { ME } from './zustand.js';
 let _gibTimer = null; // Polling-Fallback-Timer (nur wenn SSE scheitert)
 /**
  * Ein Eintrag im Ergebnis eines Imports. `results` nennt der Vertrag nicht (CsvImportStatus ist offen); so
- * schreibt ihn src/import/csvImport.ts.
+ * schreibt ihn src/sets/csvImportLauf.ts.
  * @typedef {{ set_number?: string, zeile?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportErgebnis
  * @typedef {import('../../frontend-typen/vertrag').CsvImportStatus & { results?: ImportErgebnis[] }} ImportStand
  */
