@@ -42,10 +42,8 @@ function gruppen(ip: string): number[] {
   return [...vorn, ...Array(8 - vorn.length - hinten.length).fill(0), ...hinten];
 }
 
-/** IPv4-gemappte (::ffff:a.b.c.d), IPv4-kompatible (::a.b.c.d) und NAT64-Adressen
- * (64:ff9b::a.b.c.d) erreichen eine IPv4-Adresse; geprüft wird diese, damit jede
- * IPv4-Regel auch hier greift. NAT64 ganz zu sperren bräche Abrufe hinter DNS64.
- * :: und ::1 sind eigene IPv6-Adressen, keine eingebettete IPv4. */
+/** ::ffff:a.b.c.d, ::a.b.c.d und 64:ff9b::a.b.c.d erreichen eine IPv4-Adresse: Geprüft wird
+ * diese (NAT64 ganz zu sperren bräche DNS64). :: und ::1 sind echte IPv6-Adressen. */
 export function normalisiert(ip: string): string {
   if (!net.isIPv6(ip)) return ip;
   const g = gruppen(ip);

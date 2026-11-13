@@ -34,10 +34,8 @@ function ohneGeheimnisse(wert: unknown): unknown {
   return Object.fromEntries(Object.entries(wert).map(([k, v]) => [k, GEHEIM.test(k) ? '*' : ohneGeheimnisse(v)]));
 }
 
-/** Die Wiederholung läuft vor den Wächtern der Route: Eine Verwalter-Antwort darf
- * nur derselben Rolle wieder ausgeliefert werden, nicht einem App-Token desselben
- * Kontos. Ohne Verwalterrolle bleibt der Abdruck wie vorher, damit laufende
- * Schlüssel ein Update überstehen. */
+/** Die Wiederholung läuft vor den Wächtern der Route: Verwalter-Antworten nur an die
+ * Verwalterrolle. Ohne sie bleibt der Abdruck gleich, laufende Schlüssel überstehen Updates. */
 export function fingerabdruck(methode: string, pfad: string, rumpf: unknown, verwalter = false): string {
   const inhalt = `${methode} ${pfad}\n${JSON.stringify(ohneGeheimnisse(rumpf ?? null))}`;
   return ABDRUCK + suchwert('idempotenz', verwalter ? `${inhalt}\nverwalter` : inhalt);

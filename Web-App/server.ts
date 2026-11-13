@@ -170,8 +170,7 @@ async function starte(): Promise<void> {
   process.on('SIGINT', () => {
     void herunterfahren('SIGINT', httpServer, jobs, zugang, webSperreFrei);
   });
-  // Aufträge arbeiten über Kontogrenzen (Preise, Katalog, Aufräumen); der HTTP-Server steht
-  // schon ausserhalb dieses Rahmens, seine Anfragen erben ihn nicht.
+  // Aufträge arbeiten über Kontogrenzen; HTTP-Anfragen erben diesen Rahmen nicht.
   if (jobs) await imSystemkontext('auftraege', () => starteJobs(web));
 }
 

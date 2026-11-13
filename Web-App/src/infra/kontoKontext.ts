@@ -24,10 +24,8 @@ export function imNamenVon<T>(quelle: KontoQuelle, f: () => T): T {
   return kontext.run({ quelle }, f);
 }
 
-/** Arbeit über Kontogrenzen hinweg (Aufträge, Start, Anmeldung vor dem Konto):
- * Der Zeilenschutz der Datenbank (Migration 0110) gibt dann alle Zeilen frei,
- * sonst nur die des Kontos und seiner Unterkonten. Der Grund steht am Aufruf,
- * damit jede Ausnahme mit einem grep nach `imSystemkontext(` zu finden ist. */
+/** Arbeit über Kontogrenzen (Aufträge, Start, Anmeldung): Der Zeilenschutz (Migration 0111)
+ * gibt dann alle Zeilen frei. Der Grund steht am Aufruf, auffindbar per `imSystemkontext(`. */
 const systemRahmen = new AsyncLocalStorage<string | null>();
 
 export function imSystemkontext<T>(grund: string, f: () => T): T {

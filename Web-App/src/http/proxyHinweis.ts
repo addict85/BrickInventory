@@ -46,10 +46,8 @@ export function proxyHinweis(
   };
 }
 
-/** Der vertraute Proxy reicht die Adresse weiter, die er selbst sieht. Steht ein
- * zweiter Proxy davor, ist das immer dessen Adresse, und der Gateway-Hinweis oben
- * schweigt, weil der Kopf von einem vertrauten Absender kommt. Erst nach vielen
- * Anfragen über lange Zeit, damit ein einzelner Nutzer nicht gemeldet wird. */
+/** Steht ein zweiter Proxy vor Caddy, kommt immer dessen Adresse an; gemeldet wird
+ * erst nach vielen Anfragen über lange Zeit, damit ein einzelner Nutzer nicht zählt. */
 function einzigeClientAdresse(aktiv: boolean, warne: (text: string) => void, uhr: () => number) {
   let fertig = !aktiv;
   let erste: string | undefined;
