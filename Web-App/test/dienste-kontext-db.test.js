@@ -11,6 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const quellen = require('./helpers/sources');
@@ -20,6 +21,15 @@ const { haeltTeil } = require('./helpers/bestand');
 const _req = quellen.buildAndRequire();
 const testZugang = () => quellen.testZugang();
 test.after(() => testZugang().pool.end());
+
+/** Ein eigener Zugang als Eigentümerin, wenn der Lauf die Rollen trennt (helpers/eigene-db.js). */
+function eigentuemerin() {
+  const url = process.env.TEST_DB_EIGEN_URL;
+  if (!url || url === process.env.DATABASE_URL) return testZugang();
+  const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
+  const k = modul.dbKonfigAusUmgebung();
+  return modul.erzeugeDb({ ...k, verbindung: { connectionString: url }, system: null });
+}
 
 /** Ein Zugang, der seine Abfragen zählt; sonst derselbe wie der des Tests. */
 function zaehlend(z) {
@@ -38,7 +48,7 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
   const { baueDienste } = _req('startup/verdrahtung.js');
   const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
   // Testdaten als Eigentümerin (am Zeilenschutz vorbei), der Dienst fragt als Laufzeitrolle.
-  const eigen = _req('db/database.js');
+  const eigen = eigentuemerin();
   const { imNamenVon } = _req('src/infra/kontoKontext.js');
   const db = testZugang();
   const name = `kontext_${process.pid}`;
@@ -48,7 +58,10 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
       name,
     ])
   ).id;
-  t.after(() => eigen.run('DELETE FROM users WHERE id = $1', [uid]));
+  t.after(async () => {
+    await eigen.run('DELETE FROM users WHERE id = $1', [uid]);
+    if (eigen !== testZugang()) await eigen.pool.end();
+  });
   await haeltTeil(eigen, uid, '3001', { menge: 4 });
 
   const { zaehler, zugang } = zaehlend(db);
