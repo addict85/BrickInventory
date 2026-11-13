@@ -59,8 +59,9 @@ function pruefe(web) {
       .split('\n')
       .forEach((z, i) => {
         for (const m of teil(z).matchAll(muster)) {
+          const pfad = m[1] ?? '';
           gesehen++;
-          if (!gibt(m[1], datei)) tot.push(`${path.relative(web, datei)}:${i + 1} ${m[1]}`);
+          if (!gibt(pfad, datei)) tot.push(`${path.relative(web, datei)}:${i + 1} ${pfad}`);
         }
       });
   for (const f of quellen) lies(f, f.endsWith('.sh') ? kommentarSh : kommentarJs);
