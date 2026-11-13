@@ -23,3 +23,21 @@ export function aktuellesKonto(): { id: number; verwalter: boolean } | null {
 export function imNamenVon<T>(quelle: KontoQuelle, f: () => T): T {
   return kontext.run({ quelle }, f);
 }
+
+/** Arbeit über Kontogrenzen (Aufträge, Start, Anmeldung): Der Zeilenschutz (Migration 0111)
+ * gibt dann alle Zeilen frei. Der Grund steht am Aufruf, auffindbar per `imSystemkontext(`. */
+const systemRahmen = new AsyncLocalStorage<string | null>();
+
+export function imSystemkontext<T>(grund: string, f: () => T): T {
+  return systemRahmen.run(grund, f);
+}
+
+/** Eine HTTP-Anfrage erbt keinen Systemrahmen, auch wenn Web und Jobs in einem Prozess laufen. */
+export function alsAnfrage<T>(quelle: KontoQuelle, f: () => T): T {
+  return systemRahmen.run(null, () => kontext.run({ quelle }, f));
+}
+
+/** Was die Datenbankschicht je Transaktion setzt. */
+export function zeilenKontext(): { system: boolean; konto: number | null } {
+  return { system: !!systemRahmen.getStore(), konto: aktuellesKonto()?.id ?? null };
+}

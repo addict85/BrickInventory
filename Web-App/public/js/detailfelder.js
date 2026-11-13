@@ -112,7 +112,7 @@ export function setzeOrtVorrat(namen) {
     // beim Tippen unter der Hand weg.
     const warNeu = istNeuEintrag(sel);
     const vorher = sel.value;
-    setzeHtml(sel, ungeprueft(ortOptionen(vorher)));
+    setzeHtml(sel, ortOptionen(vorher));
     if (warNeu) sel.selectedIndex = sel.options.length - 1;
     else if ([...sel.options].some(o => o.value === vorher)) sel.value = vorher;
   }
@@ -131,7 +131,7 @@ function ortOptionen(wert) {
     ..._orte.map(o => html`<option value="${o}"${o === wert ? ' selected' : ''}>${o}</option>`),
     // IMMER zuletzt: setzeOrtVorrat() greift ihn ueber options.length - 1 ab.
     html`<option value="" ${ORT_NEU_MARKE}>${tRaw('detail.storage_new')}</option>`,
-  ].join('');
+  ];
 }
 
 /**
@@ -146,7 +146,7 @@ export function lagerortBlock(id, wert, attrs = '') {
   const ort = String(wert || '');
   return html`
       <select id="${id}-sel" class="alarm-feld" aria-label="${tRaw('detail.storage')}" data-ortauswahl="1"
-              data-change="lagerortGewaehlt" data-arg="${id}">${ungeprueft(ortOptionen(ort))}</select>
+              data-change="lagerortGewaehlt" data-arg="${id}">${ortOptionen(ort)}</select>
       <input type="text" id="${id}" class="alarm-feld" maxlength="60" aria-label="${tRaw('detail.storage')}" data-stil="display:none"
              placeholder="${tRaw('detail.storage_ph')}" value="${ort}"
              data-blur="lagerortGetippt" ${ungeprueft(attrs)} />
@@ -186,7 +186,7 @@ export function lagerortGetippt() {
   if (!sel) return;
   const ort = String(this.value || '').trim();
   if (!_orte.includes(ort) && ort) _orte = [..._orte, ort].sort((a, b) => a.localeCompare(b));
-  setzeHtml(sel, ungeprueft(ortOptionen(ort)));
+  setzeHtml(sel, ortOptionen(ort));
   sel.value = ort;
   if (ort) this.style.display = 'none';
 }

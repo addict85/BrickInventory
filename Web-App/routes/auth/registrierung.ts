@@ -31,13 +31,16 @@ import {
   mailBereit,
 } from '../../src/mail';
 import { registrierungOffen, getSetting } from '../../src/einstellungen';
+import { imSystemkontext } from '../../src/infra/kontoKontext';
 
 const router = vertragsRouter();
 
 /** Ausnahme: Die Mail geht auch ohne lesbare Einstellung hinaus, dann deutsch.
  * Sie fragt niemand ab, der auf eine Antwort wartet. */
 async function mailSprache(uid: number): Promise<string> {
-  return String(await getSetting(uid, 'language', 'de').catch(meldeUndLiefere('registrierung:sprache', 'de')));
+  // Das Konto des Inhabers ist nicht das der Anfrage (Zeilenschutz).
+  const wert = imSystemkontext('registrierung', () => getSetting(uid, 'language', 'de'));
+  return String(await wert.catch(meldeUndLiefere('registrierung:sprache', 'de')));
 }
 
 // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
@@ -102,7 +105,10 @@ router.post(
       }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
       // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
       // Sprache startet.
-      if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
+      if (neuId)
+        await imSystemkontext('registrierung', () => setUserSetting(neuId, 'language', lang)).catch(
+          logAndContinue(`registrierung:sprache ${neuId}`),
+        );
       const mehrere = (await kontoBereich().konten.offeneRegistrierungen(email)) > 1;
       result = basis
         ? await sendVerificationMail(email, token, basis, lang, 'registrierung', mehrere)

@@ -1999,3 +1999,18 @@ wird). Hinweise:
 - Wer `app` mehrfach betreibt (etwa `docker compose up --scale app=2`), sieht
   diese Meldung; es bleibt bei einem `app` und einem `jobs`. Sonst nichts von
   Hand zu tun.
+
+## 57. Image startet als `brickinv`; Proxy vor Caddy
+
+- Das App-Image startet jetzt ohne `--user` als `brickinv`, nicht mehr als
+  root. Mit compose ist nichts zu tun: `schluessel` und `daten-rechte` laufen
+  dort ausdrücklich als root, `app`, `jobs` und `migration` als `brickinv`.
+  Wer das Image mit einem einzelnen `docker run` betreibt und `/app/data`
+  vom Entrypoint einrichten lässt, startet es dafür mit `--user root`; der
+  Entrypoint gibt die Rechte danach an `brickinv` ab.
+- **Nur mit einem Proxy vor Caddy** (z. B. Nginx Proxy Manager): dessen
+  Adresse, wie Caddy sie sieht, als `VORGELAGERTER_PROXY=…` in `.env`
+  eintragen und `docker compose up -d` (README.md, „Proxy vor Caddy“). Ohne
+  die Angabe sahen App und Anmeldesperre alle Clients unter der Adresse dieses
+  Proxys. Ohne Proxy davor ist nichts zu tun; das neue `Caddyfile` verhält sich
+  dann wie das alte.

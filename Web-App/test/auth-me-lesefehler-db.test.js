@@ -44,14 +44,16 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
   };
   /** Jede Abfrage scheitert, solange `arbeit` läuft. */
   const mitFehler = async arbeit => {
-    const echt = db.pool.query;
-    db.pool.query = async () => {
+    // Mit Konto holt sich die Datenbankschicht eine eigene Verbindung (Zeilenschutz): beide Wege.
+    const echt = { query: db.pool.query, connect: db.pool.connect };
+    const fehler = async () => {
       throw new Error('Verbindung zur Datenbank verloren');
     };
+    Object.assign(db.pool, { query: fehler, connect: fehler });
     try {
       return await arbeit();
     } finally {
-      db.pool.query = echt;
+      Object.assign(db.pool, echt);
     }
   };
 

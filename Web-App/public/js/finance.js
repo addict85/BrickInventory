@@ -57,12 +57,10 @@ const KENNZAHLEN = ['fin-einstand', 'fin-wert', 'fin-total-pnl', 'portfolio-curr
  * sonst sieht dasselbe Set zweimal aus wie ein Fehler. @param {{ owners?: { id: number, username: string }[] }} it @param {boolean} mehrereKonten */
 function besitzer(it, mehrereKonten) {
   return mehrereKonten && it.owners?.length
-    ? it.owners
-        .map(
-          o =>
-            html`<span class="cond-badge besitzer-badge"><span class="vh">${tRaw('finance.konto')}: </span>${o.username}</span>`,
-        )
-        .join('')
+    ? it.owners.map(
+        o =>
+          html`<span class="cond-badge besitzer-badge"><span class="vh">${tRaw('finance.konto')}: </span>${o.username}</span>`,
+      )
     : ownerBadges(it);
 }
 
@@ -132,7 +130,7 @@ function pmRow(it, label, acq, lage, text) {
   // als Inline-Handler die CSP blockiert.
   return html`<tr class="zeiger" ${ungeprueft(manArgs(it))}>
     <td class="fin-bild">${img}</td>
-      <td class="fin-name"><span class="fin-name-text">${zeilenKnopf(manZiel(it), ungeprueft(label), tRaw('zeile.oeffnen', { name: text, nr: it.fig_number || it.part_number || '' }))}${acq ? html` ${ungeprueft(condBadge(acq.condition))}` : ''} ${ungeprueft(besitzer(it, lage.mehrereKonten))}</span><span class="fin-unter">×${qty}${unterGeschaetzt(acq)}</span></td>
+      <td class="fin-name"><span class="fin-name-text">${zeilenKnopf(manZiel(it), ungeprueft(label), tRaw('zeile.oeffnen', { name: text, nr: it.fig_number || it.part_number || '' }))}${acq ? html` ${condBadge(acq.condition)}` : ''} ${besitzer(it, lage.mehrereKonten)}</span><span class="fin-unter">×${qty}${unterGeschaetzt(acq)}</span></td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${acq?.created_at ? fmtDatum(acq.created_at) : ''}</td>
     <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
@@ -165,7 +163,7 @@ function pmTableHead() {
  * @param {{ art: string, titel: string, symbol: string, zeilen: string, anzahl: number, kauf: number, wert: number, cur: string }} o */
 function manuellerAbschnitt(o) {
   if (!o.anzahl) return '';
-  const fuss = html`<tfoot><tr><td colspan="4" class="fin-fuss-l">${tRaw('finance.sum')}</td>${ungeprueft(summenZellen(o.kauf, o.wert, o.cur, 1))}<td colspan="2"></td></tr></tfoot>`;
+  const fuss = html`<tfoot><tr><td colspan="4" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(o.kauf, o.wert, o.cur, 1)}<td colspan="2"></td></tr></tfoot>`;
   return html`
     <div class="tw abstand-o-125" data-fin-art="${o.art}" tabindex="0" role="region" aria-label="${o.titel}">
       <h2 class="ctitle fin-abschnitt">${ico(o.symbol)} ${ungeprueft(o.titel)}</h2>
@@ -193,7 +191,7 @@ function setRow(s, acq, lage) {
   return html`<tr class="zeiger" data-click="openModal" data-arg="${s.set_number}">
   <td class="fin-bild">${s.image_local || s.image_url ? bildTag({ src: imgUrl(thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
   <td class="fin-detail"><span class="nummer-klein">${s.set_number}</span></td>
-    <td class="fin-name">${zeilenKnopf({ click: 'openModal', arg: s.set_number }, s.name || '—', tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}${s.year ? html` <span class="fin-jahr">${s.year}</span>` : ''}${acq ? html` ${ungeprueft(condBadge(acq.condition))}` : ''} ${ungeprueft(besitzer(s, lage.mehrereKonten))}<span class="fin-unter">${s.set_number}${s.year ? html` · ${s.year}` : ''} · ×${qty}${unterGeschaetzt(acq)}</span></td>
+    <td class="fin-name">${zeilenKnopf({ click: 'openModal', arg: s.set_number }, s.name || '—', tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}${s.year ? html` <span class="fin-jahr">${s.year}</span>` : ''}${acq ? html` ${condBadge(acq.condition)}` : ''} ${besitzer(s, lage.mehrereKonten)}<span class="fin-unter">${s.set_number}${s.year ? html` · ${s.year}` : ''} · ×${qty}${unterGeschaetzt(acq)}</span></td>
   <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
   <td class="fin-detail fin-datum">${dateSrc ? fmtDatum(dateSrc) : '—'}</td>
   <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
@@ -206,7 +204,7 @@ function setRow(s, acq, lage) {
 
 /** @param {string} rows @param {{ sets: number }} einstand @param {number} setsQtyAvg @param {string} cur */
 function setsTabelle(rows, einstand, setsQtyAvg, cur) {
-  return html`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${t('finance.filter.sets')}"><h2 class="ctitle fin-abschnitt">${ico('set')} ${tRaw('finance.filter.sets')}</h2><table class="dt dt-fin" aria-label="${tRaw('finance.filter.sets')}"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110 fin-k-markt"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${tRaw('col.image')}</span></th><th>${tRaw('col.nr')}</th><th${sortStand('name', true)}>${sortKnopf('name', true, tRaw('col.name'))}</th><th class="zahl">${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>${preisKoepfe(true)}<th title="${t('finance.price_status')}"><span aria-hidden="true">${tRaw('finance.price_status_kurz')}</span><span class="vh">${t('finance.price_status')}</span></th></tr></thead><tbody>${ungeprueft(rows)}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${tRaw('finance.sum')}</td>${ungeprueft(summenZellen(einstand.sets, setsQtyAvg, cur, 1))}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
+  return html`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${t('finance.filter.sets')}"><h2 class="ctitle fin-abschnitt">${ico('set')} ${tRaw('finance.filter.sets')}</h2><table class="dt dt-fin" aria-label="${tRaw('finance.filter.sets')}"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110 fin-k-markt"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${tRaw('col.image')}</span></th><th>${tRaw('col.nr')}</th><th${sortStand('name', true)}>${sortKnopf('name', true, tRaw('col.name'))}</th><th class="zahl">${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>${preisKoepfe(true)}<th title="${t('finance.price_status')}"><span aria-hidden="true">${tRaw('finance.price_status_kurz')}</span><span class="vh">${t('finance.price_status')}</span></th></tr></thead><tbody>${ungeprueft(rows)}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
 }
 
 /** Gesamtübersicht: Einstand und Wert je Bereich und zusammen.
@@ -215,7 +213,7 @@ function setsTabelle(rows, einstand, setsQtyAvg, cur) {
  * @param {{ ohneMarkt: number }} basis */
 function summenTabelle(einstand, wert, cur, basis) {
   const zeile = (/** @type {string} */ name, /** @type {number} */ kauf, /** @type {number} */ w, zusatz = '') =>
-    html`<tr><td class="fin-fuss-name">${ungeprueft(name)}</td>${ungeprueft(summenZellen(kauf, w, cur, 0, zusatz))}</tr>`;
+    html`<tr><td class="fin-fuss-name">${ungeprueft(name)}</td>${summenZellen(kauf, w, cur, 0, zusatz)}</tr>`;
   return html`
     <div class="tw abstand-o-125">
       <table class="dt dt-summe" aria-label="${tRaw('finance.sum')}">
@@ -605,8 +603,8 @@ function einstandAus(liste) {
  */
 function summenZellen(kauf, wert, cur, luecke, zusatz = '') {
   const k = html`<td class="price-total fin-fuss-wert" data-kurz="${t('finance.col.purchase')}">${kauf > 0 ? fmtN(kauf, cur) : html`<span class="text-mut">—</span>`}</td>`;
-  const w = html`<td class="price-total fin-fuss-wert" data-kurz="${t('finance.grand.value')}">${wert > 0 ? ungeprueft(fmtN(wert, cur) + (zusatz ? `<span class="fin-je">${esc(zusatz)}</span>` : '')) : ohneWert()}</td>`;
-  return k + '<td></td>'.repeat(luecke) + w;
+  const w = html`<td class="price-total fin-fuss-wert" data-kurz="${t('finance.grand.value')}">${wert > 0 ? html`${fmtN(wert, cur)}${zusatz ? html`<span class="fin-je">${zusatz}</span>` : ''}` : ohneWert()}</td>`;
+  return html`${k}${Array.from({ length: luecke }, () => html`<td></td>`)}${w}`;
 }
 /**
  * Die gemeinsame Basis der Karten vom Server; ohne sie (pnl gescheitert) keine G/V.

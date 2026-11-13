@@ -8,6 +8,7 @@ import {
   AuftragUnterbrochen,
   AuftragVerloren,
   AuftragVerschieben,
+  imAuftragsrahmen,
   imNamenDesAuftrags,
   verschoben,
   fehlgeschlagen,
@@ -196,11 +197,9 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     const ac = new AbortController();
     const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
     laufend.set(a.id, lauf);
-    lauf.fertig = fuehreAuftragAus(a, ac, bearbeiter[a.art], fristSek, () => beendet)
+    lauf.fertig = imAuftragsrahmen(a, () => fuehreAuftragAus(a, ac, bearbeiter[a.art], fristSek, () => beendet))
       .catch(logAndContinue(`auftraege:${a.art}`))
-      .finally(() => {
-        laufend.delete(a.id);
-      });
+      .finally(() => laufend.delete(a.id));
     return lauf;
   }
 

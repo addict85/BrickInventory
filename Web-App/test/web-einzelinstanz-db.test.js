@@ -13,6 +13,9 @@
  *      „nach einem Abriss holt der Prozess die Sperre zurück“
  *   D  bei einem Verbindungsfehler aufgeben statt es erneut zu versuchen → rot: „fehlt
  *      die Datenbank eine Weile, holt er die Sperre danach zurück“
+ *   E  (13.11.2026) ohne `database =` in halter(), während eine ANDERE Datenbank
+ *      im Cluster die Sperre hält → rot: „ein zweiter Zugang …“ (2 statt 1); mit
+ *      der Bedingung unter derselben Störung grün
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -53,9 +56,12 @@ test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const halter = () =>
-    db.all(`SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND classid = $1 AND objid = 0 AND granted`, [
-      LOCKS.WEB_PROZESS,
-    ]);
+    // pg_locks gilt für den ganzen Cluster: Parallele Testdateien halten dieselbe Sperre auf ihrer Kopie.
+    db.all(
+      `SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND classid = $1 AND objid = 0 AND granted
+              AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
+      [LOCKS.WEB_PROZESS],
+    );
   const stumm = async f => {
     const echt = console.warn;
     console.warn = () => {};

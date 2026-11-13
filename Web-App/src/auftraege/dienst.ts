@@ -1,7 +1,7 @@
 /** Jeder Wechsel, auf den jemand wartet, weckt ihn per NOTIFY: neue Aufträge
  * den Job-Prozess, Statuswechsel den Statusstrom. Geht ein NOTIFY verloren,
  * findet der Worker den Auftrag in seinem Takt. */
-import { imNamenVon } from '../infra/kontoKontext';
+import { imNamenVon, imSystemkontext } from '../infra/kontoKontext';
 import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
 import { PREISPOSTEN_HOECHSTENS, pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
@@ -118,6 +118,12 @@ export async function imNamenDesAuftrags<T>(a: Pick<AuftragsZeile, 'user_id'>, f
   if (a.user_id == null) return f();
   const u = await auftraegeBereich().auftraege.kontoRolle(a.user_id);
   return imNamenVon({ apiUser: { user_id: a.user_id, is_admin: !!u?.is_admin } }, f);
+}
+
+/** Aufträge gehen über Kontogrenzen (Preise aller Sets, Aufräumen, Katalog):
+ * Der ganze Lauf samt Aufgabe nach Fehlern im Systemrahmen des Zeilenschutzes. */
+export function imAuftragsrahmen<T>(a: Pick<AuftragsZeile, 'art'>, f: () => Promise<T>): Promise<T> {
+  return imSystemkontext(`auftrag ${a.art}`, f);
 }
 
 /** Weckt bei jedem Statuswechsel eines Auftrags, auch aus dem Job-Prozess; gibt das Abmelden zurück. */

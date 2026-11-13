@@ -100,4 +100,6 @@ ENV PG_STMT_MS=30000
 
 EXPOSE 3000
 
+USER brickinv
+
 CMD ["./docker-entrypoint.sh"]

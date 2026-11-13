@@ -70,7 +70,7 @@ test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, a
   // verloren, deshalb holt der Handler beim Wiederverbinden nach.
   await db.run(
     `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
-                 WHERE pid <> pg_backend_pid() AND query LIKE $1`,
+                 WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE $1`,
     [`LISTEN "${KANAL}"%`],
   );
   await warteAuf(3);

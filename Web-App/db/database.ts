@@ -1,7 +1,7 @@
 /** Der Zugang zu PostgreSQL: Pool, Abfragen, Transaktionen, Erststart. */
 
 import { Pool, types as pgTypes, Client } from 'pg';
-import type { PoolClient, PoolConfig } from 'pg';
+import type { PoolClient, PoolConfig, QueryResult } from 'pg';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { runMigrations, offeneMigrationen } from './migrate';
 import { Benachrichtigung } from './pgNotify';
@@ -11,6 +11,7 @@ import path from 'node:path';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { fehlerCode, meldeFehler, logAndContinue, setzeTransaktionsWaechter } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';
+import { zeilenKontext } from '../src/infra/kontoKontext';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
 // und liefert `any`.
@@ -127,17 +128,40 @@ export interface Db extends DbSchnittstelle {
  * über ihre Verbindung, auch aus Repositories ohne tx-Parameter. Sonst läse
  * ein Dienst mitten in der Transaktion über eine zweite Verbindung ausserhalb
  * ihres Stands. `offen` schützt vor Nachzüglern nach COMMIT. */
-type TxStand = { client: PoolClient; offen: boolean; db: object; innerster: string | null };
+type TxStand = { client: PoolClient; offen: boolean; db: object; innerster: string | null; kontext: string };
 const laufendeTx = new AsyncLocalStorage<TxStand>();
 /** Der Sicherungspunkt, in dem dieser Aufrufpfad gerade läuft. */
 const laufenderPunkt = new AsyncLocalStorage<{ stand: TxStand; name: string }>();
 
-function txSchnittstelle(client: PoolClient): DbSchnittstelle {
+/** Für den Zeilenschutz (Migration 0110): wer gerade fragt, nur bis zum Ende
+ * der Transaktion. Ein Wert auf Sitzungsebene bliebe an der Pool-Verbindung
+ * hängen und gälte in der nächsten Anfrage eines anderen Kontos. Die Konto-ID
+ * ist eine geprüfte ganze Zahl und darf deshalb ins SQL. */
+function kontextSql(): string {
+  const { system, konto } = zeilenKontext();
+  if (!system && konto === null) return '';
+  return `SELECT set_config('app.system', '${system ? 'an' : ''}', true), set_config('app.konto', '${system ? '' : konto}', true)`;
+}
+const KONTEXT_LEER = "SELECT set_config('app.system', '', true), set_config('app.konto', '', true)";
+
+/** Wechselt der Rahmen mitten in der Transaktion (imSystemkontext), folgt die Einstellung. */
+async function kontextAbgleich(stand: TxStand): Promise<void> {
+  const soll = kontextSql();
+  if (soll === stand.kontext) return;
+  await stand.client.query(soll || KONTEXT_LEER);
+  stand.kontext = soll;
+}
+
+function txSchnittstelle(stand: TxStand): DbSchnittstelle {
+  const q = async (sql: string, p?: unknown[]) => {
+    await kontextAbgleich(stand);
+    return stand.client.query(sql, p);
+  };
   return {
-    all: <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
-    get: <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
-    run: (sql: string, p?: unknown[]) => client.query(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
-    exec: (sql: string) => client.query(sql).then(() => undefined),
+    all: <T = unknown>(sql: string, p?: unknown[]) => q(sql, p).then(r => r.rows as T[]),
+    get: <T = unknown>(sql: string, p?: unknown[]) => q(sql, p).then(r => r.rows[0] as T | undefined),
+    run: (sql: string, p?: unknown[]) => q(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
+    exec: (sql: string) => q(sql).then(() => undefined),
   };
 }
 
@@ -170,14 +194,17 @@ function innereTransaktion<T>(stand: TxStand, nummer: number, fn: (tx: DbSchnitt
   stand.innerster = name;
   return laufenderPunkt.run({ stand, name }, async () => {
     const { client } = stand;
+    // ROLLBACK TO nimmt auch ein set_config() aus dem Sicherungspunkt zurück.
+    const kontextVorher = stand.kontext;
     try {
       await client.query(`SAVEPOINT ${name}`);
       try {
-        const r = await fn(txSchnittstelle(client));
+        const r = await fn(txSchnittstelle(stand));
         await client.query(`RELEASE SAVEPOINT ${name}`);
         return r;
       } catch (e) {
         await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+        stand.kontext = kontextVorher;
         if (e !== null && typeof e === 'object') vomSicherungspunktAufgefangen.add(e);
         throw e;
       }
@@ -220,24 +247,56 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   };
   const txClient = (): PoolClient | null => txStand()?.client ?? null;
 
+  /** Ausserhalb einer Transaktion: ohne Konto und Systemrahmen direkt über den
+   * Pool, sonst in einer kurzen eigenen, damit set_config(…, true) gilt. */
+  async function abfrage(sql: string, params?: unknown[]): Promise<QueryResult> {
+    const stand = txStand();
+    if (stand) {
+      await kontextAbgleich(stand);
+      return stand.client.query(sql, params);
+    }
+    const kontext = kontextSql();
+    if (!kontext) return pool.query(sql, params);
+    const client = await pool.connect();
+    let kaputt: Error | undefined;
+    const abriss = (e: Error) => {
+      kaputt = e;
+    };
+    client.on('error', abriss);
+    try {
+      await client.query(`BEGIN; ${kontext}`);
+      const r = await client.query(sql, params);
+      await client.query('COMMIT');
+      return r;
+    } catch (e) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (r) {
+        kaputt = r instanceof Error ? r : new Error(String(r));
+      }
+      throw e;
+    } finally {
+      client.off('error', abriss);
+      client.release(kaputt);
+    }
+  }
+
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
    * Spalten sein SQL liefert; ohne Angabe bleibt es `unknown`. */
   async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
-    const c = txClient();
-    if (c) return (await c.query(sql, params)).rows as T[];
-    return queryWithRetry(async () => (await pool.query(sql, params)).rows, istLesend(sql));
+    if (txStand()) return (await abfrage(sql, params)).rows as T[];
+    return queryWithRetry(async () => (await abfrage(sql, params)).rows, istLesend(sql));
   }
   async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
     return (await all<T>(sql, params))[0];
   }
   /** Wer die neue id braucht, schreibt RETURNING und liest mit get(). */
   async function run(sql: string, params: unknown[] = []): Promise<{ changes: number }> {
-    const c = txClient();
-    if (c) return { changes: (await c.query(sql, params)).rowCount || 0 };
-    return queryWithRetry(async () => ({ changes: (await pool.query(sql, params)).rowCount || 0 }), false);
+    if (txStand()) return { changes: (await abfrage(sql, params)).rowCount || 0 };
+    return queryWithRetry(async () => ({ changes: (await abfrage(sql, params)).rowCount || 0 }), false);
   }
   async function exec(sql: string): Promise<void> {
-    await (txClient() ?? pool).query(sql);
+    await abfrage(sql);
   }
 
   async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
@@ -256,7 +315,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
 
   async function einmaligeTransaktion<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
     const client = await pool.connect();
-    const stand: TxStand = { client, offen: true, db: ich, innerster: null };
+    const stand: TxStand = { client, offen: true, db: ich, innerster: null, kontext: '' };
     let kaputt: Error | undefined;
     // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
     // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
@@ -266,8 +325,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     client.on('error', abriss);
     try {
       await client.query('BEGIN');
-      const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(client)));
-      await commitBegleiter.getStore()?.(txSchnittstelle(client));
+      await kontextAbgleich(stand);
+      const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(stand)));
+      await commitBegleiter.getStore()?.(txSchnittstelle(stand));
       stand.offen = false;
       await client.query('COMMIT');
       return result;

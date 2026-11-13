@@ -34,8 +34,11 @@ function ohneGeheimnisse(wert: unknown): unknown {
   return Object.fromEntries(Object.entries(wert).map(([k, v]) => [k, GEHEIM.test(k) ? '*' : ohneGeheimnisse(v)]));
 }
 
-export function fingerabdruck(methode: string, pfad: string, rumpf: unknown): string {
-  return ABDRUCK + suchwert('idempotenz', `${methode} ${pfad}\n${JSON.stringify(ohneGeheimnisse(rumpf ?? null))}`);
+/** Die Wiederholung läuft vor den Wächtern der Route: Verwalter-Antworten nur an die
+ * Verwalterrolle. Ohne sie bleibt der Abdruck gleich, laufende Schlüssel überstehen Updates. */
+export function fingerabdruck(methode: string, pfad: string, rumpf: unknown, verwalter = false): string {
+  const inhalt = `${methode} ${pfad}\n${JSON.stringify(ohneGeheimnisse(rumpf ?? null))}`;
+  return ABDRUCK + suchwert('idempotenz', verwalter ? `${inhalt}\nverwalter` : inhalt);
 }
 
 export function alteAbdrueckeLoeschen(): Promise<number> {

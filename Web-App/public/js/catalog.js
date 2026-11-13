@@ -10,7 +10,7 @@ import { toast } from './meldungen.js';
 import { setScrollLabel } from './scrollbar.js';
 import { loadGallery, loadStats } from './gallery.js';
 import { set_lastImportAt, ME, _settingsCache } from './zustand.js';
-import { esc, html, ungeprueft, verbinde } from './escapen.js';
+import { esc, html, verbinde } from './escapen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
 
@@ -413,8 +413,8 @@ function catCard(s) {
   // hier waere eine zweite Stelle, die es kennen muss. Ohne Thema-Nummer bleibt sie weg — dann zeigt der
   // Streifen nichts statt etwas Falsches.
   const thema = s.theme_id;
-  const ton = thema != null && Number.isInteger(thema) ? ` data-faecher="${((thema % 12) + 12) % 12}"` : '';
-  return html`<div class="sc"${ungeprueft(ton)} tabindex="0" role="button" data-sn="${s.set_number}" data-year="${s.year || ''}" data-click="openCatModal" data-arg="${s.set_number}">
+  const ton = thema != null && Number.isInteger(thema) ? html` data-faecher="${((thema % 12) + 12) % 12}"` : '';
+  return html`<div class="sc"${ton} tabindex="0" role="button" data-sn="${s.set_number}" data-year="${s.year || ''}" data-click="openCatModal" data-arg="${s.set_number}">
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${s.set_number}</div>

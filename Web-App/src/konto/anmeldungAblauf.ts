@@ -17,6 +17,7 @@ import { fachfehler } from '../infra/fehlerTexte';
 import { passwortMangel } from '../infra/passwortRegel';
 import { versuche, wertOder } from '../infra/ergebnis';
 import { kontoBereich } from './prozess';
+import { imSystemkontext } from '../infra/kontoKontext';
 import type { Konto as KontoZeile } from './repository/konten';
 
 export type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
@@ -143,8 +144,17 @@ export async function profilAendern(
 /** Sprache des Kontos, nicht die Vorgabe. Belegt antwortet wie frei, sonst
  * liessen sich Adressen abfragen; der Inhaber bekommt einen Hinweis statt des Links. */
 async function adressMails(user: Konto, email: string, token: string): Promise<boolean> {
+  // Auch die des Inhabers einer Adresse, eines anderen Kontos: im Systemrahmen.
   const sprache = async (uid: number) =>
-    String(wertOder(await versuche('anmeldung:sprache', getSetting(uid, 'language', 'de')), 'de'));
+    String(
+      wertOder(
+        await versuche(
+          'anmeldung:sprache',
+          imSystemkontext('adressmail', () => getSetting(uid, 'language', 'de')),
+        ),
+        'de',
+      ),
+    );
   const lang = await sprache(user.id);
   const basis = mailBasisUrl();
   let gesendet = false;

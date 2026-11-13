@@ -20,6 +20,7 @@ import { meldeSmtpAltlast } from './src/mail';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen, horcheAufTokenWiderruf } from './src/konto';
 import { schliessePufferUndTakte } from './startup/abschluss';
 import { halteWebSperre } from './startup/einzelinstanz';
+import { imSystemkontext } from './src/infra/kontoKontext';
 
 // Nur loggen: Ein abgelehntes Versprechen ist meist ein Nebenläufer ohne catch;
 // Anfragen und Jobs halten ihren Zustand in der Datenbank. Ein Neustart risse
@@ -136,7 +137,8 @@ async function starte(): Promise<void> {
   const zugang = verdrahteProzess();
 
   try {
-    await bereiteDatenbankVor(zugang);
+    // Migrationen, Erststart und Umschlüsselung gehen über alle Konten.
+    await imSystemkontext('start', () => bereiteDatenbankVor(zugang));
   } catch (e) {
     console.error('❌ Database initialisation failed:', fehlertext(e));
     console.error('   Check PostgreSQL connection settings (PGHOST, PGUSER, PGPASSWORD, PGDATABASE)');
@@ -168,7 +170,8 @@ async function starte(): Promise<void> {
   process.on('SIGINT', () => {
     void herunterfahren('SIGINT', httpServer, jobs, zugang, webSperreFrei);
   });
-  if (jobs) await starteJobs(web);
+  // Aufträge arbeiten über Kontogrenzen; HTTP-Anfragen erben diesen Rahmen nicht.
+  if (jobs) await imSystemkontext('auftraege', () => starteJobs(web));
 }
 
 // Ohne Worker weiterzulaufen täuschte einen Dienst vor.

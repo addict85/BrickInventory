@@ -113,7 +113,7 @@ function setDetailHtml(sn, acqs) {
   const acqRows = detailZeile(
     t('detail.purchase_price'),
     html`
-      ${ungeprueft(renderAcquisitionSummary(acqs, sn))}
+      ${renderAcquisitionSummary(acqs, sn)}
       <button class="btn bs btn-sm detail-knopf" data-click="openAcqModal" data-arg="${sn}">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>
     `,
     {
