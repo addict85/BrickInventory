@@ -116,21 +116,21 @@ echo "[backup] Datenbank → $DB_DATEI"
 # Anmeldezähler, Protokollzeilen und die Kopien vor Migrationen braucht keine
 # Wiederherstellung; im Dump lebten sie nur länger als ihre Frist.
 DUMP_OPTIONEN="--clean --if-exists --exclude-table-data=user_sessions --exclude-table-data=rate_limit_attempts --exclude-table-data=app_logs --exclude-schema=vor_migration_*"
-mkfifo "$KLAR/strom"
-tail -c 1024 < "$KLAR/strom" > "$KLAR/ende" &
 TEIL="$DB_DATEI.teil"
 # Die Optionen getrennt an Leerzeichen, aber ohne Dateinamen-Muster (das * gilt pg_dump).
+# awk reicht den Dump durch und behält nur die letzten Zeilen für die Endmarke:
+# keine benannte Pipe mit Hintergrundprozess, deren Öffnen ewig warten kann.
 set -f
 docker compose exec -T "$DB_SERVICE" \
   pg_dump $DUMP_OPTIONEN -U "$DB_USER" "$DB_NAME" \
-  | tee "$KLAR/strom" | gzip | schreibe "$TEIL"
+  | awk -v ende="$KLAR/ende" '{ print; z[NR % 5] = $0 } END { for (i = NR - 4; i <= NR; i++) if (i > 0) print z[i % 5] > ende }' \
+  | gzip | schreibe "$TEIL"
 set +f
-wait
 
 # POSIX-sh hat kein pipefail: Scheitert pg_dump, laufen gzip und age trotzdem
 # durch. Ein vollständiger Dump endet immer mit dieser Marke; fehlt sie, räumt
 # der trap die halbe Datei weg.
-if ! tail -n 5 "$KLAR/ende" | grep -q 'PostgreSQL database dump complete'; then
+if ! grep -q 'PostgreSQL database dump complete' "$KLAR/ende" 2>/dev/null; then
   echo "[backup] FEHLER: Dump ist unvollständig (Endmarke fehlt) — nichts gesichert." >&2
   exit 1
 fi
