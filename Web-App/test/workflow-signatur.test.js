@@ -264,3 +264,18 @@ test('ein umgehängter Tag bricht ab', t => {
   assert.equal(r.code, 1, `ein umgehängter Tag bricht ab\n${r.log}`);
   assert.match(r.log, /zeigt auf sha256:b+ statt auf/);
 });
+
+// Struktur: Ein Job, der die Docker-Hub-Zugangsdaten liest, läuft in der
+// geschützten Umgebung; sonst gäbe es sie ohne deren Freigabe.
+// Gegenprobe (13.11.2026 gemessen): `environment: docker-hub` im Job build
+// gestrichen → rot „build liest DOCKERHUB_* ohne Umgebung docker-hub“.
+test('Docker-Hub-Zugangsdaten nur in Jobs mit der Umgebung docker-hub', () => {
+  const jobs = YML.slice(YML.indexOf('\njobs:\n'));
+  const bloecke = jobs.split(/^ {2}(?=[\w-]+:\s*$)/m).slice(1);
+  const mitSecret = bloecke.filter(b => /secrets\.DOCKERHUB_/.test(b));
+  assert.ok(mitSecret.length >= 2, `zu wenige Jobs mit DOCKERHUB_* gefunden (${mitSecret.length})`);
+  for (const b of mitSecret) {
+    const name = b.split(':')[0];
+    assert.match(b, /^ {4}environment: docker-hub\s*$/m, `${name} liest DOCKERHUB_* ohne Umgebung docker-hub`);
+  }
+});
