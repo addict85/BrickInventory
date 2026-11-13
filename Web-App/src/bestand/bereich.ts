@@ -10,6 +10,7 @@ import * as manuelleMenge from './manuelleMenge';
 import * as papierkorbDienst from './papierkorb';
 import * as kaufpreisNachtrag from './kaufpreisNachtrag';
 import * as lagerortRechte from './lagerortRechte';
+import * as lagerortSetzen from './lagerortSetzen';
 import { zugang, type BestandAbhaengigkeiten, type BestandKontext } from './kontext';
 
 export type { BestandAbhaengigkeiten, BestandKontext } from './kontext';
@@ -18,6 +19,8 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten) {
   const k: BestandKontext = baueKontext(a, zugang);
   return {
     ...k,
+    // Nimmt den Kontext, nicht den Zugang: Ein neuer Ort braucht k.transaktion.
+    lagerortDienst: { ...k.lagerortDienst, ...bindeZugang(k, lagerortSetzen) },
     ...bindeZugang(k, acquisitions, ['recordAcquisitionForDay', 'findSameDayAcquisition', 'setzeGeschaetztenPreis']),
     erfassungenInKontowaehrung: bindeGenerisch(k)(acquisitions.erfassungenInKontowaehrung),
     ...bindeZugang(k, bestandExportDienst, ['buildPartsCsv', 'buildFigsCsv']),

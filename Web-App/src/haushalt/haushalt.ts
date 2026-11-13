@@ -3,7 +3,7 @@ import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
 import type { DbSchnittstelle } from '../../db/database';
-import type { HaushaltKontext } from './bereich';
+import type { HaushaltKontext } from './kontext';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { getSetting } from '../einstellungen';
 import * as repo from './repository';

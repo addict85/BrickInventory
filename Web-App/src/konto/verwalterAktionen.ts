@@ -2,7 +2,8 @@
  * Transaktion. Ein fehlender Eintrag verschwiege die Änderung, ein Eintrag ohne
  * Änderung behauptete eine, die nie geschah. */
 import { LETZTER_VERWALTER, setzeAktiv, setzeVerwalterRolle } from './konten';
-import { mitZugangsende } from './zugangsende';
+import { mitZugangsende, zugangsTransaktion } from './zugangsende';
+import { doppeltAls } from '../infra/fehlerTexte';
 import { schalteAb } from './zweiterFaktor';
 import { verwalterAktionMerken } from './verwalterProtokoll';
 import type { KontoKontext } from './kontext';
@@ -26,16 +27,17 @@ export function aktivSetzen(k: KontoKontext, durch: number, ziel: number, soll: 
   });
 }
 
+/** 23505 heisst: Ein anderes Konto hat die Adresse gleichzeitig bekommen. */
 export function registrierungFreischalten(k: KontoKontext, durch: number, ziel: number) {
-  return k.transaktion(async t => {
+  return zugangsTransaktion(k, async t => {
     const r = await t.konten.schalteRegistrierungFrei(ziel);
     if (r === 'ok') await verwalterAktionMerken(t, durch, ziel, 'konto_freigeschaltet');
     return r;
-  });
+  }).catch(doppeltAls('vergeben' as const));
 }
 
 export function zweitenFaktorEntfernen(k: KontoKontext, durch: number, ziel: number): Promise<void> {
-  return k.transaktion(async t => {
+  return zugangsTransaktion(k, async t => {
     await schalteAb(t, ziel);
     await verwalterAktionMerken(t, durch, ziel, 'zweiter_faktor_entfernt');
   });

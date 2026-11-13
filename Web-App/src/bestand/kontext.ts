@@ -51,7 +51,6 @@ export const zugang = (db: Db) => ({
     'loescheOrt',
     'ortFuerNeuerfassung',
     'orteVon',
-    'setzeLagerort',
     'vorgabeVon',
   ]),
   manuelleMengen: bindeZugang(db, manuelleMengen, ['summeDerErfassungen']),

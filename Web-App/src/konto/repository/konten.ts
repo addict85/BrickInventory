@@ -79,40 +79,38 @@ export async function merkeEmailNeu(
 
 const OHNE_EMAIL_NEU = 'email_neu = NULL, email_neu_token = NULL, email_neu_bis = NULL';
 
+export async function kontoZuEmailToken(db: DbSchnittstelle, hash: string): Promise<number | undefined> {
+  return (
+    await db.get<{ id: number }>('SELECT id FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()', [hash])
+  )?.id;
+}
+
 /** Erst hier wird die Adresse vergeben: Was beim Antrag frei war, kann inzwischen belegt sein.
- * Auch ein Fehlschlag verbraucht den Link. @returns undefined bei ungültigem Link */
-export async function uebernimmEmailNeu(db: Db, hash: string): Promise<{ id: number; ok: boolean } | undefined> {
-  const k = await db.get<{ id: number }>('SELECT id FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()', [
-    hash,
-  ]);
-  if (!k) return undefined;
-  const ok = await db
-    .transaction(async tx => {
-      const neu = await tx.get<{ email_neu: string }>(
-        'SELECT email_neu FROM users WHERE id = $1 AND email_neu_token = $2 FOR UPDATE',
-        [k.id, hash],
-      );
-      if (!neu) return false;
-      if (
-        await tx.get<unknown>(
-          'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
-          [neu.email_neu, k.id],
-        )
-      )
-        return false;
-      await tx.run(
-        `UPDATE users SET email = email_neu, email_verified = true, registrierung_offen = false,
-                   ${OHNE_EMAIL_NEU}, ${OHNE_RUECKSETZLINK} WHERE id = $1`,
-        [k.id],
-      );
-      return true;
-    })
-    .catch((e: { code?: string }) => {
-      if (e?.code === '23505') return false;
-      throw e;
-    });
-  if (!ok) await db.run(`UPDATE users SET ${OHNE_EMAIL_NEU} WHERE id = $1 AND email_neu_token = $2`, [k.id, hash]);
-  return { id: k.id, ok };
+ * In der Transaktion des Aufrufers (FOR UPDATE). @returns false, wenn die Adresse vergeben ist */
+export async function uebernimmEmailNeu(tx: DbSchnittstelle, id: number, hash: string): Promise<boolean> {
+  const neu = await tx.get<{ email_neu: string }>(
+    'SELECT email_neu FROM users WHERE id = $1 AND email_neu_token = $2 FOR UPDATE',
+    [id, hash],
+  );
+  if (!neu) return false;
+  if (
+    await tx.get<unknown>(
+      'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
+      [neu.email_neu, id],
+    )
+  )
+    return false;
+  await tx.run(
+    `UPDATE users SET email = email_neu, email_verified = true, registrierung_offen = false,
+               ${OHNE_EMAIL_NEU}, ${OHNE_RUECKSETZLINK} WHERE id = $1`,
+    [id],
+  );
+  return true;
+}
+
+/** Auch ein Fehlschlag verbraucht den Link. */
+export async function verwirfEmailNeu(db: DbSchnittstelle, id: number, hash: string): Promise<void> {
+  await db.run(`UPDATE users SET ${OHNE_EMAIL_NEU} WHERE id = $1 AND email_neu_token = $2`, [id, hash]);
 }
 
 /** Nur der Name: Wer den Link hat, sieht vor dem Einlösen, zu welchem Konto er gehört. */
@@ -138,34 +136,31 @@ export async function offeneRegistrierungen(db: DbSchnittstelle, email: string):
   );
 }
 
-/** Wie uebernimmEmailNeu, aber ohne Link: Die Adresse kann inzwischen ein anderes Konto haben. */
-export async function schalteRegistrierungFrei(db: Db, id: number): Promise<'ok' | 'nicht_wartend' | 'vergeben'> {
-  return db
-    .transaction(async tx => {
-      const k = await tx.get<{ email_neu: string | null }>(
-        'SELECT email_neu FROM users WHERE id = $1 AND registrierung_offen AND NOT email_verified FOR UPDATE',
-        [id],
-      );
-      if (!k) return 'nicht_wartend' as const;
-      if (
-        k.email_neu &&
-        (await tx.get(
-          'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
-          [k.email_neu, id],
-        ))
-      )
-        return 'vergeben' as const;
-      await tx.run(
-        `UPDATE users SET email = COALESCE(email_neu, email), email_verified = true, registrierung_offen = false,
-                   ${OHNE_EMAIL_NEU} WHERE id = $1`,
-        [id],
-      );
-      return 'ok' as const;
-    })
-    .catch((e: { code?: string }) => {
-      if (e?.code === '23505') return 'vergeben' as const;
-      throw e;
-    });
+/** Wie uebernimmEmailNeu, aber ohne Link: Die Adresse kann inzwischen ein anderes Konto haben.
+ * In der Transaktion des Aufrufers; ein gleichzeitiger Gewinner meldet sich dort als 23505. */
+export async function schalteRegistrierungFrei(
+  tx: DbSchnittstelle,
+  id: number,
+): Promise<'ok' | 'nicht_wartend' | 'vergeben'> {
+  const k = await tx.get<{ email_neu: string | null }>(
+    'SELECT email_neu FROM users WHERE id = $1 AND registrierung_offen AND NOT email_verified FOR UPDATE',
+    [id],
+  );
+  if (!k) return 'nicht_wartend';
+  if (
+    k.email_neu &&
+    (await tx.get('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))', [
+      k.email_neu,
+      id,
+    ]))
+  )
+    return 'vergeben';
+  await tx.run(
+    `UPDATE users SET email = COALESCE(email_neu, email), email_verified = true, registrierung_offen = false,
+               ${OHNE_EMAIL_NEU} WHERE id = $1`,
+    [id],
+  );
+  return 'ok';
 }
 
 /** Altbestand aus Migration 0096: ausstehend ohne gültigen Link. */
@@ -218,12 +213,12 @@ export const LETZTER_VERWALTER = 'letzter_verwalter' as const;
 const ANDERER_VERWALTER = 'EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1)';
 
 /** Ohne die Sperre sähen zwei gleichzeitige Entzüge je den anderen noch als Verwalter
- * (READ COMMITTED), und es bliebe keiner. Sie gilt bis zum Ende der Transaktion. */
-async function unterVerwalterSperre<T>(db: Db, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
-  return db.transaction(async tx => {
-    await tx.get<unknown>('SELECT pg_advisory_xact_lock($1, 0)', [LOCKS.VERWALTER_BESTAND]);
-    return fn(tx);
-  });
+ * (READ COMMITTED), und es bliebe keiner. Sie gilt bis zum Ende der Transaktion des
+ * Aufrufers; ohne eine endete sie mit der Abfrage und schützte nichts. */
+async function unterVerwalterSperre<T>(tx: Db, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+  if (!tx.inTransaktion()) throw new Error('Die Verwaltersperre gilt nur in einer Transaktion (k.transaktion)');
+  await tx.get<unknown>('SELECT pg_advisory_xact_lock($1, 0)', [LOCKS.VERWALTER_BESTAND]);
+  return fn(tx);
 }
 
 /** @returns der Zustand vor der Änderung, undefined ohne Konto, oder LETZTER_VERWALTER */
@@ -337,17 +332,16 @@ export async function loescheEigenesKonto(db: Db, id: number): Promise<boolean> 
   });
 }
 
-/** Registrierungen, deren Adresse nach `tage` Tagen nicht bestätigt ist. */
-export async function loescheOffeneRegistrierungen(db: Db, tage: number): Promise<number> {
-  return db.transaction(async tx => {
-    const weg = await tx.all<{ id: number }>(
-      `DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
+/** Registrierungen, deren Adresse nach `tage` Tagen nicht bestätigt ist; in der
+ * Transaktion des Aufrufers, damit keine Spur ohne ihr Konto bleibt. */
+export async function loescheOffeneRegistrierungen(tx: DbSchnittstelle, tage: number): Promise<number> {
+  const weg = await tx.all<{ id: number }>(
+    `DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
       AND created_at < NOW() - make_interval(days => $1::int) RETURNING id`,
-      [tage],
-    );
-    for (const { id } of weg) await spurenLoeschen(tx, id);
-    return weg.length;
-  });
+    [tage],
+  );
+  for (const { id } of weg) await spurenLoeschen(tx, id);
+  return weg.length;
 }
 
 export function kontoMitEmail(

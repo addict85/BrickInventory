@@ -69,14 +69,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
         await nachWechsel(`link_fremd_${p}`, uid => K.setzeFremdesPasswort(uid, 'Verwalter-Neu-2026')),
         await nachWechsel(`link_mail_${p}`, async uid => {
           await K.merkeEmailNeu(uid, `neu_${p}@example.org`, hashToken(`mail${p}`), new Date(Date.now() + 60_000));
-          assert.equal(
-            (
-              await _req('src/konto/prozess.js')
-                .kontoBereich()
-                .konten.uebernimmEmailNeu(hashToken(`mail${p}`))
-            )?.ok,
-            true,
-          );
+          assert.equal((await _req('src/konto/prozess.js').kontoBereich().verifiziereEmailToken(`mail${p}`)).ok, true);
         }),
       ],
       [

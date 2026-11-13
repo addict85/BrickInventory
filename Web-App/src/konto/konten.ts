@@ -4,7 +4,7 @@ import { hashePasswort } from './bcryptSchranke';
 import * as repo from './repository/konten';
 import { BCRYPT_ROUNDS } from './anmeldepruefung';
 import { leereTokenCache } from './tokenCache';
-import { mitZugangsende, revokeAllSessions } from './zugangsende';
+import { mitZugangsende, revokeAllSessions, zugangsTransaktion } from './zugangsende';
 import { revokeAllTokens } from './geraeteToken';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
@@ -151,7 +151,7 @@ export async function rechneWieRegistrierung(passwort: string): Promise<void> {
 /** Länger als jeder Bestätigungslink gilt; danach sind Name und Adresse wieder frei. */
 export const REGISTRIERUNG_FRIST_TAGE = 7;
 export function raeumeOffeneRegistrierungenAuf(k: KontoKontext): Promise<number> {
-  return k.konten.loescheOffeneRegistrierungen(REGISTRIERUNG_FRIST_TAGE);
+  return zugangsTransaktion(k, t => t.konten.loescheOffeneRegistrierungen(REGISTRIERUNG_FRIST_TAGE));
 }
 
 /** Konto und Protokolleintrag in einer Transaktion: Ein Konto ohne Eintrag
@@ -208,7 +208,7 @@ export async function setzeAktiv(
   uid: number,
   soll: boolean,
 ): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
-  const r = await k.konten.schreibeAktiv(uid, soll);
+  const r = await zugangsTransaktion(k, t => t.konten.schreibeAktiv(uid, soll));
   if (!r) return null;
   if (r === repo.LETZTER_VERWALTER) return r;
   if (!soll) await zugaengeBeenden(k, uid);
@@ -223,7 +223,7 @@ export async function setzeVerwalterRolle(
   uid: number,
   soll: boolean,
 ): Promise<{ geaendert: boolean } | typeof repo.LETZTER_VERWALTER | null> {
-  const vorher = await k.konten.setzeVerwalter(uid, soll);
+  const vorher = await zugangsTransaktion(k, t => t.konten.setzeVerwalter(uid, soll));
   if (!vorher) return null;
   if (vorher === repo.LETZTER_VERWALTER) return vorher;
   const geaendert = vorher.vorher !== soll;

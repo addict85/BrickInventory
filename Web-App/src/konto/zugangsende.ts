@@ -15,6 +15,13 @@ export async function revokeAllSessions(k: KontoKontext, userId: number): Promis
   await k.zugaenge.loescheSitzungenDesKontos(userId);
 }
 
+/** Eine Transaktion über Zugangsdaten im Systemrahmen, wie bindeImSystemrahmen ihn
+ * vergibt (die Anmeldung sucht sie, bevor es ein Konto gibt). In einer laufenden
+ * gilt deren Rahmen: Ein Wechsel liefe dort neben ihr (NebenDerTransaktion). */
+export function zugangsTransaktion<T>(k: KontoKontext, fn: (t: KontoKontext) => Promise<T>): Promise<T> {
+  return k.db.inTransaktion() ? k.transaktion(fn) : imSystemkontext('zugangsdaten', () => k.transaktion(fn));
+}
+
 /** Passwort, Zugänge und Passkeys zusammen, im Systemrahmen (auch ohne Anmeldung: Passwort
  * vergessen). Die Zwischenspeicher leeren sich nach dem COMMIT noch einmal, weil eine Anfrage
  * dazwischen den alten Stand wieder aufgenommen haben kann. */
