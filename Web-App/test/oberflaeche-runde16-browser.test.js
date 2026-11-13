@@ -136,7 +136,7 @@ test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1,
       await b.auswerten(`(() => { const tr = [...document.querySelectorAll('[data-fin-art="sets"] tbody tr')].find(r => r.textContent.includes('Galaxy Explorer'));
       return tr.querySelector('td.price-cell').textContent.replace(/\\s+/g, ' ').trim(); })()`);
     assert.match(zelle, /99,99\sARS.*nicht umgerechnet/);
-    assert.equal(await b.auswerten(text('#fin-wert-titel')), 'Marktwert der Posten mit Kaufpreis');
+    assert.equal(await b.auswerten(text('#fin-wert-titel')), 'Marktwert der Positionen mit Kaufpreis');
     assert.match(
       await b.auswerten(text('#fin-wert-sub')),
       /^Verglichen wird nur, was einen Kaufpreis hat\. Alles zusammen: .+ €$/,

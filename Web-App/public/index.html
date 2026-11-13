@@ -525,9 +525,9 @@
       <details class="merk-kasten" id="mk-kasten" open>
         <summary class="merk-kasten-kopf"><h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Zur Merkliste hinzufügen</h2></summary>
         <div class="zeile luecke-8 unten umbruch merk-erfassen">
-          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Setnummer *</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
+          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Setnummer *</label><input type="text" id="mk-num" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
           <div class="fg max-110"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
-          <div class="fg max-150" id="mk-owner-box" data-stil="display:none"><label for="mk-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="mk-owner"></select></div>
+          <div class="fg max-150" id="mk-owner-box" data-stil="display:none"><label for="mk-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt" id="mk-owner"></select></div>
           <button class="btn bp" id="mk-add" data-click="merkpostenHinzufuegen" data-i18n="wanted.add.submit" data-ico="plus">Auf die Merkliste</button>
           <!-- CSV-Einlesen, dieselbe Form wie bei Teilen und Minifiguren … -->
           <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="mk-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importMerklisteCsv" /></label>
@@ -759,7 +759,7 @@
           <div class="pl-feld">
             <label for="pl-setnr" data-i18n="pl.feld_setnr">Setnummern (mehrere mit Komma trennen)</label>
             <div class="zeile mittig luecke-05">
-              <input type="text" id="pl-setnr" class="pl-setnr" autocomplete="off" />
+              <input type="text" id="pl-setnr" class="pl-setnr" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
               <button class="btn bp fest" data-click="plAddSet" id="btn-pl-add" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
             </div>
           </div>
@@ -767,7 +767,7 @@
             <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" aria-describedby="pl-gen-hinweis" data-i18n="pl.generate" data-ico="aktualisieren">Neu berechnen</button>
             <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
           </div>
-          <p class="pl-hinweis" id="pl-gen-hinweis" data-i18n="pl.erst_set">Setnummer eintragen und hinzufügen – die Bauliste entsteht sofort.</p>
+          <p class="pl-hinweis" id="pl-gen-hinweis" data-i18n="pl.erst_set">Setnummer eintragen und hinzufügen — die Bauliste entsteht sofort.</p>
         </div>
       </div>
       <!-- Added sets -->
@@ -1066,7 +1066,8 @@
               <div class="text-klein" id="pw-n-regel" data-i18n="pflicht.regel" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
             <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" autocomplete="new-password" /></div>
           </div>
-          <label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="pw-pk" checked /> <span data-i18n="settings.password.revoke_passkeys">Auch alle Passkeys entfernen (empfohlen: ein Passkey, den jemand Fremdes angelegt hat, bliebe sonst gültig; abwählen, wenn du nur dein Passwort erneuerst)</span></label>
+          <div class="fg"><label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="pw-pk" checked aria-describedby="pw-pk-hinweis" /> <span data-i18n="settings.password.revoke_passkeys">Auch alle Passkeys entfernen</span></label>
+            <div class="text-klein" id="pw-pk-hinweis" data-i18n="settings.password.revoke_passkeys_hint">Empfohlen: Ein Passkey, den jemand Fremdes angelegt hat, bliebe sonst gültig. Abwählen, wenn du nur dein Passwort erneuerst.</div></div>
           <div class="konto-fuss"><button type="button" class="btn bp" id="btn-sav-pw" data-schreibend data-i18n="settings.password.change" data-ico="schloss">Passwort ändern</button></div>
         </form>
       </section>
@@ -1225,7 +1226,7 @@
           <h2 class="stit" data-i18n="alerts.new_title">Preisalarm anlegen</h2>
           <div class="profil-raster">
             <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Setnummer</label>
-              <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" inputmode="text" placeholder="z. B. 75192-1" data-i18n="alerts.set_ph" data-i18n-attr="placeholder" /></div>
+              <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="z. B. 75192-1" data-i18n="alerts.set_ph" data-i18n-attr="placeholder" /></div>
             <div class="fg"><label for="alarm-neu-zustand" data-i18n="common.condition">Zustand</label>
               <select id="alarm-neu-zustand"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg"><label for="alarm-neu-richtung" data-i18n="alerts.new_dir">Melden, wenn der Preis</label>
@@ -1554,7 +1555,7 @@
     <div class="mhd"><h2 class="mtit" id="add-part-tit" data-i18n="parts.add_title">Teil hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="part" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div id="add-part-inline">
           <div class="raster-160">
-            <div class="fg"><label for="ap-num-inline" data-i18n="parts.num_label">Teilenummer *</label><input type="text" id="ap-num-inline" data-erstfokus placeholder="z. B. 3001" data-i18n="parts.num_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
+            <div class="fg"><label for="ap-num-inline" data-i18n="parts.num_label">Teilenummer *</label><input type="text" id="ap-num-inline" autocapitalize="off" autocorrect="off" spellcheck="false" data-erstfokus placeholder="z. B. 3001" data-i18n="parts.num_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
             <div class="fg"><label for="ap-color-select" data-i18n="parts.color_label">Farbe</label>
               <div class="zeile luecke-6 mittig">
                 <div id="ap-color-dot" data-stil="width:20px;height:20px;border-radius:50%;background:var(--s200);border:1px solid var(--bdr);flex-shrink:0"></div>
@@ -1567,7 +1568,7 @@
             <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis je Stück (optional)</label><input class="hoehe-38" inputmode="decimal" type="text" autocomplete="off" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" /></div>
             <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="ap-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg"><label for="ap-date" data-i18n="erfassen.gekauft_am">Gekauft am</label><input class="hoehe-38" type="date" id="ap-date" data-heute /></div>
-            <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
+            <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
             <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
           </div>
           <div class="schrift-2 abstand-o-05 status-zeile" id="ap-inline-result" role="status"></div>
@@ -1580,16 +1581,16 @@
     <div id="add-fig-inline">
         <div class="raster-160">
           <div class="fg"><label for="af-num-inline"><span data-i18n="figs.num_label">Figur-Nummer *</span> <span class="text-klein" data-i18n="figs.num_hint">(Rebrickable-Nummer)</span></label>
-            <input type="text" id="af-num-inline" data-erstfokus placeholder="z. B. fig-007357" data-i18n="figs.num_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
+            <input type="text" id="af-num-inline" autocapitalize="off" autocorrect="off" spellcheck="false" data-erstfokus placeholder="z. B. fig-007357" data-i18n="figs.num_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
           <div class="fg"><label for="af-blnum-inline"><span data-i18n="figs.blnum_label">BrickLink-Nr. (optional)</span> <span class="text-klein" data-i18n="parts.add.bl_hint">für Marktpreis</span></label>
-            <input type="text" id="af-blnum-inline" placeholder="z. B. sw0001" data-i18n="figs.blnum_ph" data-i18n-attr="placeholder" /></div>
+            <input type="text" id="af-blnum-inline" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="z. B. sw0001" data-i18n="figs.blnum_ph" data-i18n-attr="placeholder" /></div>
           <div class="fg"><label for="af-qty-inline" data-i18n="figs.qty_label">Anzahl</label>
             <input class="hoehe-38" inputmode="numeric" type="number" id="af-qty-inline" value="1" min="1" /></div>
           <div class="fg"><label for="af-price-inline" data-i18n="figs.price_label">Kaufpreis je Stück (optional)</label>
             <input class="hoehe-38" inputmode="decimal" type="text" autocomplete="off" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" /></div>
           <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="af-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg"><label for="af-date" data-i18n="erfassen.gekauft_am">Gekauft am</label><input class="hoehe-38" type="date" id="af-date" data-heute /></div>
-            <div class="fg max-150" id="af-owner-box" data-stil="display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="af-owner"></select></div><div class="fg max-220" id="af-storage-box"><span class="feld-titel" id="af-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="af-storage-slot"></span></div>
+            <div class="fg max-150" id="af-owner-box" data-stil="display:none"><label for="af-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt hoehe-38" id="af-owner"></select></div><div class="fg max-220" id="af-storage-box"><span class="feld-titel" id="af-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="af-storage-slot"></span></div>
           <div class="fg unten-buendig">
             <button class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
         </div>
@@ -1604,7 +1605,7 @@
     <!-- Ein Raster mit zwei Spalten: Beschriftungen und Felder stehen bündig,
          der Knopf schliesst rechts unten ab (vorher eine umbrechende Zeile). -->
     <div class="erfassen-raster">
-      <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Setnummer *</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
+      <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Setnummer *</label><input type="text" id="add-num" autocapitalize="off" autocorrect="off" spellcheck="false" data-erstfokus placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
       <div class="fg"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
       <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label>
         <span class="preis-mit-waehrung"><input inputmode="decimal" type="text" autocomplete="off" id="add-price" placeholder="z. B. 79,99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" data-i18n-betrag="79.99" />
@@ -1612,7 +1613,7 @@
       <div class="fg"><label for="add-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="add-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       <div class="fg"><label for="add-date" data-i18n="erfassen.gekauft_am">Gekauft am</label><input class="hoehe-38" type="date" id="add-date" data-heute /></div>
       <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
-      <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
+      <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
       <div class="fg" id="add-storage-box"><span class="feld-titel" id="add-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="add-storage-slot"></span></div>
       <div class="hinweis-warnung erfassen-unbekannt" id="add-unbekannt" role="status" hidden></div>
       <div class="erfassen-fuss"><button class="btn bp" id="btn-add" data-schreibend><span id="btn-add-text" data-i18n="gallery.add.submit">Hinzufügen</span></button></div>
@@ -1706,7 +1707,7 @@
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
       <div class="zeile luecke-8 unten umbruch">
-        <div class="fg max-150" id="cat-m-owner-box" data-stil="display:none"><label for="cat-m-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="cat-m-owner"></select></div><div class="fg max-220" id="cat-m-storage-box"><span class="feld-titel" id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="cat-m-storage-slot"></span></div>
+        <div class="fg max-150" id="cat-m-owner-box" data-stil="display:none"><label for="cat-m-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt" id="cat-m-owner"></select></div><div class="fg max-220" id="cat-m-storage-box"><span class="feld-titel" id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="cat-m-storage-slot"></span></div>
         <div class="fg max-74"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="cat-m-qty" value="1" min="1" /></div>
         <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-price" placeholder="—" /></div>
         <div class="fg max-110"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="cat-m-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>

@@ -62,11 +62,11 @@ export async function pollJobStatus() {
       if (j.lastErrors) parts.push(tRaw('monitor.errors_n', { n: j.lastErrors }));
       if (j.lastDuration) parts.push(formatDur(Number(j.lastDuration)));
       sdet.textContent =
-        parts.join(' · ') + (j.nextRun ? ` · ${tRaw('monitor.next_run')} ${fmtDatum(j.nextRun, 'zeit')}` : '');
+        parts.join(' · ') + (j.nextRun ? ` · ${tRaw('monitor.next_run')} ${fmtDatum(j.nextRun, 'wann')}` : '');
     } else {
       dot.style.background = 'var(--s300)';
       stxt.textContent = tRaw('monitor.waiting_first');
-      sdet.textContent = j.nextRun ? `Startet um: ${fmtDatum(j.nextRun, 'zeit')}` : '';
+      sdet.textContent = j.nextRun ? `${tRaw('monitor.next_run')} ${fmtDatum(j.nextRun, 'wann')}` : '';
     }
     // Poll every 30s while idle
     if (jobPollTimer) clearTimeout(jobPollTimer);

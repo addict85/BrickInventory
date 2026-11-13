@@ -117,7 +117,8 @@ function openLogViewer() {
 /** @type {Record<string, (w?: Record<string, string | number>) => string>} */
 const SUB_TEXTE = {
   teil_gemappt: w => tRaw('monitor.sub.teil_gemappt', w),
-  all_mapped: w => tRaw('monitor.sub.all_mapped', w),
+  // Bei 0 sagte die Mehrzahlform „Alle 0 …“.
+  all_mapped: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.nichts_zuzuordnen' : 'monitor.sub.all_mapped', w),
   ausstehend: w => tRaw('monitor.sub.ausstehend', w),
   all_done: w => tRaw('monitor.sub.all_done', w),
   keine_ausstehenden: w => tRaw('monitor.sub.keine_ausstehenden', w),
@@ -125,7 +126,7 @@ const SUB_TEXTE = {
   warten_morgen: w => tRaw('monitor.sub.warten_morgen', w),
   bilder_laden: w => tRaw('monitor.sub.bilder_laden', w),
   bilder_offen: w => tRaw('monitor.sub.bilder_offen', w),
-  imgs_cached: w => tRaw('monitor.sub.imgs_cached', w),
+  imgs_cached: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.keine_bilder' : 'monitor.sub.imgs_cached', w),
   katalog_warteschlange: w => tRaw('monitor.sub.katalog_warteschlange', w),
   job_nie: w => tRaw('monitor.sub.job_nie', w),
   kein_durchgang: w => tRaw('monitor.sub.kein_durchgang', w),
@@ -163,10 +164,10 @@ function translateJobSub(sub) {
   if (!sub) return '';
   let m;
   m = sub.match(/^Alle (\d+) gemappt$/);
-  if (m) return tRaw('monitor.sub.all_mapped', { n: m[1] });
+  if (m) return SUB_TEXTE.all_mapped({ n: Number(m[1]) });
   if (sub === 'Alle erledigt') return tRaw('monitor.sub.all_done');
   m = sub.match(/^Alle (\d+) Bilder gecacht$/);
-  if (m) return tRaw(m[1] === '0' ? 'monitor.sub.imgs_none' : 'monitor.sub.imgs_cached', { n: m[1] });
+  if (m) return SUB_TEXTE.imgs_cached({ n: Number(m[1]) });
   if (sub === 'Alle Bilder gecacht') return tRaw('monitor.sub.imgs_cached', { n: '' }).trim();
   if (/^Keine aktiven/.test(sub)) return tRaw('monitor.sub.no_active');
   m = sub.match(/^(\d+) Sets bereit zum Retry, (\d+) warten$/);
@@ -347,7 +348,7 @@ export async function loadMonitor() {
           <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
             ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedText(schedules, k)}</td>
-          <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'zeit') : ''}</td>
+          <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'wann') : ''}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j).length ? aktionen(k, j) : html`<span class="mon-leise">–</span>`}</div></td>
         </tr>`,
         )}</tbody>
@@ -436,7 +437,7 @@ const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @typ
 const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : s);
 /** Eine Zeile der einzelnen Aufträge. */
 const auftragsZeile = (/** @type {Auftrag} */ a) => {
-  const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
+  const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'wann');
   // Verschoben ist nicht gescheitert: Das sagt der Server (wartet), nicht der Text des Grundes.
   const wartet = a.status === 'offen' && a.wartet && !!a.faellig_ab && new Date(a.faellig_ab) > new Date();
   const wann = wartet
@@ -501,7 +502,7 @@ async function zeigeAuftraege() {
     html`<span class="mon-ziffer${n ? html`${' '}${ungeprueft(klasse)}` : ' null'}">${n || 0}</span>`;
   const mehr = d.auftraege.length - 40;
   const pause = (/** @type {AuftragPause} */ p) =>
-    t('monitor.auftraege.pause', { art: artName(p.art), bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' });
+    t('monitor.auftraege.pause', { art: artName(p.art), bis: fmtDatum(p.bis, 'wann'), grund: p.grund || '' });
   setzeHtml(
     el,
     html`
@@ -520,7 +521,7 @@ async function zeigeAuftraege() {
         <td class="zahl">${ziffer(zahl[art].offen)}</td>
         <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
         <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
-        <td>${naechster[art] ? fmtDatum(naechster[art], 'zeit') : ''}</td>
+        <td>${naechster[art] ? fmtDatum(naechster[art], 'wann') : ''}</td>
         <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, tRaw('monitor.auftraege.jetzt'), artName(art))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, tRaw('monitor.auftraege.leeren'), artName(art)) : ''}</div></td>
       </tr>`,
       )}</tbody></table></div>`

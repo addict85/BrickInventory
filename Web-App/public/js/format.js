@@ -1,4 +1,4 @@
-import { LANG, locale } from '../i18n.js';
+import { LANG, locale, tRaw } from '../i18n.js';
 import { CURRENCY } from './zustand.js';
 
 // Zahlen, Beträge und Daten in der Schreibweise der Oberflächensprache, eine Fassung für alle Ansichten.
@@ -150,13 +150,24 @@ export function browserSchreibtDatumWieApp(iso) {
  * Ein Datum überall gleich: „05.01.2024“ (de), „5 Jan 2024“ (en). Vorher stand je Stelle toLocaleDateString()
  * („5.1.2024“) neben eigenen Formen.
  * @param {string|number|Date|null|undefined} v
- * @param {'tag'|'zeit'|'tagzeit'|'lang'} [art]  lang: „1. Juni 2026“
+ * @param {'tag'|'zeit'|'tagzeit'|'lang'|'wann'} [art]  lang: „1. Juni 2026“; wann: „10:03“ heute, sonst
+ *   „morgen 10:03“, „gestern 10:03“ oder Datum mit Uhrzeit
+ * @returns {string}
  */
 export function fmtDatum(v, art = 'tag') {
   if (v === null || v === undefined || v === '') return '';
   const d =
     v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
   if (Number.isNaN(d.getTime())) return '';
+  // Eine Uhrzeit allein las sich als heute, auch wenn der Lauf erst morgen oder vor drei Tagen war.
+  if (art === 'wann') {
+    const tage = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
+    const zeit = fmtDatum(d, 'zeit');
+    if (tage === 0) return zeit;
+    if (tage === 1) return tRaw('zeit.morgen', { zeit });
+    if (tage === -1) return tRaw('zeit.gestern', { zeit });
+    return fmtDatum(d, 'tagzeit');
+  }
   // Englisch mit Monatsnamen: „03/11/2026“ liest sich in den USA als 11. März. Deutsch immer 24 Stunden, auch
   // bei einem Browser mit 12-h-Vorgabe.
   const tag =

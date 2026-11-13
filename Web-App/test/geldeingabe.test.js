@@ -15,6 +15,8 @@
  *      (Feld zeigte 129.99 statt 129,99)
  *   E  zeigeGespeichert() in acqSave() entfernt → rot: „Kaufpreis-Dialog“
  *      (keine Marke „Gespeichert“)
+ *   F  (13.11.2026) betragAusFeld() ohne die Prüfung auf ein Minus → rot:
+ *      „Unsinn wird am Feld gemeldet“ („-5“ hiess „kein Betrag“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -89,7 +91,12 @@ test('Unsinn wird am Feld gemeldet und nicht gesendet', async () => {
     for (const ein of ['abc', '12,3,4', '-5', '1.29.9', '149,95€x', '1,2.3,4']) {
       const r = await setErfassen(o, ein);
       assert.equal(r.gesendet, false, `„${ein}“ ging an den Server`);
-      assert.match(r.fehler, /ist kein Betrag/, `„${ein}“`);
+      // Lesbar, nur negativ: eigener Text (UX-Prüfung 20).
+      assert.match(
+        r.fehler,
+        ein === '-5' ? /^Der Kaufpreis kann nicht negativ sein\.$/ : /ist kein Betrag/,
+        `„${ein}“`,
+      );
       assert.equal(r.feld.getAttribute('aria-invalid'), 'true');
     }
   } finally {
