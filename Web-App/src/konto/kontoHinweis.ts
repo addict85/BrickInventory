@@ -1,6 +1,6 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
-import { mailEingerichtet, sendKontoHinweisMail, type KontoHinweis } from '../mail';
+import type { KontoHinweis } from '../mail';
 import { logAndContinue } from '../infra/fehler';
 import { imSystemkontext } from '../infra/kontoKontext';
 import type { KontoKontext } from './kontext';
@@ -24,12 +24,12 @@ async function meldeKontoaenderungFuer(
   art: KontoHinweis,
   angaben: Angaben,
 ): Promise<boolean> {
-  if (!(await mailEingerichtet())) return false;
+  if (!(await kx.mail.mailEingerichtet())) return false;
   const k = await kx.konten.profilZeile(uid);
   if (!k?.email) return false;
   const lang = String(await kx.einstellungen.getSetting(uid, 'language', 'de'));
   const haushalt = (await kx.haushalt.haushaltsStand(uid)).parents.map(p => p.username);
-  const r = await sendKontoHinweisMail(k.email, k.username, art, {
+  const r = await kx.mail.sendKontoHinweisMail(k.email, k.username, art, {
     lang,
     haushalt,
     ...(angaben.name ? { passkey: angaben.name } : {}),

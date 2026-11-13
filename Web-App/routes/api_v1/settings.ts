@@ -16,7 +16,6 @@ import {
   perSitzung,
 } from '../../src/konto/http/anmeldung';
 import { freigegeben, alsVerwalter } from '../../src/konto/http/schrittschutz';
-import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/mail';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { emailGueltig } from '../../src/infra/validate';
@@ -270,9 +269,9 @@ export function baueSettingsRouter(d: Dienste) {
           .getSetting(uid, 'language', 'de')
           .catch(meldeUndLiefere('einstellungen:sprache', 'de'));
         const hauptkonto = 'linked_to' in r ? r.linked_to.username : '';
-        void sendHaushaltVerknuepftMail(ich.email, ich.username, hauptkonto, String(sprache ?? 'de')).catch(
-          logAndContinue('haushalt:hinweismail'),
-        );
+        void d.mail
+          .sendHaushaltVerknuepftMail(ich.email, ich.username, hauptkonto, String(sprache ?? 'de'))
+          .catch(logAndContinue('haushalt:hinweismail'));
       }
       res.json({ success: true, ...r });
     },
@@ -414,9 +413,9 @@ export function baueSettingsRouter(d: Dienste) {
       )
         return;
 
-      const verify = await testSmtp();
+      const verify = await d.mail.testSmtp();
       if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
-      const result = await sendMail({
+      const result = await d.mail.sendMail({
         to,
         subject: 'BrickInventory Manager — SMTP Test',
         text: 'Diese E-Mail bestätigt, dass deine SMTP-Konfiguration korrekt funktioniert.',

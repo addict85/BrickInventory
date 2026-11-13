@@ -3,7 +3,7 @@
 import { meldeFehler, fehlertext } from '../infra/fehler';
 import { blickfeldIds } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
-import * as mailer from '../mail';
+import type { MailDienste } from '../mail';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/preisalarme';
@@ -185,25 +185,11 @@ export function reisst(richtung: Richtung, preis: number, schwelle: number): boo
   return richtung === 'unter' ? preis < schwelle : preis > schwelle;
 }
 
-/** Gemeldet wird der ÜBERGANG, nicht der Zustand. */
-export type Versender = (mail: {
-  to: string;
-  subject: string;
-  text: string;
-  html?: string;
-  link?: string;
-}) => Promise<unknown>;
+/** Gemeldet wird der ÜBERGANG, nicht der Zustand. Der Versand kommt als Parameter,
+ * damit ein Test ihn ersetzen kann, ohne das Modul umzubiegen. */
+export type AlarmPost = Pick<MailDienste, 'baueAlarmMail' | 'sendMail'>;
 
-/** Als Parameter, damit ein Test den Versand ersetzen kann. */
-async function standardVersand(mail: { to: string; subject: string; text: string; html?: string; link?: string }) {
-  return mailer.sendMail(mail);
-}
-
-export async function pruefeSet(
-  db: DbSchnittstelle,
-  setNumber: string,
-  versende: Versender = standardVersand,
-): Promise<number> {
+export async function pruefeSet(db: DbSchnittstelle, setNumber: string, post: AlarmPost): Promise<number> {
   const alarme = await repo
     .alleAktivenAlarme(db, setNumber)
     // Gemeldet, nicht verschluckt: Sonst sähe man nur, dass keine Mails kommen,
@@ -239,7 +225,7 @@ export async function pruefeSet(
 
     if (a.email) {
       try {
-        await verschicke(db, versende, a, preis, schwelle);
+        await verschicke(db, post, a, preis, schwelle);
         verschickt++;
       } catch (e) {
         // Merker NICHT setzen — beim nächsten Lauf erneut versuchen.
@@ -257,11 +243,11 @@ export async function pruefeSet(
 }
 
 /** Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über das WIE. */
-async function verschicke(db: DbSchnittstelle, versende: Versender, a: AlarmZeile, preis: number, schwelle: number) {
+async function verschicke(db: DbSchnittstelle, post: AlarmPost, a: AlarmZeile, preis: number, schwelle: number) {
   // Der Alarm geht auch ohne Namen hinaus; die Mail nennt dann nur die Setnummer.
   const gelesen = await versuche('preisalarm:name', repo.setNameAusStamm(db, a.set_number));
   const name = gelesen.ok ? gelesen.wert : null;
-  const mail = await mailer.baueAlarmMail({
+  const mail = await post.baueAlarmMail({
     username: a.username,
     lang: String(a.sprache),
     setNumber: a.set_number,
@@ -272,7 +258,7 @@ async function verschicke(db: DbSchnittstelle, versende: Versender, a: AlarmZeil
     preis,
     waehrung: a.currency_code,
   });
-  await versende({ to: a.email!, ...mail });
+  await post.sendMail({ to: a.email!, ...mail });
 }
 
 /** Eigene Datei statt Spalten an sets.csv: Ein Alarm braucht das Set nicht zu besitzen. */

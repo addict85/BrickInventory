@@ -7,7 +7,6 @@ import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../../src/infra/basisUrl';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { USERNAME_RE, emailGueltig, nameGueltig, vertrauenspartei, hashToken } from '../../src/konto';
-import { mailBereit } from '../../src/mail';
 import type { Dienste } from '../../startup/verdrahtung';
 
 /** Der Grund der ersten Absage, oder null, wenn die Eingabe genügt. */
@@ -26,7 +25,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
   router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
-    const mail = await mailBereit();
+    const mail = await d.mail.mailBereit();
     res.json({
       enabled: mail && (await d.einstellungen.registrierungOffen()),
       passkey: !!vertrauenspartei(),
@@ -40,7 +39,7 @@ export function baueRegistrierungRouter(d: Dienste) {
     ipThrottle('register', 5, 60 * 60 * 1000),
     async (req: OffeneAnfrage<'POST /api/v1/auth/register'>, res: Antwort<'POST /api/v1/auth/register'>) => {
       const { username, email, first_name, last_name, password, language } = req.eingabe;
-      if (!(await d.einstellungen.registrierungOffen()) || !(await mailBereit()))
+      if (!(await d.einstellungen.registrierungOffen()) || !(await d.mail.mailBereit()))
         return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
       const mangel = registrierungsMangel(req.eingabe);
       if (mangel || !username || !email || !password)

@@ -1,5 +1,6 @@
 /** Was die Dienste des Bereichs bekommen: Zugang, Dienste tieferer Bereiche, Arbeitseinheit.
  * Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
+import type { MailDienste } from '../mail';
 import type { Db } from '../../db/database';
 import { bindeImSystemrahmen, type Kontext } from '../infra/bereich';
 import * as verwaltung from './repository/verwaltung';
@@ -24,6 +25,7 @@ export interface VerwaltungAbhaengigkeiten {
   bestand: BestandDienste;
   sets: SetsDienste;
   merkliste: MerklisteDienste;
+  mail: MailDienste;
 }
 
 export const zugang = (db: Db) => ({

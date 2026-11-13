@@ -9,7 +9,6 @@ import { hinweisNebenher } from './kontoHinweis';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as QR from './qrKopplung';
-import { sendEmailGeaendertMail, sendRegistrierungsVersuchMail, sendVerificationMail } from '../mail';
 import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl, ueberTls, unbegrenztNurMitTls } from '../infra/basisUrl';
 import { tlsStand } from '../infra/tlsWurzel';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -172,19 +171,22 @@ async function adressMails(k: KontoKontext, user: Konto, email: string, token: s
       gesendet = wertOder(
         await versuche(
           'anmeldung:versuchsmail',
-          sendRegistrierungsVersuchMail(inhaber.email, await sprache(inhaber.id), 'adresse'),
+          k.mail.sendRegistrierungsVersuchMail(inhaber.email, await sprache(inhaber.id), 'adresse'),
         ),
         { success: false },
       ).success;
   } else if (basis) {
     gesendet = wertOder(
-      await versuche('anmeldung:bestaetigungsmail', sendVerificationMail(email, token, basis, lang, 'adresse')),
+      await versuche('anmeldung:bestaetigungsmail', k.mail.sendVerificationMail(email, token, basis, lang, 'adresse')),
       { success: false },
     ).success;
   }
   // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
   if (user.email)
-    await versuche('anmeldung:hinweis-alte-adresse', sendEmailGeaendertMail(user.email, user.username, email, lang));
+    await versuche(
+      'anmeldung:hinweis-alte-adresse',
+      k.mail.sendEmailGeaendertMail(user.email, user.username, email, lang),
+    );
   return gesendet;
 }
 

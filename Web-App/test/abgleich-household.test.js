@@ -232,8 +232,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   );
 
   const fc = kompakt(require('./helpers/sources').finanzQuelle());
-  const uses = (fc.match(/await (?:kx?\.haushalt\.)?besitzerAnhaengen\(uids,/g) || [])
-    .length;
+  const uses = (fc.match(/await (?:kx?\.haushalt\.)?besitzerAnhaengen\(uids,/g) || []).length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });

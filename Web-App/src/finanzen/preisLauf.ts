@@ -188,7 +188,7 @@ async function nachDemLauf(k: FinanzenKontext) {
   try {
     const wartende = await k.preisLauf.setsMitAlarm();
     let gemeldet = 0;
-    for (const sn of wartende) gemeldet += await k.preisalarm.pruefeSet(sn);
+    for (const sn of wartende) gemeldet += await k.preisalarm.pruefeSet(sn, k.mail);
     if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
   } catch (e) {
     log(`Preisalarm error: ${fehlertext(e)}`);

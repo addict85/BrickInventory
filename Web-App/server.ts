@@ -16,7 +16,7 @@ import { prozessDienste, verdrahteProzess } from './startup/verdrahtung';
 import { baueApp } from './startup/app';
 import { HTTP_FRISTEN } from './src/infra/httpFristen';
 import { closeAllSse } from './src/http/sseRegistry';
-import { meldeSmtpAltlast } from './src/mail';
+
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen, horcheAufTokenWiderruf } from './src/konto';
 import { schliessePufferUndTakte } from './startup/abschluss';
 import { halteWebSperre } from './startup/einzelinstanz';
@@ -151,7 +151,7 @@ async function starte(): Promise<void> {
         process.exit(1);
       })
     : null;
-  if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
+  if (web) await prozessDienste().mail.meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
   if (web) await meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
   if (web) await meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
   if (web) horcheAufTokenWiderruf();

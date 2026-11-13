@@ -1,10 +1,10 @@
 // Mailversand ist Werkzeug, keine Route.
 
-import { getGlobalSetting } from '../einstellungen';
+import type { MailKontext } from './kontext';
 import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
 import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, getMailTheme } from './vorlage';
 import { sendMail } from './transport';
-const getSetting = (key: string) => getGlobalSetting(key, '');
+const einstellung = (k: MailKontext, key: string) => k.einstellungen.getGlobalSetting(key, '');
 
 // Mitexportiert, damit Aufrufer und Tests bei einer Adresse bleiben.
 export { MAIL_THEMES, getMailTheme, emailTemplate } from './vorlage';
@@ -21,6 +21,7 @@ export {
  * wer registriert — eine Anrede daraus trüge fremden Text in eine Mail des Servers.
  * Nennen mehrere Registrierungen die Adresse, verweist `mehrere` auf die Bestätigungsseite. */
 export async function sendVerificationMail(
+  k: MailKontext,
   to: string,
   token: string,
   baseUrl: string,
@@ -29,7 +30,7 @@ export async function sendVerificationMail(
   mehrere = false,
 ) {
   // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
-  const theme = await getMailTheme();
+  const theme = await getMailTheme(k);
   const url = `${baseUrl}/verify#token=${token}`;
   const adresse = art === 'adresse';
   const L =
@@ -73,7 +74,7 @@ export async function sendVerificationMail(
        </p>`,
         };
   const hinweis = mehrere && !adresse;
-  return sendMail({
+  return sendMail(k, {
     to,
     subject: L.subject,
     text: hinweis ? L.text.replace('\n\n', `\n\n${L.mehrere}\n\n`) : L.text,
@@ -91,8 +92,14 @@ export async function sendVerificationMail(
   });
 }
 
-export async function sendEmailGeaendertMail(to: string, username: string, neueAdresse: string, lang = 'de') {
-  const theme = await getMailTheme();
+export async function sendEmailGeaendertMail(
+  k: MailKontext,
+  to: string,
+  username: string,
+  neueAdresse: string,
+  lang = 'de',
+) {
+  const theme = await getMailTheme(k);
   const L =
     lang === 'en'
       ? {
@@ -111,7 +118,7 @@ export async function sendEmailGeaendertMail(to: string, username: string, neueA
        <p style="margin:0 0 16px">für dein Konto wurde die E-Mail-Adresse <strong>${esc(neueAdresse)}</strong> beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.</p>`,
           note: 'Warst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Verwalter.',
         };
-  return sendMail({
+  return sendMail(k, {
     to,
     subject: L.subject,
     text: L.text,
@@ -121,11 +128,12 @@ export async function sendEmailGeaendertMail(to: string, username: string, neueA
 
 /** Die Registrierung antwortet auf eine vergebene Adresse wie auf eine neue; das hier erfährt ihr Inhaber. */
 export async function sendRegistrierungsVersuchMail(
+  k: MailKontext,
   to: string,
   lang = 'de',
   anlass: 'registrierung' | 'adresse' = 'registrierung',
 ) {
-  const theme = await getMailTheme();
+  const theme = await getMailTheme(k);
   const L =
     anlass === 'adresse'
       ? lang === 'en'
@@ -162,7 +170,7 @@ export async function sendRegistrierungsVersuchMail(
        <p style="margin:0 0 16px">jemand hat versucht, mit deiner E-Mail-Adresse ein neues Konto anzulegen. Du hast schon eines; geändert wurde nichts.</p>`,
             note: 'Hast du dein Passwort vergessen, nutze „Passwort vergessen“ auf der Anmeldeseite.',
           };
-  return sendMail({
+  return sendMail(k, {
     to,
     subject: L.subject,
     text: L.text,
@@ -173,8 +181,8 @@ export async function sendRegistrierungsVersuchMail(
 /** Die Registrierung antwortet bei vergebenem Namen wie bei Erfolg; nur die
  * angegebene Adresse erfährt, dass es ihn schon gibt. Ohne den Namen selbst:
  * Ihn wählt, wer registriert, und die Adresse ist unbestätigt. */
-export async function sendBenutzernameVergebenMail(to: string, lang = 'de', basis = '') {
-  const theme = await getMailTheme();
+export async function sendBenutzernameVergebenMail(k: MailKontext, to: string, lang = 'de', basis = '') {
+  const theme = await getMailTheme(k);
   const L =
     lang === 'en'
       ? {
@@ -203,7 +211,7 @@ BrickInventory Manager`,
           html: `<p style="margin:0 0 16px">mit dieser E-Mail-Adresse wollte jemand ein Konto unter einem Benutzernamen anlegen, den es schon gibt; angelegt wurde nichts.</p>`,
           note: 'Warst du das, registriere dich mit einem anderen Benutzernamen.',
         };
-  return sendMail({
+  return sendMail(k, {
     to,
     subject: L.subject,
     text: L.text,
@@ -214,8 +222,14 @@ BrickInventory Manager`,
 
 /** Das Hauptkonto liest danach den Bestand mit; wer nur eine Sitzung erbeutet
  * hat, soll das nicht unbemerkt einrichten können. */
-export async function sendHaushaltVerknuepftMail(to: string, username: string, hauptkonto: string, lang = 'de') {
-  const theme = await getMailTheme();
+export async function sendHaushaltVerknuepftMail(
+  k: MailKontext,
+  to: string,
+  username: string,
+  hauptkonto: string,
+  lang = 'de',
+) {
+  const theme = await getMailTheme(k);
   const L =
     lang === 'en'
       ? {
@@ -234,7 +248,7 @@ export async function sendHaushaltVerknuepftMail(to: string, username: string, h
        <p style="margin:0 0 16px">dein Konto ist jetzt Unterkonto von <strong>${esc(hauptkonto)}</strong>. Dieses Konto sieht und ändert deine Sammlung.</p>`,
           note: 'Warst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Verwalter.',
         };
-  return sendMail({
+  return sendMail(k, {
     to,
     subject: L.subject,
     text: L.text,
@@ -243,14 +257,17 @@ export async function sendHaushaltVerknuepftMail(to: string, username: string, h
 }
 
 /** Ohne Mailserver gibt es keinen Hinweis: Die Konsole erreicht den Inhaber nicht. */
-export async function mailEingerichtet(): Promise<boolean> {
-  return !!(await getSetting('smtp_host')) && !!(await getSetting('smtp_user'));
+export async function mailEingerichtet(k: MailKontext): Promise<boolean> {
+  return !!(await einstellung(k, 'smtp_host')) && !!(await einstellung(k, 'smtp_user'));
 }
 
 /** Ein Link per Mail kommt nur mit Mailserver UND eigener Adresse an; `neu` sind Werte, die gerade gespeichert werden. */
-export async function mailBereit(neu: { smtp_host?: unknown; smtp_user?: unknown } = {}): Promise<boolean> {
-  const wert = async (k: 'smtp_host' | 'smtp_user') =>
-    neu[k] !== undefined ? String(neu[k] ?? '') : await getSetting(k);
+export async function mailBereit(
+  k: MailKontext,
+  neu: { smtp_host?: unknown; smtp_user?: unknown } = {},
+): Promise<boolean> {
+  const wert = async (n: 'smtp_host' | 'smtp_user') =>
+    neu[n] !== undefined ? String(neu[n] ?? '') : await einstellung(k, n);
   return !!basisUrl() && !!(await wert('smtp_host')) && !!(await wert('smtp_user'));
 }
 
@@ -278,6 +295,7 @@ export type KontoHinweis =
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
 export async function sendKontoHinweisMail(
+  k: MailKontext,
   to: string,
   username: string,
   art: KontoHinweis,
@@ -289,7 +307,7 @@ export async function sendKontoHinweisMail(
     durch?: string | undefined;
   } = {},
 ) {
-  const theme = await getMailTheme();
+  const theme = await getMailTheme(k);
   const en = o.lang === 'en';
   const was = {
     passkey_neu: en
@@ -363,7 +381,7 @@ export async function sendKontoHinweisMail(
   const text = `${hallo} ${username},\n\n${was}\n${haushalt ? `\n${haushalt}\n` : ''}\n${note}\n\nBrickInventory Manager`;
   const html = `<p style="margin:0 0 8px">${hallo} <strong>${esc(username)}</strong>,</p>
        <p style="margin:0 0 16px">${esc(was)}</p>${haushalt ? `<p style="margin:0 0 16px">${esc(haushalt)}</p>` : ''}`;
-  return sendMail({
+  return sendMail(k, {
     to,
     subject,
     text,
@@ -372,8 +390,8 @@ export async function sendKontoHinweisMail(
 }
 
 // Sprache des Kontos, wie alle Mails.
-export async function sendPasswordResetMail(to: string, token: string, baseUrl: string, lang = 'de') {
-  const theme = await getMailTheme();
+export async function sendPasswordResetMail(k: MailKontext, to: string, token: string, baseUrl: string, lang = 'de') {
+  const theme = await getMailTheme(k);
   const url = `${baseUrl}/reset-password#token=${token}`;
   const de = lang !== 'en';
   const L = de
@@ -401,7 +419,7 @@ export async function sendPasswordResetMail(to: string, token: string, baseUrl: 
         note: `If you did not ask for a reset, you can safely ignore this email.<br>
            Your password stays unchanged.`,
       };
-  return sendMail({
+  return sendMail(k, {
     to,
     subject: L.subject,
     text: L.text,
@@ -436,9 +454,10 @@ export interface AlarmMailDaten {
 
 // Ohne APP_BASE_URL sagt die Mail, warum der Knopf fehlt.
 export async function baueAlarmMail(
+  k: MailKontext,
   d: AlarmMailDaten,
 ): Promise<{ subject: string; text: string; html: string; link?: string }> {
-  const theme = await getMailTheme();
+  const theme = await getMailTheme(k);
   const de = d.lang !== 'en';
   const geld = (n: number) => `${d.waehrung} ${n.toFixed(2)}`;
   const zustand = d.condition === 'U' ? (de ? 'gebraucht' : 'used') : de ? 'neu' : 'new';

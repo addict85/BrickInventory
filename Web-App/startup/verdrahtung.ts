@@ -14,6 +14,7 @@ import {
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
 import { erzeugeSets } from '../src/sets';
 import { erzeugeHaushalt } from '../src/haushalt';
+import { erzeugeMail } from '../src/mail';
 import { erzeugeIdempotenz } from '../src/idempotenz';
 import { erzeugeBestand } from '../src/bestand';
 import { erzeugeTeile } from '../src/teile';
@@ -89,12 +90,13 @@ export function baueKlientenZugang(): KlientenZugang {
  * verdrahtet wird; Testhilfen rufen sie auch und geben dabei ihr `bildwerk` mit. */
 export function baueDienste(db: Db, nacharbeit: Nacharbeit, bildwerk?: Bildwerk) {
   const einstellungen = erzeugeEinstellungen({ db });
+  const mail = erzeugeMail({ einstellungen });
   const auftraege = erzeugeAuftraege({ db, einstellungen });
   const haushalt = erzeugeHaushalt({ db, einstellungen });
-  const konto = erzeugeKonto({ db, einstellungen, auftraege, haushalt, nacharbeit });
+  const konto = erzeugeKonto({ db, einstellungen, auftraege, haushalt, nacharbeit, mail });
   const idempotenz = erzeugeIdempotenz({ db });
   const katalog = erzeugeKatalog({ db, einstellungen, auftraege, haushalt, nacharbeit, bildwerk });
-  const finanzen = erzeugeFinanzen({ db, einstellungen, auftraege, haushalt, katalog, nacharbeit });
+  const finanzen = erzeugeFinanzen({ db, einstellungen, auftraege, haushalt, katalog, nacharbeit, mail });
   const bestand = erzeugeBestand({ db, einstellungen, haushalt, konto, katalog, finanzen });
   const sets = erzeugeSets({ db, nacharbeit, katalog, finanzen, auftraege, bestand, einstellungen, konto });
   const teile = erzeugeTeile({ db, einstellungen, haushalt, katalog, finanzen, bestand });
@@ -124,9 +126,11 @@ export function baueDienste(db: Db, nacharbeit: Nacharbeit, bildwerk?: Bildwerk)
     bestand,
     sets,
     merkliste,
+    mail,
   });
   return {
     einstellungen,
+    mail,
     auftraege,
     haushalt,
     konto,

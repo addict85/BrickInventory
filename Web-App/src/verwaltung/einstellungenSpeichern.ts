@@ -1,7 +1,6 @@
 /** POST /settings ohne HTTP. Hier statt in src/einstellungen, weil Mail, Protokoll
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
 import { SECRET_KEYS, isMaskedValue, globalerWertGueltig, meldeGlobaleAenderung } from '../einstellungen';
-import { mailBereit } from '../mail';
 import { fachfehler } from '../infra/fehlerTexte';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../vertrag/einstellungen';
 import type { Eingabe } from '../vertrag';
@@ -73,7 +72,7 @@ export async function einstellungenSpeichern(
     if (
       String(e.registration_enabled) === '1' &&
       (await kx.einstellungen.getGlobalSetting('registration_enabled')) !== '1' &&
-      !(await mailBereit(e))
+      !(await kx.mail.mailBereit(e))
     )
       fachfehler('ungueltig', 'registrierung_braucht_mail');
   }
