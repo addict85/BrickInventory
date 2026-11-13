@@ -52,16 +52,17 @@ test('Server, Webapp und App nennen dieselbe Zahl', () => {
     '..',
     '..',
     'Android-App',
-    'core-sicherheit',
+    'core-model',
     'src',
     'main',
     'java',
     'ch',
     'brickinventoryapp',
-    'sicherheit',
+    'model',
+    'util',
     'Passwort.kt',
   );
-  assert.ok(fs.existsSync(kotlinDatei), 'sicherheit/Passwort.kt fehlt — Pfad im Test veraltet?');
+  assert.ok(fs.existsSync(kotlinDatei), 'model/util/Passwort.kt fehlt — Pfad im Test veraltet?');
   // `const val`, nicht bloss der Name: Der erste Entwurf dieser Datei schrieb
   // `const PASSWORT_MIN_ZEICHEN = 8` — ohne `val`, und das ist kein gueltiges
   // Kotlin. Dieser Regex traf die Zeichenkette trotzdem, der Test blieb gruen,

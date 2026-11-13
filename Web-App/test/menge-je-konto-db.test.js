@@ -24,17 +24,17 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { zugangOderSkip } = require('./helpers/db');
 const { haeltSet, erfasse, mengeVon } = require('./helpers/bestand');
 
-const kaeufe = (uid, sn) =>
+const kaeufe = (db, uid, sn) =>
   db
     .all(`SELECT to_jsonb(t) AS z FROM set_acquisitions t WHERE user_id=$1 AND set_number=$2 ORDER BY id`, [uid, sn])
     .then(r => r.map(x => x.z));
 
 test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  const db = await zugangOderSkip(t, _req);
+  if (!db) return;
   const NAME = `mjk-${process.pid}`,
     SN = `31171-${process.pid % 1000}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_kind`]]);
@@ -52,7 +52,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
   await t.test('Hauptkonto verringert das Unterkonto, Rückgängig bringt den Kauf zurück', async () => {
     await haeltSet(db, uid, SN, 1, { preis: 199.99, am: '2026-06-01T10:00:00Z' });
     await haeltSet(db, kid, SN, 1, { preis: 210, am: '2026-06-02T10:00:00Z' });
-    const vorher = await kaeufe(kid, SN);
+    const vorher = await kaeufe(db, kid, SN);
     const r = await updateSet(uid, SN, { quantity_delta: -1, owner_user_id: kid });
     assert.equal(await mengeVon(db, [kid], SN), 0);
     assert.equal(await mengeVon(db, [uid], SN), 1, 'das eigene Exemplar blieb nicht');
@@ -63,30 +63,30 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     );
     assert.ok(r.papierkorb, 'kein Papierkorb-Eintrag');
     assert.equal((await pk.stelleWiederHer({ schreiber: uid }, r.papierkorb)).ok, true);
-    assert.deepEqual(await kaeufe(kid, SN), vorher);
+    assert.deepEqual(await kaeufe(db, kid, SN), vorher);
   });
 
   await t.test('älterer Kauf bleibt, neuerer kommt zurück', async () => {
     await erfasse(db, uid, SN, 1, { preis: 250, am: '2026-09-13T10:00:00Z' });
-    const vorher = await kaeufe(uid, SN);
+    const vorher = await kaeufe(db, uid, SN);
     const r = await updateSet(uid, SN, { quantity_delta: -1 });
     assert.deepEqual(
       r.entfallen.map(e => [e.purchase_price, e.date]),
       [[250, '2026-09-13']],
     );
     assert.deepEqual(
-      (await kaeufe(uid, SN)).map(z => Number(z.purchase_price)),
+      (await kaeufe(db, uid, SN)).map(z => Number(z.purchase_price)),
       [199.99],
     );
     assert.ok(r.papierkorb, 'kein Papierkorb-Eintrag');
     assert.equal((await pk.listePapierkorb([uid])).find(e => e.id === r.papierkorb)?.anzahl, 1);
     assert.equal((await pk.stelleWiederHer({ schreiber: uid }, r.papierkorb)).ok, true);
-    assert.deepEqual(await kaeufe(uid, SN), vorher);
+    assert.deepEqual(await kaeufe(db, uid, SN), vorher);
   });
 
   await t.test('gekürzter Kauf: dieselbe Zeile wächst wieder, auch mit inzwischen geändertem Preis', async () => {
     await erfasse(db, uid, SN, 3, { preis: 80, am: '2026-10-01T10:00:00Z' });
-    const vorher = await kaeufe(uid, SN);
+    const vorher = await kaeufe(db, uid, SN);
     const r = await updateSet(uid, SN, { quantity_delta: -1 });
     assert.deepEqual(
       r.entfallen.map(e => [e.quantity, e.purchase_price]),
@@ -97,7 +97,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     await db.run('UPDATE set_acquisitions SET purchase_price = 85 WHERE id = $1', [id]);
     assert.equal((await pk.stelleWiederHer({ schreiber: uid }, r.papierkorb)).ok, true);
     assert.deepEqual(
-      await kaeufe(uid, SN),
+      await kaeufe(db, uid, SN),
       vorher.map(z => (z.id === id ? { ...z, purchase_price: 85 } : z)),
     );
   });
@@ -107,7 +107,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     const r = await updateSet(uid, SN, { quantity_delta: -1 });
     await erfasse(db, uid, SN, 1, { preis: 60, am: '2026-10-05T12:00:00Z' });
     assert.equal((await pk.stelleWiederHer({ schreiber: uid }, r.papierkorb)).ok, true);
-    const am5 = (await kaeufe(uid, SN)).filter(z => Number(z.purchase_price) === 60);
+    const am5 = (await kaeufe(db, uid, SN)).filter(z => Number(z.purchase_price) === 60);
     assert.deepEqual(
       am5.map(z => z.quantity),
       [2],
