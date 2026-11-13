@@ -26,7 +26,7 @@ function pruefe(web) {
     .filter(n => !['node_modules', 'dist', 'coverage', 'data', '.git'].includes(n))
     .concat(FRUEHER);
   const muster = new RegExp(
-    `(?<![\\w./-])((?:${ordner.map(n => n.replace(/[.]/g, '\\.')).join('|')})/[\\w./-]*\\w\\.(?:${ENDUNGEN}))\\b`,
+    `(?<![\\w./-])((?:${ordner.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})/[\\w./-]*\\w\\.(?:${ENDUNGEN}))\\b`,
     'g',
   );
   /** @param {string} p @param {string} datei */

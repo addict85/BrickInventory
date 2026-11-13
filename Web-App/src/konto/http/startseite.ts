@@ -19,9 +19,11 @@ export async function sendeStartseite(res: Pick<Response, 'type' | 'sendFile'>, 
 
 /** Ältere Mails (?token=) gelten weiter, aber ins Fragment, bevor die Seite lädt: Sonst trügen
  * die Referer ihrer Dateien den Token in weitere Protokollzeilen. Mailtokens sind hex. */
+const MAILSEITEN = new Set(['/verify', '/reset-password']);
 export function tokenInsFragment(req: Request, res: Response): boolean {
   const token = req.query.token;
-  if (typeof token !== 'string' || !/^[0-9a-f]{1,128}$/i.test(token)) return false;
-  res.redirect(303, `${req.path}#token=${token}`);
+  const seite = req.path.toLowerCase().replace(/\/$/, '');
+  if (typeof token !== 'string' || !/^[0-9a-f]{1,128}$/i.test(token) || !MAILSEITEN.has(seite)) return false;
+  res.redirect(303, `${seite}#token=${token}`);
   return true;
 }
