@@ -2014,3 +2014,31 @@ wird). Hinweise:
   die Angabe sahen App und Anmeldesperre alle Clients unter der Adresse dieses
   Proxys. Ohne Proxy davor ist nichts zu tun; das neue `Caddyfile` verhält sich
   dann wie das alte.
+
+<a id="systemrolle"></a>
+
+## 58. Systemrolle statt Schalter für den Zeilenschutz (Migration 0112)
+
+- Den Zeilenschutz (RLS) der Kontotabellen hob bisher die Einstellung
+  `app.system` der Sitzung auf; die kann jede Rolle per `set_config()` setzen,
+  auch eine eingeschleuste Abfrage. Jetzt hebt ihn nur noch die neue Rolle
+  **`brickinventory_system`** auf (`BYPASSRLS`, sonst dieselben Rechte wie
+  `brickinventory_app`). App und Jobs verbinden sich für Aufträge,
+  Kontenverwaltung, Anmeldung und Zugangsdaten über sie, sonst wie bisher als
+  `brickinventory_app`.
+- Neu geschützt: `auftraege` (Aufträge ohne Konto sieht nur die Systemrolle),
+  `passkeys`, `webauthn_challenges`, `zweiter_faktor`, `zweiter_faktor_codes`,
+  `api_tokens`, `api_tokens_verbraucht`, `qr_login_tokens`,
+  `geraete_schluessel`, `geraete_nonces`, `schritt_challenges`,
+  `schritt_freigaben`.
+- **Docker:** Das Passwort liegt in `./geheimnisse/db_system_password`.
+  `sh scripts/image-pruefen.sh` (der übliche Update-Schritt) legt die Datei
+  an, wenn sie fehlt; `db-rolle` legt die Rolle bei `docker compose up -d` an
+  und setzt das Passwort bei jedem Lauf. Wer selbst baut (`up -d --build`),
+  ruft vorher einmal `sh scripts/geheimnisse-einrichten.sh`. Ohne die Datei
+  bricht `docker compose up` mit „bind source path does not exist …
+  db_system_password“ ab.
+- **Ohne Docker** mit einer Rolle, der die Tabellen gehören: nichts zu tun.
+  Mit getrennten Rollen `postgres/app-rolle.sh` mit `DB_SYSTEM_PASSWORD`
+  aufrufen und `PGSYSTEM_USER`/`PGSYSTEM_PASSWORD` setzen; unterliegt die
+  Systemverbindung dem Zeilenschutz, verweigert der Start mit Hinweis hierher.

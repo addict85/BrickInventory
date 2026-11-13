@@ -456,19 +456,20 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
   }
   const name = testName('rst');
   await raeumeReste(admin, 'rst');
-  const [ziel, alt, APP, MIG, LESEN, BOESE] = [
+  const [ziel, alt, APP, MIG, LESEN, BOESE, SYS] = [
     name,
     `${name}_alt`,
     `${name}_app`,
     `${name}_mig`,
     `${name}_lesen`,
     `${name}_boese`,
+    `${name}_sys`,
   ];
   const id = s => `"${s}"`;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'restore-rolle-'));
   t.after(async () => {
     for (const d of [ziel, alt]) await admin.query(`DROP DATABASE IF EXISTS ${id(d)} WITH (FORCE)`).catch(() => {});
-    for (const r of [APP, MIG, LESEN, BOESE]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
+    for (const r of [APP, MIG, LESEN, BOESE, SYS]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
     await admin.end();
     fs.rmSync(tmp, { recursive: true, force: true });
   });
@@ -487,6 +488,8 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
     DB_MIGRATION_PASSWORD: `mig-${process.pid}`,
     DB_LESEN_USER: LESEN,
     PGWEB_DB_PASSWORD: '',
+    DB_SYSTEM_USER: SYS,
+    DB_SYSTEM_PASSWORD: `sys-${process.pid}`,
   };
   const dbUrl = (db, nutzer = suNutzer, pw = suPw) => {
     const u = new URL(basis);

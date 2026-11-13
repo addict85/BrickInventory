@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../db/database';
+import { imSystemkontext } from './kontoKontext';
 
 /** Nur Funktionen, deren erster Parameter den Zugang nimmt, und zwar ohne ihn. */
 export type Gebunden<M, Z = DbSchnittstelle> = {
@@ -27,6 +28,34 @@ export function bindeZugang<Z, M extends object>(zugang: Z, modul: M, namen?: re
       gebunden[name] = (...a: unknown[]) =>
         ((modul as Record<string, unknown>)[name] as (z: Z, ...x: unknown[]) => unknown)(zugang, ...a);
   return gebunden;
+}
+
+/** Wie bindeZugang, im Systemrahmen (Anmeldung, Warteschlange, Verwaltung); eine laufende
+ * Transaktion behält ihren Rahmen, sonst liefe der Aufruf neben ihr statt mit ihr. */
+export function bindeImSystemrahmen<Z extends { inTransaktion(): boolean }, M extends object>(
+  zugang: Z,
+  modul: M,
+  grund: string,
+): Gebunden<M, Z>;
+export function bindeImSystemrahmen<
+  Z extends { inTransaktion(): boolean },
+  M extends object,
+  N extends keyof Gebunden<M, Z> & keyof M & string,
+>(zugang: Z, modul: M, grund: string, namen: readonly N[]): Gebunden<Pick<M, N>, Z>;
+export function bindeImSystemrahmen<Z extends { inTransaktion(): boolean }, M extends object>(
+  zugang: Z,
+  modul: M,
+  grund: string,
+  namen?: readonly string[],
+): unknown {
+  const gebunden = (namen ? bindeZugang(zugang, modul, namen as never[]) : bindeZugang(zugang, modul)) as Record<
+    string,
+    (...a: unknown[]) => unknown
+  >;
+  const aus: Record<string, unknown> = {};
+  for (const [name, f] of Object.entries(gebunden))
+    aus[name] = (...a: unknown[]) => (zugang.inTransaktion() ? f(...a) : imSystemkontext(grund, () => f(...a)));
+  return aus;
 }
 
 /** Die Dienste eines Bereichs im Prozess, gebaut beim ersten Gebrauch aus dem,

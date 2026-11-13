@@ -68,6 +68,13 @@
  *      gilt für die Laufzeitrolle …“ (pgweb sieht 0 Zeilen); ebenso mit
  *      `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` vor der Prüfung (die
  *      Laufzeitrolle sieht ohne Konto 1 Zeile)
+ *   Systemrolle (13.11.2026, je einzeln):
+ *   AA die Systemrolle NOBYPASSRLS → rot: „bestehende Installation“
+ *      (rolbypassrls) und „der Zeilenschutz gilt …“ (Systemrolle sieht 0)
+ *   AB `aus_datei DB_SYSTEM_PASSWORD` gestrichen → rot: „Passwörter aus
+ *      Dateien“ und „scripts/rollen-trennen.sh …“ (DB_SYSTEM_PASSWORD fehlt)
+ *   AC die Rechte nur noch für die Laufzeitrolle vergeben → rot: „Laufzeit-
+ *      und Systemrolle dürfen …“ und „der Zeilenschutz gilt …“ (permission denied)
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
@@ -92,6 +99,8 @@ const ROLLE = `${praefix}_app`.toLowerCase();
 const MIG = `${praefix}_mig`.toLowerCase();
 const LESEN = `${praefix}_lesen`.toLowerCase();
 const BOESE = `${praefix}_boese`.toLowerCase();
+const SYS = `${praefix}_sys`.toLowerCase();
+const SYS_PW = `sys-${process.pid}-geheim`;
 const LESEN_PW = `lesen-${process.pid}-geheim`;
 const PASSWORT = `app-${process.pid}-geheim`;
 const MIG_PW = `mig-${process.pid}-geheim`;
@@ -122,6 +131,8 @@ function rolleEinrichten(db, mehr = {}) {
       DB_MIGRATION_PASSWORD: MIG_PW,
       DB_LESEN_USER: LESEN,
       PGWEB_DB_PASSWORD: LESEN_PW,
+      DB_SYSTEM_USER: SYS,
+      DB_SYSTEM_PASSWORD: SYS_PW,
       ...mehr,
     },
   });
@@ -201,7 +212,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
   t.after(async () => {
     for (const db of [alt, neu, umstieg])
       await admin.query(`DROP DATABASE IF EXISTS ${id(db)} WITH (FORCE)`).catch(() => {});
-    for (const r of [ROLLE, MIG, LESEN, BOESE]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
+    for (const r of [ROLLE, MIG, LESEN, BOESE, SYS]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
     await admin.end();
   });
 
@@ -233,6 +244,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     const ohneRechte = { rolsuper: false, rolcreaterole: false, rolcreatedb: false, rolbypassrls: false, mitglied: 0 };
     assert.deepEqual(await rechteDerRolle(admin), ohneRechte);
     assert.deepEqual(await rechteDerRolle(admin, MIG), ohneRechte);
+    assert.deepEqual(await rechteDerRolle(admin, SYS), { ...ohneRechte, rolbypassrls: true });
     const c = new Client({ connectionString: url(alt) });
     await c.connect();
     try {
@@ -375,35 +387,39 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     assert.equal((await rechteDerRolle(admin, MIG)).rolsuper, false);
   });
 
-  await t.test('die Laufzeitrolle darf kein DROP, ALTER oder CREATE, nur Zeilen', async () => {
+  await t.test('Laufzeit- und Systemrolle dürfen kein DROP, ALTER oder CREATE, nur Zeilen', async () => {
     assert.equal(rolleEinrichten(neu).status, 0);
-    await als(neu, ROLLE, PASSWORT, async app => {
-      for (const sql of [
-        'DROP TABLE wanted',
-        'ALTER TABLE users ADD COLUMN probe int',
-        'ALTER TABLE users RENAME TO users2',
-        'CREATE TABLE public.probe (x int)',
-        'CREATE SCHEMA probe',
-        'CREATE INDEX probe ON users (email)',
-        'TRUNCATE wanted',
-        "COMMENT ON TABLE users IS 'x'",
-        'CREATE VIEW public.probe AS SELECT 1 AS x',
-        'CREATE FUNCTION public.probe() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$',
-        `ALTER DATABASE ${id(neu)} SET search_path = public`,
-        'DROP FUNCTION IF EXISTS public.erfassung_tag() CASCADE',
-        'ALTER TABLE users DISABLE TRIGGER ALL',
-        'CREATE TRIGGER probe BEFORE INSERT ON users FOR EACH ROW EXECUTE FUNCTION suppress_redundant_updates_trigger()',
-      ])
-        await assert.rejects(app.query(sql), /permission denied|must be owner/, `Laufzeitrolle darf: ${sql}`);
-      // Zeilen schreiben, Sequenzen weiterzählen, temporär anlegen: alles, was die App braucht.
-      const { id: uid } = (
-        await app.query(`INSERT INTO users (username, password_hash) VALUES ('laufzeitprobe', 'x') RETURNING id`)
-      ).rows[0];
-      await app.query(`UPDATE users SET first_name = 'L' WHERE id = $1`, [uid]);
-      assert.equal((await app.query('SELECT first_name FROM users WHERE id = $1', [uid])).rows[0].first_name, 'L');
-      await app.query('DELETE FROM users WHERE id = $1', [uid]);
-      await app.query('CREATE TEMP TABLE probe (x int)');
-    });
+    for (const [nutzer, pw] of [
+      [ROLLE, PASSWORT],
+      [SYS, SYS_PW],
+    ])
+      await als(neu, nutzer, pw, async app => {
+        for (const sql of [
+          'DROP TABLE wanted',
+          'ALTER TABLE users ADD COLUMN probe int',
+          'ALTER TABLE users RENAME TO users2',
+          'CREATE TABLE public.probe (x int)',
+          'CREATE SCHEMA probe',
+          'CREATE INDEX probe ON users (email)',
+          'TRUNCATE wanted',
+          "COMMENT ON TABLE users IS 'x'",
+          'CREATE VIEW public.probe AS SELECT 1 AS x',
+          'CREATE FUNCTION public.probe() RETURNS int LANGUAGE sql AS $$ SELECT 1 $$',
+          `ALTER DATABASE ${id(neu)} SET search_path = public`,
+          'DROP FUNCTION IF EXISTS public.erfassung_tag() CASCADE',
+          'ALTER TABLE users DISABLE TRIGGER ALL',
+          'CREATE TRIGGER probe BEFORE INSERT ON users FOR EACH ROW EXECUTE FUNCTION suppress_redundant_updates_trigger()',
+        ])
+          await assert.rejects(app.query(sql), /permission denied|must be owner/, `${nutzer} darf: ${sql}`);
+        // Zeilen schreiben, Sequenzen weiterzählen, temporär anlegen: alles, was die App braucht.
+        const { id: uid } = (
+          await app.query(`INSERT INTO users (username, password_hash) VALUES ('laufzeitprobe', 'x') RETURNING id`)
+        ).rows[0];
+        await app.query(`UPDATE users SET first_name = 'L' WHERE id = $1`, [uid]);
+        assert.equal((await app.query('SELECT first_name FROM users WHERE id = $1', [uid])).rows[0].first_name, 'L');
+        await app.query('DELETE FROM users WHERE id = $1', [uid]);
+        await app.query('CREATE TEMP TABLE probe (x int)');
+      });
   });
 
   await t.test('der Katalog-Import tauscht als Laufzeitrolle', async () => {
@@ -624,7 +640,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       assert.deepEqual(await lesbar(t), [], `${t} ist für die Leserolle lesbar`);
   });
 
-  await t.test('der Zeilenschutz gilt für die Laufzeitrolle, nicht für die Leserolle', async () => {
+  await t.test('der Zeilenschutz gilt für die Laufzeitrolle, nicht für System- und Leserolle', async () => {
     await als(neu, null, null, c =>
       c.query(`INSERT INTO sets (user_id, set_number) SELECT id, '10001-1' FROM users WHERE username = 'leseprobe'`),
     );
@@ -638,6 +654,13 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       assert.equal(await zaehle(app), 1, 'mit Konto sieht sie dessen Zeile');
       await app.query('COMMIT');
     });
+    await als(neu, ROLLE, PASSWORT, async app => {
+      await app.query('BEGIN');
+      await app.query(`SELECT set_config('app.system', 'an', true)`);
+      assert.equal(await zaehle(app), 0, 'app.system schaltet den Zeilenschutz nicht mehr ab');
+      await app.query('COMMIT');
+    });
+    await als(neu, SYS, SYS_PW, async s => assert.equal(await zaehle(s), 1, 'die Systemrolle sieht alle Zeilen'));
     await als(neu, LESEN, LESEN_PW, async l => assert.equal(await zaehle(l), 1, 'pgweb sieht alle Zeilen'));
   });
 
@@ -688,6 +711,8 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         DB_MIGRATION_PASSWORD: MIG_PW,
         DB_LESEN_USER: LESEN,
         PGWEB_DB_PASSWORD: LESEN_PW,
+        DB_SYSTEM_USER: SYS,
+        DB_SYSTEM_PASSWORD: SYS_PW,
       },
     });
     fsm.rmSync(path.dirname(kopie), { recursive: true, force: true });
@@ -727,6 +752,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       DB_APP_PASSWORD_FILE: datei('app', PASSWORT),
       PGWEB_DB_PASSWORD_FILE: datei('lesen', LESEN_PW),
       DB_MIGRATION_PASSWORD_FILE: datei('mig', MIG_PW),
+      DB_SYSTEM_PASSWORD_FILE: datei('sys', SYS_PW),
       PGPASSWORD_FILE: datei('su', decodeURIComponent(BASIS.password)),
     };
     const ohneWerte = mehr => {
@@ -739,10 +765,17 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         DB_APP_USER: ROLLE,
         DB_MIGRATION_USER: MIG,
         DB_LESEN_USER: LESEN,
+        DB_SYSTEM_USER: SYS,
         ...umgebung,
         ...mehr,
       };
-      for (const k of ['PGPASSWORD', 'DB_APP_PASSWORD', 'DB_MIGRATION_PASSWORD', 'PGWEB_DB_PASSWORD'])
+      for (const k of [
+        'PGPASSWORD',
+        'DB_APP_PASSWORD',
+        'DB_MIGRATION_PASSWORD',
+        'PGWEB_DB_PASSWORD',
+        'DB_SYSTEM_PASSWORD',
+      ])
         if (!(k in mehr)) delete env[k];
       return spawnSync('sh', [SKRIPT], { encoding: 'utf8', env });
     };
@@ -755,6 +788,10 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     await app.connect();
     await app.end();
     await als(neu, MIG, MIG_PW, () => {});
+    await als(neu, SYS, SYS_PW, () => {});
+    const ohneSys = ohneWerte({ DB_SYSTEM_PASSWORD_FILE: '' });
+    assert.notEqual(ohneSys.status, 0);
+    assert.match(ohneSys.stderr, /DB_SYSTEM_PASSWORD fehlt/);
     const ohneMig = ohneWerte({ DB_MIGRATION_PASSWORD_FILE: '' });
     assert.notEqual(ohneMig.status, 0);
     assert.match(ohneMig.stderr, /DB_MIGRATION_PASSWORD fehlt/);
@@ -773,6 +810,9 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     const m = rolleEinrichten(neu, { DB_MIGRATION_PASSWORD: PASSWORT });
     assert.notEqual(m.status, 0);
     assert.match(m.stderr, /DB_MIGRATION_PASSWORD muss sich von DB_PASSWORD und DB_APP_PASSWORD unterscheiden/);
+    const sys = rolleEinrichten(neu, { DB_SYSTEM_PASSWORD: PASSWORT });
+    assert.notEqual(sys.status, 0);
+    assert.match(sys.stderr, /DB_SYSTEM_PASSWORD muss sich von DB_PASSWORD, DB_APP_PASSWORD und DB_MIGRATION_PASSWORD/);
   });
 
   // `docker` ist ein Stellvertreter: db-rolle und migration laufen wirklich gegen die Test-DB.
@@ -812,7 +852,8 @@ echo "$*" >> '${log}'
 case "$2 $4" in
   up*) exit 0 ;;
   'run db-rolle') DB_APP_PASSWORD_FILE='${g}/db_app_password' DB_MIGRATION_PASSWORD_FILE='${g}/db_migration_password' \
-       PGWEB_DB_PASSWORD_FILE='${g}/pgweb_db_password' exec sh '${SKRIPT}' ;;
+       PGWEB_DB_PASSWORD_FILE='${g}/pgweb_db_password' \
+       DB_SYSTEM_PASSWORD_FILE='${g}/db_system_password' exec sh '${SKRIPT}' ;;
   'run migration') cd '${ROOT}' && DATABASE_URL="postgres://${MIG}:$(cat '${g}/db_migration_password')@${BASIS.host}/${umstieg}" \
        exec '${process.execPath}' dist/startup/migrieren.js ;;
   exec*) shift 6; PGPASSWORD="$(cat '${g}/db_password')" PGOPTIONS='-c search_path=pg_catalog,pg_temp' exec psql -h '${BASIS.hostname}' -p '${BASIS.port || 5432}' "$@" ;;
@@ -837,6 +878,7 @@ esac
             DB_APP_USER: ROLLE,
             DB_MIGRATION_USER: MIG,
             DB_LESEN_USER: LESEN,
+            DB_SYSTEM_USER: SYS,
             PGPASSWORD_FILE: path.join(g, 'db_password'),
           },
         });

@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { fehlerCode, meldeFehler, logAndContinue, setzeTransaktionsWaechter } from '../src/infra/fehler';
-import { konfig, datenbankVerbindung } from '../src/infra/konfig';
+import { konfig, datenbankVerbindung, systemVerbindung } from '../src/infra/konfig';
 import { zeilenKontext } from '../src/infra/kontoKontext';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
@@ -28,12 +28,15 @@ const VORGABE_POOL = 15;
 export interface DbKonfig {
   verbindung: PoolConfig;
   pool: PoolConfig;
+  /** Die Systemrolle für den Systemrahmen; ohne sie läuft er über `verbindung`. */
+  system?: PoolConfig | null;
 }
 
 export function dbKonfigAusUmgebung(): DbKonfig {
   const K = konfig();
   return {
     verbindung: datenbankVerbindung(),
+    system: systemVerbindung(),
     pool: {
       max: K.pgPoolMax ?? VORGABE_POOL,
       min: K.pgPoolMin,
@@ -108,6 +111,10 @@ export type Erststart = () => Promise<void>;
 
 export interface Db extends DbSchnittstelle {
   readonly pool: Pool;
+  /** Der Pool der Systemrolle, ohne eigene Rolle derselbe wie `pool`. */
+  readonly systemPool: Pool;
+  /** Ob der Systemrahmen den Zeilenschutz wirklich aufhebt (BYPASSRLS, Eigentum oder Superuser). */
+  systemrahmenWirkt(): Promise<boolean>;
   /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). */
   readonly benachrichtigung: Benachrichtigung;
   transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen): Promise<T>;
@@ -128,23 +135,31 @@ export interface Db extends DbSchnittstelle {
  * über ihre Verbindung, auch aus Repositories ohne tx-Parameter. Sonst läse
  * ein Dienst mitten in der Transaktion über eine zweite Verbindung ausserhalb
  * ihres Stands. `offen` schützt vor Nachzüglern nach COMMIT. */
-type TxStand = { client: PoolClient; offen: boolean; db: object; innerster: string | null; kontext: string };
+type TxStand = {
+  client: PoolClient;
+  offen: boolean;
+  db: object;
+  pool: Pool;
+  innerster: string | null;
+  kontext: string;
+};
 const laufendeTx = new AsyncLocalStorage<TxStand>();
 /** Der Sicherungspunkt, in dem dieser Aufrufpfad gerade läuft. */
 const laufenderPunkt = new AsyncLocalStorage<{ stand: TxStand; name: string }>();
 
-/** Für den Zeilenschutz (Migration 0110): wer gerade fragt, nur bis zum Ende
+/** Für den Zeilenschutz (Migration 0111): wer gerade fragt, nur bis zum Ende
  * der Transaktion. Ein Wert auf Sitzungsebene bliebe an der Pool-Verbindung
  * hängen und gälte in der nächsten Anfrage eines anderen Kontos. Die Konto-ID
- * ist eine geprüfte ganze Zahl und darf deshalb ins SQL. */
+ * ist eine geprüfte ganze Zahl und darf deshalb ins SQL. Den Systemrahmen
+ * trägt die Rolle der Verbindung (Migration 0112), keine Einstellung. */
 function kontextSql(): string {
   const { system, konto } = zeilenKontext();
-  if (!system && konto === null) return '';
-  return `SELECT set_config('app.system', '${system ? 'an' : ''}', true), set_config('app.konto', '${system ? '' : konto}', true)`;
+  if (system || konto === null) return '';
+  return `SELECT set_config('app.konto', '${konto}', true)`;
 }
-const KONTEXT_LEER = "SELECT set_config('app.system', '', true), set_config('app.konto', '', true)";
+const KONTEXT_LEER = "SELECT set_config('app.konto', '', true)";
 
-/** Wechselt der Rahmen mitten in der Transaktion (imSystemkontext), folgt die Einstellung. */
+/** Wechselt das Konto mitten in der Transaktion (imNamenVon), folgt die Einstellung. */
 async function kontextAbgleich(stand: TxStand): Promise<void> {
   const soll = kontextSql();
   if (soll === stand.kontext) return;
@@ -255,11 +270,21 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   pool.on('error', err => {
     console.error('[db-pool] idle client error:', err.message);
   });
+  const systemPool = k.system ? new Pool({ ...k.pool, ...k.system }) : pool;
+  if (systemPool !== pool) {
+    systemPool.on('error', err => console.error('[db-pool] idle client error (System):', err.message));
+    // Wer den Zugang schliesst, schliesst pool; die Systemverbindungen hielten den Prozess sonst offen.
+    const schliesse = pool.end.bind(pool);
+    pool.end = (() => Promise.all([schliesse(), systemPool.end()]).then(() => undefined)) as Pool['end'];
+  }
   const ich = {};
   let sicherungspunkte = 0;
+  const poolDesRahmens = (): Pool => (zeilenKontext().system ? systemPool : pool);
+  /** Eine Transaktion auf der Verbindung der anderen Rolle gilt nicht: Wer mitten
+   * in einer Konto-Transaktion den Systemrahmen betritt, fragt neben ihr. */
   const txStand = (): TxStand | null => {
     const t = laufendeTx.getStore();
-    return t?.offen && t.db === ich ? t : null;
+    return t?.offen && t.db === ich && t.pool === poolDesRahmens() ? t : null;
   };
   const txClient = (): PoolClient | null => txStand()?.client ?? null;
 
@@ -272,8 +297,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
       return stand.client.query(sql, params);
     }
     const kontext = kontextSql();
-    if (!kontext) return pool.query(sql, params);
-    const client = await pool.connect();
+    const p = poolDesRahmens();
+    if (!kontext) return p.query(sql, params);
+    const client = await p.connect();
     let kaputt: Error | undefined;
     const abriss = (e: Error) => {
       kaputt = e;
@@ -330,8 +356,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   }
 
   async function einmaligeTransaktion<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
-    const client = await pool.connect();
-    const stand: TxStand = { client, offen: true, db: ich, innerster: null, kontext: '' };
+    const p = poolDesRahmens();
+    const client = await p.connect();
+    const stand: TxStand = { client, offen: true, db: ich, pool: p, innerster: null, kontext: '' };
     let kaputt: Error | undefined;
     // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
     // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
@@ -429,6 +456,14 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
 
   return {
     pool,
+    systemPool,
+    systemrahmenWirkt: async () =>
+      (
+        await systemPool.query<{ frei: boolean }>(
+          `SELECT r.rolsuper OR r.rolbypassrls OR pg_has_role(current_user, c.relowner, 'USAGE') AS frei
+             FROM pg_roles r, pg_class c WHERE r.rolname = current_user AND c.oid = 'public.sets'::regclass`,
+        )
+      ).rows[0]?.frei === true,
     all,
     get,
     run,
@@ -455,8 +490,10 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
           return false;
         },
       ),
+    // Gefragt ist die Rolle der Anfragen, auch wenn der Start im Systemrahmen fragt.
     alsSuperuserVerbunden: async () =>
-      !!(await get<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user'))?.s,
+      !!(await pool.query<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user')).rows[0]
+        ?.s,
   };
 }
 

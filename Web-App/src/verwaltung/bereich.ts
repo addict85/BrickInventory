@@ -2,7 +2,7 @@
  * ersten Parameter; erzeugeVerwaltung bindet ihn einmal für alle. So greift kein
  * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
 import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
+import { bindeImSystemrahmen } from '../infra/bereich';
 import * as verwaltung from './repository/verwaltung';
 
 export interface VerwaltungKontext {
@@ -13,7 +13,8 @@ export function erzeugeVerwaltung(k: VerwaltungKontext) {
   const { db } = k;
   return {
     db,
-    verwaltung: bindeZugang(db, verwaltung, [
+    // Diagnose und Zählungen gehen über alle Konten; die Routen selbst laufen ohne Systemrahmen.
+    verwaltung: bindeImSystemrahmen(db, verwaltung, 'verwaltung', [
       'bestandsFigurenbilderOffen',
       'bildZeilenDerKonten',
       'bricklinkTeile',

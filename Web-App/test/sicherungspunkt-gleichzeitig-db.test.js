@@ -99,8 +99,9 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
         }),
         /aussen scheitert sofort/,
       );
+      // Die fremde Transaktion hält die Verbindung, bis der Nachzügler fertig ist.
       await eng.transaction(async tx => {
-        await warte(160);
+        await Promise.allSettled([nachzuegler]);
         await schreibe(tx, 'fremd');
       });
       await assert.rejects(nachzuegler, modul.TransaktionBeendet);

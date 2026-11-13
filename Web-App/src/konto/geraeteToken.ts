@@ -7,6 +7,7 @@ import type { TokenScope } from './repository/zugaenge';
 import { hinweisNebenher } from './kontoHinweis';
 import { zaehleFehlversuch, zuVieleFehlversuche } from './tokenFehlversuche';
 import { kontoBereich } from './prozess';
+import { imSystemkontext } from '../infra/kontoKontext';
 import {
   cacheStand,
   tokenAusCache,
@@ -255,30 +256,33 @@ export async function rotiereToken(alt: string, ip?: string | null): Promise<Tau
   const neu = crypto.randomBytes(32).toString('hex');
   const neuHash = hashToken(neu);
   let kopie: { user_id: number; label: string | null } | null = null;
-  const ergebnis = await kontoBereich().db.transaction(async tx => {
-    const z = await repo.tauschQuelleSperren(tx, altHash);
-    if (!z) return null;
-    const offen = z.ersetzt_durch ? await repo.unbenutzterNachfolger(tx, z.ersetzt_durch, altHash) : undefined;
-    const bereich = ipBereich(ip);
-    if (offen?.ip_bereich && bereich && offen.ip_bereich !== bereich) {
-      await repo.loescheFamilie(tx, z.user_id, z.created_at);
-      kopie = { user_id: z.user_id, label: z.label };
-      return null;
-    }
-    if (offen && offen.alter_s < TAUSCH_SPERRE_S) return 'laeuft' as const;
-    if (z.ersetzt_durch) await repo.loescheUnbenutztenNachfolger(tx, z.ersetzt_durch, altHash);
-    const zeile = await repo.legeNachfolgerAn(tx, neuHash, altHash, z, TOKEN_IDLE_DAYS, ipBereich(ip));
-    const vorher = await repo.befristeVorgaenger(tx, altHash, neuHash, UEBERLAPPUNG_MS / 1000);
-    return {
-      token: neu,
-      scope: z.scope,
-      expires_at: zeile!.expires_at,
-      hard_expires_at: zeile!.hard_expires_at,
-      never_expires: z.never_expires,
-      rotiert_am: zeile!.rotiert_am,
-      alt_gueltig_bis: vorher!.expires_at,
-    };
-  });
+  // Der Tausch kommt ohne Sitzung: Der alte Token ist der einzige Ausweis.
+  const ergebnis = await imSystemkontext('tokentausch', () =>
+    kontoBereich().db.transaction(async tx => {
+      const z = await repo.tauschQuelleSperren(tx, altHash);
+      if (!z) return null;
+      const offen = z.ersetzt_durch ? await repo.unbenutzterNachfolger(tx, z.ersetzt_durch, altHash) : undefined;
+      const bereich = ipBereich(ip);
+      if (offen?.ip_bereich && bereich && offen.ip_bereich !== bereich) {
+        await repo.loescheFamilie(tx, z.user_id, z.created_at);
+        kopie = { user_id: z.user_id, label: z.label };
+        return null;
+      }
+      if (offen && offen.alter_s < TAUSCH_SPERRE_S) return 'laeuft' as const;
+      if (z.ersetzt_durch) await repo.loescheUnbenutztenNachfolger(tx, z.ersetzt_durch, altHash);
+      const zeile = await repo.legeNachfolgerAn(tx, neuHash, altHash, z, TOKEN_IDLE_DAYS, ipBereich(ip));
+      const vorher = await repo.befristeVorgaenger(tx, altHash, neuHash, UEBERLAPPUNG_MS / 1000);
+      return {
+        token: neu,
+        scope: z.scope,
+        expires_at: zeile!.expires_at,
+        hard_expires_at: zeile!.hard_expires_at,
+        never_expires: z.never_expires,
+        rotiert_am: zeile!.rotiert_am,
+        alt_gueltig_bis: vorher!.expires_at,
+      };
+    }),
+  );
   if (ergebnis || kopie) leereTokenCache();
   if (kopie) {
     const k: { user_id: number; label: string | null } = kopie;
