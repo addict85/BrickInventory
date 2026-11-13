@@ -28,7 +28,7 @@ async function meldeKontoaenderungFuer(
   const k = await kx.konten.profilZeile(uid);
   if (!k?.email) return false;
   const lang = String(await kx.einstellungen.getSetting(uid, 'language', 'de'));
-  const haushalt = (await kx.haushalt.haushalt.haushaltsStand(uid)).parents.map(p => p.username);
+  const haushalt = (await kx.haushalt.haushaltsStand(uid)).parents.map(p => p.username);
   const r = await sendKontoHinweisMail(k.email, k.username, art, {
     lang,
     haushalt,

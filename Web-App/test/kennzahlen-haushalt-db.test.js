@@ -57,7 +57,7 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
 
   const { blickfeldIds } = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+    ..._req('src/haushalt/prozess.js').haushaltBereich(),
   };
   const { getStats } = _req('src/bestand/kennzahlen.js');
   const { getSets } = _req('src/sets/index.js');

@@ -62,7 +62,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
   const S = _req('src/sets/index.js');
   const household = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+    ..._req('src/haushalt/prozess.js').haushaltBereich(),
   };
   const schreibbar = await household.schreibbereich(HAUPT);
   // Vorbedingung: Das Blickfeld umfasst wirklich BEIDE Konten, sonst prüft

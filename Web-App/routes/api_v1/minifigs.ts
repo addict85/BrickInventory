@@ -25,7 +25,7 @@ export function baueMinifigsRouter(d: Dienste) {
     '/minifigs',
     requireToken,
     async (req: Anfrage<'POST /api/v1/minifigs'>, res: Antwort<'POST /api/v1/minifigs'>) => {
-      const owner = await d.haushalt.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
       const result = await d.figuren.addManualFig(owner, req.eingabe);
       res.json({ success: true, ...result });
     },
@@ -36,11 +36,7 @@ export function baueMinifigsRouter(d: Dienste) {
     requireToken,
     async (req: Anfrage<'PUT /api/v1/minifigs/:figNumber'>, res: Antwort<'PUT /api/v1/minifigs/:figNumber'>) => {
       // Ohne den Parameter das eigene Konto.
-      const besitzer = await d.haushalt.haushalt.schreibziel(
-        req.apiUser.user_id,
-        req.abfrage.owner,
-        'kein_zugriff_konto',
-      );
+      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
       const r = await d.figuren.updateManualFig(besitzer, req.pfad.figNumber, req.eingabe);
       res.json({ success: true, ...r });
     },
@@ -70,11 +66,7 @@ export function baueMinifigsRouter(d: Dienste) {
     requireToken,
     async (req: Anfrage<'DELETE /api/v1/minifigs/:figNumber'>, res: Antwort<'DELETE /api/v1/minifigs/:figNumber'>) => {
       // Ohne den Parameter das eigene Konto.
-      const besitzer = await d.haushalt.haushalt.schreibziel(
-        req.apiUser.user_id,
-        req.abfrage.owner,
-        'kein_zugriff_konto',
-      );
+      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
       const geloescht = await d.sammlung.loescheFigur(besitzer, req.pfad.figNumber);
       if (geloescht === null) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
       res.json({ success: true, papierkorb: [geloescht] });

@@ -9,7 +9,7 @@
  *      rot: „Währung aus der zweiten Datenbank“, „Preisalarm …“ (Währung des
  *      Alarms) und „der Prozesszugang blieb unberührt“
  *   B  loescheSetFuer() in src/sets/loeschen.ts mit
- *      haushaltBereich().haushalt.schreibbereich(s.nutzer) → rot: „der
+ *      haushaltBereich().schreibbereich(s.nutzer) → rot: „der
  *      Prozesszugang blieb unberührt“
  *   C  lagerortDesSetsSetzen() wieder über bestandBereich().lagerortDienst →
  *      rot: „Lagerort in der zweiten Datenbank“ und „der Prozesszugang …“

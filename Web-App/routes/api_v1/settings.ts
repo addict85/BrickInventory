@@ -217,7 +217,7 @@ export function baueSettingsRouter(d: Dienste) {
     '/settings/household',
     requireToken,
     async (req: Anfrage<'GET /api/v1/settings/household'>, res: Antwort<'GET /api/v1/settings/household'>) => {
-      res.json({ success: true, ...(await d.haushalt.haushalt.haushaltsStand(req.apiUser.user_id)) });
+      res.json({ success: true, ...(await d.haushalt.haushaltsStand(req.apiUser.user_id)) });
     },
   );
 
@@ -228,7 +228,7 @@ export function baueSettingsRouter(d: Dienste) {
       req: Anfrage<'POST /api/v1/settings/household/invite'>,
       res: Antwort<'POST /api/v1/settings/household/invite'>,
     ) => {
-      const r = await d.haushalt.haushalt.einladungAnlegen(req.apiUser.user_id);
+      const r = await d.haushalt.einladungAnlegen(req.apiUser.user_id);
       if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
       res.json({ success: true, ...r });
     },
@@ -243,7 +243,7 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       const zuOft = await d.konto.kontoGedrosselt('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
       if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-      const r = await d.haushalt.haushalt.pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
+      const r = await d.haushalt.pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
       if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler);
       res.json({ success: true, ...r });
     },
@@ -262,7 +262,7 @@ export function baueSettingsRouter(d: Dienste) {
       const uid = req.apiUser.user_id;
       // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
       if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password, 'faktor_code'))) return;
-      const r = await d.haushalt.haushalt.einladungEinloesen(uid, String(req.eingabe.code || ''));
+      const r = await d.haushalt.einladungEinloesen(uid, String(req.eingabe.code || ''));
       if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
       const ich = await d.konto.profil(uid);
       if (ich?.email) {
@@ -287,7 +287,7 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       res.json({
         success: true,
-        ...(await d.haushalt.haushalt.kontenTrennen(
+        ...(await d.haushalt.kontenTrennen(
           req.apiUser.user_id,
           kennung(req.eingabe.sub_user_id),
           kennung(req.eingabe.main_user_id),
@@ -305,7 +305,7 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       const sub = parseInt(String(req.eingabe.sub_user_id), 10);
       if (!Number.isFinite(sub)) return sendeFehler(req, res, 400, 'konto_id_ungueltig');
-      res.json({ success: true, ...(await d.haushalt.haushalt.verwerfeGetrennt(req.apiUser.user_id, sub)) });
+      res.json({ success: true, ...(await d.haushalt.verwerfeGetrennt(req.apiUser.user_id, sub)) });
     },
   );
 

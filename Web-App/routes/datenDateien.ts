@@ -37,8 +37,7 @@ export function baueDatenDateienRouter(d: Dienste) {
       const besitzer = Number(segments[0]);
       // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
       // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
-      if (!(await d.haushalt.haushalt.siehtKonto(userId, besitzer)))
-        return res.status(404).send('Datei nicht gefunden');
+      if (!(await d.haushalt.siehtKonto(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
       alsAnhang(res, filePath);
       liefereDatei(res, filePath);
     },

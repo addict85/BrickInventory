@@ -38,7 +38,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
-  const hh = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
+  const hh = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich() };
   const namen = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
@@ -232,7 +232,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   );
 
   const fc = kompakt(require('./helpers/sources').finanzQuelle());
-  const uses = (fc.match(/await (?:(?:haushaltBereich\(\)|kx?\.haushalt)\.haushalt\.)?besitzerAnhaengen\(uids,/g) || [])
+  const uses = (fc.match(/await (?:kx?\.haushalt\.)?besitzerAnhaengen\(uids,/g) || [])
     .length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');

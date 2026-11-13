@@ -254,8 +254,8 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     const D = await konto('neu');
     await su.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [D]);
     await su.run(`UPDATE user_settings SET value = 'USD' WHERE user_id = $1 AND key = 'currency'`, [A]);
-    const { code } = await als(A, () => haushaltBereich().haushalt.einladungAnlegen(A));
-    const r = await als(D, () => haushaltBereich().haushalt.einladungEinloesen(D, code));
+    const { code } = await als(A, () => haushaltBereich().einladungAnlegen(A));
+    const r = await als(D, () => haushaltBereich().einladungEinloesen(D, code));
     assert.deepEqual(r, { fehler: 'waehrung_ungleich', vars: { haupt: 'USD', unter: 'EUR' } });
   });
 

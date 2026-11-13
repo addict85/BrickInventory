@@ -226,7 +226,7 @@ export async function getPartAcquisitions(
   partNumber: string,
   colorId: string | number,
 ) {
-  const uid = await k.haushalt.haushalt.blickfeldAus(uidWahl);
+  const uid = await k.haushalt.blickfeldAus(uidWahl);
   // Das BLICKFELD: Je Zeile kommt der Eigentümer mit, sonst wüsste die Auswahl
   // im Dialog nicht, worauf sie steht.
   return k.manuelleTeile.teilErfassungen(uid, partNumber, V0.colorId(colorId));

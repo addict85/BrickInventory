@@ -90,7 +90,7 @@ export function baueKlientenZugang(): KlientenZugang {
 export function baueDienste(db: Db, nacharbeit: Nacharbeit, bildwerk?: Bildwerk) {
   const einstellungen = erzeugeEinstellungen({ db });
   const auftraege = erzeugeAuftraege({ db, einstellungen });
-  const haushalt = erzeugeHaushalt({ db });
+  const haushalt = erzeugeHaushalt({ db, einstellungen });
   const konto = erzeugeKonto({ db, einstellungen, auftraege, haushalt, nacharbeit });
   const idempotenz = erzeugeIdempotenz({ db });
   const katalog = erzeugeKatalog({ db, einstellungen, auftraege, haushalt, nacharbeit, bildwerk });

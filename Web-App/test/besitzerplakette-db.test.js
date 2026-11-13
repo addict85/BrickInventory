@@ -60,7 +60,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
 
   const { blickfeldIds } = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+    ..._req('src/haushalt/prozess.js').haushaltBereich(),
   };
   const uids = await blickfeldIds(haupt, 'all');
   const S = _req('src/sets/index.js');
@@ -130,7 +130,7 @@ test('im Einzelkonto steht keine Plakette', async t => {
 
   const { blickfeldIds } = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+    ..._req('src/haushalt/prozess.js').haushaltBereich(),
   };
   const uids = await blickfeldIds(allein, 'all');
   const S = _req('src/sets/index.js');

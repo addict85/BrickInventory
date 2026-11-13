@@ -80,7 +80,7 @@ test('Lagerort gegen echte Datenbank', async t => {
   const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
   const household = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+    ..._req('src/haushalt/prozess.js').haushaltBereich(),
   };
   const schreibbar = await household.schreibbereich(U.ich);
 

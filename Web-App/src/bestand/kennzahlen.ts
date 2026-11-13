@@ -3,7 +3,7 @@ import type { BestandKontext } from './kontext';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
 export async function getStats(k: BestandKontext, userIdWahl: Sicht | number | number[]) {
-  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, einzelnRow] = await Promise.all([

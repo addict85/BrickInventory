@@ -331,7 +331,7 @@ export function baueSetsRouter(d: Dienste) {
     '/sets/household-members',
     requireToken,
     async (req: Anfrage<'GET /api/v1/sets/household-members'>, res: Antwort<'GET /api/v1/sets/household-members'>) => {
-      res.json({ success: true, members: await d.haushalt.haushalt.haushaltsMitglieder(req.apiUser.user_id) });
+      res.json({ success: true, members: await d.haushalt.haushaltsMitglieder(req.apiUser.user_id) });
     },
   );
 

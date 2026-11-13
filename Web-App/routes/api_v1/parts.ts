@@ -60,7 +60,7 @@ export function bauePartsRouter(d: Dienste) {
     async (req: Anfrage<'POST /api/v1/parts'>, res: Antwort<'POST /api/v1/parts'>) => {
       // schreibzielOderNull prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
       // nicht bloss die Mitgliedschaft im Blickfeld.
-      const owner = await d.haushalt.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
       const result = await d.teile.addManualPart(owner, req.eingabe);
       res.json({ success: true, ...result });
     },
@@ -75,11 +75,7 @@ export function bauePartsRouter(d: Dienste) {
     ) => {
       // Die Ansicht sagt, wessen Karte gemeint ist; ohne Parameter änderte das
       // Hauptkonto auf der Karte des Kindes die eigene Zeile.
-      const besitzer = await d.haushalt.haushalt.schreibziel(
-        req.apiUser.user_id,
-        req.abfrage.owner,
-        'kein_zugriff_konto',
-      );
+      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
       // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
       // weiss der Client sie sonst nicht).
       const r = await d.teile.updateManualPart(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
@@ -95,11 +91,7 @@ export function bauePartsRouter(d: Dienste) {
       req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/color'>,
       res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/color'>,
     ) => {
-      const besitzer = await d.haushalt.haushalt.schreibziel(
-        req.apiUser.user_id,
-        req.abfrage.owner,
-        'kein_zugriff_konto',
-      );
+      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
       // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
       // ein stilles Leeren mit Erfolgsmeldung.
       const roh = req.eingabe.color_id;
@@ -121,11 +113,7 @@ export function bauePartsRouter(d: Dienste) {
       res: Antwort<'DELETE /api/v1/parts/:partNumber/:colorId'>,
     ) => {
       // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
-      const besitzer = await d.haushalt.haushalt.schreibziel(
-        req.apiUser.user_id,
-        req.abfrage.owner,
-        'kein_zugriff_konto',
-      );
+      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
       const geloescht = await d.sammlung.loescheTeil(besitzer, req.pfad.partNumber, req.pfad.colorId);
       if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
       res.json({ success: true, papierkorb: [geloescht] });

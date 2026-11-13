@@ -209,7 +209,7 @@ export async function preisverlaufTeil(
   colorId: number,
   currency: string,
 ) {
-  const uid = await k.haushalt.haushalt.blickfeldAus(uidWahl);
+  const uid = await k.haushalt.blickfeldAus(uidWahl);
   // Preise liegen unter BrickLink-Nummer und -Farbe, Erfassungen unter denen
   // des Benutzers — die beiden Schlüsselräume dürfen nicht gemischt werden.
   const blNummer = await resolveBlPartNumber(k, partNumber, Array.isArray(uid) ? (uid[0] ?? null) : uid);
@@ -236,7 +236,7 @@ export async function preisverlaufFigur(
   figNumber: string,
   currency: string,
 ) {
-  const uid = await k.haushalt.haushalt.blickfeldAus(uidWahl);
+  const uid = await k.haushalt.blickfeldAus(uidWahl);
   const nummern = await preisNummernFuerFigur(k, uid, figNumber);
   return manualPriceHistory(
     k,

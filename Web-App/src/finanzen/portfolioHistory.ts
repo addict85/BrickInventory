@@ -40,7 +40,7 @@ export async function getPortfolioHistory(
   db: unknown = k.db,
   getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.getSetting,
 ) {
-  const ids = await k.haushalt.haushalt.blickfeldAus(idsWahl);
+  const ids = await k.haushalt.blickfeldAus(idsWahl);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
   // Währung darf dann nicht aus ids[0] kommen.
   const uids = Array.isArray(ids) ? ids.map(n => parseInt(String(n), 10)) : [parseInt(String(ids), 10)];
