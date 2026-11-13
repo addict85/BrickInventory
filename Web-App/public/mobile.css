@@ -306,6 +306,9 @@
      Symbol und brach „Backg|round“ ohne Strich. So bricht er an Leerzeichen und weichen Trennungen. */
   .ptitle { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
   .ptitle > span { min-width: 0; }
+  /* break-word senkt die Mindestbreite nicht: Ohne min-width 0 hielte der Kopf ein langes Titelwort
+     („Einstellungen“ bei 200 %) in voller Breite und weitete das Fenster. */
+  .ph > div { min-width: 0; }
 
   .dt td::before {
     content: attr(data-label);
