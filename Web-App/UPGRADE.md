@@ -2014,3 +2014,61 @@ wird). Hinweise:
   die Angabe sahen App und Anmeldesperre alle Clients unter der Adresse dieses
   Proxys. Ohne Proxy davor ist nichts zu tun; das neue `Caddyfile` verhält sich
   dann wie das alte.
+
+<a id="systemrolle"></a>
+
+## 58. Systemrolle statt Schalter für den Zeilenschutz (Migration 0112)
+
+- Den Zeilenschutz (RLS) der Kontotabellen hob bisher die Einstellung
+  `app.system` der Sitzung auf; die kann jede Rolle per `set_config()` setzen,
+  auch eine eingeschleuste Abfrage. Jetzt hebt ihn nur noch die neue Rolle
+  **`brickinventory_system`** auf (`BYPASSRLS`, sonst dieselben Rechte wie
+  `brickinventory_app`). App und Jobs verbinden sich für Aufträge,
+  Kontenverwaltung, Anmeldung und Zugangsdaten über sie, sonst wie bisher als
+  `brickinventory_app`.
+- Neu geschützt: `auftraege` (Aufträge ohne Konto sieht nur die Systemrolle),
+  `passkeys`, `webauthn_challenges`, `zweiter_faktor`, `zweiter_faktor_codes`,
+  `api_tokens`, `api_tokens_verbraucht`, `qr_login_tokens`,
+  `geraete_schluessel`, `geraete_nonces`, `schritt_challenges`,
+  `schritt_freigaben`.
+- **Docker:** Das Passwort liegt in `./geheimnisse/db_system_password`.
+  `sh scripts/image-pruefen.sh` (der übliche Update-Schritt) legt die Datei
+  an, wenn sie fehlt; `db-rolle` legt die Rolle bei `docker compose up -d` an
+  und setzt das Passwort bei jedem Lauf. Wer selbst baut (`up -d --build`),
+  ruft vorher einmal `sh scripts/geheimnisse-einrichten.sh`. Ohne die Datei
+  bricht `docker compose up` mit „bind source path does not exist …
+  db_system_password“ ab.
+- **Ohne Docker** mit einer Rolle, der die Tabellen gehören: nichts zu tun.
+  Mit getrennten Rollen `postgres/app-rolle.sh` mit `DB_SYSTEM_PASSWORD`
+  aufrufen und `PGSYSTEM_USER`/`PGSYSTEM_PASSWORD` setzen; unterliegt die
+  Systemverbindung dem Zeilenschutz, verweigert der Start mit Hinweis hierher.
+
+<a id="vorgelagerter-proxy"></a>
+
+## 59. `VORGELAGERTER_PROXY` ist Pflicht; Mail-Links mit `#token=`
+
+- **Von Hand, vor `docker compose up -d`:** in `.env` eine Zeile
+  `VORGELAGERTER_PROXY=…` eintragen, sonst bricht compose ab („VORGELAGERTER_PROXY
+  in .env setzen …“), und Caddy startet nicht:
+  - `VORGELAGERTER_PROXY=keiner`, wenn Caddy direkt erreichbar ist (Ports 80/443
+    am Router oder im LAN, kein Nginx Proxy Manager davor). Verhält sich wie
+    bisher ohne Angabe.
+  - `VORGELAGERTER_PROXY=<Adresse>`, wenn ein Proxy davor steht: seine Adresse,
+    wie Caddy sie sieht (README.md, „Proxy vor Caddy“). Wer schon nach Abschnitt
+    57 eine Adresse eingetragen hat, muss nichts tun.
+
+  Andere Werte (leer, `private_ranges`, Zeichen ausser Ziffern, `a`–`f`, `.`,
+  `:`, `/`) lehnt das Startskript von Caddy ab. Hintergrund: Ohne die Angabe
+  teilen sich hinter einem Proxy alle Clients eine Adresse, und Fehlversuche
+  eines Fremden sperren die Anmeldung für alle.
+- Fällt das trotzdem auf (über eine Stunde nur eine Client-Adresse), steht der
+  Hinweis jetzt auch für Verwalter unter **Hintergrundarbeiten**, nicht nur im
+  Protokoll. Wer sich von einem Gerät schon angemeldet hat, wird von Fehl-
+  versuchen Fremder über dieselbe Adresse nicht mehr ausgesperrt.
+- Links in Bestätigungs- und Rücksetzmails tragen den Token im Fragment
+  (`/verify#token=…`), das kein Browser an den Server schickt; er landet in
+  keinem Zugriffsprotokoll mehr. Links aus schon verschickten Mails
+  (`?token=`) gelten weiter und werden beim Öffnen umgeleitet. Nichts zu tun.
+- Zweiter Faktor: Nach 20 falschen Codes in 24 Stunden geht die Anmeldung für
+  dieses Konto nur noch mit Wiederherstellungscode oder Passkey; der Inhaber
+  bekommt sofort eine Mail. Nichts zu tun.

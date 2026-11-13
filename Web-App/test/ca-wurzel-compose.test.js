@@ -85,7 +85,7 @@ test('die Schleife kopiert nur root.crt, auch wenn Caddy die CA erst später anl
   const p = spawn('sh', ['-c', umgebogen], {
     detached: true,
     stdio: 'ignore',
-    env: { PATH: process.env.PATH, CA_OHNE_NAMENSBESCHRAENKUNG: 'ja' },
+    env: { PATH: process.env.PATH, CA_OHNE_NAMENSBESCHRAENKUNG: 'ja', VORGELAGERTER_PROXY: 'keiner' },
   });
   t.after(() => {
     try {

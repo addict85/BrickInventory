@@ -2,7 +2,7 @@
  * Der Rückfall auf die Startseite bleibt als letzte Route in server.ts. */
 import express from 'express';
 import { fehlerAntwort } from '../src/http/httpAntwort';
-import { sendeStartseite } from '../src/konto/http/startseite';
+import { sendeStartseite, tokenInsFragment } from '../src/konto/http/startseite';
 import { liefereBild } from '../src/katalog/http/bildAuslieferung';
 import { requireLoginOrToken } from '../src/konto/http/anmeldung';
 import { eingangsSperre } from './api_v1/middleware';
@@ -15,8 +15,9 @@ router.get('/images/*pfad', requireLoginOrToken, eingangsSperre, liefereBild);
 
 // Erst ein Knopf auf der Seite wirkt (POST), sonst bestätigte schon der
 // Link-Scanner des Mailanbieters eine fremde Adresse.
-router.get(['/verify', '/reset-password'], async (_req, res) => {
+router.get(['/verify', '/reset-password'], async (req, res) => {
   res.set('Cache-Control', 'no-store');
+  if (tokenInsFragment(req, res)) return;
   await sendeStartseite(res);
 });
 

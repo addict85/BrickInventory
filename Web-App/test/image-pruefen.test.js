@@ -16,6 +16,8 @@
  *      Prüfung des Caddy-Images …“
  *   F  (11.11.2026) bei caddy wieder `brickinventory-caddy:2.11.8` mit
  *      `pull_policy: build` → rot: „ohne BRICK_IMAGE und CADDY_IMAGE …“
+ *   G  (13.11.2026) den Aufruf von geheimnisse-einrichten.sh gestrichen → rot:
+ *      „ein Update legt das neue Geheimnis der Systemrolle an …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,6 +39,7 @@ function lauf(
     cosignCode = 0,
     caddyAntwort = signatur(D2),
     caddyCode = 0,
+    geheim = null,
   } = {},
 ) {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'image-pruefen-'));
@@ -44,6 +47,10 @@ function lauf(
   const bin = path.join(ort, 'bin');
   fs.mkdirSync(bin);
   fs.writeFileSync(path.join(ort, '.env'), env, { mode: 0o600 });
+  if (geheim) {
+    fs.mkdirSync(path.join(ort, 'geheimnisse'), { mode: 0o700 });
+    for (const [n, w] of Object.entries(geheim)) fs.writeFileSync(path.join(ort, 'geheimnisse', n), w);
+  }
   fs.writeFileSync(
     path.join(bin, 'cosign'),
     `#!/bin/sh\necho "$*" >> "${ort}/cosign.args"
@@ -67,6 +74,8 @@ cat <<'X'\n${cosignAntwort}\nX\nexit ${cosignCode}\n`,
     cosign: lies('cosign.args'),
     docker: lies('docker.log'),
     rechte: fs.statSync(path.join(ort, '.env')).mode & 0o777,
+    geheim: n => lies(path.join('geheimnisse', n)),
+    hatGeheimnisse: fs.existsSync(path.join(ort, 'geheimnisse')),
   };
 }
 function signatur(d) {
@@ -141,7 +150,13 @@ test('ohne BRICK_IMAGE und CADDY_IMAGE startet compose nicht, mit Digest zieht j
   const aufruf = env =>
     spawnSync('docker', ['compose', '-f', path.join(ROOT, 'compose.yaml'), 'config', '--format', 'json'], {
       encoding: 'utf8',
-      env: { PATH: process.env.PATH, HOME: process.env.HOME, BRICK_HOST: 'nas.lan', ...env },
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        BRICK_HOST: 'nas.lan',
+        VORGELAGERTER_PROXY: 'keiner',
+        ...env,
+      },
     });
   const probe = aufruf({ BRICK_IMAGE: 'x', CADDY_IMAGE: 'y' });
   if (probe.error || (probe.status !== 0 && !/_IMAGE/.test(probe.stderr))) {
@@ -169,4 +184,20 @@ test('ohne BRICK_IMAGE und CADDY_IMAGE startet compose nicht, mit Digest zieht j
       ...['caddy', 'caddy-rechte'].map(n => `${n} addict85/brickinventory-caddy@${D2} missing`),
     ].sort(),
   );
+});
+
+test('ein Update legt das neue Geheimnis der Systemrolle an, die übrigen bleiben', t => {
+  const alt = {
+    db_password: 'su',
+    db_app_password: 'app',
+    db_migration_password: 'mig',
+    session_secret: 's'.repeat(48),
+  };
+  const r = lauf(t, { cosignAntwort: signatur(D1), geheim: alt });
+  assert.equal(r.code, 0, r.log);
+  assert.match(r.geheim('db_system_password'), /^[0-9a-f]{48}$/);
+  for (const [n, w] of Object.entries(alt)) assert.equal(r.geheim(n), w, `${n} verändert`);
+  const ohne = lauf(t, { cosignAntwort: signatur(D1) });
+  assert.equal(ohne.code, 0, ohne.log);
+  assert.equal(ohne.hatGeheimnisse, false, 'ohne ./geheimnisse legt das Update keine an');
 });

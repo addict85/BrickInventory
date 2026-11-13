@@ -56,5 +56,11 @@ cat "$ENV_DATEI.neu" > "$ENV_DATEI"
 rm -f "$ENV_DATEI.neu"
 echo "[image] geprüft und in $ENV_DATEI eingetragen: BRICK_IMAGE=$app"
 echo "[image] geprüft und in $ENV_DATEI eingetragen: CADDY_IMAGE=$caddy"
+# Ein Update kann ein neues Geheimnis verlangen (zuletzt db_system_password,
+# UPGRADE.md#systemrolle); compose.yaml startet ohne die Datei nicht. Vorhandene bleiben.
+GEHEIM="${GEHEIMNIS_ORDNER:-./geheimnisse}"
+if [ -d "$GEHEIM" ] && [ ! -s "$GEHEIM/db_system_password" ]; then
+  sh "$(dirname "$0")/geheimnisse-einrichten.sh"
+fi
 docker compose pull schluessel daten-rechte migration app jobs caddy-rechte caddy
 echo "[image] fertig. Starten oder aktualisieren: docker compose up -d"

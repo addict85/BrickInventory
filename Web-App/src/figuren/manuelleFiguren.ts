@@ -66,34 +66,9 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
   const unit_price = geldEingabe(body?.unit_price, 'Stückpreis');
   // Erlaubt mehrere Erfassungen derselben Figur zu verschiedenen Zeitpunkten.
   const acquiredAt = String(body?.acquired_at || '').trim() || null;
-  let fig_name = V.optionalText(body?.fig_name, 200);
-  let image_url = V.optionalImageUrl(body?.image_url);
   // Nur Nachgeschlagenes geht als geprüft in den Katalog.
-  const eingabe = { name: fig_name, bild: image_url };
-  let gefunden: Awaited<ReturnType<typeof getMinifigInfo>> | null = null;
-
-  if (!fig_name) {
-    // Erst der eigene Katalog, dann der fremde Dienst: minifigs_catalog führt
-    // Name und Bild, ein Abruf je Figur wäre unnötig.
-    const lokal = await katalogFigur(num, uid);
-    if (lokal) {
-      fig_name = fig_name || lokal.name;
-      image_url = image_url || lokal.bild;
-    }
-    // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
-    // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
-    if (!fig_name || !(image_url || lokal?.hatBild)) {
-      // Ohne Rebrickable wird die Figur mit dem erfasst, was der Katalog schon weiss.
-      const abruf = await versuche('figuren:getMinifigInfo', getMinifigInfo(num));
-      const info = abruf.ok ? abruf.wert : null;
-      gefunden = info;
-      // `||`: Was der Katalog schon wusste, bleibt stehen.
-      if (info) {
-        fig_name = fig_name || info.fig_name;
-        image_url = image_url || info.image_url;
-      }
-    }
-  }
+  const eingabe = { name: V.optionalText(body?.fig_name, 200), bild: V.optionalImageUrl(body?.image_url) };
+  const { fig_name, gefunden } = await figurBeschreibung(uid, num, eingabe);
 
   const existing = await manuelleFigur(uid, num);
 
@@ -144,6 +119,31 @@ async function addManualFigIntern(uid: number, body: Record<string, unknown>) {
   });
 
   return { action: 'added', fig_number: num, fig_name, price_from_condition: preisAusZustand };
+}
+
+/** Ohne Namen erst der eigene Katalog, dann der fremde Dienst: minifigs_catalog führt
+ * Name und Bild, ein Abruf je Figur wäre unnötig. */
+async function figurBeschreibung(uid: number, num: string, eingabe: { name: string | null; bild: string | null }) {
+  let fig_name = eingabe.name;
+  let image_url = eingabe.bild;
+  let gefunden: Awaited<ReturnType<typeof getMinifigInfo>> | null = null;
+  if (fig_name) return { fig_name, gefunden };
+
+  const lokal = await katalogFigur(num, uid);
+  if (lokal) {
+    fig_name = lokal.name;
+    image_url = image_url || lokal.bild;
+  }
+  // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
+  // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
+  if (!fig_name || !(image_url || lokal?.hatBild)) {
+    // Ohne Rebrickable wird die Figur mit dem erfasst, was der Katalog schon weiss.
+    const abruf = await versuche('figuren:getMinifigInfo', getMinifigInfo(num));
+    gefunden = abruf.ok ? abruf.wert : null;
+    // `||`: Was der Katalog schon wusste, bleibt stehen.
+    if (gefunden) fig_name = fig_name || gefunden.fig_name;
+  }
+  return { fig_name, gefunden };
 }
 
 /** Zwilling zu updateManualPart.

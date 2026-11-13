@@ -27,6 +27,7 @@ function konfig() {
         PATH: process.env.PATH,
         HOME: process.env.HOME,
         BRICK_HOST: 'nas.example.lan',
+        VORGELAGERTER_PROXY: 'keiner',
         BRICK_IMAGE: `addict85/brickinventory@sha256:${'0'.repeat(64)}`,
         CADDY_IMAGE: 'brickinventory-caddy:probe',
       },

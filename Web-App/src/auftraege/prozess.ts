@@ -19,7 +19,7 @@ const sperre = () => auftraegeBereich().faecher.fach('prozessSperre', () => ({ c
 export async function meldeProzessAn(): Promise<number> {
   const s = sperre();
   if (!s.client) {
-    const c = await auftraegeBereich().db.pool.connect();
+    const c = await auftraegeBereich().db.systemPool.connect();
     c.on('error', logAndContinue('auftraege:prozess-sperre'));
     await repo.halteProzessSperre(c, PROZESS);
     s.client = c;

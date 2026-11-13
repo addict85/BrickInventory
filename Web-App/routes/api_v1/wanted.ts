@@ -1,11 +1,12 @@
 /** /api/v1/wanted — die Merkliste. Die Regeln stehen in src/merkliste/; hier
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
+import type express from 'express';
 import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { wacheUeberZugang } from '../../src/konto/http/zugangsWache';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
-import { haushaltBereich } from '../../src/haushalt';
+import { haushalt } from '../../src/haushalt';
 import {
   legeMerkpostenAn,
   loescheMerkposten,
@@ -17,7 +18,7 @@ import {
 } from '../../src/merkliste';
 import { getSetting } from '../../src/einstellungen';
 import { csvEmpfang, xmlEmpfang } from '../../src/http/dateiEmpfang';
-import { importAlsAuftrag, WantedKorrekturen } from '../../src/auftraege';
+import { importAlsAuftrag, WantedKorrekturen, type ImportEingabe } from '../../src/auftraege';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import type { z } from 'zod';
 import type { WantedXmlErgebnis } from '../../src/vertrag/merkliste';
@@ -54,7 +55,7 @@ router.post(
   async (req: Anfrage<'POST /api/v1/wanted'>, res: Antwort<'POST /api/v1/wanted'>) => {
     const { set_number, condition, owner_user_id } = req.eingabe;
     if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
-    const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
+    const owner = await haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
     const { merkposten, war_neu } = await legeMerkpostenAn(owner, set_number, condition);
     res.json({ success: true, war_neu, merkposten });
   },
@@ -68,8 +69,8 @@ router.put(
     req: Anfrage<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>,
     res: Antwort<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>,
   ) => {
-    const von = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-    const zu = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
+    const von = await haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const zu = await haushalt.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
     const r = await verschiebeMerkposten(von, req.pfad.setNumber, req.pfad.condition, zu);
     res.json({ success: true, ...r, owner_user_id: zu });
   },
@@ -84,7 +85,7 @@ router.delete(
     req: Anfrage<'DELETE /api/v1/wanted/:setNumber/:condition'>,
     res: Antwort<'DELETE /api/v1/wanted/:setNumber/:condition'>,
   ) => {
-    const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
+    const owner = await haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
     const weg = await loescheMerkposten(owner, req.pfad.setNumber, req.pfad.condition);
     res.json({ success: true, geloescht: weg });
   },
@@ -112,7 +113,7 @@ router.post(
     req: Anfrage<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>,
     res: Antwort<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>,
   ) => {
-    const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const owner = await haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
     const r = await uebernimm(req.apiUser.user_id, owner, req.pfad.setNumber, req.pfad.condition, req.eingabe ?? {});
     res.json({ success: true, ...r });
   },
@@ -126,7 +127,7 @@ router.post(
   csvEmpfang.single('file'),
   async (req: Anfrage<'POST /api/v1/wanted/import/csv'>, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-    const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const owner = await haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
     res.json({
       success: true,
@@ -137,6 +138,45 @@ router.post(
     });
   },
 );
+
+/** Korrekturen als Feld der Multipart-Anfrage: Bei 224 Posten wäre die Adresse
+ * länger als jeder Proxy durchlässt. @returns null, wenn sie ungültig sind */
+function korrekturenAus(roh: string | undefined): Korrektur[] | undefined | null {
+  if (roh === undefined || roh.trim() === '') return undefined;
+  const geparst = WantedKorrekturen.safeParse(jsonOderNull(roh)?.wert);
+  return geparst.success ? geparst.data : null;
+}
+
+/** Die Zwischenstände als NDJSON-Zeilen. Endet der Zugang, endet der Strom; der
+ * Auftrag läuft als eigener weiter. Die Kopfzeilen sind hinaus: Ein Fehler kommt
+ * als letzte ZEILE, sonst wartet der Client auf einen Bericht, der nie kommt. */
+async function importImStrom(
+  req: express.Request,
+  res: express.Response,
+  uid: number,
+  eingabe: ImportEingabe<'wanted_xml'>,
+) {
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  // Für Proxys, die ihrerseits puffern (nginx & Verwandte).
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  const zeile = (o: unknown) => {
+    if (res.writableEnded) return;
+    res.write(JSON.stringify(o) + '\n');
+    (res as unknown as { flush?: () => void }).flush?.();
+  };
+  const wache = wacheUeberZugang(req, () => {
+    zeile({ success: false, error: fehlerText('zugang_beendet', antwortSprache(req)), code: 'zugang_beendet' });
+    res.end();
+  });
+  await importAlsAuftrag(uid, 'wanted_xml', eingabe, { fortschritt: f => zeile({ fortschritt: f }) }).then(
+    r => zeile({ success: true, ...r }),
+    (e: unknown) => zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }),
+  );
+  wache();
+  if (!res.writableEnded) res.end();
+}
 
 /** Die Vorschau ist die VORGABE: Ohne `schreiben=1` wird nichts angelegt, weil
  * die dritte Sicherheitsstufe der Abbildung nur eine Vermutung ist. Gerechnet
@@ -152,15 +192,8 @@ router.post(
     const xml = req.file.buffer.toString('utf-8');
     // Ohne <INVENTORY> keine Wanted-Liste — eine bessere Auskunft als „0 Posten".
     if (!/<INVENTORY[\s>]/i.test(xml)) return sendeFehler(req, res, 422, 'keine_wanted_liste');
-    // Korrekturen als Feld der Multipart-Anfrage: Bei 224 Posten wäre die Adresse
-    // länger als jeder Proxy durchlässt.
-    let korrekturen: Korrektur[] | undefined;
-    const rohKorr = req.eingabe.korrekturen;
-    if (rohKorr !== undefined && rohKorr.trim() !== '') {
-      const geparst = WantedKorrekturen.safeParse(jsonOderNull(rohKorr)?.wert);
-      if (!geparst.success) return sendeFehler(req, res, 400, 'korrekturen_ungueltig');
-      korrekturen = geparst.data;
-    }
+    const korrekturen = korrekturenAus(req.eingabe.korrekturen);
+    if (korrekturen === null) return sendeFehler(req, res, 400, 'korrekturen_ungueltig');
     const eingabe = {
       xml,
       dateiName: String(req.file.originalname || 'wanted.xml').slice(0, 120),
@@ -172,29 +205,7 @@ router.post(
     if (!req.abfrage.strom)
       return res.json({ success: true, ...(await importAlsAuftrag<WantedXmlBericht>(uid, 'wanted_xml', eingabe)) });
 
-    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
-    // Für Proxys, die ihrerseits puffern (nginx & Verwandte).
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders?.();
-    const zeile = (o: unknown) => {
-      if (res.writableEnded) return;
-      res.write(JSON.stringify(o) + '\n');
-      (res as unknown as { flush?: () => void }).flush?.();
-    };
-    // Endet der Zugang, endet der Strom; der Auftrag selbst läuft als eigener weiter.
-    const wache = wacheUeberZugang(req, () => {
-      zeile({ success: false, error: fehlerText('zugang_beendet', antwortSprache(req)), code: 'zugang_beendet' });
-      res.end();
-    });
-    // Die Kopfzeilen sind hinaus: Ein Fehler kommt als letzte ZEILE, sonst
-    // wartet der Client auf einen Bericht, der nie kommt.
-    await importAlsAuftrag(uid, 'wanted_xml', eingabe, { fortschritt: f => zeile({ fortschritt: f }) }).then(
-      r => zeile({ success: true, ...r }),
-      (e: unknown) => zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }),
-    );
-    wache();
-    if (!res.writableEnded) res.end();
+    await importImStrom(req, res, uid, eingabe);
   },
 );
 

@@ -22,6 +22,7 @@ export {
   leereAuftragsArt,
 } from './hintergrund';
 export { importAlsAuftrag, setzeErgebnis, setzeFachfehler } from './importAlsAuftrag';
+export type { ImportEingabe } from './importAlsAuftrag';
 export {
   beendeAuftrag,
   beiImportStand,
@@ -53,6 +54,7 @@ export {
   fehlgeschlagen,
   imAuftragsrahmen,
   imNamenDesAuftrags,
+  pruefeZugehoerigkeit,
   setzeFortschritt,
   verschoben,
 } from './dienst';

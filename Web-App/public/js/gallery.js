@@ -300,7 +300,7 @@ export async function loadGallery(opts = {}) {
   enrichGalleryWithPrices();
 }
 export function renderGallery() {
-  // Filtern und Sortieren macht der Server (getSets in utils/handlers.ts) — hier wird nur noch gezeichnet,
+  // Filtern und Sortieren macht der Server (getSets in src/sets/lesen.ts) — hier wird nur noch gezeichnet,
   // was geladen ist. Andernfalls würde ein Filter bloss die aktuell geladene Seite durchsuchen.
   const q = G('gs')?.value?.toLowerCase() || '';
   const list = allSets;
@@ -412,7 +412,7 @@ function gridCard(s) {
   const kaeufe = Number(s.acq_count) || 0;
   const kaufText =
     kaeufe > 1
-      ? html`${tRaw('gallery.card.kaeufe', { n: kaeufe })} ${kaufFmt}`
+      ? html`<span>${tRaw('gallery.card.kaeufe', { n: kaeufe })}</span> ${kaufFmt}`
       : html`<span>${tRaw('detail.added')}</span> ${kaufFmt}`;
   // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat — eine Plakette je Zustand, siehe
   // condBadges().

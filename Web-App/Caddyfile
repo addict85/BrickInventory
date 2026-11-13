@@ -17,7 +17,7 @@
 		}
 		# Ein Proxy vor Caddy (Nginx Proxy Manager o. ä.): Nur seiner Adresse
 		# glaubt Caddy X-Forwarded-For, von rechts gelesen (strict), damit ein
-		# Client keinen eigenen Eintrag voranstellen kann. Leer: niemandem.
+		# Client keinen eigenen Eintrag voranstellen kann. `keiner` (Startskript): niemandem.
 		trusted_proxies static {$VORGELAGERTER_PROXY}
 		trusted_proxies_strict
 	}

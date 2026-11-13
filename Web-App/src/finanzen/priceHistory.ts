@@ -3,7 +3,7 @@
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { haushaltBereich, asIds, blickfeldAus, type Sicht } from '../haushalt';
 import { buildChart } from './chartData';
-import { blNummerVon } from '../katalog';
+import { blNummerVon, marktpreisAus } from '../katalog';
 import { entwicklungProzent } from './setValue';
 import { konfig } from '../infra/konfig';
 import { finanzenBereich } from './prozess';
@@ -60,10 +60,11 @@ export async function preisverlaufSet(
   ]);
 
   const currentRows = await f.preisverlauf.cachePreiseDesSets(setNumber, currency);
-  const current = {
-    N: currentRows.find(r => r.condition === 'N') || null,
-    U: currentRows.find(r => r.condition === 'U') || null,
+  const jetzt = (c: string) => {
+    const r = currentRows.find(z => z.condition === c);
+    return r ? { ...r, avg_price: marktpreisAus(r) } : null;
   };
+  const current = { N: jetzt('N'), U: jetzt('U') };
 
   // Kaufpreis aus der ERSTEN Erfassung; jede Set-Zeile hat mindestens eine.
   const set = await f.preisverlauf.ersterKaufDesSets(uids, setNumber, currency);
@@ -92,10 +93,10 @@ export async function preisverlaufSet(
   // jeweils höheren; ohne Kaufpreis gegen den ältesten Marktpreis.
   const own = condition === 'U' ? historyUsed : historyNew;
   const firstMarket = own.find(p => !p.is_purchase_price);
-  const firstHistPrice = parseFloat(String(firstMarket?.avg_price || 0));
+  const firstHistPrice = marktpreisAus(firstMarket) ?? 0;
   const baselinePrice = hasCost ? purchasePrice : firstHistPrice;
   const baselineHas = hasCost || firstHistPrice > 0;
-  const currentPrice = parseFloat(String((condition === 'U' ? current.U : current.N)?.avg_price || 0));
+  const currentPrice = marktpreisAus(condition === 'U' ? current.U : current.N) ?? 0;
   const pnlPct = baselineHas ? (entwicklungProzent(baselinePrice, currentPrice)?.toFixed(1) ?? null) : null;
 
   // Nur Zustände mit Erfassung, sonst stünde eine Prozentangabe gegen nichts da.
@@ -105,7 +106,7 @@ export async function preisverlaufSet(
   for (const cond of ['N', 'U'] as const) {
     const acq = acqByCond.find(r => (r.condition || 'N') === cond);
     if (!acq) continue; // kein Kaufpreis-Eintrag → keine Zeile
-    const market = parseFloat(String((cond === 'N' ? current.N : current.U)?.avg_price || 0)) || null;
+    const market = marktpreisAus(cond === 'N' ? current.N : current.U);
     // null = kein Kaufpreis erfasst, 0 = Geschenk; beides ohne Prozentangabe.
     const base = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
     const e = entwicklungProzent(base, market);
@@ -169,7 +170,7 @@ export async function conditionRows(
   for (const cond of ['N', 'U'] as const) {
     const acq = acqRows.find(r => (r.condition || 'N') === cond);
     if (!acq) continue; // kein Kaufpreis-Eintrag → keine Zeile
-    const market = parseFloat(String(cacheRows.find(r => r.condition === cond)?.avg_price || 0)) || null;
+    const market = marktpreisAus(cacheRows.find(r => r.condition === cond));
     const base = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
     const e = entwicklungProzent(base, market);
     out[cond] = {

@@ -1,5 +1,8 @@
 /** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
  * damit die Aufteilung der Dateien darunter frei bleibt. */
+import { dienstePerAufruf } from '../infra/bereich';
+import { bestandBereich } from './prozess';
+
 export { findSameDayAcquisition, recordAcquisitionForDay, setzeGeschaetztenPreis } from './acquisitions';
 export { buildFigsCsv, buildPartsCsv } from './bestandExport';
 export {
@@ -28,3 +31,9 @@ export { leerePapierkorb, listePapierkorb, loescheEndgueltig, stelleWiederHer } 
 export { erzeugeBestand } from './bereich';
 export type { BestandDienste, BestandKontext } from './bereich';
 export { bestandBereich, verdrahteBestand } from './prozess';
+
+/** Für Routen: die Lagerort-Dienste des Prozesses ohne Zugang als ersten Parameter. */
+export const lagerort = dienstePerAufruf(
+  () => bestandBereich().lagerortDienst,
+  ['benenneOrtUm', 'lagerorte', 'legeOrtAn', 'loescheOrt', 'setzeLagerort', 'setzeVorgabe'],
+);

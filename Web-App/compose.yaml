@@ -40,7 +40,8 @@ services:
       # Für postgres/app-rolle.sh beim Anlegen einer neuen Datenbank.
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
       DB_MIGRATION_PASSWORD_FILE: /run/secrets/db_migration_password
-    secrets: [db_password, db_app_password, db_migration_password]
+      DB_SYSTEM_PASSWORD_FILE: /run/secrets/db_system_password
+    secrets: [db_password, db_app_password, db_migration_password, db_system_password]
     command: postgres -c max_connections=200 -c shared_buffers=128MB
     # Ein Prozess je Verbindung: 200 Verbindungen plus Hintergrundprozesse.
     mem_limit: ${DB_MEM_LIMIT:-1g}
@@ -75,7 +76,8 @@ services:
   # `brickinventory` ist der Superuser der Datenbank. Datenbank und Tabellen
   # gehören `brickinventory_migration` (Dienst migration); app und jobs
   # verbinden sich als `brickinventory_app` und dürfen nur Zeilen lesen und
-  # schreiben. Dieser Dienst legt die Rollen bei jedem `up` an bzw. richtet sie
+  # schreiben, für Arbeit über Kontogrenzen zusätzlich als `brickinventory_system`
+  # (dieselben Rechte, am Zeilenschutz vorbei). Dieser Dienst legt die Rollen bei jedem `up` an bzw. richtet sie
   # nach und endet dann (UPGRADE.md#eigene-datenbankrolle, #migrationsrolle).
   db-rolle:
     image: postgres:18-alpine@sha256:9ba53c7d41ea093baf5c1ba635ba5434c4f979880527d49bb7d9237d3193085b
@@ -101,9 +103,10 @@ services:
       PGPASSWORD_FILE: /run/secrets/db_password
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
       DB_MIGRATION_PASSWORD_FILE: /run/secrets/db_migration_password
+      DB_SYSTEM_PASSWORD_FILE: /run/secrets/db_system_password
       # Leserolle brickinventory_lesen (psql, README „Datenbank ansehen“); leere Datei = Rolle ohne Anmeldung.
       PGWEB_DB_PASSWORD_FILE: /run/secrets/pgweb_db_password
-    secrets: [db_password, db_app_password, db_migration_password, pgweb_db_password]
+    secrets: [db_password, db_app_password, db_migration_password, db_system_password, pgweb_db_password]
     volumes:
       - ./postgres/app-rolle.sh:/rolle/app-rolle.sh:ro
     networks:
@@ -306,6 +309,10 @@ services:
       # PGPORT:     5432
       PGUSER:     brickinventory_app
       PGPASSWORD_FILE: /run/secrets/db_app_password
+      # Die Systemrolle für Verwaltung, Anmeldung und Aufträge (UPGRADE.md#systemrolle):
+      # Den Zeilenschutz hebt nur sie auf, keine Einstellung der Laufzeitrolle.
+      PGSYSTEM_USER: brickinventory_system
+      PGSYSTEM_PASSWORD_FILE: /run/secrets/db_system_password
       # PGDATABASE: brickinventory
 
       # ── DB-Verbindungspool ───────────────────────────────────────────────────
@@ -317,7 +324,7 @@ services:
       # PG_IDLE_MS:   30000  # Idle-Timeout in ms (Standard: 30 s)
       # PG_CONN_MS:   5000   # Verbindungs-Timeout in ms (Standard: 5 s)
       # PG_STMT_MS:   30000  # Max. Query-Laufzeit in ms (Standard: 30 s)
-    secrets: [session_secret, db_app_password]
+    secrets: [session_secret, db_app_password, db_system_password]
 
     healthcheck:
       test: ["CMD", "node", "-e",
@@ -374,12 +381,14 @@ services:
       DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
       PGUSER: brickinventory_app
       PGPASSWORD_FILE: /run/secrets/db_app_password
+      PGSYSTEM_USER: brickinventory_system
+      PGSYSTEM_PASSWORD_FILE: /run/secrets/db_system_password
       # Für Links in Mails (Preisalarm), die der Job-Prozess verschickt.
       APP_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
       # Wer bei `app` DATA_KEY, TZ, ERFASSUNG_ZEITZONE oder PG_* setzt, setzt
       # sie hier gleich. TRUST_PROXY und CA_ZERTIFIKAT braucht er nicht: Er
       # nimmt keine Anfragen an und liefert kein Zertifikat aus.
-    secrets: [db_app_password]
+    secrets: [db_app_password, db_system_password]
     # Lebenszeichen statt HTTP: Der Prozess schreibt alle 30 s eine Datei in /tmp.
     healthcheck:
       test: ["CMD", "node", "-e",
@@ -481,6 +490,13 @@ services:
       - sh
       - -c
       - |
+        case "$${VORGELAGERTER_PROXY:-}" in
+          keiner) export VORGELAGERTER_PROXY= ;;
+          "" | *[!0-9A-Fa-f.:/\ ]*)
+            echo "[caddy] FEHLER: VORGELAGERTER_PROXY in .env setzen: keiner (Caddy direkt erreichbar) oder die Adresse(n) des Proxys davor." >&2
+            echo "[caddy]   Ohne sie teilen sich hinter Nginx Proxy Manager o. ä. alle Clients eine Adresse (README.md, „Proxy vor Caddy“)." >&2
+            exit 1 ;;
+        esac
         q=
         if [ -s /ca-eigen/zwischen.key ]; then
           q=/ca-eigen/root.crt
@@ -526,7 +542,7 @@ services:
       BRICK_TLS: ${BRICK_TLS:-intern}
       ACME_EMAIL: ${ACME_EMAIL:-}
       CA_OHNE_NAMENSBESCHRAENKUNG: ${CA_OHNE_NAMENSBESCHRAENKUNG:-nein}
-      VORGELAGERTER_PROXY: ${VORGELAGERTER_PROXY:-}
+      VORGELAGERTER_PROXY: ${VORGELAGERTER_PROXY:?VORGELAGERTER_PROXY in .env setzen - keiner (Caddy direkt erreichbar) oder die Adresse des Proxys davor - siehe UPGRADE.md#vorgelagerter-proxy}
     ports:
       - "${HTTPS_BIND:-0.0.0.0}:443:443"
       - "${HTTPS_BIND:-0.0.0.0}:80:80"
@@ -561,6 +577,8 @@ secrets:
     file: ./geheimnisse/db_app_password
   db_migration_password:
     file: ./geheimnisse/db_migration_password
+  db_system_password:
+    file: ./geheimnisse/db_system_password
   pgweb_db_password:
     file: ./geheimnisse/pgweb_db_password
 

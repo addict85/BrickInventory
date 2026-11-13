@@ -5,7 +5,7 @@ import { imSystemkontext } from '../../src/infra/kontoKontext';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
-import { kontoBereich, validateToken } from '../../src/konto';
+import { passwortWechselFaellig, validateToken } from '../../src/konto';
 import { resolveUserId, sendeTokenAbsage, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
 import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
 import { verlangeFreigabe } from '../../src/konto/http/schrittschutz';
@@ -54,7 +54,7 @@ const ZUR_EINRICHTUNG: ReadonlyArray<readonly [string, RegExp]> = [
 /** Sitzungen von vor dem Feld fragen einmal die Datenbank und merken es sich. */
 async function mussWechseln(req: Request): Promise<boolean> {
   if (!req.session?.userId) return req.apiUser?.muss_passwort_aendern === true;
-  req.session.mussPasswortAendern ??= await kontoBereich().konten.mussPasswortAendern(req.session.userId);
+  req.session.mussPasswortAendern ??= await passwortWechselFaellig(req.session.userId);
   return req.session.mussPasswortAendern;
 }
 
@@ -112,14 +112,20 @@ export const requireToken = waechter<AuthedRequest>((req, res, next) => {
     });
 });
 
-export const requireApiAdmin = waechter<AuthedRequest>((req, res, next) => {
-  requireToken(req, res, () => {
-    if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
-    // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
-    // Die Verwaltung arbeitet über alle Konten (Diagnose, Kontenliste): Zeilenschutz aus.
-    verlangeFreigabe(req, res, () => imSystemkontext('verwaltung', next), 'verwaltung');
+function verwalterPruefung(ueberKonten: boolean) {
+  return waechter<AuthedRequest>((req, res, next) => {
+    requireToken(req, res, () => {
+      if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
+      // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
+      verlangeFreigabe(req, res, ueberKonten ? () => imSystemkontext('kontenverwaltung', next) : next, 'verwaltung');
+    });
   });
-});
+}
+
+/** Ohne Systemrahmen: Was über Konten geht, fragen Verwaltung und Warteschlange selbst darin. */
+export const requireApiAdmin = verwalterPruefung(false);
+/** Für Routen, die ein anderes Konto ändern (Kontenverwaltung): ganz im Systemrahmen. */
+export const requireApiAdminUeberKonten = verwalterPruefung(true);
 
 const nurWenn =
   (soll: (req: Request) => boolean, schritt: RequestHandler): RequestHandler =>

@@ -2,7 +2,7 @@
  * ersten Parameter; erzeugeKonto bindet ihn einmal für alle. So greift kein
  * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
 import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
+import { bindeImSystemrahmen, bindeZugang } from '../infra/bereich';
 import * as altgeheimnisse from './repository/altgeheimnisse';
 import * as anmeldezaehler from './repository/anmeldezaehler';
 import * as einrichtung from './repository/einrichtung';
@@ -21,9 +21,10 @@ export interface KontoKontext {
 
 export function erzeugeKonto(k: KontoKontext) {
   const { db } = k;
+  // Zugangsdaten sucht die Anmeldung, bevor es ein Konto gibt; sonst sieht sie niemand (0112).
   return {
     db,
-    altgeheimnisse: bindeZugang(db, altgeheimnisse),
+    altgeheimnisse: bindeImSystemrahmen(db, altgeheimnisse, 'zugangsdaten'),
     anmeldezaehler: bindeZugang(db, anmeldezaehler, [
       'erhoehe',
       'gibLaufplatzFrei',
@@ -35,13 +36,13 @@ export function erzeugeKonto(k: KontoKontext) {
       'zaehleHoch',
     ]),
     einrichtung: bindeZugang(db, einrichtung),
-    geraeteSchluessel: bindeZugang(db, geraeteSchluessel),
-    konten: bindeZugang(db, konten),
-    passkeys: bindeZugang(db, passkeys),
+    geraeteSchluessel: bindeImSystemrahmen(db, geraeteSchluessel, 'zugangsdaten'),
+    konten: bindeImSystemrahmen(db, konten, 'zugangsdaten'),
+    passkeys: bindeImSystemrahmen(db, passkeys, 'zugangsdaten'),
     protokoll: bindeZugang(db, protokoll),
-    qrKopplung: bindeZugang(db, qrKopplung),
+    qrKopplung: bindeImSystemrahmen(db, qrKopplung, 'zugangsdaten'),
     startVerwalter: bindeZugang(db, startVerwalter),
-    zugaenge: bindeZugang(db, zugaenge, [
+    zugaenge: bindeImSystemrahmen(db, zugaenge, 'zugangsdaten', [
       'beendeUeberlappung',
       'beruehreToken',
       'gueltigerToken',
@@ -61,7 +62,7 @@ export function erzeugeKonto(k: KontoKontext) {
       'zaehleSitzungsVersionHoch',
       'ziehAltzeilenNach',
     ]),
-    zweiterFaktor: bindeZugang(db, zweiterFaktor, [
+    zweiterFaktor: bindeImSystemrahmen(db, zweiterFaktor, 'zugangsdaten', [
       'aktiv',
       'aktivesGeheimnis',
       'entferne',

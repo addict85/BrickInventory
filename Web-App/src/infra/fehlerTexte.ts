@@ -243,7 +243,7 @@ export const FEHLER = {
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).',
   },
   // Die 60 steht ausgeschrieben, weil fachfehler() keine Platzhalter füllt;
-  // test/lagerort.test.js hält sie mit LAGERORT_MAX_ZEICHEN zusammen.
+  // test/lagerort-vorrat-db.test.js prüft die Grenze (60 erlaubt, 61 abgewiesen).
   lagerort_zu_lang: {
     de: 'Der Lagerort ist zu lang (höchstens 60 Zeichen).',
     en: 'Storage location is too long (at most 60 characters).',
@@ -446,6 +446,10 @@ export const FEHLER = {
   zweiter_faktor_falsch: {
     de: 'Der Code stimmt nicht oder wurde schon benutzt.',
     en: 'The code is wrong or has already been used.',
+  },
+  zweiter_faktor_gesperrt: {
+    de: 'Zu viele falsche Codes für dieses Konto. Bis zu 24 Stunden geht die Anmeldung nur mit einem Wiederherstellungscode oder einem Passkey.',
+    en: 'Too many wrong codes for this account. For up to 24 hours, sign-in only works with a recovery code or a passkey.',
   },
   zweiter_faktor_schon_aktiv: {
     de: 'Der zweite Faktor ist bereits eingerichtet.',

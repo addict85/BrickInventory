@@ -1,12 +1,13 @@
 /** Eine Form für alle Verlaufs-Endpunkte, damit beide Oberflächen einen
  * Diagrammbauer brauchen. */
+import { marktpreisAus } from '../katalog';
 
 export interface ChartPoint {
   x: string;
   y: number;
 }
 
-/** Eine Messung: Tag und Preis (Durchschnitt, sonst mengengewichtet). */
+/** Eine Messung: Tag und Preis (Regel: marktpreisAus). */
 export interface Messung {
   recorded_at: unknown;
   avg_price?: number | string | null;
@@ -22,11 +23,7 @@ export interface ChartSeries {
 
 /** @param inputs Je Reihe ein Name und die rohen Zeilen (recorded_at, avg_price). */
 export function buildChart(inputs: Array<{ name: string; rows: Messung[] }>) {
-  const wertVon = (r: Messung) => {
-    const v = r?.avg_price ?? r?.qty_avg_price;
-    const n = parseFloat(String(v ?? 0));
-    return Number.isFinite(n) ? n : 0;
-  };
+  const wertVon = (r: Messung) => marktpreisAus(r) ?? 0;
 
   // Nur Tage, an denen eine Reihe einen Wert hat: Die Achse zeigt Messpunkte,
   // nicht jeden Kalendertag.

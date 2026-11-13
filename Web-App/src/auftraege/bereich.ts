@@ -2,7 +2,7 @@
  * ersten Parameter; erzeugeAuftraege bindet ihn einmal für alle. So greift kein
  * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
 import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
+import { bindeImSystemrahmen, bindeZugang } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as auftraege from './repository/auftraege';
 import * as importStand from './repository/importStand';
@@ -18,7 +18,8 @@ export function erzeugeAuftraege(k: AuftraegeKontext) {
   return {
     db,
     faecher: new Faecher(),
-    auftraege: bindeZugang(db, auftraege, [
+    // Eine Warteschlange für alle Konten; eine Konto-Anfrage sieht per Zeilenschutz nur eigene.
+    auftraege: bindeImSystemrahmen(db, auftraege, 'auftragsschlange', [
       'auftragsListe',
       'auftragsStand',
       'belegeAuftrag',
@@ -58,7 +59,7 @@ export function erzeugeAuftraege(k: AuftraegeKontext) {
     ]),
     importStand: bindeZugang(db, importStand),
     laufzustand: bindeZugang(db, laufzustand),
-    pdfAuftraege: bindeZugang(db, pdfAuftraege),
+    pdfAuftraege: bindeImSystemrahmen(db, pdfAuftraege, 'auftragsschlange'),
   };
 }
 

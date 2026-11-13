@@ -136,7 +136,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
     for (const teil of [m.text, m.html]) {
       assert.ok(!teil.includes('Anna') && !teil.includes(BOESE.slice(0, 14)), teil.slice(0, 300));
     }
-    assert.match(m.text, /https:\/\/lego\.example\.org\/verify\?token=[0-9a-f]{64}/);
+    assert.match(m.text, /https:\/\/lego\.example\.org\/verify#token=[0-9a-f]{64}/, 'der Token steht im Fragment');
   });
 
   await t.test('die Mail zum vergebenen Benutzernamen nennt ihn nicht', async () => {

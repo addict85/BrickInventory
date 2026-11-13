@@ -1,7 +1,25 @@
 /** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
  * damit die Aufteilung der Dateien darunter frei bleibt. */
 export { verschluesseleGutscheinAltbestand } from './gutscheinDateien';
-export type { GutscheinZeile } from './dienst';
+export type { AusPdf, GutscheinAenderung, GutscheinZeile, GuthabenErgebnis } from './dienst';
+export {
+  PIN_MASKE,
+  exportFreigeben,
+  guthabenAbfragen,
+  gutscheinBearbeiten,
+  gutscheinErfassen,
+  gutscheinAusPdf,
+  gutscheinEntfernen,
+  gutscheinKlartext,
+  gutscheinListe,
+  gutscheinMitPdfAnlegen,
+  gutscheinPdf,
+  gutscheineExportieren,
+  maskiert,
+  pdfFreigeben,
+  pruefeWerte,
+  stapelAnlegen,
+} from './dienst';
 export {
   VOUCHER_DIR,
   gutscheinDatei,

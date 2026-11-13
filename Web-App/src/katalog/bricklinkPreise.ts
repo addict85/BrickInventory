@@ -8,13 +8,19 @@ import type { KatalogEintrag } from './repository/katalogCache';
 import { katalog } from './prozess';
 import type { KatalogDienste } from './bereich';
 
-// Ob ein Datensatz einen Preis hat, an einer Stelle statt in drei Fassungen.
 export type PreisDatensatz = { avg_price?: unknown; qty_avg_price?: unknown } | null | undefined;
 
-/** parseFloat(String(...)): Dieselbe Funktion bekommt auch rohe
- * BrickLink-Antworten, und die tragen Text. */
+/** DIE Marktpreisregel (SQL: marktpreisSql): avg_price, sonst qty_avg_price, 0 ist kein
+ * Preis; ein Mengenschnitt belegt Verkäufe. String(): Auch BrickLink-Antworten tragen Text. */
+export function marktpreisAus(row: PreisDatensatz): number | null {
+  const avg = parseFloat(String(row?.avg_price ?? ''));
+  if (avg > 0) return avg;
+  const qty = parseFloat(String(row?.qty_avg_price ?? ''));
+  return qty > 0 ? qty : null;
+}
+
 export function hatPreis(row: PreisDatensatz): boolean {
-  return parseFloat(String(row?.avg_price ?? '')) > 0;
+  return marktpreisAus(row) !== null;
 }
 
 export type { KatalogEintrag };

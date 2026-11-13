@@ -63,6 +63,20 @@ export async function gutschein(db: DbSchnittstelle, uid: number, id: number): P
   return z && lesbar(uid, z);
 }
 
+/** Sperrt die Zeile bis zum Ende der Transaktion: Wer liest, mischt und schreibt,
+ * soll keine gleichzeitige Änderung überschreiben. */
+export async function gutscheinGesperrt(
+  db: DbSchnittstelle,
+  uid: number,
+  id: number,
+): Promise<GutscheinZeile | undefined> {
+  const z = await db.get<GutscheinZeile>(`SELECT ${SPALTEN} FROM vouchers WHERE id = $1 AND user_id = $2 FOR UPDATE`, [
+    id,
+    uid,
+  ]);
+  return z && lesbar(uid, z);
+}
+
 /** undefined, wenn es die Nummer schon gibt — kein stilles Überschreiben. */
 export async function gutscheinAnlegen(
   db: DbSchnittstelle,

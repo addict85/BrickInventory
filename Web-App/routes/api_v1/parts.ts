@@ -1,6 +1,6 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
-import { haushaltBereich } from '../../src/haushalt';
+import { haushalt } from '../../src/haushalt';
 import {
   getBlColorMap,
   getManualParts,
@@ -19,7 +19,7 @@ import { importAlsAuftrag } from '../../src/auftraege';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { getSetting } from '../../src/einstellungen';
 import { preisverlaufTeil } from '../../src/finanzen';
-import { bestandBereich, verwendendeSets, normalisiereLagerort } from '../../src/bestand';
+import { lagerort, verwendendeSets, normalisiereLagerort } from '../../src/bestand';
 import { loescheTeil } from '../../src/sammlung';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
@@ -71,7 +71,7 @@ router.get(
 router.post('/parts', requireToken, async (req: Anfrage<'POST /api/v1/parts'>, res: Antwort<'POST /api/v1/parts'>) => {
   // schreibzielOderNull prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
   // nicht bloss die Mitgliedschaft im Blickfeld.
-  const owner = await haushaltBereich().haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+  const owner = await haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const result = await addManualPart(owner, req.eingabe);
   res.json({ success: true, ...result });
 });
@@ -85,11 +85,7 @@ router.put(
   ) => {
     // Die Ansicht sagt, wessen Karte gemeint ist; ohne Parameter änderte das
     // Hauptkonto auf der Karte des Kindes die eigene Zeile.
-    const besitzer = await haushaltBereich().haushalt.schreibziel(
-      req.apiUser.user_id,
-      req.abfrage.owner,
-      'kein_zugriff_konto',
-    );
+    const besitzer = await haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
     // weiss der Client sie sonst nicht).
     const r = await updateManualPart(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
@@ -105,11 +101,7 @@ router.put(
     req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/color'>,
     res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/color'>,
   ) => {
-    const besitzer = await haushaltBereich().haushalt.schreibziel(
-      req.apiUser.user_id,
-      req.abfrage.owner,
-      'kein_zugriff_konto',
-    );
+    const besitzer = await haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
     // ein stilles Leeren mit Erfolgsmeldung.
     const roh = req.eingabe.color_id;
@@ -131,11 +123,7 @@ router.delete(
     res: Antwort<'DELETE /api/v1/parts/:partNumber/:colorId'>,
   ) => {
     // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
-    const besitzer = await haushaltBereich().haushalt.schreibziel(
-      req.apiUser.user_id,
-      req.abfrage.owner,
-      'kein_zugriff_konto',
-    );
+    const besitzer = await haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     const geloescht = await loescheTeil(besitzer, req.pfad.partNumber, req.pfad.colorId);
     if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
     res.json({ success: true, papierkorb: [geloescht] });
@@ -172,7 +160,7 @@ router.put(
     res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/storage'>,
   ) => {
     const ort = normalisiereLagerort(req.eingabe.storage);
-    const n = await bestandBereich().lagerortDienst.setzeLagerort(
+    const n = await lagerort.setzeLagerort(
       'part',
       { schreiber: req.apiUser.user_id },
       [req.pfad.partNumber, String(req.pfad.colorId)],

@@ -8,7 +8,7 @@ import { ME } from './zustand.js';
 import { html } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './rueckfrage.js';
 
-// ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
+// ═══ Passkeys (Server: src/konto/repository/passkeys.ts, routes/auth.ts) ═══════════════
 // Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der Browser braucht ArrayBuffer —
 // die Umwandlung in beide Richtungen steht hier.
 

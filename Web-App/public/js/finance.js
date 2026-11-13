@@ -101,6 +101,20 @@ function unterGeschaetzt(acq) {
   return acq?.price_estimated ? html` · ${geschaetztKauf(tRaw('finance.kauf_geschaetzt'))}` : '';
 }
 
+/** Am Telefon fehlen die Spalten Kaufpreis und Marktpreis; der Kaufpreis der Zeile steht dann unter dem Namen.
+ * @param {unknown} stueck @param {unknown} menge @param {string} cur */
+function unterKauf(stueck, menge, cur) {
+  const p = stueck == null || String(stueck).trim() === '' ? NaN : Number(stueck);
+  if (!Number.isFinite(p)) return '';
+  const betrag = fmtGeld(p * (parseInt(String(menge), 10) || 1), cur);
+  return html`<span class="fin-unter-kauf"> · ${tRaw('finance.col.purchase')} ${betrag}</span>`;
+}
+
+/** Ohne Marktpreis: am Rechner ein Strich unter dem Spaltenkopf, am Telefon in Worten und ohne leere G/V-Zelle. */
+const ohneMarkt = () =>
+  html`<span class="fin-strich">${ohneWert()}</span><span class="fin-kein-markt">${tRaw('finance.kein_marktpreis')}</span>`;
+const ohneGuv = () => html`<span class="text-mut fin-guv-leer">—</span>`;
+
 /** @param {ManPosten} it @param {string} label @param {ManKauf | null} acq @param {Zeilenlage} lage @param {string} text sichtbarer Name ohne Markup */
 function pmRow(it, label, acq, lage, text) {
   const cur = lage.cur;
@@ -130,13 +144,13 @@ function pmRow(it, label, acq, lage, text) {
   // als Inline-Handler die CSP blockiert.
   return html`<tr class="zeiger" ${ungeprueft(manArgs(it))}>
     <td class="fin-bild">${img}</td>
-      <td class="fin-name"><span class="fin-name-text">${zeilenKnopf(manZiel(it), ungeprueft(label), tRaw('zeile.oeffnen', { name: text, nr: it.fig_number || it.part_number || '' }))}${acq ? html` ${condBadge(acq.condition)}` : ''} ${besitzer(it, lage.mehrereKonten)}</span><span class="fin-unter">×${qty}${unterGeschaetzt(acq)}</span></td>
+      <td class="fin-name"><span class="fin-name-text">${zeilenKnopf(manZiel(it), ungeprueft(label), tRaw('zeile.oeffnen', { name: text, nr: it.fig_number || it.part_number || '' }))}${acq ? html` ${condBadge(acq.condition)}` : ''} ${besitzer(it, lage.mehrereKonten)}</span><span class="fin-unter">×${qty}${unterKauf(purchase, qty, cur)}${unterGeschaetzt(acq)}</span></td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${acq?.created_at ? fmtDatum(acq.created_at) : ''}</td>
     <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
     <td class="fin-detail price-cell zahl">${current > 0 ? ungeprueft(geschaetztMarke(/** @type {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} */ (it), fmtN(current, cur))) : ohneWert()}</td>
-    <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total, cur) : ohneWert()}</td>
-    <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || html`<span class="text-mut">—</span>`}</td>
+    <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total, cur) : ohneMarkt()}</td>
+    <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || ohneGuv()}</td>
     <td class="fin-status"></td>
   </tr>`;
 }
@@ -191,13 +205,13 @@ function setRow(s, acq, lage) {
   return html`<tr class="zeiger" data-click="openModal" data-arg="${s.set_number}">
   <td class="fin-bild">${s.image_local || s.image_url ? bildTag({ src: imgUrl(thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
   <td class="fin-detail"><span class="nummer-klein">${s.set_number}</span></td>
-    <td class="fin-name">${zeilenKnopf({ click: 'openModal', arg: s.set_number }, s.name || '—', tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}${s.year ? html` <span class="fin-jahr">${s.year}</span>` : ''}${acq ? html` ${condBadge(acq.condition)}` : ''} ${besitzer(s, lage.mehrereKonten)}<span class="fin-unter">${s.set_number}${s.year ? html` · ${s.year}` : ''} · ×${qty}${unterGeschaetzt(acq)}</span></td>
+    <td class="fin-name">${zeilenKnopf({ click: 'openModal', arg: s.set_number }, s.name || '—', tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}${s.year ? html` <span class="fin-jahr">${s.year}</span>` : ''}${acq ? html` ${condBadge(acq.condition)}` : ''} ${besitzer(s, lage.mehrereKonten)}<span class="fin-unter">${s.set_number}${s.year ? html` · ${s.year}` : ''} · ×${qty}${unterKauf(purchase, qty, cur)}${unterGeschaetzt(acq)}</span></td>
   <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
   <td class="fin-detail fin-datum">${dateSrc ? fmtDatum(dateSrc) : '—'}</td>
   <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
     <td class="fin-detail zahl price-cell">${mitPreis && Number(market) > 0 ? fmtN(market, cur) : ohneWert()}</td>
-  <td class="fin-wert zahl price-total">${mitPreis && Number(total) > 0 ? fmtN(total, cur) : ohneWert()}</td>
-  <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || html`<span class="text-mut">—</span>`}</td>
+  <td class="fin-wert zahl price-total">${mitPreis && Number(total) > 0 ? fmtN(total, cur) : ohneMarkt()}</td>
+  <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || ohneGuv()}</td>
     <td class="fin-status">${priceStatusBadge(s, fehlerNeutral)}</td>
 </tr>`;
 }
@@ -246,16 +260,19 @@ function finanzenLaedt() {
 /** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {{ status?: number, networkError?: boolean } | null | undefined} d */
 function finanzenFehlen(d) {
   if (d?.status === 401) return;
-  // Grund und „Erneut versuchen“ stehen schon bei der Liste darunter; ein zweiter Block sagte dasselbe.
-  if (!kurveDa())
+  // Grund und „Erneut versuchen“ stehen einmal, bei der Liste; Karten und Zeitraum sagten es sonst fünfmal.
+  if (!kurveDa()) {
     setzeHtml(G('portfolio-chart'), html`<p class="fehler-zustand text-mut">${tRaw('chart.unavailable')}</p>`);
+    // Wieder frei gibt sie loadPortfolioChart(), sobald ein Verlauf da ist.
+    /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.zeitraum-wahl .period-btn')).forEach(
+      b => {
+        b.disabled = true;
+      },
+    );
+  }
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').removeAttribute('aria-busy');
-    // Fehlt die Verbindung, sagen die Karten es selbst: Das gelbe Band und der Fehlerblock stehen weit weg.
-    for (const id of KENNZAHLEN) {
-      if (d?.networkError) setzeHtml(G(id), html`<span class="fval-hinweis">${tRaw('finance.stat.offline')}</span>`);
-      else G(id).textContent = '—';
-    }
+    for (const id of KENNZAHLEN) G(id).textContent = '—';
   }
 }
 
@@ -554,15 +571,15 @@ function finMehr() {
   _finGrenze += FIN_BLOCK;
   zeichneFinanzTabellen();
 }
-/** Was das Zeichen in der Spalte „Status“ heisst — ein Häkchen allein sagt es nicht. */
+/** Was die Zeichen der Spalte „Status“ heissen; je Eintrag ohne Umbruch, sonst stand „⚠“ allein am Zeilenende. */
 function legende() {
-  return html`<p class="fin-legende">${ungeprueft(
-    tRaw('finance.legende', {
-      ok: `<span class="legende-zeichen pst pst-ok" aria-hidden="true">${ico('ok')}</span>`,
-      fehlt: '<span class="legende-zeichen pst pst-leer" aria-hidden="true">–</span>',
-      fehler: `<span class="legende-zeichen pst pst-err" aria-hidden="true">${ico('warnung')}</span>`,
-    }),
-  )}</p>`;
+  const eintrag = (
+    /** @type {string} */ klasse,
+    /** @type {import('./escapen.js').Markup | string} */ zeichen,
+    /** @type {string} */ text,
+  ) =>
+    html`<span class="legende-eintrag"><span class="legende-zeichen pst ${klasse}" aria-hidden="true">${zeichen}</span> ${text}</span>`;
+  return html`<p class="fin-legende"><span>${tRaw('finance.legende.titel')}</span>${eintrag('pst-ok', ico('ok'), tRaw('finance.legende.ok'))}<span aria-hidden="true">·</span>${eintrag('pst-leer', '–', tRaw('finance.legende.fehlt'))}<span aria-hidden="true">·</span>${eintrag('pst-err', ico('warnung'), tRaw('finance.legende.fehler'))}<span>${tRaw('finance.legende.text')}</span></p>`;
 }
 
 /**
@@ -644,8 +661,7 @@ function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehru
   const teilweise = mitBasis && Math.abs(einstandAlle - basis.einstand) >= 0.005;
   G('fin-einstand-titel').textContent = tRaw(teilweise ? 'finance.stat.purchase_basis' : 'finance.stat.purchase');
   G('fin-einstand').textContent = einstand > 0 || mitBasis ? fmtN(einstand, cur) : '—';
-  // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse). Kaufpreise in anderer Währung
-  // zählt der Server nicht mit (keine Kurse); die Zahl dazu steht unter der Summe statt still zu fehlen.
+  // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse); ihre Zahl steht darunter.
   G('fin-einstand-sub').textContent =
     fremdeWaehrung > 0
       ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung })

@@ -4,7 +4,7 @@
 
 (() => {
   var KEY = 'bim_theme';
-  // Muss mit DESIGNS in src/konto/settings.ts uebereinstimmen — eine Pruefung haelt beide zusammen
+  // Muss mit DESIGNS in src/vertrag/globaleRegeln.ts uebereinstimmen — eine Pruefung haelt beide zusammen
   // (theme.test.js).
   var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 

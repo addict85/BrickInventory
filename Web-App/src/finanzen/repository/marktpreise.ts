@@ -1,13 +1,14 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { marktpreisSql } from '../../../db/geldSql';
 
 export type Zustand = 'N' | 'U';
 type Preiszeile = { avg_price: string | null; qty_avg_price: string | null; condition: Zustand };
 
 /** Nur echte Preise über null. */
 export function setPreisAusCache(db: DbSchnittstelle, setNumber: string, zustand: string, waehrung: string) {
-  return db.get<{ avg_price: string }>(
-    `SELECT avg_price FROM price_cache
-       WHERE set_number=$1 AND condition IN ('N','U') AND currency_code=$3 AND avg_price > 0
+  return db.get<{ marktpreis: string }>(
+    `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
+       WHERE set_number=$1 AND condition IN ('N','U') AND currency_code=$3 AND ${marktpreisSql()} IS NOT NULL
        ORDER BY (condition = $2) DESC LIMIT 1`,
     [setNumber, zustand, waehrung],
   );
@@ -54,15 +55,15 @@ export async function geschaetzteFigurenpreise(
 ) {
   const aus = new Map<string, { preis: number; abdeckung: number | null }>();
   if (!figuren.length) return aus;
-  const zeilen = await db.all<{ fig_number: string; condition: string; avg_price: string; abdeckung: string | null }>(
-    `SELECT fig_number, condition, avg_price, abdeckung FROM minifig_price_cache
-      WHERE fig_number = ANY($1) AND currency_code = $2 AND geschaetzt AND avg_price > 0
+  const zeilen = await db.all<{ fig_number: string; condition: string; marktpreis: string; abdeckung: string | null }>(
+    `SELECT fig_number, condition, ${marktpreisSql()} AS marktpreis, abdeckung FROM minifig_price_cache
+      WHERE fig_number = ANY($1) AND currency_code = $2 AND geschaetzt AND ${marktpreisSql()} IS NOT NULL
         AND fetched_at > NOW() - make_interval(hours => $3)`,
     [[...new Set(figuren)], waehrung, ttlStunden],
   );
   for (const z of zeilen)
     aus.set(`${z.fig_number}|${z.condition}`, {
-      preis: Number(z.avg_price),
+      preis: Number(z.marktpreis),
       abdeckung: z.abdeckung == null ? null : Number(z.abdeckung),
     });
   return aus;
@@ -75,8 +76,8 @@ export function geschaetzterFigurenpreis(
   waehrung: string,
   ttlStunden: number,
 ) {
-  return db.get<{ avg_price: string | null; abdeckung: string | null }>(
-    `SELECT avg_price, abdeckung FROM minifig_price_cache
+  return db.get<{ marktpreis: string | null; abdeckung: string | null }>(
+    `SELECT ${marktpreisSql()} AS marktpreis, abdeckung FROM minifig_price_cache
         WHERE fig_number = $1 AND condition = $2 AND currency_code = $3 AND geschaetzt
           AND fetched_at > NOW() - make_interval(hours => $4)`,
     [figNumber, zustand, waehrung, ttlStunden],

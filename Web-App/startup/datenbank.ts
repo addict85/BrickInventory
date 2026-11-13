@@ -77,6 +77,12 @@ export async function bereiteDatenbankVor(db: Db): Promise<void> {
   datenSchluessel();
   await warneBeiSuperuser(db);
   await db.initSchemaOnce();
+  // Sonst sähen Aufträge, Verwaltung und Anmeldung still keine Zeile der Kontotabellen.
+  if (!(await db.systemrahmenWirkt()))
+    throw new Error(
+      'Die Rolle für Arbeit über Kontogrenzen unterliegt dem Zeilenschutz: PGSYSTEM_USER und ' +
+        'PGSYSTEM_PASSWORD(_FILE) auf die Systemrolle setzen (postgres/app-rolle.sh, UPGRADE.md#systemrolle).',
+    );
   await altbestandAufruesten();
   await schluesselWechsel();
   await initImageMisses().catch(logAndContinue('db:image_misses'));

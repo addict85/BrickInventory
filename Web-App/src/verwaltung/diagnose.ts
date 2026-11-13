@@ -22,6 +22,17 @@ import { getGlobalSetting, getSetting } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
 import { verwaltungBereich } from './prozess';
 
+const UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const VARIANTEN = [
+  {
+    name: 'mit Referer',
+    headers: { 'User-Agent': UA, Referer: 'https://rebrickable.com/', Accept: 'image/*,*/*;q=0.8' },
+  },
+  { name: 'ohne Referer', headers: { 'User-Agent': UA, Accept: 'image/*,*/*;q=0.8' } },
+  { name: 'nackt', headers: {} },
+];
+
 /** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
 export async function bildProbe(url: string) {
   if (!/^https:\/\//.test(url)) fachfehler('ungueltig', 'url_fehlt_https');
@@ -30,109 +41,101 @@ export async function bildProbe(url: string) {
   // Dieselben Hosts wie der Bild-Proxy: Der Abruf läuft aus dem internen Netz;
   // jede Adresse zuzulassen wäre Server-Side Request Forgery.
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: adresse.hostname });
-  const UA =
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-  const variants = [
-    {
-      name: 'mit Referer',
-      headers: { 'User-Agent': UA, Referer: 'https://rebrickable.com/', Accept: 'image/*,*/*;q=0.8' },
-    },
-    { name: 'ohne Referer', headers: { 'User-Agent': UA, Accept: 'image/*,*/*;q=0.8' } },
-    { name: 'nackt', headers: {} },
-  ];
 
-  // Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen.
-  const offen = (kopfzeilen: Record<string, string>) =>
-    oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
-  const lies = (a: AbrufStrom, genug = Infinity) =>
-    new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {
-      const teile: Buffer[] = [];
-      let bytes = 0;
-      const s = a.strom();
-      s.on('data', (c: Buffer) => {
-        teile.push(c);
-        bytes += c.length;
-        if (bytes >= genug) {
-          s.destroy();
-          fertig({ teile, bytes, truncated: false });
-        }
-      });
-      s.on('end', () => fertig({ teile, bytes, truncated: false }));
-      s.on('error', () => fertig({ teile, bytes, truncated: true }));
-    });
-  const probe = async (v: { name: string; headers: Record<string, string> }) => {
-    const t0 = Date.now();
-    try {
-      const a = await offen(v.headers);
-      const { bytes, truncated } = await lies(a);
-      const k = a.kopf;
-      return {
-        variant: v.name,
-        ms: Date.now() - t0,
-        status: a.status,
-        content_type: k['content-type'] || null,
-        content_length: k['content-length'] || null,
-        // Komprimiert geliefert muss der Proxy die Kopfzeile weiterreichen, sonst hält
-        // der Browser die Bytes für ein JPEG.
-        content_encoding: k['content-encoding'] || null,
-        transfer_encoding: k['transfer-encoding'] || null,
-        bytes,
-        server: k.server || null,
-        cf_ray: k['cf-ray'] || null,
-        ...(truncated ? { truncated } : {}),
-      };
-    } catch (e) {
-      return {
-        variant: v.name,
-        ms: Date.now() - t0,
-        error: fehlertext(e),
-        code: e instanceof AbrufFehler ? e.grund : undefined,
-      };
-    }
-  };
+  const results: Awaited<ReturnType<typeof probeVariante>>[] = [];
+  for (const v of VARIANTEN) results.push(await probeVariante(url, v));
 
-  const results: Awaited<ReturnType<typeof probe>>[] = [];
-  for (const v of variants) results.push(await probe(v));
-
-  const fsp = fs.promises,
-    pathm = path;
   const key = proxyCacheSchluessel(url);
-  const dir = pathm.join(DATA_DIR, 'img_proxy_cache');
-  const cached = await fsp
-    .stat(pathm.join(dir, key))
-    .then(st => ({ bytes: st.size }))
-    .catch(ohneFehlendeDatei('verwaltung:stat', null));
-  const thumb = await fsp
-    .stat(pathm.join(dir, key + '_thumb.jpg'))
-    .then(st => ({ bytes: st.size }))
-    .catch(ohneFehlendeDatei('verwaltung:stat', null));
+  const dir = path.join(DATA_DIR, 'img_proxy_cache');
+  const cached = await dateiGroesse(path.join(dir, key));
+  const thumb = await dateiGroesse(path.join(dir, key + '_thumb.jpg'));
 
   // Zeigt auf einen Blick, woran Abrufe scheitern, ohne im Log zu suchen.
   const failures = imgProxyFailures;
-  // Durch dieselbe Kette wie der Proxy, aber die ersten Bytes kommen als Hex hierher.
-  const head = await offen({ 'User-Agent': UA, Accept: 'image/*,*/*;q=0.8', 'Accept-Encoding': 'identity' }).then(
+  const head = await ersteBytes(url);
+  return { url, cache: { original: cached, thumb }, probes: results, proxy_failures: failures, body_check: head };
+}
+
+/** Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen. */
+const offenOhneUmleitung = (url: string, kopfzeilen: Record<string, string>) =>
+  oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
+
+function liesStrom(a: AbrufStrom, genug = Infinity) {
+  return new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {
+    const teile: Buffer[] = [];
+    let bytes = 0;
+    const s = a.strom();
+    s.on('data', (c: Buffer) => {
+      teile.push(c);
+      bytes += c.length;
+      if (bytes >= genug) {
+        s.destroy();
+        fertig({ teile, bytes, truncated: false });
+      }
+    });
+    s.on('end', () => fertig({ teile, bytes, truncated: false }));
+    s.on('error', () => fertig({ teile, bytes, truncated: true }));
+  });
+}
+
+async function probeVariante(url: string, v: { name: string; headers: Record<string, string> }) {
+  const t0 = Date.now();
+  try {
+    const a = await offenOhneUmleitung(url, v.headers);
+    const { bytes, truncated } = await liesStrom(a);
+    const k = a.kopf;
+    return {
+      variant: v.name,
+      ms: Date.now() - t0,
+      status: a.status,
+      content_type: k['content-type'] || null,
+      content_length: k['content-length'] || null,
+      // Komprimiert geliefert muss der Proxy die Kopfzeile weiterreichen, sonst hält
+      // der Browser die Bytes für ein JPEG.
+      content_encoding: k['content-encoding'] || null,
+      transfer_encoding: k['transfer-encoding'] || null,
+      bytes,
+      server: k.server || null,
+      cf_ray: k['cf-ray'] || null,
+      ...(truncated ? { truncated } : {}),
+    };
+  } catch (e) {
+    return {
+      variant: v.name,
+      ms: Date.now() - t0,
+      error: fehlertext(e),
+      code: e instanceof AbrufFehler ? e.grund : undefined,
+    };
+  }
+}
+
+const dateiGroesse = (datei: string) =>
+  fs.promises
+    .stat(datei)
+    .then(st => ({ bytes: st.size }))
+    .catch(ohneFehlendeDatei('verwaltung:stat', null));
+
+/** Durch dieselbe Kette wie der Proxy, aber die ersten Bytes kommen als Hex hierher. */
+function ersteBytes(url: string) {
+  return offenOhneUmleitung(url, { 'User-Agent': UA, Accept: 'image/*,*/*;q=0.8', 'Accept-Encoding': 'identity' }).then(
     async a => {
-      const b = Buffer.concat((await lies(a, 32)).teile);
+      const b = Buffer.concat((await liesStrom(a, 32)).teile);
       return {
         status: a.status,
         content_encoding: a.kopf['content-encoding'] || null,
         first_bytes_hex: b.slice(0, 16).toString('hex').replace(/(..)/g, '$1 ').trim(),
-        looks_like:
-          b[0] === 0xff && b[1] === 0xd8
-            ? 'JPEG'
-            : b[0] === 0x89 && b[1] === 0x50
-              ? 'PNG'
-              : b[0] === 0x1f && b[1] === 0x8b
-                ? 'gzip (komprimiert!)'
-                : b.slice(0, 5).toString().toLowerCase().startsWith('<')
-                  ? 'HTML/XML statt Bild'
-                  : 'unbekannt',
+        looks_like: bildArt(b),
       };
     },
     (e: unknown) => ({ error: fehlertext(e) }),
   );
+}
 
-  return { url, cache: { original: cached, thumb }, probes: results, proxy_failures: failures, body_check: head };
+function bildArt(b: Buffer): string {
+  if (b[0] === 0xff && b[1] === 0xd8) return 'JPEG';
+  if (b[0] === 0x89 && b[1] === 0x50) return 'PNG';
+  if (b[0] === 0x1f && b[1] === 0x8b) return 'gzip (komprimiert!)';
+  return b.slice(0, 5).toString().toLowerCase().startsWith('<') ? 'HTML/XML statt Bild' : 'unbekannt';
 }
 
 /** Mit `live` auch die Antwort von BrickLink. */

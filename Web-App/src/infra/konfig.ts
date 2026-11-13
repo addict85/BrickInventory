@@ -8,7 +8,13 @@ type Umgebung = Record<string, string | undefined>;
 
 /** Docker-Secrets: Steht X_FILE, kommt X aus der Datei statt aus der Umgebung,
  * die `docker inspect` und /proc/<pid>/environ jedem zeigen, der dort hinsieht. */
-export const DATEI_VARIABLEN = ['SESSION_SECRET', 'PGPASSWORD', 'DATABASE_URL', 'ADMIN_PASSWORD'] as const;
+export const DATEI_VARIABLEN = [
+  'SESSION_SECRET',
+  'PGPASSWORD',
+  'PGSYSTEM_PASSWORD',
+  'DATABASE_URL',
+  'ADMIN_PASSWORD',
+] as const;
 
 /** Übernimmt jede lesbare X_FILE nach X und streicht X_FILE; ein zweiter Aufruf ändert nichts. */
 export function geheimnisseAusDateien(env: Umgebung): string[] {
@@ -127,6 +133,8 @@ export const VARIABLEN = [
   'PGUSER',
   'PGPASSWORD',
   'PGDATABASE',
+  'PGSYSTEM_USER',
+  'PGSYSTEM_PASSWORD',
   'PGSSLMODE',
   'PG_POOL_MAX',
   'PG_POOL_MIN',
@@ -394,6 +402,21 @@ export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
     password: env.PGPASSWORD || STANDARD_DB_PASSWORT,
     database: env.PGDATABASE || 'brickinventory',
   };
+}
+
+/** Die Systemrolle (BYPASSRLS) für Arbeit über Kontogrenzen, sonst null: Mit
+ * einer einzigen Rolle, der die Tabellen gehören, greift der Zeilenschutz nicht. */
+export function systemVerbindung(env: NodeJS.ProcessEnv = process.env) {
+  geheimnisseAusDateien(env);
+  const user = env.PGSYSTEM_USER?.trim();
+  if (!user) return null;
+  const password = env.PGSYSTEM_PASSWORD ?? '';
+  const basis = datenbankVerbindung(env);
+  if (!('connectionString' in basis)) return { ...basis, user, password };
+  const u = new URL(basis.connectionString);
+  u.username = encodeURIComponent(user);
+  u.password = encodeURIComponent(password);
+  return { connectionString: u.toString() };
 }
 
 /** Das Beispielpasswort aus compose.yaml; es steht in jedem öffentlichen Klon. */

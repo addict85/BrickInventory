@@ -10,6 +10,7 @@ import { ausTabelle } from '../../infra/validate';
 import type { DbSchnittstelle, Zeile } from '../../../db/database';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 import { setStammJoin, SET } from '../../../db/katalogSicht';
+import { marktpreisSql } from '../../../db/geldSql';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { sperreBisZumEnde } from '../../../db/txLock';
 
@@ -29,9 +30,9 @@ export function setImBlickfeld(db: DbSchnittstelle, ids: number[], setNumber: st
 
 /** Der angefragte Zustand gewinnt, wenn er einen Preis hat. */
 export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
-  return dbh.get<{ avg_price: string }>(
-    `SELECT avg_price FROM price_cache
-     WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0
+  return dbh.get<{ marktpreis: string }>(
+    `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
+     WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
      ORDER BY (condition = $3) DESC LIMIT 1`,
     [setNumber, currency, zustand],
   );
@@ -39,9 +40,9 @@ export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, curr
 
 /** Rückfall, wenn der Cache leer ist (CSV-Import ohne Kontingent). */
 export function marktpreisAusVerlauf(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
-  return dbh.get<{ avg_price: string }>(
-    `SELECT avg_price FROM price_history
-        WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND avg_price > 0
+  return dbh.get<{ marktpreis: string }>(
+    `SELECT ${marktpreisSql()} AS marktpreis FROM price_history
+        WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
         ORDER BY (condition = $3) DESC, recorded_at DESC LIMIT 1`,
     [setNumber, currency, zustand],
   );

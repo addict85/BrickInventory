@@ -98,7 +98,7 @@ async function csvFortschritt(_t, a) {
     await taste(b, TAB);
     assert.ok(
       await b.auswerten(`document.getElementById('progress-overlay').contains(document.activeElement)`),
-      `Tab ${i + 1} verlässt das Overlay`,
+      `Tab ${i + 1} verlässt das Overlay: Fokus auf ${await b.auswerten('document.activeElement?.outerHTML?.slice(0, 120)')}, Overlay ${await b.auswerten(`document.getElementById('progress-overlay').className`)}`,
     );
   }
   assert.ok(

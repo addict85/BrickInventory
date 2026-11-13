@@ -9,6 +9,7 @@ import type { ladeSetErfassungen } from '../repository/erfassungen';
 import { aufRappen, inZehntel4, summeAus } from '../../infra/geld';
 import type * as repo from '../repository/gewinnVerlust';
 import { finanzenBereich } from '../prozess';
+import { marktpreisAus } from '../../katalog';
 
 type PnlSet = Awaited<ReturnType<typeof repo.setsMitErfassungen>>[number];
 type Erfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
@@ -20,16 +21,12 @@ type Marktwerte = {
   menge: Map<string, number>;
 };
 
-/** avg_price zuerst; qty_avg_price nur als Rückfall. */
-const preisAus = (r: { avg_price?: unknown; qty_avg_price?: unknown } | undefined) =>
-  parseFloat(String(r?.avg_price || 0)) || parseFloat(String(r?.qty_avg_price || 0)) || 0;
-
 /** Das Ausweichen auf den anderen Zustand steckt in valueSet() (priceFor). */
 function preiseDesSets(sn: string, jeSchluessel: Map<string, { avg_price?: unknown; qty_avg_price?: unknown }>) {
   const aus = new Map<string, number>();
   for (const cond of ['N', 'U']) {
-    const v = preisAus(jeSchluessel.get(`${sn}|${cond}`));
-    if (v > 0) aus.set(`${sn}|${cond}`, v);
+    const v = marktpreisAus(jeSchluessel.get(`${sn}|${cond}`));
+    if (v !== null) aus.set(`${sn}|${cond}`, v);
   }
   return aus;
 }

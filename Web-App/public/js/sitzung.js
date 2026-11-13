@@ -130,22 +130,23 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   location.reload();
 });
 
-// Check URL params on load
+// Der Token der Mail steht im Fragment (#token=), das kein Browser sendet: in keinem Protokoll, keinem Referer.
 (() => {
   const params = new URLSearchParams(location.search);
+  const token = new URLSearchParams(location.hash.slice(1)).get('token') || params.get('token');
   // Der Link aus der Mail bestätigt nichts von selbst; erst der Knopf (POST).
-  if (params.get('token') && location.pathname === '/verify') {
-    _verifyToken = params.get('token');
+  if (token && location.pathname === '/verify') {
+    _verifyToken = token;
     showPanel('verify');
-  } else if (params.get('token') && (location.pathname.includes('reset-password') || params.get('type') === 'reset')) {
-    _resetToken = params.get('token');
+  } else if (token && (location.pathname.includes('reset-password') || params.get('type') === 'reset')) {
+    _resetToken = token;
     showPanel('reset');
   }
-  // Clean URL
-  if (params.has('token')) history.replaceState({}, '', location.pathname);
+  if (token) history.replaceState({}, '', location.pathname);
 })();
+// Ein weiterer Link im selben Tab ändert nur das Fragment: neu laden, sonst bliebe der alte Token.
+addEventListener('hashchange', () => /[#&]token=/.test(location.hash) && location.reload());
 
-// Panel links
 G('link-register')?.addEventListener('click', e => {
   e.preventDefault();
   showPanel('register');
@@ -165,7 +166,6 @@ G('link-forgot-to-login')?.addEventListener('click', e => {
   showPanel('login');
 });
 
-// Register
 G('btn-register')?.addEventListener('click', async () => {
   const u = G('reg-user').value.trim(),
     e = G('reg-email').value.trim();
@@ -213,7 +213,6 @@ G('btn-register')?.addEventListener('click', async () => {
   }
 });
 
-// Forgot password
 G('btn-forgot')?.addEventListener('click', async () => {
   const email = G('forgot-email').value.trim();
   const err = G('forgot-err');
@@ -265,7 +264,6 @@ G('link-verify-to-login')?.addEventListener('click', e => {
   showPanel('login');
 });
 
-// Reset password
 G('btn-reset')?.addEventListener('click', async () => {
   const p = G('reset-pass').value,
     p2 = G('reset-pass2').value;

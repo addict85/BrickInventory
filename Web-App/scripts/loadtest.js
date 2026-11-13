@@ -21,13 +21,7 @@ process.env.DATABASE_URL = DB_URL;
 
 // ── Argumente ────────────────────────────────────────────────────────────────
 /**
- * Ein Kommandozeilenargument als ZAHL lesen.
- *
- * Der Rumpf gibt Number(...) zurueck, und alle drei Aufrufer uebergeben einen
- * Zahl-Rueckfall — mein erster Entwurf hatte hier `string|number` stehen, was
- * die drei Rechnungen unten (DAUER_S * 1000, Array.from({length: USERS}))
- * unmoeglich gemacht haette.
- *
+ * Ein Kommandozeilenargument als Zahl lesen.
  * @param {string} name
  * @param {number} fallback
  * @returns {number}
@@ -79,7 +73,6 @@ async function seed() {
   await db.run(`INSERT INTO users (username, password_hash) VALUES ($1, 'x')`, [USER.username]);
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;
 
-  // Dieser Aufbau war kaputt, und niemand hat es gemerkt
   await db.run(`INSERT INTO rb_themes (id, name) SELECT g, 'Theme '||g FROM generate_series(1, 12) g
                 ON CONFLICT (id) DO NOTHING`);
   await db.run(
@@ -128,12 +121,23 @@ async function seed() {
      ON CONFLICT (part_number, color_id) DO NOTHING`,
     [N_SETS],
   );
+  // BrickLink-Nummern schon nachgesehen: Sonst startet jede Teile-Liste ein Nachladen über das Netz.
   await db.run(
-    `INSERT INTO parts (user_id, set_number, part_number, color_id, quantity)
-     SELECT $1, (10000+g)||'-1', (3000 + (g*13 + p) % 900)::text,
-            (p % 60), 1 + (p % 4)
-       FROM generate_series(1, $2) g, generate_series(1, 75) p`,
-    [USER.id, N_SETS],
+    `INSERT INTO bl_zuordnung (art, rb_id, bl_id)
+     SELECT 'part', part_number, part_number FROM part_catalog ON CONFLICT DO NOTHING`,
+  );
+  // Die Stückzahl eines Teils aus einem Set steht im Inhalt des Sets (set_teile), nicht in parts.
+  await db.run(
+    `INSERT INTO set_teile (set_number, part_number, color_id, quantity)
+     SELECT (10000+g)||'-1', (3000 + (g*13 + p) % 900)::text, (p % 60), 1 + (p % 4)
+       FROM generate_series(1, $1) g, generate_series(1, 75) p
+     ON CONFLICT DO NOTHING`,
+    [N_SETS],
+  );
+  await db.run(
+    `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
+     SELECT $1, set_number, part_number, color_id, 'set' FROM set_teile`,
+    [USER.id],
   );
 
   await db.run(
@@ -144,10 +148,16 @@ async function seed() {
     [N_SETS],
   );
   await db.run(
-    `INSERT INTO minifigs (user_id, set_number, fig_number, quantity)
-     SELECT $1, (10000+g)||'-1', 'fig'||((g*3+m)%2500), 1
-       FROM generate_series(1, $2) g, generate_series(1, 4) m`,
-    [USER.id, N_SETS],
+    `INSERT INTO set_figuren (set_number, fig_number, quantity)
+     SELECT (10000+g)||'-1', 'fig'||((g*3+m)%2500), 1
+       FROM generate_series(1, $1) g, generate_series(1, 4) m
+     ON CONFLICT DO NOTHING`,
+    [N_SETS],
+  );
+  await db.run(
+    `INSERT INTO minifigs (user_id, set_number, fig_number, source)
+     SELECT $1, set_number, fig_number, 'set' FROM set_figuren`,
+    [USER.id],
   );
 
   // Marktpreise je Zustand — ohne sie rechnen die Finanz-Endpunkte im Leeren.
@@ -177,18 +187,17 @@ async function seed() {
 }
 
 // ── Der echte Stack, wie im Paritätstest ─────────────────────────────────────
+// Die Kette vor /api/v1 wie in startup/app.ts (apiEingang); nur die Sitzung ist gestellt,
+// damit der Lauf ohne Anmeldung und Sitzungsspeicher auskommt.
 function buildApp() {
   const app = express();
-  app.use(express.json());
   app.use((/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {
     req.session = { userId: USER.id, username: USER.username, isAdmin: false };
     next();
   });
-  app.use('/api/sets', require(path.join(ROOT, 'dist/routes/sets.js')));
-  app.use('/api/parts', require(path.join(ROOT, 'dist/routes/parts.js')));
-  app.use('/api/finance', require(path.join(ROOT, 'dist/routes/finance.js')));
-  app.use('/api/settings', require(path.join(ROOT, 'dist/routes/api_v1/settings.js')));
-  app.use('/api/minifigs', require(path.join(ROOT, 'dist/routes/minifigs.js')));
+  app.use(require(path.join(ROOT, 'dist/src/http/kontoMerken.js')).merkeAnfrage);
+  require(path.join(ROOT, 'dist/startup/app.js')).apiEingang(app);
+  app.use('/api/v1', require(path.join(ROOT, 'dist/routes/api_v1/index.js')));
   return app;
 }
 
@@ -196,15 +205,15 @@ function buildApp() {
 // durchblättern, Finanzen ansehen.
 /** @type {Array<[string, string]>} */
 const PFADE = [
-  ['Galerie (Seite 1)', '/api/sets/?page=1&page_size=60'],
-  ['Galerie (Seite 5)', '/api/sets/?page=5&page_size=60'],
-  ['Teile-Liste', '/api/parts/?page=1&page_size=60'],
-  ['Teile-Suche', '/api/parts/?search=Part%201&page=1&page_size=60'],
-  ['Teile-Statistik', '/api/parts/stats'],
-  ['Minifiguren', '/api/minifigs/?page=1&page_size=60'],
-  ['Bewertung Sets', '/api/finance/valuation'],
-  ['GuV', '/api/finance/pnl'],
-  ['Portfolio-Verlauf', '/api/finance/portfolio-history?range=year'],
+  ['Galerie (Seite 1)', '/api/v1/sets?page=1&page_size=60'],
+  ['Galerie (Seite 5)', '/api/v1/sets?page=5&page_size=60'],
+  ['Teile-Liste', '/api/v1/parts?page=1&page_size=60'],
+  ['Teile-Suche', '/api/v1/parts?search=Part%201&page=1&page_size=60'],
+  ['Teile-Statistik', '/api/v1/parts/stats'],
+  ['Minifiguren', '/api/v1/minifigs?page=1&page_size=60'],
+  ['Bewertung Sets', '/api/v1/finance/valuation'],
+  ['GuV', '/api/v1/finance/pnl'],
+  ['Portfolio-Verlauf', '/api/v1/finance/portfolio-history?period=year'],
 ];
 
 /**
@@ -320,6 +329,8 @@ async function main() {
   }
   const fehlerListe = Object.entries(fehler);
   if (fehlerListe.length) {
+    // Ein Lauf mit Fehlern misst nicht, was er vorgibt: rot, auch für den Test, der das Skript startet.
+    process.exitCode = 1;
     console.log('\n⚠️  Fehler:');
     for (const [k, n] of fehlerListe) console.log(`  ${n}× ${k}`);
   } else {

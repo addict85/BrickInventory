@@ -7,7 +7,8 @@
  *
  * Gegenproben (am 03.11.2026 gemessen):
  *   A  plRenderSets() wieder mit titel/text statt titelKey/textKey → rot:
- *      „Bauliste in Kontosprache“ („Noch keine Sets …“)
+ *      „Bauliste in Kontosprache“ („Noch keine Sets …“; 13.11.2026 erneut
+ *      gemessen mit titel statt titelKey: „Diese Bauliste ist noch leer“)
  *   B  in doLogin wieder d.code==='anmeldedaten_ungueltig' → rot: beide
  *      Anmelde-Tests
  */
@@ -26,8 +27,8 @@ test('Bauliste in Kontosprache', async () => {
     await warte(() => d.documentElement.lang === 'en');
     await takt(50);
     const leer = text(d.querySelector('#pl-sets .leer'));
-    assert.doesNotMatch(leer, /Noch keine|Setnummer/, `deutsch: ${leer}`);
-    assert.match(leer, /set/i);
+    assert.doesNotMatch(leer, /Bauliste|Noch keine|Setnummer/, `deutsch: ${leer}`);
+    assert.match(leer, /build list is still empty/i);
   } finally {
     w.close();
   }

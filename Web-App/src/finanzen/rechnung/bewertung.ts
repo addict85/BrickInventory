@@ -6,7 +6,7 @@ import { logAndContinue } from '../../infra/fehler';
 import type * as repo from '../repository/bewertung';
 import { haushaltBereich, asIds, type Sicht } from '../../haushalt';
 import { getGlobalSetting, getSetting } from '../../einstellungen';
-import { resolveImageLocal, proxyImageUrl } from '../../katalog';
+import { resolveImageLocal, proxyImageUrl, hatPreis, marktpreisAus } from '../../katalog';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../infra/setNummer';
 import {
@@ -83,7 +83,8 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
   const preise = new Map<Zustand, PreisDaten>(needed.map(c => [c, setPreisAusVorrat(set.set_number, c, l.ttl, l.pre)]));
   const preisMap = new Map<string, number>();
   for (const [cond, p] of preise) {
-    if (p.avg_price > 0) preisMap.set(`${set.set_number}|${cond}`, p.avg_price);
+    const markt = marktpreisAus(p);
+    if (markt !== null) preisMap.set(`${set.set_number}|${cond}`, markt);
     if (p.ausstehend) l.fehlt.push({ art: 'set', nummer: set.set_number, zustand: cond });
   }
   const valued = valueSet(set.set_number, acqs, preisMap, fallbackCond, set.quantity || 1);
@@ -246,10 +247,9 @@ function preiseJeZustand<P extends PreisDaten>(key: string, conds: Zustand[], pr
   let priceData: P | null = null;
   for (const cond of conds) {
     const pd = preisVon(cond);
-    // avg_price zuerst: Das ist BrickLinks angezeigter Preis, qty_avg_price liegt darunter.
-    const v = pd.avg_price || pd.qty_avg_price || 0;
-    if (v > 0) priceMap.set(`${key}|${cond}`, v);
-    if (!priceData || (!priceData.avg_price && v > 0)) priceData = pd;
+    const v = marktpreisAus(pd);
+    if (v !== null) priceMap.set(`${key}|${cond}`, v);
+    if (!priceData || (!hatPreis(priceData) && v !== null)) priceData = pd;
   }
   return { priceMap, priceData };
 }
