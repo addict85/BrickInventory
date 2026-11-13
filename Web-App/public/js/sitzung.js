@@ -130,20 +130,26 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   location.reload();
 });
 
-// Check URL params on load
+// Der Token der Mail steht im Fragment (#token=): Das schickt der Browser nie, also steht er in keinem
+// Zugriffsprotokoll und keinem Referer. `?token=` kommt nur noch aus älteren Mails.
 (() => {
+  const fragment = new URLSearchParams(location.hash.slice(1));
   const params = new URLSearchParams(location.search);
+  const token = fragment.get('token') || params.get('token');
   // Der Link aus der Mail bestätigt nichts von selbst; erst der Knopf (POST).
-  if (params.get('token') && location.pathname === '/verify') {
-    _verifyToken = params.get('token');
+  if (token && location.pathname === '/verify') {
+    _verifyToken = token;
     showPanel('verify');
-  } else if (params.get('token') && (location.pathname.includes('reset-password') || params.get('type') === 'reset')) {
-    _resetToken = params.get('token');
+  } else if (token && (location.pathname.includes('reset-password') || params.get('type') === 'reset')) {
+    _resetToken = token;
     showPanel('reset');
   }
-  // Clean URL
-  if (params.has('token')) history.replaceState({}, '', location.pathname);
+  if (fragment.has('token') || params.has('token')) history.replaceState({}, '', location.pathname);
 })();
+// Ein weiterer Link im selben Tab ändert nur das Fragment; ohne Neuladen bliebe der alte Token stehen.
+addEventListener('hashchange', () => {
+  if (new URLSearchParams(location.hash.slice(1)).has('token')) location.reload();
+});
 
 // Panel links
 G('link-register')?.addEventListener('click', e => {

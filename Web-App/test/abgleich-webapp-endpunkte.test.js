@@ -182,7 +182,7 @@ const NUR_WEB = new Map([
   [
     '/api/v1/auth/reset-password',
     'Setzt das Passwort mit dem Token aus der E-Mail. Der Link darin zeigt auf ' +
-      'die WEBSEITE (src/mail/mailer.ts: `${baseUrl}/reset-password?token=`), also ' +
+      'die WEBSEITE (src/mail/mailer.ts: `${baseUrl}/reset-password#token=`), also ' +
       'landet auch ein App-Nutzer dort. Was die App braucht, hat sie: ' +
       '/auth/forgot-password löst die Mail aus.',
   ],

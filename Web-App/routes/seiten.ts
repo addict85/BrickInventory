@@ -15,8 +15,16 @@ router.get('/images/*pfad', requireLoginOrToken, eingangsSperre, liefereBild);
 
 // Erst ein Knopf auf der Seite wirkt (POST), sonst bestätigte schon der
 // Link-Scanner des Mailanbieters eine fremde Adresse.
-router.get(['/verify', '/reset-password'], async (_req, res) => {
+router.get(['/verify', '/reset-password'], async (req, res) => {
   res.set('Cache-Control', 'no-store');
+  // Links aus älteren Mails (?token=) gelten weiter, die Adresse wird aber vor dem
+  // ersten Laden der Seite bereinigt: Sonst trügen Referer der Seitendateien den Token
+  // in weitere Protokollzeilen.
+  const token = req.query.token;
+  if (typeof token === 'string' && token) {
+    res.redirect(303, `${req.path}#token=${encodeURIComponent(token)}`);
+    return;
+  }
   await sendeStartseite(res);
 });
 

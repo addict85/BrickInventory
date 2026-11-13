@@ -10,6 +10,9 @@
  *   C  die Ersetzung entfernt → rot: „ohne Schalter …“, „NODE_ENV …“ und
  *      „mit MAIL_KONSOLE_MIT_TOKEN=1 …“ (der Wert „ja“)
  *   D  wieder NODE_ENV=development/test als Ausnahme → rot: „NODE_ENV öffnet nichts“
+ * Gegenprobe (13.11.2026 gemessen):
+ *   E  in linkFuerKonsole `#` aus `[?&#]token=` gestrichen → rot: „ohne
+ *      Schalter ohne Token“ (der Token im Fragment stand im Klartext)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,6 +32,8 @@ test('ohne Schalter ohne Token', () => {
     linkFuerKonsole('https://x.example/verify?a=1&token=geheim#oben', undefined),
     'https://x.example/verify?a=1&token=…#oben',
   );
+  // Seit die Mails den Token ins Fragment legen (#token=).
+  assert.equal(linkFuerKonsole('https://x.example/verify#token=geheim', undefined), 'https://x.example/verify#token=…');
 });
 
 test('NODE_ENV öffnet nichts — auch nicht development', () => {

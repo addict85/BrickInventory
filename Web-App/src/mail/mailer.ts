@@ -30,7 +30,7 @@ export async function sendVerificationMail(
 ) {
   // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
   const theme = await getMailTheme();
-  const url = `${baseUrl}/verify?token=${token}`;
+  const url = `${baseUrl}/verify#token=${token}`;
   const adresse = art === 'adresse';
   const L =
     lang === 'en'
@@ -374,7 +374,7 @@ export async function sendKontoHinweisMail(
 // Sprache des Kontos, wie alle Mails.
 export async function sendPasswordResetMail(to: string, token: string, baseUrl: string, lang = 'de') {
   const theme = await getMailTheme();
-  const url = `${baseUrl}/reset-password?token=${token}`;
+  const url = `${baseUrl}/reset-password#token=${token}`;
   const de = lang !== 'en';
   const L = de
     ? {

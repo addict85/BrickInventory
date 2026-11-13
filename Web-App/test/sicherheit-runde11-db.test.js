@@ -21,6 +21,10 @@
  *   H5  GET /verify bestätigt wieder selbst (verifiziereEmailToken im Handler)
  *       → rot: „der Link allein bestätigt nichts“
  *
+ * Token im Fragment statt in der Abfrage (13.11.2026 gemessen):
+ *   N2  in routes/seiten.ts die Umleitung für ?token= gestrichen → rot: „ein
+ *       alter Link mit ?token= wird umgeleitet“ (200 statt 303)
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -265,7 +269,12 @@ test('zehnte Sicherheitsprüfung am echten Server', { concurrency: 1, timeout: 2
 
   await t.test('der Link allein bestätigt nichts, erst der POST', async () => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'email-bestaetigen|%'");
-    const seite = await fetch(`${basis}/verify?token=${MAILTOKEN}`, { redirect: 'manual' });
+    // Ein Link aus einer älteren Mail (?token=) wird vor dem Laden der Seite zum Fragment.
+    const alt = await fetch(`${basis}/verify?token=${MAILTOKEN}`, { redirect: 'manual' });
+    assert.equal(alt.status, 303, 'ein alter Link mit ?token= wird umgeleitet');
+    assert.equal(alt.headers.get('location'), `/verify#token=${MAILTOKEN}`);
+    assert.equal(alt.headers.get('cache-control'), 'no-store');
+    const seite = await fetch(`${basis}/verify`, { redirect: 'manual' });
     assert.equal(seite.status, 200);
     assert.match(seite.headers.get('content-type'), /text\/html/);
     assert.equal(seite.headers.get('cache-control'), 'no-store');
