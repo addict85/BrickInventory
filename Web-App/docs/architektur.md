@@ -53,8 +53,8 @@ Absicht, solange es nur von unten gebraucht wird:
   `src/<bereich>/http/`). So bleibt der Schnitt der Dateien Sache des Bereichs.
 
 - SQL steht nur in `src/<bereich>/repository*` und `db/`, auch als Klausel
-  (Sortierung, Bedingung, Upsert). Dienste nehmen aus `db/database` nur die
-  Arbeitseinheit (`transaction`) und den Betrieb (Pool, eigene Verbindung).
+  (Sortierung, Bedingung, Upsert). Dienste nehmen aus `db/database` nur Typen
+  und den Betrieb (Pool, eigene Verbindung).
 - `jobs/` führt Aufträge aus: Pacht, Wiederholung und Abbruch im Worker, je Art
   ein Aufruf in der Bearbeitertabelle. Was ein Auftrag tut, steht in
   `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `katalog` …); die
@@ -70,6 +70,15 @@ Absicht, solange es nur von unten gebraucht wird:
 - Mehrstufige Schreibvorgänge (Änderung und Protokoll, Zeile und Datei) sind ein
   Dienst mit `k.transaktion(async t => …)`: Der Rumpf schreibt über `t`, einen
   Kontext an der Verbindung der Transaktion. So steht am Aufrufort, was zusammen gilt.
+  Das ist die einzige Form: Repositories öffnen keine Transaktion, sie nehmen den
+  `tx` des Aufrufers; `.transaction(` steht nur in `src/infra/bereich.ts` und `db/`.
+- Den Rahmen (Konto oder Systemrahmen, `imSystemkontext`) wählt man vor der
+  Transaktion. Ein Wechsel mitten in ihr liefe über den Pool der anderen Rolle,
+  also neben ihr; `db/database.ts` wirft dann `NebenDerTransaktion`.
+- Zustand im Speicher gehört einem Zugang: Ein Bereich hält ihn in seinen Fächern
+  (`k.faecher`, `src/infra/zwischenspeicher.ts`). Bewusst prozessweiter Zustand
+  (Drosseln, Schranken) steht mit Grund in `src/infra/prozessweit.ts`; modulweite
+  `let` und leer angelegte `Map`/`Set` zählt `test/ratschen.test.js`.
 - Routen importieren nichts aus `db/`, `jobs/` oder `clients/`. Sie umhüllen
   nichts mit `try/catch`; der Fehlerweg des Routers antwortet. Ein `.catch(…)`
   gibt es nur dort, wo die Antwort einen Ersatzwert braucht (etwa der Token
@@ -85,6 +94,32 @@ Absicht, solange es nur von unten gebraucht wird:
 - Eine Transaktion gilt zusätzlich für den ganzen Aufrufpfad (AsyncLocalStorage),
   auch für Repositories ohne `tx`-Parameter: Sicherung gegen eine zweite
   Verbindung mitten in der Arbeitseinheit, nicht der Weg, sie zu erkennen.
+
+## Zeilenschutz: was er leistet und was nicht
+
+Der Zeilenschutz (Migrationen 0111, 0112) fängt einen **vergessenen Filter** auf
+`user_id`: In 34 Tabellen mit Kontodaten (Bestand, Käufe, Merkliste, Einstellungen
+je Konto, Zugangsdaten wie `api_tokens`, `passkeys`, `zweiter_faktor`, Aufträge)
+sieht und ändert die Laufzeitrolle nur Zeilen von `app.konto` und dessen direkten
+Unterkonten, ohne Konto keine. Die Datenbankschicht setzt `app.konto` je
+Transaktion (`set_config(…, true)`) aus dem Konto der Anfrage. Den Systemrahmen
+trägt die Systemrolle (`BYPASSRLS`), keine Einstellung.
+
+Er ist **keine Grenze gegen eingeschleustes SQL**:
+
+- `app.konto` ist eine Sitzungseinstellung. `set_config('app.konto', …)` darf jede
+  Rolle aufrufen; wer SQL über die Laufzeitrolle ausführen kann, setzt sich jedes
+  Konto und sieht dessen Zeilen. Dagegen schützen nur Parameter statt
+  zusammengesetzter Abfragen.
+- Ohne Zeilenschutz sind Tabellen ohne `user_id` je Konto oder mit Zeilen mehrerer
+  Konten: `users`, `user_sessions`, `account_links`, `account_link_invites`,
+  `household_former_links`, `verwaltungsprotokoll`, `rate_limit_attempts`,
+  `global_settings`, Kataloge, Preis- und Bildzwischenspeicher, Laufzustände.
+  Hier schützt allein der Filter im Repository.
+- Die Systemrolle sieht alles. Was im Systemrahmen läuft (Anmeldung vor dem Konto,
+  Aufträge, Verwaltung über Konten, Haushaltswährung), prüft die Berechtigung selbst.
+- Die Laufzeitrolle hat `SELECT, INSERT, UPDATE, DELETE` auf alle Tabellen
+  (`postgres/app-rolle.sh`); Spalten- oder Tabellenrechte trennen nichts weiter.
 
 ## Rangfolge der Bereiche
 
