@@ -59,6 +59,9 @@ Absicht, solange es nur von unten gebraucht wird:
   ein Aufruf in der Bearbeitertabelle. Was ein Auftrag tut, steht in
   `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `katalog` …); die
   Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/auftraege`.
+- Routen rufen Dienste aus der `index.ts` eines Bereichs, nie `xBereich()`: Darin
+  stehen gebundene Repositories und der Zugang. Mehrstufige Schreibvorgänge
+  (Änderung und Protokoll, Zeile und Datei) sind ein Dienst mit einer Transaktion.
 - Routen importieren nichts aus `db/`, `jobs/` oder `clients/`. Sie umhüllen
   nichts mit `try/catch`; der Fehlerweg des Routers antwortet. Ein `.catch(…)`
   gibt es nur dort, wo die Antwort einen Ersatzwert braucht (etwa der Token

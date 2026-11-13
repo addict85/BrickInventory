@@ -21,6 +21,7 @@ export function erzeugeGutscheine(k: GutscheineKontext) {
       'gutscheinAendern',
       'gutscheinAnlegen',
       'gutscheinErsetzen',
+      'gutscheinGesperrt',
       'gutscheinLoeschen',
       'gutscheinPdfMerken',
       'gutscheineDesKontos',

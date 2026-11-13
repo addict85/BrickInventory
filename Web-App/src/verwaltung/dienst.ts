@@ -264,4 +264,17 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     dauer_minuten: Math.ceil((offen?.n ?? 0) / proMinute),
   };
 }
+/** Ohne Setliste nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen
+ * anderen Zweck und verschwinden nur auf Wunsch (`vorschauen`). */
+export async function bildFehlanzeigenVergessen(sets: string[] | null, vorschauen: boolean): Promise<number> {
+  const v = verwaltungBereich().verwaltung;
+  const schluessel = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setFehlanzeigen()).map(r => r.cache_key);
+  if (vorschauen) schluessel.push(...(await v.vorschauFehlanzeigen()).map(r => r.cache_key));
+  return schluessel.length ? vergissFehlend(schluessel) : 0;
+}
+
+export function serverProtokollSeit(minuten: number) {
+  return verwaltungBereich().verwaltung.protokollSeit(minuten);
+}
+
 export { KontoBildzeile } from './repository/verwaltung';

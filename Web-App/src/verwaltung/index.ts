@@ -5,6 +5,7 @@ export { datenZip, istHeikel, konfigExport, konfigImport } from './datenexport';
 export { bildDiagnose, bildProbe, preisProbe } from './diagnose';
 export {
   anleitungenNeuEinreihen,
+  bildFehlanzeigenVergessen,
   bricksetEntfernen,
   bricksetLimitGesetzt,
   bricksetListe,
@@ -17,6 +18,7 @@ export {
   katalogBilderEinreihen,
   preisJobJetzt,
   preisJobStand,
+  serverProtokollSeit,
   quellePruefen,
 } from './dienst';
 export { datenbankBereit, gesundheitsBericht } from './gesundheit';

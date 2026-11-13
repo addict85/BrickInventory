@@ -16,13 +16,15 @@ import {
   getSetting,
 } from '../../src/einstellungen';
 import {
-  kontoBereich,
+  zugaengeListe,
+  zugangBeenden,
+  andereZugaengeBeenden,
+  passwortWechselFaellig,
   setzeEigenesDesign,
   setUserSetting,
   andereSitzungenBeenden,
   profil,
   hashToken,
-  leereTokenCache,
   kontoGedrosselt,
   hinweisNebenher,
   invalidateTheme,
@@ -44,7 +46,7 @@ import {
   perSitzung,
 } from '../../src/konto/http/anmeldung';
 import { freigegeben, alsVerwalter } from '../../src/konto/http/schrittschutz';
-import { haushaltBereich } from '../../src/haushalt';
+import { haushalt } from '../../src/haushalt';
 import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/mail';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
@@ -76,7 +78,7 @@ router.get(
     const eigenerHash = eigener ? hashToken(eigener) : null;
     // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
     // Gerät ausgesperrt wird.
-    const tokens = await kontoBereich().konten.zugaengeDesKontos(req.apiUser.user_id);
+    const tokens = await zugaengeListe(req.apiUser.user_id);
     res.json({
       success: true,
       tokens: tokens.map(t => ({
@@ -111,12 +113,7 @@ router.delete(
     const eigener = bearerToken(req);
     const eigenesGeraet = !!eigener && hashToken(eigener).startsWith(req.pfad.tokenId);
     if (!eigenesGeraet && !(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
-    const { anzahl, label } = await kontoBereich().konten.zugangLoeschen(uid, req.pfad.tokenId);
-    if (anzahl) {
-      leereTokenCache();
-      if (!eigenesGeraet) hinweisNebenher(uid, 'zugang_beendet', label ?? undefined);
-    }
-    res.json({ success: true, deleted: anzahl });
+    res.json({ success: true, deleted: await zugangBeenden(uid, req.pfad.tokenId, eigenesGeraet) });
   },
 );
 
@@ -134,11 +131,7 @@ router.post(
     const { beendet, version } = await andereSitzungenBeenden(uid, req.sessionID);
     // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
     if (perSitzung(req)) req.session.sitzungsVersion = version;
-    const eigener = bearerToken(req);
-    const zugaenge = req.eingabe.zugaenge
-      ? await kontoBereich().konten.andereZugaengeLoeschen(uid, eigener ? hashToken(eigener) : null)
-      : 0;
-    if (zugaenge) leereTokenCache();
+    const zugaenge = req.eingabe.zugaenge ? await andereZugaengeBeenden(uid, bearerToken(req)) : 0;
     if (beendet || zugaenge) hinweisNebenher(uid, 'zugaenge_beendet');
     res.json({ success: true, deleted: beendet, zugaenge });
   },
@@ -250,7 +243,7 @@ router.get(
   '/settings/household',
   requireToken,
   async (req: Anfrage<'GET /api/v1/settings/household'>, res: Antwort<'GET /api/v1/settings/household'>) => {
-    res.json({ success: true, ...(await haushaltBereich().haushalt.haushaltsStand(req.apiUser.user_id)) });
+    res.json({ success: true, ...(await haushalt.haushaltsStand(req.apiUser.user_id)) });
   },
 );
 
@@ -261,7 +254,7 @@ router.post(
     req: Anfrage<'POST /api/v1/settings/household/invite'>,
     res: Antwort<'POST /api/v1/settings/household/invite'>,
   ) => {
-    const r = await haushaltBereich().haushalt.einladungAnlegen(req.apiUser.user_id);
+    const r = await haushalt.einladungAnlegen(req.apiUser.user_id);
     if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
     res.json({ success: true, ...r });
   },
@@ -276,7 +269,7 @@ router.post(
   ) => {
     const zuOft = await kontoGedrosselt('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
     if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-    const r = await haushaltBereich().haushalt.pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
+    const r = await haushalt.pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
     if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler);
     res.json({ success: true, ...r });
   },
@@ -295,7 +288,7 @@ router.post(
     const uid = req.apiUser.user_id;
     // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
     if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password, 'faktor_code'))) return;
-    const r = await haushaltBereich().haushalt.einladungEinloesen(uid, String(req.eingabe.code || ''));
+    const r = await haushalt.einladungEinloesen(uid, String(req.eingabe.code || ''));
     if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
     const ich = await profil(uid);
     if (ich?.email) {
@@ -320,7 +313,7 @@ router.post(
   ) => {
     res.json({
       success: true,
-      ...(await haushaltBereich().haushalt.kontenTrennen(
+      ...(await haushalt.kontenTrennen(
         req.apiUser.user_id,
         kennung(req.eingabe.sub_user_id),
         kennung(req.eingabe.main_user_id),
@@ -338,7 +331,7 @@ router.post(
   ) => {
     const sub = parseInt(String(req.eingabe.sub_user_id), 10);
     if (!Number.isFinite(sub)) return sendeFehler(req, res, 400, 'konto_id_ungueltig');
-    res.json({ success: true, ...(await haushaltBereich().haushalt.verwerfeGetrennt(req.apiUser.user_id, sub)) });
+    res.json({ success: true, ...(await haushalt.verwerfeGetrennt(req.apiUser.user_id, sub)) });
   },
 );
 
@@ -457,7 +450,7 @@ router.get(
   requireAdmin,
   async (req: Anfrage<'GET /api/v1/settings/einrichtung'>, res: Antwort<'GET /api/v1/settings/einrichtung'>) => {
     const wert = async (k: string) => !!(await getGlobalSetting(k));
-    const passwort = await kontoBereich().konten.mussPasswortAendern(req.apiUser.user_id);
+    const passwort = await passwortWechselFaellig(req.apiUser.user_id);
     const quellen = {
       rebrickable: await wert('rebrickable_api_key'),
       brickset: await wert('brickset_api_key'),

@@ -76,3 +76,12 @@ export function prozessStelle<T>(name: string) {
     },
   };
 }
+
+/** Ausgewählte Dienste eines Bereichs im Prozess, ohne Zugang als Parameter:
+ * So erreicht eine Route Dienste, aber weder Repository noch Zugang. Gesucht
+ * wird beim Aufruf, damit ein Test neu verdrahten kann. */
+export function dienstePerAufruf<T, N extends keyof T & string>(hole: () => T, namen: readonly N[]): Pick<T, N> {
+  const raus: Record<string, unknown> = {};
+  for (const n of namen) raus[n] = (...a: unknown[]) => (hole()[n] as (...x: unknown[]) => unknown)(...a);
+  return raus as Pick<T, N>;
+}

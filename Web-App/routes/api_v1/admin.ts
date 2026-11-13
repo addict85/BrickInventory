@@ -2,10 +2,11 @@
  * Prüfung vergessen kann. */
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireApiAdmin } from './middleware';
-import { getLimitForApi, vergissFehlend } from '../../src/katalog';
+import { getLimitForApi } from '../../src/katalog';
 import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen';
 import {
-  verwaltungBereich,
+  bildFehlanzeigenVergessen,
+  serverProtokollSeit,
   cacheStatistik,
   cachesLeeren,
   bricksetLimitGesetzt,
@@ -31,7 +32,7 @@ import {
 } from '../../src/verwaltung';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import { kontoBereich } from '../../src/konto';
+import { verwaltungsProtokoll } from '../../src/konto';
 const router = vertragsRouter({ grosseIds: true });
 
 router.get(
@@ -100,7 +101,7 @@ router.get(
   '/admin/protokoll',
   requireApiAdmin,
   async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/protokoll'>) => {
-    res.json({ success: true, eintraege: await kontoBereich().protokoll.letzteEintraege() });
+    res.json({ success: true, eintraege: await verwaltungsProtokoll() });
   },
 );
 
@@ -136,19 +137,7 @@ router.post(
     res: Antwort<'POST /api/v1/admin/forget-image-misses'>,
   ) => {
     const sets = Array.isArray(req.eingabe.set_numbers) ? req.eingabe.set_numbers.map(String) : null;
-    let entfernt = 0;
-    if (sets?.length) {
-      entfernt = await vergissFehlend(sets.map((sn: string) => 'set:' + sn));
-    } else {
-      // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen Zweck
-      // und sollen nicht nebenbei mitverschwinden.
-      const rows = await verwaltungBereich().verwaltung.setFehlanzeigen();
-      if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
-    }
-    if (req.eingabe.thumbs === true) {
-      const rows = await verwaltungBereich().verwaltung.vorschauFehlanzeigen();
-      if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
-    }
+    const entfernt = await bildFehlanzeigenVergessen(sets, req.eingabe.thumbs === true);
     // Die anderen Prozesse frischen den Merker im Fünf-Minuten-Takt aus der Tabelle auf.
     res.json({ success: true, entfernt, hinweis: 'Greift in allen Arbeitsprozessen binnen fünf Minuten.' });
   },
@@ -276,7 +265,7 @@ router.get(
   requireApiAdmin,
   async (req: Anfrage<'GET /api/v1/admin/logs'>, res: Antwort<'GET /api/v1/admin/logs'>) => {
     const minutes = Math.min(2880, Math.max(1, req.abfrage.minutes || 15));
-    const rows = await verwaltungBereich().verwaltung.protokollSeit(minutes);
+    const rows = await serverProtokollSeit(minutes);
     res.json({ success: true, minutes, count: rows.length, logs: rows });
   },
 );
