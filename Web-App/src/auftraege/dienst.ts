@@ -4,7 +4,7 @@
 import { imNamenVon } from '../infra/kontoKontext';
 import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
-import { pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
+import { PREISPOSTEN_HOECHSTENS, pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
 import { auftraegeBereich } from './prozess';
 import type { AuftraegeDienste } from './bereich';
 
@@ -31,9 +31,29 @@ export async function stelleAuftragEin<A extends AuftragsArt>(
   return id;
 }
 
-/** Zählt zugleich als Lebenszeichen. */
+/** Fehlende Preise eines Kontos in einer Währung: höchstens ein wartender Auftrag,
+ * der jede neue Meldung aufnimmt (repository: ergaenzePreisAuftrag). */
+export async function merkePreiseVor(nutzlast: NutzlastEingabe<'preise_nachladen'>): Promise<string> {
+  const n = pruefeNutzlast('preise_nachladen', nutzlast);
+  const ad = auftraegeBereich();
+  const id = await ad.auftraege.ergaenzePreisAuftrag(
+    `preise_nachladen:${n.user_id}:${n.waehrung}`,
+    n,
+    PREISPOSTEN_HOECHSTENS,
+  );
+  await ad.db.benachrichtigung.notify(repo.AUFTRAG_KANAL, 'preise_nachladen');
+  return id;
+}
+
+/** Zählt zugleich als Lebenszeichen. erledigt und gesamt sind Zählungen (Vertrag
+ * und App: ganzzahlig); ein Bruchteil wie 5,532 von 8 Schritten stand als „5.532 / 8“ da. */
 export async function setzeFortschritt(a: Belegung, f: Fortschritt, fristSek: number): Promise<boolean> {
-  const z = await auftraegeBereich().auftraege.schreibeFortschritt(a, f, fristSek);
+  const stand: Fortschritt = { ...f };
+  for (const k of ['erledigt', 'gesamt'] as const) {
+    const x = f[k];
+    if (typeof x === 'number' && Number.isFinite(x)) stand[k] = Math.floor(x);
+  }
+  const z = await auftraegeBereich().auftraege.schreibeFortschritt(a, stand, fristSek);
   await meldeStand(z);
   return !!z;
 }

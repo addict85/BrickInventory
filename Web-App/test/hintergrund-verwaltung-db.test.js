@@ -14,6 +14,12 @@
  *   D  in bricksetListe() `to_char(…)` durch den rohen Zeitstempel ersetzt →
  *      rot: „die Brickset-Liste behält ihre Felder“ (retry_after kein Datum)
  *
+ * Seit Migration 0110 (am 13.11.2026 gemessen):
+ *   E  in auftraegeImUeberblick() wieder 'fehler' und 'abgebrochen' als Vorgabe →
+ *      rot: „die Liste zeigt nur Anstehende …“ (beendete stehen in der Liste)
+ *   F  in setzeVerschoben() `wartet = NOT $3` entfernt → rot: derselbe Test
+ *      (wartet false statt true)
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -78,6 +84,14 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   // Ein Intervall aus einem früheren Lauf liesse den Termin schon richtig stehen.
   await db.run(`DELETE FROM global_settings WHERE key = 'price_job_interval_minutes'`);
   await Z.planeAlle();
+  // Ein verschobener (Kontingent) und ein abgebrochener Auftrag neben dem gescheiterten.
+  const verschoben = await A.stelleAuftragEin('anleitung', { set_number: '44444-1' });
+  const beleg = await A.belegeAuftrag(['anleitung'], 60);
+  assert.equal(beleg.id, verschoben, 'der verschobene Auftrag sollte als erster belegt werden');
+  await A.verschoben(beleg, new Date(Date.now() + 3_600_000), 'Tageskontingent erschöpft', false);
+  const abgebrochen = await A.stelleAuftragEin('nachlauf', { schritt: 'vorschauen' });
+  await A.brichAb(abgebrochen);
+
   const wartend = [];
   for (const sn of ['11111-1', '22222-1'])
     wartend.push(await A.stelleAuftragEin('anleitung', { set_number: sn }, { schluessel: `anleitung:${sn}` }));
@@ -86,10 +100,33 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ('jobs_lebenszeichen', NOW()::text)
                 ON CONFLICT (schluessel) DO UPDATE SET wert = NOW()::text`);
 
-  await t.test('die Liste zeigt Wartende, Geplante und Gescheiterte', async () => {
+  await t.test('die Liste zeigt nur Anstehende, die Zusammenfassung auch Gescheiterte', async st => {
+    st.after(() => db.run('DELETE FROM auftraege WHERE id = ANY($1)', [[verschoben, abgebrochen]]));
     const r = await rufe('GET', '/admin/auftraege');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const { auftraege, zusammenfassung, job_prozess } = r.body;
+    assert.deepEqual(
+      auftraege.filter(a => a.id === kaputt || a.id === abgebrochen),
+      [],
+      'beendete Aufträge stehen in der Liste der einzelnen',
+    );
+    assert.deepEqual([...new Set(auftraege.map(a => a.status))].sort(), ['offen']);
+    const w = auftraege.find(a => a.id === verschoben);
+    assert.deepEqual([w?.status, w?.wartet, w?.fehler], ['offen', true, 'Tageskontingent erschöpft']);
+    assert.equal(auftraege.find(a => a.set_number === '11111-1')?.wartet, false, 'ein gewöhnlicher wartet nicht');
+    assert.ok(zusammenfassung.some(z => z.art === 'nachlauf' && z.status === 'fehler' && z.anzahl === 1));
+    assert.equal(job_prozess.laeuft, true);
+    const f = (await rufe('GET', '/admin/auftraege?status=fehler')).body.auftraege.find(a => a.id === kaputt);
+    assert.deepEqual(
+      [f?.status, f?.fehler, f?.wartet],
+      ['fehler', 'Quelle weg', false],
+      'mit Filter bleibt er abrufbar',
+    );
+  });
+
+  await t.test('die Liste zeigt Wartende und Geplante', async () => {
+    const r = await rufe('GET', '/admin/auftraege');
+    const { auftraege, zusammenfassung } = r.body;
     assert.deepEqual(
       auftraege
         .filter(a => a.art === 'anleitung')
@@ -101,10 +138,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
       auftraege.some(a => a.art === 'preise' && a.geplant === true),
       'geplante Läufe fehlen',
     );
-    const f = auftraege.find(a => a.id === kaputt);
-    assert.deepEqual([f.status, f.fehler], ['fehler', 'Quelle weg']);
     assert.ok(zusammenfassung.some(z => z.art === 'anleitung' && z.status === 'offen' && z.anzahl === 2));
-    assert.equal(job_prozess.laeuft, true);
     assert.equal((await rufe('GET', '/admin/auftraege?art=gibtsnicht')).status, 400);
   });
 

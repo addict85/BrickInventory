@@ -15183,6 +15183,9 @@
           "geplant": {
             "type": "boolean"
           },
+          "wartet": {
+            "type": "boolean"
+          },
           "set_number": {
             "type": [
               "string",
@@ -15204,6 +15207,7 @@
           "fortschritt",
           "fehler",
           "geplant",
+          "wartet",
           "set_number"
         ],
         "additionalProperties": {}

@@ -150,8 +150,8 @@ interface VerwaltungApi {
     suspend fun redownloadMissingImages(): Response<GenericAdminResponse>
 
     /**
-     * Hintergrundarbeiten aus der Auftragstabelle; ohne [status] alles ausser
-     * „erledigt“. Nur mit vollem Scope, sonst 403.
+     * Hintergrundarbeiten aus der Auftragstabelle; ohne [status] nur „offen“
+     * und „läuft“. Nur mit vollem Scope, sonst 403.
      */
     @GET("api/v1/admin/auftraege")
     suspend fun getAuftraege(

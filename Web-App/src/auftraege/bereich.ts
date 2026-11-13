@@ -24,6 +24,7 @@ export function erzeugeAuftraege(k: AuftraegeKontext) {
       'belegeAuftrag',
       'bricksetWartende',
       'bricksetWiedervorlage',
+      'ergaenzePreisAuftrag',
       'fuegeAuftragEin',
       'gehoertNoch',
       'gibZurueck',
