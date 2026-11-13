@@ -306,6 +306,51 @@ function yBetraegeInnen(teilung, min, yOf, links, cur, f, meiden = []) {
 }
 
 /**
+ * Zeilen für eine Beschriftung in `platz` px. 0,68 em je Zeichen: Mit 0,62 passte „Kaufpreis 205,00 €“
+ * rechnerisch in eine Zeile und wurde links abgeschnitten.
+ * @param {string} text @param {number} platz @param {number} f
+ */
+function umbrechen(text, platz, f) {
+  const zeichen = 12 * f * 0.68;
+  /** @type {string[]} */
+  const zeilen = [];
+  for (const wort of String(text).split(' ')) {
+    const z = zeilen.length ? zeilen[zeilen.length - 1] + ' ' + wort : wort;
+    if (zeilen.length && z.length * zeichen <= platz) zeilen[zeilen.length - 1] = z;
+    else zeilen.push(wort);
+  }
+  return zeilen;
+}
+
+/**
+ * Beschriftungen von Bezugslinien, die im Bild umbrächen, stehen unter dem Diagramm: Mehrzeilig lagen sie
+ * über Kurve und Endpunkt. `hoehe` ist der Platz, den das Diagramm dafür unten anfügt.
+ * @param {{ text: string, farbe: string }[]} eintraege @param {number} W @param {number} f
+ */
+function bezugsLegende(eintraege, W, f) {
+  let y = 0;
+  const teile = eintraege.map(e => {
+    const zeilen = umbrechen(e.text, W - 8 - 22 * f, f);
+    const oben = y;
+    y += zeilen.length * 14 * f + 4 * f;
+    return { e, zeilen, oben };
+  });
+  /** @param {number} start Oberkante des Bereichs */
+  const svg = start =>
+    teile.map(({ e, zeilen, oben }) => {
+      const b = start + oben + 12 * f,
+        x = 4 + 22 * f;
+      const tspans = zeilen.map((z, i) => (i ? html`<tspan x="${x}" dy="${14 * f}">${z}</tspan>` : z));
+      return html`<g class="bezug-legende"><line x1="4" y1="${(b - 4 * f).toFixed(1)}" x2="${4 + 16 * f}" y2="${(b - 4 * f).toFixed(1)}" stroke="${e.farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="${x}" y="${b.toFixed(1)}" font-size="${12 * f}" font-weight="600" fill="var(--txt)" font-family="inherit">${tspans}</text></g>`;
+    });
+  return { hoehe: teile.length ? y + 6 * f : 0, svg };
+}
+
+/** Passt die Beschriftung einer Bezugslinie in eine Zeile über der Fläche? @param {string} text @param {number} links @param {number} rechts @param {number} f */
+const imBild = (text, links, rechts, f) => umbrechen(text, rechts - links - 8, f).length === 1;
+
+/**
  * Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung am rechten Ende. `endeY` ist
  * die Höhe der Kurve dort: Läge die Schrift auf ihr, steht sie auf der anderen Seite der Linie.
  * @param {number} wert
@@ -327,18 +372,9 @@ function bezugsLinie(
   /** @type {number} */ unten = Infinity,
 ) {
   const y = yOf(wert);
-  // Breiter als die Zeichenfläche: umbrechen statt links über die Achse hinaus (am Telefon und bei grosser
-  // Schrift stand sonst nur „…rkpreis 2.149 €“). 0,68 em je Zeichen: Mit 0,62 passte „Kaufpreis 205,00 €“
-  // rechnerisch in eine Zeile und wurde links abgeschnitten.
-  const platz = rechts - links - 8,
-    zeichen = 12 * f * 0.68,
-    zeilen = [];
-  for (const wort of String(text).split(' ')) {
-    /** @type {string} */
-    const z = zeilen.length ? zeilen[zeilen.length - 1] + ' ' + wort : wort;
-    if (zeilen.length && z.length * zeichen <= platz) zeilen[zeilen.length - 1] = z;
-    else zeilen.push(wort);
-  }
+  const linie = html`<line x1="${links}" y1="${y.toFixed(1)}" x2="${rechts}" y2="${y.toFixed(1)}" stroke="${farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+  if (!text) return html`<g class="einstand-linie">${linie}</g>`;
+  const zeilen = umbrechen(text, rechts - links - 8, f);
   const hoehe = 14 * f * (zeilen.length - 1);
   // Über der Linie, ausser die Kurve endet dort oder oben ist kein Platz (Linie am oberen Rand).
   const obenKeinPlatz = y - 6 * f - hoehe - 12 * f < 0; // 12 px je Faktor: die Oberlänge der Schrift
@@ -347,7 +383,7 @@ function bezugsLinie(
     (endeY != null && endeY < y && y - endeY < 26 * f + hoehe && y + 16 * f + hoehe + 4 * f <= unten) || obenKeinPlatz;
   const erste = darunter ? y + 16 * f : y - 6 * f - hoehe;
   const tspans = zeilen.map((z, i) => (i ? html`<tspan x="${rechts - 4}" dy="${14 * f}">${z}</tspan>` : z));
-  return html`<g class="einstand-linie"><line x1="${links}" y1="${y.toFixed(1)}" x2="${rechts}" y2="${y.toFixed(1)}" stroke="${farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
+  return html`<g class="einstand-linie">${linie}
     <text x="${rechts - 4}" y="${erste.toFixed(1)}" font-size="${12 * f}" font-weight="600" fill="var(--txt)" text-anchor="end" font-family="inherit"
       paint-order="stroke" stroke="var(--sur)" stroke-width="4" stroke-linejoin="round">${tspans}</text></g>`;
 }
@@ -445,10 +481,21 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
     range = max - min || 1;
   const f = schriftFaktor(),
     fs = 12 * f;
-  const W = breite,
-    H = Math.round(200 * (1 + (f - 1) * 0.6));
+  const W = breite;
   const lage = achsenLage(teilung, CURRENCY, fs, W, 14 * f);
   const PAD = { l: lage.links, r: lage.innen ? 6 * f : 14 * f, t: lage.innen ? 22 * f : 12 * f, b: 46 * f };
+  const kaufText = (/** @type {{ name: string, kauf: number }} */ sd) =>
+    `${tRaw('detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, CURRENCY)}`;
+  const legende = bezugsLegende(
+    kaeufe
+      .filter(sd => !imBild(kaufText(sd), PAD.l, W - PAD.r, f))
+      .map(sd => ({ text: kaufText(sd), farbe: sd.color })),
+    W,
+    f,
+  );
+  const hKurve = Math.round(200 * (1 + (f - 1) * 0.6)),
+    H = hKurve + legende.hoehe;
+  PAD.b += legende.hoehe;
   const iw = W - PAD.l - PAD.r,
     ih = H - PAD.t - PAD.b,
     unten = PAD.t + ih;
@@ -463,11 +510,11 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
       yOf,
       PAD.l,
       W - PAD.r,
-      `${tRaw('detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, CURRENCY)}`,
+      imBild(kaufText(sd), PAD.l, W - PAD.r, f) ? kaufText(sd) : '',
       sd.color,
       yOf(sd.pts[sd.pts.length - 1].y),
       f,
-      H,
+      hKurve,
     ),
   );
 
@@ -484,7 +531,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
       x: PAD.l + ((s.t - toTime(first)) / span) * iw,
       text: s.text,
     })),
-    H - 26 * f,
+    hKurve - 26 * f,
     W - PAD.r,
     f,
     fs,
@@ -492,7 +539,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
   const legend = series.map(
     (sd, i) =>
       // Ab dem linken Rand statt ab der Achse: Bei grosser Schrift ist der Achsenrand so breit, dass „Neuware“ sonst rechts abbricht.
-      html`<g transform="translate(${4 + i * Math.min(120 * f, (W - 8) / series.length)}, ${H - 6 * f})">
+      html`<g transform="translate(${4 + i * Math.min(120 * f, (W - 8) / series.length)}, ${hKurve - 6 * f})">
        <line x1="0" y1="${-4 * f}" x2="${16 * f}" y2="${-4 * f}" stroke="${sd.color}" stroke-width="2.5" stroke-linecap="round"/>
        <text x="${22 * f}" y="0" font-size="${fs}" fill="var(--txt)" font-family="inherit">${sd.name}</text>
      </g>`,
@@ -556,7 +603,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
         : ''
     }
     ${xTicks}
-    ${legend}
+    ${legend}${legende.svg(hKurve)}
     ${fk.svg}
   </svg>`;
 }
@@ -591,9 +638,17 @@ export function portfolioChartSVG(
   const f = schriftFaktor(),
     fs = 12 * f;
   const W = breite,
-    H = Math.round(180 * (1 + (f - 1) * 0.6)),
     lage = achsenLage(teilung, cur, fs, W, 16 * f);
   const PAD = { l: lage.links, r: lage.innen ? 6 * f : 16 * f, t: lage.innen ? 24 * f : 14 * f, b: 32 * f };
+  // Schmal nur „Kaufpreis“: Der Zusatz („nur bewertete Posten“) steht in der Kennzahl darunter.
+  const bezugText = mitEinstand
+    ? `${W < 560 ? tRaw('finance.chart.kaufpreis') : einstandText} ${fmtN(einstand, cur)}`
+    : '';
+  const unterDemBild = !!bezugText && !imBild(bezugText, PAD.l, W - PAD.r, f);
+  const legende = bezugsLegende(unterDemBild ? [{ text: bezugText, farbe: 'var(--txt)' }] : [], W, f);
+  const hKurve = Math.round(180 * (1 + (f - 1) * 0.6)),
+    H = hKurve + legende.hoehe;
+  PAD.b += legende.hoehe;
   const iw = W - PAD.l - PAD.r,
     ih = H - PAD.t - PAD.b,
     unten = PAD.t + ih;
@@ -633,7 +688,7 @@ export function portfolioChartSVG(
   if (mitZeit) {
     xLabels = xBeschriftung(
       zeitTeilung(t0, zeiten[n - 1], Math.floor(iw / (70 * f))).map(s => ({ x: pxZeit(s.t), text: s.text })),
-      H - 8 * f,
+      hKurve - 8 * f,
       W - PAD.r,
       f,
       fs,
@@ -642,24 +697,22 @@ export function portfolioChartSVG(
     const step = Math.max(1, Math.ceil(n / Math.max(2, Math.min(7, Math.floor(iw / (70 * f))))));
     for (let i = 0; i < n; i += step)
       if (data[i].day)
-        xLabels = html`${xLabels}${html`<text x="${px(i).toFixed(1)}" y="${H - 8 * f}" text-anchor="middle" font-size="${fs}" fill="var(--mut)" font-family="inherit">${data[i].day}</text>`}`;
+        xLabels = html`${xLabels}${html`<text x="${px(i).toFixed(1)}" y="${hKurve - 8 * f}" text-anchor="middle" font-size="${fs}" fill="var(--mut)" font-family="inherit">${data[i].day}</text>`}`;
   }
 
   const wann = (/** @type {number} */ i) => (mitZeit ? fmtDatum(new Date(zeiten[i])) : data[i].day);
   const letzter = html`<circle cx="${px(n - 1).toFixed(1)}" cy="${py(vals[n - 1]).toFixed(1)}" r="${4 * f}" fill="${color}" stroke="var(--sur)" stroke-width="1.5"/>`;
-  // Schmal nur „Kaufpreis“: Der Zusatz („nur bewertete Posten“) steht in der Kennzahl darunter.
-  const linienText = W < 560 ? tRaw('finance.chart.kaufpreis') : einstandText;
   const linie = mitEinstand
     ? bezugsLinie(
         einstand,
         py,
         PAD.l,
         W - PAD.r,
-        `${linienText} ${fmtN(einstand, cur)}`,
+        unterDemBild ? '' : bezugText,
         'var(--txt)',
         py(vals[n - 1]),
         f,
-        H,
+        hKurve,
       )
     : '';
   const fk = fadenkreuzTeile(
@@ -692,7 +745,7 @@ export function portfolioChartSVG(
   ${yAchse(teilung, min, py, PAD.l, W - PAD.r, PAD.t, unten, cur, f, lage.innen)}${xLabels}
   <polygon points="${area}" fill="url(#pcg)"/>
   <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-  ${linie}${letzter}
+  ${linie}${letzter}${legende.svg(hKurve)}
   ${lage.innen ? yBetraegeInnen(teilung, min, py, PAD.l, cur, f, mitEinstand ? [py(einstand)] : []) : ''}
   ${fk.svg}
 </svg>`;

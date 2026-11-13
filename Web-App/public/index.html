@@ -49,8 +49,8 @@
   <div class="sg-inhalt"><i class="sg-titel"></i><div class="sg-karten"><i></i><i></i><i></i><i></i></div><div class="sg-kacheln"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
 </div>
 <div id="start-offline" role="alert" hidden>
-  <p><strong data-i18n="startup.offline_titel">Server nicht erreichbar</strong></p>
-  <p data-i18n="startup.offline_text">Ein neuer Versuch läuft von selbst.</p>
+  <p><strong id="start-offline-titel" data-i18n="startup.offline_titel">Server nicht erreichbar</strong></p>
+  <p id="start-offline-text" data-i18n="startup.offline_text">Ein neuer Versuch läuft von selbst.</p>
   <button type="button" id="start-erneut" data-i18n="startup.offline_knopf">Erneut versuchen</button>
 </div>
 <!-- Erst nach dem Startgerüst: Stile und Design-Skript halten nur den Rest der Seite an. -->
@@ -827,7 +827,7 @@
           <h2 class="stit" data-i18n="settings.general_title" data-ico="einstellungen">Erscheinungsbild</h2>
           <div class="sform">
             <div class="fg"><label for="mon-app-theme" data-i18n="settings.app_theme">App-Design</label>
-              <select id="mon-app-theme">
+              <select id="mon-app-theme" data-change="speichereAppDesign">
                 <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
                 <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
                 <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (immer dunkel)</option>
@@ -837,7 +837,6 @@
               </select>
             </div>
             <div class="text-klein abstand-o-minus4" data-i18n="settings.app_theme_hint">Vorgabe für alle Konten (Web &amp; App). Jedes Konto kann unter „Konto“ ein eigenes Design wählen.</div>
-            <button class="btn bp btn-speichern" id="btn-save-theme" data-schreibend data-i18n="settings.save" data-ico="speichern">Speichern</button>
           </div>
         </div>
         <div class="ssec" id="einst-bl">
@@ -904,15 +903,15 @@
             <!-- Formular wie bei den Anmeldefeldern; display:contents haelt die
                  Zeile (.frow) unveraendert. -->
             <form class="nur-inhalt" data-submit="btn-cu">
-            <div class="frow">
+            <div class="frow nutzer-neu">
               <div class="fg"><label for="nu-n" data-i18n="settings.users_username">Benutzername</label><input type="text" id="nu-n" autocomplete="off" aria-describedby="nu-n-regel" />
                 <div class="text-klein" id="nu-n-regel" data-i18n="users.name_regel">3–32 Zeichen: Buchstaben, Zahlen und _ . - (ohne Leerzeichen)</div></div>
               <div class="fg"><label for="nu-p" data-i18n="settings.users_password">Passwort</label><input type="password" id="nu-p" autocomplete="new-password" aria-describedby="nu-p-regel" />
                 <div class="text-klein" id="nu-p-regel" data-i18n="pflicht.regel" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
-              <div class="fg max-130-rechts">
+              <div class="fg max-130-rechts nutzer-rolle">
                 <!-- Umschliessendes Label: die Checkbox liegt darin, ein for= wäre falsch
                      (und zeigte hier versehentlich auf ein fremdes Feld). -->
-                <label data-stil="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input class="w-auto" type="checkbox" id="nu-a" /> <span data-i18n="users.role.admin">Verwalter</span></label>
+                <label><input class="w-auto" type="checkbox" id="nu-a" /> <span data-i18n="users.role.admin">Verwalter</span></label>
               </div>
               <button type="button" class="btn bp" id="btn-cu" data-schreibend data-i18n="settings.users_create" data-ico="plus">Erstellen</button>
             </div>
@@ -1662,7 +1661,6 @@
       <div class="sparkline-wrap" id="mk-m-sparkline-content"></div>
     </div>
     <div class="mfooter verteilt umbruch luecke-8">
-      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Von der Merkliste löschen" data-i18n="wanted.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
       <!-- Marcos Vorgabe: die beiden Kaufadressen NEBENEINANDER, und darunter … -->
       <div data-stil="display:flex;flex-direction:column;gap:16px;align-items:stretch">
         <div data-stil="display:flex;gap:8px;flex-wrap:wrap;align-items:stretch">
@@ -1671,6 +1669,12 @@
         </div>
         <button class="btn bp zentriert" id="mk-m-take" data-click="merkpostenDetailUebernehmen" data-i18n="wanted.take" data-ico="plus">Zur Sammlung hinzufügen</button>
       </div>
+      <details class="mehr-menue v-mehr nach-oben">
+        <summary class="btn bs" data-i18n="common.more_actions" data-ico="menue">Weitere Aktionen</summary>
+        <div class="mehr-liste">
+      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Von der Merkliste löschen" data-i18n="wanted.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
+        </div>
+      </details>
     </div>
   </div>
 </div>

@@ -3,7 +3,7 @@
 import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { api } from './api.js';
-import { ico, G, setzeHtml } from './dom.js';
+import { ico, G, setzeHtml, wennSichtbar } from './dom.js';
 import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
 import { html } from './escapen.js';
@@ -47,9 +47,7 @@ export async function pollJobStatus() {
       sdet.textContent = progress.set ? tRaw('monitor.current', { set: progress.set }) : '';
     }
     btn.disabled = true;
-    // Poll faster while running
-    if (jobPollTimer) clearTimeout(jobPollTimer);
-    jobPollTimer = setTimeout(pollJobStatus, 2000);
+    naechsteJobAbfrage(2000);
   } else {
     dot.style.animation = '';
     pwrap.style.display = 'none';
@@ -68,10 +66,14 @@ export async function pollJobStatus() {
       stxt.textContent = tRaw('monitor.waiting_first');
       sdet.textContent = j.nextRun ? `${tRaw('monitor.next_run')} ${fmtDatum(j.nextRun, 'wann')}` : '';
     }
-    // Poll every 30s while idle
-    if (jobPollTimer) clearTimeout(jobPollTimer);
-    jobPollTimer = setTimeout(pollJobStatus, 30000);
+    naechsteJobAbfrage(30000);
   }
+}
+/** Schnell, solange der Preislauf läuft; im verborgenen Tab ruht die Abfrage (wennSichtbar). @param {number} ms */
+function naechsteJobAbfrage(ms) {
+  if (jobPollTimer) clearTimeout(jobPollTimer);
+  const uhr = setTimeout(() => wennSichtbar(() => jobPollTimer === uhr && pollJobStatus()), ms);
+  jobPollTimer = uhr;
 }
 
 /** @param {HTMLButtonElement} btn */

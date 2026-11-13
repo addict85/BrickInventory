@@ -2,7 +2,7 @@
 import { echt, registerActions } from './registry.js';
 import { alsHtml, escHtmlAttr, esc, html, ungeprueft } from './escapen.js';
 import { api, apiDaten } from './api.js';
-import { ico, G, setzeHtml } from './dom.js';
+import { ico, G, setzeHtml, wennSichtbar } from './dom.js';
 import { fmtDatum } from './format.js';
 import { meldeAmFeld, toast } from './meldungen.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
@@ -10,14 +10,10 @@ import { LANG, locale, t, tRaw } from '../i18n.js';
 /** @typedef {import('../../frontend-typen/vertrag').Auftrag} Auftrag */
 /** @typedef {import('../../frontend-typen/vertrag').JobStatus} JobStatus */
 
-/**
- * Zeitgeber, der die Jobliste nachzieht, solange der Reiter offen ist.
- *
- * Er steht hier, weil nur diese Datei ihn setzt — js/gallery.js hält ihn beim Reiterwechsel an, dafür gibt
- * es den Setter unten.
- */
-/** @type {ReturnType<typeof setInterval> | null} */
+/** Zeitgeber der Jobliste, solange der Reiter offen ist. @type {ReturnType<typeof setTimeout> | null} */
 let _monitorTimer = null;
+/** Zählt die Läufe: Eine Antwort nach dem Anhalten plant keine neue Runde. */
+let _monitorLauf = 0;
 
 function openLogViewer() {
   const win = window.open('', '_blank', 'width=1200,height=750,resizable=yes,scrollbars=yes');
@@ -27,9 +23,7 @@ function openLogViewer() {
   }
   const base = window.location.origin;
 
-  // Die Zeitspannen als Daten statt als sechs ausgeschriebene <option>: So steht die Beschriftung EINMAL da,
-  // in der Sprache des Nutzers. Vorher waren es sechs deutsche Literale — in einem Fenster, das ein
-  // englischer Verwalter genauso oeffnet.
+  // Die Zeitspannen als Daten: Die Beschriftung steht einmal da, in der Sprache des Nutzers.
   const spannen = [15, 30, 60, 360, 1440, 2880]
     .map(min => {
       const text =
@@ -63,8 +57,7 @@ function openLogViewer() {
         'log.none_found': tRaw('log.none_found'),
         'log.entries': tRaw('log.entries'),
         'toast.error': tRaw('toast.error'),
-        // Die beiden Beschriftungen des Auto-Knopfes wechseln zur Laufzeit; logviewer.js hatte sie deshalb
-        // als deutsche Literale.
+        // Die Beschriftungen des Auto-Knopfes wechseln zur Laufzeit und gehören deshalb mit hinein.
         'log.auto': tRaw('log.auto'),
         'log.stop': tRaw('log.stop'),
       }),
@@ -155,11 +148,7 @@ function subAusCodes(teile, sub) {
   return stuecke.includes(null) ? translateJobSub(sub) : stuecke.join(' · ');
 }
 
-// Übersetzt Server-seitige Job-Sub-Texte (background jobs kennen die Nutzersprache nicht). Bekannte Muster
-// werden clientseitig ersetzt.
-/**
- * @param {string} sub
- */
+/** Job-Untertitel des Servers in der Nutzersprache: Die Jobs kennen sie nicht. @param {string} sub */
 function translateJobSub(sub) {
   if (!sub) return '';
   let m;
@@ -312,10 +301,17 @@ const PROXY_HINWEIS = {
 export async function loadMonitor() {
   const el = G('monitor-content');
   if (!el) return;
-  if (_monitorTimer) clearInterval(_monitorTimer);
+  stoppeMonitor();
+  const lauf = ++_monitorLauf;
+  // Ruhig alle 15 s, solange etwas läuft alle 5 s; ein gescheiterter Abruf plant die nächste Runde trotzdem.
+  const runde = async () => {
+    const aktiv = await render();
+    if (lauf !== _monitorLauf) return;
+    _monitorTimer = setTimeout(() => wennSichtbar(() => lauf === _monitorLauf && runde()), aktiv ? 5000 : 15000);
+  };
   const render = async () => {
     const d = await apiDaten('GET', '/v1/admin/jobs');
-    if (!d?.success) return;
+    if (!d?.success) return false;
     const { jobs, schedules } = d;
     // db und lastRun nennt der Vertrag nicht (JobsResponse); der Server schickt sie mit.
     const dbStats =
@@ -367,14 +363,9 @@ export async function loadMonitor() {
     }
 
     await zeigeAuftraege();
-
-    // Schneller auffrischen, solange Bild- oder PDF-Aufträge laufen
-    const anyActive = Object.values(jobs).some(j => j.status === 'running');
-    const interval = anyActive ? 2000 : 5000;
-    if (_monitorTimer) clearInterval(_monitorTimer);
-    _monitorTimer = setInterval(render, interval);
+    return Object.values(jobs).some(j => j.status === 'running');
   };
-  await render();
+  await runde();
 }
 
 /**
@@ -410,11 +401,8 @@ const STATUSNAMEN = {
 /** Der Name einer Auftragsart in der Oberflächensprache, fertig maskiert; unbekannte bleiben, wie sie sind. */
 const artName = (/** @type {string} */ art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : art);
 
-/**
- * Eine Fehlermeldung des Servers in einem Satz, den man ohne Netzwerkwissen versteht; der Originaltext bleibt
- * aufklappbar, er ist für die Fehlersuche da.
- * @param {unknown} text
- */
+/** Eine Serverfehlermeldung in einem Satz ohne Netzwerkwissen; das Original bleibt zur Fehlersuche aufklappbar.
+ * @param {unknown} text */
 export function fehlerKurz(text) {
   const s = String(text || '');
   if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|fetch failed|network|socket hang up/i.test(s))
@@ -435,8 +423,18 @@ function fehlerKasten(text) {
 const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @type {string} */ text, wofuer = '') =>
   html`<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${arg}"${wofuer ? html` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
 const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : s);
-/** Eine Zeile der einzelnen Aufträge. */
-const auftragsZeile = (/** @type {Auftrag} */ a) => {
+/** Eine Zeile der einzelnen Aufträge. Steht eine Art mehrfach offen, nennt die Rolle am Namen, welcher Eintrag
+ * Wiederholung und welcher regulärer Lauf ist. @param {Auftrag} a @param {Set<string>} mehrfach */
+const auftragsZeile = (a, mehrfach) => {
+  const offen = a.status === 'offen' || a.status === 'laeuft';
+  const rolle =
+    !offen || !mehrfach.has(a.art)
+      ? ''
+      : a.geplant
+        ? tRaw('monitor.auftraege.regulaer')
+        : a.versuche > 1 || a.fehler
+          ? tRaw('monitor.auftraege.wiederholung')
+          : '';
   const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'wann');
   // Verschoben ist nicht gescheitert: Das sagt der Server (wartet), nicht der Text des Grundes.
   const wartet = a.status === 'offen' && a.wartet && !!a.faellig_ab && new Date(a.faellig_ab) > new Date();
@@ -465,7 +463,7 @@ const auftragsZeile = (/** @type {Auftrag} */ a) => {
       ? knopf('auftragAbbrechen', a.id, tRaw('monitor.auftraege.abbrechen'))
       : '';
   return html`<tr>
-    <td><strong>${artName(a.art)}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}</td>
+    <td><strong>${artName(a.art)}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}${rolle ? html` <span class="mon-rolle">${rolle}</span>` : ''}</td>
     <td><span class="mon-zustand mon-${wartet ? 'wartet' : a.status}">${wartet ? tRaw('monitor.auftraege.wartet') : statusName(a.status)}</span></td>
     <td>${ungeprueft(wann)}</td>
     <td>${ungeprueft(hinweis)}</td>
@@ -473,10 +471,8 @@ const auftragsZeile = (/** @type {Auftrag} */ a) => {
   </tr>`;
 };
 
-/**
- * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers (GET /api/v1/admin/auftraege) — je Art die
- * Zahlen mit „Jetzt“ und „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
- */
+/** Die Karte „Hintergrundarbeiten“: je Art die Zahlen mit „Jetzt“ und „Leeren“, darunter die einzelnen
+ * laufenden, wartenden und gescheiterten Aufträge (GET /api/v1/admin/auftraege). */
 async function zeigeAuftraege() {
   const el = G('auftraege-karte');
   if (!el) return;
@@ -501,6 +497,8 @@ async function zeigeAuftraege() {
   const ziffer = (/** @type {number | undefined} */ n, klasse = '') =>
     html`<span class="mon-ziffer${n ? html`${' '}${ungeprueft(klasse)}` : ' null'}">${n || 0}</span>`;
   const mehr = d.auftraege.length - 40;
+  const jeArt = d.auftraege.filter(a => a.status === 'offen' || a.status === 'laeuft').map(a => a.art);
+  const mehrfach = new Set(jeArt.filter((art, i) => jeArt.indexOf(art) !== i));
   const pause = (/** @type {AuftragPause} */ p) =>
     t('monitor.auftraege.pause', { art: artName(p.art), bis: fmtDatum(p.bis, 'wann'), grund: p.grund || '' });
   setzeHtml(
@@ -533,17 +531,13 @@ async function zeigeAuftraege() {
       <summary class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
       <div class="tw"><table class="dt mon-tabelle" aria-labelledby="mon-t-auftraege">
       <thead><tr><th>${tRaw('monitor.col.auftrag')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeit')}</th><th>${tRaw('monitor.col.hinweis')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
-      <tbody>${d.auftraege.slice(0, 40).map(auftragsZeile)}</tbody></table></div>
+      <tbody>${d.auftraege.slice(0, 40).map(a => auftragsZeile(a, mehrfach))}</tbody></table></div>
       ${mehr > 0 ? html`<p class="mon-leise">${tRaw('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>`
         : html`<h3 class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${tRaw('monitor.auftraege.leer')}</p>`
     }`,
   );
 }
-/**
- * Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick gilt bis zum Neuladen, auch über
- * das Nachzeichnen alle paar Sekunden.
- * @type {boolean | null}
- */
+/** Einzelne Aufträge: am Telefon zu, sonst offen; ein Klick gilt bis zum Neuladen. @type {boolean | null} */
 let _einzelnOffen = null;
 const einzelnOffen = () =>
   _einzelnOffen ?? !(typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches);
@@ -581,14 +575,14 @@ async function auftragsArtLeeren(art) {
 
 /** Beim Verlassen des Reiters: die Abfrage anhalten. @returns {boolean} ob sie lief */
 export function stoppeMonitor() {
+  _monitorLauf++;
   if (!_monitorTimer) return false;
-  clearInterval(_monitorTimer);
+  clearTimeout(_monitorTimer);
   _monitorTimer = null;
   return true;
 }
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
-// Der Handler gehört zu dem Modul, das ihn umsetzt.
+// ── Handler beim Dispatcher anmelden (js/registry.js); er gehört zu dem Modul, das ihn umsetzt. ──
 registerActions({
   openLogViewer,
   auftragAbbrechen,

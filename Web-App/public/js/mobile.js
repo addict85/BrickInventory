@@ -109,12 +109,14 @@
   function randHinweis(nav) {
     const rechts = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2;
     const links = nav.scrollLeft > 2;
-    nav.dataset.mehr = (links ? 'l' : '') + (rechts ? 'r' : '');
+    const mehr = (links ? 'l' : '') + (rechts ? 'r' : '');
+    if (nav.dataset.mehr !== mehr) nav.dataset.mehr = mehr;
   }
   const einstNav = /** @type {HTMLElement | null} */ (document.querySelector('.einst-nav'));
   if (einstNav) {
     einstNav.addEventListener('scroll', () => randHinweis(einstNav), { passive: true });
-    if (typeof ResizeObserver === 'function') new ResizeObserver(() => randHinweis(einstNav)).observe(einstNav);
+    if (typeof ResizeObserver === 'function')
+      new ResizeObserver(() => requestAnimationFrame(() => randHinweis(einstNav))).observe(einstNav);
   }
 
   // ── 4. Kopf beim Rollen nach unten ausblenden ───────────────────────────
@@ -151,14 +153,18 @@
       (nav && !navUnten ? nav.offsetHeight : 0) +
       (band && !band.hidden ? band.offsetHeight : 0);
     const unten = navUnten ? nav.offsetHeight : 0;
-    wurzel.style.setProperty('--leiste-oben', `${Math.round(oben)}px`);
-    wurzel.style.setProperty('--leiste-unten', `${Math.round(unten)}px`);
+    // Nur Änderungen schreiben: Jeder Schreibzugriff löst Layout aus, und der Beobachter unten sähe sich selbst.
+    for (const [name, wert] of [
+      ['--leiste-oben', `${Math.round(oben)}px`],
+      ['--leiste-unten', `${Math.round(unten)}px`],
+    ])
+      if (wurzel.style.getPropertyValue(name) !== wert) wurzel.style.setProperty(name, wert);
   }
   document.addEventListener('focusin', leistenMessen, true);
   window.addEventListener('resize', leistenMessen, { passive: true });
   if (typeof ResizeObserver === 'function')
     for (const l of document.querySelectorAll('header, nav:not(.einst-nav)'))
-      new ResizeObserver(leistenMessen).observe(l);
+      new ResizeObserver(() => requestAnimationFrame(leistenMessen)).observe(l);
   leistenMessen();
 
   // Für Tests und für Code, der Tabellen ausserhalb des Observers erzeugt.

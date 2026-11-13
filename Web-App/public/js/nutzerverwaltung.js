@@ -122,20 +122,28 @@ function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2, arg3) {
     titel = tRaw(titelKey);
   return html`${html`<button type="button" class="btn ${art} btn-sm" data-click="${klick}"${echt()} data-arg="${u.id}"`}${html`${arg2 !== undefined ? html` data-arg2="${String(arg2)}"` : ''}`}${html`${arg3 !== undefined ? html` data-arg3="${String(arg3)}"` : ''} title="${titel}"`}${html` aria-label="${`${wort}: ${u.username}`}">${ico(symbol)}<span>${wort}</span></button>`}`;
 }
+/**
+ * Die Meldung tritt an die Stelle der Regel darunter: Beide zusammen sagten dasselbe zweimal.
+ * @param {string} id @param {string | null} text
+ */
+function regelFehler(id, text) {
+  feldFehler(id, text || '');
+  const regel = G(`${id}-regel`);
+  if (!regel) return;
+  regel.hidden = !!text;
+  G(id).addEventListener('input', () => (regel.hidden = false), { once: true });
+}
 G('btn-cu').onclick = async () => {
   const n = G('nu-n').value.trim(),
     p = G('nu-p').value,
     a = G('nu-a').checked;
-  // Die Regeln vor der Rückfrage und am Feld: Vorher kam „nur Buchstaben …“ erst nach Passwort und Code.
-  if (!n || !/^[A-Za-z0-9_.-]{3,32}$/.test(n)) {
-    feldFehler('nu-n', tRaw(n ? 'users.name_regel_fehler' : 'users.name_fehlt'));
-    return;
-  }
-  const regel = p ? passwortRegelText(p) : tRaw('users.pw_fehlt');
-  if (regel) {
-    feldFehler('nu-p', regel);
-    return;
-  }
+  // Die Regeln vor der Rückfrage, alle auf einmal und je am Feld; zuletzt gemeldet, hat der Name den Fokus.
+  const nameFehler =
+    n && /^[A-Za-z0-9_.-]{3,32}$/.test(n) ? '' : tRaw(n ? 'users.name_regel_fehler' : 'users.name_fehlt');
+  const pwFehler = p ? passwortRegelText(p) : tRaw('users.pw_fehlt');
+  regelFehler('nu-p', pwFehler);
+  regelFehler('nu-n', nameFehler);
+  if (nameFehler || pwFehler) return;
   const admin_password = await bestaetigeMitPasswort(
     tRaw('users.create_title'),
     tRaw('users.admin_confirm_text'),

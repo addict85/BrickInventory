@@ -5,7 +5,7 @@ import { registerActions } from './registry.js';
 import { html } from './escapen.js';
 import { abonniere } from './ereignisse.js';
 import { resetScopeModes } from './scope.js';
-import { LANG, applyLang, t, setLangValue, tRaw } from '../i18n.js';
+import { LANG, applyLang, setLangValue, tRaw } from '../i18n.js';
 import { api, apiRoh, leereZwischenspeicher } from './api.js';
 import { G, knopfBesetzt, alle, setzeHtml } from './dom.js';
 import { formularFehler, passwortRegelText } from './formular.js';
@@ -16,6 +16,7 @@ import { loadGallery, loadStats } from './gallery.js';
 import { routeBeimStart } from './router.js';
 import { plInit, resetPartsList, plRenderSets } from './init.js';
 import { bindGlobalErrorHandlers } from './fehlerfang.js';
+import { frageSitzung, sitzungUngeklaert, startgeruestWeg, waitForStartup, zeigeOffline } from './startkasten.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './fortschritt.js';
 import { pruefeEinrichtung } from './einrichtung.js';
 import { einrichtungKnopfPruefen } from './einrichtung-stand.js';
@@ -305,10 +306,17 @@ export async function checkAuth() {
   // und Startup-Screen VOR dem Login übersetzt sind (bisher lief applyLang erst nach dem Login in showApp).
   applyLang(LANG, false);
   await waitForStartup();
-  const d = await api('GET', '/v1/auth/me');
+  const { d, warteSek } = await frageSitzung();
   // Die Anmeldemaske ist schon bedienbar, während diese Frage läuft. Wer sich inzwischen angemeldet hat,
   // bekäme sonst von der späten Antwort „nein“ die Maske zurück, obwohl die Sitzung gilt.
   if (ME) return;
+  // Nur ein ausdrückliches „nicht angemeldet“ führt zur Maske. Drosselung, Serverfehler oder kein Netz
+  // sagen nichts über die Sitzung; die Maske legte sonst nahe, sie sei weg.
+  if (typeof d.loggedIn !== 'boolean') {
+    sitzungUngeklaert(d, warteSek, checkAuth);
+    return;
+  }
+  zeigeOffline(false);
   // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort; ME behält isAdmin, id und
   // username. Auch angemeldet (neue Adresse im Profil) wird erst bestätigt, dann öffnet die Anwendung.
   _verifyAngemeldet = !!d.loggedIn;
@@ -389,105 +397,6 @@ async function bestaetigtAngemeldet() {
   history.replaceState({}, '', '/');
   await checkAuth();
   toast(_verifyEmail ? tRaw('verify.bestaetigt', { email: _verifyEmail }) : tRaw('verify.bestaetigt_kurz'), 'success');
-}
-/** Das statische Startgerüst aus index.html weicht, sobald Anmeldung, App oder Startfortschritt dastehen. */
-function startgeruestWeg() {
-  G('startgeruest')?.remove();
-}
-
-async function waitForStartup() {
-  const ss = G('startup-screen');
-  // Kein hartes Gesamt-Timeout mehr: Download/Import der Rebrickable-CSVs kann bei einer Neuinstallation
-  // viele Minuten dauern. Stattdessen nur abbrechen, wenn sich der Fortschritt über längere Zeit gar nicht
-  // mehr ändert (Server hängt) — solange Fortschritt gemeldet wird, wird weiter gewartet.
-  const STALL_TIMEOUT = 180000; // 3 Min ohne jede Statusänderung → aufgeben
-  let lastChangeAt = Date.now();
-  let lastSig = '';
-  // Antwortet der Server gar nicht, stand vorher nur das graue Gerüst da, beliebig lange. Nach sechs Sekunden
-  // sagt es die Seite und bietet einen sofortigen Versuch an; der Abruf läuft ohnehin weiter.
-  let fehlerSeit = 0;
-  /** @type {() => void} */
-  let sofort = () => {};
-  const knopf = G('start-erneut');
-  if (knopf) knopf.onclick = () => sofort();
-  while (true) {
-    try {
-      const r = await apiRoh('GET', '/v1/startup-status?_=' + Date.now(), {
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' },
-      });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const s = await r.json();
-      fehlerSeit = 0;
-      zeigeOffline(false);
-      if (!s) {
-        await new Promise(r => setTimeout(r, 600));
-        continue;
-      }
-      const pct = s.total > 0 ? Math.round((s.progress / s.total) * 100) : 0;
-      const stepEl = G('startup-step');
-      const barEl = G('startup-bar');
-      const pctEl = G('startup-pct');
-      if (stepEl) stepEl.textContent = s.step || t('startup.loading');
-      if (barEl) barEl.style.width = pct + '%';
-      if (pctEl) pctEl.textContent = pct + '%';
-      const subVal = s.sub || '';
-      const subWrap = G('startup-sub-wrap');
-      const subLabel = G('startup-sub-label');
-      const subBar = G('startup-sub-bar');
-      const subPctEl = G('startup-sub-pct');
-      const subEl = G('startup-sub');
-      if (subVal && subWrap) {
-        subWrap.style.display = '';
-        if (subLabel) subLabel.style.display = '';
-        const subPct = subVal.match(/(\d+)%/);
-        if (subPct) {
-          if (subBar) subBar.style.width = subPct[1] + '%';
-          if (subPctEl) subPctEl.textContent = subPct[1] + '%';
-          if (subEl) subEl.textContent = s.step || '';
-        } else {
-          if (subBar) subBar.style.width = '0%';
-          if (subPctEl) subPctEl.textContent = subVal;
-          if (subEl) subEl.textContent = s.step || '';
-        }
-      } else if (subWrap) {
-        subWrap.style.display = 'none';
-        if (subLabel) subLabel.style.display = 'none';
-      }
-      // Fortschritt erkennen: ändert sich Schritt, Prozent oder Sub-Status, gilt der Startvorgang als aktiv
-      // und der Stall-Timer wird zurückgesetzt.
-      const sig = `${s.step}|${s.progress}|${s.total}|${s.sub || ''}`;
-      if (sig !== lastSig) {
-        lastSig = sig;
-        lastChangeAt = Date.now();
-      }
-      if (s.ready) break;
-      // Den Fortschritt erst zeigen, wenn der Server wirklich noch startet.
-      if (ss && ss.style.display !== 'flex') {
-        startgeruestWeg();
-        ss.style.display = 'flex';
-      }
-      if (Date.now() - lastChangeAt > STALL_TIMEOUT) {
-        console.warn('[startup] stalled — no progress');
-        break;
-      }
-    } catch (e) {
-      console.warn('[startup] poll error:', e instanceof Error ? e.message : e);
-      fehlerSeit ||= Date.now();
-      if (Date.now() - fehlerSeit >= 6000) zeigeOffline(true);
-    }
-    await new Promise(r => {
-      sofort = () => r(undefined);
-      setTimeout(r, fehlerSeit ? 2000 : 600);
-    });
-  }
-  zeigeOffline(false);
-  if (ss) ss.style.display = 'none';
-}
-/** @param {boolean} an */
-function zeigeOffline(an) {
-  const el = G('start-offline');
-  if (el && el.hidden === an) el.hidden = !an;
 }
 /**
  * @param {{ abgelaufen?: boolean }} [o] abgelaufen: Der Name bleibt stehen, damit
