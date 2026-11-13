@@ -70,7 +70,13 @@ const LAYOUT = telefon => `(() => {
   const zu = [...wurzel.querySelectorAll('*')].filter(e => { const r = e.getBoundingClientRect();
     return r.width > 2 && (r.right > breite + 1 || r.left < -1) && sichtbar(e) && !rollt(e); });
   if (document.documentElement.scrollWidth > breite + 1 || zu.length)
-    funde.push('Überlauf ' + Math.max(0, document.documentElement.scrollWidth - breite) + ' px: ' + zu.slice(0, 3).map(name).join(', '));
+  {
+    // Zuerst, was im Fluss am weitesten hinausragt: Es zieht die Seite breit; feste Leisten folgen nur.
+    const rechts = (e) => e.getBoundingClientRect().right;
+    const zieher = zu.filter(e => !fest(e)).sort((a, b) => rechts(b) - rechts(a));
+    const liste = [...zieher.slice(0, 2), ...zu.filter(e => !zieher.slice(0, 2).includes(e)).slice(0, 3 - Math.min(2, zieher.length))];
+    funde.push('Überlauf ' + Math.max(0, document.documentElement.scrollWidth - breite) + ' px (Fenster ' + innerWidth + ', Seite ' + breite + '): ' + liste.map(name).join(', '));
+  }
 
   // 2. Bedienelemente: Tippziele und Überlappung.
   const SEL = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab], [tabindex]:not([tabindex="-1"])';
