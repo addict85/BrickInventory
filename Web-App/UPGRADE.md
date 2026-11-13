@@ -2014,3 +2014,33 @@ wird). Hinweise:
   die Angabe sahen App und Anmeldesperre alle Clients unter der Adresse dieses
   Proxys. Ohne Proxy davor ist nichts zu tun; das neue `Caddyfile` verhält sich
   dann wie das alte.
+
+<a id="vorgelagerter-proxy"></a>
+
+## 58. `VORGELAGERTER_PROXY` ist Pflicht; Mail-Links mit `#token=`
+
+- **Von Hand, vor `docker compose up -d`:** in `.env` eine Zeile
+  `VORGELAGERTER_PROXY=…` eintragen, sonst bricht compose ab („VORGELAGERTER_PROXY
+  in .env setzen …“), und Caddy startet nicht:
+  - `VORGELAGERTER_PROXY=keiner`, wenn Caddy direkt erreichbar ist (Ports 80/443
+    am Router oder im LAN, kein Nginx Proxy Manager davor). Verhält sich wie
+    bisher ohne Angabe.
+  - `VORGELAGERTER_PROXY=<Adresse>`, wenn ein Proxy davor steht: seine Adresse,
+    wie Caddy sie sieht (README.md, „Proxy vor Caddy“). Wer schon nach Abschnitt
+    57 eine Adresse eingetragen hat, muss nichts tun.
+
+  Andere Werte (leer, `private_ranges`, Zeichen ausser Ziffern, `a`–`f`, `.`,
+  `:`, `/`) lehnt das Startskript von Caddy ab. Hintergrund: Ohne die Angabe
+  teilen sich hinter einem Proxy alle Clients eine Adresse, und Fehlversuche
+  eines Fremden sperren die Anmeldung für alle.
+- Fällt das trotzdem auf (über eine Stunde nur eine Client-Adresse), steht der
+  Hinweis jetzt auch für Verwalter unter **Hintergrundarbeiten**, nicht nur im
+  Protokoll. Wer sich von einem Gerät schon angemeldet hat, wird von Fehl-
+  versuchen Fremder über dieselbe Adresse nicht mehr ausgesperrt.
+- Links in Bestätigungs- und Rücksetzmails tragen den Token im Fragment
+  (`/verify#token=…`), das kein Browser an den Server schickt; er landet in
+  keinem Zugriffsprotokoll mehr. Links aus schon verschickten Mails
+  (`?token=`) gelten weiter und werden beim Öffnen umgeleitet. Nichts zu tun.
+- Zweiter Faktor: Nach 20 falschen Codes in 24 Stunden geht die Anmeldung für
+  dieses Konto nur noch mit Wiederherstellungscode oder Passkey; der Inhaber
+  bekommt sofort eine Mail. Nichts zu tun.

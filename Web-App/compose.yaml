@@ -481,6 +481,13 @@ services:
       - sh
       - -c
       - |
+        case "$${VORGELAGERTER_PROXY:-}" in
+          keiner) export VORGELAGERTER_PROXY= ;;
+          "" | *[!0-9A-Fa-f.:/\ ]*)
+            echo "[caddy] FEHLER: VORGELAGERTER_PROXY in .env setzen: keiner (Caddy direkt erreichbar) oder die Adresse(n) des Proxys davor." >&2
+            echo "[caddy]   Ohne sie teilen sich hinter Nginx Proxy Manager o. ä. alle Clients eine Adresse (README.md, „Proxy vor Caddy“)." >&2
+            exit 1 ;;
+        esac
         q=
         if [ -s /ca-eigen/zwischen.key ]; then
           q=/ca-eigen/root.crt
@@ -526,7 +533,7 @@ services:
       BRICK_TLS: ${BRICK_TLS:-intern}
       ACME_EMAIL: ${ACME_EMAIL:-}
       CA_OHNE_NAMENSBESCHRAENKUNG: ${CA_OHNE_NAMENSBESCHRAENKUNG:-nein}
-      VORGELAGERTER_PROXY: ${VORGELAGERTER_PROXY:-}
+      VORGELAGERTER_PROXY: ${VORGELAGERTER_PROXY:?VORGELAGERTER_PROXY in .env setzen - keiner (Caddy direkt erreichbar) oder die Adresse des Proxys davor - siehe UPGRADE.md#vorgelagerter-proxy}
     ports:
       - "${HTTPS_BIND:-0.0.0.0}:443:443"
       - "${HTTPS_BIND:-0.0.0.0}:80:80"

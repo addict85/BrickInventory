@@ -17,6 +17,7 @@ Im Ordner mit `compose.yaml`, Schritt für Schritt:
 ```bash
 cp .env.example .env
 echo BRICK_HOST=nas.example.lan >> .env   # Name oder IP-Adresse des Servers
+echo VORGELAGERTER_PROXY=keiner >> .env   # oder die Adresse eines Proxys davor (README, „Proxy vor Caddy“)
 sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
 sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
 sh scripts/image-pruefen.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
@@ -27,9 +28,11 @@ docker compose exec app cat /app/data/admin-startpasswort.txt   # Erstpasswort v
 Danach unter `https://<BRICK_HOST>` (Port 80 leitet auf HTTPS um). Was dabei
 entsteht und warum:
 
-1. **`.env`** braucht nur `BRICK_HOST`: den Namen oder die IP-Adresse, unter
-   der Geräte den Server erreichen (für Passkeys ein Name). Alle anderen
-   Variablen haben Vorgaben (`.env.example`).
+1. **`.env`** braucht `BRICK_HOST`: den Namen oder die IP-Adresse, unter
+   der Geräte den Server erreichen (für Passkeys ein Name), und
+   `VORGELAGERTER_PROXY`: `keiner` oder die Adresse eines Proxys vor Caddy
+   (Abschnitt „Proxy vor Caddy“). Alle anderen Variablen haben Vorgaben
+   (`.env.example`).
 2. **`./geheimnisse/`** (Ordner 700) hält Sitzungsgeheimnis und Passwörter als
    Dateien; `compose.yaml` hängt sie als Docker-Secrets unter `/run/secrets/`
    ein, `docker inspect` zeigt sie so nicht. In `.env` gehören sie nicht.
@@ -106,14 +109,15 @@ ohne weitere Angabe nur dessen Adresse. Dann teilen sich alle Clients eine
 Adresse: Fehlversuche eines Fremden sperren alle aus, Registrierung und
 „Passwort vergessen“ sind für alle zusammen gedrosselt.
 
-Abhilfe: die Adresse dieses Proxys, **wie Caddy sie sieht**, in `.env`
-eintragen, mehrere durch Leerzeichen:
+Deshalb ist `VORGELAGERTER_PROXY` in `.env` eine Pflichtangabe; ohne sie
+startet Caddy nicht und sagt, was fehlt. Zwei Möglichkeiten:
 
 ```
-VORGELAGERTER_PROXY=172.28.73.20
+VORGELAGERTER_PROXY=keiner          # Caddy ist direkt erreichbar (Ports 80/443)
+VORGELAGERTER_PROXY=172.28.73.20    # Adresse des Proxys davor, wie Caddy sie sieht
 ```
 
-Caddy glaubt dann nur ihm `X-Forwarded-For` und liest es von rechts; ein
+Mehrere Adressen stehen durch Leerzeichen getrennt. Mit einer Adresse glaubt Caddy nur ihm `X-Forwarded-For` und liest es von rechts; ein
 Client kann sich keine Adresse voranstellen. `TRUST_PROXY` bleibt, wie es ist.
 Am sichersten hängt der Proxy mit fester Adresse im Netz `brickinventory-net`
 (`ipv4_address`, wie Caddy) und leitet an `https://caddy:443` weiter. Läuft er
@@ -124,7 +128,11 @@ Proxy muss `X-Forwarded-For` setzen (bei Nginx Proxy Manager die Vorgabe).
 
 Kommen über eine Stunde und mindestens 300 Anfragen alle mit derselben
 Client-Adresse an, meldet die App im Protokoll `[sicherheit] Seit … Minuten
-kommen alle … Anfragen … mit derselben Client-Adresse` — meist genau dieser Fall.
+kommen alle … Anfragen … mit derselben Client-Adresse` — meist genau dieser Fall
+(etwa `keiner` eingetragen, obwohl ein Proxy davor steht). Verwalter sehen
+denselben Hinweis unter **Hintergrundarbeiten**. Wer sich von einem Gerät schon
+angemeldet hat, wird von Fehlversuchen Fremder über dieselbe Adresse nicht
+ausgesperrt.
 
 ### Ohne HTTPS (bewusste Ausnahme)
 
@@ -386,7 +394,7 @@ der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie gehen **keine Links per Mail** hinaus (die Adresse wird nie aus dem Host-Header abgeleitet — ein gefälschter bekäme sonst den Reset-Link), Passwort-vergessen antwortet 503; der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. Ist sie gesetzt, antwortet die App nur unter diesem Namen (sonst 421; frei bleiben `localhost`, App-Token, `/ca.crt` und die Gesundheitspfade). |
 | `APP_BASE_URL_FEHLT_OK` | Nur `1`: Im Betrieb (`NODE_ENV=production`) startet der Web-Prozess ohne `APP_BASE_URL` sonst nicht, weil der Host-Filter fehlte. `compose.yaml` setzt `APP_BASE_URL` immer. |
 | `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur klein (IPv4 ab `/16`, IPv6 ab `/64`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
-| `VORGELAGERTER_PROXY` | Nur für Caddy: Adresse(n) eines Proxys **vor** Caddy (z. B. Nginx Proxy Manager), durch Leerzeichen getrennt. Leer: Caddy glaubt keinem `X-Forwarded-For`. Siehe „Proxy vor Caddy“. |
+| `VORGELAGERTER_PROXY` | Pflicht mit `compose.yaml`, nur für Caddy: `keiner` (Caddy direkt erreichbar, glaubt keinem `X-Forwarded-For`) oder die Adresse(n) eines Proxys **vor** Caddy (z. B. Nginx Proxy Manager), durch Leerzeichen getrennt. Siehe „Proxy vor Caddy“. |
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank: `openssl rand -base64 32`. Geht `DATA_KEY_FILE` vor. |
 | `DATA_KEY_FILE` | Datei mit dem Schlüssel, ausserhalb von `data/` (compose.yaml: `/app/schluessel/datenschluessel`, Vorgabe `<APP_ROOT>/schluessel/datenschluessel`). Fehlt sie, legt der erste Start sie an (nur für den Besitzer lesbar). |

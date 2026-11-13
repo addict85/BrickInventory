@@ -82,6 +82,7 @@ git clone https://github.com/addict85/BrickInventory.git
 cd BrickInventory/Web-App
 cp .env.example .env
 echo BRICK_HOST=nas.example.lan >> .env   # Name oder IP-Adresse des Servers
+echo VORGELAGERTER_PROXY=keiner >> .env   # oder die Adresse eines Proxys davor (README, „Proxy vor Caddy“)
 sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
 sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt
 sh scripts/image-pruefen.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)

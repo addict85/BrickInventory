@@ -238,7 +238,13 @@ test('das Startskript wählt eigene CA, acme oder ausdrücklich Caddys CA — so
     const p = spawn('sh', ['-c', skript], {
       detached: true,
       stdio: ['ignore', aus, fehl],
-      env: { PATH: process.env.PATH, BRICK_TLS: 'intern', CA_OHNE_NAMENSBESCHRAENKUNG: 'nein', ...env },
+      env: {
+        PATH: process.env.PATH,
+        BRICK_TLS: 'intern',
+        CA_OHNE_NAMENSBESCHRAENKUNG: 'nein',
+        VORGELAGERTER_PROXY: 'keiner',
+        ...env,
+      },
     });
     let beendet = null;
     p.on('exit', c => {
