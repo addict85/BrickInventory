@@ -269,6 +269,7 @@ export type KontoHinweis =
   | 'zweiter_faktor_eingerichtet'
   | 'zweiter_faktor_abgeschaltet'
   | 'anmeldung_gebremst'
+  | 'zweiter_faktor_gesperrt'
   | 'bestaetigung_gebremst'
   | 'einstellungen_geaendert'
   | 'zugang_beendet'
@@ -328,6 +329,9 @@ export async function sendKontoHinweisMail(
     anmeldung_gebremst: en
       ? 'there were several failed sign-in attempts for your account; further attempts are slowed down for now.'
       : 'für dein Konto gab es mehrere fehlgeschlagene Anmeldeversuche; weitere Versuche werden vorerst gebremst.',
+    zweiter_faktor_gesperrt: en
+      ? 'someone entered the right password for your account but many wrong codes of the second factor. For up to 24 hours, sign-in only works with a recovery code or a passkey. Change your password: it is probably known.'
+      : 'für dein Konto wurde das richtige Passwort, aber vielfach ein falscher Code des zweiten Faktors eingegeben. Bis zu 24 Stunden geht die Anmeldung nur mit einem Wiederherstellungscode oder Passkey. Ändere dein Passwort: Es ist vermutlich bekannt.',
     bestaetigung_gebremst: en
       ? 'in a signed-in session or app of your account, the password or code was entered wrongly several times when confirming; further attempts are slowed down for now.'
       : 'in einer angemeldeten Sitzung oder App deines Kontos wurde beim Bestätigen mehrmals ein falsches Passwort oder ein falscher Code eingegeben; weitere Versuche werden vorerst gebremst.',

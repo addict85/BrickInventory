@@ -447,6 +447,10 @@ export const FEHLER = {
     de: 'Der Code stimmt nicht oder wurde schon benutzt.',
     en: 'The code is wrong or has already been used.',
   },
+  zweiter_faktor_gesperrt: {
+    de: 'Zu viele falsche Codes für dieses Konto. Bis zu 24 Stunden geht die Anmeldung nur mit einem Wiederherstellungscode oder einem Passkey.',
+    en: 'Too many wrong codes for this account. For up to 24 hours, sign-in only works with a recovery code or a passkey.',
+  },
   zweiter_faktor_schon_aktiv: {
     de: 'Der zweite Faktor ist bereits eingerichtet.',
     en: 'Two-factor authentication is already set up.',

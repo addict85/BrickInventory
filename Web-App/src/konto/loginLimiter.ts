@@ -393,3 +393,16 @@ export async function bestaetigungFehlgeschlagen(art: Bremse, uid: number, zugan
 export async function bestaetigungGelungen(art: Bremse, uid: number, zugang: string): Promise<void> {
   await _clear(_bestaetigungKey(art, uid, zugang));
 }
+
+/** Wer das Passwort kennt, rät den Code sonst langsam unter jeder Wartezeit durch;
+ * über 24 h je Konto zählt die Datenbank alle falschen Codes der Anmeldung, und
+ * über der Schranke gelten nur noch Wiederherstellungscode und Passkey. */
+export const MAX_FAKTOR_ANMELDUNG_JE_KONTO = 20;
+const _faktorAnmeldungKey = (uid: number) => `faktor-anmeldung-konto|${uid}`;
+export async function faktorCodeGesperrt(uid: number): Promise<boolean> {
+  return ((await _read(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_FAKTOR_ANMELDUNG_JE_KONTO;
+}
+/** @returns true, wenn dieser Fehlversuch die Schranke gerade erreicht hat */
+export async function faktorCodeFalsch(uid: number): Promise<boolean> {
+  return (await _bump(_faktorAnmeldungKey(uid), KONTO_FENSTER_MIN)) === MAX_FAKTOR_ANMELDUNG_JE_KONTO;
+}

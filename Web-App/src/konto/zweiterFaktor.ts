@@ -141,14 +141,17 @@ export async function bestaetigeEinrichtung(uid: number, code: string): Promise<
   });
 }
 
-/** Einmalcode und Wiederherstellungscode gelten genau einmal. */
+/** Einmalcode und Wiederherstellungscode gelten genau einmal.
+ * @param mitEinmalcode false: Ein sechsstelliger Code wird gar nicht erst geprüft. */
 export async function pruefeCode(
   uid: number,
   code: string | number | null | undefined,
+  mitEinmalcode = true,
 ): Promise<'totp' | 'wiederherstellung' | null> {
   const eingabe = String(code ?? '').trim();
   if (!eingabe) return null;
   if (/^\d{6}$/.test(eingabe)) {
+    if (!mitEinmalcode) return null;
     const z = await kontoBereich().zweiterFaktor.aktivesGeheimnis(uid);
     const schritt = z ? passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', eingabe) : null;
     if (schritt === null) return null;

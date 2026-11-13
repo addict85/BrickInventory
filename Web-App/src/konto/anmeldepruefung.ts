@@ -10,6 +10,8 @@ import {
   recordLoginSuccess,
   meldeAnmeldeereignis,
   meldeAnmeldung,
+  faktorCodeGesperrt,
+  faktorCodeFalsch,
   MAX_ATTEMPTS,
   type Anmeldeereignis,
   type Anmeldeweg,
@@ -164,12 +166,18 @@ export async function pruefeAnmeldedaten(
       await gibAnmeldeplatzFrei(ip, name);
       return ergaenzt(absage('nicht_angemeldet', 'zweiter_faktor_noetig', undefined, false, true));
     }
+    // Über der Tagesschranke wird kein Einmalcode mehr geprüft: Weiteres Raten verrät nichts mehr.
+    const nurNotweg = !mitPasskey && (await faktorCodeGesperrt(user.id));
     const gilt = mitPasskey
       ? (await passkeys.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id)) === user.id
-      : await zf.pruefeCode(user.id, code);
+      : await zf.pruefeCode(user.id, code, !nurNotweg);
     if (!gilt) {
       await fehlversuch('zweiter_faktor_falsch', ip, name, user.id);
-      return ergaenzt(absage('nicht_angemeldet', 'zweiter_faktor_falsch', undefined, false, true));
+      // Sofort, nicht erst mit der Kontosperre: Wer hier rät, kennt das Passwort.
+      const erreicht = !mitPasskey && (await faktorCodeFalsch(user.id));
+      if (erreicht) hinweisNebenher(user.id, 'zweiter_faktor_gesperrt');
+      const grund = nurNotweg || erreicht ? 'zweiter_faktor_gesperrt' : 'zweiter_faktor_falsch';
+      return ergaenzt(absage('nicht_angemeldet', grund, undefined, false, true));
     }
   }
   await recordLoginSuccess(ip, name);
