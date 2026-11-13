@@ -1,10 +1,10 @@
 /** Jeder Wechsel, auf den jemand wartet, weckt ihn per NOTIFY: neue Aufträge
  * den Job-Prozess, Statuswechsel den Statusstrom. Geht ein NOTIFY verloren,
  * findet der Worker den Auftrag in seinem Takt. */
-import { imNamenVon, imSystemkontext } from '../infra/kontoKontext';
+import { alsAnfrage, imSystemkontext } from '../infra/kontoKontext';
 import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
-import { AuftragVerloren } from './auftraege';
+import { AuftragVerloren, KONTOUEBERGREIFEND } from './auftraege';
 import { logAndContinue } from '../infra/fehler';
 import { PREISPOSTEN_HOECHSTENS, pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
 import type { AuftraegeKontext } from './kontext';
@@ -130,22 +130,24 @@ export async function zaehleArt(k: AuftraegeKontext, art: AuftragsArt): Promise<
   return aus;
 }
 
-/** Sonst zählte ein Import eines Unterkontos als Hintergrund und umginge dessen
- * Anteil am Fremdkontingent. */
+/** Ein Auftrag mit Konto läuft wie eine Anfrage dieses Kontos, auch aus einem Systemrahmen
+ * heraus: Der Zeilenschutz gilt für ihn wie für das Konto, und ein Import eines Unterkontos
+ * zählt auf dessen Anteil am Fremdkontingent. */
 export async function imNamenDesAuftrags<T>(
   k: AuftraegeKontext,
-  a: Pick<AuftragsZeile, 'user_id'>,
+  a: Pick<AuftragsZeile, 'art' | 'user_id'>,
   f: () => Promise<T>,
 ): Promise<T> {
-  if (a.user_id == null) return f();
+  if (a.user_id == null) return imAuftragsrahmen(a, f);
   const u = await k.auftraege.kontoRolle(a.user_id);
-  return imNamenVon({ apiUser: { user_id: a.user_id, is_admin: !!u?.is_admin } }, f);
+  return alsAnfrage({ apiUser: { user_id: a.user_id, is_admin: !!u?.is_admin } }, f);
 }
 
-/** Aufträge gehen über Kontogrenzen (Preise aller Sets, Aufräumen, Katalog):
- * Der ganze Lauf samt Aufgabe nach Fehlern im Systemrahmen des Zeilenschutzes. */
+/** Ein Auftrag ohne Konto: im Systemrahmen nur, wenn seine Art als kontoübergreifend
+ * markiert ist (KONTOUEBERGREIFEND), sonst ohne Konto und ohne Systemrahmen. */
 export function imAuftragsrahmen<T>(a: Pick<AuftragsZeile, 'art'>, f: () => Promise<T>): Promise<T> {
-  return imSystemkontext(`auftrag ${a.art}`, f);
+  const grund = KONTOUEBERGREIFEND[a.art];
+  return grund ? imSystemkontext(`auftrag ${a.art}: ${grund}`, f) : alsAnfrage({}, f);
 }
 
 /** Weckt bei jedem Statuswechsel eines Auftrags, auch aus dem Job-Prozess; gibt das Abmelden zurück. */

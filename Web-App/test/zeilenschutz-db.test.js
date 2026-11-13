@@ -18,6 +18,11 @@
  *      findet den Token …“ (Token ungültig, Widerruf löscht nichts)
  *   O  in txStand() die Prüfung des Pools gestrichen → rot: „der Rahmen folgt …“
  *      und „wer einem Haushalt beitritt …“ (das Hauptkonto liest sich als EUR)
+ *   P  der Worker wie vorher (ganzer Lauf in imAuftragsrahmen(), imNamenDesAuftrags()
+ *      mit imNamenVon) → rot: „ein Auftrag läuft im Systemrahmen nur, wenn …“
+ *      (ohne Marke [A,B,C], Konto [A,B,C])
+ *   Q  nur imNamenDesAuftrags() mit imNamenVon statt alsAnfrage → rot: dasselbe
+ *      (Konto [A,B,C]: der Systemrahmen des Aufrufers bleibt)
  *
  * Gegenproben Zeilenschutz (13.11.2026, vor der Systemrolle):
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
@@ -30,7 +35,7 @@
  *      Verbindung trägt Konto A weiter) und „im Systemrahmen …“
  *   D  zeilenschutz_konten() ohne die Unterkonten → rot: „mit Konto A …“,
  *      „ohne Konto …“, „fremde user_id …“, „ein Signal-Handler …“
- *   E  im Auftrags-Worker imAuftragsrahmen() weggelassen → rot: „ein Auftrag …“
+ *   E  in imAuftragsrahmen() die Marke KONTOUEBERGREIFEND nicht beachtet → rot: „ein Auftrag …“
  *   F  nach ROLLBACK TO SAVEPOINT stand.kontext nicht zurückgesetzt → rot:
  *      „der Rahmen folgt … Sicherungspunkt“
  *   G  in Benachrichtigung.listen() AsyncResource.bind weggelassen → rot: „ein
@@ -197,15 +202,44 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.deepEqual(await su.all('SELECT id FROM papierkorb'), []);
   });
 
-  await t.test('ein Auftrag läuft im Systemrahmen', async () => {
+  await t.test('ein Auftrag läuft im Systemrahmen nur, wenn seine Art kontoübergreifend ist', async st => {
+    const leeren = () => su.run("DELETE FROM auftraege WHERE art IN ('wechselkurse', 'nacharbeit', 'preise')");
+    st.after(leeren);
     const A_ = _req('src/auftraege/dienst.js');
     const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
-    await su.run("DELETE FROM auftraege WHERE art = 'wechselkurse'");
-    let gesehen = null;
-    const w = erzeugeWorker({ wechselkurse: { ausfuehren: async () => (gesehen = ids(await alleSets())) } });
+    await leeren();
+    const gesehen = {};
+    const sieh = name => async () => {
+      gesehen[name] = ids(await alleSets());
+    };
+    const w = erzeugeWorker({
+      wechselkurse: { ausfuehren: sieh('ohne Marke') },
+      nacharbeit: {
+        ausfuehren: async () => {
+          await sieh('Konto')();
+          throw new Error('gescheitert');
+        },
+        aufgegeben: sieh('Konto aufgegeben'),
+      },
+      preise: { ausfuehren: (_n, _k, a) => sieh(a.user_id ? 'markiert mit Konto' : 'markiert')() },
+    });
     await A_.stelleAuftragEin('wechselkurse', {}, { schluessel: `zeilen-${process.pid}` });
     assert.equal(await w.verarbeiteEinen(), true);
-    assert.deepEqual(gesehen, [A, B, C]);
+    // Auch aus einem Systemrahmen heraus (server.ts startet die Jobs in einem).
+    await A_.stelleAuftragEin('nacharbeit', { set_number: '10001-1', user_id: A }, { userId: A, maxVersuche: 1 });
+    assert.equal(await imSystemkontext('test', () => w.verarbeiteEinen()), true);
+    await A_.stelleAuftragEin('preise', {}, { schluessel: `zeilen-${process.pid}` });
+    assert.equal(await w.verarbeiteEinen(), true);
+    // Mit Konto zählt das Konto, auch bei einer markierten Art.
+    await A_.stelleAuftragEin('preise', {}, { userId: A, schluessel: `zeilen-a-${process.pid}` });
+    assert.equal(await w.verarbeiteEinen(), true);
+    assert.deepEqual(gesehen, {
+      'ohne Marke': [],
+      Konto: [A, B],
+      'Konto aufgegeben': [A, B],
+      markiert: [A, B, C],
+      'markiert mit Konto': [A, B],
+    });
   });
 
   // Mitten in einer Konto-Transaktion fragt der Systemrahmen über die Systemrolle neben ihr.

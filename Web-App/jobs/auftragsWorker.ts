@@ -8,7 +8,6 @@ import {
   AuftragUnterbrochen,
   AuftragVerloren,
   AuftragVerschieben,
-  imAuftragsrahmen,
   imNamenDesAuftrags,
   verschoben,
   fehlgeschlagen,
@@ -154,7 +153,7 @@ async function nachFehler(
   }
   if (e instanceof AuftragVerschieben) {
     if (await verschoben(a, e.bis, e.grund, e.zaehlt)) {
-      if (nutzlast) await b?.aufgegeben?.(nutzlast, e.grund, a);
+      if (nutzlast) await imNamenDesAuftrags(a, async () => b?.aufgegeben?.(nutzlast, e.grund, a));
       await folgeplan(a);
     }
     return;
@@ -162,7 +161,7 @@ async function nachFehler(
   const text = fehlertext(e) || 'Unbekannter Fehler';
   console.warn(`[auftraege] ${a.art} #${a.id} Versuch ${a.versuche}/${a.max_versuche}: ${text}`);
   if (await fehlgeschlagen(a, text, e instanceof NutzlastUngueltig)) {
-    if (nutzlast) await b?.aufgegeben?.(nutzlast, text, a);
+    if (nutzlast) await imNamenDesAuftrags(a, async () => b?.aufgegeben?.(nutzlast, text, a));
     await folgeplan(a);
   }
 }
@@ -210,7 +209,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     const ac = new AbortController();
     const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
     laufend.set(a.id, lauf);
-    lauf.fertig = imAuftragsrahmen(a, () => fuehreAuftragAus(a, ac, bearbeiter[a.art], fristSek, () => beendet))
+    lauf.fertig = fuehreAuftragAus(a, ac, bearbeiter[a.art], fristSek, () => beendet)
       .catch(logAndContinue(`auftraege:${a.art}`))
       .finally(() => laufend.delete(a.id));
     return lauf;
