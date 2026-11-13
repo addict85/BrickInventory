@@ -294,7 +294,6 @@ window.I18N_DE = {
   'rb_key.banner': 'Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.',
   'rb_key.banner_link': 'Schlüssel eintragen',
   'rb_key.banner_close': 'Hinweis ausblenden',
-  'gallery.title': 'Meine Sammlung',
   'settings.logout': 'Abmelden',
 
   'gallery.template': 'Vorlage',
@@ -841,6 +840,11 @@ window.I18N_DE = {
   'parts.stat.ohne_listen': 'Teilelisten für {n} Sets fehlen noch',
   'parts.stat.ohne_listen_one': 'Teileliste für das Set fehlt noch',
   'parts.stat.breakdown': '{sets} aus Sets · {einzeln} einzeln',
+  'gallery.subtitle': 'Alle Sets deiner Sammlung — mit Kaufpreis, Marktwert und Lagerort.',
+  'gallery.subtitle_haushalt': 'Alle Sets im Haushalt — über alle Konten, mit Kaufpreis und Marktwert.',
+  'parts.subtitle_haushalt': 'Alle Teile im Haushalt — über alle Konten, aus Sets und einzeln erfasst.',
+  'figs.subtitle': 'Alle Minifiguren deiner Sammlung — aus Sets und einzeln erfasst.',
+  'figs.subtitle_haushalt': 'Alle Minifiguren im Haushalt — über alle Konten, aus Sets und einzeln erfasst.',
   'parts.subtitle': 'Alle Teile deiner Sammlung — aus Sets und einzeln erfasst.',
   'pl.subtitle': 'Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.',
   'parts.stat.total_label': 'Teile gesamt',
@@ -1682,6 +1686,5 @@ window.I18N_DE = {
   'settings.smtp.host': 'Mailserver (SMTP-Host)',
   'settings.rebrickable_link': 'rebrickable.com → API → Schlüssel erzeugen (Generate Key)',
   'wanted.added_schon_da': 'Auf die Merkliste gesetzt – das Set ist schon in deiner Sammlung (×{n}).',
-  'gallery.title_haushalt': 'Sammlung (Haushalt)',
   'zf.codes_datei': 'Als Datei speichern',
 };

@@ -305,7 +305,7 @@
     .ptitle-unter{color:var(--mut);font-size:var(--fs-3);margin-top:2px}
     /* „Sammlung › Teile“: Die Hauptleiste nennt nur „Sammlung“; der Pfad verbindet sie mit dem Seitentitel.
        Ein div mit role=navigation, kein <nav>: Jedes <nav> erbt die Leistenregeln (klebend, Design-Rot). */
-    .brotkrume{display:flex;align-items:center;gap:.4em;font-size:var(--fs-2);color:var(--mut);margin-bottom:2px}
+    .brotkrume{display:flex;align-items:center;gap:.4em;font-size:var(--fs-2);color:var(--mut);margin-bottom:2px;min-height:24px}
     .brotkrume a{color:var(--b600);min-height:24px;display:inline-flex;align-items:center}
     .brotkrume [aria-current]{color:var(--txt);font-weight:600}
     .ptitle[tabindex="-1"]:focus{outline:none}
@@ -619,6 +619,8 @@
     .bstat .bstat-s{font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     .bstat .bstat-v{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:700;line-height:1.2;margin-top:2px;color:var(--txt)}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
+    /* Die Unterzeile hält ihren Platz auch leer: Kommt sie mit den Zahlen, wuchs sonst die Kachelreihe. */
+    .bstat .bstat-s:empty::before{content:"\00a0"}
     .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}
     .pstat .v{font-variant-numeric:tabular-nums;font-size:var(--fs-5);font-weight:600;color:var(--preis,var(--b600))}
     .pstat .l{font-size:var(--fs-0);color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
@@ -1073,6 +1075,9 @@ input.suchfeld{width:220px}
 .hoehe-38,.fg .hoehe-38{height:max(38px,2.6em)}
 .min-100{min-width:min(100px,100%)}
 .max-82{max-width:82px}.max-110{max-width:110px}.max-120{max-width:120px}.max-150{max-width:150px}
+/* Auswahlfelder, deren Optionen erst mit den Daten kommen, haben eine feste Breite: Mit der längsten Option
+   wuchsen sie nach dem Laden, und das Suchfeld daneben schrumpfte sichtbar. */
+@media (min-width:641px){#gtheme{width:14rem}:is(#parts-color,#parts-cat){width:12rem}}
 .max-160{max-width:160px}.max-220{max-width:220px}.max-240{max-width:240px}.max-360{max-width:360px}
 .max-420{max-width:420px}.max-440{max-width:440px}.max-480{max-width:480px}.max-520{max-width:520px}
 .max-560{max-width:560px}.max-620{max-width:620px}.max-720{max-width:720px}.max-780{max-width:780px}

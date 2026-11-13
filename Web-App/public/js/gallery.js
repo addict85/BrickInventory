@@ -59,19 +59,7 @@ function faecherTon(s) {
 }
 
 // ── STATS ─────────────────────────────────────────────
-/** Mit „Alle Konten“ im Haushalt zählt die Seite fremde Sets mit; „Meine Sammlung“ stimmte dann nicht. */
-function sammlungTitel() {
-  const titel = G('gallery-titel'),
-    wahl = G('scope-gallery');
-  if (!titel) return;
-  const schluessel =
-    wahl && wahl.style.display !== 'none' && wahl.value === 'all' ? 'gallery.title_haushalt' : 'gallery.title';
-  titel.setAttribute('data-i18n', schluessel);
-  titel.textContent = tRaw(schluessel);
-}
-
 export async function loadStats() {
-  sammlungTitel();
   // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe des
   // ganzen Haushalts.
   const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);

@@ -43,6 +43,8 @@ export function initScopeSelects(members) {
     el.style.display = '';
   }
 
+  for (const view of ['gallery', 'parts', 'minifigs']) sammlungUntertitel(view);
+
   // Der Schalter „Unterkonten einbeziehen“ der Teileliste folgt derselben Regel: ohne Unterkonten nicht zu
   // sehen. Er steht hier, weil isMain hier aus derselben Antwort feststeht.
   const subsBox = G('pl-bestand-subs-box');
@@ -55,6 +57,20 @@ export function initScopeSelects(members) {
       if (cb) cb.checked = false;
     }
   }
+}
+
+/** Untertitel je Kopf der Sammlung: Mit „Alle Konten“ zählt die Seite fremden Bestand mit, „deiner Sammlung“
+ * stimmte dann nicht. Der Titel selbst bleibt fest, damit der Kopf beim Laden nicht umspringt.
+ * @param {string} view */
+export function sammlungUntertitel(view) {
+  const el = G(view + '-unter'),
+    wahl = G('scope-' + view);
+  if (!el) return;
+  const basis = { gallery: 'gallery', parts: 'parts', minifigs: 'figs' }[view];
+  const haushalt = !!wahl && wahl.style.display !== 'none' && wahl.value === 'all';
+  const schluessel = `${basis}.subtitle${haushalt ? '_haushalt' : ''}`;
+  el.setAttribute('data-i18n', schluessel);
+  el.textContent = tRaw(schluessel);
 }
 
 /**
@@ -84,12 +100,14 @@ export async function loadHouseholdMembers() {
   initScopeSelects(members);
   // Die Lagerorte in EINEM Zug: Sie fuellen die Auswahlfelder der Filter UND die gemeinsame <datalist> der
   // Eingabefelder. Zwei Aufrufe waeren zwei Staende derselben Liste.
-  ladeLagerorte(members.map(m => m.id)).catch(() => {});
+  const orte = ladeLagerorte(members.map(m => m.id)).catch(() => {});
   // Die Vorgabe fuer die Erfassungsfelder (Marcos Stern) — eigener Abruf, Begruendung bei
   // ladeLagerortVorgabe().
   ladeLagerortVorgabe().catch(() => {});
   zeichneKontoauswahl(members);
   zeichneLagerortFelder();
+  // Erst mit den Orten steht die Filterzeile fest (Lagerortauswahl); der Start wartet darauf.
+  await orte;
 }
 
 /**

@@ -15,8 +15,8 @@
  *   - Minifiguren: „Gekauft am“ an der Karte, Gesamtzahl als erste Kennzahl
  *     (N16).
  *   - Merken eines vorhandenen Sets nennt die Sammlung (N20).
- *   - Mit Unterkonto und „Alle Konten“ heisst die Galerie „Sammlung
- *     (Haushalt)“ (N22).
+ *   - Mit Unterkonto und „Alle Konten“ sagt der Untertitel der Galerie
+ *     „im Haushalt“ (N22; seit UI-Prüfung 22 bleibt der Titel fest).
  *   - Die Anmeldemaske nennt die Version statt eines festen Datums (N26).
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
@@ -31,8 +31,8 @@
  *      öffnen“
  *   G  merkMeldung ohne Abfrage der Sammlung → rot: „Merken nennt die
  *      Sammlung“
- *   H  sammlungTitel() in loadStats nicht aufgerufen → rot: „Haushalt im
- *      Titel“
+ *   H  sammlungUntertitel() in initScopeSelects nicht aufgerufen → rot:
+ *      „Haushalt im Untertitel“ (13.11.2026)
  *   I  versionEinsetzen() gibt das HTML unverändert zurück → rot: „Version in
  *      der Anmeldemaske“
  */
@@ -246,7 +246,7 @@ test('Merken nennt die Sammlung', async () => {
   }
 });
 
-test('Haushalt im Titel', async () => {
+test('Haushalt im Untertitel', async () => {
   const o = await oeffneOberflaeche(
     {
       '/v1/sets/household-members': {
@@ -263,13 +263,15 @@ test('Haushalt im Titel', async () => {
     assert.ok(await warte(() => o.d.getElementById('scope-gallery').style.display !== 'none'));
     o.w.eval('document.querySelector(\'.ntab[data-tab="gallery"]\').click()');
     assert.ok(
-      await warte(() => /Haushalt/.test(o.d.getElementById('gallery-titel').textContent), 2000),
-      o.d.getElementById('gallery-titel').textContent,
+      await warte(() => /im Haushalt/.test(o.d.getElementById('gallery-unter').textContent), 2000),
+      o.d.getElementById('gallery-unter').textContent,
     );
     const wahl = o.d.getElementById('scope-gallery');
     wahl.value = 'own';
     wahl.dispatchEvent(new o.w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => o.d.getElementById('gallery-titel').textContent === 'Meine Sammlung', 2000));
+    assert.ok(
+      await warte(() => /^Alle Sets deiner Sammlung/.test(o.d.getElementById('gallery-unter').textContent), 2000),
+    );
   } finally {
     o.w.close();
   }

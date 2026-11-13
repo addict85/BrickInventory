@@ -422,15 +422,17 @@
     <!-- ══ GALERIE ══ -->
     <div class="tab active" id="tab-gallery">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="gallery"><span class="ptitle-icon"></span><span id="gallery-titel" data-i18n="gallery.title">Meine Sammlung</span></h1>
+        <div><div class="brotkrume" role="navigation" aria-label="Pfad" data-i18n="common.pfad" data-i18n-attr="aria-label"><span data-i18n="nav.collection">Sammlung</span> <span aria-hidden="true">›</span> <span aria-current="page" data-i18n="header.sets">Sets</span></div>
+        <h1 class="ptitle" data-tab-title="gallery"><span class="ptitle-icon"></span><span data-i18n="header.sets">Sets</span></h1>
+        <p class="ptitle-unter" id="gallery-unter" data-i18n="gallery.subtitle">Alle Sets deiner Sammlung — mit Kaufpreis, Marktwert und Lagerort.</p></div>
         <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
       <div class="brick-stats">
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.sets">Sets</div><div class="bstat-v" id="bstat-sets">—</div><div class="bstat-s" id="bstat-sets-sub"></div></div>
         <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="nav.parts">Teile</div><div class="bstat-v" id="bstat-parts">—</div><div class="bstat-s" id="bstat-parts-sub"></div></div>
-        <div class="bstat bstat-light"><div class="bstat-l" data-i18n="nav.minifigs">Minifiguren</div><div class="bstat-v" id="bstat-minifigs">—</div></div>
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.instr">Anleitungen</div><div class="bstat-v" id="bstat-instr">—</div></div>
+        <div class="bstat bstat-light"><div class="bstat-l" data-i18n="nav.minifigs">Minifiguren</div><div class="bstat-v" id="bstat-minifigs">—</div><div class="bstat-s"></div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.instr">Anleitungen</div><div class="bstat-v" id="bstat-instr">—</div><div class="bstat-s"></div></div>
       </div>
 
       <!-- Inhalt zuerst: Erfassen ist eine Handlung, kein Dauerformular.
@@ -562,13 +564,13 @@
       <div class="ph">
         <div><div class="brotkrume" role="navigation" aria-label="Pfad" data-i18n="common.pfad" data-i18n-attr="aria-label"><a href="#/sammlung" data-i18n="nav.collection">Sammlung</a> <span aria-hidden="true">›</span> <span aria-current="page" data-i18n="nav.parts">Teile</span></div>
         <h1 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h1>
-        <p class="ptitle-unter" data-i18n="parts.subtitle">Alle Teile deiner Sammlung — aus Sets und einzeln erfasst.</p></div>
+        <p class="ptitle-unter" id="parts-unter" data-i18n="parts.subtitle">Alle Teile deiner Sammlung — aus Sets und einzeln erfasst.</p></div>
         <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
       <div class="brick-stats" id="parts-stats-bar">
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="parts.stat.total_label">Teile gesamt</div><div class="bstat-v" id="ps-total">—</div><div class="bstat-s" id="ps-total-sub"></div></div>
-        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="parts.stat.unique">Teilesorten</div><div class="bstat-v" id="ps-unique">—</div></div>
-        <div class="bstat bstat-light"><div class="bstat-l" data-i18n="parts.stat.colors">Farben</div><div class="bstat-v" id="ps-colors">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="parts.stat.unique">Teilesorten</div><div class="bstat-v" id="ps-unique">—</div><div class="bstat-s"></div></div>
+        <div class="bstat bstat-light"><div class="bstat-l" data-i18n="parts.stat.colors">Farben</div><div class="bstat-v" id="ps-colors">—</div><div class="bstat-s"></div></div>
       </div>
       <!-- ── Manuell erfasste Teile — vor den Set-Teilen ──────────────────── -->
       <div class="erfassen-leiste">
@@ -606,8 +608,8 @@
           <select id="scope-parts" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="parts" data-stil="display:none"></select>
           <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt … -->
           <select id="storage-parts" class="scope-select" aria-label="Lagerort" data-i18n="detail.storage" data-i18n-attr="aria-label" data-change="onStorageChange" data-arg="parts" data-stil="display:none"></select>
-          <select class="w-auto max-240" id="parts-color" aria-label="Nach Farbe filtern" data-i18n="parts.filter.color" data-i18n-attr="aria-label" data-change="setColorFilter" data-stil="display:none"></select>
-          <select class="w-auto max-240" id="parts-cat" aria-label="Nach Kategorie filtern" data-i18n="parts.filter.category" data-i18n-attr="aria-label" data-change="setCatFilter" data-stil="display:none"></select>
+          <select class="w-auto max-240" id="parts-color" aria-label="Nach Farbe filtern" data-i18n="parts.filter.color" data-i18n-attr="aria-label" data-change="setColorFilter"></select>
+          <select class="w-auto max-240" id="parts-cat" aria-label="Nach Kategorie filtern" data-i18n="parts.filter.category" data-i18n-attr="aria-label" data-change="setCatFilter"></select>
           <!-- Wertträger für die Knöpfe daneben: Dieselbe Ansichtswahl wie bei den Sets. -->
           <select class="vh" tabindex="-1" aria-hidden="true" id="parts-view" aria-label="Ansicht" data-i18n="parts.view_label" data-i18n-attr="aria-label">
             <option value="grid" data-i18n="parts.view.grid">Karten</option>
@@ -639,14 +641,15 @@
     <div class="tab" id="tab-minifigs">
       <div class="ph">
         <div><div class="brotkrume" role="navigation" aria-label="Pfad" data-i18n="common.pfad" data-i18n-attr="aria-label"><a href="#/sammlung" data-i18n="nav.collection">Sammlung</a> <span aria-hidden="true">›</span> <span aria-current="page" data-i18n="nav.minifigs">Minifiguren</span></div>
-        <h1 class="ptitle" data-tab-title="minifigs"><span class="ptitle-icon"></span><span data-i18n="nav.minifigs">Minifiguren</span></h1></div>
+        <h1 class="ptitle" data-tab-title="minifigs"><span class="ptitle-icon"></span><span data-i18n="nav.minifigs">Minifiguren</span></h1>
+        <p class="ptitle-unter" id="minifigs-unter" data-i18n="figs.subtitle">Alle Minifiguren deiner Sammlung — aus Sets und einzeln erfasst.</p></div>
         <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
       <!-- Stats (farbig, wie Galerie) -->
       <div class="brick-stats">
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.total_qty">Figuren gesamt</div><div class="bstat-v" id="mf-total">—</div></div>
-        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.types">Figurensorten</div><div class="bstat-v" id="mf-unique">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.total_qty">Figuren gesamt</div><div class="bstat-v" id="mf-total">—</div><div class="bstat-s"></div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.types">Figurensorten</div><div class="bstat-v" id="mf-unique">—</div><div class="bstat-s"></div></div>
       </div>
       <span id="mf-val" data-stil="display:none"></span>
 
