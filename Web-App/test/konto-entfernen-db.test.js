@@ -10,6 +10,9 @@
  *   C  in kontoDateienEntfernen() den Fang entfernt → rot: „liegen die Dateien
  *      fest, übernimmt ein Auftrag“ (die Löschung meldet einen Fehler)
  *
+ * Die Sitzungslöschung scheitert an einem Trigger in der Datenbank (wie ein echter
+ * Fehler dort), nicht an einem umgebogenen Modul. A am 13.11.2026 so wiederholt: rot.
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -17,25 +20,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-
-// Die Sitzungslöschung lässt sich zum Scheitern bringen, bevor der Dienst sie lädt.
-let sitzungenScheitern = false;
-const Module = require('node:module');
-const _echt = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = _echt.call(this, name, ...rest);
-  if (typeof name === 'string' && /repository[/\\]zugaenge(\.js)?$/.test(name))
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'loescheSitzungenDesKontos'
-          ? async (...a) => {
-              if (sitzungenScheitern) throw new Error('Sitzungen nicht löschbar');
-              return t[k](...a);
-            }
-          : t[k],
-    });
-  return m;
-};
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
@@ -88,11 +72,14 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
   await t.test('scheitert ein Schritt, bleibt alles, wie es war', async () => {
     const ziel = await neu();
     await sitzung(ziel);
-    sitzungenScheitern = true;
+    await db.exec(`CREATE FUNCTION entf_sperre() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'Sitzungen nicht löschbar'; END $$;
+      CREATE TRIGGER entf_sperre BEFORE DELETE ON user_sessions
+        FOR EACH ROW WHEN (OLD.sid = 'entf-${ziel}') EXECUTE FUNCTION entf_sperre()`);
     try {
       await assert.rejects(kontoEntfernen(ziel, verw), /Sitzungen nicht löschbar/);
     } finally {
-      sitzungenScheitern = false;
+      await db.exec('DROP TRIGGER entf_sperre ON user_sessions; DROP FUNCTION entf_sperre()');
     }
     assert.deepEqual(await stand(ziel), { konto: true, sitzungen: 1, protokoll: 0 });
     await db.run('DELETE FROM users WHERE id = $1', [ziel]);
