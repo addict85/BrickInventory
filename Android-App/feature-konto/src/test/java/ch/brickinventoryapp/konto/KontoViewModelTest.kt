@@ -111,7 +111,7 @@ class KontoViewModelTest {
         bis("Geräte") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
         server.enqueue(antwort("""{"success":true,"aktiv":true,"codes_uebrig":8}"""))
         val faktorSeite = CoroutineScope(takt).launch { vm.zweiterFaktorState.collect {} }
-        bis("zweiter Faktor") { vm.zweiterFaktorState.value.aktiv && vm.zweiterFaktorState.value.codesUebrig == 8 }
+        bis("zweiter Faktor") { vm.zweiterFaktorState.value.aktiv == true && vm.zweiterFaktorState.value.codesUebrig == 8 }
         geraeteSeite.cancel()
         faktorSeite.cancel()
         assertEquals(2, server.requestCount)
