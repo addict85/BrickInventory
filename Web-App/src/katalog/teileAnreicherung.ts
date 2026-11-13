@@ -535,7 +535,7 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redlSetStatus({ running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
-    const { missing, ohneVorschau } = await bilderOhneDatei();
+    const { missing, ohneVorschau } = await fehlendeDateienSuchen();
     const thumbsErzeugt = await vorschauenNachholen(ohneVorschau);
     const total = missing.length;
     await _redlSetStatus({ running: true, phase: 'downloading', total, done: 0, redownloaded: 0, cleared: 0 });
@@ -576,7 +576,7 @@ const gibtDatei = (fp: string) =>
 
 /** Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
  * keinen zweiten Anlauf. */
-async function bilderOhneDatei() {
+async function fehlendeDateienSuchen() {
   const rows = await katalog().teileAnreicherung.lokaleBilderMitAdresse();
   const missing: FehlendesBild[] = [];
   const ohneVorschau: string[] = [];

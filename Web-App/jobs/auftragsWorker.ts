@@ -19,6 +19,7 @@ import {
   planeNaechsten,
   hatZeitplan,
   pruefeNutzlast,
+  pruefeZugehoerigkeit,
   NutzlastUngueltig,
   type Nutzlast,
 } from '../src/auftraege';
@@ -166,21 +167,6 @@ async function nachFehler(
   }
 }
 
-/** Ein Abbruch über die Verwaltung meldet sich per NOTIFY: sofort nachsehen, nicht erst beim nächsten Lebenszeichen. */
-function pruefeZugehoerigkeit(laufend: Map<string, Lauf>, schluessel?: string): void {
-  for (const { a, ac } of laufend.values()) {
-    if (ac.signal.aborted || (schluessel !== undefined && schluessel !== (a.schluessel ?? a.id))) continue;
-    void auftraegeBereich()
-      .auftraege.gehoertNoch(a)
-      .then(
-        ja => {
-          if (!ja && !ac.signal.aborted) ac.abort(new AuftragVerloren());
-        },
-        logAndContinue(`auftraege:stand ${a.art}`),
-      );
-  }
-}
-
 /** Beim Abschalten: alle Läufe unterbrechen, kurz auf sie warten, und was dann noch
  * läuft, zurückgeben — sonst stünde es bis zum Ablauf der Frist auf 'laeuft'. */
 async function unterbrichLaufende(laufend: Map<string, Lauf>, wartenMs: number): Promise<Lauf[]> {
@@ -269,13 +255,11 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     void pumpe();
   };
 
-  const standGeaendert = (schluessel?: string) => pruefeZugehoerigkeit(laufend, schluessel);
-
   function starte(): void {
     if (gestartet) return;
     gestartet = true;
     letzteRunde = Date.now();
-    abmelden = [beiNeuemAuftrag(geweckt), beiAuftragsStand(standGeaendert)];
+    abmelden = [beiNeuemAuftrag(geweckt), beiAuftragsStand(s => pruefeZugehoerigkeit(laufend.values(), s))];
     takt = setInterval(geweckt, o.taktMs ?? 5000);
     takt.unref();
     void pumpe();

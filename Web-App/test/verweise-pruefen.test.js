@@ -29,7 +29,7 @@ function probebaum() {
     path.join(web, 'src', 'a.ts'),
     [
       '/** Siehe src/da.ts und src/weg.ts. */',
-      "const p = 'src/auchweg.ts'; // gebaut als src/da.js",
+      'const p = `src/auchweg.ts`; // gebaut als src/da.js',
       '// früher utils/alt.ts',
       '',
     ].join('\n'),

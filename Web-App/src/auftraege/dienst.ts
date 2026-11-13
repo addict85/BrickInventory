@@ -4,6 +4,8 @@
 import { imNamenVon, imSystemkontext } from '../infra/kontoKontext';
 import * as repo from './repository/auftraege';
 import type { AuftragsArt, AuftragsStatus, AuftragsZeile, Belegung, Einstellen, Fortschritt } from './auftraege';
+import { AuftragVerloren } from './auftraege';
+import { logAndContinue } from '../infra/fehler';
 import { PREISPOSTEN_HOECHSTENS, pruefeNutzlast, type NutzlastEingabe } from './nutzlasten';
 import { auftraegeBereich } from './prozess';
 import type { AuftraegeDienste } from './bereich';
@@ -136,4 +138,23 @@ export function beiAuftragsStand(f: (schluessel?: string) => void): () => void {
 export function beiNeuemAuftrag(f: () => void): () => void {
   auftraegeBereich().db.benachrichtigung.listen(repo.AUFTRAG_KANAL, f);
   return () => auftraegeBereich().db.benachrichtigung.unlisten(repo.AUFTRAG_KANAL, f);
+}
+
+/** Ein Abbruch über die Verwaltung meldet sich per NOTIFY: Die betroffenen laufenden Aufträge sehen sofort
+ * nach, ob sie ihre Zeile noch halten, statt erst beim nächsten Lebenszeichen. */
+export function pruefeZugehoerigkeit(
+  laeufe: Iterable<{ a: AuftragsZeile; ac: AbortController }>,
+  schluessel?: string,
+): void {
+  for (const { a, ac } of laeufe) {
+    if (ac.signal.aborted || (schluessel !== undefined && schluessel !== (a.schluessel ?? a.id))) continue;
+    void auftraegeBereich()
+      .auftraege.gehoertNoch(a)
+      .then(
+        ja => {
+          if (!ja && !ac.signal.aborted) ac.abort(new AuftragVerloren());
+        },
+        logAndContinue(`auftraege:stand ${a.art}`),
+      );
+  }
 }
