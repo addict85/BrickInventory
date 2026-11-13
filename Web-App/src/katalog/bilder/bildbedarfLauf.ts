@@ -1,10 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { logAndContinue } from '../../infra/fehler';
-import { downloadSetImage } from './setImages';
 import { setBildLokalEintragen } from '../bildlage';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
-import { generateThumb } from './thumbs';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege';
 import {
@@ -64,10 +62,10 @@ async function pauseVorArbeit(): Promise<void> {
 
 /** Ein Fehlschlag wird gemerkt, sonst kostet jede nicht lesbare Datei bei
  * jedem Durchgang einen vergeblichen Lauf. */
-async function vorschauErzeugen(relPfad: string, schluessel: string): Promise<boolean> {
+async function vorschauErzeugen(k: KatalogKontext, relPfad: string, schluessel: string): Promise<boolean> {
   if (istBekanntFehlend('thumb:' + schluessel)) return false;
   // Auch ein Fehler wird gemerkt: Die Datei käme sonst bei jedem Durchgang wieder.
-  const r = await versuche('bild-job:generateThumb', () => generateThumb(relPfad));
+  const r = await versuche('bild-job:generateThumb', () => k.bildwerk.vorschauErzeugen(relPfad));
   const ok = r.ok && !!r.wert;
   if (!ok) merkeFehlend('thumb:' + schluessel, 'Vorschau konnte nicht erzeugt werden');
   return ok;
@@ -140,7 +138,7 @@ type StapelStand = { erg: StapelErgebnis; gruende: string[]; etwasZuTun: boolean
 
 /** Die Datei ist da, höchstens die Vorschau fehlt. Bekannt gescheiterte nicht
  * anfassen: Jedes webp-Bild kostete sonst bei JEDEM Durchgang einen Lauf. */
-async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand): Promise<void> {
+async function nurVorschau(k: KatalogKontext, setNummer: string, vorschau: string, st: StapelStand): Promise<void> {
   if (fs.existsSync(vorschau)) {
     st.erg.uebersprungen++;
     return;
@@ -152,7 +150,7 @@ async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand)
   // Auch hier warten: Eine Verkleinerung kostet mehr als ein Download.
   await pauseVorArbeit();
   st.arbeit++;
-  if (await vorschauErzeugen(`/images/sets/${setNummer}.jpg`, vorschau)) {
+  if (await vorschauErzeugen(k, `/images/sets/${setNummer}.jpg`, vorschau)) {
     st.erg.vorschau++;
     return;
   }
@@ -214,7 +212,7 @@ async function arbeiteStapel(k: KatalogKontext): Promise<StapelErgebnis> {
     const vorschau = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
     if (fs.existsSync(datei)) {
       // kein zweiter Download
-      await nurVorschau(r.set_number, vorschau, st);
+      await nurVorschau(k, r.set_number, vorschau, st);
       await setBildLokalEintragen(k, r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
       continue;
     }
@@ -237,7 +235,7 @@ async function arbeiteStapel(k: KatalogKontext): Promise<StapelErgebnis> {
 
     const info: { status?: number } = {};
     // Ein Fehler zählt wie ein vergeblicher Abruf; über die Wiederholung entscheidet nachFehlschlag().
-    const abruf = await versuche('bild-job:downloadSetImage', downloadSetImage(r.url, r.set_number, info));
+    const abruf = await versuche('bild-job:downloadSetImage', k.bildwerk.setBildLaden(r.url, r.set_number, info));
     const lokal = abruf.ok ? abruf.wert : null;
     if (!lokal) {
       if (await nachFehlschlag(k, r.set_number, info, st)) {
@@ -256,7 +254,7 @@ async function arbeiteStapel(k: KatalogKontext): Promise<StapelErgebnis> {
     }
     // Die Vorschau entsteht NICHT in downloadSetImage(); ohne diesen Aufruf bliebe es bei der grossen
     // Originaldatei.
-    await vorschauErzeugen(lokal, vorschau);
+    await vorschauErzeugen(k, lokal, vorschau);
     // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
     await setBildLokalEintragen(k, r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
     erg.geholt++;

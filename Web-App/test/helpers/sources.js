@@ -55,6 +55,7 @@ module.exports = {
   buildAndRequire,
   testZugang,
   testDaten,
+  testBildwerk,
 };
 
 /**
@@ -117,6 +118,12 @@ let _eigenDb = null;
 /** Erzeugen die Zugänge; gesetzt von buildAndRequire(). */
 let _zugangFabrik = null;
 let _datenFabrik = null;
+/** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
+ *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
+const _bildwerk = {
+  setBildLaden: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/setImages.js')).downloadSetImage(...a),
+  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/thumbs.js')).generateThumb(...a),
+};
 
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
@@ -154,7 +161,7 @@ function buildAndRequire() {
   );
   // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch.
   require(path.join(ROOT, 'dist', 'src/infra/bereich.js')).verdrahteDienste(() =>
-    require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueDienste(testDb(), faul),
+    require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueDienste(testDb(), faul, _bildwerk),
   );
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
   // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
@@ -260,6 +267,16 @@ module.exports.routerAus = routerAus;
 function testZugang() {
   if (!_zugangFabrik) throw new Error('testZugang() erst nach buildAndRequire()');
   return _zugangFabrik();
+}
+
+/** Das Bildwerk, das baueDienste() dieser Datei bekommen hat: Ein Test ersetzt einen Teil
+ *  darin, statt das Modul beim Laden umzubiegen. Mit `t` gilt der Ersatz bis zum Ende des Tests.
+ *  @param {{ after: (f: () => void) => void } | null} [t] @param {Record<string, Function>} [ersatz] */
+function testBildwerk(t, ersatz = {}) {
+  const vorher = { ..._bildwerk };
+  Object.assign(_bildwerk, ersatz);
+  t?.after(() => Object.assign(_bildwerk, vorher));
+  return _bildwerk;
 }
 
 /** Der Zugang der Eigentümerin für Testdaten: Er schreibt am Zeilenschutz vorbei, damit

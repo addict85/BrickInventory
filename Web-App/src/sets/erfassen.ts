@@ -5,15 +5,7 @@ import type { DbSchnittstelle } from '../../db/database';
 import { blickfeldIds, schreibziel } from '../haushalt';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand';
 import { mitInventarSperre } from '../../db/txLock';
-import {
-  downloadSetImage,
-  rebrickableSetBild,
-  brickset,
-  generateThumb,
-  katalogStand,
-  merkeKatalogPlatzhalter,
-  merkeSetKatalog,
-} from '../katalog';
+import { rebrickableSetBild, brickset, katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/sets';
@@ -200,9 +192,12 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   imageUrl ??= rebrickableSetBild(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche('set-anlegen:bild-laden', Promise.race([downloadSetImage(imageUrl, sn), frist]));
+  const bild = await versuche(
+    'set-anlegen:bild-laden',
+    Promise.race([sk.katalog.bildwerk.setBildLaden(imageUrl, sn), frist]),
+  );
   const lokal = wertOder(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', generateThumb(lokal));
+  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.bildwerk.vorschauErzeugen(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   await merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };

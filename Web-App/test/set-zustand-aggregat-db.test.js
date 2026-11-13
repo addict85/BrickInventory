@@ -38,8 +38,6 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (/** @type {string} */ name, /** @type {any[]} */ ...rest) {
   const m = _echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) => (k === 'setErfassen' && gestellteAddSet ? (_sk, ...a) => gestellteAddSet?.(...a) : t[k]),

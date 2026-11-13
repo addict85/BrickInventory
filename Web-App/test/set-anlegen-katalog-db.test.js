@@ -23,18 +23,6 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
-  // Kein Bildabruf und kein Nachzug: Der Test prüft den Katalog, nicht das Netz.
-  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
-  if (typeof name === 'string' && /[/\\]images(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'downloadSetImage' ? async () => null : t[k]) });
-  return m;
-};
-
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { katalogSet } = require('./helpers/bestand');

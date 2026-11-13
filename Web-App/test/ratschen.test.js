@@ -580,24 +580,37 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
  * Testdaten nehmen testDaten()/datenOderSkip(), Code unter Test testZugang()/zugangOderSkip().
  * Einzelne Exporte des Moduls (erzeugeDb, istLesend) sind kein Zugang und bleiben erlaubt. */
 const NUTZT_FASSADE = /(?<!\}\s*=\s*)_req\w*\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(|\.standardDb\(/;
+/** Wer Module beim Laden umbiegt, prüft einen Aufbau, den es im Betrieb nicht gibt, und greift
+ * still ins Leere, sobald sich ein Importpfad ändert. Ersetzt wird an der Verdrahtung:
+ * testBildwerk(), Nacharbeit, verdrahteKlienten. */
+const BIEGT_MODULE = /\.prototype\.require\s*=|\._load\s*=/;
 
-test('kein Test nutzt die Fassade der alten DB-API', () => {
-  // 387 Dateien am 12.11.2026, 0 seit der Umstellung auf testDaten()/testZugang().
-  // Gegenprobe (13.11.2026): in indizes-db.test.js wieder `_req('db/database.js')` → rot.
+test('Tests benutzen den echten Aufbau: keine DB-Fassade, umgebogene Module werden weniger', () => {
+  // Fassade: 387 Dateien am 12.11.2026, 0 seit testDaten()/testZugang() (13.11.2026).
+  // Umgebogen: 26 Testdateien am 13.11.2026, 14 nach Bildwerk und toten Abfängen.
+  // Gegenproben (13.11.2026): in indizes-db.test.js wieder `_req('db/database.js')` → rot
+  // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14).
+  const SCHRANKE_UMGEBOGEN = 14;
   assert.ok(NUTZT_FASSADE.test("const db = _req('db/database.js');") && !NUTZT_FASSADE.test('zugangOderSkip(t)'));
   assert.ok(!NUTZT_FASSADE.test("const { erzeugeDb } = _req('db/database.js');"), 'Exporte bleiben erlaubt');
+  assert.ok(BIEGT_MODULE.test('Module.prototype.require = function () {}') && !BIEGT_MODULE.test('testBildwerk(t)'));
   const q = require('./helpers/sources');
-  const dateien = [
-    ...fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js'),
-    ...fs.readdirSync(path.join(__dirname, 'helpers')).map(n => path.join('helpers', n)),
-  ];
-  assert.ok(dateien.length > 500, `nur ${dateien.length} Dateien — greift die Suche noch?`);
+  const tests = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js');
+  const helfer = fs.readdirSync(path.join(__dirname, 'helpers')).map(n => path.join('helpers', n));
+  assert.ok(tests.length > 500, `nur ${tests.length} Testdateien — greift die Suche noch?`);
   const lies = (/** @type {string} */ n) => q.ohneKommentare(fs.readFileSync(path.join(__dirname, n), 'utf8'));
   assert.deepEqual(
-    dateien.filter(n => NUTZT_FASSADE.test(lies(n))),
+    [...tests, ...helfer].filter(n => NUTZT_FASSADE.test(lies(n))),
     [],
     'Testdaten über testDaten(), Code unter Test über testZugang()',
   );
+  const umgebogen = tests.filter(n => BIEGT_MODULE.test(lies(n))).length;
+  assert.ok(
+    umgebogen <= SCHRANKE_UMGEBOGEN,
+    `${umgebogen} Testdateien biegen Module um, erlaubt sind ${SCHRANKE_UMGEBOGEN}`,
+  );
+  if (umgebogen < SCHRANKE_UMGEBOGEN)
+    console.log(`  ℹ Module umgebogen: ${umgebogen} (Schranke ${SCHRANKE_UMGEBOGEN}) — Schranke nachziehen`);
 });
 
 /**

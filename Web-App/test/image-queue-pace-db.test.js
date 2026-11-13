@@ -32,7 +32,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
-const Module = require('node:module');
 const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
@@ -45,33 +44,18 @@ const ladeZeiten = [];
  * Schalter für den abgefangenen Download.
  */
 let ladenSchlaegtFehl = false;
-const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = echtesRequire.call(this, name, ...rest);
-  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
-  // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
-  // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'downloadSetImage'
-          ? async (_u, sn) => {
-              // Auch der Fehlschlag zählt als Anfrage: Der Roundtrip zum CDN hat
-              // stattgefunden, und genau darum geht es beim Kontingent.
-              ladeZeiten.push(Date.now());
-              return ladenSchlaegtFehl ? null : `/images/sets/${sn}.jpg`;
-            }
-          : t[k],
-    });
-  }
-  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m?.generateThumb) {
-    return new Proxy(m, { get: (t, k) => (k === 'generateThumb' ? async () => true : t[k]) });
-  }
-  return m;
-};
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
 const _req = buildAndRequire();
+testBildwerk(null, {
+  setBildLaden: async (_u, sn) => {
+    // Auch der Fehlschlag zählt als Anfrage: Der Roundtrip zum CDN hat
+    // stattgefunden, und genau darum geht es beim Kontingent.
+    ladeZeiten.push(Date.now());
+    return ladenSchlaegtFehl ? null : `/images/sets/${sn}.jpg`;
+  },
+  vorschauErzeugen: async () => true,
+});
 const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = testDaten();
@@ -524,7 +508,6 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t
 
 test('aufräumen', { concurrency: 1 }, async () => {
   for (const f of angelegt) fs.rmSync(f, { force: true });
-  Module.prototype.require = echtesRequire;
   // Letzter Test dieser Datei — nur hier wird der Pool geschlossen. (Lehre aus
   // Ein früher geschlossener Pool macht jeden folgenden DB-Test
   // rot, und die Meldung nennt den Grund nicht.)

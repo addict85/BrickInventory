@@ -7,16 +7,6 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Der Nachzug nach dem Erfassen (src/sets/nachErfassung.ts) wird abgefangen.
-const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
-  return m;
-};
-
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');

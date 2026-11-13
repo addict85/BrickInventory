@@ -18,8 +18,6 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
   const m = _echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
   // Gestellt wird das Anlegen; das Ergänzen im Strom ohne Netz.
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {

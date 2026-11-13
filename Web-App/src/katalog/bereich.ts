@@ -31,12 +31,18 @@ import * as bildBlickfeldDienst from './bilder/bildBlickfeld';
 import * as bildNachschlagen from './bilder/bildNachschlagen';
 import * as proxyThumbs from './bilder/proxyThumbs';
 import * as imgCacheServe from './bilder/imgCacheServe';
-import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
+import { downloadSetImage } from './bilder/setImages';
+import { generateThumb } from './bilder/thumbs';
+import { zugang, type Bildwerk, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
 
-export type { KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
+export type { Bildwerk, KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
 
-export function erzeugeKatalog(a: Omit<KatalogAbhaengigkeiten, 'faecher'>) {
-  const k: KatalogKontext = baueKontext({ ...a, faecher: new Faecher() }, zugang);
+/** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/verdrahtung.ts baueDienste). */
+export function erzeugeKatalog(
+  a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'bildwerk'> & { bildwerk?: Bildwerk | undefined },
+) {
+  const bildwerk = a.bildwerk ?? { setBildLaden: downloadSetImage, vorschauErzeugen: generateThumb };
+  const k: KatalogKontext = baueKontext({ ...a, bildwerk, faecher: new Faecher() }, zugang);
   return {
     ...k,
     ...bindeZugang(k, anleitungLaden, ['anleitungLaden']),

@@ -23,6 +23,7 @@ import { erzeugeGutscheine } from '../src/gutscheine';
 import { erzeugeSammlung } from '../src/sammlung';
 import { erzeugeVerwaltung } from '../src/verwaltung';
 import {
+  type Bildwerk,
   erzeugeKatalog,
   merkeGebraucht,
   enrichSetParts,
@@ -85,14 +86,14 @@ export function baueKlientenZugang(): KlientenZugang {
 
 /** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
  * der tieferen, die er braucht, als Teil seines Kontexts. Die eine Stelle, an der
- * verdrahtet wird; Testhilfen rufen sie auch. */
-export function baueDienste(db: Db, nacharbeit: Nacharbeit) {
+ * verdrahtet wird; Testhilfen rufen sie auch und geben dabei ihr `bildwerk` mit. */
+export function baueDienste(db: Db, nacharbeit: Nacharbeit, bildwerk?: Bildwerk) {
   const einstellungen = erzeugeEinstellungen({ db });
   const auftraege = erzeugeAuftraege({ db, einstellungen });
   const haushalt = erzeugeHaushalt({ db });
   const konto = erzeugeKonto({ db, einstellungen, auftraege, haushalt, nacharbeit });
   const idempotenz = erzeugeIdempotenz({ db });
-  const katalog = erzeugeKatalog({ db, einstellungen, auftraege, haushalt, nacharbeit });
+  const katalog = erzeugeKatalog({ db, einstellungen, auftraege, haushalt, nacharbeit, bildwerk });
   const finanzen = erzeugeFinanzen({ db, einstellungen, auftraege, haushalt, katalog, nacharbeit });
   const bestand = erzeugeBestand({ db, einstellungen, haushalt, konto, katalog, finanzen });
   const sets = erzeugeSets({ db, nacharbeit, katalog, finanzen, auftraege, bestand, einstellungen, konto });

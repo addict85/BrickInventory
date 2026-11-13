@@ -4,7 +4,6 @@ import { resolveIfExists, resolveImageLocal } from './bilder/images';
 import { dateiStamm } from './bilder/bildBlickfeld';
 import { resolveOne, resolveViaApi } from './bricklinkLink';
 import { fuerSet } from './preisvergleich';
-import { downloadSetImage } from './bilder/setImages';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
@@ -164,7 +163,7 @@ export async function katalogSet(k: KatalogKontext, userId: number, roh: string)
   // Jetzt dauerhaft ablegen; die Vorschau und den Eintrag in set_catalog macht der Bild-Job.
   if (!image_local && set.image_url) {
     // Ohne Datei zeigt die Seite image_url; der Bild-Job holt sie nach.
-    const r = await versuche('katalog:downloadSetImage', downloadSetImage(set.image_url, set.set_number));
+    const r = await versuche('katalog:downloadSetImage', k.bildwerk.setBildLaden(set.image_url, set.set_number));
     image_local = r.ok ? r.wert : null;
     if (image_local) k.nacharbeit.bildVormerken(String(set.image_url || ''), set.set_number);
   }

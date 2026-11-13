@@ -5,7 +5,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
-const Module = require('node:module');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -13,39 +12,19 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Herunterladen und Verkleinern abfangen — hier zählt, WAS aufgerufen wird.
 let geladen = 0;
 const verkleinert = [];
-const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = echtesRequire.call(this, name, ...rest);
-  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
-  // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
-  // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'downloadSetImage'
-          ? async (_u, sn) => {
-              geladen++;
-              return `/images/sets/${sn}.jpg`;
-            }
-          : t[k],
-    });
-  }
-  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m?.generateThumb) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'generateThumb'
-          ? async p => {
-              verkleinert.push(p);
-              return true;
-            }
-          : t[k],
-    });
-  }
-  return m;
-};
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
 const _req = buildAndRequire();
+testBildwerk(null, {
+  setBildLaden: async (_u, sn) => {
+    geladen++;
+    return `/images/sets/${sn}.jpg`;
+  },
+  vorschauErzeugen: async p => {
+    verkleinert.push(p);
+    return true;
+  },
+});
 const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
@@ -235,7 +214,6 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
-    Module.prototype.require = echtesRequire;
   }
 });
 

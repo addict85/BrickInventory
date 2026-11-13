@@ -13,34 +13,23 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const Module = require('node:module');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 /** Abgefangener Download: Statuscode je Set, kein Netz. */
 const antworten = new Map();
 const angefragt = [];
-const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'downloadSetImage'
-          ? async (_url, sn, info) => {
-              angefragt.push(sn);
-              const status = antworten.get(sn);
-              if (status && info) info.status = status;
-              return null;
-            }
-          : t[k],
-    });
-  }
-  return m;
-};
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
 const _req = buildAndRequire();
+testBildwerk(null, {
+  setBildLaden: async (_url, sn, info) => {
+    angefragt.push(sn);
+    const status = antworten.get(sn);
+    if (status && info) info.status = status;
+    return null;
+  },
+});
 const { datenOderSkip } = require('./helpers/db');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 const db = testDaten();
