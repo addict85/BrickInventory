@@ -43,12 +43,13 @@ process.env.DATABASE_URL = URL_DB;
 // Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
 const gesendet = mailAttrappe();
-const db = _req('db/database.js');
+const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { warte } = require('./helpers/zeit');
 const freierPort = () =>
@@ -60,7 +61,7 @@ const freierPort = () =>
   });
 
 test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `quer_${process.pid}`,
     PASS = 'Quer-Passwort-1',
     MAIL = `quer_${process.pid}@example.org`;

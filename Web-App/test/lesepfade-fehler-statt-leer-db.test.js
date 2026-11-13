@@ -19,8 +19,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { katalogSet: legeKatalogSetAn } = require('./helpers/bestand');
 
 const FARBE = 990000 + (process.pid % 9000);
@@ -29,7 +30,7 @@ const SET = `LPF${process.pid}-1`;
 const NAME = `lesepfade_${process.pid}`;
 
 test('Lesefehler im Katalog: Fehler statt leer', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const { farbliste } = _req('src/katalog/farben.js');
   const { blNummerVon } = _req('src/katalog/blZuordnung.js');

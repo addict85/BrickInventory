@@ -20,10 +20,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire } = require('./helpers/sources');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { pflegeTabelle } = _req('db/tabellePflegen.js');
 
 /** Wann wurde die Tabelle zuletzt aufgeraeumt und vermessen? */
@@ -50,7 +50,7 @@ async function wartenAufStand(tabelle, vorher, ms = 5000) {
 }
 
 test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   // Ein echtes Konto: parts_summary hat seit Migration 0043 einen Schlüssel auf users.
   const NAME = `pflege_${process.pid}`;

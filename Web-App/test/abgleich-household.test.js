@@ -36,7 +36,7 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').dbOderSkip(t, _req);
+  const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
   const hh = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
   const namen = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];

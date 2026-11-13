@@ -8,13 +8,14 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const express = require('express');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { importWorker } = require('./helpers/auftraege');
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   importWorker(t, _req);
 
   const name = `imp_${process.pid}`;

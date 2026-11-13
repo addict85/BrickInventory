@@ -9,19 +9,20 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 // Die Adresse aus server.ts LESEN, nicht abschreiben: Ein eigener Pruefstand
 // mit fester Adresse bleibt gruen, waehrend der Router laengst woanders haengt.
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   // ── Aufbau: ein Administrator, ein Opfer ────────────────────────────────
   for (const name of ['pw_chef', 'pw_opfer']) {

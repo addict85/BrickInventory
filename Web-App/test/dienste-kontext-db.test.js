@@ -38,7 +38,7 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
   const { baueDienste } = _req('startup/verdrahtung.js');
   const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
   // Testdaten als Eigentümerin (am Zeilenschutz vorbei), der Dienst fragt als Laufzeitrolle.
-  const eigen = _req('db/database.js');
+  const eigen = quellen.testDaten();
   const { imNamenVon } = _req('src/infra/kontoKontext.js');
   const db = testZugang();
   const name = `kontext_${process.pid}`;

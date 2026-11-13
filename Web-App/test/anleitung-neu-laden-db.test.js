@@ -29,8 +29,9 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 
@@ -39,13 +40,13 @@ const anlPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'sr
 const echt = require(anlPfad);
 require.cache[anlPfad].exports = Object.assign({}, echt, { downloadSetInstructions: async () => [] });
 
-const db = _req('db/database.js');
+const db = testDaten();
 const SET = '99072-1',
   URL_A = 'https://quelle.example/99072.pdf';
 const NAMEN = ['anl_halter', 'anl_fremd'].map(n => `${n}_${process.pid}`);
 
 test('Anleitungen neu laden', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];

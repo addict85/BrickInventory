@@ -47,12 +47,13 @@ Module.prototype.require = function (/** @type {string} */ name, /** @type {any[
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const P = process.pid;
   const NAME = `zustand-agg-${P}`;

@@ -24,8 +24,9 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const { geraeteNameGueltig } = _req('src/konto/namensRegeln.js');
@@ -48,7 +49,7 @@ test('Gerätenamen: die Regel', () => {
 });
 
 test('Gerätenamen an allen drei Wegen', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const NAME = `geraet_${process.pid}`,
     PASS = 'Geraete-Passwort-17';

@@ -35,10 +35,11 @@ process.env.DATABASE_URL = URL_DB;
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const { proxyVertrauen } = _req('src/infra/proxyVertrauen.js');
 const { MAX_ATTEMPTS, wartezeitSekunden } = _req('src/konto/loginLimiter.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));

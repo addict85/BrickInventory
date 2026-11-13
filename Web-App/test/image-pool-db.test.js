@@ -9,12 +9,13 @@ const fs = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip, keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip, keineDb } = require('./helpers/db');
+const db = testDaten();
 
 test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const IM = _req('src/katalog/bilder/imageMisses.js');
   const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');

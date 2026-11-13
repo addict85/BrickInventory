@@ -8,9 +8,9 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = _req('db/database.js');
+const db = testDaten();
 const hh = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
 
 const HAUPT = 990501,
@@ -108,7 +108,7 @@ test('Blickfeld: gemerkt, und bei Änderung sofort vergessen', async t => {
         }
       });
     });
-    hh.meldeHaushaltsaenderung(db.standardDb());
+    hh.meldeHaushaltsaenderung(testZugang());
     const meldung = await angekommen;
     assert.equal(meldung.channel, hh.HAUSHALT_KANAL);
 

@@ -39,13 +39,14 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const repo = _req('src/katalog/repository/bildlage.js');
   const { setBilderNachladen } = _req('src/katalog/bildlage.js');
   const IM = _req('src/katalog/bilder/imageMisses.js');

@@ -10,9 +10,9 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, ohneKommentare, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = _req('db/database.js');
+const db = testDaten();
 const { drossleBeruehren } = _req('src/konto/sitzungsBeruehrung.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));

@@ -32,7 +32,7 @@ process.env.APP_BASE_URL = 'https://lego.test';
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 const gesendet = [];
@@ -45,12 +45,12 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
   },
 });
 
-const db = _req('db/database.js');
+const db = S.testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Hinweis-Passwort-1';
 
 test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const P = process.pid,
     NAMEN = [`zh_chef_${P}`, `zh_zwei_${P}`, `zh_nutzer_${P}`, `zh_neu_${P}`];
   const konto = async (name, admin) =>

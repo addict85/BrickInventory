@@ -18,10 +18,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const { ANDROID, quellwurzeln } = require('./helpers/android');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 test.after(() =>
-  _req('db/database.js')
+  testDaten()
     .pool.end()
     .catch(() => {}),
 );
@@ -41,7 +42,7 @@ test('gebaute Adressen nehmen die neue Form, die alte wird weiter erkannt', () =
 });
 
 test('der Server bedient beide Adressen', async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   // Ältere App-Fassungen bauen die alte Adresse selbst zusammen.
   const app = require('express')();
   app.use((req, _res, next) => {

@@ -66,12 +66,13 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const sets = _req('src/sets/index.js');
   const P = process.pid % 100000;

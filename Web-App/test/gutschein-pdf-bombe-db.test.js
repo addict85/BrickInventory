@@ -36,9 +36,10 @@ fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });
 fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}');
 process.env.APP_ROOT = SANDKASTEN;
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const { pdfText, werteAusPdf, PdfZuGross, STROM_MAX_BYTES, ENTPACKT_MAX_BYTES, STROEME_MAX } = _req(
   'src/gutscheine/gutscheinPdf.js',
 );

@@ -38,9 +38,10 @@ Module.prototype.require = function (name, ...rest) {
   };
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
   try {

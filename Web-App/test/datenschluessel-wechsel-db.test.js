@@ -35,7 +35,7 @@ const A = crypto.randomBytes(32).toString('base64'),
 umgebung({ DATA_KEY: A });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const G = _req('src/infra/geheimnis.js');
 const zf = _req('src/konto/zweiterFaktor.js');
 const gut = {
@@ -54,7 +54,7 @@ function schluessel(aktuell, vorig) {
 }
 
 test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const NAME = `wechsel_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);

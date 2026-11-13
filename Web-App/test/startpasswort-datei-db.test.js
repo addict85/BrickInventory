@@ -23,8 +23,9 @@ delete process.env.ADMIN_PASSWORD;
 const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'startpasswort-'));
 process.env.APP_ROOT = wurzel;
 
-const _req = require('./helpers/sources').buildAndRequire();
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const db = testDaten();
 const { keineDb } = require('./helpers/db');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 

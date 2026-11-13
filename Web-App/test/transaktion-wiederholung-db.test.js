@@ -26,9 +26,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 const TABELLE = `tx_wiederholung_${process.pid}`;
 const MIT = { wiederholeBeiKonflikt: true };
@@ -37,7 +38,7 @@ const MIT = { wiederholeBeiKonflikt: true };
 const pgFehler = code => Object.assign(new Error(`simuliert ${code}`), { code });
 
 test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run(`CREATE TABLE ${TABELLE} (id int PRIMARY KEY, n int NOT NULL DEFAULT 0)`);
   await db.run(`INSERT INTO ${TABELLE} (id) VALUES (1), (2)`);
   t.after(async () => {
@@ -185,7 +186,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     const { mitInventarSperre } = _req('db/txLock.js');
     let n = 0;
     const r = await mitInventarSperre(
-      db.standardDb(),
+      testZugang(),
       1,
       'x',
       async () => {
@@ -197,7 +198,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     assert.deepEqual([r, n], ['fertig', 2]);
     let m = 0;
     await assert.rejects(
-      mitInventarSperre(db.standardDb(), 1, 'x', async () => {
+      mitInventarSperre(testZugang(), 1, 'x', async () => {
         m++;
         throw pgFehler('40P01');
       }),

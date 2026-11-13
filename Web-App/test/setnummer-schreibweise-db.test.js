@@ -13,9 +13,10 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 // BrickLink vorgeben, BEVOR die Preiswege getPriceGuide herausziehen. Der
 // echte Client wirft in genau dieser Lage — hier wird nur MITGEZAEHLT, wie
@@ -40,7 +41,7 @@ test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
 });
 
 test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const BLANK = `g${process.pid}`; // so fragt der Aufrufer
   const MITV = `${BLANK}-1`; // so legt clients/bricklink.ts es ab

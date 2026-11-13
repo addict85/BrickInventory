@@ -25,9 +25,10 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.ERFASSUNG_ZEITZONE = 'Europe/Zurich';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async t => {
   // initSchemaOnce wie beim Start: Schema, Migrationen, Zone in die Datenbank.

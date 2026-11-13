@@ -19,16 +19,17 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
-const pgNotify = _req('db/database.js').standardDb().benachrichtigung;
+const pgNotify = testZugang().benachrichtigung;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
 test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `widerruf_p_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (

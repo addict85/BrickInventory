@@ -36,14 +36,14 @@ Module.prototype.require = function (name, ...rest) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { ohneKommentare } = require('./helpers/sources');
+const { ohneKommentare, testDaten } = require('./helpers/sources');
 const { haeltSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const NUTZER = `neu-form-${process.pid}`;
   const basis = 96000 + (process.pid % 900);

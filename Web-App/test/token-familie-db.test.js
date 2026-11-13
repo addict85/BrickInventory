@@ -28,7 +28,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 
 const gesendet = [];
 const echterMailer = _req('src/mail/mailer.js');
@@ -40,7 +40,7 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
   },
 });
 
-const db = _req('db/database.js');
+const db = S.testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -49,7 +49,7 @@ const NAME = `familie_${process.pid}`,
   PASS = 'Familien-Passwort-1';
 
 test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(

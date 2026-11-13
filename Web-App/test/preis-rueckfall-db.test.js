@@ -30,9 +30,10 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 // BrickLink nachstellen — wie in preis-schreibweg-db: esbuild exportiert über
@@ -82,7 +83,7 @@ async function konto(name, set) {
 }
 
 test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const NAME = `rueckfall_${process.pid}`,
     SET = `9${process.pid % 10000}-1`;

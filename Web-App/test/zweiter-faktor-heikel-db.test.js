@@ -29,7 +29,7 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Keine echten Mails: vor dem Laden von routes/auth ersetzen.
@@ -40,7 +40,7 @@ require.cache[mailerPfad].exports = Object.assign({}, echterMailer, {
   sendVerificationMail: async () => ({ success: true }),
 });
 
-const db = _req('db/database.js');
+const db = S.testDaten();
 const zf = _req('src/konto/zweiterFaktor.js');
 const { entschluessele } = _req('src/infra/geheimnis.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -68,7 +68,7 @@ async function mitFaktor(uid) {
 }
 
 test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const NAME = `zfh_${process.pid}`,
     OHNE = `zfh_ohne_${process.pid}`,

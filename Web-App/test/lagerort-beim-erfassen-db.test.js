@@ -17,7 +17,8 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 /**
@@ -37,7 +38,7 @@ async function ortVon(db, tabelle, bedingung, params) {
   );
   return r?.storage ?? null;
 }
-const db = _req('db/database.js');
+const db = testDaten();
 
 const U = {};
 

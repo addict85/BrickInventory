@@ -34,15 +34,16 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 const { bis } = require('./helpers/zeit');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const db = _req('db/database.js');
+const db = testDaten();
 
 const NAME = `haerte_${process.pid}`,
   PASS = 'Haerte-Passwort-1';
@@ -51,7 +52,7 @@ const ZAEHLER = `${NAME}_zaehler`;
 let uid = 0;
 
 test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const aufraeumen = async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_v`]]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', ['%203.0.113.%']);

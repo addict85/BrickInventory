@@ -27,9 +27,10 @@ const { Readable } = require('node:stream');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 // @ts-expect-error — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
 https.get = (_url, _opts, cb) => {
@@ -51,7 +52,7 @@ https.get = (_url, _opts, cb) => {
 };
 
 test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const ID = String(process.pid);
   const TEIL = `t${ID}`,

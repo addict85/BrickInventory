@@ -38,9 +38,10 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { warte } = require('./helpers/zeit');
 const freierPort = () =>
@@ -82,7 +83,7 @@ function roh(port, text) {
 }
 
 test('zehnte Sicherheitsprüfung am echten Server', { concurrency: 1, timeout: 240_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const PASS = 'Runde-Elf-Passwort-7x',
     NAME = `r11_${process.pid}`;
   const namen = [`${NAME}_a`, `${NAME}_b`, `${NAME}_v`];

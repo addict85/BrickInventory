@@ -37,9 +37,10 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 
 // Rebrickable vorgeben: Ohne Namen im Rumpf fragt addManualPart/addManualFig
 // den Katalog und danach notfalls Rebrickable. Hier geht es um den Lagerort,

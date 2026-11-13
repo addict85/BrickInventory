@@ -20,13 +20,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
 
 test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const namen = [`absage_a_${process.pid}`, `absage_b_${process.pid}`, `absage_c_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);

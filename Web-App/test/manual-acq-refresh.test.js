@@ -87,7 +87,7 @@ test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', async t => {
 test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurrency: 1 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').dbOderSkip(t, _req);
+  const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
   const NAME = `macq_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);

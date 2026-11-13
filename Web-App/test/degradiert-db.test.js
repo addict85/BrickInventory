@@ -47,12 +47,13 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 
 test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const NAME = `degr-${process.pid}`,
     SN = `${60000 + (process.pid % 9000)}-1`;

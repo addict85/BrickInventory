@@ -70,10 +70,11 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
-const db = _req('db/database.js');
+const db = testDaten();
 const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 

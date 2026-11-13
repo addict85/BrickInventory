@@ -35,13 +35,14 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { katalogSet } = require('./helpers/bestand');
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   const SN = `9${process.pid % 10000}-1`;
   const NAME = `kat-name-${process.pid}`;
   const schluessel = ['rebrickable_api_key', 'brickset_api_key'];

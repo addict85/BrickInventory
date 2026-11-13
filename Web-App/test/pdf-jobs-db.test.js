@@ -27,8 +27,9 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
@@ -252,8 +253,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
     await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`).catch(() => {});
-    await _req('db/database.js')
-      .standardDb()
+    await testZugang()
       .benachrichtigung.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});

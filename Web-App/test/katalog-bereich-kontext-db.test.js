@@ -22,7 +22,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { verdrahte } = _req('startup/verdrahtung.js');
 const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
 const K = _req('src/katalog/prozess.js');
@@ -49,7 +49,7 @@ function zaehlenderZugang(echt, sql) {
 }
 
 test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const weg = async () => {
     await db.run('DELETE FROM rb_inventories WHERE id = $1', [INVENTAR]);
@@ -64,7 +64,7 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
   await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1, $2, 1)', [INVENTAR, SN]);
 
   const sql = [];
-  verdrahte({ nacharbeit: OHNE_NACHARBEIT, erststart: async () => {} }, zaehlenderZugang(db.standardDb(), sql));
+  verdrahte({ nacharbeit: OHNE_NACHARBEIT, erststart: async () => {} }, zaehlenderZugang(quellen.testZugang(), sql));
 
   await t.test('Lesen geht über den übergebenen Zugang', async () => {
     assert.equal(await neuestesInventar(SN), INVENTAR);

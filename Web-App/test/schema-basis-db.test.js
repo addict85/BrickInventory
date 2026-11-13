@@ -37,7 +37,8 @@ ziel.pathname = '/' + NAME;
 process.env.DATABASE_URL = ziel.toString();
 process.env.ADMIN_PASSWORD = 'Basis-Pruefung-2026';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 
@@ -53,13 +54,15 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
   await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
   // Wie server.ts: Der Zugang bekommt den Erststart mit, der das erste Konto anlegt.
-  const modul = _req('db/database.js');
+  const modul = require(path.join(ROOT, 'dist', 'db', 'database.js'));
   const db = modul.erzeugeDb(modul.dbKonfigAusUmgebung(), {
     erststart: () => _req('startup/verdrahtung.js').baueVerdrahtung().erststart(),
   });
   t.after(async () => {
     await db.pool.end().catch(() => {});
-    await modul.pool.end().catch(() => {});
+    await testDaten()
+      .pool.end()
+      .catch(() => {});
     await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)} WITH (FORCE)`).catch(() => {});
     await admin.end().catch(() => {});
   });

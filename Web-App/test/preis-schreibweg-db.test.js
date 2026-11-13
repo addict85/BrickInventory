@@ -25,9 +25,10 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 // BrickLink vorgeben, BEVOR financeCalc/priceJob getPriceGuide herausziehen.
 // esbuild exportiert ueber Getter, ein `bl.getPriceGuide = …` liefe ins
@@ -59,7 +60,7 @@ async function spuren(sn) {
 }
 
 test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const JOB = `schreibweg-${process.pid}-job`;
   const WEG = `schreibweg-${process.pid}-weg`;

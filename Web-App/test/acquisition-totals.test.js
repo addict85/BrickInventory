@@ -18,8 +18,9 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { acquisitionTotals } = _req('src/bestand/acquisitions.js');
 
@@ -79,8 +80,8 @@ test('leere Liste', () => {
 // ── Teil 2: die Regel ───────────────────────────────────────────────────────
 
 test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, async t => {
-  const db = _req('db/database.js');
-  if (!(await dbOderSkip(t, _req))) return;
+  const db = testDaten();
+  if (!(await datenOderSkip(t, _req))) return;
   const P = process.pid,
     NAME = `summen-${P}`,
     SN = `${P}7-1`,

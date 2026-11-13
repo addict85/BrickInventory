@@ -32,9 +32,10 @@ fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });
 fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}');
 process.env.APP_ROOT = SANDKASTEN;
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const g = _req('src/infra/geheimnis.js');
 const gr = {
   ..._req('src/gutscheine/repository/gutscheine.js'),
@@ -56,7 +57,7 @@ const alsV1 = klar => 'v1:' + roh1(Buffer.from(klar, 'utf8')).toString('base64')
 const PDF = Buffer.from('%PDF-1.4\nGutschein 5045076374450099999 PIN 4711\n%%EOF\n');
 
 test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const namen = [`kontext_a_${process.pid}`, `kontext_b_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
@@ -204,7 +205,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     fs.mkdirSync(path.dirname(pdf), { recursive: true });
     fs.writeFileSync(pdf, Buffer.concat([Buffer.from('BIENC1\n'), roh1(PDF)]));
 
-    await _req('startup/datenbank.js').bereiteDatenbankVor(_req('db/database.js').standardDb());
+    await _req('startup/datenbank.js').bereiteDatenbankVor(testZugang());
 
     const v = await db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);
     assert.ok(v.number.startsWith('v2:') && v.pin.startsWith('v2:'), JSON.stringify(v));

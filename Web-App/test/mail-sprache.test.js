@@ -86,7 +86,7 @@ test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kon
   const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
   const gesendet = mailAttrappe();
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').dbOderSkip(t, _req);
+  const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
   const { bis } = require('./helpers/zeit');
   const NAME = `mailsprache_${process.pid}`;
@@ -156,7 +156,7 @@ test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kon
 test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').dbOderSkip(t, _req);
+  const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
   const { baueAlarmMail, emailTemplate } = _req('src/mail/mailer.js');
   const mail = await baueAlarmMail({

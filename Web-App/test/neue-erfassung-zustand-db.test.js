@@ -14,13 +14,14 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   // Die Tagesregel steht als Index in Migration 0047; ohne ihn greift das
   // ON CONFLICT beim Erfassen nicht.
   const mc = await db.pool.connect();

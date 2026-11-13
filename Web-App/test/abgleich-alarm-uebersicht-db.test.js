@@ -24,14 +24,14 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, loadTranslations, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, loadTranslations, ohneKommentare, testDaten } = require('./helpers/sources');
 const { katalogSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const { alleAlarme, setzeAlarm, loescheAlarm } = {
     ..._req('src/finanzen/preisalarm.js'),

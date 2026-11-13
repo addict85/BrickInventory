@@ -20,7 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const S = _req('src/sets/index.js');
 const N = _req('src/auftraege/nacharbeit.js');
 const B = _req('src/infra/bereich.js');
@@ -55,7 +55,7 @@ function aufzeichnendeNacharbeit(notiz) {
 }
 
 test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   t.after(async () => {
     await db.run('DELETE FROM rb_inventory_parts WHERE inventory_id = $1', [INVENTAR]);
@@ -75,7 +75,7 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
   const sql = [],
     notiz = [],
     prozessNotiz = [];
-  const zugang = zaehlenderZugang(db.standardDb(), sql);
+  const zugang = zaehlenderZugang(quellen.testZugang(), sql);
   const { baueDienste } = _req('startup/verdrahtung.js');
   const sets = baueDienste(zugang, aufzeichnendeNacharbeit(notiz)).sets;
   Object.assign(B.prozessDienste().katalog.nacharbeit, aufzeichnendeNacharbeit(prozessNotiz));

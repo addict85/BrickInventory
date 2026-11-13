@@ -7,15 +7,16 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { fetchPartPrice } = _req('src/finanzen/financeCalc.js');
 const { preisverlaufTeil } = _req('src/finanzen/priceHistory.js');
 const { haeltTeil } = require('./helpers/bestand');
 
 test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   // part_price_history steht nur in db/migrations/0003.
   const migClient = await db.pool.connect();
   try {

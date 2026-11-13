@@ -23,12 +23,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { startStilHash, renderIndexHtml, ohneKommentare } = _req('src/konto/indexHtml.js');
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 // renderIndexHtml() fragt das Design aus der Datenbank; offen hielte der Pool den Lauf an.
 test.after(() =>
-  _req('db/database.js')
+  testDaten()
     .pool.end()
     .catch(() => {}),
 );

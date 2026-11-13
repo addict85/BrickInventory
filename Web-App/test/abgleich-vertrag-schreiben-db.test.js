@@ -33,9 +33,9 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { katalogSet } = require('./helpers/bestand');
 const { importWorker } = require('./helpers/auftraege');
-const { dbOderSkip } = require('./helpers/db');
-const { routerEinhaengungen } = require('./helpers/sources');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const { routerEinhaengungen, testDaten } = require('./helpers/sources');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
@@ -104,7 +104,7 @@ function formular(inhalt, typ, name, felder = {}) {
 }
 
 test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   importWorker(t, _req);
 
   // ── Drei Konten: Haupt, Unterkonto, ein drittes für die Einladung ──────

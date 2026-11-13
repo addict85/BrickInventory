@@ -25,10 +25,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const PASS = 'eigenes-Passwort-1';
@@ -37,7 +38,7 @@ const HAUPT = `beitritt_haupt_${process.pid}`,
   HAUPT2 = `beitritt_haupt2_${process.pid}`;
 
 test('Haushalt beitreten', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND, HAUPT2]]);
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async n =>

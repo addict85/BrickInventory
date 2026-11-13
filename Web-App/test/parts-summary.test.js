@@ -3,7 +3,7 @@
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -87,7 +87,7 @@ try {
   const _req = require('./helpers/sources').buildAndRequire();
   process.env.DATABASE_URL = DB_URL;
   umgebung({ SESSION_SECRET: 'test' });
-  db = _req('db/database.js');
+  db = testDaten();
   H = require('./helpers/sources').handlerModul(_req);
   PS = _req('src/teile/partsSummary.js');
   S = _req('src/bestand/kennzahlen.js');

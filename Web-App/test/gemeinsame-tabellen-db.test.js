@@ -36,11 +36,11 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
+const { buildAndRequire, ohneKommentare, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
-const db = _req('db/database.js');
+const db = testDaten();
 const { testServer } = require('./helpers/server');
 
 // Ohne Netz: Rebrickable kennt nichts, dann bleibt nur die Eingabe selbst.

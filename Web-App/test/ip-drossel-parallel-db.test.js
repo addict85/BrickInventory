@@ -23,10 +23,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.APP_BASE_URL = 'http://localhost';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const { ipThrottle } = _req('src/konto/http/anmeldung.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 

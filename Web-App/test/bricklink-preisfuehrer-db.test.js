@@ -19,8 +19,9 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 
 const blPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients', 'bricklink.js'));
 const echt = require(blPfad);
@@ -44,7 +45,7 @@ const SET = `91${N}-1`,
   FIGUR = `pf-fig-${N}`;
 
 test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   t.after(async () => {
     await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TEIL]).catch(() => {});

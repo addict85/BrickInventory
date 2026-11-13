@@ -15,11 +15,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test.after(async () => {
   await db.pool.end().catch(() => {});

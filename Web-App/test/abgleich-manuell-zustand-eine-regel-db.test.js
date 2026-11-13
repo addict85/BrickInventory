@@ -10,9 +10,10 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { getManualParts } = _req('src/teile/abfragen.js');
 const { getManualMinifigs } = _req('src/figuren/abfragen.js');
 const { computePartsValuation, computeMinifigsValuation } = _req('src/finanzen/financeCalc.js');
@@ -22,7 +23,7 @@ const { haeltFigur, haeltTeil } = require('./helpers/bestand');
 const NAME = 'zustand_eine_regel';
 
 test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)', [

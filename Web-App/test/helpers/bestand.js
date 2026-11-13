@@ -6,7 +6,7 @@ const path = require('node:path');
 /**
  * „Dieses Konto hält dieses Set, so viele Exemplare."
  *
- * @param db   das Datenbankmodul (db/database.js)
+ * @param db   der Zugang für Testdaten (sources testDaten())
  * @param userId  Konto
  * @param setNumber  Setnummer
  * @param menge  Exemplare. 0 ist erlaubt und heisst „Bestandszeile ohne

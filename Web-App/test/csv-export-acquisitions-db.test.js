@@ -8,10 +8,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 // Ohne das Schliessen des Verbindungspools endet der Testprozess nie: Der Pool
 // haelt offene Verbindungen, und node wartet darauf. Dieselbe Zeile steht aus
@@ -34,7 +35,7 @@ function zeilen(csv) {
 }
 
 test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const nutzer = `csvexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
@@ -97,7 +98,7 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile', { con
 });
 
 test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   // ── Warum gezaehlt und nicht gestoppt wird ────────────────────────────────
   // Eine Zeitmessung waere hier die schlechtere Pruefung: Sie schwankt mit der
@@ -150,7 +151,7 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets', { conc
 });
 
 test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const nutzer = `figexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});
@@ -223,7 +224,7 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency:
 
 test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency: 1 }, async t => {
   // Warum dieser Fall spaeter kam
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const nutzer = `teilexp-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [nutzer]).catch(() => {});

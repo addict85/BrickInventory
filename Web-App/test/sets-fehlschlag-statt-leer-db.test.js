@@ -14,8 +14,9 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 
 /** Ein gebautes Modul im require-Zwischenspeicher ersetzen, bevor die Dienste es herausziehen. */
 function ersetze(rel, felder) {
@@ -52,7 +53,7 @@ test('Ergebnis: Wert, Ersatz und gemeldeter Fehlschlag', async () => {
 });
 
 test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const SN = `99${String(process.pid).slice(-4)}-1`;

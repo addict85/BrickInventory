@@ -19,7 +19,7 @@
  * Schema neu an).
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
@@ -28,11 +28,11 @@ umgebung({ APP_BASE_URL: 'http://localhost' });
 umgebung({ ADMIN_PASSWORD: undefined });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
 mailAttrappe();
-const db = _req('db/database.js');
+const db = testDaten();
 const { passwortMangel } = _req('src/infra/passwortRegel.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -54,7 +54,7 @@ test('die Regel selbst', () => {
 });
 
 test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const CHEF = `regel_chef_${process.pid}`,
     ZIEL = `regel_ziel_${process.pid}`,
     PASS = 'Regel-Pruefung-7';

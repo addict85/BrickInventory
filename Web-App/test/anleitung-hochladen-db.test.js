@@ -18,7 +18,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -28,16 +28,16 @@ umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { katalogSet } = require('./helpers/bestand');
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
-const db = _req('db/database.js');
+const db = testDaten();
 const SET = '99073-1',
   NAME = `anl_hoch_${process.pid}`;
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
 
 test('Anleitung hochladen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (

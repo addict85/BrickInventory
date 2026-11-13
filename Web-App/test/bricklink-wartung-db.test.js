@@ -20,10 +20,11 @@ const { PassThrough } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 const WARTUNG = 'https://maintenance.bricklink.com:443/recovery.html';
 
@@ -44,7 +45,7 @@ function wartungVortaeuschen(t) {
 }
 
 test('BrickLink in Wartung', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { verdrahteKlienten, zugang } = _req('clients/zugang.js');
   const { bricklinkRequest, BricklinkNichtErreichbar } = _req('clients/bricklink.js');

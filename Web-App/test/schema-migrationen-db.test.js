@@ -14,10 +14,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 test.after(() =>
-  _req('db/database.js')
+  testDaten()
     .pool.end()
     .catch(() => {}),
 );
@@ -44,7 +45,7 @@ test('keine neue Spalten-Änderung in db/database.ts', () => {
 
 test('api_tokens.sliding gibt es auf einer frischen und einer migrierten Datenbank', async t => {
   // Ohne die Spalte scheitert createToken() und damit Login und QR-Login.
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const spalte = await db.get(`SELECT data_type FROM information_schema.columns
     WHERE table_schema = current_schema() AND table_name = 'api_tokens' AND column_name = 'sliding'`);

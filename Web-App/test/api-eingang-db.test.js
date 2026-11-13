@@ -23,10 +23,10 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, v1Routen } = require('./helpers/sources');
+const { buildAndRequire, v1Routen, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { warte } = require('./helpers/zeit');
 
 /** Absichtlich ohne Anmeldung erreichbar — mit Grund. Wächst die Liste, muss jemand sie begründen. */
@@ -60,7 +60,7 @@ const freierPort = () =>
   });
 
 test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
   const port = await freierPort();

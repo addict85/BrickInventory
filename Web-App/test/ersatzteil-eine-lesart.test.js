@@ -7,14 +7,14 @@ const { after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare } = require('./helpers/sources');
+const { ohneKommentare, testDaten } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 after(() => db.pool.end().catch(() => {}));
 

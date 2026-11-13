@@ -19,17 +19,18 @@ const express = require('express');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 
 // Eine offene Verbindung aus dem Pool hält den Prozess am Leben; im Volllauf steht dann
 // die ganze Datei still, statt zu enden. Deshalb schliesst die Datei ihren Pool selbst.
 after(() => db.pool.end().catch(() => {}));
 
 test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
@@ -96,7 +97,7 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
 });
 
 test('der Eingang lässt ohne Sitzung nur den Stand durch', async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   const app = express();
   const mw = _req('routes/api_v1/middleware.js');
   app.use('/api/v1', mw.anmeldungAmEingang);

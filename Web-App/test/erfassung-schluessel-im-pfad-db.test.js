@@ -17,17 +17,18 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
 test('Erfassungen gelten nur unter ihrem Schlüssel', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username IN ($1,$2)', ['sk_haupt', 'sk_kind']);
   const haupt = (await db.get("INSERT INTO users (username,password_hash) VALUES ('sk_haupt','x') RETURNING id")).id;
   const kind = (await db.get("INSERT INTO users (username,password_hash) VALUES ('sk_kind','x') RETURNING id")).id;

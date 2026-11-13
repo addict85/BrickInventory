@@ -21,7 +21,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { routeZu } = _req('src/vertrag/index.js');
 const { z } = require('zod');
@@ -40,7 +40,7 @@ test('kein Antwortschema der Verwaltung nennt user_id', () => {
 });
 
 test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const P = process.pid,
     SN = `9${P % 100000}-1`;

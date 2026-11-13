@@ -66,7 +66,7 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
   },
 });
 
-const db = _req('db/database.js');
+const db = S.testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const P = `en${process.pid}`,
   PASS = 'Passwort-Carol-2026';

@@ -20,13 +20,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async t => {
-  const db = _req('db/database.js');
-  if (!(await dbOderSkip(t, _req))) return;
+  const db = testDaten();
+  if (!(await datenOderSkip(t, _req))) return;
   const P = process.pid,
     NAME = `waehrung-${P}`,
     SN = '10326-1',

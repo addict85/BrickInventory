@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
 const { testServer } = require('./helpers/server');
 
@@ -60,10 +60,10 @@ Object.assign(_req('src/infra/bereich.js').prozessDienste().sets, {
   },
 });
 
-const db = _req('db/database.js');
+const db = quellen.testDaten();
 
 test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `fehlertext_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
