@@ -1,6 +1,7 @@
 /** Vorberechnet, weil die Live-Abfrage über alle Set-Teile eines Haushalts
  * Sekunden braucht. */
 import { fehlertext } from '../infra/fehler';
+import { imSystemkontext } from '../infra/kontoKontext';
 import * as repo from './repository/teileZusammenfassung';
 import type { TeileKontext } from './kontext';
 
@@ -91,9 +92,15 @@ function katalogEinmalNachziehen(k: TeileKontext) {
 const KATALOG_EINZELN_BIS = 5000;
 
 /** Je Konto nur die Gruppen mit einer geänderten Nummer — vorher wie nachher,
- * denn eine neue BL-Zuordnung verschiebt ein Teil in eine andere Gruppe.
+ * denn eine neue BL-Zuordnung verschiebt ein Teil in eine andere Gruppe. Im
+ * Systemrahmen: Die Warteschlange ist global, und wer sie leert, muss die Gruppen
+ * aller Konten nachziehen, nicht nur die des Kontos, dessen Anfrage es auslöst.
  * @returns null, wenn ein anderer Prozess gerade nachzieht */
-export async function zieheKatalogNach(k: TeileKontext): Promise<{ konten: number; gruppen: number } | null> {
+export function zieheKatalogNach(k: TeileKontext): Promise<{ konten: number; gruppen: number } | null> {
+  return imSystemkontext('katalog-nachzug', () => zieheKatalogNachImRahmen(k));
+}
+
+async function zieheKatalogNachImRahmen(k: TeileKontext): Promise<{ konten: number; gruppen: number } | null> {
   return k.transaktion(async t => {
     if (!(await repo.sperreKatalogNachzug(t.db))) return null;
     const nummern = await repo.holeOffeneNummern(t.db);

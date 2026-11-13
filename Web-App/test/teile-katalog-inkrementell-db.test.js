@@ -13,10 +13,15 @@
  *      (die Gruppe von W zählt X weiter mit: 3 statt 1)
  *   C  in ensureFresh() den Nachzug weggelassen → rot: „ein geänderter
  *      Teilename …“ (alter Name)
+ *   D  (13.11.2026) in zieheKatalogNach() den Systemrahmen weggelassen → rot:
+ *      „die Anfrage eines Kontos zieht auch die anderen nach“ (Konto B behält
+ *      „Y“, die Warteschlange ist trotzdem leer)
+ *
+ * Die Dienste laufen im Namen eines Kontos unter der Laufzeitrolle wie im Betrieb;
+ * Testdaten schreibt und liest die Eigentümerin.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -27,6 +32,8 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { imNamenVon } = _req('src/infra/kontoKontext.js');
+const als = (uid, f) => imNamenVon({ apiUser: { user_id: uid } }, f);
 
 test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, async t => {
   try {
@@ -66,9 +73,9 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
                 ON CONFLICT (part_number) DO UPDATE SET part_name = EXCLUDED.part_name`,
     [X, Z, Y],
   );
-  await PS.rebuildNow(a);
-  await PS.rebuildNow(b);
-  await PS.zieheKatalogNach(); // was der Aufbau schon enthält, aus der Warteschlange räumen
+  await als(a, () => PS.rebuildNow(a));
+  await als(b, () => PS.rebuildNow(b));
+  await als(a, () => PS.zieheKatalogNach()); // was der Aufbau schon enthält, aus der Warteschlange räumen
 
   const zeilen = uid =>
     db.all(
@@ -81,7 +88,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
   /** Ergebnis jetzt gegen einen vollen Neuaufbau desselben Kontos. */
   const gleichVollemAufbau = async uid => {
     const nach = await zeilen(uid);
-    await PS.rebuildNow(uid);
+    await als(uid, () => PS.rebuildNow(uid));
     assert.deepEqual(nach, await zeilen(uid), 'Nachzug und voller Neuaufbau ergeben dieselben Zeilen');
   };
 
@@ -89,7 +96,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     await marke(a, Z);
     await marke(b, Y);
     await db.run(`UPDATE part_catalog SET part_name = 'X neu' WHERE part_number = $1`, [X]);
-    assert.equal(await PS.ensureFresh(a, { strict: true }), true);
+    assert.equal(await als(a, () => PS.ensureFresh(a, { strict: true })), true);
     assert.equal(
       (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1 AND part_number=$2', [a, X])).part_name,
       'X neu',
@@ -111,16 +118,26 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     await gleichVollemAufbau(a);
   });
 
+  await t.test('die Anfrage eines Kontos zieht auch die anderen nach', async () => {
+    await db.run(`UPDATE part_catalog SET part_name = 'Y neu' WHERE part_number = $1`, [Y]);
+    assert.equal(await als(a, () => PS.ensureFresh(a, { strict: true })), true);
+    assert.equal((await db.get('SELECT count(*)::int AS n FROM parts_katalog_offen')).n, 0);
+    assert.equal(
+      (await db.get('SELECT part_name FROM parts_summary WHERE user_id=$1 AND part_number=$2', [b, Y])).part_name,
+      'Y neu',
+    );
+  });
+
   await t.test('eine neue BrickLink-Zuordnung verschiebt die Gruppe', async () => {
     // W und X teilen sich eine BrickLink-Nummer; die Gruppe heisst nach W.
     await haeltTeil(db, a, W, { setNumber: SA, menge: 1, colorId: 4 });
-    await PS.rebuildNow(a);
+    await als(a, () => PS.rebuildNow(a));
     await db.run(`INSERT INTO bl_zuordnung (art, rb_id, bl_id) VALUES ('part', $1, $3), ('part', $2, $3)`, [
       X,
       W,
       `${X}bl`,
     ]);
-    assert.equal(await PS.ensureFresh(a, { strict: true }), true);
+    assert.equal(await als(a, () => PS.ensureFresh(a, { strict: true })), true);
     assert.deepEqual(
       (await zeilen(a)).map(z => [z.part_key, z.part_number, Number(z.total_quantity)]),
       [
@@ -130,7 +147,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     );
     // X wandert weiter; die Gruppe von W enthält X dann nicht mehr.
     await db.run(`UPDATE bl_zuordnung SET bl_id = $2 WHERE art = 'part' AND rb_id = $1`, [X, `${X}neu`]);
-    assert.equal(await PS.ensureFresh(a, { strict: true }), true);
+    assert.equal(await als(a, () => PS.ensureFresh(a, { strict: true })), true);
     assert.deepEqual(
       (await zeilen(a)).map(z => [z.part_key, z.part_number, Number(z.total_quantity)]),
       [
