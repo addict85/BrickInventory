@@ -33,6 +33,8 @@
  *      Teile“)
  *   P  Tagesachse wieder { day: 'numeric', month: 'short' } → rot: ebenda
  *      („13. Sept. | 27. Sept. …“)
+ *   Q  `.ca .delbtn{display:none}` in styles.css (13.11.2026) → rot: ebenda
+ *      („Symbol zu klein (0 px)“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
