@@ -150,8 +150,8 @@ export function zeitpunkt(s) {
 
 /**
  * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem Tag, Tage bis drei Monate, darüber
- * Monate. Deutsch in Ziffern wie jedes Datum im Text (fmtDatum: „13.09.2026“ → Achse „13.09.“, „09.2026“);
- * „13. Sept.“ neben „13.09.2026“ las sich wie zwei Formate. Englisch mit Monatsnamen wie fmtDatum.
+ * Monate („Nov. 2025“). Tage auf Deutsch in Ziffern wie jedes Datum im Text („13.09.“ zu „13.09.2026“);
+ * „13. Sept.“ daneben las sich wie ein zweites Format. Englisch mit Monatsnamen wie fmtDatum.
  * @param {number} von @param {number} bis  Millisekunden
  * @param {number} maxStriche
  * @returns {{ t: number, text: string }[]}
@@ -176,7 +176,7 @@ export function zeitTeilung(von, bis, maxStriche) {
   } else {
     const monate = spanne / (30.44 * TAG);
     const n = [1, 2, 3, 6, 12, 24].find(x => monate / x <= max) ?? 24;
-    const f = fmt(LANG === 'en' ? { month: 'short', year: 'numeric' } : { month: '2-digit', year: 'numeric' });
+    const f = fmt({ month: 'short', year: 'numeric' });
     const d = new Date(von);
     d.setDate(1);
     d.setHours(0, 0, 0, 0);

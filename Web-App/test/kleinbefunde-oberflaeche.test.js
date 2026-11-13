@@ -132,11 +132,10 @@ test('leere Zugangsdaten melden „Zugang entfernt“', async () => {
   try {
     o.d.getElementById('rb-key').value = '';
     o.d.getElementById('btn-sav-rb').click();
-    assert.ok(
-      await warte(() => /Zugang entfernt/.test(o.d.getElementById('toasts').textContent), 2000),
-      o.d.getElementById('toasts').textContent,
-    );
-    assert.doesNotMatch(o.d.getElementById('toasts').textContent, /gespeichert/i);
+    // Bestätigt wird am Knopf (meldeAmFeld), nicht im Toast.
+    const stand = () => o.d.querySelector('#einst-rb .feld-status')?.textContent || '';
+    assert.ok(await warte(() => /Zugang entfernt/.test(stand()), 2000), stand());
+    assert.doesNotMatch(stand() + o.d.getElementById('toasts').textContent, /gespeichert/i);
   } finally {
     o.w.close();
   }

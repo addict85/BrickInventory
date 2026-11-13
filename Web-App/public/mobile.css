@@ -209,6 +209,7 @@
   .vb, .v-btn, .btn-sm, .ubadge-knopf, .acq-loeschen { min-width: 44px; }
   .lager-sinnbild { min-width: 44px; }
   .mon-plan, .mon-plan input { min-height: 44px; }
+  #monitor-content a.zu-sicht { min-height: 44px; min-width: 44px; justify-content: center; }
   /* Häkchen: 22 px gezeichnet, aber 44 px Tippfläche am Kästchen selbst — auch
      ohne Beschriftung. Das Kästchen malen zwei Hintergrundschichten in die Mitte;
      der negative Rand hält den Platz im Layout bei 22 px.
@@ -590,11 +591,11 @@
   :is(#tab-gallery, #tab-parts, #tab-minifigs) { position: relative; }
   /* Der Titel ist so hoch wie der Knopf daneben: Der Untertitel beginnt erst darunter. */
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { padding-right: 52px; min-height: 44px; }
-  /* Der Umschalter Sets/Teile/Minifiguren ist hier die sichtbare Überschrift (aria-current); Titel, Pfad und
-     Untertitel bleiben für Vorleser. Zwei Zeilen Kopf schoben die erste Karte unter 40 % der Höhe. */
-  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph :is(h1, .ptitle-unter, .brotkrume) {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
-  }
+  /* Der Umschalter Sets/Teile/Minifiguren ist hier die sichtbare Überschrift (aria-current); der Titel bleibt
+     unsichtbar für Vorleser erhalten, Pfad und Untertitel sagen daneben nichts Neues. Zwei Zeilen Kopf
+     schoben die erste Karte unter 40 % der Höhe. */
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { position: absolute; opacity: 0; pointer-events: none; }
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph :is(.ptitle-unter, .brotkrume) { display: none; }
   :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph .sammlung-wahl { width: auto; flex: 1 1 auto; margin-right: 52px; }
   .erfassen-leiste { margin: 0; position: static; }
   .erfassen-leiste .import-menue { position: absolute; top: 0; right: 0; flex: none; }

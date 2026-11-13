@@ -104,9 +104,11 @@ test('die Menge geht bewusst auf das eigene Konto', () => {
   // Besitzer ab. Das steht hier, damit es niemand „mit vereinheitlicht".
   const src = fs.readFileSync(path.join(ROOT, 'src/sets/setService.ts'), 'utf8');
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+  // Seit UX-Prüfung 19 (H1) kann der Aufruf ein Konto im Schreibfeld nennen; ohne Angabe bleibt es das eigene.
+  assert.match(code, /const ziel = body\.owner_user_id == null \? uid :/, 'ohne Angabe nicht das eigene Konto');
   assert.match(
     code,
-    /adjustAcquisitionsToQuantity\(sk, uid, sn/,
+    /adjustAcquisitionsToQuantity\(sk, ziel, sn/,
     'Die Mengenanpassung laeuft nicht mehr auf das eigene Konto — dann erhoeht ' +
       'ein „+" den Bestand eines fremden Kontos',
   );

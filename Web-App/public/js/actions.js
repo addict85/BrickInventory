@@ -203,7 +203,8 @@ import { deleteManualPart } from './parts.js';
       ev.key === 'Delete' && el.matches('[aria-keyshortcuts~="Delete"]')
         ? el.querySelector(':scope > .ca > .delbtn')
         : null;
-    if (kreuz?.checkVisibility()) {
+    // Gesperrt ist es nur, wenn der Knopf selbst fehlt (ohne Netz); ohne Überfahren ist bloss die Ecke leer.
+    if (kreuz && getComputedStyle(kreuz).display !== 'none') {
       ev.preventDefault();
       /** @type {HTMLElement} */
       (kreuz).click();

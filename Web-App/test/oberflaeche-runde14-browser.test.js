@@ -125,7 +125,8 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
         '#gs',
         '#tab-gallery .brick-stats',
         '#tab-gallery .filter-knopf',
-        '#tab-gallery h1 > span[data-i18n]',
+        // Am Telefon ist der Umschalter die sichtbare Überschrift (UX-Prüfung 19 M4).
+        '#tab-gallery .sammlung-wahl',
       ])
         assert.equal(schneiden(knopf, await b.auswerten(rechteck(sel))), false, `über ${sel}`);
     } finally {

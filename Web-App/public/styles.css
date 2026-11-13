@@ -299,7 +299,8 @@
     .fehler-kasten summary{color:var(--r700);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
     .fehler-kasten code{display:block;margin-top:4px;padding:.3rem .45rem;background:var(--s100);border-radius:4px;font-size:var(--fs-1);white-space:pre-wrap;word-break:break-word;color:var(--txt)}
     .ptitle-unter{color:var(--mut);font-size:var(--fs-3);margin-top:2px}
-    /* „Sammlung › Teile“: Die Hauptleiste nennt nur „Sammlung“; der Pfad verbindet sie mit dem Seitentitel. */
+    /* „Sammlung › Teile“: Die Hauptleiste nennt nur „Sammlung“; der Pfad verbindet sie mit dem Seitentitel.
+       Ein div mit role=navigation, kein <nav>: Jedes <nav> erbt die Leistenregeln (klebend, Design-Rot). */
     .brotkrume{display:flex;align-items:center;gap:.4em;font-size:var(--fs-2);color:var(--mut);margin-bottom:2px}
     .brotkrume a{color:var(--b600);min-height:24px;display:inline-flex;align-items:center}
     .brotkrume [aria-current]{color:var(--txt);font-weight:600}
@@ -493,7 +494,7 @@
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
-    .delbtn{width:32px;height:32px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:color-mix(in srgb,var(--sur) 92%,transparent);color:var(--s500);font-size:1.125rem;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
+    .delbtn{width:32px;height:32px;border-radius:6px;border:1px solid var(--bdr);cursor:pointer;background:color-mix(in srgb,var(--sur) 92%,transparent);color:var(--s500);font-size:var(--fs-4);display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,border-color .15s}
     /* Dezent bis zur Berührung: Der Knopf erscheint ohnehin erst beim
        Überfahren der Kachel (.ca opacity). Ein dauerhaft rotes Feld zog den
        Blick stärker auf sich als das Set selbst. Rot bleibt der Bestätigung
@@ -1476,9 +1477,9 @@ p.mon-leise{margin:0 0 .35rem}
 .menge-feld{width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:4px;font-weight:600;background:var(--sur);color:var(--txt)}
 /* Menge im Haushalt: je Konto eine Zeile mit eigenem Regler, darunter die Summe. */
 .menge-regler{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.menge-konten{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-.menge-konto{display:flex;align-items:center;gap:6px}
-.menge-name{color:var(--mut);font-size:var(--fs-2);min-width:4em;text-align:right}
+.menge-konten{display:flex;flex-direction:column;align-items:flex-end;gap:4px;max-width:100%}
+.menge-konto{display:flex;align-items:center;gap:6px;max-width:100%}
+.menge-name{color:var(--mut);font-size:var(--fs-2);min-width:0;text-align:right;overflow-wrap:anywhere}
 .menge-zahl{min-width:2em;text-align:center;font-weight:600}
 .menge-gesamt{font-size:var(--fs-1);color:var(--mut)}
 /* „Gespeichert ✓“ am Feld (meldeAmFeld); leer nimmt es keinen Platz. */
@@ -1546,6 +1547,8 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .ew-aktion{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;margin-top:.75rem}
 .ew-aktion .btn{flex:0 0 auto}
 .ew-link{display:inline-flex;align-items:center;min-height:24px;font-size:var(--fs-2)}
+/* Der Link „ändern“ neben dem Zeitplan ist ein eigenes Ziel, kein Verweis im Fliesstext. */
+:where(#monitor-content a).zu-sicht{display:inline-flex;align-items:center;min-height:24px}
 .zu-sicht{background:none;border:0;padding:0 2px;color:var(--b600);text-decoration:underline;font:inherit;font-size:var(--fs-1);
   cursor:pointer;min-height:24px}
 .ew-fuss{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}

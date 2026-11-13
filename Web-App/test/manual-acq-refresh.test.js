@@ -398,13 +398,11 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
     /pricePlan \?\? \(?await priceForNewAcquisition\(sk, userId, setNumber, dbh\)/,
     'Ein vorab ermittelter Preis muss durchgereicht werden können',
   );
-  // Ziel der Mengenänderung ist seit einer früheren Runde das EIGENE Konto (`uid`) und
-  // nicht mehr der Besitzer irgendeiner Haushaltszeile: Angezeigt wird die
-  // Gesamtmenge, geschrieben wird die Differenz auf das eigene Konto. Die
-  // geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
+  // Ziel der Mengenänderung ist das Konto `ziel` (ohne Angabe das eigene, im Haushalt das gewählte).
+  // Die geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
   assert.match(
     src,
-    /const plan = [\s\S]{0,120}priceForNewAcquisition\(sk, uid, sn\)[\s\S]{0,400}mitInventarSperre\(sk\.db, uid, sn/,
+    /const plan = [\s\S]{0,120}priceForNewAcquisition\(sk, ziel, sn\)[\s\S]{0,400}mitInventarSperre\(sk\.db, ziel, sn/,
     'In updateSet muss der Preis VOR der Sperre stehen',
   );
   assert.doesNotMatch(src, /function isToday\(/, 'Die eigene Tagesprüfung gehört entfernt');
@@ -418,9 +416,12 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
     // Kommentare weg: Der Erklärtext oben zitiert den alten Aufruf samt
     // .catch(() => {}) und würde die Prüfung sonst selbst auslösen.
     .replace(/\/\/[^\n]*/g, '');
-  // Ziel ist seit einer früheren Runde das eigene Konto (`uid`) — die Regel bleibt:
-  // EINE gesperrte Transaktion für Menge und Erfassungen.
-  assert.match(fn, /mitInventarSperre\(sk\.db, uid, sn/, 'Menge und Erfassungen gehören in EINE gesperrte Transaktion');
+  // Ziel ist das Konto `ziel` — die Regel bleibt: EINE gesperrte Transaktion für Menge und Erfassungen.
+  assert.match(
+    fn,
+    /mitInventarSperre\(sk\.db, ziel, sn/,
+    'Menge und Erfassungen gehören in EINE gesperrte Transaktion',
+  );
   assert.doesNotMatch(
     fn,
     /adjustAcquisitionsToQuantity\([^)]*\)\.catch\(/,

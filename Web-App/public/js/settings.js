@@ -388,7 +388,7 @@ G('btn-sav-prof').onclick = async () => {
       zeigeBenutzernamen();
     }
     if (d.emailChanged && !d.emailSent) toast(tRaw('profile.mail_not_sent'), 'error');
-    else if (d.emailChanged) toast(t('profile.saved_mail'), 'success');
+    else if (d.emailChanged) toast(tRaw('profile.saved_mail'), 'success');
     else meldeAmFeld(btn);
   } finally {
     btn.disabled = false;
@@ -538,7 +538,7 @@ G('btn-save-theme').onclick = async () => {
     }
   }
   if (d.success) meldeAmFeld(G('btn-save-theme'));
-  else toast(t('settings.error'), 'error');
+  else toast(tRaw('settings.error'), 'error');
 };
 G('btn-clr').onclick = async () => {
   await api('POST', '/v1/admin/cache-clear');
