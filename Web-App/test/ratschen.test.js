@@ -94,11 +94,12 @@ test('stille Faenge werden weniger, nie mehr', () => {
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
   // logAndContinue liefert nichts; meldeUndLiefere einen Ersatzwert, der wie „leer“
-  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter;
+  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter; Schreibwege
+  // (Preis samt Verlauf, Bildverweis) lassen ihn durch (139 am 13.11.2026, vorher 144);
   // die übrigen Ersatzwerte begründen sich als „Ausnahme:“ im Code. Gemessen 7 am 11.11.2026.
   // Gegenprobe (11.11.2026): in src/katalog/farben.ts wieder
   // `.catch(meldeUndLiefere('x', []))` → rot (8 Ersatzwerte, Schranke 7).
-  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 7 };
+  const SCHRANKEN = { logAndContinue: 139, meldeUndLiefere: 7 };
   const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
   for (const [name, schranke] of Object.entries(SCHRANKEN)) {
     const ist = zaehle([new RegExp(`\\b${name}\\(`, 'g')]);

@@ -294,11 +294,10 @@ async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void
     if (!ok) return;
   }
 
-  if (p.kind === 'fig') {
-    await setzeFigurBildLokal(k, p.id, rel).catch(logAndContinue('teile-enrich:figurbild'));
-  } else {
-    await setzeTeilBildLokal(k, p.id, p.color_id, rel).catch(logAndContinue('katalog:teilbild'));
-  }
+  // Ein Schreibfehler bricht den Lauf ab, statt eine Datei ohne Verweis zu hinterlassen;
+  // der nächste Lauf findet die Datei und schreibt nur den Verweis nach.
+  if (p.kind === 'fig') await setzeFigurBildLokal(k, p.id, rel);
+  else await setzeTeilBildLokal(k, p.id, p.color_id, rel);
 }
 
 /** Prozessübergreifend auf einer EIGENEN Verbindung: Ein Advisory-Lock hängt an

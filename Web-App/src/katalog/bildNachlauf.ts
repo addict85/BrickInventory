@@ -62,8 +62,9 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
     );
     const local = r.ok ? r.wert : null;
     if (local) {
-      // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal.
-      await setzeFigurBildLokal(kx, f.fig_number, local).catch(logAndContinue(`bilder:minifigur ${f.fig_number}`));
+      // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal. Ein
+      // Schreibfehler bricht den Lauf ab; der nächste findet die Datei und schreibt nach.
+      await setzeFigurBildLokal(kx, f.fig_number, local);
       generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
     }
     await tick();

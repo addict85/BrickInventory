@@ -105,15 +105,15 @@ export async function speicherePreis(
   // Auch eine Null wird geschrieben: Sie ist die Auskunft „kein Preis" und hält
   // den nächsten Abruf zurück; wie lange, entscheidet cacheUsable().
   const preis = { min, avg, max, qavg, qty };
-  await k.preisCache.merkeSetPreis(setNumber, condition, currency, preis);
-
-  // Dieselbe Regel wie der Tages-Schnappschuss des Jobs: Ein Verlauf mit zwei
-  // Aufnahmeregeln hätte Lücken.
-  if (hatPreis({ avg_price: avg, qty_avg_price: qavg })) {
-    await k.preisCache
-      .merkeSetVerlauf(setNumber, condition, currency, preis)
-      .catch(logAndContinue('preise:setverlauf schreiben'));
-  }
+  // Cache und Verlauf zusammen: Ein Cache ohne seinen Verlaufspunkt hielte den nächsten
+  // Abruf zurück, und die Lücke im Verlauf füllte niemand mehr.
+  await k.transaktion(async t => {
+    await t.preisCache.merkeSetPreis(setNumber, condition, currency, preis);
+    // Dieselbe Regel wie der Tages-Schnappschuss des Jobs: Ein Verlauf mit zwei
+    // Aufnahmeregeln hätte Lücken.
+    if (hatPreis({ avg_price: avg, qty_avg_price: qavg }))
+      await t.preisCache.merkeSetVerlauf(setNumber, condition, currency, preis);
+  });
   return preis;
 }
 

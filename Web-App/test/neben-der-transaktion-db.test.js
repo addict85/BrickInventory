@@ -48,7 +48,7 @@ test('Abfragen neben einer Transaktion', { concurrency: 1 }, async t => {
         const eigene = (await tx.get(PID)).p;
         await assert.rejects(
           imSystemkontext('probe', () => db.get(PID)),
-          e => e instanceof modul.NebenDerTransaktion && /vor der Transaktion/.test(e.message),
+          e => e instanceof modul.NebenDerTransaktion && /vor der Transaktion/.test(String(e)),
         );
         await assert.rejects(
           imSystemkontext('probe', () => db.transaction(inner => inner.get(PID))),
