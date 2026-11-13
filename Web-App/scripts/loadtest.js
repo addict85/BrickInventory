@@ -4,7 +4,6 @@
  */
 
 const path = require('node:path');
-const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
@@ -187,21 +186,19 @@ async function seed() {
 }
 
 // ── Der echte Stack, wie im Paritätstest ─────────────────────────────────────
-// Die Kette vor /api/v1 wie in startup/app.ts (apiEingang); nur die Sitzung ist gestellt,
-// damit der Lauf ohne Anmeldung und Sitzungsspeicher auskommt.
+// Die App aus startup/app.ts (baueApp); nur der Sitzungsspeicher ist gestellt,
+// damit der Lauf ohne Anmeldung auskommt.
 function buildApp() {
-  const app = express();
-  app.use((/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {
-    req.session = { userId: USER.id, username: USER.username, isAdmin: false };
-    next();
+  return require(path.join(ROOT, 'dist/startup/app.js')).baueApp({
+    pool: db.pool,
+    konfig: require(path.join(ROOT, 'dist/src/infra/konfig.js')).konfig(),
+    sitzungsGeheimnis: 'lasttest-sitzungsgeheimnis-lang-genug',
+    dienste: verdrahtung.prozessDienste(),
+    sitzungsSpeicher: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {
+      req.session = { userId: USER.id, username: USER.username, isAdmin: false };
+      next();
+    },
   });
-  app.use(require(path.join(ROOT, 'dist/src/http/kontoMerken.js')).merkeAnfrage);
-  require(path.join(ROOT, 'dist/startup/app.js')).apiEingang(app);
-  app.use(
-    '/api/v1',
-    require(path.join(ROOT, 'dist/routes/api_v1/index.js')).baueApiRouter(verdrahtung.prozessDienste()),
-  );
-  return app;
 }
 
 // Die Endpunkte, die eine Sitzung tatsächlich anfasst: Galerie öffnen, Teile

@@ -28,8 +28,7 @@ test('testServer läuft durch die echte Kette', { concurrency: 1 }, async t => {
   const NAME = `kette_echt_${process.pid}`;
   await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
   const anlegen = async (/** @type {string} */ n) =>
-    (await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`, [n]))
-      .id;
+    (await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`, [n])).id;
   const mit = await anlegen(NAME);
   const ohne = await anlegen(`${NAME}_ohne`);
   await verwalterMitFaktor(_req, mit);
