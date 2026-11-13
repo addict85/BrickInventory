@@ -10,7 +10,7 @@
  *   C  gutscheinMitPdfAnlegen (src/gutscheine/dienst.ts) ohne das Löschen im
  *      catch → rot: „… keine verwaiste Datei“
  *   D  gutscheinMitPdfAnlegen ohne db.transaction → rot: „… keine Gutscheinzeile“
- *   E  gutscheinAendern liest mit gutschein() statt gutscheinGesperrt() → rot:
+ *   E  gutscheinBearbeiten liest mit gutschein() statt gutscheinGesperrt() → rot:
  *      „zwei gleichzeitige Änderungen“ (der Betrag des ersten ging verloren)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -129,14 +129,14 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
   });
 
   await t.test('zwei gleichzeitige Änderungen verlieren keine', async () => {
-    const z = await G.gutscheinAnlegen(nutzer, { number: '6000444455556666', pin: '111', amount: 10 });
+    const z = await G.gutscheinErfassen(nutzer, { number: '6000444455556666', pin: '111', amount: 10 });
     let zweiterDa;
     schranke = { n: 0, zweiter: new Promise(r => (zweiterDa = r)) };
     schranke.zweiterDa = zweiterDa;
     try {
       await Promise.all([
-        G.gutscheinAendern(nutzer, z.id, { amount: 42 }),
-        G.gutscheinAendern(nutzer, z.id, { pin: '999', number: G.maskiert(z).number }),
+        G.gutscheinBearbeiten(nutzer, z.id, { amount: 42 }),
+        G.gutscheinBearbeiten(nutzer, z.id, { pin: '999', number: G.maskiert(z).number }),
       ]);
     } finally {
       schranke = null;

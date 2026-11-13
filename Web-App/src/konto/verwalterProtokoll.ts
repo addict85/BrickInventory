@@ -5,7 +5,7 @@ import { kontoBereich } from './prozess';
 
 export type { VerwalterAktion } from './repository/protokoll';
 
-export function protokolliere(
+export function verwalterAktionMerken(
   verwalterId: number,
   zielId: number,
   aktion: VerwalterAktion,

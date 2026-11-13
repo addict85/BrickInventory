@@ -18,7 +18,7 @@ export {
   katalogBilderEinreihen,
   preisJobJetzt,
   preisJobStand,
-  protokollSeit,
+  serverProtokollSeit,
   quellePruefen,
 } from './dienst';
 export { datenbankBereit, gesundheitsBericht } from './gesundheit';

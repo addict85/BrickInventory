@@ -39,8 +39,8 @@ import {
   tokenAngaben,
   meldeAnmeldung,
   hinweisNebenher,
-  kontoKurz,
-  kontoVoll,
+  kontoKurzVon,
+  kontoVollVon,
   type Angemeldet,
   type TokenWunsch,
   anmeldeAntwort,
@@ -171,7 +171,7 @@ async function tokenNutzer(res: Response, u: GeprueftesToken) {
 }
 
 async function sitzungsNutzer(req: Request, uid: number) {
-  const user = await kontoKurz(uid);
+  const user = await kontoKurzVon(uid);
   if (!user) return null;
   return {
     success: true,
@@ -273,7 +273,7 @@ router.put(
   requireLogin,
   async (req: OffeneAnfrage<'PUT /api/v1/auth/profile'>, res: Antwort<'PUT /api/v1/auth/profile'>) => {
     const { username, email, first_name, last_name, password, password_current } = req.eingabe;
-    const user = await kontoVoll(nutzerId(req)!);
+    const user = await kontoVollVon(nutzerId(req)!);
     if (!user) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
 
     // Das Passwort nur über /change-password: Nur dort werden danach alle
@@ -357,7 +357,7 @@ router.post(
 
 /** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */
 async function darfAnmelden(uid: number): Promise<boolean> {
-  const user = await kontoVoll(uid);
+  const user = await kontoVollVon(uid);
   return !!user && !assertLoginAllowed(user);
 }
 
@@ -404,7 +404,7 @@ router.post(
     if (a.stand === 'wartet') return res.json({ success: true, wartet: true });
     if (a.stand === 'abgelehnt') return sendeFehler(req, res, 403, 'qr_abgelehnt');
     if (a.stand === 'ungueltig') return sendeFehler(req, res, 401, 'token_ungueltig');
-    const user = await kontoKurz(a.uid);
+    const user = await kontoKurzVon(a.uid);
     if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
     if (a.stand === 'bereit')
       return res.json({ success: true, wartet: false, vorschau: true, username: user.username });
@@ -506,7 +506,7 @@ router.post(
     if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
     const uid = angemeldeteNutzerId(req);
     if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
-    const konto = await kontoKurz(uid);
+    const konto = await kontoKurzVon(uid);
     const optionen = await registrierungsOptionen(uid, konto?.username ?? String(uid));
     if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
     res.json({ success: true, optionen });
@@ -571,7 +571,7 @@ router.post(
     if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
     const uid = await anmeldungPruefen(req.eingabe.antwort, 'anmelden');
     if (!uid) return sendeFehler(req, res, 401, 'passkey_ungueltig');
-    const user = await kontoVoll(uid);
+    const user = await kontoVollVon(uid);
     if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
     const gesperrt = assertLoginAllowed(user);
     if (gesperrt) return sendeFehler(req, res, STATUS_DER_ART[gesperrt.art], gesperrt.code);

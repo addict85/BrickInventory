@@ -5,7 +5,7 @@ import { hinweisNebenher } from './kontoHinweis';
 import { kontoBereich } from './prozess';
 import { leereTokenCache } from './tokenCache';
 
-export function zugaengeDesKontos(uid: number) {
+export function zugaengeListe(uid: number) {
   return kontoBereich().konten.zugaengeDesKontos(uid);
 }
 

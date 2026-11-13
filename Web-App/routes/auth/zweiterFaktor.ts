@@ -17,7 +17,7 @@ import {
   beendeAndereZugaenge,
   bestaetigeEinrichtungGebremst,
   hinweisNebenher,
-  kontoKurz,
+  kontoKurzVon,
   stand,
   beginneEinrichtung,
   otpauthAdresse,
@@ -54,7 +54,7 @@ router.post(
     } else if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
     const geheimnis = await beginneEinrichtung(uid);
     if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
-    const u = await kontoKurz(uid);
+    const u = await kontoKurzVon(uid);
     res.json({ success: true, geheimnis, otpauth: otpauthAdresse(geheimnis, u?.username ?? String(uid)) });
   },
 );

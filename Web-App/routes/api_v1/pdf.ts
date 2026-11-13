@@ -43,7 +43,7 @@ async function pdfJobReadFor(id: string, userId: number) {
   return job;
 }
 /** Die Beugung steht als Platzhalter in der Tabelle, nicht hier. */
-function laufendeAuftraege(anzahl: number, sprache: string) {
+function laufendeBeugung(anzahl: number, sprache: string) {
   const en = sprache === 'en',
     eins = anzahl === 1;
   return {
@@ -63,7 +63,7 @@ router.post(
 
     const r = await pdfAuftragStarten(uid, sets, parts);
     if ('laufend' in r) {
-      return sendeFehler(req, res, 429, 'pdf_auftrag_laeuft', laufendeAuftraege(r.laufend, antwortSprache(req)));
+      return sendeFehler(req, res, 429, 'pdf_auftrag_laeuft', laufendeBeugung(r.laufend, antwortSprache(req)));
     }
 
     res.json({ success: true, jobId: r.jobId });

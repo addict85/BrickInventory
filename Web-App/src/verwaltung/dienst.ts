@@ -273,7 +273,7 @@ export async function bildFehlanzeigenVergessen(sets: string[] | null, vorschaue
   return schluessel.length ? vergissFehlend(schluessel) : 0;
 }
 
-export function protokollSeit(minuten: number) {
+export function serverProtokollSeit(minuten: number) {
   return verwaltungBereich().verwaltung.protokollSeit(minuten);
 }
 

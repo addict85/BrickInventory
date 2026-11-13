@@ -11,9 +11,9 @@ import {
   hinweisNebenher,
   verwalterHinweisNebenher,
   kontenListe,
-  kontoExistiert,
-  kontoKurz,
-  kontoName,
+  gibtKonto,
+  kontoKurzVon,
+  kontoAnzeigeName,
   legeKontoAn,
   LETZTER_VERWALTER,
   setzeFremdesPasswort,
@@ -63,13 +63,16 @@ router.put(
     // Streng: "false" ist in JavaScript wahr und entzöge sonst keine Rechte.
     const soll = req.eingabe.is_admin;
     if (targetId === nutzerId(req) && !soll) return sendeFehler(req, res, 400, 'eigene_adminrolle');
-    if (!(await kontoExistiert(targetId))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (!(await gibtKonto(targetId))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await verwalterRolleSetzen(angemeldeteNutzerId(req), targetId, soll);
     if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
     if (r === LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
     if (r.geaendert && soll)
-      verwalterHinweisNebenher('verwalter_ernannt', { konto: await kontoName(targetId), durch: nutzerName(req) ?? '' });
+      verwalterHinweisNebenher('verwalter_ernannt', {
+        konto: await kontoAnzeigeName(targetId),
+        durch: nutzerName(req) ?? '',
+      });
 
     // Sitzungen enden, weil istVerwalter() zuerst das nie nachgeführte
     // `req.session.isAdmin` fragt; ein Entzug wirkte sonst im offenen Fenster nicht.
@@ -85,7 +88,7 @@ router.put(
     const soll = req.eingabe.is_active;
     if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
     if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
-    if (!(await kontoExistiert(targetId))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (!(await gibtKonto(targetId))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await aktivSetzen(angemeldeteNutzerId(req), targetId, soll);
     if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
@@ -103,7 +106,7 @@ router.put(
     res: Antwort<'PUT /api/v1/auth/users/:id/freischalten'>,
   ) => {
     const targetId = req.pfad.id;
-    if (!Number.isInteger(targetId) || !(await kontoExistiert(targetId)))
+    if (!Number.isInteger(targetId) || !(await gibtKonto(targetId)))
       return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await registrierungFreischalten(angemeldeteNutzerId(req), targetId);
@@ -123,7 +126,7 @@ router.put(
     const { password } = req.eingabe || {};
     const targetId = req.pfad.id;
     if (!targetId || targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
-    const mangel = passwortMangel(password, (await kontoKurz(targetId))?.username);
+    const mangel = passwortMangel(password, (await kontoKurzVon(targetId))?.username);
     if (mangel) return sendeFehler(req, res, 400, mangel);
 
     // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
@@ -134,7 +137,7 @@ router.put(
     // Wie beim entfernten Faktor: Eine Übernahme durch eine erbeutete Verwaltersitzung bliebe sonst unbemerkt.
     const durch = nutzerName(req) ?? '';
     hinweisNebenher(targetId, 'passwort_durch_verwalter', undefined, { durch });
-    verwalterHinweisNebenher('verwaltung_passwort_gesetzt', { konto: await kontoName(targetId), durch });
+    verwalterHinweisNebenher('verwaltung_passwort_gesetzt', { konto: await kontoAnzeigeName(targetId), durch });
 
     res.json({ success: true });
   },
@@ -167,7 +170,7 @@ router.delete(
     await zweitenFaktorEntfernen(angemeldeteNutzerId(req), id);
     const durch = nutzerName(req) ?? '';
     hinweisNebenher(id, 'zweiter_faktor_entfernt', undefined, { durch });
-    verwalterHinweisNebenher('verwaltung_faktor_entfernt', { konto: await kontoName(id), durch });
+    verwalterHinweisNebenher('verwaltung_faktor_entfernt', { konto: await kontoAnzeigeName(id), durch });
     res.json({ success: true });
   },
 );

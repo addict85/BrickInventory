@@ -6,7 +6,7 @@ import { getLimitForApi } from '../../src/katalog';
 import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen';
 import {
   bildFehlanzeigenVergessen,
-  protokollSeit,
+  serverProtokollSeit,
   cacheStatistik,
   cachesLeeren,
   bricksetLimitGesetzt,
@@ -265,7 +265,7 @@ router.get(
   requireApiAdmin,
   async (req: Anfrage<'GET /api/v1/admin/logs'>, res: Antwort<'GET /api/v1/admin/logs'>) => {
     const minutes = Math.min(2880, Math.max(1, req.abfrage.minutes || 15));
-    const rows = await protokollSeit(minutes);
+    const rows = await serverProtokollSeit(minutes);
     res.json({ success: true, minutes, count: rows.length, logs: rows });
   },
 );

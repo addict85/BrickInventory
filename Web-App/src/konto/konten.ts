@@ -10,7 +10,7 @@ import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
 import { kontoBereich } from './prozess';
-import { protokolliere } from './verwalterProtokoll';
+import { verwalterAktionMerken } from './verwalterProtokoll';
 import { alsDoppelt } from '../infra/fehlerTexte';
 
 export { LETZTER_VERWALTER } from './repository/konten';
@@ -54,24 +54,24 @@ export async function profil(id: number) {
   return kontoBereich().konten.profilZeile(id);
 }
 
-export function kontoKurz(id: number) {
+export function kontoKurzVon(id: number) {
   return kontoBereich().konten.kontoKurz(id);
 }
 
-export function kontoVoll(id: number) {
+export function kontoVollVon(id: number) {
   return kontoBereich().konten.kontoVoll(id);
 }
 
-export function kontoExistiert(id: number): Promise<boolean> {
+export function gibtKonto(id: number): Promise<boolean> {
   return kontoBereich().konten.kontoExistiert(id);
 }
 
 /** Für Hinweise an Verwalter: Ein gerade gelöschtes Konto heisst wenigstens nach seiner ID. */
-export async function kontoName(id: number): Promise<string> {
+export async function kontoAnzeigeName(id: number): Promise<string> {
   return (await kontoBereich().konten.kontoKurz(id))?.username ?? String(id);
 }
 
-export function mussPasswortAendern(id: number): Promise<boolean> {
+export function passwortWechselFaellig(id: number): Promise<boolean> {
   return kontoBereich().konten.mussPasswortAendern(id);
 }
 
@@ -96,7 +96,7 @@ export async function setzeFremdesPasswort(
   return mitZugangsende(uid, async () => {
     if (!(await kontoBereich().konten.setzePasswortHash(uid, hash))) return false;
     await zugaengeBeenden(uid);
-    if (durch !== null) await protokolliere(durch, uid, 'passwort_gesetzt');
+    if (durch !== null) await verwalterAktionMerken(durch, uid, 'passwort_gesetzt');
     return true;
   });
 }
@@ -162,8 +162,8 @@ export async function legeKontoAn(
       if (await kontoBereich().konten.nameVergeben(username, 0)) return null;
       const neu = await kontoBereich().konten.fuegeKontoEin(username, hash, alsVerwalter);
       if (neu === null) return null;
-      await protokolliere(verwalter, neu, 'konto_angelegt');
-      if (alsVerwalter) await protokolliere(verwalter, neu, 'verwalter_ernannt');
+      await verwalterAktionMerken(verwalter, neu, 'konto_angelegt');
+      if (alsVerwalter) await verwalterAktionMerken(verwalter, neu, 'verwalter_ernannt');
       return neu;
     })
     .catch(alsDoppelt('benutzername_vergeben'));

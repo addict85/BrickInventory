@@ -433,43 +433,6 @@ router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
   );
 });
 
-/** Das Set ist angelegt; endet der Zugang oder trennt der Client, bricht nur die
- * Ergänzung ab. Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein
- * Statuscode mehr. `success` gehört dazu: Die Clients lesen es wie eine Antwort. */
-async function ergaenzeImStrom(
-  strom: Strom,
-  req: express.Request,
-  r: { set_number: string; besitzer: number; name?: string | null },
-) {
-  const fertig = (name: string | null | undefined, offen: boolean, ergaenzung: 'erledigt' | 'ausstehend') => ({
-    step: 'done',
-    success: true,
-    action: 'added',
-    set_number: r.set_number,
-    name,
-    katalog_offen: offen,
-    ergaenzung,
-  });
-  strom.sende({ step: 'meta', set: r.set_number });
-  await sets
-    .setErgaenzen(r.set_number, r.besitzer, d => {
-      if (strom.zu) throw new Error('CANCELLED');
-      strom.sende(d);
-    })
-    .then(
-      k => {
-        strom.sende({ step: 'done_meta', set: r.set_number });
-        strom.sende(fertig(k.name ?? r.name, !k.name, 'erledigt'));
-      },
-      (f: unknown) => {
-        if (fehlertext(f) === 'CANCELLED') return;
-        oeffentlicherFehler(f, 'sets:add-stream', req);
-        strom.sende(fertig(r.name, true, 'ausstehend'));
-      },
-    );
-  strom.ende();
-}
-
 router.post(
   '/sets/add-stream',
   requireToken,
@@ -498,6 +461,36 @@ router.post(
     await ergaenzeImStrom(oeffneStrom(req, res, { herzschlag: false }), req, r);
   },
 );
+
+/** Das Set ist angelegt; endet der Zugang oder trennt der Client, bricht nur die
+ * Ergänzung ab. Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein
+ * Statuscode mehr. `success` gehört dazu: Die Clients lesen es wie eine Antwort. */
+async function ergaenzeImStrom(
+  strom: Strom,
+  req: express.Request,
+  r: { set_number: string; besitzer: number; name?: string | null },
+) {
+  const send = (d: object) => strom.sende(d);
+  const ergebnis = { success: true, action: 'added', set_number: r.set_number };
+  send({ step: 'meta', set: r.set_number });
+  await sets
+    .setErgaenzen(r.set_number, r.besitzer, d => {
+      if (strom.zu) throw new Error('CANCELLED');
+      send(d);
+    })
+    .then(
+      k => {
+        send({ step: 'done_meta', set: r.set_number });
+        send({ step: 'done', ...ergebnis, name: k.name ?? r.name, katalog_offen: !k.name, ergaenzung: 'erledigt' });
+      },
+      (f: unknown) => {
+        if (fehlertext(f) === 'CANCELLED') return;
+        oeffentlicherFehler(f, 'sets:add-stream', req);
+        send({ step: 'done', ...ergebnis, name: r.name, katalog_offen: true, ergaenzung: 'ausstehend' });
+      },
+    );
+  strom.ende();
+}
 
 router.post(
   '/sets/:setNumber/parts',

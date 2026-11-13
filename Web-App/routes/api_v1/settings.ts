@@ -16,10 +16,10 @@ import {
   getSetting,
 } from '../../src/einstellungen';
 import {
-  zugaengeDesKontos,
+  zugaengeListe,
   zugangBeenden,
   andereZugaengeBeenden,
-  mussPasswortAendern,
+  passwortWechselFaellig,
   setzeEigenesDesign,
   setUserSetting,
   andereSitzungenBeenden,
@@ -78,7 +78,7 @@ router.get(
     const eigenerHash = eigener ? hashToken(eigener) : null;
     // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
     // Gerät ausgesperrt wird.
-    const tokens = await zugaengeDesKontos(req.apiUser.user_id);
+    const tokens = await zugaengeListe(req.apiUser.user_id);
     res.json({
       success: true,
       tokens: tokens.map(t => ({
@@ -450,7 +450,7 @@ router.get(
   requireAdmin,
   async (req: Anfrage<'GET /api/v1/settings/einrichtung'>, res: Antwort<'GET /api/v1/settings/einrichtung'>) => {
     const wert = async (k: string) => !!(await getGlobalSetting(k));
-    const passwort = await mussPasswortAendern(req.apiUser.user_id);
+    const passwort = await passwortWechselFaellig(req.apiUser.user_id);
     const quellen = {
       rebrickable: await wert('rebrickable_api_key'),
       brickset: await wert('brickset_api_key'),

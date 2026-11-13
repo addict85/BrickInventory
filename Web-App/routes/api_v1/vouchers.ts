@@ -10,8 +10,8 @@ import {
   TICKET_SEK,
   exportFreigeben,
   guthabenAbfragen,
-  gutscheinAendern,
-  gutscheinAnlegen,
+  gutscheinBearbeiten,
+  gutscheinErfassen,
   gutscheinAusPdf,
   gutscheinEntfernen,
   gutscheinKlartext,
@@ -86,7 +86,7 @@ router.post(
   '/vouchers',
   requireToken,
   async (req: Anfrage<'POST /api/v1/vouchers'>, res: Antwort<'POST /api/v1/vouchers'>) => {
-    res.json({ success: true, voucher: fuerAussen(await gutscheinAnlegen(req.apiUser.user_id, req.eingabe || {})) });
+    res.json({ success: true, voucher: fuerAussen(await gutscheinErfassen(req.apiUser.user_id, req.eingabe || {})) });
   },
 );
 
@@ -150,7 +150,7 @@ router.put(
   async (req: Anfrage<'PUT /api/v1/vouchers/:id'>, res: Antwort<'PUT /api/v1/vouchers/:id'>) => {
     const id = idOderAbsage(req, res);
     if (id === null) return;
-    res.json({ success: true, voucher: fuerAussen(await gutscheinAendern(req.apiUser.user_id, id, req.eingabe)) });
+    res.json({ success: true, voucher: fuerAussen(await gutscheinBearbeiten(req.apiUser.user_id, id, req.eingabe)) });
   },
 );
 

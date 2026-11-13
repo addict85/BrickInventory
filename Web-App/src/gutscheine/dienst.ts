@@ -6,7 +6,7 @@ import path from 'node:path';
 import { alsDoppelt, fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { ohneFehlendeDatei } from '../infra/fehler';
 import { getGlobalSetting, getSetting } from '../einstellungen';
-import { protokolliere } from '../konto';
+import { verwalterAktionMerken } from '../konto';
 import type { GutscheinZeile } from './repository/gutscheine';
 import {
   VOUCHER_DIR,
@@ -72,7 +72,7 @@ async function vorhanden(uid: number, id: number): Promise<GutscheinZeile> {
 }
 
 /** Keine Zeile heisst „war schon da" — als Erfolg sähe der Nutzer nichts passieren. */
-export async function gutscheinAnlegen(uid: number, roh: Roh): Promise<GutscheinZeile> {
+export async function gutscheinErfassen(uid: number, roh: Roh): Promise<GutscheinZeile> {
   return (await repo().gutscheinAnlegen(uid, geprueft(roh))) ?? fachfehler('konflikt', 'gutschein_existiert');
 }
 
@@ -168,7 +168,7 @@ export interface GutscheinAenderung {
 /** Lesen, mischen, schreiben unter der Zeilensperre: Zwei gleichzeitige Änderungen
  * an verschiedenen Feldern gehen sonst eine verloren. Was nicht mitkommt oder
  * maskiert zurückkommt, bleibt stehen: Das Formular kennt nur die Maske. */
-export function gutscheinAendern(uid: number, id: number, e: GutscheinAenderung): Promise<GutscheinZeile> {
+export function gutscheinBearbeiten(uid: number, id: number, e: GutscheinAenderung): Promise<GutscheinZeile> {
   return gutscheineBereich()
     .db.transaction(async () => {
       const alt = (await repo().gutscheinGesperrt(uid, id)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
@@ -197,7 +197,7 @@ export async function gutscheinEntfernen(uid: number, id: number): Promise<void>
 
 export async function gutscheinKlartext(uid: number, id: number): Promise<GutscheinZeile> {
   const z = await vorhanden(uid, id);
-  await protokolliere(uid, uid, 'gutschein_klartext', maskiert(z).number);
+  await verwalterAktionMerken(uid, uid, 'gutschein_klartext', maskiert(z).number);
   return z;
 }
 
@@ -205,14 +205,14 @@ export async function gutscheinKlartext(uid: number, id: number): Promise<Gutsch
 export async function pdfFreigeben(uid: number, id: number): Promise<string> {
   const z = await vorhanden(uid, id);
   if (!z.pdf_path) fachfehler('nicht_gefunden', 'nicht_gefunden');
-  await protokolliere(uid, uid, 'gutschein_pdf', maskiert(z).number);
+  await verwalterAktionMerken(uid, uid, 'gutschein_pdf', maskiert(z).number);
   return stelleTicketAus(uid, String(id));
 }
 
 export async function exportFreigeben(uid: number): Promise<string> {
   const n = (await gutscheinListe(uid)).length;
   if (!n) fachfehler('nicht_gefunden', 'keine_gutscheine');
-  await protokolliere(uid, uid, 'gutschein_export', `${n}`);
+  await verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);
   return stelleTicketAus(uid, 'export');
 }
 
