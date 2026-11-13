@@ -15,8 +15,8 @@
  *   B  in zeichneFinanzTabellen die Zeile `if (_finSort.feld) sets.sort(…)`
  *      entfernt → rot: „Sortierköpfe mit aria-sort“
  *   C  passt() liefert immer true → rot: „Suche über alle Positionen“
- *   D  ungeprueft() um tRaw('finance.legende') entfernt → rot: „Legende
- *      zeigt Zeichen“
+ *   D  (13.11.2026) in legende() die Zeichen weggelassen (eintrag() ohne
+ *      .legende-zeichen) → rot: „Legende zeigt Zeichen“ (0 statt 3)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

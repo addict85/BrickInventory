@@ -82,6 +82,10 @@
     .llogo .llogo-name span{color:var(--b600)}
     /* Fehlermeldung direkt am Feld (feldFehler in 01-core.js). */
     .feld-fehler{color:var(--r700);font-size:var(--fs-2);margin-top:4px;flex-basis:100%}
+    /* Meldung unter einer Tabellenzeile (feldFehler): über alle Spalten, dicht an der Zeile darüber. */
+    .feld-fehler-zeile > td{padding-top:0;white-space:normal}
+    .feld-fehler-zeile > td > .feld-fehler{margin-top:0}
+    .dt tr:has(+ .feld-fehler-zeile:not([hidden])) > td{border-bottom-color:transparent}
     input[aria-invalid="true"]{border-color:var(--r500)}
     .login-hinweis{background:var(--b50);color:var(--b700);border:1px solid var(--b200);padding:10px 14px;border-radius:8px;font-size:var(--fs-3);margin-bottom:1rem}
     .login-hinweis[hidden]{display:none}
@@ -509,6 +513,10 @@
     .acq-tabelle td{padding:6px}
     .acq-tabelle .zahl{text-align:right}
     .acq-feld{border:1px solid var(--feldrand);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);background:var(--sur);color:var(--txt);max-width:100%}
+    /* max-width:100% liess die Tabelle Auswahlfelder auf „Ne“ und „pruefer_kin…“ zusammendrücken; am
+       Rechner haben sie Platz für ihren längsten Eintrag (am Telefon stehen sie unter der Beschriftung). */
+    @media (min-width:641px){.acq-tabelle select.acq-feld{max-width:none;min-width:max-content}
+      .modal.acq-wide:has(.acq-tabelle){max-width:min(900px,calc(100vw - 2rem))}}
     .acq-tabelle input.acq-menge{width:5.5em;text-align:center;font-weight:700}
     .acq-tabelle input.acq-preis{width:7em;text-align:right;font-weight:600}
     .acq-datum{display:inline-flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
@@ -984,6 +992,7 @@ html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bott
     .toast.success .toast-ico{color:var(--g500)} .toast.error .toast-ico{color:var(--r500)} .toast.info .toast-ico{color:var(--b600)}
     .pst .ico{width:.75rem;height:.75rem;stroke-width:3}
     .fin-unter{display:none}
+    .fin-unter-kauf,.fin-kein-markt{display:none}
     /* Platzhalter für ein fehlendes oder nicht ladendes Bild (bildTag/bildPlatzhalter in
        01-core.js): dieselbe getönte Fläche, ob es nie ein Bild gab oder eines kaputt ist. */
     .bild-ph{display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:var(--s50);color:var(--s400);border-radius:6px;overflow:hidden;width:40px;height:40px}
@@ -1608,6 +1617,7 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .dr.dr-leise{font-size:var(--fs-2)}
 .fin-legende{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem;margin:.5rem 0 0;font-size:var(--fs-1);color:var(--mut)}
 .fin-legende .legende-zeichen{display:inline-flex;vertical-align:middle}
+.fin-legende .legende-eintrag{display:inline-flex;align-items:center;gap:.25rem;white-space:nowrap}
 @media (max-width:640px){.fin-legende{display:none}}
 
 /* Genau zwei Knopfgrössen: Standard 38 px wie die Eingabefelder, kompakt 32 px

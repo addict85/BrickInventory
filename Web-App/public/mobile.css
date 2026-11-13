@@ -290,6 +290,10 @@
     text-align: right;
   }
   .dt tr td:last-child { border-bottom: none; }
+  /* Feldfehler unter einer Karte (feldFehler): hängt an ihr statt als eigene Karte. */
+  .dt tr:has(+ .feld-fehler-zeile:not([hidden])) { margin-bottom: 0; border-bottom: none; border-radius: 10px 10px 0 0; }
+  .dt tr.feld-fehler-zeile { border-top: none; border-radius: 0 0 10px 10px; padding-top: 0; }
+  .dt tr.feld-fehler-zeile > td { display: block; text-align: left; }
   /* Wird es eng (grosse Schrift), steht der Wert unter seiner Beschriftung. */
   .dt td { flex-wrap: wrap; row-gap: .25rem; }
   .dt td > * { max-width: 100%; }
@@ -338,6 +342,9 @@
   .dt-fin td.fin-guv  { grid-area: guv;  text-align: right; }
   .dt-fin .fin-jahr { display: none; }
   .fin-unter { display: block !important; font-size: var(--fs-0); font-weight: 400; color: var(--mut); margin-top: 2px; }
+  .fin-unter-kauf { display: inline; white-space: nowrap; }
+  .dt-fin .fin-kein-markt { display: inline; font-size: var(--fs-1); font-weight: 400; color: var(--mut); }
+  .dt-fin .fin-strich, .dt-fin td.fin-guv:has(.fin-guv-leer) { display: none; }
   /* Summen: Name oben, darunter Einstand und Marktwert mit eigener Beschriftung. */
   .dt-summe tfoot { display: block; }
   .dt-summe tr { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem .75rem; padding: .55rem .7rem; }
@@ -424,8 +431,10 @@
   nav:not(.einst-nav) { container: leiste / inline-size; flex-wrap: wrap; }
 }
 @container leiste (max-width: 20.5em) {
-  .ntab { flex: 0 0 33.333%; padding: 4px 2px; min-height: 44px; gap: 1px; }
-  .ntab .ico { width: .8rem; height: .8rem; }
+  /* Nur die Namen, ohne Symbol: Symbol über Name machte jede Reihe rund 57 px hoch, die Leiste 115 px.
+     Die Namen bleiben lesbar (Symbole allein erklären „Bauliste“ und „Katalog“ nicht). */
+  .ntab { flex: 0 0 33.333%; padding: 2px; min-height: 44px; gap: 0; justify-content: center; }
+  .ntab .ico { display: none; }
   /* Etwas kleiner als die übrige Schrift: „Sammlung“ passt so ganz in ein Drittel. */
   .ntab .tab-label { font-size: calc(var(--fs-0) * .8); line-height: 1.15; white-space: normal; overflow: visible;
                      text-overflow: clip; overflow-wrap: anywhere; text-align: center; }
@@ -503,7 +512,11 @@
      Sets/Teile/Minifiguren aus, bedienbar ist aber nur der obere. */
   .bstat, [data-theme="brick"] .bstat { display: inline-flex; flex-direction: row-reverse; align-items: baseline; gap: .35em;
     flex: 0 0 auto; padding: 0; border: 0 !important; border-radius: 0; box-shadow: none; background: none; color: var(--mut); }
-  .bstat:not(:first-child)::after { content: "·"; margin: 0 .5em; color: var(--mut); }
+  /* Der Punkt steht hinter einer Kennzahl, nicht vor der nächsten: Bricht die Zeile um, beginnt sie
+     sonst mit einem verwaisten „·“. order:-2 setzt ihn in der umgekehrten Reihe ans Ende (die vierte
+     Kennzahl ist am Telefon verborgen, also hat die dritte keinen). */
+  .bstat:not(:last-child):not(:nth-child(3))::after { content: "·"; margin: 0 0 0 .5em; color: var(--mut); order: -2; }
+  .bstat.bstat-erklaert::after { order: 0; }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-4); margin: 0; line-height: 1.3; }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { text-transform: none; letter-spacing: 0; font-size: var(--fs-2); }
   .bstat .bstat-s { display: none; }

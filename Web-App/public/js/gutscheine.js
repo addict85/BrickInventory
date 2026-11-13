@@ -265,7 +265,7 @@ const GUTSCHEIN_FELDER = {
 export async function gutscheinSpeichern() {
   const number = el('v-number').value.trim();
   const pin = el('v-pin').value.trim();
-  const betrag = betragAusFeld('v-amount');
+  const betrag = betragAusFeld('v-amount', 'common.betrag_negativ');
   if (!betrag.ok) return;
   const amount = betrag.wert ?? '';
   const currency = el('v-currency')?.value || 'CHF';

@@ -98,7 +98,8 @@ export function plRenderSets() {
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
   plSchritt(!_plSets.length);
   if (!_plSets.length) {
-    setzeHtml(c, leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.no_sets_hint' }));
+    // Was zu tun ist, sagt der Hinweis unter den Knöpfen; der Leerzustand wiederholte es mit anderen Worten.
+    setzeHtml(c, leerZustand({ ico: 'liste', titelKey: 'pl.no_sets' }));
     return;
   }
   setzeHtml(

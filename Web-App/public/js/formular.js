@@ -68,13 +68,24 @@ export function feldFehler(id, text) {
     el.id = id + '-fehler';
     el.className = 'feld-fehler';
     el.setAttribute('role', 'alert');
-    // Steht das Feld in einer Flex-Zeile (Preis mit Währung), gehört die Meldung hinter die Zeile,
-    // sonst drückt sie das Feld auf wenige Pixel zusammen.
-    (feld.closest('.preis-mit-waehrung') ?? feld).insertAdjacentElement('afterend', el);
+    // In einer Tabellenzelle drückte die Meldung die Nachbarspalten aus dem Bild; sie bekommt eine eigene
+    // Zeile über alle Spalten. In einer Flex-Zeile (Preis mit Währung) steht sie hinter der Zeile.
+    const zeile = feld.closest('td')?.parentElement;
+    if (zeile instanceof HTMLTableRowElement) {
+      const tr = document.createElement('tr');
+      tr.className = 'feld-fehler-zeile';
+      const td = document.createElement('td');
+      td.colSpan = zeile.cells.length;
+      td.append(el);
+      tr.append(td);
+      zeile.insertAdjacentElement('afterend', tr);
+    } else (feld.closest('.preis-mit-waehrung') ?? feld).insertAdjacentElement('afterend', el);
     feld.addEventListener('input', () => feldFehler(id, ''));
   }
   el.textContent = text || '';
   el.hidden = !text;
+  const fehlerZeile = el.closest('tr.feld-fehler-zeile');
+  if (fehlerZeile instanceof HTMLElement) fehlerZeile.hidden = !text;
   // Die eigene Kennung ergänzen und wieder nehmen: Ein vorhandener Hinweis (Passwortregel) bleibt verknüpft.
   const ids = new Set((feld.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
   if (text) {
@@ -165,15 +176,20 @@ export function kaufdatumGueltig(id) {
  * Liest ein Geldfeld; ist der Inhalt keine Zahl (oder negativ), steht die Meldung am Feld und `ok` ist false
  * — gesendet wird dann nichts.
  * @param {string|HTMLInputElement} feld  ID oder Element
+ * @param {string} [negativ] Schlüssel der Meldung für einen negativen Betrag (Vorgabe: Kaufpreis)
  * @returns {{ ok: boolean, wert: number|null }}
  */
-export function betragAusFeld(feld) {
+export function betragAusFeld(feld, negativ = 'common.amount_negative') {
   const el = typeof feld === 'string' ? G(feld) : feld;
   if (!el) return { ok: true, wert: null };
-  const wert = leseBetrag(el.value);
+  const roh = el.value.trim();
+  const wert = leseBetrag(roh);
   if (wert !== null && !(wert >= 0)) {
-    if (el.id) feldFehler(el.id, tRaw('common.amount_invalid', { wert: el.value.trim() }));
-    else toast(tRaw('common.amount_invalid', { wert: el.value.trim() }), 'error');
+    // „-5“ ist lesbar, nur nicht erlaubt: „ist kein Betrag“ führte dort in die Irre.
+    const minus = /^[-−]/.test(roh) && Number.isFinite(leseBetrag(roh.slice(1)));
+    const meldung = minus ? tRaw(negativ) : tRaw('common.amount_invalid', { wert: roh });
+    if (el.id) feldFehler(el.id, meldung);
+    else toast(meldung, 'error');
     return { ok: false, wert: null };
   }
   if (el.id && G(el.id + '-fehler')) feldFehler(el.id, '');

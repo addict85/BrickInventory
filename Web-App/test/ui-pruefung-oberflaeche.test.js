@@ -196,25 +196,28 @@ test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf stat
   }
 });
 
-// Gegenprobe (08.11.2026): in finanzenFehlen() wieder immer „—“ → rot (Karten zeigten „—“ statt „Keine Verbindung“);
-// ein Serverfehler (500) statt Netzausfall zeigt weiter „—“, weil dort keine Verbindung fehlt.
-test('offline: Die Kennzahl-Karten der Finanzen sagen „Keine Verbindung“ statt „—“', async () => {
+// UX-Prüfung 20: Grund und „Erneut versuchen“ stehen einmal, bei der Liste; die Karten zeigen „—“, die
+// Zeitraumknöpfe sind gesperrt. Gegenprobe (13.11.2026): in finanzenFehlen() wieder „Keine Verbindung“ in den
+// Karten → rot (Karte fin-einstand); das Sperren der Knöpfe entfernt → rot (Zeitraum bedienbar).
+test('offline: Die Kennzahl-Karten der Finanzen zeigen „—“, die Zeitraumknöpfe sind gesperrt', async () => {
   const netzweg = () => {
     throw new TypeError('Failed to fetch');
   };
-  for (const [sprache, soll] of [
-    ['de', 'Keine Verbindung'],
-    ['en', 'No connection'],
-  ]) {
-    const { w, d } = await oeffneOberflaeche(
-      { '/v1/finance/valuation': netzweg, '/v1/finance/portfolio-history': netzweg },
-      { sprache },
-    );
+  {
+    const { w, d } = await oeffneOberflaeche({
+      '/v1/finance/valuation': netzweg,
+      '/v1/finance/portfolio-history': netzweg,
+    });
     try {
       await reiter(w, 'finance');
-      await warte(() => text(d.getElementById('fin-einstand')) === soll);
+      await warte(() => /nicht erreichbar/.test(text(d.getElementById('fin-tbl'))));
       for (const id of ['fin-einstand', 'fin-wert', 'fin-total-pnl', 'portfolio-current'])
-        assert.equal(text(d.getElementById(id)), soll, id);
+        assert.equal(text(d.getElementById(id)), '—', id);
+      assert.deepEqual(
+        [...d.querySelectorAll('.zeitraum-wahl .period-btn')].map(k => k.disabled),
+        [true, true, true, true],
+        'Zeitraum bedienbar',
+      );
     } finally {
       w.close();
     }

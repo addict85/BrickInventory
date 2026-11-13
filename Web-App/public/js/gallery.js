@@ -412,7 +412,7 @@ function gridCard(s) {
   const kaeufe = Number(s.acq_count) || 0;
   const kaufText =
     kaeufe > 1
-      ? html`${tRaw('gallery.card.kaeufe', { n: kaeufe })} ${kaufFmt}`
+      ? html`<span>${tRaw('gallery.card.kaeufe', { n: kaeufe })}</span> ${kaufFmt}`
       : html`<span>${tRaw('detail.added')}</span> ${kaufFmt}`;
   // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat — eine Plakette je Zustand, siehe
   // condBadges().
