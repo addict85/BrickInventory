@@ -8,6 +8,9 @@
  * `--exclude-table-data=user_sessions` gestrichen → rot: „Sitzungen, Zähler
  * und Protokoll kommen leer zurück …“.
  *
+ * Gegenprobe (13.11.2026 gemessen): AUFRUF_FRIST auf 1 ms → 9 Fälle rot statt eines
+ * Hängers (Sicherung, backup.sh, restore.sh).
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL UND die PostgreSQL-Klienten
  * (pg_dump/psql). Ohne DB: skip, ausser REQUIRE_DB=1.
  */
@@ -19,6 +22,11 @@ const path = require('node:path');
 const { testName, raeumeReste } = require('./helpers/testnamen');
 const { execFileSync, spawnSync } = require('node:child_process');
 
+/** Ein synchroner Aufruf blockiert die ganze Datei: Wartet psql oder restore.sh auf
+ * eine Sperre, kommt auch die Dateifrist aus test/helpers/auslauf.js nie an die Reihe,
+ * und der Lauf hängt bis zum Abbruch der CI. Mit Frist wird daraus ein roter Test. */
+const AUFRUF_FRIST = 120_000;
+
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { ROOT } = require('./helpers/sources');
@@ -29,7 +37,7 @@ const db = _req('db/database.js');
 
 /** pg_dump/psql finden — auf dem PATH oder in einer Distributions-Installation. */
 function klient(name) {
-  const direkt = spawnSync('which', [name], { encoding: 'utf8' });
+  const direkt = spawnSync('which', [name], { encoding: 'utf8', timeout: AUFRUF_FRIST });
   if (direkt.status === 0) return direkt.stdout.trim();
   const basis = '/usr/lib/postgresql';
   if (!fs.existsSync(basis)) return null;
@@ -63,7 +71,7 @@ test('Sicherung und Wiederherstellung', async t => {
    */
   const fassung = bin => {
     if (!bin) return '—';
-    const r = spawnSync(bin, ['--version'], { encoding: 'utf8', stdio: 'pipe' });
+    const r = spawnSync(bin, ['--version'], { encoding: 'utf8', stdio: 'pipe', timeout: AUFRUF_FRIST });
     return (r.stdout || r.stderr || '').trim() || '?';
   };
   if (!pgDump || !psql) {
@@ -78,7 +86,12 @@ test('Sicherung und Wiederherstellung', async t => {
 
   // psql mit einem Dump füttern
   const lauf = (args, datei) =>
-    spawnSync(psql, [...args, url, '-f', datei], { encoding: 'utf8', stdio: 'pipe', env: { ...process.env } });
+    spawnSync(psql, [...args, url, '-f', datei], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+      env: { ...process.env },
+      timeout: AUFRUF_FRIST,
+    });
   /** Exit-Code; `grund()` liefert danach die Meldung von psql dazu. */
   let letzterLauf = null;
   const einspielen = datei => {
@@ -140,7 +153,7 @@ test('Sicherung und Wiederherstellung', async t => {
 
   await t.test('pg_dump erzeugt einen vollständigen Dump', () => {
     assert.ok(optionen.includes('--clean'), `backup.sh: DUMP_OPTIONEN nicht gefunden (${optionen})`);
-    execFileSync(pgDump, [...optionen, '-f', dump, url], { stdio: 'pipe' });
+    execFileSync(pgDump, [...optionen, '-f', dump, url], { stdio: 'pipe', timeout: AUFRUF_FRIST });
     const inhalt = fs.readFileSync(dump, 'utf8');
     assert.match(
       inhalt.slice(-500),
@@ -342,12 +355,16 @@ test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', t => {
       cwd: arbeit,
       encoding: 'utf8',
       env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', ...env },
+      timeout: AUFRUF_FRIST,
     });
 
   const ohne = sichern({});
   assert.equal(ohne.status, 0, ohne.stderr);
   const archiv = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
-  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], { encoding: 'utf8' });
+  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], {
+    encoding: 'utf8',
+    timeout: AUFRUF_FRIST,
+  });
   assert.match(inhalt, /data\/uploads\/anleitung\.pdf/, 'Vorbedingung: data/ ist im Archiv');
   assert.doesNotMatch(inhalt, /datenschluessel/, 'der Schlüssel liegt im Archiv');
   assert.match(ohne.stderr, /NICHT in der Sicherung/, 'ohne getrennten Ort muss das Skript es sagen');
@@ -386,10 +403,14 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', t =
     cwd: arbeit,
     encoding: 'utf8',
     env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', BACKUP_SCHLUESSEL_ZIEL: tresor },
+    timeout: AUFRUF_FRIST,
   });
   assert.equal(r.status, 0, r.stderr);
   const archiv = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
-  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], { encoding: 'utf8' });
+  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], {
+    encoding: 'utf8',
+    timeout: AUFRUF_FRIST,
+  });
   assert.match(inhalt, /data\/uploads\/rechnung\.pdf/);
   assert.doesNotMatch(inhalt, /schluessel/);
   assert.equal(
@@ -481,10 +502,14 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
         '-e',
         "const db = require('./dist/startup/verdrahtung.js').verdrahteProzess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })",
       ],
-      { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: url } },
+      { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: url }, timeout: AUFRUF_FRIST },
     );
   const rolle = () =>
-    spawnSync('sh', [path.join(ROOT, 'postgres', 'app-rolle.sh')], { encoding: 'utf8', env: umgebung });
+    spawnSync('sh', [path.join(ROOT, 'postgres', 'app-rolle.sh')], {
+      encoding: 'utf8',
+      env: umgebung,
+      timeout: AUFRUF_FRIST,
+    });
 
   await admin.query(`CREATE DATABASE ${id(ziel)}`);
   assert.equal(rolle().status, 0);
@@ -531,9 +556,13 @@ esac
       input: 'ja\n',
       encoding: 'utf8',
       env: { ...umgebung, PATH: `${bin}:${process.env.PATH}` },
+      timeout: AUFRUF_FRIST,
     });
   const sichern = (db, datei) => {
-    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', datei, dbUrl(db)], { stdio: 'pipe' });
+    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', datei, dbUrl(db)], {
+      stdio: 'pipe',
+      timeout: AUFRUF_FRIST,
+    });
     execFileSync('gzip', [datei]);
     return `${datei}.gz`;
   };
@@ -604,7 +633,10 @@ esac
   await t.test('ein Backslash-Befehl mitten in einer Zeile läuft nicht', async () => {
     const geknackt = path.join(tmp, 'geknackt');
     const sql = path.join(tmp, 'fremd.sql');
-    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', sql, dbUrl(ziel)], { stdio: 'pipe' });
+    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', sql, dbUrl(ziel)], {
+      stdio: 'pipe',
+      timeout: AUFRUF_FRIST,
+    });
     const inhalt = fs.readFileSync(sql, 'utf8');
     const ende = inhalt.lastIndexOf('--\n-- PostgreSQL database dump complete');
     fs.writeFileSync(sql, `${inhalt.slice(0, ende)}SELECT 1; \\! touch '${geknackt}'\n${inhalt.slice(ende)}`);
