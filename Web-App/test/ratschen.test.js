@@ -919,7 +919,8 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
   // vor dem Umbau schon maskiert gebaut wurde. Listen aus html`` verbindet verbinde() (escapen.js).
   // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
   // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
-  const SCHRANKE = 125;
+  // Gegenprobe (13.11.2026, Schranke 87): in gutscheine.js ein `${ungeprueft(KOPIE_ICON_SVG)}` zurück → rot.
+  const SCHRANKE = 87;
   assert.deepEqual(
     ungeprueftArgumente(
       "function ungeprueft(t) {}\na(ungeprueft(`<i>${b(c)}</i>`), ungeprueft(d.map(e).join('')), x.ungeprueft(f))",

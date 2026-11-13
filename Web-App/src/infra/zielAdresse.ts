@@ -42,15 +42,17 @@ function gruppen(ip: string): number[] {
   return [...vorn, ...Array(8 - vorn.length - hinten.length).fill(0), ...hinten];
 }
 
-/** IPv4-gemappte (::ffff:a.b.c.d) und NAT64-Adressen (64:ff9b::a.b.c.d) erreichen
- * eine IPv4-Adresse; geprüft wird diese, damit jede IPv4-Regel auch hier greift.
- * NAT64 ganz zu sperren bräche Abrufe hinter DNS64 (reine IPv6-Netze). */
+/** IPv4-gemappte (::ffff:a.b.c.d), IPv4-kompatible (::a.b.c.d) und NAT64-Adressen
+ * (64:ff9b::a.b.c.d) erreichen eine IPv4-Adresse; geprüft wird diese, damit jede
+ * IPv4-Regel auch hier greift. NAT64 ganz zu sperren bräche Abrufe hinter DNS64.
+ * :: und ::1 sind eigene IPv6-Adressen, keine eingebettete IPv4. */
 export function normalisiert(ip: string): string {
   if (!net.isIPv6(ip)) return ip;
   const g = gruppen(ip);
   const gemappt = g.slice(0, 5).every(x => x === 0) && g[5] === 0xffff;
   const nat64 = g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every(x => x === 0);
-  if (!gemappt && !nat64) return ip;
+  const kompatibel = g.slice(0, 6).every(x => x === 0) && (g[6] !== 0 || (g[7] ?? 0) > 1);
+  if (!gemappt && !nat64 && !kompatibel) return ip;
   const [h = 0, l = 0] = g.slice(6);
   return [h >> 8, h & 255, l >> 8, l & 255].join('.');
 }

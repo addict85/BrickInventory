@@ -7,7 +7,7 @@ import { antwortFehler, betragAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
 import { openPdfViewer } from './pdfviewer.js';
 import { CURRENCY, _settingsCache } from './zustand.js';
-import { html, ungeprueft, verbinde } from './escapen.js';
+import { html, verbinde } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 
 // Gutscheine (LEGO-Geschenkkarten) stehen direkt im Profil statt in einem eigenen Reiter: Sie sollen schnell
@@ -64,11 +64,9 @@ async function holeKlartext(id) {
  * Inline und nicht als Schriftzeichen: Ein Emoji sieht auf jedem System anders aus und faellt bei manchen
  * Schriften ganz aus. `currentColor` laesst es die Farbe des Knopfes annehmen, also auch im Dunkelmodus.
  */
-const KOPIE_ICON_SVG =
-  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
-  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<rect x="9" y="9" width="13" height="13" rx="2"/>' +
-  '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const KOPIE_ICON_SVG = html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13"
+  height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 
 /** „6123-4567-8901“ und „612345678901“ → „6123 4567 8901“. */
 /** @param {unknown} roh */
@@ -123,7 +121,7 @@ function zeile(g) {
           <span class="voucher-num">${nummer}</span>
           <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="nummer"
                   title="${tRaw('vouchers.copy_number')}"
-                  aria-label="${tRaw('vouchers.copy_number')}">${ungeprueft(KOPIE_ICON_SVG)}<span class="v-btn-text">${tRaw('vouchers.kurz_kopieren')}</span></button>
+                  aria-label="${tRaw('vouchers.copy_number')}">${KOPIE_ICON_SVG}<span class="v-btn-text">${tRaw('vouchers.kurz_kopieren')}</span></button>
         </div>
         <div class="voucher-meta">
           <span class="voucher-amount">${fmtN(g.amount, g.currency)}</span>
@@ -146,7 +144,7 @@ function zeile(g) {
                      ${ico(pinOffen ? 'auge-zu' : 'auge')}<span class="v-btn-text">${tRaw(pinOffen ? 'vouchers.kurz_verbergen' : 'vouchers.kurz_anzeigen')}</span></button>
                    <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="pin"
                      title="${tRaw('vouchers.copy_pin')}"
-                     aria-label="${tRaw('vouchers.copy_pin')}">${ungeprueft(KOPIE_ICON_SVG)}<span class="v-btn-text">${tRaw('vouchers.kurz_kopieren')}</span></button>`
+                     aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}<span class="v-btn-text">${tRaw('vouchers.kurz_kopieren')}</span></button>`
             : ''
         }
       </div>

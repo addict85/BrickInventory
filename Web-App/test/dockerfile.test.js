@@ -153,3 +153,49 @@ test('Install-Skripte laufen nur gezielt, für genau die Pakete, die eines haben
     assert.deepEqual(gebaut, mitSkript, `${name} baut nicht genau die Pakete mit Install-Skript`);
   }
 });
+
+// Das Image startet als brickinv; der Entrypoint mit Ersatz für id, su-exec und node, /app im Sandkasten.
+// Gegenproben (13.11.2026 gemessen, je einzeln): `USER brickinv` gestrichen → rot „das Image startet
+// ohne --user als root“; die Bedingung `[ "$(id -u)" = 0 ]` durch `true` ersetzt → rot „ohne root
+// startet node direkt, ohne su-exec“.
+test('das Image startet als brickinv, der Entrypoint läuft so und als root', () => {
+  const laufzeit =
+    fs
+      .readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8')
+      .split(/^FROM /m)
+      .pop() ?? '';
+  const nutzer = [...laufzeit.matchAll(/^USER\s+(\S+)/gm)].map(m => m[1]);
+  assert.equal(nutzer.at(-1), 'brickinv', 'das Image startet ohne --user als root');
+  assert.match(laufzeit, /adduser -S brickinv/, 'der Nutzer entsteht im Laufzeit-Stage');
+  const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'entrypoint-'));
+  try {
+    const app = path.join(ort, 'app'),
+      bin = path.join(ort, 'bin'),
+      spur = path.join(ort, 'spur');
+    fs.mkdirSync(path.join(app, 'data'), { recursive: true });
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(app, 'daten-rechte.sh'), 'echo daten-rechte >> "$SPUR"\n');
+    const ersatz = (name, rumpf) => fs.writeFileSync(path.join(bin, name), `#!/bin/sh\n${rumpf}\n`, { mode: 0o755 });
+    ersatz('id', '[ "$1" = -u ] && echo "$KENNUNG" || echo brickinv');
+    ersatz('chown', 'exit 0');
+    ersatz('su-exec', 'echo "su-exec $1" >> "$SPUR"; shift; KENNUNG=1000 exec "$@"');
+    ersatz('node', 'echo "node $*" >> "$SPUR"');
+    const ep = fs.readFileSync(path.join(ROOT, 'docker-entrypoint.sh'), 'utf8').replaceAll('/app/', `${app}/`);
+    const skript = path.join(ort, 'entrypoint.sh');
+    fs.writeFileSync(skript, ep, { mode: 0o755 });
+    const lauf = kennung => {
+      fs.rmSync(spur, { force: true });
+      const r = spawnSync('sh', [skript], {
+        encoding: 'utf8',
+        cwd: ort,
+        env: { PATH: `${bin}:/usr/bin:/bin`, KENNUNG: kennung, SPUR: spur },
+      });
+      assert.equal(r.status, 0, r.stderr);
+      return fs.readFileSync(spur, 'utf8').trim().split('\n');
+    };
+    assert.deepEqual(lauf('1000'), ['node dist/server.js'], 'ohne root startet node direkt, ohne su-exec');
+    assert.deepEqual(lauf('0'), ['daten-rechte', 'su-exec brickinv', 'node dist/server.js']);
+  } finally {
+    fs.rmSync(ort, { recursive: true, force: true });
+  }
+});

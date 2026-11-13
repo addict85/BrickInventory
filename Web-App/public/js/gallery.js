@@ -50,12 +50,12 @@ import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte
  */
 function faecherTon(s) {
   if (typeof s.theme_id === 'number' && Number.isInteger(s.theme_id))
-    return ` data-faecher="${((s.theme_id % 12) + 12) % 12}"`;
+    return html` data-faecher="${((s.theme_id % 12) + 12) % 12}"`;
   const name = String(s.theme || '').split(' / ')[0];
   if (!name) return '';
   let h = 0;
   for (const z of name) h = (h * 31 + (z.codePointAt(0) ?? 0)) >>> 0;
-  return ` data-faecher="${h % 12}"`;
+  return html` data-faecher="${h % 12}"`;
 }
 
 // ── STATS ─────────────────────────────────────────────
@@ -420,7 +420,7 @@ function gridCard(s) {
   // Ohne Jahr, Thema und echten Namen kennt der Katalog die Nummer (noch) nicht.
   const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
   // Kein aria-label: Der Name kommt aus dem Inhalt, sonst fehlte dem Vorleser, was sichtbar dasteht.
-  return html`<div class="sc"${ungeprueft(faecherTon(s))} tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openModal" data-arg="${s.set_number}">
+  return html`<div class="sc"${faecherTon(s)} tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openModal" data-arg="${s.set_number}">
     <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${s.set_number}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
@@ -431,7 +431,7 @@ function gridCard(s) {
         <div class="splaketten">
           ${s.instructions?.length ? html`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>` : ''}
           ${s.quantity > 1 ? html`<span class="qbadge">×${s.quantity}</span>` : ''}
-          ${ungeprueft(condBadge)}
+          ${condBadge}
           ${istGeschenk(s.avg_purchase_price ?? s.max_purchase_price) ? html`<span class="geschenk-badge">${tRaw('finance.gift')}</span>` : ''}
           ${unbekannt ? html`<span class="unbekannt-badge" title="${tRaw('gallery.card.unbekannt_hint')}">${tRaw('gallery.card.unbekannt')}</span>` : ''}
           ${ownerBadges(s)}

@@ -1,6 +1,6 @@
 import { registerActions } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { escHex, esc, html, ungeprueft } from './escapen.js';
+import { escHex, esc, html } from './escapen.js';
 import { fehlerMeldung, api, apiRoh } from './api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
 import { leerZustand, ico, G, knopfBesetzt, alle, setzeHtml } from './dom.js';
@@ -367,7 +367,7 @@ function plRenderTable(fehler = 0) {
       // Kein Rückfall auf die Rebrickable-Farbnummer: Das ergäbe eine gültige Datei mit der falschen Farbe.
       // Leer heisst unbekannt; plExportBricklink lässt solche Posten weg und nennt sie.
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
-      markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number || p.part_number}</span><span data-stil="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:6.5em;text-align:right;flex-shrink:0">×${ungeprueft(p.quantity.toLocaleString(locale()))}</span><span data-stil="width:6.5em;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number || p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name || ''}" data-type="${(p.bl_part_number || p.part_number || 'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number || p.part_number} ${p.color_name || ''}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`}`;
+      markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number || p.part_number}</span><span data-stil="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:6.5em;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:6.5em;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number || p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name || ''}" data-type="${(p.bl_part_number || p.part_number || 'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number || p.part_number} ${p.color_name || ''}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`}`;
     }
     markup = html`${markup}</div></div>`;
   }

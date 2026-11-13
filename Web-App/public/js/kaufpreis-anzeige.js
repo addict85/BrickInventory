@@ -1,7 +1,7 @@
 // Wie Kaufpreise dastehen: Summenzeile, Währung, Umrechnung und Schätzung, in Dialog und Detail gleich.
 // Eigene Datei, weil Set-Detail, Kaufpreis-Dialog und Detail manueller Einträge dieselben Bausteine nutzen.
 import { tRaw } from '../i18n.js';
-import { esc, html, ungeprueft } from './escapen.js';
+import { esc, html } from './escapen.js';
 import { ico } from './dom.js';
 import { fmtDatum, fmtGeld, fmtGeldCode, fmtN } from './format.js';
 import { CURRENCY } from './zustand.js';
@@ -82,24 +82,20 @@ function legendeGeschaetzt(acqs) {
  */
 export function renderAcquisitionSummary(acqs, _sn) {
   if (!acqs?.length) return html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
-  return (
-    acqs
-      .map(a => {
-        const cond =
-          a.condition === 'U'
-            ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
-            : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
-        const price = erfassungsPreis(a, a.purchase_price);
-        const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-        return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+  return html`${acqs.map(a => {
+    const cond =
+      a.condition === 'U'
+        ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
+        : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
+    const price = erfassungsPreis(a, a.purchase_price);
+    const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
+    return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
       <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
-      ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(dateFmt)}</span>` : ''}
+      ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
     </div>`;
-      })
-      .join('') + legendeGeschaetzt(acqs)
-  );
+  })}${legendeGeschaetzt(acqs)}`;
 }
 
 // Kurzübersicht für Teile und Figuren (mit unit_price statt purchase_price)
@@ -111,34 +107,30 @@ export function renderAcquisitionSummary(acqs, _sn) {
  */
 export function renderManAcqSummary(acqs, _type, _id, _colorId) {
   if (!acqs?.length) return html`<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
-  return (
-    acqs
-      .map(a => {
-        const cond =
-          a.condition === 'U'
-            ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
-            : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
-        const price = erfassungsPreis(a, a.unit_price);
-        const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-        return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+  return html`${acqs.map(a => {
+    const cond =
+      a.condition === 'U'
+        ? html`<span class="cond-badge cond-used">${tRaw('common.condition_used')}</span>`
+        : html`<span class="cond-badge cond-new">${tRaw('common.condition_new')}</span>`;
+    const price = erfassungsPreis(a, a.unit_price);
+    const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
+    return html`<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
       <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
-      ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(dateFmt)}</span>` : ''}
+      ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
     </div>`;
-      })
-      .join('') + legendeGeschaetzt(acqs)
-  );
+  })}${legendeGeschaetzt(acqs)}`;
 }
 
 /** Kurzfassung im Set-Detail samt Knopf zum Kaufpreis-Dialog.
  * @param {Erfassung[] | null | undefined} acqs @param {string} sn */
 export function kurzfassung(acqs, sn) {
-  return html`${ungeprueft(renderAcquisitionSummary(acqs, sn))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`;
+  return html`${renderAcquisitionSummary(acqs, sn)}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`;
 }
 
 /** Dasselbe für ein manuell erfasstes Teil oder eine Figur.
  * @param {Erfassung[] | null | undefined} acqs @param {string} type @param {string} id @param {number} colorId */
 export function kurzfassungMan(acqs, type, id, colorId) {
-  return html`${ungeprueft(renderManAcqSummary(acqs, type, id, colorId))}${html`<button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`;
+  return html`${renderManAcqSummary(acqs, type, id, colorId)}${html`<button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`;
 }

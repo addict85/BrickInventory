@@ -1,7 +1,7 @@
 import { vergissManItem } from './manuell-detail.js';
 import { detailZeile, ladeAnzeige, zeilenKnopf } from './bausteine.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { escHex, escJs, esc, html, ungeprueft, verbinde } from './escapen.js';
+import { escHex, escJs, esc, html, verbinde } from './escapen.js';
 import { api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './bilder.js';
 import { ico, G, setzeHtml } from './dom.js';
@@ -31,7 +31,7 @@ function verwendetInListe(sets) {
           <td data-stil="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
           <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${zeilenKnopf({ click: 'openSetAusItem', arg: s.set_number }, s.set_number, tRaw('zeile.oeffnen', { name: s.set_name || s.set_number, nr: s.set_number }))}</td>
           <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${s.set_name || ''}</td>
-          <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${ungeprueft((s.quantity || 0).toLocaleString(locale()))}</td>
+          <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${(s.quantity || 0).toLocaleString(locale())}</td>
         </tr>`,
       )}</tbody></table>`
     : html`<span data-stil="color:var(--mut);font-size:var(--fs-2)">${t('setitem.used_in_none')}</span>`;

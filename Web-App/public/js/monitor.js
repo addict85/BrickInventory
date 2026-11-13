@@ -258,7 +258,7 @@ const jobIconSvg = (/** @type {string} */ k) => {
   };
   return svgs[k]
     ? html`<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${ungeprueft(svgs[k])}</svg>`
-    : '<span class="mon-sinnbild" aria-hidden="true"></span>';
+    : html`<span class="mon-sinnbild" aria-hidden="true"></span>`;
 };
 const jobZustand = (/** @type {string} */ s) =>
   ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'), error: tRaw('monitor.state.error') })[
@@ -297,7 +297,7 @@ const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
     k === 'bricksetRetry' && j.total > 0
       ? html`<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${tRaw('monitor.show')}</span></button>`
       : '',
-  ].join('');
+  ].filter(Boolean);
 const dienstName = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
   tRaw('monitor.job.' + k) !== 'monitor.job.' + k ? tRaw('monitor.job.' + k) : j.label || k;
 
@@ -335,12 +335,12 @@ export async function loadMonitor() {
         <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeitplan')}</th><th>${tRaw('monitor.col.zuletzt')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(
           ([k, j]) => html`<tr>
-          <td><span class="mon-name">${k === 'bricksetRetry' ? ungeprueft(jobIconSvg('brickset')) : ungeprueft(jobIconSvg(k))}${dienstName(k, j)}</span></td>
+          <td><span class="mon-name">${jobIconSvg(k === 'bricksetRetry' ? 'brickset' : k)}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
             ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedText(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'zeit') : ''}</td>
-          <td><div class="mon-knoepfe">${aktionen(k, j) ? ungeprueft(aktionen(k, j)) : html`<span class="mon-leise">–</span>`}</div></td>
+          <td><div class="mon-knoepfe">${aktionen(k, j).length ? aktionen(k, j) : html`<span class="mon-leise">–</span>`}</div></td>
         </tr>`,
         )}</tbody>
       </table></div>

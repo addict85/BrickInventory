@@ -141,7 +141,7 @@ jobs:
         run: |
           if [ -z "$NUTZER" ] || [ -z "$TOKEN" ]; then
             echo "::error::Die Secrets DOCKERHUB_USERNAME und DOCKERHUB_TOKEN fehlen."
-            echo "Anzulegen unter: Repository -> Settings -> Secrets and variables -> Actions."
+            echo "Anzulegen als Environment-Secrets: Repository -> Settings -> Environments -> docker-hub."
             echo "Das Token kommt von https://app.docker.com/settings/personal-access-tokens"
             echo "und braucht das Recht 'Read & Write'."
             exit 1
