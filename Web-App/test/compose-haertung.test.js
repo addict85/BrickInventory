@@ -136,6 +136,7 @@ test('root richtet ./data nur im Dienst daten-rechte ein, app und jobs laufen al
         PATH: process.env.PATH,
         HOME: process.env.HOME,
         BRICK_HOST: 'nas.lan',
+        VORGELAGERTER_PROXY: 'keiner',
         BRICK_IMAGE: 'brickinventory:probe',
         CADDY_IMAGE: 'brickinventory-caddy:probe',
       },

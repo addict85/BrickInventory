@@ -150,7 +150,13 @@ test('ohne BRICK_IMAGE und CADDY_IMAGE startet compose nicht, mit Digest zieht j
   const aufruf = env =>
     spawnSync('docker', ['compose', '-f', path.join(ROOT, 'compose.yaml'), 'config', '--format', 'json'], {
       encoding: 'utf8',
-      env: { PATH: process.env.PATH, HOME: process.env.HOME, BRICK_HOST: 'nas.lan', ...env },
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        BRICK_HOST: 'nas.lan',
+        VORGELAGERTER_PROXY: 'keiner',
+        ...env,
+      },
     });
   const probe = aufruf({ BRICK_IMAGE: 'x', CADDY_IMAGE: 'y' });
   if (probe.error || (probe.status !== 0 && !/_IMAGE/.test(probe.stderr))) {
