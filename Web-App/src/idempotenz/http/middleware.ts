@@ -29,7 +29,11 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
   const uid = nutzerId(req);
   if (uid === null) return next();
 
-  const ausgang = await dienst.beginne(uid, schluessel, dienst.fingerabdruck(req.method, req.originalUrl, req.body, req.apiUser?.is_admin === true));
+  const ausgang = await dienst.beginne(
+    uid,
+    schluessel,
+    dienst.fingerabdruck(req.method, req.originalUrl, req.body, req.apiUser?.is_admin === true),
+  );
   if (ausgang.art === 'anders') return sendeFehler(req, res, 422, 'idempotenz_schluessel_anders');
   if (ausgang.art === 'laeuft') {
     res.set('Retry-After', '1');

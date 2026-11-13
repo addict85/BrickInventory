@@ -74,7 +74,11 @@ test('Gateway-Erkennung', () => {
 function ueberProxy(trust, ips, { minuten }) {
   const meldungen = [];
   let jetzt = 0;
-  const mw = proxyHinweis(trust, t => meldungen.push(t), () => jetzt);
+  const mw = proxyHinweis(
+    trust,
+    t => meldungen.push(t),
+    () => jetzt,
+  );
   ips.forEach((ip, i) => {
     jetzt = Math.round((i / Math.max(ips.length - 1, 1)) * minuten * 60_000);
     mw({ ip, socket: { remoteAddress: '172.28.73.10' }, headers: { 'x-forwarded-for': ip } }, {}, () => {});
