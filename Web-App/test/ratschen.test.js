@@ -975,14 +975,53 @@ test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner'
     console.log(`  ℹ Dateigrösse Oberfläche: grösste ${groesste}, über 600: ${ueber600} — Schranke nachziehen`);
 });
 
+/** Top-Level-Funktionen samt Pfeilfunktionen an const; sie endet vor der nächsten Zeile
+ * ohne Einzug (eine schliessende Klammer gehört noch dazu). */
+function topLevelLaengen(/** @type {string[]} */ dateien) {
+  const raus = [];
+  for (const f of dateien) {
+    const z = fs.readFileSync(f, 'utf8').split('\n');
+    z.forEach((l, i) => {
+      let name = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s*\*?\s*(\w+)\s*[<(]/.exec(l)?.[1];
+      if (!name) {
+        const m = /^(?:export\s+)?const\s+(\w+)\b/.exec(l);
+        if (!m?.[1]) return;
+        const kopf = z.slice(i, i + 15).join('\n');
+        const rest = kopf.slice(kopf.indexOf('=', kopf.indexOf(m[1])) + 1);
+        if (!/^\s*(async\s+)?(\(|\w+\s*=>|<|function\b)/.test(rest)) return;
+        name = m[1];
+      }
+      let j = i + 1;
+      while (j < z.length && !/^\S/.test(z[j] ?? '')) j++;
+      let ende = j < z.length && /^[})\]]/.test(z[j] ?? '') ? j : j - 1;
+      while (ende > i && !z[ende]?.trim()) ende--;
+      raus.push({ ort: `${path.relative(WEB, f)} ${name}`, zeilen: ende - i + 1 });
+    });
+  }
+  return raus;
+}
+
 test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie mehr', () => {
-  // Gemessen im Biome-Format am 12.11.2026: 29 über 80, eine über 150 (erzeugeDb in db/database.ts).
-  // Gegenprobe (05.11.2026): computePnl wieder in einem Stück → rot (über 150).
-  const SCHRANKE_80 = 29,
-    SCHRANKE_150 = 1;
-  const alle = funktionsLaengen(
-    quellen().filter(f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f)),
+  // Gemessen im Biome-Format am 13.11.2026: 22 über 80, eine über 150 (erzeugeDb in db/database.ts).
+  // Ab 100 Zeilen zählen Top-Level-Funktionen samt Pfeilfunktionen: erzeugeDb und runPriceRefresh.
+  // Gegenproben: computePnl wieder in einem Stück → rot (über 150, 05.11.2026); buildPdf in
+  // src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026).
+  const SCHRANKE_80 = 22,
+    SCHRANKE_150 = 1,
+    BEKANNT_100 = ['db/database.ts erzeugeDb', 'src/finanzen/preisLauf.ts runPriceRefresh'];
+  const dateien = quellen().filter(
+    f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f),
   );
+  const oben = topLevelLaengen(dateien);
+  assert.ok(oben.length > 1500, `nur ${oben.length} Top-Level-Funktionen gefunden — greift die Suche noch?`);
+  const ab100 = oben.filter(x => x.zeilen >= 100).map(x => x.ort);
+  assert.deepEqual(
+    ab100.filter(x => !BEKANNT_100.includes(x)),
+    [],
+    'ab 100 Zeilen: in benannte Teile zerlegen',
+  );
+  if (ab100.length < BEKANNT_100.length) console.log(`  ℹ ab 100 Zeilen: ${ab100.join(', ')} — BEKANNT_100 nachziehen`);
+  const alle = funktionsLaengen(dateien);
   assert.ok(alle.length > 1000, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
   const ueber = n => alle.filter(x => x.zeilen > n);
   assert.ok(

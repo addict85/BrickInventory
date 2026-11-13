@@ -9,7 +9,7 @@ import { oeffneErfassen, verstaendlicherGrund } from './bausteine.js';
 import { mitZweitemFaktor, speichereEinstellungen } from './rueckfrage.js';
 import { html } from './escapen.js';
 
-// ═══ Einrichtung beim ersten Start (Server: routes/settings.ts /einrichtung) ═
+// ═══ Einrichtung beim ersten Start (Server: routes/api_v1/settings.ts /settings/einrichtung) ═
 // Nur für Verwalter, nur solange etwas fehlt. „Später" schliesst bloss — beim nächsten Anmelden kommt der
 // Assistent wieder, bis er abgeschlossen ist.
 

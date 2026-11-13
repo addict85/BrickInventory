@@ -53,6 +53,7 @@ export {
   fehlgeschlagen,
   imAuftragsrahmen,
   imNamenDesAuftrags,
+  pruefeZugehoerigkeit,
   setzeFortschritt,
   verschoben,
 } from './dienst';

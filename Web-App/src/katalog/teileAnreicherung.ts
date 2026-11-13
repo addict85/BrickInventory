@@ -529,51 +529,14 @@ async function redownloadMissingImages(lauf?: AuftragsLauf) {
   }
 }
 
+type FehlendesBild = { image_local: string; image_url: string | null; fp: string };
+
 async function _redownloadMissingImages(lauf?: AuftragsLauf) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redlSetStatus({ running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
-    const rows = await katalog().teileAnreicherung.lokaleBilderMitAdresse();
-    // Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
-    // keinen zweiten Anlauf.
-    const missing: { image_local: string; image_url: string | null; fp: string }[] = [];
-    const ohneVorschau: string[] = [];
-    for (const r of rows) {
-      const fp = _fsPathFromLocal(r.image_local);
-      if (!fp) continue; // gebündelte /images/ o.ä. überspringen
-      const exists = await fs.promises
-        .access(fp)
-        .then(() => true)
-        .catch(ohneFehlendeDatei('teile-enrich:access', false));
-      if (!exists) {
-        missing.push({ image_local: r.image_local, image_url: r.image_url, fp });
-        continue;
-      }
-      const thumbFp = fp.replace(/(\.[^.]+)$/, '_thumb.jpg');
-      const hatThumb = await fs.promises
-        .access(thumbFp)
-        .then(() => true)
-        .catch(ohneFehlendeDatei('teile-enrich:access', false));
-      if (!hatThumb) ohneVorschau.push(r.image_local);
-    }
-
-    // Vorschauen zuerst: Sie brauchen kein Netz und wirken sofort auf jede Kachelwand.
-    let thumbsErzeugt = 0;
-    if (ohneVorschau.length) {
-      await _redlSetStatus({
-        running: true,
-        phase: 'thumbs',
-        total: ohneVorschau.length,
-        done: 0,
-        redownloaded: 0,
-        cleared: 0,
-      });
-      for (const web of ohneVorschau) {
-        const r = await versuche('teile-enrich:vorschau', () => generateThumb(web));
-        if (r.ok && r.wert) thumbsErzeugt++;
-      }
-      console.log(`[img-redl] ${thumbsErzeugt} fehlende Vorschauen erzeugt (von ${ohneVorschau.length})`);
-    }
+    const { missing, ohneVorschau } = await fehlendeDateienSuchen();
+    const thumbsErzeugt = await vorschauenNachholen(ohneVorschau);
     const total = missing.length;
     await _redlSetStatus({ running: true, phase: 'downloading', total, done: 0, redownloaded: 0, cleared: 0 });
     if (!total) {
@@ -589,51 +552,7 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
       return { total: 0, redownloaded: 0, cleared: 0, thumbs: thumbsErzeugt };
     }
 
-    let done = 0,
-      redownloaded = 0,
-      cleared = 0,
-      _lastFlush = 0;
-    const flush = async (force?: boolean) => {
-      const now = Date.now();
-      if (!force && now - _lastFlush < 1000) return;
-      _lastFlush = now;
-      await _redlSetStatus({ running: true, phase: 'downloading', total, done, redownloaded, cleared });
-    };
-
-    let idx = 0;
-    const worker = async () => {
-      while (idx < missing.length && !lauf?.signal?.aborted) {
-        const m = missing[idx++];
-        if (!m) break;
-        let ok = false;
-        if (m.image_url) {
-          await cdnImageLimiter.acquire().catch(logAndContinue('teile-enrich:acquire'));
-          try {
-            // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler unten nennt beide.
-            const r = await versuche('teile-enrich:downloadFile', downloadFile(m.image_url, m.fp));
-            ok = r.ok && r.wert === true;
-          } finally {
-            cdnImageLimiter.release();
-          }
-        }
-        if (ok) {
-          await generateThumb(m.image_local).catch(logAndContinue('teile-enrich:generateThumb'));
-          redownloaded++;
-        } else {
-          // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
-          for (const tbl of repo.KATALOGE_MIT_BILD) {
-            await katalog()
-              .teileAnreicherung.vergissLokalesBild(tbl, m.image_local)
-              .catch(logAndContinue(`img-redl:leeren ${tbl}`));
-          }
-          cleared++;
-        }
-        done++;
-        await flush(false);
-      }
-    };
-    const CONC = 2; // wie beim normalen Download; der CDN-Limiter drosselt ohnehin
-    await Promise.all(Array.from({ length: CONC }, () => worker()));
+    const { done, redownloaded, cleared } = await fehlendeNachladen(missing, lauf);
     pruefeAbbruch(lauf);
 
     await _redlSetStatus({ running: false, phase: 'done', total, done, redownloaded, cleared, thumbs: thumbsErzeugt });
@@ -647,6 +566,105 @@ async function _redownloadMissingImages(lauf?: AuftragsLauf) {
     console.error('[img-redl] Fehler:', fehlertext(e));
     return { error: fehlertext(e) };
   }
+}
+
+const gibtDatei = (fp: string) =>
+  fs.promises
+    .access(fp)
+    .then(() => true)
+    .catch(ohneFehlendeDatei('teile-enrich:access', false));
+
+/** Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
+ * keinen zweiten Anlauf. */
+async function fehlendeDateienSuchen() {
+  const rows = await katalog().teileAnreicherung.lokaleBilderMitAdresse();
+  const missing: FehlendesBild[] = [];
+  const ohneVorschau: string[] = [];
+  for (const r of rows) {
+    const fp = _fsPathFromLocal(r.image_local);
+    if (!fp) continue; // gebündelte /images/ o.ä. überspringen
+    if (!(await gibtDatei(fp))) {
+      missing.push({ image_local: r.image_local, image_url: r.image_url, fp });
+      continue;
+    }
+    if (!(await gibtDatei(fp.replace(/(\.[^.]+)$/, '_thumb.jpg')))) ohneVorschau.push(r.image_local);
+  }
+  return { missing, ohneVorschau };
+}
+
+/** Vorschauen zuerst: Sie brauchen kein Netz und wirken sofort auf jede Kachelwand. */
+async function vorschauenNachholen(ohneVorschau: string[]): Promise<number> {
+  let thumbsErzeugt = 0;
+  if (!ohneVorschau.length) return 0;
+  await _redlSetStatus({
+    running: true,
+    phase: 'thumbs',
+    total: ohneVorschau.length,
+    done: 0,
+    redownloaded: 0,
+    cleared: 0,
+  });
+  for (const web of ohneVorschau) {
+    const r = await versuche('teile-enrich:vorschau', () => generateThumb(web));
+    if (r.ok && r.wert) thumbsErzeugt++;
+  }
+  console.log(`[img-redl] ${thumbsErzeugt} fehlende Vorschauen erzeugt (von ${ohneVorschau.length})`);
+  return thumbsErzeugt;
+}
+
+/** Neu laden, was eine Adresse hat; sonst den Verweis leeren, damit die Kachel nicht
+ * auf eine Datei zeigt, die es nicht gibt. */
+async function fehlendeNachladen(missing: FehlendesBild[], lauf?: AuftragsLauf) {
+  const total = missing.length;
+  let done = 0,
+    redownloaded = 0,
+    cleared = 0,
+    _lastFlush = 0;
+  const flush = async (force?: boolean) => {
+    const now = Date.now();
+    if (!force && now - _lastFlush < 1000) return;
+    _lastFlush = now;
+    await _redlSetStatus({ running: true, phase: 'downloading', total, done, redownloaded, cleared });
+  };
+
+  let idx = 0;
+  const worker = async () => {
+    while (idx < missing.length && !lauf?.signal?.aborted) {
+      const m = missing[idx++];
+      if (!m) break;
+      if (await bildNachladen(m)) redownloaded++;
+      else {
+        // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
+        for (const tbl of repo.KATALOGE_MIT_BILD) {
+          await katalog()
+            .teileAnreicherung.vergissLokalesBild(tbl, m.image_local)
+            .catch(logAndContinue(`img-redl:leeren ${tbl}`));
+        }
+        cleared++;
+      }
+      done++;
+      await flush(false);
+    }
+  };
+  const CONC = 2; // wie beim normalen Download; der CDN-Limiter drosselt ohnehin
+  await Promise.all(Array.from({ length: CONC }, () => worker()));
+  return { done, redownloaded, cleared };
+}
+
+async function bildNachladen(m: FehlendesBild): Promise<boolean> {
+  let ok = false;
+  if (m.image_url) {
+    await cdnImageLimiter.acquire().catch(logAndContinue('teile-enrich:acquire'));
+    try {
+      // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler nennt beide.
+      const r = await versuche('teile-enrich:downloadFile', downloadFile(m.image_url, m.fp));
+      ok = r.ok && r.wert === true;
+    } finally {
+      cdnImageLimiter.release();
+    }
+  }
+  if (ok) await generateThumb(m.image_local).catch(logAndContinue('teile-enrich:generateThumb'));
+  return ok;
 }
 
 export { enrichSetParts, downloadSetImages, enrichSetMinifigs, downloadImage, redownloadMissingImages };

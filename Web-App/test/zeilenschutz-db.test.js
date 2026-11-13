@@ -1,5 +1,5 @@
 /**
- * Zeilenschutz (Migration 0110): Ohne Filter auf user_id sieht und ändert eine
+ * Zeilenschutz (Migration 0111): Ohne Filter auf user_id sieht und ändert eine
  * Anfrage nur Zeilen ihres Kontos und seiner direkten Unterkonten, ohne Konto
  * und Systemrahmen keine. Geprüft als eigene Rolle ohne Eigentum und ohne
  * BYPASSRLS über erzeugeDb(), wie die Laufzeitrolle im Betrieb (der

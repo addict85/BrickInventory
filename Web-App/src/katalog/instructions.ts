@@ -95,6 +95,14 @@ export async function scrapeInstructionsFromFallback(setNumber: string) {
   return 0;
 }
 
+type AnleitungsQuelle = {
+  url: string;
+  description?: string | null | undefined;
+  brickinstructions_base?: string;
+  brickinstructions_hdrs?: Record<string, string>;
+  brickinstructions_first?: Buffer;
+};
+
 /** @param eigenerTakt Der Aufrufer hält selbst Abstand zwischen zwei Sets;
  *   dann entfallen die Pausen am Ende. */
 export async function downloadSetInstructions(setNumber: string, eigenerTakt = false) {
@@ -109,15 +117,28 @@ export async function downloadSetInstructions(setNumber: string, eigenerTakt = f
     return existing;
   }
 
-  let instrList: {
-    url: string;
-    description?: string | null | undefined;
-    brickinstructions_base?: string;
-    brickinstructions_hdrs?: Record<string, string>;
-    brickinstructions_first?: Buffer;
-  }[] = [];
-  let bricksetSucceededEmpty = false;
   _letzterAbrufWarExtern = true; // ab hier wird wirklich gefragt
+  const { instrList, bricksetSucceededEmpty } = await anleitungsQuellen(n);
+
+  if (!instrList.length && bricksetSucceededEmpty && (await bdpRueckfall(n, eigenerTakt))) return 1;
+
+  const biAlreadyTried = await katalog().anleitungen.hatBrickinstructions(n);
+  if (!instrList.length && bricksetSucceededEmpty && !biAlreadyTried) {
+    const bi = await brickinstructionsQuelle(n);
+    if (bi) instrList.push(bi);
+  }
+
+  if (!instrList.length) {
+    return 0;
+  }
+  return speichereAnleitungen(n, instrList);
+}
+
+/** Erst die Rebrickable-Seite, dann Brickset. `bricksetSucceededEmpty`: Brickset hat
+ * geantwortet, ohne Anleitung — nur dann lohnen die weiteren Rückfälle. */
+async function anleitungsQuellen(n: string) {
+  let instrList: AnleitungsQuelle[] = [];
+  let bricksetSucceededEmpty = false;
   try {
     instrList = await scrapeInstructions(n);
   } catch (e) {
@@ -126,60 +147,60 @@ export async function downloadSetInstructions(setNumber: string, eigenerTakt = f
   if (!instrList.length) {
     const bs = await versuche('anleitungen:brickset', brickset.getInstructions(n));
     instrList = bs.ok ? bs.wert.instructions || [] : [];
-    // usesFallback: Brickset hat geantwortet, ohne Anleitung; false heisst
-    // Kontingent erschöpft. Ein Fehler ist keine Antwort — beides bleibt in der Warteschlange.
+    // usesFallback false heisst Kontingent erschöpft. Ein Fehler ist keine Antwort —
+    // beides bleibt in der Warteschlange.
     bricksetSucceededEmpty = bs.ok && bs.wert.usesFallback && instrList.length === 0;
   }
+  return { instrList, bricksetSucceededEmpty };
+}
 
-  // downloadFile schreibt direkt auf die Platte — kein Puffer für grosse PDFs.
-  if (!instrList.length && bricksetSucceededEmpty) {
-    try {
-      const baseNum = ohneVersion(n);
-      const bdpUrl = `https://bdpinstructions.s3.amazonaws.com/${pfadSegment(baseNum)}.pdf`;
-      const safeBase = n.replace(/[^a-z0-9-]/gi, '_');
-      const pdfName = `${safeBase}_bdp.pdf`;
-      const instrDir = INSTRUCTIONS_DIR;
-      fs.mkdirSync(instrDir, { recursive: true });
-      const pdfDest = path.join(instrDir, pdfName);
-      const relPath = `/data/instructions/${pdfName}`;
-      const ok = await downloadFile(bdpUrl, pdfDest, undefined, PDF_ANFANG);
-      if (ok) {
-        console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
-        await katalog()
-          .anleitungen.merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath)
-          .catch(logAndContinue('anleitung:ok'));
-        if (!eigenerTakt) await warte(5000);
-        return 1;
-      }
-    } catch (e) {
-      console.log(`[instr] BDP failed: ${fehlertext(e)}`);
+/** Direkt auf die Platte, kein Puffer für grosse PDFs; die Pause auch nach einem Fehlschlag. */
+async function bdpRueckfall(n: string, eigenerTakt: boolean): Promise<boolean> {
+  try {
+    const baseNum = ohneVersion(n);
+    const bdpUrl = `https://bdpinstructions.s3.amazonaws.com/${pfadSegment(baseNum)}.pdf`;
+    const safeBase = n.replace(/[^a-z0-9-]/gi, '_');
+    const pdfName = `${safeBase}_bdp.pdf`;
+    const instrDir = INSTRUCTIONS_DIR;
+    fs.mkdirSync(instrDir, { recursive: true });
+    const pdfDest = path.join(instrDir, pdfName);
+    const relPath = `/data/instructions/${pdfName}`;
+    const ok = await downloadFile(bdpUrl, pdfDest, undefined, PDF_ANFANG);
+    if (ok) {
+      console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
+      await katalog()
+        .anleitungen.merkeAnleitung(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath)
+        .catch(logAndContinue('anleitung:ok'));
+      if (!eigenerTakt) await warte(5000);
+      return true;
     }
-    if (!eigenerTakt) await warte(5000); // throttle regardless of result
+  } catch (e) {
+    console.log(`[instr] BDP failed: ${fehlertext(e)}`);
   }
+  if (!eigenerTakt) await warte(5000);
+  return false;
+}
 
-  const biAlreadyTried = await katalog().anleitungen.hatBrickinstructions(n);
-  if (!instrList.length && bricksetSucceededEmpty && !biAlreadyTried) {
-    try {
-      const fund = await brickinstructionsFund(n);
-      if (fund) {
-        const { baseUrl, pageUrl, hdrs } = fund;
-        instrList.push({
-          url: pageUrl,
-          description: `Anleitung ${n} (BrickInstructions)`,
-          brickinstructions_base: baseUrl,
-          brickinstructions_hdrs: hdrs,
-          brickinstructions_first: fund.erstesBild,
-        });
-      }
-    } catch (e) {
-      console.log(`  BrickInstructions probe failed: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
-    }
+async function brickinstructionsQuelle(n: string): Promise<AnleitungsQuelle | null> {
+  try {
+    const fund = await brickinstructionsFund(n);
+    if (!fund) return null;
+    const { baseUrl, pageUrl, hdrs } = fund;
+    return {
+      url: pageUrl,
+      description: `Anleitung ${n} (BrickInstructions)`,
+      brickinstructions_base: baseUrl,
+      brickinstructions_hdrs: hdrs,
+      brickinstructions_first: fund.erstesBild,
+    };
+  } catch (e) {
+    console.log(`  BrickInstructions probe failed: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    return null;
   }
+}
 
-  if (!instrList.length) {
-    return 0;
-  }
-
+/** Bildseiten von BrickInstructions werden im Hintergrund zu einem PDF. */
+async function speichereAnleitungen(n: string, instrList: AnleitungsQuelle[]): Promise<number> {
   const instrDir = INSTRUCTIONS_DIR;
   fs.mkdirSync(instrDir, { recursive: true });
   let saved = 0;

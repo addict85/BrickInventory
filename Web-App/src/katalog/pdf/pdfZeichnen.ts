@@ -65,6 +65,13 @@ function nachFarbe(parts: PdfTeil[]) {
   return { colorOrder, byColor };
 }
 
+type Doc = InstanceType<typeof PDFDocument>;
+type Zeile = PdfTeil & { quantity: number };
+const PAGE_H = 841.89,
+  PAGE_W = 595.28;
+const COL = { num: 40, name: 200 };
+const START_X = 40;
+
 /** Als Strom, nicht als Puffer: Eine grosse Sammlung ergibt viele Megabyte.
  * Erst die fertige Datei bekommt ihren Namen. */
 async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
@@ -78,10 +85,28 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
     doc.on('error', reject);
   });
 
+  const seiten = seitenFuehrung(doc);
+  kopfZeichnen(doc, sets, parts);
+
+  const { colorOrder, byColor } = nachFarbe(parts);
+  // Je Farbgruppe vorladen und freigeben: Im Speicher liegt nur eine Gruppe.
+  const bilder = new Map<string, Buffer | null>();
+  for (const colorName of colorOrder) {
+    const colorParts = byColor.get(colorName) ?? [];
+    await ladeBilder(colorParts, bilder);
+    farbGruppeZeichnen(doc, colorName, colorParts, bilder, seiten.neueSeite);
+  }
+
+  seiten.fusszeile();
+  doc.end();
+  await pdfDone;
+  await fsp.rename(teil, ziel);
+}
+
+/** Seitenzahl unten mittig; der Rand wird dafür kurz aufgehoben, sonst bricht pdfkit um. */
+function seitenFuehrung(doc: Doc) {
   let seite = 1;
-  const PAGE_H = 841.89,
-    PAGE_W = 595.28;
-  function addFooter() {
+  const fusszeile = () => {
     const savedY = doc.y,
       savedX = doc.x,
       savedSize = (doc as unknown as { _fontSize: number })._fontSize;
@@ -95,14 +120,17 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
     doc.y = savedY;
     doc.x = savedX;
     doc.fontSize(savedSize).fillColor('#1e293b');
-  }
-  function newPage() {
-    addFooter();
+  };
+  const neueSeite = () => {
+    fusszeile();
     seite++;
     doc.addPage();
     doc.y = 40;
-  }
+  };
+  return { fusszeile, neueSeite };
+}
 
+function kopfZeichnen(doc: Doc, sets: PdfSet[], parts: PdfTeil[]) {
   doc.fontSize(18).font('Helvetica-Bold').text('Bauliste', { align: 'left' });
   doc
     .fontSize(10)
@@ -113,87 +141,80 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
   const totalQty = parts.reduce((s, p) => s + (parseInt(String(p.quantity), 10) || 0), 0);
   doc.fontSize(9).fillColor('#64748b').text(`${parts.length} Teiletypen · ${totalQty.toLocaleString()} Teile total`);
   doc.moveDown(1);
+}
 
-  const { colorOrder, byColor } = nachFarbe(parts);
-
-  // Je Farbgruppe vorladen und freigeben: Im Speicher liegt nur eine Gruppe.
-  const bilder = new Map<string, Buffer | null>();
-  const ladeBilder = async (gruppe: PdfTeil[]) => {
-    bilder.clear();
-    const pfade = [...new Set(gruppe.map(pdfBildPfad).filter((fp): fp is string => !!fp))];
-    for (let i = 0; i < pfade.length; i += 32) {
-      const stueck = pfade.slice(i, i + 32);
-      const bufs = await Promise.all(stueck.map(fp => fsp.readFile(fp).catch(ohneBild)));
-      stueck.forEach((fp, j) => {
-        bilder.set(fp, bufs[j] ?? null);
-      });
-    }
-  };
-
-  const COL = { num: 40, name: 200 };
-  for (const colorName of colorOrder) {
-    const colorParts = byColor.get(colorName) ?? [];
-    await ladeBilder(colorParts);
-    if (doc.y > 700) newPage();
-
-    const hexColor = colorParts[0]?.color_hex ? '#' + colorParts[0].color_hex : '#94a3b8';
-    const dotX = 40,
-      dotY = doc.y + 3;
-    doc
-      .circle(dotX + 5, dotY + 5, 5)
-      .fill(hexColor)
-      .fillColor('#1e293b');
-    doc
-      .fontSize(10)
-      .font('Helvetica-Bold')
-      .fillColor('#1e293b')
-      .text(colorName || '(Keine Farbe)', dotX + 14, dotY, { continued: false });
-    doc.moveDown(0.2);
-
-    const startX = 40;
-    doc.fontSize(8).font('Helvetica-Bold').fillColor('#64748b');
-    doc.text('Nummer', startX, doc.y, { width: COL.num + 80, continued: false });
-    const hy = doc.y - doc.currentLineHeight();
-    doc.text('Bezeichnung', startX + COL.num + 80, hy, { width: COL.name, continued: false });
-    doc.text('Anz.', startX + COL.num + 80 + COL.name, hy, { width: 50, align: 'right', continued: false });
-    doc.moveDown(0.1);
-    doc.moveTo(startX, doc.y).lineTo(555, doc.y).lineWidth(0.5).strokeColor('#e2e8f0').stroke();
-    doc.moveDown(0.2);
-
-    for (const p of colorParts) {
-      const rowHeight = 36;
-      if (doc.y > 730 - rowHeight) newPage();
-      const rowY = doc.y;
-      const fp = pdfBildPfad(p);
-      const imgBuf = fp ? bilder.get(fp) || null : null;
-      let imgOffset = 0;
-      if (imgBuf) {
-        // Ein Bild, das pdfkit nicht lesen kann, fällt weg; die Zeile bleibt.
-        try {
-          doc.image(imgBuf, startX, rowY, { width: 30, height: 30, fit: [30, 30] });
-          imgOffset = 36;
-        } catch (e) {
-          console.warn(`[PDF] Bild für ${p.part_number} unlesbar: ${(e as Error).message}`);
-        }
-      }
-      doc.fontSize(8).font('Helvetica').fillColor('#1e293b');
-      doc.text(p.bl_part_number || p.part_number, startX + imgOffset, rowY, { width: COL.num + 60 });
-      doc.text(p.part_name ?? '', startX + imgOffset + COL.num + 60, rowY, { width: COL.name - imgOffset });
-      doc
-        .font('Helvetica-Bold')
-        .text(String(p.quantity), startX + imgOffset + COL.num + 60 + COL.name - imgOffset, rowY, {
-          width: 50,
-          align: 'right',
-        });
-      doc.y = rowY + rowHeight + 2;
-    }
-    doc.moveDown(0.6);
+async function ladeBilder(gruppe: PdfTeil[], bilder: Map<string, Buffer | null>) {
+  bilder.clear();
+  const pfade = [...new Set(gruppe.map(pdfBildPfad).filter((fp): fp is string => !!fp))];
+  for (let i = 0; i < pfade.length; i += 32) {
+    const stueck = pfade.slice(i, i + 32);
+    const bufs = await Promise.all(stueck.map(fp => fsp.readFile(fp).catch(ohneBild)));
+    stueck.forEach((fp, j) => {
+      bilder.set(fp, bufs[j] ?? null);
+    });
   }
+}
 
-  addFooter();
-  doc.end();
-  await pdfDone;
-  await fsp.rename(teil, ziel);
+function farbGruppeZeichnen(
+  doc: Doc,
+  colorName: string,
+  colorParts: Zeile[],
+  bilder: Map<string, Buffer | null>,
+  neueSeite: () => void,
+) {
+  if (doc.y > 700) neueSeite();
+
+  const hexColor = colorParts[0]?.color_hex ? '#' + colorParts[0].color_hex : '#94a3b8';
+  const dotX = 40,
+    dotY = doc.y + 3;
+  doc
+    .circle(dotX + 5, dotY + 5, 5)
+    .fill(hexColor)
+    .fillColor('#1e293b');
+  doc
+    .fontSize(10)
+    .font('Helvetica-Bold')
+    .fillColor('#1e293b')
+    .text(colorName || '(Keine Farbe)', dotX + 14, dotY, { continued: false });
+  doc.moveDown(0.2);
+
+  doc.fontSize(8).font('Helvetica-Bold').fillColor('#64748b');
+  doc.text('Nummer', START_X, doc.y, { width: COL.num + 80, continued: false });
+  const hy = doc.y - doc.currentLineHeight();
+  doc.text('Bezeichnung', START_X + COL.num + 80, hy, { width: COL.name, continued: false });
+  doc.text('Anz.', START_X + COL.num + 80 + COL.name, hy, { width: 50, align: 'right', continued: false });
+  doc.moveDown(0.1);
+  doc.moveTo(START_X, doc.y).lineTo(555, doc.y).lineWidth(0.5).strokeColor('#e2e8f0').stroke();
+  doc.moveDown(0.2);
+
+  for (const p of colorParts) teilZeichnen(doc, p, bilder, neueSeite);
+  doc.moveDown(0.6);
+}
+
+function teilZeichnen(doc: Doc, p: Zeile, bilder: Map<string, Buffer | null>, neueSeite: () => void) {
+  const rowHeight = 36;
+  if (doc.y > 730 - rowHeight) neueSeite();
+  const rowY = doc.y;
+  const fp = pdfBildPfad(p);
+  const imgBuf = fp ? bilder.get(fp) || null : null;
+  let imgOffset = 0;
+  if (imgBuf) {
+    // Ein Bild, das pdfkit nicht lesen kann, fällt weg; die Zeile bleibt.
+    try {
+      doc.image(imgBuf, START_X, rowY, { width: 30, height: 30, fit: [30, 30] });
+      imgOffset = 36;
+    } catch (e) {
+      console.warn(`[PDF] Bild für ${p.part_number} unlesbar: ${(e as Error).message}`);
+    }
+  }
+  doc.fontSize(8).font('Helvetica').fillColor('#1e293b');
+  doc.text(p.bl_part_number || p.part_number, START_X + imgOffset, rowY, { width: COL.num + 60 });
+  doc.text(p.part_name ?? '', START_X + imgOffset + COL.num + 60, rowY, { width: COL.name - imgOffset });
+  doc.font('Helvetica-Bold').text(String(p.quantity), START_X + imgOffset + COL.num + 60 + COL.name - imgOffset, rowY, {
+    width: 50,
+    align: 'right',
+  });
+  doc.y = rowY + rowHeight + 2;
 }
 
 type FadenAuftrag = { art: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; ziel: string };

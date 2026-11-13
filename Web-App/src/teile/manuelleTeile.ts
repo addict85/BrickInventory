@@ -77,61 +77,15 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
   // Erlaubt mehrere Erfassungen desselben Teils zu verschiedenen Zeitpunkten.
   const acquiredAt = String(rawBody?.acquired_at || '').trim() || null;
 
-  let part_name = V.optionalText(rawBody?.part_name, 200);
-  let image_url = V.optionalImageUrl(rawBody?.image_url);
-  let category_name = V.optionalText(rawBody?.category_name, 100);
-  // Eingetipptes und Nachgeschlagenes getrennt: Nur was Rebrickable liefert,
-  // geht als geprüft in den gemeinsamen Katalog.
-  const eingabe = { name: part_name, kategorie: category_name, bild: image_url };
-  let gefunden: Awaited<ReturnType<typeof lookupPart>> | null = null;
-
-  if (!part_name) {
-    const hasColor = color_id !== KEINE_FARBE;
-
-    // Erst der eigene Katalog, dann der fremde Dienst — für jeden Weg, der ohne
-    // Namen hereinkommt, deshalb hier.
-    const lokal = await katalogTeil(part_number, hasColor ? color_id : null, uid);
-    if (lokal) {
-      part_name = part_name || lokal.name;
-      category_name = category_name || lokal.kategorie;
-      image_url = image_url || lokal.bild;
-    }
-
-    // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
-    // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
-    if (!part_name || !(image_url || lokal?.hatBild)) {
-      // Ohne Rebrickable wird das Teil mit dem erfasst, was der Katalog schon weiss.
-      const abruf = await versuche('teile:lookupPart', lookupPart(part_number, hasColor ? color_id : null));
-      const info = abruf.ok ? abruf.wert : null;
-      gefunden = info;
-      // `||`: Was der Katalog schon wusste, bleibt stehen.
-      if (info) {
-        part_name = part_name || info.part_name;
-        image_url = image_url || info.image_url;
-        category_name = category_name || info.category_name;
-      }
-    }
-  }
+  // In dieser Reihenfolge geprüft: Bei mehreren Fehlern meldet sich der erste.
+  const name = V.optionalText(rawBody?.part_name, 200);
+  const bild = V.optionalImageUrl(rawBody?.image_url);
+  const eingabe = { name, kategorie: V.optionalText(rawBody?.category_name, 100), bild };
+  const { part_name, gefunden } = await teilBeschreibung(uid, part_number, color_id, eingabe);
 
   // Nur die Existenz zählt: Die Menge addiert sich über eine zweite Erfassung.
-  const existing = await manuellesTeil(uid, part_number, color_id);
-
-  if (existing) {
-    const reCond =
-      condition && ['N', 'U'].includes(condition) ? condition : await resolvePartCondition(uid, part_number, color_id);
-    const reEntered = unit_price;
-    const rePrice =
-      reEntered !== null ? reEntered : await getCurrentPartMarketPrice(part_number, color_id, uid, reCond);
-
-    // Pro Tag und Zustand EINE Erfassung (src/bestand/acquisitions.ts).
-    await recordAcquisitionForDay('part', uid, [part_number, color_id], {
-      quantity,
-      price: (rePrice ?? 0) > 0 ? rePrice : null,
-      condition: reCond,
-      createdAt: acquiredAt,
-      geschaetzt: reEntered === null,
-    });
-
+  if (await manuellesTeil(uid, part_number, color_id)) {
+    await weitereErfassung(uid, part_number, color_id, { condition, unit_price, quantity, acquiredAt });
     return { action: 'updated', part_number };
   }
 
@@ -164,6 +118,62 @@ async function addManualPartIntern(uid: number, rawBody: Record<string, unknown>
   // `price_from_condition`: Der übernommene Marktpreis stammt aus dem ANDEREN
   // Zustand — übernehmen, aber kennzeichnen.
   return { action: 'added', part_number, part_name, price_from_condition: preisAusZustand };
+}
+
+/** Eingetipptes und Nachgeschlagenes getrennt: Nur was Rebrickable liefert, geht als
+ * geprüft in den gemeinsamen Katalog. Ohne Namen erst der eigene Katalog, dann Rebrickable. */
+async function teilBeschreibung(
+  uid: number,
+  part_number: string,
+  color_id: number,
+  eingabe: { name: string | null; kategorie: string | null; bild: string | null },
+) {
+  let part_name = eingabe.name;
+  let image_url = eingabe.bild;
+  let gefunden: Awaited<ReturnType<typeof lookupPart>> | null = null;
+  if (part_name) return { part_name, gefunden };
+
+  const hasColor = color_id !== KEINE_FARBE;
+  const lokal = await katalogTeil(part_number, hasColor ? color_id : null, uid);
+  if (lokal) {
+    part_name = lokal.name;
+    image_url = image_url || lokal.bild;
+  }
+
+  // `hatBild` statt `image_url`: Ein lokaler Pfad fiele bei der URL-Prüfung
+  // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
+  if (!part_name || !(image_url || lokal?.hatBild)) {
+    // Ohne Rebrickable wird das Teil mit dem erfasst, was der Katalog schon weiss.
+    const abruf = await versuche('teile:lookupPart', lookupPart(part_number, hasColor ? color_id : null));
+    gefunden = abruf.ok ? abruf.wert : null;
+    // `||`: Was der Katalog schon wusste, bleibt stehen.
+    if (gefunden) part_name = part_name || gefunden.part_name;
+  }
+  return { part_name, gefunden };
+}
+
+/** Ein schon erfasstes Teil: nur eine weitere Erfassung, ohne Zustand den des Bestands. */
+async function weitereErfassung(
+  uid: number,
+  part_number: string,
+  color_id: number,
+  e: { condition: string | null; unit_price: number | null; quantity: number; acquiredAt: string | null },
+) {
+  const reCond =
+    e.condition && ['N', 'U'].includes(e.condition)
+      ? e.condition
+      : await resolvePartCondition(uid, part_number, color_id);
+  const reEntered = e.unit_price;
+  const rePrice = reEntered !== null ? reEntered : await getCurrentPartMarketPrice(part_number, color_id, uid, reCond);
+
+  // Pro Tag und Zustand EINE Erfassung (src/bestand/acquisitions.ts).
+  await recordAcquisitionForDay('part', uid, [part_number, color_id], {
+    quantity: e.quantity,
+    price: (rePrice ?? 0) > 0 ? rePrice : null,
+    condition: reCond,
+    createdAt: e.acquiredAt,
+    geschaetzt: reEntered === null,
+  });
 }
 
 /** Für Webapp und App derselbe Weg.
