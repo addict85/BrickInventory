@@ -1,6 +1,7 @@
 import { haushaltBereich, type Schreiber } from '../haushalt';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/papierkorb';
+import * as kauf from './repository/kaufErfassungen';
 import type { PapierArt } from './repository/papierkorb';
 import { bestandBereich } from './prozess';
 
@@ -57,7 +58,15 @@ export async function legeKaeufeInPapierkorb(
 async function stelleKaeufeWiederHer(tx: DbSchnittstelle, e: { user_id: number; nummer: string }, kaeufe: Kauf[]) {
   if (!(await repo.hatSetZeile(tx, e.user_id, e.nummer))) return false;
   for (const k of kaeufe) {
-    if (await repo.mengeZurueck(tx, e.user_id, e.nummer, k)) continue;
+    const menge = Number(k.quantity) || 0;
+    if (await kauf.stockeErfassungAuf(tx, 'set', Number(k.id), e.user_id, menge)) continue;
+    const gleich = await kauf.gleicheErfassungAmTag(tx, 'set', e.user_id, [e.nummer], String(k.tag), -1, {
+      zustand: String(k.condition ?? 'N'),
+      preis: k.purchase_price == null ? null : Number(k.purchase_price),
+      geschaetzt: !!k.price_estimated,
+      waehrung: k.currency == null ? null : String(k.currency),
+    });
+    if (gleich && (await kauf.stockeErfassungAuf(tx, 'set', gleich, e.user_id, menge))) continue;
     await repo.schreibeZurueck(tx, 'set_acquisitions', [k]);
   }
   return true;

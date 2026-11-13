@@ -3,13 +3,16 @@
  * Kontos weg, sagt, welcher Kauf entfiel, und legt ihn in den Papierkorb, aus
  * dem er Zeile für Zeile zurückkommt (auch ein nur gekürzter Kauf).
  *
- * Gegenproben (12.11.2026 gemessen, je einzeln, dist neu gebaut):
+ * Gegenproben (12./13.11.2026 gemessen, je einzeln, dist neu gebaut):
  *   A  in updateSet `ziel` wieder fest auf `uid` → rot: „Hauptkonto verringert
  *      das Unterkonto“ (Unterkonto hat noch 1, das eigene 0)
  *   B  legeKaeufeInPapierkorb() in updateSet nicht gerufen → rot: „älterer
  *      Kauf bleibt, neuerer kommt zurück“ (kein papierkorb in der Antwort)
- *   C  in stelleKaeufeWiederHer repo.mengeZurueck übersprungen → rot:
- *      „gekürzter Kauf“ (Wiederherstellen scheitert am Primärschlüssel)
+ *   C  in stelleKaeufeWiederHer das Aufstocken der Herkunftszeile
+ *      übersprungen → rot: „gekürzter Kauf“ (ohne den geänderten Preis
+ *      blieb es grün: die Suche nach dem gleichen Kauf fand die Zeile)
+ *   E  das Aufstocken einer gleichen Zeile desselben Tages übersprungen →
+ *      rot: „derselbe Kauf am selben Tag“
  *   D  die Schreibfeld-Prüfung (`_wids.includes(ziel)`) entfernt → rot:
  *      „Unterkonto darf das Hauptkonto nicht ändern“
  *
@@ -81,7 +84,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     assert.deepEqual(await kaeufe(uid, SN), vorher);
   });
 
-  await t.test('gekürzter Kauf: dieselbe Zeile wächst wieder', async () => {
+  await t.test('gekürzter Kauf: dieselbe Zeile wächst wieder, auch mit inzwischen geändertem Preis', async () => {
     await erfasse(db, uid, SN, 3, { preis: 80, am: '2026-10-01T10:00:00Z' });
     const vorher = await kaeufe(uid, SN);
     const r = await updateSet(uid, SN, { quantity_delta: -1 });
@@ -89,8 +92,27 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
       r.entfallen.map(e => [e.quantity, e.purchase_price]),
       [[1, 80]],
     );
+    // Mit geändertem Preis findet die Suche nach einem gleichen Kauf die Zeile nicht mehr.
+    const id = r.entfallen[0].id;
+    await db.run('UPDATE set_acquisitions SET purchase_price = 85 WHERE id = $1', [id]);
     assert.equal((await pk.stelleWiederHer({ schreiber: uid }, r.papierkorb)).ok, true);
-    assert.deepEqual(await kaeufe(uid, SN), vorher);
+    assert.deepEqual(
+      await kaeufe(uid, SN),
+      vorher.map(z => (z.id === id ? { ...z, purchase_price: 85 } : z)),
+    );
+  });
+
+  await t.test('derselbe Kauf am selben Tag neu erfasst: die neue Zeile nimmt die Menge auf', async () => {
+    await erfasse(db, uid, SN, 1, { preis: 60, am: '2026-10-05T10:00:00Z' });
+    const r = await updateSet(uid, SN, { quantity_delta: -1 });
+    await erfasse(db, uid, SN, 1, { preis: 60, am: '2026-10-05T12:00:00Z' });
+    assert.equal((await pk.stelleWiederHer({ schreiber: uid }, r.papierkorb)).ok, true);
+    const am5 = (await kaeufe(uid, SN)).filter(z => Number(z.purchase_price) === 60);
+    assert.deepEqual(
+      am5.map(z => z.quantity),
+      [2],
+    );
+    await updateSet(uid, SN, { quantity_delta: -2 });
   });
 
   await t.test('Unterkonto darf das Hauptkonto nicht ändern', async () => {

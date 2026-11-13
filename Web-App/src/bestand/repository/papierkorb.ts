@@ -149,31 +149,6 @@ export async function hatSetZeile(tx: DbSchnittstelle, userId: number, nummer: s
   ]));
 }
 
-/** Erst die Herkunftszeile (gekürzt, nicht gelöscht), dann eine Zeile mit demselben Schlüssel des
- * eindeutigen Tagesindex. @returns ob eine Zeile die Menge aufnahm */
-export async function mengeZurueck(
-  tx: DbSchnittstelle,
-  userId: number,
-  nummer: string,
-  k: Record<string, unknown>,
-): Promise<boolean> {
-  const menge = Number(k.quantity) || 0;
-  const r = await tx.run(
-    'UPDATE set_acquisitions SET quantity = quantity + $1 WHERE id = $2 AND user_id = $3 AND set_number = $4',
-    [menge, k.id, userId, nummer],
-  );
-  if (r.changes) return true;
-  const gleich = await tx.run(
-    `UPDATE set_acquisitions SET quantity = quantity + $1
-      WHERE id = (SELECT id FROM set_acquisitions
-                   WHERE user_id = $2 AND set_number = $3 AND tag = $4::date AND condition = $5
-                     AND purchase_price IS NOT DISTINCT FROM $6::numeric AND price_estimated = $7
-                     AND currency = $8 LIMIT 1)`,
-    [menge, userId, nummer, k.tag, k.condition, k.purchase_price, !!k.price_estimated, k.currency],
-  );
-  return !!gleich.changes;
-}
-
 export async function entferneEintrag(tx: DbSchnittstelle, id: number): Promise<void> {
   await tx.run('DELETE FROM papierkorb WHERE id = $1', [id]);
 }
