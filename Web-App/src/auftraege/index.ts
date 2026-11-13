@@ -51,6 +51,7 @@ export {
   beiNeuemAuftrag,
   erledigt,
   fehlgeschlagen,
+  imAuftragsrahmen,
   imNamenDesAuftrags,
   setzeFortschritt,
   verschoben,

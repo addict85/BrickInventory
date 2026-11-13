@@ -5,10 +5,17 @@ import { logAndContinue } from '../infra/fehler';
 import { haushaltBereich } from '../haushalt';
 import { getSetting } from '../einstellungen';
 import { kontoBereich } from './prozess';
+import { imSystemkontext } from '../infra/kontoKontext';
 
 type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };
 
-export async function meldeKontoaenderung(uid: number, art: KontoHinweis, angaben: Angaben = {}): Promise<boolean> {
+// Läuft auch vor der Anmeldung und für andere Konten (alle Verwalter): Sprache
+// und Haushalt des Empfängers liest es daher im Systemrahmen.
+export function meldeKontoaenderung(uid: number, art: KontoHinweis, angaben: Angaben = {}): Promise<boolean> {
+  return imSystemkontext('kontohinweis', () => meldeKontoaenderungFuer(uid, art, angaben));
+}
+
+async function meldeKontoaenderungFuer(uid: number, art: KontoHinweis, angaben: Angaben): Promise<boolean> {
   if (!(await mailEingerichtet())) return false;
   const k = await kontoBereich().konten.profilZeile(uid);
   if (!k?.email) return false;

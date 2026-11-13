@@ -28,6 +28,8 @@ function testServer(_req, { sitzung = {}, apiNutzer, routen, t, kette = false })
     if (apiNutzer !== undefined) req.apiUser = apiNutzer;
     next();
   });
+  // Wie startup/app.ts: Das Konto der Anfrage gilt bis in die Datenbank (Zeilenschutz).
+  app.use(_req('src/http/kontoMerken.js').merkeAnfrage);
   if (kette) _req('startup/app.js').apiEingang(app);
   for (const [pfad, modul] of Object.entries(routen)) app.use(pfad, _req(modul));
   const srv = app.listen(0);

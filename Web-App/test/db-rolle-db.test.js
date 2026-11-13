@@ -64,6 +64,10 @@
  *      (Missing expected rejection: TRUNCATE wanted)
  *   Y  in raeumeAlteSicherungenAuf das Leeren für fremde Kopien gestrichen →
  *      rot: „was die Migrationsrolle später anlegt …“ (0 statt 1 geleert)
+ *   Z  (13.11.2026) die Leserolle wieder NOBYPASSRLS → rot: „der Zeilenschutz
+ *      gilt für die Laufzeitrolle …“ (pgweb sieht 0 Zeilen); ebenso mit
+ *      `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` vor der Prüfung (die
+ *      Laufzeitrolle sieht ohne Konto 1 Zeile)
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
@@ -618,6 +622,23 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       'idempotenz',
     ])
       assert.deepEqual(await lesbar(t), [], `${t} ist für die Leserolle lesbar`);
+  });
+
+  await t.test('der Zeilenschutz gilt für die Laufzeitrolle, nicht für die Leserolle', async () => {
+    await als(neu, null, null, c =>
+      c.query(`INSERT INTO sets (user_id, set_number) SELECT id, '10001-1' FROM users WHERE username = 'leseprobe'`),
+    );
+    const zaehle = c => c.query('SELECT count(id)::int AS n FROM sets').then(r => r.rows[0].n);
+    await als(neu, ROLLE, PASSWORT, async app => {
+      assert.equal(await zaehle(app), 0, 'ohne Konto sieht die Laufzeitrolle keine Zeile');
+      await app.query('BEGIN');
+      await app.query(
+        `SELECT set_config('app.konto', (SELECT id FROM users WHERE username = 'leseprobe')::text, true)`,
+      );
+      assert.equal(await zaehle(app), 1, 'mit Konto sieht sie dessen Zeile');
+      await app.query('COMMIT');
+    });
+    await als(neu, LESEN, LESEN_PW, async l => assert.equal(await zaehle(l), 1, 'pgweb sieht alle Zeilen'));
   });
 
   await t.test('neue Spalten und Tabellen bleiben unlesbar, bis die Allowlist sie nennt', async () => {

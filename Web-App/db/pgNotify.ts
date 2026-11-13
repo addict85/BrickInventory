@@ -4,10 +4,14 @@
  */
 import { logAndContinue } from '../src/infra/fehler';
 import { Client, type ClientConfig } from 'pg';
+import { AsyncResource } from 'node:async_hooks';
 
 /** Ohne Payload ruft der (Wieder-)Verbindungsaufbau: Dann zieht der Handler
  * seinen Zustand aus der Datenbank nach, statt einem Signal zu folgen. */
 type Handler = (payload?: string) => void | Promise<void>;
+/** Der Handler läuft im Rahmen seines listen(): Ein Strom einer Anfrage fragt
+ * dann mit deren Konto, ein Auftrag im Systemrahmen (Zeilenschutz, Migration 0110). */
+type Eintrag = { roh: Handler; lauf: Handler };
 
 /** Kanalnamen sind Bezeichner und können nicht als Parameter gebunden werden. */
 function quoteIdent(name: string) {
@@ -17,7 +21,7 @@ function quoteIdent(name: string) {
 
 /** Gesendet wird über den Zugang (senden), gehorcht auf einer eigenen Verbindung. */
 export class Benachrichtigung {
-  private readonly _handlers = new Map<string, Handler[]>();
+  private readonly _handlers = new Map<string, Eintrag[]>();
   private _client: Client | null = null;
   private _connecting = false;
   private _retryMs = 1000;
@@ -46,7 +50,7 @@ export class Benachrichtigung {
       });
       c.on('notification', (msg: import('pg').Notification) => {
         for (const h of this._handlers.get(msg.channel) || []) {
-          Promise.resolve(h(msg.payload)).catch(e => console.error(`[notify:${msg.channel}]`, e.message));
+          Promise.resolve(h.lauf(msg.payload)).catch(e => console.error(`[notify:${msg.channel}]`, e.message));
         }
       });
       await c.connect();
@@ -62,7 +66,7 @@ export class Benachrichtigung {
       for (const channel of this._handlers.keys()) await c.query(`LISTEN ${quoteIdent(channel)}`);
       // Ein Signal aus der Trennung ist verloren: Die Handler holen einmal nach.
       for (const [channel, hs] of this._handlers) {
-        for (const h of hs) Promise.resolve(h()).catch(logAndContinue('notify:h'));
+        for (const h of hs) Promise.resolve(h.lauf()).catch(logAndContinue('notify:h'));
         if (this._client === c) this._lauscht.add(channel);
       }
     } catch (e) {
@@ -103,7 +107,7 @@ export class Benachrichtigung {
     quoteIdent(channel);
     this._closed = false;
     if (!this._handlers.has(channel)) this._handlers.set(channel, []);
-    this._handlers.get(channel)!.push(handler);
+    this._handlers.get(channel)!.push({ roh: handler, lauf: AsyncResource.bind(handler) });
     const c = this._client;
     if (c) {
       c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {
@@ -133,7 +137,7 @@ export class Benachrichtigung {
   unlisten(channel: string, handler: Handler) {
     const hs = this._handlers.get(channel);
     if (!hs) return;
-    const i = hs.indexOf(handler);
+    const i = hs.findIndex(e => e.roh === handler);
     if (i !== -1) hs.splice(i, 1);
     if (!hs.length) {
       this._handlers.delete(channel);
