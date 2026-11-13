@@ -31,6 +31,7 @@ export interface AuftragsListenZeile {
   fehler: string | null;
   user_id: number | null;
   geplant: boolean;
+  wartet: boolean;
   set_number: string | null;
 }
 export interface WiedervorlageZeile {
@@ -67,6 +68,48 @@ export async function fuegeAuftragEin(
   );
   return z ? String(z.id) : null;
 }
+
+/** Je Schlüssel ein offener Auftrag, der die neuen Posten zu seinen dazunimmt:
+ * Jede Bewertung meldet, was noch fehlt; eine neue Liste ist kein neuer Auftrag.
+ * Läuft einer, entsteht daneben höchstens ein offener (eindeutig nur unter 'offen'). */
+export async function ergaenzePreisAuftrag(
+  db: DbSchnittstelle,
+  schluessel: string,
+  nutzlast: { user_id: number; posten: unknown[] },
+  hoechstens: number,
+): Promise<string> {
+  const z = await db.get<{ id: string }>(
+    `INSERT INTO auftraege (art, nutzlast, user_id, schluessel) VALUES ('preise_nachladen', $2, $3, $1)
+     ON CONFLICT (schluessel) WHERE status = 'offen' DO UPDATE SET aktualisiert = NOW(),
+       nutzlast = jsonb_set(auftraege.nutzlast, '{posten}', (
+         SELECT COALESCE(jsonb_agg(p ORDER BY n), '[]'::jsonb) FROM (
+           SELECT p, MIN(n) AS n FROM (
+             SELECT p, n FROM jsonb_array_elements(auftraege.nutzlast->'posten') WITH ORDINALITY AS alt(p, n)
+             UNION ALL
+             SELECT p, n + 1000000 FROM jsonb_array_elements(EXCLUDED.nutzlast->'posten') WITH ORDINALITY AS neu(p, n)
+           ) beide GROUP BY p ORDER BY MIN(n) LIMIT $4) vereint))
+     RETURNING id`,
+    [schluessel, JSON.stringify(nutzlast), nutzlast.user_id, hoechstens],
+  );
+  return String(z!.id);
+}
+
+/** Zurück nach 'offen', ausser ein neuerer offener Auftrag mit demselben Schlüssel
+ * steht schon da: Dann übernimmt der, und dieser endet als 'abgebrochen' — zwei
+ * offene mit einem Schlüssel verbietet der Index, das UPDATE scheiterte sonst. */
+const OFFEN_ODER_ERSETZT = `CASE WHEN EXISTS (SELECT 1 FROM auftraege z WHERE z.schluessel = auftraege.schluessel
+                                   AND z.status = 'offen' AND z.id <> auftraege.id)
+            THEN 'abgebrochen' ELSE 'offen' END`;
+
+/** Entsteht der Zwilling zwischen Prüfung und Schreiben, sieht ihn der zweite Versuch. */
+async function nochmalBeiZwilling<T>(f: () => Promise<T>): Promise<T> {
+  try {
+    return await f();
+  } catch (e) {
+    if ((e as { code?: unknown } | null)?.code === '23505') return f();
+    throw e;
+  }
+}
 /** Ein 'laeuft' mit abgelaufener Frist gehört einem verschwundenen Prozess und
  * wird neu vergeben. SKIP LOCKED: Zwei Worker greifen nie dieselbe Zeile; zwei
  * exklusive derselben Art verhindert der Trigger aus Migration 0099.
@@ -80,7 +123,7 @@ export async function belegeAuftrag(
   ausser: readonly string[] = [],
 ): Promise<AuftragsZeile | null> {
   const z = await db.get<RoheZeile>(
-    `UPDATE auftraege SET status = 'laeuft', versuche = versuche + 1, belegt_von = $1,
+    `UPDATE auftraege SET status = 'laeuft', versuche = versuche + 1, belegt_von = $1, wartet = false,
             frist_bis = NOW() + make_interval(secs => $2), gestartet = NOW(), aktualisiert = NOW()
       WHERE id = (SELECT a.id FROM auftraege a
                    WHERE a.art = ANY($3)
@@ -149,14 +192,18 @@ export function setzeFehlgeschlagen(
   fehler: string,
   wartezeitSek: number,
 ): Promise<Stand> {
-  return db.get(
-    `UPDATE auftraege SET status = $3, fehler = $4, belegt_von = NULL, frist_bis = NULL, aktualisiert = NOW(),
-            faellig_ab = NOW() + make_interval(secs => $5)
-      WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
-    [a.id, a.belegt_von, endgueltig ? 'fehler' : 'offen', fehler.slice(0, 2000), wartezeitSek],
+  return nochmalBeiZwilling(() =>
+    db.get(
+      `UPDATE auftraege SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OFFEN_ODER_ERSETZT} END,
+              fehler = $4, belegt_von = NULL, frist_bis = NULL, aktualisiert = NOW(),
+              faellig_ab = NOW() + make_interval(secs => $5)
+        WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
+      [a.id, a.belegt_von, endgueltig, fehler.slice(0, 2000), wartezeitSek],
+    ),
   );
 }
-/** Zählt der Versuch nicht, bleibt die Zahl der Versuche, wie sie vor dem Belegen war. */
+/** Zählt der Versuch nicht, bleibt die Zahl der Versuche, wie sie vor dem Belegen war.
+ * `wartet`: Der Auftrag ist nicht gescheitert, die Verwaltung zeigt ihn als wartend. */
 export function setzeVerschoben(
   db: DbSchnittstelle,
   a: Belegung,
@@ -165,11 +212,14 @@ export function setzeVerschoben(
   grund: string,
   zaehlt: boolean,
 ): Promise<Stand> {
-  return db.get(
-    `UPDATE auftraege SET status = $3, fehler = $4, faellig_ab = $5, belegt_von = NULL, frist_bis = NULL,
-            versuche = CASE WHEN $6 THEN versuche ELSE GREATEST(versuche - 1, 0) END, aktualisiert = NOW()
-      WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
-    [a.id, a.belegt_von, endgueltig ? 'fehler' : 'offen', grund.slice(0, 2000), bis, zaehlt],
+  return nochmalBeiZwilling(() =>
+    db.get(
+      `UPDATE auftraege SET status = CASE WHEN $3 THEN 'fehler' ELSE ${OFFEN_ODER_ERSETZT} END,
+              wartet = NOT $3, fehler = $4, faellig_ab = $5, belegt_von = NULL, frist_bis = NULL,
+              versuche = CASE WHEN $6 THEN versuche ELSE GREATEST(versuche - 1, 0) END, aktualisiert = NOW()
+        WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft' RETURNING COALESCE(schluessel, id::text) AS s`,
+      [a.id, a.belegt_von, endgueltig, grund.slice(0, 2000), bis, zaehlt],
+    ),
   );
 }
 type Abfrager = Pick<import('pg').ClientBase, 'query'>;
@@ -191,14 +241,14 @@ export async function gibVerwaisteZurueck(c: Abfrager, prozess: string): Promise
   for (const { p } of rows) {
     if (!(await versucheSchluesselSperre(c, LOCKS.JOB_PROZESS, p))) continue;
     try {
-      n +=
-        (
-          await c.query(
-            `UPDATE auftraege SET status = 'offen', belegt_von = NULL, frist_bis = NULL, faellig_ab = NOW(), aktualisiert = NOW()
-          WHERE status = 'laeuft' AND split_part(belegt_von, '/', 1) = $1 AND belegt_von LIKE '%/%'`,
-            [p],
-          )
-        ).rowCount ?? 0;
+      const zurueck = () =>
+        c.query(
+          `UPDATE auftraege SET status = ${OFFEN_ODER_ERSETZT}, belegt_von = NULL, frist_bis = NULL,
+                  faellig_ab = NOW(), aktualisiert = NOW()
+            WHERE status = 'laeuft' AND split_part(belegt_von, '/', 1) = $1 AND belegt_von LIKE '%/%'`,
+          [p],
+        );
+      n += (await nochmalBeiZwilling(zurueck)).rowCount ?? 0;
     } finally {
       await gibSchluesselSperreFrei(c, LOCKS.JOB_PROZESS, p);
     }
@@ -208,11 +258,13 @@ export async function gibVerwaisteZurueck(c: Abfrager, prozess: string): Promise
 
 /** Der Versuch zählt nicht. */
 export async function gibZurueck(db: DbSchnittstelle, a: Belegung): Promise<void> {
-  await db.run(
-    `UPDATE auftraege SET status = 'offen', versuche = GREATEST(versuche - 1, 0), belegt_von = NULL,
-            frist_bis = NULL, faellig_ab = NOW(), aktualisiert = NOW()
-      WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`,
-    [a.id, a.belegt_von],
+  await nochmalBeiZwilling(() =>
+    db.run(
+      `UPDATE auftraege SET status = ${OFFEN_ODER_ERSETZT}, versuche = GREATEST(versuche - 1, 0), belegt_von = NULL,
+              frist_bis = NULL, faellig_ab = NOW(), aktualisiert = NOW()
+        WHERE id = $1 AND belegt_von = $2 AND status = 'laeuft'`,
+      [a.id, a.belegt_von],
+    ),
   );
 }
 export async function raeumeErledigteAuf(db: DbSchnittstelle): Promise<number> {
@@ -247,7 +299,7 @@ export async function loeschePause(db: DbSchnittstelle, art: AuftragsArt): Promi
 /** Ein laufender hört bei seinem nächsten Lebenszeichen auf. */
 export async function setzeAbgebrochen(db: DbSchnittstelle, id: string): Promise<AuftragsZeile | null> {
   const z = await db.get<RoheZeile>(
-    `UPDATE auftraege SET status = 'abgebrochen', frist_bis = NULL, aktualisiert = NOW(),
+    `UPDATE auftraege SET status = 'abgebrochen', frist_bis = NULL, aktualisiert = NOW(), wartet = false,
             fehler = COALESCE(fehler, 'abgebrochen')
       WHERE id = $1 AND status IN ('offen', 'laeuft') RETURNING ${SPALTEN}`,
     [id],
@@ -256,7 +308,7 @@ export async function setzeAbgebrochen(db: DbSchnittstelle, id: string): Promise
 }
 export async function stelleWiederEin(db: DbSchnittstelle, id: string): Promise<boolean> {
   const r = await db.run(
-    `UPDATE auftraege a SET status = 'offen', versuche = 0, fehler = NULL, faellig_ab = NOW(), belegt_von = NULL,
+    `UPDATE auftraege a SET status = 'offen', versuche = 0, fehler = NULL, faellig_ab = NOW(), belegt_von = NULL, wartet = false,
             aktualisiert = NOW()
       WHERE a.id = $1 AND a.status IN ('fehler', 'abgebrochen')
         AND NOT EXISTS (SELECT 1 FROM auftraege o WHERE o.schluessel = a.schluessel AND o.status = 'offen')`,
@@ -377,7 +429,7 @@ export function bricksetWartende(db: DbSchnittstelle) {
 export function auftragsListe(db: DbSchnittstelle, status: string[], art: string | null) {
   return db.all<AuftragsListenZeile>(
     `SELECT id::text AS id, art, status, versuche, max_versuche, faellig_ab, frist_bis, gestartet, erstellt,
-            aktualisiert, fortschritt, fehler, COALESCE(schluessel LIKE 'plan:%', false) AS geplant,
+            aktualisiert, fortschritt, fehler, COALESCE(schluessel LIKE 'plan:%', false) AS geplant, wartet,
             nutzlast->>'set_number' AS set_number
        FROM auftraege
       WHERE status = ANY($1) AND ($2::text IS NULL OR art = $2)

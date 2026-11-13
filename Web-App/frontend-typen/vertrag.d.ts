@@ -178,6 +178,7 @@ export type Auftrag = {
   fortschritt: AuftragFortschritt | null;
   fehler: string | null;
   geplant: boolean;
+  wartet: boolean;
   set_number: string | null;
   [feld: string]: unknown;
 };

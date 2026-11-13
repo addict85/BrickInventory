@@ -422,6 +422,48 @@ function fehlerKasten(text) {
   return html`<details class="fehler-kasten"><summary>${ico('warnung')} ${fehlerKurz(text)}</summary><code>${text}</code></details>`;
 }
 
+// Sieben gleiche „Jetzt starten“ sind für Vorleser ununterscheidbar: Der Name nennt die Art mit.
+const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @type {string} */ text, wofuer = '') =>
+  html`<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${arg}"${wofuer ? html` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
+const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : s);
+/** Eine Zeile der einzelnen Aufträge. */
+const auftragsZeile = (/** @type {Auftrag} */ a) => {
+  const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
+  // Verschoben ist nicht gescheitert: Das sagt der Server (wartet), nicht der Text des Grundes.
+  const wartet = a.status === 'offen' && a.wartet && !!a.faellig_ab && new Date(a.faellig_ab) > new Date();
+  const wann = wartet
+    ? t('monitor.auftraege.wartet_bis', { zeit })
+    : a.status === 'offen'
+      ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit })
+      : a.status === 'laeuft'
+        ? zeit
+        : '';
+  const stand = a.fortschritt?.gesamt
+    ? `${Math.round(a.fortschritt.erledigt ?? 0)} / ${a.fortschritt.gesamt}`
+    : a.fortschritt?.text || '';
+  const hinweis = [
+    wartet && a.fehler ? html`<span class="mon-leise">${a.fehler}</span>` : '',
+    !wartet && a.fehler && (a.status === 'offen' || a.status === 'fehler') ? fehlerKasten(a.fehler) : '',
+    a.versuche > 1 && !wartet
+      ? html`<span class="mon-leise">${tRaw('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>`
+      : '',
+    stand ? html`<span class="mon-leise">${stand}</span>` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const aktion =
+    a.status === 'offen' || a.status === 'laeuft'
+      ? knopf('auftragAbbrechen', a.id, tRaw('monitor.auftraege.abbrechen'))
+      : '';
+  return html`<tr>
+    <td><strong>${artName(a.art)}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}</td>
+    <td><span class="mon-zustand mon-${wartet ? 'wartet' : a.status}">${wartet ? tRaw('monitor.auftraege.wartet') : statusName(a.status)}</span></td>
+    <td>${ungeprueft(wann)}</td>
+    <td>${ungeprueft(hinweis)}</td>
+    <td><div class="mon-knoepfe">${aktion}</div></td>
+  </tr>`;
+};
+
 /**
  * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers (GET /api/v1/admin/auftraege) — je Art die
  * Zahlen mit „Jetzt“ und „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
@@ -446,47 +488,9 @@ async function zeigeAuftraege() {
   for (const a of d.auftraege)
     if (a.status === 'offen' && a.faellig_ab && (!naechster[a.art] || a.faellig_ab < naechster[a.art]))
       naechster[a.art] = a.faellig_ab;
-  // Sieben gleiche „Jetzt starten“ sind für Vorleser ununterscheidbar: Der Name nennt die Art mit.
-  const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @type {string} */ text, wofuer = '') =>
-    html`<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${arg}"${wofuer ? html` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
-  const status = (/** @type {string} */ s) => (Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : s);
   const ziffer = (/** @type {number | undefined} */ n, klasse = '') =>
     html`<span class="mon-ziffer${n ? html`${' '}${ungeprueft(klasse)}` : ' null'}">${n || 0}</span>`;
-  const zeile = (/** @type {Auftrag} */ a) => {
-    const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
-    const wann =
-      a.status === 'offen'
-        ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit })
-        : a.status === 'laeuft'
-          ? zeit
-          : '';
-    const stand = a.fortschritt?.gesamt
-      ? `${a.fortschritt.erledigt ?? 0} / ${a.fortschritt.gesamt}`
-      : a.fortschritt?.text || '';
-    const hinweis = [
-      a.fehler && a.status !== 'laeuft' ? fehlerKasten(a.fehler) : '',
-      a.versuche > 1
-        ? html`<span class="mon-leise">${tRaw('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>`
-        : '',
-      stand ? html`<span class="mon-leise">${stand}</span>` : '',
-    ]
-      .filter(Boolean)
-      .join(' ');
-    const aktion =
-      a.status === 'offen' || a.status === 'laeuft'
-        ? knopf('auftragAbbrechen', a.id, tRaw('monitor.auftraege.abbrechen'))
-        : a.status === 'fehler' || a.status === 'abgebrochen'
-          ? knopf('auftragWiederholen', a.id, tRaw('monitor.auftraege.wiederholen'))
-          : '';
-    return html`<tr>
-      <td><strong>${artName(a.art)}</strong>${a.set_number ? html` <span class="mon-leise">${a.set_number}</span>` : ''}</td>
-      <td><span class="mon-zustand mon-${a.status}">${status(a.status)}</span></td>
-      <td>${ungeprueft(wann)}</td>
-      <td>${ungeprueft(hinweis)}</td>
-      <td><div class="mon-knoepfe">${aktion}</div></td>
-    </tr>`;
-  };
   const mehr = d.auftraege.length - 40;
   const pause = (/** @type {AuftragPause} */ p) =>
     t('monitor.auftraege.pause', { art: artName(p.art), bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' });
@@ -520,7 +524,7 @@ async function zeigeAuftraege() {
       <summary class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
       <div class="tw"><table class="dt mon-tabelle" aria-labelledby="mon-t-auftraege">
       <thead><tr><th>${tRaw('monitor.col.auftrag')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeit')}</th><th>${tRaw('monitor.col.hinweis')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
-      <tbody>${d.auftraege.slice(0, 40).map(zeile)}</tbody></table></div>
+      <tbody>${d.auftraege.slice(0, 40).map(auftragsZeile)}</tbody></table></div>
       ${mehr > 0 ? html`<p class="mon-leise">${tRaw('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>`
         : html`<h3 class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${tRaw('monitor.auftraege.leer')}</p>`
     }`,
@@ -547,13 +551,6 @@ if (typeof document !== 'undefined')
 /** @param {string} id */
 async function auftragAbbrechen(id) {
   const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`).catch(() => null);
-  if (!d?.success) toast(d?.error || t('settings.error'), 'error');
-  await zeigeAuftraege();
-}
-
-/** @param {string} id */
-async function auftragWiederholen(id) {
-  const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/wiederholen`).catch(() => null);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();
 }
@@ -586,7 +583,6 @@ export function stoppeMonitor() {
 registerActions({
   openLogViewer,
   auftragAbbrechen,
-  auftragWiederholen,
   auftragsArtJetzt,
   auftragsArtLeeren,
 });

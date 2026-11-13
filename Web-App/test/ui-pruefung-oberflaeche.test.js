@@ -12,6 +12,12 @@
  *   F  diagrammNichtDa im Fehlerzweig von loadFinance entfernt → rot „offline“
  *   G  Teile-Leerzustand wieder „Keine Teile gefunden“ ohne Knopf → rot „Teile-Suche ohne Treffer“
  *   H  fehlerKasten wieder als roher Text → rot „Hintergrundarbeiten“
+ *
+ * Gegenproben (13.11.2026 gemessen):
+ *   I  in monitor.js zeile() `wartet` fest false → rot „verschobener Auftrag wartet“
+ *      (Fehlerkasten und „Versuch 3 von 5“ in der Zeile)
+ *   J  den Fehlerkasten wieder für jeden Status ausser 'laeuft' → rot: derselbe
+ *      Test (Fehlerkasten beim abgebrochenen)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -272,6 +278,51 @@ test('Hintergrundarbeiten: technischer Fehler als Satz, Einzelheiten aufklappbar
     const kasten = d.querySelector('#auftraege-karte .fehler-kasten');
     assert.equal(text(kasten.querySelector('summary')), 'Dienst nicht erreichbar — Netz oder Server gestört.');
     assert.equal(text(kasten.querySelector('code')), roh);
+  } finally {
+    w.close();
+  }
+});
+
+test('Hintergrundarbeiten: ein verschobener Auftrag wartet, ein abgebrochener ist nicht gescheitert', async () => {
+  const bis = new Date(Date.now() + 3 * 3600_000).toISOString();
+  const zeile = (id, mehr) => ({
+    id,
+    art: 'preise_nachladen',
+    set_number: null,
+    versuche: 3,
+    max_versuche: 5,
+    faellig_ab: bis,
+    geplant: false,
+    wartet: false,
+    fortschritt: null,
+    ...mehr,
+  });
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/admin/job-status': { success: true, job: { running: false } },
+    '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
+    '/v1/admin/auftraege': {
+      success: true,
+      zusammenfassung: [{ art: 'preise_nachladen', status: 'offen', anzahl: 2 }],
+      job_prozess: { laeuft: true },
+      pausen: [],
+      bildbedarf: 0,
+      auftraege: [
+        zeile('1', { status: 'offen', wartet: true, fehler: 'BrickLink-Tageskontingent erschöpft' }),
+        zeile('2', { status: 'offen', fehler: 'getaddrinfo ENOTFOUND api.bricklink.com' }),
+        zeile('3', { status: 'abgebrochen', fehler: 'abgebrochen', faellig_ab: null }),
+      ],
+    },
+  });
+  try {
+    await reiter(w, 'monitor');
+    await warte(() => d.querySelectorAll('#auftraege-karte .mon-einzeln tbody tr').length === 3, 3000);
+    const [wartend, wieder, ab] = [...d.querySelectorAll('#auftraege-karte .mon-einzeln tbody tr')];
+    assert.equal(wartend.querySelector('.fehler-kasten'), null, `als Fehler gezeigt: ${text(wartend)}`);
+    assert.match(text(wartend), /wartet bis .*\d{1,2}:\d{2}.*BrickLink-Tageskontingent erschöpft/);
+    assert.doesNotMatch(text(wartend), /Versuch/);
+    assert.ok(wieder.querySelector('.fehler-kasten'), 'ein Fehler vor dem nächsten Versuch bleibt sichtbar');
+    assert.equal(ab.querySelector('.fehler-kasten'), null, `abgebrochen als Fehler gezeigt: ${text(ab)}`);
+    assert.equal(d.querySelector('[data-click="auftragWiederholen"]'), null);
   } finally {
     w.close();
   }

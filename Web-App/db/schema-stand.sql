@@ -107,6 +107,7 @@ CREATE TABLE auftraege (
   gestartet timestamp with time zone,
   fortschritt jsonb,
   ergebnis jsonb,
+  wartet boolean NOT NULL DEFAULT false,
   CONSTRAINT auftraege_art_fkey FOREIGN KEY (art) REFERENCES auftrags_arten(art),
   CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
   CONSTRAINT auftraege_pkey PRIMARY KEY (id),

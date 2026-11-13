@@ -13,7 +13,7 @@ export {
   bricksetVormerken,
   bricksetZahlen,
 } from './bricksetAuftrag';
-export { beendePause, stelleAuftragEin, zaehleArt } from './dienst';
+export { beendePause, merkePreiseVor, stelleAuftragEin, zaehleArt } from './dienst';
 export {
   auftraegeImUeberblick,
   auftragAbbrechen,
@@ -56,7 +56,7 @@ export {
   verschoben,
 } from './dienst';
 export { verdrahteNacharbeit } from './nacharbeit';
-export { NutzlastUngueltig, WantedKorrekturen, pruefeNutzlast } from './nutzlasten';
+export { NutzlastUngueltig, PREISPOSTEN_HOECHSTENS, WantedKorrekturen, pruefeNutzlast } from './nutzlasten';
 export { gueltigeAuftragsKennung, liesAuftrag, loescheAuftrag, pdfAuftragStarten, pdfSchluessel } from './pdfAuftraege';
 export { belegKennung, meldeProzessAb, meldeProzessAn } from './prozess';
 export { oeffentlicherStartZustand } from './startZustand';

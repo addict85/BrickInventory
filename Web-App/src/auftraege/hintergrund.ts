@@ -13,9 +13,10 @@ function pruefeArt(art: string): AuftragsArt {
   return art as AuftragsArt;
 }
 
-/** Nutzlasten bleiben draussen: Sie tragen ganze Listen. */
+/** Nutzlasten bleiben draussen: Sie tragen ganze Listen. Ohne Filter nur, was
+ * noch ansteht; Gescheiterte zählt die Zusammenfassung je Art. */
 export async function auftraegeImUeberblick(filter: { status?: string | undefined; art?: string | undefined } = {}) {
-  const status = (filter.status ? filter.status.split(',') : ['offen', 'laeuft', 'fehler', 'abgebrochen']).filter(s =>
+  const status = (filter.status ? filter.status.split(',') : ['offen', 'laeuft']).filter(s =>
     (STATUS as readonly string[]).includes(s),
   );
   const art = filter.art ? pruefeArt(filter.art) : null;

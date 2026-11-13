@@ -79,10 +79,11 @@ export const PreisPosten = z.discriminatedUnion('art', [
   z.object({ art: z.literal('figur'), nummer: SETNR, zustand: z.enum(['N', 'U']) }),
   z.object({ art: z.literal('schaetzung'), nummer: SETNR, zustand: z.enum(['N', 'U']) }),
 ]);
+export const PREISPOSTEN_HOECHSTENS = 2000;
 const PreiseNachladen = z.object({
   user_id: KONTO,
   waehrung: z.string().min(3).max(3),
-  posten: z.array(PreisPosten).max(2000),
+  posten: z.array(PreisPosten).max(PREISPOSTEN_HOECHSTENS),
 });
 
 /** Die Schritte des Nachlaufs nach dem Start; src/verwaltung/startNachlaeufe.ts hält genau diese. */
