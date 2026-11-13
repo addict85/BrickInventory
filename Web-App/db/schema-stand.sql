@@ -166,6 +166,8 @@ CREATE INDEX idx_bl_zuordnung_eigen_bl ON bl_zuordnung_eigen USING btree (user_i
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_zuordnung_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_zuordnung_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+ALTER TABLE bl_zuordnung_eigen ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON bl_zuordnung_eigen USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE catalog_cache (
   set_number text NOT NULL,
@@ -186,6 +188,8 @@ CREATE TABLE figur_eigen (
   CONSTRAINT figur_eigen_pkey PRIMARY KEY (user_id, fig_number),
   CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+ALTER TABLE figur_eigen ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON figur_eigen USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE geraete_nonces (
   nonce text NOT NULL,
@@ -250,6 +254,8 @@ CREATE TABLE idempotenz (
   CONSTRAINT idempotenz_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_idempotenz_angelegt ON idempotenz USING btree (angelegt);
+ALTER TABLE idempotenz ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON idempotenz USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE image_misses (
   cache_key text NOT NULL,
@@ -281,6 +287,8 @@ CREATE TABLE import_stand (
   CONSTRAINT csv_import_jobs_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'running'::text, 'done'::text, 'error'::text, 'cancelled'::text]))),
   CONSTRAINT csv_import_jobs_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+ALTER TABLE import_stand ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON import_stand USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE instructions (
   id integer NOT NULL DEFAULT nextval('instructions_id_seq'::regclass),
@@ -297,6 +305,8 @@ CREATE TABLE instructions (
 );
 CREATE INDEX idx_instructions_user ON instructions USING btree (user_id, set_number);
 CREATE TRIGGER instructions_setnummer BEFORE INSERT OR UPDATE OF set_number ON instructions FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
+ALTER TABLE instructions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON instructions USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE laufzustand (
   schluessel text NOT NULL,
@@ -326,6 +336,8 @@ CREATE TABLE minifig_acquisitions (
 CREATE UNIQUE INDEX idx_minifig_acq_erfassungstag ON minifig_acquisitions USING btree (user_id, fig_number, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER minifig_acquisitions_tag BEFORE INSERT OR UPDATE ON minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_tag();
 CREATE TRIGGER minifig_acquisitions_waehrung BEFORE INSERT OR UPDATE ON minifig_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
+ALTER TABLE minifig_acquisitions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON minifig_acquisitions USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE minifig_parts_cache (
   fig_number text NOT NULL,
@@ -391,6 +403,8 @@ CREATE INDEX idx_minifigs_set ON minifigs USING btree (user_id, set_number);
 CREATE INDEX idx_minifigs_storage_id ON minifigs USING btree (user_id, storage_id) WHERE (storage_id IS NOT NULL);
 CREATE INDEX idx_minifigs_storage_ref ON minifigs USING btree (storage_id) WHERE (storage_id IS NOT NULL);
 CREATE TRIGGER minifigs_setnummer BEFORE INSERT OR UPDATE OF set_number ON minifigs FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
+ALTER TABLE minifigs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON minifigs USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE minifigs_catalog (
   fig_number text NOT NULL,
@@ -417,6 +431,8 @@ CREATE TABLE papierkorb (
   CONSTRAINT papierkorb_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_papierkorb_konto ON papierkorb USING btree (user_id, geloescht_am DESC);
+ALTER TABLE papierkorb ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON papierkorb USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE part_acquisitions (
   id integer NOT NULL DEFAULT nextval('part_acquisitions_id_seq'::regclass),
@@ -440,6 +456,8 @@ CREATE TABLE part_acquisitions (
 CREATE UNIQUE INDEX idx_part_acq_erfassungstag ON part_acquisitions USING btree (user_id, part_number, color_id, COALESCE(tag, ((created_at AT TIME ZONE 'UTC'::text))::date), condition, COALESCE(unit_price, ('-1'::integer)::numeric), price_estimated, currency);
 CREATE TRIGGER part_acquisitions_tag BEFORE INSERT OR UPDATE ON part_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_tag();
 CREATE TRIGGER part_acquisitions_waehrung BEFORE INSERT OR UPDATE ON part_acquisitions FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
+ALTER TABLE part_acquisitions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON part_acquisitions USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE part_catalog (
   part_number text NOT NULL,
@@ -532,6 +550,8 @@ CREATE TRIGGER parts_setnummer BEFORE INSERT OR UPDATE OF set_number ON parts FO
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON parts REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON parts REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON parts REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_upd();
+ALTER TABLE parts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON parts USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE parts_katalog_offen (
   id bigint NOT NULL DEFAULT nextval('parts_katalog_offen_id_seq'::regclass),
@@ -564,6 +584,8 @@ CREATE INDEX idx_parts_summary_sort ON parts_summary USING btree (user_id, color
 CREATE INDEX idx_psum_blnumber_trgm ON parts_summary USING gin (bl_part_number gin_trgm_ops) WITH (fastupdate=off);
 CREATE INDEX idx_psum_name_trgm ON parts_summary USING gin (part_name gin_trgm_ops) WITH (fastupdate=off);
 CREATE INDEX idx_psum_number_trgm ON parts_summary USING gin (part_number gin_trgm_ops) WITH (fastupdate=off);
+ALTER TABLE parts_summary ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON parts_summary USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE parts_summary_state (
   user_id integer NOT NULL,
@@ -572,6 +594,8 @@ CREATE TABLE parts_summary_state (
   CONSTRAINT parts_summary_state_pkey PRIMARY KEY (user_id),
   CONSTRAINT parts_summary_state_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+ALTER TABLE parts_summary_state ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON parts_summary_state USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE parts_version_user (
   user_id integer NOT NULL,
@@ -579,6 +603,8 @@ CREATE TABLE parts_version_user (
   CONSTRAINT parts_version_user_pkey PRIMARY KEY (user_id),
   CONSTRAINT parts_version_user_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+ALTER TABLE parts_version_user ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON parts_version_user USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE passkeys (
   id integer NOT NULL DEFAULT nextval('passkeys_id_seq'::regclass),
@@ -617,6 +643,8 @@ CREATE TABLE price_alerts (
 );
 CREATE INDEX idx_price_alerts_set ON price_alerts USING btree (set_number, condition);
 CREATE TRIGGER price_alerts_setnummer BEFORE INSERT OR UPDATE OF set_number ON price_alerts FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
+ALTER TABLE price_alerts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON price_alerts USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE price_cache (
   id integer NOT NULL DEFAULT nextval('price_cache_id_seq'::regclass),
@@ -830,6 +858,8 @@ CREATE TRIGGER set_acquisitions_waehrung BEFORE INSERT OR UPDATE ON set_acquisit
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON set_acquisitions REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON set_acquisitions REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON set_acquisitions REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_erfassung_upd();
+ALTER TABLE set_acquisitions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON set_acquisitions USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE set_catalog (
   set_number text NOT NULL,
@@ -892,6 +922,8 @@ CREATE TRIGGER sets_setnummer BEFORE INSERT OR UPDATE OF set_number ON sets FOR 
 CREATE TRIGGER trg_bump_parts_version_del AFTER DELETE ON sets REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_del();
 CREATE TRIGGER trg_bump_parts_version_ins AFTER INSERT ON sets REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_ins();
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON sets REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_upd();
+ALTER TABLE sets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON sets USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE shared_instructions (
   id integer NOT NULL DEFAULT nextval('shared_instructions_id_seq'::regclass),
@@ -915,6 +947,8 @@ CREATE TABLE storage_locations (
 );
 CREATE UNIQUE INDEX storage_locations_konto_name ON storage_locations USING btree (user_id, lower(name));
 CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON storage_locations REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION bump_parts_version_lagerort_upd();
+ALTER TABLE storage_locations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON storage_locations USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE subsets_cache (
   set_number text NOT NULL,
@@ -935,6 +969,8 @@ CREATE TABLE teil_eigen (
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON teil_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON teil_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON teil_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+ALTER TABLE teil_eigen ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON teil_eigen USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE teil_farbe_eigen (
   user_id integer NOT NULL,
@@ -950,6 +986,8 @@ CREATE TABLE teil_farbe_eigen (
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON teil_farbe_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON teil_farbe_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON teil_farbe_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+ALTER TABLE teil_farbe_eigen ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON teil_farbe_eigen USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE user_sessions (
   sid character varying NOT NULL,
@@ -967,6 +1005,8 @@ CREATE TABLE user_settings (
   CONSTRAINT user_settings_pkey PRIMARY KEY (user_id, key),
   CONSTRAINT user_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON user_settings USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE users (
   id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
@@ -1029,6 +1069,8 @@ CREATE TABLE vouchers (
   CONSTRAINT vouchers_user_id_nummer_suche_key UNIQUE (user_id, nummer_suche)
 );
 CREATE TRIGGER vouchers_waehrung BEFORE INSERT OR UPDATE ON vouchers FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
+ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON vouchers USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE wanted (
   id integer NOT NULL DEFAULT nextval('wanted_id_seq'::regclass),
@@ -1044,6 +1086,8 @@ CREATE TABLE wanted (
 );
 CREATE INDEX idx_wanted_user ON wanted USING btree (user_id, created_at DESC);
 CREATE TRIGGER wanted_setnummer BEFORE INSERT OR UPDATE OF set_number ON wanted FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
+ALTER TABLE wanted ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON wanted USING ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])))) WITH CHECK ((( SELECT zeilenschutz_system() AS zeilenschutz_system) OR (user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))));
 
 CREATE TABLE webauthn_challenges (
   challenge text NOT NULL,
@@ -1298,3 +1342,21 @@ BEGIN
   NEW.set_number := set_nummer_mit_version(NEW.set_number);
   RETURN NEW;
 END $function$;
+
+CREATE OR REPLACE FUNCTION zeilenschutz_konten()
+ RETURNS integer[]
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'pg_catalog', 'pg_temp'
+AS $function$
+  SELECT CASE WHEN k.id IS NULL THEN '{}'::integer[]
+              ELSE k.id || ARRAY(SELECT l.sub_user_id FROM account_links l WHERE l.main_user_id = k.id) END
+    FROM (SELECT NULLIF(current_setting('app.konto', true), '')::integer AS id) k
+$function$;
+
+CREATE OR REPLACE FUNCTION zeilenschutz_system()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'pg_catalog', 'pg_temp'
+AS $function$ SELECT COALESCE(current_setting('app.system', true), '') = 'an' $function$;

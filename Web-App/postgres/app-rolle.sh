@@ -259,11 +259,13 @@ BEGIN
   EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I', migration, rolle);
   EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT USAGE ON SCHEMAS TO %I', migration, rolle);
 
-  -- Leserolle für pgweb: nur SELECT auf die Allowlist oben.
+  -- Leserolle für pgweb: nur SELECT auf die Allowlist oben. BYPASSRLS, weil
+  -- pgweb keinen Kontext setzt und der Zeilenschutz (Migration 0110) ihr sonst
+  -- jede Zeile der Kontotabellen verbärge; was sie liest, begrenzt die Allowlist.
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = lesen) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I NOLOGIN', lesen);
   END IF;
-  EXECUTE pg_catalog.format('ALTER ROLE %I %s NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION NOBYPASSRLS NOINHERIT',
+  EXECUTE pg_catalog.format('ALTER ROLE %I %s NOSUPERUSER NOCREATEROLE NOCREATEDB NOREPLICATION BYPASSRLS NOINHERIT',
                  lesen, CASE WHEN lesen_pw = '' THEN 'NOLOGIN PASSWORD NULL' ELSE pg_catalog.format('LOGIN PASSWORD %L', lesen_pw) END);
   EXECUTE pg_catalog.format('ALTER ROLE %I RESET ALL', lesen);
   EXECUTE pg_catalog.format('ALTER ROLE %I SET default_transaction_read_only = on', lesen);

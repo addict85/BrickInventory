@@ -1,6 +1,7 @@
 /** requireApiAdmin bündelt Anmeldung und is_admin, damit kein Admin-Endpunkt
  * die Prüfung versehentlich weglässt. */
 import { meldeFehler } from '../../src/infra/fehler';
+import { imSystemkontext } from '../../src/infra/kontoKontext';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
@@ -115,7 +116,8 @@ export const requireApiAdmin = waechter<AuthedRequest>((req, res, next) => {
   requireToken(req, res, () => {
     if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
     // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
-    verlangeFreigabe(req, res, next, 'verwaltung');
+    // Die Verwaltung arbeitet über alle Konten (Diagnose, Kontenliste): Zeilenschutz aus.
+    verlangeFreigabe(req, res, () => imSystemkontext('verwaltung', next), 'verwaltung');
   });
 });
 

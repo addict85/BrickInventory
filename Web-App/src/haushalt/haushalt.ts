@@ -9,6 +9,7 @@ import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fachfehler } from '../infra/fehlerTexte';
 import crypto from 'node:crypto';
+import { imSystemkontext } from '../infra/kontoKontext';
 
 /** Lang genug für „später am Abend", kurz genug, dass ein liegen gebliebener
  * Code nicht dauerhaft öffnet. */
@@ -194,10 +195,10 @@ export async function einladungEinloesen(db: Db, uid: number, code: string) {
   // derselben Sperre wie ein Währungswechsel, damit keiner dazwischenrutscht.
   const ungleich = await db.transaction(async tx => {
     await sperreHaushaltswaehrung(tx);
-    const [curMain, curSub] = await Promise.all([
-      getSetting(mainId, 'currency', 'EUR'),
-      getSetting(subId, 'currency', 'EUR'),
-    ]);
+    // Das Hauptkonto ist (noch) nicht im Blickfeld des Einlösenden: Zeilenschutz aus.
+    const [curMain, curSub] = await imSystemkontext('haushalt beitreten', () =>
+      Promise.all([getSetting(mainId, 'currency', 'EUR'), getSetting(subId, 'currency', 'EUR')]),
+    );
     if (String(curMain) !== String(curSub)) return { haupt: String(curMain), unter: String(curSub) };
     await repo.verknuepfe(tx, mainId, subId);
     return null;

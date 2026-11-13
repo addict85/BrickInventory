@@ -41,6 +41,12 @@ async function schemaText(db) {
       LEFT JOIN pg_depend d ON d.objid = p.oid AND d.deptype = 'e'
      WHERE d.objid IS NULL ORDER BY 1, 2`);
   const erweiterungen = await db.all(`SELECT extname FROM pg_extension WHERE extname <> 'plpgsql' ORDER BY 1`);
+  const zeilenschutz = await db.all(`
+    SELECT c.relname AS tabelle, c.relforcerowsecurity AS zwang FROM pg_class c
+     WHERE c.relnamespace = 'public'::regnamespace AND c.relrowsecurity ORDER BY 1`);
+  const regeln = await db.all(`
+    SELECT tablename AS tabelle, policyname AS name, permissive, cmd, roles::text[] AS rollen, qual, with_check
+      FROM pg_policies WHERE schemaname = 'public' ORDER BY 1, 2`);
 
   /** @param {any[]} zeilen @param {string} tabelle */
   const von = (zeilen, tabelle) => zeilen.filter(z => z.tabelle === tabelle);
@@ -61,6 +67,16 @@ async function schemaText(db) {
     teile.push('', `CREATE TABLE ${t} (`, zeilen.join(',\n'), ');');
     teile.push(...von(indizes, t).map(i => `${i.def.replace(/ ON public\./, ' ON ')};`));
     teile.push(...von(trigger, t).map(g => `${g.def.replace(/ ON public\./, ' ON ')};`));
+    for (const z of von(zeilenschutz, t))
+      teile.push(`ALTER TABLE ${t} ${z.zwang ? 'FORCE' : 'ENABLE'} ROW LEVEL SECURITY;`);
+    teile.push(
+      ...von(regeln, t).map(
+        r =>
+          `CREATE POLICY ${r.name} ON ${t}${r.permissive === 'PERMISSIVE' ? '' : ' AS RESTRICTIVE'}` +
+          `${r.cmd === 'ALL' ? '' : ` FOR ${r.cmd}`}${r.rollen.join() === 'public' ? '' : ` TO ${r.rollen.join(', ')}`}` +
+          `${r.qual ? ` USING (${r.qual})` : ''}${r.with_check ? ` WITH CHECK (${r.with_check})` : ''};`,
+      ),
+    );
   }
   for (const f of funktionen) teile.push('', `${f.def.trim()};`);
   return teile.join('\n').replace(/public\./g, '') + '\n';
