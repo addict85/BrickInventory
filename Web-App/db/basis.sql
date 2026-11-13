@@ -312,6 +312,7 @@ CREATE TABLE public.auftraege (
     gestartet timestamp with time zone,
     fortschritt jsonb,
     ergebnis jsonb,
+    wartet boolean DEFAULT false NOT NULL,
     CONSTRAINT auftraege_max_versuche_check CHECK ((max_versuche > 0)),
     CONSTRAINT auftraege_status_check CHECK ((status = ANY (ARRAY['offen'::text, 'laeuft'::text, 'erledigt'::text, 'fehler'::text, 'abgebrochen'::text])))
 );
@@ -2343,4 +2344,5 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('010
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0107-merkliste-schranken-namen.sql', '2026-11-11 12:59:07.448052+00', '0b7b0e4bd58feaf35fabf8243270139dad032308349153278e1a8dd9ab05d864');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0108-catalog-cache-nur-abrufstand.sql', '2026-11-11 13:56:56.199275+00', 'a91b69538855e6934c5b120ed2d011c6b7c73e3f0b9feac1a45d648ee4d74fc8');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0109-zustand-und-auftragsart-pruefen.sql', '2026-11-11 13:56:56.205616+00', 'c16ce444add67b79f46521d52f6a3ad81a9cb104a1380593f1592ff55c572a28');
-INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0110-zeilenschutz.sql', '2026-11-13 06:03:58.648528+00', '94bf278ba825a71a09801adf588e35c17bf490a2779e81012b24f4b6b025f49d');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0110-auftrag-wartet.sql', '2026-11-13 08:15:29.409994+00', '144dd4e64404412bded58c0a01a256f12f9da8e6e018bfc487b7471866e321ba');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0111-zeilenschutz.sql', '2026-11-13 08:15:29.414676+00', '94bf278ba825a71a09801adf588e35c17bf490a2779e81012b24f4b6b025f49d');
