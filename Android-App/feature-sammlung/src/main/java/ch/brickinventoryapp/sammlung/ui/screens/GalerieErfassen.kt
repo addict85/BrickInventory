@@ -69,6 +69,25 @@ private fun nummerFehler(nummer: String, geprueft: Boolean): Int? = when {
     else -> null
 }
 
+/** Der Hinweis als Hilfezeile statt Platzhalter: Der verschwand mit dem ersten Tippen. */
+@Composable
+private fun KaufpreisFeld(preis: String, onPreis: (String) -> Unit, onFertig: () -> Unit) {
+    OutlinedTextField(
+        value = preis,
+        onValueChange = { onPreis(NumericInput.price(it)) },
+        label = { Text(stringResource(R.string.gallery_purchase_price)) },
+        isError = NumericInput.preisUngueltig(preis),
+        supportingText = {
+            if (NumericInput.preisUngueltig(preis)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen())
+            else Text(stringResource(R.string.common_unit_price_placeholder))
+        },
+        modifier = Modifier.fillMaxWidth(), singleLine = true,
+        shape = Formen.feld,
+        keyboardOptions = NumericInput.preisTastatur(),
+        keyboardActions = KeyboardActions(onDone = { onFertig() })
+    )
+}
+
 @Composable
 fun AddSetDialog(
     onDismiss: () -> Unit,
@@ -168,21 +187,7 @@ fun AddSetDialog(
             shape = Formen.feld,
             keyboardOptions = NumericInput.ganzzahlTastatur()
         )
-        OutlinedTextField(
-            value = purchasePrice,
-            onValueChange = { purchasePrice = NumericInput.price(it) },
-            label = { Text(stringResource(R.string.gallery_purchase_price)) },
-            isError = NumericInput.preisUngueltig(purchasePrice),
-            // Der Hinweis als Hilfezeile statt Platzhalter: Der verschwand mit dem ersten Tippen.
-            supportingText = {
-                if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen())
-                else Text(stringResource(R.string.common_unit_price_placeholder))
-            },
-            modifier = Modifier.fillMaxWidth(), singleLine = true,
-            shape = Formen.feld,
-            keyboardOptions = NumericInput.preisTastatur(),
-            keyboardActions = KeyboardActions(onDone = { keyboard?.hide(); submit() })
-        )
+        KaufpreisFeld(purchasePrice, { purchasePrice = it }) { keyboard?.hide(); submit() }
         Zustandszeile(zustand = condition, onZustand = { condition = it })
         LagerortErfassung(lagerort, lagerorte, { lagerort = it })
     }

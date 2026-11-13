@@ -69,21 +69,7 @@ private fun ZertifikatFrageDialog(
             Ueberdeckungsschutz()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(text, host))
-                frage.erwartet?.let {
-                    Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
-                    Text(fingerabdruckLesbar(it), fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                // Was abzutippen ist, steht nicht da: Sonst schriebe man es vom Bildschirm
-                // eines Angreifers ab statt aus der Webapp. Der Anfang zeigt nur, welche Zeile.
-                Text(stringResource(if (abschreiben) R.string.zert_beginnt_mit else R.string.zert_fingerabdruck),
-                    style = MaterialTheme.typography.labelMedium)
-                Text(if (abschreiben) fingerabdruckAnfang(frage.fingerabdruck) else fingerabdruckLesbar(frage.fingerabdruck),
-                    fontFamily = FontFamily.Monospace,
-                    // Ohne Abtippen ist der Vergleich die ganze Prüfung: gross genug zum Lesen.
-                    style = if (abschreiben) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,
-                    color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                FingerabdruckAnzeige(frage, abschreiben, geaendert)
                 if (abschreiben) {
                     Fingerabdruckfeld(
                         eingabe = eingabe,
@@ -115,6 +101,26 @@ private fun ZertifikatFrageDialog(
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
+}
+
+/** Bisheriger und neuer Fingerabdruck; beim Abtippen nur der Anfang. */
+@Composable
+private fun FingerabdruckAnzeige(frage: ZertifikatUngeklaert, abschreiben: Boolean, geaendert: Boolean) {
+    frage.erwartet?.let {
+        Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
+        Text(fingerabdruckLesbar(it), fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    // Was abzutippen ist, steht nicht da: Sonst schriebe man es vom Bildschirm
+    // eines Angreifers ab statt aus der Webapp. Der Anfang zeigt nur, welche Zeile.
+    Text(stringResource(if (abschreiben) R.string.zert_beginnt_mit else R.string.zert_fingerabdruck),
+        style = MaterialTheme.typography.labelMedium)
+    Text(if (abschreiben) fingerabdruckAnfang(frage.fingerabdruck) else fingerabdruckLesbar(frage.fingerabdruck),
+        fontFamily = FontFamily.Monospace,
+        // Ohne Abtippen ist der Vergleich die ganze Prüfung: gross genug zum Lesen.
+        style = if (abschreiben) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,
+        color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
 }
 
 /**

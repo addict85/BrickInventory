@@ -239,7 +239,11 @@ test('signiert wird in eigenen Jobs ohne Projektcode, geprüft und veröffentlic
   assert.match(apk, /run-id: \$\{\{ inputs\.lauf \|\| github\.run_id \}\}/, 'das Artefakt kommt aus dem Baulauf');
   assert.match(jobIn('android-signieren.yml', 'beschreibung'), /name: apk-signiert\n/);
   // Der APK-Schlüssel signiert nur noch APK und Bundle, die Beschreibung gilt sieben Tage.
-  assert.doesNotMatch(ohneKommentar(apk), /openssl pkcs12|-exportcert|version\.sig/, 'kein PEM-Export des APK-Schlüssels');
+  assert.doesNotMatch(
+    ohneKommentar(apk),
+    /openssl pkcs12|-exportcert|version\.sig/,
+    'kein PEM-Export des APK-Schlüssels',
+  );
   assert.match(schrittIn(apk, 'Signieren'), /\$\(\(AUSGESTELLT \+ 7 \* 86400\)\)/, 'die Beschreibung gilt sieben Tage');
   assert.doesNotMatch(
     ohneKommentar(jobIn('android-signieren.yml', 'beschreibung')),
