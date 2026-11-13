@@ -341,7 +341,7 @@ function bezugsLegende(eintraege, W, f) {
       const b = start + oben + 12 * f,
         x = 4 + 22 * f;
       const tspans = zeilen.map((z, i) => (i ? html`<tspan x="${x}" dy="${14 * f}">${z}</tspan>` : z));
-      return html`<g class="bezug-legende"><line x1="4" y1="${(b - 4 * f).toFixed(1)}" x2="${4 + 16 * f}" y2="${(b - 4 * f).toFixed(1)}" stroke="${e.farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
+      return html`<g data-legende="bezug"><line x1="4" y1="${(b - 4 * f).toFixed(1)}" x2="${4 + 16 * f}" y2="${(b - 4 * f).toFixed(1)}" stroke="${e.farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
       <text x="${x}" y="${b.toFixed(1)}" font-size="${12 * f}" font-weight="600" fill="var(--txt)" font-family="inherit">${tspans}</text></g>`;
     });
   return { hoehe: teile.length ? y + 6 * f : 0, svg };

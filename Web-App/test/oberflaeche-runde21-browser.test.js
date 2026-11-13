@@ -125,7 +125,7 @@ async function bezugslinieSchmal(_t, a) {
     await ruhig();
     const d = await b.auswerten(`(() => { const s = document.querySelector('#portfolio-chart svg.diagramm-wert');
       const flaeche = s.querySelector('polyline').getBoundingClientRect();
-      const leg = s.querySelector('.bezug-legende text');
+      const leg = s.querySelector('[data-legende="bezug"] text');
       return { imBild: [...s.querySelectorAll('.einstand-linie text')].map(t => t.textContent),
         legende: leg?.textContent.replace(/\\s+/g, ' ') ?? '', legOben: leg?.getBoundingClientRect().top ?? 0,
         flaecheUnten: flaeche.bottom }; })()`);
