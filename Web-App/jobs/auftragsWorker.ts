@@ -74,12 +74,10 @@ function fortschrittsKette(a: AuftragsZeile, ac: AbortController, fristSek: numb
   let kette: Promise<boolean> = Promise.resolve(true);
   return (f: Fortschritt): Promise<boolean> => {
     const melde = () => setzeFortschritt(a, f, fristSek);
-    kette = kette
-      .then(melde, melde)
-      .then(ok => {
-        if (!ok && !ac.signal.aborted) ac.abort(new AuftragVerloren());
-        return ok;
-      });
+    kette = kette.then(melde, melde).then(ok => {
+      if (!ok && !ac.signal.aborted) ac.abort(new AuftragVerloren());
+      return ok;
+    });
     return kette;
   };
 }
