@@ -20,4 +20,7 @@ dependencies {
     implementation(libs.androidx.biometric)
 
     testImplementation(project(":core-testing"))
+    // GeheimeZwischenablageTest liest die Zwischenablage unter Robolectric.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
 }

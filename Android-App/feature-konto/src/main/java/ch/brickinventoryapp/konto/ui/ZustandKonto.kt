@@ -2,7 +2,6 @@ package ch.brickinventoryapp.konto.ui
 
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
 import ch.brickinventoryapp.model.ui.model.CsvImportArt
 import ch.brickinventoryapp.model.ui.model.GeraetAnsicht

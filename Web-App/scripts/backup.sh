@@ -15,7 +15,7 @@
 #   ./scripts/backup.sh /pfad/zum/ziel   → dorthin
 #
 # Cron-Beispiel (täglich um 3 Uhr, in der crontab von root – der Dienst schreibt
-# nur für sich lesbar, siehe UPGRADE.md Abschnitt 39):
+# nur für sich lesbar, siehe UPGRADE.md#backup-vollstaendig):
 #   0 3 * * * cd /opt/brickinventory && ./scripts/backup.sh >> backup.log 2>&1
 #
 # Eine Sicherung ist ein GEHEIMNIS: Der Dump enthält alle Passwort-Hashes und,
@@ -33,7 +33,7 @@
 # oder BACKUP_AGE_EMPFAENGER. Es entstehen nur *.age-Dateien; den privaten
 # Schlüssel braucht erst restore.sh (BACKUP_AGE_IDENTITAET), er gehört nicht
 # auf diesen Rechner. Ohne Empfänger sichert das Skript nichts, ausser mit
-# ausdrücklichem BACKUP_KLARTEXT=ja (UPGRADE.md, Abschnitt 33).
+# ausdrücklichem BACKUP_KLARTEXT=ja (UPGRADE.md#backup-empfaenger).
 set -eu
 umask 077
 
@@ -53,7 +53,7 @@ elif [ "${BACKUP_KLARTEXT:-}" = ja ]; then
 else
   echo "[backup] FEHLER: kein Empfänger für die Verschlüsselung — nichts gesichert." >&2
   echo "[backup]   Auf einem ANDEREN Rechner: age-keygen -o backup-schluessel.txt; den öffentlichen" >&2
-  echo "[backup]   Schlüssel (age1…) hier in ./backup-empfaenger.txt eintragen (UPGRADE.md, Abschnitt 33)." >&2
+  echo "[backup]   Schlüssel (age1…) hier in ./backup-empfaenger.txt eintragen (UPGRADE.md#backup-empfaenger)." >&2
   echo "[backup]   Unverschlüsselt nur ausdrücklich: BACKUP_KLARTEXT=ja" >&2
   exit 1
 fi
@@ -85,7 +85,7 @@ if [ -d data ]; then
                 | while IFS= read -r f; do [ -r "$f" ] || { echo "$f"; break; }; done; sed -n 1p "$KLAR/find"; } | sed -n 1p)
   if [ -n "$UNLESBAR" ]; then
     echo "[backup] FEHLER: data/ ist nicht vollständig lesbar ($UNLESBAR) — nichts gesichert." >&2
-    echo "[backup]   Als root oder mit der UID des Dienstes ausführen (UPGRADE.md, Abschnitt 39)." >&2
+    echo "[backup]   Als root oder mit der UID des Dienstes ausführen (UPGRADE.md#backup-vollstaendig)." >&2
     exit 1
   fi
 fi
@@ -116,21 +116,21 @@ echo "[backup] Datenbank → $DB_DATEI"
 # Anmeldezähler, Protokollzeilen und die Kopien vor Migrationen braucht keine
 # Wiederherstellung; im Dump lebten sie nur länger als ihre Frist.
 DUMP_OPTIONEN="--clean --if-exists --exclude-table-data=user_sessions --exclude-table-data=rate_limit_attempts --exclude-table-data=app_logs --exclude-schema=vor_migration_*"
-mkfifo "$KLAR/strom"
-tail -c 1024 < "$KLAR/strom" > "$KLAR/ende" &
 TEIL="$DB_DATEI.teil"
 # Die Optionen getrennt an Leerzeichen, aber ohne Dateinamen-Muster (das * gilt pg_dump).
+# awk reicht den Dump durch und behält nur die letzten Zeilen für die Endmarke:
+# keine benannte Pipe mit Hintergrundprozess, deren Öffnen ewig warten kann.
 set -f
 docker compose exec -T "$DB_SERVICE" \
   pg_dump $DUMP_OPTIONEN -U "$DB_USER" "$DB_NAME" \
-  | tee "$KLAR/strom" | gzip | schreibe "$TEIL"
+  | awk -v ende="$KLAR/ende" '{ print; z[NR % 5] = $0 } END { for (i = NR - 4; i <= NR; i++) if (i > 0) print z[i % 5] > ende }' \
+  | gzip | schreibe "$TEIL"
 set +f
-wait
 
 # POSIX-sh hat kein pipefail: Scheitert pg_dump, laufen gzip und age trotzdem
 # durch. Ein vollständiger Dump endet immer mit dieser Marke; fehlt sie, räumt
 # der trap die halbe Datei weg.
-if ! tail -n 5 "$KLAR/ende" | grep -q 'PostgreSQL database dump complete'; then
+if ! grep -q 'PostgreSQL database dump complete' "$KLAR/ende" 2>/dev/null; then
   echo "[backup] FEHLER: Dump ist unvollständig (Endmarke fehlt) — nichts gesichert." >&2
   exit 1
 fi

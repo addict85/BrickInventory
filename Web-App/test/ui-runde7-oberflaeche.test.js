@@ -18,6 +18,9 @@
  *   I  (05.11.2026, UI-Prüfung 17 M5) Rückfrage vor dem Währungswechsel aus
  *      speichereWaehrung entfernt → rot: „Konto: Währung wirkt sofort“ (kein
  *      Dialog mit „Marktpreise“)
+ *   J  (12.11.2026, UX-Prüfung 19 M3: Zeitplanfelder jetzt in den
+ *      Einstellungen) in saveJobTime die Prüfung auf HH:MM entfernt → rot:
+ *      „Hintergrundarbeiten“ (aria-invalid fehlt)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -225,7 +228,10 @@ test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in
     assert.deepEqual(koepfe, ['Art', 'Offen', 'Läuft', 'Fehlgeschlagen', 'Nächster Lauf', 'Aktionen']);
     assert.ok(d.querySelector('#auftraege-karte tbody tr .fehler-kasten'), 'Fehler nicht in der Zeile seines Auftrags');
     assert.equal(d.querySelectorAll('#tab-monitor h1, #tab-monitor h2').length, 5);
-    const zeit = d.querySelector('#monitor-content input.mon-zeit');
+    assert.match(text(d.querySelector('#monitor-content .mon-plan')), /03:00/);
+    await reiter(w, 'settings');
+    await warte(() => d.querySelector('#einst-zeitplaene input.mon-zeit'));
+    const zeit = d.querySelector('#einst-zeitplaene input.mon-zeit');
     assert.equal(zeit.type, 'text');
     zeit.value = '3:5';
     zeit.dispatchEvent(new w.Event('change', { bubbles: true }));

@@ -1,0 +1,16 @@
+Gegenprobe: Eine abgelehnte Bearbeitung wird entfernt, ohne sie festzuhalten
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.AusgangAbgleichTest
+Rot: eine Ablehnung verwirft und hält sie fest
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
+@@ -140,7 +140,6 @@
+ 
+     private suspend fun verwirf(bereich: String, p: Ausgangsposten, meldung: String, code: Int?, betroffen: MutableSet<Bestandsart>) {
+         // Erst festhalten, dann entfernen: Stirbt der Prozess dazwischen, bleibt der Hinweis.
+-        ausgang.merkeVerworfen(bereich, VerworfenerPosten(p.schluessel.ifBlank { "posten-${p.id}" }, p.bearbeitung.ziel, meldung, code))
+         ausgang.entferne(p.id)
+         // Die lokale Liste trägt die Bearbeitung noch; neu laden stellt den Serverstand her.
+         betroffen += p.bearbeitung.art

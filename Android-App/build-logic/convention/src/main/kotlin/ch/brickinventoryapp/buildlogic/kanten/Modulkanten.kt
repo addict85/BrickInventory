@@ -33,6 +33,16 @@ object Modulkanten {
         "core-testing" to setOf("core-zustand", "core-sitzung", "core-data", "core-sicherheit", "core-offline"),
     )
 
+    /**
+     * Netz und Tresor liegen unter dem Zustand; ein Bereich kennt sie nur, wenn er selbst
+     * Server und Zertifikate prüft (Anmeldung) oder Adressen des Servers auflöst.
+     */
+    val tiefeKerne: Map<String, Set<String>> = mapOf(
+        "core-netz" to setOf("feature-anmeldung", "feature-finanzen", "feature-katalog", "feature-sammlung"),
+        "core-sicherheit" to setOf("feature-anmeldung"),
+        "core-offline" to emptySet(),
+    )
+
     /** Die Verstösse unter [kanten], je einer als Satz; leer, wenn alle erlaubt sind. */
     fun verstoesse(kanten: Collection<Modulkante>): List<String> = kanten.mapNotNull { k ->
         when {
@@ -42,6 +52,8 @@ object Modulkanten {
             k.nurTest -> null
             k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
             k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
+            k.von.startsWith("feature-") && k.nach in tiefeKerne && k.von !in tiefeKerne.getValue(k.nach) ->
+                "${k.von} hängt an ${k.nach}, das unter dem Zustand liegt"
             k.von.startsWith("core-") && k.nach !in kerne[k.von].orEmpty() ->
                 "Schichtung der Kernmodule: ${k.von} hängt an ${k.nach}" +
                     if (k.von in kerne) "" else " (${k.von} hat keine Regel in Modulkanten.kerne)"

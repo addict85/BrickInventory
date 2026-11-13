@@ -2,7 +2,13 @@ package ch.brickinventoryapp.finanzen.ui
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
-import ch.brickinventoryapp.model.ui.model.*
+import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
+import ch.brickinventoryapp.model.ui.model.DiagrammAchse
+import ch.brickinventoryapp.model.ui.model.DiagrammPunkt
+import ch.brickinventoryapp.model.ui.model.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
+import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
+import ch.brickinventoryapp.model.ui.model.TeileBewertungAnsicht
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**

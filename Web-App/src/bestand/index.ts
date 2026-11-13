@@ -19,7 +19,7 @@ export {
 export { run } from './kaufpreisNachtrag';
 export { normalisiereLagerort, ortFuerNeuerfassung, orteFuer, setzeLagerort, vorgabeVon } from './lagerort';
 export { mengenwunsch, passeManuelleMengeAn } from './manuelleMenge';
-export { legeInPapierkorb, raeumePapierkorbAuf } from './papierkorb';
+export { legeInPapierkorb, legeKaeufeInPapierkorb, raeumePapierkorbAuf } from './papierkorb';
 export { acquisitionTotals, erfassungenInKontowaehrung } from './acquisitions';
 export { verwendendeSets } from './gemeinsam';
 export { getStats } from './kennzahlen';

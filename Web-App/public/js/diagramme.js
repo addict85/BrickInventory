@@ -4,8 +4,8 @@ import { CURRENCY } from './zustand.js';
 import { G, setzeHtml } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
 import { detailZeile, pnlBadge } from './bausteine.js';
-import { locale, t, tRaw } from '../i18n.js';
-import { esc, html, ungeprueft } from './escapen.js';
+import { LANG, locale, t, tRaw } from '../i18n.js';
+import { esc, html, ungeprueft, verbinde } from './escapen.js';
 import { fadenkreuzTeile } from './fadenkreuz.js';
 
 /**
@@ -25,18 +25,18 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
       const d = ph?.by_condition?.[c];
       return d ? [{ c, d }] : [];
     }).map(({ c, d }) => {
-      const wert = d.market_price != null ? esc(fmtN(d.market_price, CURRENCY)) : esc(tRaw('detail.kein_marktpreis'));
+      const wert = d.market_price != null ? fmtN(d.market_price, CURRENCY) : tRaw('detail.kein_marktpreis');
       const pnl = pnlBadge(d.pnl_pct, d.purchase_price);
       const bezug =
         pnl && d.pnl_pct != null && !/pnl-geschenk/.test(String(pnl))
           ? html` <span class="wk-bezug">${tRaw('detail.zum_kaufpreis')}</span>`
           : '';
-      return html`${html`<div class="wk-zeile"><span class="wk-label">${t('detail.market_price')} · ${LABEL[c]}</span>`}${html`<span class="wk-wert${d.market_price != null ? ' preis' : ''}">${ungeprueft(wert)}</span>${pnl ? html`<span class="wk-guv">${pnl}${bezug}</span>` : ''}</div>`}`;
+      return html`${html`<div class="wk-zeile"><span class="wk-label">${t('detail.market_price')} · ${LABEL[c]}</span>`}${html`<span class="wk-wert${d.market_price != null ? ' preis' : ''}">${wert}</span>${pnl ? html`<span class="wk-guv">${pnl}${bezug}</span>` : ''}</div>`}`;
     });
     setzeHtml(
       el,
-      teile.join('')
-        ? ungeprueft(teile.join(''))
+      teile.length
+        ? verbinde(teile)
         : html`<div class="wk-zeile"><span class="wk-label">${t('detail.market_price')}</span><span class="wk-wert text-mut">${tRaw('detail.kein_marktpreis')}</span></div>`,
     );
     return;
@@ -54,7 +54,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
       wertStil: 'display:flex;align-items:center;gap:8px',
     });
   });
-  setzeHtml(el, ungeprueft(rows.join('')));
+  setzeHtml(el, verbinde(rows));
 }
 
 /**
@@ -149,8 +149,9 @@ export function zeitpunkt(s) {
 }
 
 /**
- * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem Tag, Tage bis drei Monate („29.
- * Okt.“), darüber Monate („Nov. 25“).
+ * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem Tag, Tage bis drei Monate, darüber
+ * Monate („Nov. 2025“). Tage auf Deutsch in Ziffern wie jedes Datum im Text („13.09.“ zu „13.09.2026“);
+ * „13. Sept.“ daneben las sich wie ein zweites Format. Englisch mit Monatsnamen wie fmtDatum.
  * @param {number} von @param {number} bis  Millisekunden
  * @param {number} maxStriche
  * @returns {{ t: number, text: string }[]}
@@ -167,7 +168,7 @@ export function zeitTeilung(von, bis, maxStriche) {
     for (let t = Math.ceil(von / (h * 36e5)) * h * 36e5; t <= bis; t += h * 36e5) raus.push({ t, text: f.format(t) });
   } else if (spanne <= 92 * TAG) {
     const n = [1, 2, 7, 14].find(x => spanne / (x * TAG) <= max) ?? 14;
-    const f = fmt({ day: 'numeric', month: 'short' });
+    const f = fmt(LANG === 'en' ? { day: 'numeric', month: 'short' } : { day: '2-digit', month: '2-digit' });
     const d = new Date(von);
     d.setHours(0, 0, 0, 0);
     if (d.getTime() < von) d.setDate(d.getDate() + 1);

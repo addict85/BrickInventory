@@ -39,6 +39,10 @@ import ch.brickinventoryapp.testing.Quellen
  *   bereich-oeffentlich        qrWechseltServer ohne internal → rot „die oeffentliche Flaeche der Bereiche …“
  *   erfassung-an-der-activity  ErfassungViewModel wieder per `by viewModels()` in MainActivity
  *                              → rot „die Activity haelt nicht mehr ViewModels …“
+ *   padding-feste-zahl         DetailRow2 wieder `padding(vertical = 5.dp)` → rot „feste Zahlen in padding …“
+ *   string-format-ohne-locale  MonitoringScreen wieder `String.format(fmt, sn)` → rot „kein String-format …“
+ *   laden-im-bildschirm        SetDetailScreen lädt wieder per LaunchedEffect(setNumber)
+ *                              → rot „Bildschirme stossen das Laden nicht …“
  */
 class QuelltextRatscheTest {
 
@@ -78,7 +82,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 215
+        val FUNKTIONEN = 212
         val NUR_QUELLTEXT = 35
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
@@ -459,7 +463,7 @@ class QuelltextRatscheTest {
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene, über core-data und
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         // Darin UPDATE_ORDNER: öffentlich, weil core-data und core-update ihn teilen.
-        val GRENZE = 228
+        val GRENZE = 223
         val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-sitzung", "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
         assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
@@ -476,6 +480,30 @@ class QuelltextRatscheTest {
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen der Bereiche", GRENZE, oeffentlich(module, 100),
             "Was nur der Bereich braucht, wird internal.")
+    }
+
+    /** Alle Kotlin-Dateien unter src/main, ohne Kommentare und Zeichenketten. */
+    private fun hauptcode(): List<Pair<File, String>> = Quellen.module.map { File(it, "src/main") }.filter { it.isDirectory }
+        .flatMap { d -> d.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
+        .map { it to code(it.readText()) }
+
+    @Test
+    fun `feste Zahlen in padding werden nicht mehr`() {
+        // Abstände haben Namen (ui/theme/Abstaende); ein blankes `padding(… 14.dp)` hält sich
+        // an keine Skala, und zwei Karten nebeneinander stehen verschieden weit ein.
+        val GRENZE = 57
+        val fest = Regex("""\bpadding\([^()]*?\b\d+(?:\.\d+)?\.dp""")
+        val zahl = hauptcode().sumOf { (_, text) -> fest.findAll(text).count() }
+        ratsche("padding mit fester dp-Zahl", GRENZE, zahl, "Einen Abstand aus Abstaende nehmen.")
+    }
+
+    @Test
+    fun `kein String-format ohne Locale`() {
+        // Ohne Locale formatiert String.format nach dem Gerät, nicht nach der Sprache der App;
+        // stringResource(id, …) oder appNumberLocale() nennen sie ausdrücklich.
+        val ohne = Regex("""\bString\.format\(\s*(?!Locale|appNumberLocale|locale\b|java\.util\.Locale)""")
+        val stellen = hauptcode().filter { (_, text) -> ohne.containsMatchIn(text) }.map { it.first.name }
+        assertEquals("String.format ohne Locale in $stellen", emptyList<String>(), stellen)
     }
 
     @Test
@@ -508,7 +536,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 219
+        val HAUPT = 207
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->
@@ -521,5 +549,20 @@ class QuelltextRatscheTest {
         assertTrue("Keine voll qualifizierten Namen gefunden — greift das Muster noch?", haupt + tests > 0)
         ratsche("voll qualifizierte Namen im Hauptcode", HAUPT, haupt)
         ratsche("voll qualifizierte Namen in Tests", TESTS, tests)
+    }
+
+    @Test
+    fun `Bildschirme stossen das Laden nicht per LaunchedEffect an`() {
+        // Ziel 0: Das ViewModel lädt selbst (init, ladeBeimBeobachten); der Bildschirm ruft
+        // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
+        val LADEND = 17
+        val effekt = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
+        val lader = Regex("""\b(?:lade|load)[A-Z]\w*\s*\(""")
+        val funde = produktivDateien().flatMap { f ->
+            effekt.findAll(code(f.readText())).filter { lader.containsMatchIn(it.groupValues[1]) }.map { f.name }.toList()
+        }
+        assertTrue("Kein LaunchedEffect gefunden — greift das Muster noch?",
+            produktivDateien().any { "LaunchedEffect(" in it.readText() })
+        ratsche("LaunchedEffect, die laden", LADEND, funde.size, funde.joinToString())
     }
 }

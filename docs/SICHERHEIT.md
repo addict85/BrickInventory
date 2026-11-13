@@ -548,7 +548,8 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
   Frischefenster gegen alte Fassungen. Restrisiko: Der Signierschlüssel liegt
   als Secret in einem GitHub-Environment; wer ihn dort erbeutet, kann Updates
   signieren.
-- **Beschreibungsschlüssel noch leer**: Solange in der App kein
-  Beschreibungsschlüssel eingerichtet ist, gilt als Übergangsweg das Zertifikat
-  der installierten App; die Trennung von APK- und Beschreibungsschlüssel
-  greift erst mit der Einrichtung.
+- **Beschreibungsschlüssel**: Die App nimmt eine Fassungsbeschreibung nur mit der
+  Signatur des eigenen Beschreibungsschlüssels an; der frühere Übergangsweg über
+  das Zertifikat der installierten App ist entfernt (12.11.2026). Die Beschreibung
+  gilt sieben Tage; danach meldet die App sie als veraltet, bis ein neues Etikett
+  sie auffrischt.

@@ -3,6 +3,7 @@
  * gelten darf er nur, solange ein Widerruf ihn sicher erreicht. */
 import type { TokenScope } from './repository/zugaenge';
 import { kontoBereich } from './prozess';
+import { meldeZugangsAenderung } from './zugangsAenderung';
 
 /** Typisiert, weil ein vertippter Feldname `undefined` liefert und das in einer
  * Sicherheitsprüfung still als „nein" durchgeht. */
@@ -40,6 +41,7 @@ let _stand = 0;
 function leere(): void {
   _tokenCache.clear();
   _stand++;
+  meldeZugangsAenderung();
 }
 
 function _pruneCache() {
@@ -76,6 +78,7 @@ export function invalidateToken(token: string | null | undefined): void {
   if (!token) return;
   _tokenCache.delete(token);
   _stand++;
+  meldeZugangsAenderung();
   meldeWiderruf();
 }
 

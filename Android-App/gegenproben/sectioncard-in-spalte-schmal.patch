@@ -1,0 +1,17 @@
+Gegenprobe: Die Abschnittskarte bleibt auch in einer Tablet-Spalte auf Lesebreite, mittig mit leerem Rand
+Modul: core-ui-bestand
+Test: ch.brickinventoryapp.gemeinsam.SectionCardBreiteTest
+Rot: in einer Spalte nimmt die Karte die volle Breite
+
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+@@ -86,7 +86,7 @@
+     // Die Karte begrenzt die Breite, nicht jedes Element darin: Sonst endeten Werte, Felder
+     // und Knöpfe auf dem Tablet an verschiedenen Stellen mitten in der Karte. In einer
+     // Spalte ist die Spalte die Grenze; schmaler stand die Karte mittig in einem Rand.
+-    val breite = if (LocalSpaltenkarte.current) Modifier.fillMaxWidth() else Modifier.mittigBis(Lesebreite.formular)
++    val breite = Modifier.mittigBis(Lesebreite.formular)
+     AppKarte(breite
+         .then(if (aussenAbstand) Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.winzig) else Modifier)) {
+         Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel)) {

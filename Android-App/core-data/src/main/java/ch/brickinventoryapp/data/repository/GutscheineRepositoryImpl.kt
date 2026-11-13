@@ -3,7 +3,16 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.model.data.model.GenericResponse
+import ch.brickinventoryapp.model.data.model.GuthabenAntwort
+import ch.brickinventoryapp.model.data.model.Gutschein
+import ch.brickinventoryapp.model.data.model.GutscheinAntwort
+import ch.brickinventoryapp.model.data.model.GutscheinKlartext
+import ch.brickinventoryapp.model.data.model.GutscheinListe
+import ch.brickinventoryapp.model.data.model.GutscheinPdfFreigabe
+import ch.brickinventoryapp.model.data.model.GutscheinRequest
+import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody

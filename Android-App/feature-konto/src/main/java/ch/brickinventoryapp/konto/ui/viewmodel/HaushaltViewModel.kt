@@ -22,6 +22,7 @@ import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
 /**
  * Der Haushalt: Konten verknüpfen, Einladungen, Lösen.
@@ -52,7 +53,11 @@ class HaushaltViewModel @Inject constructor(
     private val _householdState = MutableStateFlow(HouseholdUiState())
     val householdState: StateFlow<HouseholdUiState> = _householdState.asStateFlow()
 
-    fun loadHouseholdStatus() {
+    init {
+        ladeBeimBeobachten(_householdState) { ladeHaushalt() }
+    }
+
+    fun ladeHaushalt() {
         pruefeZweitenFaktor()
         viewModelScope.launch {
             _householdState.update { it.copy(isLoading = true, message = null) }
@@ -134,7 +139,7 @@ class HaushaltViewModel @Inject constructor(
     fun verwerfeGetrenntesKonto(subUserId: Int) {
         viewModelScope.launch {
             when (val r = haushalt.verwerfeGetrenntesKonto(subUserId)) {
-                is Ergebnis.Success -> loadHouseholdStatus()
+                is Ergebnis.Success -> ladeHaushalt()
                 is Ergebnis.Error -> _householdState.update { it.copy(message = meldungen.meldung(r)) }
             }
         }
@@ -142,7 +147,7 @@ class HaushaltViewModel @Inject constructor(
 
     /** Neue Konten im Haushalt: Status, Kontofilter und — beim Lösen — der sichtbare Bestand. */
     private suspend fun kontenGeaendert(bestandGeaendert: Boolean) {
-        loadHouseholdStatus()
+        ladeHaushalt()
         filter.ladeMitglieder()
         if (bestandGeaendert) abgleich.bestand()
     }

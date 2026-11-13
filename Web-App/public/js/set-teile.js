@@ -1,7 +1,7 @@
 import { vergissManItem } from './manuell-detail.js';
 import { detailZeile, ladeAnzeige, zeilenKnopf } from './bausteine.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { escHex, escJs, esc, html, ungeprueft } from './escapen.js';
+import { escHex, escJs, esc, html, ungeprueft, verbinde } from './escapen.js';
 import { api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './bilder.js';
 import { ico, G, setzeHtml } from './dom.js';
@@ -132,7 +132,7 @@ export async function openSetItemDetail(type, id, colorId) {
     }),
   );
 
-  setzeHtml(bodyEl, ungeprueft(zeilen.join('')));
+  setzeHtml(bodyEl, verbinde(zeilen));
 }
 
 /**

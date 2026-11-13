@@ -26,10 +26,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.katalog.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.NoppenReihe
 import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf

@@ -103,7 +103,7 @@ class BeispieldatenTest {
         val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
         val finanzen = welt.finanzen().also { it.loadValuation() }
         val merkliste = welt.merkliste().also { it.ladeMerkliste() }
-        val detail = welt.setDetail().also { it.loadSetDetail(Beispiele.SET) }
+        val detail = welt.setDetail()
         da("Galerie") { galerie.galleryState.value.sets.size == 3 }
         da("Teile") { teile.partsState.value.parts.isNotEmpty() }
         da("Figuren") { teile.partsState.value.minifigs.isNotEmpty() }
@@ -133,7 +133,7 @@ class BeispieldatenTest {
     @Test
     fun `die Beispiele sind stimmig`() {
         val finanzen = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-        val detail = welt.setDetail().also { it.ladeAlles() }
+        val detail = welt.setDetail()
         da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() } }
         da("Detail") { detail.setDetailState.value.let { it.setPrice != null && it.acquisitions.isNotEmpty() } }
         val falcon = finanzen.financeState.value.valuation!!.sets.first { it.setNumber == Beispiele.SET }

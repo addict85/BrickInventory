@@ -38,7 +38,9 @@ private class GeraeteZugang(private val prefs: Tokenspiegel) : Zugangslage {
     // Immer warten, nicht nur ohne Spiegelwert: Erst danach ist auch der alte
     // Stand der Nutzer-CAs zurückgesetzt. Nach dem Kaltstart kehrt es sofort zurück.
     private fun bereit() = prefs.warteAufStart()
-    override fun serverUrl(): String { bereit(); return prefs.serverUrlState.value.orEmpty() }
+    // Eine QR-Kopplung spricht schon den neuen Server an; der Token bleibt an seine
+    // Herkunft gebunden und geht dorthin nicht mit (ServerWaechter.setzeKoepfe).
+    override fun serverUrl(): String { bereit(); return prefs.kopplungszielState.value ?: prefs.serverUrlState.value.orEmpty() }
     override fun token(): String { bereit(); return prefs.authTokenState.value.orEmpty() }
     override fun tokenHerkunft(): String? { bereit(); return prefs.tokenHerkunftState.value }
     override fun generation(): Long { bereit(); return prefs.tokenGeneration() }
@@ -86,7 +88,7 @@ private fun serverVertrauen(prefs: Netzablagen, frage: ZertifikatsFrage): PinVer
             nutzerErlaubt = { prefs.vertrauen.nutzerCaErlaubt() },
         ),
         pins = prefs.vertrauen,
-        eigenerServer = { pinSchluessel(prefs.token.serverUrlState.value.orEmpty()) },
+        eigenerServer = { pinSchluessel(prefs.token.kopplungszielState.value ?: prefs.token.serverUrlState.value.orEmpty()) },
         frage = frage,
         fremdeHosts = system,
     ).also { gemeinsamesVertrauen = it }

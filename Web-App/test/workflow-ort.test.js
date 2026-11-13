@@ -223,12 +223,27 @@ test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden 
 });
 
 // Renovate liest nur die renovate.json im Wurzelverzeichnis; eine zweite unter Web-App/
-// bliebe ohne Wirkung. Gegenproben (02.11.2026 gemessen): `npm` aus
-// enabledManagers gestrichen → rot; eine leere renovate.json unter Web-App/ angelegt → rot;
-// minimumReleaseAge gestrichen → rot (npm und gradle ohne Wartezeit).
+// bliebe ohne Wirkung, Dependabot daneben öffnete jede Aktualisierung doppelt.
+// Gegenproben (02.11.2026 gemessen): `npm` aus enabledManagers gestrichen → rot; eine leere
+// renovate.json unter Web-App/ angelegt → rot; minimumReleaseAge gestrichen → rot.
+// Gegenproben (12.11.2026): prConcurrentLimit gestrichen → rot „begrenzt“; eine Dependabot-
+// Konfiguration angelegt → rot „nur ein Werkzeug“; `gradle` aus enabledManagers → rot.
 test('Renovate pflegt npm der Web-App aus der Wurzel-Konfiguration', () => {
   const konf = JSON.parse(fs.readFileSync(path.join(WURZEL, 'renovate.json'), 'utf8'));
   assert.ok(konf.enabledManagers.includes('npm'), 'Die npm-Pakete der Web-App hält niemand aktuell');
+  // Alle vier Quellen wöchentlich, gruppiert und mit begrenzter Zahl offener PRs.
+  for (const m of ['npm', 'github-actions', 'dockerfile', 'docker-compose', 'gradle', 'gradle-wrapper'])
+    assert.ok(konf.enabledManagers.includes(m), `${m}: hält niemand aktuell`);
+  assert.match(String(konf.schedule), /on monday/, 'wöchentlich');
+  assert.ok(konf.prConcurrentLimit > 0 && konf.prConcurrentLimit <= 5, 'offene PRs begrenzt');
+  assert.ok(
+    konf.packageRules.some(r => r.groupName && r.matchUpdateTypes?.includes('minor')),
+    'gruppiert',
+  );
+  assert.ok(
+    !fs.existsSync(path.join(WURZEL, '.github', 'dependabot.yml')),
+    'nur ein Werkzeug: Dependabot neben Renovate öffnete jede Aktualisierung doppelt',
+  );
   assert.ok(
     konf.packageRules.some(r => r.matchManagers?.includes('npm') && r.matchPackageNames?.includes('pdfjs-dist')),
     'Die Regel für die eingecheckte PDF.js-Kopie fehlt',

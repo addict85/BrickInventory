@@ -383,6 +383,10 @@ export const FEHLER = {
   },
   job_id_ungueltig: { de: 'Ungültige Job-ID', en: 'Invalid job ID' },
   job_nicht_gefunden: { de: 'Job nicht gefunden oder abgelaufen', en: 'Job not found, or it has expired' },
+  zugang_beendet: {
+    de: 'Der Zugang wurde beendet (abgemeldet oder widerrufen).',
+    en: 'Access has ended (signed out or revoked).',
+  },
   unbekannter_job: { de: 'Unbekannter Job', en: 'Unknown job' },
   auftrag_nicht_aenderbar: {
     de: 'Diesen Auftrag gibt es nicht oder er ist schon beendet',

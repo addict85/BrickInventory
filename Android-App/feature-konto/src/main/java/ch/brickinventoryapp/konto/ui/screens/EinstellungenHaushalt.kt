@@ -1,9 +1,10 @@
 package ch.brickinventoryapp.konto.ui.screens
 
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import java.text.SimpleDateFormat
-import java.util.Date
+import ch.brickinventoryapp.model.util.DatumJahr
+import ch.brickinventoryapp.model.util.fmtStand
+import ch.brickinventoryapp.ui.util.appNumberLocale
+import ch.brickinventoryapp.ui.util.vierundzwanzigStunden
 import androidx.compose.material.icons.filled.Share
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
@@ -25,10 +26,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.ui.beschreibung
+import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.components.Rueckfrage
@@ -37,7 +36,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.konto.ui.HouseholdUiState
 import ch.brickinventoryapp.ui.components.ErklaerText
-import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
 
 /**
  * Haushalt: verknüpfte Konten, Konto einladen, Einladung annehmen — drei Abschnitte
@@ -156,7 +155,7 @@ internal fun HouseholdCard(
             )
             state.inviteGueltigBis?.let { bis ->
                 Text(stringResource(R.string.household_invite_gueltig_bis,
-                        SimpleDateFormat("dd.MM. HH:mm", LocalConfiguration.current.locales[0]).format(Date(bis))),
+                        fmtStand(bis, appNumberLocale(), vierundzwanzig = vierundzwanzigStunden(), jahr = DatumJahr.OHNE)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // Der Code gehört auf ein anderes Gerät: teilen wie kopieren, beide gleich gewichtet.

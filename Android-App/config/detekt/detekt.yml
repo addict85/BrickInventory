@@ -72,8 +72,24 @@ style:
     # über rund 1100 Zeilen brächte nur Rauschen in jeden Diff.
     active: false
   WildcardImport:
-    # Stern-Importe für die Compose-Pakete sind Projektstil.
-    active: false
+    # Stern-Importe nur für AndroidX-Bausteinpakete, aus denen ein Bildschirm dutzende
+    # Namen holt; eigene Pakete einzeln, damit ein Import das Modul verrät. Die zwei
+    # ausgenommenen Dateien folgen, sobald sie ohnehin angefasst werden.
+    active: true
+    excludeImports:
+      - 'androidx.compose.material3.*'
+      - 'androidx.compose.foundation.layout.*'
+      - 'androidx.compose.runtime.*'
+      - 'androidx.compose.material.icons.filled.*'
+      - 'androidx.compose.foundation.lazy.grid.*'
+      - 'androidx.compose.ui.text.input.*'
+      - 'androidx.compose.animation.core.*'
+      - 'androidx.compose.ui.unit.*'
+      - 'androidx.compose.ui.text.*'
+      - 'androidx.compose.ui.graphics.*'
+      - 'androidx.navigation.compose.*'
+      - 'androidx.camera.core.*'
+    excludes: ['**/gemeinsam/ui/SetDetailComponents.kt', '**/verwaltung/ui/screens/MonitoringScreen.kt']
   ReturnCount:
     # Früh zurückgeben statt verschachteln ist Projektstil, auch nach der
     # Prüfung mitten in der Funktion (Netzantworten, Passkeys).

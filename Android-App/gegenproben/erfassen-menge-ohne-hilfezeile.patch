@@ -1,0 +1,16 @@
+Gegenprobe: Das Mengenfeld von Set hinzufügen hat wieder nur bei einem Fehler eine Zeile darunter
+Modul: app
+Test: ch.brickinventoryapp.app.AblaufTest
+Rot: jedes Feld beim Set erfassen hat eine Hilfezeile
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
+@@ -165,7 +165,6 @@
+             // Jedes Feld mit einer Hilfezeile: Ohne sie standen die Felder ungleich weit auseinander.
+             supportingText = {
+                 if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen())
+-                else Text(stringResource(R.string.gallery_quantity_hint))
+             },
+             modifier = Modifier.fillMaxWidth(), singleLine = true,
+             shape = Formen.feld,

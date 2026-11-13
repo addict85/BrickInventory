@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.sicherheit
+package ch.brickinventoryapp.ui.util
 
 import android.content.ClipData
 import android.content.ClipboardManager

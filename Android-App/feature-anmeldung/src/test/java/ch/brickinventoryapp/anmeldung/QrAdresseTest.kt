@@ -115,6 +115,7 @@ class QrAdresseTest {
         override fun gemerkterPin(schluessel: String): String? = null
         override fun halteVor(schluessel: String, fingerabdruck: String) { protokoll += "vor" }
         override fun vergissVorgehaltenen(schluessel: String) = Unit
+        override fun kopplungsziel(url: String?) { protokoll += "ziel:$url" }
     }
 
     private lateinit var pfade: PfadServer

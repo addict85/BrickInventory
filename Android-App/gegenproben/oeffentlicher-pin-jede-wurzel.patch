@@ -1,0 +1,17 @@
+Gegenprobe: Ein Pin auf eine System-Wurzel nimmt wieder jede öffentlich gültige Kette an
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: ein oeffentlicher Pin haelt eine Kette unter fremder Wurzel an, auch wenn das System sie annimmt
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -254,7 +254,7 @@
+      * ein anderer Betreiber fragt wie ein geänderter Schlüssel. Ein Code verlangt genau seine Wurzel.
+      */
+     private fun traegtPin(lage: Kettenlage, pin: String, oeffentlicherPin: Boolean, ausCode: Boolean): Boolean =
+-        if (oeffentlicherPin) lage.oeffentlich && (lage.fingerabdruck == pin || !ausCode && gleicherBetreiber(pin, lage.fingerabdruck))
++        if (oeffentlicherPin) lage.oeffentlich && (!ausCode || lage.fingerabdruck == pin)
+         else lage.ueberNutzerCa && lage.wurzel != null && lage.fingerabdruck == pin
+ 
+     /** Beide sind System-Wurzeln, und ihr Subjekt nennt dieselbe Organisation (O=). */

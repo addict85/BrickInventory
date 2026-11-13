@@ -43,6 +43,8 @@ import java.io.File
  *   angaben-im-klartext             setzeAngabe() schreibt den Klartext → rot
  *                                   „Adresse und Name liegen nur verschluesselt …“
  *   angaben-ohne-uebernahme         uebernimmAngaben() lässt den Klartext stehen → rot, derselbe Test
+ *   hochstufen-erst-beim-start      stufeTokenHoch() ohne Wirkung → rot „nach dem Entsperren kommt
+ *                                   ein Token …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -180,5 +182,22 @@ class TokenTresorTest {
         val geheim = platte()[TokenAblage.AUTH_TOKEN_ENC]!!
         assertFalse("Umgeschlüsselt: $geheim", tresor.veraltet(geheim))
         assertEquals("alt", runBlocking { start(tresor).tokenJetzt() })
+    }
+
+    /** Nicht erst beim nächsten Start: Das Entsperren (ACTION_USER_PRESENT) stuft gleich hoch. */
+    @Test
+    fun `nach dem Entsperren kommt ein Token unter dem alten Schluessel sofort unter den strengen`() {
+        lege(geheim = "ENC(tla)")
+        var gesperrt = true
+        val tresor = EntsperrTresor(Streng { gesperrt }, Attrappe())
+        val prefs = start(tresor)
+        runBlocking { prefs.stufeTokenHoch() }
+        assertEquals("Gesperrt bleibt es, wie es ist", "ENC(tla)", platte()[TokenAblage.AUTH_TOKEN_ENC])
+
+        gesperrt = false
+        runBlocking { prefs.stufeTokenHoch() }
+        val geheim = platte()[TokenAblage.AUTH_TOKEN_ENC]!!
+        assertFalse("Hochgestuft ohne Neustart: $geheim", tresor.veraltet(geheim))
+        assertEquals("alt", runBlocking { prefs.tokenJetzt() })
     }
 }

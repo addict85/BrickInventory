@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ch.brickinventoryapp.offline.Ausgang.VerworfenerPosten
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -226,6 +227,17 @@ class Offlineablage(
 
     private fun gueltig(b: String?) = b?.takeIf { it.isNotBlank() }
 
+    /** Was der Server abgelehnt hat und noch nicht gemeldet ist, für den aktuellen Bereich. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun verworfene(): Flow<List<VerworfenerPosten>> =
+        aktuell.flatMapLatest { b -> if (b == null) flowOf(emptyList()) else ausgang.verworfene(b) }
+
+    /** Der Hinweis zu [id] ist gezeigt; der Posten darf weg. */
+    suspend fun quittiereVerworfen(id: String) {
+        val b = bereich() ?: return
+        ausgang.quittiereVerworfen(b, id)
+    }
+
     /** Wie viele Bearbeitungen noch auf den Server warten. */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun offene(): Flow<Int> = aktuell.flatMapLatest { b -> if (b == null) flowOf(0) else ausgang.anzahl(b) }
@@ -338,7 +350,7 @@ class Offlineablage(
     /** Nur unter der Sperre von ([b], fach.art) aufrufen. */
     private suspend fun <T : Any> aendere(fach: Fach<T>, b: String, w: Wirkung) {
         val alt = dekodiere(fach, bestand.lies(b, fach.art))
-        bestand.ersetze(b, fach.art, kodiere(fach, fach.anwenden(alt.liste, w)), null)
+        bestand.gleicheAn(b, fach.art, kodiere(fach, fach.anwenden(alt.liste, w)))
     }
 
     private fun <T : Any> kodiere(fach: Fach<T>, liste: List<T>) =

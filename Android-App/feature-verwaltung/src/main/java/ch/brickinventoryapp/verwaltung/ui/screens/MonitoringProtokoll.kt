@@ -13,18 +13,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.model.ui.model.*
+import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.util.fmtUhrzeit
+import ch.brickinventoryapp.ui.util.appNumberLocale
+import ch.brickinventoryapp.ui.util.vierundzwanzigStunden
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringAktionen
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.verwaltung.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
@@ -174,11 +173,11 @@ private fun ProtokollEintrag(zeile: ProtokollZeileAnsicht) {
         // `logged_at` kam seit jeher mit und wurde nie
         // gezeigt; ohne sie ist eine Protokollzeile kaum zu
         // gebrauchen.
-        Text(fmtUhrzeit(zeile.loggedAt) ?: "",
+        Text(fmtUhrzeit(zeile.loggedAt, appNumberLocale(), vierundzwanzigStunden()) ?: "",
             style = MaterialTheme.typography.bodySmall,
             fontFamily = FontFamily.Monospace,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(58.dp))
+            modifier = Modifier.widthIn(min = 58.dp))
         Text(zeile.level.orEmpty().uppercase(),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Bold,

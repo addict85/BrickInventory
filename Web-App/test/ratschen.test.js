@@ -350,53 +350,193 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
 });
 
 /**
- * Je Testfall statt je Datei: Auch eine Datei, die irgendwo Code ausführt,
- * kann zwanzig Fälle haben, die nur eine Zeile im Quelltext suchen. Ein Fall
- * zählt, wenn er Quelltext liest (direkt oder über eine Quelltext-Variable der
- * Datei) und nichts ausführt. Zählweise wie im Prüfbericht arch17-web-b.
+ * Je Testfall statt je Datei. Ein Fall führt aus, wenn er einen Ausführungs-Helfer
+ * ruft (buildAndRequire/_req, testServer, starteApp, spawn, fetch, jsdom, db.…) oder
+ * einen Namen der Datei, der dahin führt (auch über Helfer und deren Helfer). Ein
+ * blosses `await` zählt nicht: Es wartet ebenso auf fs.promises.readFile.
  */
-// `_req(…)` ist der require-Helfer aus buildAndRequire(): ein Aufruf lädt das gebaute Modul aus dist/.
 const FALL_FUEHRT_AUS =
-  /buildAndRequire|\b_req\w*\(|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|JSDOM|new Function|vm\.|import\(|require\(.*dist|\.request\(|agent\.|[oO]berflaeche\(|browser|seite\.|page\.|await |starte|lade\w*\(/;
+  /\bbuildAndRequire\(|\b_req\w*\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
 const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
+/** Aus helpers/sources führen nur diese aus; die übrigen lesen Quelltext. */
+const SOURCES_FUEHRT_AUS = new Set(['buildAndRequire', 'baueDist', 'umgebung']);
+const HILFE = /require\(\s*['"]\.\/helpers\/([\w-]+)['"]\s*\)/;
+
+/** Ob ein Modul unter test/helpers selbst etwas ausführt. */
+function ausfuehrendeHelfer() {
+  const raus = new Map();
+  const d = path.join(__dirname, 'helpers');
+  for (const f of fs.readdirSync(d).filter(x => x.endsWith('.js')))
+    raus.set(f.replace(/\.js$/, ''), FALL_FUEHRT_AUS.test(fs.readFileSync(path.join(d, f), 'utf8')));
+  raus.set('sources', false);
+  return raus;
+}
+
+/** Anweisungen auf oberster Ebene: jeweils bis zur nächsten Zeile in Spalte 0, die keine Klammer schliesst. */
+function anweisungen(/** @type {string} */ s) {
+  const z = s.split('\n');
+  const raus = [];
+  const weiter = (/** @type {string} */ x) => !x || /^[\s})\]]/.test(x);
+  for (let i = 0; i < z.length; ) {
+    if (weiter(z[i])) {
+      i++;
+      continue;
+    }
+    let j = i + 1;
+    while (j < z.length && weiter(z[j])) j++;
+    raus.push(z.slice(i, j).join('\n'));
+    i = j;
+  }
+  return raus;
+}
+
+function deklarierteNamen(/** @type {string} */ a) {
+  let m = a.match(/^(?:async\s+)?function\s*\*?\s*(\w+)/);
+  if (m) return [m[1]];
+  m = a.match(/^(?:const|let|var)\s+\{([^}]*)\}\s*=/);
+  if (m)
+    return m[1]
+      .split(',')
+      .map(x => x.trim().split(':').pop()?.trim() ?? '')
+      .filter(Boolean);
+  m = a.match(/^(?:const|let|var)\s+(\w+)\s*=/);
+  return m ? [m[1]] : [];
+}
+
+/** @returns {{ n: number, alle: number, faelle: string[] }} Fälle, die lesen und nichts ausführen */
+function quelltextFaelleIn(/** @type {string} */ roh, /** @type {Map<string, boolean>} */ helfer) {
+  const s = require('./helpers/sources').ohneKommentare(roh);
+  const fuehrt = new Set(),
+    liest = new Set();
+  /** @type {{ namen: string[], text: string }[]} */
+  const dekl = [];
+  for (const a of anweisungen(s)) {
+    const namen = deklarierteNamen(a);
+    if (!namen.length) continue;
+    const variable = /^(?:const|let|var)/.test(a);
+    const text = variable ? a.slice(a.indexOf('=') + 1) : a;
+    const hilfe = a.match(HILFE);
+    if (hilfe && variable && !FALL_FUEHRT_AUS.test(text)) {
+      for (const n of namen)
+        if (hilfe[1] === 'sources' ? SOURCES_FUEHRT_AUS.has(n) : helfer.get(hilfe[1])) fuehrt.add(n);
+        else if (hilfe[1] === 'sources') liest.add(n);
+      continue;
+    }
+    dekl.push({ namen, text });
+  }
+  const nennt = (/** @type {string} */ t, /** @type {Set<string>} */ m) =>
+    [...m].some(n => new RegExp(`\\b${n}\\b`).test(t));
+  for (let neu = true; neu; ) {
+    neu = false;
+    for (const { namen, text } of dekl)
+      for (const n of namen) {
+        if (!fuehrt.has(n) && (FALL_FUEHRT_AUS.test(text) || nennt(text, fuehrt))) neu = !!fuehrt.add(n);
+        if (!liest.has(n) && (FALL_LIEST.test(text) || nennt(text, liest))) neu = !!liest.add(n);
+      }
+  }
+  const z = s.split('\n');
+  let n = 0,
+    alle = 0;
+  const faelle = [];
+  for (let i = 0; i < z.length; i++) {
+    const kopf = z[i].match(/^(\s{0,4})(?:test|it)\(\s*['"`]/);
+    if (!kopf) continue;
+    let j = i + 1;
+    for (; j < z.length; j++) {
+      const t = z[j].trimStart();
+      if (t && z[j].length - t.length <= kopf[1].length && !/^[})\]]/.test(t)) break;
+    }
+    const fall = z.slice(i, j).join('\n');
+    alle++;
+    const hilfen = [...fall.matchAll(new RegExp(HILFE.source, 'g'))].map(m => m[1]);
+    const ausf = FALL_FUEHRT_AUS.test(fall) || nennt(fall, fuehrt) || hilfen.some(h => helfer.get(h));
+    if (!ausf && (FALL_LIEST.test(fall) || nennt(fall, liest))) {
+      n++;
+      faelle.push(z[i].trim());
+    }
+  }
+  return { n, alle, faelle };
+}
+
 function quelltextFaelle() {
+  const helfer = ausfuehrendeHelfer();
   let n = 0,
     alle = 0;
   for (const name of fs.readdirSync(__dirname).filter(x => x.endsWith('.test.js'))) {
-    const s = fs.readFileSync(path.join(__dirname, name), 'utf8');
-    const vars = new Set();
-    // Nur Variablen der Datei selbst; die eines anderen Falls und Funktionen aus buildAndRequire() lesen nichts.
-    for (const m of s.matchAll(
-      /^(?:const|let|var)\s+(\w+)\s*=\s*[^;\n]*(readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare|Quelle\b)/gm,
-    ))
-      vars.add(m[1]);
-    for (const m of s.matchAll(
-      /(?:const|let|var)\s+\{([^}]+)\}\s*=\s*require\(['"]\.\/helpers\/sources['"]\)(?!\s*\.\s*buildAndRequire)/g,
-    ))
-      for (const x of m[1].split(',')) vars.add(x.trim().split(':').pop()?.trim() ?? '');
-    for (const fall of s.split(/\n(?=\s{0,4}(?:test|it)\(\s*['"`])/).slice(1)) {
-      alle++;
-      const liest = FALL_LIEST.test(fall) || [...vars].some(v => v && new RegExp(`\\b${v}\\b`).test(fall));
-      if (liest && !FALL_FUEHRT_AUS.test(fall)) n++;
-    }
+    const r = quelltextFaelleIn(fs.readFileSync(path.join(__dirname, name), 'utf8'), helfer);
+    n += r.n;
+    alle += r.alle;
   }
   return { n, alle };
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 334 am 12.11.2026 (die Ratschen selbst zählen mit; mit der Zählung vor
-  // dem 11.11., die auch Variablen anderer Fälle mitnahm, 387).
-  // Gegenprobe (11.11.2026): die alte Variablensuche (ohne `^`, ohne buildAndRequire-Ausnahme) → rot (387).
-  // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
-  const SCHRANKE = 334;
+  // Gemessen 428 am 12.11.2026 mit der strukturellen Erkennung (die Zählung mit
+  // `await ` als Ausführung ergab 336 und hielt reine Lesefälle für ausführend).
+  // Gegenprobe (12.11.2026): `await ` wieder in FALL_FUEHRT_AUS → rot „Selbstbeweis“.
+  const probe = [
+    "const _req = require('./helpers/sources').buildAndRequire();",
+    "const { serverOnly } = require('./helpers/sources');",
+    "const { testServer } = require('./helpers/server');",
+    "const SRC = fs.readFileSync('x.ts', 'utf8');",
+    "const modul = _req('src/infra/fehler.js');",
+    'function starte() {',
+    '  return testServer();',
+    '}',
+    "test('liest nur', async () => {",
+    "  const t = await fs.promises.readFile('y', 'utf8');",
+    '  assert.match(SRC + t, /x/);',
+    '});',
+    "test('liest über Helfer', () => {",
+    '  assert.match(serverOnly(), /x/);',
+    '});',
+    "test('führt über eine Funktion der Datei aus', async () => {",
+    '  await starte();',
+    '  assert.match(SRC, /x/);',
+    '});',
+    "test('führt das gebaute Modul aus', () => {",
+    '  assert.equal(modul.f(SRC), 1);',
+    '});',
+  ].join('\n');
+  const helfer = new Map([
+    ['server', true],
+    ['sources', false],
+  ]);
+  assert.deepEqual(
+    quelltextFaelleIn(probe, helfer).faelle,
+    ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
+    'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
+  );
+  const SCHRANKE = 428;
   const { n, alle } = quelltextFaelle();
-  assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
+  assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
     n <= SCHRANKE,
     `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
       'Verhalten gehört in einen Test, der den Code ausführt (jsdom, buildAndRequire, testServer).',
   );
   if (n < SCHRANKE) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+/** Die Fassade `_req('db/database.js')` (und dbOderSkip, das sie liefert) tut so, als
+ * gäbe es noch einen Zugang des Prozesses. Neue Tests nehmen den Zugang selbst:
+ * zugangOderSkip() bzw. testZugang() aus den Testhilfen oder erzeugeDb(). */
+const NUTZT_FASSADE = /_req\w*\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(/;
+
+test('Tests über die Fassade der alten DB-API werden weniger, nie mehr', () => {
+  // Gemessen 387 am 12.11.2026 (389 vor der Umstellung von indizes-db und transaktion-umgebung-db).
+  // Gegenprobe (12.11.2026): indizes-db.test.js zurück auf dbOderSkip → rot (388).
+  const SCHRANKE = 387;
+  assert.ok(NUTZT_FASSADE.test("const db = _req('db/database.js');") && !NUTZT_FASSADE.test('zugangOderSkip(t)'));
+  const q = require('./helpers/sources');
+  const ist = fs
+    .readdirSync(__dirname)
+    .filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js')
+    .filter(n => NUTZT_FASSADE.test(q.ohneKommentare(fs.readFileSync(path.join(__dirname, n), 'utf8'))));
+  assert.ok(ist.length > 100, `nur ${ist.length} Treffer — greift das Muster noch?`);
+  assert.ok(ist.length <= SCHRANKE, `${ist.length} Testdateien nutzen die Fassade, erlaubt sind ${SCHRANKE}`);
+  if (ist.length < SCHRANKE)
+    console.log(`  ℹ Fassade der DB-API: ${ist.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 /**
@@ -760,17 +900,56 @@ test('Markup kommt nur über setzeHtml()/fuegeHtmlEin() in die Seite', () => {
   );
 });
 
-test('ungeprueft() wird weniger, nie mehr', () => {
+/** Die Argumente aller ungeprueft()-Aufrufe in `text`, bis zur schliessenden Klammer. */
+function ungeprueftArgumente(/** @type {string} */ text) {
+  const raus = [];
+  for (const m of text.matchAll(/(?<![\w.])(?<!function )ungeprueft\(/g)) {
+    const ab = (m.index ?? 0) + m[0].length;
+    let i = ab;
+    for (let tiefe = 0; i < text.length; i++)
+      if (text[i] === '(') tiefe++;
+      else if (text[i] === ')' && tiefe-- === 0) break;
+    raus.push(text.slice(ab, i));
+  }
+  return raus;
+}
+
+test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .join() darin', () => {
   // html`` maskiert jeden eingesetzten Wert; ungeprueft() setzt eine Zeichenkette als Markup ein, die
-  // vor dem Umbau schon maskiert gebaut wurde. Wer eine Stelle auf html`` umstellt, senkt die Schranke.
-  // Gegenprobe: `${ungeprueft(x)}` in dom.js ergänzt → rot mit 159.
-  const SCHRANKE = 140;
-  const ist = oberflaechenCode().reduce(
-    (n, x) =>
-      n + (x.z.match(/(?<![\w.])ungeprueft\(/g) || []).length - (/export function ungeprueft\(/.test(x.z) ? 1 : 0),
-    0,
+  // vor dem Umbau schon maskiert gebaut wurde. Listen aus html`` verbindet verbinde() (escapen.js).
+  // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
+  // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
+  const SCHRANKE = 125;
+  assert.deepEqual(
+    ungeprueftArgumente(
+      "function ungeprueft(t) {}\na(ungeprueft(`<i>${b(c)}</i>`), ungeprueft(d.map(e).join('')), x.ungeprueft(f))",
+    ),
+    ['`<i>${b(c)}</i>`', "d.map(e).join('')"],
+    'Selbstbeweis',
   );
+  const js = path.join(WEB, 'public', 'js');
+  const argumente = fs
+    .readdirSync(js)
+    .filter(n => istAppModul(n))
+    .flatMap(f =>
+      ungeprueftArgumente(require('./helpers/sources').ohneKommentare(fs.readFileSync(path.join(js, f), 'utf8'))).map(
+        a => ({ f, a }),
+      ),
+    );
+  const ist = argumente.length;
   assert.ok(ist > 0, 'kein ungeprueft() gefunden — greift die Suche noch?');
+  const vorlage = argumente.filter(x => /^\s*`[^`]*\$\{/.test(x.a));
+  assert.deepEqual(
+    vorlage.map(x => `${x.f}: ${x.a.slice(0, 60)}`),
+    [],
+    'ungeprueft() mit Template und ${…}: html`` nehmen',
+  );
+  const verbunden = argumente.filter(x => /\.join\(/.test(x.a));
+  assert.deepEqual(
+    verbunden.map(x => `${x.f}: ${x.a.slice(0, 60)}`),
+    [],
+    'ungeprueft(… .join()): verbinde() nehmen',
+  );
   assert.ok(ist <= SCHRANKE, `${ist}-mal ungeprueft(), erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungeprueft(): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });

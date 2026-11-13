@@ -28,10 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.teile.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
 import coil3.ImageLoader

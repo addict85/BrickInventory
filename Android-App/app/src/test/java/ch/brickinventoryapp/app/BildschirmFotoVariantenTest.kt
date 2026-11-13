@@ -300,7 +300,7 @@ class BildschirmFotoVariantenTest {
 
     private fun detailFoto(name: String, design: String = "classic", dunkel: Boolean = false,
                            sprache: String? = DEUTSCH, schrift: Float = 1f) {
-        val vm = welt.setDetail().also { it.ladeAlles() }
+        val vm = welt.setDetail()
         zeige(name, design, dunkel, sprache = sprache, schrift = schrift, bereit = detailFertig(vm),
             zustand = { vm.setDetailState.value }) { Detail(vm) }
         foto(name, design, dunkel)
@@ -349,7 +349,7 @@ class BildschirmFotoVariantenTest {
             "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":1210.0},{"x":"2026-09-01","y":1231.0},{"x":"2026-10-01","y":1249.9}],"firstRealIndex":0}],
                      "x":["2026-08-01","2026-09-01","2026-10-01"]},
             "pnl_prozent":19.2,"purchase_price":1049.0}"""
-        val vm = welt.setDetail().also { it.ladeAlles() }
+        val vm = welt.setDetail()
         zeige(name, geraet = "schmal", schrift = schrift, bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
         anhalten()
         foto(name, geraet = "schmal")
@@ -559,7 +559,7 @@ class BildschirmFotoVariantenTest {
     }
 
     private fun dialogSetLoeschenFoto(name: String, schrift: Float) {
-        val vm = welt.setDetail().also { it.ladeAlles() }
+        val vm = welt.setDetail()
         zeige(name, design = "noppe", schrift = schrift, bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
         compose.onNodeWithContentDescription("Millennium Falcon löschen").performClick()
         compose.waitForIdle()
@@ -675,7 +675,7 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
+            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.ladeHaushalt() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
@@ -1266,7 +1266,7 @@ class BildschirmFotoVariantenTest {
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache))).also { it.jetzt = { FESTE_ZEIT }; it.loadHouseholdStatus() }
+            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache))).also { it.jetzt = { FESTE_ZEIT }; it.ladeHaushalt() }
         zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }

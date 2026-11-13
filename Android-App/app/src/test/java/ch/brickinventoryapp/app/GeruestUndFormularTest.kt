@@ -56,7 +56,7 @@ import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.sicherheit.PASSWORT_MIN_ZEICHEN
+import ch.brickinventoryapp.model.util.PASSWORT_MIN_ZEICHEN
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
 import org.junit.Assert.assertEquals

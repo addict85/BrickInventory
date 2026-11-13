@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.sicherheit
+package ch.brickinventoryapp.model.util
 
 /**
  * Die Mindestlaenge eines Passworts — an einer Stelle.

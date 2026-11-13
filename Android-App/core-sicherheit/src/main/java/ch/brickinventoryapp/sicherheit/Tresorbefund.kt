@@ -34,7 +34,7 @@ fun interface Geraetesperre {
  * Das Token unter einem Schlüssel, der nur bei entsperrtem Gerät arbeitet ([nurEntsperrt]):
  * Wer ein gesperrtes Gerät ausliest, bekommt den Geheimtext, aber keinen Klartext. Kann
  * er nicht verschlüsseln (Tausch bei gesperrtem Gerät, Keystore ohne diese Bedingung),
- * nimmt [immer] den Wert, bis ihn der nächste Start umschlüsselt (TokenAblage).
+ * nimmt [immer] den Wert, bis ihn das nächste Entsperren umschlüsselt (TokenAblage.stufeTokenHoch).
  */
 class EntsperrTresor(
     private val nurEntsperrt: TokenVerschluesselung,
@@ -42,7 +42,11 @@ class EntsperrTresor(
 ) : TokenVerschluesselung {
     override fun verschluessle(klartext: String): String =
         fangeAusserAbbruch { ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext) }
-            .getOrElse { immer.verschluessle(klartext) }
+            .getOrElse {
+                // Nicht still: Wer im Debug-Log sucht, warum ein Token schwächer liegt, findet es hier.
+                Protokoll.warnung("Tresor", "Token unter dem Schlüssel ohne Entsperr-Bedingung abgelegt", it)
+                immer.verschluessle(klartext)
+            }
 
     override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext
 

@@ -5,7 +5,7 @@ import { mitInventarSperre } from '../../db/txLock';
 import { getCurrentMarketPrice, resolveSetCondition } from '../finanzen';
 import { einstellungMitZugang } from '../einstellungen';
 import { deleteSetRows } from './loeschen';
-import { legeInPapierkorb } from '../bestand';
+import { legeInPapierkorb, legeKaeufeInPapierkorb } from '../bestand';
 import { toCsv } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import { recordAcquisition } from './erfassen';
@@ -77,7 +77,7 @@ async function adjustAcquisitionsToQuantity(
   );
   const current = rows.reduce((sum: number, r: { quantity?: number | null }) => sum + (r.quantity || 0), 0);
   let delta = newTotalQty - current;
-  if (delta === 0) return;
+  if (delta === 0) return [];
   if (delta > 0) {
     if (rows.length) {
       {
@@ -114,15 +114,32 @@ async function adjustAcquisitionsToQuantity(
         dbh,
       );
     }
-    return;
+    return [];
   }
+  const entfallen: Record<string, unknown>[] = [];
   for (const r of rows) {
     if (delta === 0) break;
     const take = Math.min(r.quantity, -delta);
+    const zeile = await repo.setErfassungAlsJson(dbh, r.id);
+    if (zeile) entfallen.push({ ...zeile, quantity: take });
     if (take >= r.quantity) await repo.loescheSetErfassungNachId(dbh, r.id);
     else await repo.kuerzeSetErfassung(dbh, take, r.id);
     delta += take;
   }
+  return entfallen;
+}
+
+/** Was eine Verringerung wegnahm, in der Form der Antwort: Die Oberfläche nennt den Kauf im Rückgängig-Toast. */
+function entfallenAntwort(zeilen: Record<string, unknown>[]) {
+  return zeilen.map(z => ({
+    id: Number(z.id),
+    quantity: Number(z.quantity),
+    purchase_price: z.purchase_price == null ? null : Number(z.purchase_price),
+    currency: z.currency == null ? null : String(z.currency),
+    price_estimated: !!z.price_estimated,
+    condition: String(z.condition ?? 'N'),
+    date: z.tag == null ? null : String(z.tag),
+  }));
 }
 
 /** Die LETZTE Erfassung, weil der Detail-Dialog genau sie bearbeitet.
@@ -154,6 +171,7 @@ export async function updateSet(
   const hatDelta = body.quantity_delta !== undefined && body.quantity_delta !== null;
   const hasQuantity = hatDelta || (body.quantity !== undefined && body.quantity !== null);
   let papierkorb: number | null = null;
+  let entfallen: ReturnType<typeof entfallenAntwort> = [];
   // Ein Marktpreis, der nicht kam, oder eine Menge, die sich nicht nachlesen liess, steht in `degradiert`.
   const ab = new Abstriche();
 
@@ -162,12 +180,15 @@ export async function updateSet(
     const delta = hatDelta ? Number(body.quantity_delta) : null;
     if (delta !== null && (!Number.isInteger(delta) || Math.abs(delta) > 9999))
       fachfehler('ungueltig', 'wert_ungueltig');
+    // Im Haushalt gehört jede Menge einem Konto; ohne Angabe dem eigenen. Ein fremdes nur im Schreibfeld.
+    const ziel = body.owner_user_id == null ? uid : Number(body.owner_user_id);
+    if (!_wids.includes(ziel)) fachfehler('verboten', 'kein_schreibrecht');
     const gewuenschtGesamt = delta === null ? bestandsMenge(body.quantity) : null;
     const leseFeld = await blickfeldIds(sk.db, uid);
-    // Angezeigt wird der Haushalt, geändert nur das eigene Konto.
+    // Angezeigt wird der Haushalt, geändert nur das Zielkonto.
     const eigenesZiel = async (dbh: Pick<DbSchnittstelle, 'get'>) => {
       const gesamtVorher = await repo.setMenge(dbh, 'blickfeld', leseFeld, sn);
-      const eigenVorher = await repo.setMenge(dbh, 'eines', uid, sn);
+      const eigenVorher = await repo.setMenge(dbh, 'eines', ziel, sn);
       // Bei 0 gedeckelt: Exemplare eines anderen Kontos kann ich nicht wegnehmen.
       const aenderung = delta ?? Number(gewuenschtGesamt) - gesamtVorher;
       return { eigenVorher, eigenZiel: Math.max(0, eigenVorher + aenderung) };
@@ -176,19 +197,23 @@ export async function updateSet(
     const vorab = await eigenesZiel(sk.db);
     const plan =
       vorab.eigenZiel > vorab.eigenVorher
-        ? await ab.oder('kaufpreis', priceForNewAcquisition(sk, uid, sn), { price: null, condition: 'N' })
+        ? await ab.oder('kaufpreis', priceForNewAcquisition(sk, ziel, sn), { price: null, condition: 'N' })
         : { price: null, condition: 'N' };
-    await mitInventarSperre(sk.db, uid, sn, async tx => {
+    await mitInventarSperre(sk.db, ziel, sn, async tx => {
       const { eigenVorher, eigenZiel } = await eigenesZiel(tx);
       if (eigenZiel === eigenVorher) return;
       // Gehörte das Set bisher nur einem anderen Konto, liefe die Anpassung sonst ins Leere.
-      if (eigenVorher === 0 && eigenZiel > 0) await repo.uebernimmSetZeile(tx, uid, leseFeld, sn);
+      if (eigenVorher === 0 && eigenZiel > 0) await repo.uebernimmSetZeile(tx, ziel, leseFeld, sn);
       // Menge 0 geht durch den Papierkorb, damit ein Tippfehler sich zurückholen lässt.
       if (eigenZiel === 0) {
-        papierkorb = await legeInPapierkorb(tx, 'set', uid, sn);
-        await deleteSetRows(tx, [uid], sn);
+        entfallen = entfallenAntwort(await repo.setErfassungenAlsJson(tx, ziel, sn));
+        papierkorb = await legeInPapierkorb(tx, 'set', ziel, sn);
+        await deleteSetRows(tx, [ziel], sn);
       } else {
-        await adjustAcquisitionsToQuantity(sk, uid, sn, eigenZiel, tx, plan);
+        // Auch einzelne Käufe gehen durch den Papierkorb: Sonst verschwände ein Kaufpreis ohne Rückweg.
+        const weg = await adjustAcquisitionsToQuantity(sk, ziel, sn, eigenZiel, tx, plan);
+        entfallen = entfallenAntwort(weg);
+        papierkorb = await legeKaeufeInPapierkorb(tx, ziel, sn, weg);
       }
     });
   }
@@ -221,7 +246,12 @@ export async function updateSet(
     async () => (await repo.setMenge(sk.db, 'blickfeld', await blickfeldIds(sk.db, uid), sn)) ?? 0,
     null,
   );
-  return { quantity: nachher, ...(papierkorb ? { papierkorb } : {}), ...ab.angabe() };
+  return {
+    quantity: nachher,
+    ...(papierkorb ? { papierkorb } : {}),
+    ...(entfallen.length ? { entfallen } : {}),
+    ...ab.angabe(),
+  };
 }
 
 export async function buildSetsCsv(sk: SetsKontext, uid: number) {

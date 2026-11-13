@@ -93,7 +93,6 @@ internal fun PartListRow(
     imageLoader: ImageLoader,
 ) {
     val ctx = LocalContext.current
-    val rbPrefixFmt = stringResource(R.string.partslist_rb_prefix)
     // part.imageUrl ist schon aufgelöst (ui/Teileliste.kt); ein zweites
     // resolveThumbUrl() wickelte die Proxy-Adresse doppelt ein. Nur ein relativer Pfad
     // bekommt den Server davor.
@@ -123,7 +122,7 @@ internal fun PartListRow(
             Text(displayId, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             if (part.blPartNumber != null && part.blPartNumber != part.partNumber) {
-                Text(String.format(rbPrefixFmt, part.partNumber), style = MaterialTheme.typography.bodySmall,
+                Text(stringResource(R.string.partslist_rb_prefix, part.partNumber), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(katalogName(part.partName), style = MaterialTheme.typography.bodySmall,

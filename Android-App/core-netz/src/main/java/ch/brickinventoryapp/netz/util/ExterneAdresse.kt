@@ -33,15 +33,3 @@ fun pdfImBetrachter(pdfUrl: String, serverUrl: String): Boolean {
     val ziel = pdfUrl.trim().toHttpUrlOrNull() ?: return false
     return serverUrl.isNotBlank() && NetworkPolicy.isSameOrigin(ziel, serverUrl) && NetworkPolicy.imBasisPfad(ziel, serverUrl)
 }
-
-/**
- * Die Adresse für die Authenticator-App: nur `otpauth://totp|hotp/…`. Sie kommt
- * vom Server und geht per ACTION_VIEW hinaus; ein anderes Schema (`intent:`,
- * `https:`, `content:`) öffnete sonst ein beliebiges Ziel und gäbe ihm das Geheimnis.
- */
-fun otpauthAdresse(url: String?): String? {
-    val roh = url?.trim()?.takeIf { it.isNotEmpty() && it.none(Char::isWhitespace) } ?: return null
-    val uri = runCatching { java.net.URI(roh) }.getOrNull() ?: return null
-    if (!uri.scheme.equals("otpauth", ignoreCase = true) || uri.isOpaque) return null
-    return roh.takeIf { uri.host?.lowercase() in setOf("totp", "hotp") }
-}

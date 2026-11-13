@@ -14,6 +14,8 @@ import androidx.compose.ui.test.performTextInput
 import ch.brickinventoryapp.data.VorwaermNetz
 import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
 import ch.brickinventoryapp.model.util.fmtUhrzeit
+import ch.brickinventoryapp.ui.util.appNumberLocale
+import android.text.format.DateFormat
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
@@ -104,7 +106,8 @@ class MonitoringProtokollAnzeigeTest {
     fun `jede Zeile nennt ihre Uhrzeit`() {
         zeigeOffen()
         for (zeile in listOf(info, fehler)) {
-            val uhrzeit = fmtUhrzeit(zeile.loggedAt)!!
+            // Wie die Zeile sie zeigt: nach der 12/24-Stunden-Einstellung des Geräts.
+            val uhrzeit = fmtUhrzeit(zeile.loggedAt, appNumberLocale(), DateFormat.is24HourFormat(compose.activity))!!
             assertEquals("Uhrzeit $uhrzeit zu „${zeile.message}“", 1, anzahl(uhrzeit))
         }
     }

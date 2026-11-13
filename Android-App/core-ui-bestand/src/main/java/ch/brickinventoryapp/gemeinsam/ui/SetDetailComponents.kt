@@ -84,19 +84,24 @@ fun SectionCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // Die Karte begrenzt die Breite, nicht jedes Element darin: Sonst endeten Werte, Felder
-    // und Knöpfe auf dem Tablet an verschiedenen Stellen mitten in der Karte.
-    AppKarte(Modifier.mittigBis(Lesebreite.formular)
-        .then(if (aussenAbstand) Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp) else Modifier)) {
-        Column(Modifier.padding(horizontal = Abstaende.gross, vertical = 14.dp)) {
-            Abschnittstitel(title, Modifier.padding(bottom = 10.dp))
+    // und Knöpfe auf dem Tablet an verschiedenen Stellen mitten in der Karte. In einer
+    // Spalte ist die Spalte die Grenze; schmaler stand die Karte mittig in einem Rand.
+    val breite = if (LocalSpaltenkarte.current) Modifier.fillMaxWidth() else Modifier.mittigBis(Lesebreite.formular)
+    AppKarte(breite
+        .then(if (aussenAbstand) Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.winzig) else Modifier)) {
+        Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel)) {
+            Abschnittstitel(title, Modifier.padding(bottom = Abstaende.klein))
             content()
         }
     }
 }
 
+/** true in einer Spalte des zweispaltigen Tablet-Layouts: [SectionCard] nimmt dann ihre volle Breite. */
+val LocalSpaltenkarte = staticCompositionLocalOf { false }
+
 @Composable
 fun DetailRow2(label: String, value: String) {
-    BezeichnungUndWert(label, value, Modifier.padding(vertical = 5.dp))
+    BezeichnungUndWert(label, value, Modifier.padding(vertical = Abstaende.winzig))
 }
 
 /**

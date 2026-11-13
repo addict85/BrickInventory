@@ -6,8 +6,8 @@ Rot: die App liefert WorkManager seine Konfiguration selbst
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInventoryApp.kt
-@@ -23,7 +23,7 @@
- import android.os.Build
+@@ -32,7 +32,7 @@
+ import androidx.core.content.ContextCompat
  
  @HiltAndroidApp
 -class BrickInventoryApp : Application(), Configuration.Provider {
@@ -15,7 +15,7 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/BrickInvento
      // Lazy: Der isolierte PDF-Prozess erzeugt auch eine Application, darf aber keine Dateien öffnen.
      @Inject lateinit var tokenuebernahmeLazy: dagger.Lazy<Tokenuebernahme>
      @Inject lateinit var alarmeLazy: dagger.Lazy<Alarmablage>
-@@ -39,7 +39,7 @@
+@@ -50,7 +50,7 @@
       * im Manifest: Ohne diese Schnittstelle wirft der erste Zugriff „WorkManager is
       * not initialized properly“. Die Fabrik von Hilt baut die @HiltWorker.
       */

@@ -4,7 +4,7 @@ import { alsHtml, escHtmlAttr, esc, html, ungeprueft } from './escapen.js';
 import { api, apiDaten } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
-import { toast } from './meldungen.js';
+import { meldeAmFeld, toast } from './meldungen.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 /** @typedef {import('../../frontend-typen/vertrag').AuftragPause} AuftragPause */
 /** @typedef {import('../../frontend-typen/vertrag').Auftrag} Auftrag */
@@ -177,19 +177,21 @@ function translateJobSub(sub) {
   return sub; // unbekannt: unverändert
 }
 
-// Speichert den Zeitplan eines Jobs (Monitoring). payload = {time:"HH:MM"} oder {minutes:n}.
+// Speichert den Zeitplan eines Dienstes. payload = {time:"HH:MM"} oder {minutes:n}; bestätigt am Feld.
 /**
  * @param {string} name
  * @param {{ time?: string, minutes?: number }} payload
+ * @param {Element} [feld]
  */
-export async function saveJobSchedule(name, payload) {
+export async function saveJobSchedule(name, payload, feld) {
   const d = await api('POST', '/v1/admin/job-schedule', { name, ...payload }).catch(() => null);
-  if (d?.success) toast(tRaw('monitor.sched.saved'), 'success');
+  if (d?.success) meldeAmFeld(feld);
   else toast(d?.error || t('settings.error'), 'error');
 }
 
-// Bausteine der Dienstetabelle im Monitor. Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt
-// die Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
+// Die Zeitpläne stehen in den Einstellungen (Feld); hier, unter „Hintergrundarbeiten“, nur als Text mit
+// Link dorthin: Beobachten und Einstellen an einem Ort waren drei Speicherwege nebeneinander.
+// Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die Form des Browsers („03:00 AM“).
 /** @param {Record<string, import('../../frontend-typen/vertrag').JobSchedule> | null | undefined} schedules @param {string} k */
 const schedInput = (schedules, k) => {
   const sc = schedules?.[k];
@@ -202,6 +204,34 @@ const schedInput = (schedules, k) => {
   }
   return '';
 };
+/** @param {Record<string, import('../../frontend-typen/vertrag').JobSchedule> | null | undefined} schedules @param {string} k */
+const schedText = (schedules, k) => {
+  const sc = schedules?.[k];
+  if (!sc) return html`<span class="mon-leise">${tRaw('monitor.sched.keiner')}</span>`;
+  const wann =
+    sc.type === 'daily'
+      ? `${tRaw('monitor.sched.taeglich')} ${sc.time}`
+      : sc.type === 'interval'
+        ? `${tRaw('monitor.sched.alle')} ${sc.minutes} ${tRaw('monitor.sched.min')}`
+        : '';
+  return html`<span class="mon-plan">${wann}</span> <a class="zu-sicht" href="#/einstellungen/hintergrund">${tRaw('monitor.sched.aendern')}</a>`;
+};
+
+/** Die Zeitpläne als Felder in Einstellungen › Hintergrundarbeiten. */
+export async function ladeZeitplaene() {
+  const el = G('einst-zeitplaene');
+  if (!el) return;
+  const d = await apiDaten('GET', '/v1/admin/jobs');
+  if (!d?.success || !d.jobs) return;
+  const zeilen = Object.entries(d.jobs).filter(([k]) => d.schedules?.[k]);
+  setzeHtml(
+    el,
+    html`<div class="tw"><table class="dt mon-tabelle" aria-label="${tRaw('settings.zeitplaene')}">
+      <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zeitplan')}</th></tr></thead>
+      <tbody>${zeilen.map(([k, j]) => html`<tr><td>${dienstName(k, j)}</td><td>${schedInput(d.schedules, k)}</td></tr>`)}</tbody>
+    </table></div>`,
+  );
+}
 const jobIconSvg = (/** @type {string} */ k) => {
   /** @type {Record<string, string>} */
   const svgs = {
@@ -278,10 +308,6 @@ export async function loadMonitor() {
   const render = async () => {
     const d = await apiDaten('GET', '/v1/admin/jobs');
     if (!d?.success) return;
-    // Nicht neu rendern, während der Nutzer gerade eine Zeitplan-Eingabe bearbeitet (sonst würde das
-    // 3s-Re-Render die Eingabe/den Fokus verwerfen).
-    const _ae = document.activeElement;
-    if (_ae?.classList?.contains('job-sched-input')) return;
     const { jobs, schedules } = d;
     // db und lastRun nennt der Vertrag nicht (JobsResponse); der Server schickt sie mit.
     const dbStats =
@@ -312,7 +338,7 @@ export async function loadMonitor() {
           <td><span class="mon-name">${k === 'bricksetRetry' ? ungeprueft(jobIconSvg('brickset')) : ungeprueft(jobIconSvg(k))}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
             ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
-          <td>${schedInput(schedules, k)}</td>
+          <td>${schedText(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'zeit') : ''}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j) ? ungeprueft(aktionen(k, j)) : html`<span class="mon-leise">–</span>`}</div></td>
         </tr>`,

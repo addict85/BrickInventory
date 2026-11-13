@@ -10,7 +10,6 @@ package ch.brickinventoryapp.anmeldung.ui.screens
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,10 +30,11 @@ import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.sicherheit.bestaetigtFingerabdruck
+import ch.brickinventoryapp.sicherheit.Abschrift
+import ch.brickinventoryapp.ui.components.Fingerabdruckfeld
+import androidx.compose.ui.window.DialogProperties
 import ch.brickinventoryapp.sicherheit.fingerabdruckAnfang
 import ch.brickinventoryapp.sicherheit.fingerabdruckLesbar
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.font.FontFamily
@@ -73,9 +73,11 @@ internal fun QrVorschlagDialog(
     val abtippen = remember(vorschlag) { mussAbtippen(vorschlag.url, vorschlag.fingerabdruck) }
     // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
     var eingabe by remember(vorschlag) { mutableStateOf("") }
-    var falsch by remember(vorschlag) { mutableStateOf(false) }
+    var befund by remember(vorschlag) { mutableStateOf<Abschrift?>(null) }
     AlertDialog(
         onDismissRequest = onAbbrechen,
+        // Wie ZertifikatDialog: Daneben tippen verwirft nichts Abgetipptes, Zurück nur ein leeres Feld.
+        properties = DialogProperties(dismissOnBackPress = eingabe.isEmpty(), dismissOnClickOutside = false),
         title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
         text = {
             // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
@@ -118,21 +120,19 @@ internal fun QrVorschlagDialog(
                         style = MaterialTheme.typography.bodySmall)
                 }
                 if (abtippen && fp != null) {
-                    OutlinedTextField(
-                        shape = Formen.feld,
-                        value = eingabe,
-                        onValueChange = { eingabe = it; falsch = false },
-                        // Kurzes Etikett, die Anleitung darunter: Ein Satz als Etikett wurde
-                        // abgeschnitten und stand beim Tippen über dem Feld.
-                        label = { Text(stringResource(R.string.zert_eingabe_etikett)) },
-                        isError = falsch,
-                        supportingText = {
-                            Text(stringResource(if (falsch) R.string.zert_eingabe_falsch
-                                else if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe))
+                    Fingerabdruckfeld(
+                        eingabe = eingabe,
+                        onEingabe = { eingabe = it; befund = null },
+                        noetig = Abschrift.NOETIG,
+                        hilfe = stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe),
+                        fehler = { gezaehlt ->
+                            when (befund) {
+                                null, Abschrift.PASST -> null
+                                Abschrift.LEER, Abschrift.ZU_KURZ ->
+                                    stringResource(R.string.zert_eingabe_zu_kurz, gezaehlt, Abschrift.NOETIG)
+                                Abschrift.PASST_NICHT -> stringResource(R.string.zert_eingabe_falsch)
+                            }
                         },
-                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
-                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
@@ -141,8 +141,9 @@ internal fun QrVorschlagDialog(
         confirmButton = {
             TextButton(enabled = !qrGesperrt && (!abtippen || eingabe.isNotBlank()), onClick = {
                 val fp = vorschlag.fingerabdruck
-                if (abtippen && (fp == null || !bestaetigtFingerabdruck(eingabe, fp))) {
-                    falsch = true
+                val pruefung = if (abtippen) fp?.let { Abschrift.von(eingabe, it) } ?: Abschrift.PASST_NICHT else Abschrift.PASST
+                if (pruefung != Abschrift.PASST) {
+                    befund = pruefung
                 } else {
                     onUebernehmen(eingabe.takeIf { abtippen })
                 }

@@ -8740,7 +8740,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PUT_api_v1_sets_setNumber_acquisitions_acqId"
+                  "$ref": "#/components/schemas/MengeGeaendert"
                 }
               }
             }
@@ -17637,6 +17637,7 @@
           "pdf_auftrag_laeuft",
           "job_id_ungueltig",
           "job_nicht_gefunden",
+          "zugang_beendet",
           "unbekannter_job",
           "auftrag_nicht_aenderbar",
           "nummer_ungueltig",
@@ -20685,6 +20686,305 @@
           "page",
           "page_size",
           "parts"
+        ],
+        "additionalProperties": {}
+      },
+      "MengeGeaendert": {
+        "type": "object",
+        "properties": {
+          "new_quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "from_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_user_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "merged": {
+            "type": "boolean"
+          },
+          "unchanged": {
+            "type": "boolean"
+          },
+          "acquisitions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "papierkorb": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              }
+            ]
+          },
+          "removed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "username"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "set": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "set_number": {
+                    "type": "string"
+                  },
+                  "condition": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "acq_count": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "used_count": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "conditions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "max_purchase_price": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "avg_purchase_price": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parts": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "minifigs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_emptied": {
+            "type": "boolean"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "degradiert": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entfallen": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "purchase_price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "currency": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "price_estimated": {
+                  "type": "boolean"
+                },
+                "condition": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "quantity",
+                "purchase_price",
+                "currency",
+                "price_estimated",
+                "condition",
+                "date"
+              ],
+              "additionalProperties": {}
+            }
+          }
+        },
+        "required": [
+          "success"
         ],
         "additionalProperties": {}
       },

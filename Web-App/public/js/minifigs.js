@@ -4,7 +4,7 @@ import { abonniere } from './ereignisse.js';
 import { echt, registerActions } from './registry.js';
 import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen, csvHochladen, zeilenKnopf } from './bausteine.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { escHex, esc, html, ungeprueft } from './escapen.js';
+import { escHex, esc, html, ungeprueft, verbinde } from './escapen.js';
 import { api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './bilder.js';
 import {
@@ -619,7 +619,7 @@ export function manuelleTabelle(posten, art) {
       <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${ungeprueft(loeschArgs)} title="${loeschTitel}" aria-label="${loeschTitel}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;
   };
-  return html`<div class="tw"><table class="dt" aria-label="${tRaw(istTeil ? 'parts.manual_section' : 'finance.figs_section')}" data-stil="font-size:var(--fs-2)"><thead><tr>${kopf.map(h => html`<th>${ungeprueft(h)}</th>`)}</tr></thead><tbody>${ungeprueft(posten.map(zeile).join(''))}</tbody></table></div>`;
+  return html`<div class="tw"><table class="dt" aria-label="${tRaw(istTeil ? 'parts.manual_section' : 'finance.figs_section')}" data-stil="font-size:var(--fs-2)"><thead><tr>${kopf.map(h => html`<th>${ungeprueft(h)}</th>`)}</tr></thead><tbody>${verbinde(posten.map(zeile))}</tbody></table></div>`;
 }
 
 /**

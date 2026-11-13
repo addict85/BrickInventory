@@ -123,6 +123,13 @@ class TokenAblage @Inject constructor(
     /** Leer = Altbestand ohne Bindung; dann gilt der eingetragene Server. */
     override val tokenHerkunftState: StateFlow<String?> = _tokenHerkunftState.asStateFlow()
 
+    // Nur im Speicher: Eine Kopplung, die der Prozess nicht überlebt, ist abgebrochen.
+    private val _kopplungsziel = MutableStateFlow<String?>(null)
+    override val kopplungszielState: StateFlow<String?> = _kopplungsziel.asStateFlow()
+    fun kopplungsziel(url: String?) {
+        _kopplungsziel.value = url
+    }
+
     // Drei Spiegel (Adresse, Token, Herkunft) und die einmaligen Aufräumarbeiten:
     // Erst wenn alle vier durch sind, ist der Kaltstart vorbei und der erste
     // Verbindungsaufbau darf los.
@@ -340,6 +347,16 @@ class TokenAblage @Inject constructor(
             umschluesseln(prefs)
         }
         return entfernt
+    }
+
+    /**
+     * Ein Tausch bei gesperrtem Gerät legt das Token unter den schwächeren Schlüssel. Bis zum
+     * nächsten Start blieb es dort lesbar für jeden, der das gesperrte Gerät ausliest; darum
+     * gleich nach dem Entsperren (BrickInventoryApp, ACTION_USER_PRESENT). Ohne Altbestand kein Schreiben.
+     */
+    override suspend fun stufeTokenHoch() {
+        if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(tresor::veraltet) != true) return
+        dataStore.edit { umschluesseln(it) }
     }
 
     /** Adresse und Name im Klartext älterer Fassungen verschlüsselt ablegen; scheitert es, beim nächsten Start. */

@@ -30,10 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.sammlung.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
 import ch.brickinventoryapp.ui.theme.LocalIstGlanz

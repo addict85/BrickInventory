@@ -8,8 +8,37 @@ import type { ClientBase } from 'pg';
 import { meldeFehler, fehlertext, logAndContinue } from '../src/infra/fehler';
 import type { DbSchnittstelle } from './typen';
 
+/** Wie lange eine Migration auf eine Sperre wartet und wie oft sie es versucht. */
+export interface Sperrfrist {
+  fristMs: number;
+  versuche: number;
+}
+
+/** Hält ein anderer Prozess eine Tabelle (Web-Prozess mitten in einer Anfrage,
+ * offene psql-Sitzung), hinge der Dienst migration ohne Frist still. Mit Frist
+ * nennt er den Grund, versucht es erneut und gibt nach den Versuchen auf. */
+export const SPERRFRIST: Sperrfrist = { fristMs: 30_000, versuche: 3 };
+
+async function mitSperrfrist<T>(was: string, frist: Sperrfrist, arbeit: () => Promise<T>): Promise<T> {
+  for (let versuch = 1; ; versuch++) {
+    try {
+      return await arbeit();
+    } catch (e) {
+      if ((e as { code?: string }).code !== '55P03') throw e;
+      const grund =
+        `${was}: nach ${frist.fristMs / 1000} s keine Sperre erhalten – eine andere Verbindung hält die ` +
+        'Tabelle (welche, zeigt pg_stat_activity).';
+      if (versuch >= frist.versuche) throw new Error(`${grund} Aufgegeben nach ${versuch} Versuchen.`);
+      console.warn(`  ⏳ ${grund} Versuch ${versuch + 1}/${frist.versuche} …`);
+    }
+  }
+}
+
 /** Alle noch nicht angewandten Migrationen; `client` ist eine eigene Verbindung, nicht der Pool. */
-async function runMigrations(client: ClientBase, { sichern = false }: { sichern?: boolean } = {}): Promise<string[]> {
+async function runMigrations(
+  client: ClientBase,
+  { sichern = false, sperre = SPERRFRIST }: { sichern?: boolean; sperre?: Sperrfrist } = {},
+): Promise<string[]> {
   await client.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       name       TEXT PRIMARY KEY,
@@ -33,30 +62,39 @@ async function runMigrations(client: ClientBase, { sichern = false }: { sichern?
   await pruefeAngewandte(client, dir, rows);
 
   const offen = files.filter(f => !done.has(f));
-  if (offen.length && sichern) await sichereNutzerdaten(client, offen);
+  if (offen.length && sichern) await sichereNutzerdaten(client, offen, sperre);
 
   const applied: string[] = [];
   for (const file of offen) {
     const sql = fs.readFileSync(path.join(dir, file), 'utf8');
     // Eine Transaktion je Datei: entweder ganz oder gar nicht.
-    await client.query('BEGIN');
     try {
-      // Die 30 s des Pools gelten für Anfragen, nicht für den Umbau einer
-      // grossen Tabelle; ein Abbruch mittendrin hiesse Neustart in Schleife.
-      await client.query('SET LOCAL statement_timeout = 0');
-      await client.query('SET LOCAL lock_timeout = 0');
-      await client.query(sql);
-      await client.query('INSERT INTO schema_migrations (name, pruefsumme) VALUES ($1, $2)', [file, pruefsumme(sql)]);
-      await client.query('COMMIT');
-      applied.push(file);
-      console.log(`  ✅ Migration angewandt: ${file}`);
+      await mitSperrfrist(`Migration ${file}`, sperre, async () => {
+        await client.query('BEGIN');
+        try {
+          // Die 30 s des Pools gelten für Anfragen, nicht für den Umbau einer
+          // grossen Tabelle; ein Abbruch mittendrin hiesse Neustart in Schleife.
+          await client.query('SET LOCAL statement_timeout = 0');
+          await client.query(`SET LOCAL lock_timeout = ${Math.trunc(sperre.fristMs)}`);
+          await client.query(sql);
+          await client.query('INSERT INTO schema_migrations (name, pruefsumme) VALUES ($1, $2)', [
+            file,
+            pruefsumme(sql),
+          ]);
+          await client.query('COMMIT');
+        } catch (e) {
+          await client.query('ROLLBACK').catch(logAndContinue('migration:query'));
+          throw e;
+        }
+      });
     } catch (e) {
-      await client.query('ROLLBACK').catch(logAndContinue('migration:query'));
       // Bewusst weiterwerfen: Der Start bricht ab. Ein Server, der auf einem
       // halb migrierten Schema weiterläuft, produziert Folgefehler, die
       // niemand mehr auf diese Stelle zurückführt.
       throw new Error(`Migration ${file} fehlgeschlagen: ${(e as Error).message}`);
     }
+    applied.push(file);
+    console.log(`  ✅ Migration angewandt: ${file}`);
   }
   return applied;
 }
@@ -179,7 +217,7 @@ export async function entferneKontoAusSicherungen(c: Abfrager, uid: number): Pro
  * Fremdschlüssel auf users) in ein eigenes Schema kopieren: Der Container hat
  * kein pg_dump, und eine umformende Migration ist ohne Kopie nicht
  * umkehrbar. Drei Sicherungen bleiben; Wiederherstellen steht im README. */
-async function sichereNutzerdaten(client: ClientBase, offen: string[]): Promise<string> {
+async function sichereNutzerdaten(client: ClientBase, offen: string[], sperre = SPERRFRIST): Promise<string> {
   const schema = `vor_migration_${new Date().toISOString().replace(/\D/g, '').slice(0, 17)}`;
   const { rows } = await client.query<{ name: string }>(`
     SELECT DISTINCT c.table_name AS name
@@ -193,19 +231,25 @@ async function sichereNutzerdaten(client: ClientBase, offen: string[]): Promise<
       JOIN pg_namespace n ON n.oid = r.relnamespace
      WHERE k.contype = 'f' AND k.confrelid = 'public.users'::regclass AND n.nspname = 'public'
      ORDER BY 1`);
-  await client.query('BEGIN');
   try {
-    await client.query('SET LOCAL statement_timeout = 0');
-    await client.query('SET LOCAL lock_timeout = 0');
-    await client.query(`CREATE SCHEMA ${schema}`);
-    for (const { name } of rows) {
-      const t = client.escapeIdentifier(name);
-      await client.query(`CREATE TABLE ${schema}.${t} AS TABLE public.${t}`);
-    }
-    await client.query(`COMMENT ON SCHEMA ${schema} IS ${client.escapeLiteral(`vor ${offen.join(', ')}`)}`);
-    await client.query('COMMIT');
+    await mitSperrfrist('Sicherung vor den Migrationen', sperre, async () => {
+      await client.query('BEGIN');
+      try {
+        await client.query('SET LOCAL statement_timeout = 0');
+        await client.query(`SET LOCAL lock_timeout = ${Math.trunc(sperre.fristMs)}`);
+        await client.query(`CREATE SCHEMA ${schema}`);
+        for (const { name } of rows) {
+          const t = client.escapeIdentifier(name);
+          await client.query(`CREATE TABLE ${schema}.${t} AS TABLE public.${t}`);
+        }
+        await client.query(`COMMENT ON SCHEMA ${schema} IS ${client.escapeLiteral(`vor ${offen.join(', ')}`)}`);
+        await client.query('COMMIT');
+      } catch (e: unknown) {
+        await client.query('ROLLBACK').catch((r: unknown) => meldeFehler('migration:sicherung', r));
+        throw e;
+      }
+    });
   } catch (e: unknown) {
-    await client.query('ROLLBACK').catch((r: unknown) => meldeFehler('migration:sicherung', r));
     throw new Error(`Sicherung vor den Migrationen fehlgeschlagen: ${fehlertext(e)}`);
   }
   const alt = await client.query<{ nspname: string }>(`

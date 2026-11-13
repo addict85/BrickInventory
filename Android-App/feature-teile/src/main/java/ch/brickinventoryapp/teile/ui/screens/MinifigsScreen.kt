@@ -25,10 +25,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.teile.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.ui.Ladeanzeige
+import ch.brickinventoryapp.ui.ladeanzeige
+import ch.brickinventoryapp.zustand.ui.Filterzahl
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster

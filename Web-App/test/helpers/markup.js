@@ -31,6 +31,7 @@ function markupHelfer() {
     'einsetzen',
     'html',
     'ungeprueft',
+    'verbinde',
     'setzeHtml',
     'fuegeHtmlEin',
   ];

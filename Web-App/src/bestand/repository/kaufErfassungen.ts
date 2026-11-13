@@ -89,6 +89,22 @@ export function erfassungSperren(tx: DbSchnittstelle, art: ErfassungsArt, id: nu
   );
 }
 
+/** Menge in eine bestehende Zeile des Kontos zurücklegen (Papierkorb). @returns ob es die Zeile gab */
+export async function stockeErfassungAuf(
+  tx: DbSchnittstelle,
+  art: ErfassungsArt,
+  id: number,
+  userId: number,
+  menge: number,
+): Promise<boolean> {
+  const r = await tx.run(`UPDATE ${SHAPES[art].table} SET quantity = quantity + $1 WHERE id = $2 AND user_id = $3`, [
+    menge,
+    id,
+    userId,
+  ]);
+  return !!r.changes;
+}
+
 export async function legeErfassungZusammen(
   tx: DbSchnittstelle,
   art: ErfassungsArt,

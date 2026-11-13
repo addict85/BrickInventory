@@ -1,0 +1,16 @@
+Gegenprobe: Die Uhrzeit steht wieder fest als HH:mm, auch auf einem Gerät mit 12-Stunden-Uhr
+Modul: core-model
+Test: ch.brickinventoryapp.model.DatumFormatTest
+Rot: die Uhrzeit folgt der 12- oder 24-Stunden-Einstellung
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/util/DatumFormat.kt
+@@ -90,6 +90,6 @@
+  */
+ fun uhrzeitFormat(locale: Locale, vierundzwanzig: Boolean, sekunden: Boolean = false): DateTimeFormatter =
+     DateTimeFormatter.ofPattern(
+-        (if (vierundzwanzig) "HH:mm" else "h:mm") + (if (sekunden) ":ss" else "") + (if (vierundzwanzig) "" else " a"),
++        "HH:mm" + (if (sekunden) ":ss" else ""),
+         locale,
+     )

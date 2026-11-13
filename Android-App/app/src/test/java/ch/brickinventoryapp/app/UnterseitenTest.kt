@@ -92,6 +92,8 @@ import ch.brickinventoryapp.testing.TeileRepository
  *   bauliste-plus-ohne-wirkung   „+“ im Feld nimmt das Set nicht auf → rot „Bauliste nimmt Sets …“
  *   konto-profil-ohne-rueckfrage Speichern ohne Passwortdialog → rot „Konto fragt beim Speichern …“
  *   konto-email-ohne-ausstehend  die beantragte Adresse nicht unter dem Feld → rot „Konto nennt …“
+ *   abmelden-mitten-im-konto     Abmelden wieder als letzter Eintrag von „Konto und App“, vor der
+ *                                Servergruppe → rot „Abmelden steht abgesetzt …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -159,6 +161,17 @@ class UnterseitenTest {
         assertEquals("Bestätigt meldet ab", 1, abgemeldet)
     }
 
+    /** Zwischen „Einstellungen“ und der Servergruppe lag Abmelden dort, wo man weitertippt. */
+    @Test
+    fun `Abmelden steht abgesetzt als letzter Eintrag, nach der Servergruppe`() {
+        zeige { MehrBildschirm({}, isAdmin = true, updateVerfuegbar = false, onAbmelden = {}) }
+        fun lage(id: Int) = compose.onNodeWithText(ctx.getString(id)).fetchSemanticsNode().boundsInRoot
+        val abmelden = lage(R.string.main_menu_logout)
+        for (id in listOf(R.string.nav_settings, R.string.main_menu_monitoring, R.string.konto_title, R.string.vouchers_title)) {
+            assertTrue("„${ctx.getString(id)}“ steht unter Abmelden", lage(id).bottom <= abmelden.top)
+        }
+    }
+
     /** Der Punkt an den Einstellungen sagt in Worten, wofür er steht. */
     @Test
     fun `Update-Punkt ist beschriftet`() {
@@ -193,7 +206,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
+            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.ladeHaushalt() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
 
@@ -255,7 +268,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.loadHouseholdStatus() }
+            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.ladeHaushalt() }
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
         val entfernen = ctx.getString(R.string.household_remove)

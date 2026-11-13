@@ -1,0 +1,16 @@
+Gegenprobe: Die Preiskarte wiederholt den Marktpreis der Wert-Kachel
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetDetailAnzeigeTest
+Rot: der Marktpreis steht einmal in den Wert-Kacheln
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
+@@ -104,6 +104,7 @@
+     } else if (price == null && detailState.preisFehler != null) {
+         FehlerHinweis(detailState.preisFehler, onErneut, detailState.preisFehlerKlasse)
+     } else if (price != null && !price.noPrice) {
++        Text(fmtMoney(price.avgPrice ?: 0.0, currency))
+         // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen
+         // Zustand stünden Preis und G&V der Wert-Kacheln oben gleich noch einmal da.
+         history?.byCondition?.let { byCond ->

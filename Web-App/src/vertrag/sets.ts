@@ -223,6 +223,23 @@ export const AnleitungHochgeladen = GenericResponse.extend({
   instruction: z.looseObject({ url: z.string(), description: z.string().nullable(), local_path: z.string() }),
 });
 
+/** Was eine Verringerung wegnahm; die Oberfläche nennt den Kauf und bietet Rückgängig über `papierkorb`. */
+export const MengeGeaendert = GenericResponse.extend({
+  entfallen: z
+    .array(
+      z.looseObject({
+        id: ganz,
+        quantity: ganz,
+        purchase_price: z.number().nullable(),
+        currency: z.string().nullable(),
+        price_estimated: z.boolean(),
+        condition: z.string(),
+        date: z.string().nullable(),
+      }),
+    )
+    .optional(),
+});
+
 /** Ein neues Set; dieselben Felder für den Strom (add-stream). */
 const NeuesSet = z.strictObject({
   set_number: z.union([z.string().max(64), z.number()]).optional(),
@@ -284,7 +301,7 @@ export const routen = {
       condition: ZUSTAND.nullable().optional(),
       owner_user_id: KENNUNG.nullable().optional(),
     }),
-    antwort: GenericResponse,
+    antwort: MengeGeaendert,
   },
   'DELETE /api/v1/sets/:setNumber': {
     eingabe: OHNE_RUMPF,

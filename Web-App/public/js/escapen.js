@@ -186,6 +186,20 @@ export function html(teile, ...werte) {
 }
 
 /**
+ * Fertige Stücke aus html`` zu einem, mit Trenner: statt ungeprueft(liste.join('')), das jede Zeichenkette
+ * ungeprüft durchliesse. Eine rohe Zeichenkette in der Liste ist ein Fehler, kein Markup.
+ * @param {readonly Markup[]} teile
+ * @param {SicheresHtml | string} [trenner] Text wird maskiert
+ */
+export function verbinde(teile, trenner = '') {
+  const zwischen = einsetzen(trenner);
+  const stuecke = teile.filter(x => x !== '' && x !== null && x !== undefined && x !== false);
+  for (const x of stuecke)
+    if (!SicheresHtml.markiert(x) && !Array.isArray(x)) throw new TypeError('verbinde: nur Stücke aus html``');
+  return new SicheresHtml(stuecke.map(einsetzen).join(zwischen));
+}
+
+/**
  * Markup ohne Prüfung — nur für Zeichenketten, die schon maskiert gebaut wurden. Jede Stelle zählt
  * test/ratschen.test.js; neue Vorlagen nehmen html``.
  * @param {unknown} text

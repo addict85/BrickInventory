@@ -11,6 +11,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.Update
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
@@ -88,6 +89,12 @@ internal abstract class BestandDao {
     @Insert
     abstract suspend fun fuegeEin(zeilen: List<BestandZeile>)
 
+    @Update
+    abstract suspend fun aktualisiere(zeilen: List<BestandZeile>)
+
+    @Query("DELETE FROM bestand WHERE bereich = :bereich AND art = :art AND schluessel IN (:schluessel)")
+    abstract suspend fun loesche(bereich: String, art: String, schluessel: List<String>)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun setzeStand(stand: BestandStand)
 
@@ -97,6 +104,22 @@ internal abstract class BestandDao {
         loescheListe(bereich, art)
         fuegeEin(zeilen)
         if (stand != null) setzeStand(BestandStand(bereich, art, stand))
+    }
+
+    /**
+     * Die Liste auf [zeilen] bringen und dabei nur Unterschiede schreiben: Eine lokale
+     * Bearbeitung ändert meist eine Zeile, nicht hunderte. Positionen siehe [positionen].
+     */
+    @Transaction
+    open suspend fun gleicheAn(bereich: String, art: String, zeilen: List<BestandZeile>) {
+        val alt = lies(bereich, art).associateBy { it.schluessel }
+        val pos = positionen(alt.mapValues { it.value.position }, zeilen.map { it.schluessel })
+        val neu = zeilen.mapIndexed { i, z -> z.copy(position = pos[i]) }
+        val weg = alt.keys - neu.map { it.schluessel }.toSet()
+        if (weg.isNotEmpty()) loesche(bereich, art, weg.toList())
+        val (bekannt, frisch) = neu.filter { alt[it.schluessel] != it }.partition { it.schluessel in alt }
+        if (bekannt.isNotEmpty()) aktualisiere(bekannt)
+        if (frisch.isNotEmpty()) fuegeEin(frisch)
     }
 
     @Query("DELETE FROM bestand WHERE bereich != :bereich")

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.konto.ui.screens
 
-import ch.brickinventoryapp.sitzung.*
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
@@ -36,10 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.konto.ui.UpdateUiState
+import ch.brickinventoryapp.ui.satz
+import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.model.ui.theme.Helligkeit
 import ch.brickinventoryapp.ui.theme.mittigBis

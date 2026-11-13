@@ -4,14 +4,13 @@ Test: ch.brickinventoryapp.verwaltung.MonitoringProtokollAnzeigeTest
 Rot: jede Zeile nennt
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
-index 6b54475..95aa832 100644
 --- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
 +++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
-@@ -174,7 +174,7 @@ private fun ProtokollEintrag(zeile: ProtokollZeileAnsicht) {
+@@ -176,7 +176,7 @@
          // `logged_at` kam seit jeher mit und wurde nie
          // gezeigt; ohne sie ist eine Protokollzeile kaum zu
          // gebrauchen.
--        Text(fmtUhrzeit(zeile.loggedAt) ?: "",
+-        Text(fmtUhrzeit(zeile.loggedAt, appNumberLocale(), vierundzwanzigStunden()) ?: "",
 +        Text("",
              style = MaterialTheme.typography.bodySmall,
              fontFamily = FontFamily.Monospace,

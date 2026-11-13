@@ -6,7 +6,7 @@ import { html, ungeprueft } from './escapen.js';
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
 import { betragFuerFeld, fmtN, leseBetrag } from './format.js';
-import { toast } from './meldungen.js';
+import { meldeAmFeld, toast } from './meldungen.js';
 import { feldFehler } from './formular.js';
 import { CURRENCY, ME, allSets, curSet, set_curSet } from './zustand.js';
 import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './scope.js';
@@ -34,6 +34,7 @@ export async function speichereSetLagerort(sn) {
   const eintrag = (allSets || []).find(x => x.set_number === sn);
   if (eintrag) eintrag.storage = d.storage;
   if (curSet && curSet.set_number === sn) curSet.storage = d.storage;
+  meldeAmFeld(el);
   await ladeLagerorte();
 }
 
@@ -315,6 +316,7 @@ async function sendeAlarm(sn, richtung, roh) {
   }
   // Nur den Merker, nicht das Feld — die Begründung steht an zeigeAlarmMerker().
   zeigeAlarmMerker(loeschen ? undefined : (d.alert ?? undefined));
+  meldeAmFeld(G(alarmId('state')));
 }
 
 /**

@@ -35,11 +35,14 @@ class ManuelleKachelTest {
         assertEquals(5.0, figur.avgPurchasePrice ?: 0.0, 0.0)
     }
 
+    // Die Wert-Kacheln wie im Set-Detail; eine grosse Preiszeile in der Marktpreis-Karte
+    // wiederholte sie (lag bis hierher in PurchasePriceDisplayTest, core-data).
     @Test
-    fun `die Detailansicht zeigt Marktpreis und Preisverlauf`() {
+    fun `die Detailansicht zeigt Wert-Kacheln, Marktpreis und Preisverlauf, ohne grosse Preiszeile`() {
         val s = code(read("teile/ui/screens/ManualItemDetailScreen.kt"))
-        for (teil in listOf("MarketPriceByCondition(", "PriceChart(")) {
+        for (teil in listOf("WertKacheln(", "MarketPriceByCondition(", "PriceChart(")) {
             assert(s.contains(teil)) { "$teil fehlt in der Detailansicht" }
         }
+        assert(!s.contains("headlineSmall")) { "wieder eine grosse Preiszeile neben den Kacheln" }
     }
 }

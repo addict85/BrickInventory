@@ -20,17 +20,47 @@ const liste = (v4: string[], v6: string[]) => {
 /** Nie ein Ziel: Selbst, Link-Local (Metadatendienste der Clouds), Multicast. */
 const NIE = liste(['0.0.0.0/8', '169.254.0.0/16', '224.0.0.0/4', '240.0.0.0/4'], ['::/128', 'fe80::/10', 'ff00::/8']);
 const LOOPBACK = liste(['127.0.0.0/8'], ['::1/128']);
-/** Privat, CGNAT, ULA und Dokumentation: Für einen öffentlichen Dienst gibt es dort nichts zu holen. */
+/** Privat, CGNAT, ULA und Dokumentation: Für einen öffentlichen Dienst gibt es dort nichts zu holen.
+ * 6to4 und Teredo tragen eine IPv4-Adresse, die ein Relais beliebig ansteuert; beide sind veraltet. */
 const INTERN = liste(
   ['10.0.0.0/8', '100.64.0.0/10', '172.16.0.0/12', '192.168.0.0/16', '192.0.0.0/24', '198.18.0.0/15'],
-  ['fc00::/7', '64:ff9b:1::/48'],
+  ['fc00::/7', '64:ff9b:1::/48', '2002::/16', '2001::/32'],
 );
+
+/** Die acht 16-Bit-Gruppen einer gültigen IPv6-Adresse (Zone und IPv4-Schreibweise am Ende erlaubt). */
+function gruppen(ip: string): number[] {
+  let s = ip.split('%')[0]?.toLowerCase() ?? '';
+  const v4 = s.match(/^(.*:)(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (v4) {
+    const [a = 0, b = 0, c = 0, d = 0] = v4.slice(2).map(Number);
+    s = `${v4[1]}${((a << 8) | b).toString(16)}:${((c << 8) | d).toString(16)}`;
+  }
+  const [kopf = '', rest] = s.split('::');
+  const teil = (x: string) => (x ? x.split(':').map(g => Number.parseInt(g, 16)) : []);
+  const vorn = teil(kopf),
+    hinten = rest === undefined ? [] : teil(rest);
+  return [...vorn, ...Array(8 - vorn.length - hinten.length).fill(0), ...hinten];
+}
+
+/** IPv4-gemappte (::ffff:a.b.c.d) und NAT64-Adressen (64:ff9b::a.b.c.d) erreichen
+ * eine IPv4-Adresse; geprüft wird diese, damit jede IPv4-Regel auch hier greift.
+ * NAT64 ganz zu sperren bräche Abrufe hinter DNS64 (reine IPv6-Netze). */
+export function normalisiert(ip: string): string {
+  if (!net.isIPv6(ip)) return ip;
+  const g = gruppen(ip);
+  const gemappt = g.slice(0, 5).every(x => x === 0) && g[5] === 0xffff;
+  const nat64 = g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every(x => x === 0);
+  if (!gemappt && !nat64) return ip;
+  const [h = 0, l = 0] = g.slice(6);
+  return [h >> 8, h & 255, l >> 8, l & 255].join('.');
+}
 
 const typ = (ip: string) => (net.isIPv6(ip) ? 'ipv6' : 'ipv4');
 
 /** Für Abrufe öffentlicher Dienste (Rebrickable, LEGO, CDNs). */
-export function oeffentlicheAdresse(ip: string): boolean {
-  if (!net.isIP(ip)) return false;
+export function oeffentlicheAdresse(roh: string): boolean {
+  if (!net.isIP(roh)) return false;
+  const ip = normalisiert(roh);
   return ![NIE, LOOPBACK, INTERN].some(b => b.check(ip, typ(ip)));
 }
 
@@ -40,10 +70,12 @@ type Schnittstellen = ReturnType<typeof os.networkInterfaces>;
  * bleiben die Netze des eigenen Containers (Datenbank, Proxy) samt Loopback;
  * ohne Container ist Loopback ein lokaler Mailserver und bleibt erlaubt. */
 export function mailserverAdresse(
-  ip: string,
+  roh: string,
   o: { imContainer?: boolean; schnittstellen?: Schnittstellen } = {},
 ): boolean {
-  if (!net.isIP(ip) || NIE.check(ip, typ(ip))) return false;
+  if (!net.isIP(roh)) return false;
+  const ip = normalisiert(roh);
+  if (NIE.check(ip, typ(ip))) return false;
   if (!(o.imContainer ?? imContainer())) return true;
   if (LOOPBACK.check(ip, typ(ip))) return false;
   const eigene = new net.BlockList();

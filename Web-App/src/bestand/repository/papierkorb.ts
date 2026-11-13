@@ -142,6 +142,13 @@ export async function schreibeZurueck(
   );
 }
 
+export async function hatSetZeile(tx: DbSchnittstelle, userId: number, nummer: string): Promise<boolean> {
+  return !!(await tx.get<{ da: number }>('SELECT 1 AS da FROM sets WHERE user_id = $1 AND set_number = $2', [
+    userId,
+    nummer,
+  ]));
+}
+
 export async function entferneEintrag(tx: DbSchnittstelle, id: number): Promise<void> {
   await tx.run('DELETE FROM papierkorb WHERE id = $1', [id]);
 }

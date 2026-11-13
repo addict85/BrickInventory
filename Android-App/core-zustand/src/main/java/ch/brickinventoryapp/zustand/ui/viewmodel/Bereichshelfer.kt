@@ -11,8 +11,11 @@ import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.sitzung.Sitzung
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -104,4 +107,15 @@ class BereichsFilter @Inject constructor(
  */
 fun ViewModel.folgeAbmeldung(sitzung: Sitzung, zuruecksetzen: () -> Unit) {
     viewModelScope.launch { sitzung.abmeldungen.drop(1).collect { zuruecksetzen() } }
+}
+
+/**
+ * Lädt, sobald [zustand] seinen ersten Beobachter bekommt, und wieder nach jeder Pause ohne:
+ * Das Betreten der Seite stösst das Laden an, nicht ein LaunchedEffect des Bildschirms.
+ * Kein stateIn, damit `.value` auch ohne Beobachter stimmt.
+ */
+fun ViewModel.ladeBeimBeobachten(zustand: MutableStateFlow<*>, laden: () -> Unit) {
+    viewModelScope.launch {
+        zustand.subscriptionCount.map { it > 0 }.distinctUntilChanged().collect { if (it) laden() }
+    }
 }

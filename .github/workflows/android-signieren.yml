@@ -54,8 +54,6 @@ jobs:
       summe_paket: ${{ steps.signiert.outputs.summe_paket }}
       summe_bundle: ${{ steps.signiert.outputs.summe_bundle }}
       summe_daten: ${{ steps.signiert.outputs.summe_daten }}
-      summe_signatur: ${{ steps.signiert.outputs.summe_signatur }}
-      summe_zertifikat: ${{ steps.signiert.outputs.summe_zertifikat }}
     steps:
       - name: Unsigniertes APK holen
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
@@ -187,8 +185,9 @@ jobs:
           jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$RUNNER_TEMP/bundle.aab" "$KEY_ALIAS" >/dev/null
           jarsigner -verify "$RUNNER_TEMP/bundle.aab" >/dev/null
 
-          # Die Fassungsbeschreibung: Die App prüft `beschreibungssignatur` (Job
-          # beschreibung) oder `signatur` und die Frist `gueltigBis`.
+          # Die Fassungsbeschreibung: Die App prüft nur `beschreibungssignatur` (Job
+          # beschreibung) und die Frist `gueltigBis`. Sieben Tage: Eine zurückgehaltene
+          # Beschreibung fällt nach einer Woche auf, nicht erst nach einem Monat.
           META="$EIN/apk/release/output-metadata.json"
           APK_AUS="$AUS/apk/release/BrickInventory.apk"
           V_CODE=$(jq -r '.elements[0].versionCode' "$META")
@@ -197,17 +196,12 @@ jobs:
                 --arg commit "$COMMIT" \
                 --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT/BrickInventory-${V_CODE}.apk" \
                 --argjson size "$(stat -c%s "$APK_AUS")" --arg pruefsumme "$(sha256sum "$APK_AUS" | cut -d' ' -f1)" \
-                --argjson ausgestellt "$AUSGESTELLT" --argjson gueltig "$((AUSGESTELLT + 30 * 86400))" \
+                --argjson ausgestellt "$AUSGESTELLT" --argjson gueltig "$((AUSGESTELLT + 7 * 86400))" \
                 '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size, apkSha256:$pruefsumme,
                   ausgestellt:$ausgestellt, gueltigBis:$gueltig}' \
                 > "$AUS/version-daten.json"
-          keytool -importkeystore -noprompt -srckeystore "$KS" -srcstorepass:env KS_PASS -srcalias "$KEY_ALIAS" \
-            -srckeypass:env KEY_PASS -destkeystore "$S/schluessel.p12" -deststoretype PKCS12 \
-            -deststorepass:env KS_PASS -destkeypass:env KS_PASS >/dev/null
-          # Der Schlüssel bleibt auch als PEM verschlüsselt: kein Klartext auf der Platte.
-          openssl pkcs12 -in "$S/schluessel.p12" -nocerts -passin env:KS_PASS -passout env:KS_PASS -out "$S/schluessel.pem"
-          openssl dgst -sha256 -sign "$S/schluessel.pem" -passin env:KS_PASS -out "$AUS/version.sig" "$AUS/version-daten.json"
-          keytool -exportcert -rfc -keystore "$KS" -storepass:env KS_PASS -alias "$KEY_ALIAS" > "$AUS/signierzertifikat.pem"
+          # Der APK-Schlüssel signiert nur APK und Bundle; die Beschreibung signiert der
+          # eigene Schlüssel im Job beschreibung. Kein PEM-Export des APK-Schlüssels mehr.
 
           if [ "$ECHT" = "true" ]; then
             install -m 644 "$RUNNER_TEMP/bundle.aab" "$AUS/bundle/release/app-release.aab"
@@ -220,8 +214,6 @@ jobs:
             echo "summe_paket=$(sha256sum "$APK_AUS" | cut -d' ' -f1)"
             echo "summe_bundle=$(sha256sum "$AUS/bundle/release/app-release.aab" | cut -d' ' -f1)"
             echo "summe_daten=$(sha256sum "$AUS/version-daten.json" | cut -d' ' -f1)"
-            echo "summe_signatur=$(sha256sum "$AUS/version.sig" | cut -d' ' -f1)"
-            echo "summe_zertifikat=$(sha256sum "$AUS/signierzertifikat.pem" | cut -d' ' -f1)"
           } >> "$GITHUB_OUTPUT"
           # Ein probe-signiertes APK (jeder Lauf ausser dem Release) liegt nicht installierbar
           # im Artefakt: Ein Link darauf verteilte fremden Code unter dem Namen des Projekts.
@@ -269,15 +261,13 @@ jobs:
           PAKET: ${{ needs.signatur.outputs.summe_paket }}
           BUNDLE: ${{ needs.signatur.outputs.summe_bundle }}
           DATEN: ${{ needs.signatur.outputs.summe_daten }}
-          SIGNATUR: ${{ needs.signatur.outputs.summe_signatur }}
-          ZERTIFIKAT: ${{ needs.signatur.outputs.summe_zertifikat }}
         run: |
           set -euo pipefail
           A="$RUNNER_TEMP/ausgang"
           APK="$A/apk/release/BrickInventory.apk"
           if [ "$ECHT" != "true" ]; then APK="$APK.probe-nicht-installieren"; fi
           printf '%s  %s\n' "$PAKET" "$APK" "$BUNDLE" "$A/bundle/release/app-release.aab" "$DATEN" "$A/version-daten.json" \
-            "$SIGNATUR" "$A/version.sig" "$ZERTIFIKAT" "$A/signierzertifikat.pem" | sha256sum -c -
+            | sha256sum -c -
 
       - name: Environment ist geschützt
         if: inputs.echt
@@ -305,8 +295,8 @@ jobs:
           fi
           echo "Environment $UMGEBUNG: $PRUEFER Pflichtprüfer, nur der Zweig main."
 
-      # Das Secret liegt verschlüsselt (PEM mit Passphrase); fehlt eines der beiden,
-      # trägt die Beschreibung nur die Signatur des APK-Schlüssels (apk-pruefen entscheidet).
+      # Das Secret liegt verschlüsselt (PEM mit Passphrase). Fehlt eines der beiden, gibt es
+      # keine Beschreibung, die eine App annähme: Der Übergangsweg über den APK-Schlüssel ist weg.
       - name: Beschreibungsschlüssel bereitstellen
         if: inputs.echt
         env:
@@ -316,8 +306,8 @@ jobs:
           set -euo pipefail
           S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
           if [ -z "$BESCHREIBUNG_SCHLUESSEL" ] || [ -z "$BESCHREIBUNG_PASS" ]; then
-            echo "::warning title=Beschreibungsschlüssel fehlt::BESCHREIBUNG_SCHLUESSEL oder BESCHREIBUNG_PASS fehlt in der Environment release-beschreibung (docs/ANDROID-RELEASE.md). Die Beschreibung trägt nur die Signatur des APK-Schlüssels."
-            exit 0
+            echo "::error title=Beschreibungsschlüssel fehlt::BESCHREIBUNG_SCHLUESSEL oder BESCHREIBUNG_PASS fehlt in der Environment release-beschreibung (docs/ANDROID-RELEASE.md). Ohne ihn nimmt keine App die Beschreibung an. Nichts wird veröffentlicht."
+            exit 1
           fi
           printf '%s\n' "$BESCHREIBUNG_SCHLUESSEL" > "$S/beschreibung.pem"
           printf '%s' "$BESCHREIBUNG_PASS" > "$S/pass"
@@ -345,16 +335,11 @@ jobs:
           A="$RUNNER_TEMP/ausgang"
           S="$RUNNER_TEMP/schluessel"
           trap 'rm -rf "$S"' EXIT
-          BSIG=""
-          if [ -f "$S/beschreibung.pem" ]; then
-            openssl dgst -sha256 -sign "$S/beschreibung.pem" -passin "file:$S/pass" -out "$S/beschreibung.sig" "$A/version-daten.json"
-            openssl pkey -in "$S/beschreibung.pem" -passin "file:$S/pass" -pubout -out "$A/beschreibungsschluessel.pem"
-            BSIG=$(base64 -w0 "$S/beschreibung.sig")
-          fi
-          jq -n --arg daten "$(base64 -w0 "$A/version-daten.json")" --arg signatur "$(base64 -w0 "$A/version.sig")" --arg bsig "$BSIG" \
-                '{daten:$daten, signatur:$signatur} + (if $bsig == "" then {} else {beschreibungssignatur:$bsig} end)' \
+          openssl dgst -sha256 -sign "$S/beschreibung.pem" -passin "file:$S/pass" -out "$S/beschreibung.sig" "$A/version-daten.json"
+          openssl pkey -in "$S/beschreibung.pem" -passin "file:$S/pass" -pubout -out "$A/beschreibungsschluessel.pem"
+          jq -n --arg daten "$(base64 -w0 "$A/version-daten.json")" --arg bsig "$(base64 -w0 "$S/beschreibung.sig")" \
+                '{daten:$daten, beschreibungssignatur:$bsig}' \
                 > "$A/version-signiert.json"
-          rm "$A/version.sig"
           echo "summe_beschreibung=$(sha256sum "$A/version-signiert.json" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Signiertes Ergebnis übergeben
@@ -441,9 +426,9 @@ jobs:
           python3 tools/manifest-pruefen.py "$RUNNER_TEMP/manifest.txt" tools/manifest-exportiert.txt \
             tools/manifest-berechtigungen.txt
 
-      # Die Beschreibung ist vom selben Zertifikat wie das APK signiert und beschreibt
-      # genau dieses APK. Nennt die App Beschreibungsschlüssel, muss das Release mit
-      # einem davon signiert sein; sonst fiele das erst auf den Geräten auf.
+      # Die Beschreibung trägt die Signatur des Beschreibungsschlüssels und beschreibt
+      # genau dieses APK. Das Release muss mit einem der Schlüssel signiert sein, die
+      # die App nennt; sonst fiele das erst auf den Geräten auf.
       - name: Signierte Beschreibung prüfen
         env:
           ECHT: ${{ inputs.echt }}
@@ -453,21 +438,15 @@ jobs:
           set -euo pipefail
           A=app/build/outputs
           T="$RUNNER_TEMP/beschreibung"; mkdir -p "$T"
-          ZERT=$(openssl x509 -in "$A/signierzertifikat.pem" -outform DER | sha256sum | cut -d' ' -f1)
-          if ! grep -qi "certificate SHA-256 digest: $ZERT" "$RUNNER_TEMP/zertifikat.txt"; then
-            echo "::error::Die Beschreibung ist mit einem anderen Zertifikat signiert als das APK."
+          jq -r .daten "$A/version-signiert.json" | base64 -d > "$T/daten.json"
+          if jq -e .signatur "$A/version-signiert.json" >/dev/null; then
+            echo "::error::Die Beschreibung trägt wieder eine Signatur des APK-Schlüssels; sie gehört nicht mehr hinein."
             exit 1
           fi
-          openssl x509 -in "$A/signierzertifikat.pem" -pubkey -noout > "$T/schluessel.pem"
-          jq -r .daten "$A/version-signiert.json" | base64 -d > "$T/daten.json"
-          jq -r .signatur "$A/version-signiert.json" | base64 -d > "$T/daten.sig"
-          openssl dgst -sha256 -verify "$T/schluessel.pem" -signature "$T/daten.sig" "$T/daten.json"
-          if jq -e .beschreibungssignatur "$A/version-signiert.json" >/dev/null; then
-            jq -r .beschreibungssignatur "$A/version-signiert.json" | base64 -d > "$T/beschreibung.sig"
-            openssl dgst -sha256 -verify "$A/beschreibungsschluessel.pem" -signature "$T/beschreibung.sig" "$T/daten.json"
-          fi
-          # Rückgabe 3: Die App nennt keinen Beschreibungsschlüssel (Übergangsweg über den
-          # APK-Schlüssel). Sichtbar in jedem Lauf; ein Release veröffentlicht so nicht.
+          jq -r .beschreibungssignatur "$A/version-signiert.json" | base64 -d > "$T/beschreibung.sig"
+          openssl dgst -sha256 -verify "$A/beschreibungsschluessel.pem" -signature "$T/beschreibung.sig" "$T/daten.json"
+          # Rückgabe 3: Die App nennt keinen Beschreibungsschlüssel und nähme so keine
+          # Beschreibung an. Sichtbar in jedem Lauf; ein Release veröffentlicht so nicht.
           SCHLUESSEL=0
           python3 tools/release-pruefen.py schluessel "$A/beschreibungsschluessel.pem" \
             core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem || SCHLUESSEL=$?

@@ -4,7 +4,9 @@ import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.data.api.KatalogApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
+import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
+import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
 import javax.inject.Inject
 import javax.inject.Singleton
 import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse

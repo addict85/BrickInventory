@@ -1,0 +1,17 @@
+Gegenprobe: Eine lokale Bearbeitung ersetzt wieder die ganze Liste statt nur die geänderten Zeilen
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.BestandDatenbankTest
+Rot: eine lokale Bearbeitung schreibt nur die betroffene Zeile
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+@@ -338,7 +338,7 @@
+     /** Nur unter der Sperre von ([b], fach.art) aufrufen. */
+     private suspend fun <T : Any> aendere(fach: Fach<T>, b: String, w: Wirkung) {
+         val alt = dekodiere(fach, bestand.lies(b, fach.art))
+-        bestand.gleicheAn(b, fach.art, kodiere(fach, fach.anwenden(alt.liste, w)))
++        bestand.ersetze(b, fach.art, kodiere(fach, fach.anwenden(alt.liste, w)), null)
+     }
+ 
+     private fun <T : Any> kodiere(fach: Fach<T>, liste: List<T>) =

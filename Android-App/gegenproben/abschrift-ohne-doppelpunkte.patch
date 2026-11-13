@@ -1,0 +1,17 @@
+Gegenprobe: Die Abschrift bekommt keine Doppelpunkte mehr wie in der Webapp
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AbschriftformTest
+Rot: die Abschrift bekommt Doppelpunkte
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Abschriftform.kt
+@@ -11,7 +11,7 @@
+ internal fun abschriftInPaaren(text: String, cursor: Int): Pair<String, Int> {
+     if (text.any { it.uppercaseChar() !in HEX && it != ':' && !it.isWhitespace() }) return text to cursor
+     val davor = text.take(cursor.coerceIn(0, text.length)).count { it.uppercaseChar() in HEX }
+-    val gepaart = text.uppercase().filter { it in HEX }.chunked(2).joinToString(":")
++    val gepaart = text.uppercase().filter { it in HEX }
+     return gepaart to if (davor == 0) 0 else davor + (davor - 1) / 2
+ }
+ 

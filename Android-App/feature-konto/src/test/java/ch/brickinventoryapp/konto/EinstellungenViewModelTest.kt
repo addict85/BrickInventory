@@ -190,7 +190,7 @@ class EinstellungenViewModelTest {
     fun `bei aktivem zweitem Faktor geht dessen Code beim Einloesen mit`() {
         pfade.antworten["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
         val vm = t.merke(HaushaltViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
-        vm.loadHouseholdStatus()
+        vm.ladeHaushalt()
         assertTrue("Codefeld", vm.householdState.value.faktorNoetig)
         vm.redeemHouseholdInvite("ABC123", "geheim1234", " 123456 ")
         assertTrue("eingeloest", pfade.anfragen.any { "household/redeem" in it })

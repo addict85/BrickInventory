@@ -1,0 +1,17 @@
+Gegenprobe: Das Monitoring formatiert eine Meldung wieder mit String.format ohne Locale
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: kein String-format ohne Locale
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
+@@ -190,7 +190,7 @@
+                     },
+                     onRetry = { sn ->
+                         scope.launch {
+-                            snack = if (aktionen.wiederholeEintrag(sn)) String.format(appNumberLocale(), retryQueuedFmt, sn)
++                            snack = if (aktionen.wiederholeEintrag(sn)) String.format(retryQueuedFmt, sn)
+                                     else retryErrorMsg
+                         }
+                     },

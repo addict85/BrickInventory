@@ -1,0 +1,19 @@
+Gegenprobe: Der Zertifikatsdialog sagt bei einer zu kurzen Abschrift wieder nur „passt nicht“
+Modul: app
+Test: ch.brickinventoryapp.app.ZertifikatDialogTest
+Rot: zu kurz und falsch abgeschrieben sind verschiedene Fehler
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+@@ -153,8 +153,8 @@
+ @Composable
+ private fun abschriftFehler(befund: Abschrift?, gezaehlt: Int): String? = when (befund) {
+     null, Abschrift.PASST -> null
+-    Abschrift.LEER, Abschrift.ZU_KURZ -> stringResource(R.string.zert_eingabe_zu_kurz, gezaehlt, Abschrift.NOETIG)
+-    Abschrift.PASST_NICHT -> stringResource(R.string.zert_eingabe_falsch)
++    Abschrift.LEER -> stringResource(R.string.zert_eingabe_zu_kurz, gezaehlt, Abschrift.NOETIG)
++    Abschrift.ZU_KURZ, Abschrift.PASST_NICHT -> stringResource(R.string.zert_eingabe_falsch)
+ }
+ 
+ /** Überschrift und Erklärung je Art der Frage. */

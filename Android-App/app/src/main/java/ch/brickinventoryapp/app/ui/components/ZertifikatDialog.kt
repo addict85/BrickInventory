@@ -15,10 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -29,8 +25,10 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
 import ch.brickinventoryapp.sicherheit.fingerabdruckAnfang
 import ch.brickinventoryapp.sicherheit.fingerabdruckLesbar
-import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.Fingerabdruckfeld
+import ch.brickinventoryapp.sicherheit.Abschrift
+import androidx.compose.ui.window.DialogProperties
 
 /**
  * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der Fingerabdruck
@@ -58,49 +56,27 @@ private fun ZertifikatFrageDialog(
     onAbbrechen: () -> Unit,
 ) {
     var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
-    var falsch by remember(frage.fingerabdruck) { mutableStateOf(false) }
+    var befund by remember(frage.fingerabdruck) { mutableStateOf<Abschrift?>(null) }
     val host = frage.schluessel.substringBeforeLast(':')
     val (titel, text) = titelUndText(frage.art)
     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
     val abschreiben = frage.art != ZertifikatUngeklaert.Art.ERSTKONTAKT
     AlertDialog(
         onDismissRequest = onAbbrechen,
+        properties = schliessbar(eingabe),
         title = { Text(stringResource(titel), modifier = Modifier.semantics { heading() }) },
         text = {
             Ueberdeckungsschutz()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(text, host))
-                frage.erwartet?.let {
-                    Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
-                    Text(fingerabdruckLesbar(it), fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                // Was abzutippen ist, steht nicht da: Sonst schriebe man es vom Bildschirm
-                // eines Angreifers ab statt aus der Webapp. Der Anfang zeigt nur, welche Zeile.
-                Text(stringResource(if (abschreiben) R.string.zert_beginnt_mit else R.string.zert_fingerabdruck),
-                    style = MaterialTheme.typography.labelMedium)
-                Text(if (abschreiben) fingerabdruckAnfang(frage.fingerabdruck) else fingerabdruckLesbar(frage.fingerabdruck),
-                    fontFamily = FontFamily.Monospace,
-                    // Ohne Abtippen ist der Vergleich die ganze Prüfung: gross genug zum Lesen.
-                    style = if (abschreiben) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,
-                    color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                FingerabdruckAnzeige(frage, abschreiben, geaendert)
                 if (abschreiben) {
-                    OutlinedTextField(
-                        shape = Formen.feld,
-                        value = eingabe,
-                        onValueChange = { eingabe = it; falsch = false },
-                        // Kurzes Etikett, die Anleitung darunter: Ein Satz als Etikett wurde
-                        // abgeschnitten und stand beim Tippen über dem Feld.
-                        label = { Text(stringResource(R.string.zert_eingabe_etikett)) },
-                        isError = falsch,
-                        supportingText = {
-                            Text(stringResource(if (falsch) R.string.zert_eingabe_falsch
-                                else if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe))
-                        },
-                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
-                        modifier = Modifier.fillMaxWidth(),
+                    Fingerabdruckfeld(
+                        eingabe = eingabe,
+                        onEingabe = { eingabe = it; befund = null },
+                        noetig = Abschrift.NOETIG,
+                        hilfe = stringResource(if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe),
+                        fehler = { gezaehlt -> abschriftFehler(befund, gezaehlt) },
                     )
                     Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
                 }
@@ -113,7 +89,11 @@ private fun ZertifikatFrageDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { falsch = !onVertrauen(eingabe.takeIf { abschreiben }) },
+                onClick = {
+                    val angenommen = onVertrauen(eingabe.takeIf { abschreiben })
+                    befund = if (angenommen) null
+                        else Abschrift.von(eingabe, frage.fingerabdruck).takeIf { it != Abschrift.PASST } ?: Abschrift.PASST_NICHT
+                },
                 enabled = !abschreiben || eingabe.isNotBlank(),
                 colors = if (geaendert) ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                          else ButtonDefaults.textButtonColors(),
@@ -121,6 +101,26 @@ private fun ZertifikatFrageDialog(
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
+}
+
+/** Bisheriger und neuer Fingerabdruck; beim Abtippen nur der Anfang. */
+@Composable
+private fun FingerabdruckAnzeige(frage: ZertifikatUngeklaert, abschreiben: Boolean, geaendert: Boolean) {
+    frage.erwartet?.let {
+        Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
+        Text(fingerabdruckLesbar(it), fontFamily = FontFamily.Monospace,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    // Was abzutippen ist, steht nicht da: Sonst schriebe man es vom Bildschirm
+    // eines Angreifers ab statt aus der Webapp. Der Anfang zeigt nur, welche Zeile.
+    Text(stringResource(if (abschreiben) R.string.zert_beginnt_mit else R.string.zert_fingerabdruck),
+        style = MaterialTheme.typography.labelMedium)
+    Text(if (abschreiben) fingerabdruckAnfang(frage.fingerabdruck) else fingerabdruckLesbar(frage.fingerabdruck),
+        fontFamily = FontFamily.Monospace,
+        // Ohne Abtippen ist der Vergleich die ganze Prüfung: gross genug zum Lesen.
+        style = if (abschreiben) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,
+        color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
 }
 
 /**
@@ -146,6 +146,21 @@ private fun CodeAbweichungDialog(frage: ZertifikatUngeklaert, onSchliessen: () -
         },
         confirmButton = { TextButton(onClick = onSchliessen) { Text(stringResource(R.string.common_ok)) } },
     )
+}
+
+/**
+ * Ein Tipp neben den Dialog verwarf das halb Abgetippte. Zurück schliesst nur, solange
+ * nichts getippt ist; daneben tippen nie — Abbrechen bleibt der ausdrückliche Weg.
+ */
+internal fun schliessbar(eingabe: String) =
+    DialogProperties(dismissOnBackPress = eingabe.isEmpty(), dismissOnClickOutside = false)
+
+/** „Zu kurz“ sagt, wie viel fehlt; „passt nicht“ heisst, die Zeichen stimmen nicht. */
+@Composable
+private fun abschriftFehler(befund: Abschrift?, gezaehlt: Int): String? = when (befund) {
+    null, Abschrift.PASST -> null
+    Abschrift.LEER, Abschrift.ZU_KURZ -> stringResource(R.string.zert_eingabe_zu_kurz, gezaehlt, Abschrift.NOETIG)
+    Abschrift.PASST_NICHT -> stringResource(R.string.zert_eingabe_falsch)
 }
 
 /** Überschrift und Erklärung je Art der Frage. */

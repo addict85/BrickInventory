@@ -9,8 +9,11 @@ import ch.brickinventoryapp.offline.Filterspalten
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.offline.LokaleZeile
 import ch.brickinventoryapp.offline.LokalerBestand
+import ch.brickinventoryapp.offline.Ausgang.VerworfenerPosten
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
 /** [LokalerBestand] über Room: Zeilen und Stand je Bereich und Art. */
@@ -37,6 +40,9 @@ internal class RoomBestand @Inject constructor(private val db: BestandDatenbank)
             // Doppelte Schlüssel verletzten den Primärschlüssel; die spätere Zeile gilt.
             zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> alsZeile(z, bereich, art, i) },
             stand)
+
+    override suspend fun gleicheAn(bereich: String, art: Bestandsart, zeilen: List<LokaleZeile>) =
+        dao.gleicheAn(bereich, art.name, zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> alsZeile(z, bereich, art, i) })
 
     override suspend fun raeumeAndere(bereich: String) {
         dao.loescheAndereZeilen(bereich)
@@ -91,8 +97,35 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
     override suspend fun versuchGescheitert(id: Long) = dao.versuchGescheitert(id)
     override suspend fun leere() = dao.leere()
 
+    // Verworfenes liegt als eigene Art in der Tabelle `bestand`: dauerhaft ohne neues Schema,
+    // und Abmelden (Bestand leeren) räumt es mit.
+    private val bestand get() = db.bestand()
+
+    override suspend fun merkeVerworfen(bereich: String, v: VerworfenerPosten) {
+        val position = bestand.lies(bereich, VERWORFEN).maxOfOrNull { it.position }?.plus(1) ?: 0
+        val inhalt = AblageJson.encodeToString(VerworfenZeile.serializer(), VerworfenZeile(v.ziel, v.meldung, v.httpCode))
+        bestand.loesche(bereich, VERWORFEN, listOf(v.id))
+        bestand.fuegeEin(listOf(BestandZeile(bereich, VERWORFEN, v.id, position, inhalt)))
+    }
+
+    override fun verworfene(bereich: String): Flow<List<VerworfenerPosten>> =
+        bestand.beobachte(bereich, VERWORFEN).map { zeilen ->
+            zeilen.mapNotNull { z ->
+                runCatching { AblageJson.decodeFromString(VerworfenZeile.serializer(), z.inhalt) }.getOrNull()
+                    ?.let { VerworfenerPosten(z.schluessel, it.ziel, it.meldung, it.httpCode) }
+            }
+        }
+
+    override suspend fun quittiereVerworfen(bereich: String, id: String) = bestand.loesche(bereich, VERWORFEN, listOf(id))
+
     private suspend fun lies(z: AusgangZeile): Ausgangsposten? =
         runCatching { AblageJson.decodeFromString(Bearbeitung.serializer(), z.bearbeitung) }.getOrNull()
             ?.let { Ausgangsposten(z.id, it, z.erstellt, z.versuche, z.schluessel) }
             ?: run { dao.entferne(z.id); null }
 }
+
+/** Die Art, unter der verworfene Posten in `bestand` liegen; keine [Bestandsart] heisst so. */
+internal const val VERWORFEN = "AUSGANG_VERWORFEN"
+
+@Serializable
+internal data class VerworfenZeile(val ziel: String, val meldung: String, val httpCode: Int? = null)

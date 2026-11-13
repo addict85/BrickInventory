@@ -1,5 +1,13 @@
 package ch.brickinventoryapp.model.util
 
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
 /**
  * ISO-Datum aus einer Serverantwort als kurzes Datum — eine Fassung für alle
  * Bildschirme und dieselbe Form wie fmtDatum() der Webapp (Intl, 2-stellig):
@@ -11,7 +19,7 @@ package ch.brickinventoryapp.model.util
  * @param jahr [DatumJahr.VOLL], [DatumJahr.KURZ] („03.09.26“) oder [DatumJahr.OHNE] („03.09.“)
  * @return das formatierte Datum, oder null wenn nichts Brauchbares dasteht
  */
-fun fmtDatum(iso: String?, locale: java.util.Locale, jahr: DatumJahr = DatumJahr.VOLL): String? {
+fun fmtDatum(iso: String?, locale: Locale, jahr: DatumJahr = DatumJahr.VOLL): String? {
     val tag = iso?.take(10) ?: return null
     val teile = tag.split("-")
     if (teile.size != 3) return null
@@ -43,15 +51,19 @@ enum class DatumJahr { VOLL, KURZ, OHNE }
  * Protokoll der Verwaltung wie in der Webapp (public/js/logviewer.js): Ohne Zeit
  * ist „von eben oder von gestern?“ nicht zu beantworten.
  */
-fun fmtUhrzeit(iso: String?): String? {
+fun fmtUhrzeit(
+    iso: String?,
+    locale: Locale = Locale.getDefault(),
+    vierundzwanzig: Boolean = true,
+): String? {
     if (iso.isNullOrBlank()) return null
-    val zeitpunkt = runCatching { java.time.OffsetDateTime.parse(iso).toInstant() }
+    val zeitpunkt = runCatching { OffsetDateTime.parse(iso).toInstant() }
         .recoverCatching {
-            java.time.LocalDateTime.parse(iso).toInstant(java.time.ZoneOffset.UTC)
+            LocalDateTime.parse(iso).toInstant(ZoneOffset.UTC)
         }
         .getOrNull() ?: return null
-    return java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")
-        .withZone(java.time.ZoneId.systemDefault())
+    return uhrzeitFormat(locale, vierundzwanzig, sekunden = true)
+        .withZone(ZoneId.systemDefault())
         .format(zeitpunkt)
 }
 
@@ -60,8 +72,24 @@ fun fmtUhrzeit(iso: String?): String? {
  * liest — wie [fmtUhrzeit]. Tag und Uhrzeit, weil „Stand von 14:03" ohne Tag
  * nicht sagt, ob es von heute ist.
  */
-fun fmtStand(millis: Long, locale: java.util.Locale, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String {
-    val zeit = java.time.Instant.ofEpochMilli(millis).atZone(zone)
-    return fmtDatum(zeit.toLocalDate().toString(), locale) + " " +
-        java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(zeit)
+fun fmtStand(
+    millis: Long,
+    locale: Locale,
+    zone: ZoneId = ZoneId.systemDefault(),
+    vierundzwanzig: Boolean = true,
+    jahr: DatumJahr = DatumJahr.VOLL,
+): String {
+    val zeit = Instant.ofEpochMilli(millis).atZone(zone)
+    return fmtDatum(zeit.toLocalDate().toString(), locale, jahr) + " " + uhrzeitFormat(locale, vierundzwanzig).format(zeit)
 }
+
+/**
+ * Die Uhrzeit, wie das Gerät sie eingestellt hat: 24 Stunden („14:05“) oder 12 mit
+ * Tageszeit in der Sprache der App („2:05 PM“). Fest „HH:mm“ zeigte einem Gerät auf
+ * 12 Stunden eine andere Uhr als in der Statusleiste.
+ */
+fun uhrzeitFormat(locale: Locale, vierundzwanzig: Boolean, sekunden: Boolean = false): DateTimeFormatter =
+    DateTimeFormatter.ofPattern(
+        (if (vierundzwanzig) "HH:mm" else "h:mm") + (if (sekunden) ":ss" else "") + (if (vierundzwanzig) "" else " a"),
+        locale,
+    )

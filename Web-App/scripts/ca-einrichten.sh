@@ -4,7 +4,7 @@
 # könnte ihr Schlüssel Zertifikate für jede Adresse ausstellen, der diese
 # Geräte dann trauen. Caddy bekommt nur die Zwischenstelle samt Schlüssel; den
 # Schlüssel der Wurzel behält dieses Skript nicht (oder legt ihn auf Wunsch
-# an einen Ort ausserhalb des Servers). UPGRADE.md, Abschnitt 32.
+# an einen Ort ausserhalb des Servers). UPGRADE.md#ca-einrichten.
 #
 #   sh scripts/ca-einrichten.sh [BRICK_HOST]
 #

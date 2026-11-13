@@ -127,7 +127,10 @@ export interface Db extends DbSchnittstelle {
  * über ihre Verbindung, auch aus Repositories ohne tx-Parameter. Sonst läse
  * ein Dienst mitten in der Transaktion über eine zweite Verbindung ausserhalb
  * ihres Stands. `offen` schützt vor Nachzüglern nach COMMIT. */
-const laufendeTx = new AsyncLocalStorage<{ client: PoolClient; offen: boolean; db: object }>();
+type TxStand = { client: PoolClient; offen: boolean; db: object; innerster: string | null };
+const laufendeTx = new AsyncLocalStorage<TxStand>();
+/** Der Sicherungspunkt, in dem dieser Aufrufpfad gerade läuft. */
+const laufenderPunkt = new AsyncLocalStorage<{ stand: TxStand; name: string }>();
 
 function txSchnittstelle(client: PoolClient): DbSchnittstelle {
   return {
@@ -146,25 +149,42 @@ export function mitCommitBegleiter<T>(begleiter: CommitBegleiter, arbeit: () => 
   return commitBegleiter.run(begleiter, arbeit);
 }
 
-/** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
- * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. Der
- * Name braucht nur innerhalb der Transaktion eindeutig zu sein. */
-async function innereTransaktion<T>(
-  client: PoolClient,
-  nummer: number,
-  fn: (tx: DbSchnittstelle) => Promise<T>,
-): Promise<T> {
-  const name = `sp_${nummer}`;
-  await client.query(`SAVEPOINT ${name}`);
-  try {
-    const r = await fn(txSchnittstelle(client));
-    await client.query(`RELEASE SAVEPOINT ${name}`);
-    return r;
-  } catch (e) {
-    await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
-    if (e !== null && typeof e === 'object') vomSicherungspunktAufgefangen.add(e);
-    throw e;
+export class GleichzeitigerSicherungspunkt extends Error {
+  constructor(offen: string) {
+    super(
+      `Innere Transaktion, während ${offen} derselben Transaktion noch läuft (Promise.all über ` +
+        'db.transaction?): Sicherungspunkte einer Verbindung sind ein Stapel, nacheinander ausführen.',
+    );
   }
+}
+
+/** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
+ * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. Zwei
+ * gleichzeitige teilten sich eine Verbindung; das ROLLBACK TO des einen nähme
+ * die Arbeit des anderen mit. Deshalb muss jeder im innersten offenen beginnen. */
+function innereTransaktion<T>(stand: TxStand, nummer: number, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+  const p = laufenderPunkt.getStore();
+  const rahmen = p?.stand === stand ? p.name : null;
+  if (stand.innerster !== rahmen) return Promise.reject(new GleichzeitigerSicherungspunkt(stand.innerster ?? ''));
+  const name = `sp_${nummer}`;
+  stand.innerster = name;
+  return laufenderPunkt.run({ stand, name }, async () => {
+    const { client } = stand;
+    try {
+      await client.query(`SAVEPOINT ${name}`);
+      try {
+        const r = await fn(txSchnittstelle(client));
+        await client.query(`RELEASE SAVEPOINT ${name}`);
+        return r;
+      } catch (e) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+        if (e !== null && typeof e === 'object') vomSicherungspunktAufgefangen.add(e);
+        throw e;
+      }
+    } finally {
+      stand.innerster = rahmen;
+    }
+  });
 }
 
 /** Nach ROLLBACK TO SAVEPOINT ist die Transaktion wieder benutzbar: Wer diesen
@@ -194,10 +214,11 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   });
   const ich = {};
   let sicherungspunkte = 0;
-  const txClient = (): PoolClient | null => {
+  const txStand = (): TxStand | null => {
     const t = laufendeTx.getStore();
-    return t?.offen && t.db === ich ? t.client : null;
+    return t?.offen && t.db === ich ? t : null;
   };
+  const txClient = (): PoolClient | null => txStand()?.client ?? null;
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
    * Spalten sein SQL liefert; ohne Angabe bleibt es `unknown`. */
@@ -220,7 +241,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   }
 
   async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
-    const aussen = txClient();
+    const aussen = txStand();
     if (aussen) return innereTransaktion(aussen, ++sicherungspunkte, fn);
     for (let versuch = 0; ; versuch++) {
       try {
@@ -235,7 +256,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
 
   async function einmaligeTransaktion<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
     const client = await pool.connect();
-    const stand = { client, offen: true, db: ich };
+    const stand: TxStand = { client, offen: true, db: ich, innerster: null };
     let kaputt: Error | undefined;
     // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
     // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
@@ -387,7 +408,7 @@ async function nurStandPruefen(client: import('pg').ClientBase): Promise<void> {
   if (leer || offen.length)
     throw new Error(
       `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
-        'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md, Abschnitt 51).',
+        'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md#migrationsrolle).',
     );
   await schreibeErfassungsZeitzone(client);
   console.log('✅ Schema aktuell (eingespielt vom Dienst migration)');
@@ -404,6 +425,6 @@ async function pruefeMindeststand(client: import('pg').ClientBase): Promise<void
   if (!neuGenug)
     throw new Error(
       `Die Datenbank ist älter als Migration ${MINDESTSTAND}. Zuerst auf eine Fassung vor dem ` +
-        'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md, Abschnitt 45).',
+        'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md#stichtag-0050).',
     );
 }

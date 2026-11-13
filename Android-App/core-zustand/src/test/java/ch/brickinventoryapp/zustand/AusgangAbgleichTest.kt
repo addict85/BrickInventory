@@ -14,6 +14,7 @@ import ch.brickinventoryapp.data.lokal.einordnenLoeschen
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -37,8 +38,8 @@ import java.util.Collections
  *      „zwei Läufe zugleich senden nichts doppelt“ (gesendet [1, 1, 2])
  *   D  in einordnen 401 aus der Ausnahmeliste genommen → rot „eine abgelaufene
  *      Sitzung verwirft nichts“
- *   E  in Abgleich.verwirf die Meldung weggelassen → rot „eine Ablehnung verwirft
- *      und meldet“
+ *   E  in Abgleich.verwirf das Festhalten weggelassen (gegenproben/verworfen-nicht-
+ *      festgehalten.patch) → rot „eine Ablehnung verwirft und hält sie fest …“
  *   (F und G gemessen)
  *   F  in Abgleich.lauf `p.schluessel` → `java.util.UUID.randomUUID().toString()`
  *      → rot „Die Wiederholung trägt denselben Schlüssel“
@@ -101,7 +102,7 @@ class AusgangAbgleichTest {
     }
 
     @Test
-    fun `eine Ablehnung verwirft und meldet, der Rest geht weiter`() = runBlocking {
+    fun `eine Ablehnung verwirft und hält sie fest, auch ohne Beobachter, der Rest geht weiter`() = runBlocking {
         val w = Welt()
         val a = w.ablage
         for (n in 1..3) a.puffere(menge(n))
@@ -114,7 +115,8 @@ class AusgangAbgleichTest {
         yield()
         sammler.cancel()
         assertEquals(listOf(1, 2, 3), nummern(s))
-        val verworfen = ereignisse.filterIsInstance<Abgleichsereignis.Verworfen>().single()
+        // Erst jetzt gefragt: Ein flüchtiges Ereignis wäre ohne Beobachter verloren.
+        val verworfen = abgleich.verworfene().first().single()
         assertEquals("1002-1", verworfen.ziel)
         assertEquals("gibt es nicht", verworfen.meldung)
         assertTrue("Die Liste wird neu geladen, damit die lokale Annahme verschwindet: $ereignisse",

@@ -8,10 +8,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.sammlung.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.zustand.ui.Filterzahl
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.gemeinsam.ui.FilterAbschnitt

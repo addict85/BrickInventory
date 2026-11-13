@@ -2,6 +2,7 @@ package ch.brickinventoryapp.sammlung
 
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.ui.Fehlerklasse
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.model.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -43,6 +44,12 @@ import ch.brickinventoryapp.testing.TestDienste
  *      Preisalarm wird neu geladen“
  *   E  in aendereMengeUm() wieder UpdateQuantityRequest(quantity = schritt)
  *      → rot „der Regler schickt einen Schritt …“
+ *   F  `init { aktualisiere() }` gestrichen (der Bildschirm lud früher selbst)
+ *      → rot „das Set kommt aus dem SavedStateHandle und alles wird beim Erzeugen geladen“
+ *   G  in starte() das Abbrechen des laufenden Abrufs gestrichen
+ *      → rot „ein neuer Abruf bricht den laufenden desselben Abschnitts ab“ (2 statt 1)
+ *   H  in ladePreis() und ladeVerlauf() den Fehler wieder verworfen
+ *      → rot „scheitern Preis und Verlauf, steht der Fehler im Zustand …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SetDetailViewModelTest {
@@ -90,10 +97,9 @@ class SetDetailViewModelTest {
     private fun geladen(vm: SetDetailViewModel) = assertTrue("Detail geladen", vm.setDetailState.value.setDetail != null && vm.setDetailState.value.acquisitions.isNotEmpty())
 
     @Test
-    fun `das Set kommt aus dem SavedStateHandle und alles wird dafuer geladen`() {
+    fun `das Set kommt aus dem SavedStateHandle und alles wird beim Erzeugen geladen`() {
         val vm = vm()
         assertEquals("75192-1", vm.setNumber)
-        vm.ladeAlles()
         geladen(vm)
         // Die Alarme kommen über die Übersicht des Kontos in die Ablage, nicht je Set.
         assertTrue("alle fünf Abrufe", listOf("/75192-1/price-history", "/75192-1/price?", "GET /api/v1/alerts").all { p -> pfade.anfragen.any { p.removeSuffix("?") in it } })
@@ -104,7 +110,6 @@ class SetDetailViewModelTest {
     fun `eine geaenderte Menge steht sofort da und in der Ablage`() {
         runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1", quantity = 1))) }
         val vm = vm()
-        vm.ladeAlles()
         geladen(vm)
         serverHatDanachDrei()
         // Gewünscht 5, der Server deckelt auf 3 (fremde Exemplare lassen sich
@@ -119,7 +124,6 @@ class SetDetailViewModelTest {
     @Test
     fun `der Regler schickt einen Schritt, keine Zielzahl`() {
         val vm = vm()
-        vm.ladeAlles()
         geladen(vm)
         serverHatDanachDrei()
         vm.aendereMengeUm("75192-1", -1)
@@ -135,7 +139,6 @@ class SetDetailViewModelTest {
     fun `ein geaenderter Kauf eines anderen Sets laedt hier nichts, einer dieses Sets schon`() {
         runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1"), SetItem("10294-1"))) }
         val vm = vm()
-        vm.ladeAlles()
         geladen(vm)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size
 
@@ -150,7 +153,6 @@ class SetDetailViewModelTest {
     @Test
     fun `ein gespeicherter Preisalarm wird neu geladen`() {
         val vm = vm()
-        vm.ladeAlles()
         geladen(vm)
         assertTrue(vm.setDetailState.value.preisalarme.isEmpty())
         val vorher = pfade.anfragenAn("GET /api/v1/alerts").size
@@ -161,5 +163,36 @@ class SetDetailViewModelTest {
         // Der Zustand liest die Ablage nur beim Laden: ohne Nachladen bliebe er leer.
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/alerts").size > vorher)
         assertEquals(listOf(450.0), vm.setDetailState.value.preisalarme.map { it.schwelle })
+    }
+
+    private fun preisAbrufe() = pfade.anfragen.count { Regex("""^GET /api/v1/sets/75192-1/price(\?|$)""").containsMatchIn(it) }
+
+    @Test
+    fun `ein neuer Abruf bricht den laufenden desselben Abschnitts ab`() {
+        pfade.ausbleibend += "/api/v1/sets/75192-1/price"
+        val vm = vm()
+        vm.aktualisiere()
+        pfade.freigeben()
+        // Der erste Abruf ist abgebrochen und bekommt keine Antwort mehr; nur der zweite kommt an.
+        assertEquals(1, preisAbrufe())
+        assertTrue("Preis da", vm.setDetailState.value.setPrice != null)
+        assertEquals(false, vm.setDetailState.value.setPriceLoading)
+    }
+
+    @Test
+    fun `scheitern Preis und Verlauf, steht der Fehler im Zustand, bis ein neuer Abruf gelingt`() {
+        pfade.codes["/api/v1/sets/75192-1/price"] = 500
+        pfade.codes["/api/v1/sets/75192-1/price-history"] = 500
+        val vm = vm()
+        geladen(vm)
+        assertEquals("fehler", vm.setDetailState.value.preisFehler)
+        assertEquals("fehler", vm.setDetailState.value.verlaufFehler)
+        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.preisFehlerKlasse)
+
+        pfade.codes.clear()
+        vm.aktualisiere()
+        assertEquals(null, vm.setDetailState.value.preisFehler)
+        assertEquals(null, vm.setDetailState.value.verlaufFehler)
+        assertTrue("Preis da", vm.setDetailState.value.setPrice != null)
     }
 }

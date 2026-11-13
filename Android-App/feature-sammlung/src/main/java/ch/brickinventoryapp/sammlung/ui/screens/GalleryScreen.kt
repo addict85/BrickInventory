@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
-import ch.brickinventoryapp.sitzung.*
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
@@ -27,10 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.sammlung.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
+import ch.brickinventoryapp.sammlung.ui.GalerieAnzeige
+import ch.brickinventoryapp.sammlung.ui.GalleryUiState
+import ch.brickinventoryapp.sammlung.ui.galerieAnzeige
+import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.zustand.ui.Filterzahl
+import ch.brickinventoryapp.zustand.ui.LagerUiState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader

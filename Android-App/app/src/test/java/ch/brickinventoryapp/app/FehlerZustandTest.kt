@@ -135,7 +135,6 @@ class FehlerZustandTest {
         val vm = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
             FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), leser,
             SavedStateHandle(mapOf("setNumber" to "75192-1"))))
-        vm.loadSetDetail("75192-1")
         assertTrue("Fehler", vm.setDetailState.value.setDetailFehler != null)
         assertEquals(false, vm.setDetailState.value.setDetailLoading)
         assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.setDetailFehlerKlasse)

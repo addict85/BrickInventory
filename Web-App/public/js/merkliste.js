@@ -1,6 +1,6 @@
 import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { esc, html, ungeprueft } from './escapen.js';
+import { esc, html, ungeprueft, verbinde } from './escapen.js';
 import { api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './bilder.js';
 import {
@@ -187,7 +187,7 @@ export async function ladeMerkliste() {
   setzeHtml(
     ziel,
     _merkposten.length
-      ? ungeprueft(_merkposten.map(zeile).join(''))
+      ? verbinde(_merkposten.map(zeile))
       : gefiltert
         ? leerZustand({
             ico: 'suche',

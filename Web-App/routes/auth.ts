@@ -16,6 +16,7 @@ import {
 } from '../src/konto/http/anmeldung';
 import type { Request, Response } from 'express';
 import { requireApiAdmin } from './api_v1/middleware';
+import { meldeZugangsAenderung } from '../src/konto/http/zugangsWache';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import benutzerRouter from './auth/benutzer';
 import zweiterFaktorRouter from './auth/zweiterFaktor';
@@ -139,6 +140,8 @@ router.post(
     // destroy gibt es nur mit Sitzungs-Middleware; die App ruft ohne Cookie auf.
     if (req.session?.destroy)
       return req.session.destroy(() => {
+        // Offene Ströme dieser Sitzung prüfen sofort, nicht erst im nächsten Takt.
+        meldeZugangsAenderung();
         res.clearCookie(sitzungsKeksName(), sitzungsKeksOptionen()).json({ success: true });
       });
     res.json({ success: true });

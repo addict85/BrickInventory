@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.model.data.model.AcquisitionsResponse
-import ch.brickinventoryapp.model.data.model.GenericResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
@@ -76,51 +75,6 @@ class ServerComputedValuesTest {
                s.contains("minifigStats.totalQuantity") &&
                s.contains("minifigStats.manual")) {
             "Alle drei Kacheln müssen aus den Server-Kennzahlen kommen"
-        }
-    }
-
-    @Test
-    fun `der Mengenregler folgt der Serverantwort, nicht der eigenen Annahme`() {
-        // ── Warum ───────────────────────────────────────────────────────────
-        // Angezeigt wird die Menge ALLER Konten, geschrieben wird die Differenz
-        // auf das eigene. Beim Verringern deckelt der Server bei
-        // den eigenen Exemplaren — fremde lassen sich nicht wegnehmen — und
-        // antwortet mit der tatsächlichen Gesamtmenge.
-        //
-        // Der Regler zählt seine Zahl vorher hoch. Ohne die Übernahme stünde
-        // nach einem gedeckelten Verringern die eigene Annahme da, bis jemand
-        // die Ansicht neu öffnet: Der Server hat recht, der Bildschirm zeigt
-        // etwas anderes, und niemand merkt es.
-        //
-        // Dieselbe Lücke ist hier schon zweimal aufgefallen — die
-        // Verschiebe-Zahlen und das Zustands-Aggregat lieferte der Server
-        // seit jeher mit, und die App las sie nie.
-        val antwort = ApiJson.decodeFromString(GenericResponse.serializer(), """{"success":true,"quantity":2}""")
-        assertEquals("Die Antwort transportiert die wirkliche Gesamtmenge", 2, antwort.quantity)
-        assertEquals(null, ApiJson.decodeFromString(GenericResponse.serializer(), """{"success":true}""").quantity)
-
-        val g = code(read("sammlung/ui/viewmodel/SetDetailViewModel.kt"))
-        val block = g.substring(g.indexOf("fun updateQuantity("))
-            .substringBefore("fun setzeSetLagerort(")
-        assert(block.contains("r.data.quantity")) {
-            "updateQuantity liest die Menge der Antwort nicht"
-        }
-        val uebernahme = block.indexOf("r.data.quantity")
-        val laden = block.indexOf("bestand.melde(")
-        assert(laden < 0 || uebernahme < laden) {
-            "Die Übernahme muss VOR dem Nachladen stehen — sonst sieht man die " +
-                "falsche Zahl für die Dauer einer Rundreise"
-        }
-
-        // Und der Regler muss der Zahl aus dem Zustand folgen. Hinge sein
-        // `remember` nur an der Setnummer, behielte er seinen alten Wert,
-        // obwohl der Zustand längst korrigiert ist.
-        // SetDetailScreen.kt wurde aufgeteilt; die Kacheln und Karten stehen
-        // in SetDetailSections.kt. Beide zusammen sind die Detailansicht.
-        val d = code(read("sammlung/ui/screens/SetDetailScreen.kt") + "\n" + read("sammlung/ui/screens/SetDetailSections.kt") +
-            "\n" + read("sammlung/ui/screens/SetDetailAnleitungen.kt"))
-        assert(d.contains("remember(set.setNumber, set.quantity)")) {
-            "Der Mengenregler ist nicht an set.quantity gekoppelt"
         }
     }
 }

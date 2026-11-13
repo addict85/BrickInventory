@@ -1,0 +1,16 @@
+Gegenprobe: Nach dem Ja meldet die App ab, solange die Kopplung noch auf den neuen Server zeigt: Der alte Token bliebe gültig
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.AnmeldungViewModelTest
+Rot: ein QR-Code fuer einen anderen Server meldet erst nach dem Ja zum Konto ab
+
+diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
+--- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
++++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/viewmodel/AnmeldungViewModel.kt
+@@ -297,7 +297,6 @@
+      * das Abmelden den bisherigen Server erreicht und dessen Token dort entwertet.
+      */
+     private suspend fun verlasseBisherigenServer(neu: String) {
+-        ablage.kopplungsziel(null)
+         sitzungsDienst.abmelden().join()
+         ablage.saveServerUrl(neu)
+     }

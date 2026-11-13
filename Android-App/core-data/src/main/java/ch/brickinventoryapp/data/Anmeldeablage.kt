@@ -21,4 +21,11 @@ interface Anmeldeablage {
      */
     fun halteVor(schluessel: String, fingerabdruck: String)
     fun vergissVorgehaltenen(schluessel: String)
+
+    /**
+     * Für eine QR-Kopplung mit einem anderen Server, solange man noch angemeldet ist:
+     * Anfragen gehen an [url], ohne den Token des bisherigen; dessen Adresse und Token
+     * bleiben, bis die Kopplung gelingt. null beendet sie.
+     */
+    fun kopplungsziel(url: String?)
 }

@@ -83,12 +83,22 @@ test('HSTS nur über TLS', { concurrency: 1, timeout: 180_000 }, async t => {
   const db = await dbOderSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  // Drei Prozesse nebeneinander: Der Start dauert, die Umgebung ist je Prozess fest.
-  const [hinterProxy, ohneProxy, abgestellt] = await Promise.all([
-    starteServer(t, { TRUST_PROXY: '' }),
-    starteServer(t, { TRUST_PROXY: 'false' }),
-    starteServer(t, { TRUST_PROXY: '', HSTS_MAX_AGE: '0' }),
-  ]);
+  // Nacheinander: Auf einer Datenbank läuft nur ein Web-Prozess (startup/einzelinstanz.ts).
+  // Jeder antwortet einmal mit und einmal ohne TLS; die Fälle prüfen die Antworten.
+  /** @type {Record<string, { tls: Headers, ohne: Headers }>} */
+  const k = {};
+  for (const [name, env] of Object.entries({
+    hinterProxy: { TRUST_PROXY: '' },
+    ohneProxy: { TRUST_PROXY: 'false' },
+    abgestellt: { TRUST_PROXY: '', HSTS_MAX_AGE: '0' },
+  }))
+    await t.test(`Server ${name}`, async st => {
+      const hole = await starteServer(st, env);
+      k[name] = { tls: await hole(TLS), ohne: await hole() };
+    });
+  const hinterProxy = async kopf => (kopf ? k.hinterProxy.tls : k.hinterProxy.ohne);
+  const ohneProxy = async kopf => (kopf ? k.ohneProxy.tls : k.ohneProxy.ohne);
+  const abgestellt = async kopf => (kopf ? k.abgestellt.tls : k.abgestellt.ohne);
 
   await t.test('über TLS ein Jahr mit Subdomains', async () => {
     assert.equal((await hinterProxy(TLS)).get('strict-transport-security'), 'max-age=31536000; includeSubDomains');

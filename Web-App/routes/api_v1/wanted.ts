@@ -3,6 +3,8 @@
 import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { requireToken, kontoSchranke, sichtVon } from './middleware';
+import { wacheUeberZugang } from '../../src/konto/http/zugangsWache';
+import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { haushaltBereich } from '../../src/haushalt';
 import {
   legeMerkpostenAn,
@@ -180,13 +182,19 @@ router.post(
       res.write(JSON.stringify(o) + '\n');
       (res as unknown as { flush?: () => void }).flush?.();
     };
+    // Endet der Zugang, endet der Strom; der Auftrag selbst läuft als eigener weiter.
+    const wache = wacheUeberZugang(req, () => {
+      zeile({ success: false, error: fehlerText('zugang_beendet', antwortSprache(req)), code: 'zugang_beendet' });
+      res.end();
+    });
     // Die Kopfzeilen sind hinaus: Ein Fehler kommt als letzte ZEILE, sonst
     // wartet der Client auf einen Bericht, der nie kommt.
     await importAlsAuftrag(uid, 'wanted_xml', eingabe, { fortschritt: f => zeile({ fortschritt: f }) }).then(
       r => zeile({ success: true, ...r }),
       (e: unknown) => zeile({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }),
     );
-    res.end();
+    wache();
+    if (!res.writableEnded) res.end();
   },
 );
 

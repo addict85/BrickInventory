@@ -28,17 +28,17 @@ import javax.inject.Singleton
 class ResponseCache(
     /**
      * Server und Sitzung, denen die Einträge gehören; null heisst „nicht
-     * angemeldet“, dann wird nichts abgelegt. Die Vorgabe mit einem festen
-     * Bereich ist für Tests, die nur ein Konto kennen.
+     * angemeldet“, dann wird nichts abgelegt. Ohne Vorgaben: Die Testfabrik
+     * (core-testing, Fabriken.kt) setzt einen festen Bereich und keine Chiffre.
      */
-    private val bereichQuelle: suspend () -> String? = { "test" },
+    private val bereichQuelle: suspend () -> String?,
     /** Ein früherer Ablageort, der beim ersten Zugriff geräumt wird. */
-    private val altlast: () -> File? = { null },
+    private val altlast: () -> File?,
     /**
      * Verschlüsselt jede Datei: Inventar und Preise liegen sonst bei Root
      * oder einem ausgelesenen Datenverzeichnis offen. Null nur in Tests ohne Keystore.
      */
-    private val chiffre: AblageChiffre? = null,
+    private val chiffre: AblageChiffre?,
     /** Für Platte und Verschlüsselung. */
     private val io: CoroutineDispatcher,
     /**

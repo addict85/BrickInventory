@@ -38,6 +38,9 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync, execFileSync } = require('node:child_process');
 
+/** Ein hängendes Skript blockiert sonst die Datei und mit ihr den ganzen Lauf. */
+const AUFRUF_FRIST = 120_000;
+
 const ROOT = path.join(__dirname, '..');
 const hatAge = spawnSync('age', ['--version']).status === 0;
 
@@ -71,7 +74,13 @@ exit 0
     'restore.sh': path.join(ROOT, 'scripts', 'restore.sh'),
   };
   const lauf = (skript, args, mehr = {}, input = '') =>
-    spawnSync('sh', [skripte[skript], ...args], { cwd: arbeit, encoding: 'utf8', input, env: { ...env, ...mehr } });
+    spawnSync('sh', [skripte[skript], ...args], {
+      cwd: arbeit,
+      encoding: 'utf8',
+      input,
+      env: { ...env, ...mehr },
+      timeout: AUFRUF_FRIST,
+    });
   return { tmp, arbeit, ziel: path.join(tmp, 'ziel'), identitaet, empfaenger, lauf };
 }
 
@@ -298,6 +307,7 @@ test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', t => {
         BACKUP_KLARTEXT: 'ja',
         TMPDIR: a.tmp,
       },
+      timeout: AUFRUF_FRIST,
     });
   } else {
     fs.chmodSync(geheim, 0o000);

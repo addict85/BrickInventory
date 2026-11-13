@@ -15,6 +15,12 @@
  *      jüngsten Sicherungen bleiben"
  *   D  (28.10.) die UNION über Fremdschlüssel auf users entfernt → rot:
  *      „offene Migration …" (account_links fehlt)
+ *   E  (12.11.2026) in runMigrations wieder `SET LOCAL lock_timeout = 0` → rot:
+ *      „eine gehaltene Sperre: Frist, Wiederholung, klare Meldung“ (Zeitüberschreitung)
+ *   F  (12.11.2026) in mitSperrfrist() ohne Wiederholung (sofort weiterwerfen)
+ *      → rot: dieselbe Prüfung (eine Warnung erwartet, keine gesehen)
+ *   G  (12.11.2026) in sichereNutzerdaten wieder `lock_timeout = 0` → rot:
+ *      „auch die Sicherung wartet nicht ewig“ (Zeitüberschreitung)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -102,6 +108,70 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
       await db.get(`SELECT 1 FROM ${neu[0]}.account_links WHERE main_user_id = $1 AND sub_user_id = $2`, [haupt, kind]),
       'Die Haushaltsverknüpfung fehlt in der Sicherung',
     );
+  });
+
+  const KURZ = { fristMs: 200, versuche: 2 };
+  const SPERRPROBE = `9998-sperre-${process.pid}.sql`,
+    TABELLE = `migsperre_${process.pid}`;
+  /** Eine zweite Verbindung hält `tabelle` exklusiv, bis `frei()` gerufen wird –
+   * spätestens nach 4 s, damit eine Fassung ohne Frist rot wird statt zu hängen. */
+  const halteSperre = async tabelle => {
+    const c2 = await db.pool.connect();
+    await c2.query('BEGIN');
+    await c2.query(`LOCK TABLE ${tabelle} IN ACCESS EXCLUSIVE MODE`);
+    let offen = true;
+    const frei = async () => {
+      if (!offen) return;
+      offen = false;
+      clearTimeout(notfall);
+      await c2.query('ROLLBACK');
+      c2.release();
+    };
+    const notfall = setTimeout(frei, 4000);
+    return frei;
+  };
+  /** console.warn mitschreiben, solange `f` läuft. */
+  const mitWarnungen = async f => {
+    const echt = console.warn,
+      gesehen = [];
+    console.warn = (...a) => gesehen.push(a.join(' '));
+    try {
+      return { ergebnis: await f().catch(e => e), gesehen };
+    } finally {
+      console.warn = echt;
+    }
+  };
+
+  await t.test('eine gehaltene Sperre: Frist, Wiederholung, klare Meldung', { timeout: 15_000 }, async () => {
+    const datei = path.join(DIST, 'db/migrations', SPERRPROBE);
+    await db.run(`CREATE TABLE IF NOT EXISTS ${TABELLE} (x int)`);
+    t.after(async () => {
+      fs.rmSync(datei, { force: true });
+      await db.run('DELETE FROM schema_migrations WHERE name = $1', [SPERRPROBE]).catch(() => {});
+      await db.run(`DROP TABLE IF EXISTS ${TABELLE}`).catch(() => {});
+    });
+    fs.writeFileSync(datei, `SELECT count(*) FROM ${TABELLE};`);
+    const frei = await halteSperre(TABELLE);
+    const { ergebnis, gesehen } = await mitWarnungen(() => runMigrations(client, { sperre: KURZ }));
+    await frei();
+    assert.ok(ergebnis instanceof Error, `ohne Fehler zurück: ${ergebnis}`);
+    assert.match(
+      ergebnis.message,
+      new RegExp(
+        `Migration ${SPERRPROBE} fehlgeschlagen: .*nach 0.2 s keine Sperre erhalten.*Aufgegeben nach 2 Versuchen`,
+      ),
+    );
+    assert.equal(gesehen.filter(w => w.includes('Versuch 2/2')).length, 1, gesehen.join('\n'));
+    assert.equal(await db.get('SELECT 1 FROM schema_migrations WHERE name = $1', [SPERRPROBE]), undefined);
+    assert.deepEqual(await runMigrations(client, { sperre: KURZ }), [SPERRPROBE], 'ohne Sperre läuft sie durch');
+  });
+
+  await t.test('auch die Sicherung wartet nicht ewig', { timeout: 15_000 }, async () => {
+    const frei = await halteSperre('users');
+    const { ergebnis } = await mitWarnungen(() => sichereNutzerdaten(client, ['probe'], { fristMs: 200, versuche: 1 }));
+    await frei();
+    assert.ok(ergebnis instanceof Error, `ohne Fehler zurück: ${ergebnis}`);
+    assert.match(ergebnis.message, /Sicherung vor den Migrationen fehlgeschlagen: .*keine Sperre erhalten/);
   });
 
   await t.test('die drei jüngsten Sicherungen bleiben', async () => {

@@ -21,6 +21,7 @@ import { sendeCsv } from '../../src/http/csvAntwort';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
 import * as sets from '../../src/sets';
 import { registerSse } from '../../src/http/sseRegistry';
+import { SSE_ZUGANG_BEENDET, wacheUeberZugang } from '../../src/konto/http/zugangsWache';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { freigegeben } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
@@ -381,6 +382,10 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
   res.flushHeaders?.();
   // Beim Herunterfahren muss der Strom enden, sonst hält er httpServer.close() auf.
   const unregisterSse = registerSse(res);
+  const wache = wacheUeberZugang(req, () => {
+    res.write(SSE_ZUGANG_BEENDET);
+    cleanup();
+  });
 
   let closed = false,
     lastJson = '';
@@ -416,6 +421,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
   function cleanup() {
     if (closed) return;
     closed = true;
+    wache();
     abmelden();
     clearInterval(fallbackTimer);
     clearInterval(heartbeat);
@@ -505,6 +511,12 @@ router.post(
     req.on('close', () => {
       cancelled = true;
     });
+    // Das Set ist angelegt; endet der Zugang, bricht nur die Ergänzung ab, wie beim Trennen.
+    const wache = wacheUeberZugang(req, () => {
+      cancelled = true;
+      res.write(SSE_ZUGANG_BEENDET);
+      res.end();
+    });
     const send = (d: unknown) => {
       if (!cancelled && !res.destroyed) res.write(`data: ${JSON.stringify(d)}\n\n`);
     };
@@ -543,8 +555,9 @@ router.post(
           });
         },
       );
+    wache();
     unregisterAddSse();
-    res.end();
+    if (!res.writableEnded) res.end();
   },
 );
 

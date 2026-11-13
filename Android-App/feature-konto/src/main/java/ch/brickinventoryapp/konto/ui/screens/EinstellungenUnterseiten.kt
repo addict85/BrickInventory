@@ -12,10 +12,7 @@ import coil3.ImageLoader
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.GeraeteEinstellungenViewModel
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.konto.ui.AlarmUebersichtUiState
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.theme.Lesebreite
@@ -53,7 +50,6 @@ fun PreisalarmeRoute(
     meldeSchalter: @Composable () -> Unit = { PreisalarmSchalterRoute() },
 ) {
     val uebersicht by vm.alarmUebersicht.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
     PreisalarmeUnterseite(uebersicht, vm, imageLoader, serverUrl, snackbarHostState, onSetClick, onZurueck, meldeSchalter)
 }
 
@@ -97,7 +93,6 @@ fun HaushaltRoute(
     onZurueck: () -> Unit,
 ) {
     val haushalt by vm.householdState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { vm.loadHouseholdStatus() }
     // Einladung einlösen und Konten trennen: kein Tipp durch eine Überlagerung.
     Ueberdeckungsschutz()
     Unterseite(stringResource(R.string.household_title), snackbarHostState, onZurueck) {
@@ -124,10 +119,8 @@ fun KontoRoute(
     val kontoZustand by konto.kontoState.collectAsStateWithLifecycle()
     val geraeteZustand by konto.geraeteState.collectAsStateWithLifecycle()
     val zfZustand by konto.zweiterFaktorState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { konto.ladeProfil() }
-    LaunchedEffect(Unit) { konto.ladeGeraete() }
-    LaunchedEffect(Unit) { konto.ladeZweitenFaktor() }
-    LaunchedEffect(Unit) { konto.ladeDesign() }
+    // Geräte und zweiter Faktor laden beim Beobachten ihres Zustands (KontoViewModel).
+    LaunchedEffect(Unit) { konto.ladeProfil(); konto.ladeDesign() }
     // Passwort, zweiter Faktor, Geräte: Ein untergeschobener Tipp schaltete hier Schutz ab.
     Ueberdeckungsschutz()
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck,

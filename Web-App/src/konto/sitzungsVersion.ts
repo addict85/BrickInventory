@@ -2,6 +2,7 @@
  * Sitzung am Ende per Upsert zurück. Deshalb trägt jede Sitzung die Version
  * des Kontos; wer Zugänge beendet, erhöht sie, und jede Anfrage vergleicht. */
 import { kontoBereich } from './prozess';
+import { meldeZugangsAenderung } from './zugangsAenderung';
 
 const ZWISCHENSPEICHER_MS = 5_000;
 const gemerkt = new Map<number, { version: number | null; bis: number }>();
@@ -23,6 +24,7 @@ export async function aktuelleSitzungsVersion(uid: number): Promise<number | nul
 export async function erhoeheSitzungsVersion(uid: number): Promise<number> {
   const version = await kontoBereich().zugaenge.zaehleSitzungsVersionHoch(uid);
   gemerkt.delete(uid);
+  meldeZugangsAenderung();
   return version;
 }
 
@@ -30,4 +32,5 @@ export async function erhoeheSitzungsVersion(uid: number): Promise<number> {
  * dazwischen hätte sonst den alten Stand wieder gemerkt. */
 export function vergissSitzungsVersion(uid: number): void {
   gemerkt.delete(uid);
+  meldeZugangsAenderung();
 }

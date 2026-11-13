@@ -1,6 +1,6 @@
 #!/bin/sh
 # Wechselt den Datenschlüssel, etwa bei Verdacht, dass ./schluessel/datenschluessel
-# abgeflossen ist (UPGRADE.md, Abschnitt 43). Im Ordner mit compose.yaml:
+# abgeflossen ist (UPGRADE.md#datenschluessel-wechseln). Im Ordner mit compose.yaml:
 #
 #   sudo sh scripts/datenschluessel-wechseln.sh                beginnen
 #   sudo sh scripts/datenschluessel-wechseln.sh abschliessen   den vorigen löschen
