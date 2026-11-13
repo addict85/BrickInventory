@@ -586,7 +586,7 @@ const NUTZT_FASSADE =
  * wird an der Verdrahtung (testBildwerk(), Nacharbeit, verdrahteKlienten). routerServer steckt
  * eigene Router zusammen statt baueApp, an Sitzungs- und Verwalterprüfungen vorbei. */
 const ERSATZWEGE = {
-  'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 12 },
+  'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 11 },
   'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, schranke: 12 },
 };
 

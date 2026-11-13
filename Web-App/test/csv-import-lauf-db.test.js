@@ -14,6 +14,9 @@
  *      fuehreCsvImportAus) → rot: „ein abgelöster Lauf hört auf“ (der alte
  *      Lauf buchte alle fünf Sets weiter)
  *
+ * Das Erfassen läuft echt; gestellt sind Rebrickable (testQuellen) und der Bildabruf.
+ *   A, B am 13.11.2026 mit echtem Erfassen wiederholt: beide wieder rot.
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -22,28 +25,11 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.CSV_ZEILE_FRIST_MS = '150';
 
-// addSetWithDate gestellt: Jeder Aufruf wird gezählt und dauert `dauer` ms.
+// Rebrickable gestellt: Jede Katalogfrage wird gezählt und dauert `dauer` ms.
 const aufrufe = [];
 let dauer = 0;
-const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
-    return new Proxy(m, {
-      get: (t, k) =>
-        k !== 'addSetWithDate'
-          ? t[k]
-          : async (_sk, sn) => {
-              aufrufe.push(sn);
-              await new Promise(r => setTimeout(r, dauer));
-              return { action: 'added', set_number: sn };
-            },
-    });
-  return m;
-};
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testZugang, testQuellen, testBildwerk } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
@@ -52,6 +38,14 @@ const { warte, bis } = require('./helpers/zeit');
 
 test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
+  testQuellen(t, {
+    holeSet: async sn => {
+      aufrufe.push(sn);
+      await warte(dauer);
+      return null;
+    },
+  });
+  testBildwerk(t, { setBildLaden: async () => null });
   const NAME = `csvlauf-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
