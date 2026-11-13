@@ -86,14 +86,19 @@ export function baueKlientenZugang(): KlientenZugang {
 
 /** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
  * der tieferen, die er braucht, als Teil seines Kontexts. Die eine Stelle, an der
- * verdrahtet wird; Testhilfen rufen sie auch und geben dabei ihr `bildwerk` mit. */
-export function baueDienste(db: Db, nacharbeit: Nacharbeit, bildwerk?: Bildwerk) {
+ * verdrahtet wird; Testhilfen rufen sie auch und geben dabei ihr `bildwerk` und ihre `quellen` mit. */
+export function baueDienste(
+  db: Db,
+  nacharbeit: Nacharbeit,
+  bildwerk?: Bildwerk,
+  quellen?: Parameters<typeof erzeugeKatalog>[0]['quellen'],
+) {
   const einstellungen = erzeugeEinstellungen({ db });
   const auftraege = erzeugeAuftraege({ db, einstellungen });
   const haushalt = erzeugeHaushalt({ db });
   const konto = erzeugeKonto({ db, einstellungen, auftraege, haushalt, nacharbeit });
   const idempotenz = erzeugeIdempotenz({ db });
-  const katalog = erzeugeKatalog({ db, einstellungen, auftraege, haushalt, nacharbeit, bildwerk });
+  const katalog = erzeugeKatalog({ db, einstellungen, auftraege, haushalt, nacharbeit, bildwerk, quellen });
   const finanzen = erzeugeFinanzen({ db, einstellungen, auftraege, haushalt, katalog, nacharbeit });
   const bestand = erzeugeBestand({ db, einstellungen, haushalt, konto, katalog, finanzen });
   const sets = erzeugeSets({ db, nacharbeit, katalog, finanzen, auftraege, bestand, einstellungen, konto });

@@ -56,6 +56,7 @@ module.exports = {
   testZugang,
   testDaten,
   testBildwerk,
+  testQuellen,
   alsKonto,
 };
 
@@ -126,6 +127,9 @@ const _bildwerk = {
   vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/thumbs.js')).generateThumb(...a),
 };
 
+/** Die ersetzten Fremdquellen der Dienste (src/katalog/fremdquellen.ts): leer heisst echt. */
+const _quellen = {};
+
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
@@ -162,7 +166,7 @@ function buildAndRequire() {
   );
   // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch.
   require(path.join(ROOT, 'dist', 'src/infra/bereich.js')).verdrahteDienste(() =>
-    require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueDienste(testDb(), faul, _bildwerk),
+    require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueDienste(testDb(), faul, _bildwerk, _quellen),
   );
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
   // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
@@ -286,6 +290,17 @@ function testBildwerk(t, ersatz = {}) {
 function alsKonto(uid, f, o = {}) {
   const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
   return alsAnfrage({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
+}
+
+/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in src/katalog/quellen.ts)
+ *  an der Verdrahtung, statt Module beim Laden umzubiegen. Mit `t` bis zum Ende des Tests.
+ *  @param {{ after: (f: () => void) => void } | null} t @param {Record<string, unknown>} ersatz */
+function testQuellen(t, ersatz) {
+  Object.assign(_quellen, ersatz);
+  t?.after(() => {
+    for (const k of Object.keys(ersatz)) delete _quellen[k];
+  });
+  return _quellen;
 }
 
 /** Der Zugang der Eigentümerin für Testdaten: Er schreibt am Zeilenschutz vorbei, damit

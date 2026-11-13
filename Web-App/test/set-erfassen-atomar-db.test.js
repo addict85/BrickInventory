@@ -16,57 +16,22 @@
  *   F  (10.11.) in merkeSetKatalog() `WHERE rb_sets.herkunft = 'api'` zu 'csv' →
  *      rot: „der Auftrag ergänzt …“ (Name „Set …“ statt „Testset“)
  *
+ * Rebrickable, BrickLink, Brickset und der Bildabruf sind an der Verdrahtung gestellt
+ * (testQuellen, testBildwerk) und zählen jeden Netzaufruf. Der Code fragt im Konto
+ * (alsKonto, Route über testServer) als Laufzeitrolle; Testdaten über die Eigentümerin.
+ *   B' (13.11.) B über die gestellten Quellen wiederholt → rot: „die Anfrage fragt
+ *      kein Netz …“ (Name „Testset“ schon in der Anfrage) und „der Auftrag …“
+ *   G  (13.11.) in getSetInfo() (rebrickableKatalog.ts) wieder das importierte holeSet
+ *      statt quellen(k) → rot: „der Auftrag ergänzt …“ (kein Netzaufruf gezählt)
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Jede Quelle im Netz gestellt und gezählt, bevor ein Dienst sie lädt.
-const netz = [];
-const Module = require('node:module');
-const _echt = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = _echt.call(this, name, ...rest);
-  if (typeof name !== 'string') return m;
-  if (/rebrickableKatalog(\.js)?$/.test(name))
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'getSetInfo'
-          ? async (_k, sn) => {
-              netz.push(`rebrickable ${sn}`);
-              return { name: 'Testset', year: 2020, theme: 'Test', pieces: 10, image_url: null };
-            }
-          : t[k],
-    });
-  if (/(?:finanzen[/\\]|^\.\/)marketPrice(\.js)?$/.test(name))
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'getCurrentMarketPrice'
-          ? async (_k, sn) => {
-              netz.push(`preis ${sn}`);
-              return 42;
-            }
-          : t[k],
-    });
-  if (/bilder[/\\]setImages(\.js)?$/.test(name))
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'downloadSetImage'
-          ? async (_u, sn) => {
-              netz.push(`bild ${sn}`);
-              return null;
-            }
-          : t[k],
-    });
-  if (/(?:katalog[/\\]|^\.\/)quellen(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'brickset' ? { getSetInfo: async () => null } : t[k]) });
-  return m;
-};
-
-const { buildAndRequire } = require('./helpers/sources');
+const { buildAndRequire, testQuellen, testBildwerk, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
@@ -74,6 +39,26 @@ const { testServer } = require('./helpers/server');
 test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
   if (!db) return;
+  // Jede Quelle im Netz gestellt und gezählt.
+  const netz = [];
+  testQuellen(t, {
+    holeSet: async sn => {
+      netz.push(`rebrickable ${sn}`);
+      return { set_num: sn, name: 'Testset', year: 2020, theme_id: 990001, num_parts: 10, set_img_url: null };
+    },
+    getThemeName: async () => 'Test',
+    getSetInfo: async () => null,
+    bricklinkRequest: async (_m, pfad) => {
+      netz.push(`preis ${pfad.split('/')[3]}`);
+      return { avg_price: '42', qty_avg_price: '42', currency_code: 'EUR' };
+    },
+  });
+  testBildwerk(t, {
+    setBildLaden: async (_u, sn) => {
+      netz.push(`bild ${sn}`);
+      return null;
+    },
+  });
   const sets = _req('src/sets/index.js');
   const P = process.pid % 100000;
   const HAUPT = `erf-haupt-${P}`,
@@ -90,6 +75,8 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND]]);
   };
   await weg();
+  // Ohne BrickLink-Zugang fragte der Preislauf gar nicht; der Abruf selbst ist gestellt.
+  await _req('src/einstellungen/settings.js').setGlobalSetting('bricklink_consumer_key', 'test');
   await db.run("INSERT INTO rb_themes (id, name) VALUES (990001, 'Test') ON CONFLICT (id) DO NOTHING");
   const neu = async n =>
     (await db.get("INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id", [n])).id;
@@ -98,6 +85,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, kind]);
   t.after(async () => {
     await weg().catch(() => {});
+    await db.run("DELETE FROM global_settings WHERE key = 'bricklink_consumer_key'").catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -105,7 +93,11 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
     // Das Hauptkonto sieht beide Konten; es legt teils für sich, teils für das Kind an.
     const fuer = [haupt, kind, haupt, kind, haupt, kind, haupt, kind];
     const r = await Promise.all(
-      fuer.map(b => sets.setErfassen({ anfragender: haupt, besitzerWunsch: b, setNumber: SN, kaufpreis: null })),
+      fuer.map(b =>
+        alsKonto(haupt, () =>
+          sets.setErfassen({ anfragender: haupt, besitzerWunsch: b, setNumber: SN, kaufpreis: null }),
+        ),
+      ),
     );
     assert.equal(r.filter(x => x.action === 'added').length, 1, JSON.stringify(r.map(x => x.action)));
     const zeilen = await db.all('SELECT user_id FROM sets WHERE set_number = $1', [SN]);
@@ -159,7 +151,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
 
   await t.test('der Auftrag ergänzt Katalog und Kaufpreis', async () => {
     netz.length = 0;
-    await sets.setErgaenzen(SN2, haupt);
+    await alsKonto(haupt, () => sets.setErgaenzen(SN2, haupt));
     const kat = await db.get(
       `SELECT r.name, r.year, t.name AS thema, r.herkunft FROM rb_sets r
                                 LEFT JOIN rb_themes t ON t.id = r.theme_id WHERE r.set_num = $1`,
@@ -181,7 +173,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
     assert.ok(netz.includes(`rebrickable ${SN2}`) && netz.includes(`preis ${SN2}`), JSON.stringify(netz));
     // Ein zweiter Lauf fragt den Katalog nicht noch einmal: Strom und Auftrag stören sich nicht.
     netz.length = 0;
-    await sets.setErgaenzen(SN2, haupt);
+    await alsKonto(haupt, () => sets.setErgaenzen(SN2, haupt));
     assert.equal(netz.filter(x => x.startsWith('preis')).length, 0, 'der Preis wurde doppelt geholt');
   });
 });

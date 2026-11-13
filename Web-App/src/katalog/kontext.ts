@@ -3,6 +3,7 @@
 import { bindeZugang, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { Db } from '../../db/database';
+import type { Quellen } from './fremdquellen';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
@@ -36,6 +37,8 @@ export interface KatalogAbhaengigkeiten {
   db: Db;
   faecher: Faecher;
   bildwerk: Bildwerk;
+  /** Ersetzte Fremdquellen (fremdquellen.ts); ohne sie die echten. */
+  quellen?: Partial<Quellen> | undefined;
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
