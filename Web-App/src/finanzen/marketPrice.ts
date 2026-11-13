@@ -6,11 +6,12 @@ import {
   fetchPartPrice,
   fetchMinifigPrice,
   ladeBlNummernVor,
+  preisOderKeiner,
   resolveBlPartNumber,
   resolveBlColorId,
 } from './rechnung/preise';
 import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
-import { getMinifigParts } from '../katalog';
+import { getMinifigParts, marktpreisAus } from '../katalog';
 import { KEINE_FARBE, zustand } from '../infra/validate';
 import { finanzenBereich } from './prozess';
 
@@ -35,8 +36,7 @@ export async function getCurrentMarketPrice(setNumber: string, userId: number, c
 
   // Angefragter Zustand zuerst; der andere nur, wenn dort kein Preis steht.
   const cached = await finanzenBereich().marktpreise.setPreisAusCache(setNumber, effectiveCond, currency);
-  const price = parseFloat(cached?.avg_price ?? '0');
-  return price > 0 ? price : null;
+  return cached ? Number(cached.marktpreis) : null;
 }
 
 // Marktpreise für Sets, Teile und Figuren an einer Stelle, damit die Zustandsregel
@@ -77,8 +77,8 @@ export async function marktpreiseAusCacheFuerFiguren(
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
-    const wert = parseFloat(String(z.avg_price || 0)) || parseFloat(String(z.qty_avg_price || 0)) || 0;
-    if (wert > 0) cache.set(`${z.fig_number}|${z.condition}`, wert);
+    const wert = marktpreisAus(z);
+    if (wert !== null) cache.set(`${z.fig_number}|${z.condition}`, wert);
   }
 
   for (const f of figuren) {
@@ -141,8 +141,8 @@ export async function marktpreiseAusCacheFuerTeile(
 
   const cache = new Map<string, number>();
   for (const z of zeilen) {
-    const wert = parseFloat(String(z.avg_price || 0)) || parseFloat(String(z.qty_avg_price || 0)) || 0;
-    if (wert > 0) cache.set(`${z.part_number}|${z.color_id}|${z.condition}`, wert);
+    const wert = marktpreisAus(z);
+    if (wert !== null) cache.set(`${z.part_number}|${z.color_id}|${z.condition}`, wert);
   }
 
   for (const t of teile) {
@@ -171,10 +171,11 @@ export async function marktpreisMitHerkunft(
   const currency = await getSetting(userId, 'currency', 'EUR');
   const ttlHours = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
   const effCond = condition || (await resolvePartCondition(userId, partNumber, colorId));
-  const priceData = await fetchPartPrice(partNumber, colorId, effCond, currency, ttlHours, null, userId);
-  // avg_price wie bei den Sets: BrickLinks angezeigter Preis, und "0.00" ist truthy.
-  const price = Number(priceData?.avg_price) || 0;
-  if (!(price > 0)) return { preis: null, ausZustand: null };
+  const priceData = await preisOderKeiner(
+    fetchPartPrice(partNumber, colorId, effCond, currency, ttlHours, null, userId),
+  );
+  const price = marktpreisAus(priceData);
+  if (price === null) return { preis: null, ausZustand: null };
   // Der Rückfall auf den anderen Zustand wird übernommen, aber benannt: Gar
   // kein Preis war schlechter als ein gekennzeichneter.
   return {
@@ -213,7 +214,7 @@ export async function schaetzeFigurenpreis(
     // Erst im Cache nachsehen: Sonst kostete jede Figur je Teil einen Abruf.
     const ttl = Math.max(1, parseInt(await getGlobalSetting('price_cache_ttl', '24'), 10));
     const cached = await finanzenBereich().marktpreise.geschaetzterFigurenpreis(figNumber, cond0, currency, ttl);
-    const zwischengespeichert = parseFloat(String(cached?.avg_price || 0));
+    const zwischengespeichert = Number(cached?.marktpreis) || 0;
     if (zwischengespeichert > 0)
       return {
         preis: zwischengespeichert,
@@ -240,9 +241,11 @@ export async function schaetzeFigurenpreis(
       // gefüllten Gedächtnis.
       const blPartNum = p.bl_part_num || p.part_num;
       try {
-        const priceData = await fetchPartPrice(blPartNum, p.color_id ?? KEINE_FARBE, cond, currency, 24);
-        const unitPrice = Number(priceData?.avg_price) || 0;
-        if (unitPrice > 0) {
+        const priceData = await preisOderKeiner(
+          fetchPartPrice(blPartNum, p.color_id ?? KEINE_FARBE, cond, currency, 24),
+        );
+        const unitPrice = marktpreisAus(priceData);
+        if (unitPrice !== null) {
           total += unitPrice * (p.quantity || 1);
           priced++;
         }
@@ -297,10 +300,10 @@ export async function figMarktpreisMitHerkunft(
   // Nummer mit der BrickLink-Nummer überein.
   for (const num of [blFigNumber, figNumber]) {
     if (!num) continue;
-    const priceData = await fetchMinifigPrice(num, effCond, currency, 24);
+    const priceData = await preisOderKeiner(fetchMinifigPrice(num, effCond, currency, 24));
     // Der Rückfall wird übernommen, aber benannt — wie bei den Teilen.
-    const price = Number(priceData?.avg_price) || 0;
-    if (price > 0)
+    const price = marktpreisAus(priceData);
+    if (price !== null)
       return {
         preis: price,
         ausZustand: priceData?.is_fallback ? priceData.condition_used || null : null,

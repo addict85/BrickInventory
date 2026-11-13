@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { marktpreisSql } from '../../../db/geldSql';
 
 /** Die App macht daran die Zeile anklickbar; $3 ist das Blickfeld. */
 /** Hat das Ziel schon einen Alarm (etwa an einem besessenen Set), gilt seiner;
@@ -97,8 +98,8 @@ export function alleAktivenAlarme(db: DbSchnittstelle, setNumber: string) {
 }
 
 export function cachePreisFuerAlarm(db: DbSchnittstelle, set_number: string, condition: string, currency_code: string) {
-  return db.get<{ avg_price: number | null }>(
-    `SELECT avg_price FROM price_cache
+  return db.get<{ marktpreis: number | null }>(
+    `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
         WHERE set_number=$1 AND condition=$2 AND currency_code=$3`,
     [set_number, condition, currency_code],
   );

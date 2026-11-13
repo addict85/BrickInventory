@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { marktpreisSql } from '../../../db/geldSql';
 
 export interface PreisPlatz {
   user_id: number;
@@ -46,7 +47,7 @@ export async function schreibeTagesstand(db: DbSchnittstelle): Promise<number> {
     INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, recorded_at)
     SELECT set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, NOW()
     FROM price_cache
-    WHERE (avg_price > 0 OR qty_avg_price > 0)
+    WHERE ${marktpreisSql()} IS NOT NULL
       AND NOT EXISTS (
         SELECT 1 FROM price_history ph
         WHERE ph.set_number = price_cache.set_number

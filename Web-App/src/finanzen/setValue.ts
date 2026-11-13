@@ -20,7 +20,7 @@ function num(v: unknown): number {
 }
 
 /** In EINER Abfrage für viele Sets.
- * @returns Map "setNumber|condition" → avg_price */
+ * @returns Map "setNumber|condition" → Marktpreis */
 export async function loadConditionPrices(
   setNumbers: string[],
   currency: string,
@@ -34,11 +34,10 @@ export async function loadConditionPrices(
   const params: (string[] | string | number)[] = [list, currency];
   if (ttlHours) params.push(ttlHours);
 
-  // avg_price, NICHT qty_avg_price: BrickLinks angezeigter Preis.
   const rows = await finanzenBereich().setWert.cachePreiseFuerSets(params, ttlClause);
 
   for (const r of rows) {
-    const p = num(r.avg_price);
+    const p = num(r.marktpreis);
     if (p > 0) out.set(`${r.set_number}|${r.condition}`, p);
   }
   return out;
@@ -159,7 +158,7 @@ export interface ErfassungFuerWert {
   price_estimated?: boolean | null;
 }
 
-/** @param prices Map "setNumber|condition" → avg_price (loadConditionPrices) */
+/** @param prices Map "setNumber|condition" → Marktpreis (loadConditionPrices) */
 export function valueAcquisitionRows(
   setNumber: string,
   acquisitions: ErfassungFuerWert[],

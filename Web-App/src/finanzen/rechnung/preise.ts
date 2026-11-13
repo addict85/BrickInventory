@@ -14,12 +14,13 @@ import {
   katalogEintrag,
   getPriceGuide,
   hatPreis,
+  marktpreisAus,
   blAbrufNummer,
   blAbrufNummern,
 } from '../../katalog';
 import { asIds } from '../../haushalt';
 import { fehlertext, logAndContinue } from '../../infra/fehler';
-import { fachfehler } from '../../infra/fehlerTexte';
+import { Fachfehler, fachfehler } from '../../infra/fehlerTexte';
 import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
 import { effectiveCondition } from './zustand';
 import { KEINE_FARBE } from '../../infra/validate';
@@ -100,9 +101,7 @@ interface PreisFuehrer {
   total_quantity?: unknown;
 }
 
-/** Erst Cache, dann — nur mit Preis — Verlaufspunkt; eine Funktion, weil drei
- * Fassungen derselben Regel auseinandergelaufen waren.
- * @returns die gelesenen Zahlen, damit der Aufrufer nicht erneut umwandeln muss */
+/** Erst Cache, dann (nur mit Preis) Verlaufspunkt. @returns die gelesenen Zahlen */
 export async function speicherePreis(
   setNumber: string,
   condition: string,
@@ -121,127 +120,14 @@ export async function speicherePreis(
   const preis = { min, avg, max, qavg, qty };
   await f.preisCache.merkeSetPreis(setNumber, condition, currency, preis);
 
-  // Weiter als hatPreis(), absichtlich dieselbe Regel wie der Tages-Schnappschuss
-  // des Jobs: Ein Verlauf mit zwei Aufnahmeregeln hätte Lücken.
-  if (avg > 0 || qavg > 0) {
+  // Dieselbe Regel wie der Tages-Schnappschuss des Jobs: Ein Verlauf mit zwei
+  // Aufnahmeregeln hätte Lücken.
+  if (hatPreis({ avg_price: avg, qty_avg_price: qavg })) {
     await f.preisCache
       .merkeSetVerlauf(setNumber, condition, currency, preis)
       .catch(logAndContinue('preise:setverlauf schreiben'));
   }
   return preis;
-}
-
-export async function fetchPrice(
-  setNumber: string,
-  condition: string,
-  guideType: string,
-  currency: string,
-  ttlHours: Stunden,
-  pre: { catalog: Map<string, KatalogEintrag>; cache: Map<string, SetPreiszeile> } | null = null,
-  z: PreisZugang = { finanzen: finanzenBereich() },
-) {
-  // mitVersion() auch beim vorgeladenen Weg: Die Karte kommt aus catalog_cache,
-  // also unter derselben Schreibweise wie die Tabelle.
-  const catalogRow = pre?.catalog
-    ? pre.catalog.get(mitVersion(setNumber)) || null
-    : await katalogEintrag(setNumber, z.katalog);
-  if (ohneBricklinkPreis(catalogRow))
-    return {
-      min_price: 0,
-      avg_price: 0,
-      max_price: 0,
-      qty_avg_price: 0,
-      from_cache: true,
-      no_price: true,
-      bl_unbekannt: true,
-    };
-
-  const ttl = Math.max(1, parseInt(String(ttlHours), 10));
-  const fallbackCondition = condition === 'N' ? 'U' : 'N';
-
-  const cached = pre?.cache
-    ? pre.cache.get(`${setNumber}|${condition}`) || null
-    : await preisAusCache(setNumber, condition, currency, ttl, z.finanzen);
-  if (cached && hatPreis(cached))
-    return {
-      min_price: cached.min_price,
-      avg_price: cached.avg_price,
-      max_price: cached.max_price,
-      qty_avg_price: cached.qty_avg_price,
-      from_cache: true,
-    };
-
-  // Frischer 0-Eintrag: erst den anderen Zustand aus dem Cache versuchen. Ist er
-  // älter, wird unten neu geholt, mit dem sold→stock-Rückfall.
-  if (cached && !hatPreis(cached) && cacheUsable(cached, ttl)) {
-    const cachedFb = pre?.cache
-      ? pre.cache.get(`${setNumber}|${fallbackCondition}`) || null
-      : await preisAusCache(setNumber, fallbackCondition, currency, ttl, z.finanzen);
-    // Dieselbe Regel wie der Leser (src/finanzen/preisRegel.ts).
-    if (cachedFb && hatPreis(cachedFb))
-      return {
-        min_price: cachedFb.min_price,
-        avg_price: cachedFb.avg_price,
-        max_price: cachedFb.max_price,
-        qty_avg_price: cachedFb.qty_avg_price,
-        from_cache: true,
-        condition_used: fallbackCondition,
-        is_fallback: true,
-      };
-    // Nur wenn auch der andere Zustand frisch geprüft ist, gilt das Set als
-    // preislos; sonst bliebe Finanzen ohne Abruf leer.
-    if (!cacheUsable(cachedFb, ttl)) {
-      const rl = await kontingentFrei('bricklink');
-      const fb = rl.allowed ? await tryFetch(fallbackCondition) : null;
-      if (hatPreis(fb)) return { ...fb, condition_used: fallbackCondition, is_fallback: true };
-    }
-    return { min_price: 0, avg_price: 0, max_price: 0, qty_avg_price: 0, from_cache: true, no_price: true };
-  }
-
-  async function tryFetch(cond: string) {
-    try {
-      // Lazy-Require gegen einen Require-Zyklus (bricklink nutzt den Rate-Limiter von hier).
-      const g = await getPriceGuide(setNumber, cond, guideType, currency);
-      const { min, avg, max, qavg } = await speicherePreis(setNumber, cond, currency, g, z.finanzen);
-      console.log(`  Price ${setNumber} cond=${cond}: avg=${avg} qty_avg=${qavg}`);
-      return { min_price: min, avg_price: avg, max_price: max, qty_avg_price: qavg, from_cache: false };
-    } catch (e) {
-      console.log(
-        `  Price ${setNumber} cond=${cond} error: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-      );
-      return null;
-    }
-  }
-
-  const rl1 = await kontingentFrei('bricklink');
-  if (!rl1.allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
-
-  const pd = await tryFetch(condition);
-  // An avg_price festgemacht, weil alle Verbraucher diesen Wert lesen.
-  if (pd && hatPreis(pd)) return { ...pd, condition_used: condition };
-
-  const cachedFallback = await preisAusCache(setNumber, fallbackCondition, currency, ttl, z.finanzen);
-  if (cachedFallback && hatPreis(cachedFallback))
-    return {
-      min_price: cachedFallback.min_price,
-      avg_price: cachedFallback.avg_price,
-      max_price: cachedFallback.max_price,
-      qty_avg_price: cachedFallback.qty_avg_price,
-      from_cache: true,
-      condition_used: fallbackCondition,
-      is_fallback: true,
-    };
-
-  const rl2 = await kontingentFrei('bricklink');
-  if (!rl2.allowed) {
-    if (pd) return { ...pd, condition_used: condition };
-    fachfehler('zu_viele', 'bricklink_tageslimit');
-  }
-
-  const pd2 = await tryFetch(fallbackCondition);
-  if (pd2 && hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
-  if (pd) return { ...pd, condition_used: condition };
-  fachfehler('nicht_gefunden', 'kein_bricklink_preis');
 }
 
 export interface PreisDaten {
@@ -250,7 +136,7 @@ export interface PreisDaten {
   max_price: number;
   qty_avg_price: number;
   from_cache: boolean;
-  condition_used?: 'N' | 'U';
+  condition_used?: string;
   is_fallback?: true;
   /** Frisch geprüft, aber BrickLink kennt keinen Preis. */
   no_price?: true;
@@ -268,14 +154,98 @@ type CacheZeile = {
 };
 const OHNE_PREIS = { min_price: 0, avg_price: 0, max_price: 0, qty_avg_price: 0 } as const;
 const zahlAus = (v: unknown) => Number(v) || 0;
+/** avg_price trägt den Marktpreis: Alle Verbraucher lesen es, eine 0 erschiene als „0.00“. */
 const ausZeile = (z: CacheZeile, zusatz: Partial<PreisDaten> = {}): PreisDaten => ({
   min_price: zahlAus(z.min_price),
-  avg_price: zahlAus(z.avg_price),
+  avg_price: marktpreisAus(z) ?? 0,
   max_price: zahlAus(z.max_price),
   qty_avg_price: zahlAus(z.qty_avg_price),
   from_cache: true,
   ...zusatz,
 });
+
+/** Was Set, Teil und Figur unterscheidet; den Ablauf teilen sich alle drei. */
+interface Preisquelle {
+  name: string;
+  lies(zustand: string): Promise<CacheZeile | null | undefined> | CacheZeile | null | undefined;
+  frage(zustand: string): Promise<PreisFuehrer | null | undefined>;
+  merke(zustand: string, g: PreisFuehrer | null | undefined): Promise<CacheZeile>;
+}
+
+/** null: Der Abruf scheiterte; ob das ein Fehler ist, entscheidet der Ablauf. */
+async function rufeAb(q: Preisquelle, zustand: string): Promise<CacheZeile | null> {
+  try {
+    return await q.merke(zustand, await q.frage(zustand));
+  } catch (e) {
+    console.log(`  ${q.name} cond=${zustand} error: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    return null;
+  }
+}
+
+/** „Kein Preis“ ist eine Antwort (no_price); scheitert jeder Abruf ohne frische Antwort im
+ * Cache, ist das ein Fehler, damit die Merkliste „nicht geladen“ statt „keiner“ zeigt. */
+async function holePreisMitRueckfall(q: Preisquelle, zustand: string, ttl: number): Promise<PreisDaten> {
+  const anderer = zustand === 'N' ? 'U' : 'N';
+  const z = await q.lies(zustand);
+  if (hatPreis(z)) return ausZeile(z!);
+  const bekanntLeer = cacheUsable(z, ttl);
+  let pd: CacheZeile | null = null;
+  if (!bekanntLeer) {
+    if (!(await kontingentFrei('bricklink')).allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
+    pd = await rufeAb(q, zustand);
+    if (hatPreis(pd)) return ausZeile(pd!, { from_cache: false, condition_used: zustand });
+  }
+  const zf = await q.lies(anderer);
+  if (hatPreis(zf)) return ausZeile(zf!, { condition_used: anderer, is_fallback: true });
+  if (bekanntLeer && cacheUsable(zf, ttl)) return { ...OHNE_PREIS, from_cache: true, no_price: true };
+  const frei = (await kontingentFrei('bricklink')).allowed;
+  const pd2 = frei ? await rufeAb(q, anderer) : null;
+  if (hatPreis(pd2)) return ausZeile(pd2!, { from_cache: false, condition_used: anderer, is_fallback: true });
+  if (bekanntLeer || pd || pd2) return { ...OHNE_PREIS, from_cache: !pd && !pd2, no_price: true };
+  return frei ? fachfehler('nicht_gefunden', 'kein_bricklink_preis') : fachfehler('zu_viele', 'bricklink_tageslimit');
+}
+
+/** Beim Erfassen heisst ein gescheiterter Abruf „keiner“; das erschöpfte Kontingent bleibt ein Fehler. */
+export async function preisOderKeiner(abruf: Promise<PreisDaten>): Promise<PreisDaten | null> {
+  try {
+    return await abruf;
+  } catch (e) {
+    if (e instanceof Fachfehler && e.code === 'kein_bricklink_preis') return null;
+    throw e;
+  }
+}
+
+const stunden = (ttlHours: Stunden) => Math.max(1, parseInt(String(ttlHours), 10));
+
+export async function fetchPrice(
+  setNumber: string,
+  condition: string,
+  guideType: string,
+  currency: string,
+  ttlHours: Stunden,
+  pre: { catalog: Map<string, KatalogEintrag>; cache: Map<string, SetPreiszeile> } | null = null,
+  z: PreisZugang = { finanzen: finanzenBereich() },
+): Promise<PreisDaten> {
+  // mitVersion() auch beim vorgeladenen Weg: Die Karte kommt aus catalog_cache,
+  // also unter derselben Schreibweise wie die Tabelle.
+  const catalogRow = pre?.catalog
+    ? pre.catalog.get(mitVersion(setNumber)) || null
+    : await katalogEintrag(setNumber, z.katalog);
+  if (ohneBricklinkPreis(catalogRow)) return { ...OHNE_PREIS, from_cache: true, no_price: true, bl_unbekannt: true };
+  const ttl = stunden(ttlHours);
+  const quelle: Preisquelle = {
+    name: `Price ${setNumber}`,
+    lies: c =>
+      pre?.cache ? pre.cache.get(`${setNumber}|${c}`) || null : preisAusCache(setNumber, c, currency, ttl, z.finanzen),
+    frage: c => getPriceGuide(setNumber, c, guideType, currency),
+    merke: async (c, g) => {
+      const p = await speicherePreis(setNumber, c, currency, g, z.finanzen);
+      console.log(`  Price ${setNumber} cond=${c}: avg=${p.avg} qty_avg=${p.qavg}`);
+      return { min_price: p.min, avg_price: p.avg, max_price: p.max, qty_avg_price: p.qavg };
+    },
+  };
+  return holePreisMitRueckfall(quelle, condition, ttl);
+}
 
 /** Nur der Cache: Eine Liste soll nicht auf BrickLink warten. Rückfall auf den anderen
  * Zustand; sind beide frisch leer, gibt es keinen Preis, fehlt einer, steht er aus. */
@@ -384,10 +354,8 @@ export async function farbkarte(): Promise<Map<number, number>> {
   }
 }
 
-/** KEINE_FARBE ist bei BrickLink 0 („(Not Applicable)"); Rebrickables 0 ist
- * Schwarz und geht über die Karte. */
-/** @returns null, wenn die Karte nicht lesbar ist: Die Rebrickable-Nummer als
- * BrickLink-Farbe hiesse, einen falschen Preis zu holen und falsch zu merken. */
+/** KEINE_FARBE ist bei BrickLink 0, Rebrickables 0 ist Schwarz. @returns null, wenn die Karte
+ * nicht lesbar ist: Mit der Rebrickable-Farbe käme der Preis eines anderen Teils. */
 export async function resolveBlColorId(rbColorId: number): Promise<number | null> {
   if (rbColorId == null || rbColorId === KEINE_FARBE) return 0;
   const karte = await versuche('preise:farbkarte', farbkarte());
@@ -456,21 +424,27 @@ export async function ladeFigurenpreiseVor(
   return vorrat;
 }
 
-/** Ein Teile- oder Figurenpreis; condition_used nennt den Zustand, aus dem er kam. */
-export interface PreisErgebnis {
-  avg_price: number;
-  qty_avg_price: number;
-  from_cache: boolean;
-  condition_used?: string;
-  is_fallback?: boolean;
-  no_price?: boolean;
-  error?: string;
-  error_code?: string;
+/** Erst Verkäufe, sonst Angebote: Bei Teilen in seltenen Farben ist „kein Verkauf
+ * in sechs Monaten“ der Normalfall. */
+async function fragePreisfuehrer(pfad: string, zustand: string, currency: string, extra: Record<string, string> = {}) {
+  const qp = { guide_type: 'sold', new_or_used: zustand, currency_code: currency, vat: 'N', ...extra };
+  const g = await bricklinkRequest('GET', pfad, qp);
+  if (hatPreis(g)) return g;
+  const alt = await versuche('preise:alt', bricklinkRequest('GET', pfad, { ...qp, guide_type: 'stock' }));
+  return alt.ok && hatPreis(alt.wert) ? alt.wert : g;
 }
 
-/** Mit Rückfall auf den anderen Zustand (viele ältere Teile gibt es nur
- * gebraucht). Nummer und Farbe werden zuerst übersetzt und dann für Cache,
- * Abruf und Schreiben benutzt — sonst passten Cache und Anfrage nicht.
+type Schreiber = (avg: number, qavg: number) => Promise<unknown>;
+
+/** Auch eine Null wird gemerkt (hält den Abruf zurück); ein Nullpunkt im Verlauf sähe aus wie ein Kurssturz. */
+async function merkeMitVerlauf(g: PreisFuehrer | null | undefined, ort: string, cache: Schreiber, verlauf: Schreiber) {
+  const zeile = { avg_price: zahlAus(g?.avg_price), qty_avg_price: zahlAus(g?.qty_avg_price) };
+  await cache(zeile.avg_price, zeile.qty_avg_price);
+  if (hatPreis(zeile)) await verlauf(zeile.avg_price, zeile.qty_avg_price).catch(logAndContinue(ort));
+  return zeile;
+}
+
+/** Nummer und Farbe übersetzt für Cache, Abruf und Schreiben, sonst passten sie nicht zueinander.
  * @param vorrat aus ladeTeilepreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
 export async function fetchPartPrice(
   partNumber: string,
@@ -480,117 +454,30 @@ export async function fetchPartPrice(
   ttlHours: Stunden,
   vorrat: Map<string, Preiszeile> | null = null,
   konto: number | null = null,
-): Promise<PreisErgebnis> {
-  const ttl = Math.max(1, parseInt(String(ttlHours), 10));
-  const colorId = await resolveBlColorId(rbColorId);
-  if (colorId === null) return { avg_price: 0, qty_avg_price: 0, from_cache: false, error: 'Farbe nicht zuordenbar' };
-  const blPartNumber = await resolveBlPartNumber(partNumber, konto);
-  const fallbackCondition = condition === 'N' ? 'U' : 'N';
-
-  const readCache = async (cond: string) =>
-    vorrat
-      ? (vorrat.get(`${blPartNumber}|${Number(colorId) || 0}|${cond}`) ?? null)
-      : finanzenBereich().preisCache.teilpreisFrisch(blPartNumber, Number(colorId) || 0, cond, currency, ttl);
-
-  const cached = await readCache(condition);
-  if (cached && hatPreis(cached))
-    return {
-      avg_price: parseFloat(String(cached.avg_price)),
-      qty_avg_price: parseFloat(String(cached.qty_avg_price)),
-      from_cache: true,
-    };
-
-  // Ist der Rückfall noch nie geholt, NICHT aufgeben, sondern unten live
-  // nachholen — nur den bekannt leeren Primärzustand überspringen.
-  let skipPrimaryFetch = false;
-  if (cached && !hatPreis(cached)) {
-    const cachedFb = await readCache(fallbackCondition);
-    if (cachedFb && hatPreis(cachedFb))
-      return {
-        avg_price: parseFloat(String(cachedFb.avg_price)),
-        qty_avg_price: parseFloat(String(cachedFb.qty_avg_price)),
-        from_cache: true,
-        condition_used: fallbackCondition,
-        is_fallback: true,
-      };
-    if (cachedFb) return { avg_price: 0, qty_avg_price: 0, from_cache: true, no_price: true };
-    skipPrimaryFetch = true;
-  }
-
-  async function tryFetch(cond: string) {
-    try {
-      const qp: Record<string, string> = { guide_type: 'sold', new_or_used: cond, currency_code: currency, vat: 'N' };
-      if (colorId && colorId !== 0) qp.color_id = String(colorId);
-      let g = await bricklinkRequest('GET', `/items/part/${blPartNumber}/price`, qp);
-      // Kein Verkauf in sechs Monaten → aktuelle Angebote. Bei Teilen in seltenen
-      // Farben ist das der Normalfall.
-      if (!hatPreis(g)) {
-        const alt = await versuche(
-          'preise:alt',
-          bricklinkRequest('GET', `/items/part/${blPartNumber}/price`, { ...qp, guide_type: 'stock' }),
-        );
-        if (alt.ok && hatPreis(alt.wert)) g = alt.wert;
-      }
-      const avg = parseFloat(g?.avg_price || 0);
-      const qavg = parseFloat(g?.qty_avg_price || 0);
-      await finanzenBereich().preisCache.merkeTeilpreis(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg);
-      // Der Cache hält nur den letzten Wert; ohne Verlaufspunkt gäbe es keine Kurve.
-      if (avg > 0 || qavg > 0) {
-        await finanzenBereich()
-          .preisCache.merkeTeilVerlauf(blPartNumber, Number(colorId) || 0, cond, currency, avg, qavg)
-          .catch(logAndContinue('preise:teileverlauf schreiben'));
-      }
-      return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
-    } catch (e) {
-      console.log(
-        `  Part price failed ${partNumber}${blPartNumber !== partNumber ? ` (bl ${blPartNumber})` : ''} color ${colorId} (rb color ${rbColorId}) cond=${cond}: ${fehlertext(e)}`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
-      return null;
-    }
-  }
-
-  let pd: Awaited<ReturnType<typeof tryFetch>> = null;
-  if (!skipPrimaryFetch) {
-    const rl1 = await kontingentFrei('bricklink');
-    if (!rl1.allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
-    pd = await tryFetch(condition);
-    if (pd && hatPreis(pd)) return { ...pd, condition_used: condition };
-
-    const cachedFallback = await readCache(fallbackCondition);
-    if (cachedFallback && hatPreis(cachedFallback))
-      return {
-        avg_price: parseFloat(String(cachedFallback.avg_price)),
-        qty_avg_price: parseFloat(String(cachedFallback.qty_avg_price)),
-        from_cache: true,
-        condition_used: fallbackCondition,
-        is_fallback: true,
-      };
-  }
-
-  const rl2 = await kontingentFrei('bricklink');
-  if (!rl2.allowed) {
-    if (pd) return { ...pd, condition_used: condition };
-    fachfehler('zu_viele', 'bricklink_tageslimit');
-  }
-
-  const pd2 = await tryFetch(fallbackCondition);
-  if (pd2 && hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
-  if (pd2) return { ...pd2, condition_used: fallbackCondition };
-  if (pd) return { ...pd, condition_used: condition };
-  // KEINE Nutzermeldung, sondern ein Merkmal: Der Preis-Job zählt daran
-  // „übersprungen" statt „Fehler". Deshalb bewusst unübersetzt.
-  return {
-    avg_price: 0,
-    qty_avg_price: 0,
-    from_cache: false,
-    error: 'kein BrickLink-Preis gefunden',
-    error_code: 'kein_bricklink_preis',
+): Promise<PreisDaten> {
+  const farbe = await resolveBlColorId(rbColorId);
+  if (farbe === null) fachfehler('nicht_gefunden', 'kein_bricklink_preis');
+  const nummer = await resolveBlPartNumber(partNumber, konto);
+  const f = Number(farbe) || 0;
+  const ttl = stunden(ttlHours);
+  const cache = finanzenBereich().preisCache;
+  const quelle: Preisquelle = {
+    name: `Part price ${partNumber}${nummer !== partNumber ? ` (bl ${nummer})` : ''} color ${farbe} (rb color ${rbColorId})`,
+    lies: c =>
+      vorrat ? (vorrat.get(`${nummer}|${f}|${c}`) ?? null) : cache.teilpreisFrisch(nummer, f, c, currency, ttl),
+    frage: c => fragePreisfuehrer(`/items/part/${nummer}/price`, c, currency, farbe ? { color_id: String(farbe) } : {}),
+    merke: (c, g) =>
+      merkeMitVerlauf(
+        g,
+        'preise:teileverlauf schreiben',
+        (avg, qavg) => cache.merkeTeilpreis(nummer, f, c, currency, avg, qavg),
+        (avg, qavg) => cache.merkeTeilVerlauf(nummer, f, c, currency, avg, qavg),
+      ),
   };
+  return holePreisMitRueckfall(quelle, condition, ttl);
 }
 
-/** Rückfall wie bei fetchPartPrice ('U' ↔ 'N').
+/** Wie fetchPartPrice; gelesen werden nur echte BrickLink-Preise, keine Schätzungen.
  * @param vorrat aus ladeFigurenpreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
 export async function fetchMinifigPrice(
   figNumber: string,
@@ -598,104 +485,23 @@ export async function fetchMinifigPrice(
   currency: string,
   ttlHours: Stunden,
   vorrat: Map<string, Preiszeile> | null = null,
-): Promise<PreisErgebnis> {
-  const ttl = Math.max(1, parseInt(String(ttlHours), 10));
-  const fallbackCondition = condition === 'N' ? 'U' : 'N';
-
-  const readCache = async (cond: string) =>
-    vorrat
-      ? (vorrat.get(`${figNumber}|${cond}`) ?? null)
-      : finanzenBereich().preisCache.figurpreisFrisch(figNumber, cond, currency, ttl);
-
-  const cached = await readCache(condition);
-  if (cached && hatPreis(cached))
-    return {
-      avg_price: parseFloat(String(cached.avg_price)),
-      qty_avg_price: parseFloat(String(cached.qty_avg_price)),
-      from_cache: true,
-    };
-
-  let skipPrimaryFetch = false;
-  if (cached && !hatPreis(cached)) {
-    const cachedFb = await readCache(fallbackCondition);
-    if (cachedFb && hatPreis(cachedFb))
-      return {
-        avg_price: parseFloat(String(cachedFb.avg_price)),
-        qty_avg_price: parseFloat(String(cachedFb.qty_avg_price)),
-        from_cache: true,
-        condition_used: fallbackCondition,
-        is_fallback: true,
-      };
-    if (cachedFb) return { avg_price: 0, qty_avg_price: 0, from_cache: true, no_price: true };
-    skipPrimaryFetch = true;
-  }
-
-  async function tryFetch(cond: string) {
-    try {
-      const qp = { guide_type: 'sold', new_or_used: cond, currency_code: currency, vat: 'N' };
-      let g = await bricklinkRequest('GET', `/items/minifig/${figNumber}/price`, qp);
-      if (!hatPreis(g)) {
-        const alt = await versuche(
-          'preise:alt',
-          bricklinkRequest('GET', `/items/minifig/${figNumber}/price`, { ...qp, guide_type: 'stock' }),
-        );
-        if (alt.ok && hatPreis(alt.wert)) g = alt.wert;
-      }
-      const avg = parseFloat(g?.avg_price || 0);
-      const qavg = parseFloat(g?.qty_avg_price || 0);
-      await finanzenBereich().preisCache.merkeFigurpreis(figNumber, cond, currency, avg, qavg);
-      // Der Cache hält nur den letzten Wert; ohne Verlaufspunkt gäbe es keine Kurve.
-      if (avg > 0 || qavg > 0) {
-        await finanzenBereich()
-          .preisCache.merkeFigurVerlauf(figNumber, cond, currency, avg, qavg)
-          .catch(logAndContinue('preise:figurverlauf schreiben'));
-      }
-      return { avg_price: avg, qty_avg_price: qavg, from_cache: false };
-    } catch (e) {
-      console.log(
-        `  Minifig price failed ${figNumber} cond=${cond}: ${fehlertext(e)}`
-          .replace(/\r?\n/g, ' ⏎ ')
-          .replace(/\n|\r/g, ''),
-      );
-      return null;
-    }
-  }
-
-  let pd: Awaited<ReturnType<typeof tryFetch>> = null;
-  if (!skipPrimaryFetch) {
-    const rl1 = await kontingentFrei('bricklink');
-    if (!rl1.allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
-    pd = await tryFetch(condition);
-    if (pd && hatPreis(pd)) return { ...pd, condition_used: condition };
-
-    const cachedFallback = await readCache(fallbackCondition);
-    if (cachedFallback && hatPreis(cachedFallback))
-      return {
-        avg_price: parseFloat(String(cachedFallback.avg_price)),
-        qty_avg_price: parseFloat(String(cachedFallback.qty_avg_price)),
-        from_cache: true,
-        condition_used: fallbackCondition,
-        is_fallback: true,
-      };
-  }
-
-  const rl2 = await kontingentFrei('bricklink');
-  if (!rl2.allowed) {
-    if (pd) return { ...pd, condition_used: condition };
-    fachfehler('zu_viele', 'bricklink_tageslimit');
-  }
-
-  const pd2 = await tryFetch(fallbackCondition);
-  if (pd2 && hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
-  if (pd2) return { ...pd2, condition_used: fallbackCondition };
-  if (pd) return { ...pd, condition_used: condition };
-  return {
-    avg_price: 0,
-    qty_avg_price: 0,
-    from_cache: false,
-    error: 'kein BrickLink-Preis gefunden',
-    error_code: 'kein_bricklink_preis',
+): Promise<PreisDaten> {
+  const ttl = stunden(ttlHours);
+  const cache = finanzenBereich().preisCache;
+  const quelle: Preisquelle = {
+    name: `Minifig price ${figNumber}`,
+    lies: c =>
+      vorrat ? (vorrat.get(`${figNumber}|${c}`) ?? null) : cache.figurpreisFrisch(figNumber, c, currency, ttl),
+    frage: c => fragePreisfuehrer(`/items/minifig/${figNumber}/price`, c, currency),
+    merke: (c, g) =>
+      merkeMitVerlauf(
+        g,
+        'preise:figurverlauf schreiben',
+        (avg, qavg) => cache.merkeFigurpreis(figNumber, c, currency, avg, qavg),
+        (avg, qavg) => cache.merkeFigurVerlauf(figNumber, c, currency, avg, qavg),
+      ),
   };
+  return holePreisMitRueckfall(quelle, condition, ttl);
 }
 
 export { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus };

@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { marktpreisSql } from '../../../db/geldSql';
 
 export function tageswerteAusVerlauf(
   db: DbSchnittstelle,
@@ -20,11 +21,11 @@ export function tageswerteAusVerlauf(
               to_char(ph.recorded_at, 'YYYY-MM')            AS monat,
               ph.recorded_at,
               (ph.condition = $2)                           AS passender_zustand,
-              COALESCE(NULLIF(ph.avg_price, 0), ph.qty_avg_price)::numeric AS preis
+              ${marktpreisSql('ph')}::numeric AS preis
          FROM price_history ph
         WHERE ph.set_number = ANY($3::text[])
           AND ph.currency_code = $1 AND ph.condition IN ('U','N')
-          AND (ph.qty_avg_price > 0 OR ph.avg_price > 0)
+          AND ${marktpreisSql('ph')} IS NOT NULL
           ${datumsFilter}
      ),
      werte AS (
@@ -79,17 +80,16 @@ export function cachePreiseDerSets(
 ) {
   return db.all<{
     set_number: string;
-    qty_avg_price: number | null;
-    avg_price: number | null;
+    marktpreis: number;
     day: string;
     month: string;
   }>(
-    `SELECT set_number, qty_avg_price, avg_price,
+    `SELECT set_number, ${marktpreisSql()} AS marktpreis,
               to_char(fetched_at,'YYYY-MM-DD') AS day,
               to_char(fetched_at,'YYYY-MM')    AS month
        FROM price_cache
        WHERE currency_code=$1 AND condition IN ('U','N') AND set_number IN (${placeholders})
-         AND (qty_avg_price>0 OR avg_price>0)
+         AND ${marktpreisSql()} IS NOT NULL
        ORDER BY fetched_at ASC, (condition = $2) ASC`,
     [currency, condition, ...setNumbers],
   );
@@ -110,11 +110,11 @@ export function letzteWerteVorBeginn(
        ),
        letzte AS (
          SELECT DISTINCT ON (ph.set_number) ph.set_number,
-                COALESCE(NULLIF(ph.avg_price, 0), ph.qty_avg_price)::numeric AS preis
+                ${marktpreisSql('ph')}::numeric AS preis
            FROM price_history ph
           WHERE ph.set_number = ANY($3::text[])
             AND ph.currency_code = $1 AND ph.condition IN ('U','N')
-            AND (ph.qty_avg_price > 0 OR ph.avg_price > 0)
+            AND ${marktpreisSql('ph')} IS NOT NULL
             -- Derselbe Zeitraumfilter wie oben: Daten VOR dem Fenster zählen
             -- auch beim Startpunkt nicht mit, sonst begänne „Jahr" höher als
             -- die Monatskurve.
