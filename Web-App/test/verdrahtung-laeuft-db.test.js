@@ -2,14 +2,14 @@
  * Fünf Verdrahtungen, die bisher nur als Textmuster zugesichert waren.
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const { testServer } = require('./helpers/server');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
@@ -56,26 +56,10 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
   }
   await aufbau();
 
-  // ── Ein Server OHNE Token ────────────────────────────────────────────────
-  //
-  // apiNutzer weggelassen: Dann setzt der Helfer `req.apiUser` NICHT, und
-  // requireToken sieht genau das, was es bei einer Anfrage ohne gültigen
-  // Token sieht. Darum geht es im ersten Fall.
-  const ohne = testServer(_req, {
-    sitzung: {},
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
-  // ── Und einer MIT ────────────────────────────────────────────────────────
-  const mit = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js', '/api/v1/auth': 'routes/auth.js' },
-    t,
-  });
-  // Der Bild-Proxy haengt nicht an einem Router, sondern wird auf die App
-  // gesetzt (registerImgProxy). Express nimmt Routen auch nach listen() an.
-  _req('routes/imgProxy.js').registerImgProxy(mit.app);
+  // Ohne Sitzung und ohne Token sieht die App genau das, was sie bei einer Anfrage
+  // ohne gültige Anmeldung sieht. Darum geht es im ersten Fall.
+  const ohne = testServer(_req, { sitzung: {}, t });
+  const mit = testServer(_req, { sitzung: { userId: HAUPT }, t });
 
   await t.test('1. der PDF-Download antwortet ohne Token nicht mit der Datei', async () => {
     const r = await fetch(`${ohne.base}/api/v1/sets/partslist-pdf/download/irgendwas`);

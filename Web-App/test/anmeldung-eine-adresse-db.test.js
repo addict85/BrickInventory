@@ -9,10 +9,11 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -22,7 +23,7 @@ const NAME = 'eine_anmeldung',
   PASS = 'richtigesPasswort1';
 
 test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   // Wenige Runden: Hier wird die VERDRAHTUNG geprüft, nicht die Laufzeit —

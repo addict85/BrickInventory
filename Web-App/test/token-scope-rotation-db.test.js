@@ -32,7 +32,7 @@
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -47,8 +47,8 @@ umgebung(require('./helpers/attestation').UMGEBUNG);
 const { buildAndRequire } = require('./helpers/sources');
 const { qrKoppeln } = require('./helpers/qr');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -62,7 +62,7 @@ const TAG = 86400_000;
 const tageBis = d => (new Date(d).getTime() - Date.now()) / TAG;
 
 test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(

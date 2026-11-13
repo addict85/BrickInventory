@@ -32,8 +32,8 @@ process.env.APP_BASE_URL = 'https://lego.test';
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { datenOderSkip } = require('./helpers/db');
+const { routerServer } = require('./helpers/server');
 
 const gesendet = [];
 const echterMailer = _req('src/mail/mailer.js');
@@ -45,12 +45,12 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
   },
 });
 
-const db = _req('db/database.js');
+const db = S.testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Hinweis-Passwort-1';
 
 test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const P = process.pid,
     NAMEN = [`zh_chef_${P}`, `zh_zwei_${P}`, `zh_nutzer_${P}`, `zh_neu_${P}`];
   const konto = async (name, admin) =>
@@ -69,7 +69,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const base = testServer(_req, {
+  const base = routerServer(_req, {
     sitzung: { userId: chef, username: NAMEN[0], isAdmin: true },
     routen: { '/api/v1/auth': 'routes/auth.js' },
     t,

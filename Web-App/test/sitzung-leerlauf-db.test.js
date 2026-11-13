@@ -28,9 +28,9 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire } = require('./helpers/sources');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = _req('db/database.js');
+const db = testDaten();
 const { drossleBeruehren, BERUEHREN_MS } = _req('src/konto/sitzungsBeruehrung.js');
 const { SITZUNG_LEERLAUF_MS, SITZUNG_LEERLAUF_SEK, LEERLAUF_VORGABE_MIN } = _req('src/konto/sitzungsFrist.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));

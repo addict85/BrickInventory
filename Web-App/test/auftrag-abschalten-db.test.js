@@ -17,13 +17,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { warte } = require('./helpers/zeit');
 
 test('Abschalten während einer Belegung', async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const A = { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege };
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const ART = `abschalten-${process.pid}`;
@@ -41,8 +42,7 @@ test('Abschalten während einer Belegung', async t => {
     await sperre.query('ROLLBACK').catch(() => {});
     sperre.release();
     await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]).catch(() => {});
-    await _req('db/database.js')
-      .standardDb()
+    await testZugang()
       .benachrichtigung.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});

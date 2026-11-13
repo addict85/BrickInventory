@@ -32,9 +32,9 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const { DIST } = require('./helpers/sources');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const { DIST, testDaten } = require('./helpers/sources');
+const db = testDaten();
 const { runMigrations, sichereNutzerdaten } = _req('db/migrate.js');
 const NAME = `migsich_${process.pid}`,
   ZWEIT = `migsich2_${process.pid}`;
@@ -46,7 +46,7 @@ const sicherungen = async () =>
   );
 
 test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   const client = await db.pool.connect();
   await runMigrations(client);
   const vorher = new Set(await sicherungen());

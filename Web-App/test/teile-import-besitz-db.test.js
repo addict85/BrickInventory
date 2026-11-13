@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Vor dem Laden der Route: Import und Rebrickable-Abruf mitschreiben statt ausführen.
@@ -46,11 +46,11 @@ ersetze('src/katalog/partsImport.js', {
   },
 });
 
-const db = _req('db/database.js');
+const db = quellen.testDaten();
 const P = process.pid;
 
 test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const namen = [`ti_haupt_${P}`, `ti_unter_${P}`, `ti_fremd_${P}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -78,7 +78,7 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
   });
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t, routen: { '/api/v1': 'routes/api_v1/index.js' } });
+  const { base } = testServer(_req, { sitzung, t });
   const importiere = async (als, sn) => {
     sitzung.userId = als;
     const r = await fetch(`${base}/api/v1/sets/${encodeURIComponent(sn)}/parts`, { method: 'POST' });

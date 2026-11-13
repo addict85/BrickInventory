@@ -18,13 +18,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
 test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const PS = _req('src/teile/partsSummary.js');
   const NAME = `stand-${process.pid}`,
     SN = `31170-${process.pid % 1000}`,

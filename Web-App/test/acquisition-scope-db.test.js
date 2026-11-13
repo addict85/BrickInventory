@@ -13,14 +13,15 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const HAUPT = 'acqscope-haupt',
     SUB = 'acqscope-sub',

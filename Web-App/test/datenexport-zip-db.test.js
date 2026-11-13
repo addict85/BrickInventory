@@ -20,16 +20,17 @@ const { execFileSync } = require('node:child_process');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('der Datenexport liefert ein entpackbares ZIP mit den Daten des Kontos', {
   concurrency: 1,
   timeout: 60_000,
 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const NAME = `export_zip_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -52,11 +53,7 @@ test('der Datenexport liefert ein entpackbares ZIP mit den Daten des Kontos', {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    routen: { '/api/v1': 'routes/api_v1/settings.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const r = await fetch(`${base}/api/v1/settings/export/data`);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('content-type'), 'application/zip');

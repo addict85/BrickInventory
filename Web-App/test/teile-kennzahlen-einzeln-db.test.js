@@ -21,12 +21,13 @@ const { haeltSet, haeltTeil } = require('./helpers/bestand');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const H = require('./helpers/sources').handlerModul(_req);
   const PS = _req('src/teile/partsSummary.js');
   const A = `kz-einzeln-${process.pid}`,

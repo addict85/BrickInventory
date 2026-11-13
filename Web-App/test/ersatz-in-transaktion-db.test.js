@@ -22,10 +22,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { haeltSet, erfasse, haltZeile } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 const { meldeUndLiefere, logAndContinue } = _req('src/infra/fehler.js');
 const { versuche } = _req('src/infra/ergebnis.js');
 const { erfassungLoeschen } = _req('src/sammlung/erfassungen.js');
@@ -36,7 +37,7 @@ const NAME = `ersatz_tx_${process.pid}`,
 const mitCode = c => (/** @type {any} */ e) => e.code === c;
 
 test('kein Ersatzwert in einer Transaktion', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
   await t.test('ein Datenbankfehler geht weiter', async () => {

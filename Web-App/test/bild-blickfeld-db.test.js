@@ -32,10 +32,11 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { katalogSet } = require('./helpers/bestand');
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { warte } = require('./helpers/zeit');
 const freierPort = () =>
   new Promise(r => {
@@ -61,7 +62,7 @@ const DATEIEN = [
 ].map(([o, n]) => path.join(DATEN, o, n));
 
 test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const namen = ['bb_haupt', 'bb_unter', 'bb_fremd'].map(n => `${n}_${P}`);
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);

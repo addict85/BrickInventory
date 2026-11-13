@@ -22,8 +22,9 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const { sichereNutzerdaten, raeumeAlteSicherungenAuf } = _req('db/migrate.js');
@@ -31,7 +32,7 @@ const { raeumeProtokollAuf } = _req('src/konto/prozess.js').kontoBereich().proto
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const P = process.pid,
     NAME = `spur_${P}`,
@@ -73,7 +74,7 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
   assert.equal(await zaehle('sets', 'user_id'), 1, 'Vorbedingung: sein Set steht in der Kopie');
 
   const sitzung = { userId: uid, username: NAME, destroy: fertig => fertig() };
-  const { base } = testServer(_req, { sitzung, routen: { [AUTH]: 'routes/auth.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const r = await fetch(`${base}${AUTH}/konto`, {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },

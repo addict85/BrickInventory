@@ -14,14 +14,16 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
@@ -48,12 +50,8 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
   await new Jimp({ width: 500, height: 400, color: 0x0000ffff }).write(original);
   fs.rmSync(vorschau, { force: true });
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const frag = async sn => {
     const r = await fetch(`${base}/api/v1/admin/image-diag/${sn}`);
     assert.equal(r.status, 200, 'die Diagnose muss antworten');

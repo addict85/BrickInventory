@@ -15,10 +15,10 @@ process.env.DATABASE_URL = DB_URL;
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { routerEinhaengungen } = require('./helpers/sources');
+const { routerEinhaengungen, testDaten } = require('./helpers/sources');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 const USER = { id: null, username: 'parity-tester' };

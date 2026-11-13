@@ -23,8 +23,9 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const erf = _req('src/sammlung/repository/erfassungen.js');
 const manuell = {
   ..._req('src/bestand/repository/manuelleMengen.js'),
@@ -33,7 +34,7 @@ const manuell = {
 const versch = _req('src/sets/repository/verschieben.js');
 
 test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const name = n => `zl_${process.pid}_${n}`;
   const konto = async n =>

@@ -24,8 +24,9 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 
 const VORLADEN = `
 const Module = require('node:module');
@@ -38,7 +39,7 @@ Module.prototype.require = function (name) {
 };`;
 
 test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, timeout: 90_000 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const { liesZustand, loescheZustand } = _req('src/auftraege/prozess.js').auftraegeBereich().laufzustand;
   const { LEBENSZEICHEN_SCHLUESSEL } = _req('startup/jobsProzess.js');

@@ -23,9 +23,19 @@ import * as rebrickableCache from './repository/rebrickableCache';
 import * as setInhalt from './repository/setInhalt';
 import * as teileAnreicherung from './repository/teileAnreicherung';
 
+/** Set-Bild holen und verkleinern über den Kontext statt über den Import: So ersetzt ein
+ * Test Netz und sharp an der Verdrahtung (baueDienste), statt Module umzubiegen. */
+export interface Bildwerk {
+  /** Lädt das Set-Bild nach images/sets; null, wenn es scheitert (`info.status` nennt den HTTP-Code). */
+  setBildLaden(url: string, setNumber: string, info?: { status?: number }): Promise<string | null>;
+  /** Legt die Vorschau neben das Bild und liefert ihren Pfad; null, wenn es nicht ging. */
+  vorschauErzeugen(relPfad: string): Promise<string | null>;
+}
+
 export interface KatalogAbhaengigkeiten {
   db: Db;
   faecher: Faecher;
+  bildwerk: Bildwerk;
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;

@@ -18,9 +18,10 @@ const { Readable } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 /** Jede Anfrage bekommt 200 mit `koerper` als JSON. */
 async function mitKoerper(koerper, lauf) {
@@ -40,7 +41,7 @@ async function mitKoerper(koerper, lauf) {
 }
 
 test('Fremdantworten gegen ihr Schema', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const S = _req('src/einstellungen/settings.js');
   const k = _req('src/katalog/apiKontingent.js');
   t.after(async () => {

@@ -22,15 +22,16 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 
 after(() => db.pool.end().catch(() => {}));
 
 test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
 
   const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
@@ -110,7 +111,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
   });
 
   await t.test('die Adresse wird gebremst', async () => {
-    const srv = testServer(_req, { sitzung: {}, routen: { '/api/v1': 'routes/api_v1/einrichtung.js' }, t });
+    const srv = testServer(_req, { sitzung: {}, t });
     let letzter = 0;
     for (let i = 0; i < 125 && letzter !== 429; i++) {
       letzter = (await fetch(srv.base + '/api/v1/einrichtung/stand')).status;

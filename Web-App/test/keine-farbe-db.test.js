@@ -23,13 +23,14 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const MIGRATION = path.join(__dirname, '..', 'db/migrations/0071-keine-farbe.sql');
 
 test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
   await t.test('die Migration stellt nur um, wo die Zeile es beweist', async () => {

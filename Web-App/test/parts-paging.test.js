@@ -119,8 +119,8 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
 
 test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden Wegen', { concurrency: 1 }, async t => {
   const _req = require('./helpers/sources').buildAndRequire();
-  const { dbOderSkip } = require('./helpers/db');
-  const db = await dbOderSkip(t, _req);
+  const { datenOderSkip } = require('./helpers/db');
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const H = require('./helpers/sources').handlerModul(_req);
   const PS = _req('src/teile/partsSummary.js');

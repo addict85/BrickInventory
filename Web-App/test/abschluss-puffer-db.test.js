@@ -17,12 +17,13 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 
 test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const P = _req('src/infra/protokoll.js');
   const B = _req('src/katalog/bilder/bildbedarfLauf.js');
@@ -58,7 +59,7 @@ test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t
   F.merkeFehlend(`fehlt:${kennung}`, '404');
   console.log(`letzte Zeile ${kennung}`);
 
-  await schliessePufferUndTakte(_req('db/database.js').standardDb());
+  await schliessePufferUndTakte(testZugang());
 
   await t.test('der Bildbedarf steht danach in image_wanted', async () => {
     const z = await db.get('SELECT set_number FROM image_wanted WHERE url = $1', [

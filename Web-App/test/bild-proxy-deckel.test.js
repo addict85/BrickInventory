@@ -49,7 +49,8 @@ fs.copyFileSync(
 );
 process.env.BILD_ABRUFE_JE_MINUTE = '3';
 const express = require('express');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { warte: pause, bis } = require('./helpers/zeit');
 const { bildDurchreichen } = _req('routes/imgProxy.js');
 const { raeumeBildCacheAuf } = _req('src/katalog/bilder/imgCacheServe.js');
@@ -105,7 +106,7 @@ const bilderImCache = () =>
 test.after(async () => {
   https.get = echt;
   srv.close();
-  await _req('db/database.js')
+  await testDaten()
     .pool?.end?.()
     .catch(() => {});
   fs.rmSync(wurzel, { recursive: true, force: true });

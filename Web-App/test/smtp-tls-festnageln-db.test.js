@@ -27,10 +27,11 @@ const { execFileSync } = require('node:child_process');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATA_KEY = Buffer.alloc(32, 9).toString('base64');
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const { routerServer } = require('./helpers/server');
+const db = testDaten();
 const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -102,7 +103,7 @@ function smtpServer(z) {
 }
 
 test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const SCHLUESSEL = [
     'smtp_host',
@@ -200,7 +201,7 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
 
   await t.test('das Formular nimmt nur lesbare Werte und räumt die Altlast ab', async () => {
     await setze({ smtp_port: a.port, smtp_insecure_tls: '1' });
-    const { base } = testServer(_req, {
+    const { base } = routerServer(_req, {
       sitzung: { userId: uid, isAdmin: true },
       routen: { '/api/v1': 'routes/api_v1/settings.js' },
       t,

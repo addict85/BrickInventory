@@ -4,7 +4,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const Module = require('node:module');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -12,42 +11,23 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 let antwort = 403;
 const thumbVersuche = { n: 0 };
 let versuche = 0;
-const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = echtesRequire.call(this, name, ...rest);
-  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
-  // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
-  // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'downloadSetImage'
-          ? async (_u, _sn, info) => {
-              versuche++;
-              if (info) info.status = antwort;
-              return null;
-            }
-          : t[k],
-    });
-  }
-  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m?.generateThumb) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'generateThumb'
-          ? async () => {
-              thumbVersuche.n++;
-              return null;
-            }
-          : t[k],
-    });
-  }
-  return m;
-};
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const _req = buildAndRequire();
+testBildwerk(null, {
+  setBildLaden: async (_u, _sn, info) => {
+    versuche++;
+    if (info) info.status = antwort;
+    return null;
+  },
+  vorschauErzeugen: async () => {
+    thumbVersuche.n++;
+    return null;
+  },
+});
 const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 }, async t => {
   // Marcos Log
@@ -190,6 +170,5 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']).catch(() => {});
     // Letzter DB-Test dieser Datei — nur hier wird aufgeräumt (Lehre aus 116).
     await db.pool.end().catch(() => {});
-    Module.prototype.require = echtesRequire;
   }
 });

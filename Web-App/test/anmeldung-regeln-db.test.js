@@ -20,14 +20,15 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.APP_BASE_URL = 'http://localhost';
 const { qrKoppeln } = require('./helpers/qr');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('Regeln der Anmeldung', { concurrency: 1, timeout: 60_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `regeln_${process.pid}`,
     NACHBAR = `Nachbar_${process.pid}`,
     PASS = 'Regeln-Passwort-1';
@@ -48,11 +49,7 @@ test('Regeln der Anmeldung', { concurrency: 1, timeout: 60_000 }, async t => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NACHBAR]]);
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const ruf = async (methode, pfad, body) => {
     const r = await fetch(`${base}/api/v1/auth${pfad}`, {
       method: methode,

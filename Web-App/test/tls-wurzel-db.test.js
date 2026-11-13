@@ -19,7 +19,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (für Sitzung und QR-Code).
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -35,8 +35,8 @@ const CA = path.join(ordner, 'root.crt');
 umgebung({ CA_ZERTIFIKAT: CA });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { tlsStandAus } = _req('src/infra/tlsWurzel.js');
 const { ladeKonfig, cookieSicher } = _req('src/infra/konfig.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -84,7 +84,7 @@ test('Cookie nur über TLS: in Produktion und hinter https, abschaltbar', () => 
 });
 
 test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run("DELETE FROM users WHERE username = 'tls_nutzer'");
   await db.run(
     "INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('tls_nutzer',$1,false,true,true)",

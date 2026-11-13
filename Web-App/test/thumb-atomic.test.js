@@ -18,13 +18,14 @@ const os = require('node:os');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const sharp = require('sharp');
 
 // Die Vorschau-Sperre hält eine eigene Verbindung offen; mitgeschrieben, damit der Test sie schliessen kann.
 const eigene = [];
-const standard = _req('db/database.js').standardDb();
+const standard = testZugang();
 const verbinde = standard.eigeneVerbindung;
 standard.eigeneVerbindung = async () => {
   const c = await verbinde();
@@ -33,7 +34,7 @@ standard.eigeneVerbindung = async () => {
 };
 test.after(async () => {
   for (const c of eigene) await c.end().catch(() => {});
-  await _req('db/database.js')
+  await testDaten()
     .pool?.end?.()
     .catch(() => {});
 });
@@ -90,7 +91,7 @@ test('generateThumb schreibt über eine temporäre Datei', async () => {
 });
 
 test('makeProxyThumb schreibt über eine temporäre Datei', async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'proxyvorschau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const quelle = path.join(ordner, 'a'.repeat(40)),

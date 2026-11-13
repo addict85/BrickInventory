@@ -29,8 +29,9 @@ process.env.APP_ROOT = wurzel;
 process.env.BILD_ABRUFE_JE_MINUTE = '1000';
 const express = require('express');
 const sharp = require('sharp');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const { bildDurchreichen } = _req('routes/imgProxy.js');
 const { SET_IMG_MAX_BYTES, downloadSetImage } = _req('src/katalog/bilder/setImages.js');
@@ -65,7 +66,7 @@ https.get = /** @type {typeof https.get} */ (
 
 // Die Vorschau-Sperre hält eine eigene Verbindung; mitgeschrieben, damit der Test sie schliesst.
 const eigene = [];
-const standard = _req('db/database.js').standardDb();
+const standard = testZugang();
 const verbinde = standard.eigeneVerbindung;
 standard.eigeneVerbindung = async () => {
   const c = await verbinde();
@@ -107,14 +108,14 @@ test.after(async () => {
   https.get = echt;
   srv.close();
   for (const c of eigene) await c.end().catch(() => {});
-  await _req('db/database.js')
+  await testDaten()
     .pool?.end?.()
     .catch(() => {});
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
 test('ein Bild genau an der Grenze geht hinaus und in den Cache', async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   assert.ok(SET_IMG_MAX_BYTES >= 10 * 1024 * 1024, 'hochauflösende Katalogbilder (5 MB und mehr) fielen heraus');
   cdnRumpf = Buffer.alloc(SET_IMG_MAX_BYTES, 3);
   const r = await hole(adresse('grenze'));
@@ -128,7 +129,7 @@ test('ein Bild genau an der Grenze geht hinaus und in den Cache', async t => {
 });
 
 test('ein Bild über der Grenze wird verworfen, gezählt und gemeldet', async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   cdnRumpf = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 4);
   const vorherCache = imCache().length;
   // Mit Content-Length lehnt schon der Abruf ab; ohne zählt der Strom mit und bricht ab.
@@ -174,7 +175,7 @@ test('der lokale Download verwirft dasselbe Bild und meldet es', async () => {
 });
 
 test('die Vorschau entsteht aus dem fertig geschriebenen Cache', async t => {
-  if (!(await dbOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
   cdnRumpf = await sharp({ create: { width: 640, height: 480, channels: 3, background: '#36c' } })
     .jpeg()
     .toBuffer();

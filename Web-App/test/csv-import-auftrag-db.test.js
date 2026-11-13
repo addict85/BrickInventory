@@ -47,13 +47,14 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { warte } = require('./helpers/zeit');
 
 test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const schluessel = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consumer_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
@@ -169,7 +170,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   } finally {
     loslassen();
     await worker.stoppe(0);
-    await _req('db/database.js').standardDb().benachrichtigung.close();
+    await testZugang().benachrichtigung.close();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
     for (const z of vorher)
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1,$2) ON CONFLICT (key) DO UPDATE SET value=$2', [

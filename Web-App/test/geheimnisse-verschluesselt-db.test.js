@@ -19,7 +19,7 @@
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 
@@ -27,15 +27,15 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 umgebung({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const g = _req('src/infra/geheimnis.js');
 
 const NAME = `geheim_${process.pid}`;
 
 test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const vorher = await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'");
@@ -57,12 +57,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
   });
 
   await t.test('Gutschein-PIN', async () => {
-    const { base } = testServer(_req, {
-      sitzung: { userId: uid },
-      apiNutzer: { user_id: uid, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+    const { base } = testServer(_req, { sitzung: { userId: uid }, t });
     const r = await fetch(`${base}/api/v1/vouchers`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

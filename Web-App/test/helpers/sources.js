@@ -45,11 +45,22 @@ const finanzQuelle = () => {
   return teile.join('\n');
 };
 
-module.exports = { ROOT, serverOnly, imgProxy, serverAll, finanzQuelle, umgebung };
+module.exports = {
+  ROOT,
+  serverOnly,
+  imgProxy,
+  serverAll,
+  finanzQuelle,
+  umgebung,
+  buildAndRequire,
+  testZugang,
+  testDaten,
+  testBildwerk,
+};
 
 /**
  * Baut die .ts-Quellen nach dist/ (nie neben die Quellen) und liefert einen
- * require-Helfer darauf: `buildAndRequire()('db/database.js')`.
+ * require-Helfer darauf: `buildAndRequire()('src/sets/index.js')`.
  */
 let _built = false;
 
@@ -104,8 +115,15 @@ function baueDist() {
  *  ein Test bekommt ihn wie der Server von seinem Einstieg, hier also von hier. */
 let _testDb = null;
 let _eigenDb = null;
-/** Erzeugt den Zugang; gesetzt von buildAndRequire(). */
+/** Erzeugen die Zugänge; gesetzt von buildAndRequire(). */
 let _zugangFabrik = null;
+let _datenFabrik = null;
+/** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
+ *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
+const _bildwerk = {
+  setBildLaden: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/setImages.js')).downloadSetImage(...a),
+  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/thumbs.js')).generateThumb(...a),
+};
 
 function buildAndRequire() {
   // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
@@ -143,33 +161,13 @@ function buildAndRequire() {
   );
   // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch.
   require(path.join(ROOT, 'dist', 'src/infra/bereich.js')).verdrahteDienste(() =>
-    require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueDienste(testDb(), faul),
+    require(path.join(ROOT, 'dist', 'startup/verdrahtung.js')).baueDienste(testDb(), faul, _bildwerk),
   );
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
   // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
   const eigenDb = () => (_eigenDb ??= eigentuemerZugang(dbModul, testDb, () => echt().erststart()));
-  // db/database.js mit den Funktionen des Eigentümerzugangs, wie es früher der Prozesszugang war.
-  const fassade = Object.create(dbModul, {
-    pool: { get: () => eigenDb().pool },
-    standardDb: { value: testDb },
-  });
-  for (const f of [
-    'all',
-    'get',
-    'run',
-    'exec',
-    'transaction',
-    'initSchema',
-    'initSchemaOnce',
-    'getPoolStats',
-    'datenbankAntwortet',
-    'alsSuperuserVerbunden',
-    'eigeneVerbindung',
-    'inTransaktion',
-  ])
-    fassade[f] = (...a) => eigenDb()[f](...a);
+  _datenFabrik = eigenDb;
   return rel => {
-    if (rel === 'db/database.js') return fassade;
     const m = mitKontext(rel, require(path.join(ROOT, 'dist', rel)));
     return rel.startsWith('routes/') ? mitKontoDerAnfrage(m) : m;
   };
@@ -253,8 +251,6 @@ function mitKontoDerAnfrage(m) {
   });
 }
 
-module.exports.buildAndRequire = buildAndRequire;
-
 /** Ein Routenmodul mit Fabrik (baueXRouter(d)) als Router, mit den Diensten des Prozesses
  *  (dieselben, die baueDienste() für diese Testdatei gebaut hat); ein Modul ohne Fabrik unverändert. */
 function routerAus(_req, rel) {
@@ -266,13 +262,31 @@ function routerAus(_req, rel) {
 module.exports.routerAus = routerAus;
 
 /** Der Zugang aus erzeugeDb(), den auch die verdrahteten Dienste dieser Testdatei
- *  benutzen: für neue Tests statt der Fassade `_req('db/database.js')`, die so
- *  tut, als gäbe es noch einen Zugang des Prozesses. Erst nach buildAndRequire(). */
+ *  benutzen: für Code unter Test, der als Laufzeitrolle fragen soll wie im Betrieb.
+ *  Erst nach buildAndRequire(). */
 function testZugang() {
   if (!_zugangFabrik) throw new Error('testZugang() erst nach buildAndRequire()');
   return _zugangFabrik();
 }
-module.exports.testZugang = testZugang;
+
+/** Das Bildwerk, das baueDienste() dieser Datei bekommen hat: Ein Test ersetzt einen Teil
+ *  darin, statt das Modul beim Laden umzubiegen. Mit `t` gilt der Ersatz bis zum Ende des Tests.
+ *  @param {{ after: (f: () => void) => void } | null} [t] @param {Record<string, Function>} [ersatz] */
+function testBildwerk(t, ersatz = {}) {
+  const vorher = { ..._bildwerk };
+  Object.assign(_bildwerk, ersatz);
+  t?.after(() => Object.assign(_bildwerk, vorher));
+  return _bildwerk;
+}
+
+/** Der Zugang der Eigentümerin für Testdaten: Er schreibt am Zeilenschutz vorbei, damit
+ *  ein Test Zeilen beliebiger Konten anlegt. Erst beim ersten Gebrauch gebaut, damit eine
+ *  Testdatei die Umgebung noch nach dem Aufruf stellen kann. Erst nach buildAndRequire(). */
+function testDaten() {
+  if (!_datenFabrik) throw new Error('testDaten() erst nach buildAndRequire()');
+  return _datenGriff;
+}
+const _datenGriff = new Proxy(/** @type {any} */ ({}), { get: (_z, k) => _datenFabrik()[k] });
 
 /** Stellt Umgebungsvariablen um (undefined löscht) und lässt konfig() sie neu
  *  lesen: Der Server liest sie einmal beim Start (src/infra/konfig.ts). */

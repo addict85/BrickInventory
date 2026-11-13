@@ -15,7 +15,7 @@
  * Meldungen sind richtig; die zweite ist die, auf die es ankommt.
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -27,16 +27,16 @@ umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 // Die Einhaengung aus server.ts LESEN, nicht abschreiben: Ein Pruefstand mit
 // fester Adresse bleibt gruen, waehrend der Router laengst woanders haengt.
 const AUTH = einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 
 const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run("DELETE FROM users WHERE username = 'qr_pruefling'");
   const nutzer = await db.get(
@@ -52,11 +52,7 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: nutzer.id, username: 'qr_pruefling', isAdmin: 0 },
-    routen: { [AUTH]: 'routes/auth.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: nutzer.id, username: 'qr_pruefling', isAdmin: 0 }, t });
   const hole = () =>
     fetch(`${base}${AUTH}/qr-token`, {
       // Seit dem Passwortschritt verlangt die Route das eigene Passwort.

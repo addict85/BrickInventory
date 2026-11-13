@@ -20,6 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { zugangOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { proxyHinweis, EINE_ADRESSE } = _req('src/http/proxyHinweis.js');
 
 test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t => {
@@ -42,12 +43,8 @@ test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t 
     m => meldungen.push(m),
     () => jetzt,
   );
-  const { app, base } = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: 1 },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const { app, base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
   app.locals.proxyHinweis = mw;
   const jobs = async () => (await fetch(`${base}/api/v1/admin/jobs`)).json();
 

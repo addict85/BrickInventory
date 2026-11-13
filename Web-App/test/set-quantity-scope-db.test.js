@@ -14,14 +14,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const { haeltSet, mengeVon } = require('./helpers/bestand');
 
 test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const HAUPT = `qty-haupt-${process.pid}`,
     SUB = `qty-sub-${process.pid}`;
@@ -36,8 +37,8 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurr
   ]);
 
   // Die Webapp kommt mit der Sitzung, die App mit einem echten Token und ohne Sitzung.
-  const web = testServer(_req, { sitzung: { userId: hauptId }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
-  const app = testServer(_req, { sitzung: {}, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const web = testServer(_req, { sitzung: { userId: hauptId }, t });
+  const app = testServer(_req, { sitzung: {}, t });
   const token = await _req('src/konto/geraeteToken.js').createToken(hauptId, 'test-app', false, null, { scope: 'app' });
   const srv = web.srv;
 

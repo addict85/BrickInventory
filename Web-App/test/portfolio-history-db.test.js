@@ -4,14 +4,14 @@
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { umgebung, testDaten } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 
 /** Dieselbe Regel geradeheraus: Tageswerte laden, in JS gruppieren, fortschreiben. */
 async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFilter) {
@@ -196,7 +196,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
 });
 
 test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, async t => {
-  const db2 = _req('db/database.js');
+  const db2 = testDaten();
   try {
     await db2.get('SELECT 1');
   } catch (e) {

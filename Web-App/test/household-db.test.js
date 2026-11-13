@@ -25,9 +25,10 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const { haeltFigur, haeltSet, haeltTeil, mengeVon, katalogSet } = require('./helpers/bestand');
 

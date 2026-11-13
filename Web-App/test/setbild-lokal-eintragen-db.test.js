@@ -26,14 +26,15 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { katalogSet } = require('./helpers/bestand');
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { SET_IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });

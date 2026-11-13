@@ -61,7 +61,7 @@ export {
 export type { Abruf, Kurs, LegoAbruf, RbSetTeil } from './quellen';
 export { katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from './setStamm';
 export { erzeugeKatalog } from './bereich';
-export type { KatalogDienste } from './bereich';
+export type { KatalogDienste, Bildwerk } from './bereich';
 export { merkeGebraucht } from './bilder/bildbedarf';
 export { initImageQueue, stoppeBildbedarf } from './bilder/bildbedarfLauf';
 export { initImageMisses } from './bilder/imageMisses';

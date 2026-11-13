@@ -33,10 +33,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const zf = _req('src/konto/zweiterFaktor.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 const { entschluessele } = _req('src/infra/geheimnis.js');
@@ -108,7 +109,7 @@ async function mitFaktor(uid) {
 }
 
 test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const CHEF = `bv_chef_${process.pid}`,
     ZIEL = `bv_ziel_${process.pid}`,
     OHNE = `bv_ohne_${process.pid}`;
@@ -134,8 +135,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
   });
   const codes = await mitFaktor(chef);
   await mitFaktor(ziel);
-  const routen = { '/api/v1/auth': 'routes/auth.js', '/api/v1': 'routes/api_v1/index.js' };
-  const basis = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true }, routen, t }).base;
+  const basis = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true }, t }).base;
   const ruf = async (b, schluessel, body) => {
     const [methode, muster] = schluessel.split(' ');
     const r = await fetch(b + muster.replace(':id', String(ziel)).replace(':tokenId', '0123456789abcdef'), {
@@ -197,7 +197,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
     });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await zf.istAktiv(ziel), false);
-    const ohneFaktor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, routen, t }).base;
+    const ohneFaktor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
     const tok = await ruf(ohneFaktor, 'POST /api/v1/auth/token-create', { password: PASS });
     assert.equal(tok.status, 200, JSON.stringify(tok.body));
   });

@@ -6,7 +6,6 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const fs = require('node:fs');
-const Module = require('node:module');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -16,44 +15,25 @@ const zeiten = [];
 const thumbZeiten = [];
 let gleichzeitig = 0,
   maxGleichzeitig = 0;
-const echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = echtesRequire.call(this, name, ...rest);
-  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
-  // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
-  // der Test misst still den echten Download.
-  if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m?.downloadSetImage) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'downloadSetImage'
-          ? async (_u, sn) => {
-              zeiten.push(Date.now());
-              gleichzeitig++;
-              maxGleichzeitig = Math.max(maxGleichzeitig, gleichzeitig);
-              await new Promise(r => setTimeout(r, 30)); // „Netzwerk"
-              gleichzeitig--;
-              return `/images/sets/${sn}.jpg`;
-            }
-          : t[k],
-    });
-  }
-  if (typeof name === 'string' && /thumbs(\.js)?$/.test(name) && m?.generateThumb) {
-    return new Proxy(m, {
-      get: (t, k) =>
-        k === 'generateThumb'
-          ? async () => {
-              thumbZeiten.push(Date.now());
-              return true;
-            }
-          : t[k],
-    });
-  }
-  return m;
-};
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const _req = buildAndRequire();
+testBildwerk(null, {
+  setBildLaden: async (_u, sn) => {
+    zeiten.push(Date.now());
+    gleichzeitig++;
+    maxGleichzeitig = Math.max(maxGleichzeitig, gleichzeitig);
+    await new Promise(r => setTimeout(r, 30)); // „Netzwerk"
+    gleichzeitig--;
+    return `/images/sets/${sn}.jpg`;
+  },
+  vorschauErzeugen: async () => {
+    thumbZeiten.push(Date.now());
+    return true;
+  },
+});
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
   try {
@@ -113,9 +93,8 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
     });
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
-    // Weder den Pool schliessen noch das Abfangen zurücknehmen — der Test
-    // darunter braucht BEIDES noch. Aufgeräumt wird im LETZTEN Test dieser
-    // Datei, der mit der Datenbank arbeitet.
+    // Den Pool nicht schliessen — der Test darunter braucht ihn noch. Aufgeräumt
+    // wird im LETZTEN Test dieser Datei, der mit der Datenbank arbeitet.
   }
 });
 
@@ -166,7 +145,6 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => 
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
     // Letzter Test mit Datenbank in dieser Datei — hier wird aufgeräumt.
     await db.pool.end().catch(() => {});
-    Module.prototype.require = echtesRequire;
   }
 });
 

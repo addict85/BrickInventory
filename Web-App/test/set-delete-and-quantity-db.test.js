@@ -16,11 +16,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ohneKommentare } = require('./helpers/sources');
+const { ohneKommentare, testDaten } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 
 test('das Löschen fragt genau einmal', () => {
@@ -72,7 +72,7 @@ test('die Mengen-Multiplikation steht an allen Stellen', () => {
 });
 
 test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const NUTZER = `dl-${process.pid}`;
   const SN = `76${(process.pid % 900) + 100}-1`;
@@ -105,12 +105,7 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
   await haeltTeil(db, uid, '3001', { setNumber: SN, menge: 10, colorId: 4 });
   await haeltFigur(db, uid, 'cty0001', { setNumber: SN, menge: 1 });
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   const H = require('./helpers/sources').handlerModul(_req);
   const setzen = n =>

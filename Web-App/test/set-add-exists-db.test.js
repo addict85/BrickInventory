@@ -12,24 +12,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Der Nachzug nach dem Erfassen (src/sets/nachErfassung.ts) wird abgefangen.
-const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
-Module.prototype.require = function (name, ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
-  return m;
-};
-
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const HAUPT = `ex-haupt-${process.pid}`,
     SUB = `ex-sub-${process.pid}`;
@@ -87,12 +78,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
     zeilen: (await db.get(`SELECT COUNT(*)::int AS c FROM sets WHERE set_number=$1`, [sn])).c,
   });
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: hauptId },
-    apiNutzer: { user_id: hauptId, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: hauptId }, t });
 
   const erfassen = async (pfad, sn) => {
     const r = await fetch(base + pfad, {

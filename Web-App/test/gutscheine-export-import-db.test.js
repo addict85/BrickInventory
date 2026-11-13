@@ -25,9 +25,10 @@ fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}')
 process.env.APP_ROOT = SANDKASTEN;
 const DATEN_DIR = path.join(SANDKASTEN, 'data');
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const { testServer } = require('./helpers/server');
 const PL = require('@cantoo/pdf-lib');
 const suche = (uid, nr) => _req('src/gutscheine/repository/gutscheine.js').nummerSuche(uid, nr);
@@ -99,12 +100,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   }
   await aufbau();
 
-  const srv = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
 
   let pdf = null,
     befunde = null;

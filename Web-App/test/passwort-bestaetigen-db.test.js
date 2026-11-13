@@ -22,17 +22,18 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `pwbest_${process.pid}`,
   PASS = 'Passwort12345';
 
 test('Passwort bestätigen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -49,12 +50,8 @@ test('Passwort bestätigen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const mitSitzung = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    routen: { [AUTH]: 'routes/auth.js' },
-    t,
-  });
-  const ohneSitzung = testServer(_req, { sitzung: {}, routen: { [AUTH]: 'routes/auth.js' }, t });
+  const mitSitzung = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
+  const ohneSitzung = testServer(_req, { sitzung: {}, t });
   const post = async (srv, pfad, body, kopf = {}) => {
     const r = await fetch(`${srv.base}${AUTH}${pfad}`, {
       method: 'POST',

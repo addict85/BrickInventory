@@ -29,9 +29,11 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 // Kein Abruf bei den Quellen: Das Neuladen findet hier nichts.
@@ -39,13 +41,13 @@ const anlPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'sr
 const echt = require(anlPfad);
 require.cache[anlPfad].exports = Object.assign({}, echt, { downloadSetInstructions: async () => [] });
 
-const db = _req('db/database.js');
+const db = testDaten();
 const SET = '99072-1',
   URL_A = 'https://quelle.example/99072.pdf';
 const NAMEN = ['anl_halter', 'anl_fremd'].map(n => `${n}_${process.pid}`);
 
 test('Anleitungen neu laden', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
@@ -59,6 +61,8 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
         )
       ).id,
     );
+  // ids[1] arbeitet unten als Verwalter.
+  await verwalterMitFaktor(_req, ids[1]);
   await katalogSet(db, SET, { name: 'Anleitungsprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await haeltSet(db, ids[0], SET, 1);
   const anleitung = () =>
@@ -81,7 +85,7 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
   });
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const neuLaden = async (als, nummer = SET) => {
     Object.assign(sitzung, als);
     return (await fetch(`${base}/api/v1/sets/${nummer}/instructions`, { method: 'POST' })).status;

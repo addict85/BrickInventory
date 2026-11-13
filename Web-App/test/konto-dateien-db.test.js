@@ -23,11 +23,13 @@ const PDFKit = require('pdfkit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
+const db = testDaten();
 const { DATA_DIR } = _req('src/infra/appPaths.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -81,18 +83,9 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     await db.pool.end().catch(() => {});
   });
 
-  const ziel = testServer(_req, {
-    sitzung: { userId: zielId },
-    apiNutzer: { user_id: zielId, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
-  const admin = testServer(_req, {
-    sitzung: { userId: adminId, username: ADMIN, isAdmin: true },
-    apiNutzer: { user_id: adminId, is_admin: 1 },
-    routen: { [AUTH]: 'routes/auth.js' },
-    t,
-  });
+  const ziel = testServer(_req, { sitzung: { userId: zielId }, t });
+  const codes = await verwalterMitFaktor(_req, adminId);
+  const admin = testServer(_req, { sitzung: { userId: adminId, username: ADMIN, isAdmin: true }, t });
 
   const original = await gutscheinPdf();
   const { werteAusPdf } = _req('src/gutscheine/gutscheinPdf.js');
@@ -148,7 +141,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     const r = await fetch(`${admin.base}${AUTH}/users/${zielId}`, {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ admin_password: ADMIN_PW }),
+      body: JSON.stringify({ admin_password: ADMIN_PW, code: codes.shift() }),
     });
     assert.equal(r.status, 200, await r.text());
     assert.equal(fs.existsSync(uploads), false, 'data/uploads/<id> bleibt nach dem Löschen liegen');

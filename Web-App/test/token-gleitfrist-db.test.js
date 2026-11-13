@@ -11,12 +11,12 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 // Nicht die Vorgabe 90: So zeigt der Test, dass die Frist aus der Konfiguration kommt.
 process.env.TOKEN_IDLE_DAYS = '23';
 
-const { buildAndRequire, einhaengung } = require('./helpers/sources');
+const { buildAndRequire, einhaengung, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const AUTH = einhaengung('auth');
-const db = _req('db/database.js');
+const db = testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -29,7 +29,7 @@ const NAME = 'gleitfrist_test',
 const TAG = 86400_000;
 
 test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(

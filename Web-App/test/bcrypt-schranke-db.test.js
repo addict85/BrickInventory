@@ -31,10 +31,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const { neueSchranke, bcryptSchranke, BcryptUeberlast } = _req('src/konto/bcryptSchranke.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
@@ -121,7 +122,7 @@ test('bei voller Schranke antwortet die Anmeldung 503 und die Passwortbestätigu
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const post = async (weg, body) => {
     const r = await fetch(`${base}/api/v1/auth${weg}`, {
       method: 'POST',

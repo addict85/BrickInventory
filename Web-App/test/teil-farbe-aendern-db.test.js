@@ -68,9 +68,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = _req('db/database.js');
+const db = testDaten();
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
@@ -107,12 +108,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
   await db.run(`INSERT INTO rb_colors (id,name,rgb,bl_color_id)
                 VALUES (4,'Red','C91A09',5), (7,'Blue','0055BF',7)`);
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: UID },
-    apiNutzer: { user_id: UID, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: UID }, t });
   const aendere = async (nummer, alteFarbe, koerper) => {
     const r = await fetch(`${base}/api/v1/parts/${nummer}/${alteFarbe}/color`, {
       method: 'PUT',

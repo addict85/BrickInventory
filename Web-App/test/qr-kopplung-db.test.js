@@ -26,14 +26,15 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.APP_BASE_URL = 'http://localhost';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAMEN = [`qrk_${process.pid}`, `qrk2_${process.pid}`];
   const PASS = 'Kopplung-Passwort-1';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
@@ -55,7 +56,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     await db.pool.end().catch(() => {});
   });
   const sitzung = { userId: ids[0], username: NAMEN[0] };
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   // Über IPv4: Mit „localhost“ fragt der CI-Läufer über ::1, und das geprüfte Netz hiesse 0:0:0::/48.
   const adresse = base.replace('localhost', '127.0.0.1');
   const ruf = async (methode, pfad, body) => {

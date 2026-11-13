@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { getSetInfo } from './quellen';
-import { downloadSetImage } from './bilder/setImages';
 import { generateThumb } from './bilder/thumbs';
 import { merkeFehlend } from './bilder/imageMisses';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
@@ -100,7 +99,7 @@ export async function setBilderNachladen(k: KatalogKontext): Promise<void> {
     for (const { set_number, image_url } of missing) {
       // Nur 404/410 heisst „gibt es nicht“; Drosselung beendet den Lauf, alles andere versucht der nächste.
       const info: { status?: number } = {};
-      const r = await versuche('nachlauf:downloadSetImage', downloadSetImage(image_url, set_number, info));
+      const r = await versuche('nachlauf:downloadSetImage', k.bildwerk.setBildLaden(image_url, set_number, info));
       const local = r.ok ? r.wert : null;
       if (!local && (info.status === 404 || info.status === 410))
         merkeFehlend('set:' + set_number, `HTTP ${info.status} vom CDN`);
@@ -110,7 +109,7 @@ export async function setBilderNachladen(k: KatalogKontext): Promise<void> {
       }
       if (local) {
         await k.bildlage.merkeSetBildLokal(set_number, local).catch(logAndContinue(`bilder:set ${set_number}`));
-        generateThumb(local).catch(logAndContinue('nachlauf:generateThumb'));
+        k.bildwerk.vorschauErzeugen(local).catch(logAndContinue('nachlauf:generateThumb'));
       }
       await new Promise(r => setTimeout(r, 300));
     }

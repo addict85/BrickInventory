@@ -18,8 +18,9 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet, haeltFigur, haeltTeil, katalogSet } = require('./helpers/bestand');
 
@@ -33,7 +34,7 @@ const SETS = [
 ];
 
 test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const NAME = `paging_${process.pid}`;
   const nummern = SETS.map(s => s.nr);
@@ -62,12 +63,7 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const hole = async pfad => {
     const r = await fetch(`${base}/api/v1${pfad}`);
     const b = await r.json();

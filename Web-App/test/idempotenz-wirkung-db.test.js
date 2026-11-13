@@ -21,16 +21,17 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
-const db = _req('db/database.js');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
+const db = testDaten();
 const { idempotenz } = _req('src/idempotenz/http/middleware.js');
 const dienst = _req('src/idempotenz/dienst.js');
 
 const NAME = `idem_wirkung_${process.pid}`;
 
 test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(

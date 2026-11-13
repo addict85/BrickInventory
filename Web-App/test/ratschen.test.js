@@ -413,10 +413,10 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
  * blosses `await` zählt nicht: Es wartet ebenso auf fs.promises.readFile.
  */
 const FALL_FUEHRT_AUS =
-  /\bbuildAndRequire\(|\b_req\w*\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
+  /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang)\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
 const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
 /** Aus helpers/sources führen nur diese aus; die übrigen lesen Quelltext. */
-const SOURCES_FUEHRT_AUS = new Set(['buildAndRequire', 'baueDist', 'umgebung']);
+const SOURCES_FUEHRT_AUS = new Set(['buildAndRequire', 'baueDist', 'umgebung', 'testDaten', 'testZugang']);
 const HILFE = /require\(\s*['"]\.\/helpers\/([\w-]+)['"]\s*\)/;
 
 /** Ob ein Modul unter test/helpers selbst etwas ausführt. */
@@ -575,25 +575,47 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
   if (n < SCHRANKE) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
-/** Die Fassade `_req('db/database.js')` (und dbOderSkip, das sie liefert) tut so, als
- * gäbe es noch einen Zugang des Prozesses. Neue Tests nehmen den Zugang selbst:
- * zugangOderSkip() bzw. testZugang() aus den Testhilfen oder erzeugeDb(). */
-const NUTZT_FASSADE = /_req\w*\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(/;
+/** Die Fassade `_req('db/database.js')` (und dbOderSkip, das sie lieferte) tat so, als gäbe
+ * es noch einen Zugang des Prozesses, und mischte Testdaten mit dem Code unter Test.
+ * Testdaten nehmen testDaten()/datenOderSkip(), Code unter Test testZugang()/zugangOderSkip().
+ * Einzelne Exporte des Moduls (erzeugeDb, istLesend) sind kein Zugang und bleiben erlaubt. */
+const NUTZT_FASSADE =
+  /(?<!\}\s*=\s*)(?:_req\w*|buildAndRequire\(\))\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(|\.standardDb\(/;
+/** Ersatzwege, die nur sinken dürfen. Wer Module beim Laden umbiegt, prüft einen Aufbau, den es
+ * im Betrieb nicht gibt, und greift still ins Leere, sobald sich ein Importpfad ändert; ersetzt
+ * wird an der Verdrahtung (testBildwerk(), Nacharbeit, verdrahteKlienten). routerServer steckt
+ * eigene Router zusammen statt baueApp, an Sitzungs- und Verwalterprüfungen vorbei. */
+const ERSATZWEGE = {
+  'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 14 },
+  'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, schranke: 13 },
+};
 
-test('Tests über die Fassade der alten DB-API werden weniger, nie mehr', () => {
-  // Gemessen 387 am 12.11.2026 (389 vor der Umstellung von indizes-db und transaktion-umgebung-db).
-  // Gegenprobe (12.11.2026): indizes-db.test.js zurück auf dbOderSkip → rot (388).
-  const SCHRANKE = 387;
+test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weniger', () => {
+  // Fassade: 387 Dateien am 12.11.2026, 0 seit testDaten()/testZugang() (13.11.2026).
+  // Umgebogen: 26 Testdateien am 13.11.2026, 14 nach Bildwerk und toten Abfängen.
+  // routerServer: 124 Dateien bauten am 13.11.2026 eigene Router, 13 tun es noch.
+  // Gegenproben (13.11.2026): in indizes-db.test.js wieder `_req('db/database.js')` → rot
+  // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14);
+  // in app-kette-db.test.js testServer → routerServer → rot (14 statt 13).
   assert.ok(NUTZT_FASSADE.test("const db = _req('db/database.js');") && !NUTZT_FASSADE.test('zugangOderSkip(t)'));
+  assert.ok(!NUTZT_FASSADE.test("const { erzeugeDb } = _req('db/database.js');"), 'Exporte bleiben erlaubt');
+  assert.ok(ERSATZWEGE['biegen Module um'].muster.test('Module.prototype.require = function () {}'));
   const q = require('./helpers/sources');
-  const ist = fs
-    .readdirSync(__dirname)
-    .filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js')
-    .filter(n => NUTZT_FASSADE.test(q.ohneKommentare(fs.readFileSync(path.join(__dirname, n), 'utf8'))));
-  assert.ok(ist.length > 100, `nur ${ist.length} Treffer — greift das Muster noch?`);
-  assert.ok(ist.length <= SCHRANKE, `${ist.length} Testdateien nutzen die Fassade, erlaubt sind ${SCHRANKE}`);
-  if (ist.length < SCHRANKE)
-    console.log(`  ℹ Fassade der DB-API: ${ist.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  const tests = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js');
+  const helfer = fs.readdirSync(path.join(__dirname, 'helpers')).map(n => path.join('helpers', n));
+  assert.ok(tests.length > 500, `nur ${tests.length} Testdateien — greift die Suche noch?`);
+  const lies = (/** @type {string} */ n) => q.ohneKommentare(fs.readFileSync(path.join(__dirname, n), 'utf8'));
+  assert.deepEqual(
+    [...tests, ...helfer].filter(n => NUTZT_FASSADE.test(lies(n))),
+    [],
+    'Testdaten über testDaten(), Code unter Test über testZugang()',
+  );
+  for (const [was, { muster, schranke }] of Object.entries(ERSATZWEGE)) {
+    const ist = tests.filter(n => muster.test(lies(n))).length;
+    assert.ok(ist > 0, `keine Datei ${was} — greift das Muster noch? Dann Schranke und Eintrag entfernen`);
+    assert.ok(ist <= schranke, `${ist} Testdateien ${was}, erlaubt sind ${schranke}`);
+    if (ist < schranke) console.log(`  ℹ ${ist} Testdateien ${was} (Schranke ${schranke}) — Schranke nachziehen`);
+  }
 });
 
 /**

@@ -23,7 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
 const DIST = path.join(__dirname, '..', 'dist');
-const { dbOderSkip } = require('./helpers/db');
+const { datenOderSkip } = require('./helpers/db');
 
 /** @type {{ pfad: string, schluessel: string | undefined }[]} */
 const abrufe = [];
@@ -61,8 +61,8 @@ test('ohne Verdrahtung wirft jeder Abruf, statt ohne Schlüssel zu laufen', asyn
 });
 
 test('über die Verdrahtung tragen Abrufe den eingetragenen Schlüssel und zählen', { concurrency: 1 }, async t => {
-  const db = _req('db/database.js');
-  if (!(await dbOderSkip(t, _req))) return;
+  const db = require('./helpers/sources').testDaten();
+  if (!(await datenOderSkip(t, _req))) return;
   const { setGlobalSetting, deleteGlobalSetting } = _req('src/einstellungen/settings.js');
   await setGlobalSetting('rebrickable_api_key', 'schluessel-zugang-1');
   t.after(async () => {

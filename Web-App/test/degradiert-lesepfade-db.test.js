@@ -18,17 +18,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const { getGlobalSetting } = _req('src/einstellungen/settings.js');
 
 const NAME = `degradiert_${process.pid}`,
   TEIL = '3001dg';
 
 test('Lesefehler: `degradiert` oder Fehler, nie still leer', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -51,12 +52,7 @@ test('Lesefehler: `degradiert` oder Fehler, nie still leer', { concurrency: 1 },
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const manuelle = async () => {
     const r = await fetch(`${base}/api/v1/parts/manual`);
     assert.equal(r.status, 200);

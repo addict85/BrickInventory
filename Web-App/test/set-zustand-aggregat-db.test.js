@@ -38,8 +38,6 @@ const Module = require('node:module');
 const _echtesRequire = Module.prototype.require;
 Module.prototype.require = function (/** @type {string} */ name, /** @type {any[]} */ ...rest) {
   const m = _echtesRequire.call(this, name, ...rest);
-  if (typeof name === 'string' && /sets[/\\]nachErfassung(\.js)?$/.test(name))
-    return new Proxy(m, { get: (t, k) => (k === 'zieheNach' || k === 'zieheNachNeuanlage' ? () => {} : t[k]) });
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) => (k === 'setErfassen' && gestellteAddSet ? (_sk, ...a) => gestellteAddSet?.(...a) : t[k]),
@@ -47,12 +45,14 @@ Module.prototype.require = function (/** @type {string} */ name, /** @type {any[
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 
 test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
-  const db = await dbOderSkip(t, _req);
+  const db = await datenOderSkip(t, _req);
   if (!db) return;
   const P = process.pid;
   const NAME = `zustand-agg-${P}`;
@@ -91,12 +91,8 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     )
   ).id;
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const anfrage = async (
     /** @type {string} */ methode,
     /** @type {string} */ pfad,

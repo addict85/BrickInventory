@@ -7,14 +7,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
-const db = _req('db/database.js');
+const db = testDaten();
 
 test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
 
   const USER = `delp-${process.pid}`;
   const SN = `41439-${process.pid}`;
@@ -22,12 +23,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   // Zwei Erfassungen; die Elternzeile trägt den Wert der NEUESTEN.
   const aufbauen = async () => {

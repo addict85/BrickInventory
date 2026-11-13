@@ -41,25 +41,26 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const { bis } = require('./helpers/zeit');
 
 const DATEI = 'Set Number,Quantity\n10200-1,1\n10305-1,2\nabc,1\n10312-1,x\n99999-1,1\n,3\n10319-1,-2\n10326-1,1\n';
 
 test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `csvpruef-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, '10305-1']);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
   t.after(async () => {
     await worker.stoppe(0);
-    await _req('db/database.js').standardDb().benachrichtigung.close();
+    await testZugang().benachrichtigung.close();
     await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });

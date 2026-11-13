@@ -133,7 +133,7 @@ async function starteApp(t, opt = {}) {
   const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   process.env.DATABASE_URL = URL_DB;
   const _req = require('./sources').buildAndRequire();
-  const db = _req('db/database.js');
+  const db = require('./sources').testDaten();
   const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
   try {
     await db.initSchema();

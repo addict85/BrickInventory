@@ -21,13 +21,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
+const db = testDaten();
 
 test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `eingabe_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const PASS = 'Eingabe-Passwort-1';
@@ -42,12 +44,8 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
-    t,
-  });
+  const codes = await verwalterMitFaktor(_req, uid);
+  const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const sende = async (methode, pfad, rumpf) => {
     const r = await fetch(base + pfad, {
       method: methode,
@@ -77,6 +75,7 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
       first_name: 'Marco',
       last_name: null,
       password_current: PASS,
+      code: codes.shift(),
     });
     assert.equal(ok.status, 200, `gültige Eingabe abgewiesen: ${ok.code}`);
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Marco');
@@ -96,7 +95,7 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
   });
 
   await t.test('ohne Anmeldung bleibt es 401, nicht 400', async () => {
-    const { base: offen } = testServer(_req, { sitzung: {}, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+    const { base: offen } = testServer(_req, { sitzung: {}, t });
     const r = await fetch(`${offen}/api/v1/auth/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

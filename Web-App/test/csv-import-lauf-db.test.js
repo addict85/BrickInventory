@@ -43,18 +43,19 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const { warte, bis } = require('./helpers/zeit');
 
 test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const NAME = `csvlauf-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
 
   const importiere = async zeilen => {
@@ -105,7 +106,7 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
     });
   } finally {
     await worker.stoppe(0);
-    await _req('db/database.js').standardDb().benachrichtigung.close();
+    await testZugang().benachrichtigung.close();
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await db.pool.end().catch(() => {});
   }

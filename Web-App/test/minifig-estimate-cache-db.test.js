@@ -6,7 +6,8 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 async function neuerNutzer(db) {
@@ -14,7 +15,7 @@ async function neuerNutzer(db) {
 }
 
 test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
-  const db = _req('db/database.js');
+  const db = testDaten();
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -57,7 +58,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
 });
 
 test('ein veralteter Eintrag wird übergangen', async t => {
-  const db = _req('db/database.js');
+  const db = testDaten();
   try {
     await db.initSchemaOnce();
   } catch (e) {

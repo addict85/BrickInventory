@@ -27,10 +27,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const _req = require('./helpers/sources').buildAndRequire();
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = _req('db/database.js');
+const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Loeschen-Passwort-1';
 
@@ -68,11 +69,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     await db.pool.end().catch(() => {});
   });
   const als = uid => {
-    const { base } = testServer(_req, {
-      sitzung: { userId: uid, destroy: cb => cb() },
-      routen: { '/api/v1/auth': 'routes/auth.js' },
-      t,
-    });
+    const { base } = testServer(_req, { sitzung: { userId: uid, destroy: cb => cb() }, t });
     return async body => {
       const r = await fetch(`${base}/api/v1/auth/konto`, {
         method: 'DELETE',

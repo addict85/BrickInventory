@@ -18,15 +18,16 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.PG_STMT_MS = '1000';
 
-const _req = require('./helpers/sources').buildAndRequire();
-const { dbOderSkip } = require('./helpers/db');
+const { buildAndRequire, testDaten } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { datenOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
-const db = _req('db/database.js');
+const db = testDaten();
 const { LOCKS } = _req('src/infra/lockNamespaces.js');
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
 test('Schema-Sperre: Warten dauert länger als statement_timeout', async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  if (!(await datenOderSkip(t, _req))) return;
   const fremder = new Client({ connectionString: process.env.DATABASE_URL });
   await fremder.connect();
   t.after(async () => {
