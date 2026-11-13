@@ -815,6 +815,12 @@ window.I18N_DE = {
   'set.kaufpreis_folgt':
     'Menge gespeichert. Der Marktpreis für das neue Exemplar war nicht erreichbar und wird nachgetragen.',
   'monitor.degradiert': 'Unvollständig, ein Teil liess sich nicht lesen: {teile}. Die Zahlen dort sind Ersatzwerte.',
+  'monitor.proxy.gateway':
+    'X-Forwarded-For kommt über das Docker-Gateway {ip} und wird verworfen; über das Gateway kommen auch Clients selbst herein. Den Reverse-Proxy mit fester Adresse ins Netz brickinventory-net stellen und genau diese in TRUST_PROXY eintragen (README.md).',
+  'monitor.proxy.docker_netz':
+    'Ein Reverse-Proxy erreicht den Server aus dem Docker-Netz unter {ip}, sein X-Forwarded-For wird verworfen: Alle Clients teilen sich eine Adresse (Anmeldesperre, Drosseln). Ist das der eigene Proxy: TRUST_PROXY={ip} setzen (README.md).',
+  'monitor.proxy.eine_adresse':
+    'Seit {minuten} Minuten kommen alle {anzahl} Anfragen mit derselben Client-Adresse {ip}. Steht vor Caddy ein weiterer Proxy (z. B. Nginx Proxy Manager), teilen sich alle Clients diese Adresse: Fehlversuche eines Fremden sperren alle aus. Seine Adresse in VORGELAGERTER_PROXY (.env) eintragen (README.md, „Proxy vor Caddy“).',
   'monitor.art.bild_nachlauf': 'Bild-Download (CDN)',
   'monitor.art.aufraeumen': 'Aufräumen (stündlich)',
   'monitor.art.aufraeumen_taeglich': 'Aufräumen (täglich)',

@@ -17661,6 +17661,7 @@
           "quelle_abgelehnt",
           "zweiter_faktor_noetig",
           "zweiter_faktor_falsch",
+          "zweiter_faktor_gesperrt",
           "zweiter_faktor_schon_aktiv",
           "zweiter_faktor_nicht_aktiv",
           "papierkorb_schon_vorhanden",
@@ -19437,6 +19438,53 @@
             "items": {
               "type": "string"
             }
+          },
+          "proxy_hinweis": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "art": {
+                    "type": "string",
+                    "enum": [
+                      "gateway",
+                      "docker_netz",
+                      "eine_adresse"
+                    ]
+                  },
+                  "vars": {
+                    "type": "object",
+                    "properties": {
+                      "ip": {
+                        "type": "string"
+                      },
+                      "minuten": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "anzahl": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "ip"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "art",
+                  "vars"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

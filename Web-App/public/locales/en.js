@@ -804,6 +804,12 @@ window.I18N_EN = {
   'set.kaufpreis_folgt':
     'Quantity saved. The market price for the new copy was unavailable and will be filled in later.',
   'monitor.degradiert': 'Incomplete, a part could not be read: {teile}. The numbers there are placeholders.',
+  'monitor.proxy.gateway':
+    'X-Forwarded-For arrives via the Docker gateway {ip} and is discarded; clients themselves also come in through the gateway. Put the reverse proxy into the network brickinventory-net with a fixed address and enter exactly that one in TRUST_PROXY (README.md).',
+  'monitor.proxy.docker_netz':
+    'A reverse proxy reaches the server from the Docker network at {ip}; its X-Forwarded-For is discarded, so all clients share one address (sign-in lock, throttles). If this is your own proxy: set TRUST_PROXY={ip} (README.md).',
+  'monitor.proxy.eine_adresse':
+    'For {minuten} minutes, all {anzahl} requests have come with the same client address {ip}. If another proxy (e.g. Nginx Proxy Manager) sits in front of Caddy, all clients share this address: failed attempts by a stranger lock everyone out. Enter its address in VORGELAGERTER_PROXY (.env) (README.md, “Proxy vor Caddy”).',
   'monitor.art.bild_nachlauf': 'Image download (CDN)',
   'monitor.art.aufraeumen': 'Clean-up (hourly)',
   'monitor.art.aufraeumen_taeglich': 'Clean-up (daily)',

@@ -301,6 +301,13 @@ const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
 const dienstName = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
   tRaw('monitor.job.' + k) !== 'monitor.job.' + k ? tRaw('monitor.job.' + k) : j.label || k;
 
+/** Feste Schlüssel statt zusammengesetzter (test/i18n-aufrufe.test.js); Text wie im Protokoll (src/http/proxyHinweis.ts). */
+const PROXY_HINWEIS = {
+  gateway: 'monitor.proxy.gateway',
+  docker_netz: 'monitor.proxy.docker_netz',
+  eine_adresse: 'monitor.proxy.eine_adresse',
+};
+
 export async function loadMonitor() {
   const el = G('monitor-content');
   if (!el) return;
@@ -331,6 +338,7 @@ export async function loadMonitor() {
       html`
       <p class="mon-hinweis">${tRaw('monitor.services_hint')}</p>
       ${d.degradiert?.length ? html`<p class="mon-hinweis" role="status">${tRaw('monitor.degradiert', { teile: d.degradiert.join(', ') })}</p>` : ''}
+      ${d.proxy_hinweis ? html`<p class="mon-warnung" role="status" id="mon-proxy-hinweis">${ico('warnung')} ${tRaw(PROXY_HINWEIS[d.proxy_hinweis.art], d.proxy_hinweis.vars)}</p>` : ''}
       <div class="tw"><table class="dt mon-tabelle mon-dienste" aria-label="${tRaw('tabelle.dienste')}">
         <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeitplan')}</th><th>${tRaw('monitor.col.zuletzt')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(

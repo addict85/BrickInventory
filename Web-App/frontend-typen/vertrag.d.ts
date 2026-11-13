@@ -803,6 +803,7 @@ export type Fehlercode =
   | 'quelle_abgelehnt'
   | 'zweiter_faktor_noetig'
   | 'zweiter_faktor_falsch'
+  | 'zweiter_faktor_gesperrt'
   | 'zweiter_faktor_schon_aktiv'
   | 'zweiter_faktor_nicht_aktiv'
   | 'papierkorb_schon_vorhanden'
@@ -1190,6 +1191,14 @@ export type JobsResponse = {
   jobs: Record<string, JobStatus>;
   schedules: Record<string, JobSchedule>;
   degradiert?: string[];
+  proxy_hinweis?: {
+    art: 'gateway' | 'docker_netz' | 'eine_adresse';
+    vars: {
+      ip: string;
+      minuten?: number;
+      anzahl?: number;
+    };
+  } | null;
   [feld: string]: unknown;
 };
 export type JobStatus = {

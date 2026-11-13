@@ -85,7 +85,8 @@ function grundschutz(app: express.Express, k: Konfig): void {
     app.set('trust proxy', proxyVertrauen(k.trustProxy));
   }
   // Auch ausserhalb der Produktion: Er meldet ein verworfenes X-Forwarded-For.
-  app.use(proxyHinweis(k.trustProxy));
+  app.locals.proxyHinweis = proxyHinweis(k.trustProxy);
+  app.use(app.locals.proxyHinweis);
 
   // `//api/…` fiele sonst bis zum SPA-Catch-all durch und bekäme index.html mit 200.
   app.use((req, _res, next) => {
