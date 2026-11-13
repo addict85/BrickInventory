@@ -1,6 +1,7 @@
 /** Was die Dienste des Bereichs bekommen: Zugang, Dienste tieferer Bereiche, Arbeitseinheit.
  * Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
 import type { Db } from '../../db/database';
+import type { Faecher } from '../infra/zwischenspeicher';
 import { bindeImSystemrahmen, bindeZugang, type Kontext } from '../infra/bereich';
 import * as altgeheimnisse from './repository/altgeheimnisse';
 import * as anmeldezaehler from './repository/anmeldezaehler';
@@ -19,6 +20,8 @@ import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 
 export interface KontoAbhaengigkeiten {
   db: Db;
+  /** Zustand je Zugang (Token-Cache, Sitzungsversionen); erzeugeKonto legt sie an. */
+  faecher: Faecher;
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;

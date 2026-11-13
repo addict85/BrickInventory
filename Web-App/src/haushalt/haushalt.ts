@@ -11,6 +11,7 @@ import type { ErfassungsArt } from './repository';
 import { fachfehler } from '../infra/fehlerTexte';
 import crypto from 'node:crypto';
 import { imSystemkontext } from '../infra/kontoKontext';
+import { prozessweit } from '../infra/prozessweit';
 
 /** Lang genug für „später am Abend", kurz genug, dass ein liegen gebliebener
  * Code nicht dauerhaft öffnet. */
@@ -32,26 +33,31 @@ const HAUSHALT_MAX = 500;
 /** Je Zugang ein Gedächtnis: Zwei Datenbanken vergeben dieselbe Konto-ID an
  * verschiedene Konten. WeakMap, damit ein Transaktionsgriff samt Gedächtnis
  * verschwindet; der Stand macht leereHaushaltCache() für alle Zugänge wirksam. */
-const _stand = { n: 0 };
-const _haushalte = new WeakMap<object, { stand: number; speicher: Zwischenspeicher<number, Household> }>();
+const gedaechtnisse = () =>
+  prozessweit('haushaltGedaechtnis', () => ({
+    stand: 0,
+    jeZugang: new WeakMap<object, { stand: number; speicher: Zwischenspeicher<number, Household> }>(),
+    abhaengige: [] as Array<() => void>,
+  }));
 function gedaechtnis(db: DbSchnittstelle): Zwischenspeicher<number, Household> {
-  let g = _haushalte.get(db);
-  if (!g || g.stand !== _stand.n) {
-    g = { stand: _stand.n, speicher: new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS) };
-    _haushalte.set(db, g);
+  const alle = gedaechtnisse();
+  let g = alle.jeZugang.get(db);
+  if (!g || g.stand !== alle.stand) {
+    g = { stand: alle.stand, speicher: new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS) };
+    alle.jeZugang.set(db, g);
   }
   return g.speicher;
 }
 
-const _abhaengige: Array<() => void> = [];
 /** Rückruf statt Import: Module, die den Haushalt brauchen, würden sonst einen Zyklus bilden. */
 export function beiHaushaltsaenderung(leere: () => void): void {
-  _abhaengige.push(leere);
+  gedaechtnisse().abhaengige.push(leere);
 }
 
 export function leereHaushaltCache(): void {
-  _stand.n++;
-  for (const leere of _abhaengige) leere();
+  const alle = gedaechtnisse();
+  alle.stand++;
+  for (const leere of alle.abhaengige) leere();
 }
 
 /** Fehler werden verschluckt: Das Signal ist die Beschleunigung, die Frist

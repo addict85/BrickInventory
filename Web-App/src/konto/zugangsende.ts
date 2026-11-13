@@ -33,7 +33,7 @@ export async function mitZugangsende<T>(
   const r = await imSystemkontext('zugangsende', () => k.transaktion(fn, { wiederholeBeiKonflikt: true }));
   leereTokenCache(k);
   const uid = typeof konto === 'function' ? konto(r) : konto;
-  if (uid) vergissSitzungsVersion(uid);
+  if (uid) vergissSitzungsVersion(k, uid);
   return r;
 }
 

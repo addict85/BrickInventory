@@ -6,13 +6,14 @@
 import { drosselAdresse, zaehleAnfrage } from './loginLimiter';
 import { meldeFehler } from '../infra/fehler';
 import type { KontoKontext } from './kontext';
+import { prozessweit } from '../infra/prozessweit';
 
 export const FEHLVERSUCH_FENSTER_MS = 60_000;
 export const FEHLVERSUCH_MAX = 60;
 const BUCKET = 'token-fehlversuch';
 
 /** Adresse → Ende der Sperre, nur als Abkürzung: Die Zählung steht in der Datenbank. */
-const gesperrtBis = new Map<string, number>();
+const gesperrt = () => prozessweit('tokenSperre', () => new Map<string, number>());
 
 export async function zaehleFehlversuch(
   kx: KontoKontext,
@@ -22,23 +23,24 @@ export async function zaehleFehlversuch(
   if (!ip) return;
   const st = await zaehleAnfrage(kx, BUCKET, ip, FEHLVERSUCH_FENSTER_MS);
   if (st.count <= FEHLVERSUCH_MAX) return;
+  const gesperrtBis = gesperrt();
   gesperrtBis.set(drosselAdresse(ip), jetzt + Math.min(st.waitMin * 60_000, FEHLVERSUCH_FENSTER_MS));
   if (gesperrtBis.size > 5000) for (const [k, bis] of gesperrtBis) if (bis <= jetzt) gesperrtBis.delete(k);
 }
 
 export function zuVieleFehlversuche(ip: string | null | undefined, jetzt = Date.now()): boolean {
   if (!ip) return false;
-  const bis = gesperrtBis.get(drosselAdresse(ip));
+  const bis = gesperrt().get(drosselAdresse(ip));
   return bis !== undefined && jetzt < bis;
 }
 
 /** Nur die Abkürzung dieses Prozesses; ein anderer Prozess hat seine eigene. */
 export function vergissSperrenImProzess(): void {
-  gesperrtBis.clear();
+  gesperrt().clear();
 }
 
 export async function vergissFehlversuche(k: KontoKontext): Promise<void> {
-  gesperrtBis.clear();
+  gesperrt().clear();
   await k.anmeldezaehler
     .loescheZaehlerMitPraefix(`${BUCKET}|`)
     .catch((e: unknown) => meldeFehler('token-fehlversuch:vergessen', e));

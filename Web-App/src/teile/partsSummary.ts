@@ -22,17 +22,23 @@ export async function rebuild(k: TeileKontext, userId: number, version?: { v: nu
 
   // Ohne frische Statistik wählt der Planer nach dem Masseneinfügen den falschen
   // Index. Höchstens alle zehn Minuten, weil ANALYZE die Tabelle aller Konten vermisst.
-  if (gebaut && Date.now() - _letzteAnalyse > 10 * 60_000) {
-    _letzteAnalyse = Date.now();
+  const z = zustand(k);
+  if (gebaut && Date.now() - z.letzteAnalyse > 10 * 60_000) {
+    z.letzteAnalyse = Date.now();
     await k.teileZusammenfassung.analysiere().catch((e: Error) => console.warn('[partsSummary] ANALYZE:', e.message));
   }
 }
 
-let _letzteAnalyse = 0;
-
-const _rebuilding = new Map<number, Promise<void>>();
+/** Je Zugang: Konto-IDs, Neuaufbauten und Nachzug gehören zu der Datenbank, in der sie laufen. */
+const zustand = (k: TeileKontext) =>
+  k.faecher.fach('teileZusammenfassung', () => ({
+    letzteAnalyse: 0,
+    neuaufbau: new Map<number, Promise<void>>(),
+    nachzug: null as ReturnType<typeof zieheKatalogNach> | null,
+  }));
 
 function rebuildInBackground(k: TeileKontext, userId: number, v: { v: number }) {
+  const _rebuilding = zustand(k).neuaufbau;
   if (_rebuilding.has(userId)) return;
   const p = rebuild(k, userId, v)
     .catch(e => console.error('[partsSummary] Hintergrundaufbau:', e.message))
@@ -79,13 +85,13 @@ export async function ensureFresh(
   }
 }
 
-/** Ein Nachzug je Prozess: Die Konten eines Haushalts fragen gleichzeitig. */
-let _nachzug: ReturnType<typeof zieheKatalogNach> | null = null;
+/** Ein Nachzug je Zugang: Die Konten eines Haushalts fragen gleichzeitig. */
 function katalogEinmalNachziehen(k: TeileKontext) {
-  _nachzug ??= zieheKatalogNach(k).finally(() => {
-    _nachzug = null;
+  const z = zustand(k);
+  z.nachzug ??= zieheKatalogNach(k).finally(() => {
+    z.nachzug = null;
   });
-  return _nachzug;
+  return z.nachzug;
 }
 
 const KATALOG_EINZELN_BIS = 5000;
@@ -114,6 +120,7 @@ export async function zieheKatalogNach(k: TeileKontext): Promise<{ konten: numbe
 
 /** Für Stellen, die danach garantiert aktuelle Zahlen brauchen (Ende eines CSV-Imports). */
 export async function rebuildNow(k: TeileKontext, userId: number): Promise<void> {
+  const _rebuilding = zustand(k).neuaufbau;
   const running = _rebuilding.get(userId);
   if (running) return running;
   const v = await currentVersion(k, userId);

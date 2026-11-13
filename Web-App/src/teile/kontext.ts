@@ -1,6 +1,7 @@
 /** Was die Dienste des Bereichs bekommen: Zugang, Dienste tieferer Bereiche, Arbeitseinheit.
  * Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
 import type { Db } from '../../db/database';
+import type { Faecher } from '../infra/zwischenspeicher';
 import { bindeZugang, type Kontext } from '../infra/bereich';
 import * as manuelleTeile from './repository/manuelleTeile';
 import * as teileListe from './repository/teileListe';
@@ -14,6 +15,8 @@ import type { BestandDienste } from '../bestand';
 
 export interface TeileAbhaengigkeiten {
   db: Db;
+  /** Zustand je Zugang (Neuaufbau der Teilezusammenfassung); erzeugeTeile legt sie an. */
+  faecher: Faecher;
   einstellungen: EinstellungenDienste;
   haushalt: HaushaltDienste;
   katalog: KatalogDienste;
