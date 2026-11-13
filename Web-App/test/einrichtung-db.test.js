@@ -8,6 +8,12 @@
  *   C  istVerwalter-Prüfung in /einrichtung weg   → rot: „Nicht-Verwalter sieht den Stand"
  *   D  (04.11.) in quellenAbsage die Zeile für fehlende Schlüssel entfernt
  *      → rot: „fehlender Schlüssel in Klartext" (quelle_test_fehlgeschlagen)
+ *   E  (13.11.) in eingangsSperre() die Prüfung mussWechseln() entfernt → rot:
+ *      „mit dem Startpasswort führt der Eingang nur zum Wechsel“ (200 statt 403)
+ *
+ * Über die echte Kette (testServer): Mit dem Startpasswort lässt der Eingang nur
+ * den Wechsel zu; die Oberfläche öffnet den Assistenten erst danach (sitzung.js:
+ * oeffneApp → Pflichtwechsel → Neuladen → showApp → pruefeEinrichtung).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -19,7 +25,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { routerServer } = require('./helpers/server');
+const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const db = testDaten();
 
 const SCHLUESSEL = [
@@ -44,19 +51,10 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
       [name],
     )
   ).id;
-  const routen = { '/api/v1': 'routes/api_v1/settings.js' };
-  const V = routerServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen,
-    t,
-  });
-  const N = routerServer(_req, {
-    sitzung: { userId: uid, isAdmin: false },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen,
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const verwalter = { userId: uid, isAdmin: true };
+  const V = testServer(_req, { sitzung: verwalter, t });
+  const N = testServer(_req, { sitzung: { userId: uid, isAdmin: false }, t });
   const ruf = async (srv, weg, body) => {
     const r = await fetch(srv.base + '/api/v1/settings' + weg, {
       method: body ? 'POST' : 'GET',
@@ -72,19 +70,29 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
     );
 
   try {
-    await t.test('frische Installation: offen, mit Passwortschritt', async () => {
+    await t.test('mit dem Startpasswort führt der Eingang nur zum Wechsel', async () => {
+      const r = await ruf(V, '/einrichtung');
+      assert.equal(r.status, 403, JSON.stringify(r.body));
+      assert.equal(r.body.code, 'passwort_wechsel_noetig');
+    });
+
+    await t.test('frische Installation nach dem Pflichtwechsel: offen, ohne Passwortschritt', async () => {
+      // Wie POST /auth/change-password: Konto und Sitzung vergessen die Pflicht.
+      await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
+      delete verwalter.mussPasswortAendern;
       const r = await ruf(V, '/einrichtung');
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.offen, true);
-      assert.equal(r.body.passwort_aendern, true);
+      assert.equal(r.body.passwort_aendern, false);
       assert.deepEqual(r.body.quellen, { rebrickable: false, brickset: false, bricklink: false });
-      assert.equal((await ruf(N, '/einrichtung')).status, 403, 'Nicht-Verwalter sieht den Stand');
+      const n = await ruf(N, '/einrichtung');
+      assert.equal(n.status, 403, 'Nicht-Verwalter sieht den Stand');
+      assert.equal(n.body.code, 'nur_admins');
     });
 
     await t.test('eingerichtet: Schlüssel da, Passwort gesetzt → nicht mehr offen', async () => {
       await setze('rebrickable_api_key', 'abc');
       await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
-      await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
       const r = await ruf(V, '/einrichtung');
       assert.equal(r.body.offen, false);
       assert.equal(r.body.quellen.rebrickable, true);

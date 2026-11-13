@@ -587,7 +587,7 @@ const NUTZT_FASSADE =
  * eigene Router zusammen statt baueApp, an Sitzungs- und Verwalterprüfungen vorbei. */
 const ERSATZWEGE = {
   'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 14 },
-  'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, schranke: 13 },
+  'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, schranke: 12 },
 };
 
 test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weniger', () => {
