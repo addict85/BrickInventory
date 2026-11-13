@@ -226,16 +226,18 @@ export type Sperre = { code: FehlerCode; vars: { minuten: number } };
  * gibAnmeldeplatzFrei geben ihn frei. */
 export async function checkLoginAllowed(ip: string, username: string): Promise<Sperre | null> {
   const kennung = await kontoKennung(username);
-  const gesamt = await _reserviere(_adressKey(ip), WINDOW_MIN, s => s.count + s.laufend < MAX_JE_ADRESSE);
+  // Von einer bekannten Adresse gilt nur die Sperre je Adresse und Konto: Die
+  // Gesamtsperre der Adresse und die Wartezeit des Kontos liessen sich sonst
+  // gegen den Inhaber richten — hinter einem Proxy teilen sich alle eine Adresse.
+  const bekannt = !!(await _read(_bekanntKey(ip, kennung), BEKANNT_MIN));
+  const gesamt = await _reserviere(_adressKey(ip), WINDOW_MIN, s => bekannt || s.count + s.laufend < MAX_JE_ADRESSE);
   if (!gesamt.ok) return { code: 'zu_viele_fehlversuche', vars: { minuten: gesamt.stand.waitMin } };
   const adresse = await _reserviere(_key(ip, kennung), WINDOW_MIN, s => s.count + s.laufend < MAX_ATTEMPTS);
   if (!adresse.ok) {
     await _freigeben(_adressKey(ip));
     return { code: 'zu_viele_fehlversuche', vars: { minuten: adresse.stand.waitMin } };
   }
-  // Von einer bekannten Adresse gilt nur die Sperre je Adresse — sonst liesse
-  // sich die Wartezeit gegen den Inhaber richten.
-  if (await _read(_bekanntKey(ip, kennung), BEKANNT_MIN)) return null;
+  if (bekannt) return null;
   let rest = 0;
   const konto = await _reserviere(_nameKey(kennung), WINDOW_MIN, s => {
     rest = wartezeitSekunden(s.count) - s.seitLetztem;
