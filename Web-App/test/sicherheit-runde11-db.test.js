@@ -22,7 +22,7 @@
  *       → rot: „der Link allein bestätigt nichts“
  *
  * Token im Fragment statt in der Abfrage (13.11.2026 gemessen):
- *   N2  in routes/seiten.ts die Umleitung für ?token= gestrichen → rot: „ein
+ *   N2  tokenInsFragment() leitet nie um → rot: „ein
  *       alter Link mit ?token= wird umgeleitet“ (200 statt 303)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.

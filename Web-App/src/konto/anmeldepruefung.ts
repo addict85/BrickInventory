@@ -166,7 +166,6 @@ export async function pruefeAnmeldedaten(
       await gibAnmeldeplatzFrei(ip, name);
       return ergaenzt(absage('nicht_angemeldet', 'zweiter_faktor_noetig', undefined, false, true));
     }
-    // Über der Tagesschranke wird kein Einmalcode mehr geprüft: Weiteres Raten verrät nichts mehr.
     const nurNotweg = !mitPasskey && (await faktorCodeGesperrt(user.id));
     const gilt = mitPasskey
       ? (await passkeys.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id)) === user.id

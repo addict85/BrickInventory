@@ -1,5 +1,4 @@
-/** Die Funktionen nehmen die Adresse als Wert; welche Adresse eine Anfrage
- * hat, entscheidet die HTTP-Schicht. */
+/** Die Adresse kommt als Wert; welche eine Anfrage hat, entscheidet die HTTP-Schicht. */
 import { createHash } from 'node:crypto';
 import { isIPv4, isIPv6 } from 'node:net';
 import { einzelwert } from '../infra/validate';
@@ -9,8 +8,7 @@ import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/anmeldezaehler';
 import { kontoBereich } from './prozess';
 
-/** Typisiert, weil ein vertippter Feldname `undefined >= MAX_ATTEMPTS` ergäbe
- * — `false`, also keine Sperre. */
+/** Typisiert: Ein vertippter Feldname ergäbe `undefined >= MAX_ATTEMPTS`, also keine Sperre. */
 interface Zaehlerstand {
   count: number;
   waitMin: number;
@@ -134,8 +132,7 @@ async function _bump(key: string, windowMin: number): Promise<number> {
 
 type Stand = Zaehlerstand & { laufend: number };
 
-/** BEVOR geprüft wird, unter einer Zeilensperre, damit gleichzeitige Versuche
- * einander sehen. */
+/** BEVOR geprüft wird, unter einer Zeilensperre, damit gleichzeitige Versuche einander sehen. */
 async function _reserviere(
   key: string,
   windowMin: number,
@@ -222,13 +219,11 @@ function namensAbdruck(name: string): string {
 
 export type Sperre = { code: FehlerCode; vars: { minuten: number } };
 
-/** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder
- * gibAnmeldeplatzFrei geben ihn frei. */
+/** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder gibAnmeldeplatzFrei geben ihn frei. */
 export async function checkLoginAllowed(ip: string, username: string): Promise<Sperre | null> {
   const kennung = await kontoKennung(username);
-  // Von einer bekannten Adresse gilt nur die Sperre je Adresse und Konto: Die
-  // Gesamtsperre der Adresse und die Wartezeit des Kontos liessen sich sonst
-  // gegen den Inhaber richten — hinter einem Proxy teilen sich alle eine Adresse.
+  // Bekannt: nur die Sperre je Adresse und Konto. Gesamtsperre und Wartezeit liessen sich sonst
+  // gegen den Inhaber richten, hinter einem Proxy teilen sich alle eine Adresse.
   const bekannt = !!(await _read(_bekanntKey(ip, kennung), BEKANNT_MIN));
   const gesamt = await _reserviere(_adressKey(ip), WINDOW_MIN, s => bekannt || s.count + s.laufend < MAX_JE_ADRESSE);
   if (!gesamt.ok) return { code: 'zu_viele_fehlversuche', vars: { minuten: gesamt.stand.waitMin } };
@@ -306,8 +301,7 @@ export async function recordLoginSuccess(ip: string, username: string): Promise<
   const kennung = await kontoKennung(username);
   await _clear(_key(ip, kennung));
   await _clear(_nameKey(kennung));
-  // Nur freigeben, nicht löschen: Ein Erfolg soll den Zähler der Adresse nach
-  // Fehlversuchen gegen andere Konten nicht zurücksetzen.
+  // Nur freigeben: Ein Erfolg setzt den Zähler der Adresse nach Fehlversuchen gegen andere Konten nicht zurück.
   await _freigeben(_adressKey(ip));
   await _bump(_bekanntKey(ip, kennung), BEKANNT_MIN);
   await _bump(_erfolgKey(ip, kennung), WINDOW_MIN);
@@ -329,8 +323,7 @@ export async function raeumeAnmeldezaehlerAuf(): Promise<number> {
   return kontoBereich().anmeldezaehler.raeumeAuf(BEKANNT_MIN);
 }
 
-/** In einem Schritt: Getrennt gelesen und gezählt kamen gleichzeitige Anfragen
- * durch. Abgewiesene zählen mit, verlängern aber nicht. */
+/** In einem Schritt, sonst kamen gleichzeitige Anfragen durch. Abgewiesene zählen, verlängern aber nicht. */
 export async function zaehleAnfrage(
   bucket: string,
   ip: string,
@@ -394,9 +387,8 @@ export async function bestaetigungGelungen(art: Bremse, uid: number, zugang: str
   await _clear(_bestaetigungKey(art, uid, zugang));
 }
 
-/** Wer das Passwort kennt, rät den Code sonst langsam unter jeder Wartezeit durch;
- * über 24 h je Konto zählt die Datenbank alle falschen Codes der Anmeldung, und
- * über der Schranke gelten nur noch Wiederherstellungscode und Passkey. */
+/** Wer das Passwort kennt, riete den Code sonst langsam unter jeder Wartezeit durch;
+ * über der Schranke (24 h je Konto) gelten nur Wiederherstellungscode und Passkey. */
 export const MAX_FAKTOR_ANMELDUNG_JE_KONTO = 20;
 const _faktorAnmeldungKey = (uid: number) => `faktor-anmeldung-konto|${uid}`;
 export async function faktorCodeGesperrt(uid: number): Promise<boolean> {

@@ -142,7 +142,7 @@ export async function bestaetigeEinrichtung(uid: number, code: string): Promise<
 }
 
 /** Einmalcode und Wiederherstellungscode gelten genau einmal.
- * @param mitEinmalcode false: Ein sechsstelliger Code wird gar nicht erst geprüft. */
+ * @param mitEinmalcode false (Tagesschranke): Ein sechsstelliger Code wird nicht geprüft, Raten verrät nichts. */
 export async function pruefeCode(
   uid: number,
   code: string | number | null | undefined,

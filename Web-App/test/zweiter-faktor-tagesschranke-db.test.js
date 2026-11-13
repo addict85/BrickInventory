@@ -1,10 +1,7 @@
 /**
- * Wer das Passwort kennt, rät den Code des zweiten Faktors nicht langsam über
- * Tage durch: Über 24 h zählen alle falschen Codes eines Kontos in der
- * Datenbank; ab dem 20. gilt kein Einmalcode mehr, nur Wiederherstellungscode
- * oder Passkey, und der Inhaber bekommt sofort eine Mail.
- *
- * Die übrigen Sperren (je Adresse, Wartezeit des Kontos) räumt der Test vor
+ * Über 24 h zählen alle falschen Codes eines Kontos in der Datenbank; ab dem
+ * 20. gilt kein Einmalcode mehr, nur Wiederherstellungscode oder Passkey, und
+ * der Inhaber bekommt sofort eine Mail. Die übrigen Sperren räumt der Test vor
  * jedem Versuch weg, damit allein die Tagesschranke wirkt.
  *
  * Gegenproben (13.11.2026 gemessen, je einzeln):
@@ -36,8 +33,8 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
     return { success: true };
   },
 });
-const db = _req('db/database.js');
-const { dbOderSkip } = require('./helpers/db');
+const { zugangOderSkip } = require('./helpers/db');
+const { bis } = require('./helpers/zeit');
 const zf = _req('src/konto/zweiterFaktor.js');
 const lim = _req('src/konto/loginLimiter.js');
 const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
@@ -46,7 +43,8 @@ const PASS = 'Tagesschranke-Passwort-1';
 const IP = '198.51.100.44';
 
 test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await dbOderSkip(t, _req))) return;
+  const db = await zugangOderSkip(t, _req);
+  if (!db) return;
   const NAME = `zfschranke_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -96,7 +94,9 @@ test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurr
   });
 
   await t.test('der Inhaber erfährt es sofort, einmal', async () => {
-    await new Promise(r => setTimeout(r, 200));
+    // hinweisNebenher schickt ohne await; erst ein zweiter Blick zeigt, dass es bei einer Mail bleibt.
+    await bis(() => mails.some(m => m.art === 'zweiter_faktor_gesperrt'));
+    await anmelden(FALSCH);
     assert.deepEqual(
       mails.filter(m => m.art === 'zweiter_faktor_gesperrt'),
       [{ an: `${NAME}@example.org`, art: 'zweiter_faktor_gesperrt' }],
