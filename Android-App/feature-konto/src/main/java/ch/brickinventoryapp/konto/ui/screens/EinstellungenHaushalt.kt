@@ -26,10 +26,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.ui.beschreibung
+import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.components.Rueckfrage
@@ -38,7 +36,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.konto.ui.HouseholdUiState
 import ch.brickinventoryapp.ui.components.ErklaerText
-import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
 
 /**
  * Haushalt: verknüpfte Konten, Konto einladen, Einladung annehmen — drei Abschnitte

@@ -16,10 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.ui.titel
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.konto.ui.CsvHochladenUiState
 import ch.brickinventoryapp.model.ui.model.CsvImportArt

@@ -2,7 +2,11 @@ package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.*
+import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.model.ui.model.MerkpostenPreiseAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**

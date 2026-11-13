@@ -30,10 +30,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ModalBottomSheet
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.katalog.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.ui.text.style.TextOverflow
 import ch.brickinventoryapp.katalog.ui.CatalogUiState

@@ -2,14 +2,16 @@ package ch.brickinventoryapp.konto
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -58,6 +60,8 @@ import ch.brickinventoryapp.testing.text
  *    ausgewertet): „eine neue E-Mail ohne gesendete Mail …“ rot. Patch
  *    gegenproben/profil-neu-laden-loescht-fehler.patch (holeProfil() setzt den
  *    Fehler wieder auf null): dieselbe Prüfung rot an „übersteht das Neuladen“.
+ *  - Patch gegenproben/konto-laedt-nicht-beim-beobachten.patch (ladeBeimBeobachten für
+ *    Geräte und zweiten Faktor gestrichen): „Geräte und zweiter Faktor laden, sobald …“ rot.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KontoViewModelTest {
@@ -96,6 +100,21 @@ class KontoViewModelTest {
         server.pruefeEinlesen()
         cacheDir.deleteRecursively()
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `Geraete und zweiter Faktor laden, sobald jemand ihren Zustand beobachtet`() {
+        uhr.runCurrent()
+        assertEquals("ohne Beobachter kein Abruf", 0, server.requestCount)
+        server.enqueue(antwort(geraete(aktuellDabei = true)))
+        val geraeteSeite = CoroutineScope(takt).launch { vm.geraeteState.collect {} }
+        bis("Geräte") { vm.geraeteState.value.geraete.size == 3 && !vm.geraeteState.value.laedt }
+        server.enqueue(antwort("""{"success":true,"aktiv":true,"codes_uebrig":8}"""))
+        val faktorSeite = CoroutineScope(takt).launch { vm.zweiterFaktorState.collect {} }
+        bis("zweiter Faktor") { vm.zweiterFaktorState.value.aktiv && vm.zweiterFaktorState.value.codesUebrig == 8 }
+        geraeteSeite.cancel()
+        faktorSeite.cancel()
+        assertEquals(2, server.requestCount)
     }
 
     private fun geraete(aktuellDabei: Boolean) = """{"success":true,"tokens":[

@@ -9,11 +9,8 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
  * so lässt er sich mit einem festen Zustand zeigen, ohne Hilt und Server.
  */
 interface SetDetailAktionen {
-    fun loadSetDetail(setNumber: String)
-    fun loadSetPrice(setNumber: String)
-    fun loadSetPriceHistory(setNumber: String)
-    fun loadAcquisitions(setNumber: String)
-    fun loadPreisalarme(setNumber: String)
+    /** Alles neu holen; geladen wird beim Erzeugen, nicht vom Bildschirm. */
+    fun aktualisiere()
     fun setzePreisalarm(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand)
     fun aendereMengeUm(setNumber: String, schritt: Int)
     fun setzeSetLagerort(setNumber: String, ort: String)

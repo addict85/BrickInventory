@@ -1,8 +1,14 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
-import ch.brickinventoryapp.model.data.model.*
-
+import ch.brickinventoryapp.model.data.model.FigsValuationResponse
+import ch.brickinventoryapp.model.data.model.PartsValuationResponse
+import ch.brickinventoryapp.model.data.model.PnlResponse
+import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
+import ch.brickinventoryapp.model.data.model.PriceHistoryResponse
+import ch.brickinventoryapp.model.data.model.SetPriceResponse
+import ch.brickinventoryapp.model.data.model.StatsResponse
+import ch.brickinventoryapp.model.data.model.ValuationResponse
 /**
  * Preise, Bewertung, Verlauf und Gewinn/Verlust.
  * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit

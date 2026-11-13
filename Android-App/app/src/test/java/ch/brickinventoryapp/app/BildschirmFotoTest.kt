@@ -138,7 +138,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
 
     @Test
     fun setDetail() {
-        val vm = welt.setDetail().also { it.ladeAlles() }
+        val vm = welt.setDetail()
         // Alle Abschnitte, nicht nur das Set: Preis, Verlauf und Käufe kommen
         // in eigenen Abrufen, und ein Foto mitten im Laden weicht vom Referenzbild ab.
         val fertig = { vm.setDetailState.value.let { s ->

@@ -14,9 +14,6 @@ android {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-data"))
-    // otpauthAdresse.
-    implementation(project(":core-netz"))
-    implementation(project(":core-sicherheit"))
     implementation(project(":core-update"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-bestand"))
@@ -25,6 +22,8 @@ dependencies {
     implementation(project(":core-ressourcen"))
 
     testImplementation(project(":core-testing"))
+    // UpdateViewModelTest baut eine Vertrauensablage (PinAblage aus core-sicherheit).
+    testImplementation(project(":core-sicherheit"))
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

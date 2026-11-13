@@ -1,7 +1,13 @@
 package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.model.ui.model.*
+import ch.brickinventoryapp.model.ui.model.KaufAnsicht
+import ch.brickinventoryapp.model.ui.model.KaufSummenAnsicht
+import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
+import ch.brickinventoryapp.model.ui.model.SetAnsicht
+import ch.brickinventoryapp.model.ui.model.SetPreisAnsicht
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
@@ -44,13 +50,17 @@ data class SetDetailUiState(
     val setDetailFehlerKlasse: Fehlerklasse? = null,
     val setPrice: SetPreisAnsicht? = null,
     val setPriceLoading: Boolean = false,
+    /** Preis und Verlauf scheitern für sich; die Karte sagt es statt leer zu bleiben. */
+    val preisFehler: String? = null,
+    val preisFehlerKlasse: Fehlerklasse? = null,
     // Die ganze Antwort statt einzelner Felder: Sie trägt seit der
     // Server-Umstellung beide Verlaufsreihen, die fertigen Diagrammdaten, die
     // aktuellen Preise und die Bewertung je Zustand. Einzeln herausgezogen
-    // müsste jedes neue Feld hier UND in loadSetPriceHistory nachgeführt
+    // müsste jedes neue Feld hier UND in ladeVerlauf nachgeführt
     // werden — die Antwort ist bereits das Modell.
     val priceHistory: PreisverlaufAnsicht? = null,
     val priceHistoryLoading: Boolean = false,
+    val verlaufFehler: String? = null,
     /**
      * Preisalarme dieses Sets, höchstens zwei (neu und gebraucht). Getrennt vom Set
      * geladen, weil sie zum Konto gehören: Zwei Personen mit demselben Set haben

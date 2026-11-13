@@ -34,6 +34,7 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.Gelesen
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
 /**
  * Gutscheine im eigenen Profil. Das PDF liest und die Werte prüft der Server, einmal
@@ -52,6 +53,10 @@ class GutscheinViewModel @Inject constructor(
     val state = _state.asStateFlow()
 
     private var guthabenJob: Job? = null
+
+    init {
+        ladeBeimBeobachten(_state) { ladeGutscheine() }
+    }
 
     fun ladeGutscheine() {
         viewModelScope.launch { lade() }

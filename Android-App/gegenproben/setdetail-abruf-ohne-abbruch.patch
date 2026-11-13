@@ -1,0 +1,16 @@
+Gegenprobe: Ein neuer Abruf eines Abschnitts lässt den laufenden weiterlaufen
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetDetailViewModelTest
+Rot: ein neuer Abruf bricht den laufenden desselben Abschnitts ab
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+@@ -135,7 +135,6 @@
+ 
+     private fun starte(abschnitt: Abschnitt, abruf: suspend () -> Unit) {
+         if (setNumber.isBlank()) return
+-        laufend.remove(abschnitt)?.cancel()
+         laufend[abschnitt] = viewModelScope.launch { abruf() }
+     }
+ 

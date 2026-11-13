@@ -1,0 +1,16 @@
+Gegenprobe: Die Positionen werden bei jedem Angleichen von vorn durchgezählt
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.room.PositionenTest
+Rot: ein Loeschen in der Mitte verschiebt nichts
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt
+@@ -6,6 +6,7 @@
+  * bleibenden kippt oder kein Platz frei ist, wird von vorn durchgezählt.
+  */
+ internal fun positionen(alt: Map<String, Int>, neu: List<String>): List<Int> {
++    if (neu.size >= 0) return neu.indices.toList()
+     val ergebnis = IntArray(neu.size)
+     var vorher: Int? = null
+     var i = 0

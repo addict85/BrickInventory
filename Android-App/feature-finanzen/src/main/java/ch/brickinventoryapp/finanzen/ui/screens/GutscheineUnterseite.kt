@@ -7,14 +7,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.finanzen.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
-import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.components.Unterseite
 
@@ -37,10 +33,8 @@ fun GutscheineRoute(
     // Rückmeldung läuft über den Snackbar des ViewModels wie alle anderen Meldungen.
     val kontext = androidx.compose.ui.platform.LocalContext.current
     val etikett = stringResource(R.string.vouchers_title)
-    // Beim Oeffnen DIESER Seite laden und nicht mehr beim Oeffnen der
-    // Einstellungen: Wer die Sprache umstellt, braucht keine Gutscheinliste.
-    LaunchedEffect(Unit) { gvm.ladeGutscheine() }
-    // Der Klartext lebt nur, solange die Seite vorne steht.
+    // Die Liste lädt, sobald diese Seite den Zustand beobachtet (GutscheinViewModel),
+    // nicht beim Öffnen der Einstellungen. Der Klartext lebt nur, solange die Seite vorne steht.
     DisposableEffect(Unit) { onDispose { gvm.verlasseGutscheine() } }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { gvm.vergissKlartext() }
     // Nummer und PIN zusammen sind Geld: als Geheimnis markiert, nach einer Minute weg.

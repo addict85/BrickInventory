@@ -1,8 +1,27 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.ApiLimitsResponse
+import ch.brickinventoryapp.model.data.model.AuftraegeResponse
+import ch.brickinventoryapp.model.data.model.AuftragAenderung
+import ch.brickinventoryapp.model.data.model.AuftragsArtLeerung
+import ch.brickinventoryapp.model.data.model.AuftragsArtStart
+import ch.brickinventoryapp.model.data.model.BricksetQueueResponse
+import ch.brickinventoryapp.model.data.model.CacheStatsResponse
+import ch.brickinventoryapp.model.data.model.CacheTtlResponse
+import ch.brickinventoryapp.model.data.model.CsvImportErgebnis
+import ch.brickinventoryapp.model.data.model.GenericAdminResponse
+import ch.brickinventoryapp.model.data.model.JobsResponse
+import ch.brickinventoryapp.model.data.model.ProtokollResponse
 import retrofit2.Response
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.Multipart
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Query
+import retrofit2.http.Part
 import ch.brickinventoryapp.model.data.model.StartupStatus
 
 /**
@@ -14,34 +33,33 @@ interface VerwaltungApi {
 
     // ── CSV-Import: dieselben Adressen wie in der Webapp ──
     //
-    // `@retrofit2.http.Part` ausgeschrieben: Die beiden Sternimporte bringen je ein
-    // `Part` (Datenklasse und Annotation), und Kotlin übersetzt die Mehrdeutigkeit
-    // nicht. Drei Aufrufe statt eines mit Pfadparameter, weil es drei Router sind.
+    // `Part` ist hier die Annotation, der Typ steht deshalb als `okhttp3.MultipartBody.Part`.
+    // Drei Aufrufe statt eines mit Pfadparameter, weil es drei Router sind.
     @Multipart
     @POST("api/v1/sets/import/csv")
-    suspend fun importSetsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importSetsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     @Multipart
     @POST("api/v1/parts/import/csv")
-    suspend fun importPartsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importPartsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     @Multipart
     @POST("api/v1/minifigs/import/csv")
-    suspend fun importMinifigsCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importMinifigsCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     // Die Merkliste liegt NICHT unter einem eigenen alten Router wie Sets,
     // Teile und Minifiguren, sondern vollstaendig in routes/api_v1/wanted.ts —
     // deshalb steht ihr Import dort und nicht unter api/v1/merkliste/.
     @Multipart
     @POST("api/v1/wanted/import/csv")
-    suspend fun importMerklisteCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importMerklisteCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     // Preisalarme. Die Adresse liegt unter /alerts und nicht unter
     // /sets/<nr>/alert, weil die Datei VIELE Sets traegt — die Einzelroute
     // nebenan setzt genau einen Alarm.
     @Multipart
     @POST("api/v1/alerts/import/csv")
-    suspend fun importAlarmeCsv(@retrofit2.http.Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
+    suspend fun importAlarmeCsv(@Part datei: okhttp3.MultipartBody.Part): Response<CsvImportErgebnis>
 
     // ── Server-Protokoll (nur für Verwalter) ──
     //

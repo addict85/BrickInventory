@@ -211,7 +211,7 @@ class UmbruchWaechterTest {
     }
 
     private fun setDetail(schrift: Float) {
-        val vm = welt.setDetail().also { it.ladeAlles() }
+        val vm = welt.setDetail()
         pruefe("Set-Detail $schrift", schrift, { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
                 !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading } }) {

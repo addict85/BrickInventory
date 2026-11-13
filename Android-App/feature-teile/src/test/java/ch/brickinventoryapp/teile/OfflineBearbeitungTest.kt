@@ -6,7 +6,6 @@ import ch.brickinventoryapp.data.cache.ResponseCache
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import ch.brickinventoryapp.data.lokal.Abgleich
-import ch.brickinventoryapp.data.lokal.Abgleichsereignis
 import ch.brickinventoryapp.data.lokal.Abgleichsergebnis
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Faecher
@@ -18,9 +17,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.yield
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -189,13 +186,8 @@ class OfflineBearbeitungTest {
         repo.addSet("99999-1")
         s.codes["POST /api/v1/sets"] = 404 to """{"success":false,"error":"Set unbekannt"}"""
         s.offline = false
-        val ereignisse = mutableListOf<Abgleichsereignis>()
-        val sammler = launch { abgleich.ereignisse.collect { ereignisse += it } }
-        yield()
         assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
-        yield()
-        sammler.cancel()
-        val v = ereignisse.filterIsInstance<Abgleichsereignis.Verworfen>().single()
+        val v = abgleich.verworfene().first().single()
         assertEquals("99999-1", v.ziel)
         assertEquals("Set unbekannt", v.meldung)
         assertEquals(0, ausgang.alle("konto").size)
@@ -243,13 +235,8 @@ class OfflineBearbeitungTest {
         teile.deletePart("3001", 5)
         s.codes["DELETE /api/v1/parts/3001/5"] = 404 to """{"success":false,"error":"Teil nicht gefunden"}"""
         s.offline = false
-        val ereignisse = mutableListOf<Abgleichsereignis>()
-        val sammler = launch { abgleich.ereignisse.collect { ereignisse += it } }
-        yield()
         assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
-        yield()
-        sammler.cancel()
-        assertEquals(emptyList<Abgleichsereignis>(), ereignisse.filterIsInstance<Abgleichsereignis.Verworfen>())
+        assertEquals(emptyList<String>(), abgleich.verworfene().first().map { it.ziel })
         assertEquals(0, ausgang.alle("konto").size)
     }
 

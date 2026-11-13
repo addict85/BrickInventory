@@ -1,0 +1,17 @@
+Gegenprobe: Ein quittierter verworfener Posten bleibt in der Datenbank
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.BestandDatenbankTest
+Rot: ein verworfener Posten bleibt in der Datenbank
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
+@@ -116,7 +116,7 @@
+             }
+         }
+ 
+-    override suspend fun quittiereVerworfen(bereich: String, id: String) = bestand.loesche(bereich, VERWORFEN, listOf(id))
++    override suspend fun quittiereVerworfen(bereich: String, id: String) = Unit
+ 
+     private suspend fun lies(z: AusgangZeile): Ausgangsposten? =
+         runCatching { AblageJson.decodeFromString(Bearbeitung.serializer(), z.bearbeitung) }.getOrNull()

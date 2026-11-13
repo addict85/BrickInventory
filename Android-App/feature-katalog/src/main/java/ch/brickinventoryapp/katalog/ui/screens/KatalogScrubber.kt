@@ -20,10 +20,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.katalog.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
 import ch.brickinventoryapp.katalog.ui.CatalogYearMath
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 

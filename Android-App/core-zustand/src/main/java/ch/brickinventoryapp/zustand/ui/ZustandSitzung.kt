@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.zustand.ui
 
-import ch.brickinventoryapp.model.data.model.*
 import ch.brickinventoryapp.model.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.model.ui.model.LagerortEintragAnsicht
 import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht

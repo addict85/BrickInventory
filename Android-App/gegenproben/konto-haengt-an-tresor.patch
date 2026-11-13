@@ -1,0 +1,16 @@
+Gegenprobe: feature-konto bindet core-sicherheit wieder im Hauptcode ein
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: kein Bereich hängt an einem anderen Bereich
+
+diff --git a/Android-App/feature-konto/build.gradle.kts b/Android-App/feature-konto/build.gradle.kts
+--- a/Android-App/feature-konto/build.gradle.kts
++++ b/Android-App/feature-konto/build.gradle.kts
+@@ -14,6 +14,7 @@
+ dependencies {
+     implementation(project(":core-model"))
+     implementation(project(":core-data"))
++    implementation(project(":core-sicherheit"))
+     implementation(project(":core-update"))
+     implementation(project(":core-ui"))
+     implementation(project(":core-ui-bestand"))

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
-import ch.brickinventoryapp.sitzung.*
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
@@ -21,10 +21,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
-import ch.brickinventoryapp.finanzen.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.finanzen.ui.FinanceUiState
+import ch.brickinventoryapp.finanzen.ui.finanzKopf
+import ch.brickinventoryapp.ui.ladeanzeige
+import ch.brickinventoryapp.ui.zweiSpaltig
+import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader

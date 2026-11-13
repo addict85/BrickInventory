@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
-import ch.brickinventoryapp.sitzung.*
+import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailAktionen
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
@@ -20,10 +20,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.sammlung.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.sammlung.ui.SetDetailUiState
+import ch.brickinventoryapp.ui.titel
+import ch.brickinventoryapp.ui.zweiSpaltig
+import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.model.util.resolveFullUrl
 import coil3.ImageLoader
@@ -112,14 +112,6 @@ internal fun SetDetailScreen(
 
     val acquisitions = detailState.acquisitions
 
-    LaunchedEffect(setNumber) {
-        aktionen.loadSetDetail(setNumber)
-        aktionen.loadSetPrice(setNumber)
-        aktionen.loadSetPriceHistory(setNumber)
-        aktionen.loadAcquisitions(setNumber)
-        aktionen.loadPreisalarme(setNumber)
-    }
-
     fun fmtPrice(v: Double?) = if (v == null) "—"
         else fmtMoney(v, currency)
 
@@ -168,7 +160,7 @@ internal fun SetDetailScreen(
             val fehler = detailState.setDetailFehler
             if (fehler != null && !detailState.setDetailLoading) {
                 ZustandsHinweis(Modifier.padding(padding)) {
-                    FehlerHinweis(fehler, { aktionen.loadSetDetail(setNumber) },
+                    FehlerHinweis(fehler, aktionen::aktualisiere,
                         detailState.setDetailFehlerKlasse)
                 }
             } else LadeKreis(Modifier.padding(padding))
@@ -204,7 +196,7 @@ internal fun SetDetailScreen(
             setDetailAlarmSection(setNumber, detailState.preisalarme, currency, aktionen::setzePreisalarm)
         }
         val preise: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-            setDetailPriceSection(detailState, price, history, currency)
+            setDetailPriceSection(detailState, price, history, currency, aktionen::aktualisiere)
         }
         val anleitungen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailInstructionsSection(

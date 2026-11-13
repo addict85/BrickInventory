@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
@@ -19,6 +20,8 @@ import ch.brickinventoryapp.offline.Ausgangsposten
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.offline.Ausgang.VerworfenerPosten
+import ch.brickinventoryapp.data.lokal.Ausgangslage.VerworfeneAenderung
 
 /** Was der Server zu einer Bearbeitung sagte. */
 sealed class Sendeergebnis {
@@ -90,6 +93,12 @@ class Abgleich @Inject constructor(
 
     override fun offene(): Flow<Int> = ablage.offene()
 
+    override fun verworfene(): Flow<List<VerworfeneAenderung>> = ablage.verworfene().map { l ->
+        l.map { VerworfeneAenderung(it.id, it.ziel, it.meldung, it.httpCode) }
+    }
+
+    override suspend fun quittiere(v: VerworfeneAenderung) = ablage.quittiereVerworfen(v.id)
+
     override suspend fun planeLiegengebliebenes() {
         if (ablage.wartet()) ablage.planeSenden()
     }
@@ -115,13 +124,13 @@ class Abgleich @Inject constructor(
                     ausgang.entferne(p.id)
                     betroffen += p.bearbeitung.art
                 }
-                is Sendeergebnis.Abgelehnt -> verwirf(p, e.meldung, e.httpCode, betroffen)
+                is Sendeergebnis.Abgelehnt -> verwirf(bereich, p, e.meldung, e.httpCode, betroffen)
                 Sendeergebnis.Spaeter -> {
                     if (p.versuche + 1 < MAX_VERSUCHE) {
                         ausgang.versuchGescheitert(p.id)
                         return Abgleichsergebnis.SPAETER
                     }
-                    verwirf(p, "", null, betroffen)
+                    verwirf(bereich, p, "", null, betroffen)
                 }
             }
             p = ausgang.erster(bereich)
@@ -129,11 +138,12 @@ class Abgleich @Inject constructor(
         return Abgleichsergebnis.FERTIG
     }
 
-    private suspend fun verwirf(p: Ausgangsposten, meldung: String, code: Int?, betroffen: MutableSet<Bestandsart>) {
+    private suspend fun verwirf(bereich: String, p: Ausgangsposten, meldung: String, code: Int?, betroffen: MutableSet<Bestandsart>) {
+        // Erst festhalten, dann entfernen: Stirbt der Prozess dazwischen, bleibt der Hinweis.
+        ausgang.merkeVerworfen(bereich, VerworfenerPosten(p.schluessel.ifBlank { "posten-${p.id}" }, p.bearbeitung.ziel, meldung, code))
         ausgang.entferne(p.id)
         // Die lokale Liste trägt die Bearbeitung noch; neu laden stellt den Serverstand her.
         betroffen += p.bearbeitung.art
-        _ereignisse.tryEmit(Abgleichsereignis.Verworfen(p.bearbeitung.ziel, meldung, code))
     }
 
     companion object {

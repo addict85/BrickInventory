@@ -69,6 +69,8 @@ import ch.brickinventoryapp.testing.Quellen
  *      rot „core-netz importiert Ablage, Repositories, DI oder Android-Oberfläche“ (Schichtung …)
  *   Y  gegenproben/sitzung-haengt-an-ui.patch: core-sitzung bindet core-ui ein →
  *      rot „Schichtung der Kernmodule: core-sitzung hängt an core-ui“
+ *   Z  gegenproben/konto-haengt-an-tresor.patch: feature-konto bindet core-sicherheit wieder ein →
+ *      rot „feature-konto hängt an core-sicherheit, das unter dem Zustand liegt“ (kein Bereich hängt …)
  *   W  gegenproben/route-im-kern.patch: eine Route in core-model, die Verwaltung öffnet sie →
  *      rot „feature-verwaltung nennt fremde Routentypen: [Zentralziel]“ (kein Bereich hängt …);
  *      lokal mit kotlinc gegen den Baum gemessen, in der CI über Gradle
@@ -208,6 +210,7 @@ class ModulgrenzenTest {
      *   gegenproben/kantenregel-ohne-testausnahme.patch: Testkonfigurationen zählen mit → rot hier
      *   die api-Zeile gestrichen → rot hier, „Modulkanten per api …“ fehlt
      *   core-ui in kerne["core-zustand"] eingetragen → rot hier
+     *   gegenproben/tiefe-kerne-offen.patch: die Regel zu tiefeKerne gestrichen → rot hier
      */
     @Test
     fun `die Kantenregel verbietet Bereich an Bereich, falsche Schichtung, api und core-testing im Hauptcode`() {
@@ -217,9 +220,14 @@ class ModulgrenzenTest {
         assertEquals(listOf("Schichtung der Kernmodule: core-zustand hängt an core-ui"), pruefe("core-zustand", "implementation", "core-ui"))
         assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-netz"), pruefe("core-data", "api", "core-netz"))
         assertEquals(listOf("feature-konto bindet core-testing nicht nur für Tests ein"), pruefe("feature-konto", "implementation", "core-testing"))
+        assertEquals(listOf("feature-konto hängt an core-sicherheit, das unter dem Zustand liegt"),
+            pruefe("feature-konto", "implementation", "core-sicherheit"))
+        assertEquals(listOf("feature-teile hängt an core-netz, das unter dem Zustand liegt"), pruefe("feature-teile", "implementation", "core-netz"))
         assertTrue(pruefe("core-neu", "implementation", "core-model").single().endsWith("(core-neu hat keine Regel in Modulkanten.kerne)"))
         // Erlaubt: Tests sehen mehr, die App sieht alles ausser den Testhilfen, die Schichtung nach unten.
         assertEquals(emptyList<String>(), pruefe("feature-teile", "testImplementation", "core-testing"))
+        assertEquals(emptyList<String>(), pruefe("feature-anmeldung", "implementation", "core-sicherheit"))
+        assertEquals(emptyList<String>(), pruefe("feature-konto", "testImplementation", "core-sicherheit"))
         assertEquals(emptyList<String>(), pruefe("core-zustand", "testImplementation", "core-ui"))
         assertEquals(emptyList<String>(), pruefe("app", "implementation", "feature-teile"))
         assertEquals(emptyList<String>(), pruefe("core-data", "api", "core-model"))

@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.sicherheit
+package ch.brickinventoryapp.ui.util
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

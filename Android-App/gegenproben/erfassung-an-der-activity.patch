@@ -6,19 +6,19 @@ Rot: die Activity haelt nicht mehr ViewModels
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
-@@ -69,6 +69,7 @@
+@@ -70,6 +70,7 @@
  import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
  import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
  import ch.brickinventoryapp.app.csv.CsvImportViewModel
 +import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
  import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
  import ch.brickinventoryapp.app.nav.AktivitaetsZustand
- import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
-@@ -83,6 +84,7 @@
+ import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
+@@ -84,6 +85,7 @@
      private val vertrauen: VertrauenViewModel by viewModels()
      private val selbstUpdate: UpdateViewModel by viewModels()
      private val csvImport: CsvImportViewModel by viewModels()
 +    private val erfassung: ErfassungViewModel by viewModels()
-
+ 
      /** Einmal hier geholt, damit kein Ziel selbst im ViewModelStore der Activity sucht. */
      private fun aktivitaetsZustand() = AktivitaetsZustand(

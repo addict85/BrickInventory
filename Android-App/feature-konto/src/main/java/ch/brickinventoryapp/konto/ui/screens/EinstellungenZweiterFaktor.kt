@@ -28,18 +28,15 @@ import ch.brickinventoryapp.ui.components.FehlerZeile
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.zustand.ui.*
+import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.konto.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.ui.components.fuer
 import ch.brickinventoryapp.ui.components.Sichtschutz
-import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
-import ch.brickinventoryapp.netz.util.otpauthAdresse
+import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
+import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.ui.components.SettingsCard
 
 /**

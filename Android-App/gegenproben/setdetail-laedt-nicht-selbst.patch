@@ -1,0 +1,16 @@
+Gegenprobe: Das Set-Detail lädt beim Erzeugen nichts; früher stiess der Bildschirm das Laden an
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetDetailViewModelTest
+Rot: das Set kommt aus dem SavedStateHandle und alles wird beim Erzeugen geladen
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
+@@ -122,7 +122,6 @@
+     )
+ 
+     // Am Ende der Felder: Die Abrufe brauchen laufend und alarmEingabe schon belegt.
+-    init { aktualisiere() }
+ 
+     /** Alles, was die Ansicht zeigt, neu holen; beim Erzeugen und auf „Erneut versuchen“. */
+     override fun aktualisiere() {

@@ -40,6 +40,7 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
 /**
  * Wie gross eine CSV-Datei sein darf — derselbe Wert wie CSV_MAX_BYTES in
@@ -79,6 +80,10 @@ class EinstellungenViewModel @Inject constructor(
 
     private val _alarmUebersicht = MutableStateFlow(AlarmUebersichtUiState())
     val alarmUebersicht: StateFlow<AlarmUebersichtUiState> = _alarmUebersicht.asStateFlow()
+
+    init {
+        ladeBeimBeobachten(_alarmUebersicht) { ladeAlarmUebersicht() }
+    }
 
     // ── Währung und Zustand ──────────────────────────────────────────────────
 

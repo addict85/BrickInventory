@@ -15,24 +15,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.navigation.compose.*
-import ch.brickinventoryapp.anmeldung.ui.*
-import ch.brickinventoryapp.finanzen.ui.*
-import ch.brickinventoryapp.katalog.ui.*
-import ch.brickinventoryapp.konto.ui.*
-import ch.brickinventoryapp.model.ui.*
-import ch.brickinventoryapp.sammlung.ui.*
-import ch.brickinventoryapp.teile.ui.*
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.verwaltung.ui.*
-import ch.brickinventoryapp.zustand.ui.*
-import ch.brickinventoryapp.anmeldung.ui.screens.*
-import ch.brickinventoryapp.finanzen.ui.screens.*
-import ch.brickinventoryapp.katalog.ui.screens.*
-import ch.brickinventoryapp.konto.ui.screens.*
-import ch.brickinventoryapp.sammlung.ui.screens.*
-import ch.brickinventoryapp.teile.ui.screens.*
-import ch.brickinventoryapp.ui.screens.*
-import ch.brickinventoryapp.verwaltung.ui.screens.*
+import ch.brickinventoryapp.zustand.ui.AppViewModel
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.theme.darstellung
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -72,7 +55,7 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
 import ch.brickinventoryapp.app.csv.CsvImportViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.app.nav.AktivitaetsZustand
-import ch.brickinventoryapp.sicherheit.GeheimeZwischenablage
+import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.BuildConfig
@@ -233,7 +216,6 @@ class MainActivity : NurLauncherStart() {
                         )
                     } else if (faktorPflicht && angemeldet) {
                         val faktorZustand by startKontoVm.zweiterFaktorState.collectAsStateWithLifecycle()
-                        LaunchedEffect(Unit) { startKontoVm.ladeZweitenFaktor() }
                         ZweiterFaktorPflichtMaske(
                             zustand = faktorZustand,
                             onEinrichten = startKontoVm::richteZweitenFaktorEin,

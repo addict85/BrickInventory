@@ -3,14 +3,14 @@ Modul: app
 Test: ch.brickinventoryapp.app.PreisalarmeAnzeigeTest
 Rot: die Uebersicht holt
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenUnterseiten.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenUnterseiten.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenUnterseiten.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenUnterseiten.kt
-@@ -53,7 +53,6 @@
-     meldeSchalter: @Composable () -> Unit = { PreisalarmSchalterRoute() },
- ) {
-     val uebersicht by vm.alarmUebersicht.collectAsStateWithLifecycle()
--    LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
-     PreisalarmeUnterseite(uebersicht, vm, imageLoader, serverUrl, snackbarHostState, onSetClick, onZurueck, meldeSchalter)
- }
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+@@ -82,7 +82,6 @@
+     val alarmUebersicht: StateFlow<AlarmUebersichtUiState> = _alarmUebersicht.asStateFlow()
  
+     init {
+-        ladeBeimBeobachten(_alarmUebersicht) { ladeAlarmUebersicht() }
+     }
+ 
+     // ── Währung und Zustand ──────────────────────────────────────────────────

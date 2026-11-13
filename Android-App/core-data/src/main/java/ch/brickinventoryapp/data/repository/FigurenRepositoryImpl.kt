@@ -10,7 +10,15 @@ import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.model.data.model.*
+import ch.brickinventoryapp.model.data.model.AddMinifigRequest
+import ch.brickinventoryapp.model.data.model.AddMinifigResponse
+import ch.brickinventoryapp.model.data.model.FigValuationItem
+import ch.brickinventoryapp.model.data.model.GenericResponse
+import ch.brickinventoryapp.model.data.model.LagerortRequest
+import ch.brickinventoryapp.model.data.model.LagerortResponse
+import ch.brickinventoryapp.model.data.model.Minifig
+import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
+import ch.brickinventoryapp.model.data.model.VerwendendeSetsResponse
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton

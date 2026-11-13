@@ -4,6 +4,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.lokal.Abgleichsereignis
 import ch.brickinventoryapp.data.lokal.Ausgangslage
+import ch.brickinventoryapp.data.lokal.Ausgangslage.VerworfeneAenderung
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.model.ui.Meldung
@@ -11,6 +12,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -58,6 +60,7 @@ class AusgangsBeobachter @Inject constructor(
             }
         }
         scope.launch { lage.ereignisse.collect { melde(it) } }
+        scope.launch { lage.verworfene().collect { l -> l.firstOrNull()?.let { meldeVerworfen(it) } } }
         // Was vom letzten Mal noch wartet, geht beim Start raus.
         scope.launch { lage.planeLiegengebliebenes() }
     }
@@ -65,9 +68,17 @@ class AusgangsBeobachter @Inject constructor(
     private suspend fun melde(e: Abgleichsereignis) {
         when (e) {
             is Abgleichsereignis.Gesendet -> e.arten.mapNotNull { listeFuer(it) }.toSet().forEach { gleicheAb(it) }
-            is Abgleichsereignis.Verworfen -> meldungen.zeige(Meldung.Ressource(R.string.offline_verworfen, listOf(e.ziel,
-                e.meldung.ifBlank { null } ?: Meldung.Ressource(R.string.offline_verworfen_ohne_grund))))
         }
+    }
+
+    /** Quittiert erst, wenn der Hinweis an der Reihe war und weggeräumt ist; bis dahin hält ihn die Ablage. */
+    private suspend fun meldeVerworfen(v: VerworfeneAenderung) {
+        val hinweis = Meldung.Ressource(R.string.offline_verworfen, listOf(v.ziel,
+            v.meldung.ifBlank { null } ?: Meldung.Ressource(R.string.offline_verworfen_ohne_grund)))
+        meldungen.zeige(hinweis)
+        meldungen.meldung.first { it == hinweis }
+        meldungen.meldung.first { it != hinweis }
+        lage.quittiere(v)
     }
 
     /** Teile und manuelle Teile kommen mit einem Abruf; so auch die Figuren. */
