@@ -50,6 +50,23 @@ export function ico(name) {
   return html`<svg class="ico" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 }
 
+/**
+ * Abfragen im Takt ruhen in verborgenen Tabs: Jede zählt gegen das Budget des Kontos (src/http/apiDrossel.ts),
+ * auch wenn niemand hinsieht. `fn` läuft sofort oder beim nächsten Sichtbarwerden.
+ * @param {() => unknown} fn
+ */
+export function wennSichtbar(fn) {
+  if (!document.hidden) {
+    fn();
+    return;
+  }
+  document.addEventListener('visibilitychange', function weiter() {
+    if (document.hidden) return;
+    document.removeEventListener('visibilitychange', weiter);
+    fn();
+  });
+}
+
 /** @type {ReturnType<typeof setTimeout> | undefined} */
 let _trefferUhr;
 

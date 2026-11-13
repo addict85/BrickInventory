@@ -474,8 +474,10 @@
     .diagramm-leer strong{color:var(--txt);font-weight:600}
     .pnl-zeitraum{margin-left:6px;font-size:var(--fs-1);color:var(--mut)}
     .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;white-space:nowrap;overflow-wrap:normal;border:1.5px solid var(--feldrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
-    @media (hover:hover){.period-btn:hover{border-color:var(--b600);color:var(--b600)}}
+    @media (hover:hover){.period-btn:hover:not(:disabled){border-color:var(--b600);color:var(--b600)}}
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
+    /* Gesperrt (kein Verlauf, keine Verbindung) sah ein Zeitraumknopf aus wie bedienbar, „Max“ sogar gewählt. */
+    .period-btn:disabled{opacity:.5;cursor:not-allowed}
     .snum{white-space:nowrap;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600);font-weight:500;margin-bottom:2px}
     .sname{font-size:var(--fs-2);font-weight:600;line-height:1.3;margin-bottom:6px}
     .smeta{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;font-size:var(--fs-1);color:var(--mut)}
@@ -1325,6 +1327,11 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .max-17rem{max-width:min(17rem,100%)}
 .max-74{max-width:74px}
 .max-130-rechts{max-width:130px;justify-content:flex-end}
+/* Neuer Benutzer: oben bündig, sonst schöbe eine Meldung unter einem Feld die Nachbarn nach oben. Häkchen
+   und Knopf stehen eine Etikettzeile tiefer, auf Höhe der Eingabefelder. */
+.nutzer-neu{align-items:flex-start}
+.nutzer-neu>.nutzer-rolle,.nutzer-neu>.btn{margin-top:calc(var(--fs-1) * 1.5 + var(--sp-1))}
+.nutzer-rolle label{display:flex;align-items:center;gap:6px;cursor:pointer;min-height:max(38px,2.6em)}
 .relativ{position:relative}
 .pdf-rahmen{box-sizing:border-box;min-width:0;background:var(--sur);width:96vw;height:96vh;max-width:min(1200px,100vw);border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--sh1)}
 .pdf-kopf{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:.55rem .9rem;border-bottom:1px solid var(--bdr)}
@@ -1379,6 +1386,8 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .mon-untertitel{font-size:var(--fs-3);font-weight:700;margin:1rem 0 .5rem}
 .mon-hinweis{color:var(--mut);font-size:var(--fs-2);margin:0 0 .75rem}
 .mon-leise{color:var(--mut);font-size:var(--fs-2)}
+/* Rolle eines Auftrags, wenn eine Art zweimal offen steht: als Etikett, damit sie neben dem Namen auffällt. */
+.mon-rolle{display:inline-block;font-size:var(--fs-1);font-weight:600;color:var(--txt);border:1px solid var(--bdr);border-radius:999px;padding:0 .5rem;white-space:nowrap}
 p.mon-leise{margin:0 0 .35rem}
 .mon-warnung{color:var(--r700);font-size:var(--fs-2);display:flex;gap:.35rem;align-items:center;margin:0 0 .5rem}
 .mon-kacheln{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:.75rem}

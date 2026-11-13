@@ -141,6 +141,7 @@ export const SCHREIBENDE_AKTIONEN = new Set([
   'setLangFromEl',
   'setzeEigenesDesign',
   'speichereAlarm',
+  'speichereAppDesign',
   'speichereCacheTtl',
   'speichereSetLagerort',
   'speichereStandardZustand',

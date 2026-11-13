@@ -2,7 +2,15 @@
 // manuelle Tabellen und CSV-Status.
 import { abonniere } from './ereignisse.js';
 import { echt, registerActions } from './registry.js';
-import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen, csvHochladen, zeilenKnopf } from './bausteine.js';
+import {
+  listeLadefehler,
+  condBadges,
+  ownerBadges,
+  schliesseErfassen,
+  csvHochladen,
+  zeilenKnopf,
+  skelettKacheln,
+} from './bausteine.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escHex, esc, html, ungeprueft, verbinde } from './escapen.js';
 import { api } from './api.js';
@@ -118,6 +126,9 @@ export async function loadMinifigs() {
   _figDone = false;
   _figLoadingMore = false;
   const gen = _figGen;
+  // Ein alter Fehlerzustand weicht dem Gerüst, solange neu geladen wird (wie in der Merkliste).
+  const liste = G('figs-list');
+  if (liste?.querySelector('.fehler-zustand')) setzeHtml(liste, skelettKacheln(8, tRaw('common.loading')));
   const d = await api('GET', `/v1/minifigs?${figParams(1)}`);
   if (gen !== _figGen) return;
   if (listeLadefehler(G('figs-list'), d, { erneut: 'loadMinifigs', behalten: allFigsCache.length > 0 })) return;

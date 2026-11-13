@@ -526,7 +526,8 @@ G('btn-sav-rb').onclick = () =>
   speichereZugang({ rebrickable_api_key: G('rb-key').value }, 'rebrickable', 'lim-rb', 'btn-sav-rb');
 G('btn-sav-bs').onclick = () =>
   speichereZugang({ brickset_api_key: G('bs-key').value }, 'brickset', 'lim-bs', 'btn-sav-bs');
-G('btn-save-theme').onclick = async () => {
+/** Wie die übrigen Einzelwerte sofort gespeichert, bestätigt am Feld. */
+async function speichereAppDesign() {
   const theme = G('mon-app-theme')?.value || 'classic';
   const d = await api('POST', '/v1/settings/admin/theme', { theme });
   // Angewendet wird, was für DIESES Konto gilt — ein eigenes Design bleibt.
@@ -537,9 +538,9 @@ G('btn-save-theme').onclick = async () => {
       if (_settingsCache) _settingsCache.app_theme = w.theme;
     }
   }
-  if (d.success) meldeAmFeld(G('btn-save-theme'));
+  if (d.success) meldeAmFeld(G('mon-app-theme'));
   else toast(tRaw('settings.error'), 'error');
-};
+}
 G('btn-clr').onclick = async () => {
   await api('POST', '/v1/admin/cache-clear');
   toast(tRaw('settings.cache_cleared'), 'info');
@@ -552,17 +553,15 @@ G('btn-clr').onclick = async () => {
  */
 async function zwischenspeicherLeeren(alle) {
   const z = await api('GET', '/v1/admin/cache-stats');
+  // Ohne Zahlen (Abruf gescheitert, `degradiert` mit Ersatz-Nullen) ein Text ohne Zahl: „Löscht 0 Preise“
+  // verspräche, es gehe nichts verloren.
+  const bekannt = !!z?.success && typeof z.prices === 'number' && !z.degradiert?.includes('cache');
   const n = { p: z?.prices || 0, s: z?.subsets || 0, c: z?.catalog || 0 };
   const titel = tRaw(alle ? 'settings.all_cache.confirm_title' : 'settings.cache_prices.confirm_title');
-  if (
-    !(await confirmDelete(
-      titel,
-      tRaw(alle ? 'settings.all_cache.confirm_text' : 'settings.cache_prices.confirm_text', n),
-      'loeschen',
-      { knopf: 'confirm.btn.leeren', art: 'bd' },
-    ))
-  )
-    return;
+  const text = bekannt
+    ? tRaw(alle ? 'settings.all_cache.confirm_text' : 'settings.cache_prices.confirm_text', n)
+    : tRaw(alle ? 'settings.all_cache.confirm_text_ohne_zahl' : 'settings.cache_prices.confirm_text_ohne_zahl');
+  if (!(await confirmDelete(titel, text, 'loeschen', { knopf: 'confirm.btn.leeren', art: 'bd' }))) return;
   const d = await api('POST', '/v1/admin/cache-clear', alle ? { all: true } : {});
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
@@ -736,6 +735,7 @@ stelleZielBereit({ einstAbschnitt });
 
 registerActions({
   einstellungenQuellePruefen,
+  speichereAppDesign,
   speichereCacheTtl,
   speichereStandardZustand,
   speichereWaehrung,

@@ -228,9 +228,13 @@ window.I18N_DE = {
   'settings.cache_prices.confirm_title': 'Gespeicherte Preise löschen?',
   'settings.cache_prices.confirm_text':
     'Löscht {p} gespeicherte Marktpreise. Deine Sammlung, die Kaufpreise und der Preisverlauf bleiben. Die Preise holt der Server beim nächsten Abruf neu von BrickLink; das verbraucht Tageskontingent. Rückgängig machen lässt es sich nicht.',
+  'settings.cache_prices.confirm_text_ohne_zahl':
+    'Löscht alle gespeicherten Marktpreise. Deine Sammlung, die Kaufpreise und der Preisverlauf bleiben. Die Preise holt der Server beim nächsten Abruf neu von BrickLink; das verbraucht Tageskontingent. Rückgängig machen lässt es sich nicht.',
   'settings.all_cache.confirm_title': 'Zwischenspeicher ganz leeren?',
   'settings.all_cache.confirm_text':
     'Löscht {p} gespeicherte Preise, {s} Baulisten und {c} Katalog-Einträge. Deine Sammlung, die Kaufpreise und der Preisverlauf bleiben. Danach holt der Server alles neu von Rebrickable und BrickLink — das dauert eine Weile und verbraucht Tageskontingent. Rückgängig machen lässt es sich nicht.',
+  'settings.all_cache.confirm_text_ohne_zahl':
+    'Löscht alle gespeicherten Preise, Baulisten und Katalog-Einträge. Deine Sammlung, die Kaufpreise und der Preisverlauf bleiben. Danach holt der Server alles neu von Rebrickable und BrickLink — das dauert eine Weile und verbraucht Tageskontingent. Rückgängig machen lässt es sich nicht.',
   'monitor.gefahrenzone': 'Zwischenspeicher leeren',
   'settings.delete_all.title': 'Alle Daten löschen?',
   'settings.delete_all.text':
@@ -791,6 +795,8 @@ window.I18N_DE = {
   'monitor.auftraege.geplant': 'geplant für {zeit}',
   'monitor.auftraege.faellig': 'fällig ab {zeit}',
   'monitor.auftraege.versuch': 'Versuch {n} von {max}',
+  'monitor.auftraege.regulaer': 'regulärer Lauf',
+  'monitor.auftraege.wiederholung': 'Wiederholung nach Fehler',
   'monitor.auftraege.jetzt': 'Jetzt starten',
   'monitor.auftraege.leeren': 'Warteschlange leeren',
   'monitor.auftraege.abbrechen': 'Abbrechen',
@@ -1012,6 +1018,8 @@ window.I18N_DE = {
   'finance.stat.value_von': 'Verglichen wird nur, was einen Kaufpreis hat. Alles zusammen: {betrag}',
   'finance.nicht_umgerechnet': 'nicht umgerechnet',
   'finance.basis.gerechnet': 'Gerechnet über {n} von {von} Positionen mit Kauf- und Marktpreis.',
+  'finance.basis.gerechnet_zeilen':
+    'Gerechnet über {n} von {von} Positionen mit Kauf- und Marktpreis. Jede Position zählt einmal, auch wenn die Tabelle sie in mehreren Zeilen zeigt (je Kauf und Konto).',
   'finance.basis.ohne_markt': '{n} Positionen ohne Marktpreis nicht gerechnet (Kaufpreis {betrag})',
   'finance.basis.ohne_markt_one': '{n} Position ohne Marktpreis nicht gerechnet (Kaufpreis {betrag})',
   'finance.basis.ohne_kauf': '{n} Positionen ohne Kaufpreis nicht gerechnet (Marktwert {betrag})',
@@ -1664,6 +1672,8 @@ window.I18N_DE = {
   'startup.offline_titel': 'Server nicht erreichbar',
   'startup.offline_text': 'Ein neuer Versuch läuft von selbst.',
   'startup.offline_knopf': 'Erneut versuchen',
+  'startup.sitzung_offen': 'Anmeldung konnte nicht geprüft werden',
+  'startup.naechster_versuch': 'Neuer Versuch in {sek} s.',
   'settings.zugang_entfernt': 'Zugang entfernt – die Felder sind leer.',
   'settings.bl.ck': 'Anwendungsschlüssel (Consumer Key)',
   'settings.bl.cs': 'Anwendungsgeheimnis (Consumer Secret)',

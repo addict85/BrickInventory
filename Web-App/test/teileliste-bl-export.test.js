@@ -102,7 +102,7 @@ test('die Meldungen sind übersetzt, nicht eingetippt', async () => {
   try {
     const texte = meldungen.map(m => m.text).join(' | ');
     assert.match(texte, /1 missing part types? exported/);
-    assert.match(texte, /1 items? without a known BrickLink color/);
+    assert.match(texte, /1 items? without a known BrickLink colour/);
     assert.doesNotMatch(texte, /fehlende|Posten/);
   } finally {
     w.close();

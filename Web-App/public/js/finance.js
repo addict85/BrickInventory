@@ -352,6 +352,7 @@ export async function loadFinance() {
     cur,
     fremdeWaehrung: pnlData?.totals?.kaufpreise_fremde_waehrung || 0,
     geschaetzt: alleZeilen.flatMap(z => z.acquisitions || []).filter(a => a.price_estimated).length,
+    zeilen: alleZeilen.reduce((n, z) => n + Math.max(1, z.acquisitions?.length || 0), 0),
   });
   // Nichts erfasst: ein Leerzustand statt Tabellen, die fünfmal „Preis fehlt“ melden.
   if (leer) {
@@ -651,8 +652,8 @@ function basisAus(pt, ohnePreis) {
  * Die Kacheln über der Tabelle. Der Einstand ist immer bekannt; Gesamtwert und G&V nur, wenn es Marktpreise
  * gibt — sonst sagt die Kachel, für wie viele Positionen der Preis fehlt, statt „—“ zu zeigen.
  */
-/** @param {{ basis: Basis, einstandAlle: number, wertAlle: number, guv: number | null | undefined, cur: string, fremdeWaehrung?: number, geschaetzt?: number }} p */
-function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehrung = 0, geschaetzt = 0 }) {
+/** @param {{ basis: Basis, einstandAlle: number, wertAlle: number, guv: number | null | undefined, cur: string, fremdeWaehrung?: number, geschaetzt?: number, zeilen?: number }} p */
+function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehrung = 0, geschaetzt = 0, zeilen = 0 }) {
   G('fin-sum').dataset.geladen = '1';
   G('fin-sum').removeAttribute('aria-busy');
   const mitBasis = basis.bewertet > 0;
@@ -715,7 +716,9 @@ function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehru
   zeile.hidden = false;
   setzeHtml(
     zeile,
-    html`${ico('info')}<span><strong>${tRaw('finance.basis.gerechnet', { n: basis.bewertet, von: basis.gesamt })}</strong> ${teile.join(' · ')}</span>`,
+    // Der Server zählt je Position, die Tabelle zeigt je Kauf und Konto eine Zeile; weichen die Zahlen ab,
+    // sagt der Satz, warum.
+    html`${ico('info')}<span><strong>${tRaw(zeilen > (basis.gesamt ?? 0) ? 'finance.basis.gerechnet_zeilen' : 'finance.basis.gerechnet', { n: basis.bewertet, von: basis.gesamt })}</strong> ${teile.join(' · ')}</span>`,
   );
 }
 
