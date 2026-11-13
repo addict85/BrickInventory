@@ -36,12 +36,7 @@ test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t =
     await db.pool.end().catch(() => {});
   });
   await haeltSet(db, uid, SN, 2);
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const setze = async quantity =>
     (
       await fetch(`${base}/api/v1/sets/${SN}`, {

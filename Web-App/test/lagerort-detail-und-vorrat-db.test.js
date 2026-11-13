@@ -234,12 +234,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
   // (src/bestand/lagerort.ts): fuer ein Teil Nummer UND Farbe, also zwei Einträge.
   await L.setzeLagerort('part', [HAUPT], ['3001', 4], 'Estrich');
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: HAUPT }, t });
   const hole = async pfad => {
     const r = await fetch(base + pfad);
     assert.equal(r.status, 200, `${pfad} antwortete ${r.status}`);

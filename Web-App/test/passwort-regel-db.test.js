@@ -29,7 +29,7 @@ umgebung({ ADMIN_PASSWORD: undefined });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
 mailAttrappe();
 const db = testDaten();
@@ -86,7 +86,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     await mailZurueck();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, ziel]]);
   });
-  const { base } = testServer(_req, {
+  const { base } = routerServer(_req, {
     sitzung: { userId: chef, username: CHEF, isAdmin: true },
     routen: { '/api/v1/auth': 'routes/auth.js' },
     t,
@@ -167,7 +167,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
   // req.session?.username → rot (200 für den eigenen Namen); in
   // /users/:id/password wieder ohne Namen → rot (200 für den Namen des Ziels).
   await t.test('der Benutzername ist kein Passwort, auch ohne Namen in der Sitzung', async () => {
-    const app = testServer(_req, {
+    const app = routerServer(_req, {
       sitzung: { userId: chef, isAdmin: true },
       routen: { '/api/v1/auth': 'routes/auth.js' },
       t,

@@ -31,12 +31,7 @@ test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, asyn
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await haeltSet(db, uid, SN, 2, { preis: 40 });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const setze = menge =>
     fetch(`${base}/api/v1/sets/${SN}`, {
       method: 'PUT',

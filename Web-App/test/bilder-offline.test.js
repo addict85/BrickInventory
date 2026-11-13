@@ -36,7 +36,7 @@ test('die Bilder der Tabellen duerfen offline aus dem Zwischenspeicher kommen', 
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { sitzung: { userId: uid }, routen: { '/': 'routes/seiten.js' }, t });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const r = await fetch(`${base}/images/parts/${path.basename(datei)}`);
   assert.equal([r.status, await r.text()].join(' '), '200 Bild');
   const kopf = String(r.headers.get('cache-control'));

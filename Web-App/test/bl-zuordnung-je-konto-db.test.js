@@ -96,12 +96,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   await addManualPart(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
   await addManualFig(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
 
-  const anna = testServer(_req, {
-    sitzung: { userId: ANNA },
-    apiNutzer: { user_id: ANNA, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const anna = testServer(_req, { sitzung: { userId: ANNA }, t });
 
   await t.test('der Import schreibt nur Annas Zuordnung', async () => {
     const { status, body } = await hochladen(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [

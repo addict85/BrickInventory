@@ -78,12 +78,7 @@ test('Erfassungen gelten nur unter ihrem Schlüssel', { concurrency: 1 }, async 
   const teilZeile = id => db.get('SELECT user_id, quantity FROM part_acquisitions WHERE id=$1', [id]);
   const figZeile = id => db.get('SELECT user_id, quantity FROM minifig_acquisitions WHERE id=$1', [id]);
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: haupt },
-    apiNutzer: { user_id: haupt, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
   const ruf = async (methode, pfad, koerper) => {
     const r = await fetch(base + pfad, {
       method: methode,

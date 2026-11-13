@@ -78,12 +78,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
     zeilen: (await db.get(`SELECT COUNT(*)::int AS c FROM sets WHERE set_number=$1`, [sn])).c,
   });
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: hauptId },
-    apiNutzer: { user_id: hauptId, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: hauptId }, t });
 
   const erfassen = async (pfad, sn) => {
     const r = await fetch(base + pfad, {

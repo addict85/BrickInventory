@@ -30,7 +30,7 @@ const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 
 // Keine echten Mails: vor dem Laden von routes/auth ersetzen.
 const echterMailer = _req('src/mail/mailer.js');
@@ -84,7 +84,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
   const codes = await mitFaktor(uid);
 
   const server = (id, name, admin = false) =>
-    testServer(_req, {
+    routerServer(_req, {
       sitzung: { userId: id, username: name, isAdmin: admin },
       routen: { '/api/v1/auth': 'routes/auth.js' },
       t,

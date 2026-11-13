@@ -38,6 +38,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 const { bis } = require('./helpers/zeit');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -67,6 +68,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     ).id;
   uid = await anlegen(NAME, false);
   const verwalter = await anlegen(`${NAME}_v`, true);
+  await verwalterMitFaktor(_req, verwalter);
   t.after(async () => {
     await aufraeumen().catch(() => {});
   });
@@ -136,11 +138,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
   });
 
   await t.test('ein Token zählt nur im Kopf, nicht in der Adresszeile', async () => {
-    const { base } = testServer(_req, {
-      sitzung: {},
-      t,
-      routen: { '/api/v1/auth': 'routes/auth.js', '/api/v1': 'routes/api_v1/index.js' },
-    });
+    const { base } = testServer(_req, { sitzung: {}, t });
     const login = await fetch(`${base}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -160,12 +158,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
       SN,
     ]);
     const leeren = async (id, admin) => {
-      const { base } = testServer(_req, {
-        sitzung: { userId: id },
-        apiNutzer: { user_id: id, is_admin: admin },
-        t,
-        routen: { '/api/v1': 'routes/api_v1/index.js' },
-      });
+      const { base } = testServer(_req, { sitzung: { userId: id, isAdmin: !!admin }, t });
       return (
         await fetch(`${base}/api/v1/admin/cache-clear`, {
           method: 'POST',

@@ -75,12 +75,7 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
   t.after(() => db.run('DELETE FROM users WHERE id = ANY($1)', [[alice, bob, carol, kind]]).catch(() => {}));
 
   const api = uid => {
-    const { base } = testServer(_req, {
-      sitzung: { userId: uid },
-      apiNutzer: { user_id: uid, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+    const { base } = testServer(_req, { sitzung: { userId: uid }, t });
     return async (methode, pfad, body) => {
       const r = await fetch(base + '/api/v1' + pfad, {
         method: methode,

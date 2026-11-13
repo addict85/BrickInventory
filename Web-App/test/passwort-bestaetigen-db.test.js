@@ -50,12 +50,8 @@ test('Passwort bestätigen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const mitSitzung = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    routen: { [AUTH]: 'routes/auth.js' },
-    t,
-  });
-  const ohneSitzung = testServer(_req, { sitzung: {}, routen: { [AUTH]: 'routes/auth.js' }, t });
+  const mitSitzung = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
+  const ohneSitzung = testServer(_req, { sitzung: {}, t });
   const post = async (srv, pfad, body, kopf = {}) => {
     const r = await fetch(`${srv.base}${AUTH}${pfad}`, {
       method: 'POST',

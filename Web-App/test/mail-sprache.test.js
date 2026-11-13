@@ -125,7 +125,7 @@ test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kon
     await zurueck();
     await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
   });
-  const { base } = require('./helpers/server').testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  const { base } = require('./helpers/server').testServer(_req, { t });
   const post = (pfad, email) =>
     fetch(`${base}/api/v1/auth${pfad}`, {
       method: 'POST',
@@ -180,7 +180,7 @@ test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', async t => {
 
 test.after(() =>
   require('./helpers/sources')
-    .buildAndRequire()('db/database.js')
+    .testDaten()
     .pool.end()
     .catch(() => {}),
 );

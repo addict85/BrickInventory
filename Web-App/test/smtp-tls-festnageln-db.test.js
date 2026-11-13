@@ -30,7 +30,7 @@ process.env.DATA_KEY = Buffer.alloc(32, 9).toString('base64');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const db = testDaten();
 const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -201,7 +201,7 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
 
   await t.test('das Formular nimmt nur lesbare Werte und räumt die Altlast ab', async () => {
     await setze({ smtp_port: a.port, smtp_insecure_tls: '1' });
-    const { base } = testServer(_req, {
+    const { base } = routerServer(_req, {
       sitzung: { userId: uid, isAdmin: true },
       routen: { '/api/v1': 'routes/api_v1/settings.js' },
       t,

@@ -28,7 +28,7 @@ require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports 
     return { success: true, mode: 'console' };
   },
 });
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const { datenOderSkip } = require('./helpers/db');
 const db = S.testDaten();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -53,7 +53,7 @@ test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
+  const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
     routen: { '/api/v1': 'routes/api_v1/settings.js' },
     t,

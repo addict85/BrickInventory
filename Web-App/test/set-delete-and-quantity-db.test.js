@@ -105,12 +105,7 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
   await haeltTeil(db, uid, '3001', { setNumber: SN, menge: 10, colorId: 4 });
   await haeltFigur(db, uid, 'cty0001', { setNumber: SN, menge: 1 });
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   const H = require('./helpers/sources').handlerModul(_req);
   const setzen = n =>

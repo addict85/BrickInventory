@@ -84,12 +84,7 @@ test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender', { co
     ).map(r => ({ id: r.id, menge: Number(r.quantity) }));
   };
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: HAUPT }, t });
   const verschiebe = async (erfassungId, nachKonto) => {
     const r = await fetch(`${base}/api/v1/parts/3001/4/acquisitions/${erfassungId}`, {
       method: 'PUT',

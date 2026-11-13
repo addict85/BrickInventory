@@ -38,7 +38,7 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const me = async (kopf = {}) => {
     const r = await fetch(`${base}/api/v1/auth/me`, { headers: kopf });
     return { status: r.status, body: await r.json() };

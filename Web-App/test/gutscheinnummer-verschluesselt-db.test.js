@@ -99,18 +99,8 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     fs.rmSync(SANDKASTEN, { recursive: true, force: true });
   });
 
-  const haupt = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
-  const fremd = testServer(_req, {
-    sitzung: { userId: FREMD },
-    apiNutzer: { user_id: FREMD, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const haupt = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const fremd = testServer(_req, { sitzung: { userId: FREMD }, t });
   const ruf = async (srv, methode, weg, body) => {
     const r = await fetch(`${srv.base}/api/v1${weg}`, {
       method: methode,

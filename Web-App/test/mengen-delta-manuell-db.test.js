@@ -83,11 +83,7 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
   });
 
   await t.test('über die Route: Schritt nach unten, Antwort mit der Menge danach', async () => {
-    const { base } = testServer(_req, {
-      apiNutzer: { user_id: uid, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+    const { base } = testServer(_req, { t, sitzung: { userId: uid } });
     const put = (pfad, body) =>
       fetch(`${base}/api/v1/${pfad}`, {
         method: 'PUT',

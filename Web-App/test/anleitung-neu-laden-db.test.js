@@ -33,6 +33,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { haeltSet, katalogSet } = require('./helpers/bestand');
 
 // Kein Abruf bei den Quellen: Das Neuladen findet hier nichts.
@@ -60,6 +61,8 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
         )
       ).id,
     );
+  // ids[1] arbeitet unten als Verwalter.
+  await verwalterMitFaktor(_req, ids[1]);
   await katalogSet(db, SET, { name: 'Anleitungsprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await haeltSet(db, ids[0], SET, 1);
   const anleitung = () =>
@@ -82,7 +85,7 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
   });
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const neuLaden = async (als, nummer = SET) => {
     Object.assign(sitzung, als);
     return (await fetch(`${base}/api/v1/sets/${nummer}/instructions`, { method: 'POST' })).status;

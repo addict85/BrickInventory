@@ -44,12 +44,7 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT', 
     [SET],
   );
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid, username: USERNAME, isAdmin: false },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid, username: USERNAME, isAdmin: false }, t });
 
   const hole = async query => {
     const r = await fetch(`${base}/api/v1/sets/${SET}/price${query}`);

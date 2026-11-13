@@ -155,12 +155,7 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
   }
   await aufbau();
 
-  const srv = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
 
   /**
    * Nimmt die Sperre auf eigener Verbindung, führt `fn` aus, gibt sie frei.

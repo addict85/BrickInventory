@@ -49,12 +49,7 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
     [uid, SN, GS],
   );
   await db.run(`UPDATE set_acquisitions SET price_estimated = true WHERE user_id=$1 AND set_number=$2`, [uid, GS]);
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const hole = async pfad => (await fetch(`${base}/api/v1/${pfad}`)).json();
 
   await t.test('Summe in Kontowährung wie die Finanzen', async () => {

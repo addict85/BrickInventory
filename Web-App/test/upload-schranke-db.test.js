@@ -103,13 +103,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
       .catch(() => {}); // der CSV-Strom hört auf NOTIFY
     await db.pool.end().catch(() => {});
   });
-  const server = uid =>
-    testServer(_req, {
-      sitzung: { userId: uid },
-      apiNutzer: { user_id: uid, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+  const server = uid => testServer(_req, { sitzung: { userId: uid }, t });
   const a = server(A),
     b = server(B);
 

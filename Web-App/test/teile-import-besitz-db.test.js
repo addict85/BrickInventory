@@ -78,7 +78,7 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
   });
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t, routen: { '/api/v1': 'routes/api_v1/index.js' } });
+  const { base } = testServer(_req, { sitzung, t });
   const importiere = async (als, sn) => {
     sitzung.userId = als;
     const r = await fetch(`${base}/api/v1/sets/${encodeURIComponent(sn)}/parts`, { method: 'POST' });

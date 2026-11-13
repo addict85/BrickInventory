@@ -26,7 +26,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const db = testDaten();
 
 test('pfadSegment', () => {
@@ -83,7 +83,7 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
+  const { base } = routerServer(_req, {
     sitzung: { userId: 1 },
     apiNutzer: { user_id: 1, is_admin: 0 },
     routen: { '/api/v1': 'routes/api_v1/index.js' },

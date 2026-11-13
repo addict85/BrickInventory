@@ -41,12 +41,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   // Die Warteschlange arbeitet nebenläufig — nach dem Abruf kurz warten.
   const besuch = async () => {

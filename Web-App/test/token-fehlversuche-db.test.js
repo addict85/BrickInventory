@@ -28,7 +28,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const db = require('./helpers/sources').testDaten();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
@@ -42,7 +42,7 @@ const NAME = `fehlversuch_${process.pid}`;
 test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const server = testServer(_req, { t, sitzung: {}, routen: {} });
+  const server = routerServer(_req, { t, sitzung: {}, routen: {} });
   server.app.use('/api/v1', anmeldungAmEingang);
   server.app.get('/api/v1/probe', (_req2, res) => res.json({ ok: true }));
   // Den Cache gibt es nur mit stehender Horch-Verbindung für Widerrufe (fail closed).

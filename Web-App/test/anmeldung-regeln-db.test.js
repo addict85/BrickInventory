@@ -49,11 +49,7 @@ test('Regeln der Anmeldung', { concurrency: 1, timeout: 60_000 }, async t => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NACHBAR]]);
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const ruf = async (methode, pfad, body) => {
     const r = await fetch(`${base}/api/v1/auth${pfad}`, {
       method: methode,

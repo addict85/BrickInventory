@@ -70,9 +70,8 @@ test('Papierkorb', { concurrency: 1 }, async t => {
   const [haupt, sub, fremd] = ids;
   await db.run('INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)', [haupt, sub]);
 
-  const routen = { '/api/v1': 'routes/api_v1/index.js' };
-  const H = testServer(_req, { sitzung: { userId: haupt }, apiNutzer: { user_id: haupt, is_admin: 0 }, routen, t });
-  const F = testServer(_req, { sitzung: { userId: fremd }, apiNutzer: { user_id: fremd, is_admin: 0 }, routen, t });
+  const H = testServer(_req, { sitzung: { userId: haupt }, t });
+  const F = testServer(_req, { sitzung: { userId: fremd }, t });
   const api = async (srv, methode, pfad, body) => {
     const r = await fetch(srv.base + '/api/v1' + pfad, {
       method: methode,

@@ -16,7 +16,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 // Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const db = testDaten();
 
 test('Adminrechte lassen sich auch mit "false" als Text entziehen', { concurrency: 1 }, async t => {
@@ -43,7 +43,7 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen', { concurrenc
   const adminId = (await db.get(`SELECT id FROM users WHERE username=$1`, [ADMIN])).id;
   const zielId = (await db.get(`SELECT id FROM users WHERE username=$1`, [ZIEL])).id;
 
-  const { base, srv } = testServer(_req, {
+  const { base, srv } = routerServer(_req, {
     sitzung: { userId: adminId, username: ADMIN, isAdmin: true },
     apiNutzer: { user_id: adminId, is_admin: 1 },
     routen: { [AUTH]: 'routes/auth.js', '/api/v1': 'routes/api_v1/index.js' },

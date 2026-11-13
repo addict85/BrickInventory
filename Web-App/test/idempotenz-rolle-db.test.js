@@ -22,8 +22,6 @@ const { zugangOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
 
-const ROUTEN = { '/api/v1': 'routes/api_v1/index.js' };
-
 test('Idempotenz: Verwalter-Antworten nur für die Verwalterrolle', { concurrency: 1 }, async t => {
   const db = await zugangOderSkip(t, _req);
   if (!db) return;
@@ -44,8 +42,8 @@ test('Idempotenz: Verwalter-Antworten nur für die Verwalterrolle', { concurrenc
   });
 
   const sitzung = { userId: uid, username: name, isAdmin: true, mussPasswortAendern: false };
-  const verwalter = testServer(_req, { sitzung, routen: ROUTEN, t, kette: true });
-  const ohne = testServer(_req, { sitzung: {}, routen: ROUTEN, t, kette: true });
+  const verwalter = testServer(_req, { sitzung, t });
+  const ohne = testServer(_req, { sitzung: {}, t });
 
   const schluessel = `rolle-${process.pid}-${Date.now()}`;
   const senden = (base, kopf = {}) =>

@@ -52,12 +52,7 @@ test('Lesefehler: `degradiert` oder Fehler, nie still leer', { concurrency: 1 },
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const manuelle = async () => {
     const r = await fetch(`${base}/api/v1/parts/manual`);
     assert.equal(r.status, 200);

@@ -74,12 +74,7 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets', { conc
   );
 
   // Betrachter ist das HAUPTKONTO.
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: hauptId, username: HAUPT, isAdmin: false },
-    apiNutzer: { user_id: hauptId, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: hauptId, username: HAUPT, isAdmin: false }, t });
 
   try {
     // 1. Der eigentliche Fund: Die Preisroute darf nicht mehr 404 geben.

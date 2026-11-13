@@ -37,12 +37,7 @@ test('Erfassen nur, was gemeint ist', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const post = async (weg, body) => {
     const r = await fetch(`${base}/api/v1${weg}`, {
       method: 'POST',

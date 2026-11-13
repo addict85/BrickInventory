@@ -50,12 +50,7 @@ test('fremde Erfassungen löschen', { concurrency: 1 }, async t => {
     )
   ).id;
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: a },
-    apiNutzer: { user_id: a, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: a }, t });
   const loesche = pfad => fetch(base + pfad, { method: 'DELETE' }).then(r => r.status);
 
   await t.test('Teil', async () => {

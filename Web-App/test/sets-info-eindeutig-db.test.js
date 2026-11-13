@@ -44,12 +44,7 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
   for (const [i, name] of ['Pfadwort', 'Gewöhnlich', null, null].entries())
     await katalogSet(db, nummern[i], { name: name ?? `Set ${nummern[i]}` });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [fremdId, fremd, uid, eigen]);
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME, isAdmin: false },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: false }, t });
 
   try {
     await t.test('eine gewöhnliche Nummer', async () => {

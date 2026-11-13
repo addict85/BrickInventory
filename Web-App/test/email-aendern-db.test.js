@@ -90,11 +90,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    routen: { '/api/v1/auth': 'routes/auth.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   const profil = async body => {
     const r = await fetch(`${base}/api/v1/auth/profile`, {
       method: 'PUT',

@@ -122,7 +122,7 @@ test('bei voller Schranke antwortet die Anmeldung 503 und die Passwortbestätigu
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const post = async (weg, body) => {
     const r = await fetch(`${base}/api/v1/auth${weg}`, {
       method: 'POST',

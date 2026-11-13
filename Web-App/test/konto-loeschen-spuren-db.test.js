@@ -74,7 +74,7 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
   assert.equal(await zaehle('sets', 'user_id'), 1, 'Vorbedingung: sein Set steht in der Kopie');
 
   const sitzung = { userId: uid, username: NAME, destroy: fertig => fertig() };
-  const { base } = testServer(_req, { sitzung, routen: { [AUTH]: 'routes/auth.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const r = await fetch(`${base}${AUTH}/konto`, {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },

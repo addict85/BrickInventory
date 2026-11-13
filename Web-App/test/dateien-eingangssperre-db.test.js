@@ -66,7 +66,7 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
   fs.writeFileSync(path.join(WURZEL, 'data', 'images', 'parts', 'probe.png'), 'kein echtes png');
 
   const sitzung = {};
-  const { app, base } = testServer(_req, { sitzung, routen: { '/': 'routes/datenDateien.js' }, t });
+  const { app, base } = testServer(_req, { sitzung, t });
   _req('routes/imgProxy.js').registerImgProxy(app);
   app.use('/', _req('routes/seiten.js'));
   const hole = async (uid, weg) => {

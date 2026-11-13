@@ -28,6 +28,7 @@ testBildwerk(null, {
 const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const db = testDaten();
 
 test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
@@ -70,12 +71,8 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
   await db.run(`INSERT INTO image_misses (cache_key, reason) VALUES ($1,$2)`, [`set:${P}_3`, 'HTTP 404 vom CDN']);
   await db.run(`INSERT INTO image_misses (cache_key) VALUES ($1)`, [`set:${P}_4`]);
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: 1 },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
 
   try {
     await t.test('der Knopf reiht ein, ohne bekannte Fehlanzeigen', async () => {

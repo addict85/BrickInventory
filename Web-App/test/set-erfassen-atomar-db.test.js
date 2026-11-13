@@ -120,12 +120,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
 
   await t.test('die Anfrage fragt kein Netz und stellt den Auftrag ein', async () => {
     netz.length = 0;
-    const { base } = testServer(_req, {
-      sitzung: {},
-      apiNutzer: { user_id: haupt, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+    const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
     const r = await fetch(`${base}/api/v1/sets`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

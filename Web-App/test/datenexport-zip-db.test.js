@@ -53,11 +53,7 @@ test('der Datenexport liefert ein entpackbares ZIP mit den Daten des Kontos', {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    routen: { '/api/v1': 'routes/api_v1/settings.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const r = await fetch(`${base}/api/v1/settings/export/data`);
   assert.equal(r.status, 200);
   assert.equal(r.headers.get('content-type'), 'application/zip');

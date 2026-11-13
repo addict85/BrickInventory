@@ -87,12 +87,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
   }
   await aufbau();
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: HAUPT }, t });
   const setze = async (pfad, koerper) => {
     const r = await fetch(base + pfad, {
       method: 'PUT',

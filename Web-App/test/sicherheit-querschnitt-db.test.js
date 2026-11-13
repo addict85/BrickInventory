@@ -194,7 +194,7 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('eine vergebene Adresse antwortet wie eine neue', async () => {
-    const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+    const { base } = testServer(_req, { t });
     const registriere = (username, email) =>
       fetch(`${base}/api/v1/auth/register`, {
         method: 'POST',
@@ -213,7 +213,7 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('ein vergebener Name antwortet wie ein neuer, die Adresse erfährt es per Mail', async () => {
-    const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+    const { base } = testServer(_req, { t });
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%'");
     const registriere = (username, email) =>
       fetch(`${base}/api/v1/auth/register`, {

@@ -71,7 +71,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, { sitzung: {}, routen: { '/api/v1': 'routes/api_v1/index.js' }, t });
+  const { base } = testServer(_req, { sitzung: {}, t });
   const ruf = async (methode, weg, token, body) => {
     const r = await fetch(base + '/api/v1' + weg, {
       method: methode,

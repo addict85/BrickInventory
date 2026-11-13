@@ -136,18 +136,8 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
   }
   await aufbau();
 
-  const srv = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
-  const fremdSrv = testServer(_req, {
-    sitzung: { userId: FREMD },
-    apiNutzer: { user_id: FREMD, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const fremdSrv = testServer(_req, { sitzung: { userId: FREMD }, t });
 
   const abfrage = (basis, id) => fetch(`${basis}/api/v1/vouchers/${id}/guthaben`, { method: 'POST' });
 

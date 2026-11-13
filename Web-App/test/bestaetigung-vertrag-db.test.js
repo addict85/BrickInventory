@@ -135,8 +135,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
   });
   const codes = await mitFaktor(chef);
   await mitFaktor(ziel);
-  const routen = { '/api/v1/auth': 'routes/auth.js', '/api/v1': 'routes/api_v1/index.js' };
-  const basis = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true }, routen, t }).base;
+  const basis = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true }, t }).base;
   const ruf = async (b, schluessel, body) => {
     const [methode, muster] = schluessel.split(' ');
     const r = await fetch(b + muster.replace(':id', String(ziel)).replace(':tokenId', '0123456789abcdef'), {
@@ -198,7 +197,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
     });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await zf.istAktiv(ziel), false);
-    const ohneFaktor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, routen, t }).base;
+    const ohneFaktor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
     const tok = await ruf(ohneFaktor, 'POST /api/v1/auth/token-create', { password: PASS });
     assert.equal(tok.status, 200, JSON.stringify(tok.body));
   });

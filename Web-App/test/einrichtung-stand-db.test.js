@@ -55,7 +55,7 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]));
 
-  const srv = testServer(_req, { sitzung: {}, routen: { '/api/v1': 'routes/api_v1/einrichtung.js' }, t });
+  const srv = testServer(_req, { sitzung: {}, t });
   const r = await fetch(srv.base + '/api/v1/einrichtung/stand');
   assert.equal(r.status, 200);
   const d = await r.json();
@@ -72,11 +72,7 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
   const konto = d.schritte.find(s => s.id === 'konto');
   assert.equal(konto.ok, true, 'ohne Verwalter verrät der Stand kein Startpasswort');
   assert.equal(d.basis_url, null, 'ohne Verwalter keine Basis-URL');
-  const verwalter = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    routen: { '/api/v1': 'routes/api_v1/einrichtung.js' },
-    t,
-  });
+  const verwalter = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const dv = await (await fetch(verwalter.base + '/api/v1/einrichtung/stand')).json();
   assert.equal(
     dv.schritte.find(s => s.id === 'konto').ok,

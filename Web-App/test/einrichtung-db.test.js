@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const db = testDaten();
 
 const SCHLUESSEL = [
@@ -45,13 +45,13 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
     )
   ).id;
   const routen = { '/api/v1': 'routes/api_v1/settings.js' };
-  const V = testServer(_req, {
+  const V = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
     apiNutzer: { user_id: uid, is_admin: 1 },
     routen,
     t,
   });
-  const N = testServer(_req, {
+  const N = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: false },
     apiNutzer: { user_id: uid, is_admin: 0 },
     routen,

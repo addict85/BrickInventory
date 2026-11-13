@@ -31,6 +31,7 @@ const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const db = testDaten();
 
 test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
@@ -62,12 +63,8 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
       .catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME, isAdmin: true },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: true }, t });
   const rufe = async (methode, pfad, body) => {
     const r = await fetch(base + '/api/v1' + pfad, {
       method: methode,

@@ -43,13 +43,7 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const routen = { '/api/v1': 'routes/api_v1/index.js' };
-  const server = Object.fromEntries(
-    ids.map(id => [
-      id,
-      testServer(_req, { sitzung: { userId: id }, apiNutzer: { user_id: id, is_admin: 0 }, routen, t }).base,
-    ]),
-  );
+  const server = Object.fromEntries(ids.map(id => [id, testServer(_req, { sitzung: { userId: id }, t }).base]));
   const post = async (id, pfad, rumpf = {}) => {
     const r = await fetch(`${server[id]}/api/v1/settings/household/${pfad}`, {
       method: 'POST',

@@ -56,12 +56,7 @@ test('Suche mit % und _ findet nur wörtliche Treffer', { concurrency: 1 }, asyn
   await haeltSet(db, uid, '77701-1', 1);
   await haeltSet(db, uid, '77702-1', 1);
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const hole = async pfad => {
     const r = await fetch(base + '/api/v1' + pfad);
     const j = await r.json();

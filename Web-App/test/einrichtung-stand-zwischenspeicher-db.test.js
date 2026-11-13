@@ -111,7 +111,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
   });
 
   await t.test('die Adresse wird gebremst', async () => {
-    const srv = testServer(_req, { sitzung: {}, routen: { '/api/v1': 'routes/api_v1/einrichtung.js' }, t });
+    const srv = testServer(_req, { sitzung: {}, t });
     let letzter = 0;
     for (let i = 0; i < 125 && letzter !== 429; i++) {
       letzter = (await fetch(srv.base + '/api/v1/einrichtung/stand')).status;

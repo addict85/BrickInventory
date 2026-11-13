@@ -49,12 +49,7 @@ test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand', { concurre
     await haeltTeil(db, haupt, '3001', { setNumber: '0001-1', menge: 2, colorId: 4 });
     await haeltTeil(db, kind, '3002', { setNumber: '0002-1', menge: 5, colorId: 1 });
 
-    const { base } = testServer(_req, {
-      sitzung: { userId: haupt },
-      apiNutzer: { user_id: haupt, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+    const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
     const hole = async pfad => (await fetch(base + pfad)).json();
 
     for (const modus of ['all', 'own']) {

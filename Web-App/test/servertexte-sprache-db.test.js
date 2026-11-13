@@ -23,6 +23,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 
 test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async t => {
   const db = testDaten();
@@ -41,12 +42,8 @@ test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async t => {
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition) VALUES ($1,'10294-1',1,600,'N')`,
     [uid],
   );
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: 1 },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
   const hole = async (pfad, sprache) =>
     (await fetch(`${base}/api/v1/${pfad}`, { headers: { 'Accept-Language': sprache } })).json();
 

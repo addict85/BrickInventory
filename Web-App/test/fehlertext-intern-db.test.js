@@ -75,7 +75,7 @@ test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
   });
 
   importWorker(t, _req);
-  const { base } = testServer(_req, { sitzung: { userId: uid }, t, routen: { '/api/v1': 'routes/api_v1/index.js' } });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const strom = async (setNumber, sprache = 'de') => {
     const r = await fetch(`${base}/api/v1/sets/add-stream`, {
       method: 'POST',

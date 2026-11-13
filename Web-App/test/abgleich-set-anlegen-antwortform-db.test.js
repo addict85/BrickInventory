@@ -67,12 +67,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
     [uid, DA],
   );
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   try {
     // ── 1. Die Praemisse, mit der ECHTEN Funktion ────────────────────────────

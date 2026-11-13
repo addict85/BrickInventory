@@ -83,11 +83,7 @@ test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot|bestaetigung)'");
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, username: NAME },
-    t,
-    routen: { '/api/v1/auth': 'routes/auth.js' },
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
   // Die IP-Drossel (5/h) soll die Prüfung der Adresse nicht verdecken.
   const rufe = async (methode, pfad, body) => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot|bestaetigung)'");

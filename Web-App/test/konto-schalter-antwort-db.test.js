@@ -18,6 +18,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 
 test('Kontoschalter gehen als true/false hinaus', async t => {
   const db = testDaten();
@@ -41,11 +42,12 @@ test('Kontoschalter gehen als true/false hinaus', async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, gast]]);
     await db.pool.end();
   });
+  await verwalterMitFaktor(_req, chef);
   let als = chef;
   const sitzung = {};
   Object.defineProperty(sitzung, 'userId', { get: () => als, enumerable: true });
   Object.defineProperty(sitzung, 'isAdmin', { get: () => als === chef, enumerable: true });
-  const { base } = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const hole = async pfad => {
     const r = await fetch(base + pfad);
     assert.equal(r.status, 200, await r.clone().text());

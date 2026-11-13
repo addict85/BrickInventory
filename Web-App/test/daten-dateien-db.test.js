@@ -70,7 +70,7 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t =
   fs.writeFileSync(path.join(WURZEL, 'data', 'instructions', `${SN}_1.pdf`), '%PDF-1.4\n<html><script>x</script>');
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, routen: { '/': 'routes/datenDateien.js' }, t });
+  const { base } = testServer(_req, { sitzung, t });
   const hole = async (als, weg, verwalter = false) => {
     sitzung.userId = als;
     sitzung.isAdmin = verwalter;

@@ -115,12 +115,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
   await aufbau();
 
   importWorker(t, _req);
-  const srv = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
 
   await t.test('1. eine Datei ohne <INVENTORY> wird vorher abgewiesen', async () => {
     const { status, body } = await hochladen(srv.base, '<?xml version="1.0"?>\n<FOO/>\n');

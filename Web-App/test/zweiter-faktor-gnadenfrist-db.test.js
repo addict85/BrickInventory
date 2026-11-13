@@ -30,7 +30,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Gnaden-Passwort-1';
@@ -59,7 +59,7 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
 
   // Die Sitzung ist ein Objekt über alle Anfragen; die Anmeldung schreibt hinein.
   const sitzung = {};
-  const basis = testServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t }).base;
+  const basis = routerServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t }).base;
   const ruf = async (weg, body, kopf = {}) => {
     const r = await fetch(`${basis}/api/v1/auth${weg}`, {
       method: 'POST',

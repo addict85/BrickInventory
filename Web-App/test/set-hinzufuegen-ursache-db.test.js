@@ -33,12 +33,7 @@ test('Server: leerer Katalog', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await db.pool.end();
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const frage = async nr => (await fetch(`${base}/api/v1/catalog/sets/${nr}`)).json();
 
   await db.run('TRUNCATE rb_sets CASCADE');

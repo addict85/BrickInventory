@@ -33,7 +33,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
     await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+  const { base } = testServer(_req, { t });
   /** Ein Konto mit offenem Link; der Wechsel läuft, dann wird der Link eingelöst. */
   const nachWechsel = async (name, wechsel) => {
     namen.push(name);

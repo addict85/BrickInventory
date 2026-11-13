@@ -24,7 +24,7 @@ process.env.DATA_KEY = Buffer.alloc(32, 5).toString('base64');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const db = testDaten();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -50,7 +50,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
     await db.pool.end().catch(() => {});
   });
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
-  const { base } = testServer(_req, {
+  const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
     apiNutzer: { user_id: uid, is_admin: 1 },
     routen: { '/api/v1': 'routes/api_v1/index.js' },

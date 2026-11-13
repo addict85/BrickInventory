@@ -32,7 +32,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 const { mailAttrappe } = require('./helpers/mail-attrappe');
 mailAttrappe();
 const db = testDaten();
@@ -65,7 +65,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
+  const { base } = routerServer(_req, {
     sitzung: { userId: uid, isAdmin: true },
     t,
     routen: { '/api/v1/auth': 'routes/auth.js', '/api/v1': 'routes/api_v1/settings.js' },

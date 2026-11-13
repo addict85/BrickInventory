@@ -52,11 +52,7 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
     await db.pool.end().catch(() => {});
   });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: nutzer.id, username: 'qr_pruefling', isAdmin: 0 },
-    routen: { [AUTH]: 'routes/auth.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: nutzer.id, username: 'qr_pruefling', isAdmin: 0 }, t });
   const hole = () =>
     fetch(`${base}${AUTH}/qr-token`, {
       // Seit dem Passwortschritt verlangt die Route das eigene Passwort.

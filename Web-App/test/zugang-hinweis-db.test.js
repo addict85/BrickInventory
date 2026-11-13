@@ -33,7 +33,7 @@ const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { routerServer } = require('./helpers/server');
 
 const gesendet = [];
 const echterMailer = _req('src/mail/mailer.js');
@@ -69,7 +69,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const base = testServer(_req, {
+  const base = routerServer(_req, {
     sitzung: { userId: chef, username: NAMEN[0], isAdmin: true },
     routen: { '/api/v1/auth': 'routes/auth.js' },
     t,

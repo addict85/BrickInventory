@@ -61,12 +61,7 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async t => {
   await haeltFigur(db, haupt, 'sw0001', { menge: 1 });
   await haeltFigur(db, kind, 'sw0001', { menge: 2 });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: haupt },
-    apiNutzer: { user_id: haupt, is_admin: 0, username: 'haupt' },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: haupt, username: 'haupt' }, t });
   const ruf = async (pfad, methode = 'GET') => {
     const r = await fetch(base + pfad, { method: methode });
     return { status: r.status, body: await r.json() };
@@ -187,12 +182,7 @@ test('beide Bewertungen fuehren den Besitzer mit', async t => {
   await haeltFigur(db, haupt, 'sw0001', { menge: 1, preis: 12.0 });
   await haeltFigur(db, kind, 'sw0002', { menge: 2, preis: 9.0 });
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: haupt },
-    apiNutzer: { user_id: haupt, is_admin: 0, username: 'h2' },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: haupt, username: 'h2' }, t });
   const hole = async p => (await fetch(base + p)).json();
 
   // Beide Arten in EINER Schleife: Die Zusicherung soll für beide gleich

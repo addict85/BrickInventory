@@ -579,21 +579,27 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
  * es noch einen Zugang des Prozesses, und mischte Testdaten mit dem Code unter Test.
  * Testdaten nehmen testDaten()/datenOderSkip(), Code unter Test testZugang()/zugangOderSkip().
  * Einzelne Exporte des Moduls (erzeugeDb, istLesend) sind kein Zugang und bleiben erlaubt. */
-const NUTZT_FASSADE = /(?<!\}\s*=\s*)_req\w*\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(|\.standardDb\(/;
-/** Wer Module beim Laden umbiegt, prüft einen Aufbau, den es im Betrieb nicht gibt, und greift
- * still ins Leere, sobald sich ein Importpfad ändert. Ersetzt wird an der Verdrahtung:
- * testBildwerk(), Nacharbeit, verdrahteKlienten. */
-const BIEGT_MODULE = /\.prototype\.require\s*=|\._load\s*=/;
+const NUTZT_FASSADE =
+  /(?<!\}\s*=\s*)(?:_req\w*|buildAndRequire\(\))\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(|\.standardDb\(/;
+/** Ersatzwege, die nur sinken dürfen. Wer Module beim Laden umbiegt, prüft einen Aufbau, den es
+ * im Betrieb nicht gibt, und greift still ins Leere, sobald sich ein Importpfad ändert; ersetzt
+ * wird an der Verdrahtung (testBildwerk(), Nacharbeit, verdrahteKlienten). routerServer steckt
+ * eigene Router zusammen statt baueApp, an Sitzungs- und Verwalterprüfungen vorbei. */
+const ERSATZWEGE = {
+  'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 14 },
+  'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, schranke: 13 },
+};
 
-test('Tests benutzen den echten Aufbau: keine DB-Fassade, umgebogene Module werden weniger', () => {
+test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weniger', () => {
   // Fassade: 387 Dateien am 12.11.2026, 0 seit testDaten()/testZugang() (13.11.2026).
   // Umgebogen: 26 Testdateien am 13.11.2026, 14 nach Bildwerk und toten Abfängen.
+  // routerServer: 124 Dateien bauten am 13.11.2026 eigene Router, 13 tun es noch.
   // Gegenproben (13.11.2026): in indizes-db.test.js wieder `_req('db/database.js')` → rot
-  // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14).
-  const SCHRANKE_UMGEBOGEN = 14;
+  // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14);
+  // in app-kette-db.test.js testServer → routerServer → rot (14 statt 13).
   assert.ok(NUTZT_FASSADE.test("const db = _req('db/database.js');") && !NUTZT_FASSADE.test('zugangOderSkip(t)'));
   assert.ok(!NUTZT_FASSADE.test("const { erzeugeDb } = _req('db/database.js');"), 'Exporte bleiben erlaubt');
-  assert.ok(BIEGT_MODULE.test('Module.prototype.require = function () {}') && !BIEGT_MODULE.test('testBildwerk(t)'));
+  assert.ok(ERSATZWEGE['biegen Module um'].muster.test('Module.prototype.require = function () {}'));
   const q = require('./helpers/sources');
   const tests = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js');
   const helfer = fs.readdirSync(path.join(__dirname, 'helpers')).map(n => path.join('helpers', n));
@@ -604,13 +610,12 @@ test('Tests benutzen den echten Aufbau: keine DB-Fassade, umgebogene Module werd
     [],
     'Testdaten über testDaten(), Code unter Test über testZugang()',
   );
-  const umgebogen = tests.filter(n => BIEGT_MODULE.test(lies(n))).length;
-  assert.ok(
-    umgebogen <= SCHRANKE_UMGEBOGEN,
-    `${umgebogen} Testdateien biegen Module um, erlaubt sind ${SCHRANKE_UMGEBOGEN}`,
-  );
-  if (umgebogen < SCHRANKE_UMGEBOGEN)
-    console.log(`  ℹ Module umgebogen: ${umgebogen} (Schranke ${SCHRANKE_UMGEBOGEN}) — Schranke nachziehen`);
+  for (const [was, { muster, schranke }] of Object.entries(ERSATZWEGE)) {
+    const ist = tests.filter(n => muster.test(lies(n))).length;
+    assert.ok(ist > 0, `keine Datei ${was} — greift das Muster noch? Dann Schranke und Eintrag entfernen`);
+    assert.ok(ist <= schranke, `${ist} Testdateien ${was}, erlaubt sind ${schranke}`);
+    if (ist < schranke) console.log(`  ℹ ${ist} Testdateien ${was} (Schranke ${schranke}) — Schranke nachziehen`);
+  }
 });
 
 /**

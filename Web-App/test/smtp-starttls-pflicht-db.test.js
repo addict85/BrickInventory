@@ -33,6 +33,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const db = testDaten();
 const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -191,11 +192,8 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     await setze({ smtp_port: ohne.port });
     const vorherZeilen = ohne.mitschnitt.length;
     assert.equal((await mailer.testSmtp()).code, 'smtp_fehler');
-    const { base } = testServer(_req, {
-      sitzung: { userId: uid, isAdmin: true },
-      routen: { '/api/v1': 'routes/api_v1/settings.js' },
-      t,
-    });
+    await verwalterMitFaktor(_req, uid);
+    const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
     const r = await fetch(`${base}/api/v1/settings/smtp-test`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

@@ -71,7 +71,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
   });
 
   const sitzung = {};
-  const { base } = testServer(_req, { sitzung, t, routen: { '/api/v1/auth': 'routes/auth.js' } });
+  const { base } = testServer(_req, { sitzung, t });
   const rufe = (methode, pfad, body) =>
     fetch(`${base}/api/v1/auth${pfad}`, {
       method: methode,

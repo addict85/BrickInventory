@@ -100,12 +100,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   }
   await aufbau();
 
-  const srv = testServer(_req, {
-    sitzung: { userId: HAUPT },
-    apiNutzer: { user_id: HAUPT, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
 
   let pdf = null,
     befunde = null;

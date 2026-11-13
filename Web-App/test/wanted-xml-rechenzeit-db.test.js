@@ -98,12 +98,7 @@ test('3. die Route weist eine Liste über der XML-Grenze ab', async t => {
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('xmlgrenze','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='xmlgrenze'`)).id;
   importWorker(t, _req);
-  const srv = testServer(_req, {
-    sitzung: { userId: uid },
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const srv = testServer(_req, { sitzung: { userId: uid }, t });
   const senden = async xml => {
     const fd = new FormData();
     fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');

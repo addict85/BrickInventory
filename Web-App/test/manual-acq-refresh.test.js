@@ -106,12 +106,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
   const { updateManualFig } = _req('src/figuren/manuelleFiguren.js');
   const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
   const { testServer } = require('./helpers/server');
-  const { base } = testServer(_req, {
-    sitzung: {},
-    apiNutzer: { user_id: uid, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const teilZeilen = (pn, cid = 5) =>
     db.all(
       `SELECT id, quantity FROM part_acquisitions WHERE user_id = $1 AND part_number = $2 AND color_id = $3

@@ -69,11 +69,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     await db.pool.end().catch(() => {});
   });
   const als = uid => {
-    const { base } = testServer(_req, {
-      sitzung: { userId: uid, destroy: cb => cb() },
-      routen: { '/api/v1/auth': 'routes/auth.js' },
-      t,
-    });
+    const { base } = testServer(_req, { sitzung: { userId: uid, destroy: cb => cb() }, t });
     return async body => {
       const r = await fetch(`${base}/api/v1/auth/konto`, {
         method: 'DELETE',

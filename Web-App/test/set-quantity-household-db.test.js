@@ -54,12 +54,7 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
     [subId, SN],
   );
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: hauptId },
-    apiNutzer: { user_id: hauptId, is_admin: 0 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: hauptId }, t });
 
   const detail = async () => (await (await fetch(`${base}/api/v1/sets/${SN}`)).json()).set;
   const setzen = async n => {

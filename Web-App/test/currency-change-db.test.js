@@ -51,12 +51,7 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
     [uid],
   );
 
-  const { base, srv } = testServer(_req, {
-    sitzung: { userId: uid, username: USERNAME, isAdmin: false },
-    apiNutzer: { user_id: uid },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid, username: USERNAME, isAdmin: false }, t });
 
   const postWeb = body =>
     fetch(`${base}/api/v1/settings`, {

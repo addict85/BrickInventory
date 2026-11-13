@@ -23,6 +23,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { routeZu } = _req('src/vertrag/index.js');
 const { z } = require('zod');
 
@@ -69,12 +70,8 @@ test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t =
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { base } = testServer(_req, {
-    sitzung: { userId: ids[0], username: namen[0], isAdmin: true },
-    apiNutzer: { user_id: ids[0], is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, ids[0]);
+  const { base } = testServer(_req, { sitzung: { userId: ids[0], username: namen[0], isAdmin: true }, t });
 
   await t.test('die Bild-Diagnose zählt Konten, nennt sie aber nicht', async () => {
     const r = await fetch(`${base}/api/v1/admin/image-diag/${SN}`);

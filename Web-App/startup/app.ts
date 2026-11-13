@@ -1,6 +1,6 @@
 /** Die Express-App: Middleware, Sitzung, Dateien und Router in ihrer Reihenfolge.
- * server.ts startet nur; Tests bauen Teile davon nach (test/helpers/server.js). */
-import type { Request, Response, NextFunction } from 'express';
+ * server.ts startet nur; Tests bauen dieselbe App (test/helpers/server.js). */
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import express from 'express';
 import session from 'express-session';
 import compression from 'compression';
@@ -43,17 +43,20 @@ export interface AppZutaten {
   sitzungsGeheimnis: string;
   /** Die Routen bekommen ihre Dienste von hier (startup/verdrahtung.ts, baueDienste). */
   dienste: Dienste;
+  /** Setzt req.session; ohne Angabe express-session über user_sessions. Ein Test stellt
+   * hier seine Sitzung, die Prüfungen danach (Version, Höchstdauer) bleiben die echten. */
+  sitzungsSpeicher?: RequestHandler;
 }
 
 /** Die Abschnitte stehen in der Reihenfolge der Middleware. */
-export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste }: AppZutaten): express.Express {
+export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste, sitzungsSpeicher }: AppZutaten): express.Express {
   const app = express();
   // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
   app.disable('x-powered-by');
   // Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
   app.set('case sensitive routing', true);
   grundschutz(app, konfig);
-  sitzung(app, pool, sitzungsGeheimnis);
+  sitzung(app, sitzungsSpeicher ?? sitzungInPostgres(pool, sitzungsGeheimnis));
   dateienUndBilder(app, dienste);
   apiRouten(app, dienste);
   rueckfaelle(app);
@@ -177,7 +180,7 @@ const sicherheitsKoepfe =
     next();
   };
 
-function sitzung(app: express.Express, pool: Pool, geheimnis: string): void {
+function sitzungInPostgres(pool: Pool, geheimnis: string): RequestHandler {
   // In PostgreSQL, damit Sitzungen einen Neustart überleben; die Tabelle legt das Schema an.
   const PgSession = connectPgSimple(session);
   const sitzungsSpeicher = new PgSession({
@@ -197,16 +200,18 @@ function sitzung(app: express.Express, pool: Pool, geheimnis: string): void {
   // Gedrosselt geschrieben (src/konto/sitzungsBeruehrung.ts).
   drossleBeruehren(sitzungsSpeicher);
 
-  app.use(
-    session({
-      store: sitzungsSpeicher,
-      secret: geheimnis,
-      resave: false,
-      saveUninitialized: false,
-      name: sitzungsKeksName(),
-      cookie: sitzungsKeksOptionen(),
-    }),
-  );
+  return session({
+    store: sitzungsSpeicher,
+    secret: geheimnis,
+    resave: false,
+    saveUninitialized: false,
+    name: sitzungsKeksName(),
+    cookie: sitzungsKeksOptionen(),
+  });
+}
+
+function sitzung(app: express.Express, speicher: RequestHandler): void {
+  app.use(speicher);
   app.use(sitzungsVersionPruefen());
   app.use(sitzungsHoechstdauer());
 }
@@ -243,8 +248,8 @@ function apiRouten(app: express.Express, d: Dienste): void {
   app.use('/api/v1/auth', baueAuthRouter(d));
 }
 
-/** Der Eingang vor allen /api/v1-Routern; auch testServer({ kette: true }) baut ihn so. */
-export function apiEingang(app: express.Express): void {
+/** Der Eingang vor allen /api/v1-Routern. */
+function apiEingang(app: express.Express): void {
   // EIN Eingang: anmeldungAmEingang verlangt Sitzung oder Token für alles unter
   // /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
   // bleibt als zweite Linie.

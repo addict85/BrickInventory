@@ -49,6 +49,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
+const { verwalterMitFaktor } = require('./helpers/verwalter');
 
 test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
@@ -90,12 +91,8 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     )
   ).id;
 
-  const { base } = testServer(_req, {
-    sitzung: { userId: uid, isAdmin: true },
-    apiNutzer: { user_id: uid, is_admin: 1 },
-    routen: { '/api/v1': 'routes/api_v1/index.js' },
-    t,
-  });
+  await verwalterMitFaktor(_req, uid);
+  const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const anfrage = async (
     /** @type {string} */ methode,
     /** @type {string} */ pfad,

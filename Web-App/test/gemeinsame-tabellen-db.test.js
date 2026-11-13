@@ -405,12 +405,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     await updateManualFig(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
     await importiereFigurenCsv(B, `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`);
 
-    const srv = testServer(_req, {
-      sitzung: { userId: A },
-      apiNutzer: { user_id: A, is_admin: 0 },
-      routen: { '/api/v1': 'routes/api_v1/index.js' },
-      t,
-    });
+    const srv = testServer(_req, { sitzung: { userId: A }, t });
     const fd = new FormData();
     fd.append(
       'file',
