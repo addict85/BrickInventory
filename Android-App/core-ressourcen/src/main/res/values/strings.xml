@@ -1018,7 +1018,7 @@
     <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
     <string name="zert_unbekannt_eingabe">Last 12 pairs of the fingerprint (e.g. 3F:A2:…), copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_eingabe_falsch">That does not match this server\'s fingerprint.</string>
-    <string name="zert_eingabe_zu_kurz">Still too short: %1$d of %2$d characters. Copy the last 12 pairs.</string>
+    <string name="zert_eingabe_zu_kurz">Characters so far: %1$d/%2$d. Copy the last 12 pairs.</string>
     <string name="zert_eingabe_zaehler">%1$d/%2$d</string>
     <string name="zert_eingabe_etikett">Last 12 pairs</string>
     <string name="zert_beginnt_mit">Fingerprint starts with (for orientation only)</string>
