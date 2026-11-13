@@ -148,10 +148,13 @@ async function pfadKachelnAchse(_t, a) {
   const korb = `document.querySelector('#gallery [data-arg="21318-1"] .delbtn')`;
   assert.equal(await b.auswerten(`matchMedia('(hover: none)').matches`), true, 'Testaufbau: Überfahren möglich');
   assert.equal(await b.auswerten(`${korb}.checkVisibility()`), false, 'Papierkorb auf jeder Kachel');
-  await b.auswerten(
-    `(() => { const c = ${korb}.parentElement; c.style.display = 'block'; c.style.opacity = '1'; return true; })()`,
+  // Einblenden und Messen in einem Schritt: Zeichnet die Galerie dazwischen neu (Auftrag fertig,
+  // Statusstrom), wäre der zweite Zugriff ein neues, wieder verstecktes Element mit 0 px.
+  const breite = await b.auswerten(
+    `(() => { const k = ${korb}; const c = k.parentElement; c.style.display = 'block'; c.style.opacity = '1';
+      return k.querySelector('svg').getBoundingClientRect().width; })()`,
   );
-  assert.ok((await b.auswerten(`${korb}.querySelector('svg').getBoundingClientRect().width`)) >= 16, 'Symbol zu klein');
+  assert.ok(breite >= 16, `Symbol zu klein (${breite} px)`);
   await b.auswerten(`document.documentElement.toggleAttribute('data-dunkel', true); true`);
   const kontrast = await b.auswerten(`(() => { const rgb = s => s.match(/[\\d.]+/g).slice(0, 3).map(Number);
     const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
