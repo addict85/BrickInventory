@@ -26,6 +26,7 @@ import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.Ladezustand
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
+import ch.brickinventoryapp.ui.satz
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -171,7 +172,8 @@ internal fun MerklisteScreen(
     val gefiltert = zustand.query.isNotBlank() ||
         zustand.zustandFilter != null ||
         scopeModus != ScopeFilter.ALL
-    val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert)
+    val fehler = zustand.fehler?.satz()
+    val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
         // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
         // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
@@ -221,7 +223,7 @@ internal fun MerklisteScreen(
             Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.rand)) {
                 Ladezustand(
                     anzeige = anzeige,
-                    fehler = zustand.fehler,
+                    fehler = fehler,
                     onErneut = { aktionen.ladeMerkliste() },
                     // Wie die leere Galerie: sagen, wozu die Liste da ist, und beide Wege
                     // zum ersten Eintrag anbieten — dieselben wie die Knöpfe unten rechts.

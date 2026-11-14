@@ -16,6 +16,8 @@ import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
@@ -93,7 +95,8 @@ class FehlerZustandTest {
             KatalogRepository(t.api), FinanzenRepository(t.api), SavedStateHandle()))
         vm.ladeMerkliste()
         assertTrue("Fehler", vm.merklisteState.value.fehler != null)
-        assertEquals("fehler", vm.merklisteState.value.fehler)
+        // Kein fertiger Satz im Zustand: die Ressource zur Art samt HTTP-Status.
+        assertEquals(Meldung.Ressource(R.string.err_server, listOf(404)), vm.merklisteState.value.fehler)
         assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.merklisteState.value.fehlerKlasse)
 
         pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""

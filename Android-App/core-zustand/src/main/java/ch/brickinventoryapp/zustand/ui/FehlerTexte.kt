@@ -3,6 +3,8 @@ package ch.brickinventoryapp.zustand.ui
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.data.repository.fehlerTextZuCode
 
 /**
  * Welche Textressource gehört zu welchem Fehler? Eine eigene, reine Funktion
@@ -39,6 +41,17 @@ fun fehlerklasse(f: Ergebnis.Error): Fehlerklasse = when (f) {
  * nicht verlässlich, sondern liefert still einen falschen Text.
  */
 fun fehlerTextArgument(f: Ergebnis.Error): Int? = (f as? Ergebnis.Error.Server)?.status
+
+/**
+ * Der Fehler als Meldung für den Zustand, ohne Context und ohne fertigen Satz: der Satz
+ * des Servers, sonst der zu seinem Code, sonst der zur Art. Die technische Ursache gehört
+ * ins Log, nicht in die Anzeige.
+ */
+fun fehlerMeldung(f: Ergebnis.Error): Meldung {
+    if (f.message.isNotBlank()) return Meldung.Text(f.message)
+    fehlerTextZuCode(f.code)?.let { return Meldung.Ressource(it) }
+    return Meldung.Ressource(fehlerTextId(f), listOfNotNull(fehlerTextArgument(f)))
+}
 
 /**
  * Die technische Ursache anhängen — aber nur, wo der Satz allein nichts sagt.
