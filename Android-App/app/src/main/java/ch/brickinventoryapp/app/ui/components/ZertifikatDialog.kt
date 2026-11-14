@@ -57,10 +57,13 @@ private fun ZertifikatFrageDialog(
 ) {
     var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
     var befund by remember(frage.fingerabdruck) { mutableStateOf<Abschrift?>(null) }
+    // Beim Erstkontakt freiwillig: Wer abtippt, sieht wie sonst nur den Anfang.
+    var abtippenGewaehlt by rememberSaveable(frage.fingerabdruck) { mutableStateOf(false) }
     val host = frage.schluessel.substringBeforeLast(':')
     val (titel, text) = titelUndText(frage.art)
-    val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
-    val abschreiben = frage.art != ZertifikatUngeklaert.Art.ERSTKONTAKT
+    val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT || frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+    val erstkontakt = frage.art == ZertifikatUngeklaert.Art.ERSTKONTAKT
+    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.art != ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
     AlertDialog(
         onDismissRequest = onAbbrechen,
         properties = schliessbar(eingabe),
@@ -70,6 +73,9 @@ private fun ZertifikatFrageDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(text, host))
                 FingerabdruckAnzeige(frage, abschreiben, geaendert)
+                if (erstkontakt && !abtippenGewaehlt) {
+                    TextButton(onClick = { abtippenGewaehlt = true }) { Text(stringResource(R.string.zert_erstkontakt_abtippen)) }
+                }
                 if (abschreiben) {
                     Fingerabdruckfeld(
                         eingabe = eingabe,
@@ -170,4 +176,5 @@ private fun titelUndText(art: ZertifikatUngeklaert.Art): Pair<Int, Int> = when (
     ZertifikatUngeklaert.Art.NUTZER_CA -> R.string.zert_titel_nutzer_ca to R.string.zert_text_nutzer_ca
     ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
     ZertifikatUngeklaert.Art.CODE_ABWEICHUNG -> R.string.zert_titel_code_abweichung to R.string.zert_text_code_abweichung
+    ZertifikatUngeklaert.Art.SCHLUESSEL_NEU -> R.string.zert_titel_schluessel_neu to R.string.zert_text_schluessel_neu
 }

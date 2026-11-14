@@ -1014,6 +1014,9 @@
     <string name="zert_bisher">Previously confirmed</string>
     <string name="zert_vertrauen">Trust this certificate</string>
     <string name="zert_vertrauen_neu">Accept the new certificate</string>
+    <string name="zert_titel_schluessel_neu">The server has a new key</string>
+    <string name="zert_text_schluessel_neu">%1$s shows a valid certificate from the same certificate authority, but with a different key than before. That is normal after the server renewed its certificate – but it can also be a certificate issued to someone else. Nothing has been sent. Only accept it if the server\'s certificate was just renewed.</string>
+    <string name="zert_erstkontakt_abtippen">Type the fingerprint instead</string>
     <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
     <string name="zert_geaendert_eingabe">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>

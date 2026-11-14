@@ -200,8 +200,9 @@ https-Adresse eintragen).
 | Weg | Was passiert |
 | --- | --- |
 | QR-Code mit `fp` | Der Fingerabdruck (SHA-256 des öffentlichen Schlüssels der Caddy-Wurzel) gilt schon für die erste Anfrage, gespeichert wird er erst nach gelungener Anmeldung. Ein Code kann von jedem stammen: Ohne Abtippen gilt er nur, wenn er auf eine System-Wurzel zeigt (deren Kette ohnehin öffentlich gültig sein muss) oder dem schon bestätigten Pin entspricht. Sonst verlangt der Dialog die letzten 24 Zeichen aus der Webapp (Einstellungen → Server-Zertifikat), beim ersten Einrichten wie bei einem abweichenden Pin. |
-| Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich). |
+| Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich); wer will, tippt ihn stattdessen ab („Fingerabdruck stattdessen abtippen“), dann gilt nur eine passende Abschrift. |
 | Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur, wenn man mindestens die letzten 24 Zeichen des neuen aus einer zweiten Quelle abschreibt (Webapp oder Zertifikatdetails des Browsers) — oder per neuem QR-Code. |
+| Neuer Serverschlüssel unter öffentlicher CA | Ist eine System-Wurzel gepinnt, merkt sich die App zusätzlich den Schlüssel des Blatts (zweiter Pin, `host:port#blatt`). Zeigt der Server später einen anderen, geht nichts hinaus; der Dialog „Der Server hat einen neuen Schlüssel“ nennt beide, übernommen wird nach bewusster Bestätigung (ohne Abtippen: die Kette hat das System samt CT geprüft) oder still über einen Code mit `fp` vom angemeldeten Bildschirm. Ältere Fassungen ohne zweiten Pin merken ihn beim nächsten Verbindungsaufbau. |
 
 Die Dialoge zum Fingerabdruck erklären in einfachen Worten, was er ist und in
 drei Schritten, wo er in der Webapp steht (Texte `zert_text_*`, `setup_qr_pin_abtippen`).
@@ -209,8 +210,13 @@ drei Schritten, wo er in der Webapp steht (Texte `zert_text_*`, `setup_qr_pin_ab
 Unter einer gepinnten eigenen CA gilt nur ein Blatt, das einen Server
 ausweisen darf (EKU `serverAuth` oder gar keine EKU-Angabe).
 
-Weil die Wurzel gepinnt wird und nicht das Blatt, übersteht der Pin die
-regelmässige Erneuerung des Serverzertifikats durch Caddy. Andere Hosts
+Weil unter einer eigenen CA die Wurzel gepinnt wird und nicht das Blatt, übersteht
+der Pin die regelmässige Erneuerung des Serverzertifikats durch Caddy (alle paar
+Stunden). Unter einer öffentlichen CA fragt die App bei jedem neuen Serverschlüssel
+(Caddy erneuert ACME-Zertifikate standardmässig mit neuem Schlüssel, etwa alle 60
+Tage). Wechselt die Wurzel innerhalb einer Familie (ISRG Root X1 → X2, GTS R1 → R4
+usw.), fragt sie nicht; die Familien stehen fest in `CA_FAMILIEN`, nicht im frei
+wählbaren `O=` des Subjekts. Andere Hosts
 (GitHub für die Selbstaktualisierung) prüft nur die System-CA-Liste.
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
 ausdrücklich einschaltet.

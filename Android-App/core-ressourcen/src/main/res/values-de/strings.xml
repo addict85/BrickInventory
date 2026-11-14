@@ -995,6 +995,9 @@
     <string name="zert_bisher">Bisher bestätigt</string>
     <string name="zert_vertrauen">Diesem Zertifikat vertrauen</string>
     <string name="zert_vertrauen_neu">Neues Zertifikat annehmen</string>
+    <string name="zert_titel_schluessel_neu">Der Server hat einen neuen Schlüssel</string>
+    <string name="zert_text_schluessel_neu">%1$s zeigt ein gültiges Zertifikat derselben Zertifizierungsstelle, aber mit einem anderen Schlüssel als bisher. Das ist nach einer Erneuerung des Zertifikats normal – es kann aber auch ein Zertifikat sein, das jemand anderem ausgestellt wurde. Es wurde nichts gesendet. Nur annehmen, wenn das Zertifikat des Servers gerade erneuert wurde.</string>
+    <string name="zert_erstkontakt_abtippen">Fingerabdruck stattdessen abtippen</string>
     <string name="zert_nutzer_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
     <string name="zert_geaendert_eingabe">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Web-App scannen.</string>

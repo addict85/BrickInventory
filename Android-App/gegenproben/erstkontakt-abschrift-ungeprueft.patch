@@ -1,0 +1,17 @@
+Gegenprobe: Beim Erstkontakt gilt auch eine falsche Abschrift
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: beim Erstkontakt darf man abtippen
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -195,7 +195,7 @@
+     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
+         val f = _offen.value ?: return false
+         if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
+-        val freiwillig = f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && eingabe.isNullOrBlank() ||
++        val freiwillig = f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT ||
+             f.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+         if (!freiwillig && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
+         pins.merkePin(f.ablageSchluessel, f.fingerabdruck)

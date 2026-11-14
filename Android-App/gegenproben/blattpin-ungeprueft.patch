@@ -1,0 +1,17 @@
+Gegenprobe: Unter einer öffentlichen Wurzel gilt wieder jeder Serverschlüssel (zweiter Pin ungeprüft)
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: ein neuer Serverschluessel unter derselben oeffentlichen Wurzel fragt bewusst nach
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -250,7 +250,7 @@
+         val oeffentlicherPin = pin in systemWurzeln
+         if (!oeffentlicherPin && passtZumPin(chain, pin)) return
+         val lage = lage(chain, mit)
+-        if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return if (oeffentlicherPin) pruefeBlatt(chain[0], schluessel, ausCode) else Unit
++        if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return
+         val art = if (ausCode) ZertifikatUngeklaert.Art.CODE_ABWEICHUNG else ZertifikatUngeklaert.Art.GEAENDERT
+         throw gemeldet(ZertifikatUngeklaert(schluessel, lage.fingerabdruck, art, erwartet = pin, blatt = spkiFingerabdruck(chain[0])))
+     }
