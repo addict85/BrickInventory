@@ -1203,7 +1203,8 @@ a{color:var(--b600);text-underline-offset:2px}
 /* ── Fehler, Verbindung, Laden ──────────────────────────────────────────── */
 .fehler-zustand .leer-ico .ico{color:var(--a-schrift)}
 .fehler-zustand p{margin:0 0 .9rem}
-.offline-band{position:sticky;top:0;z-index:120;display:flex;justify-content:center;gap:8px;padding:8px 16px;
+/* Klebt unter Kopf und Leiste statt über ihnen (Höhe aus js/mobile.js): Oben deckte es das Benutzermenü zu. */
+.offline-band{position:sticky;top:var(--band-oben,0px);z-index:98;display:flex;justify-content:center;gap:8px;padding:8px 16px;
   background:var(--a100);color:var(--a-schrift);border-bottom:1px solid var(--bdr);font-size:var(--fs-2);font-weight:600;text-align:center}
 .offline-band[hidden]{display:none}
 /* Kompakt in einer Zeile; schmal steht der Knopf unter dem Text, das Schliessen bleibt oben rechts. */
