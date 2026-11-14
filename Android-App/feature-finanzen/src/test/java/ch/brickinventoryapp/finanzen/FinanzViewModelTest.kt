@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
 import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +41,7 @@ class FinanzViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle()) =
-        t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, FinanzenRepository(t.api), gemerkt))
+        t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFinanzenRepository(t.api), gemerkt))
 
     @Before
     fun auf() {

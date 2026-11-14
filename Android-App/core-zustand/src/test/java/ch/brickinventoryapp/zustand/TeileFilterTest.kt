@@ -6,8 +6,8 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.SetDateienRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testSetDateienRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /** Ein Testserver für [block], danach heruntergefahren. */
@@ -43,7 +43,7 @@ class TeileFilterTest {
     fun `die App ruft beide Filterlisten mit dem Blickfeld`() = mitServer { pfade ->
         // Beide mit `accounts`: Sonst zaehlten sie im Haushalt anders als die
         // Liste darunter — genau der Fehler, den der Server dabei hatte.
-        val teile = TeileRepository(TestApi.fuer(pfade.server))
+        val teile = testTeileRepository(TestApi.fuer(pfade.server))
         runBlocking {
             teile.getPartsFilterColors(konten = Kontoauswahl.Eigene)
             teile.getPartsCategories(konten = Kontoauswahl.Eigene)
@@ -60,7 +60,7 @@ class CsvAbbruchTest {
 
     @Test
     fun `die App ruft die Abbruch-Adresse`() = mitServer { pfade ->
-        runBlocking { SetDateienRepository(TestApi.fuer(pfade.server)).cancelCsvImport() }
+        runBlocking { testSetDateienRepository(TestApi.fuer(pfade.server)).cancelCsvImport() }
         assertEquals(listOf("POST /api/v1/sets/import/csv/cancel"), pfade.anfragen.toList())
     }
 }

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.finanzen
 
-import ch.brickinventoryapp.testing.GutscheineRepository
+import ch.brickinventoryapp.testing.testGutscheineRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -49,7 +49,7 @@ class GutscheinSichtschutzAnzeigeTest {
     fun `die Gutscheinseite ist geschuetzt, solange sie steht`() {
         val pfade = PfadServer()
         val vm = GutscheinViewModel(
-            repo = GutscheineRepository(pfade.imTakt()),
+            repo = testGutscheineRepository(pfade.imTakt()),
             texte = NummernTexte,
             leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = MeldungsKanal(),

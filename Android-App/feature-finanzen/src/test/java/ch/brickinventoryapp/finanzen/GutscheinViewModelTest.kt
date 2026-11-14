@@ -3,7 +3,7 @@ package ch.brickinventoryapp.finanzen
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.repository.GutscheineRepository
-import ch.brickinventoryapp.testing.GutscheineRepository
+import ch.brickinventoryapp.testing.testGutscheineRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
@@ -71,7 +71,7 @@ class GutscheinViewModelTest {
         val api = server.api
         kanal = MeldungsKanal()
         vm = GutscheinViewModel(
-            repo = GutscheineRepository(api),
+            repo = testGutscheineRepository(api),
             texte = NummernTexte,
             leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = kanal,

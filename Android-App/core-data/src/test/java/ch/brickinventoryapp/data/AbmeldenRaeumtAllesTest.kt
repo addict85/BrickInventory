@@ -52,10 +52,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import java.io.File
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.SpeicherAblage
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -152,8 +152,8 @@ class AbmeldenRaeumtAllesTest {
         // Der echte Haken (AppModule) leert die Widget-Zahlen; er liegt in der App.
         val widget = Abmeldehaken { ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().clear().commit() }
         val abmelden = Abmelden(bereinigung, widget, sitzung,
-            Blickfeld(SpeicherAblage(), HaushaltRepository(api), TeileRepository(api)),
-            Abmeldung(KontoRepository(api), prefs) { })
+            Blickfeld(SpeicherAblage(), testHaushaltRepository(api), testTeileRepository(api)),
+            Abmeldung(testKontoRepository(api), prefs) { })
         assertEquals(Abmeldeweg.SOFORT, abmelden.ausfuehren())
 
         val platte = store.data.first()

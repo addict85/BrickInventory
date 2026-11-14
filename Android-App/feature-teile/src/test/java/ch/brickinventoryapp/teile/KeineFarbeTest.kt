@@ -10,8 +10,8 @@ import ch.brickinventoryapp.vertrag.Part
 import ch.brickinventoryapp.vertrag.PartValuationItem
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testFigurenRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.teile.ui.TeileZiel
@@ -67,7 +67,7 @@ class KeineFarbeTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api), FigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
 
     private fun koerperZu(methodeUndPfad: String): String {
         val i = pfade.anfragen.indexOfFirst { it == methodeUndPfad }

@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.verwaltung
 
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -32,7 +32,7 @@ class MonitoringNachladenTest {
     )
     private val ordner = File(System.getProperty("java.io.tmpdir"), "bim-mon-nach-${System.nanoTime()}").apply { mkdirs() }
     private val api = TestApi.fuer(pfade.server)
-    private val vm = MonitoringViewModel(VerwaltungRepository(api), KontoRepository(api), NummernTexte, MeldungsKanal())
+    private val vm = MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), NummernTexte, MeldungsKanal())
 
     @After
     fun zu() {

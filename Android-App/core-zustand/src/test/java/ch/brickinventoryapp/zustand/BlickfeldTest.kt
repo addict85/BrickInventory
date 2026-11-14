@@ -4,8 +4,8 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
 import kotlinx.coroutines.test.runTest
@@ -55,7 +55,7 @@ class BlickfeldTest {
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-blick-${System.nanoTime()}").apply { mkdirs() }
         val api = TestApi.fuer(server)
         ablage = Ablage()
-        blick = Blickfeld(ablage, HaushaltRepository(api), TeileRepository(api))
+        blick = Blickfeld(ablage, testHaushaltRepository(api), testTeileRepository(api))
     }
 
     @After
