@@ -9,7 +9,7 @@ import { toast } from './meldungen.js';
 import { applySetAggregate, loadGallery } from './gallery.js';
 import { loadFinance } from './finance.js';
 import { CURRENCY, ME, curSet } from './zustand.js';
-import { closeModal } from './detailfelder.js';
+import { closeModal, setzeMengenfeld } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { acqSummary, summenText, umgerechnetText, kurzfassung } from './kaufpreis-anzeige.js';
 export { erfassungsPreis, renderAcquisitionSummary } from './kaufpreis-anzeige.js';
@@ -304,8 +304,7 @@ async function acqDelete(sn, id) {
   // curSet und das Mengenfeld im Set-Detail nachführen
   if (curSet?.set_number === sn) {
     curSet.quantity = /** @type {number} */ (d.new_quantity);
-    const qEl = G('m-qty');
-    if (qEl) qEl.value = String(d.new_quantity);
+    setzeMengenfeld(curSet.quantity);
   }
   // Erfassungsdialog neu laden
   const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
@@ -355,9 +354,8 @@ export function closeAcqModal() {
             preventScroll: true,
           });
         const total = ad.totals?.quantity ?? 0;
-        const qEl = G('m-qty');
-        if (qEl && total > 0) {
-          qEl.value = String(total);
+        if (total > 0) {
+          setzeMengenfeld(total);
           if (curSet) curSet.quantity = total;
         }
       })

@@ -121,27 +121,27 @@ internal object Ablagezeilen {
         s.instructions.map { AnleitungZeile(it.id, it.url, it.description, it.localPath, it.isManual) },
         s.bricklink?.let { BrickLinkZeile(it.type, it.number, it.url, it.exact, it.resolved) }, s.preisvergleichUrl)
 
-    fun set(z: SetZeile) = SetItem(z.setNumber, z.name, z.year, z.theme, z.pieces, z.minifigs, z.quantity, z.imageUrl,
-        z.imageLocal, z.addedAt, z.condition, z.storage, z.conditions, z.owners.map { KontoName(it.id, it.username) },
-        z.maxPurchasePrice, z.avgPurchasePrice, z.usedCount,
-        z.instructions.map { Instruction(it.id, it.url, it.description, it.localPath, it.isManual) },
-        z.bricklink?.let { BrickLinkRef(it.type, it.number, it.url, it.exact, it.resolved) }, z.preisvergleichUrl)
+    fun set(z: SetZeile) = SetItem(setNumber = z.setNumber, name = z.name, year = z.year, theme = z.theme, pieces = z.pieces, minifigs = z.minifigs, quantity = z.quantity, imageUrl = z.imageUrl,
+        imageLocal = z.imageLocal, addedAt = z.addedAt, condition = z.condition, storage = z.storage, conditions = z.conditions, owners = z.owners.map { KontoName(id = it.id, username = it.username) },
+        maxPurchasePrice = z.maxPurchasePrice, avgPurchasePrice = z.avgPurchasePrice, usedCount = z.usedCount,
+        instructions = z.instructions.map { Instruction(id = it.id, url = it.url, description = it.description, localPath = it.localPath, isManual = it.isManual) },
+        bricklink = z.bricklink?.let { BrickLinkRef(type = it.type, number = it.number, url = it.url, exact = it.exact, resolved = it.resolved) }, preisvergleichUrl = z.preisvergleichUrl)
 
     fun merk(m: Merkposten) = MerkZeile(m.setNumber, m.condition, m.createdAt, m.userId, m.name, m.year, m.numParts,
         m.imageUrl, m.imageLocal, m.marktpreis, m.waehrung, m.owned,
         m.alarm?.let { MerkAlarmZeile(it.richtung, it.schwelle, it.ausgeloest) }, m.preisvergleichUrl)
 
-    fun merk(z: MerkZeile) = Merkposten(z.setNumber, z.condition, z.createdAt, z.userId, z.name, z.year, z.numParts,
-        z.imageUrl, z.imageLocal, z.marktpreis, z.waehrung, z.owned,
-        z.alarm?.let { MerkpostenAlarm(it.richtung, it.schwelle, it.ausgeloest) }, z.preisvergleichUrl)
+    fun merk(z: MerkZeile) = Merkposten(setNumber = z.setNumber, condition = z.condition, createdAt = z.createdAt, userId = z.userId, name = z.name, year = z.year, numParts = z.numParts,
+        imageUrl = z.imageUrl, imageLocal = z.imageLocal, marktpreis = z.marktpreis, waehrung = z.waehrung, owned = z.owned,
+        alarm = z.alarm?.let { MerkpostenAlarm(richtung = it.richtung, schwelle = it.schwelle, ausgeloest = it.ausgeloest) }, preisvergleichUrl = z.preisvergleichUrl)
 
     fun teil(p: Part) = TeilZeile(p.partNumber, p.blPartNumber, p.partName, p.colorId, p.blColorId, p.colorName,
         p.colorHex, p.categoryName, p.imageUrl, p.imageLocal, p.totalQuantity, p.inSets, p.isSpare)
 
-    fun teil(z: TeilZeile) = Part(z.partNumber, z.blPartNumber, z.partName, z.colorId, z.blColorId, z.colorName,
-        z.colorHex, z.categoryName, z.imageUrl, z.imageLocal, z.totalQuantity, z.inSets, z.isSpare)
+    fun teil(z: TeilZeile) = Part(partNumber = z.partNumber, blPartNumber = z.blPartNumber, partName = z.partName, colorId = z.colorId, blColorId = z.blColorId, colorName = z.colorName,
+        colorHex = z.colorHex, categoryName = z.categoryName, imageUrl = z.imageUrl, imageLocal = z.imageLocal, totalQuantity = z.totalQuantity, inSets = z.inSets, isSpare = z.isSpare)
 
     fun vorrat(v: VorratsOrt) = VorratZeile(v.ort.id, v.ort.userId, v.ort.name, v.vorgabe)
 
-    fun vorrat(z: VorratZeile) = VorratsOrt(LagerortEintrag(z.id, z.userId, z.name), z.vorgabe)
+    fun vorrat(z: VorratZeile) = VorratsOrt(ort = LagerortEintrag(id = z.id, userId = z.userId, name = z.name), vorgabe = z.vorgabe)
 }

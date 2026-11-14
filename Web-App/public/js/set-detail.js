@@ -10,7 +10,15 @@ import { G, ico, aktiverReiter, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld } from './format.js';
 import { meldeAmFeld, toast, verwirfToasts } from './meldungen.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
-import { alarmBlock, closeModal, ladeAlarm, ladeOrtAuswahl, lagerortBlock, setzeAlarmFeld } from './detailfelder.js';
+import {
+  alarmBlock,
+  closeModal,
+  ladeAlarm,
+  ladeOrtAuswahl,
+  lagerortBlock,
+  setzeAlarmFeld,
+  setzeMengenfeld,
+} from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { delSet, loadGallery, loadStats, reimportParts } from './gallery.js';
 import { detailZeile, kontoAnzeige, oderStrich, skelettZeilen, oeffneErfassen } from './bausteine.js';
@@ -58,17 +66,17 @@ function mengenJeKonto(set, acqs) {
 function mengenBlock(set, acqs) {
   if (!imHaushalt(set))
     return html`<span class="menge-regler" data-rueckmeldung>
-      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${tRaw('detail.qty_less')}">−</button>
+      <button class="btn bs btn-sm detail-knopf menge-knopf" id="m-qty-dec" data-click="mQtyDec" aria-label="${tRaw('detail.qty_less')}">−</button>
       <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-feld menge-feld" aria-label="${tRaw('detail.qty')}" data-change="autosaveSet" />
       <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyInc" aria-label="${tRaw('detail.qty_more')}">+</button>
-      <span class="feld-status" role="status"></span></span>`;
+      <span class="feld-status" role="status"></span><span class="vh" id="m-qty-letztes">${tRaw('detail.qty_letztes')}</span></span>`;
   const konten = mengenJeKonto(set, acqs);
   const gesamt = konten.reduce((s, k) => s + k.menge, 0);
   const zeilen = konten.map(k => {
     const darf = !_schreibbar || _schreibbar.includes(k.id);
     const name = kontoName(k);
     const knopf = (/** @type {number} */ schritt, /** @type {string} */ zeichen, /** @type {string} */ was) =>
-      html`<button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mengeJeKonto" data-arg="${k.id}" data-arg2="${schritt}" aria-label="${tRaw(was)}: ${name}"${schritt < 0 && (k.menge === 0 || gesamt <= 1) ? ' disabled' : ''}>${zeichen}</button>`;
+      html`<button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mengeJeKonto" data-arg="${k.id}" data-arg2="${schritt}" aria-label="${tRaw(was)}: ${name}"${schritt < 0 && (k.menge === 0 || gesamt <= 1) ? html` disabled title="${tRaw(gesamt <= 1 ? 'detail.qty_letztes' : 'detail.qty_less')}"` : ''}>${zeichen}</button>`;
     return html`<div class="menge-konto" data-konto="${k.id}">
       <span class="menge-name">${name}</span>
       ${darf ? knopf(-1, '−', 'detail.qty_less') : ''}<span class="menge-zahl">${k.menge}</span>${darf ? knopf(1, '+', 'detail.qty_more') : ''}
@@ -237,8 +245,7 @@ export async function openModal(sn) {
   setzeHtml(G('m-det-links'), inhalt ? inhalt.links : '');
   setzeHtml(G('m-det'), inhalt ? inhalt.rechts : '');
 
-  const feld = G('m-qty');
-  if (feld) feld.value = String(set.quantity);
+  setzeMengenfeld(set.quantity);
 
   renderInstructions(set.instructions || [], sn);
   // Ab hier meinen die Alarm-Handler DIESEN Dialog.
@@ -371,15 +378,32 @@ G('set-modal').addEventListener('click', e => e.target === e.currentTarget && cl
 
 /** @type {number | null} */
 let _autosaveTimer = null;
+/** Die noch nicht gespeicherte Mengenänderung; null, wenn nichts aussteht. @type {(() => void) | null} */
+let _mengeAusstehend = null;
+
+/** Beim Schliessen sofort speichern: Der Dialog vergisst curSet, und 400 ms nach „−“ geschlossen ging die
+ * Änderung verloren. Beobachtet statt an jedem Schliessweg (Knopf, Esc, Hintergrund, Kaufpreis-Dialog). */
+function mengeSofortSpeichern() {
+  if (_autosaveTimer !== null) clearTimeout(_autosaveTimer);
+  _autosaveTimer = null;
+  _mengeAusstehend?.();
+}
+if (typeof MutationObserver === 'function')
+  new MutationObserver(() => {
+    if (!G('set-modal').classList.contains('open')) mengeSofortSpeichern();
+  }).observe(G('set-modal'), { attributes: true, attributeFilter: ['class'] });
 
 export function autosaveSet() {
   if (!curSet) return;
-  clearTimeout(_autosaveTimer);
-  _autosaveTimer = setTimeout(() => {
-    if (!curSet) return;
+  setzeMengenfeld();
+  if (_autosaveTimer !== null) clearTimeout(_autosaveTimer);
+  const set = curSet;
+  _mengeAusstehend = () => {
+    _mengeAusstehend = null;
     const qty = parseInt(G('m-qty').value, 10) || 1;
-    aendereMenge({ quantity: qty }, qty - (curSet.quantity || qty), G('m-qty'));
-  }, 400);
+    aendereMenge({ quantity: qty }, qty - (set.quantity || qty), G('m-qty'), set);
+  };
+  _autosaveTimer = setTimeout(mengeSofortSpeichern, 400);
 }
 
 /** Der Regler eines Kontos im Haushalt: ein Schritt, relativ, für genau dieses Konto.
@@ -397,10 +421,9 @@ function mengeJeKonto(konto, schritt) {
  * und die Kaufpreis-Linie im Diagramm). Eine Verringerung nennt den Kauf, der entfiel, und bietet Rückgängig
  * wie das Löschen; eine Erhöhung nennt den geschätzten Preis.
  * @param {{ quantity?: number, quantity_delta?: number, owner_user_id?: number }} body @param {number} schritt
- * @param {Element | null} feld
+ * @param {Element | null} feld @param {import('./zustand.js').Kachel | null} [set] das Set, auch wenn der Dialog schon zu ist
  */
-async function aendereMenge(body, schritt, feld) {
-  const set = curSet;
+async function aendereMenge(body, schritt, feld, set = curSet) {
   if (!set || !schritt) return;
   const sn = set.set_number;
   const d = await api('PUT', `/v1/sets/${esc(sn)}`, body);
@@ -451,7 +474,7 @@ async function frischeDetailAuf(sn, feld) {
   const menge = G('m-menge');
   if (menge) setzeHtml(menge, mengenBlock(d.set, acqs));
   const feldNeu = G('m-qty');
-  if (feldNeu) feldNeu.value = String(d.set.quantity);
+  setzeMengenfeld(d.set.quantity);
   const sumEl = G('m-acq-summary');
   if (sumEl) setzeHtml(sumEl, kurzfassung(acqs, sn));
   if (G('acq-modal').classList.contains('open')) renderAcqModalBody(sn, acqs, ad?.totals);

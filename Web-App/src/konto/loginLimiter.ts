@@ -80,7 +80,7 @@ function _prune() {
   for (const [k, v] of rueckfall().eintraege) if (v.firstAt < cutoff) rueckfall().eintraege.delete(k);
 }
 
-const _restMin = (firstAt: number, windowMin: number, now = Date.now()) =>
+const _restMin = (firstAt: number, windowMin: number, now: number) =>
   Math.max(1, Math.ceil((firstAt + windowMin * 60000 - now) / 60000));
 
 async function _read(k: KontoKontext, key: string, windowMin: number): Promise<Zaehlerstand | null> {
@@ -95,11 +95,11 @@ async function _read(k: KontoKontext, key: string, windowMin: number): Promise<Z
   } catch (fehler) {
     imSpeicher('lesen', fehler);
     const e = rueckfall().eintraege.get(key);
-    if (!e || Date.now() - e.firstAt > windowMin * 60000) return null;
+    if (!e || k.uhr.jetzt() - e.firstAt > windowMin * 60000) return null;
     return {
       count: e.count,
-      waitMin: _restMin(e.firstAt, windowMin),
-      seitLetztem: (Date.now() - (e.lastAt ?? e.firstAt)) / 1000,
+      waitMin: _restMin(e.firstAt, windowMin, k.uhr.jetzt()),
+      seitLetztem: (k.uhr.jetzt() - (e.lastAt ?? e.firstAt)) / 1000,
     };
   }
 }
@@ -109,7 +109,7 @@ async function _bump(k: KontoKontext, key: string, windowMin: number): Promise<n
     return await k.anmeldezaehler.erhoehe(key, windowMin);
   } catch (fehler) {
     imSpeicher('zählen', fehler);
-    const now = Date.now();
+    const now = k.uhr.jetzt();
     const e = rueckfall().eintraege.get(key);
     if (!e || now - e.firstAt > windowMin * 60000)
       rueckfall().eintraege.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
@@ -149,7 +149,7 @@ async function _reserviere(
   } catch (fehler) {
     imSpeicher('reservieren', fehler);
     // Im Prozessspeicher ist dieser Block ohne await atomar.
-    const now = Date.now();
+    const now = k.uhr.jetzt();
     let e = rueckfall().eintraege.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) {
       e = { count: 0, firstAt: now, lastAt: null, laufend: 0 };
@@ -242,18 +242,37 @@ export async function gibAnmeldeplatzFrei(k: KontoKontext, ip: string, username:
   await _freigeben(k, _adressKey(ip));
 }
 
-/** @returns die Fehlversuche des Kontos im Fenster */
-export async function anmeldungGescheitert(k: KontoKontext, ip: string, username: string): Promise<number> {
+/** @returns die Fehlversuche des Kontos im Fenster und ob die Tagesgrenze gerade erreicht ist */
+export async function anmeldungGescheitert(
+  k: KontoKontext,
+  ip: string,
+  username: string,
+): Promise<{ n: number; tagesgrenze: boolean }> {
   const kennung = await kontoKennung(k, username);
   await _bump(k, _key(ip, kennung), WINDOW_MIN);
   const n = await _bump(k, _nameKey(kennung), WINDOW_MIN);
   await _bump(k, _adressKey(ip), WINDOW_MIN);
-  return n;
+  const tag = await _bump(k, _tagKey(kennung), KONTO_FENSTER_MIN);
+  return { n, tagesgrenze: tag === MAX_JE_KONTO_TAG };
+}
+
+/** Eine bekannte Adresse umgeht die Bremse je Konto; wer dort sitzt, riete sonst 480 Mal am Tag.
+ * Darüber (alle Adressen) gilt das Passwort nur mit zweitem Faktor; Passkey und „Passwort
+ * vergessen“ bleiben offen, das Zurücksetzen leert den Zähler. */
+export const MAX_JE_KONTO_TAG = 50;
+const _tagKey = (kennung: string) => `login-tag|${kennung}`;
+export async function tagesgrenzeErreicht(k: KontoKontext, username: string): Promise<boolean> {
+  const kennung = await kontoKennung(k, username);
+  return ((await _read(k, _tagKey(kennung), KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_JE_KONTO_TAG;
+}
+export async function loescheTagesgrenze(k: KontoKontext, uid: number): Promise<void> {
+  await _clear(k, _tagKey(`konto:${uid}`));
 }
 
 export type Anmeldeereignis =
   | 'anmeldung_fehlgeschlagen'
   | 'anmeldung_gesperrt'
+  | 'anmeldung_tagesgrenze'
   | 'zweiter_faktor_falsch'
   | 'bestaetigung_fehlgeschlagen'
   | 'bestaetigung_gesperrt'
@@ -325,7 +344,7 @@ export async function zaehleAnfrage(
     return { count: parseInt(r.count, 10) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
   } catch (fehler) {
     imSpeicher('anfrage', fehler);
-    const now = Date.now();
+    const now = k.uhr.jetzt();
     let e = rueckfall().eintraege.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) {
       e = { count: 0, firstAt: now, lastAt: now, laufend: 0 };

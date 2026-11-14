@@ -103,7 +103,8 @@ test('makeProxyThumb schreibt über eine temporäre Datei', async t => {
   const { ergebnis, spur } = await mitRenameSpur(() => _req('src/bilder/proxyThumbs.js').makeProxyThumb(quelle, ziel));
   assert.equal(ergebnis, true);
   pruefeAtomar(spur, ziel);
-  assert.deepEqual([(await sharp(ziel).metadata()).width, (await sharp(ziel).metadata()).height], [200, 200]);
+  // 400 × 300 eingepasst, nicht zugeschnitten (UX-Prüfung 25, B1).
+  assert.deepEqual([(await sharp(ziel).metadata()).width, (await sharp(ziel).metadata()).height], [200, 150]);
 });
 
 test('eine unbrauchbar kleine Vorschau wird verworfen, ausgeliefert wird das Original', async t => {

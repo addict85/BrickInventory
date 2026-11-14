@@ -5,6 +5,7 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.KontoApi
+import ch.brickinventoryapp.vertrag.Erledigt
 import ch.brickinventoryapp.vertrag.AndereBeendenAnfrage
 import ch.brickinventoryapp.vertrag.AndereBeendet
 import ch.brickinventoryapp.vertrag.AppThemeResponse
@@ -16,8 +17,7 @@ import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.LoginRequest
 import ch.brickinventoryapp.vertrag.LoginResponse
 import ch.brickinventoryapp.vertrag.MeResponse
-import ch.brickinventoryapp.vertrag.PasskeyAnmeldung
-import ch.brickinventoryapp.vertrag.PasskeyLoginRequest
+import ch.brickinventoryapp.vertrag.PasskeyAnmeldungAnfrage
 import ch.brickinventoryapp.vertrag.PasskeyOptionen
 import ch.brickinventoryapp.vertrag.PasskeyOptionenAnfrage
 import ch.brickinventoryapp.vertrag.PasswortAenderung
@@ -35,7 +35,7 @@ import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.vertrag.ZweiterFaktorCodes
 import ch.brickinventoryapp.vertrag.ZweiterFaktorEinrichtung
 import ch.brickinventoryapp.vertrag.ZweiterFaktorStand
-import ch.brickinventoryapp.vertrag.ZweiterFaktorWege
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.json.Json
@@ -82,8 +82,8 @@ class KontoRepositoryImpl @Inject constructor(
         val r = sicherAufrufen {
             val https = NetworkPolicy.istHttps(serverUrl)
             val antwort = if (passkey != null)
-                api.loginMitPasskey(PasskeyLoginRequest(username, password, passkey, scope = scope, neverExpires = https))
-            else api.login(LoginRequest(username, password, code = code, scope = scope, neverExpires = https))
+                api.loginMitPasskey(LoginRequest(username = username, password = password, passkey = passkey, scope = scope, neverExpires = https))
+            else api.login(LoginRequest(username = username, password = password, code = code, scope = scope, neverExpires = https))
             if (antwort.code() == 401) {
                 val rumpf = antwort.errorBody()?.string()
                 val geparst = rumpf?.let { runCatching { json.decodeFromString<LoginResponse>(it) }.getOrNull() }
@@ -99,21 +99,21 @@ class KontoRepositoryImpl @Inject constructor(
 
     /** Die Optionen für den Credential Manager; [zweck] wie PASSKEY_ANMELDEN. */
     override suspend fun passkeyOptionen(zweck: String): Ergebnis<PasskeyOptionen> =
-        sicherAufrufen { api.passkeyOptionen(PasskeyOptionenAnfrage(zweck)) }
+        sicherAufrufen { api.passkeyOptionen(PasskeyOptionenAnfrage(zweck = zweck)) }
 
     /** Ohne Passwort; derselbe Token wie bei [login], mit denselben Regeln für den Ablauf. */
     override suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String): Ergebnis<LoginResponse> =
-        sicherAufrufen { api.passkeyAnmelden(PasskeyAnmeldung(antwort, scope = scope,
+        sicherAufrufen { api.passkeyAnmelden(PasskeyAnmeldungAnfrage(antwort = antwort, scope = scope,
             neverExpires = NetworkPolicy.istHttps(serverUrl))) }
 
     override suspend fun qrLogin(token: String, label: String): Ergebnis<QrMeldung> =
-        sicherAufrufen { api.qrLogin(QrLoginRequest(token, label)) }
+        sicherAufrufen { api.qrLogin(QrLoginRequest(token = token, label = label)) }
 
     override suspend fun qrAbholen(abholung: String, vorschau: Boolean): Ergebnis<QrAbholung> =
-        sicherAufrufen { api.qrAbholen(QrAbholRequest(abholung, vorschau)) }
+        sicherAufrufen { api.qrAbholen(QrAbholRequest(abholung = abholung, vorschau = vorschau)) }
 
-    override suspend fun qrVerwerfen(abholung: String): Ergebnis<GenericResponse> =
-        sicherAufrufen { api.qrVerwerfen(QrVerwerfen(abholung)) }
+    override suspend fun qrVerwerfen(abholung: String): Ergebnis<Erledigt> =
+        sicherAufrufen { api.qrVerwerfen(QrVerwerfen(abholung = abholung)) }
 
     override suspend fun getMe(): Ergebnis<MeResponse> = sicherAufrufen { api.getMe() }
 
@@ -125,7 +125,7 @@ class KontoRepositoryImpl @Inject constructor(
         sicherAufrufen { api.register(request) }
 
     override suspend fun forgotPassword(email: String): Ergebnis<ForgotPasswordResponse> =
-        sicherAufrufen { api.forgotPassword(ForgotPasswordRequest(email)) }
+        sicherAufrufen { api.forgotPassword(ForgotPasswordRequest(email = email)) }
 
     override suspend fun getProfil(): Ergebnis<ProfilResponse> = sicherAufrufen { api.getProfil() }
 
@@ -147,7 +147,7 @@ class KontoRepositoryImpl @Inject constructor(
         sicherAufrufen { api.updateProfil(aenderung) }
 
     override suspend fun changePassword(aktuell: String, neu: String, code: String?): Ergebnis<GenericResponse> =
-        sicherAufrufen { api.changePassword(PasswortAenderung(aktuell, neu, code)) }
+        sicherAufrufen { api.changePassword(PasswortAenderung(current = aktuell, newPassword = neu, code = code)) }
 
     override suspend fun getTokens(): Ergebnis<TokensResponse> = sicherAufrufen { api.getTokens() }
 
@@ -155,7 +155,7 @@ class KontoRepositoryImpl @Inject constructor(
         sicherAufrufen { api.revokeToken(tokenId, bestaetigung) }
 
     override suspend fun andereBeenden(bestaetigung: ZweiterFaktorAnfrage): Ergebnis<AndereBeendet> =
-        sicherAufrufen { api.andereBeenden(AndereBeendenAnfrage(bestaetigung.password, bestaetigung.code)) }
+        sicherAufrufen { api.andereBeenden(AndereBeendenAnfrage(password = bestaetigung.password, code = bestaetigung.code)) }
 
     /**
      * Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch).
@@ -215,3 +215,7 @@ class KontoRepositoryImpl @Inject constructor(
 /** Die Antwort auf [KontoRepository.login]; [passkeyStattCode], wenn der Server beim
  * zweiten Faktor auch einen Passkey nimmt. */
 data class Anmeldeantwort(val antwort: LoginResponse, val passkeyStattCode: Boolean = false)
+
+/** Aus der 401-Antwort auf den zweiten Faktor: Geht statt des Codes ein Passkey? Steht nicht im Vertrag (Fehler trägt Zusatzfelder frei). */
+@Serializable
+private data class ZweiterFaktorWege(val passkey: Boolean = false)

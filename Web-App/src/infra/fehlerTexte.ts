@@ -48,6 +48,10 @@ export const FEHLER = {
     de: 'Zu viele Fehlversuche — bitte in {minuten} Min. erneut versuchen',
     en: 'Too many failed attempts — please try again in {minuten} min',
   },
+  konto_tagesgrenze: {
+    de: 'Zu viele Fehlversuche für dieses Konto in 24 Stunden. Anmelden geht jetzt nur mit Passwort und Code des zweiten Faktors, mit Passkey oder nach „Passwort vergessen“.',
+    en: 'Too many failed attempts for this account in 24 hours. Sign-in now works only with password and second-factor code, with a passkey or after “Forgot password”.',
+  },
   anmeldedaten_ungueltig: { de: 'Ungültige Anmeldedaten', en: 'Invalid credentials' },
   name_oder_email_eingeben: {
     de: 'Bitte Benutzername oder E-Mail-Adresse eingeben.',

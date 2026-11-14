@@ -410,6 +410,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
         pool,
         dieBasis,
         k.erfassungZeitzone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
+        systemPool,
       ),
     eigeneVerbindung,
     mitCommitBegleiter,

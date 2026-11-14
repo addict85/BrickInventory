@@ -1,6 +1,6 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
+import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository';
 import type { Uhr } from '../infra/uhr';
@@ -12,6 +12,9 @@ export interface EinstellungenAbhaengigkeiten {
   faecher: Faecher;
 }
 
+/** Mailserver, Registrierung, Schlüssel stellt keine eingeschleuste Abfrage um (0117). */
+const GLOBAL = 'globale Einstellungen schreibt nur die Systemrolle';
+
 export const zugang = (db: Db) => ({
   repository: {
     nutzerWert: mit(db)(repository.nutzerWert),
@@ -19,10 +22,10 @@ export const zugang = (db: Db) => ({
     schreibeNutzerWert: mit(db)(repository.schreibeNutzerWert),
     loescheNutzerWert: mit(db)(repository.loescheNutzerWert),
     nutzerWerte: mit(db)(repository.nutzerWerte),
-    schreibeGlobalenWert: mit(db)(repository.schreibeGlobalenWert),
-    loescheGlobaleWerte: mit(db)(repository.loescheGlobaleWerte),
+    schreibeGlobalenWert: imSystem(db, GLOBAL, repository.schreibeGlobalenWert),
+    loescheGlobaleWerte: imSystem(db, GLOBAL, repository.loescheGlobaleWerte),
     globaleWerte: mit(db)(repository.globaleWerte),
-    ersetzeGlobalenWert: mit(db)(repository.ersetzeGlobalenWert),
+    ersetzeGlobalenWert: imSystem(db, GLOBAL, repository.ersetzeGlobalenWert),
   },
 });
 export type EinstellungenKontext = Kontext<EinstellungenAbhaengigkeiten, ReturnType<typeof zugang>>;

@@ -6,6 +6,7 @@ import ch.brickinventoryapp.vertrag.MinifigsResponse
 import ch.brickinventoryapp.vertrag.PartsValuationResponse
 import ch.brickinventoryapp.vertrag.SetsResponse
 import ch.brickinventoryapp.vertrag.ValuationResponse
+import ch.brickinventoryapp.vertrag.present
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull

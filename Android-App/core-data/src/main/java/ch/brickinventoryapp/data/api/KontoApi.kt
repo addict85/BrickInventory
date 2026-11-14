@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.api
 
+import ch.brickinventoryapp.vertrag.Erledigt
 import ch.brickinventoryapp.vertrag.AndereBeendenAnfrage
 import ch.brickinventoryapp.vertrag.AndereBeendet
 import ch.brickinventoryapp.vertrag.DefaultConditionResponse
@@ -10,8 +11,7 @@ import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.LoginRequest
 import ch.brickinventoryapp.vertrag.LoginResponse
 import ch.brickinventoryapp.vertrag.MeResponse
-import ch.brickinventoryapp.vertrag.PasskeyAnmeldung
-import ch.brickinventoryapp.vertrag.PasskeyLoginRequest
+import ch.brickinventoryapp.vertrag.PasskeyAnmeldungAnfrage
 import ch.brickinventoryapp.vertrag.PasskeyOptionen
 import ch.brickinventoryapp.vertrag.PasskeyOptionenAnfrage
 import ch.brickinventoryapp.vertrag.PasswortAenderung
@@ -61,16 +61,16 @@ interface KontoApi {
     suspend fun qrAbholen(@Body request: QrAbholRequest): Response<QrAbholung>
 
     @POST("api/v1/auth/qr-login/verwerfen")
-    suspend fun qrVerwerfen(@Body request: QrVerwerfen): Response<GenericResponse>
+    suspend fun qrVerwerfen(@Body request: QrVerwerfen): Response<Erledigt>
 
     @POST("api/v1/auth/login")
-    suspend fun loginMitPasskey(@Body request: PasskeyLoginRequest): Response<LoginResponse>
+    suspend fun loginMitPasskey(@Body request: LoginRequest): Response<LoginResponse>
 
     @POST("api/v1/auth/passkey/anmelden/optionen")
     suspend fun passkeyOptionen(@Body request: PasskeyOptionenAnfrage): Response<PasskeyOptionen>
 
     @POST("api/v1/auth/passkey/anmelden")
-    suspend fun passkeyAnmelden(@Body request: PasskeyAnmeldung): Response<LoginResponse>
+    suspend fun passkeyAnmelden(@Body request: PasskeyAnmeldungAnfrage): Response<LoginResponse>
 
     @POST("api/v1/auth/logout")
     suspend fun logout(): Response<GenericResponse>

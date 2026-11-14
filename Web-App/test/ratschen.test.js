@@ -443,10 +443,10 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
 
 test('direkte Uhr-Aufrufe in Fachbereichen werden weniger, nie mehr', () => {
   // Die Zeit kommt über k.uhr (src/infra/uhr.ts): Ein Test stellt sie, statt zu warten.
-  // Übrig sind Drosseln mit echten Zeitgebern, Zeitstempel ohne Kontext und src/konto
-  // (dort arbeitet gerade eine andere Runde an Sitzungsfristen und Anmeldebremse).
-  // Gegenprobe (14.11.2026): `const x = Date.now();` in src/sets/setService.ts → rot (44 von 43).
-  const SCHRANKE = 43;
+  // Übrig sind Drosseln mit echten Zeitgebern, die Sitzungsmiddleware (Fristen des Kekses) und
+  // Zeitstempel ohne Kontext.
+  // Gegenprobe (14.11.2026): `const x = Date.now();` in src/sets/setService.ts → rot.
+  const SCHRANKE = 34;
   const UHR = /\bDate\.now\(\)|\bnew Date\(\)/g;
   assert.equal('Date.now(); new Date(); new Date(x); k.uhr.jetzt()'.match(UHR)?.length, 2, 'Selbstbeweis');
   const fach = (/** @type {string} */ f) =>
@@ -487,7 +487,7 @@ test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
   // Übersetzer ohnehin ein Typargument.
   // Gegenprobe (05.11.2026): Schranke auf 68 → rot. Zeilentypen bindet db/zeilen.ts ans Schema.
-  const SCHRANKE = 31;
+  const SCHRANKE = 23;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -1170,7 +1170,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
   // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
   // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
   // Gegenprobe (13.11.2026, Schranke 87): in gutscheine.js ein `${ungeprueft(KOPIE_ICON_SVG)}` zurück → rot.
-  const SCHRANKE = 85;
+  const SCHRANKE = 83;
   assert.deepEqual(
     ungeprueftArgumente(
       "function ungeprueft(t) {}\na(ungeprueft(`<i>${b(c)}</i>`), ungeprueft(d.map(e).join('')), x.ungeprueft(f))",
@@ -1208,7 +1208,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
   // Gegenprobe (09.11.2026): an finance.js Leerzeilen gehängt → rot.
-  const SCHRANKE_GROESSTE = 778,
+  const SCHRANKE_GROESSTE = 772,
     SCHRANKE_UEBER_600 = 12;
   const laengen = oberflaeche().map(f => ({
     f: path.relative(WEB, f),

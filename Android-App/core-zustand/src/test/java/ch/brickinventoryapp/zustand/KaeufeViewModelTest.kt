@@ -43,10 +43,10 @@ import ch.brickinventoryapp.testing.text
  *      der Ablage entfernt → rot „ein Besitzerwechsel meldet die mitgewanderten Teile …“
  *   D  in lade() den Verlauf eines anderen Eintrags stehen gelassen → rot
  *      „der Preisverlauf eines anderen Eintrags bleibt nicht stehen“
- *   E  in UpdateAcquisitionRequest.fuerStueck() `purchasePrice = preis` statt
+ *   E  in aenderungFuerStueck() `purchasePrice = preis` statt
  *      `unitPrice = preis` → rot „ein Set schickt purchase_price, Teile und
  *      Figuren unit_price“ (Teil)
- *   F  in HaushaltRepository.updateAcquisition() fuerStueck statt fuerSet →
+ *   F  in HaushaltRepository.updateAcquisition() aenderungFuerStueck statt aenderungFuerSet →
  *      rot an derselben Stelle (Set)
  *   G  in updateManualAcquisition() den Rumpf von Hand gebaut,
  *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → rot an
@@ -89,7 +89,7 @@ class KaeufeViewModelTest {
 
     @Test
     fun `ein geaenderter Kauf eines Sets schreibt seine Zusammenfassung in die Ablage und laedt die Liste neu`() {
-        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1", usedCount = 0))) }
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1", usedCount = 0))) }
         val vm = vm()
         vm.loadAcquisitions("75192-1")
         assertTrue("Liste geladen", vm.manDetailState.value.acquisitions.isNotEmpty())

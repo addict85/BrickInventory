@@ -183,7 +183,7 @@ class CatalogViewModelTest {
     fun `die Jahresverteilung kommt vom Server, mit den Filtern der Liste`() = mitVm { vm ->
         fake.antworten["getCatalogSets"] = seite("10294-1")
         fake.antworten["getCatalogYearVerteilung"] = CatalogYearVerteilungResponse(
-            success = true, years = listOf(JahrAnzahl(1999, 4), JahrAnzahl(null, 2), JahrAnzahl(2024, 7)))
+            success = true, years = listOf(JahrAnzahl(year = 1999, n = 4), JahrAnzahl(year = null, n = 2), JahrAnzahl(year = 2024, n = 7)))
         vm.setCatalogSort(Katalogsortierung.JAHR_ABSTEIGEND)
         vm.setCatalogTheme(158)
         advanceUntilIdle()
@@ -202,7 +202,7 @@ class CatalogViewModelTest {
         advanceUntilIdle()
         val alarm = synchronized(fake.argumente) { fake.argumente.single { it.first == "setPreisalarm" }.second }
         assertEquals("10305-1", alarm[0])
-        assertEquals(PreisalarmRequest(Alarmrichtung.UEBER, 120.0, Zustand.GEBRAUCHT), alarm[1])
+        assertEquals(PreisalarmRequest(richtung = Alarmrichtung.UEBER, schwelle = 120.0, condition = Zustand.GEBRAUCHT), alarm[1])
         assertEquals(Meldung.Ressource(R.string.wanted_added), t.meldungen.meldung.value)
     }
 

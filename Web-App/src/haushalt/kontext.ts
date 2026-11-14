@@ -30,6 +30,7 @@ export const zugang = (db: Db) => ({
     gibEinladungFrei: imSystem(db, FREMDE_EINLADUNG, repository.gibEinladungFrei),
     verknuepfe: mit(db)(repository.verknuepfe),
     trenne: mit(db)(repository.trenne),
+    loeseUnterkontoUndEinladungen: mit(db)(repository.loeseUnterkontoUndEinladungen),
     loescheGetrenntHinweis: mit(db)(repository.loescheGetrenntHinweis),
     offeneEinladungen: mit(db)(repository.offeneEinladungen),
     getrennteKetten: mit(db)(repository.getrennteKetten),

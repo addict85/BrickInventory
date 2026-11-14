@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 
 /** Challenges liegen nur als Hash vor. */
 
@@ -94,7 +94,7 @@ export function desKontos(db: DbSchnittstelle, uid: number) {
 }
 
 export async function hatWelche(db: DbSchnittstelle, uid: number): Promise<boolean> {
-  return !!(await db.get('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]));
+  return !!(await db.get<Treffer>('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]));
 }
 
 export async function loescheAlleDesKontos(db: DbSchnittstelle, uid: number): Promise<number> {

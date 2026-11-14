@@ -246,6 +246,7 @@ const statusIcon = (/** @type {string} */ s, /** @type {JobStatus} */ j) => {
   if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
   return ico('pause');
 };
+/** Nur bei laufender Arbeit: Ein stehender Balken las sich wie ein hängender Lauf. */
 const bar = (/** @type {number} */ v, /** @type {number} */ gesamt) => {
   if (!gesamt) return '';
   const pct = Math.min(100, Math.round((v / gesamt) * 100));
@@ -326,7 +327,7 @@ export async function loadMonitor() {
           ([k, j]) => html`<tr>
           <td><span class="mon-name">${jobIconSvg(k === 'bricksetRetry' ? 'brickset' : k)}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
-            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedText(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'wann') : ''}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j).length ? aktionen(k, j) : html`<span class="mon-leise">–</span>`}</div></td>
@@ -505,7 +506,7 @@ async function zeigeAuftraege() {
       <tbody>${arten.map(
         art => html`<tr>
         <td>${artName(art)}</td>
-        <td class="zahl">${ziffer(zahl[art].offen)}${nachFehler[art] ? html` <span class="mon-leise">${tRaw('monitor.auftraege.davon_nach_fehler', { n: nachFehler[art] })}</span>` : ''}</td>
+        <td class="zahl">${ziffer(zahl[art].offen)}${nachFehler[art] ? html`<span class="mon-leise mon-zusatz">${tRaw('monitor.auftraege.davon_nach_fehler', { n: nachFehler[art] })}</span>` : ''}</td>
         <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
         <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
         <td>${naechster[art] ? fmtDatum(naechster[art], 'wann') : ''}</td>

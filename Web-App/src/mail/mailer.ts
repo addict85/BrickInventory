@@ -286,6 +286,7 @@ export type KontoHinweis =
   | 'zweiter_faktor_eingerichtet'
   | 'zweiter_faktor_abgeschaltet'
   | 'anmeldung_gebremst'
+  | 'anmeldung_tagesgrenze'
   | 'zweiter_faktor_gesperrt'
   | 'bestaetigung_gebremst'
   | 'einstellungen_geaendert'
@@ -297,8 +298,12 @@ export type KontoHinweis =
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
+/** Was „Passwort vergessen“ ausser dem Passwort beendet hat. */
+export type Geloest = { haushalt: string[]; einladungen: number; adresse: string | null };
+
 /** Der eine Satz, was am Konto geschah. */
 type HinweisAngaben = {
+  geloest?: Geloest | undefined;
   passkey?: string;
   konto?: string | undefined;
   durch?: string | undefined;
@@ -323,6 +328,28 @@ function uebernahme(o: HinweisAngaben, en: boolean): { was: string; bis: string 
   return { was, bis: o.bis ? `${o.bis.slice(0, 16).replace('T', ' ')} UTC` : '' };
 }
 
+/** Der Inhaber soll sehen, was ein Eindringling angelegt haben könnte und wegfiel. */
+function geloestSatz(g: Geloest | undefined, en: boolean): string {
+  if (!g) return '';
+  const teile: string[] = [];
+  if (g.haushalt.length)
+    teile.push(
+      en
+        ? `the link to ${g.haushalt.map(n => `“${n}”`).join(', ')} (these accounts could see your collection)`
+        : `die Verknüpfung mit ${g.haushalt.map(n => `„${n}“`).join(', ')} (diese Konten sahen deine Sammlung)`,
+    );
+  if (g.adresse)
+    teile.push(
+      en
+        ? `the pending change of your email address to ${g.adresse}`
+        : `die ausstehende Änderung deiner E-Mail-Adresse auf ${g.adresse}`,
+    );
+  if (g.einladungen)
+    teile.push(en ? `${g.einladungen} open household invitation(s)` : `${g.einladungen} offene Haushaltseinladung(en)`);
+  if (!teile.length) return '';
+  return en ? ` Also removed: ${teile.join('; ')}.` : ` Ausserdem aufgehoben: ${teile.join('; ')}.`;
+}
+
 function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string {
   const u = uebernahme(o, en);
   return {
@@ -339,9 +366,11 @@ function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string 
       ? `a new passkey (“${o.passkey ?? ''}”) was added to your account.`
       : `deinem Konto wurde ein neuer Passkey („${o.passkey ?? ''}“) hinzugefügt.`,
     passwort_geaendert: en ? 'the password of your account was changed.' : 'das Passwort deines Kontos wurde geändert.',
-    passwort_zurueckgesetzt: en
-      ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
-      : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.',
+    passwort_zurueckgesetzt:
+      (en
+        ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
+        : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.') +
+      geloestSatz(o.geloest, en),
     token_neu: en
       ? `a new app token (“${o.passkey ?? ''}”) was created for your account.`
       : `für dein Konto wurde ein neuer App-Zugang („${o.passkey ?? ''}“) erzeugt.`,
@@ -372,6 +401,9 @@ function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string 
     anmeldung_gebremst: en
       ? 'there were several failed sign-in attempts for your account; further attempts are slowed down for now.'
       : 'für dein Konto gab es mehrere fehlgeschlagene Anmeldeversuche; weitere Versuche werden vorerst gebremst.',
+    anmeldung_tagesgrenze: en
+      ? 'there were 50 failed sign-in attempts for your account within 24 hours. For now, signing in with the password only works together with the second factor; a passkey or “Forgot password” work as before. Change your password if it may be known.'
+      : 'für dein Konto gab es 50 fehlgeschlagene Anmeldeversuche in 24 Stunden. Mit dem Passwort geht die Anmeldung vorerst nur zusammen mit dem zweiten Faktor; Passkey und „Passwort vergessen“ gehen wie bisher. Ändere dein Passwort, falls es bekannt sein könnte.',
     zweiter_faktor_gesperrt: en
       ? 'someone entered the right password for your account but many wrong codes of the second factor. For up to 24 hours, sign-in only works with a recovery code or a passkey. Change your password: it is probably known.'
       : 'für dein Konto wurde das richtige Passwort, aber vielfach ein falscher Code des zweiten Faktors eingegeben. Bis zu 24 Stunden geht die Anmeldung nur mit einem Wiederherstellungscode oder Passkey. Ändere dein Passwort: Es ist vermutlich bekannt.',

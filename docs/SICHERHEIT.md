@@ -28,6 +28,17 @@ den Commits, nicht hier.
    gemeinsame Daten (Bildcache, Katalog, Anleitungen) zu verändern.
 4. **Böswilliger Upload** — PDF/Bild mit falschem Typ, Entpackbombe,
    Pfadteile im Namen.
+
+**Was der Zeilenschutz nicht leistet.** Web- und Jobs-Prozess halten beide die
+Zugangsdaten der Laufzeitrolle **und** der Systemrolle (`BYPASSRLS`): Wer Code
+in einem der Prozesse ausführt (eingeschleuste Abhängigkeit, RCE), liest und
+schreibt alles, was die Systemrolle darf, also jedes Konto. Zeilenschutz und
+Rollenrechte (0111–0118) fangen **Logikfehler** ab — ein vergessener Filter auf
+`user_id`, eine eingeschleuste Abfrage über die Laufzeitrolle —, nicht
+Codeausführung im Prozess. Dagegen helfen nur Lieferkette, Container-Härtung
+(ohne root, schreibgeschützt) und die getrennte Migrationsrolle, die keinem
+Prozess der App gehört. Das Verwaltungsprotokoll ist auch für die Systemrolle
+nur anfügbar: Eine Spur lässt sich so nicht nachträglich tilgen.
 5. **Lieferkette** — npm-Pakete, Actions, Container-Images, fremde
    Antworten von Rebrickable, Brickset, LEGO.
 
@@ -35,8 +46,9 @@ den Commits, nicht hier.
 
 ### Transport (1)
 - HTTPS als Standard: Caddy vor der App, die App veröffentlicht keinen Port;
-  Port 80 leitet um und liefert nur `/ca.crt`: `compose.yaml`, `Caddyfile` —
-  `compose-haertung`.
+  Port 80 leitet nur um, `/ca.crt` gibt es nur über HTTPS (nach einmal
+  bestätigter Warnung, Abgleich des Fingerabdrucks): `compose.yaml`,
+  `Caddyfile`, `routes/zertifikat.ts` — `compose-haertung`, `tls-wurzel-db`.
 - Keine CA ohne Namensbeschränkung als stiller Rückfall: Caddy startet nur mit
   eigener, auf `BRICK_HOST` beschränkter CA (`scripts/ca-einrichten.sh`), mit
   `BRICK_TLS=acme` (öffentlicher Name) oder ausdrücklich mit
@@ -197,6 +209,13 @@ den Commits, nicht hier.
   Unterkonto auch an einem fremden Hauptkonto mit anderer Währung: 409
   `waehrung_geteiltes_unterkonto`: `src/konto/nutzerEinstellung.ts` — `haushalt-waehrung-db`.
 - Gutscheine nie über den Haushalt, auch nicht für Verwalter — `gutscheine-db`.
+- Datenbankrechte nach Rolle (Migration 0117, `postgres/app-rolle.sh`): Die
+  Laufzeitrolle schreibt in `users` nur Vor- und Nachname und liest
+  `global_settings` nur; Passwort, Verwalterrecht, Adresse, Links,
+  Sitzungsversion und globale Einstellungen schreibt nur die Systemrolle.
+  `verwaltungsprotokoll` ist für beide nur anfügbar, aufgeräumt wird über eine
+  Funktion der Eigentümerin mit fester Frist. Gutscheine und Idempotenzeinträge
+  sieht nur das eigene Konto (0118) — `db-rolle-db`, `zeilenschutz-db`.
 
 ### Gemeinsame Daten (3)
 - Bildcache nur aus geprüften Katalogadressen (`bild_von IS NULL`), nie aus
@@ -327,10 +346,10 @@ den Commits, nicht hier.
 
 ### Lieferkette (5)
 - Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-haertung`.
-  Renovate schlägt neue Fassungen vor: Actions, Dockerfiles (auch
+  Dependabot schlägt neue Fassungen vor: Actions, Dockerfiles (auch
   `Dockerfile.caddy`) und die Dienste in `compose.yaml` (`docker-compose`), npm und Gradle
-  (`renovate.json` im Wurzelverzeichnis), frühestens drei Tage nach
-  Erscheinen (`minimumReleaseAge`).
+  (`.github/dependabot.yml`), npm und Gradle frühestens drei Tage nach
+  Erscheinen (`cooldown`).
 - `npm ci --ignore-scripts` aus dem Lockfile (Dockerfile, CI); Install-Skripte
   nur gezielt für die Pakete, die eines haben (`npm rebuild esbuild`) —
   `dockerfile`. `npm audit --omit=dev` ist rot ab `moderate` (web-ci.yml) —
@@ -631,7 +650,7 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
   erscheinen geteilte Anleitungen eines selbst erfassten Sets sofort, wenn sie
   schon jemand geladen hatte.
 - **Bilder der Container** (`postgres`, die Basis von `Dockerfile.caddy`, ZAP)
-  sind per Digest fest und veralten damit; Renovate schlägt neue Fassungen vor
+  sind per Digest fest und veralten damit; Dependabot schlägt neue Fassungen vor
   (ZAP und die Dienst-Container der Workflows nicht). Eine hingenommene Lücke
   in `postgres` steht mit Ablaufdatum in `.github/trivy-betrieb.yaml`; Caddy
   prüft der Job `trivy-eigenbau` ohne Ausnahmen.

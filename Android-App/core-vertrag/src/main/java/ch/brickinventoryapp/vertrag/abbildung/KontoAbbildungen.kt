@@ -4,14 +4,21 @@ import ch.brickinventoryapp.vertrag.CsvImportErgebnis
 import ch.brickinventoryapp.vertrag.CsvImportStatus
 import ch.brickinventoryapp.vertrag.GetrenntesKonto
 import ch.brickinventoryapp.vertrag.HouseholdStatusResponse
+import ch.brickinventoryapp.vertrag.LoginResponse
 import ch.brickinventoryapp.vertrag.Profil
 import ch.brickinventoryapp.vertrag.ProtokollZeile
+import ch.brickinventoryapp.vertrag.TOKEN_SCOPE_VOLL
+import ch.brickinventoryapp.vertrag.elternkonten
+import ch.brickinventoryapp.vertrag.neuAngelegt
 import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
 import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
 import ch.brickinventoryapp.model.ui.model.GetrenntesKontoAnsicht
 import ch.brickinventoryapp.model.ui.model.HaushaltStatusAnsicht
 import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
 import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
+
+/** Verwalterrecht wirkt nur mit vollem Token: Mit "app" antwortet der Server auf Verwalteradressen 403. */
+val LoginResponse.verwalter: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_VOLL
 
 fun Profil.alsAnsicht() =
     ProfilAnsicht(id, username, email, firstName, lastName, emailBestaetigt = emailVerified, emailNeu = emailNeu?.ifBlank { null })

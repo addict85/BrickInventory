@@ -105,6 +105,19 @@ export async function trenne(db: DbSchnittstelle, main: number | null, sub: numb
   return r.changes ?? 0;
 }
 
+/** Alle Hauptkonten von `sub` lösen und dessen offene Einladungen verwerfen. */
+export async function loeseUnterkontoUndEinladungen(
+  tx: DbSchnittstelle,
+  sub: number,
+): Promise<{ hauptkonten: number[]; einladungen: number }> {
+  const weg = await tx.all<{ main_user_id: number | string }>(
+    'DELETE FROM account_links WHERE sub_user_id = $1 RETURNING main_user_id',
+    [sub],
+  );
+  const einl = await tx.run('DELETE FROM account_link_invites WHERE main_user_id = $1 AND used_at IS NULL', [sub]);
+  return { hauptkonten: weg.map(z => zahl(z.main_user_id)), einladungen: einl.changes ?? 0 };
+}
+
 export async function loescheGetrenntHinweis(db: DbSchnittstelle, main: number, sub: number): Promise<number> {
   const r = await db.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2', [
     main,

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { queueThumb } from './proxyThumbs';
+import { vorschauTyp } from './thumbs';
 import { vorDem, ohneFehlendeDatei, meldeFehler } from '../infra/fehler';
 import { prozessweit } from '../infra/prozessweit';
 import path from 'node:path';
@@ -49,7 +50,7 @@ export async function cacheTreffer(
       }
       return {
         datei: thumbFile,
-        typ: 'image/jpeg',
+        typ: await vorschauTyp(thumbFile),
         groesse: tst.size,
         etag: `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"`,
       };

@@ -135,7 +135,6 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
       // Nur die Anfrage, die den Link verbraucht, setzt ihr Passwort.
       const uid = await d.konto.passwortPerLinkSetzen(token, password);
       if (!uid) return sendeFehler(req, res, 400, 'token_ungueltig');
-      d.konto.hinweisNebenher(uid, 'passwort_zurueckgesetzt');
       return { message: 'Passwort erfolgreich geändert.' };
     },
   );

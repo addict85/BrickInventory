@@ -224,6 +224,15 @@ export async function kontenTrennen(
   return { removed };
 }
 
+/** Ein Hauptkonto über `uid` sieht und ändert dessen Bestand; die Gegenrichtung gibt nur `uid`
+ * Einblick und bleibt. @returns die gelösten Hauptkonten und die verworfenen Einladungen */
+export async function fremdzugriffLoesen(k: HaushaltKontext, uid: number) {
+  const r = await k.repository.loeseUnterkontoUndEinladungen(parseInt(String(uid), 10));
+  const namen = r.hauptkonten.length ? await k.repository.kontoNamen(r.hauptkonten, 'username') : [];
+  if (r.hauptkonten.length || r.einladungen) meldeHaushaltsaenderung(k);
+  return { hauptkonten: namen.map(n => n.username), einladungen: r.einladungen };
+}
+
 export async function verwerfeGetrennt(k: HaushaltKontext, uid: number, subUserId: number) {
   return {
     removed: await repo.loescheGetrenntHinweis(k.db, parseInt(String(uid), 10), parseInt(String(subUserId), 10)),

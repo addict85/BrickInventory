@@ -64,6 +64,14 @@ export async function mitZweitemFaktor(ruf) {
   return passkey ? ruf({ passkey }) : null;
 }
 /**
+ * Nur einen Code abfragen, ohne Passwort (neue Wiederherstellungscodes).
+ * @param {string} titel @param {string} text @returns {Promise<string | null>} der Code, oder null bei Abbruch
+ */
+export async function frageCode(titel, text) {
+  const code = await dialogOeffnen(titel, text, 'schloss', false, true, false, BESTAETIGEN);
+  return typeof code === 'string' ? code.trim() : null;
+}
+/**
  * Hauptknopf des Rückfragedialogs: Text, Art (bp blau, bd rot), Feldbeschriftung.
  * @typedef {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean, wahl?: { wert: string, text: string }[] }} Knopf
  */

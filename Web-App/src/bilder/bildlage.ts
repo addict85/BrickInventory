@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { generateThumb } from './thumbs';
+import { zugeschnitteneVorschauenEinpassen } from './vorschauenEinpassen';
 import { merkeFehlend } from './imageMisses';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import { KEINE_FARBE } from '../infra/validate';
@@ -124,11 +125,18 @@ export async function vorschaubilderNachtragen(k: BilderKontext): Promise<void> 
       () => true,
       () => false,
     );
-  for (const localPath of paths) {
-    let fsPath: string;
-    if (localPath.startsWith('/images/')) fsPath = path.join(IMAGES_DIR, localPath.slice('/images/'.length));
-    else if (localPath.startsWith('/data/')) fsPath = path.join(APP_ROOT, localPath.slice(1));
-    else continue;
+  const datei = (localPath: string) =>
+    localPath.startsWith('/images/')
+      ? path.join(IMAGES_DIR, localPath.slice('/images/'.length))
+      : localPath.startsWith('/data/')
+        ? path.join(APP_ROOT, localPath.slice(1))
+        : null;
+  const lokale = paths.flatMap(web => {
+    const d = datei(web);
+    return d ? [{ web, datei: d }] : [];
+  });
+  await versuche('nachlauf:vorschauen einpassen', zugeschnitteneVorschauenEinpassen(k, lokale));
+  for (const { web: localPath, datei: fsPath } of lokale) {
     const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
     if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
     if ((await versuche('nachlauf:generateThumb', generateThumb(localPath))).ok) generated++;

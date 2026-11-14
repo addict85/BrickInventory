@@ -91,7 +91,7 @@ docker compose logs app jobs | grep -A2 Standard-Admin   # Erstpasswort von admi
 ```
 
 → `https://<BRICK_HOST>` (Port 80 leitet um). Das Wurzelzertifikat der eigenen
-CA liegt unter `http://<BRICK_HOST>/ca.crt`; vor dem Installieren auf einem
+CA liegt unter `https://<BRICK_HOST>/ca.crt` (die Warnung einmal bestätigen); vor dem Installieren auf einem
 Gerät den Fingerabdruck vergleichen, den `scripts/ca-einrichten.sh` ausgibt.
 
 - **Öffentlicher Name statt eigener CA:** `BRICK_TLS=acme` (und optional

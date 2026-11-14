@@ -295,6 +295,24 @@ BEGIN
   IF pg_catalog.to_regclass('public.user_sessions') IS NOT NULL THEN
     EXECUTE pg_catalog.format('REVOKE ALL ON public.user_sessions FROM %I', rolle);
   END IF;
+  -- Was über den Zugang entscheidet, schreibt nur die Systemrolle (Migration 0117): In users
+  -- die Laufzeitrolle nur Vor- und Nachname, globale Einstellungen liest sie nur; das
+  -- Verwaltungsprotokoll ist für beide nur anfügbar, Aufräumen über die Funktion mit fester Frist.
+  IF pg_catalog.to_regclass('public.users') IS NOT NULL THEN
+    EXECUTE pg_catalog.format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.users FROM %I', rolle);
+    EXECUTE pg_catalog.format('GRANT UPDATE (first_name, last_name) ON public.users TO %I', rolle);
+  END IF;
+  IF pg_catalog.to_regclass('public.global_settings') IS NOT NULL THEN
+    EXECUTE pg_catalog.format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.global_settings FROM %I', rolle);
+  END IF;
+  IF pg_catalog.to_regclass('public.verwaltungsprotokoll') IS NOT NULL THEN
+    EXECUTE pg_catalog.format('REVOKE UPDATE, DELETE, TRUNCATE ON public.verwaltungsprotokoll FROM %I, %I', rolle, sysrolle);
+  END IF;
+  IF pg_catalog.to_regprocedure('public.verwaltungsprotokoll_aufraeumen()') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.verwaltungsprotokoll_aufraeumen() FROM PUBLIC';
+    EXECUTE pg_catalog.format('REVOKE ALL ON FUNCTION public.verwaltungsprotokoll_aufraeumen() FROM %I', rolle);
+    EXECUTE pg_catalog.format('GRANT EXECUTE ON FUNCTION public.verwaltungsprotokoll_aufraeumen() TO %I', sysrolle);
+  END IF;
   FOR r IN SELECT c.oid::pg_catalog.regclass AS name FROM pg_catalog.pg_class c
              JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
             WHERE n.nspname OPERATOR(pg_catalog.~) '^vor_migration_[0-9]+$' AND c.relkind = 'r' LOOP

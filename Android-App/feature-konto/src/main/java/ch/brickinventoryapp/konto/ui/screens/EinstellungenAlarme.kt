@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -153,7 +154,7 @@ internal fun PreisalarmeCard(
                                       Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
                     gewaehlt = a.richtung,
                     onWahl = { neu -> if (neu != a.richtung) aktionen.aendereAlarmSchwelle(a.setNumber, a.condition, neu, zahl ?: a.schwelle) },
-                    modifier = Modifier.widthIn(max = BETRAG_BREITE),
+                    modifier = Modifier.betragsbreite(),
                 )
                 OutlinedTextField(
                     value = wert,
@@ -181,7 +182,7 @@ internal fun PreisalarmeCard(
                     }),
                     shape = Formen.feld,
                     // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
-                    modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
+                    modifier = Modifier.betragsbreite(),
                 )
                 Ansage(if (zahl == a.schwelle) stringResource(R.string.vm_saved) else null)
             }
@@ -222,33 +223,45 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
         value = nummer, onValueChange = { nummer = NumericInput.setNumber(it) },
         label = { Text(stringResource(R.string.gallery_set_number)) }, singleLine = true,
         keyboardOptions = NumericInput.setnummerTastatur(), shape = Formen.feld,
-        modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
+        modifier = Modifier.betragsbreite(),
     )
-    Zustandszeile(zustand = zustand, onZustand = { zustand = it }, modifier = Modifier.widthIn(max = BETRAG_BREITE))
+    Zustandszeile(zustand = zustand, onZustand = { zustand = it }, modifier = Modifier.betragsbreite())
     SegmentWahl(
         optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
                           Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
-        gewaehlt = richtung, onWahl = { richtung = it }, modifier = Modifier.widthIn(max = BETRAG_BREITE),
+        gewaehlt = richtung, onWahl = { richtung = it }, modifier = Modifier.betragsbreite(),
     )
     OutlinedTextField(
         value = schwelle, onValueChange = { schwelle = NumericInput.price(it) },
         label = { Text(stringResource(R.string.alerts_schwelle)) }, singleLine = true,
         keyboardOptions = NumericInput.preisTastatur(), shape = Formen.feld,
-        modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
+        modifier = Modifier.betragsbreite(),
     )
     val bereit = nummer.isNotBlank() && (Alarmeingabe.zahl(schwelle) ?: 0.0) > 0.0
     if (!bereit) SperrGrund(stringResource(R.string.alerts_anlegen_sperrgrund))
     Button(
         onClick = { aktionen.legeAlarmAn(nummer, zustand, richtung, schwelle); nummer = ""; schwelle = "" },
-        enabled = bereit, modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
+        enabled = bereit, modifier = Modifier.betragsbreite(),
     ) { Text(stringResource(R.string.alerts_anlegen)) }
 }
 
 /**
- * Höchstbreite der Felder und Wahlen eines Alarms: Auf dem Telefon füllen sie die Karte
- * und enden am selben Rand wie Kopf und Trennlinie; erst auf dem Tablet bleiben sie schmal.
+ * Breite der Felder und Wahlen eines Alarms: Ein Betrag über die ganze Tabletkarte läse sich
+ * als Textzeile, darum [BETRAG_BREITE]. Ist die Karte kaum breiter (Telefon), füllen sie sie
+ * und enden am selben Rand wie Kopf und Trennlinie, statt ein paar dp davor.
  */
-private val BETRAG_BREITE = 420.dp
+private fun Modifier.betragsbreite(): Modifier = layout { messbar, grenzen ->
+    val breite = when {
+        !grenzen.hasBoundedWidth -> BETRAG_BREITE.roundToPx()
+        grenzen.maxWidth <= TELEFON_KARTE.roundToPx() -> grenzen.maxWidth
+        else -> minOf(grenzen.maxWidth, BETRAG_BREITE.roundToPx())
+    }
+    val platz = messbar.measure(grenzen.copy(minWidth = breite, maxWidth = breite))
+    layout(platz.width, platz.height) { platz.place(0, 0) }
+}
+
+private val BETRAG_BREITE = 320.dp
+private val TELEFON_KARTE = 420.dp
 
 /**
  * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen

@@ -177,12 +177,12 @@ class SitzungsDienstTest {
 
     @Test
     fun `entzogene Verwalterrechte gelten sofort und werden einmal gemeldet`() = mitVm {
-        fake.antworten["getMe"] = MeResponse(success = true, user = User(1, "anna", isAdmin = true))
+        fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = true))
         angemeldet()
         advanceUntilIdle()
         assertTrue(sitzung.state.value.isAdmin)
 
-        fake.antworten["getMe"] = MeResponse(success = true, user = User(1, "anna", isAdmin = false))
+        fake.antworten["getMe"] = MeResponse(success = true, user = User(id = 1, username = "anna", isAdmin = false))
         rechte.melde()
         advanceUntilIdle()
         assertFalse(sitzung.state.value.isAdmin)

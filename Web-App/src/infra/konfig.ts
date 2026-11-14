@@ -56,6 +56,9 @@ export interface Konfig {
   cookieSecure: boolean | null;
   sitzungLeerlaufMin: number;
   sitzungHoechstStd: number;
+  /** Eine offene Verwaltersitzung ist mehr wert: kürzer, höchstens die allgemeinen Fristen. */
+  sitzungVerwalterLeerlaufMin: number;
+  sitzungVerwalterHoechstStd: number;
   tokenLeerlaufTage: number;
   rolle: Rolle;
   /** Für einen Hinweis beim Start. */
@@ -115,6 +118,8 @@ const ROLLEN: readonly Rolle[] = ['web', 'jobs', 'beides'];
 export const VORGABE = {
   sitzungLeerlaufMin: 240,
   sitzungHoechstStd: 168,
+  sitzungVerwalterLeerlaufMin: 30,
+  sitzungVerwalterHoechstStd: 12,
   auftragParallel: 4,
   auftragFristSek: 300,
 } as const;
@@ -138,6 +143,8 @@ export const VARIABLEN = [
   'COOKIE_SECURE',
   'SESSION_IDLE_MINUTES',
   'SESSION_MAX_HOURS',
+  'SESSION_ADMIN_IDLE_MINUTES',
+  'SESSION_ADMIN_MAX_HOURS',
   'TOKEN_IDLE_DAYS',
   'ROLLE',
   'DATABASE_URL',
@@ -304,6 +311,30 @@ function entwicklungsUmgebung(env: Umgebung): boolean {
 }
 
 /** Wirft KonfigFehler mit allen Fehlern auf einmal. */
+/** Fristen der Browsersitzung; für Verwalter eigene, kürzere (src/konto/sitzungsFrist.ts). */
+function sitzungsKonfig(env: Umgebung, f: string[]) {
+  return {
+    sitzungLeerlaufMin: ganzzahl(env, 'SESSION_IDLE_MINUTES', VORGABE.sitzungLeerlaufMin, 1, 525_600, f),
+    sitzungHoechstStd: ganzzahl(env, 'SESSION_MAX_HOURS', VORGABE.sitzungHoechstStd, 1, 87_600, f),
+    sitzungVerwalterLeerlaufMin: ganzzahl(
+      env,
+      'SESSION_ADMIN_IDLE_MINUTES',
+      VORGABE.sitzungVerwalterLeerlaufMin,
+      1,
+      525_600,
+      f,
+    ),
+    sitzungVerwalterHoechstStd: ganzzahl(
+      env,
+      'SESSION_ADMIN_MAX_HOURS',
+      VORGABE.sitzungVerwalterHoechstStd,
+      1,
+      87_600,
+      f,
+    ),
+  };
+}
+
 export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const f: string[] = geheimnisseAusDateien(env);
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
@@ -334,8 +365,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     proxyNetzBestaetigt: schalter(env, 'PROXY_NETZ_BESTAETIGT', f) === true,
     sessionSecret: env.SESSION_SECRET || undefined,
     cookieSecure: schalter(env, 'COOKIE_SECURE', f),
-    sitzungLeerlaufMin: ganzzahl(env, 'SESSION_IDLE_MINUTES', VORGABE.sitzungLeerlaufMin, 1, 525_600, f),
-    sitzungHoechstStd: ganzzahl(env, 'SESSION_MAX_HOURS', VORGABE.sitzungHoechstStd, 1, 87_600, f),
+    ...sitzungsKonfig(env, f),
     tokenLeerlaufTage: ganzzahl(env, 'TOKEN_IDLE_DAYS', 90, 1, 36_500, f),
     rolle: rolleAus(env, f),
     veraltet: VERALTET.filter(n => env[n]?.trim()),

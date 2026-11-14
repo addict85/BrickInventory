@@ -60,17 +60,17 @@ private fun alsForm(b: Bearbeitung): PostenF1 = when (b) {
 private fun alsBearbeitung(p: PostenF1): Bearbeitung = when (p) {
     is PostenF1.SetMenge -> Bearbeitung.SetMenge(p.setNumber, p.schritt)
     is PostenF1.SetErfassen -> with(p.anfrage) {
-        Bearbeitung.SetErfassen(AddSetRequest(setNumber, quantity, purchasePrice, condition, ownerUserId, storage))
+        Bearbeitung.SetErfassen(AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice, condition = condition, ownerUserId = ownerUserId, storage = storage))
     }
-    is PostenF1.MerkpostenAnlegen -> with(p.anfrage) { Bearbeitung.MerkpostenAnlegen(MerkpostenRequest(setNumber, condition, ownerUserId)) }
+    is PostenF1.MerkpostenAnlegen -> with(p.anfrage) { Bearbeitung.MerkpostenAnlegen(MerkpostenRequest(setNumber = setNumber, condition = condition, ownerUserId = ownerUserId)) }
     is PostenF1.MerkpostenLoeschen -> Bearbeitung.MerkpostenLoeschen(p.setNumber, p.zustand, p.besitzer)
     is PostenF1.TeilErfassen -> with(p.anfrage) {
-        Bearbeitung.TeilErfassen(AddPartRequest(partNumber, colorId, colorName, colorHex, quantity, unitPrice, condition, ownerUserId, storage))
+        Bearbeitung.TeilErfassen(AddPartRequest(partNumber = partNumber, colorId = colorId, colorName = colorName, colorHex = colorHex, quantity = quantity, unitPrice = unitPrice, condition = condition, ownerUserId = ownerUserId, storage = storage))
     }
     is PostenF1.TeilAendern -> Bearbeitung.TeilAendern(p.partNumber, p.colorId, anfrage(p.anfrage), p.besitzer)
     is PostenF1.TeilLoeschen -> Bearbeitung.TeilLoeschen(p.partNumber, p.colorId, p.besitzer)
     is PostenF1.FigurErfassen -> with(p.anfrage) {
-        Bearbeitung.FigurErfassen(AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice, condition, ownerUserId, storage))
+        Bearbeitung.FigurErfassen(AddMinifigRequest(figNumber = figNumber, blFigNumber = blFigNumber, quantity = quantity, unitPrice = unitPrice, condition = condition, ownerUserId = ownerUserId, storage = storage))
     }
     is PostenF1.FigurAendern -> Bearbeitung.FigurAendern(p.figNumber, anfrage(p.anfrage), p.besitzer)
     is PostenF1.FigurLoeschen -> Bearbeitung.FigurLoeschen(p.figNumber, p.besitzer)
@@ -78,7 +78,7 @@ private fun alsBearbeitung(p: PostenF1): Bearbeitung = when (p) {
 
 private fun aenderung(a: UpdateManualItemRequest) = AenderungF1(a.quantity, a.unitPrice, a.blFigNumber, a.condition, a.quantityDelta)
 
-private fun anfrage(a: AenderungF1) = UpdateManualItemRequest(a.quantity, a.unitPrice, a.blFigNumber, a.condition, a.quantityDelta)
+private fun anfrage(a: AenderungF1) = UpdateManualItemRequest(quantity = a.quantity, unitPrice = a.unitPrice, blFigNumber = a.blFigNumber, condition = a.condition, quantityDelta = a.quantityDelta)
 
 // Die Feldnamen sind die, unter denen Fassung 1 auf Geräten liegt; Vorgaben decken
 // Posten älterer Apps, denen ein später dazugekommenes Feld fehlt.

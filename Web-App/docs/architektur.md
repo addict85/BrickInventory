@@ -185,13 +185,20 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
   und `household_former_links` sieht nur ein beteiligtes Konto.
 - Ohne Zeilenschutz sind `users`, `verwaltungsprotokoll`, `rate_limit_attempts`,
   `global_settings`, Kataloge, Preis- und Bildzwischenspeicher, Laufzustände.
-  Hier schützt allein der Filter im Repository.
+  Hier schützt der Filter im Repository, bei den ersten dreien zusätzlich das
+  Recht der Rolle (unten).
 - Die Systemrolle sieht alles. Was im Systemrahmen läuft (Anmeldung vor dem Konto,
   Aufträge, Verwaltung über Konten, Haushaltswährung), prüft die Berechtigung selbst.
 - Die Laufzeitrolle hat `SELECT, INSERT, UPDATE, DELETE` auf alle Tabellen
-  (`postgres/app-rolle.sh`) mit zwei Ausnahmen: `users.password_hash` liest sie
-  nicht, `user_sessions` gar nicht; Anmeldung und Sitzungsspeicher laufen über die
-  Systemrolle. Kopien vor Migrationen (`vor_migration_*`) haben RLS ohne Policy und
+  (`postgres/app-rolle.sh`) mit diesen Ausnahmen: `users.password_hash` liest sie
+  nicht, `user_sessions` gar nicht; in `users` schreibt sie nur `first_name` und
+  `last_name`, `global_settings` liest sie nur (Migration 0117). Anmeldung,
+  Sitzungsspeicher, Passwort, Rechte, Adresse, Sitzungsversion und globale
+  Einstellungen laufen über die Systemrolle (`imSystem(…)` im Kontext des
+  Bereichs). `verwaltungsprotokoll` ist für beide Rollen nur anfügbar; aufgeräumt
+  wird über `verwaltungsprotokoll_aufraeumen()` (feste Frist, Eigentümerin).
+- Gutscheine und Idempotenzeinträge sieht wie die Zugangsdaten nur das eigene
+  Konto (Migration 0118). Kopien vor Migrationen (`vor_migration_*`) haben RLS ohne Policy und
   sind damit nur für die Systemrolle und die Eigentümerin lesbar.
 
 ## Rangfolge der Bereiche

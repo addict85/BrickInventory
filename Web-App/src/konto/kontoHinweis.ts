@@ -1,6 +1,6 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
-import type { KontoHinweis } from '../mail';
+import type { Geloest, KontoHinweis } from '../mail';
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { imSystemkontext } from '../infra/kontoKontext';
 import type { KontoKontext } from './kontext';
@@ -11,6 +11,7 @@ type Angaben = {
   durch?: string | undefined;
   was?: string | undefined;
   bis?: string | undefined;
+  geloest?: Geloest | undefined;
 };
 
 // Läuft auch vor der Anmeldung und für andere Konten (alle Verwalter): Sprache
@@ -43,6 +44,7 @@ async function meldeKontoaenderungFuer(
     durch: angaben.durch,
     was: angaben.was,
     bis: angaben.bis,
+    geloest: angaben.geloest,
   });
   return r.success;
 }

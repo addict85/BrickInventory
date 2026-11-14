@@ -68,7 +68,7 @@ class UiModellAbbildungTest {
     fun `Profil, Haushalt und CSV-Stand sind für die Oberfläche aufbereitet`() {
         assertTrue(Profil(id = 1, username = "m", emailVerified = true).alsAnsicht().emailBestaetigt)
         assertFalse("false heisst unbestätigt", Profil(id = 1, username = "m", emailVerified = false).alsAnsicht().emailBestaetigt)
-        val altesFeld = HouseholdStatusResponse(linkedTo = KontoName(7, "haupt")).alsAnsicht()
+        val altesFeld = HouseholdStatusResponse(linkedTo = KontoName(id = 7, username = "haupt")).alsAnsicht()
         assertEquals("ohne parents gilt linked_to", listOf(KontoAnsicht(7, "haupt")), altesFeld.elternkonten)
         val stand = CsvImportStatus(status = Laufstatus.LAEUFT, current = "75192-1").alsAnsicht()
         assertEquals(listOf(0, 0, 0, 0, 0), listOf(stand.total, stand.done, stand.ok, stand.warn, stand.err))

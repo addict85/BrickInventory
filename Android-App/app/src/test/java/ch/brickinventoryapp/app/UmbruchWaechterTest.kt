@@ -190,7 +190,9 @@ class UmbruchWaechterTest {
 
     /**
      * „Gebrauch|t“: ein Zeilenende zwischen zwei Buchstaben oder Ziffern bricht das Wort
-     * selbst. Und eine Zeile, breiter als ihr Platz: Der Rest ist abgeschnitten.
+     * selbst. Und eine Zeile, breiter als ihr Platz: Der Rest ist abgeschnitten. Gemessen
+     * wird die Breite der Zeile, nicht ihr rechtes Ende: Das Textlayout der Semantik liegt
+     * auf der ganzen Platzgrenze, eine zentrierte Zeile endet dort rechts der Anzeige.
      */
     private fun imWortOderUeberDenRand(l: TextLayoutResult, wo: String, em: Float): List<String> {
         val text = l.layoutInput.text.text
@@ -198,7 +200,7 @@ class UmbruchWaechterTest {
         val imWort = (0 until l.lineCount - 1).map { l.getLineEnd(it) }
             .firstOrNull { e -> e in 1 until text.length && text[e - 1].isLetterOrDigit() && text[e].isLetterOrDigit() }
         if (imWort != null) befunde += "$wo im Wort gebrochen nach „${text.take(imWort).takeLast(12)}“"
-        val ueberstand = (0 until l.lineCount).maxOf { l.getLineRight(it) } - l.size.width
+        val ueberstand = (0 until l.lineCount).maxOf { l.getLineRight(it) - l.getLineLeft(it) } - l.size.width
         if (em > 0f && ueberstand > em * UEBERSTAND_EM) befunde += "$wo ragt ${ueberstand.toInt()} px über den Rand"
         return befunde
     }

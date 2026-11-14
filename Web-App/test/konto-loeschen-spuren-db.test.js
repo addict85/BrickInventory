@@ -12,6 +12,8 @@
  *      rot: „Kopien älter als die Frist …“
  *   D  raeumeProtokollAuf() mit 3650 statt 365 Tagen → rot: „Protokollzeilen
  *      älter als ein Jahr …“
+ *   Seit Migration 0117 räumt die Funktion verwaltungsprotokoll_aufraeumen() auf (14.11.2026
+ *   wiederholt): dort `ziel_name = ziel_name` → rot wie B; 3650 statt 365 Tage → rot wie D.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */

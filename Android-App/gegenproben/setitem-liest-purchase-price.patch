@@ -3,16 +3,15 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.PurchasePriceDisplayTest
 Rot: die Anzeigeregel steht im Modell
 
-diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt
---- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt
-+++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt
-@@ -125,7 +125,8 @@
-      * die Adresse statt einer je Bildschirm. Leer heisst: kein Knopf statt eines
-      * Knopfs ins Leere.
-      */
--    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null
-+    @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
+diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
+index 7bc71ec..6dd7713 100644
+--- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
++++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
+@@ -2215,6 +2215,7 @@ data class SetItem(
+     @SerialName("instructions") val instructions: List<Instruction> = emptyList(),
+     @SerialName("bricklink") val bricklink: BrickLinkRef? = null,
+     @SerialName("preisvergleich_url") val preisvergleichUrl: String? = null,
 +    @SerialName("purchase_price") val purchasePrice: Double? = null,
- ) {
-     /**
-      * Der angezeigte Kaufpreis, mengengewichtet. Die eine Stelle, an der Kachel und
+ )
+ 
+ @Serializable

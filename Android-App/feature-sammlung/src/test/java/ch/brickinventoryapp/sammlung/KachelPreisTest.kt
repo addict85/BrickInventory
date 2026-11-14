@@ -40,9 +40,9 @@ class KachelPreisTest {
     fun `die Kachel nimmt Betrag und G&V des Servers`() {
         // Die alten Felder ergäben 800,0 und 14,3; der Server hat im Haushalt gewichtet.
         val p = kachelPreise(listOf(
-            PnlSetZeile("75192-1", 1, 800.0, 700.0, pnlPct = null, baselinePnlPct = "14.3",
+            PnlSetZeile(setNumber = "75192-1", quantity = 1, currentPrice = 800.0, baselinePrice = 700.0, pnlPct = null, baselinePnlPct = "14.3",
                         kachelPreis = 812.5, kachelPnlPct = 16.1),
-            PnlSetZeile("10294-1", 1, 0.0, null, kachelPreis = null, kachelPnlPct = -3.0),
+            PnlSetZeile(setNumber = "10294-1", quantity = 1, currentPrice = 0.0, baselinePrice = null, kachelPreis = null, kachelPnlPct = -3.0),
         ))
         assertEquals(KachelPreis(812.5, 16.1), p["75192-1"])
         assertEquals(KachelPreis(null, -3.0), p["10294-1"])
@@ -50,16 +50,16 @@ class KachelPreisTest {
 
     @Test
     fun `Uebergang - eine Zeile ohne Kaufpreis nimmt den Basiswert des Servers`() {
-        val p = kachelPreise(listOf(PnlSetZeile("75192-1", 1, 800.0, 700.0, pnlPct = null, baselinePnlPct = "14.3")))
+        val p = kachelPreise(listOf(PnlSetZeile(setNumber = "75192-1", quantity = 1, currentPrice = 800.0, baselinePrice = 700.0, pnlPct = null, baselinePnlPct = "14.3")))
         assertEquals(KachelPreis(800.0, 14.3), p["75192-1"])
     }
 
     @Test
     fun `Uebergang - zwei Zustaende werden nach Menge gewichtet, nicht die erste Zeile genommen`() {
         val p = kachelPreise(listOf(
-            PnlSetZeile("10294-1", 1, 350.0, 160.0, pnlPct = "118.8"),
-            PnlSetZeile("10294-1", 2, 350.0, 100.0, pnlPct = "250.0"),
-            PnlSetZeile("10294-1", 1, 350.0, null),
+            PnlSetZeile(setNumber = "10294-1", quantity = 1, currentPrice = 350.0, baselinePrice = 160.0, pnlPct = "118.8"),
+            PnlSetZeile(setNumber = "10294-1", quantity = 2, currentPrice = 350.0, baselinePrice = 100.0, pnlPct = "250.0"),
+            PnlSetZeile(setNumber = "10294-1", quantity = 1, currentPrice = 350.0, baselinePrice = null),
         ))
         // (2·100 + 1·160) / 3 = 120 → (350 − 120) / 120 = 191,7 %
         assertEquals(191.7, p["10294-1"]?.pnlPct ?: -1.0, 1e-9)
@@ -77,7 +77,7 @@ class KachelPreisTest {
 
     @Test
     fun `die Quelle des Servers bestimmt die Beschriftung der Kachel`() {
-        val p = kachelPreise(listOf(PnlSetZeile("21318-1", 1, null, 180.0, kachelPreis = 180.0, kachelQuelle = "kauf")))
+        val p = kachelPreise(listOf(PnlSetZeile(setNumber = "21318-1", quantity = 1, currentPrice = null, baselinePrice = 180.0, kachelPreis = 180.0, kachelQuelle = "kauf")))
         assertEquals(KachelPreis(180.0, null, "kauf"), p["21318-1"])
         val set = SetAnsicht(setNumber = "21318-1")
         assertEquals(KachelQuelle.KAUF, kachelQuelle(set, p["21318-1"]))

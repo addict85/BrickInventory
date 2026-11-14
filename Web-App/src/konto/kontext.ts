@@ -41,6 +41,7 @@ const ALLE_KONTEN = 'Aufräumen über alle Konten';
 const FREMDES_KONTO = 'Verwaltung oder Passwort vergessen: ändert ein Konto, das die Anfrage nicht trägt';
 const NUR_SYSTEMROLLE = 'Passwort-Hash oder Sitzungsspeicher: nur die Systemrolle darf sie lesen';
 const UEBERNAHME = 'Verwalterübernahme: Verwalter und Ziel sind verschiedene Konten';
+const ZUGANG = 'Passwort, Rechte, Adresse und Sitzungsversion schreibt nur die Systemrolle (0117)';
 
 /** Anmeldung ohne Konto: Zähler, Schlüssel und Geheimnisse der Geräte. */
 const anmeldezugang = (db: Db) => ({
@@ -92,34 +93,36 @@ const kontenzugang = (db: Db) => ({
     kontoVoll: mit(db)(konten.kontoVoll),
     profilZeile: mit(db)(konten.profilZeile),
     nameVergeben: mit(db)(konten.nameVergeben),
-    aendereProfil: mit(db)(konten.aendereProfil),
-    merkeEmailNeu: mit(db)(konten.merkeEmailNeu),
+    aendereNamen: mit(db)(konten.aendereNamen),
+    aendereBenutzernamen: imSystem(db, ZUGANG, konten.aendereBenutzernamen),
+    verwirfAusstehendeAdresse: imSystem(db, ZUGANG, konten.verwirfAusstehendeAdresse),
+    merkeEmailNeu: imSystem(db, ZUGANG, konten.merkeEmailNeu),
     kontoZuEmailToken: mit(db)(konten.kontoZuEmailToken),
-    uebernimmEmailNeu: mit(db)(konten.uebernimmEmailNeu),
-    verwirfEmailNeu: mit(db)(konten.verwirfEmailNeu),
+    uebernimmEmailNeu: imSystem(db, ZUGANG, konten.uebernimmEmailNeu),
+    verwirfEmailNeu: imSystem(db, ZUGANG, konten.verwirfEmailNeu),
     nameZuEmailToken: mit(db)(konten.nameZuEmailToken),
     offeneRegistrierungen: mit(db)(konten.offeneRegistrierungen),
-    schalteRegistrierungFrei: mit(db)(konten.schalteRegistrierungFrei),
+    schalteRegistrierungFrei: imSystem(db, ZUGANG, konten.schalteRegistrierungFrei),
     ausstehendOhneLink: mit(db)(konten.ausstehendOhneLink),
     alleKonten: imSystem(db, 'Verwaltung: liest den zweiten Faktor aller Konten', konten.alleKonten),
     alleAdressen: mit(db)(konten.alleAdressen),
     aktiveVerwalter: mit(db)(konten.aktiveVerwalter),
-    fuegeKontoEin: mit(db)(konten.fuegeKontoEin),
-    setzeVerwalter: mit(db)(konten.setzeVerwalter),
-    schreibeAktiv: mit(db)(konten.schreibeAktiv),
-    setzePasswortHash: mit(db)(konten.setzePasswortHash),
-    setzeEigenesPasswort: mit(db)(konten.setzeEigenesPasswort),
+    fuegeKontoEin: imSystem(db, ZUGANG, konten.fuegeKontoEin),
+    setzeVerwalter: imSystem(db, ZUGANG, konten.setzeVerwalter),
+    schreibeAktiv: imSystem(db, ZUGANG, konten.schreibeAktiv),
+    setzePasswortHash: imSystem(db, ZUGANG, konten.setzePasswortHash),
+    setzeEigenesPasswort: imSystem(db, ZUGANG, konten.setzeEigenesPasswort),
     kontoExistiert: mit(db)(konten.kontoExistiert),
-    loescheKonto: mit(db)(konten.loescheKonto),
-    loescheEigenesKonto: mit(db)(konten.loescheEigenesKonto),
-    loescheOffeneRegistrierungen: mit(db)(konten.loescheOffeneRegistrierungen),
+    loescheKonto: imSystem(db, ZUGANG, konten.loescheKonto),
+    loescheEigenesKonto: imSystem(db, ZUGANG, konten.loescheEigenesKonto),
+    loescheOffeneRegistrierungen: imSystem(db, ZUGANG, konten.loescheOffeneRegistrierungen),
     kontoMitEmail: mit(db)(konten.kontoMitEmail),
-    registriereKonto: mit(db)(konten.registriereKonto),
+    registriereKonto: imSystem(db, ZUGANG, konten.registriereKonto),
     aktivesKontoNachEmail: mit(db)(konten.aktivesKontoNachEmail),
-    setzeRuecksetzTokenWennFrei: mit(db)(konten.setzeRuecksetzTokenWennFrei),
-    erneuereEmailTokenWennFrei: mit(db)(konten.erneuereEmailTokenWennFrei),
+    setzeRuecksetzTokenWennFrei: imSystem(db, ZUGANG, konten.setzeRuecksetzTokenWennFrei),
+    erneuereEmailTokenWennFrei: imSystem(db, ZUGANG, konten.erneuereEmailTokenWennFrei),
     kontoNachRuecksetzToken: mit(db)(konten.kontoNachRuecksetzToken),
-    setzePasswortNachRuecksetzen: mit(db)(konten.setzePasswortNachRuecksetzen),
+    setzePasswortNachRuecksetzen: imSystem(db, ZUGANG, konten.setzePasswortNachRuecksetzen),
     zugaengeDesKontos: mit(db)(konten.zugaengeDesKontos),
     tokenStand: imSystem(db, 'Token-Prüfung: sucht über den Hash, ohne Konto', konten.tokenStand),
     zugangLoeschen: mit(db)(konten.zugangLoeschen),
@@ -146,7 +149,7 @@ const kontenzugang = (db: Db) => ({
   protokoll: {
     protokolliere: mit(db)(protokoll.protokolliere),
     letzteEintraege: mit(db)(protokoll.letzteEintraege),
-    raeumeProtokollAuf: mit(db)(protokoll.raeumeProtokollAuf),
+    raeumeProtokollAuf: imSystem(db, ALLE_KONTEN, protokoll.raeumeProtokollAuf),
   },
 });
 
@@ -176,7 +179,7 @@ const sitzungszugang = (db: Db) => ({
   startVerwalter: {
     kontenVorhanden: mit(db)(startVerwalter.kontenVorhanden),
     startpasswortOffen: mit(db)(startVerwalter.startpasswortOffen),
-    legeVerwalterAn: mit(db)(startVerwalter.legeVerwalterAn),
+    legeVerwalterAn: imSystem(db, ZUGANG, startVerwalter.legeVerwalterAn),
   },
   zugaenge: {
     gueltigerToken: imSystem(db, OHNE_KONTO, zugaenge.gueltigerToken),
@@ -201,7 +204,7 @@ const sitzungszugang = (db: Db) => ({
     kappeTokens: imSystem(db, 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto', zugaenge.kappeTokens),
     loescheSitzungenDesKontos: imSystem(db, NUR_SYSTEMROLLE, zugaenge.loescheSitzungenDesKontos),
     sitzungsVersion: mit(db)(zugaenge.sitzungsVersion),
-    zaehleSitzungsVersionHoch: mit(db)(zugaenge.zaehleSitzungsVersionHoch),
+    zaehleSitzungsVersionHoch: imSystem(db, ZUGANG, zugaenge.zaehleSitzungsVersionHoch),
     ziehAltzeilenNach: imSystem(db, ALLE_KONTEN, zugaenge.ziehAltzeilenNach),
     loescheAbgelaufene: imSystem(db, ALLE_KONTEN, zugaenge.loescheAbgelaufene),
     loescheUngenutzte: imSystem(db, ALLE_KONTEN, zugaenge.loescheUngenutzte),

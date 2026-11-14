@@ -1,5 +1,5 @@
 /** Die Währung gilt je Haushalt; geschrieben wird sie für alle Konten darin. */
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 
 export async function waehrungIn(tx: DbSchnittstelle, userId: number): Promise<string | null> {
   const r = await tx.get<{ value: string }>("SELECT value FROM user_settings WHERE user_id = $1 AND key = 'currency'", [
@@ -36,7 +36,7 @@ export async function fremdGeteilt(tx: DbSchnittstelle, ids: number[], waehrung:
 }
 
 export async function hatHauptkonto(tx: DbSchnittstelle, userId: number): Promise<boolean> {
-  return !!(await tx.get('SELECT 1 FROM account_links WHERE sub_user_id = $1 LIMIT 1', [userId]));
+  return !!(await tx.get<Treffer>('SELECT 1 FROM account_links WHERE sub_user_id = $1 LIMIT 1', [userId]));
 }
 
 export async function setzeWaehrungFuer(tx: DbSchnittstelle, ids: number[], waehrung: string): Promise<void> {

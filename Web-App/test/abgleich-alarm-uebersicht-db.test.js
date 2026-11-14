@@ -241,7 +241,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
         'ch',
         'brickinventoryapp',
         'vertrag',
-        'SetModels.kt',
+        'Vertrag.kt',
       ),
       'utf8',
     );

@@ -95,13 +95,13 @@ class TeileRepositoryImpl @Inject constructor(
      */
     override suspend fun getOwnedParts(teile: List<BestandTeil>,
                               konten: Kontoauswahl?): Ergebnis<BestandResponse> =
-        sicherAufrufen { api.getOwnedParts(BestandRequest(teile), konten?.anfrage) }
+        sicherAufrufen { api.getOwnedParts(BestandRequest(teile = teile), konten?.anfrage) }
 
     /** Lagerort eines Teils setzen. Leerer Text loescht ihn. */
     override suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String):
         Ergebnis<LagerortResponse> =
         ablage.nachgezogen({ r -> Nachzug.TeilLagerort(partNumber, colorId, r.storage).takeIf { r.success } }) {
-            sicherAufrufen { api.setPartStorage(partNumber, colorId, LagerortRequest(ort)) }
+            sicherAufrufen { api.setPartStorage(partNumber, colorId, LagerortRequest(storage = ort)) }
         }
 
     /**
@@ -123,7 +123,7 @@ class TeileRepositoryImpl @Inject constructor(
 
     /** Die Vorgabe kommt neben der Liste; in der Ablage trägt sie der Ort selbst. */
     override suspend fun aktualisiereLagerortVorrat(): Ergebnis<Unit> =
-        ablage.aktualisiereSeitenweise(Faecher.LAGERORTE, { r -> r.orte.map { VorratsOrt(it, it.id == r.vorgabe?.id) } },
+        ablage.aktualisiereSeitenweise(Faecher.LAGERORTE, { r -> r.orte.map { VorratsOrt(ort = it, vorgabe = it.id == r.vorgabe?.id) } },
             { it.orte.size }, wiederholung) { _ -> sicherAufrufen { api.getLagerortVorrat(null) } }
 
     override suspend fun getLagerortVorrat(besitzer: List<Int>): Ergebnis<LagerortVorratResponse> =
@@ -131,12 +131,12 @@ class TeileRepositoryImpl @Inject constructor(
 
     override suspend fun legeLagerortAn(name: String): Ergebnis<LagerortEintragResponse> =
         ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortAngelegt(it) } }) {
-            sicherAufrufen { api.legeLagerortAn(LagerortNameRequest(name)) }
+            sicherAufrufen { api.legeLagerortAn(LagerortNameRequest(name = name)) }
         }
 
     override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<LagerortEintragResponse> =
         ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it) } }) {
-            sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name)) }
+            sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name = name)) }
         }
 
     override suspend fun loescheLagerort(id: Int): Ergebnis<LagerortResponse> =
@@ -145,7 +145,7 @@ class TeileRepositoryImpl @Inject constructor(
     /** Der vorausgewählte Lagerort (Stern) — `null` schaltet die Vorgabe ab; es gilt, was der Server meldet. */
     override suspend fun setzeLagerortVorgabe(id: Int?): Ergebnis<LagerortVorgabeResponse> =
         ablage.nachgezogen({ r -> Nachzug.LagerortVorgabe(r.vorgabe?.id).takeIf { r.success } }) {
-            sicherAufrufen { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id)) }
+            sicherAufrufen { api.setzeLagerortVorgabe(LagerortVorgabeRequest(id = id)) }
         }
 
     // ── In welchen Sets steckt dieses Teil / diese Figur? ──
@@ -166,8 +166,8 @@ class TeileRepositoryImpl @Inject constructor(
                          condition: Zustand?, ownerUserId: Int?,
                          storage: String?): Ergebnis<AddPartResponse> {
         val ohne = colorId == KEINE_FARBE
-        val anfrage = AddPartRequest(partNumber, colorId, colorName.takeUnless { ohne },
-            colorHex.takeUnless { ohne }, quantity, unitPrice, condition, ownerUserId, storage)
+        val anfrage = AddPartRequest(partNumber = partNumber, colorId = colorId, colorName = colorName.takeUnless { ohne },
+            colorHex = colorHex.takeUnless { ohne }, quantity = quantity, unitPrice = unitPrice, condition = condition, ownerUserId = ownerUserId, storage = storage)
         return ablage.schreibe(Bearbeitung.TeilErfassen(anfrage),
             { AddPartResponse(success = true, action = "gepuffert", partNumber = partNumber) }) { schluessel ->
             sicherAufrufen { api.addPart(anfrage, schluessel) }
@@ -183,7 +183,7 @@ class TeileRepositoryImpl @Inject constructor(
     override suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: Zustand?, owner: Int?): Ergebnis<GenericResponse> {
         val bisher = ablage.lies(Faecher.MANUELLE_TEILE)?.liste
             ?.firstOrNull { it.partNumber == partNumber && it.colorId == colorId && (owner == null || it.userId == owner) }?.quantity
-        val anfrage = UpdateManualItemRequest(quantity, unitPrice, condition = condition, quantityDelta = bisher?.let { quantity - it })
+        val anfrage = UpdateManualItemRequest(quantity = quantity, unitPrice = unitPrice, condition = condition, quantityDelta = bisher?.let { quantity - it })
         return ablage.schreibe(Bearbeitung.TeilAendern(partNumber, colorId, anfrage, owner), { GenericResponse(success = true) }) { schluessel ->
             sicherAufrufen { api.updatePart(partNumber, colorId, anfrage, owner, schluessel) }
         }
@@ -208,7 +208,7 @@ class TeileRepositoryImpl @Inject constructor(
         val name = farbName.takeUnless { neueFarbe == KEINE_FARBE }
         val hex = farbHex.takeUnless { neueFarbe == KEINE_FARBE }
         return ablage.nachgezogen({ r -> Nachzug.TeilFarbe(partNumber, colorId, neueFarbe, name, hex, owner).takeIf { r.success } }) {
-            sicherAufrufen { api.setPartColor(partNumber, colorId, TeilFarbeRequest(neueFarbe, name, hex), owner) }
+            sicherAufrufen { api.setPartColor(partNumber, colorId, TeilFarbeRequest(colorId = neueFarbe, colorName = name, colorHex = hex), owner) }
         }
     }
 }
