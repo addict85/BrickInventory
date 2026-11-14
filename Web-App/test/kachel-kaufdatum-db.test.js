@@ -35,7 +35,7 @@ test('getSets liefert den letzten Kauf', { concurrency: 1 }, async t => {
   });
   await haeltSet(db, uid, '10300-1', 1, { preis: 199, am: '2024-03-02T10:00:00Z' });
   await erfasse(db, uid, '10300-1', 1, { preis: 210, am: '2025-07-14T10:00:00Z' });
-  const { getSets } = _req('src/sets/index.js');
+  const { getSets } = require('./helpers/sources').bereichsSeite('sets');
   const { sets } = await getSets(uid, {});
   const s = sets.find(x => x.set_number === '10300-1');
   assert.ok(s, 'Set fehlt');

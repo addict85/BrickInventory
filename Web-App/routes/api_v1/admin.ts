@@ -1,14 +1,15 @@
 /** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
  * Prüfung vergessen kann. */
+import { waechterFuer } from './middleware';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireApiAdmin } from './middleware';
 import { proxyHinweisStand } from '../../src/http/proxyHinweis';
-import { bricksetListe, bildProbe, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt } from '../../src/verwaltung';
+import { bildProbe } from '../../src/verwaltung';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../startup/verdrahtung';
 
 export function baueAdminRouter(d: Dienste) {
+  const { requireApiAdmin } = waechterFuer(d.konto);
   const router = vertragsRouter({ grosseIds: true });
 
   router.get(
@@ -29,7 +30,7 @@ export function baueAdminRouter(d: Dienste) {
       req: Anfrage<'POST /api/v1/admin/auftraege/:id/abbrechen'>,
       res: Antwort<'POST /api/v1/admin/auftraege/:id/abbrechen'>,
     ) => {
-      res.json({ success: true, ...(await auftragAbbrechen(String(req.pfad.id))) });
+      res.json({ success: true, ...(await d.auftraege.auftragAbbrechen(String(req.pfad.id))) });
     },
   );
 
@@ -40,7 +41,7 @@ export function baueAdminRouter(d: Dienste) {
       req: Anfrage<'POST /api/v1/admin/auftraege/:id/wiederholen'>,
       res: Antwort<'POST /api/v1/admin/auftraege/:id/wiederholen'>,
     ) => {
-      res.json({ success: true, ...(await auftragWiederholen(String(req.pfad.id))) });
+      res.json({ success: true, ...(await d.auftraege.auftragWiederholen(String(req.pfad.id))) });
     },
   );
 
@@ -51,7 +52,7 @@ export function baueAdminRouter(d: Dienste) {
       req: Anfrage<'POST /api/v1/admin/auftraege/art/:art/jetzt'>,
       res: Antwort<'POST /api/v1/admin/auftraege/art/:art/jetzt'>,
     ) => {
-      res.json({ success: true, ...(await auftragsArtJetzt(req.pfad.art)) });
+      res.json({ success: true, ...(await d.auftraege.auftragsArtJetzt(req.pfad.art)) });
     },
   );
 
@@ -253,7 +254,7 @@ export function baueAdminRouter(d: Dienste) {
     '/admin/brickset-queue',
     requireApiAdmin,
     async (req: Anfrage<'GET /api/v1/admin/brickset-queue'>, res: Antwort<'GET /api/v1/admin/brickset-queue'>) => {
-      const rows = await bricksetListe();
+      const rows = await d.auftraege.bricksetListe();
       const { eintraege, ...seite } = seiteAus(rows, req.abfrage);
       res.json({ success: true, count: rows.length, entries: eintraege, ...seite });
     },

@@ -4,7 +4,7 @@ import type express from 'express';
 import path from 'node:path';
 import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken, kontoSchranke, sichtVon } from './middleware';
+import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import {
   csvEmpfang,
   uploadKontingentBytes,
@@ -16,7 +16,7 @@ import {
 import { uebersprungenHinweis } from '../../src/infra/csvExport';
 import { sendeCsv } from '../../src/http/csvAntwort';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
-import * as sets from '../../src/sets';
+import { ANLEITUNGS_WURZEL, normalizeSetNumber } from '../../src/sets';
 import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { freigegeben } from '../../src/konto/http/schrittschutz';
@@ -65,7 +65,7 @@ const vorDemUpload =
       return sendeFehler(req, res, 404, 'nicht_gefunden');
     if (
       !(await kontingentReichtFuer(
-        path.join(sets.ANLEITUNGS_WURZEL, String(uid)),
+        path.join(ANLEITUNGS_WURZEL, String(uid)),
         Number(req.headers['content-length']) || 0,
       ))
     )
@@ -74,6 +74,7 @@ const vorDemUpload =
   };
 
 export function baueSetsRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   // ── Feste Pfade VOR den Pfaden mit :setNumber ────────────────────────────────
@@ -94,7 +95,7 @@ export function baueSetsRouter(d: Dienste) {
     async (req: Anfrage<'GET /api/v1/sets/exists/:setNumber'>, res: Antwort<'GET /api/v1/sets/exists/:setNumber'>) => {
       const sn = req.pfad.setNumber;
       const treffer = await d.sets.findSetInScope(req.apiUser.user_id, sn);
-      res.json({ success: true, exists: !!treffer, ...(treffer || { set_number: sets.normalizeSetNumber(sn) }) });
+      res.json({ success: true, exists: !!treffer, ...(treffer || { set_number: normalizeSetNumber(sn) }) });
     },
   );
 
@@ -331,7 +332,7 @@ export function baueSetsRouter(d: Dienste) {
     '/sets/household-members',
     requireToken,
     async (req: Anfrage<'GET /api/v1/sets/household-members'>, res: Antwort<'GET /api/v1/sets/household-members'>) => {
-      res.json({ success: true, members: await d.haushalt.haushalt.haushaltsMitglieder(req.apiUser.user_id) });
+      res.json({ success: true, members: await d.haushalt.haushaltsMitglieder(req.apiUser.user_id) });
     },
   );
 
@@ -418,7 +419,7 @@ export function baueSetsRouter(d: Dienste) {
   // ── CSV-Import: Fortschritt als Abfrage und als Strom ───────────────────────
   // 503 nach 3 s statt zu warten: Die Zustandsrouten hängen an jeder geöffneten
   // Seite und dürfen bei voller Datenbank nicht stauen.
-  const zustandsWaechter = loginOrTokenGuard({ timeoutMs: 3000 });
+  const zustandsWaechter = loginOrTokenGuard(d.konto, { timeoutMs: 3000 });
 
   router.get(
     '/sets/import/csv/status',
@@ -434,7 +435,7 @@ export function baueSetsRouter(d: Dienste) {
   // Offene Ströme je Konto zählt kontoSchranke('strom') für alle Ströme gemeinsam.
   router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), async (req, res) => {
     const uid = angemeldeteNutzerId(req);
-    const strom = oeffneStrom(req, res, { nurAenderungen: true, gegendruck: `csv-import ${uid}` });
+    const strom = oeffneStrom(d.konto, req, res, { nurAenderungen: true, gegendruck: `csv-import ${uid}` });
     // EventSource setzt keine Kopfzeilen, die Sprache kommt deshalb als ?sprache=.
     const gewaehlt = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
     const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : antwortSprache(req);
@@ -518,7 +519,7 @@ export function baueSetsRouter(d: Dienste) {
         res.json({ success: true, ...r });
         return;
       }
-      await ergaenzeImStrom(d, oeffneStrom(req, res, { herzschlag: false }), req, r);
+      await ergaenzeImStrom(d, oeffneStrom(d.konto, req, res, { herzschlag: false }), req, r);
     },
   );
 
@@ -543,7 +544,7 @@ export function baueSetsRouter(d: Dienste) {
     ) => {
       // Der Verwalter löscht geteilte Anleitungen: derselbe Schrittschutz wie jede Verwalter-Route.
       const verwalter = istVerwalter(req);
-      if (verwalter && !(await freigegeben(req, res, 'verwaltung'))) return;
+      if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
       const { instructions, auftrag } = await d.sets.anleitungenNeuLaden(
         req.apiUser.user_id,
         req.pfad.setNumber,
@@ -554,7 +555,7 @@ export function baueSetsRouter(d: Dienste) {
   );
 
   const uploadInstr = privaterEmpfang({
-    ordner: req => privaterOrdner(sets.ANLEITUNGS_WURZEL, String(angemeldeteNutzerId(req))),
+    ordner: req => privaterOrdner(ANLEITUNGS_WURZEL, String(angemeldeteNutzerId(req))),
     praefix: req => pfadParam(req, 'setNumber'),
     typen: { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' },
     maxBytes: 50 * 1024 * 1024,
@@ -571,7 +572,7 @@ export function baueSetsRouter(d: Dienste) {
       res: Antwort<'POST /api/v1/sets/:setNumber/instructions/upload'>,
     ) => {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-      const grund = await pruefeEmpfangeneDatei(sets.ANLEITUNGS_WURZEL, req.file.path, req.file.mimetype);
+      const grund = await pruefeEmpfangeneDatei(ANLEITUNGS_WURZEL, req.file.path, req.file.mimetype);
       if (grund === 'upload_kontingent_voll') return sendeFehler(req, res, 413, grund, { mb: uploadKontingentMb() });
       if (grund) return sendeFehler(req, res, 400, grund);
       const uid = angemeldeteNutzerId(req),

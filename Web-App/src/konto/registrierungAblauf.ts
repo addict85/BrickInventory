@@ -5,12 +5,6 @@ import crypto from 'node:crypto';
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { mailBasisUrl } from '../infra/basisUrl';
 import { imSystemkontext } from '../infra/kontoKontext';
-import {
-  sendBenutzernameVergebenMail,
-  sendPasswordResetMail,
-  sendRegistrierungsVersuchMail,
-  sendVerificationMail,
-} from '../mail';
 import { hashToken } from './geraeteToken';
 import { rechneWieRegistrierung, registriere } from './konten';
 import { setUserSetting } from './nutzerEinstellung';
@@ -59,11 +53,11 @@ export async function registrierungVersuchen(k: KontoKontext, r: Registrierung):
   if (inhaber) {
     await rechneWieRegistrierung(r.passwort);
     const sprache = await mailSprache(k, inhaber.id);
-    return versende(() => sendRegistrierungsVersuchMail(inhaber.email, sprache));
+    return versende(() => k.mail.sendRegistrierungsVersuchMail(inhaber.email, sprache));
   }
   if (await k.konten.nameVergeben(r.username, 0)) {
     await rechneWieRegistrierung(r.passwort);
-    return versende(basis => sendBenutzernameVergebenMail(r.email, r.lang, basis));
+    return versende(basis => k.mail.sendBenutzernameVergebenMail(r.email, r.lang, basis));
   }
   return neuesKonto(k, r);
 }
@@ -85,7 +79,7 @@ async function neuesKonto(k: KontoKontext, r: Registrierung): Promise<boolean> {
       logAndContinue(`registrierung:sprache ${neuId}`),
     );
   const mehrere = (await k.konten.offeneRegistrierungen(r.email)) > 1;
-  return versende(basis => sendVerificationMail(r.email, token, basis, r.lang, 'registrierung', mehrere));
+  return versende(basis => k.mail.sendVerificationMail(r.email, token, basis, r.lang, 'registrierung', mehrere));
 }
 
 /** Über der Grenze still keine Mail: Eine Absage verriete, dass jemand die Adresse bedrängt. */
@@ -99,7 +93,7 @@ export function bestaetigungErneutAnfordern(k: KontoKontext, email: string): Pro
     // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
     if (konto)
       mailSprache(k, konto.id)
-        .then(lang => sendVerificationMail(konto.email, token, mailBasisUrl()!, lang))
+        .then(lang => k.mail.sendVerificationMail(konto.email, token, mailBasisUrl()!, lang))
         .catch(logAndContinue('bestaetigung-erneut:mailversand'));
   });
 }
@@ -118,7 +112,7 @@ export function ruecksetzLinkAnfordern(kx: KontoKontext, email: string): Promise
       return;
     mailSprache(kx, user.id)
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
-      .then(lang => sendPasswordResetMail(user.email ?? '', token, mailBasisUrl()!, lang))
+      .then(lang => kx.mail.sendPasswordResetMail(user.email ?? '', token, mailBasisUrl()!, lang))
       .catch(logAndContinue('forgot-password:mailversand'));
   });
 }

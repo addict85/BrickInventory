@@ -98,9 +98,9 @@ export async function ladeAlarmUebersicht() {
       <div class="alarm-ue-stand">${ungeprueft(marke)}<span class="alarm-ue-zuletzt">${stand}</span></div>
       <div class="alarm-ue-schwelle">
         <span class="alarm-ue-richtung">${richtung}</span>
-        <input inputmode="decimal" type="text" autocomplete="off" value="${betragFuerFeld(a.schwelle)}" aria-label="${tRaw('detail.alert_price')} ${a.set_number}"
+        <span class="alarm-ue-betrag"><input inputmode="decimal" type="text" autocomplete="off" value="${betragFuerFeld(a.schwelle)}" aria-label="${tRaw('detail.alert_price')} ${a.set_number}"
                data-change="aendereAlarmSchwelle" data-arg="${schluessel}" data-val="1" data-click="stopEvent" class="alarm-ue-feld" />
-        <span class="alarm-ue-waehrung">${a.currency_code}</span>
+        <span class="alarm-ue-waehrung">${a.currency_code}</span></span>
       </div>
       <button class="btn bs btn-sm alarm-ue-loeschen" data-click="loescheAlarm"${echt()} data-arg="${schluessel}"
               aria-label="${tRaw('common.delete')}: ${a.set_number}" title="${tRaw('common.delete')}"

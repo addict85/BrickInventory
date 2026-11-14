@@ -7,6 +7,8 @@
  *   A  in ownerBadges() die Ausnahme für eigene Einträge entfernt → rot:
  *      „eigene Sets ohne Etikett“
  *   B  ownerBadges() gibt immer '' zurück → rot: „das Set des Kindes trägt seinen Namen“
+ *   C  (13.11.2026) ownerBadges() wieder mit o.username statt kontoAnzeige() → rot:
+ *      „das Set des Kindes trägt seinen Namen“ („anna“ statt „anna (ich)“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -55,7 +57,7 @@ test('das Set des Kindes trägt seinen Namen, ein geteiltes beide', async () => 
   const { w, d } = await galerie();
   try {
     assert.deepEqual(etiketten(d, '42143-1'), ['emily']);
-    assert.deepEqual(etiketten(d, '75192-1'), ['anna', 'emily']);
+    assert.deepEqual(etiketten(d, '75192-1'), ['anna (ich)', 'emily']);
   } finally {
     w.close();
   }

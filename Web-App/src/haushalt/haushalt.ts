@@ -2,14 +2,15 @@
 import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
-import type { Db, DbSchnittstelle } from '../../db/database';
+import type { DbSchnittstelle } from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { getSetting } from '../einstellungen';
+import type { HaushaltKontext } from './kontext';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fachfehler } from '../infra/fehlerTexte';
 import crypto from 'node:crypto';
 import { imSystemkontext } from '../infra/kontoKontext';
+import { prozessweit } from '../infra/prozessweit';
 
 /** Lang genug für „später am Abend", kurz genug, dass ein liegen gebliebener
  * Code nicht dauerhaft öffnet. */
@@ -31,26 +32,31 @@ const HAUSHALT_MAX = 500;
 /** Je Zugang ein Gedächtnis: Zwei Datenbanken vergeben dieselbe Konto-ID an
  * verschiedene Konten. WeakMap, damit ein Transaktionsgriff samt Gedächtnis
  * verschwindet; der Stand macht leereHaushaltCache() für alle Zugänge wirksam. */
-const _stand = { n: 0 };
-const _haushalte = new WeakMap<object, { stand: number; speicher: Zwischenspeicher<number, Household> }>();
+const gedaechtnisse = () =>
+  prozessweit('haushaltGedaechtnis', () => ({
+    stand: 0,
+    jeZugang: new WeakMap<object, { stand: number; speicher: Zwischenspeicher<number, Household> }>(),
+    abhaengige: [] as Array<() => void>,
+  }));
 function gedaechtnis(db: DbSchnittstelle): Zwischenspeicher<number, Household> {
-  let g = _haushalte.get(db);
-  if (!g || g.stand !== _stand.n) {
-    g = { stand: _stand.n, speicher: new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS) };
-    _haushalte.set(db, g);
+  const alle = gedaechtnisse();
+  let g = alle.jeZugang.get(db);
+  if (!g || g.stand !== alle.stand) {
+    g = { stand: alle.stand, speicher: new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS) };
+    alle.jeZugang.set(db, g);
   }
   return g.speicher;
 }
 
-const _abhaengige: Array<() => void> = [];
 /** Rückruf statt Import: Module, die den Haushalt brauchen, würden sonst einen Zyklus bilden. */
 export function beiHaushaltsaenderung(leere: () => void): void {
-  _abhaengige.push(leere);
+  gedaechtnisse().abhaengige.push(leere);
 }
 
 export function leereHaushaltCache(): void {
-  _stand.n++;
-  for (const leere of _abhaengige) leere();
+  const alle = gedaechtnisse();
+  alle.stand++;
+  for (const leere of alle.abhaengige) leere();
 }
 
 /** Fehler werden verschluckt: Das Signal ist die Beschleunigung, die Frist
@@ -154,7 +160,7 @@ export async function pruefeEinladung(db: DbSchnittstelle, uid: number, code: st
 }
 
 // Atomar entwertet, bei Fehlschlag frei.
-export async function einladungEinloesen(db: Db, uid: number, code: string) {
+export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: string) {
   const subId = parseInt(String(uid), 10);
   if (typeof code !== 'string' || code.length < 8) {
     return { fehler: 'einladungscode_ungueltig' as const };
@@ -162,11 +168,11 @@ export async function einladungEinloesen(db: Db, uid: number, code: string) {
   const th = hash(code);
 
   // Ein Lesefehler ist kein abgelaufener Code: Er geht weiter.
-  const mainId = await repo.belegeEinladung(db, th, subId);
+  const mainId = await k.repository.belegeEinladung(th, subId);
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
 
   const release = async () => {
-    await repo.gibEinladungFrei(db, th).catch(logAndContinue('haushalt:release'));
+    await k.repository.gibEinladungFrei(th).catch(logAndContinue('haushalt:release'));
   };
 
   if (mainId === subId) {
@@ -177,8 +183,8 @@ export async function einladungEinloesen(db: Db, uid: number, code: string) {
   // Frisch: Ein fünf Minuten alter Stand könnte einen Kreis durchlassen, den
   // eine gleichzeitige Einlösung gerade erst möglich gemacht hat.
   const [schonDa, umgekehrt] = await Promise.all([
-    repo.istVerknuepft(db, mainId, subId),
-    repo.istVerknuepft(db, subId, mainId),
+    k.repository.istVerknuepft(mainId, subId),
+    k.repository.istVerknuepft(subId, mainId),
   ]);
   if (schonDa) {
     await release();
@@ -192,25 +198,28 @@ export async function einladungEinloesen(db: Db, uid: number, code: string) {
   }
 
   // Zwei Währungen ergäben eine Summe, der man den Fehler nicht ansieht. Unter
-  // derselben Sperre wie ein Währungswechsel, damit keiner dazwischenrutscht.
-  const ungleich = await db.transaction(async tx => {
-    await sperreHaushaltswaehrung(tx);
-    // Das Hauptkonto ist (noch) nicht im Blickfeld des Einlösenden: Zeilenschutz aus.
-    const [curMain, curSub] = await imSystemkontext('haushalt beitreten', () =>
-      Promise.all([getSetting(mainId, 'currency', 'EUR'), getSetting(subId, 'currency', 'EUR')]),
-    );
-    if (String(curMain) !== String(curSub)) return { haupt: String(curMain), unter: String(curSub) };
-    await repo.verknuepfe(tx, mainId, subId);
-    return null;
-  });
+  // derselben Sperre wie ein Währungswechsel, damit keiner dazwischenrutscht. Im
+  // Systemrahmen, weil das Hauptkonto (noch) nicht im Blickfeld des Einlösenden ist.
+  const ungleich = await imSystemkontext('haushalt beitreten', () =>
+    k.transaktion(async t => {
+      await sperreHaushaltswaehrung(t.db);
+      const [curMain, curSub] = await Promise.all([
+        k.einstellungen.getSetting(mainId, 'currency', 'EUR'),
+        k.einstellungen.getSetting(subId, 'currency', 'EUR'),
+      ]);
+      if (String(curMain) !== String(curSub)) return { haupt: String(curMain), unter: String(curSub) };
+      await t.repository.verknuepfe(mainId, subId);
+      return null;
+    }),
+  );
   if (ungleich) {
     await release();
     return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
   }
-  meldeHaushaltsaenderung(db);
+  meldeHaushaltsaenderung(k.db);
   // Die Verknüpfung steht schon; fehlt nur der Name, trägt die Antwort die ID und sagt es.
   const ab = new Abstriche();
-  const name = await ab.oder('kontoname', repo.kontoName(db, mainId), null);
+  const name = await ab.oder('kontoname', k.repository.kontoName(mainId), null);
   return { linked_to: { id: mainId, username: name || String(mainId) }, ...ab.angabe() };
 }
 
@@ -237,16 +246,16 @@ export async function verwerfeGetrennt(db: DbSchnittstelle, uid: number, subUser
   return { removed: await repo.loescheGetrenntHinweis(db, parseInt(String(uid), 10), parseInt(String(subUserId), 10)) };
 }
 
-export async function haushaltsStand(db: DbSchnittstelle, uid: number) {
+export async function haushaltsStand(k: HaushaltKontext, uid: number) {
   const id = parseInt(String(uid), 10);
-  const h = await haushaltVon(db, id);
-  const members = await haushaltsMitglieder(db, id);
+  const h = await haushaltVon(k.db, id);
+  const members = await haushaltsMitglieder(k.db, id);
   const ab = new Abstriche();
   const [eltern, openInvites, currency, getrennt] = await Promise.all([
-    repo.kontoNamen(db, h.elternIds, 'username'),
-    ab.oder('einladungen', repo.offeneEinladungen(db, id), 0),
-    getSetting(id, 'currency', 'EUR'),
-    repo.getrennteKetten(db, id),
+    k.repository.kontoNamen(h.elternIds, 'username'),
+    ab.oder('einladungen', k.repository.offeneEinladungen(id), 0),
+    k.einstellungen.getSetting(id, 'currency', 'EUR'),
+    k.repository.getrennteKetten(id),
   ]);
   const elternListe = eltern;
   return {

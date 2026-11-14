@@ -1,6 +1,5 @@
 import { logAndContinue } from '../../infra/fehler';
 import type { KatalogKontext } from '../kontext';
-import { katalog } from '../prozess';
 
 /** Daten, keine Warteschlange: je Adresse eine Zeile. Abgearbeitet vom EINEN
  * Auftrag 'bildbedarf', der in Stapeln mit Rücksicht auf das CDN holt. */
@@ -35,32 +34,32 @@ export async function notiereBildbedarf(k: KatalogKontext, urls: string[], sets:
   await k.bildbedarf.merkeBildwuensche(urls, sets);
 }
 
-/** Der Puffer gehört dem Prozess (Nacharbeit merkt vor), also auch sein Zugang. */
-export async function schreibePuffer(): Promise<void> {
+/** Geschrieben über den Kontext dessen, der den Takt gestartet hat (initImageQueue). */
+export async function schreibePuffer(k: KatalogKontext): Promise<void> {
   if (!_puffer.size) return;
   const urls = [..._puffer.keys()];
   const sets = urls.map(u => _puffer.get(u)!);
   _puffer.clear();
-  await notiereBildbedarf(katalog(), urls, sets).catch(logAndContinue('bild-job:sets'));
-  await bildbedarfAnstossen(katalog()).catch(logAndContinue('bild-job:anstossen'));
+  await notiereBildbedarf(k, urls, sets).catch(logAndContinue('bild-job:sets'));
+  await bildbedarfAnstossen(k).catch(logAndContinue('bild-job:anstossen'));
 }
 
 const _takte: NodeJS.Timeout[] = [];
 
-export async function initImageQueue(): Promise<void> {
+export async function initImageQueue(k: KatalogKontext): Promise<void> {
   if (_takte.length) return;
   _takte.push(
     setInterval(() => {
-      schreibePuffer().catch(logAndContinue('bild-job:schreibePuffer'));
+      schreibePuffer(k).catch(logAndContinue('bild-job:schreibePuffer'));
     }, 10_000),
   );
   _takte[0]?.unref();
 }
 
 /** Vor dem Schliessen des Pools: Was im Puffer liegt, braucht noch eine Verbindung. */
-export async function stoppeBildbedarf(): Promise<void> {
+export async function stoppeBildbedarf(k: KatalogKontext): Promise<void> {
   for (const t of _takte.splice(0)) clearInterval(t);
-  await schreibePuffer();
+  await schreibePuffer(k);
 }
 
 // Sonst bleiben alte Notizen.

@@ -31,6 +31,7 @@ import { loadParts, teileFilterZuruecksetzen, loadManualParts } from './parts.js
 import { loadBrickColors } from './teil-erfassen.js';
 import { meldeAnsicht, meldeFilter } from './router.js';
 import { setLagerModus, setScopeMode } from './scope.js';
+import { sammlungUntertitel } from './konten-orte.js';
 import { setScrollLabel } from './scrollbar.js';
 import { tRaw } from '../i18n.js';
 import { abonniere } from './ereignisse.js';
@@ -318,8 +319,12 @@ function beobachteTitel(flaeche) {
     h1 = flaeche?.querySelector('.ptitle');
   _titelBeobachter?.disconnect();
   if (!kopf || !h1 || typeof IntersectionObserver !== 'function') return;
+  // Gemessen an der echten Kopfleiste (bei 200 % Schrift höher als 64 px) und sofort, nicht erst im ersten
+  // Rückruf: Bis dahin galt der Stand der vorigen Seite, und der Titel stand kurz zweimal untereinander.
+  const leiste = document.querySelector('header')?.getBoundingClientRect().bottom ?? 64;
+  kopf.classList.toggle('titel-sichtbar', h1.getBoundingClientRect().bottom > leiste);
   _titelBeobachter = new IntersectionObserver(([e]) => kopf.classList.toggle('titel-sichtbar', e.isIntersecting), {
-    rootMargin: '-64px 0px 0px 0px',
+    rootMargin: `-${Math.round(leiste)}px 0px 0px 0px`,
   });
   _titelBeobachter.observe(h1);
 }
@@ -488,6 +493,7 @@ export function onScopeChange(view) {
   const el = G('scope-' + view);
   if (!el) return;
   setScopeMode(view, el.value);
+  sammlungUntertitel(view);
   if (view === 'gallery') {
     loadGallery();
     loadStats();

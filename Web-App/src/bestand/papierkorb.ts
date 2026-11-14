@@ -86,7 +86,7 @@ export interface PapierkorbEintrag {
 }
 
 export async function listePapierkorb(k: BestandKontext, uidsWahl: Schreiber | number[]): Promise<PapierkorbEintrag[]> {
-  const uids = await k.haushalt.haushalt.schreibbereichAus(uidsWahl);
+  const uids = await k.haushalt.schreibbereichAus(uidsWahl);
   const rows = await k.papierkorb.eintraege(uids, AUFBEWAHRUNG_TAGE);
   return rows.map(r => {
     const erfassungen = r.zeilen?.[ERFASSUNGEN[r.art]] ?? [];
@@ -106,7 +106,7 @@ export async function stelleWiederHer(
   uidsWahl: Schreiber | number[],
   id: number,
 ): Promise<Wiederherstellung> {
-  const uids = await k.haushalt.haushalt.schreibbereichAus(uidsWahl);
+  const uids = await k.haushalt.schreibbereichAus(uidsWahl);
   try {
     return await k.transaktion(async (t): Promise<Wiederherstellung> => {
       const e = await repo.eintragSperren(t.db, id, uids);
@@ -134,12 +134,12 @@ export async function loescheEndgueltig(
   uidsWahl: Schreiber | number[],
   id: number,
 ): Promise<boolean> {
-  const uids = await k.haushalt.haushalt.schreibbereichAus(uidsWahl);
+  const uids = await k.haushalt.schreibbereichAus(uidsWahl);
   return (await k.papierkorb.entferneEintragDesKontos(id, uids)) > 0;
 }
 
 export async function leerePapierkorb(k: BestandKontext, uidsWahl: Schreiber | number[]): Promise<number> {
-  const uids = await k.haushalt.haushalt.schreibbereichAus(uidsWahl);
+  const uids = await k.haushalt.schreibbereichAus(uidsWahl);
   return k.papierkorb.entferneAlle(uids);
 }
 

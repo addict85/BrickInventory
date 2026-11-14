@@ -31,13 +31,13 @@ function alsSitzung(/** @type {Record<string, any>} */ s) {
  *                                Server im NACHLAUF — auch wenn eine Zusicherung vorher scheitert.
  */
 function testServer(_req, { sitzung = {}, t } = {}) {
-  const { testZugang } = require('./sources');
+  const { testZugang, testDienste } = require('./sources');
   const gestellt = alsSitzung(sitzung);
   const app = _req('startup/app.js').baueApp({
     pool: testZugang().pool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
-    dienste: _req('startup/verdrahtung.js').prozessDienste(),
+    dienste: testDienste(),
     sitzungsSpeicher: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
       req.session = gestellt;
       next();

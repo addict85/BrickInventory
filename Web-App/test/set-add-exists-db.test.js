@@ -148,7 +148,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
     // 4. AUSNAHME: Der CSV-Import ruft addSet() direkt und fasst weiterhin
     //    zusammen. Die Regel darf nicht dort hineingerutscht sein.
     // Fundort: src/sets/erfassen.ts, erreichbar über den Einstieg src/sets.
-    const { addSet } = _req('src/sets/index.js');
+    const { addSet } = require('./helpers/sources').bereichsSeite('sets');
     const vorImport = await stand(KIND);
     const erg = await addSet({ setNumber: KIND, menge: 1, konto: subId, zustand: 'N' });
     assert.equal(
@@ -168,8 +168,8 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
 
 test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
   // Warum das jetzt anders geprueft wird
-  const { normalizeSetNumber } = _req('src/sets/index.js');
-  const { sanitizeSetNumber } = _req('src/sets/index.js');
+  const { normalizeSetNumber } = require('./helpers/sources').bereichsSeite('sets');
+  const { sanitizeSetNumber } = require('./helpers/sources').bereichsSeite('sets');
   assert.equal(
     typeof sanitizeSetNumber,
     'function',

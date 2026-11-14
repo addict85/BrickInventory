@@ -181,7 +181,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
         () =>
           Object.assign({}, _req('src/auftraege/auftraege.js'), {
             ..._req('src/auftraege/dienst.js'),
-            ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+            ...require('./helpers/sources').testBereich('auftraege').auftraege,
           }).erledigt({ id: String(zeile.id), belegt_von: 'test' }),
         300,
       );

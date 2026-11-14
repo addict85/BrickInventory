@@ -3,7 +3,7 @@
  * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag. */
 import type { DbSchnittstelle } from '../../db/database';
 import { blickfeldIds, schreibziel } from '../haushalt';
-import { setzeLagerort, ortFuerNeuerfassung } from '../bestand';
+import { ortFuerNeuerfassung } from '../bestand';
 import { mitInventarSperre } from '../../db/txLock';
 import { rebrickableSetBild, brickset, katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
@@ -133,7 +133,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
       },
       t.db,
     );
-    if (ort) await setzeLagerort(t.db, 'set', [besitzer], [sn], ort);
+    if (ort) await t.bestand.lagerortDienst.setzeLagerort('set', [besitzer], [sn], ort);
     // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
     await t.auftraege.stelleAuftragEin(
       'nacharbeit',
@@ -192,12 +192,9 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   imageUrl ??= rebrickableSetBild(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche(
-    'set-anlegen:bild-laden',
-    Promise.race([sk.katalog.bildwerk.setBildLaden(imageUrl, sn), frist]),
-  );
+  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.katalog.setBildLaden(imageUrl, sn), frist]));
   const lokal = wertOder(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.bildwerk.vorschauErzeugen(lokal));
+  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.vorschauErzeugen(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   await merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
@@ -245,7 +242,8 @@ export async function addSet(sk: SetsKontext, s: SetHinzufuegen) {
   // Ohne Ort gilt der Vorgabeort des Kontos (CSV- und Wanted-Import haben keinen).
   const ort = await ortFuerNeuerfassung(sk.db, s.konto, s.lagerort ?? null);
   const ergebnis = await addSetIntern(sk, s);
-  if (ort && ergebnis?.set_number) await setzeLagerort(sk.db, 'set', [s.konto], [ergebnis.set_number], ort);
+  if (ort && ergebnis?.set_number)
+    await sk.bestand.lagerortDienst.setzeLagerort('set', [s.konto], [ergebnis.set_number], ort);
   return ergebnis;
 }
 

@@ -1,6 +1,6 @@
 /** Werte so, wie sie in der Tabelle stehen; Entschlüsseln, Prüfen und Vorgaben
  * macht src/einstellungen/settings.ts. */
-import type { DbSchnittstelle, Db } from '../../db/database';
+import type { DbSchnittstelle } from '../../db/database';
 
 export interface Eintrag {
   key: string;
@@ -77,10 +77,4 @@ export async function ersetzeGlobalenWert(
     alt,
   ]);
   return (r.changes ?? 0) > 0;
-}
-
-/** Eine Transaktion über alles, was der Rückruf schreibt; auch Repositories anderer
- * Bereiche laufen darin mit (db/database.ts, laufendeTx). */
-export function alsEinheit<T>(db: Db, arbeit: () => Promise<T>): Promise<T> {
-  return db.transaction(() => arbeit());
 }

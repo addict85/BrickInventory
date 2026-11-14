@@ -18,7 +18,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const { sitzungsHoechstdauer } = _req('src/konto/sitzungsFrist.js');
-const { establishSession } = _req('src/konto/http/anmeldung.js');
+const establishSession = (...a) =>
+  _req('src/konto/http/anmeldung.js').establishSession(require('./helpers/sources').testDienste().konto, ...a);
 
 const { warte } = require('./helpers/zeit');
 

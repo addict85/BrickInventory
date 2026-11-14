@@ -1,7 +1,6 @@
 /** POST /settings ohne HTTP. Hier statt in src/einstellungen, weil Mail, Protokoll
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
 import { SECRET_KEYS, isMaskedValue, globalerWertGueltig, meldeGlobaleAenderung } from '../einstellungen';
-import { mailBereit } from '../mail';
 import { fachfehler } from '../infra/fehlerTexte';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../vertrag/einstellungen';
 import type { Eingabe } from '../vertrag';
@@ -52,8 +51,7 @@ async function schreibeGlobal(kx: VerwaltungKontext, uid: number, e: Einstellung
     if (String(e[key]) !== String((await kx.einstellungen.getGlobalSetting(key)) ?? '')) geaendert.push(key);
     await kx.einstellungen.setGlobalSetting(key, e[key]);
   }
-  if (geaendert.length)
-    await kx.konto.protokoll.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
+  if (geaendert.length) await kx.konto.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
   // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
   if (GLOBALE_EINSTELLUNGEN.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await kx.einstellungen.deleteGlobalSetting('smtp_insecure_tls');
@@ -73,7 +71,7 @@ export async function einstellungenSpeichern(
     if (
       String(e.registration_enabled) === '1' &&
       (await kx.einstellungen.getGlobalSetting('registration_enabled')) !== '1' &&
-      !(await mailBereit(e))
+      !(await kx.mail.mailBereit(e))
     )
       fachfehler('ungueltig', 'registrierung_braucht_mail');
   }
@@ -81,14 +79,18 @@ export async function einstellungenSpeichern(
   if (heikel.length && !e.admin_password) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
   if (heikel.length && !(await o.bestaetige(e.admin_password))) return false;
 
-  const bricksetAlt = await kx.einstellungen.einstellungenAlsEinheit(async () => {
+  // Die Währung gilt für den ganzen Haushalt und braucht deshalb den Systemrahmen, der
+  // sich in einer Transaktion nicht betreten lässt: vorher und für sich. Scheitert sie,
+  // ist noch nichts geschrieben; der Preis-Job folgt nur einer echten Änderung.
+  if (e.currency !== undefined) await kx.konto.setUserSetting(o.uid, 'currency', e.currency);
+  const bricksetAlt = await kx.transaktion(async t => {
     const alt =
       global && e.api_limit_brickset !== undefined
-        ? parseInt((await kx.einstellungen.getGlobalSetting('api_limit_brickset')) || '100', 10)
+        ? parseInt((await t.einstellungen.getGlobalSetting('api_limit_brickset')) || '100', 10)
         : null;
-    if (global) await schreibeGlobal(kx, o.uid, e);
-    // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
-    for (const key of KONTO_EINSTELLUNGEN) if (e[key] !== undefined) await kx.konto.setUserSetting(o.uid, key, e[key]);
+    if (global) await schreibeGlobal(t, o.uid, e);
+    for (const key of KONTO_EINSTELLUNGEN)
+      if (key !== 'currency' && e[key] !== undefined) await t.konto.setUserSetting(o.uid, key, e[key]);
     return alt;
   });
   if (!global) return true;

@@ -2,7 +2,7 @@
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt. */
 import { meldeFehler, ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort, streamFileToResponse, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken, kontoSchranke } from './middleware';
+import { kontoSchranke, waechterFuer } from './middleware';
 import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
 import _pdfFs from 'node:fs/promises';
 import _fsSync from 'node:fs';
@@ -76,6 +76,7 @@ function liefereUndRaeumeAuf(d: Dienste, req: Request, res: Response, jobId: str
 }
 
 export function bauePdfRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   const validJobId = gueltigeAuftragsKennung;
@@ -127,7 +128,7 @@ export function bauePdfRouter(d: Dienste) {
       if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
       const initial = await pdfJobReadFor(d, jobId, req.apiUser.user_id);
       if (!initial) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
-      const strom = oeffneStrom(req, res, { nurAenderungen: true });
+      const strom = oeffneStrom(d.konto, req, res, { nurAenderungen: true });
       strom.sende({
         status: initial.status,
         error: initial.error || null,

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { getSetInfo } from './quellen';
+import { quellen } from './fremdquellen';
 import { generateThumb } from './bilder/thumbs';
 import { merkeFehlend } from './bilder/imageMisses';
 import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
@@ -22,7 +22,7 @@ export async function bilderFuerNachlauf(k: KatalogKontext) {
 
 /** Vorhandenes bleibt. @returns ob Brickset das Set kennt */
 export async function fuelleAusBrickset(k: KatalogKontext, setNumber: string): Promise<boolean> {
-  const info = await getSetInfo(setNumber);
+  const info = await quellen(k).getSetInfo(setNumber);
   if (!info) return false;
   // Scheitert es, bleibt das Set namenlos — darum mit Protokoll.
   await k.bildlage.fuelleSetLuecken(setNumber, info).catch(logAndContinue(`brickset-nachlauf:set ${setNumber}`));

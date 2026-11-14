@@ -1,28 +1,23 @@
-/** Die Fabrik des Bereichs: Wer die Datenbank braucht, nimmt den Zugang als
- * ersten Parameter; erzeugeHaushalt bindet ihn einmal für alle. So greift kein
- * Modul selbst auf den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import type { Db } from '../../db/database';
-import { bindeZugang } from '../infra/bereich';
+/** Die Fabrik des Bereichs. Die Blickfeld-Helfer nehmen nur den Zugang, weil andere
+ * Bereiche sie auch mit dem Griff ihrer Transaktion rufen; wer Einstellungen braucht,
+ * nimmt den Kontext. */
+import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import * as haushalt from './haushalt';
-import * as repository from './repository';
+import { zugang, type HaushaltAbhaengigkeiten, type HaushaltKontext } from './kontext';
 
-export interface HaushaltKontext {
-  db: Db;
-}
+export type { HaushaltAbhaengigkeiten, HaushaltKontext } from './kontext';
 
-export function erzeugeHaushalt(k: HaushaltKontext) {
-  const { db } = k;
+export function erzeugeHaushalt(a: HaushaltAbhaengigkeiten, einblick?: Einblick<HaushaltKontext>) {
+  const k: HaushaltKontext = baueKontext(a, zugang);
+  einblick?.(k);
   return {
-    db,
-    haushalt: bindeZugang(db, haushalt, [
+    ...bindeZugang(k.db, haushalt, [
       'umzugsQuelle',
       'blickfeldAus',
       'darfSchreibenFuer',
       'einladungAnlegen',
       'haushaltsMitglieder',
-      'haushaltsStand',
       'pruefeEinladung',
-      'einladungEinloesen',
       'haushaltVon',
       'schreibzielOderNull',
       'schreibbereichAus',
@@ -34,24 +29,9 @@ export function erzeugeHaushalt(k: HaushaltKontext) {
       'besitzerAnhaengen',
       'schreibbereich',
     ]),
-    repository: bindeZugang(db, repository, [
-      'belegeEinladung',
-      'benutzerNamen',
-      'besitzerDerErfassung',
-      'einladenderZuCode',
-      'elternkonten',
-      'getrennteKetten',
-      'gibEinladungFrei',
-      'istVerknuepft',
-      'kontoName',
-      'kontoNamen',
-      'legeEinladungAn',
-      'loescheGetrenntHinweis',
-      'offeneEinladungen',
-      'raeumeEinladungenAuf',
-      'trenne',
-      'unterkonten',
-    ]),
+    ...bindeZugang(k, haushalt, ['einladungEinloesen', 'haushaltsStand']),
+    /** Nur ein getrennter Job-Prozess: Er hält eigene Caches, die der Web-Prozess ändert. */
+    horcheAufAenderungen: () => k.db.benachrichtigung.listen(haushalt.HAUSHALT_KANAL, haushalt.leereHaushaltCache),
   };
 }
 

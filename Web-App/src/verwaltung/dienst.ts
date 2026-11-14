@@ -117,7 +117,7 @@ export async function preisJobStand(k: VerwaltungKontext) {
     log?: unknown;
   } = {};
   try {
-    letzter = JSON.parse((await k.auftraege.laufzustand.liesZustand('preis_job_stand')) ?? '{}');
+    letzter = JSON.parse((await k.auftraege.liesZustand('preis_job_stand')) ?? '{}');
   } catch (e) {
     meldeFehler('verwaltung:preis-stand', e);
   }
@@ -151,8 +151,6 @@ export const fehlendeBilderNachladen = (k: VerwaltungKontext) => {
 };
 
 export const katalogAbgleichJetzt = (k: VerwaltungKontext) => k.auftraege.ziehePlanVor('csv_sync');
-
-export { bricksetListe } from '../auftraege';
 
 /** Auch über das Tageskontingent hinweg. */
 export async function bricksetWiederholen(k: VerwaltungKontext, sn: string) {

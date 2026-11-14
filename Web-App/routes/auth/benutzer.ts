@@ -1,14 +1,15 @@
 /** Benutzerverwaltung für Verwalter: Jede Änderung verlangt Passwort und
  * zweiten Faktor des Verwalters und steht im Protokoll. */
+import { waechterFuer } from '../api_v1/middleware';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { passwortMangel } from '../../src/infra/passwortRegel';
-import { requireApiAdminUeberKonten } from '../api_v1/middleware';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { USERNAME_RE, LETZTER_VERWALTER } from '../../src/konto';
 import type { Dienste } from '../../startup/verdrahtung';
 
 export function baueBenutzerRouter(d: Dienste) {
+  const { requireApiAdminUeberKonten } = waechterFuer(d.konto);
   const router = vertragsRouter();
   const requireAdmin = requireApiAdminUeberKonten;
 
@@ -32,7 +33,7 @@ export function baueBenutzerRouter(d: Dienste) {
       // Passwort bestätigen und protokollieren — eine erbeutete Sitzung soll keinen
       // Verwalter anlegen.
       const verwalter = angemeldeteNutzerId(req);
-      if (!(await bestaetigeMitFaktor(req, res, verwalter, req.eingabe.admin_password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, verwalter, req.eingabe.admin_password))) return;
       if ((await d.konto.legeKontoAn(verwalter, username, password, alsVerwalter)) === null)
         return sendeFehler(req, res, 409, 'benutzername_vergeben');
       if (alsVerwalter)
@@ -56,7 +57,7 @@ export function baueBenutzerRouter(d: Dienste) {
       const soll = req.eingabe.is_admin;
       if (targetId === nutzerId(req) && !soll) return sendeFehler(req, res, 400, 'eigene_adminrolle');
       if (!(await d.konto.gibtKonto(targetId))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-      if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
       const r = await d.konto.verwalterRolleSetzen(angemeldeteNutzerId(req), targetId, soll);
       if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
       if (r === LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
@@ -84,7 +85,7 @@ export function baueBenutzerRouter(d: Dienste) {
       if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
       if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
       if (!(await d.konto.gibtKonto(targetId))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-      if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
       const r = await d.konto.aktivSetzen(angemeldeteNutzerId(req), targetId, soll);
       if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
       if (r === LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
@@ -103,7 +104,7 @@ export function baueBenutzerRouter(d: Dienste) {
       const targetId = req.pfad.id;
       if (!Number.isInteger(targetId) || !(await d.konto.gibtKonto(targetId)))
         return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-      if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
       const r = await d.konto.registrierungFreischalten(angemeldeteNutzerId(req), targetId);
       if (r !== 'ok') return sendeFehler(req, res, 409, r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
       res.json({ success: true });
@@ -126,7 +127,7 @@ export function baueBenutzerRouter(d: Dienste) {
 
       // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
       // eine offene Verwaltersitzung allein genügt dafür nicht.
-      if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
       if (!(await d.konto.setzeFremdesPasswort(targetId, password ?? '', angemeldeteNutzerId(req))))
         return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
       // Wie beim entfernten Faktor: Eine Übernahme durch eine erbeutete Verwaltersitzung bliebe sonst unbemerkt.
@@ -145,7 +146,7 @@ export function baueBenutzerRouter(d: Dienste) {
     '/users/:id',
     requireAdmin,
     async (req: OffeneAnfrage<'DELETE /api/v1/auth/users/:id'>, res: Antwort<'DELETE /api/v1/auth/users/:id'>) => {
-      if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
       const r = await d.konto.kontoEntfernen(req.pfad.id, angemeldeteNutzerId(req));
       if (r === LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
       if (r !== 'entfernt') return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
@@ -164,7 +165,7 @@ export function baueBenutzerRouter(d: Dienste) {
       const id = req.pfad.id;
       if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
       if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
-      if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
       await d.konto.zweitenFaktorEntfernen(angemeldeteNutzerId(req), id);
       const durch = nutzerName(req) ?? '';
       d.konto.hinweisNebenher(id, 'zweiter_faktor_entfernt', undefined, { durch });

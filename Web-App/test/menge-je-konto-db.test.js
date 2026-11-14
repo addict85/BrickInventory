@@ -47,7 +47,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, kid]]);
     await db.pool.end().catch(() => {});
   });
-  const { updateSet } = _req('src/sets/index.js');
+  const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
   const pk = _req('src/bestand/papierkorb.js');
 
   await t.test('Hauptkonto verringert das Unterkonto, Rückgängig bringt den Kauf zurück', async () => {

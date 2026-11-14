@@ -1,14 +1,18 @@
 /**
- * CSV-Import und Erfassen von Hand müssen dasselbe hinterlassen.
+ * CSV-Import und Erfassen von Hand müssen dasselbe hinterlassen. Beide laufen
+ * wie im Betrieb im Konto: der Import über die echte Kette (testServer) und den
+ * Auftrag, das Erfassen im Namen des Kontos (alsKonto).
+ *
+ * Gegenprobe (13.11.2026 gemessen): im Worker den Auftrag ohne sein Konto
+ * (imNamenDesAuftrags mit alsAnfrage({})) → rot (der Import schlägt fehl).
  */
-require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const express = require('express');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, alsKonto } = require('./helpers/sources');
+const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
 const { importWorker } = require('./helpers/auftraege');
 const { datenOderSkip } = require('./helpers/db');
@@ -28,15 +32,7 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
   );
   const uid = u.id;
 
-  const app = express();
-  app.use(express.json());
-  app.use((req, _res, next) => {
-    req.session = { userId: uid };
-    next();
-  });
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
-  const srv = app.listen(0);
-  const base = `http://localhost:${srv.address().port}`;
+  const { base, schliessen } = testServer(_req, { sitzung: { userId: uid } });
 
   try {
     // part_name steht in der Datei, damit kein Rebrickable-Nachschlag nötig
@@ -51,7 +47,9 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
 
     // Derselbe Fall von Hand, ueber dieselbe Route wie die Webapp.
     const { addManualPart } = _req('src/teile/manuelleTeile.js');
-    await addManualPart(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 });
+    await alsKonto(uid, () =>
+      addManualPart(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 }),
+    );
 
     // Gelesen aus der ERFASSUNG
     const spalten = 'unit_price, condition, quantity';
@@ -85,7 +83,7 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
         'sie ab, rechnet einer der beiden wieder selbst.',
     );
   } finally {
-    srv.close();
+    await schliessen();
     await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM parts WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM users WHERE id=$1`, [uid]).catch(() => {});

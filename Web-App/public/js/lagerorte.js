@@ -39,7 +39,7 @@ export async function ladeLagerortVerwaltung() {
   // damit ein langer Name die Spalte nicht sprengt; der Trennstrich liegt darum an jeder Zelle.
   setzeHtml(
     el,
-    html`${html`<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">`}${orte.map(
+    html`${html`<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:0">`}${orte.map(
       o => {
         const n = belegung.get(o.name);
         // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts): „18 Teilesorten" hiesse
@@ -57,15 +57,15 @@ export async function ladeLagerortVerwaltung() {
         // Belegt: Der Server lehnte das Löschen erst nach der Rückfrage ab. Gesperrt sagt es vorher, mit dem Grund.
         const belegt = !!n && (Number(n.sets) || 0) + (Number(n.teile) || 0) + (Number(n.figuren) || 0) > 0;
         return html`<div data-stil="display:contents">
-      <span class="lager-feld" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${o.name}" aria-label="${tRaw('detail.storage')}"
+      <span class="lager-feld" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${o.name}" aria-label="${tRaw('storage.umbenennen', { name: o.name })}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1" data-zaehler class="lager-eingabe" /></span>
-      <span class="lager-belegt" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${n ? '' : ' lager-frei'}">${wie}</span></span>
-      <span data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
+      <span class="lager-belegt" data-stil="padding:6px 0 6px 8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${n ? '' : ' lager-frei'}">${wie}</span></span>
+      <span data-stil="padding:6px 0 6px 8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
               data-arg2="${o.id === vorgabeId ? 1 : 0}"
               title="${tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set')}"
               aria-label="${tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set')}"
               aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
-      <span data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="loescheLagerort"${echt()} data-arg="${o.id}"
+      <span data-stil="padding:6px 0 6px 8px;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="loescheLagerort"${echt()} data-arg="${o.id}"
               aria-label="${tRaw('common.delete')}: ${o.name}${belegt ? ` (${tRaw('storage.erst_umraeumen', { wie })})` : ''}" title="${belegt ? tRaw('storage.erst_umraeumen', { wie }) : tRaw('common.delete')}"
               data-arg2="${o.name}"${belegt ? ' disabled' : ''}>${ico('loeschen')}</button></span>
     </div>`;

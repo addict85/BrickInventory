@@ -529,7 +529,43 @@ test('Routen, Aufträge und Clients importieren keine Repositories', () => {
   );
   assert.deepEqual(treffer, []);
   routenNurUeberFabrik();
+  routenOhneFachablauf();
 });
+
+/** Fachabläufe (Mail, Token-Hash, Design-Cache) stehen in Diensten, nicht in Routen. */
+function routenOhneFachablauf() {
+  // Eine Route liest die Anfrage, ruft d und antwortet; wer src/mail, hashToken oder
+  // invalidateTheme importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
+  // Gegenproben (14.11.2026): `import { hashToken } from '../../src/konto'` in
+  // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
+  // routes/api_v1/sets.ts → rot; `import { erzeugeMail } from '../../src/mail'` in
+  // routes/auth/registrierung.ts → rot.
+  /** @type {[RegExp, string][]} */
+  const MUSTER = [
+    [
+      /import\s*\{[^}]*\b(?:hashToken|invalidateTheme)\b[^}]*\}\s*from\s*'[./]+\/src\/konto'/g,
+      'Werkzeug aus src/konto',
+    ],
+    [/import\s*\*\s*as\s*\w+\s*from\s*'[./]+\/src\/\w+'/g, 'Bereich als Namensraum'],
+    [/from\s*'[./]+\/src\/mail(?:\/\w+)?'/g, 'src/mail'],
+  ];
+  assert.ok(
+    MUSTER.every(([re], i) =>
+      new RegExp(re.source).test(
+        [
+          "import { hashToken } from '../../src/konto';",
+          "import * as sets from '../../src/sets';",
+          "import { sendMail } from '../../src/mail';",
+        ][i],
+      ),
+    ),
+    'Selbstbeweis: jedes Muster findet sein Beispiel',
+  );
+  const treffer = [];
+  for (const d of tsUnter('routes'))
+    for (const [re, was] of MUSTER) for (const _ of quelltext(d).matchAll(re)) treffer.push(`${d}: ${was}`);
+  assert.deepEqual(treffer, []);
+}
 
 /** Die gebundenen Dienste je Bereich, wie src/<bereich>/bereich.ts sie anbietet. */
 function gebundeneDienste() {
@@ -570,22 +606,23 @@ function routenNurUeberFabrik() {
 
 /** Eine Arbeitseinheit steht am Aufrufort: k.transaktion(t => …). */
 function arbeitseinheitAmAufrufort() {
-  // Der Rumpf bekommt den Kontext der Transaktion (t) und schreibt über ihn; bei
-  // db.transaction(async () => …) sah man nur am Aufrufpfad, was zusammen gilt.
-  // Ausgenommen die Module, deren Kontext der Zugang selbst ist (tx als Parameter).
-  // Gegenprobe (13.11.2026): in src/sammlung/loeschen.ts wieder
-  // `k.db.transaction(async tx =>` → rot „src/sammlung/loeschen.ts: .transaction(“.
-  const ZUGANG_ALS_KONTEXT = new Set(['src/haushalt/haushalt.ts', 'src/bestand/lagerort.ts', 'src/infra/bereich.ts']);
+  // Eine Transaktionsform: Dienste öffnen sie mit k.transaktion, der Rumpf bekommt den
+  // Kontext der Transaktion (t); Repositories nehmen den tx des Aufrufers. `.transaction(`
+  // steht nur in src/infra/bereich.ts und db/.
+  // Gegenproben: (13.11.2026) in src/sammlung/loeschen.ts wieder `k.db.transaction(async tx =>`
+  // → rot; (13.11.2026) ebenso in src/bestand/lagerortSetzen.ts und in
+  // src/konto/repository/zweiterFaktor.ts → rot „…: .transaction(“.
   const treffer = [];
-  for (const d of tsUnter('src')) {
-    if (/\/repository/.test(d) || ZUGANG_ALS_KONTEXT.has(d)) continue;
+  const alle = [...tsUnter('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts'];
+  for (const d of alle) {
     const s = quelltext(d);
-    if (/\.transaction\(/.test(s)) treffer.push(`${d}: .transaction(`);
+    if (d !== 'src/infra/bereich.ts' && /\.transaction\s*(?:<[^>]*>)?\(/.test(s)) treffer.push(`${d}: .transaction(`);
     if (/transaktion\(\s*(?:async\s*)?\(\)/.test(s)) treffer.push(`${d}: transaktion ohne Kontext`);
   }
   assert.ok(
-    tsUnter('src').some(d => /\.transaktion\(async t\b/.test(quelltext(d))),
-    'Selbstbeweis: es gibt Arbeitseinheiten',
+    tsUnter('src').some(d => /\.transaktion\(async t\b/.test(quelltext(d))) &&
+      /\.transaction\(/.test(quelltext('src/infra/bereich.ts')),
+    'Selbstbeweis: es gibt Arbeitseinheiten, und die Suche findet die eine Stelle',
   );
   assert.deepEqual(treffer, []);
 }

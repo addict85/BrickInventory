@@ -52,6 +52,55 @@ export function istSetnummer(eingabe) {
   return /^[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?$/.test(String(eingabe ?? '').trim());
 }
 
+/** Legt ein Element seine Kinder nebeneinander (Flex-Zeile oder Raster)? @param {Element} el */
+function nebeneinander(el) {
+  const s = getComputedStyle(el);
+  return /grid$/.test(s.display) || (/flex$/.test(s.display) && !s.flexDirection.startsWith('column'));
+}
+
+/**
+ * Die Geschwister, die mit `kind` auf derselben Linie seiner Flex-Zeile stehen (ohne Meldungen). Am Telefon
+ * brechen dieselben Zeilen untereinander um; dann steht das Feld allein.
+ * @param {Element} kind
+ */
+function linienNachbarn(kind) {
+  const a = kind.getBoundingClientRect();
+  return [...(kind.parentElement?.children ?? [])].filter(x => {
+    if (x === kind || x.classList.contains('feld-fehler')) return false;
+    const b = x.getBoundingClientRect();
+    return b.height > 0 && b.top < a.bottom - 1 && a.top < b.bottom - 1;
+  });
+}
+
+/**
+ * Stellt die Meldung unter die Formularzeile, nicht in sie: In einer Flex-Zeile schob sie sonst den Knopf
+ * daneben zur Seite oder hob die Nachbarn aus der Flucht. Steht das Feld allein auf seiner Linie, bleibt
+ * sie direkt darunter.
+ * @param {HTMLElement} feld @param {HTMLElement} meldung
+ */
+function fehlerPlatzieren(feld, meldung) {
+  /** @type {Element} */
+  let anker = feld.closest('.preis-mit-waehrung') ?? feld;
+  let gruppe = anker.parentElement?.closest('.fg') ?? null;
+  if (gruppe && !gruppe.contains(anker)) gruppe = null;
+  /** @type {Element} */
+  let kind = gruppe ?? anker;
+  while (kind.parentElement && nebeneinander(kind.parentElement)) {
+    const nachbarn = linienNachbarn(kind);
+    if (!nachbarn.length) break;
+    // Umbrechende Zeile oder Raster: als eigene Linie hinter die letzten Nachbarn (.feld-fehler spannt über alle
+    // Spalten), die Linien darunter rücken nur nach unten.
+    const s = getComputedStyle(kind.parentElement);
+    if (/grid$/.test(s.display) || s.flexWrap !== 'nowrap') {
+      anker = [kind, ...nachbarn].reduce((x, y) => (x.compareDocumentPosition(y) & 4 ? y : x));
+      break;
+    }
+    kind = kind.parentElement;
+    anker = kind;
+  }
+  if (anker.nextElementSibling !== meldung) anker.insertAdjacentElement('afterend', meldung);
+}
+
 /**
  * Eine Fehlermeldung direkt am Feld (leerer Text räumt sie weg). Vorleser hören sie über role="alert" und
  * finden sie über aria-describedby.
@@ -68,7 +117,7 @@ export function feldFehler(id, text) {
     el.id = id + '-fehler';
     el.className = 'feld-fehler';
     el.setAttribute('role', 'alert');
-    // In der Tabelle eine eigene Zeile (in der Zelle schob sie Spalten aus dem Bild), sonst hinter Feld/Zeile.
+    // In der Tabelle eine eigene Zeile (in der Zelle schob sie Spalten aus dem Bild).
     const zeile = feld.closest('td')?.parentElement;
     if (zeile instanceof HTMLTableRowElement) {
       const tr = document.createElement('tr');
@@ -78,9 +127,11 @@ export function feldFehler(id, text) {
       td.append(el);
       tr.append(td);
       zeile.insertAdjacentElement('afterend', tr);
-    } else (feld.closest('.preis-mit-waehrung') ?? feld).insertAdjacentElement('afterend', el);
+    }
     feld.addEventListener('input', () => feldFehler(id, ''));
   }
+  // Auch eine leere Meldung kommt ins Dokument: Sonst legte jeder Aufruf eine neue an, samt Zuhörer.
+  if ((text || !el.isConnected) && !el.closest('tr.feld-fehler-zeile')) fehlerPlatzieren(feld, el);
   el.textContent = text || '';
   el.hidden = !text;
   const fehlerZeile = el.closest('tr.feld-fehler-zeile');

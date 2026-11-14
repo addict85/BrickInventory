@@ -56,7 +56,7 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
   fs.writeFileSync(path.join(ordner, 'KB_1-1.jpg'), 'JPG');
   fs.writeFileSync(path.join(ordner, 'KB_1-1_thumb.jpg'), 'JPG');
 
-  const nacharbeit = _req('src/infra/bereich.js').prozessDienste().katalog.nacharbeit;
+  const nacharbeit = require('./helpers/sources').testNacharbeit();
   const vorgemerkt = [];
   const vorher = nacharbeit.bildVormerken;
   nacharbeit.bildVormerken = (_url, sn) => vorgemerkt.push(sn);

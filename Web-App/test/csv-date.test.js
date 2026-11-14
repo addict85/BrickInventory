@@ -52,7 +52,7 @@ test('leere und unbrauchbare Eingaben ergeben null', () => {
  */
 test('jeder CSV-Import normalisiert das Datum', () => {
   const _req = require('./helpers/sources').buildAndRequire();
-  const { setCsvZeilen } = _req('src/sets/index.js');
+  const { setCsvZeilen } = require('./helpers/sources').bereichsSeite('sets');
   const { csvGemeinsameFelder } = _req('src/infra/csvExport.js');
   const { rows } = setCsvZeilen('set_number;acquired_at\n10001-1;01.02.2026\n');
   assert.equal(rows[0].acquiredAt, '2026-02-01', 'Sets: 01.02.2026 ist der 1. Februar');

@@ -22,7 +22,7 @@ import type { TeileKontext } from './kontext';
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus
  * rb_colors für Teile ohne eigenen Wert. */
 export async function getPartsColors(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
-  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Aus der Zusammenfassung (die Mengen sind dort schon mit der Set-Anzahl
@@ -141,7 +141,7 @@ export async function tryPartsSummary(k: TeileKontext, userId: Blickfeld, o: Rec
 }
 
 export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, query: Record<string, unknown> = {}) {
-  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const filter = teileFilter(query);
   const page = query.page ?? 1;
@@ -195,13 +195,13 @@ export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, q
 /** Die Kategorie aus dem eigenen Katalog, sonst aus rb_parts: Rebrickables
  * Set-Teile-Antwort liefert meist keine, die Liste bestünde sonst aus „Unbekannt". */
 export async function getPartsCategories(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
-  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   return k.teileListe.kategorien(uids, await ensureFresh(k, uids, { strict: true }));
 }
 
 export async function getPartsStats(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
-  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   // Aus der Zusammenfassung nur, wenn sie frisch ist: Webapp und App zeigen
   // dieselben Zahlen.
@@ -275,7 +275,7 @@ export async function getManualParts(
   }: { page?: unknown; page_size?: unknown; search?: string | null; storage?: string | null } = {},
   ab = new Abstriche(),
 ) {
-  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
@@ -289,7 +289,7 @@ export async function getManualParts(
     new Map<string, number>(),
   );
   const mitPreis = mitZustand.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
-  return k.haushalt.haushalt.besitzerAnhaengen(uids, mitPreis);
+  return k.haushalt.besitzerAnhaengen(uids, mitPreis);
 }
 
 // Füllt die Spalte „Habe“ aus dem Bestand.
@@ -300,7 +300,7 @@ export async function getOwnedQuantities(
   blickfeldWahl: Sicht | BlickfeldEingabe,
   teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { gesamt: number; lose: number }>> {
-  const uids = await k.haushalt.haushalt.blickfeldAus(blickfeldWahl);
+  const uids = await k.haushalt.blickfeldAus(blickfeldWahl);
   // Doppelte Schlüssel fallen weg: Eine Liste über mehrere Sets fragt dasselbe
   // Teil sonst mehrfach.
   const gesehen = new Set<string>();

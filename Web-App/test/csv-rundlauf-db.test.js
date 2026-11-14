@@ -65,10 +65,10 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
   );
 
   const { buildPartsCsv, buildFigsCsv } = _req('src/bestand/bestandExport.js');
-  const { buildSetsCsv } = _req('src/sets/index.js');
+  const { buildSetsCsv } = require('./helpers/sources').bereichsSeite('sets');
   const { importiereTeileCsv } = _req('src/teile/manuelleTeile.js');
   const { importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
-  const { setCsvZeilen } = _req('src/sets/index.js');
+  const { setCsvZeilen } = require('./helpers/sources').bereichsSeite('sets');
 
   const erfassungen = (tabelle, nummer, farbe, u) =>
     db.all(

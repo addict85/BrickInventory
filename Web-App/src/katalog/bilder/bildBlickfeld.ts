@@ -16,7 +16,7 @@ const TREFFER_MS = 60_000,
   KONTEN_HOECHSTENS = 1000;
 
 async function lade(k: KatalogKontext, uid: number): Promise<Stand> {
-  const zeilen = await k.bildBlickfeld.setsImBlickfeld(await k.haushalt.haushalt.blickfeldIds(uid));
+  const zeilen = await k.bildBlickfeld.setsImBlickfeld(await k.haushalt.blickfeldIds(uid));
   const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: Date.now() };
   for (const z of zeilen) {
     s.nummern.add(dateiStamm(z.set_number));

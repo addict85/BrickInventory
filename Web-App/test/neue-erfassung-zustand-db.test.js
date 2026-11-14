@@ -68,7 +68,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
         [SET, c, p],
       );
 
-    const { updateSet } = _req('src/sets/index.js');
+    const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
     await updateSet(uid, SET, { quantity: 2 });
 
     const erf = await db.all(

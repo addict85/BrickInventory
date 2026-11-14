@@ -142,10 +142,15 @@ export function sitzungUngeklaert(d, warteSek, neu) {
   clearInterval(_sitzungUhr);
   const grund = String(d.error || tRaw('api.unexpected'));
   let rest = d.status === 429 ? Math.max(5, warteSek || 60) : 15;
+  // Gedrosselt nennt die Meldung des Servers Minuten, der Kasten zählt Sekunden: zwei Zeitangaben für
+  // dasselbe Warten. Dann steht nur der Zähler da, unter einem Titel, der den Grund nennt.
+  const gedrosselt = d.status === 429;
   const zeige = () =>
     zeigeOffline(true, {
-      titel: tRaw('startup.sitzung_offen'),
-      text: `${grund}${/[.!?]$/.test(grund) ? '' : '.'} ${tRaw('startup.naechster_versuch', { sek: rest })}`,
+      titel: tRaw(gedrosselt ? 'startup.gedrosselt_titel' : 'startup.sitzung_offen'),
+      text: gedrosselt
+        ? tRaw('startup.gedrosselt_text', { sek: rest })
+        : `${grund}${/[.!?]$/.test(grund) ? '' : '.'} ${tRaw('startup.naechster_versuch', { sek: rest })}`,
     });
   const nochmal = () => {
     clearInterval(_sitzungUhr);

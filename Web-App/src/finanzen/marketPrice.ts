@@ -274,13 +274,12 @@ export async function schaetzeFigurenpreis(
     // In Cache und Verlauf, markiert als geschätzt: fetchMinifigPrice liest nur
     // unmarkierte Zeilen, die Anzeige kennzeichnet sie.
     const abdeckung = Math.round((priced / parts.length) * 1000) / 1000;
-    await k.marktpreise
-      .merkeGeschaetztenFigurenpreis(figNumber, cond, currency, total, abdeckung)
-      .catch(e => console.warn(`[minifig-price-estimate] Cache ${figNumber}: ${e.message}`));
-    // Nur mit echtem Preis: Ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
-    await k.marktpreise
-      .merkeGeschaetztenFigurenverlauf(figNumber, cond, currency, total, abdeckung)
-      .catch(logAndContinue('marktpreis:figurverlauf schreiben'));
+    // Zusammen, wie bei Sets (speicherePreis): Ein Cache ohne Verlaufspunkt hielte die
+    // nächste Schätzung zurück. Ein Fehler endet unten als Meldung ohne Schätzung.
+    await k.transaktion(async t => {
+      await t.marktpreise.merkeGeschaetztenFigurenpreis(figNumber, cond, currency, total, abdeckung);
+      await t.marktpreise.merkeGeschaetztenFigurenverlauf(figNumber, cond, currency, total, abdeckung);
+    });
 
     return { preis: total, abdeckung };
   } catch (e) {

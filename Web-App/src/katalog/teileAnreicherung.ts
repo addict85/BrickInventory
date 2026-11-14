@@ -1,53 +1,31 @@
 /** Füllt set_parts_catalog aus der Rebrickable-API, damit die Teileliste eines
- * Sets Namen und Bilder hat. Bilder werden im Hintergrund geladen; bis dahin
- * gilt die CDN-Adresse. */
-import {
-  cdnImageLimiter,
-  rebrickableBackgroundLimiter as rebrickableLimiter,
-  consumeRebrickableDaily,
-} from './rateLimiter';
-import { meldeFehler, fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
+ * Sets Namen und Bilder hat. Bilder lädt setBilderLaden.ts im Hintergrund; bis
+ * dahin gilt die CDN-Adresse. */
+import { consumeRebrickableDaily } from './rateLimiter';
+import { logAndContinue } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
-import {
-  merkeTeil,
-  merkeTeilFarbe,
-  merkeSetTeil,
-  setzeTeilBildLokal,
-  merkeFiguren,
-  merkeSetFiguren,
-  setzeFigurBildLokal,
-} from './katalogPflege';
-import { getRbKey, downloadFile, parseThrottleWait as ptw, rebrickableRoh, BILD_KOPFZEILEN } from './quellen';
+import { merkeTeil, merkeTeilFarbe, merkeSetTeil, merkeFiguren, merkeSetFiguren } from './katalogPflege';
+import { getRbKey, parseThrottleWait as ptw, rebrickableRoh } from './quellen';
 
 /** Ohne Typparameter leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
 
-// Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
-// bekommt deshalb die Art mit.
-import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
-import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
-import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
-import * as repo from './repository/teileAnreicherung';
-import fs from 'node:fs';
-import type { PoolClient } from 'pg';
-import path from 'node:path';
-import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { generateThumb } from './bilder/thumbs';
+import { pfadSegment, nummernListe } from '../infra/fremdeAdressen';
+import type * as repo from './repository/teileAnreicherung';
 import { KEINE_FARBE } from '../infra/validate';
-import { versuche } from '../infra/ergebnis';
 import type { KatalogKontext } from './kontext';
 
 async function apiGet(k: KatalogKontext, url: string, rbKey: string) {
   let serverErrors = 0;
   while (true) {
     if (!(await consumeRebrickableDaily(k))) return null;
-    await rebrickableLimiter.waitForSlot();
+    await k.drossel.hintergrund.waitForSlot();
     const result: JobHttpResult = await rebrickableRoh(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
-      rebrickableLimiter.throttle(wait);
+      k.drossel.hintergrund.throttle(wait);
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
@@ -65,36 +43,6 @@ async function apiGet(k: KatalogKontext, url: string, rbKey: string) {
       return null;
     }
   }
-}
-
-/** @param kind Bestimmt Zielverzeichnis und Web-Pfad. */
-async function downloadImage(
-  imgUrl: string | null | undefined,
-  partNum: string,
-  colorId: number,
-  kind: 'part' | 'minifig',
-): Promise<string | null> {
-  if (!imgUrl) return null;
-  const IMG_DIR = kind === 'minifig' ? MINIFIG_IMAGES_DIR : PART_IMAGES_DIR;
-  const webBase = kind === 'minifig' ? '/images/minifigs/' : '/images/parts/';
-  // Nummer und Adresse kommen bei manuellen Teilen vom Nutzer: Sie dürfen weder
-  // einen Pfad bilden noch die Endung bestimmen.
-  const nummer = dateiTeil(partNum),
-    farbe = dateiTeil(colorId);
-  if (!nummer || !farbe) return null;
-  const file = `${nummer}_${farbe}.${bildEndung(imgUrl)}`;
-  const dest = zielImOrdner(IMG_DIR, file);
-  if (!dest) return null;
-  const rel = `${webBase}${file}`;
-  if (fs.existsSync(dest)) return rel;
-  fs.mkdirSync(IMG_DIR, { recursive: true });
-  if (!(await ladeBild(imgUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN))) return null;
-  try {
-    await generateThumb(rel).catch(logAndContinue('teile-enrich:generateThumb'));
-  } catch (e) {
-    meldeFehler('teile-enrich:vorschau', e);
-  }
-  return rel;
 }
 
 async function enrichSetParts(k: KatalogKontext, setNumber: string) {
@@ -262,156 +210,6 @@ async function ergaenzeSetFiguren(k: KatalogKontext, n: string, rbKey: string): 
   }
 }
 
-/** Ein Bild vom CDN in den Teile-Ordner, dann in den Katalog. */
-async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void> {
-  const rawUrl = p.image_url || '';
-  let cdnUrl = rawUrl;
-  // Beide Schreibweisen: Altzeilen tragen noch /api/img-proxy.
-  const m = rawUrl.match(/\/api\/(?:v1\/)?img-proxy\?url=(.+)/);
-  if (m) cdnUrl = decodeURIComponent(m[1] ?? '');
-  if (!cdnUrl.startsWith('http')) {
-    console.warn(`[img-dl] skipping invalid URL for ${p.id}: ${rawUrl.substring(0, 80)}`);
-    return;
-  }
-
-  const nummer = dateiTeil(p.id),
-    farbe = dateiTeil(p.color_id);
-  if (!nummer || (p.kind !== 'fig' && !farbe)) {
-    console.warn(`[img-dl] skipping unsafe number ${String(p.id).substring(0, 40)}`);
-    return;
-  }
-  const file = p.kind === 'fig' ? `${nummer}.${bildEndung(cdnUrl)}` : `${nummer}_${farbe}.${bildEndung(cdnUrl)}`;
-  const dest = zielImOrdner(PART_IMAGES_DIR, file);
-  if (!dest) return;
-  const rel = `/images/parts/${file}`;
-
-  if (!fs.existsSync(dest)) {
-    await cdnImageLimiter.acquire();
-    fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
-    const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN, text =>
-      console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
-    ).finally(() => cdnImageLimiter.release());
-    if (!ok) return;
-  }
-
-  if (p.kind === 'fig') {
-    await setzeFigurBildLokal(k, p.id, rel).catch(logAndContinue('teile-enrich:figurbild'));
-  } else {
-    await setzeTeilBildLokal(k, p.id, p.color_id, rel).catch(logAndContinue('katalog:teilbild'));
-  }
-}
-
-/** Prozessübergreifend auf einer EIGENEN Verbindung: Ein Advisory-Lock hängt an
- * der Session, über den Pool würde er unzuverlässig freigegeben. waitIfBusy (PDF)
- * wartet auf den anderen Prozess, sonst fehlten Bilder im PDF. */
-async function holeBildSperre(
-  k: KatalogKontext,
-  n: string,
-  waitIfBusy: boolean,
-): Promise<'belegt' | { lockClient: import('pg').PoolClient | null; haveXlock: boolean }> {
-  let lockClient: import('pg').PoolClient | null = null,
-    haveXlock = false;
-  try {
-    lockClient = await k.teileAnreicherung.sperrVerbindung();
-  } catch (_) {
-    lockClient = null;
-  }
-  if (!lockClient) return { lockClient, haveXlock };
-  const deadline = Date.now() + 180000; // max. 3 Min auf anderen Worker warten
-  while (true) {
-    try {
-      haveXlock = await repo.versucheBildSperre(lockClient, n);
-    } catch (_) {
-      haveXlock = false;
-    }
-    if (haveXlock) break;
-    if (!waitIfBusy) {
-      console.log(`[img-dl] ${n}: wird bereits von einem anderen Worker geladen — übersprungen`);
-      lockClient.release();
-      return 'belegt';
-    }
-    if (Date.now() > deadline) {
-      console.warn(`[img-dl] ${n}: Wartezeit auf anderen Worker überschritten — fahre ohne Lock fort`);
-      break; // best effort ohne Lock weitermachen
-    }
-    await new Promise(r => setTimeout(r, 1500));
-  }
-  return { lockClient, haveXlock };
-}
-
-// Je Set eine Sperre: Gleichzeitige Aufrufe für dasselbe Set warten auf den ersten.
-const _downloadLocks = new Map();
-
-async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBusy = false) {
-  const n = mitVersion(setNumber);
-
-  if (_downloadLocks.has(n)) {
-    await _downloadLocks.get(n);
-    return;
-  }
-  // `!` ist beweisbar: Der Rumpf eines Promise-Konstruktors läuft synchron,
-  // resolveLock ist also gesetzt.
-  let resolveLock!: () => void;
-  const lock = new Promise<void>(r => {
-    resolveLock = r;
-  });
-  _downloadLocks.set(n, lock);
-
-  const sperre = await holeBildSperre(k, n, waitIfBusy);
-  if (sperre === 'belegt') {
-    resolveLock();
-    _downloadLocks.delete(n);
-    return;
-  }
-  const { lockClient, haveXlock } = sperre;
-
-  let _pendingAdded = 0; // Anteil dieses Batches am globalen imgDl-Zähler
-  let _flushed = 0; // davon bereits an den Zähler gemeldet (Rest im finally)
-  let _lastFlush = Date.now();
-  try {
-    const needsImg = await k.teileAnreicherung.bilderOhneDatei(n);
-    if (!needsImg.length) return;
-
-    console.log(`[img-dl] ${n}: lade ${needsImg.length} Bilder`);
-    // Zum globalen Zähler ADDIEREN statt ihn zu überschreiben, sonst zeigte die
-    // Überwachung nur den zuletzt gestarteten Stapel.
-    _pendingAdded = needsImg.length;
-    await k.auftraege.imgDlAdd(_pendingAdded).catch(logAndContinue('teile-enrich:imgDlAdd'));
-
-    let done = 0;
-    // Höchstens ein Schreibvorgang je Sekunde statt einer je Bild, das entlastet
-    // den Pool. Der Zähler steigt VOR dem await, damit nichts doppelt meldet.
-    const flushProgress = async (force?: boolean) => {
-      const delta = done - _flushed;
-      if (delta <= 0) return;
-      if (!force && Date.now() - _lastFlush < 1000) return;
-      _flushed += delta;
-      _lastFlush = Date.now();
-      await k.auftraege.imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
-    };
-    await Promise.all(
-      needsImg.map(async p => {
-        await ladeTeilbild(k, p);
-        done++;
-        await flushProgress(false);
-      }),
-    );
-    await flushProgress(true);
-    console.log(`[img-dl] ${n}: ${done}/${needsImg.length} Bilder geladen`);
-  } finally {
-    // Nur den noch nicht gemeldeten Rest verrechnen — deckt Abbruch ab, ohne im
-    // Normalfall doppelt abzuziehen.
-    const _rest = _pendingAdded - _flushed;
-    if (_rest > 0) await k.auftraege.imgDlAdd(-_rest).catch(logAndContinue('teile-enrich:imgDlAdd'));
-    if (lockClient) {
-      if (haveXlock) await repo.gibBildSperreFrei(lockClient, n).catch(logAndContinue('teile-enrich:hashtext'));
-      lockClient.release();
-    }
-    resolveLock();
-    _downloadLocks.delete(n);
-  }
-}
-
 async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
   const n = mitVersion(setNumber);
   const rbKey = await getRbKey();
@@ -486,208 +284,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
   }
 }
 
-// „Fehlend" = image_local gesetzt, Datei fehlt. Nicht wiederherstellbare
-// Einträge werden geleert, damit die Oberflächen auf die CDN-Adresse zurückfallen.
-let _redlRunning = false;
-
-// Für alle drei Bildarten; sonst verwarf der Nachlauf Set- und Figurenbilder.
-function _fsPathFromLocal(imageLocal: string) {
-  if (!imageLocal) return null;
-  const bereiche: Array<[string, string]> = [
-    ['/images/parts/', PART_IMAGES_DIR],
-    ['/images/minifigs/', MINIFIG_IMAGES_DIR],
-    ['/images/sets/', SET_IMAGES_DIR],
-  ];
-  for (const [prefix, dir] of bereiche) {
-    if (!imageLocal.startsWith(prefix)) continue;
-    const file = imageLocal.slice(prefix.length);
-    // Pfadtrenner und .. bleiben verboten: Auch ein Wert aus der Datenbank ist
-    // nicht per se vertrauenswürdig.
-    if (!file || file.includes('..') || file.includes('/') || file.includes('\\')) return null;
-    return path.join(dir, file);
-  }
-  return null;
-}
-
-// Mit await, sonst ginge der Endstand bei einem Neustart verloren.
-async function _redlSetStatus(k: KatalogKontext, obj: Record<string, unknown>) {
-  await k.auftraege.laufzustand
-    .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
-    .catch(logAndContinue('teile-enrich:setzeZustand'));
-}
-
-async function redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) {
-  if (_redlRunning) return { alreadyRunning: true };
-  // Sperre auf EIGENER Verbindung: Advisory-Locks hängen an der Session.
-  let lockClient: PoolClient;
-  try {
-    lockClient = await k.teileAnreicherung.sperrVerbindung();
-  } catch (e) {
-    return { error: fehlertext(e) || 'keine Verbindung' };
-  }
-  try {
-    if (!(await repo.versucheNachlaufSperre(lockClient))) {
-      lockClient.release();
-      return { alreadyRunning: true };
-    }
-  } catch (e) {
-    lockClient.release();
-    return { error: fehlertext(e) || 'Sperre fehlgeschlagen' };
-  }
-  _redlRunning = true;
-  try {
-    return await _redownloadMissingImages(k, lauf);
-  } finally {
-    _redlRunning = false;
-    await repo.gibNachlaufSperreFrei(lockClient).catch(logAndContinue('teile-enrich:pg_advisory_unlock'));
-    lockClient.release();
-  }
-}
-
-type FehlendesBild = { image_local: string; image_url: string | null; fp: string };
-
-async function _redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) {
-  try {
-    fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
-    await _redlSetStatus(k, { running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
-    const { missing, ohneVorschau } = await fehlendeDateienSuchen(k);
-    const thumbsErzeugt = await vorschauenNachholen(k, ohneVorschau);
-    const total = missing.length;
-    await _redlSetStatus(k, { running: true, phase: 'downloading', total, done: 0, redownloaded: 0, cleared: 0 });
-    if (!total) {
-      await _redlSetStatus(k, {
-        running: false,
-        phase: 'done',
-        total: 0,
-        done: 0,
-        redownloaded: 0,
-        cleared: 0,
-        thumbs: thumbsErzeugt,
-      });
-      return { total: 0, redownloaded: 0, cleared: 0, thumbs: thumbsErzeugt };
-    }
-
-    const { done, redownloaded, cleared } = await fehlendeNachladen(k, missing, lauf);
-    pruefeAbbruch(lauf);
-
-    await _redlSetStatus(k, {
-      running: false,
-      phase: 'done',
-      total,
-      done,
-      redownloaded,
-      cleared,
-      thumbs: thumbsErzeugt,
-    });
-    console.log(
-      `[img-redl] fertig: ${redownloaded} neu geladen, ${cleared} geleert (von ${total} fehlenden), ${thumbsErzeugt} Vorschauen erzeugt`,
-    );
-    return { total, redownloaded, cleared, thumbs: thumbsErzeugt };
-  } catch (e) {
-    await _redlSetStatus(k, { running: false, phase: 'error', error: fehlertext(e) });
-    if (lauf?.signal?.aborted) throw e;
-    console.error('[img-redl] Fehler:', fehlertext(e));
-    return { error: fehlertext(e) };
-  }
-}
-
-const gibtDatei = (fp: string) =>
-  fs.promises
-    .access(fp)
-    .then(() => true)
-    .catch(ohneFehlendeDatei('teile-enrich:access', false));
-
-/** Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
- * keinen zweiten Anlauf. */
-async function fehlendeDateienSuchen(k: KatalogKontext) {
-  const rows = await k.teileAnreicherung.lokaleBilderMitAdresse();
-  const missing: FehlendesBild[] = [];
-  const ohneVorschau: string[] = [];
-  for (const r of rows) {
-    const fp = _fsPathFromLocal(r.image_local);
-    if (!fp) continue; // gebündelte /images/ o.ä. überspringen
-    if (!(await gibtDatei(fp))) {
-      missing.push({ image_local: r.image_local, image_url: r.image_url, fp });
-      continue;
-    }
-    if (!(await gibtDatei(fp.replace(/(\.[^.]+)$/, '_thumb.jpg')))) ohneVorschau.push(r.image_local);
-  }
-  return { missing, ohneVorschau };
-}
-
-/** Vorschauen zuerst: Sie brauchen kein Netz und wirken sofort auf jede Kachelwand. */
-async function vorschauenNachholen(k: KatalogKontext, ohneVorschau: string[]): Promise<number> {
-  let thumbsErzeugt = 0;
-  if (!ohneVorschau.length) return 0;
-  await _redlSetStatus(k, {
-    running: true,
-    phase: 'thumbs',
-    total: ohneVorschau.length,
-    done: 0,
-    redownloaded: 0,
-    cleared: 0,
-  });
-  for (const web of ohneVorschau) {
-    const r = await versuche('teile-enrich:vorschau', () => generateThumb(web));
-    if (r.ok && r.wert) thumbsErzeugt++;
-  }
-  console.log(`[img-redl] ${thumbsErzeugt} fehlende Vorschauen erzeugt (von ${ohneVorschau.length})`);
-  return thumbsErzeugt;
-}
-
-/** Neu laden, was eine Adresse hat; sonst den Verweis leeren, damit die Kachel nicht
- * auf eine Datei zeigt, die es nicht gibt. */
-async function fehlendeNachladen(k: KatalogKontext, missing: FehlendesBild[], lauf?: AuftragsLauf) {
-  const total = missing.length;
-  let done = 0,
-    redownloaded = 0,
-    cleared = 0,
-    _lastFlush = 0;
-  const flush = async (force?: boolean) => {
-    const now = Date.now();
-    if (!force && now - _lastFlush < 1000) return;
-    _lastFlush = now;
-    await _redlSetStatus(k, { running: true, phase: 'downloading', total, done, redownloaded, cleared });
-  };
-
-  let idx = 0;
-  const worker = async () => {
-    while (idx < missing.length && !lauf?.signal?.aborted) {
-      const m = missing[idx++];
-      if (!m) break;
-      if (await bildNachladen(m)) redownloaded++;
-      else {
-        // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
-        for (const tbl of repo.KATALOGE_MIT_BILD) {
-          await k.teileAnreicherung
-            .vergissLokalesBild(tbl, m.image_local)
-            .catch(logAndContinue(`img-redl:leeren ${tbl}`));
-        }
-        cleared++;
-      }
-      done++;
-      await flush(false);
-    }
-  };
-  const CONC = 2; // wie beim normalen Download; der CDN-Limiter drosselt ohnehin
-  await Promise.all(Array.from({ length: CONC }, () => worker()));
-  return { done, redownloaded, cleared };
-}
-
-async function bildNachladen(m: FehlendesBild): Promise<boolean> {
-  let ok = false;
-  if (m.image_url) {
-    await cdnImageLimiter.acquire().catch(logAndContinue('teile-enrich:acquire'));
-    try {
-      // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler nennt beide.
-      const r = await versuche('teile-enrich:downloadFile', downloadFile(m.image_url, m.fp));
-      ok = r.ok && r.wert === true;
-    } finally {
-      cdnImageLimiter.release();
-    }
-  }
-  if (ok) await generateThumb(m.image_local).catch(logAndContinue('teile-enrich:generateThumb'));
-  return ok;
-}
-
-export { enrichSetParts, downloadSetImages, enrichSetMinifigs, downloadImage, redownloadMissingImages };
+export { enrichSetParts, enrichSetMinifigs };
+// Die Bildwege hiessen bisher von hier aus; Bereich, PDF und Nachlauf finden sie weiter.
+export { downloadImage, downloadSetImages } from './setBilderLaden';
+export { redownloadMissingImages } from './bilderNachladen';

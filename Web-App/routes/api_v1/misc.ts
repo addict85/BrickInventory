@@ -1,9 +1,10 @@
 import { fehlerAntwort } from '../../src/http/httpAntwort';
-import { requireToken, sichtVon } from './middleware';
+import { sichtVon, waechterFuer } from './middleware';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../startup/verdrahtung';
 
 export function baueMiscRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   router.get('/stats', requireToken, async (req: Anfrage<'GET /api/v1/stats'>, res: Antwort<'GET /api/v1/stats'>) => {

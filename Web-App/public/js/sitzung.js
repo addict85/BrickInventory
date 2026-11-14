@@ -483,11 +483,10 @@ function showApp() {
   }, 1000);
   G('login-screen').style.display = 'none';
   G('app').style.display = 'block';
-  startgeruestWeg();
   zeigeBenutzernamen();
   initDefaultCondition();
   // Kontoauswahl beim Erfassen — bleibt verborgen, wenn es nichts zu wählen gibt.
-  loadHouseholdMembers();
+  const haushalt = loadHouseholdMembers();
   // Ausgeloeste Preisalarme seit dem letzten Besuch — das Gegenstueck zum stuendlichen Abruf der Android-App.
   zeigeOffeneAlarme();
   // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
@@ -558,13 +557,18 @@ function showApp() {
   // Anmeldung nimmt dem Verwalter seine Startseite. Ein Band weist einmal je Sitzung darauf hin. Erst die
   // Einstellungen, dann Beträge: Sonst stünden die Preise kurz in der Vorgabewährung und sprängen dann um
   // (UI-Prüfung 6, N12).
-  einstellungen
+  const bandEntschieden = einstellungen
     .catch(() => {})
     .finally(() => {
       if (ME?.isAdmin) rbHinweisZeigen();
       loadGallery();
       loadStats();
     });
+  // Das Gerüst deckt die App, bis Band und Kontofilter feststehen: Sonst rutschte der Kopf beim Laden um das
+  // Band nach unten und das Suchfeld schrumpfte um die Kontoauswahl. Antwortet der Server nicht, nach 2,5 s.
+  Promise.race([Promise.allSettled([bandEntschieden, haushalt]), new Promise(r => setTimeout(r, 2500))]).then(
+    startgeruestWeg,
+  );
   routeBeimStart();
   seitennameAktualisieren();
 }

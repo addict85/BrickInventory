@@ -20,6 +20,20 @@ export const AUFTRAGS_ARTEN = [
 ] as const;
 export type AuftragsArt = (typeof AUFTRAGS_ARTEN)[number];
 
+/** Nur diese Arten laufen ohne Konto im Systemrahmen, am Zeilenschutz vorbei; der Grund
+ * steht hier. Ein Auftrag mit Konto läuft immer in dessen Namen, die übrigen Arten ohne
+ * Konto arbeiten am Katalog und sehen keine Kontozeile (imNamenDesAuftrags). */
+export const KONTOUEBERGREIFEND: Readonly<Partial<Record<AuftragsArt, string>>> = {
+  nachlauf: 'Altbestand und Katalog aller Konten',
+  csv_sync: 'BrickLink-Nummern der Teile aller Konten',
+  preise: 'Preise aller Sets',
+  bild_nachlauf: 'Bilder aller Bestände',
+  bildbedarf: 'Bildbedarf aller Bestände',
+  bilder_neu_laden: 'fehlende Bilder aller Bestände',
+  aufraeumen: 'Reste aller Konten',
+  aufraeumen_taeglich: 'Reste aller Konten',
+};
+
 export type AuftragsStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
 
 export interface Fortschritt {

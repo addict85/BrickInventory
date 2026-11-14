@@ -44,7 +44,7 @@ const { testServer } = require('./helpers/server');
 const db = testDaten();
 const gr = {
   ..._req('src/gutscheine/repository/gutscheine.js'),
-  ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine,
+  ...require('./helpers/sources').testBereich('gutscheine').gutscheine,
 };
 /** Das Format vor dem Kontext: v1, AES-GCM mit dem Rohschlüssel, ohne AAD. */
 function alsV1(klar) {
@@ -237,7 +237,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
         ).id,
       );
 
-    await _req('startup/datenbank.js').bereiteDatenbankVor(testZugang());
+    await _req('startup/datenbank.js').bereiteDatenbankVor(testZugang(), require('./helpers/sources').testDienste());
 
     assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name = '0087-gutscheinnummer-verschluesselt.sql'`));
     const zeilen = await db.all(
@@ -295,7 +295,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
       'mit dem Schlüssel bleibt die Kopie lesbar',
     );
 
-    const gs = _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine;
+    const gs = require('./helpers/sources').testBereich('gutscheine').gutscheine;
     assert.equal(
       (await gs.nummernNachverschluesseln()) + (await gs.kopienVerschluesseln()),
       0,

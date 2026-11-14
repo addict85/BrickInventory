@@ -3,7 +3,7 @@
 import type express from 'express';
 import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken, kontoSchranke, sichtVon } from './middleware';
+import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { wacheUeberZugang } from '../../src/konto/http/zugangsWache';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import type { Korrektur } from '../../src/merkliste';
@@ -50,7 +50,7 @@ async function importImStrom(
     res.write(JSON.stringify(o) + '\n');
     (res as unknown as { flush?: () => void }).flush?.();
   };
-  const wache = wacheUeberZugang(req, () => {
+  const wache = wacheUeberZugang(d.konto, req, () => {
     zeile({ success: false, error: fehlerText('zugang_beendet', antwortSprache(req)), code: 'zugang_beendet' });
     res.end();
   });
@@ -63,6 +63,7 @@ async function importImStrom(
 }
 
 export function baueWantedRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   // Blickfeld wie überall: Wer ein Geschenk sucht, sieht die Merkposten der Enkel.
@@ -92,7 +93,7 @@ export function baueWantedRouter(d: Dienste) {
     async (req: Anfrage<'POST /api/v1/wanted'>, res: Antwort<'POST /api/v1/wanted'>) => {
       const { set_number, condition, owner_user_id } = req.eingabe;
       if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
-      const owner = await d.haushalt.haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
+      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
       const { merkposten, war_neu } = await d.merkliste.legeMerkpostenAn(owner, set_number, condition);
       res.json({ success: true, war_neu, merkposten });
     },
@@ -106,8 +107,8 @@ export function baueWantedRouter(d: Dienste) {
       req: Anfrage<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>,
       res: Antwort<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>,
     ) => {
-      const von = await d.haushalt.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-      const zu = await d.haushalt.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
+      const von = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+      const zu = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
       const r = await d.merkliste.verschiebeMerkposten(von, req.pfad.setNumber, req.pfad.condition, zu);
       res.json({ success: true, ...r, owner_user_id: zu });
     },
@@ -122,7 +123,7 @@ export function baueWantedRouter(d: Dienste) {
       req: Anfrage<'DELETE /api/v1/wanted/:setNumber/:condition'>,
       res: Antwort<'DELETE /api/v1/wanted/:setNumber/:condition'>,
     ) => {
-      const owner = await d.haushalt.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
+      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
       const weg = await d.merkliste.loescheMerkposten(owner, req.pfad.setNumber, req.pfad.condition);
       res.json({ success: true, geloescht: weg });
     },
@@ -150,7 +151,7 @@ export function baueWantedRouter(d: Dienste) {
       req: Anfrage<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>,
       res: Antwort<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>,
     ) => {
-      const owner = await d.haushalt.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
       const r = await d.merkliste.uebernimm(
         req.apiUser.user_id,
         owner,
@@ -170,7 +171,7 @@ export function baueWantedRouter(d: Dienste) {
     csvEmpfang.single('file'),
     async (req: Anfrage<'POST /api/v1/wanted/import/csv'>, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-      const owner = await d.haushalt.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
       res.json({
         success: true,

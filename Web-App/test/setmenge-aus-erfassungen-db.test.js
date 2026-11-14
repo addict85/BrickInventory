@@ -240,7 +240,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
     [haupt.id, SN, kind.id],
   );
 
-  const H = _req('src/sets/index.js');
+  const H = require('./helpers/sources').bereichsSeite('sets');
 
   // ── Ein Konto ────────────────────────────────────────────────────────────
   const eins = await H.getSets([haupt.id], { page_size: 60 });

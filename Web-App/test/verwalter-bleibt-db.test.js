@@ -10,6 +10,8 @@
  *   B  die Bedingung ANDERER_VERWALTER aus dem UPDATE in setzeVerwalter()
  *      entfernt → rot: „der letzte Verwalter behält die Rolle“ und der
  *      gleichzeitige Entzug
+ *   C  (13.11.2026) in unterVerwalterSperre() die Prüfung inTransaktion() gestrichen
+ *      → rot: „der letzte Verwalter behält …“ (loescheKonto ohne Transaktion lief durch)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -22,7 +24,12 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const K = { ..._req('src/konto/konten.js'), ..._req('src/konto/prozess.js').kontoBereich().konten };
+const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
+/** Wie kontoEntfernen(), ohne Protokoll: Dessen Eintrag zum gleichzeitig gelöschten Verwalter stiesse an den Fremdschlüssel. */
+const entferne = (ziel, durch) =>
+  require('./helpers/sources')
+    .testKontext('konto')
+    .transaktion(t => t.konten.loescheKonto(ziel, durch));
 
 const RUNDEN = 12;
 
@@ -70,7 +77,12 @@ test('Verwalter: Gleichzeitig bleibt immer einer aktiv', { concurrency: 1 }, asy
     assert.deepEqual(await K.setzeVerwalterRolle(y, false), { geaendert: true });
     assert.equal(await K.setzeVerwalterRolle(x, false), K.LETZTER_VERWALTER);
     assert.equal(await K.setzeAktiv(x, false), K.LETZTER_VERWALTER);
-    assert.equal(await K.loescheKonto(x, y), K.LETZTER_VERWALTER);
+    assert.equal(await entferne(x, y), K.LETZTER_VERWALTER);
+    await assert.rejects(
+      K.loescheKonto(x, y),
+      /nur in einer Transaktion/,
+      'ohne Transaktion schützte die Sperre nichts',
+    );
     assert.equal(await aktiveVerwalter(), 1);
     // Ein anderer Verwalter darf wieder gehen, die Rolle von Nicht-Verwaltern ist frei.
     assert.deepEqual(await K.setzeVerwalterRolle(y, true), { geaendert: true });
@@ -87,7 +99,7 @@ test('Verwalter: Gleichzeitig bleibt immer einer aktiv', { concurrency: 1 }, asy
   });
 
   await t.test('gleichzeitiges Löschen', async () => {
-    await gleichzeitig((ziel, ich) => K.loescheKonto(ziel, ich).then(r => (r === true ? 'ok' : r)));
+    await gleichzeitig((ziel, ich) => entferne(ziel, ich).then(r => (r === true ? 'ok' : r)));
   });
 
   await t.test('Entzug gegen Deaktivieren, gleichzeitig', async () => {

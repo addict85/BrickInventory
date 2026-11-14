@@ -1,7 +1,7 @@
 /** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
  * Parameter; erzeugeFinanzen bindet ihn einmal für alle. So greift kein Dienst auf den
  * Prozess zu, und ein Test gibt einen eigenen Zugang. */
-import { baueKontext, bindeZugang } from '../infra/bereich';
+import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as marketPrice from './marketPrice';
 import * as portfolioHistory from './portfolioHistory';
@@ -17,10 +17,12 @@ import { zugang, type FinanzenAbhaengigkeiten, type FinanzenKontext } from './ko
 
 export type { FinanzenAbhaengigkeiten, FinanzenKontext } from './kontext';
 
-export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>) {
+export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, einblick?: Einblick<FinanzenKontext>) {
   const k: FinanzenKontext = baueKontext({ ...a, faecher: new Faecher() }, zugang);
+  einblick?.(k);
   return {
-    ...k,
+    // Die Preisalarme sind Dienste; der Preislauf ruft sie über den Kontext.
+    preisalarm: k.preisalarm,
     ...bindeZugang(k, marketPrice, [
       'getCurrentMarketPrice',
       'resolvePartCondition',

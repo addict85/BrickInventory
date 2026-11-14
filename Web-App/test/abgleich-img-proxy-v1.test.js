@@ -49,7 +49,7 @@ test('der Server bedient beide Adressen', async t => {
     Object.assign(req, { session: { userId: 1 } });
     next();
   });
-  _req('routes/imgProxy.js').registerImgProxy(app);
+  _req('routes/imgProxy.js').registerImgProxy(app, require('./helpers/sources').testDienste());
   const srv = app.listen(0);
   t.after(() => srv.close());
   const status = p =>

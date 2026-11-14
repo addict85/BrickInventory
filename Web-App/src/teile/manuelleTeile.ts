@@ -5,13 +5,11 @@ import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
-import { lookupPart, farbliste, KEINE_FARBE } from '../katalog';
+import { lookupPart, KEINE_FARBE } from '../katalog';
 import * as V0 from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
 import type { TeileKontext } from './kontext';
-
-export const getPartColorList = farbliste;
 
 // Eine Rechnung für Anlegen, Bearbeiten und CSV-Import; ohne Angabe bleibt Preis/Stk leer.
 export async function resolveManualPartPurchase(
@@ -226,7 +224,7 @@ export async function getPartAcquisitions(
   partNumber: string,
   colorId: string | number,
 ) {
-  const uid = await k.haushalt.haushalt.blickfeldAus(uidWahl);
+  const uid = await k.haushalt.blickfeldAus(uidWahl);
   // Das BLICKFELD: Je Zeile kommt der Eigentümer mit, sonst wüsste die Auswahl
   // im Dialog nicht, worauf sie steht.
   return k.manuelleTeile.teilErfassungen(uid, partNumber, V0.colorId(colorId));

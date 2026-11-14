@@ -108,7 +108,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     assert.ok(await da(id));
   });
 
-  const K = { ..._req('src/konto/konten.js'), ..._req('src/konto/prozess.js').kontoBereich().konten };
+  const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
   const { verifiziereEmailToken } = _req('src/konto/anmeldepruefung.js');
   const { hashToken } = _req('src/konto/geraeteToken.js');
   const registriert = async (name, tageAlt) => {

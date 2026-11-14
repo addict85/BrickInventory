@@ -355,11 +355,14 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
       '-e',
       `
     const V = require(${JSON.stringify(path.join(ROOT, 'dist', 'startup', 'verdrahtung.js'))});
-    const db = V.verdrahteProzess({ ...V.baueVerdrahtung(), erststart: async () => {} });
+    const { dbKonfigAusUmgebung, erzeugeDb } = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
+    const db = erzeugeDb(dbKonfigAusUmgebung(), { erststart: async () => {} });
+    const kontexte = {};
+    V.baueDienste(db, { kontexte });
     const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/katalog/bilder/bildbedarfLauf.js'))});
     (async () => {
       await db.initSchemaOnce();
-      await IQ._taktDurchgang(V.prozessDienste().katalog);
+      await IQ._taktDurchgang(kontexte.katalog);
       await db.pool.end();
     })().catch(e => { console.error(e); process.exit(1); });
   `,

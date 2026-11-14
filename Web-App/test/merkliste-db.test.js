@@ -192,7 +192,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     await W.legeMerkpostenAn(U.enkel, '10276-1', 'N');
     const P = {
       ..._req('src/finanzen/preisalarm.js'),
-      ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm,
+      ...require('./helpers/sources').testBereich('finanzen').preisalarm,
     };
     await P.setzeAlarm(U.enkel, '10276-1', 'EUR', { richtung: 'unter', schwelle: 249, condition: 'U' });
     assert.equal((await P.alarmeFuer(U.enkel, '10276-1')).length, 1, 'Aufbau: Alarm fehlt');
@@ -371,7 +371,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     //      wird rot (UNIQUE-Verletzung statt Zusammenführen).
     const P = {
       ..._req('src/finanzen/preisalarm.js'),
-      ..._req('src/finanzen/prozess.js').finanzenBereich().preisalarm,
+      ...require('./helpers/sources').testBereich('finanzen').preisalarm,
     };
     const sn = `wlmv${process.pid}-1`;
     await db.run(

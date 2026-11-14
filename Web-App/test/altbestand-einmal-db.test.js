@@ -4,7 +4,7 @@
  * Datenbank, zurückgespielte ältere Sicherung), läuft sie wieder.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  die Abfrage der Marke in altbestandAufruesten() gestrichen → rot:
+ *   A  die Abfrage der Marke in altbestandAufruesten(require('./helpers/sources').testDienste()) gestrichen → rot:
  *      „der zweite Start lässt den Altbestand in Ruhe“
  *   B  setzeZustand(ALTBESTAND_MARKE, …) gestrichen → rot: „der erste Start
  *      rüstet auf und setzt die Marke“ und „der zweite Start …“
@@ -26,21 +26,21 @@ test('Altbestand einmal je Datenbank', { concurrency: 1 }, async t => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { altbestandAufruesten, ALTBESTAND_MARKE } = _req('startup/datenbank.js');
-  const { liesZustand, loescheZustand } = _req('src/auftraege/prozess.js').auftraegeBereich().laufzustand;
+  const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
   await loescheZustand(ALTBESTAND_MARKE);
 
   await t.test('der erste Start rüstet auf und setzt die Marke', async () => {
-    const r = await altbestandAufruesten();
+    const r = await altbestandAufruesten(require('./helpers/sources').testDienste());
     assert.ok(r && typeof r.umgeschluesselt === 'number', JSON.stringify(r));
     assert.ok(await liesZustand(ALTBESTAND_MARKE));
   });
 
   await t.test('der zweite Start lässt den Altbestand in Ruhe', async () => {
-    assert.equal(await altbestandAufruesten(), null);
+    assert.equal(await altbestandAufruesten(require('./helpers/sources').testDienste()), null);
   });
 
   await t.test('ohne Marke (ältere Sicherung zurückgespielt) läuft es wieder', async () => {
     await loescheZustand(ALTBESTAND_MARKE);
-    assert.notEqual(await altbestandAufruesten(), null);
+    assert.notEqual(await altbestandAufruesten(require('./helpers/sources').testDienste()), null);
   });
 });

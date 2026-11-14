@@ -45,9 +45,7 @@ const { testServer } = require('./helpers/server');
 const gesendet = [];
 const bestaetigt = [];
 const versuche = [];
-const mailerPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'src/mail/mailer.js'));
-const echt = _req('src/mail/mailer.js');
-require.cache[mailerPfad].exports = Object.assign({}, echt, {
+require('./helpers/sources').ersetzeDienste('mail', {
   sendEmailGeaendertMail: async (an, name, neu) => {
     gesendet.push({ an, name, neu });
     return { success: true };

@@ -57,7 +57,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     /** @type {any} */ (req).apiUser = { user_id: uid };
     next();
   });
-  app.use('/api/v1', idempotenz);
+  app.use('/api/v1', idempotenz(require('./helpers/sources').testDienste().idempotenz));
   app.post('/api/v1/parts', async (req, res) => {
     await db.transaction(async tx => {
       await tx.run(`INSERT INTO ${tabelle} VALUES ($1)`, [req.get('Idempotency-Key')]);

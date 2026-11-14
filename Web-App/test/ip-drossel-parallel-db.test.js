@@ -28,7 +28,8 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = testDaten();
-const { ipThrottle } = _req('src/konto/http/anmeldung.js');
+const ipThrottle = (...a) =>
+  _req('src/konto/http/anmeldung.js').ipThrottle(require('./helpers/sources').testDienste().konto, ...a);
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test.after(() => db.pool.end().catch(() => {}));

@@ -36,8 +36,9 @@ test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async t => {
   await t.test('zwei Drosseln teilen sich den Takt', async () => {
     // Die eigene Drossel lässt sofort durch (Fenster 0) — jeder Abstand, der
     // sich zeigt, kommt aus dem gemeinsamen Takt.
-    const a = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND });
-    const b = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND });
+    const apiTakt = require('./helpers/sources').testKontext('katalog').apiTakt;
+    const a = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND, apiTakt });
+    const b = new RateLimiter(1, 0, { api: API, abstandMs: ABSTAND, apiTakt });
     const zeiten = [];
     const start = Date.now();
     await Promise.all([a, b, a, b, a, b].map(d => d.waitForSlot().then(() => zeiten.push(Date.now() - start))));

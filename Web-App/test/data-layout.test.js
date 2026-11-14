@@ -96,14 +96,14 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   // strip() vor dem Schneiden, sonst schiebt ein Erklärtext die Zeile hinaus.
   assert.match(
     strip(read('routes/seiten.ts')),
-    /router\.get\('\/images\/\*pfad',[^)]*\bliefereBild\)/,
+    /router\.get\('\/images\/\*pfad',[^)]*\)\s*=>\s*liefereBild\(d, req, res\)\)/,
     'Bildroute nicht gefunden',
   );
   const src = strip(read('src/katalog/http/bildAuslieferung.ts'));
   const start = src.indexOf('function liefereBild(');
   assert.ok(start > 0, 'Bildroute nicht gefunden');
   const route = src.slice(start, start + 2000);
-  assert.match(route, /resolveUserId\(req\)/, 'Ohne Anmeldeprüfung wären die Bilder öffentlich');
+  assert.match(route, /resolveUserId\(d\.konto, req\)/, 'Ohne Anmeldeprüfung wären die Bilder öffentlich');
   assert.match(
     route,
     /cdnFuerFehlendesBild/,

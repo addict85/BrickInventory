@@ -9,30 +9,35 @@
  *   K  Policy wieder mit `current_setting('app.system') = 'an' OR …` (0112
  *      geändert, Datenbank neu) → rot: „kein Schalter der Sitzung …“
  *   L  in erzeugeDb() den Systempool weggelassen (immer pool) → rot: „kein
- *      Schalter …“, „im Systemrahmen …“, „ein Auftrag …“, „der Rahmen folgt …“,
+ *      Schalter …“, „im Systemrahmen …“, „ein Auftrag …“,
  *      „wer einem Haushalt …“, „ein Währungswechsel …“, „Aufträge und …“,
  *      „die Anmeldung …“
  *   M  auftraege aus der Liste in 0112 gestrichen → rot: „Aufträge und
  *      Zugangsdaten …“
  *   N  in erzeugeKonto() zugaenge wieder mit bindeZugang → rot: „die Anmeldung
  *      findet den Token …“ (Token ungültig, Widerruf löscht nichts)
- *   O  in txStand() die Prüfung des Pools gestrichen → rot: „der Rahmen folgt …“
- *      und „wer einem Haushalt beitritt …“ (das Hauptkonto liest sich als EUR)
+ *   O  in txStand() die Prüfung des Pools gestrichen → rot: „imSystemkontext
+ *      mitten in der Transaktion …“ (lief in ihr, ohne Fehler)
+ *   P  der Worker wie vorher (ganzer Lauf in imAuftragsrahmen(), imNamenDesAuftrags()
+ *      mit imNamenVon) → rot: „ein Auftrag läuft im Systemrahmen nur, wenn …“
+ *      (ohne Marke [A,B,C], Konto [A,B,C])
+ *   Q  nur imNamenDesAuftrags() mit imNamenVon statt alsAnfrage → rot: dasselbe
+ *      (Konto [A,B,C]: der Systemrahmen des Aufrufers bleibt)
  *
  * Gegenproben Zeilenschutz (13.11.2026, vor der Systemrolle):
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
  *   A  vor den Tests `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` → rot:
  *      „mit Konto A …“, „ein Unterkonto …“, „ohne Konto …“, „fremde user_id …“,
- *      „der Rahmen folgt …“, „ein Signal-Handler …“, „eine Anfrage erbt …“;
+ *      „imSystemkontext mitten …“, „ein Signal-Handler …“, „eine Anfrage erbt …“;
  *      nur die Policy entfernt (RLS an) → dieselben und „ein Auftrag …“ (0 Zeilen)
  *   B  in kontextSql() (db/database.ts) immer '' → rot: alle Teiltests
  *   C  set_config(…, false) statt true für app.konto → rot: „ohne Konto …“ (die
  *      Verbindung trägt Konto A weiter) und „im Systemrahmen …“
  *   D  zeilenschutz_konten() ohne die Unterkonten → rot: „mit Konto A …“,
  *      „ohne Konto …“, „fremde user_id …“, „ein Signal-Handler …“
- *   E  im Auftrags-Worker imAuftragsrahmen() weggelassen → rot: „ein Auftrag …“
+ *   E  in imAuftragsrahmen() die Marke KONTOUEBERGREIFEND nicht beachtet → rot: „ein Auftrag …“
  *   F  nach ROLLBACK TO SAVEPOINT stand.kontext nicht zurückgesetzt → rot:
- *      „der Rahmen folgt … Sicherungspunkt“
+ *      „imSystemkontext mitten … Sicherungspunkt“ (Konto A sah nur B)
  *   G  in Benachrichtigung.listen() AsyncResource.bind weggelassen → rot: „ein
  *      Signal-Handler …“ (er fragt im Rahmen von C)
  *   H  alsAnfrage() ohne Leeren des Systemrahmens → rot: „eine Anfrage erbt …“
@@ -63,10 +68,16 @@ const SYSTEM = testName('zeilsys');
 const als = (uid, f) => imNamenVon({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
-/** Alle Bereiche über einen Zugang, wie startup/verdrahtung.ts sie baut. */
-const dienstMit = z =>
-  _req('startup/verdrahtung.js').baueDienste(z, _req('src/auftraege/nacharbeit.js').OHNE_NACHARBEIT);
-const verdrahteMit = z => _req('src/infra/bereich.js').verdrahteDienste(() => dienstMit(z));
+/** Alle Bereiche über einen Zugang, wie startup/verdrahtung.ts sie baut, samt ihren Kontexten. */
+const bauMit = z => {
+  const kontexte = {};
+  const d = _req('startup/verdrahtung.js').baueDienste(z, {
+    nacharbeit: _req('src/auftraege/nacharbeit.js').OHNE_NACHARBEIT,
+    kontexte,
+  });
+  return { d, kontexte };
+};
+const dienstMit = z => bauMit(z).d;
 
 test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   const su = await zugangOderSkip(t, _req);
@@ -191,44 +202,74 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   });
 
   await t.test('im Systemrahmen sieht die Aufräumarbeit alle Konten', async () => {
-    const bestand = dienstMit(app).bestand;
-    assert.equal(await bestand.papierkorb.entferneAeltere(30), 0);
-    assert.equal(await imSystemkontext('test', () => bestand.papierkorb.entferneAeltere(30)), 3);
+    const { papierkorb } = bauMit(app).kontexte.bestand;
+    assert.equal(await papierkorb.entferneAeltere(30), 0);
+    assert.equal(await imSystemkontext('test', () => papierkorb.entferneAeltere(30)), 3);
     assert.deepEqual(await su.all('SELECT id FROM papierkorb'), []);
   });
 
-  await t.test('ein Auftrag läuft im Systemrahmen', async () => {
+  await t.test('ein Auftrag läuft im Systemrahmen nur, wenn seine Art kontoübergreifend ist', async st => {
+    const leeren = () => su.run("DELETE FROM auftraege WHERE art IN ('wechselkurse', 'nacharbeit', 'preise')");
+    st.after(leeren);
     const A_ = _req('src/auftraege/dienst.js');
     const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
-    await su.run("DELETE FROM auftraege WHERE art = 'wechselkurse'");
-    let gesehen = null;
-    const w = erzeugeWorker({ wechselkurse: { ausfuehren: async () => (gesehen = ids(await alleSets())) } });
+    await leeren();
+    const gesehen = {};
+    const sieh = name => async () => {
+      gesehen[name] = ids(await alleSets());
+    };
+    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
+      wechselkurse: { ausfuehren: sieh('ohne Marke') },
+      nacharbeit: {
+        ausfuehren: async () => {
+          await sieh('Konto')();
+          throw new Error('gescheitert');
+        },
+        aufgegeben: sieh('Konto aufgegeben'),
+      },
+      preise: { ausfuehren: (_n, _k, a) => sieh(a.user_id ? 'markiert mit Konto' : 'markiert')() },
+    });
     await A_.stelleAuftragEin('wechselkurse', {}, { schluessel: `zeilen-${process.pid}` });
     assert.equal(await w.verarbeiteEinen(), true);
-    assert.deepEqual(gesehen, [A, B, C]);
+    // Auch aus einem Systemrahmen heraus (server.ts startet die Jobs in einem).
+    await A_.stelleAuftragEin('nacharbeit', { set_number: '10001-1', user_id: A }, { userId: A, maxVersuche: 1 });
+    assert.equal(await imSystemkontext('test', () => w.verarbeiteEinen()), true);
+    await A_.stelleAuftragEin('preise', {}, { schluessel: `zeilen-${process.pid}` });
+    assert.equal(await w.verarbeiteEinen(), true);
+    // Mit Konto zählt das Konto, auch bei einer markierten Art.
+    await A_.stelleAuftragEin('preise', {}, { userId: A, schluessel: `zeilen-a-${process.pid}` });
+    assert.equal(await w.verarbeiteEinen(), true);
+    assert.deepEqual(gesehen, {
+      'ohne Marke': [],
+      Konto: [A, B],
+      'Konto aufgegeben': [A, B],
+      markiert: [A, B, C],
+      'markiert mit Konto': [A, B],
+    });
   });
 
-  // Mitten in einer Konto-Transaktion fragt der Systemrahmen über die Systemrolle neben ihr.
+  // Mitten in einer Konto-Transaktion fragte der Systemrahmen über die Systemrolle neben ihr: abgewiesen.
   await t.test(
-    'der Rahmen folgt imSystemkontext mitten in der Transaktion, auch nach einem Sicherungspunkt',
+    'imSystemkontext mitten in der Transaktion wird abgewiesen; ein Kontowechsel folgt auch nach einem Sicherungspunkt',
     async () => {
       const n = async d => (await d.all('SELECT user_id FROM sets')).length;
       const stand = await als(B, () =>
         app.transaction(async tx => {
           const vorher = await n(tx);
-          const drinnen = await imSystemkontext('test', async () => {
-            await app
-              .transaction(async inner => {
-                await n(inner);
-                throw new Error('zurück');
-              })
-              .catch(() => {});
-            return n(app);
-          });
-          return [vorher, drinnen, await n(tx)];
+          const neben = await imSystemkontext('test', () => n(app)).then(
+            () => 'lief neben der Transaktion',
+            e => e.constructor.name,
+          );
+          await als(A, () =>
+            app.transaction(async inner => {
+              await n(inner);
+              throw new Error('zurück');
+            }),
+          ).catch(() => {});
+          return [vorher, neben, await als(A, () => n(app)), await n(tx)];
         }),
       );
-      assert.deepEqual(stand, [1, 3, 1]);
+      assert.deepEqual(stand, [1, 'NebenDerTransaktion', 2, 1]);
     },
   );
 
@@ -249,21 +290,20 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
 
   await t.test('wer einem Haushalt beitritt, vergleicht mit der Währung des Hauptkontos', async () => {
     // Die Dienste über den Zugang mit Zeilenschutz, wie im Betrieb.
-    verdrahteMit(app);
-    const { haushaltBereich } = _req('src/haushalt/prozess.js');
+    const haushalt = dienstMit(app).haushalt;
     const D = await konto('neu');
     await su.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [D]);
     await su.run(`UPDATE user_settings SET value = 'USD' WHERE user_id = $1 AND key = 'currency'`, [A]);
-    const { code } = await als(A, () => haushaltBereich().haushalt.einladungAnlegen(A));
-    const r = await als(D, () => haushaltBereich().haushalt.einladungEinloesen(D, code));
+    const { code } = await als(A, () => haushalt.einladungAnlegen(A));
+    const r = await als(D, () => haushalt.einladungEinloesen(D, code));
     assert.deepEqual(r, { fehler: 'waehrung_ungleich', vars: { haupt: 'USD', unter: 'EUR' } });
   });
 
   await t.test('ein Währungswechsel erreicht auch das Unterkonto des Unterkontos', async () => {
-    verdrahteMit(app);
+    const kontoDienste = dienstMit(app).konto;
     const E = await konto('enkel');
     await su.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [B, E]);
-    await als(A, () => _req('src/konto/nutzerEinstellung.js').setUserSetting(A, 'currency', 'CHF'));
+    await als(A, () => kontoDienste.setUserSetting(A, 'currency', 'CHF'));
     const w = await su.all(`SELECT user_id, value FROM user_settings WHERE key = 'currency' AND user_id = ANY($1)`, [
       [A, B, E],
     ]);
@@ -302,15 +342,15 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Anmeldung findet den Token ohne Konto, der Widerruf löscht ihn', async () => {
-    verdrahteMit(app);
+    const { d, kontexte } = bauMit(app);
     const K = _req('src/konto/index.js');
     const token = `zeilen-token-${process.pid}`;
     await su.run(`INSERT INTO api_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
       K.hashToken(token),
       C,
     ]);
-    assert.equal((await K.validateToken(token))?.user_id, C);
-    await _req('src/konto/geraeteToken.js').revokeAllTokens(C);
+    assert.equal((await d.konto.validateToken(token))?.user_id, C);
+    await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).revokeAllTokens(kontexte.konto, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });
 });

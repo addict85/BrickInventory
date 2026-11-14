@@ -38,7 +38,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
-  const hh = { ..._req('src/haushalt/haushalt.js'), ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt };
+  const hh = { ..._req('src/haushalt/haushalt.js'), ...require('./helpers/sources').testBereich('haushalt') };
   const namen = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
@@ -101,7 +101,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   // Ausweise). Vorher stand diese Prüfung über ZWEI Dateien und verlangte,
   // dass beide alles anbieten — die schwächere Fassung derselben Aussage.
   const src = read('routes/api_v1/settings.ts');
-  for (const fn of ['haushaltsStand', 'einladungAnlegen', 'einladungEinloesen', 'kontenTrennen']) {
+  for (const fn of ['haushaltsStand', 'einladungAnlegen', 'haushaltBeitreten', 'kontenTrennen']) {
     assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
   }
   // Und die Zweitfassung darf nicht zurückkehren: jede Haushalts-Route genau einmal.
@@ -232,8 +232,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   );
 
   const fc = kompakt(require('./helpers/sources').finanzQuelle());
-  const uses = (fc.match(/await (?:(?:haushaltBereich\(\)|kx?\.haushalt)\.haushalt\.)?besitzerAnhaengen\(uids,/g) || [])
-    .length;
+  const uses = (fc.match(/await (?:kx?\.haushalt\.)?besitzerAnhaengen\(uids,/g) || []).length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });
@@ -380,7 +379,7 @@ test('Verschieben geht NUR über den Kaufpreis', async () => {
   // tatsächlich wandert: Drei Erfassungen sind drei Käufe, die im Haushalt
   // verschiedenen Kindern gehören können. Wer alles verschieben will, ändert
   // jede Zeile — und sieht dabei, wie viele es sind. …
-  const { setVerschieben } = require('./helpers/sources').buildAndRequire()('src/sets/index.js');
+  const { setVerschieben } = require('./helpers/sources').bereichsSeite('sets');
   await assert.rejects(
     setVerschieben(1, '10294-1', 1, 2, []),
     (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'kaufpreise_angeben',

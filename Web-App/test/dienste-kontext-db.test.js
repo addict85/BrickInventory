@@ -52,7 +52,7 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
   await haeltTeil(eigen, uid, '3001', { menge: 4 });
 
   const { zaehler, zugang } = zaehlend(db);
-  const d = baueDienste(zugang, OHNE_NACHARBEIT);
+  const d = baueDienste(zugang, { nacharbeit: OHNE_NACHARBEIT });
   const stats = await imNamenVon({ session: { userId: uid } }, () => d.teile.getPartsStats(uid));
   assert.equal(Number(stats.unique_parts), 1, 'das angelegte Teil kommt an');
   assert.ok(zaehler.n > 0, 'getPartsStats fragt über den übergebenen Zugang');
@@ -62,7 +62,9 @@ test('k.transaktion: was über t geschrieben wird, gilt zusammen oder gar nicht'
   if (!(await zugangOderSkip(t, _req))) return;
   const { baueDienste } = _req('startup/verdrahtung.js');
   const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
-  const e = baueDienste(testZugang(), OHNE_NACHARBEIT).einstellungen;
+  const kontexte = {};
+  baueDienste(testZugang(), { nacharbeit: OHNE_NACHARBEIT, kontexte });
+  const e = kontexte.einstellungen;
   const A = `kontext_a_${process.pid}`;
   const B = `kontext_b_${process.pid}`;
   t.after(() => e.repository.loescheGlobaleWerte([A, B]));

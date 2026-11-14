@@ -62,7 +62,11 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async t
     await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen geladen', 200);
     const zeilen = await b.auswerten(`[...document.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody tr')]
       .filter(r => r.textContent.includes('Tree House')).map(r => [...r.querySelectorAll('.besitzer-badge')].map(x => x.textContent.replace('Konto: ', '')))`);
-    assert.deepEqual(zeilen.map(z => z.join()).sort(), [KIND, NAME].sort(), 'je Kauf eine Zeile mit ihrem Konto');
+    assert.deepEqual(
+      zeilen.map(z => z.join()).sort(),
+      [KIND, `${NAME} (ich)`].sort(),
+      'je Kauf eine Zeile mit ihrem Konto',
+    );
     assert.match(
       await b.auswerten(text('#fin-tbl .fin-legende')),
       /Kaufpreis dieser Zeile/,
@@ -117,7 +121,8 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async t
       [],
       'das Logo wird nicht vorgelesen',
     );
-    const karte = namen.find(n => n.startsWith('button: 10294-1'));
+    // Seit UI-Prüfung 22 nur Nummer und Name; der Rest ist Beschreibung.
+    const karte = namen.find(n => n === 'button: 10294-1 Titanic');
     assert.ok(karte, 'Kachel Titanic als Knopf');
     assert.equal(karte.match(/Titanic/g).length, 1, `Name einmal: ${karte}`);
   });

@@ -677,7 +677,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
         w.id = String(
           await {
             ..._req('src/auftraege/dienst.js'),
-            ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+            ...require('./helpers/sources').testBereich('auftraege').auftraege,
           }.stelleAuftragEin('anleitung', { set_number: SET }, { schluessel: `vertrag:${process.pid}:${Date.now()}` }),
         );
       },

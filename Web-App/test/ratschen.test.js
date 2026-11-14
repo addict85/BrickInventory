@@ -94,11 +94,12 @@ test('stille Faenge werden weniger, nie mehr', () => {
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
   // logAndContinue liefert nichts; meldeUndLiefere einen Ersatzwert, der wie „leer“
-  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter;
+  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter; Schreibwege
+  // (Preis samt Verlauf, Bildverweis) lassen ihn durch (139 am 13.11.2026, vorher 144);
   // die übrigen Ersatzwerte begründen sich als „Ausnahme:“ im Code. Gemessen 7 am 11.11.2026.
   // Gegenprobe (11.11.2026): in src/katalog/farben.ts wieder
   // `.catch(meldeUndLiefere('x', []))` → rot (8 Ersatzwerte, Schranke 7).
-  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 7 };
+  const SCHRANKEN = { logAndContinue: 139, meldeUndLiefere: 7 };
   const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
   for (const [name, schranke] of Object.entries(SCHRANKEN)) {
     const ist = zaehle([new RegExp(`\\b${name}\\(`, 'g')]);
@@ -150,7 +151,7 @@ function nimmtProzesszugang(f) {
   );
 }
 
-test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, nie mehr', () => {
+test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
   // Gemessen 0 am 11.11.2026 (server.ts und startup/ ohne Prozesszugang).
@@ -168,73 +169,77 @@ test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, n
   if (ist < SCHRANKE)
     console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
-  // Modulweite let: Zustand, den alle Aufrufer eines Prozesses teilen; ein Bereich
-  // bekommt seinen über die Fabrik. Gemessen 44 am 13.11.2026 (Fächer je Bereich, src/infra/zwischenspeicher.ts).
-  // Gegenprobe (10.11.2026): `let _probe = 0;` in src/katalog/kontext.ts → rot mit 59.
-  const LET_SCHRANKE = 44;
-  const lets = quellen().reduce(
-    (n, f) => n + (fs.readFileSync(f, 'utf8').match(/^(?:export )?let /gm) || []).length,
-    0,
+  // Modulweiter Zustand (let und leer angelegte Map/Set/WeakMap/WeakSet): Ihn teilen alle
+  // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/zwischenspeicher.ts),
+  // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
+  // Gemessen 13.11.2026: 44 let + 28 Sammlungen = 72 vorher, 39 + 20 = 59 danach.
+  // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
+  // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60.
+  const ZUSTAND_SCHRANKE = 59;
+  const ZUSTAND =
+    /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
+  const zaehleZustand = s => (s.match(ZUSTAND) || []).length;
+  // Selbstbeweis: Leer angelegte Sammlungen und let zählen, Konstanten mit Inhalt nicht.
+  assert.equal(
+    zaehleZustand(
+      'let a = 0;\nconst b = new Map<string, number>();\nconst c: X = new WeakMap();\nconst d = new Set([1]);',
+    ),
+    3,
   );
-  assert.ok(lets > 20 && lets <= LET_SCHRANKE, `${lets} modulweite let, erlaubt sind ${LET_SCHRANKE}`);
-  if (lets < LET_SCHRANKE) console.log(`  ℹ modulweite let: ${lets} (Schranke ${LET_SCHRANKE}) — Schranke nachziehen`);
+  const zustand = quellen().reduce((n, f) => n + zaehleZustand(fs.readFileSync(f, 'utf8')), 0);
+  assert.ok(
+    zustand > 20 && zustand <= ZUSTAND_SCHRANKE,
+    `${zustand}-mal modulweiter Zustand, erlaubt sind ${ZUSTAND_SCHRANKE}`,
+  );
+  if (zustand < ZUSTAND_SCHRANKE)
+    console.log(`  ℹ modulweiter Zustand: ${zustand} (Schranke ${ZUSTAND_SCHRANKE}) — Schranke nachziehen`);
   wegeAnDenKontextenVorbei();
 });
 
-/** Wege an den Kontexten vorbei werden weniger, nie mehr. */
+/** Wege an den Kontexten vorbei sind verboten (früher eine Ratsche). */
 function wegeAnDenKontextenVorbei() {
   // Ein Dienst bekommt seine Abhängigkeiten über den Kontext (src/<bereich>/kontext.ts);
-  // xBereich() und die Fassaden der index.ts holen sie vom Prozess. Gemessen am 13.11.2026:
-  // 35 Aufrufe in src/ (vorher 629), 67 Fassaden-Importe ausserhalb des eigenen Bereichs.
-  // Gegenproben (13.11.2026): `teileBereich()` zurück in getPartsStats() → rot (36);
-  // `import { getParts } from '../teile'` in src/sammlung/loeschen.ts → rot (68).
-  const SCHRANKE_AUFRUFE = 35,
-    SCHRANKE_FASSADEN = 67;
+  // einen Speicher der Dienste im Prozess (Holer xBereich(), Fassaden aus dienstePerAufruf)
+  // gibt es nicht mehr. Gemessen am 13.11.2026: 35 Holer-Aufrufe und 67 Fassaden-Importe,
+  // am 14.11.2026: 0 und 0.
+  // Gegenproben (14.11.2026): `export const sets = prozessStelle<SetsDienste>('sets');` in
+  // src/sets/lesen.ts → rot (1 Holer-Stelle); `import { getSets } from '../sets'` in
+  // src/sammlung/loeschen.ts (mit `export const getSets = …` in src/sets/index.ts) → rot (1 Fassade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
-  const bereiche = fs.readdirSync(src).filter(b => fs.existsSync(path.join(src, b, 'prozess.ts')));
-  const holer = bereiche.flatMap(b =>
-    [...fs.readFileSync(path.join(src, b, 'prozess.ts'), 'utf8').matchAll(/export const (\w+) = prozessStelle/g)].map(
-      m => m[1],
-    ),
+  const HOLER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
+  const holer = quellen().filter(f => HOLER.test(ohneKommentare(fs.readFileSync(f, 'utf8'))));
+  assert.deepEqual(
+    holer.map(f => path.relative(WEB, f)),
+    [],
+    'Dienste kommen über den Kontext oder als Parameter, nicht vom Prozess',
   );
-  assert.ok(
-    holer.length >= 14 && holer.includes('katalog'),
-    `nur ${holer.length} Holer gefunden — greift die Suche noch?`,
-  );
-  const AUFRUF = new RegExp(`\\b(?:${holer.join('|')})\\(\\)`, 'g');
+  const bereiche = fs.readdirSync(src).filter(b => fs.existsSync(path.join(src, b, 'bereich.ts')));
+  assert.ok(bereiche.length >= 15, `nur ${bereiche.length} Bereiche gefunden — greift die Suche noch?`);
+  // Was ein Bereich als Dienst bindet, darf keine index.ts zusätzlich als Wert exportieren.
   const dienste = new Map(
     bereiche.map(b => {
       const s = fs.readFileSync(path.join(src, b, 'bereich.ts'), 'utf8');
       const n = new Set();
       for (const m of s.matchAll(/binde(?:Zugang)?\((?:k|sk), \w+, \[([^\]]*)\]\)/g))
         for (const x of m[1].match(/\w+/g) || []) n.add(x);
-      for (const m of s.matchAll(/^ {4}(\w+): (?:bindeGenerisch|\(\(|\(<)/gm)) n.add(m[1]);
+      for (const m of s.matchAll(/^ {4}(\w+): /gm)) n.add(m[1]);
       return [b, n];
     }),
   );
-  let aufrufe = 0,
-    fassaden = 0;
+  assert.ok(dienste.get('sets').has('getSets'), 'die Dienste der Bereiche werden nicht mehr gefunden');
+  const fassaden = [];
   for (const f of quellen()) {
     const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
-    if (f.startsWith(src + path.sep)) aufrufe += (s.match(AUFRUF) || []).length;
     for (const m of s.matchAll(/^import \{([^}]*)\} from '([^']+)';/gm)) {
       const b = path.relative(src, path.resolve(path.dirname(f), m[2]));
       if (!dienste.has(b) || f.startsWith(path.join(src, b) + path.sep)) continue;
       for (const x of m[1].split(',').map(y => y.trim()))
-        if (x && !x.startsWith('type ') && dienste.get(b).has(x.split(/\s+as\s+/)[0])) fassaden++;
+        if (x && !x.startsWith('type ') && dienste.get(b).has(x.split(/\s+as\s+/)[0]))
+          fassaden.push(`${path.relative(WEB, f)}: ${x}`);
     }
   }
-  assert.ok(
-    aufrufe <= SCHRANKE_AUFRUFE,
-    `${aufrufe} Aufrufe der Dienste des Prozesses in src/, erlaubt sind ${SCHRANKE_AUFRUFE}`,
-  );
-  assert.ok(
-    fassaden > 10 && fassaden <= SCHRANKE_FASSADEN,
-    `${fassaden} Fassaden-Importe, erlaubt sind ${SCHRANKE_FASSADEN}`,
-  );
-  if (aufrufe < SCHRANKE_AUFRUFE || fassaden < SCHRANKE_FASSADEN)
-    console.log(`  ℹ an den Kontexten vorbei: ${aufrufe} Aufrufe, ${fassaden} Fassaden — Schranke nachziehen`);
+  assert.deepEqual(fassaden, [], 'Dienste eines anderen Bereichs kommen über d oder den Kontext, nicht als Import');
 }
 
 test('any wird weniger, nie mehr', () => {
@@ -315,7 +320,9 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
   // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
   // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
   // Gegenprobe (05.11.2026): `get<T = any>` in DbSchnittstelle → rot.
-  const quelle = ['database.ts', 'typen.ts'].map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8')).join('\n');
+  const quelle = ['database.ts', 'transaktion.ts', 'typen.ts']
+    .map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8'))
+    .join('\n');
   assert.equal(
     (quelle.match(/\b(?:all|get)\s*(?::\s*)?<T = unknown>/g) || []).length,
     6,
@@ -413,10 +420,22 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
  * blosses `await` zählt nicht: Es wartet ebenso auf fs.promises.readFile.
  */
 const FALL_FUEHRT_AUS =
-  /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang)\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
+  /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang|Dienste|Kontext|Bereich|Nacharbeit)\(|\b(?:bereichsSeite|ersetzeDienste)\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
 const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
 /** Aus helpers/sources führen nur diese aus; die übrigen lesen Quelltext. */
-const SOURCES_FUEHRT_AUS = new Set(['buildAndRequire', 'baueDist', 'umgebung', 'testDaten', 'testZugang']);
+const SOURCES_FUEHRT_AUS = new Set([
+  'buildAndRequire',
+  'baueDist',
+  'umgebung',
+  'testDaten',
+  'testZugang',
+  'testDienste',
+  'testKontext',
+  'testBereich',
+  'testNacharbeit',
+  'bereichsSeite',
+  'ersetzeDienste',
+]);
 const HILFE = /require\(\s*['"]\.\/helpers\/([\w-]+)['"]\s*\)/;
 
 /** Ob ein Modul unter test/helpers selbst etwas ausführt. */
@@ -586,7 +605,7 @@ const NUTZT_FASSADE =
  * wird an der Verdrahtung (testBildwerk(), Nacharbeit, verdrahteKlienten). routerServer steckt
  * eigene Router zusammen statt baueApp, an Sitzungs- und Verwalterprüfungen vorbei. */
 const ERSATZWEGE = {
-  'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 14 },
+  'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, schranke: 11 },
   'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, schranke: 13 },
 };
 
@@ -597,6 +616,9 @@ test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weni
   // Gegenproben (13.11.2026): in indizes-db.test.js wieder `_req('db/database.js')` → rot
   // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14);
   // in app-kette-db.test.js testServer → routerServer → rot (14 statt 13).
+  // Seit dem 13.11.2026 zählt test/helpers/ mit (helpers/systemrahmen.js, die Definition in
+  // helpers/server.js; je +1 gegenüber der Zählung nur der Testdateien); Gegenprobe:
+  // `Module._load = l;` in helpers/zeit.js → rot (12 statt 11).
   assert.ok(NUTZT_FASSADE.test("const db = _req('db/database.js');") && !NUTZT_FASSADE.test('zugangOderSkip(t)'));
   assert.ok(!NUTZT_FASSADE.test("const { erzeugeDb } = _req('db/database.js');"), 'Exporte bleiben erlaubt');
   assert.ok(ERSATZWEGE['biegen Module um'].muster.test('Module.prototype.require = function () {}'));
@@ -610,8 +632,9 @@ test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weni
     [],
     'Testdaten über testDaten(), Code unter Test über testZugang()',
   );
+  // Auch die Helfer: Ein Umbiegen in test/helpers/ träfe jede Datei, die ihn lädt.
   for (const [was, { muster, schranke }] of Object.entries(ERSATZWEGE)) {
-    const ist = tests.filter(n => muster.test(lies(n))).length;
+    const ist = [...tests, ...helfer].filter(n => muster.test(lies(n))).length;
     assert.ok(ist > 0, `keine Datei ${was} — greift das Muster noch? Dann Schranke und Eintrag entfernen`);
     assert.ok(ist <= schranke, `${ist} Testdateien ${was}, erlaubt sind ${schranke}`);
     if (ist < schranke) console.log(`  ℹ ${ist} Testdateien ${was} (Schranke ${schranke}) — Schranke nachziehen`);
@@ -1087,7 +1110,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
   // src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026).
   const SCHRANKE_80 = 22,
     SCHRANKE_150 = 1,
-    BEKANNT_100 = ['db/database.ts erzeugeDb', 'src/finanzen/preisLauf.ts runPriceRefresh'];
+    BEKANNT_100 = ['db/database.ts erzeugeDb'];
   const dateien = quellen().filter(
     f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f),
   );

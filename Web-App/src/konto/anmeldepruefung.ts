@@ -19,9 +19,10 @@ import {
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
-import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
+import { doppeltAls, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import { hinweisNebenher } from './kontoHinweis';
 import { hashToken } from './geraeteToken';
+import { zugangsTransaktion } from './zugangsende';
 import { isValidLoginIdentifier } from './namensRegeln';
 import type { KontoKontext } from './kontext';
 
@@ -45,9 +46,12 @@ export async function verifiziereEmailToken(
   if (token === undefined || token === null || String(token).trim() === '') {
     return { ok: false, grund: 'fehlt' };
   }
-  const neu = await k.konten.uebernimmEmailNeu(hashToken(String(token)));
-  if (!neu) return { ok: false, grund: 'ungueltig' };
-  return neu.ok ? { ok: true, userId: neu.id } : { ok: false, grund: 'vergeben', userId: neu.id };
+  const hash = hashToken(String(token));
+  const id = await k.konten.kontoZuEmailToken(hash);
+  if (id === undefined) return { ok: false, grund: 'ungueltig' };
+  const ok = await zugangsTransaktion(k, t => t.konten.uebernimmEmailNeu(id, hash)).catch(doppeltAls(false));
+  if (!ok) await k.konten.verwirfEmailNeu(id, hash);
+  return ok ? { ok: true, userId: id } : { ok: false, grund: 'vergeben', userId: id };
 }
 
 export const BCRYPT_ROUNDS = 12;

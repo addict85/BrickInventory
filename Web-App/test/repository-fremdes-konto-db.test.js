@@ -29,7 +29,7 @@ const { datenOderSkip } = require('./helpers/db');
 const erf = _req('src/sammlung/repository/erfassungen.js');
 const manuell = {
   ..._req('src/bestand/repository/manuelleMengen.js'),
-  ..._req('src/bestand/prozess.js').bestandBereich().manuelleMengen,
+  ...require('./helpers/sources').testBereich('bestand').manuelleMengen,
 };
 const versch = _req('src/sets/repository/verschieben.js');
 

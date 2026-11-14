@@ -13,7 +13,7 @@ import { geloeschtMitRueckgaengig } from './papierkorb.js';
 import { alarmBlock, closeModal, ladeAlarm, ladeOrtAuswahl, lagerortBlock, setzeAlarmFeld } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { delSet, loadGallery, loadStats, reimportParts } from './gallery.js';
-import { detailZeile, oderStrich, skelettZeilen, oeffneErfassen } from './bausteine.js';
+import { detailZeile, kontoAnzeige, oderStrich, skelettZeilen, oeffneErfassen } from './bausteine.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
 import { loadFinance } from './finance.js';
 import { locale, t, tRaw } from '../i18n.js';
@@ -33,7 +33,7 @@ let _schreibbar = null;
 const imHaushalt = set => (set?.owners || []).some(o => !ME || o.id !== ME.id);
 
 /** Ein Name für die Oberfläche: das eigene Konto heisst „ich“. @param {{ id: number, username: string }} o */
-const kontoName = o => (ME && o.id === ME.id ? tRaw('detail.ich') : o.username);
+const kontoName = kontoAnzeige;
 
 /**
  * Menge je Konto aus den Erfassungen; das eigene Konto zuerst. Im Haushalt hat jedes Konto seinen Regler: Eine
@@ -85,20 +85,19 @@ function untertitel(set) {
   const konten = imHaushalt(set)
     ? (set.owners || []).slice().sort((a, b) => Number(b.id === ME?.id) - Number(a.id === ME?.id))
     : [];
-  return [
-    set.name ? set.set_number : '',
-    konten.length
-      ? tRaw(konten.length > 1 ? 'detail.konten_von' : 'detail.konto_von', { namen: konten.map(kontoName).join(', ') })
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  // Nur die Setnummer in Festbreite; die Konten sind Fliesstext wie überall.
+  const nr = set.name ? html`<span class="setnr">${set.set_number}</span>` : '';
+  const wem = konten.length
+    ? tRaw(konten.length > 1 ? 'detail.konten_von' : 'detail.konto_von', { namen: konten.map(kontoName).join(', ') })
+    : '';
+  return html`${nr}${nr && wem ? ' · ' : ''}${wem}`;
 }
 
-/** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
+/** Inhalt des Set-Dialogs aus curSet und den Erfassungen: Wert und Verlauf links unter dem Bild, die Angaben
+ * rechts. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
   const set = curSet;
-  if (!set) return '';
+  if (!set) return null;
   const addedFmt = set.added_at ? fmtDatum(set.added_at) : '—';
   // Marktpreis und Entwicklung je Zustand, aus derselben Abfrage wie der Preisverlauf; hier nur der
   // Platzhalter. Ein Wert fürs ganze Set vermischte neu und gebraucht.
@@ -123,8 +122,12 @@ function setDetailHtml(sn, acqs) {
     },
   );
 
-  return html`
-    ${priceRow}${pnlRow}
+  const links = html`${priceRow}${pnlRow}
+    <div id="m-price-chart">
+      <h3 class="bereich-titel" data-stil="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
+      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
+    </div>`;
+  const rechts = html`
     ${acqRows}
     ${detailZeile(t('detail.year'), oderStrich(set.year))}
     ${detailZeile(t('detail.theme'), esc(oderStrich(set.theme)))}
@@ -149,11 +152,8 @@ function setDetailHtml(sn, acqs) {
       t('detail.created'),
       html`${ico('kalender')} ${addedFmt} <span class="text-klein">(${tRaw('detail.created_hint')})</span>`,
       { klasse: 'dr-leise' },
-    )}
-    <div id="m-price-chart" data-stil="margin-top:.75rem">
-      <h3 class="bereich-titel" data-stil="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
-      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
-    </div>`;
+    )}`;
+  return { links, rechts };
 }
 
 /** Figurenzahl und Preisverlauf nachladen, ohne den Dialog aufzuhalten. @param {string} sn */
@@ -200,6 +200,7 @@ export async function openModal(sn) {
   G('m-untertit').textContent = '';
   setzeDialogbild(G('m-img'), PLATZHALTER_SET, PLATZHALTER_SET);
   setzeHtml(G('m-det'), skelettZeilen(4, tRaw('common.loading')));
+  G('m-det-links')?.replaceChildren();
   G('m-instr').replaceChildren();
   G('set-modal').dataset.nummer = sn;
   G('set-modal').classList.add('open');
@@ -235,13 +236,15 @@ export async function openModal(sn) {
   set_curSet(set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent = set.name || set.set_number;
-  G('m-untertit').textContent = untertitel(set);
+  setzeHtml(G('m-untertit'), untertitel(set));
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
   const img = G('m-img');
   setzeDialogbild(img, fullUrl(set.image_local || set.image_url) || PLATZHALTER_SET, PLATZHALTER_SET);
   img.style.display = 'block';
 
-  setzeHtml(G('m-det'), setDetailHtml(sn, ad?.acquisitions || []));
+  const inhalt = setDetailHtml(sn, ad?.acquisitions || []);
+  setzeHtml(G('m-det-links'), inhalt ? inhalt.links : '');
+  setzeHtml(G('m-det'), inhalt ? inhalt.rechts : '');
 
   const feld = G('m-qty');
   if (feld) feld.value = String(set.quantity);
@@ -461,7 +464,7 @@ async function frischeDetailAuf(sn, feld) {
   const sumEl = G('m-acq-summary');
   if (sumEl) setzeHtml(sumEl, kurzfassung(acqs, sn));
   if (G('acq-modal').classList.contains('open')) renderAcqModalBody(sn, acqs, ad?.totals);
-  G('m-untertit').textContent = untertitel(d.set);
+  setzeHtml(G('m-untertit'), untertitel(d.set));
   // Der gedrückte Knopf ist ersetzt; der Fokus geht an seinen Nachfolger, ist der gesperrt (letztes „−“), an „+“.
   const konto = feld instanceof HTMLElement ? feld.dataset.arg : undefined;
   const knoepfe = konto ? [...(menge?.querySelectorAll(`[data-arg="${konto}"]`) || [])] : [];

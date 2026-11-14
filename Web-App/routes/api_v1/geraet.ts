@@ -1,7 +1,7 @@
 /** Der Geräteschlüssel der App und die Freigabe heikler Schritte; nur mit
  * App-Token, eine Browser-Sitzung bestätigt mit Passwort und zweitem Faktor. */
+import { waechterFuer } from './middleware';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken } from './middleware';
 import { familieAus } from '../../src/konto';
 import { istAppToken } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
@@ -10,6 +10,7 @@ import type { Dienste } from '../../startup/verdrahtung';
 const familie = (req: AuthedRequest) => (istAppToken(req) ? familieAus(req.apiUser) : null);
 
 export function baueGeraetRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   router.post(

@@ -25,9 +25,11 @@
  *   G  die Zeile 'src/sammlung/repository/loeschen.ts → part_acquisitions' aus
  *      FREMDSCHREIBER gestrichen → rot: dieselbe Prüfung
  *
+ * Die Eingaben macht jedes Konto in seinem Namen (alsKonto) als Laufzeitrolle, wie im
+ * Betrieb; Testdaten und die Suche danach laufen über die Eigentümerin.
+ *
  * REQUIRE_DB=1.
  */
-require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -36,7 +38,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, ohneKommentare, testDaten } = require('./helpers/sources');
+const { buildAndRequire, ohneKommentare, testDaten, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
@@ -248,7 +250,7 @@ const BESITZER = {
 /** Wer heute noch in eine fremde Tabelle schreibt — eine Ratsche: nur streichen, nie ergänzen. */
 const FREMDSCHREIBER = [
   // Der Schemastart schreibt die Zeitzone, bevor es Dienste gibt.
-  'db/database.ts → global_settings',
+  'db/schemaStart.ts → global_settings',
   // Teile und Figuren eines Sets: Der Katalog liegt unter dem Bestand und kann ihn nicht rufen.
   'src/katalog/repository/setInhalt.ts → minifigs',
   'src/katalog/repository/setInhalt.ts → parts',
@@ -383,27 +385,34 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     const { addManualPart } = _req('src/teile/manuelleTeile.js');
     const { addManualFig, updateManualFig, importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
     const bild = `https://cdn.rebrickable.com/${MARKE}.png`;
-    await addManualPart(A, {
-      part_number: '3005',
-      color_id: 4,
-      part_name: `${MARKE} Teil`,
-      color_name: MARKE,
-      category_name: MARKE,
-      image_url: bild,
-      quantity: 1,
-      unit_price: 1,
+    await alsKonto(A, async () => {
+      await addManualPart(A, {
+        part_number: '3005',
+        color_id: 4,
+        part_name: `${MARKE} Teil`,
+        color_name: MARKE,
+        category_name: MARKE,
+        image_url: bild,
+        quantity: 1,
+        unit_price: 1,
+      });
+      await addManualFig(A, {
+        fig_number: 'fig-000002',
+        fig_name: `${MARKE} Figur`,
+        image_url: bild,
+        bl_fig_number: `${MARKE}1`,
+        quantity: 1,
+        unit_price: 1,
+      });
     });
-    await addManualFig(A, {
-      fig_number: 'fig-000002',
-      fig_name: `${MARKE} Figur`,
-      image_url: bild,
-      bl_fig_number: `${MARKE}1`,
-      quantity: 1,
-      unit_price: 1,
+    await alsKonto(B, async () => {
+      await addManualFig(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
+      await updateManualFig(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
+      await importiereFigurenCsv(
+        B,
+        `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`,
+      );
     });
-    await addManualFig(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
-    await updateManualFig(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
-    await importiereFigurenCsv(B, `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`);
 
     const srv = testServer(_req, { sitzung: { userId: A }, t });
     const fd = new FormData();

@@ -1,5 +1,5 @@
 // Der Katalog: Sets suchen, Details zeigen und in die Sammlung übernehmen.
-import { detailZeile, ladeAnzeige, listeLadefehler } from './bausteine.js';
+import { detailZeile, kachelName, ladeAnzeige, listeLadefehler } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fehlerMeldung, api } from './api.js';
@@ -414,12 +414,13 @@ function catCard(s) {
   // Streifen nichts statt etwas Falsches.
   const thema = s.theme_id;
   const ton = thema != null && Number.isInteger(thema) ? html` data-faecher="${((thema % 12) + 12) % 12}"` : '';
-  return html`<div class="sc"${ton} tabindex="0" role="button" data-sn="${s.set_number}" data-year="${s.year || ''}" data-click="openCatModal" data-arg="${s.set_number}">
+  const k = kachelName();
+  return html`<div class="sc"${ton} tabindex="0" role="button"${k.attr} data-sn="${s.set_number}" data-year="${s.year || ''}" data-click="openCatModal" data-arg="${s.set_number}">
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${s.set_number}</div>
       <div class="sname">${s.name || '—'}</div>
-      <div class="smeta">
+      <div class="smeta"${k.teil(0)}>
         <span class="smeta-text"${themeShort ? html` title="${themeShort}"` : ''}>${s.year || '—'}${themeShort ? html`${' · '}${themeShort}` : ''}</span>
         <div class="splaketten">
           ${s.num_parts ? html`<span class="teile-zahl">${tRaw('catalog.pieces_n', { n: s.num_parts.toLocaleString(locale()) })}</span>` : ''}
