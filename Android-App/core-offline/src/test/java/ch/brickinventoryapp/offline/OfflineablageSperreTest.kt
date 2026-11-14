@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow

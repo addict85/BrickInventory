@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.model.schritt
 
 /** [kennung] ist die Aktion des Servers; ohne sie bleibt die Prüfung im Gerät (vor der Anmeldung). */
+
 enum class Schrittaktion(val kennung: String?) {
     GUTSCHEIN("gutschein"),
     VERWALTUNG("verwaltung"),

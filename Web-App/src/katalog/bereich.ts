@@ -20,6 +20,7 @@ import * as teileAnreicherungDienst from './teileAnreicherung';
 import { ConcurrentRateLimiter, type FremdquellenDienste } from '../fremdquellen';
 import * as bildNachlauf from './bildNachlauf';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
+import * as widerrufsliste from './widerrufsliste';
 import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
 
 export type { KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
@@ -109,6 +110,7 @@ function katalogDienste(k: KatalogKontext) {
     redownloadMissingImages: mit(k)(teileAnreicherungDienst.redownloadMissingImages),
     bildNachlauf: mit(k)(bildNachlauf.bildNachlauf),
     erzeugePdf: mit(k)(pdfErzeugung.erzeugePdf),
+    ladeWiderrufsliste: mit(k)(widerrufsliste.ladeWiderrufsliste),
   };
 }
 

@@ -123,6 +123,7 @@ export const NUTZLASTEN = {
   aufraeumen_taeglich: LEER,
   konto_dateien: z.object({ user_id: KONTO }),
   preise_nachladen: PreiseNachladen,
+  widerrufsliste: LEER,
 } satisfies Record<AuftragsArt, z.ZodType>;
 
 export type Nutzlast<A extends AuftragsArt> = z.output<(typeof NUTZLASTEN)[A]>;

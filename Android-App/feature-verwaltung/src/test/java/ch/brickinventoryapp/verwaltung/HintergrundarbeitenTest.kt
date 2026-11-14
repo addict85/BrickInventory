@@ -2,13 +2,11 @@ package ch.brickinventoryapp.verwaltung
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.model.ui.model.AuftragStatus
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.screens.auftragsArtText
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
@@ -75,8 +73,7 @@ class HintergrundarbeitenTest {
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-hg-${System.nanoTime()}")
     private val kanal = MeldungsKanal()
     private val vm = TestApi.fuer(pfade.server).let { api ->
-        val cache = ResponseCache { dir }
-        MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), Saetze, kanal)
+        MonitoringViewModel(VerwaltungRepository(api), KontoRepository(api), Saetze, kanal)
     }
 
     @After

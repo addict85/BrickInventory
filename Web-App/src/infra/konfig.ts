@@ -100,6 +100,9 @@ export interface Konfig {
   attestationWurzeln: string | null;
   /** Bis dahin gelten Geräteschlüssel, die vor der Attestation hinterlegt wurden (UPGRADE.md). */
   geraeteschluesselAltBis: Date;
+  /** So alt darf Googles Widerrufsliste höchstens sein; älter nimmt der Server keinen Schlüssel an. */
+  attestationWiderrufTage: number;
+  attestationPatchMindestens: number | null;
 }
 
 export type Rolle = 'web' | 'jobs' | 'beides';
@@ -175,6 +178,8 @@ export const VARIABLEN = [
   'DB_SUPERUSER_ERLAUBT',
   'ATTESTATION_WURZELN',
   'GERAETESCHLUESSEL_ALT_BIS',
+  'ATTESTATION_WIDERRUF_TAGE',
+  'ATTESTATION_PATCH_MINDESTENS',
   ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
 ] as const;
 
@@ -256,6 +261,14 @@ function altschluesselBis(env: Umgebung, fehler: string[]): Date {
   if (!Number.isNaN(d.getTime())) return d;
   fehler.push(`GERAETESCHLUESSEL_ALT_BIS="${roh}" ist kein Datum JJJJ-MM-TT`);
   return new Date(`${ALTSCHLUESSEL_STICHTAG}T00:00:00Z`);
+}
+
+function patchMindestens(env: Umgebung, fehler: string[]): number | null {
+  const roh = env.ATTESTATION_PATCH_MINDESTENS?.trim();
+  if (!roh) return null;
+  if (/^20\d\d(0[1-9]|1[0-2])$/.test(roh)) return Number(roh);
+  fehler.push(`ATTESTATION_PATCH_MINDESTENS="${roh}" ist kein Monat JJJJMM`);
+  return null;
 }
 
 /** Sicher genug, um in eine Verbindungsoption eingesetzt zu werden. */
@@ -354,6 +367,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     androidPaket: androidPaket(env, f),
     attestationWurzeln: attestationWurzeln(env, f),
     geraeteschluesselAltBis: altschluesselBis(env, f),
+    attestationWiderrufTage: ganzzahl(env, 'ATTESTATION_WIDERRUF_TAGE', 7, 1, 90, f),
+    attestationPatchMindestens: patchMindestens(env, f),
   };
   if (f.length) throw new KonfigFehler(f);
   return k;

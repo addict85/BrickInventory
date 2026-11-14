@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app.widget
 
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.data.model.PnlResponse
-import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
+import ch.brickinventoryapp.vertrag.PnlResponse
+import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtProzent
 import kotlinx.serialization.Serializable

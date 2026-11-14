@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.teile.ui
 
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.data.model.BrickColorsResponse
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.PartsCategoriesResponse
-import ch.brickinventoryapp.model.data.model.PartsFilterColorsResponse
-import ch.brickinventoryapp.model.data.model.PartsStatsResponse
+import ch.brickinventoryapp.vertrag.BrickColorsResponse
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.Minifig
+import ch.brickinventoryapp.vertrag.MinifigStatsResponse
+import ch.brickinventoryapp.vertrag.Part
+import ch.brickinventoryapp.vertrag.PartValuationItem
+import ch.brickinventoryapp.vertrag.PartsCategoriesResponse
+import ch.brickinventoryapp.vertrag.PartsFilterColorsResponse
+import ch.brickinventoryapp.vertrag.PartsStatsResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay

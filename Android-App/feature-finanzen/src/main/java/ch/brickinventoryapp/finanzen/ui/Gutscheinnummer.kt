@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui
 
-import ch.brickinventoryapp.model.data.model.istGutscheinMaske
+import ch.brickinventoryapp.model.fach.istGutscheinMaske
 
 /**
  * Eine Gutscheinnummer zum Ablesen: erst die Trennzeichen des Herausgebers weg,

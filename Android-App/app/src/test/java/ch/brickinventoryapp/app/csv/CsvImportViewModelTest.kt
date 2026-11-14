@@ -5,8 +5,8 @@ import ch.brickinventoryapp.data.CsvImportBeobachter
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
-import ch.brickinventoryapp.model.data.model.GenericAdminResponse
+import ch.brickinventoryapp.vertrag.CsvImportStatus
+import ch.brickinventoryapp.vertrag.GenericAdminResponse
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
 import kotlinx.coroutines.Dispatchers
@@ -89,7 +89,6 @@ class CsvImportViewModelTest {
 
     @After fun ab() {
         Dispatchers.resetMain()
-        t.cacheDir.deleteRecursively()
     }
 
     private fun status(s: String, done: Int = 0) =
@@ -100,7 +99,7 @@ class CsvImportViewModelTest {
     /** Angemeldet, wie nach dem Start der App; das ViewModel folgt dem Import von selbst. */
     private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.uhr = { testScheduler.currentTime }
-        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api, t.cache))
+        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api))
         koordinator = CsvImportKoordinator(beobachter, dienst, t.abgleich)
         t.sitzung.angemeldet(admin = false)
         val vm = CsvImportViewModel(koordinator, beobachter, NummernTexte, t.meldungen, t.sitzung)
@@ -177,7 +176,7 @@ class CsvImportViewModelTest {
     fun `ohne Anmeldung verbindet niemand, die Anmeldung startet den Strom`() = runTest(takt) {
         val strom = Strom(listOf(status("running", 1)))
         strom.uhr = { testScheduler.currentTime }
-        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api, t.cache))
+        val beobachter = CsvImportBeobachter(strom, SetDateienRepository(fake.api))
         val vm = CsvImportViewModel(CsvImportKoordinator(beobachter, Dienst(), t.abgleich), beobachter,
             NummernTexte, t.meldungen, t.sitzung)
         try {

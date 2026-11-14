@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.data.model.GenericResponse
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.MerkpostenAntwort
-import ch.brickinventoryapp.model.data.model.MerkpostenInhaberAntwort
-import ch.brickinventoryapp.model.data.model.MerkpostenPreiseResponse
-import ch.brickinventoryapp.model.data.model.MerkpostenUebernahmeResponse
+import ch.brickinventoryapp.vertrag.GenericResponse
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.MerkpostenAntwort
+import ch.brickinventoryapp.vertrag.MerkpostenInhaberAntwort
+import ch.brickinventoryapp.vertrag.MerkpostenPreiseResponse
+import ch.brickinventoryapp.vertrag.MerkpostenUebernahmeResponse
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal

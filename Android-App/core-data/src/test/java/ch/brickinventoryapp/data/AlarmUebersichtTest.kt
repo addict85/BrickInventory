@@ -2,19 +2,16 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.vertrag.Preisalarm
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 import retrofit2.http.DELETE
 import retrofit2.http.PUT
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.AlarmRepository
 import ch.brickinventoryapp.testing.TestApi
 
@@ -40,8 +37,7 @@ class AlarmUebersichtTest {
         val pfade = PfadServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
         try {
             runBlocking {
-                AlarmRepository(TestApi.fuer(pfade.server),
-                    ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-alarme") }).aktualisiereAlarme()
+                AlarmRepository(TestApi.fuer(pfade.server)).aktualisiereAlarme()
             }
             assertEquals(listOf("GET /api/v1/alerts"), pfade.anfragen.toList())
         } finally {

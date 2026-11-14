@@ -10,7 +10,7 @@ import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.SpeicherAusgang
 import ch.brickinventoryapp.offline.SpeicherBestand
-import ch.brickinventoryapp.model.data.model.AddSetRequest
+import ch.brickinventoryapp.vertrag.AddSetRequest
 import ch.brickinventoryapp.testing.PfadServer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch

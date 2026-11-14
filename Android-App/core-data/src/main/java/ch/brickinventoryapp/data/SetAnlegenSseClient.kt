@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
-import ch.brickinventoryapp.model.data.model.AddSetResponse
+import ch.brickinventoryapp.vertrag.AddSetResponse
 import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
 import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import kotlinx.coroutines.CoroutineDispatcher

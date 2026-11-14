@@ -1,23 +1,19 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.TeileRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.SetDateienRepository
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.testing.TestApi
 
-/** Ein Repository gegen einen Testserver; [block] bekommt beides. */
-private fun <T> mitServer(block: (PfadServer, ResponseCache) -> T): T {
+/** Ein Testserver für [block], danach heruntergefahren. */
+private fun <T> mitServer(block: (PfadServer) -> T): T {
     val pfade = PfadServer()
-    val ordner = File(System.getProperty("java.io.tmpdir"), "bim-filter-${System.nanoTime()}").apply { mkdirs() }
-    try { return block(pfade, ResponseCache { ordner }) } finally { pfade.server.shutdown(); ordner.deleteRecursively() }
+    try { return block(pfade) } finally { pfade.server.shutdown() }
 }
 
 /**
@@ -44,10 +40,10 @@ private fun <T> mitServer(block: (PfadServer, ResponseCache) -> T): T {
 class TeileFilterTest {
 
     @Test
-    fun `die App ruft beide Filterlisten mit dem Blickfeld`() = mitServer { pfade, cache ->
+    fun `die App ruft beide Filterlisten mit dem Blickfeld`() = mitServer { pfade ->
         // Beide mit `accounts`: Sonst zaehlten sie im Haushalt anders als die
         // Liste darunter — genau der Fehler, den der Server dabei hatte.
-        val teile = TeileRepository(TestApi.fuer(pfade.server), cache)
+        val teile = TeileRepository(TestApi.fuer(pfade.server))
         runBlocking {
             teile.getPartsFilterColors(konten = Kontoauswahl.Eigene)
             teile.getPartsCategories(konten = Kontoauswahl.Eigene)
@@ -63,8 +59,8 @@ class TeileFilterTest {
 class CsvAbbruchTest {
 
     @Test
-    fun `die App ruft die Abbruch-Adresse`() = mitServer { pfade, cache ->
-        runBlocking { SetDateienRepository(TestApi.fuer(pfade.server), cache).cancelCsvImport() }
+    fun `die App ruft die Abbruch-Adresse`() = mitServer { pfade ->
+        runBlocking { SetDateienRepository(TestApi.fuer(pfade.server)).cancelCsvImport() }
         assertEquals(listOf("POST /api/v1/sets/import/csv/cancel"), pfade.anfragen.toList())
     }
 }

@@ -58,7 +58,7 @@ import ch.brickinventoryapp.ui.components.LocalOffeneAenderungen
 import ch.brickinventoryapp.ui.components.LocalOfflineHinweise
 import ch.brickinventoryapp.ui.components.LocalSnackbarPlatz
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.AnsichtUmschalter
 import ch.brickinventoryapp.ui.components.UpdatePunkt
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
@@ -418,14 +418,14 @@ private fun androidx.navigation.NavController.zuReiter(ziel: Any) =
     }
 
 /**
- * Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. Über
- * SegmentWahl, damit er bei grosser Schrift wie jede Einfachwahl zu Chips wird.
+ * Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. Ein Wechsel
+ * der Ansicht, darum Segmente, auch bei 200 % Schrift (dann seitlich rollbar).
  */
 @Composable
 private fun SammlungUmschalter(aktuell: Any, onWahl: (Any) -> Unit, modifier: Modifier = Modifier) {
     val texte = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs)
     val ziele = SAMMLUNGS_ZIELE.zip(texte).map { (ziel, text) -> ziel to stringResource(text) }
-    SegmentWahl<Any?>(
+    AnsichtUmschalter<Any?>(
         optionen = ziele,
         gewaehlt = aktuell,
         onWahl = { if (it != null) onWahl(it) },

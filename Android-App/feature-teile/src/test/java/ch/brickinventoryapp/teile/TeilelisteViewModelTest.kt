@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.teile
 
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -77,7 +77,6 @@ class TeilelisteViewModelTest {
         takt.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         pfade.server.shutdown()
-        t.cacheDir.deleteRecursively()
     }
 
     private class Quelle(val teile: Map<String, List<PlPart>> = emptyMap()) : TeilelistenQuelle {

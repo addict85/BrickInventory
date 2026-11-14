@@ -22,6 +22,8 @@ android {
 
 dependencies {
     api(project(":core-model"))
+    // Die Repositories liefern Antworttypen; wer sie aufruft, braucht sie.
+    api(project(":core-vertrag"))
     // Wächter und Netzrichtlinie. Wer selbst etwas daraus nennt (NetworkPolicy, Protokoll),
     // bindet core-netz selbst ein; über core-data reicht nichts davon hinaus.
     implementation(project(":core-netz"))

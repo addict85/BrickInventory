@@ -178,15 +178,13 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
       '..',
       '..',
       'Android-App',
-      'core-model',
+      'core-vertrag',
       'src',
       'main',
       'java',
       'ch',
       'brickinventoryapp',
-      'model',
-      'data',
-      'model',
+      'vertrag',
       'SetModels.kt',
     );
     const kt = ohneKommentare(require('node:fs').readFileSync(ktPfad, 'utf8'));

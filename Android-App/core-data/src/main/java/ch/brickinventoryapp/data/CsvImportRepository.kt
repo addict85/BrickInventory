@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
-import ch.brickinventoryapp.model.data.model.GenericAdminResponse
+import ch.brickinventoryapp.vertrag.CsvImportStatus
+import ch.brickinventoryapp.vertrag.GenericAdminResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch

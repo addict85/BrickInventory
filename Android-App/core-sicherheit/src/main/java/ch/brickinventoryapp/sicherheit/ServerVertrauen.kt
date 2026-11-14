@@ -19,7 +19,6 @@ import javax.net.ssl.SSLEngine
 import javax.net.ssl.SSLSession
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509ExtendedTrustManager
-import javax.security.auth.x500.X500Principal
 
 /**
  * Welchen Zertifizierungsstellen die Clients des eigenen Servers vertrauen: nur
@@ -93,6 +92,9 @@ fun pinSchluessel(serverUrl: String): String? {
     return if (url.isHttps) "${url.host.lowercase()}:${url.port}" else null
 }
 
+/** Der zweite Pin eines Servers: der Schlüssel seines Blatts, neben dem Pin der Wurzel. */
+fun blattPinSchluessel(schluessel: String): String = "$schluessel#blatt"
+
 /**
  * Zeigt ein Fingerabdruck auf eine System-Wurzel (ohne Nutzer-CAs)? Ein solcher Pin
  * verlangt ohnehin eine öffentlich gültige, CT-geprüfte Kette; jeder andere aus einer
@@ -123,9 +125,14 @@ class ZertifikatUngeklaert(
     val schluessel: String,
     val fingerabdruck: String,
     val art: Art,
-    /** Bei [Art.GEAENDERT]: der gemerkte Pin. */
+    /** Bei [Art.GEAENDERT] und [Art.SCHLUESSEL_NEU]: der gemerkte Pin. */
     val erwartet: String? = null,
+    /** Der Schlüssel des Blatts; mit dem Ja zum Wurzel-Pin wird er zum zweiten Pin. */
+    val blatt: String? = null,
 ) : CertificateException("Zertifikat von $schluessel nicht bestätigt ($art)") {
+    /** Wo das Ja den [fingerabdruck] ablegt. */
+    val ablageSchluessel: String get() = if (art == Art.SCHLUESSEL_NEU) blattPinSchluessel(schluessel) else schluessel
+
     enum class Art {
         /** Erster Kontakt, die Kette ist gültig: Fingerabdruck zeigen und bestätigen lassen. */
         ERSTKONTAKT,
@@ -143,6 +150,12 @@ class ZertifikatUngeklaert(
          * bestätigen: Code und Server sollten aus derselben Quelle stammen.
          */
         CODE_ABWEICHUNG,
+        /**
+         * Gleiche öffentliche Wurzel, aber ein anderer Serverschlüssel als der gemerkte
+         * (Erneuerung mit neuem Schlüssel oder eine fehlausgestellte Kette derselben CA).
+         * Bewusst zu bestätigen; abgetippt wird nicht, die Kette hat das System geprüft.
+         */
+        SCHLUESSEL_NEU,
     }
 }
 
@@ -176,13 +189,17 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
      * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Ohne bekannte CA
      * oder bei geändertem Schlüssel nur mit [eingabe] aus einer zweiten Quelle
      * ([Abschrift.bestaetigt]): Dort prüft sonst niemand die Kette, und ein Tipp
-     * allein wäre genau das, was ein Angreifer dazwischen braucht.
+     * allein wäre genau das, was ein Angreifer dazwischen braucht. Beim Erstkontakt
+     * ist das Abtippen freiwillig; wer es tut, muss richtig tippen.
      */
     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
         val f = _offen.value ?: return false
         if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
-        if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
-        pins.merkePin(f.schluessel, f.fingerabdruck)
+        val freiwillig = f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && eingabe.isNullOrBlank() ||
+            f.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+        if (!freiwillig && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
+        pins.merkePin(f.ablageSchluessel, f.fingerabdruck)
+        f.blatt?.let { pins.merkePin(blattPinSchluessel(f.schluessel), it) }
         _offen.value = null
         return true
     }
@@ -213,6 +230,8 @@ class PinVertrauen(
      * eigenen Server; ein Bild-CDN soll eine Firmen- oder Schad-CA nie annehmen.
      */
     private val fremdeHosts: X509ExtendedTrustManager,
+    /** Wurzeln, zwischen denen ein öffentlicher Pin still wechseln darf ([CA_FAMILIEN]). */
+    private val familien: Map<String, String> = CA_FAMILIEN,
 ) : X509ExtendedTrustManager() {
 
     private fun schluessel(sitzung: SSLSession?): String? =
@@ -222,17 +241,18 @@ class PinVertrauen(
         if (schluessel == null) return ohneHost(chain) { mit(fremdeHosts) }
         if (chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
         // Ohne Pin wird nie still vertraut; was die Rückfrage ist, sagt die Lage der Kette.
-        val pin = pins.pin(schluessel)
-            ?: throw lage(chain, mit).let { gemeldet(ZertifikatUngeklaert(schluessel, it.fingerabdruck, it.artOhnePin)) }
+        val pin = pins.pin(schluessel) ?: throw lage(chain, mit).let {
+            gemeldet(ZertifikatUngeklaert(schluessel, it.fingerabdruck, it.artOhnePin, blatt = spkiFingerabdruck(chain[0])))
+        }
         val ausCode = pins.ausCode(schluessel)
         // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate
         // Transparency: Schickt der Server die Wurzel mit, umginge der Abgleich die CT-Prüfung.
         val oeffentlicherPin = pin in systemWurzeln
         if (!oeffentlicherPin && passtZumPin(chain, pin)) return
         val lage = lage(chain, mit)
-        if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return
+        if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return if (oeffentlicherPin) pruefeBlatt(chain[0], schluessel, ausCode) else Unit
         val art = if (ausCode) ZertifikatUngeklaert.Art.CODE_ABWEICHUNG else ZertifikatUngeklaert.Art.GEAENDERT
-        throw gemeldet(ZertifikatUngeklaert(schluessel, lage.fingerabdruck, art, erwartet = pin))
+        throw gemeldet(ZertifikatUngeklaert(schluessel, lage.fingerabdruck, art, erwartet = pin, blatt = spkiFingerabdruck(chain[0])))
     }
 
     /** Wie die Kette gilt und woran sie hängt. Öffentlich heisst: allein mit den System-CAs, nie über eine Nutzer-CA. */
@@ -257,10 +277,23 @@ class PinVertrauen(
         if (oeffentlicherPin) lage.oeffentlich && (lage.fingerabdruck == pin || !ausCode && gleicherBetreiber(pin, lage.fingerabdruck))
         else lage.ueberNutzerCa && lage.wurzel != null && lage.fingerabdruck == pin
 
-    /** Beide sind System-Wurzeln, und ihr Subjekt nennt dieselbe Organisation (O=). */
+    /**
+     * Unter einer öffentlichen Wurzel genügt jede Kette dieser CA; der Schlüssel des Blatts
+     * grenzt sie auf diesen Server ein. Fehlt er (ältere Fassung), wird er jetzt gemerkt;
+     * ein Code vom angemeldeten Bildschirm tauscht ihn ohne Frage, sonst fragt die App.
+     */
+    private fun pruefeBlatt(blatt: X509Certificate, schluessel: String, ausCode: Boolean) {
+        val neu = spkiFingerabdruck(blatt)
+        val gemerkt = pins.pin(blattPinSchluessel(schluessel))
+        if (gemerkt == neu) return
+        if (gemerkt == null || ausCode) return pins.merkePin(blattPinSchluessel(schluessel), neu)
+        throw gemeldet(ZertifikatUngeklaert(schluessel, neu, ZertifikatUngeklaert.Art.SCHLUESSEL_NEU, erwartet = gemerkt))
+    }
+
+    /** Beide sind System-Wurzeln derselben bekannten Familie; das O= im Subjekt wählt jede CA selbst. */
     private fun gleicherBetreiber(a: String, b: String): Boolean {
-        val betreiberA = systemWurzeln[a]?.let(::betreiber) ?: return false
-        return betreiberA == systemWurzeln[b]?.let(::betreiber)
+        if (a !in systemWurzeln || b !in systemWurzeln) return false
+        return familien[a]?.let { it == familien[b] } ?: false
     }
 
     /** Die System-Wurzeln nach Fingerabdruck: Ein Pin auf eine davon heisst „öffentlich gültig“. */
@@ -292,7 +325,9 @@ class PinVertrauen(
         if (pin in systemWurzeln) {
             system()
             val wurzel = spkiFingerabdruck(anker(chain, fremdeHosts.acceptedIssuers) ?: chain.last())
-            if (wurzel == pin || gleicherBetreiber(pin, wurzel)) return
+            val blatt = eigenerServer()?.let { pins.pin(blattPinSchluessel(it)) }
+            val blattPasst = blatt == null || chain.firstOrNull()?.let(::spkiFingerabdruck) == blatt
+            if ((wurzel == pin || gleicherBetreiber(pin, wurzel)) && blattPasst) return
         } else if (passtZumPin(chain, pin)) return
         throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
     }
@@ -357,13 +392,22 @@ internal fun fuerServer(blatt: X509Certificate): Boolean {
     return EKU_SERVER in zwecke || EKU_JEDER in zwecke
 }
 
-/** Die Organisation (O=) im Subjekt; ohne sie ist eine Wurzel mit keiner anderen verwandt. */
-internal fun betreiber(zert: X509Certificate): String? =
-    zert.subjectX500Principal.getName(X500Principal.RFC2253)
-        .split(UNMASKIERTES_KOMMA).map { it.trim() }
-        .firstOrNull { it.startsWith("O=") }?.removePrefix("O=")?.takeIf { it.isNotBlank() }
-
-private val UNMASKIERTES_KOMMA = Regex("""(?<!\\),""")
+/**
+ * Wurzeln (SPKI-SHA-256, Base64) je Betreiber, zwischen denen ein öffentlicher Pin ohne
+ * Frage wechselt. Fest statt aus dem O= des Subjekts: Das schreibt jede CA hinein, was sie
+ * will. Werte mit openssl aus den Wurzeln gerechnet (Mozilla-Speicher, 14.11.2026).
+ */
+val CA_FAMILIEN: Map<String, String> = mapOf(
+    "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=" to "Let's Encrypt", // ISRG Root X1
+    "diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=" to "Let's Encrypt", // ISRG Root X2
+    "hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=" to "Google Trust Services", // GTS Root R1
+    "QXnt2YHvdHR3tJYmQIr0Paosp6t/nggsEGD4QJZ3Q0g=" to "Google Trust Services", // GTS Root R3
+    "mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=" to "Google Trust Services", // GTS Root R4
+    "x4QzPSC810K5/cMjb05Qm4k3Bw5zBn4lTdO/nEW/Td4=" to "Sectigo", // USERTrust RSA (ZeroSSL)
+    "ICGRfpgmOUXIWcQ/HXPLQTkFPEFPoDyjvH7ohhQpjzs=" to "Sectigo", // USERTrust ECC (ZeroSSL)
+    "i7WTqTvh0OioIruIfFR4kMPnBqrS2rdiVPl/s2uC/CY=" to "DigiCert", // Global Root G2
+    "uUwZgwDOxcBXrQcntwu+kYFpkiVkOaezL0WYEZ3anJc=" to "DigiCert", // Global Root G3
+)
 
 private const val EKU_SERVER = "1.3.6.1.5.5.7.3.1"
 private const val EKU_JEDER = "2.5.29.37.0"

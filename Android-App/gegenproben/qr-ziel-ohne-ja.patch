@@ -1,0 +1,17 @@
+Gegenprobe: Eine QR-Anmeldung geht ohne Ja zum gezeigten Ziel hinaus
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.QrZielTest
+Rot: ohne Ja zum Ziel
+
+diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/QrAnmeldung.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/QrAnmeldung.kt
+--- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/QrAnmeldung.kt
++++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/QrAnmeldung.kt
+@@ -46,7 +46,7 @@
+  * vorhalten, und wer nur auf „Übernehmen“ tippt, hat den Namen darüber nicht gelesen.
+  */
+ internal fun qrUebernehmbar(gesperrt: Boolean, zielBestaetigt: Boolean, abtippen: Boolean, eingabe: String): Boolean =
+-    !gesperrt && zielBestaetigt && (!abtippen || eingabe.isNotBlank())
++    !gesperrt && (!abtippen || eingabe.isNotBlank())
+ 
+ /**
+  * Der Host des bisherigen Servers, wenn der Code woandershin führt: Das Ja meldet

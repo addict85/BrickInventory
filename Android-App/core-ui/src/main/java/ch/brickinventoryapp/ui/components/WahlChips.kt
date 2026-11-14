@@ -32,6 +32,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.Badge
@@ -77,6 +79,35 @@ fun <T> SegmentWahl(
                 // Zwei Zeilen statt Auslassung: Bei grosser Schrift wurde „Gebraucht“ zu „Gebr…“.
                 Text(text, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+        }
+    }
+}
+
+/**
+ * Ein Wechsel zwischen Ansichten (Sets | Teile | Minifiguren) ist immer eine Segmentzeile,
+ * auch bei grosser Schrift: Dann rollt sie seitlich, statt Beschriftungen abzuschneiden
+ * oder zu Chips zu werden, die wie Filter aussähen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> AnsichtUmschalter(
+    optionen: List<Pair<T, String>>,
+    gewaehlt: T,
+    onWahl: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val gross = LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB
+    Box(if (gross) modifier.fillMaxWidth().horizontalScroll(rememberScrollState()) else modifier.fillMaxWidth()) {
+        SingleChoiceSegmentedButtonRow(if (gross) Modifier else Modifier.fillMaxWidth()) {
+            optionen.forEachIndexed { i, (wert, text) ->
+                SegmentedButton(
+                    selected = wert == gewaehlt,
+                    onClick = { onWahl(wert) },
+                    shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
+                ) {
+                    Text(text, maxLines = 1, softWrap = false)
+                }
             }
         }
     }

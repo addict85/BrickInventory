@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.netz.di
 
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
-import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.vertrag.Fehlercode
 import ch.brickinventoryapp.netz.util.APP_API_VERSION
 import ch.brickinventoryapp.netz.util.KlartextAbgelehnt
 import ch.brickinventoryapp.netz.util.NetworkPolicy

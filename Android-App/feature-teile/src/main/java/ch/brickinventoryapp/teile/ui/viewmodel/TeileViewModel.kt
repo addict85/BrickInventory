@@ -19,7 +19,7 @@ import ch.brickinventoryapp.teile.ui.SetItemUiState
 import ch.brickinventoryapp.teile.ui.Teile
 import ch.brickinventoryapp.teile.ui.TeileLokal
 import ch.brickinventoryapp.teile.ui.TeileQuelle
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.data.model.GenericResponse
+import ch.brickinventoryapp.vertrag.GenericResponse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.model.ui.ScrollMemory

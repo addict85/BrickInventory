@@ -7,6 +7,7 @@ import type { Familie } from './repository/geraeteSchluessel';
 import type { AKTIONEN } from '../vertrag/geraet';
 import { GOOGLE_WURZELN } from './attestation/googleWurzeln';
 import { pruefeKette } from './attestation/schluesselAttestation';
+import { geltendeListe, WIDERRUF_ZUSTAND } from './attestation/widerrufsliste';
 import type { KontoKontext } from './kontext';
 import { prozessweit } from '../infra/prozessweit';
 
@@ -87,10 +88,14 @@ export async function hinterlegeSchluessel(
   kette: readonly string[],
 ): Promise<Registrierung> {
   const k = kx.konfig;
+  const widerrufen = geltendeListe(await kx.auftraege.liesZustand(WIDERRUF_ZUSTAND), k.attestationWiderrufTage);
+  if (!widerrufen) return { abgewiesen: 'widerrufsliste_fehlt' };
   const p = pruefeKette(kette, {
     wurzeln: wurzeln(k.attestationWurzeln ?? ''),
     paket: k.androidPaket,
     digests: k.androidZertifikate,
+    widerrufen,
+    patchMindestens: k.attestationPatchMindestens,
   });
   if (!p.ok) return { abgewiesen: p.grund };
   const kanonisch = (p.oeffentlich.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');

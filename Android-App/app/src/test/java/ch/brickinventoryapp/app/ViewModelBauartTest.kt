@@ -9,7 +9,7 @@ import ch.brickinventoryapp.testing.Quellen
  * ── Warum das mehr ist als Einheitlichkeit ──────────────────────────────────
  * `MainViewModel` war das EINZIGE `AndroidViewModel` im Baum. CatalogViewModel
  * und MonitoringViewModel sind gewöhnliche `ViewModel` und lassen sich den
- * Context einspritzen — genau wie ResponseCache, PreferencesManager und
+ * Context einspritzen — genau wie VorschauSpeicher, PreferencesManager und
  * PdfExportManager. Zwei Muster für dieselbe Sache also, und das seltenere war
  * das teurere:
  *

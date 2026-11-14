@@ -117,7 +117,9 @@ import ch.brickinventoryapp.teile.ui.TeileZiel
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
  *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
- *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
+ *   merkliste-zustand-als-segmente  Zustandsfilter der Merkliste wieder als Segmente → rot „Merkliste filtert …“
+ *   umschalter-chips-bei-200        Sets | Teile | Minifiguren wieder über SegmentWahl (Chips ab 130 %)
+ *                                   → rot „der Sammlungs-Umschalter bleibt bei 200 Prozent …“
  *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
  *   detail-mit-zurueckpfeil         Detail neben der Liste mit Zurück-Pfeil statt X → rot „Tablet zeigt Merkliste und Detail …“
  *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
@@ -187,6 +189,41 @@ class OberflaechenRegelnTest {
         val reiterRechts = (0 until 2).map { leiste[it].fetchSemanticsNode().boundsInRoot }.minBy { it.left }.right
         assertTrue("Der Umschalter beginnt rechts der Seitenleiste",
             compose.onNodeWithText(teile).fetchSemanticsNode().boundsInRoot.left >= reiterRechts)
+    }
+
+    /**
+     * Sets | Teile | Minifiguren wechselt die Ansicht und bleibt darum auch bei 200 % eine
+     * Segmentzeile: aneinanderstossende Segmente, keine Beschriftung abgeschnitten (die
+     * Zeile rollt seitlich, wenn sie nicht passt).
+     */
+    @Test
+    fun `der Sammlungs-Umschalter bleibt bei 200 Prozent eine Segmentzeile`() {
+        zeige(schrift = 2f) {
+            val nav = rememberNavController()
+            val reiter = remember { listOf(Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung")) }
+            MainScaffold(
+                title = "Sammlung", navController = nav, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, onTabAngetippt = {},
+            ) {
+                NavHost(nav, startDestination = SammlungZiel.Gallery) { composable<SammlungZiel.Gallery> { } }
+            }
+        }
+        val dichte = ctx.resources.displayMetrics.density
+        val segmente = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs).map {
+            val text = ctx.getString(it)
+            val beschriftung = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
+                .first { n -> n.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
+            val layouts = mutableListOf<TextLayoutResult>()
+            beschriftung.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+            assertTrue("$text bei 200 % abgeschnitten", layouts.none { l -> l.hasVisualOverflow })
+            compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+        }
+        segmente.zipWithNext().forEach { (a, b) ->
+            assertTrue("Segmente stossen aneinander (${a.right / dichte} / ${b.left / dichte} dp)",
+                kotlin.math.abs(b.left - a.right) <= 2 * dichte && kotlin.math.abs(a.top - b.top) < 1f)
+        }
     }
 
     @Test
@@ -299,8 +336,8 @@ class OberflaechenRegelnTest {
     /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
     private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
         val vm = welt.galerie().also { it.loadSets() }
-        val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
-            KatalogRepository(welt.t.api, welt.t.cache),
+        val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+            KatalogRepository(welt.t.api),
             object : SetAnleger {
                 override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                      ownerUserId: Int?, storage: String?) =
@@ -505,8 +542,8 @@ class OberflaechenRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.galerie().also { it.loadSets() }
-            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
-                KatalogRepository(welt.t.api, welt.t.cache),
+            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+                KatalogRepository(welt.t.api),
                 object : SetAnleger {
                     override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =
@@ -638,26 +675,25 @@ class OberflaechenRegelnTest {
     }
 
     /**
-     * Ein Bauteil je Entscheidungstyp: Der Zustand ist eine Einfachwahl und steht als
-     * Segmentschaltfläche da (gleich breite, aneinanderstossende Segmente mit der
-     * Rolle RadioButton); die Sortierung ist ein Menü hinter einem Symbol.
+     * Ein Bauteil je Entscheidungstyp: Der Zustand schränkt die Liste ein und steht als
+     * Filterchips da (Rolle Checkbox, mit Abstand), wie die Filter in Galerie und Finanzen;
+     * Segmente gehören Ansichten. Die Sortierung ist ein Menü hinter einem Symbol.
      */
     @Test
-    fun `Merkliste waehlt den Zustand mit Segmenten und sortiert ueber ein Menue`() {
+    fun `Merkliste filtert den Zustand mit Chips und sortiert ueber ein Menue`() {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.merkliste().also { it.ladeMerkliste() }
             zeige { MerklisteRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOeffnenEinzeln = { _, _ -> }) }
             warte("Merkliste") { vm.merklisteState.value.merkposten.isNotEmpty() }
-            val segmente = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used).map {
+            val chips = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used).map {
                 compose.onNode(hasText(ctx.getString(it)) and
                     SemanticsMatcher.expectValue(SemanticsProperties.Role,
-                        Role.RadioButton)).fetchSemanticsNode().boundsInRoot
+                        Role.Checkbox)).fetchSemanticsNode("${ctx.getString(it)} ist kein Filterchip").boundsInRoot
             }
             val dichte = ctx.resources.displayMetrics.density
-            segmente.zipWithNext().forEach { (a, b) ->
-                assertTrue("Segmente stossen aneinander (${a.right / dichte} / ${b.left / dichte} dp)",
-                    kotlin.math.abs(b.left - a.right) <= 2 * dichte && kotlin.math.abs(a.top - b.top) < 1f)
+            chips.zipWithNext().forEach { (a, b) ->
+                assertTrue("Chips stehen mit Abstand (${a.right / dichte} / ${b.left / dichte} dp)", b.left - a.right >= 4 * dichte)
             }
             // Die Sortierung steht nicht als Chip mit ihrem Namen da, sondern hinter dem Symbol.
             val vorgabe = ctx.getString(R.string.gallery_sort_added_desc)

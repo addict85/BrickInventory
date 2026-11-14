@@ -23,7 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
+import ch.brickinventoryapp.vertrag.CsvImportStatus
 import javax.inject.Inject
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.data.util.LanguageManager

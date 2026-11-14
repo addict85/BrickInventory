@@ -34,10 +34,11 @@ include(":app")
 
 // Abhängigkeiten nur in diese Richtung: app → feature-* → core-*; kein Bereich
 // kennt einen anderen. Unter den Kernmodulen: core-update und core-dienste →
-// core-data → core-offline → core-sicherheit → core-netz → core-model; core-navigation →
+// core-data → core-offline → core-sicherheit → core-netz → core-vertrag → core-model; core-navigation →
 // core-zustand → core-sitzung → core-data.
 // Die Regel: build-logic/…/kanten/Modulkanten.kt (Aufgabe modulkantenPruefen, ModulgrenzenTest).
 include(":core-model")
+include(":core-vertrag")
 include(":core-ressourcen")
 include(":core-netz")
 include(":core-sicherheit")

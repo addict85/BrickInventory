@@ -1,0 +1,16 @@
+Gegenprobe: raeumeAlteAntwortablage() räumt nichts
+Modul: core-data
+Test: ch.brickinventoryapp.data.CacheBereichTest
+Rot: der alte Ablageort wird geraeumt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheBesitzer.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheBesitzer.kt
+index fe8b162..65c7d83 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheBesitzer.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/CacheBesitzer.kt
+@@ -32,5 +32,5 @@ fun bereichsName(bereich: String): String =
+  * hielt Antworten eines Kontos; was niemand mehr liest, soll nicht liegen bleiben.
+  */
+ internal fun raeumeAlteAntwortablage(vararg ordner: File) {
+-    for (o in ordner) o.listFiles()?.filter { it.isDirectory && it.name.startsWith("api-") }?.forEach { it.deleteRecursively() }
++    for (o in ordner) o.listFiles()?.filter { it.isDirectory && it.name.startsWith("api-") }?.forEach { }
+ }

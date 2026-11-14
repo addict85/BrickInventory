@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.KontoApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.netz.di.ServerWaechter
 import ch.brickinventoryapp.netz.di.Zugangslage
@@ -23,7 +22,6 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.ResponseCache
 
 /**
  * Abmelden ohne Netz lässt das Token am Server nicht gültig: Scheitert
@@ -69,7 +67,7 @@ class EntwertungTest {
             .readTimeout(2, TimeUnit.SECONDS).build()
         return KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(client)
             .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
-            .build().create(KontoApi::class.java), ResponseCache { dir })
+            .build().create(KontoApi::class.java))
     }
 
     private val auftrag = Entwertungsauftrag("https://brick.example", "GEHEIMTEXT")

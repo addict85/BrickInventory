@@ -1,8 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.model.data.model.GutscheinRequest
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.vertrag.GutscheinRequest
+import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -14,7 +13,6 @@ import org.json.JSONObject
 import ch.brickinventoryapp.testing.GutscheineRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -74,7 +72,7 @@ class GutscheineContractTest {
             {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
         val ordner = File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
         try {
-            return block(pfade, GutscheineRepository(TestApi.fuer(pfade.server), ResponseCache { ordner }), ordner)
+            return block(pfade, GutscheineRepository(TestApi.fuer(pfade.server)), ordner)
         } finally {
             pfade.server.shutdown(); ordner.deleteRecursively()
         }

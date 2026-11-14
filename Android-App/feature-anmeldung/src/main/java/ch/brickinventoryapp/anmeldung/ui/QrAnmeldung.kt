@@ -42,6 +42,13 @@ internal fun parseQrPayload(raw: String): QrLoginPayload? = try {
 } catch (_: Exception) { null }
 
 /**
+ * Übernehmen erst nach dem ausdrücklichen Ja zum gezeigten Ziel: Einen Code kann jeder
+ * vorhalten, und wer nur auf „Übernehmen“ tippt, hat den Namen darüber nicht gelesen.
+ */
+internal fun qrUebernehmbar(gesperrt: Boolean, zielBestaetigt: Boolean, abtippen: Boolean, eingabe: String): Boolean =
+    !gesperrt && zielBestaetigt && (!abtippen || eingabe.isNotBlank())
+
+/**
  * Der Host des bisherigen Servers, wenn der Code woandershin führt: Das Ja meldet
  * dort ab und schickt alles Weitere an den neuen Server, also sagt der Dialog es.
  */

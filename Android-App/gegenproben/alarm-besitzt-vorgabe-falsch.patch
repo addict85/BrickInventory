@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.AlarmUebersichtTest
 Rot: ein fehlendes besitzt-Feld
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
+diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt
+--- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt
++++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt
 @@ -361,7 +361,7 @@
       * das Feld nicht, und ein Klick, der in einer Meldung endet, ist besser als eine
       * tote Liste.

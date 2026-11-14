@@ -4,12 +4,12 @@ import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.data.model.SetAggregate
+import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
 import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -61,7 +61,7 @@ class SetDetailViewModelTest {
     private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
     private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
-        FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), keinLeser,
+        FinanzenRepository(t.api), HaushaltRepository(t.api), keinLeser,
         SavedStateHandle(mapOf("setNumber" to setNumber))))
 
     @Before
