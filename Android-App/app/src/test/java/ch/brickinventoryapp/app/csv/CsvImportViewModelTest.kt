@@ -89,7 +89,6 @@ class CsvImportViewModelTest {
 
     @After fun ab() {
         Dispatchers.resetMain()
-        t.cacheDir.deleteRecursively()
     }
 
     private fun status(s: String, done: Int = 0) =

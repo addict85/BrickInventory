@@ -77,7 +77,6 @@ class TeilelisteViewModelTest {
         takt.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         pfade.server.shutdown()
-        t.cacheDir.deleteRecursively()
     }
 
     private class Quelle(val teile: Map<String, List<PlPart>> = emptyMap()) : TeilelistenQuelle {

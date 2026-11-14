@@ -105,7 +105,6 @@ class SitzungsDienstTest {
 
     @After fun ab() {
         Dispatchers.resetMain()
-        t.cacheDir.deleteRecursively()
     }
 
     /** Erzeugt und startet den Dienst, führt [block] aus und beendet seine Koroutinen. */

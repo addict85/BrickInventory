@@ -74,7 +74,6 @@ class CatalogViewModelTest {
 
     @After fun ab() {
         Dispatchers.resetMain()
-        t.cacheDir.deleteRecursively()
     }
 
     private fun seite(vararg nummern: String) =
