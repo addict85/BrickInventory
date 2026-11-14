@@ -61,6 +61,25 @@ object Modulkanten {
         (plugins.toSet() intersect oberflaechenPlugins).takeIf { modul in ohneOberflaeche && it.isNotEmpty() }
             ?.let { "$modul liegt unter der Oberfläche und schaltet Compose ein: ${it.sorted()}" }
 
+    /**
+     * Die ViewModels, die in core-zustand liegen dürfen, je mit Grund. Ein ViewModel, das nur ein
+     * Bereich braucht, gehört in diesen Bereich; hier liegt nur, was die Activity oder mehrere
+     * Bereiche teilen, die einander nicht kennen dürfen.
+     */
+    val zustandsViewModels: Map<String, String> = mapOf(
+        "AppViewModel" to "Sitzung, Snackbar und Pflichtmasken der Activity; Bereiche sehen ihn nur über die Bereichsumgebung",
+        "KaeufeViewModel" to "Käufe eines Eintrags: Sets (feature-sammlung) und eigene Teile/Figuren (feature-teile) " +
+            "zeigen sie; ein eigener Bereich bräuchte die Bildschirme beider",
+        "DarstellungViewModel" to "Design und Sprache: die Activity wendet sie an, Einstellungen (feature-konto) ändert sie",
+        "VertrauenViewModel" to "Zertifikatsfrage über jedem Ziel (Activity) und in den Einstellungen (feature-konto)",
+        "GeraeteEinstellungenViewModel" to "Geräteschalter in feature-konto und feature-verwaltung",
+    )
+
+    /** Was zwischen den ViewModels in core-zustand ([gefunden]) und [zustandsViewModels] nicht stimmt. */
+    fun zustandsViewModelVerstoesse(gefunden: Collection<String>): List<String> =
+        (gefunden.toSet() - zustandsViewModels.keys).map { "$it liegt in core-zustand ohne Grund in Modulkanten.zustandsViewModels" } +
+            (zustandsViewModels.keys - gefunden.toSet()).map { "$it steht in Modulkanten.zustandsViewModels, liegt aber nicht in core-zustand" }
+
     /** Die Verstösse unter [kanten], je einer als Satz; leer, wenn alle erlaubt sind. */
     fun verstoesse(kanten: Collection<Modulkante>): List<String> = kanten.mapNotNull { k ->
         when {

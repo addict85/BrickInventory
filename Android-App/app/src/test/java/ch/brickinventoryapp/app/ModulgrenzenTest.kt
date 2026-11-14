@@ -74,6 +74,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   AA core-zustand schaltet wieder brickinventory.android.compose ein → rot „core-zustand liegt unter
  *      der Oberfläche und schaltet Compose ein“ (Schichtung …; mit kotlinc gemessen, in Gradle bricht
  *      schon AndroidComposeKonvention ab); gegenproben/zustand-darf-oberflaeche.patch → rot „die Kantenregel …“
+ *   AB gegenproben/bereichs-viewmodel-im-zustand.patch: ein ViewModel nur eines Bereichs in core-zustand
+ *      → rot „… liegt in core-zustand ohne Grund in Modulkanten.zustandsViewModels“ (Schichtung …)
  *   W  gegenproben/route-im-kern.patch: eine Route in core-model, die Verwaltung öffnet sie →
  *      rot „feature-verwaltung nennt fremde Routentypen: [Zentralziel]“ (kein Bereich hängt …);
  *      lokal mit kotlinc gegen den Baum gemessen, in der CI über Gradle
@@ -180,6 +182,12 @@ class ModulgrenzenTest {
         val plugin = Regex("""alias\(libs\.plugins\.([\w.]+)\)""")
         val oberflaeche = module().mapNotNull { (name, bau) -> Modulkanten.oberflaecheVerstoss(name, plugin.findAll(bau).map { it.groupValues[1] }.toList()) }
         assertTrue(oberflaeche.joinToString("\n"), oberflaeche.isEmpty())
+        val viewModel = Regex("""\bclass\s+(\w+)[^{]*?:\s*ViewModel\(\)""")
+        val zustandsVms = File(projekt, "core-zustand/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .flatMap { f -> viewModel.findAll(Quellen.ohneKommentare(f.readText())).map { it.groupValues[1] } }.toList()
+        assertTrue("Keine ViewModels in core-zustand gefunden — Muster veraltet?", zustandsVms.size >= 3)
+        val vmFalsch = Modulkanten.zustandsViewModelVerstoesse(zustandsVms)
+        assertTrue(vmFalsch.joinToString("\n"), vmFalsch.isEmpty())
         // core-netz ist die untere Netz-Schicht: Ablage, Repositories und Hilt bleiben in core-data.
         val netz = kerne.getValue("core-netz")
         val bibliotheken = Regex("""\(libs\.([\w.]+)\)""").findAll(netz).map { it.groupValues[1] }.toList()
@@ -245,6 +253,8 @@ class ModulgrenzenTest {
         assertEquals("core-zustand liegt unter der Oberfläche und schaltet Compose ein: [brickinventory.android.compose]",
             Modulkanten.oberflaecheVerstoss("core-zustand", listOf("brickinventory.android.library", "brickinventory.android.compose")))
         assertEquals(null, Modulkanten.oberflaecheVerstoss("core-navigation", listOf("brickinventory.android.compose")))
+        assertEquals(listOf("MerklisteViewModel liegt in core-zustand ohne Grund in Modulkanten.zustandsViewModels"),
+            Modulkanten.zustandsViewModelVerstoesse(Modulkanten.zustandsViewModels.keys + "MerklisteViewModel"))
     }
 
     @Test
