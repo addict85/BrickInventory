@@ -31,6 +31,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -245,6 +249,14 @@ fun PasswortRueckfrage(
 ) {
     var passwort by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
+    // Die Absage rollt ins Bild: Mit dem Codefeld darüber lag sie auf kleinen Schirmen unter
+    // dem Rand der Rückfrage, und man sah nur ein neues Feld ohne den Grund dafür.
+    val meldungSichtbar = remember { BringIntoViewRequester() }
+    LaunchedEffect(fehler) {
+        if (fehler == null) return@LaunchedEffect
+        withFrameNanos { }  // erst wenn die Zeile gesetzt ist
+        meldungSichtbar.bringIntoView()
+    }
     ErfassenDialog(
         titel = titel,
         bestaetigen = bestaetigen,
@@ -258,7 +270,7 @@ fun PasswortRueckfrage(
         PasswortFeld(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
             Modifier.fillMaxWidth())
         if (codeNoetig) ZweiterFaktorCodeFeld(code) { code = it }
-        if (fehler != null) FehlerZeile(fehler)
+        if (fehler != null) FehlerZeile(fehler, Modifier.bringIntoViewRequester(meldungSichtbar))
     }
 }
 

@@ -13,9 +13,6 @@ const val TOKEN_SCOPE_VOLL = "voll"
 const val PASSKEY_ANMELDEN = "anmelden"
 const val PASSKEY_ZWEITER_FAKTOR = "zweiter_faktor"
 
-/** Verwalterrecht wirkt nur mit vollem Token: Mit "app" antwortet der Server auf Verwalteradressen 403. */
-val LoginResponse.verwalter: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_VOLL
-
 /** Nur die Zustände, zu denen der Server eine Zeile geliefert hat. */
 fun PriceByCondition.present(): List<Pair<Zustand, ConditionValuation>> = buildList {
     new?.let { add(Zustand.NEU to it) }

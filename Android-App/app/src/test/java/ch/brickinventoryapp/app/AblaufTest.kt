@@ -66,6 +66,9 @@ import androidx.compose.ui.test.SemanticsMatcher
  *       Nummer nicht kopiert“ (gegenproben/gutschein-nummer-ohne-geraetesperre.patch)
  *   (g) in PasswortRueckfrage das Codefeld nie gezeigt → rot „die Rueckfrage zeigt das
  *       Codefeld erst auf Verlangen“ (gegenproben/gutschein-rueckfrage-ohne-code.patch)
+ *   (g2) die Absage rollt nicht ins Bild → dasselbe rot, „Bitte den Code eingeben.“ ist
+ *       nicht zu sehen (gegenproben/rueckfrage-meldung-ausser-sicht.patch; der Stand vor
+ *       der Korrektur, rot in der CI auf 0223f52)
  *   (h) im Set-Detail der Papierkorb immer mit Rückfrage → rot „ein Set loescht mit
  *       Rueckgaengig sofort …“ (gegenproben/set-loeschen-doppelt-gesichert.patch)
  *   (i) Hinzufügen ohne Nummer markiert das Feld nicht → rot „ein Set ohne Nummer sagt …“

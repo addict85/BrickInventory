@@ -238,14 +238,17 @@ private fun GutscheinRueckfrage(
     )
 }
 
-/** Die Hauptaktion der Seite: einen Gutschein anlegen. */
+/**
+ * Die Hauptaktion der Seite: einen Gutschein anlegen. Die Fassung mit Inhalt, nicht die mit
+ * `text`/`icon`: Jene nimmt den Text aus der Semantik, vorgelesen würde nur „Schaltfläche“.
+ */
 @Composable
 internal fun GutscheinHinzufuegen(onClick: () -> Unit) {
-    ExtendedFloatingActionButton(
-        onClick = onClick,
-        icon = { Icon(Icons.Default.Add, null) },
-        text = { Text(stringResource(R.string.vouchers_add)) },
-    )
+    ExtendedFloatingActionButton(onClick = onClick) {
+        Icon(Icons.Default.Add, null)
+        Spacer(Modifier.width(Abstaende.mittel))
+        Text(stringResource(R.string.vouchers_add))
+    }
 }
 
 /**

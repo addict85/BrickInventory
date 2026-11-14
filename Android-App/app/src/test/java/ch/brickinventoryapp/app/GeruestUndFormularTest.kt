@@ -34,6 +34,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -125,6 +126,7 @@ import ch.brickinventoryapp.sammlung.ui.SammlungZiel
  *   finanzen-verlauf-zuerst     Verlauf wieder vor der Kopfkachel → rot „Finanzen nennen den Marktwert …“
  *   katalog-bild-ohne-grenze    Katalogbild wieder ohne Höchstbreite → rot „Katalog-Detail steht …“
  *   alarme-volle-breite         Preisalarme wieder in Listenbreite → rot „Konto und Preisalarme …“
+ *   alarm-feld-tablet-breit     Felder eines Alarms füllen auch die Tabletkarte → rot „Konto und Preisalarme …“
  *   markenkopf-immer-gross      Markenkopf auch bei 200 % gross → rot „Markenkopf bei 200 Prozent …“
  *   bewegung-immer-an           bewegungReduziert() liefert immer false → rot „reduzierte Bewegung …“
  *   einrichtung-einspaltig      Einrichtung auch quer einspaltig → rot „Einrichtung im Querformat …“
@@ -234,11 +236,11 @@ class GeruestUndFormularTest {
     }
 
     @Test
-    fun `Preisalarme zeigen die Schwelle als Betrag und die Richtung im Feld`() {
+    fun `Preisalarme zeigen die Schwelle als Betrag und die Richtung in der Wahl`() {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
-                {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
+                {"set_number":"75192-1","condition":"N","richtung":"ueber","schwelle":750.0,"currency_code":"CHF"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
                 KontoRepository(welt.t.api, welt.t.io),
                 VerwaltungRepository(welt.t.api), welt.t.alarme(),
@@ -252,9 +254,13 @@ class GeruestUndFormularTest {
                     snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
             }
             warte("Alarme") { vm.alarmUebersicht.value.geladen }
-            // „750.00“ wie jeder Betrag (de-CH), nicht die Rohzahl „750.0“; die Richtung im Feld.
+            // „750.00“ wie jeder Betrag (de-CH), nicht die Rohzahl „750.0“; das Feld heisst „Schwelle“,
+            // die Richtung steht gewählt in der Wahl darüber (N2 der zweiten UX-Prüfung). „Steigt
+            // über“, weil das Formular zum Anlegen „Fällt unter“ vorwählt.
             compose.onNode(hasSetTextAction() and hasText("750.00")).fetchSemanticsNode()
-            compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.detail_alert_chip_below))).fetchSemanticsNode()
+            compose.onNode(hasSetTextAction() and hasText("750.00") and hasText(ctx.getString(R.string.alerts_schwelle)))
+                .fetchSemanticsNode()
+            compose.onNode(hasText(ctx.getString(R.string.detail_alert_chip_above)) and isSelected()).fetchSemanticsNode()
             // Kein eigener Speichern-Knopf: gespeichert wird wie im Set-Detail beim Tippen.
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.settings_save)).assertCountEquals(0)
         } finally {

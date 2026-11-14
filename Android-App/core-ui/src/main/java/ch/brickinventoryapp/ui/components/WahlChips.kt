@@ -157,7 +157,9 @@ private fun <T> SegmentSpalte(
                         Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))
                         Spacer(Modifier.width(Abstaende.klein))
                     }
-                    Text(text, style = MaterialTheme.typography.labelLarge)
+                    // So breit wie das Wort, wie in der Zeile: Sonst meldet das Textlayout der
+                    // Semantik die ganze Segmentbreite als Überlauf, obwohl das Wort ganz dasteht.
+                    Text(text, Modifier.width(IntrinsicSize.Max), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
