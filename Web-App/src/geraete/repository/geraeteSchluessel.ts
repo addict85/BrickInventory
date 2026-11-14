@@ -1,5 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
-import { familieLebt, familieDesTokens as familieDesTokensSql } from '../../../db/zugangSicht';
+import { familieLebt, tokenFamilieSql } from '../../../db/zugangSicht';
 
 /** Eine Token-Familie: Konto und created_at (auf Millisekunden, wie es über JavaScript reist). */
 export interface Familie {
@@ -12,7 +12,7 @@ const FAMILIE_LEBT = familieLebt('$1', '$2');
 /** Ein unbestätigter Schlüssel (vor der Attestation hinterlegt) gilt nur bis [altBis]. */
 /** Die Familie eines eben ausgestellten Tokens, auf Millisekunden wie FAMILIE_LEBT. */
 export async function familieDesTokens(db: DbSchnittstelle, hash: string): Promise<Familie | null> {
-  const z = await db.get<{ uid: number; seit: Date }>(familieDesTokensSql('$1'), [hash]);
+  const z = await db.get<{ uid: number; seit: Date }>(tokenFamilieSql('$1'), [hash]);
   return z ? { uid: z.uid, seit: new Date(z.seit).toISOString() } : null;
 }
 

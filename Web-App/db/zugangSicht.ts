@@ -8,6 +8,6 @@ export function familieLebt(konto: string, seit: string): string {
 }
 
 /** Konto und Familie des Tokens mit dem Hash `hash`; Spalten `uid`, `seit`. */
-export function familieDesTokens(hash: string): string {
+export function tokenFamilieSql(hash: string): string {
   return `SELECT user_id AS uid, date_trunc('milliseconds', created_at) AS seit FROM api_tokens WHERE token = ${hash}`;
 }

@@ -27,6 +27,8 @@ const G = _req('src/gutscheine/gutscheinGuthaben.js');
 /** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
 const vorrat = new Map();
 const { AbrufFehler } = _req('src/infra/abruf.js');
+// Der echte Abruf, wie ihn die Dienste über ihre Quellen reichen (src/fremdquellen/quellen.ts).
+const { legoAbruf } = require('./helpers/sources').testDienste().fremdquellen.quellen;
 
 const FIX = path.join(__dirname, 'fixtures');
 const cert = fs.readFileSync(path.join(FIX, 'abruf-test.crt'));
@@ -120,7 +122,7 @@ test.beforeEach(() => {
 
 test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
   modus = 'gut';
-  const g = await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH' });
+  const g = await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf });
   assert.deepEqual(g, { betrag: 12.5, waehrung: 'CHF', angezeigt: 'CHF 12.50' });
   assert.deepEqual(
     gesehen.map(a => `${a.methode} ${a.pfad}`),
@@ -140,7 +142,7 @@ test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
 test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
   modus = 'umleitung';
   await assert.rejects(
-    G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH' }),
+    G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf }),
     (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'umleitung',
   );
   assert.ok(gesehen.length >= 1, 'der Testserver wurde nicht gefragt');
@@ -153,7 +155,7 @@ test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
 test('eine übergrosse Antwort wird abgebrochen', async () => {
   modus = 'gross';
   await assert.rejects(
-    G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH' }),
+    G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf }),
     (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'zu-gross',
   );
 });

@@ -127,7 +127,7 @@
     return val;
   }
 
-  // 0) Hat der Server data-theme gesetzt (src/konto/indexHtml.ts), gilt es: nur den Cache nachführen, kein
+  // 0) Hat der Server data-theme gesetzt (src/profil/indexHtml.ts), gilt es: nur den Cache nachführen, kein
   //    Abgleich — weder ein sichtbarer Sprung noch eine Anfrage mehr je Seitenaufruf.
   var served = document.documentElement.getAttribute('data-theme');
   if (served && ALLOWED.indexOf(served) !== -1) {

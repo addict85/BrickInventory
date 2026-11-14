@@ -462,7 +462,7 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
-    /await hole(?:Https|Bild)\(url, \{/,
+    /await (?:k\.fremdquellen\.quellen\s*\.)?hole(?:Https|Bild)\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort',
   );
 });
@@ -511,7 +511,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   assert.match(src, /generateThumb/, 'generateThumb ist in server.ts nicht mehr verfügbar');
   assert.match(
     partsLoop,
-    /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    /(?:generateThumb|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Teile-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen',
   );
 
@@ -521,7 +521,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   );
   assert.match(
     figsLoop,
-    /generateThumb\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    /(?:generateThumb|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Minifiguren-Schleife muss generateThumb() nach einem erfolgreichen Download aufrufen',
   );
 });

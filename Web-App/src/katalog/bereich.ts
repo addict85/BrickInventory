@@ -32,12 +32,7 @@ export function erzeugeKatalog(
   einblick?: Einblick<KatalogKontext>,
 ) {
   const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
-  return baueBereich(
-    { ...a, cdnDrossel, faecher: new Faecher() },
-    zugang,
-    (k: KatalogKontext) => ({ ...katalogDienste(k), ...bildDienste(k) }),
-    einblick,
-  );
+  return baueBereich({ ...a, cdnDrossel, faecher: new Faecher() }, zugang, katalogDienste, einblick);
 }
 
 type P<
@@ -64,7 +59,9 @@ function bildDienste(k: KatalogKontext) {
 
 function katalogDienste(k: KatalogKontext) {
   const fq = () => k.fremdquellen;
+  // Ein Spread des fertigen Satzes läse die Getter (quellen, bilder) beim Bau; darum hier hinein.
   return {
+    ...bildDienste(k),
     anleitungLaden: mit(k)(anleitungLaden.anleitungLaden),
     // Beim Aufruf nachgeschlagen: Der Bau des Katalogs liest die Fremdquellen nicht.
     checkAndIncrementRateLimit: (...x: P<'checkAndIncrementRateLimit'>) => fq().checkAndIncrementRateLimit(...x),

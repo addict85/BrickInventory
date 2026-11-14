@@ -522,6 +522,8 @@ function setKernQuelle() {
     ['src/katalog/partsImport.ts'],
     ['src/katalog/minifigsImport.ts'],
     ['src/sets/setInhaltImport.ts'],
+    // Marktpreis aus Cache und Verlauf liest der Set-Dienst über finanzen.
+    ['src/finanzen/repository/preisCache.ts'],
   ]
     .map(p => dienstQuelle(p[0]))
     .join('\n');
