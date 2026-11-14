@@ -1,0 +1,17 @@
+Gegenprobe: Hinzufügen schliesst den Teile-Dialog wieder auch ohne Erfassung
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.ErfassenDialogTest
+Rot: ohne Teilenummer
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsDialogs.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsDialogs.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsDialogs.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsDialogs.kt
+@@ -76,7 +76,7 @@
+     ErfassenDialog(
+         titel = stringResource(R.string.parts_add_title),
+         bestaetigen = stringResource(R.string.parts_add_button),
+-        onBestaetigen = { submit() },
++        onBestaetigen = { submit(); onDismiss() },
+         onAbbrechen = onDismiss,
+         bestaetigenAn = !erfassungUngueltig(quantity, unitPrice),
+         geaendert = partNumber.isNotBlank() || quantity != "1" || unitPrice.isNotEmpty() || farbId != null ||

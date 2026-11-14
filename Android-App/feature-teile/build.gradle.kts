@@ -7,6 +7,8 @@ plugins {
 
 android {
     namespace = "ch.brickinventoryapp.feature.teile"
+    // Oberflächentests unter Robolectric lesen Texte und Schriften aus den Ressourcen.
+    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
@@ -21,4 +23,10 @@ dependencies {
     testImplementation(project(":core-testing"))
     // Die Tests bauen Ablage und Bearbeitungen selbst.
     testImplementation(project(":core-offline"))
+    // Die Erfassen-Dialoge werden unter Robolectric bedient, nicht nur gelesen.
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.test.manifest)
 }
