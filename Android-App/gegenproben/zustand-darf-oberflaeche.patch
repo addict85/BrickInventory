@@ -1,0 +1,18 @@
+Gegenprobe: core-zustand fehlt in Modulkanten.ohneOberflaeche und dürfte Compose einschalten
+Modul: app
+Test: ch.brickinventoryapp.app.ModulgrenzenTest
+Rot: die Kantenregel verbietet
+
+diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
+index d8d1c54..8048225 100644
+--- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
++++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
+@@ -51,7 +51,7 @@ object Modulkanten {
+      */
+     val ohneOberflaeche: Set<String> = setOf(
+         "core-model", "core-netz", "core-sicherheit", "core-offline", "core-data", "core-update", "core-dienste",
+-        "core-sitzung", "core-zustand",
++        "core-sitzung",
+     )
+ 
+     private val oberflaechenPlugins = setOf("brickinventory.android.compose", "brickinventory.android.feature", "kotlin.compose")

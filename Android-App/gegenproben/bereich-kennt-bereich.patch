@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: kein Bereich hängt an einem anderen Bereich
 
 diff --git a/Android-App/feature-teile/build.gradle.kts b/Android-App/feature-teile/build.gradle.kts
+index 5fa9b4e..ab8efe5 100644
 --- a/Android-App/feature-teile/build.gradle.kts
 +++ b/Android-App/feature-teile/build.gradle.kts
-@@ -14,6 +14,7 @@
+@@ -14,6 +14,7 @@ dependencies {
      implementation(project(":core-data"))
      implementation(project(":core-ui"))
      implementation(project(":core-ui-bestand"))
 +    implementation(project(":feature-katalog"))
      implementation(project(":core-zustand"))
+     implementation(project(":core-navigation"))
      implementation(project(":core-sitzung"))
-     implementation(project(":core-ressourcen"))
