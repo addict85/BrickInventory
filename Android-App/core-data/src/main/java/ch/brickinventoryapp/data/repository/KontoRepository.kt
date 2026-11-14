@@ -5,6 +5,7 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.Entwertungsergebnis
 import ch.brickinventoryapp.data.GetauschterToken
+import ch.brickinventoryapp.vertrag.Erledigt
 import ch.brickinventoryapp.vertrag.AndereBeendet
 import ch.brickinventoryapp.vertrag.AppThemeResponse
 import ch.brickinventoryapp.vertrag.DefaultConditionResponse
@@ -49,7 +50,7 @@ interface KontoRepository {
     /** [vorschau]: nach der Bestätigung im Browser nur das Konto, noch kein Token. */
     suspend fun qrAbholen(abholung: String, vorschau: Boolean = false): Ergebnis<QrAbholung>
     /** Das Nein nach der Vorschau: Die Kopplung ist danach abgelehnt. */
-    suspend fun qrVerwerfen(abholung: String): Ergebnis<GenericResponse>
+    suspend fun qrVerwerfen(abholung: String): Ergebnis<Erledigt>
 
     suspend fun getMe(): Ergebnis<MeResponse>
 

@@ -169,15 +169,13 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
       });
     };
     await antworte().catch((e: unknown) => {
-      // Ein Lesefehler ist keine Abmeldung: Mit 401 oder „nicht angemeldet“
-      // verwürfe die App ihren Token, und der Browser zeigte die Anmeldemaske.
+      // Ein Lesefehler ist keine Abmeldung: Mit 401 verwürfe die App ihren Token.
       meldeFehler('auth:me', e);
       fachfehler('nicht_verfuegbar', 'server_ausgelastet');
     });
   });
 
-  /** Öffentlich, weil ein unbegrenzter Token nach der Pflichtfrist nur noch hier
-   * gilt; die Prüfung steht deshalb hier. */
+  /** Öffentlich: Ein unbegrenzter Token gilt nach der Pflichtfrist nur noch hier. */
   router.endpunkt(
     'POST /api/v1/auth/token-rotieren',
     ipThrottle(d.konto, 'token-rotieren', 120, 60 * 60 * 1000),

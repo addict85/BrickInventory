@@ -137,7 +137,9 @@ import org.robolectric.RuntimeEnvironment
  *   gutscheine-anlegen-oben         „Gutschein hinzufügen“ wieder über der Liste → rot „M5 …“ (schwebt nicht)
  *   bauliste-zahl-im-text           „(2 Sets)“ wieder als zweiter Text im Knopf → rot „N1 …“
  *   alarm-feld-nennt-richtung       Schwellenfeld wieder mit „Fällt unter“ beschriftet → rot „N2 …“
- *   alarm-feld-schmal               Felder wieder höchstens 320 dp breit → rot „N2 …“ (Rand)
+ *   alarm-feld-schmal               Felder auch auf dem Telefon höchstens 320 dp breit → rot „N2 …“ (Rand)
+ *   gutschein-anlegen-ohne-text     Knopf wieder mit text/icon (Text aus der Semantik genommen)
+ *                                   → rot „M5 …“
  *   bildflaeche-hell-im-dunkeln     Bildgrund auch im Dunkeln Weiss → rot „N3 …“
  *   leiste-ohne-rand                Leiste wieder ohne Rand → rot „N4 die Leiste …“
  *   scanner-schliessen-rechts       Schliessen wieder oben rechts → rot „N4 der Scanner …“
@@ -420,8 +422,11 @@ class UxPruefungZweiTest {
             n.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any { it.startsWith(vorn) }
         }).fetchSemanticsNodes().first().boundsInRoot
         val feld = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
-        assertEquals("N2: Feld endet nicht am Rand der Karte (${feld.right} / ${loeschen.right})", loeschen.right, feld.right,
-            ctx.resources.displayMetrics.density)
+        // Der Rand ist das Ende der 48-dp-Tippfläche des Löschknopfs; seine sichtbare Fläche
+        // (40 dp, mittig darin) endet 4 dp davor.
+        val dichte = ctx.resources.displayMetrics.density
+        val rand = loeschen.center.x + 24 * dichte
+        assertEquals("N2: Feld endet nicht am Rand der Karte (${feld.right} / $rand)", rand, feld.right, dichte)
     }
 
     // ── N3: dunkle Designs ──

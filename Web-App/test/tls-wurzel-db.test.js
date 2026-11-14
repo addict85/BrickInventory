@@ -13,8 +13,9 @@
  *   D  cookieSicher() ohne hinterTls → rot: „Cookie nur über TLS …“
  *   E  (09.11.2026) zert_sha256 aus dem SPKI statt aus dem ganzen Zertifikat →
  *      rot: „zum Abgleich auf dem Gerät …“
- *   F  (09.11.2026) in /ca.crt den Dateinamen ohne Unterschied nach req.secure →
- *      rot: „/ca.crt, Einstellungen und QR …“ (über HTTP kein Hinweis)
+ *   F  (14.11.2026, nur noch HTTPS) in /ca.crt die Absage ohne req.secure
+ *      gestrichen → rot: „/ca.crt, Einstellungen und QR …“ (über HTTP 200 statt 403);
+ *      den Kopf X-Fingerabdruck-Pruefen gestrichen → rot: dieselbe Prüfung
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (für Sitzung und QR-Code).
  */
@@ -132,21 +133,22 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
   const qr = async () =>
     (await ruf('/api/v1/auth/qr-token', { cookie, body: { password: 'richtigesPasswort1' } })).json();
 
+  const zert = (proto = 'https') => fetch(basis + '/ca.crt', { headers: { 'x-forwarded-proto': proto } });
   // Noch keine Datei (Caddy hat die CA nicht angelegt): kein fp, 404.
-  assert.equal((await ruf('/ca.crt')).status, 404);
+  assert.equal((await zert()).status, 404);
   assert.equal((await qr()).fp, undefined);
 
   fs.writeFileSync(CA, PEM1);
-  const r = await ruf('/ca.crt');
+  const r = await zert();
   assert.equal(r.status, 200);
   assert.match(r.headers.get('content-type'), /application\/x-x509-ca-cert/);
   assert.equal(tlsStandAus(await r.text()).fp, FP1, '/ca.crt liefert das Zertifikat selbst');
-  // Über HTTP sagen Dateiname und Kopf, dass der Fingerabdruck abzugleichen ist; über HTTPS nicht.
+  // Auch über HTTPS: Vor der Installation traut das Gerät der Verbindung nicht, Name und Kopf sagen es.
   assert.match(r.headers.get('content-disposition'), /filename="brickinventory-ca-fingerabdruck-pruefen\.crt"/);
   assert.match(r.headers.get('x-fingerabdruck-pruefen') ?? '', /SHA-256 vor dem Installieren/);
-  const sicher = await fetch(basis + '/ca.crt', { headers: { 'x-forwarded-proto': 'https' } });
-  assert.match(sicher.headers.get('content-disposition'), /filename="brickinventory-ca\.crt"/);
-  assert.equal(sicher.headers.get('x-fingerabdruck-pruefen'), null);
+  const klar = await zert('http');
+  assert.equal(klar.status, 403, 'über HTTP keine Wurzel');
+  assert.doesNotMatch(await klar.text(), /BEGIN CERTIFICATE/);
   const tls = await (await ruf('/api/v1/settings/tls', { cookie })).json();
   assert.equal(tls.fp, FP1);
   assert.equal(tls.zert_sha256, tlsStandAus(PEM1).zert_sha256);

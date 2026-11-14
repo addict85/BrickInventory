@@ -50,7 +50,7 @@ internal class AnlegenMitAblage @Inject constructor(
             val e = (s as? SetAnlegenSchritt.Fertig)?.ergebnis
             if (e != null && e.success && e.action != "exists" && vorher != null && ablage.bereich() == vorher) {
                 val nummer = e.setNumber ?: setNumber
-                ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest(nummer, quantity, purchasePrice, condition, ownerUserId, storage)), vorher)
+                ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest(setNumber = nummer, quantity = quantity, purchasePrice = purchasePrice, condition = condition, ownerUserId = ownerUserId, storage = storage)), vorher)
             }
             emit(s)
         }

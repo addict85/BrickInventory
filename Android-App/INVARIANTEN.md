@@ -42,8 +42,8 @@ Zweitimplementierung. Test: `SessionAndLifecycleTest`
 und quittiert. Test: `ManualEntryAfterScanTest`
 
 **Zwei Preisfelder.** Sets schicken `purchase_price`, Teile und Figuren `unit_price`; der
-Rumpf entsteht nur über `fuerSet()` bzw. `fuerStueck()`.
-Datei: `vertrag/HaushaltModels.kt` · Test: `KaeufeViewModelTest`
+Rumpf entsteht nur über `aenderungFuerSet()` bzw. `aenderungFuerStueck()`.
+Datei: `vertrag/Ergaenzungen.kt` · Test: `KaeufeViewModelTest`
 
 ## Sitzung und Netz
 
@@ -118,8 +118,10 @@ in fester Schichtung (build-logic, `Modulkanten`). Zustand und alles darunter oh
 (`ohneOberflaeche`); die Bereiche bekommen die App nur als `Bereichsumgebung` aus einzelnen
 Flüssen und Rückrufen, nie den AppViewModel. Ein ViewModel liegt nur mit Grund in
 core-zustand (`zustandsViewModels`).
-Das Wire-Format liegt in core-vertrag (kennt core-model, nicht umgekehrt); Bereiche nehmen
-Ansichten, ihre Importe aus core-vertrag sind eine Ratsche.
+Das Wire-Format liegt in core-vertrag (kennt core-model, nicht umgekehrt), als ein Satz
+Typen, erzeugt aus `Web-App/docs/openapi.json` (`vertrag/Vertrag.kt`, nie von Hand; Namen und
+Fachtypen in `Web-App/scripts/vertrag-kotlin-zuordnung.js`). Bereiche nehmen Ansichten, ihre
+Importe aus core-vertrag sind eine Ratsche.
 Datei: `navigation/Bereichsumgebung.kt` · Tests: `ModulgrenzenTest`, `SchichtregelnTest`
 
 **Bildschirme sind zustandslos.** Nur ein Composable `…Route` nimmt ein ViewModel und reicht
@@ -189,7 +191,7 @@ Test: `PriceChartMathTest`
 
 **Bewertung je Erfassung.** Jede Erfassung mit dem Marktpreis ihres Zustands; der Server
 rechnet, die App rechnet nicht nach. Dateien: `finanzen/ui/screens/FinanceScreen.kt`,
-`vertrag/FinanzModels.kt` · Test: `PriceHistorySerializationTest`
+`vertrag/Vertrag.kt` · Test: `PriceHistorySerializationTest`
 
 ## Bau und Plattform
 

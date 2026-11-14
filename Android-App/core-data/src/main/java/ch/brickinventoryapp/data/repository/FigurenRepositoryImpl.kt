@@ -55,14 +55,14 @@ class FigurenRepositoryImpl @Inject constructor(
     /** Dasselbe fuer eine Minifigur — sie hat keine Farbe (Migration 0024). */
     override suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<LagerortResponse> =
         ablage.nachgezogen({ r -> Nachzug.FigurLagerort(figNumber, r.storage).takeIf { r.success } }) {
-            sicherAufrufen { api.setFigStorage(figNumber, LagerortRequest(ort)) }
+            sicherAufrufen { api.setFigStorage(figNumber, LagerortRequest(storage = ort)) }
         }
 
     override suspend fun addMinifig(figNumber: String, blFigNumber: String?, quantity: Int,
                            unitPrice: Double?, condition: Zustand?,
                            ownerUserId: Int?,
                            storage: String?): Ergebnis<AddMinifigResponse> =
-        AddMinifigRequest(figNumber, blFigNumber, quantity, unitPrice, condition, ownerUserId, storage).let { anfrage ->
+        AddMinifigRequest(figNumber = figNumber, blFigNumber = blFigNumber, quantity = quantity, unitPrice = unitPrice, condition = condition, ownerUserId = ownerUserId, storage = storage).let { anfrage ->
             ablage.schreibe(Bearbeitung.FigurErfassen(anfrage),
                 { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { schluessel ->
                 sicherAufrufen { api.addMinifig(anfrage, schluessel) }
@@ -77,7 +77,7 @@ class FigurenRepositoryImpl @Inject constructor(
     override suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?, condition: Zustand?, owner: Int?): Ergebnis<GenericResponse> {
         val bisher = ablage.lies(Faecher.MANUELLE_FIGUREN)?.liste
             ?.firstOrNull { it.figNumber == figNumber && (owner == null || it.userId == owner) }?.quantity
-        val anfrage = UpdateManualItemRequest(quantity, unitPrice, blFigNumber, condition, quantityDelta = bisher?.let { quantity - it })
+        val anfrage = UpdateManualItemRequest(quantity = quantity, unitPrice = unitPrice, blFigNumber = blFigNumber, condition = condition, quantityDelta = bisher?.let { quantity - it })
         return ablage.schreibe(Bearbeitung.FigurAendern(figNumber, anfrage, owner), { GenericResponse(success = true) }) { schluessel ->
             sicherAufrufen { api.updateMinifig(figNumber, anfrage, owner, schluessel) }
         }

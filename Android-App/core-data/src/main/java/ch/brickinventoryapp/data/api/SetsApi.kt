@@ -26,7 +26,6 @@ import ch.brickinventoryapp.vertrag.PendingAlertsResponse
 import ch.brickinventoryapp.vertrag.PreisalarmRequest
 import ch.brickinventoryapp.vertrag.PreisalarmResponse
 import ch.brickinventoryapp.vertrag.PreisalarmeResponse
-import ch.brickinventoryapp.vertrag.SetDetailResponse
 import ch.brickinventoryapp.vertrag.SetResponse
 import ch.brickinventoryapp.vertrag.SetsResponse
 import ch.brickinventoryapp.vertrag.UpdateQuantityRequest
@@ -96,7 +95,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     @GET("api/v1/sets/{setNumber}")
     suspend fun getSetDetail(
         @Path("setNumber") setNumber: String
-    ): Response<SetDetailResponse>
+    ): Response<SetResponse>
 
     // ── Kontofilter (Haushalt) ──
     //
@@ -147,7 +146,8 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     /**
      * „Kann ich das bauen?" — welche Teile einer Liste schon da sind.
      *
-     * Siehe die Begruendung fuer POST an BestandRequest (TeileMinifigModels.kt).
+     * POST, obwohl nichts geändert wird: Über tausend Teil-Farb-Paare ergäben eine Adresse,
+     * die kein Proxy durchlässt.
      */
     // ── Preisalarm ──────────────────────────────────────────────────────────
     //

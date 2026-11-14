@@ -369,7 +369,7 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
 | `core-model` | `ch.brickinventoryapp.model` | Fach- und Anzeigetypen (Ansichten), reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
-| `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers (`@Serializable`), `Fehlercode`, unter `vertrag.abbildung` ihre Abbildung auf die Ansichten in `core-model`, unter `vertrag.erzeugt` die aus `Web-App/docs/openapi.json` erzeugten Typen (`npm run vertrag:kotlin`, nie von Hand); reines Kotlin, kennt `core-model`, nicht umgekehrt |
+| `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/vertrag-kotlin-zuordnung.js`), abgeleitete Werte in `Ergaenzungen.kt`, `Fehlercode`, unter `vertrag.abbildung` die Abbildung auf die Ansichten in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt |
 | `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
 | `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
 | `core-sicherheit` | `ch.brickinventoryapp.sicherheit` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
@@ -425,13 +425,13 @@ und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 
 ## Abhängigkeiten und Lieferkette
 
-`renovate.json` liegt im Wurzelverzeichnis (nur dort liest Renovate sie) und
-gilt für Gradle, die npm-Pakete der Web-App, die Docker-Images (Digests) und
-die GitHub-Actions (Commit-SHAs). Renovate erzeugt montags früh gesammelte Pull-Requests für kleine
-Sprünge und einzelne für grosse. `graphics-path` steigt nicht automatisch,
-`datastore-preferences` kommt als eigener PR: Ob die Bibliotheken 16-KB-
-ausgerichtet sind, misst die CI am fertigen APK (siehe INVARIANTEN.md). Die
-Begründung steht als `description` direkt in der Regel.
+`.github/dependabot.yml` gilt für Gradle, die npm-Pakete der Web-App, die
+Docker-Images (Digests) und die GitHub-Actions (Commit-SHAs). Dependabot erzeugt
+montags früh gesammelte Pull-Requests für kleine Sprünge und einzelne für grosse,
+neue Fassungen frühestens drei Tage nach Erscheinen. `graphics-path` steigt nicht
+automatisch, `datastore-preferences` kommt als eigener PR: Ob die Bibliotheken
+16-KB-ausgerichtet sind, misst die CI am fertigen APK (siehe INVARIANTEN.md). Die
+Begründung steht als Kommentar an der Regel.
 
 ### Gradle-Wrapper
 

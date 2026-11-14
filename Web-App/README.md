@@ -71,8 +71,9 @@ Wurzelzertifikat (Volume `ca-wurzel`), nie den Schlüssel der CA.
 
 Damit Browser und Telefone dem Zertifikat vertrauen, kommt das
 **Wurzelzertifikat** einmal auf jedes Gerät: Es liegt unter
-`https://<BRICK_HOST>/ca.crt` (auch über `http://`, ohne Umleitung). Über
-HTTP kann es unterwegs ausgetauscht werden; **vor dem Installieren den
+`https://<BRICK_HOST>/ca.crt`, nur über HTTPS: Die Zertifikatswarnung des
+Browsers einmal bestätigen. Weil das Gerät dieser Verbindung noch nicht traut,
+kann die Datei unterwegs ausgetauscht sein; **vor dem Installieren den
 SHA-256-Fingerabdruck auf dem Gerät mit dem auf dem Server vergleichen**
 (`docker compose logs caddy | grep Fingerabdruck` oder die Ausgabe von
 `scripts/ca-einrichten.sh`). Er steht auch in den Einstellungen unter „Sicherheit“; die
@@ -414,6 +415,7 @@ der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein Gerätezugang (Token) verfällt (Vorgabe `90`, mindestens `1`). Jede Nutzung schiebt die Frist nach; geschrieben wird höchstens einmal je Tag. Ohne Ablauf gibt es nur die Wahl „Unbegrenzt“ beim QR-Code, nur über HTTPS und mit Rotation. |
 | `SESSION_IDLE_MINUTES` | Minuten ohne Betrieb, nach denen eine **Webapp-Sitzung** abgemeldet wird (Vorgabe `240`, also vier Stunden). Betrifft nur den Browser — die Android-App kommt mit Bearer-Token und ohne Cookie, für sie gilt `TOKEN_IDLE_DAYS`. Die Frist GLEITET: Solange jemand arbeitet, läuft sie nicht ab; sie zählt ab der letzten Anfrage. `0` schaltet die Frist **nicht** ab. |
 | `SESSION_MAX_HOURS` | Stunden ab der Anmeldung, nach denen eine **Webapp-Sitzung** endet, auch wenn sie benutzt wird (Vorgabe `168`, eine Woche). Anders als `SESSION_IDLE_MINUTES` gleitet diese Frist nicht. Ein ungültiger Wert fällt mit einer Logzeile auf die Vorgabe zurück. |
+| `SESSION_ADMIN_IDLE_MINUTES`, `SESSION_ADMIN_MAX_HOURS` | Kürzere Fristen für **Verwaltersitzungen** im Browser: Leerlauf in Minuten (Vorgabe `30`) und Höchstdauer ab der Anmeldung in Stunden (Vorgabe `12`). Höchstens so lang wie `SESSION_IDLE_MINUTES` bzw. `SESSION_MAX_HOURS`. Jede Anfrage der offenen Seite zählt als Betrieb. |
 
 Siehe `UPGRADE.md` für die Änderungen gegenüber der Vorgängerfassung.
 

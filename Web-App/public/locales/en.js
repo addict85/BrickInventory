@@ -189,6 +189,8 @@ window.I18N_EN = {
   'liste.fehler_titel': 'The list could not be loaded',
   'liste.server_fehler':
     'The server could not deliver the data just now. It usually works on the next try; otherwise your administrator can help.',
+  'liste.server_fehler_verwalter':
+    'The server could not deliver the data just now. It usually works on the next try; otherwise the cause is under Background jobs → “View logs”.',
   'liste.details': 'Technical details',
   'liste.erneut': 'Try again',
   'liste.gedrosselt': 'Too many requests – possible again in {minuten} min.',
@@ -679,6 +681,7 @@ window.I18N_EN = {
   'detail.alert_price': 'Price alert: threshold',
   'detail.qty_less': 'Decrease quantity',
   'detail.qty_more': 'Increase quantity',
+  'detail.qty_letztes': 'To remove it: “Delete set” under “More actions”',
   'detail.alert_below': 'falls below',
   'detail.alert_above': 'rises above',
   'detail.alert_armed': 'active',
@@ -1013,17 +1016,19 @@ window.I18N_EN = {
   'finance.stat.purchase': 'Total purchase price',
   'finance.col.purchase': 'Purchase price',
   'finance.stat.purchase_hint': 'Sum of purchase prices',
-  'finance.stat.purchase_basis': 'Purchase price of items with a market price',
-  'finance.stat.purchase_von': 'All purchases together: {betrag}',
+  'finance.stat.purchase_basis': 'Purchase price (valued items)',
+  'finance.stat.purchase_von': 'Paid in total: {betrag}',
+  'finance.stat.bewertet_hilfe':
+    'Valued items have both a purchase and a market price: only then does gain/loss compare like with like.',
   'finance.chart.kaufpreis': 'Purchase price',
   'finance.stat.value': 'Market value',
   'finance.stat.value_hint': 'At the average BrickLink price',
-  'finance.stat.value_basis': 'Market value of items with a purchase price',
-  'finance.stat.value_von': 'Everything together: {betrag}',
+  'finance.stat.value_basis': 'Market value (valued items)',
+  'finance.stat.value_von': 'Total market value: {betrag}',
   'finance.nicht_umgerechnet': 'not converted',
-  'finance.basis.gerechnet': 'Based on {n} of {von} items with purchase and market price.',
-  'finance.basis.gerechnet_zeilen':
-    'Based on {n} of {von} items with purchase and market price. Each item counts once, even if the table shows it in several rows (one per purchase and account).',
+  'finance.basis.gerechnet': 'Valued: {n} of {von} items (with purchase and market price).',
+  'finance.basis.zeilen_hilfe':
+    'Each item counts once, even if the table shows it in several rows (one per purchase and account).',
   'finance.basis.ohne_markt': '{n} items without market price not included (purchase price {betrag})',
   'finance.basis.ohne_markt_one': '{n} item without market price not included (purchase price {betrag})',
   'finance.basis.ohne_kauf': '{n} items without purchase price not included (market value {betrag})',
@@ -1337,6 +1342,8 @@ window.I18N_EN = {
   'zf.title': 'Two-factor authentication',
   'zf.code_noetig': 'This change also needs the code from your authenticator app (or a recovery code).',
   'zf.code_oder_passkey': 'This change also needs the code from your authenticator app, a recovery code or a passkey.',
+  'zf.code_fuer_codes':
+    'Code from your authenticator app or a recovery code. Your current recovery codes stop working afterwards.',
   'zf.mit_passkey': 'Use a passkey instead',
   'zf.hint':
     'A code from an authenticator app (e.g. Aegis, Google Authenticator, 1Password) in addition to your password. Protects you if someone knows your password.',
@@ -1552,9 +1559,6 @@ window.I18N_EN = {
   'finance.price_status_kurz': 'Status',
   'finance.je': '{preis} each',
   'finance.pnl_kurz': 'P/L',
-  'finance.wie_marktwert': 'same as market value',
-  'finance.col.stueckpreis': 'Unit price',
-  'finance.market_price_stueck': 'Market price per unit',
   'wanted.preis_offen': 'No price',
   'wanted.preis_offen_hint':
     'No market price is known for this condition. The daily price run asks again if BrickLink is reachable.',
@@ -1613,8 +1617,8 @@ window.I18N_EN = {
   'parts.num_ph': 'e.g. 3001',
   'figs.num_hint': '(Rebrickable number)',
   'figs.blnum_ph': 'e.g. sw0001',
-  'finance.basis.geschaetzt': '{n} estimated purchase prices (market price instead of the amount paid)',
-  'finance.basis.geschaetzt_one': '1 estimated purchase price (market price instead of the amount paid)',
+  'finance.basis.geschaetzt': '{n} estimated purchase prices',
+  'finance.basis.geschaetzt_one': '1 estimated purchase price',
   'finance.kauf_geschaetzt': 'purchase price estimated',
   'monitor.sub.teil_gemappt': '{n} / {gesamt} mapped',
   'monitor.sub.ausstehend': '{n} pending',

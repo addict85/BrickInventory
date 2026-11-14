@@ -1,62 +1,67 @@
 /**
- * Die Kotlin-Modelle der App gegen den Vertrag des Servers (src/vertrag/,
- * als JSON-Schema wie in docs/openapi.json): Jede Route, die die App aufruft,
- * hat einen Vertrag, und ihr Antworttyp liest jede Antwort, die der Vertrag
- * erlaubt — Feldnamen (@SerialName), Typ, Nullbarkeit, Pflicht oder optional. …
+ * Die Routen der App gegen den Vertrag des Servers (src/vertrag/, als JSON-Schema wie in
+ * docs/openapi.json). Die Kotlin-Typen selbst sind aus dem Vertrag erzeugt
+ * (vertrag-kotlin-dtos.test.js prüft, dass die Datei aktuell ist); hier bleibt, dass jede
+ * Route der App genau den erzeugten Typ ihres Schemas liest und schickt.
  *
- * Gegenproben (31.10.2026 gemessen):
- *   A  im Vertrag SetItem.quantity als z.string() → rot: „die Kotlin-Modelle
- *      passen zum Vertrag“ nennt GET /api/v1/sets $.sets[].quantity: Schema string, Kotlin Int
- *   B  in SetItem (SetModels.kt) ein Feld `val gibtEsNicht: String` ergänzt →
- *      rot: „$.sets[].gibtEsNicht: fehlt im Schema (SetItem)“
- *   C  Profil.emailVerified wieder als Int → rot: „$.user.email_verified:
- *      Schema boolean, Kotlin Int“
- *   D  im Vertrag die Route GET /api/v1/parts/stats umbenannt → rot: „jede
- *      Route der App hat einen Vertrag“ und „… sagt kein JSON“
- *   E  in FEHLEN_ERLAUBT einen erfundenen Schlüssel ergänzt → rot: „jede
- *      erlaubte Lücke gibt es noch“
- *   F  (05.11.2026) im Vertrag `label` aus den Anmeldedaten gestrichen → rot:
- *      „jedes Feld, das die App schickt, kennt der Vertrag“ (LoginRequest.label)
- *   G  (05.11.2026) im Vertrag die Abfrage von GET /api/v1/sets ohne `page_size`
- *      → rot: „jeder Abfrageparameter der App steht im Vertrag“
- *   H  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") →
- *      rot: „jeder Fehlercode der App steht im Vertrag“ nennt barcode_kein_satz
- *   I  (14.11.2026) in kotlinModelle() die erzeugten Typen (vertrag/erzeugt) mitgelesen →
- *      rot: „die Kotlin-Modelle passen zum Vertrag“ ($.theme fehlt in AppThemeResponse)
- *   J  (14.11.2026) in KontoApi.kt "api/v1/settings/default-condition" mit angehängtem x →
+ * Gegenproben (14.11.2026 gemessen):
+ *   A  im Vertrag die Route GET /api/v1/parts/stats umbenannt → rot: „jede Route der App
+ *      hat einen Vertrag“
+ *   B  in SetsApi.kt getSetDetail mit Response<SetsResponse> statt SetResponse → rot:
+ *      „jede Antwort liest die App mit dem erzeugten Typ ihres Schemas“
+ *   C  in KontoApi.kt login mit @Body QrLoginRequest → rot: „jeder Rumpf der App ist der
+ *      erzeugte Rumpf seiner Route“
+ *   D  in vertrag-kotlin-zuordnung.js ANFRAGEN eine erfundene Route ergänzt → rot: „jeder
+ *      Rumpf der App ist der erzeugte Rumpf seiner Route“ (toter Rumpf)
+ *   E  (05.11.2026) im Vertrag die Abfrage von GET /api/v1/sets ohne `page_size` → rot:
+ *      „jeder Abfrageparameter der App steht im Vertrag“
+ *   F  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") → rot: „jeder Fehlercode
+ *      der App steht im Vertrag“ nennt barcode_kein_satz
+ *   G  (14.11.2026) in KontoApi.kt "api/v1/settings/default-condition" mit angehängtem x →
  *      rot: „shared/app-schnittstelle.json ist aktuell“ (und „jede Route der App …“)
  */
-// Läuft im Android-Lauf (android.yml, Job vertrag): node --test Android-App/tools/vertrag/
+// Läuft im Android-Lauf (android.yml, Job vertrag); die Web-Suite liest keinen Kotlin-Quelltext.
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 
-const fs = require('node:fs');
-const {
-  kotlinModelle,
-  kotlinFehlercodes,
-  apiRouten,
-  schreibRouten,
-  vergleiche,
-  FEHLEN_ERLAUBT,
-} = require('./kotlin-vertrag.js');
-const { quellwurzeln, ANDROID, API } = require('./app-schnittstelle.js');
-
-// Der Vertrag, wie der Server ihn veröffentlicht (npm run vertrag:openapi, dort mit --pruefen geprüft).
+const { kotlinFehlercodes, apiRouten, schreibRouten } = require('./kotlin-vertrag.js');
+const { ANDROID, API } = require('./app-schnittstelle.js');
+// Erzeuger und Namenszuordnung der Kotlin-Typen liegen beim Vertrag (Web-App/scripts).
+const SKRIPTE = path.join(ANDROID, '..', 'Web-App', 'scripts');
+const { klassenname, ZIEL } = require(path.join(SKRIPTE, 'vertrag-kotlin-dtos.js'));
+const Z = require(path.join(SKRIPTE, 'vertrag-kotlin-zuordnung.js'));
+// Der Vertrag, wie der Server ihn veröffentlicht (npm run vertrag:openapi).
 const dok = JSON.parse(fs.readFileSync(path.join(ANDROID, '..', 'Web-App', 'docs', 'openapi.json'), 'utf8'));
-const modelle = kotlinModelle(quellwurzeln());
 const routen = [
-  ...apiRouten(API).map(r => ({ methode: 'GET', pfad: r.pfad, typ: r.typ, anfrage: r.anfrage })),
+  ...apiRouten(API).map(r => ({
+    methode: 'GET',
+    pfad: r.pfad,
+    typ: r.typ,
+    anfrage: r.anfrage,
+    rumpf: null,
+  })),
   ...schreibRouten(API),
 ];
+const erzeugt = new Set([...fs.readFileSync(ZIEL, 'utf8').matchAll(/^(?:data |enum )?class (\w+)/gm)].map(m => m[1]));
 /** @param {string} p */
 const gleichfoermig = p => p.replace(/\{\w+\}/g, '{}');
-/** Pfad der App → Operation im Vertrag. */
+/** Pfad der App → Operation im Vertrag. @param {string} methode @param {string} pfad */
 function operation(methode, pfad) {
   const treffer = Object.entries(dok.paths).filter(([p]) => gleichfoermig(p) === gleichfoermig(pfad));
   return treffer.length === 1 ? treffer[0][1][methode.toLowerCase()] : undefined;
 }
-const aufloesen = ref => dok.components.schemas[ref.replace('#/components/schemas/', '')];
+/** Der Kotlin-Name, den der Erzeuger einem Schema gibt. @param {string} ref */
+const kotlinName = ref => {
+  const n = klassenname(ref.split('/').pop() ?? '');
+  return /** @type {Record<string, string>} */ (Z.NAMEN)[n] ?? n;
+};
+
+// Antworten ohne JSON-Typ: Dateien und leere Rümpfe.
+const OHNE_SCHEMA = new Set(['ResponseBody', 'Unit']);
+// Rümpfe, die die App noch als Map oder JsonObject baut; jeder Eintrag ist ein offener Rest.
+const FREIE_RUEMPFE = new Set(['Map', 'JsonObject']);
 
 test('jede Route der App hat einen Vertrag', () => {
   assert.ok(routen.length > 100, `nur ${routen.length} Routen gelesen — greift der Leser noch?`);
@@ -64,57 +69,46 @@ test('jede Route der App hat einen Vertrag', () => {
   assert.deepEqual(ohne, []);
 });
 
-test('die Kotlin-Modelle passen zum Vertrag', () => {
-  const abweichungen = [];
+test('jede Antwort liest die App mit dem erzeugten Typ ihres Schemas', () => {
+  const falsch = [];
   let geprueft = 0;
   for (const r of routen) {
-    const op = operation(r.methode, r.pfad);
-    const schema = op?.responses?.[200]?.content?.['application/json']?.schema;
-    if (!r.typ || !modelle.has(r.typ)) continue;
-    if (!schema) {
-      abweichungen.push(`${r.methode} ${r.pfad}: Kotlin liest ${r.typ}, der Vertrag sagt kein JSON`);
+    const ref = operation(r.methode, r.pfad)?.responses?.[200]?.content?.['application/json']?.schema?.$ref;
+    if (!ref) {
+      if (r.typ && !OHNE_SCHEMA.has(r.typ))
+        falsch.push(`${r.methode} ${r.pfad}: Kotlin liest ${r.typ}, der Vertrag sagt kein JSON`);
       continue;
     }
     geprueft++;
-    abweichungen.push(
-      ...vergleiche(
-        { art: 'klasse', name: r.typ, nullbar: false },
-        schema,
-        modelle,
-        aufloesen,
-        `${r.methode} ${r.pfad} $`,
-        { route: r.pfad, standardwerte: r.methode === 'GET' },
-      ),
-    );
+    const soll = kotlinName(ref);
+    if (r.typ !== soll) falsch.push(`${r.methode} ${r.pfad}: Kotlin ${r.typ}, erzeugt ${soll}`);
+    if (!erzeugt.has(soll)) falsch.push(`${r.methode} ${r.pfad}: ${soll} fehlt in Vertrag.kt`);
   }
-  assert.deepEqual(abweichungen, []);
+  assert.deepEqual(falsch, []);
   assert.ok(geprueft >= 140, `nur ${geprueft} Antworttypen verglichen`);
 });
 
-test('jede erlaubte Lücke gibt es noch', () => {
-  const tot = [...FEHLEN_ERLAUBT.keys()].filter(k => {
-    const [route, feld] = k.split(' ');
-    const [klasse, name] = feld.split('.');
-    return !routen.some(r => r.pfad === route) || !modelle.get(klasse)?.felder.some(f => f.json === name);
-  });
-  assert.deepEqual(tot, [], 'Eine Ausnahme ohne Route oder Feld verdeckt nichts mehr');
-});
-
-// Eingaben sind geschlossen (strictObject): Ein Feld, das die App schickt und
-// der Vertrag nicht kennt, wäre im Betrieb eine 400.
-test('jedes Feld, das die App schickt, kennt der Vertrag', () => {
-  const fehlt = [];
+test('jeder Rumpf der App ist der erzeugte Rumpf seiner Route', () => {
+  const anfragen = Object.entries(/** @type {Record<string, string>} */ (Z.ANFRAGEN));
+  const falsch = [];
   let geprueft = 0;
-  for (const r of routen.filter(x => x.rumpf && modelle.has(x.rumpf))) {
-    const op = operation(r.methode, r.pfad);
-    const schema = op?.requestBody?.content?.['application/json']?.schema;
-    const felder = new Set(Object.keys(schema?.properties ?? {}));
+  for (const r of routen.filter(x => x.rumpf && !FREIE_RUEMPFE.has(x.rumpf))) {
     geprueft++;
-    for (const f of modelle.get(r.rumpf).felder)
-      if (!felder.has(f.json)) fehlt.push(`${r.methode} ${r.pfad} ${r.rumpf}.${f.json}`);
+    const soll = anfragen.find(([k]) => {
+      const [m, p] = k.split(' ');
+      return m === r.methode && gleichfoermig(p ?? '') === gleichfoermig(r.pfad);
+    })?.[1];
+    if (!operation(r.methode, r.pfad)?.requestBody)
+      falsch.push(`${r.methode} ${r.pfad}: der Vertrag nimmt keinen Rumpf`);
+    if (r.rumpf !== soll) falsch.push(`${r.methode} ${r.pfad}: Kotlin schickt ${r.rumpf}, erzeugt ${soll ?? '—'}`);
   }
-  assert.deepEqual(fehlt, []);
-  assert.ok(geprueft >= 35, `nur ${geprueft} Rümpfe verglichen`);
+  assert.deepEqual(falsch, []);
+  assert.ok(geprueft >= 40, `nur ${geprueft} Rümpfe verglichen`);
+  const tot = Object.keys(Z.ANFRAGEN).filter(k => {
+    const [m, p] = k.split(' ');
+    return !routen.some(r => r.methode === m && gleichfoermig(r.pfad) === gleichfoermig(p ?? ''));
+  });
+  assert.deepEqual(tot, [], 'Ein Rumpf ohne Route der App ist toter Code im Erzeuger');
 });
 
 test('jeder Abfrageparameter der App steht im Vertrag', () => {
@@ -131,44 +125,6 @@ test('jeder Abfrageparameter der App steht im Vertrag', () => {
   }
   assert.deepEqual(fehlt, []);
   assert.ok(geprueft >= 50, `nur ${geprueft} Abfrageparameter verglichen`);
-});
-
-test('der Vergleich schlägt an, wo die App nicht lesen kann', () => {
-  const m = new Map([
-    [
-      'K',
-      {
-        datei: 'K.kt',
-        felder: [
-          { json: 'n', typ: { art: 'int', nullbar: false }, hatDefault: false },
-          { json: 'b', typ: { art: 'boolean', nullbar: false }, hatDefault: true },
-        ],
-      },
-    ],
-  ]);
-  const k = { art: 'klasse', name: 'K', nullbar: false };
-  const passt = {
-    type: 'object',
-    properties: { n: { type: 'integer' }, b: { type: 'boolean' } },
-    required: ['n', 'b'],
-  };
-  assert.deepEqual(
-    vergleiche(k, passt, m, () => ({})),
-    [],
-  );
-  const zahlAlsSchalter = { ...passt, properties: { ...passt.properties, b: { type: 'integer' } } };
-  assert.match(vergleiche(k, zahlAlsSchalter, m, () => ({})).join(), /\$\.b: Schema integer, Kotlin Boolean/);
-  const nullErlaubt = {
-    ...passt,
-    properties: { ...passt.properties, n: { anyOf: [{ type: 'integer' }, { type: 'null' }] } },
-  };
-  assert.match(vergleiche(k, nullErlaubt, m, () => ({})).join(), /\$\.n: Schema erlaubt null/);
-  assert.match(vergleiche(k, { ...passt, required: ['b'] }, m, () => ({})).join(), /\$\.n: im Schema optional/);
-  assert.deepEqual(
-    vergleiche(k, { ...passt, required: ['n'] }, m, () => ({}), '$', { standardwerte: false }),
-    [],
-    'Schreibantworten: ein Feld mit Standardwert darf fehlen',
-  );
 });
 
 test('jeder Fehlercode der App steht im Vertrag', () => {

@@ -52,13 +52,23 @@ test('jeder Abfrageparameter der App steht im Vertrag', () => {
 // Eingaben sind geschlossen (strictObject): Ein Feld, das die App schickt und der Vertrag
 // nicht kennt, wäre im Betrieb eine 400.
 test('jedes Rumpffeld der App steht im Vertrag', () => {
+  // Ein erzeugter Rumpftyp dient mehreren Routen (Vereinigung ihrer Schemas); ein Feld muss in
+  // einer von ihnen stehen.
+  const mitRumpf = app.routen.filter(x => x.rumpffelder.length);
+  /** @type {Map<string, Set<string>>} */
+  const jeTyp = new Map();
+  for (const r of mitRumpf) {
+    const schema = operation(r.methode, r.pfad)?.requestBody?.content?.['application/json']?.schema;
+    const felder = jeTyp.get(r.rumpf ?? '') ?? new Set();
+    for (const f of Object.keys(schema?.properties ?? {})) felder.add(f);
+    jeTyp.set(r.rumpf ?? '', felder);
+  }
   const fehlt = [];
   let geprueft = 0;
-  for (const r of app.routen.filter(x => x.rumpffelder.length)) {
-    const schema = operation(r.methode, r.pfad)?.requestBody?.content?.['application/json']?.schema;
-    const felder = new Set(Object.keys(schema?.properties ?? {}));
+  for (const r of mitRumpf) {
     geprueft++;
-    for (const f of r.rumpffelder) if (!felder.has(f)) fehlt.push(`${r.methode} ${r.pfad} ${r.rumpf}.${f}`);
+    for (const f of r.rumpffelder)
+      if (!jeTyp.get(r.rumpf ?? '')?.has(f)) fehlt.push(`${r.methode} ${r.pfad} ${r.rumpf}.${f}`);
   }
   assert.ok(geprueft >= 35, `nur ${geprueft} Rümpfe verglichen`);
   assert.deepEqual(fehlt, []);

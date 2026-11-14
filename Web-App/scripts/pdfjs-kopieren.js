@@ -3,7 +3,7 @@
 
 /**
  * PDF.js kommt aus der npm-Abhängigkeit pdfjs-dist (exakte Fassung in
- * package.json), damit npm audit und Renovate es sehen. Dieses Skript legt die
+ * package.json), damit npm audit und Dependabot es sehen. Dieses Skript legt die
  * beiden Dateien nach public/vendor/pdfjs/ und zieht die Fassung im
  * Cache-Brecher von public/js/pdfjs-boot.js nach; build-frontend.js ruft es.
  *

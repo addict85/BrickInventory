@@ -235,9 +235,11 @@
       "abfrage": [],
       "rumpf": "PasswortAenderung",
       "rumpffelder": [
-        "current",
         "newPassword",
-        "code"
+        "passkeys_widerrufen",
+        "current",
+        "code",
+        "passkey"
       ]
     },
     {
@@ -259,10 +261,12 @@
       "rumpffelder": [
         "username",
         "password",
+        "code",
+        "ohne_token",
         "label",
         "never_expires",
-        "code",
-        "scope"
+        "scope",
+        "passkey"
       ]
     },
     {
@@ -270,14 +274,16 @@
       "pfad": "/api/v1/auth/login",
       "typ": "LoginResponse",
       "abfrage": [],
-      "rumpf": "PasskeyLoginRequest",
+      "rumpf": "LoginRequest",
       "rumpffelder": [
         "username",
         "password",
-        "passkey",
+        "code",
+        "ohne_token",
         "label",
         "never_expires",
-        "scope"
+        "scope",
+        "passkey"
       ]
     },
     {
@@ -301,13 +307,13 @@
       "pfad": "/api/v1/auth/passkey/anmelden",
       "typ": "LoginResponse",
       "abfrage": [],
-      "rumpf": "PasskeyAnmeldung",
+      "rumpf": "PasskeyAnmeldungAnfrage",
       "rumpffelder": [
         "antwort",
+        "mit_token",
         "label",
         "never_expires",
-        "scope",
-        "mit_token"
+        "scope"
       ]
     },
     {
@@ -339,8 +345,10 @@
         "email",
         "first_name",
         "last_name",
+        "password",
         "password_current",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -368,7 +376,7 @@
     {
       "methode": "POST",
       "pfad": "/api/v1/auth/qr-login/verwerfen",
-      "typ": "GenericResponse",
+      "typ": "Erledigt",
       "abfrage": [],
       "rumpf": "QrVerwerfen",
       "rumpffelder": [
@@ -401,7 +409,7 @@
     {
       "methode": "POST",
       "pfad": "/api/v1/auth/token-rotieren",
-      "typ": "AppThemeResponse",
+      "typ": "TokenRotation",
       "abfrage": [],
       "rumpf": null,
       "rumpffelder": []
@@ -422,7 +430,8 @@
       "rumpf": "ZweiterFaktorAnfrage",
       "rumpffelder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -433,7 +442,8 @@
       "rumpf": "ZweiterFaktorAnfrage",
       "rumpffelder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -444,7 +454,8 @@
       "rumpf": "ZweiterFaktorAnfrage",
       "rumpffelder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -455,7 +466,8 @@
       "rumpf": "ZweiterFaktorAnfrage",
       "rumpffelder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -604,10 +616,11 @@
     {
       "methode": "POST",
       "pfad": "/api/v1/geraet/schluessel",
-      "typ": "GeraeteSchluesselAntwort",
+      "typ": "Erledigt",
       "abfrage": [],
-      "rumpf": "GeraeteKettenAnfrage",
+      "rumpf": "GeraeteSchluesselAnfrage",
       "rumpffelder": [
+        "oeffentlich",
         "kette"
       ]
     },
@@ -673,12 +686,15 @@
       "rumpf": "AddMinifigRequest",
       "rumpffelder": [
         "fig_number",
-        "bl_fig_number",
         "quantity",
-        "unit_price",
         "condition",
+        "unit_price",
+        "fig_name",
+        "image_url",
+        "bl_fig_number",
         "owner_user_id",
-        "storage"
+        "storage",
+        "acquired_at"
       ]
     },
     {
@@ -705,7 +721,13 @@
         }
       ],
       "rumpf": "UpdateManualItemRequest",
-      "rumpffelder": []
+      "rumpffelder": [
+        "quantity",
+        "quantity_delta",
+        "unit_price",
+        "condition",
+        "bl_fig_number"
+      ]
     },
     {
       "methode": "GET",
@@ -730,12 +752,13 @@
       "abfrage": [],
       "rumpf": "UpdateAcquisitionRequest",
       "rumpffelder": [
+        "quantity",
         "purchase_price",
         "unit_price",
         "condition",
-        "quantity",
         "date",
-        "owner_user_id"
+        "owner_user_id",
+        "from_user_id"
       ]
     },
     {
@@ -872,10 +895,14 @@
         "color_name",
         "color_hex",
         "quantity",
-        "unit_price",
         "condition",
+        "unit_price",
+        "part_name",
+        "image_url",
+        "category_name",
         "owner_user_id",
-        "storage"
+        "storage",
+        "acquired_at"
       ]
     },
     {
@@ -902,7 +929,13 @@
         }
       ],
       "rumpf": "UpdateManualItemRequest",
-      "rumpffelder": []
+      "rumpffelder": [
+        "quantity",
+        "quantity_delta",
+        "unit_price",
+        "condition",
+        "bl_fig_number"
+      ]
     },
     {
       "methode": "GET",
@@ -927,12 +960,13 @@
       "abfrage": [],
       "rumpf": "UpdateAcquisitionRequest",
       "rumpffelder": [
+        "quantity",
         "purchase_price",
         "unit_price",
         "condition",
-        "quantity",
         "date",
-        "owner_user_id"
+        "owner_user_id",
+        "from_user_id"
       ]
     },
     {
@@ -1123,7 +1157,9 @@
         "purchase_price",
         "condition",
         "owner_user_id",
-        "storage"
+        "storage",
+        "currency",
+        "date"
       ]
     },
     {
@@ -1137,7 +1173,7 @@
     {
       "methode": "GET",
       "pfad": "/api/v1/sets/{setNumber}",
-      "typ": "SetDetailResponse",
+      "typ": "SetResponse",
       "abfrage": [],
       "rumpf": null,
       "rumpffelder": []
@@ -1156,7 +1192,13 @@
       "typ": "GenericResponse",
       "abfrage": [],
       "rumpf": "UpdateQuantityRequest",
-      "rumpffelder": []
+      "rumpffelder": [
+        "quantity",
+        "quantity_delta",
+        "purchase_price",
+        "condition",
+        "owner_user_id"
+      ]
     },
     {
       "methode": "GET",
@@ -1181,12 +1223,13 @@
       "abfrage": [],
       "rumpf": "UpdateAcquisitionRequest",
       "rumpffelder": [
+        "quantity",
         "purchase_price",
         "unit_price",
         "condition",
-        "quantity",
         "date",
-        "owner_user_id"
+        "owner_user_id",
+        "from_user_id"
       ]
     },
     {
@@ -1362,7 +1405,7 @@
     {
       "methode": "GET",
       "pfad": "/api/v1/sets/partslist-pdf/download/{jobId}",
-      "typ": null,
+      "typ": "ResponseBody",
       "abfrage": [],
       "rumpf": null,
       "rumpffelder": []
@@ -1454,9 +1497,10 @@
       "abfrage": [],
       "rumpf": "AndereBeendenAnfrage",
       "rumpffelder": [
+        "zugaenge",
         "password",
         "code",
-        "zugaenge"
+        "passkey"
       ]
     },
     {
@@ -1483,7 +1527,8 @@
       "rumpf": "ZweiterFaktorAnfrage",
       "rumpffelder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -1566,7 +1611,8 @@
       "abfrage": [],
       "rumpf": "LagerortNameRequest",
       "rumpffelder": [
-        "name"
+        "name",
+        "owner"
       ]
     },
     {
@@ -1584,7 +1630,8 @@
       "abfrage": [],
       "rumpf": "LagerortNameRequest",
       "rumpffelder": [
-        "name"
+        "name",
+        "owner"
       ]
     },
     {
@@ -1616,7 +1663,8 @@
       "rumpf": "ZweiterFaktorAnfrage",
       "rumpffelder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -1648,7 +1696,8 @@
       "rumpf": "ZweiterFaktorAnfrage",
       "rumpffelder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -1659,7 +1708,8 @@
       "rumpf": "ZweiterFaktorAnfrage",
       "rumpffelder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -1670,7 +1720,8 @@
       "rumpf": "ZweiterFaktorAnfrage",
       "rumpffelder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ]
     },
     {
@@ -1786,13 +1837,17 @@
   "antwortfelder": [
     "N",
     "U",
+    "abgebrochen",
+    "abgewiesen",
     "abholung",
     "acq_count",
+    "acquired_at",
     "acquisition_ids",
     "acquisitions",
     "action",
     "added",
     "added_at",
+    "adresse",
     "aktion",
     "aktiv",
     "aktualisiert",
@@ -1803,18 +1858,28 @@
     "alt_gueltig_bis",
     "alter_sekunden",
     "amount",
+    "anfrage",
+    "angelegt",
+    "angewandt",
     "angezeigt",
     "antwort",
     "anzahl",
+    "anzahl_konten",
+    "api",
     "apkSha256",
     "apkSize",
     "apkUrl",
     "app_theme",
     "art",
     "attempts",
+    "aufgestockt",
     "auftraege",
+    "auftrag_id",
+    "ausgang",
     "ausgeloest",
     "ausgestellt",
+    "ausstehend",
+    "auth",
     "avg",
     "avg_price",
     "avg_purchase_price",
@@ -1824,16 +1889,28 @@
     "basis_einstand",
     "basis_guv_betrag",
     "basis_marktwert",
+    "basis_url",
+    "beendet_am",
+    "besitzer",
     "besitzt",
     "bestand",
+    "bezeichnung",
+    "bild",
     "bildbedarf",
     "bis",
+    "blFarbe",
+    "blId",
     "bl_color_id",
     "bl_fig_number",
     "bl_part_number",
+    "bl_unbekannt",
+    "blickfeld",
     "bricklink",
     "brickset",
     "by_condition",
+    "bytes",
+    "ca",
+    "canRedownload",
     "catalog",
     "categories",
     "category_name",
@@ -1860,13 +1937,22 @@
     "current",
     "current_price",
     "date",
+    "datenbank",
+    "dauer_minuten",
+    "db",
+    "db_pool",
+    "default_condition",
     "default_price_condition",
+    "degradiert",
     "deleted",
     "description",
     "display_value",
     "done",
+    "download",
+    "downloaded_at",
     "effective_condition",
     "eigenes",
+    "eintraege",
     "email",
     "emailChanged",
     "emailSent",
@@ -1874,13 +1960,17 @@
     "email_sent",
     "email_verified",
     "enabled",
+    "endgueltig_am",
+    "endpoints",
     "enqueued",
+    "entfallen",
     "entfernt",
     "entries",
     "ergaenzung",
     "erledigt",
     "err",
     "error",
+    "error_code",
     "errors",
     "erstellt",
     "etaSeconds",
@@ -1888,32 +1978,54 @@
     "exists",
     "expires_at",
     "expires_in",
+    "exported_at",
+    "exported_by",
     "faellig_ab",
+    "farbHex",
+    "farbName",
+    "farbeOffen",
+    "farbe_id",
     "fehler",
     "fetched_at",
+    "figNumber",
     "fig_name",
     "fig_number",
     "figs",
     "figs_purchase",
+    "figuren",
+    "filterWirkungslos",
     "firstRealIndex",
     "first_name",
     "former_links",
     "fortschritt",
+    "fp",
+    "fp_hex",
     "frac",
+    "fremdeArten",
     "frist_bis",
     "from_cache",
     "from_user_id",
+    "geaendert",
+    "gecacht",
+    "gefragt",
+    "gefunden",
     "geheimnis",
     "gelesen",
+    "geloescht",
+    "geloescht_am",
     "geplant",
+    "geraet",
     "gesamt",
     "gesamtProzent",
     "gestartet",
+    "global",
     "grand_total",
     "grund",
+    "grundCode",
     "gueltigBis",
     "gueltig_bis",
     "gueltig_sek",
+    "guide_type",
     "guthaben_geprueft_am",
     "hard_expires_at",
     "hat_pdf",
@@ -1921,117 +2033,182 @@
     "heute",
     "heuteProzent",
     "hex",
+    "hinweis",
+    "hinweise",
     "history_new",
     "history_used",
+    "https",
     "id",
+    "im_katalog",
     "image_local",
     "image_url",
     "imported",
     "in_sets",
+    "instruction",
     "instructions",
+    "inviter",
+    "ip",
     "ip_bereich",
+    "isAdmin",
+    "isWarning",
+    "is_active",
     "is_admin",
     "is_fallback",
     "is_fig",
     "is_main",
     "is_manual",
+    "is_purchase_price",
     "is_self",
     "is_spare",
     "is_sub",
     "item",
+    "job",
     "jobId",
     "job_prozess",
     "jobs",
     "kachel_pnl_pct",
     "kachel_preis",
     "kachel_quelle",
+    "katalog_bild",
     "katalog_offen",
+    "kaufpreis_geschaetzt",
+    "kaufpreis_original",
+    "kaufpreis_waehrung",
     "kaufpreise_fremde_waehrung",
+    "kaufpreise_umgerechnet",
     "kette",
+    "konfiguriert",
+    "kopplung",
+    "korrekturen",
     "label",
     "laeuft",
     "language",
+    "lastDuration",
+    "lastErrors",
+    "lastRun",
+    "lastUpdated",
     "last_error",
     "last_name",
     "last_used",
     "lebenszeichen",
+    "letzter_kauf",
     "level",
     "limit",
     "limits",
     "linked_to",
+    "links",
     "local_path",
+    "log",
+    "loggedIn",
     "logged_at",
     "logs",
+    "lokal",
     "lose",
+    "mail_versand",
     "manual",
     "manual_parts",
+    "map",
     "market_price",
     "marktpreis",
     "max",
+    "maxPreis",
     "max_price",
     "max_purchase_price",
     "max_versuche",
     "mehrere",
     "members",
+    "menge",
     "merged",
+    "merker",
     "merkposten",
     "message",
+    "messpunkte",
     "min",
     "min_price",
     "minifigs",
+    "minuten",
     "minutes",
+    "missingImages",
     "mit_token",
     "mixed",
+    "mode",
+    "mustChangePassword",
     "n",
     "nachricht",
     "name",
+    "nameGeraten",
     "neuer_inhaber",
     "never_expires",
     "newPassword",
     "new_quantity",
+    "nextRun",
     "no_price",
     "nonce",
+    "note",
     "now",
     "num_parts",
     "number",
     "nummer",
+    "oeffentlich",
+    "offen",
+    "ohneNummer",
     "ohne_kaufpreis_marktwert",
+    "ohne_kurs",
     "ohne_marktpreis_einstand",
+    "ohne_token",
     "ok",
     "open_invites",
     "optionen",
+    "original",
     "ort",
     "orte",
     "otpauth",
     "owned",
     "owned_quantity",
+    "owner",
     "owner_ids",
     "owner_user_id",
     "owners",
     "page",
     "page_size",
     "pages",
+    "papierkorb",
     "parents",
+    "partNumber",
     "part_name",
     "part_number",
     "parts",
     "parts_purchase",
     "passkey",
+    "passkeys",
+    "passkeys_widerrufen",
     "password",
     "password_current",
+    "passwort_aendern",
+    "passwort_vergessen",
     "pausen",
+    "pending",
     "period",
     "period_change_pct",
+    "pfad",
+    "pflicht",
     "pieces",
     "pin",
+    "pnl_abs",
     "pnl_betrag",
+    "pnl_current",
     "pnl_pct",
     "pnl_prozent",
+    "pnl_purchase",
     "points",
     "positionen",
     "positionen_bewertet",
     "positionen_ohne_kaufpreis",
     "positionen_ohne_marktpreis",
+    "posten",
+    "preis_ausstehend",
+    "preis_konto",
+    "preise_ausstehend",
     "preisvergleich_url",
     "price_cache_ttl",
     "price_condition",
@@ -2041,28 +2218,43 @@
     "priced_rows",
     "prices",
     "progress",
+    "proxy",
+    "proxy_hinweis",
     "purchase",
     "purchase_price",
     "purchase_total",
     "qty_avg",
     "qty_avg_price",
     "quantity",
+    "quantity_delta",
+    "quellen",
+    "queue",
+    "queueLastRun",
+    "queued",
+    "rate_limit",
     "rate_limits",
+    "rbFarbe",
+    "rbId",
     "ready",
     "rebrickable",
     "recorded_at",
     "remaining",
     "removed",
     "resolved",
+    "results",
     "retry_after",
     "richtung",
     "rotation_faellig",
     "rotiert_am",
+    "running",
     "schedules",
     "schluessel",
     "schluessel_nonce",
+    "schritt",
+    "schritte",
     "schwelle",
     "scope",
+    "seit",
     "set",
     "setNumber",
     "set_added_at",
@@ -2074,16 +2266,27 @@
     "sets",
     "sets_purchase",
     "settings",
+    "sicherheit",
     "signatur",
+    "skipped",
+    "skipped_hint",
+    "smtp_uebergangen",
     "source",
     "source_emptied",
     "stand",
+    "standardZustand",
+    "started",
+    "startup",
     "stats",
     "status",
     "step",
     "storage",
+    "storage_id",
+    "stufen",
     "sub",
     "sub_accounts",
+    "sub_teile",
+    "subject",
     "subsets",
     "success",
     "teile",
@@ -2093,10 +2296,12 @@
     "theme_name",
     "themes",
     "ticket",
+    "tiefe",
     "time",
     "title",
     "to_user_id",
     "token",
+    "token_days",
     "token_expires",
     "token_id",
     "token_info",
@@ -2114,43 +2319,65 @@
     "total_sets",
     "total_value",
     "totals",
+    "transports",
     "ttl",
+    "ttl_hours",
     "ttl_stunden",
     "type",
     "types",
     "ueberlappung_sek",
+    "unchanged",
     "unique_colors",
+    "unique_figs",
     "unique_parts",
     "unit_price",
     "unsicher",
     "updated",
     "updated_at",
+    "uptime_seconds",
     "url",
     "used_count",
     "user",
+    "userId",
     "user_default_condition",
     "user_id",
+    "user_settings",
     "username",
+    "users",
     "value",
     "values",
+    "vars",
     "vereint",
+    "verfuegbar",
     "verschoben",
+    "version",
     "versionCode",
     "versionName",
     "versuche",
+    "verworfen",
     "via",
+    "vor",
     "vorgabe",
+    "vorhanden",
+    "vorhanden_nummern",
     "vorschau",
     "voucher",
     "vouchers",
     "waehrung",
+    "waehrung_angepasst",
+    "waehrung_datei",
     "waehrung_geaendert",
+    "waehrung_hinweis",
+    "waehrung_konto",
     "war_neu",
     "warn",
     "wartenSek",
     "wartet",
+    "wartet_auf_bestaetigung",
     "wert",
     "wert_gesamt",
+    "werte",
+    "wirksam_ab",
     "x",
     "x_label",
     "y",
@@ -2161,12 +2388,15 @@
     "year_max",
     "year_min",
     "years",
+    "zeile",
+    "zert_sha256",
     "zugaenge",
     "zuletzt_am",
     "zuletzt_preis",
     "zusammenfassung",
     "zusammengefuehrt",
     "zusammengelegt",
+    "zustand",
     "zweck",
     "zweiterFaktorPflicht",
     "zweiter_faktor"
@@ -2182,7 +2412,8 @@
         "created_at",
         "owner_user_id",
         "price_estimated",
-        "currency"
+        "currency",
+        "preis_konto"
       ],
       "pflicht": [
         "id",
@@ -2205,8 +2436,10 @@
     "AcquisitionsResponse": {
       "felder": [
         "success",
+        "owner_user_id",
         "acquisitions",
-        "totals"
+        "totals",
+        "degradiert"
       ],
       "pflicht": [
         "success"
@@ -2216,19 +2449,24 @@
       "felder": [
         "quantity",
         "amount",
-        "priced_rows"
+        "priced_rows",
+        "currency",
+        "ohne_kurs"
       ],
       "pflicht": []
     },
     "AddMinifigRequest": {
       "felder": [
         "fig_number",
-        "bl_fig_number",
         "quantity",
-        "unit_price",
         "condition",
+        "unit_price",
+        "fig_name",
+        "image_url",
+        "bl_fig_number",
         "owner_user_id",
-        "storage"
+        "storage",
+        "acquired_at"
       ],
       "pflicht": [
         "fig_number"
@@ -2254,10 +2492,14 @@
         "color_name",
         "color_hex",
         "quantity",
-        "unit_price",
         "condition",
+        "unit_price",
+        "part_name",
+        "image_url",
+        "category_name",
         "owner_user_id",
-        "storage"
+        "storage",
+        "acquired_at"
       ],
       "pflicht": [
         "part_number"
@@ -2283,7 +2525,9 @@
         "purchase_price",
         "condition",
         "owner_user_id",
-        "storage"
+        "storage",
+        "currency",
+        "date"
       ],
       "pflicht": [
         "set_number"
@@ -2297,15 +2541,18 @@
         "name",
         "katalog_offen",
         "ergaenzung",
+        "owner_user_id",
+        "is_self",
         "error"
       ],
       "pflicht": []
     },
     "AndereBeendenAnfrage": {
       "felder": [
+        "zugaenge",
         "password",
         "code",
-        "zugaenge"
+        "passkey"
       ],
       "pflicht": []
     },
@@ -2318,6 +2565,23 @@
       "pflicht": [
         "success"
       ]
+    },
+    "AnleitungenGeladen": {
+      "felder": [
+        "success",
+        "count",
+        "instructions",
+        "auftrag_id"
+      ],
+      "pflicht": []
+    },
+    "AnleitungHochgeladenInstruction": {
+      "felder": [
+        "url",
+        "description",
+        "local_path"
+      ],
+      "pflicht": []
     },
     "ApiLimits": {
       "felder": [
@@ -2398,6 +2662,7 @@
         "fortschritt",
         "fehler",
         "geplant",
+        "wartet",
         "set_number"
       ],
       "pflicht": [
@@ -2519,6 +2784,16 @@
       ],
       "pflicht": []
     },
+    "BestandGeleert": {
+      "felder": [
+        "success",
+        "sets",
+        "teile",
+        "figuren",
+        "papierkorb"
+      ],
+      "pflicht": []
+    },
     "BestandRequest": {
       "felder": [
         "teile"
@@ -2564,6 +2839,81 @@
         "nummer"
       ]
     },
+    "BildDiagnose": {
+      "felder": [
+        "success",
+        "set_number",
+        "hinweise",
+        "datenbank",
+        "lokal",
+        "proxy",
+        "merker"
+      ],
+      "pflicht": []
+    },
+    "BildDiagnoseDatenbank": {
+      "felder": [
+        "anzahl_konten",
+        "image_local",
+        "image_url",
+        "katalog_bild"
+      ],
+      "pflicht": []
+    },
+    "BildDiagnoseLokal": {
+      "felder": [
+        "original",
+        "vorschau"
+      ],
+      "pflicht": []
+    },
+    "BildDiagnoseLokalOriginal": {
+      "felder": [
+        "vorhanden",
+        "bytes",
+        "geaendert"
+      ],
+      "pflicht": []
+    },
+    "BildDiagnoseLokalVorschau": {
+      "felder": [
+        "vorhanden",
+        "bytes",
+        "geaendert"
+      ],
+      "pflicht": []
+    },
+    "BildDiagnoseMerker": {
+      "felder": [
+        "seit",
+        "grund"
+      ],
+      "pflicht": []
+    },
+    "BildDiagnoseProxy": {
+      "felder": [
+        "gecacht",
+        "adresse"
+      ],
+      "pflicht": []
+    },
+    "BildMerkerVergessen": {
+      "felder": [
+        "success",
+        "entfernt",
+        "hinweis"
+      ],
+      "pflicht": []
+    },
+    "BlFarbTabelle": {
+      "felder": [
+        "success",
+        "source",
+        "map",
+        "degradiert"
+      ],
+      "pflicht": []
+    },
     "BrickColor": {
       "felder": [
         "id",
@@ -2595,8 +2945,16 @@
       ],
       "pflicht": []
     },
+    "BricklinkVerweise": {
+      "felder": [
+        "success",
+        "links"
+      ],
+      "pflicht": []
+    },
     "BricksetQueueEntry": {
       "felder": [
+        "created_at",
         "set_number",
         "name",
         "attempts",
@@ -2610,6 +2968,9 @@
     "BricksetQueueResponse": {
       "felder": [
         "success",
+        "total",
+        "page",
+        "page_size",
         "count",
         "entries"
       ],
@@ -2619,12 +2980,14 @@
     },
     "CacheStatsResponse": {
       "felder": [
+        "db_pool",
         "success",
         "prices",
         "subsets",
         "catalog",
         "price_stale",
-        "rate_limits"
+        "rate_limits",
+        "degradiert"
       ],
       "pflicht": [
         "success"
@@ -2656,9 +3019,7 @@
         "year_counts",
         "error"
       ],
-      "pflicht": [
-        "success"
-      ]
+      "pflicht": []
     },
     "CatalogSetDetail": {
       "felder": [
@@ -2703,22 +3064,19 @@
         "owned",
         "owned_quantity"
       ],
-      "pflicht": [
-        "set_number"
-      ]
+      "pflicht": []
     },
     "CatalogSetsResponse": {
       "felder": [
         "success",
         "total",
         "page",
+        "page_size",
         "pages",
         "sets",
         "error"
       ],
-      "pflicht": [
-        "success"
-      ]
+      "pflicht": []
     },
     "CatalogTheme": {
       "felder": [
@@ -2726,19 +3084,14 @@
         "name",
         "set_count"
       ],
-      "pflicht": [
-        "id",
-        "name"
-      ]
+      "pflicht": []
     },
     "CatalogYearCount": {
       "felder": [
         "year",
         "n"
       ],
-      "pflicht": [
-        "year"
-      ]
+      "pflicht": []
     },
     "CatalogYearVerteilungResponse": {
       "felder": [
@@ -2767,19 +3120,27 @@
       "felder": [
         "market_price",
         "purchase_price",
+        "pnl_pct",
         "pnl_prozent"
       ],
       "pflicht": []
     },
     "CsvImportErgebnis": {
       "felder": [
+        "results",
+        "waehrung_hinweis",
         "success",
+        "skipped",
+        "skipped_hint",
         "total",
         "added",
         "imported",
         "updated",
         "errors",
-        "error"
+        "error",
+        "gestartet",
+        "vorhanden",
+        "vorhanden_nummern"
       ],
       "pflicht": [
         "success"
@@ -2787,6 +3148,8 @@
     },
     "CsvImportStatus": {
       "felder": [
+        "code",
+        "results",
         "success",
         "status",
         "total",
@@ -2795,7 +3158,52 @@
         "ok",
         "warn",
         "err",
-        "error"
+        "error",
+        "beendet_am"
+      ],
+      "pflicht": []
+    },
+    "CsvImportStatusResultsEintrag": {
+      "felder": [
+        "set_number",
+        "zeile",
+        "success",
+        "action",
+        "isWarning",
+        "error",
+        "code",
+        "menge",
+        "katalog_offen",
+        "part_number",
+        "fig_number",
+        "fig_name",
+        "condition",
+        "vars",
+        "waehrung_angepasst",
+        "waehrung_datei",
+        "waehrung_konto"
+      ],
+      "pflicht": []
+    },
+    "CsvImportZeile": {
+      "felder": [
+        "set_number",
+        "zeile",
+        "success",
+        "action",
+        "isWarning",
+        "error",
+        "code",
+        "menge",
+        "katalog_offen",
+        "part_number",
+        "fig_number",
+        "fig_name",
+        "condition",
+        "vars",
+        "waehrung_angepasst",
+        "waehrung_datei",
+        "waehrung_konto"
       ],
       "pflicht": []
     },
@@ -2818,14 +3226,17 @@
     },
     "DashboardStats": {
       "felder": [
+        "currency",
+        "default_condition",
+        "user_default_condition",
         "total_sets",
         "total_quantity",
         "total_pieces",
         "total_instructions",
         "total_parts",
-        "total_minifigs",
         "set_parts",
-        "manual_parts"
+        "manual_parts",
+        "total_minifigs"
       ],
       "pflicht": [
         "total_sets",
@@ -2854,12 +3265,96 @@
         "success"
       ]
     },
-    "FigsValuationResponse": {
+    "Einrichtung": {
       "felder": [
         "success",
+        "offen",
+        "passwort_aendern",
+        "quellen"
+      ],
+      "pflicht": []
+    },
+    "EinrichtungQuellen": {
+      "felder": [
+        "rebrickable",
+        "bricklink",
+        "brickset"
+      ],
+      "pflicht": []
+    },
+    "EinrichtungStand": {
+      "felder": [
+        "success",
+        "erledigt",
+        "konfiguriert",
+        "schritte",
+        "ca",
+        "basis_url",
+        "https",
+        "degradiert"
+      ],
+      "pflicht": []
+    },
+    "EinrichtungStandCa": {
+      "felder": [
+        "vorhanden",
+        "fp_hex",
+        "zert_sha256",
+        "gueltig_bis",
+        "download"
+      ],
+      "pflicht": []
+    },
+    "EinrichtungStandSchritteEintrag": {
+      "felder": [
+        "id",
+        "ok",
+        "pflicht"
+      ],
+      "pflicht": []
+    },
+    "EmailVorschau": {
+      "felder": [
+        "success",
+        "username"
+      ],
+      "pflicht": []
+    },
+    "Endpunkte": {
+      "felder": [
+        "auth",
+        "api",
+        "version",
+        "endpoints"
+      ],
+      "pflicht": []
+    },
+    "Erledigt": {
+      "felder": [
+        "success"
+      ],
+      "pflicht": []
+    },
+    "Fehler": {
+      "felder": [
+        "success",
+        "error",
+        "code"
+      ],
+      "pflicht": []
+    },
+    "FigsValuationResponse": {
+      "felder": [
+        "kaufpreise_umgerechnet",
+        "success",
+        "total",
+        "page",
+        "page_size",
         "currency",
         "figs",
         "total_value",
+        "wert_gesamt",
+        "preise_ausstehend",
         "kaufpreise_fremde_waehrung",
         "error"
       ],
@@ -2868,8 +3363,53 @@
         "total_value"
       ]
     },
+    "FigurAendern": {
+      "felder": [
+        "figNumber",
+        "anfrage",
+        "besitzer"
+      ],
+      "pflicht": [
+        "figNumber",
+        "anfrage"
+      ]
+    },
+    "FigurErfassen": {
+      "felder": [
+        "anfrage"
+      ],
+      "pflicht": [
+        "anfrage"
+      ]
+    },
+    "FigurLoeschen": {
+      "felder": [
+        "figNumber",
+        "besitzer"
+      ],
+      "pflicht": [
+        "figNumber"
+      ]
+    },
+    "FigurTeile": {
+      "felder": [
+        "success",
+        "source",
+        "parts"
+      ],
+      "pflicht": []
+    },
     "FigValuationItem": {
       "felder": [
+        "ausstehend",
+        "from_cache",
+        "max_price",
+        "min_price",
+        "set_number",
+        "source",
+        "storage_id",
+        "acq_count",
+        "used_count",
         "id",
         "fig_number",
         "bl_fig_number",
@@ -2885,6 +3425,7 @@
         "pnl_pct",
         "pnl_prozent",
         "display_value",
+        "total_value",
         "wert_gesamt",
         "condition",
         "conditions",
@@ -2922,11 +3463,29 @@
       ],
       "pflicht": []
     },
-    "GenericAdminResponse": {
+    "Geloescht": {
       "felder": [
         "success",
+        "deleted"
+      ],
+      "pflicht": []
+    },
+    "GenericAdminResponse": {
+      "felder": [
+        "dauer_minuten",
+        "pending",
+        "queued",
+        "skipped",
+        "verworfen",
+        "success",
         "error",
-        "enqueued"
+        "enqueued",
+        "theme",
+        "started",
+        "message",
+        "set_number",
+        "ttl",
+        "condition"
       ],
       "pflicht": [
         "success"
@@ -2934,33 +3493,50 @@
     },
     "GenericResponse": {
       "felder": [
+        "new_quantity",
+        "from_user_id",
+        "to_user_id",
+        "merged",
+        "unchanged",
+        "acquisitions",
+        "instructions",
+        "papierkorb",
+        "removed",
+        "linked_to",
         "success",
         "error",
         "set",
         "parts",
         "minifigs",
         "source_emptied",
-        "quantity"
+        "quantity",
+        "degradiert",
+        "instruction",
+        "updated",
+        "entfallen",
+        "geloescht"
       ],
       "pflicht": [
         "success"
       ]
     },
-    "GeraeteKettenAnfrage": {
+    "GeraeteSchluesselAnfrage": {
       "felder": [
+        "oeffentlich",
         "kette"
       ],
       "pflicht": [
         "kette"
       ]
     },
-    "GeraeteSchluesselAntwort": {
+    "Gesundheit": {
       "felder": [
-        "success"
+        "status",
+        "startup",
+        "db_pool",
+        "uptime_seconds"
       ],
-      "pflicht": [
-        "success"
-      ]
+      "pflicht": []
     },
     "GetrenntesKonto": {
       "felder": [
@@ -3022,6 +3598,9 @@
     "GutscheinListe": {
       "felder": [
         "success",
+        "total",
+        "page",
+        "page_size",
         "vouchers"
       ],
       "pflicht": []
@@ -3048,10 +3627,25 @@
     },
     "GutscheinStapel": {
       "felder": [
+        "results",
         "added",
         "updated",
         "errors",
         "total"
+      ],
+      "pflicht": []
+    },
+    "HouseholdInviteCheckResponse": {
+      "felder": [
+        "success",
+        "inviter"
+      ],
+      "pflicht": []
+    },
+    "HouseholdInviteCheckResponseInviter": {
+      "felder": [
+        "id",
+        "username"
       ],
       "pflicht": []
     },
@@ -3066,6 +3660,7 @@
     },
     "HouseholdMember": {
       "felder": [
+        "tiefe",
         "id",
         "username",
         "is_self"
@@ -3081,6 +3676,7 @@
     },
     "HouseholdStatusResponse": {
       "felder": [
+        "blickfeld",
         "success",
         "is_main",
         "is_sub",
@@ -3090,12 +3686,17 @@
         "sub_accounts",
         "open_invites",
         "former_links",
-        "error"
+        "error",
+        "degradiert"
       ],
       "pflicht": []
     },
     "Instruction": {
       "felder": [
+        "downloaded_at",
+        "fetched_at",
+        "set_number",
+        "user_id",
         "id",
         "url",
         "description",
@@ -3135,21 +3736,88 @@
     },
     "JobsResponse": {
       "felder": [
+        "db",
         "success",
         "jobs",
-        "schedules"
+        "schedules",
+        "degradiert",
+        "proxy_hinweis"
       ],
       "pflicht": [
         "success"
       ]
     },
+    "JobsResponseProxyHinweis": {
+      "felder": [
+        "art",
+        "vars"
+      ],
+      "pflicht": []
+    },
+    "JobsResponseProxyHinweisVars": {
+      "felder": [
+        "ip",
+        "minuten",
+        "anzahl"
+      ],
+      "pflicht": []
+    },
     "JobStatus": {
       "felder": [
+        "lastRun",
+        "canRedownload",
+        "queue",
+        "queueLastRun",
         "label",
         "status",
         "progress",
         "total",
-        "sub"
+        "sub",
+        "sub_teile"
+      ],
+      "pflicht": []
+    },
+    "JobStatusSubTeileEintrag": {
+      "felder": [
+        "code",
+        "werte",
+        "vor"
+      ],
+      "pflicht": []
+    },
+    "KonfigExport": {
+      "felder": [
+        "version",
+        "exported_at",
+        "exported_by",
+        "global",
+        "user_settings"
+      ],
+      "pflicht": []
+    },
+    "KontenListe": {
+      "felder": [
+        "success",
+        "users"
+      ],
+      "pflicht": []
+    },
+    "KontoAktiv": {
+      "felder": [
+        "success",
+        "is_active"
+      ],
+      "pflicht": []
+    },
+    "KontoInListe": {
+      "felder": [
+        "id",
+        "username",
+        "is_admin",
+        "is_active",
+        "created_at",
+        "zweiter_faktor",
+        "wartet_auf_bestaetigung"
       ],
       "pflicht": []
     },
@@ -3162,6 +3830,7 @@
     },
     "Lagerort": {
       "felder": [
+        "figuren",
         "ort",
         "sets",
         "teile"
@@ -3196,7 +3865,8 @@
     },
     "LagerortNameRequest": {
       "felder": [
-        "name"
+        "name",
+        "owner"
       ],
       "pflicht": [
         "name"
@@ -3242,14 +3912,22 @@
       ],
       "pflicht": []
     },
+    "Lebenszeichen": {
+      "felder": [
+        "status"
+      ],
+      "pflicht": []
+    },
     "LoginRequest": {
       "felder": [
         "username",
         "password",
+        "code",
+        "ohne_token",
         "label",
         "never_expires",
-        "code",
-        "scope"
+        "scope",
+        "passkey"
       ],
       "pflicht": [
         "username",
@@ -3263,6 +3941,7 @@
         "user",
         "error",
         "zweiter_faktor",
+        "never_expires",
         "token_info"
       ],
       "pflicht": [
@@ -3272,8 +3951,12 @@
     "ManualFigsResponse": {
       "felder": [
         "success",
+        "total",
+        "page",
+        "page_size",
         "figs",
-        "error"
+        "error",
+        "degradiert"
       ],
       "pflicht": []
     },
@@ -3293,14 +3976,31 @@
     "ManualPartsResponse": {
       "felder": [
         "success",
+        "total",
+        "page",
+        "page_size",
         "parts",
-        "error"
+        "error",
+        "degradiert"
+      ],
+      "pflicht": []
+    },
+    "MengeGeaendertEntfallenEintrag": {
+      "felder": [
+        "id",
+        "quantity",
+        "purchase_price",
+        "currency",
+        "price_estimated",
+        "condition",
+        "date"
       ],
       "pflicht": []
     },
     "MeResponse": {
       "felder": [
         "success",
+        "loggedIn",
         "user",
         "token_expires",
         "token_last_used",
@@ -3313,6 +4013,9 @@
     "MerklisteResponse": {
       "felder": [
         "success",
+        "total",
+        "page",
+        "page_size",
         "merkposten",
         "error"
       ],
@@ -3320,6 +4023,7 @@
     },
     "Merkposten": {
       "felder": [
+        "theme_id",
         "set_number",
         "condition",
         "created_at",
@@ -3344,6 +4048,14 @@
         "ausgeloest"
       ],
       "pflicht": []
+    },
+    "MerkpostenAnlegen": {
+      "felder": [
+        "anfrage"
+      ],
+      "pflicht": [
+        "anfrage"
+      ]
     },
     "MerkpostenAntwort": {
       "felder": [
@@ -3384,12 +4096,25 @@
         "neuer_inhaber"
       ]
     },
+    "MerkpostenLoeschen": {
+      "felder": [
+        "setNumber",
+        "zustand",
+        "besitzer"
+      ],
+      "pflicht": [
+        "setNumber",
+        "zustand"
+      ]
+    },
     "MerkpostenPreiseResponse": {
       "felder": [
         "success",
+        "set_number",
         "currency",
         "current",
-        "error"
+        "error",
+        "degradiert"
       ],
       "pflicht": []
     },
@@ -3415,6 +4140,8 @@
     },
     "MerkpostenUebernahmeResponse": {
       "felder": [
+        "katalog_offen",
+        "name",
         "success",
         "action",
         "set_number",
@@ -3424,6 +4151,12 @@
     },
     "Minifig": {
       "felder": [
+        "id",
+        "in_sets",
+        "owner_ids",
+        "set_number",
+        "storage",
+        "unit_price",
         "fig_number",
         "condition",
         "conditions",
@@ -3444,6 +4177,8 @@
     "MinifigsResponse": {
       "felder": [
         "success",
+        "total",
+        "source",
         "figs",
         "error"
       ],
@@ -3453,6 +4188,7 @@
     },
     "MinifigStats": {
       "felder": [
+        "unique_figs",
         "types",
         "total_quantity",
         "manual"
@@ -3487,12 +4223,44 @@
         "minifigs",
         "instructions",
         "source_emptied",
+        "from_user_id",
+        "to_user_id",
         "error"
+      ],
+      "pflicht": []
+    },
+    "Papierkorb": {
+      "felder": [
+        "success",
+        "eintraege"
+      ],
+      "pflicht": []
+    },
+    "PapierkorbEintrag": {
+      "felder": [
+        "id",
+        "art",
+        "nummer",
+        "farbe_id",
+        "bezeichnung",
+        "anzahl",
+        "user_id",
+        "geloescht_am",
+        "endgueltig_am"
+      ],
+      "pflicht": []
+    },
+    "PapierkorbGeleert": {
+      "felder": [
+        "success",
+        "entfernt"
       ],
       "pflicht": []
     },
     "Part": {
       "felder": [
+        "condition",
+        "storage",
         "part_number",
         "bl_part_number",
         "part_name",
@@ -3545,12 +4313,14 @@
     },
     "PartsResponse": {
       "felder": [
+        "source",
         "success",
         "total",
         "page",
         "page_size",
         "parts",
-        "error"
+        "error",
+        "degradiert"
       ],
       "pflicht": [
         "success"
@@ -3576,10 +4346,16 @@
     },
     "PartsValuationResponse": {
       "felder": [
+        "kaufpreise_umgerechnet",
         "success",
+        "total",
+        "page",
+        "page_size",
         "currency",
         "parts",
         "total_value",
+        "wert_gesamt",
+        "preise_ausstehend",
         "kaufpreise_fremde_waehrung",
         "error"
       ],
@@ -3590,6 +4366,15 @@
     },
     "PartValuationItem": {
       "felder": [
+        "ausstehend",
+        "from_cache",
+        "max_price",
+        "min_price",
+        "acq_count",
+        "used_count",
+        "category_name",
+        "created_at",
+        "source",
         "id",
         "part_number",
         "bl_part_number",
@@ -3608,6 +4393,7 @@
         "pnl_pct",
         "pnl_prozent",
         "display_value",
+        "total_value",
         "wert_gesamt",
         "condition",
         "conditions",
@@ -3618,38 +4404,52 @@
       ],
       "pflicht": []
     },
-    "PasskeyAnmeldung": {
+    "Passkey": {
+      "felder": [
+        "id",
+        "name",
+        "transports",
+        "created_at",
+        "last_used"
+      ],
+      "pflicht": []
+    },
+    "PasskeyAngelegt": {
+      "felder": [
+        "success",
+        "passkey"
+      ],
+      "pflicht": []
+    },
+    "PasskeyAngelegtPasskey": {
+      "felder": [
+        "id",
+        "name"
+      ],
+      "pflicht": []
+    },
+    "PasskeyAnmeldungAnfrage": {
       "felder": [
         "antwort",
-        "label",
-        "never_expires",
-        "scope",
-        "mit_token"
-      ],
-      "pflicht": [
-        "antwort"
-      ]
-    },
-    "PasskeyLoginRequest": {
-      "felder": [
-        "username",
-        "password",
-        "passkey",
+        "mit_token",
         "label",
         "never_expires",
         "scope"
       ],
-      "pflicht": [
-        "username",
-        "password",
-        "passkey"
-      ]
+      "pflicht": []
+    },
+    "PasskeyListe": {
+      "felder": [
+        "success",
+        "verfuegbar",
+        "passkeys"
+      ],
+      "pflicht": []
     },
     "PasskeyOptionen": {
       "felder": [
         "success",
-        "optionen",
-        "error"
+        "optionen"
       ],
       "pflicht": []
     },
@@ -3663,14 +4463,23 @@
     },
     "PasswortAenderung": {
       "felder": [
-        "current",
         "newPassword",
-        "code"
+        "passkeys_widerrufen",
+        "current",
+        "code",
+        "passkey"
       ],
       "pflicht": [
-        "current",
-        "newPassword"
+        "newPassword",
+        "current"
       ]
+    },
+    "PasswortGesetzt": {
+      "felder": [
+        "success",
+        "wirksam_ab"
+      ],
+      "pflicht": []
     },
     "PdfAuftragAnfrage": {
       "felder": [
@@ -3699,8 +4508,9 @@
       "felder": [
         "success",
         "status",
+        "error",
         "etaSeconds",
-        "error"
+        "missingImages"
       ],
       "pflicht": []
     },
@@ -3713,14 +4523,43 @@
         "color_hex",
         "color_id",
         "quantity",
-        "image_local",
+        "is_fig",
         "image_url",
-        "is_fig"
+        "image_local"
       ],
       "pflicht": [
         "part_number",
         "quantity"
       ]
+    },
+    "PdfEingabe": {
+      "felder": [
+        "sets",
+        "parts"
+      ],
+      "pflicht": []
+    },
+    "PdfEingabePartsEintrag": {
+      "felder": [
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_name",
+        "color_hex",
+        "color_id",
+        "quantity",
+        "is_fig",
+        "image_url",
+        "image_local"
+      ],
+      "pflicht": []
+    },
+    "PdfEingabeSetsEintrag": {
+      "felder": [
+        "set_number",
+        "name"
+      ],
+      "pflicht": []
     },
     "PdfViewer": {
       "felder": [
@@ -3742,6 +4581,9 @@
     "PnlResponse": {
       "felder": [
         "success",
+        "total",
+        "page",
+        "page_size",
         "currency",
         "totals",
         "sets",
@@ -3754,6 +4596,14 @@
     },
     "PnlSetZeile": {
       "felder": [
+        "added_at",
+        "condition",
+        "image_local",
+        "image_url",
+        "name",
+        "pnl_abs",
+        "purchase_price",
+        "year",
         "set_number",
         "quantity",
         "current_price",
@@ -3773,6 +4623,9 @@
     },
     "PnlTotals": {
       "felder": [
+        "kaufpreise_umgerechnet",
+        "pnl_current",
+        "pnl_purchase",
         "purchase",
         "current",
         "pnl_pct",
@@ -3799,14 +4652,15 @@
     },
     "PortfolioHistoryResponse": {
       "felder": [
+        "chart",
+        "messpunkte",
         "success",
         "currency",
         "period",
         "points",
         "y_axis",
         "period_change_pct",
-        "purchase_total",
-        "chart"
+        "purchase_total"
       ],
       "pflicht": [
         "success"
@@ -3858,6 +4712,44 @@
       ],
       "pflicht": []
     },
+    "PreisJobStand": {
+      "felder": [
+        "success",
+        "job",
+        "rate_limit"
+      ],
+      "pflicht": []
+    },
+    "PreisJobStandJob": {
+      "felder": [
+        "running",
+        "lastRun",
+        "nextRun",
+        "lastErrors",
+        "log",
+        "lastDuration",
+        "lastUpdated",
+        "progress"
+      ],
+      "pflicht": []
+    },
+    "PreisJobStandJobProgress": {
+      "felder": [
+        "current",
+        "total",
+        "set"
+      ],
+      "pflicht": []
+    },
+    "PreisJobStandRateLimit": {
+      "felder": [
+        "count",
+        "limit",
+        "remaining",
+        "date"
+      ],
+      "pflicht": []
+    },
     "PriceByCondition": {
       "felder": [
         "N",
@@ -3889,6 +4781,7 @@
     },
     "PriceHistoryPoint": {
       "felder": [
+        "is_purchase_price",
         "recorded_at",
         "qty_avg_price",
         "avg_price",
@@ -3899,7 +4792,10 @@
     },
     "PriceHistoryResponse": {
       "felder": [
+        "condition",
+        "current",
         "success",
+        "set_number",
         "currency",
         "history_new",
         "history_used",
@@ -3934,8 +4830,10 @@
         "email",
         "first_name",
         "last_name",
+        "password",
         "password_current",
-        "code"
+        "code",
+        "passkey"
       ],
       "pflicht": [
         "username",
@@ -3944,8 +4842,24 @@
     },
     "ProfilGespeichert": {
       "felder": [
+        "new_quantity",
+        "from_user_id",
+        "to_user_id",
+        "merged",
+        "unchanged",
+        "acquisitions",
+        "instructions",
+        "papierkorb",
+        "removed",
+        "linked_to",
         "success",
         "error",
+        "set",
+        "parts",
+        "minifigs",
+        "source_emptied",
+        "quantity",
+        "degradiert",
         "emailChanged",
         "emailSent"
       ],
@@ -3962,6 +4876,13 @@
       "pflicht": [
         "success"
       ]
+    },
+    "ProtokollEintraege": {
+      "felder": [
+        "success",
+        "eintraege"
+      ],
+      "pflicht": []
     },
     "ProtokollResponse": {
       "felder": [
@@ -3996,18 +4917,31 @@
     "QrAbholung": {
       "felder": [
         "success",
-        "wartet",
-        "vorschau",
-        "username",
         "token",
         "user",
         "error",
+        "zweiter_faktor",
+        "never_expires",
         "token_info",
+        "wartet",
+        "username",
+        "isAdmin",
+        "userId",
+        "vorschau",
         "schluessel_nonce"
       ],
       "pflicht": [
         "success"
       ]
+    },
+    "QrKopplungStand": {
+      "felder": [
+        "success",
+        "stand",
+        "geraet",
+        "ip_bereich"
+      ],
+      "pflicht": []
     },
     "QrLoginRequest": {
       "felder": [
@@ -4024,12 +4958,24 @@
         "wartet",
         "abholung",
         "code",
-        "expires_in",
-        "error"
+        "expires_in"
       ],
       "pflicht": [
         "success"
       ]
+    },
+    "QrToken": {
+      "felder": [
+        "success",
+        "token",
+        "kopplung",
+        "expires_in",
+        "url",
+        "token_days",
+        "fp",
+        "zert_sha256"
+      ],
+      "pflicht": []
     },
     "QrVerwerfen": {
       "felder": [
@@ -4041,6 +4987,7 @@
     },
     "RateLimit": {
       "felder": [
+        "date",
         "count",
         "limit",
         "remaining"
@@ -4084,7 +5031,17 @@
     },
     "RegistrationStatusResponse": {
       "felder": [
-        "enabled"
+        "enabled",
+        "passkey",
+        "passwort_vergessen",
+        "mail_versand"
+      ],
+      "pflicht": []
+    },
+    "RoheEinstellungen": {
+      "felder": [
+        "success",
+        "settings"
       ],
       "pflicht": []
     },
@@ -4162,13 +5119,12 @@
         "setNumber"
       ]
     },
-    "SetDetailResponse": {
+    "SetErfassen": {
       "felder": [
-        "success",
-        "set"
+        "anfrage"
       ],
       "pflicht": [
-        "success"
+        "anfrage"
       ]
     },
     "SetExistsResponse": {
@@ -4183,13 +5139,28 @@
     },
     "SetInfoResponse": {
       "felder": [
+        "image_local",
+        "image_url",
+        "minifigs",
+        "pieces",
+        "theme",
+        "year",
         "success",
-        "name"
+        "set_number",
+        "name",
+        "im_katalog"
       ],
       "pflicht": []
     },
     "SetItem": {
       "felder": [
+        "acq_count",
+        "letzter_kauf",
+        "owner_ids",
+        "id",
+        "storage_id",
+        "updated_at",
+        "user_id",
         "set_number",
         "name",
         "year",
@@ -4206,6 +5177,7 @@
         "owners",
         "max_purchase_price",
         "avg_purchase_price",
+        "kaufpreis_geschaetzt",
         "used_count",
         "instructions",
         "bricklink",
@@ -4215,8 +5187,19 @@
         "set_number"
       ]
     },
+    "SetMenge": {
+      "felder": [
+        "setNumber",
+        "schritt"
+      ],
+      "pflicht": [
+        "setNumber",
+        "schritt"
+      ]
+    },
     "SetPriceResponse": {
       "felder": [
+        "from_cache",
         "success",
         "set_number",
         "currency",
@@ -4263,8 +5246,36 @@
         "success"
       ]
     },
+    "Sicherung": {
+      "felder": [
+        "version",
+        "exported_at",
+        "exported_by",
+        "global",
+        "user_settings"
+      ],
+      "pflicht": []
+    },
+    "SicherungEingespielt": {
+      "felder": [
+        "success",
+        "imported",
+        "note",
+        "smtp_uebergangen"
+      ],
+      "pflicht": []
+    },
+    "SmtpProbe": {
+      "felder": [
+        "mode",
+        "success"
+      ],
+      "pflicht": []
+    },
     "StartupStatus": {
       "felder": [
+        "fehler",
+        "pfad",
         "ready",
         "step",
         "progress",
@@ -4282,6 +5293,34 @@
         "success"
       ]
     },
+    "TeilAendern": {
+      "felder": [
+        "partNumber",
+        "colorId",
+        "anfrage",
+        "besitzer"
+      ],
+      "pflicht": [
+        "partNumber",
+        "colorId",
+        "anfrage"
+      ]
+    },
+    "TeileGeladen": {
+      "felder": [
+        "success",
+        "count"
+      ],
+      "pflicht": []
+    },
+    "TeilErfassen": {
+      "felder": [
+        "anfrage"
+      ],
+      "pflicht": [
+        "anfrage"
+      ]
+    },
     "TeilFarbeRequest": {
       "felder": [
         "color_id",
@@ -4294,11 +5333,46 @@
     },
     "TeilFarbeResponse": {
       "felder": [
+        "bild",
         "success",
         "zusammengelegt",
         "verschoben",
         "vereint",
         "error"
+      ],
+      "pflicht": []
+    },
+    "TeilLoeschen": {
+      "felder": [
+        "partNumber",
+        "colorId",
+        "besitzer"
+      ],
+      "pflicht": [
+        "partNumber",
+        "colorId"
+      ]
+    },
+    "TlsStand": {
+      "felder": [
+        "success",
+        "https",
+        "fp",
+        "fp_hex",
+        "zert_sha256",
+        "subject",
+        "gueltig_bis",
+        "download"
+      ],
+      "pflicht": []
+    },
+    "TokenErstellt": {
+      "felder": [
+        "success",
+        "token",
+        "label",
+        "never_expires",
+        "token_info"
       ],
       "pflicht": []
     },
@@ -4358,12 +5432,13 @@
     },
     "UpdateAcquisitionRequest": {
       "felder": [
+        "quantity",
         "purchase_price",
         "unit_price",
         "condition",
-        "quantity",
         "date",
-        "owner_user_id"
+        "owner_user_id",
+        "from_user_id"
       ],
       "pflicht": []
     },
@@ -4384,11 +5459,34 @@
         "apkUrl"
       ]
     },
+    "UpdateManualItemRequest": {
+      "felder": [
+        "quantity",
+        "quantity_delta",
+        "unit_price",
+        "condition",
+        "bl_fig_number"
+      ],
+      "pflicht": [
+        "quantity"
+      ]
+    },
+    "UpdateQuantityRequest": {
+      "felder": [
+        "quantity",
+        "quantity_delta",
+        "purchase_price",
+        "condition",
+        "owner_user_id"
+      ],
+      "pflicht": []
+    },
     "User": {
       "felder": [
         "id",
         "username",
         "is_admin",
+        "mustChangePassword",
         "zweiterFaktorPflicht"
       ],
       "pflicht": [
@@ -4420,13 +5518,25 @@
         "pnl_pct",
         "pnl_prozent",
         "created_at",
-        "owner_user_id"
+        "owner_user_id",
+        "kaufpreis_original",
+        "kaufpreis_waehrung",
+        "price_estimated"
       ],
       "pflicht": []
     },
     "ValuationResponse": {
       "felder": [
+        "kaufpreise_umgerechnet",
+        "guide_type",
+        "ttl_hours",
         "success",
+        "total",
+        "page",
+        "page_size",
+        "total_value",
+        "wert_gesamt",
+        "preise_ausstehend",
         "currency",
         "condition",
         "ttl_stunden",
@@ -4441,6 +5551,12 @@
     },
     "ValuationSet": {
       "felder": [
+        "bl_unbekannt",
+        "condition",
+        "conditions",
+        "error_code",
+        "pnl_pct",
+        "user_id",
         "set_number",
         "added_at",
         "name",
@@ -4453,6 +5569,7 @@
         "max_price",
         "qty_avg_price",
         "total_qty_avg",
+        "preis_ausstehend",
         "total_avg",
         "wert_gesamt",
         "pnl_prozent",
@@ -4463,6 +5580,7 @@
         "no_price",
         "acquisitions",
         "mixed",
+        "owners",
         "error"
       ],
       "pflicht": [
@@ -4491,6 +5609,73 @@
         "set_number"
       ]
     },
+    "WantedXmlErgebnis": {
+      "felder": [
+        "success",
+        "vorschau",
+        "gelesen",
+        "angelegt",
+        "aufgestockt",
+        "fehler",
+        "posten",
+        "offen",
+        "fremdeArten",
+        "ohneNummer",
+        "stufen",
+        "farbeOffen",
+        "standardZustand",
+        "abgebrochen",
+        "korrekturen",
+        "rebrickable"
+      ],
+      "pflicht": []
+    },
+    "WantedXmlErgebnisKorrekturen": {
+      "felder": [
+        "angewandt",
+        "abgewiesen"
+      ],
+      "pflicht": []
+    },
+    "WantedXmlErgebnisOffenEintrag": {
+      "felder": [
+        "art",
+        "blId",
+        "blFarbe"
+      ],
+      "pflicht": []
+    },
+    "WantedXmlErgebnisPostenEintrag": {
+      "felder": [
+        "art",
+        "blId",
+        "menge",
+        "ausgang",
+        "blFarbe",
+        "rbId",
+        "rbFarbe",
+        "farbName",
+        "farbHex",
+        "sicherheit",
+        "zustand",
+        "maxPreis",
+        "name",
+        "nameGeraten",
+        "bild",
+        "grund",
+        "grundCode"
+      ],
+      "pflicht": []
+    },
+    "WantedXmlErgebnisRebrickable": {
+      "felder": [
+        "gefragt",
+        "gefunden",
+        "filterWirkungslos",
+        "abgebrochen"
+      ],
+      "pflicht": []
+    },
     "WidgetZahlen": {
       "felder": [
         "waehrung",
@@ -4505,10 +5690,20 @@
         "waehrung"
       ]
     },
+    "Wiederhergestellt": {
+      "felder": [
+        "success",
+        "art",
+        "nummer",
+        "user_id"
+      ],
+      "pflicht": []
+    },
     "ZweiterFaktorAnfrage": {
       "felder": [
         "password",
-        "code"
+        "code",
+        "passkey"
       ],
       "pflicht": []
     },
@@ -4543,12 +5738,6 @@
       "pflicht": [
         "success"
       ]
-    },
-    "ZweiterFaktorWege": {
-      "felder": [
-        "passkey"
-      ],
-      "pflicht": []
     }
   }
 }

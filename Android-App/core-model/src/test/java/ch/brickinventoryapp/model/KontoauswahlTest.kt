@@ -43,7 +43,7 @@ class KontoauswahlTest {
         val alarm = json.decodeFromString(Preisalarm.serializer(), """{"set_number":"1-1","richtung":"ueber","schwelle":5.0}""")
         assertEquals(Alarmrichtung.UEBER, alarm.richtung)
         assertEquals("""{"richtung":"ueber","schwelle":5.0,"condition":"U"}""",
-            Json.encodeToString(PreisalarmRequest.serializer(), PreisalarmRequest(Alarmrichtung.UEBER, 5.0, Zustand.GEBRAUCHT)))
+            Json.encodeToString(PreisalarmRequest.serializer(), PreisalarmRequest(richtung = Alarmrichtung.UEBER, schwelle = 5.0, condition = Zustand.GEBRAUCHT)))
         // Unbekanntes wie beim Server: „unter“, statt die Liste zu verwerfen.
         assertEquals(Alarmrichtung.UNTER, json.decodeFromString(Preisalarm.serializer(), """{"richtung":"seitwaerts"}""").richtung)
     }

@@ -256,7 +256,7 @@ class GalerieViewModelTest {
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
         // So wendet TeileRepository ein erfasstes Teil in der Ablage an.
-        runBlocking { t.ablage.wendeAn(Bearbeitung.TeilErfassen(AddPartRequest("3001", colorId = 5, quantity = 2))) }
+        runBlocking { t.ablage.wendeAn(Bearbeitung.TeilErfassen(AddPartRequest(partNumber = "3001", colorId = 5, quantity = 2))) }
         assertEquals("Kennzahlen nach Teilen", zahlenVorher + 1, pfade.anfragenAn("GET /api/v1/stats").size)
         assertEquals("Ein Teil ändert die Set-Liste nicht", listeVorher, abrufe().size)
     }

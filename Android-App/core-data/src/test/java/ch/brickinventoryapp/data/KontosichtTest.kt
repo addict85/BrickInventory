@@ -100,7 +100,7 @@ class KontosichtTest {
         gesehen.await()
         repeat(50) { yield() }
         // Was ein Repository anwendet, ändert die Ablage — die Kontosicht fragt neu.
-        ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest("12-1")))
+        ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest(setNumber = "12-1")))
         // Die neue Anfrage läuft über den Testserver, also auf einem fremden Faden.
         withTimeoutOrNull(5_000) { while (pfade.anfragenAn("GET /api/v1/sets?").size <= vorher) delay(10) }
         beobachter.cancel()

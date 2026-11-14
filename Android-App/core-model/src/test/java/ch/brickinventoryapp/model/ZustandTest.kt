@@ -28,11 +28,11 @@ class ZustandTest {
 
     @Test
     fun `hinaus geht N und U`() {
-        val text = json.encodeToString(AddSetRequest.serializer(), AddSetRequest("75192-1", condition = Zustand.GEBRAUCHT))
+        val text = json.encodeToString(AddSetRequest.serializer(), AddSetRequest(setNumber = "75192-1", condition = Zustand.GEBRAUCHT))
         assertTrue(text, text.contains("\"condition\":\"U\""))
-        val ohne = json.encodeToString(AddSetRequest.serializer(), AddSetRequest("75192-1"))
+        val ohne = json.encodeToString(AddSetRequest.serializer(), AddSetRequest(setNumber = "75192-1"))
         assertTrue(ohne, ohne.contains("\"condition\":null"))
-        val merk = json.encodeToString(Merkposten.serializer(), Merkposten("10294-1"))
+        val merk = json.encodeToString(Merkposten.serializer(), Merkposten(setNumber = "10294-1"))
         assertTrue(merk, merk.contains("\"condition\":\"N\""))
     }
 

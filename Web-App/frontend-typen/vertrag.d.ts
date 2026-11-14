@@ -659,6 +659,7 @@ export type Fehlercode =
   | 'email_nicht_bestaetigt'
   | 'zu_viele_anfragen'
   | 'zu_viele_fehlversuche'
+  | 'konto_tagesgrenze'
   | 'anmeldedaten_ungueltig'
   | 'name_oder_email_eingeben'
   | 'registrierung_deaktiviert'

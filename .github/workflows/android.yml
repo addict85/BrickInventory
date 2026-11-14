@@ -22,6 +22,7 @@ on:
       - 'Web-App/src/vertrag/**'
       - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/vertrag-kotlin-dtos.js'
+      - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'
       - 'Web-App/docs/openapi.json'
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
@@ -34,6 +35,7 @@ on:
       - 'Web-App/src/vertrag/**'
       - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/vertrag-kotlin-dtos.js'
+      - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'
       - 'Web-App/docs/openapi.json'
       # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf.
       - '.github/workflows/android.yml'
@@ -437,8 +439,8 @@ jobs:
       sha256_apk: ${{ needs.build.outputs.sha256_apk }}
       sha256_aab: ${{ needs.build.outputs.sha256_aab }}
 
-  # Die Modelle aus core-vertrag gegen den Vertrag des Servers, auch hier: Ein Android-Lauf
-  # soll selbst rot sein, wenn ein Modell den Vertrag nicht mehr lesen kann.
+  # Die Typen in core-vertrag sind aus dem Vertrag erzeugt; ein Android-Lauf soll selbst rot
+  # sein, wenn die Datei veraltet ist oder eine Route nicht den erzeugten Typ nimmt.
   vertrag:
     if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
     runs-on: ubuntu-24.04
@@ -461,7 +463,7 @@ jobs:
         run: npm ci --ignore-scripts && npm rebuild esbuild
       # Was die App vom Server braucht (shared/app-schnittstelle.json) und wie sie es liest,
       # gegen docs/openapi.json; dazu die Release-Wege. Die Web-Suite liest keinen Kotlin-Quelltext.
-      - name: Kotlin-Modelle gegen den Vertrag, Schnittstelle und Release-Wege
+      - name: Routen nehmen die erzeugten Typen, Schnittstelle und Release-Wege
         run: node --test ../Android-App/tools/vertrag/vertrag-kotlin.test.js ../Android-App/tools/release-wege.test.js
       - name: Erzeugte Design-Tokens aktuell
         run: node scripts/generate-design-tokens.js --pruefen

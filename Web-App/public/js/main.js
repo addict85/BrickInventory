@@ -37,6 +37,7 @@ import './parts.js';
 import './teil-erfassen.js';
 import './wertkurve.js';
 import './finance.js';
+import './finanz-kennzahlen.js';
 import './settings.js';
 import './zugaenge.js';
 import './haushalt.js';

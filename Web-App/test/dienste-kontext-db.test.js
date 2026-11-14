@@ -65,17 +65,22 @@ test('k.transaktion: was über t geschrieben wird, gilt zusammen oder gar nicht'
   const kontexte = {};
   baueDienste(testZugang(), { nacharbeit: OHNE_NACHARBEIT, kontexte });
   const e = kontexte.einstellungen;
+  // Globale Werte schreibt nur die Systemrolle (0117): die Transaktion in ihrem Rahmen.
+  const { imSystemkontext } = _req('src/infra/kontoKontext.js');
+  const imSystem = f => imSystemkontext('test', f);
   const A = `kontext_a_${process.pid}`;
   const B = `kontext_b_${process.pid}`;
-  t.after(() => e.repository.loescheGlobaleWerte([A, B]));
+  t.after(() => imSystem(() => e.repository.loescheGlobaleWerte([A, B])));
 
   await assert.rejects(
-    e.transaktion(async tx => {
-      await tx.repository.schreibeGlobalenWert(A, 'eins');
-      assert.equal(await tx.repository.globalerWert(A), 'eins', 'innen sichtbar');
-      await tx.repository.schreibeGlobalenWert(B, 'zwei');
-      throw new Error('Abbruch');
-    }),
+    imSystem(() =>
+      e.transaktion(async tx => {
+        await tx.repository.schreibeGlobalenWert(A, 'eins');
+        assert.equal(await tx.repository.globalerWert(A), 'eins', 'innen sichtbar');
+        await tx.repository.schreibeGlobalenWert(B, 'zwei');
+        throw new Error('Abbruch');
+      }),
+    ),
     /Abbruch/,
   );
   assert.deepEqual(
@@ -84,9 +89,11 @@ test('k.transaktion: was über t geschrieben wird, gilt zusammen oder gar nicht'
     'ein Fehler nimmt alles zurück',
   );
 
-  await e.transaktion(async tx => {
-    await tx.repository.schreibeGlobalenWert(A, 'eins');
-    await tx.repository.schreibeGlobalenWert(B, 'zwei');
-  });
+  await imSystem(() =>
+    e.transaktion(async tx => {
+      await tx.repository.schreibeGlobalenWert(A, 'eins');
+      await tx.repository.schreibeGlobalenWert(B, 'zwei');
+    }),
+  );
   assert.deepEqual([await e.repository.globalerWert(A), await e.repository.globalerWert(B)], ['eins', 'zwei']);
 });

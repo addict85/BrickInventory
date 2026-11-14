@@ -86,6 +86,16 @@
  *   AG in app-rolle.sh die Schleife über vor_migration_* für RLS gestrichen → rot:
  *      „… Kopien vor Migrationen …“ (die Laufzeitrolle liest den Hash der Kopie)
  *
+ *   Zugangsdaten schreibt nur die Systemrolle (Migration 0117, 14.11.2026 gemessen, je einzeln):
+ *   AH in 0117 die Schleife über die Rollen leer laufen lassen (`AND false`) → rot: „… schon
+ *      nach der Migration“ (die Laufzeitrolle setzt is_admin, das Protokoll ist löschbar)
+ *   AI in app-rolle.sh das REVOKE auf users gestrichen → rot: „… und nach jedem Lauf …“
+ *      (GRANT ON ALL TABLES gibt INSERT/UPDATE/DELETE zurück)
+ *   AJ verwaltungsprotokoll_aufraeumen() als SECURITY INVOKER → rot: beide (die Systemrolle
+ *      darf selbst nicht löschen, das Aufräumen scheitert)
+ *   AK in app-rolle.sh das REVOKE auf verwaltungsprotokoll nur für die Laufzeitrolle → rot:
+ *      „… und nach jedem Lauf …“ (die Systemrolle löscht Protokollzeilen)
+ *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
  */
@@ -347,6 +357,97 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     assert.equal((await rechteDerRolle(admin)).rolsuper, false);
   });
 
+  /** Genau diese Schreibrechte (0117): Zugangsdaten, globale Einstellungen und das Protokoll. */
+  const zugangsrechtePruefen = async (db, konto) => {
+    const frage = (rolle, objekt, art, funktion) =>
+      als(db, null, null, c =>
+        c
+          .query(
+            funktion
+              ? 'SELECT has_function_privilege($1, $2, $3) AS ja'
+              : 'SELECT has_table_privilege($1, $2, $3) AS ja',
+            [rolle, objekt, art],
+          )
+          .then(r => r.rows[0].ja),
+      );
+    const ist = {};
+    for (const [rolle, kurz] of [
+      [ROLLE, 'app'],
+      [SYS, 'sys'],
+    ]) {
+      for (const tabelle of ['users', 'global_settings', 'verwaltungsprotokoll'])
+        for (const art of ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'])
+          ist[`${kurz} ${tabelle} ${art}`] = await frage(rolle, `public.${tabelle}`, art);
+      ist[`${kurz} aufraeumen EXECUTE`] = await frage(
+        rolle,
+        'public.verwaltungsprotokoll_aufraeumen()',
+        'EXECUTE',
+        true,
+      );
+    }
+    const soll = {};
+    for (const k of Object.keys(ist)) soll[k] = false;
+    // Tabellenweit (has_table_privilege prüft hier nur ganze Tabellen; SELECT auf users hat die
+    // Laufzeitrolle spaltenweise ohne password_hash, siehe oben).
+    for (const k of [
+      'app global_settings SELECT',
+      'app verwaltungsprotokoll SELECT',
+      'app verwaltungsprotokoll INSERT',
+    ])
+      soll[k] = true;
+    for (const t of ['users', 'global_settings'])
+      for (const a of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) soll[`sys ${t} ${a}`] = true;
+    for (const k of ['sys verwaltungsprotokoll SELECT', 'sys verwaltungsprotokoll INSERT', 'sys aufraeumen EXECUTE'])
+      soll[k] = true;
+    assert.deepEqual(ist, soll);
+    const spalten = (
+      await als(db, null, null, c =>
+        c.query(
+          `SELECT a.attname FROM pg_attribute a WHERE a.attrelid = 'public.users'::regclass AND a.attnum > 0
+              AND NOT a.attisdropped AND has_column_privilege($1, 'public.users', a.attname, 'UPDATE') ORDER BY 1`,
+          [ROLLE],
+        ),
+      )
+    ).rows.map(z => z.attname);
+    assert.deepEqual(spalten, ['first_name', 'last_name'], 'in users schreibt die Laufzeitrolle nur die Namen');
+
+    // Und so, wie eine eingeschleuste Abfrage es versuchte:
+    await als(db, ROLLE, PASSWORT, async app => {
+      for (const sql of [
+        'UPDATE users SET is_admin = true WHERE id = $1',
+        "UPDATE users SET password_hash = 'x' WHERE id = $1",
+        "UPDATE users SET email = 'boese@example.org' WHERE id = $1",
+        'UPDATE users SET sitzungs_version = 0 WHERE id = $1',
+        'DELETE FROM users WHERE id = $1',
+        'DELETE FROM verwaltungsprotokoll WHERE ziel_id = $1',
+        "UPDATE verwaltungsprotokoll SET aktion = 'x' WHERE ziel_id = $1",
+        "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1::text)",
+        'SELECT verwaltungsprotokoll_aufraeumen() WHERE $1::int > 0',
+      ])
+        await assert.rejects(app.query(sql, [konto]), /permission denied/, `Laufzeitrolle: ${sql}`);
+      assert.equal((await app.query(`UPDATE users SET first_name = 'Neu' WHERE id = $1`, [konto])).rowCount, 1);
+      await app.query(`INSERT INTO verwaltungsprotokoll (ziel_id, aktion) VALUES ($1, 'probe')`, [konto]);
+    });
+    await als(db, SYS, SYS_PW, async sys => {
+      await sys.query(
+        `INSERT INTO verwaltungsprotokoll (zeit, ziel_id, aktion) VALUES (NOW() - INTERVAL '400 days', $1, 'alt')`,
+        [konto],
+      );
+      for (const sql of [
+        'DELETE FROM verwaltungsprotokoll WHERE ziel_id = $1',
+        "UPDATE verwaltungsprotokoll SET aktion = 'x' WHERE ziel_id = $1",
+      ])
+        await assert.rejects(sys.query(sql, [konto]), /permission denied/, `Systemrolle: ${sql}`);
+      assert.ok((await sys.query('SELECT verwaltungsprotokoll_aufraeumen() AS n')).rows[0].n >= 1);
+      assert.deepEqual(
+        (await sys.query('SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY aktion', [konto])).rows,
+        [{ aktion: 'probe' }],
+        'die feste Frist nimmt nur die alte Zeile',
+      );
+    });
+    await als(db, null, null, c => c.query('DELETE FROM verwaltungsprotokoll WHERE ziel_id = $1', [konto]));
+  };
+
   /** Was die Laufzeitrolle an Kontotabellen darf; die Systemrolle liest alles. */
   const kontotabellenPruefen = async db => {
     await als(db, null, null, async c => {
@@ -403,6 +504,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       );
       assert.equal((await sys.query(`SELECT 1 FROM user_sessions WHERE sid = 'kt-sid'`)).rowCount, 1);
     });
+    await zugangsrechtePruefen(db, A);
     await als(db, null, null, c =>
       c.query(`DELETE FROM user_sessions WHERE sid = 'kt-sid'; DELETE FROM users WHERE username LIKE 'kt\\_%'`),
     );
@@ -504,12 +606,13 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
         ])
           await assert.rejects(app.query(sql), /permission denied|must be owner/, `${nutzer} darf: ${sql}`);
         // Zeilen schreiben, Sequenzen weiterzählen, temporär anlegen: alles, was die App braucht.
-        const { id: uid } = (
-          await app.query(`INSERT INTO users (username, password_hash) VALUES ('laufzeitprobe', 'x') RETURNING id`)
+        // (users schreibt die Laufzeitrolle nur teilweise, siehe „Zugangsdaten schreibt nur …“.)
+        const { id: zeile } = (
+          await app.query(`INSERT INTO app_logs (level, message) VALUES ('info', 'laufzeitprobe') RETURNING id`)
         ).rows[0];
-        await app.query(`UPDATE users SET first_name = 'L' WHERE id = $1`, [uid]);
-        assert.equal((await app.query('SELECT first_name FROM users WHERE id = $1', [uid])).rows[0].first_name, 'L');
-        await app.query('DELETE FROM users WHERE id = $1', [uid]);
+        await app.query(`UPDATE app_logs SET message = 'L' WHERE id = $1`, [zeile]);
+        assert.equal((await app.query('SELECT message FROM app_logs WHERE id = $1', [zeile])).rows[0].message, 'L');
+        await app.query('DELETE FROM app_logs WHERE id = $1', [zeile]);
         await app.query('CREATE TEMP TABLE probe (x int)');
       });
   });

@@ -108,7 +108,7 @@ class BestandDatenbankTest {
     @Test
     fun `eine lokale Bearbeitung schreibt nur die betroffene Zeile`() = runBlocking {
         val ablage = Offlineablage(bestand, ausgang, { "a" })
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem("1-1", quantity = 1), SetItem("2-1", quantity = 1), SetItem("3-1", quantity = 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1), SetItem(setNumber = "2-1", quantity = 1), SetItem(setNumber = "3-1", quantity = 1)))
         val geschrieben = protokolliereSchreiben()
         ablage.puffere(Bearbeitung.SetMenge("2-1", 1))
         assertEquals(listOf("UPDATE 2-1"), geschrieben())

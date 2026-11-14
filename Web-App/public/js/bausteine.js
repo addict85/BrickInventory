@@ -144,7 +144,8 @@ export function listeLadefehler(ziel, d, o) {
 
 /**
  * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann; der Rohtext steht unter
- * „Details“ für die Meldung an den Verwalter. 4xx-Texte schreibt der Server selbst verständlich.
+ * „Details“ für die Meldung an den Verwalter. Der Verwalter selbst bekommt den Weg zum Protokoll. 4xx-Texte
+ * schreibt der Server selbst verständlich.
  * @param {{ networkError?: boolean, status?: number, error?: unknown, warteSek?: unknown } | null | undefined} d Antwort von api()
  * @returns {{ grund: string, details?: string }}
  */
@@ -153,7 +154,10 @@ export function verstaendlicherGrund(d) {
   if (d?.status === 429)
     return { grund: tRaw('liste.gedrosselt', { minuten: Math.max(1, Math.ceil((Number(d.warteSek) || 60) / 60)) }) };
   if (!d || (d.status ?? 0) >= 500 || !d.error)
-    return { grund: tRaw('liste.server_fehler'), details: d?.error ? String(d.error) : undefined };
+    return {
+      grund: tRaw(ME?.isAdmin ? 'liste.server_fehler_verwalter' : 'liste.server_fehler'),
+      details: d?.error ? String(d.error) : undefined,
+    };
   return { grund: String(d.error) };
 }
 

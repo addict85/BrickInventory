@@ -1,13 +1,14 @@
 /**
  * Vorschaubilder der eigenen Bilder (generateThumb) entstehen mit sharp:
- * 200 × 200, mittig zugeschnitten, Transparenz auf Weiss. Lässt sich sharp
- * nicht laden, rechnet Jimp dasselbe.
+ * höchstens 200 je Seite, Seitenverhältnis erhalten (UX-Prüfung 25, B1),
+ * Transparenz auf Weiss. Lässt sich sharp nicht laden, rechnet Jimp dasselbe.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, dist neu gebaut), alle in
  * src/bilder/thumbs.ts:
  *   A  `.flatten({ background: '#ffffff' })` entfernt → rot: „sharp: 200 × 200 …“
  *      (Ecke schwarz)
- *   B  `fit: 'cover'` → `fit: 'inside'` → rot: ebenda (200 × 133)
+ *   B  (14.11.2026) `fit: 'inside'` → `fit: 'cover'` → rot: ebenda (200 × 200);
+ *      jimpEinpassen() wieder mit cover() → rot: „ohne sharp …“ (200 × 200)
  *   C  im catch um require('sharp') `throw e` statt Jimp → rot: „ohne sharp …“
  */
 const test = require('node:test');
@@ -44,12 +45,12 @@ async function lege(name) {
 
 async function pruefeVorschau(datei) {
   const meta = await sharp(datei).metadata();
-  assert.deepEqual([meta.format, meta.width, meta.height], ['jpeg', 200, 200]);
+  assert.deepEqual([meta.format, meta.width, meta.height], ['jpeg', 200, 133]);
   const roh = await sharp(datei).raw().toBuffer();
   assert.ok(roh[0] > 200 && roh[1] > 200 && roh[2] > 200, `Grund (${roh[0]},${roh[1]},${roh[2]}) ist nicht weiss`);
 }
 
-test('sharp: 200 × 200, mittig zugeschnitten, Transparenz auf Weiss', async () => {
+test('sharp: 200 × 133, nicht zugeschnitten, Transparenz auf Weiss', async () => {
   const b = await lege(`zz-sharp-${process.pid}`);
   try {
     assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));

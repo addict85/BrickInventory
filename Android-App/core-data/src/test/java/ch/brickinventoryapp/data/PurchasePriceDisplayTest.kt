@@ -2,6 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.vertrag.anzeigeKaufpreis
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

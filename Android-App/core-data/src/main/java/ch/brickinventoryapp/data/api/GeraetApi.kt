@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.vertrag.GeraeteKettenAnfrage
-import ch.brickinventoryapp.vertrag.GeraeteSchluesselAntwort
+import ch.brickinventoryapp.vertrag.GeraeteSchluesselAnfrage
+import ch.brickinventoryapp.vertrag.Erledigt
 import ch.brickinventoryapp.vertrag.SchluesselNonce
 import ch.brickinventoryapp.vertrag.SchrittChallenge
 import ch.brickinventoryapp.vertrag.SchrittChallengeAnfrage
@@ -15,7 +15,7 @@ import retrofit2.http.POST
 internal interface GeraetApi {
 
     @POST("api/v1/geraet/schluessel")
-    suspend fun hinterlegeKette(@Body anfrage: GeraeteKettenAnfrage): Response<GeraeteSchluesselAntwort>
+    suspend fun hinterlegeKette(@Body anfrage: GeraeteSchluesselAnfrage): Response<Erledigt>
 
     @POST("api/v1/geraet/schluessel/nonce")
     suspend fun schluesselNonce(): Response<SchluesselNonce>

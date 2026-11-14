@@ -13,7 +13,7 @@ import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks
 import {
   beruehrenMs,
   drossleBeruehren,
-  sitzungHoechstMs,
+  sitzungsfristen,
   sitzungLeerlaufMs,
   sitzungLeerlaufSek,
   sitzungsHoechstdauer,
@@ -222,7 +222,7 @@ function sitzungInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHan
 function sitzung(app: express.Express, speicher: RequestHandler, konto: KontoDienste, k: Konfig): void {
   app.use(speicher);
   app.use(sitzungsVersionPruefen(konto));
-  app.use(sitzungsHoechstdauer(sitzungHoechstMs(k)));
+  app.use(sitzungsHoechstdauer(sitzungsfristen(k)));
 }
 
 function dateienUndBilder(app: express.Express, d: Dienste, konfig: Konfig): void {

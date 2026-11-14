@@ -1,0 +1,92 @@
+# Hält gepinnte Fassungen aktuell: Actions (Commit-SHA), Images in Dockerfile und
+# compose.yaml (Digest), npm der Web-App und Gradle der Android-App. Dependabot statt
+# Renovate, weil es ohne eine zusätzlich installierte App läuft; die renovate.json lag
+# seit dem 2. November ohne einen einzigen PR da (UPGRADE.md, Abschnitt 63).
+# Neue Fassungen erst nach drei Tagen (cooldown): Ein gekapertes Paket fällt meist in
+# dieser Zeit auf. Kleine Sprünge gesammelt, grosse einzeln; montags früh.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Zurich
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directory: /Web-App
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Zurich
+    open-pull-requests-limit: 3
+    groups:
+      images:
+        patterns: ['*']
+        update-types: [patch, minor]
+
+  - package-ecosystem: docker-compose
+    directory: /Web-App
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Zurich
+    open-pull-requests-limit: 3
+    ignore:
+      # Eine neue PostgreSQL-Hauptversion braucht einen Umzug der Daten (POSTGRES-18.md).
+      - dependency-name: postgres
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /Web-App
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Zurich
+    open-pull-requests-limit: 3
+    cooldown:
+      default-days: 3
+    groups:
+      laufzeit:
+        dependency-type: production
+        update-types: [patch, minor]
+      werkzeuge:
+        dependency-type: development
+        update-types: [patch, minor]
+
+  - package-ecosystem: gradle
+    directory: /Android-App
+    schedule:
+      interval: weekly
+      day: monday
+      time: '05:00'
+      timezone: Europe/Zurich
+    open-pull-requests-limit: 3
+    cooldown:
+      default-days: 3
+    ignore:
+      # Bewusst direkt gezogen wegen der 16-KB-Ausrichtung (INVARIANTEN.md); von Hand.
+      - dependency-name: androidx.graphics:graphics-path
+      # Fest eingebaute Texterkennung: ein anderes Artefakt wäre eine Produktentscheidung.
+      - dependency-name: com.google.mlkit:text-recognition
+        update-types: [version-update:semver-major]
+    groups:
+      # AGP, Kotlin, KSP und das Compose-Plugin hängen aneinander.
+      werkzeugkette:
+        patterns:
+          - com.android.tools.build:gradle
+          - org.jetbrains.kotlin*
+          - com.google.devtools.ksp*
+      kleine-spruenge:
+        update-types: [patch, minor]
+        # DataStore einzeln: Die CI misst die 16-KB-Ausrichtung am fertigen APK.
+        exclude-patterns:
+          - androidx.datastore:*

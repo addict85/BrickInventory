@@ -270,7 +270,7 @@ test('Caddy läuft ohne root, caddy-rechte übergibt ihm seine Ordner', () => {
   assert.deepEqual(fehlt, [], 'diese Orte hat caddy-rechte nicht übergeben');
 });
 
-test('Caddy: Aussteller aus dem Startskript, eigene Anfragekennung, /ca.crt im Klartext', () => {
+test('Caddy: Aussteller aus dem Startskript, eigene Anfragekennung, Port 80 leitet nur um', () => {
   const datei = fs
     .readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
     .split('\n')
@@ -283,11 +283,8 @@ test('Caddy: Aussteller aus dem Startskript, eigene Anfragekennung, /ca.crt im K
     'der Aussteller hat eine Vorgabe',
   );
   assert.match(datei, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
-  assert.match(
-    datei,
-    /http:\/\/ \{[\s\S]*@wurzel \{\s*method GET HEAD\s*path \/ca\.crt\s*\}\s*handle @wurzel[\s\S]*redir /,
-    'Port 80 liefert nur GET/HEAD /ca.crt und leitet sonst um',
-  );
+  // Auch /ca.crt nur über HTTPS (routes/zertifikat.ts sagt über HTTP 403, tls-wurzel-db).
+  assert.match(datei, /http:\/\/ \{\s*redir \{\$BRICK_BASE_URL\}\{uri\} 308\s*\}/, 'Port 80 leitet nicht nur um');
   assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
 });
 

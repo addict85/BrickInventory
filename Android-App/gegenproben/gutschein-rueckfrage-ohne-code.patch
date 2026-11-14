@@ -6,11 +6,11 @@ Rot: die Rueckfrage zeigt das Codefeld erst auf Verlangen
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
-@@ -222,7 +222,6 @@ fun PasswortRueckfrage(
+@@ -269,7 +269,6 @@
          Text(text, style = MaterialTheme.typography.bodyMedium)
          PasswortFeld(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
              Modifier.fillMaxWidth())
 -        if (codeNoetig) ZweiterFaktorCodeFeld(code) { code = it }
-         if (fehler != null) FehlerZeile(fehler)
+         if (fehler != null) FehlerZeile(fehler, Modifier.bringIntoViewRequester(meldungSichtbar))
      }
  }
