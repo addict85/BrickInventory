@@ -19,6 +19,11 @@ function quoteIdent(name: string) {
   return `"${name}"`;
 }
 
+/** Ein Nachholen ohne Signal; scheitert es, holt das nächste Signal den Stand. */
+function holeNach(handler: Handler) {
+  Promise.resolve(handler()).catch(logAndContinue('notify:nachholen'));
+}
+
 /** Gesendet wird über den Zugang (senden), gehorcht auf einer eigenen Verbindung. */
 export class Benachrichtigung {
   private readonly _handlers = new Map<string, Eintrag[]>();
@@ -37,6 +42,7 @@ export class Benachrichtigung {
     private readonly senden: (sql: string, p: unknown[]) => Promise<unknown>,
   ) {}
 
+  /** Wirft nie: Ein Fehlschlag plant selbst den nächsten Versuch. */
   private async connect() {
     if (this._connecting || this._client || this._closed) return;
     this._connecting = true;
@@ -66,7 +72,7 @@ export class Benachrichtigung {
       for (const channel of this._handlers.keys()) await c.query(`LISTEN ${quoteIdent(channel)}`);
       // Ein Signal aus der Trennung ist verloren: Die Handler holen einmal nach.
       for (const [channel, hs] of this._handlers) {
-        for (const h of hs) Promise.resolve(h.lauf()).catch(logAndContinue('notify:h'));
+        for (const h of hs) holeNach(h.lauf);
         if (this._client === c) this._lauscht.add(channel);
       }
     } catch (e) {
@@ -95,7 +101,7 @@ export class Benachrichtigung {
     this._retryMs = Math.min(30_000, this._retryMs * 2); // exponentiell, gedeckelt
     this._reconnectTimer = setTimeout(() => {
       this._reconnectTimer = null;
-      this.connect().catch(logAndContinue('notify:connect'));
+      void this.connect();
     }, wait);
     // Ein wartender Reconnect darf den Prozess nicht am Beenden hindern.
     this._reconnectTimer.unref?.();
@@ -111,11 +117,11 @@ export class Benachrichtigung {
     const c = this._client;
     if (c) {
       c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {
-        Promise.resolve(handler()).catch(logAndContinue('notify:handler'));
+        holeNach(handler);
         if (this._client === c) this._lauscht.add(channel);
-      }, logAndContinue('notify:quoteIdent'));
+      }, logAndContinue('notify:listen'));
     } else {
-      this.connect().catch(logAndContinue('notify:connect'));
+      void this.connect();
     }
   }
 

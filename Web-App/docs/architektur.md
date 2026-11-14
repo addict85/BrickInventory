@@ -95,6 +95,24 @@ Absicht, solange es nur von unten gebraucht wird:
   auch für Repositories ohne `tx`-Parameter: Sicherung gegen eine zweite
   Verbindung mitten in der Arbeitseinheit, nicht der Weg, sie zu erkennen.
 
+## Fehler
+
+Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
+
+- **Schreibpfade werfen.** Eine Absage ist ein `Fachfehler` mit `FehlerArt`; den
+  Status wählt `src/http/fehlerArt.ts`. Alles andere fliegt weiter bis zum
+  Fehlerweg des Routers oder des Auftrags.
+- **Lesepfade** mit Teilen, die ausfallen dürfen, nehmen `versuche()` oder
+  `Abstriche` (`src/infra/ergebnis.ts`): Die Antwort nennt sie in `degradiert`.
+- **`logAndContinue`** nur für Nebenwirkungen ohne Folgen für das Ergebnis: Mail
+  und Signal nebenher, Fortschritt und Stand, Aufräumen nach dem eigentlichen
+  Fehler, Herunterfahren. Einen Ersatzwert liefert `meldeUndLiefere` und nennt
+  sein Warum im Code. `test/ratschen.test.js` zählt beide.
+- Ein Signal ist eine **Fehlerklasse** (`StromGeschlossen`, `AuftragVerloren` …),
+  keine Zeichenkette, die der Fänger vergleicht.
+- Der Transaktionswächter (kein Ersatzwert in einer laufenden Transaktion) kommt
+  mit dem Zugang: `erzeugeDb()` setzt ihn, kein Import.
+
 ## Zeilenschutz: was er leistet und was nicht
 
 Der Zeilenschutz (Migrationen 0111, 0112) fängt einen **vergessenen Filter** auf

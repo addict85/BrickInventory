@@ -2,7 +2,7 @@
  * routes/auth/ zusammen. Alles hängt unter /api/v1/auth. */
 import { waechterFuer } from './api_v1/middleware';
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
-import { logAndContinue, meldeFehler } from '../src/infra/fehler';
+import { meldeFehler } from '../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../src/http/httpAntwort';
 import {
   perSitzung,
@@ -171,10 +171,8 @@ export function baueAuthRouter(d: Dienste) {
     '/logout',
     async (req: OffeneAnfrage<'POST /api/v1/auth/logout'>, res: Antwort<'POST /api/v1/auth/logout'>) => {
       const auth = String(req.headers.authorization || '');
-      // Nur loggen: Die Abmeldung darf daran nicht scheitern, still bliebe der Fall
-      // aber unbemerkt.
-      if (auth.startsWith('Bearer '))
-        await d.konto.deleteToken(auth.slice(7)).catch(logAndContinue('logout:token entsorgen'));
+      // Ein Fehler geht an den Client: Hiesse die Abmeldung gelungen, bliebe der Token gültig.
+      if (auth.startsWith('Bearer ')) await d.konto.deleteToken(auth.slice(7));
       // destroy gibt es nur mit Sitzungs-Middleware; die App ruft ohne Cookie auf.
       if (req.session?.destroy)
         return req.session.destroy(() => {

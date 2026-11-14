@@ -1,7 +1,7 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
 import type { Sicht } from '../haushalt';
-import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
+import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
@@ -101,8 +101,7 @@ async function addManualFigIntern(k: FigurenKontext, uid: number, body: Record<s
   await k.katalog.merkeFigur(num, eingabe.name, eingabe.bild, null, k.db, uid);
   // Ohne Menge, Preis und Zustand: Sie stehen in der Erfassung darunter.
   await k.manuelleFiguren.legeFigurManuellAn(uid, num);
-  if (blNum)
-    await k.katalog.merkeEigeneBlNummer(uid, 'fig', num, blNum).catch(logAndContinue(`minifiguren:bl-nummer ${num}`));
+  if (blNum) await k.katalog.merkeEigeneBlNummer(uid, 'fig', num, blNum);
   // Mit dem tatsächlich verwendeten Kaufpreis (Marktpreis oder Schätzung), damit
   // Erfassungshistorie und G&V stimmen.
   await k.bestand.recordAcquisitionForDay('fig', uid, [num], {
@@ -258,10 +257,7 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
       // Ein Name aus der Datei ist eine Eingabe dieses Kontos (katalogPflege.ts).
       await k.katalog.merkeFigur(figNumber, figName, imageUrl, null, k.db, eingetippt ? uid : null);
       await k.manuelleFiguren.legeFigurManuellAn(uid, figNumber);
-      if (blFigNumber)
-        await k.katalog
-          .merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber)
-          .catch(logAndContinue(`minifigs:import ${figNumber} (bl-nummer)`));
+      if (blFigNumber) await k.katalog.merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber);
       await k.bestand.recordAcquisitionForDay('fig', uid, [figNumber], erfassung);
       added++;
       results.push({ fig_number: figNumber, action: 'added', fig_name: figName });

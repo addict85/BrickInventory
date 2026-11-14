@@ -13,7 +13,7 @@ import {
   NutzlastUngueltig,
   type Nutzlast,
 } from '../src/auftraege';
-import { fehlertext, logAndContinue } from '../src/infra/fehler';
+import { fehlertext, logAndContinue, meldeFehler } from '../src/infra/fehler';
 import { konfig } from '../src/infra/konfig';
 
 /** Die Nutzlast kommt geprüft an (src/auftraege/nutzlasten.ts). */
@@ -70,6 +70,11 @@ function fortschrittsKette(d: AuftraegeDienste, a: AuftragsZeile, ac: AbortContr
     });
     return kette;
   };
+}
+
+/** Was nicht mehr läuft, steht sonst bis zum Ablauf der Frist auf 'laeuft'; die Frist heilt auch einen Fehler hier. */
+async function gibZurueck(d: AuftraegeDienste, a: AuftragsZeile): Promise<void> {
+  await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
 }
 
 /** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan. */
@@ -165,7 +170,7 @@ async function unterbrichLaufende(d: AuftraegeDienste, laufend: Map<string, Lauf
   for (const l of alle) if (!l.ac.signal.aborted) l.ac.abort(new AuftragUnterbrochen());
   await Promise.race([Promise.all(alle.map(l => l.fertig)), new Promise(r => setTimeout(r, wartenMs).unref())]);
   const rest = [...laufend.values()];
-  for (const { a } of rest) await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+  for (const { a } of rest) await gibZurueck(d, a);
   return rest;
 }
 
@@ -190,7 +195,7 @@ function erzeugeWorker(d: AuftraegeDienste, bearbeiter: Bearbeitertabelle, o: Wo
     const a = await d.belegeAuftrag(arten, fristSek, belegKennung(), exklusiv, [...laufend.keys()]);
     if (!a) return null;
     if (beendet) {
-      await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+      await gibZurueck(d, a);
       return null;
     }
     const ac = new AbortController();
@@ -232,7 +237,8 @@ function erzeugeWorker(d: AuftraegeDienste, bearbeiter: Bearbeitertabelle, o: Wo
         });
       }
     } catch (e) {
-      logAndContinue('auftraege:belegen')(e);
+      // Die Runde endet; der nächste Takt oder ein NOTIFY versucht es wieder.
+      meldeFehler('auftraege:belegen', e);
     } finally {
       pumpt = false;
       letzteRunde = Date.now();

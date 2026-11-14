@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DAILY_JOBS } from '../auftraege';
 import { PDF_JOB_DIR } from '../infra/appPaths';
-import { meldeFehler, logAndContinue } from '../infra/fehler';
+import { meldeFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import type { VerwaltungKontext } from './kontext';
 
@@ -105,7 +105,7 @@ async function bildKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> 
   // Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz.
   let aktiv = await ab.oder('bilder', k.auftraege.imgDlPending(), 0);
   if (offen === 0 && aktiv > 0) {
-    await k.auftraege.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset'));
+    await k.auftraege.imgDlReset();
     aktiv = 0;
   }
   aktiv = Math.min(aktiv, offen);

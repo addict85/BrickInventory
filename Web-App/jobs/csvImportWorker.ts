@@ -18,6 +18,12 @@ const TASKS = katalogImporte(pool, send);
 
 type Aufgabe = keyof typeof TASKS;
 
+// Der Fehler ist schon gemeldet; ein zweiter beim Schliessen hält den Ausstieg nicht auf.
+async function beendeMitFehler() {
+  await pool.end().catch(logAndContinue('csv-worker:end'));
+  process.exit(1);
+}
+
 process.on('message', async (msg: { task?: string } | null) => {
   const task = String(msg?.task);
   // Was per IPC ankommt, prüft kein Übersetzer: Ohne diese Prüfung wäre
@@ -25,9 +31,7 @@ process.on('message', async (msg: { task?: string } | null) => {
   if (!Object.hasOwn(TASKS, task)) {
     // Geht ins Serverprotokoll, keine Nutzermeldung — deshalb unübersetzt.
     send({ type: 'error', task, error: `Unbekannte Aufgabe: ${task}` });
-    await pool.end().catch(logAndContinue('csv-worker:end'));
-    process.exit(1);
-    return;
+    return beendeMitFehler();
   }
   try {
     const total = await TASKS[task as Aufgabe]();
@@ -37,8 +41,7 @@ process.on('message', async (msg: { task?: string } | null) => {
     process.exit(0);
   } catch (e) {
     send({ type: 'error', task, error: fehlertext(e) });
-    await pool.end().catch(logAndContinue('csv-worker:end'));
-    process.exit(1);
+    await beendeMitFehler();
   }
 });
 

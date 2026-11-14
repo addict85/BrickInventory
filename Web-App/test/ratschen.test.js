@@ -93,19 +93,28 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
-  // logAndContinue liefert nichts; meldeUndLiefere einen Ersatzwert, der wie „leer“
-  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter; Schreibwege
-  // (Preis samt Verlauf, Bildverweis) lassen ihn durch (139 am 13.11.2026, vorher 144);
-  // die übrigen Ersatzwerte begründen sich als „Ausnahme:“ im Code. Gemessen 7 am 11.11.2026.
-  // Gegenprobe (11.11.2026): in src/katalog/farben.ts wieder
-  // `.catch(meldeUndLiefere('x', []))` → rot (8 Ersatzwerte, Schranke 7).
-  const SCHRANKEN = { logAndContinue: 139, meldeUndLiefere: 7 };
+  // Die Regel steht in docs/architektur.md („Fehler“): Schreibpfade werfen, Lesepfade nehmen
+  // versuche()/Abstriche, logAndContinue nur für Nebenwirkungen ohne Folgen; ein Ersatzwert
+  // (meldeUndLiefere) begründet sich als „Ausnahme:“ im Code. Ausserhalb von src/katalog eigene Schranke.
+  // Gegenproben: in src/katalog/farben.ts wieder `.catch(meldeUndLiefere('x', []))` → rot (8, Schranke 7);
+  // (14.11.2026) in routes/auth.ts beim Abmelden wieder `.catch(logAndContinue('x'))` → rot (109 von 108),
+  // mit Gesamtschranke 200 → rot „ausserhalb src/katalog“ (40 von 39).
+  const SCHRANKEN = { logAndContinue: 108, meldeUndLiefere: 7 };
   const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
+  const AUSSERHALB_KATALOG = { logAndContinue: 39 };
+  const imKatalog = (/** @type {string} */ f) => /[\\/]src[\\/]katalog[\\/]/.test(f);
   for (const [name, schranke] of Object.entries(SCHRANKEN)) {
-    const ist = zaehle([new RegExp(`\\b${name}\\(`, 'g')]);
+    const muster = [new RegExp(`\\b${name}\\(`, 'g')];
+    const ist = zaehle(muster);
     assert.ok(ist > MINDESTENS[name], `nur ${ist}-mal ${name} gefunden — greift die Suche noch?`);
     assert.ok(ist <= schranke, `${ist}-mal ${name}, erlaubt sind ${schranke}`);
     if (ist < schranke) console.log(`  ℹ ${name}: ${ist} (Schranke ${schranke}) — Schranke nachziehen`);
+    const aussen = AUSSERHALB_KATALOG[name];
+    if (aussen === undefined) continue;
+    const n = zaehle(muster, f => !imKatalog(f));
+    assert.ok(n > 0 && n < ist, `ausserhalb src/katalog ${n} von ${ist} — greift die Trennung noch?`);
+    assert.ok(n <= aussen, `${n}-mal ${name} ausserhalb src/katalog, erlaubt sind ${aussen}`);
+    if (n < aussen) console.log(`  ℹ ${name} ausserhalb src/katalog: ${n} (Schranke ${aussen}) — Schranke nachziehen`);
   }
   const muster = /\b(?:logAndContinue|meldeUndLiefere)\(/;
   const sets = quellen().filter(f => /[\\/]src[\\/]sets[\\/]/.test(f));

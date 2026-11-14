@@ -176,8 +176,7 @@ export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, q
   // Im Hintergrund fehlende BrickLink-Nummern nachladen; eine leere bl_id heisst „nachgesehen".
   setImmediate(async () => {
     try {
-      if (await k.teileListe.hatUngeseheneBlNummer(uids))
-        k.katalog.fetchMissingBlIds().catch(logAndContinue('teile:fetchMissingBlIds'));
+      if (await k.teileListe.hatUngeseheneBlNummer(uids)) await k.katalog.fetchMissingBlIds();
     } catch (e) {
       meldeFehler('teile:bl-nummern-nachladen', e);
     }

@@ -1,5 +1,8 @@
 /**
  * Die EINE Anmeldung — durchgespielt, nicht gelesen.
+ *
+ * Gegenprobe (14.11.2026): in POST /logout wieder `deleteToken(…).catch(logAndContinue(…))`
+ * → rot: „Ein Token, der gültig bleibt, darf nicht als abgemeldet gelten“ (200 statt 500).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -137,6 +140,20 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
       401,
       'Ein vorgelegter, ungültiger Token muss 401 ergeben — sonst merkt die App den Ablauf nicht',
     );
+
+    // ── 3b. Scheitert das Entwerten, ist die Abmeldung nicht gelungen ───────
+    const konto = require('./helpers/sources').testDienste().konto;
+    const echt = konto.deleteToken;
+    konto.deleteToken = async () => {
+      throw new Error('Datenbank weg');
+    };
+    try {
+      const halb = await ruf('/logout', { method: 'POST', headers: { authorization: `Bearer ${webToken}` } });
+      assert.equal(halb.status, 500, 'Ein Token, der gültig bleibt, darf nicht als abgemeldet gelten');
+      assert.ok(await ablauf(webToken), 'Der Token ist noch da');
+    } finally {
+      konto.deleteToken = echt;
+    }
 
     // ── 4. Abmelden entwertet BEIDES ────────────────────────────────────────
     const ab = await ruf('/logout', {

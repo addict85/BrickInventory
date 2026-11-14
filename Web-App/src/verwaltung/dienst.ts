@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
 import { naechsteUhrzeit, DAILY_JOBS } from '../auftraege';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, meldeFehler, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
+import { fehlertext, meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import {
   anfragenJeMinute,
@@ -100,7 +100,7 @@ export async function bricksetLimitGesetzt(k: VerwaltungKontext, alt: number, ne
 export async function anleitungenNeuEinreihen(k: VerwaltungKontext) {
   const fehlend = await k.verwaltung.setsOhneAnleitung();
   for (const { set_number } of fehlend) {
-    await k.katalog.loescheAnleitungen(set_number).catch(logAndContinue('verwaltung:loescheAnleitungen'));
+    await k.katalog.loescheAnleitungen(set_number);
     await k.auftraege.anleitungEinreihen(set_number);
   }
   return fehlend.length;
@@ -144,22 +144,21 @@ export async function preisJobStand(k: VerwaltungKontext) {
 
 /** false, wenn er schon läuft. */
 export const preisJobJetzt = (k: VerwaltungKontext) => k.auftraege.ziehePlanVor('preise');
-export const fehlendeBilderNachladen = (k: VerwaltungKontext) => {
-  void k.auftraege
-    .stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 })
-    .catch(logAndContinue('verwaltung:bilder nachladen'));
-};
+/** Stellt nur den Auftrag ein; scheitert das, erfährt es der Verwalter statt des Protokolls. */
+export async function fehlendeBilderNachladen(k: VerwaltungKontext): Promise<void> {
+  await k.auftraege.stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 });
+}
 
 export const katalogAbgleichJetzt = (k: VerwaltungKontext) => k.auftraege.ziehePlanVor('csv_sync');
 
 /** Auch über das Tageskontingent hinweg. */
 export async function bricksetWiederholen(k: VerwaltungKontext, sn: string) {
-  await k.katalog.setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
+  await k.katalog.setzeKontingentZurueck('brickset');
   await k.auftraege.bricksetJetzt(sn);
 }
 
 export async function bricksetEntfernen(k: VerwaltungKontext, sn: string) {
-  await ausRetryWarteschlange(sn).catch(logAndContinue('verwaltung:ausRetryWarteschlange'));
+  await ausRetryWarteschlange(sn);
   await k.auftraege.anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 

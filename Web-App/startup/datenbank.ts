@@ -1,5 +1,4 @@
 import type { Db } from '../db/database';
-import { logAndContinue } from '../src/infra/fehler';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine';
 import { altSchluessel, datenSchluessel } from '../src/infra/geheimnis';
 import { konfig } from '../src/infra/konfig';
@@ -82,6 +81,6 @@ export async function bereiteDatenbankVor(db: Db, d: Dienste): Promise<void> {
     );
   await altbestandAufruesten(d);
   await schluesselWechsel(d);
-  await d.katalog.initImageMisses().catch(logAndContinue('db:image_misses'));
-  await d.katalog.initImageQueue().catch(logAndContinue('db:image_wanted'));
+  await d.katalog.initImageMisses();
+  await d.katalog.initImageQueue();
 }

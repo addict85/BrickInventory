@@ -65,11 +65,13 @@ export async function initSchemaOnce(pool: Pool, initSchema: () => Promise<boole
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
-    await client
-      .query(`SELECT pg_advisory_unlock(${LOCKS.SCHEMA_INIT})`)
-      .catch(logAndContinue('db:pg_advisory_unlock'));
-    await client.query('RESET lock_timeout').catch(logAndContinue('db:lock_timeout'));
-    await client.query('RESET statement_timeout').catch(logAndContinue('db:statement_timeout'));
+    // Aufräumen nach dem eigentlichen Ergebnis: Dessen Fehler zählt, nicht einer von hier.
+    for (const sql of [
+      `SELECT pg_advisory_unlock(${LOCKS.SCHEMA_INIT})`,
+      'RESET lock_timeout',
+      'RESET statement_timeout',
+    ])
+      await client.query(sql).catch(logAndContinue(`db:aufräumen ${sql}`));
     client.release();
   }
 }
