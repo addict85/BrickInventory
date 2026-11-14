@@ -38,7 +38,7 @@ class StrongBoxZuerstTest {
     fun `ein anderer Fehler des Keystores faellt nicht auf das TEE zurueck`() {
         val versuche = mutableListOf<Boolean>()
         assertThrows(IllegalStateException::class.java) {
-            strongBoxZuerst<String> { s -> versuche += s; throw IllegalStateException("Keystore") }
+            strongBoxZuerst<String> { s -> versuche += s; error("Keystore") }
         }
         assertEquals(listOf(true), versuche)
     }

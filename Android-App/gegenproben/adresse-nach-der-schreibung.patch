@@ -4,18 +4,19 @@ Test: ch.brickinventoryapp.data.TokenSpeicherwertTest
 Rot: Token und Adresse gelten
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 0287f52..80db91a 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -225,7 +225,6 @@
+@@ -286,7 +286,6 @@ class TokenAblage @Inject constructor(
                  verwaistesToken(platte, alteAdresse)?.let { runCatching { entwertung.get().plane(it) } }
                  _authTokenState.value = ""; _tokenHerkunftState.value = null
              }
 -            _serverUrlState.value = normalized
              dataStore.edit {
-                 it.setzeAngabe(SERVER_URL_ENC, SERVER_URL, normalized)
+                 it.setze(ADRESSE, adresse)
                  if (anderer) {
-@@ -233,6 +232,7 @@
-                     it.remove(USERNAME_ENC); it.remove(ANGEMELDET_AM)
+@@ -294,6 +293,7 @@ class TokenAblage @Inject constructor(
+                     it.remove(ANGEMELDET_AM)
                  }
              }
 +            _serverUrlState.value = normalized

@@ -1,0 +1,18 @@
+Gegenprobe: Der Name eines Pin-Eintrags trägt wieder Host und Port
+Modul: core-data
+Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
+Rot: kein Eintrag nennt den Server
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+index c5ab2dd..f478d8f 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -303,7 +303,7 @@ class GeraeteAblage @Inject constructor(
+ 
+     /** Wo der Pin zu [schluessel] liegt; null, wenn der Schlüssel der Pins gerade nicht arbeitet. */
+     internal fun pinEintrag(schluessel: String): String? =
+-        vertrauenschiffre.name(PIN_PRAEFIX + schluessel)?.let { PIN_NAME_PRAEFIX + it }
++        vertrauenschiffre.name(PIN_PRAEFIX + schluessel)?.let { PIN_NAME_PRAEFIX + it + schluessel }
+ 
+     /**
+      * Pins älterer Fassungen tragen Host und Port im Namen. Derselbe Geheimtext (seine Bindung

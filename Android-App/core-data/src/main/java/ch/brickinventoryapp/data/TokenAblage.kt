@@ -13,6 +13,7 @@ import ch.brickinventoryapp.sicherheit.Geraetesperre
 import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
 import ch.brickinventoryapp.sicherheit.Tresorbefund
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
+import ch.brickinventoryapp.sicherheit.liesGeduldig
 import ch.brickinventoryapp.sicherheit.liesToken
 import ch.brickinventoryapp.sicherheit.pinSchluessel
 import kotlinx.coroutines.CoroutineScope
@@ -57,9 +58,12 @@ class TokenAblage @Inject constructor(
     private val entwertung: Provider<EntwertungsPlaner> = Provider { EntwertungsPlaner {} },
 ) : Tokenspiegel, Tokenuebernahme, CacheBesitzer, Entwertungsquelle, Zugangsdaten, Anmeldestand, Sitzungsende {
     companion object {
-        /** Klartext älterer Fassungen: gelesen, bis der Start ihn nach [SERVER_URL_ENC] übernimmt. */
+        /** Klartext älterer Fassungen: gelesen, bis der Start ihn nach [SERVER_URL_GEHEIM] übernimmt. */
         val SERVER_URL   = stringPreferencesKey("server_url")
+        /** Frühere Fassungen: unter dem Schlüssel der Pins, der auch gesperrt arbeitet. Wie [SERVER_URL]. */
         val SERVER_URL_ENC = stringPreferencesKey("server_url_enc")
+        /** Unter dem Schlüssel der Angaben, der nur entsperrt arbeitet (GeraeteAblage.oeffneAngabe). */
+        val SERVER_URL_GEHEIM = stringPreferencesKey("server_url_geheim")
         /**
          * Das Klartext-Token älterer Fassungen. Es gilt nie als Token, sondern wird nur
          * entfernt: Was im Klartext lag, kann kopiert sein (Sicherung, Dateizugriff).
@@ -68,34 +72,69 @@ class TokenAblage @Inject constructor(
 
         /** Der verschlüsselte Nachfolger. */
         val AUTH_TOKEN_ENC = stringPreferencesKey("auth_token_enc")
-        /** Der Server, der den Token ausgab (NetworkPolicy.herkunft); nur dorthin geht er. */
+        /** Klartext älterer Fassungen, wie [SERVER_URL]. */
         val TOKEN_HERKUNFT = stringPreferencesKey("token_herkunft")
+        /** Der Server, der den Token ausgab (NetworkPolicy.herkunft); nur dorthin geht er. */
+        val TOKEN_HERKUNFT_GEHEIM = stringPreferencesKey("token_herkunft_geheim")
         /** Wann mit Passwort, Passkey oder QR angemeldet wurde; ein Tausch ändert es nicht. */
         val ANGEMELDET_AM = longPreferencesKey("angemeldet_am")
-        /** Klartext älterer Fassungen, wie [SERVER_URL]. */
+        /** Klartext und frühere Form, wie [SERVER_URL] und [SERVER_URL_ENC]. */
         val USERNAME     = stringPreferencesKey("username")
         val USERNAME_ENC = stringPreferencesKey("username_enc")
+        val USERNAME_GEHEIM = stringPreferencesKey("username_geheim")
+
+        private val ADRESSE = Angabe(SERVER_URL_GEHEIM, SERVER_URL_ENC, SERVER_URL)
+        private val NAME = Angabe(USERNAME_GEHEIM, USERNAME_ENC, USERNAME)
+        private val HERKUNFT = Angabe(TOKEN_HERKUNFT_GEHEIM, null, TOKEN_HERKUNFT)
     }
 
-    /** Erst der Geheimtext; der Klartext nur, bis der Start ihn übernommen hat (uebernimmAngaben). */
-    private fun angabe(prefs: Preferences, geheim: Preferences.Key<String>, klar: Preferences.Key<String>): String? =
-        prefs[geheim]?.let { geraet.entschluessleAngabe(it, geheim.name) } ?: prefs[klar]
+    /** Die Rohwerte einer Angabe in allen Formen; ändert sich keiner, ist nichts neu zu lesen. */
+    private fun roh(prefs: Preferences, a: Angabe): List<String?> = listOf(prefs[a.geheim], a.alt?.let { prefs[it] }, prefs[a.klar])
 
-    private fun MutablePreferences.setzeAngabe(geheim: Preferences.Key<String>, klar: Preferences.Key<String>, wert: String) {
-        this[geheim] = geraet.verschluessleAngabe(wert, geheim.name) ?: throw IOException("${geheim.name} nicht verschlüsselbar")
-        remove(klar)
+    /** Eine frühere Form (unter dem Schlüssel der Pins oder Klartext), bis der Start sie übernimmt. */
+    private fun frueher(roh: List<String?>, a: Angabe): String? =
+        a.alt?.let { k -> roh[1]?.let { geraet.entschluessleAlteAngabe(it, k.name) } } ?: roh[2]
+
+    /** Erst der Geheimtext, dann eine frühere Form. Gesperrt heisst warten, nicht „keine Adresse“. */
+    private fun oeffne(roh: List<String?>, a: Angabe): Tresorbefund {
+        val b = roh[0]?.let { geraet.oeffneAngabe(it, a.geheim.name) } ?: Tresorbefund.Weg
+        if (b != Tresorbefund.Weg) return b
+        return frueher(roh, a)?.let { Tresorbefund.Lesbar(it) } ?: Tresorbefund.Weg
     }
 
-    val serverUrl: Flow<String> = dataStore.data.map { adresseAus(it) }
+    /** Ohne zu warten; gesperrt ist hier null wie „nicht da“. */
+    private fun wert(prefs: Preferences, a: Angabe): String? = (oeffne(roh(prefs, a), a) as? Tresorbefund.Lesbar)?.klartext
+
+    /** Wartet bei gesperrtem Gerät auf das Entsperren, wie das Token (liesGeduldig). */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun fluss(a: Angabe): Flow<String> = dataStore.data.map { roh(it, a) }.distinctUntilChanged()
+        .transformLatest { r -> liesGeduldig({ oeffne(r, a) }, null, melde = { emit(it) }, sperre = sperre) }
+
+    private fun verschluessle(a: Angabe, wert: String): String =
+        geraet.verschluessleAngabe(wert, a.geheim.name) ?: throw IOException("${a.geheim.name} gerade nicht verschlüsselbar")
+
+    private fun MutablePreferences.setze(a: Angabe, geheim: String) {
+        this[a.geheim] = geheim
+        a.alt?.let { remove(it) }
+        remove(a.klar)
+    }
+
+    private fun MutablePreferences.entferne(a: Angabe) {
+        remove(a.geheim)
+        a.alt?.let { remove(it) }
+        remove(a.klar)
+    }
+
+    val serverUrl: Flow<String> = fluss(ADRESSE).map(::schemaKlein)
+
+    private fun adresseAus(prefs: Preferences): String = schemaKlein(wert(prefs, ADRESSE) ?: "")
 
     /** Das Schema klein (HTTPs → https), wie es saveServerUrl ablegt. */
-    private fun adresseAus(prefs: Preferences): String {
-        val raw = angabe(prefs, SERVER_URL_ENC, SERVER_URL) ?: ""
-        return if (raw.contains("://")) {
+    private fun schemaKlein(raw: String): String =
+        if (raw.contains("://")) {
             val idx = raw.indexOf("://")
             raw.substring(0, idx).lowercase() + raw.substring(idx)
         } else raw
-    }
     /**
      * Das Bearer-Token im Klartext, nur aus dem verschlüsselten Wert ([AUTH_TOKEN] gilt nie).
      * Ein gesperrter Keystore wird abgewartet und nachgeholt (util/Tresorbefund.liesToken).
@@ -104,7 +143,7 @@ class TokenAblage @Inject constructor(
     val authToken: Flow<String> = dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] }
         .distinctUntilChanged()
         .transformLatest { geheim -> liesToken(tresor, geheim, null, melde = { emit(it) }, sperre = sperre) }
-    val username:  Flow<String> = dataStore.data.map { angabe(it, USERNAME_ENC, USERNAME) ?: "" }
+    val username:  Flow<String> = fluss(NAME)
 
     // ── In-Memory-Cache für den OkHttp-Interceptor ────────────────────────────
     // Der Interceptor läuft auf OkHttp-Dispatcher-Threads und darf dort nicht
@@ -193,11 +232,15 @@ class TokenAblage @Inject constructor(
     init {
         // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
         // die nicht über die save-Funktionen kamen (Umschlüsseln beim Start).
-        spiegle<String, String>(::adresseAus, _serverUrlState) { r, melde -> melde(r) }
+        spiegle<List<String?>, String>({ roh(it, ADRESSE) }, _serverUrlState) { r, melde ->
+            liesGeduldig({ oeffne(r, ADRESSE) }, null, melde = { melde(schemaKlein(it)) }, sperre = sperre)
+        }
         spiegle<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { geheim, melde ->
             liesToken(tresor, geheim, null, melde, sperre = sperre)
         }
-        spiegle<String?, String?>({ it[TOKEN_HERKUNFT] }, _tokenHerkunftState) { r, melde -> melde(r) }
+        spiegle<List<String?>, String?>({ roh(it, HERKUNFT) }, _tokenHerkunftState) { r, melde ->
+            liesGeduldig({ oeffne(r, HERKUNFT) }, null, melde = { melde(it.ifEmpty { null }) }, sperre = sperre)
+        }
         prefsScope.launch {
             try {
                 geraet.bereiteVor()
@@ -231,8 +274,10 @@ class TokenAblage @Inject constructor(
             // Entschieden wird über die Platte, nicht über den Speicher: Bei gesperrtem
             // Keystore meldet der Speicher "", das Token liegt aber noch da (Tresorbefund).
             val platte = dataStore.data.first()
+            // Vor allem anderen: Lässt sie sich nicht ablegen, bleibt alles beim alten Server.
+            val adresse = verschluessle(ADRESSE, normalized)
             val alteAdresse = serverUrlJetzt()
-            val herkunft = platte[TOKEN_HERKUNFT] ?: _tokenHerkunftState.value ?: alteAdresse
+            val herkunft = wert(platte, HERKUNFT) ?: _tokenHerkunftState.value ?: alteAdresse
             val hatToken = platte[AUTH_TOKEN_ENC] != null || tokenJetzt().isNotBlank()
             val anderer = hatToken &&
                 (!NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
@@ -243,10 +288,10 @@ class TokenAblage @Inject constructor(
             }
             _serverUrlState.value = normalized
             dataStore.edit {
-                it.setzeAngabe(SERVER_URL_ENC, SERVER_URL, normalized)
+                it.setze(ADRESSE, adresse)
                 if (anderer) {
-                    it.remove(AUTH_TOKEN); it.remove(AUTH_TOKEN_ENC); it.remove(TOKEN_HERKUNFT); it.remove(USERNAME)
-                    it.remove(USERNAME_ENC); it.remove(ANGEMELDET_AM)
+                    it.remove(AUTH_TOKEN); it.remove(AUTH_TOKEN_ENC); it.entferne(HERKUNFT); it.entferne(NAME)
+                    it.remove(ANGEMELDET_AM)
                 }
             }
         }
@@ -259,7 +304,7 @@ class TokenAblage @Inject constructor(
      */
     private fun verwaistesToken(platte: Preferences, alteAdresse: String): Entwertungsauftrag? {
         val geheim = platte[AUTH_TOKEN_ENC] ?: return null
-        val herkunft = platte[TOKEN_HERKUNFT] ?: NetworkPolicy.herkunft(alteAdresse)
+        val herkunft = wert(platte, HERKUNFT) ?: NetworkPolicy.herkunft(alteAdresse)
         if (alteAdresse.isBlank() || herkunft == null || herkunft != NetworkPolicy.herkunft(alteAdresse)) return null
         return Entwertungsauftrag(alteAdresse, geheim, pinSchluessel(alteAdresse)?.let(geraet::pin), herkunft)
     }
@@ -270,8 +315,8 @@ class TokenAblage @Inject constructor(
      */
     private suspend fun bindeAltbestand() {
         dataStore.edit { p ->
-            if (p[AUTH_TOKEN_ENC] == null || p[TOKEN_HERKUNFT] != null) return@edit
-            NetworkPolicy.herkunft(adresseAus(p))?.let { p[TOKEN_HERKUNFT] = it; _tokenHerkunftState.value = it }
+            if (p[AUTH_TOKEN_ENC] == null || roh(p, HERKUNFT).any { it != null }) return@edit
+            NetworkPolicy.herkunft(adresseAus(p))?.let { p.setze(HERKUNFT, verschluessle(HERKUNFT, it)); _tokenHerkunftState.value = it }
         }
     }
 
@@ -289,13 +334,15 @@ class TokenAblage @Inject constructor(
      * bei einer Anmeldung: Ein Tausch verlängert die Höchstdauer nicht.
      */
     private suspend fun schreibeToken(token: String, herkunft: String?, angemeldetAm: Long?) {
+        // Erst verschlüsseln: Scheitert es (gesperrt), stehen Speicher und Platte noch beim alten.
+        val geheim = tresor.verschluessle(token)
+        val herkunftGeheim = herkunft?.let { verschluessle(HERKUNFT, it) }
         _tokenHerkunftState.value = herkunft
         _authTokenState.value = token
-        val geheim = tresor.verschluessle(token)
         dataStore.edit {
             it[AUTH_TOKEN_ENC] = geheim
             it.remove(AUTH_TOKEN)
-            if (herkunft != null) it[TOKEN_HERKUNFT] = herkunft else it.remove(TOKEN_HERKUNFT)
+            if (herkunftGeheim != null) it.setze(HERKUNFT, herkunftGeheim) else it.entferne(HERKUNFT)
             if (angemeldetAm != null) it[ANGEMELDET_AM] = angemeldetAm
         }
     }
@@ -310,7 +357,7 @@ class TokenAblage @Inject constructor(
 
     /** Für den Tausch: Herkunft wie im Wächter — ohne Bindung keine, dann tauscht nichts. */
     override suspend fun tokenStand(): TokenStand {
-        val herkunft = _tokenHerkunftState.value ?: dataStore.data.first()[TOKEN_HERKUNFT]
+        val herkunft = _tokenHerkunftState.value ?: wert(dataStore.data.first(), HERKUNFT)
         return TokenStand(tokenJetzt(), herkunft, tokenSchranke.generation)
     }
 
@@ -359,12 +406,19 @@ class TokenAblage @Inject constructor(
         dataStore.edit { umschluesseln(it) }
     }
 
-    /** Adresse und Name im Klartext älterer Fassungen verschlüsselt ablegen; scheitert es, beim nächsten Start. */
+    /**
+     * Adresse, Name und Herkunft früherer Fassungen (Klartext oder unter dem Schlüssel der Pins)
+     * unter den Schlüssel der Angaben; scheitert es (gesperrt), beim nächsten Start. Die frühere
+     * Form geht erst, wenn die neue dasteht: Nichts geht verloren.
+     */
     private fun uebernimmAngaben(prefs: MutablePreferences) {
-        for ((geheim, klar) in listOf(SERVER_URL_ENC to SERVER_URL, USERNAME_ENC to USERNAME)) {
-            val wert = prefs[klar] ?: continue
-            if (prefs[geheim] == null) geraet.verschluessleAngabe(wert, geheim.name)?.let { prefs[geheim] = it } ?: continue
-            prefs.remove(klar)
+        for (a in listOf(ADRESSE, NAME, HERKUNFT)) {
+            if (prefs[a.geheim] == null) {
+                val vorher = frueher(roh(prefs, a), a) ?: continue
+                prefs[a.geheim] = geraet.verschluessleAngabe(vorher, a.geheim.name) ?: continue
+            }
+            a.alt?.let { prefs.remove(it) }
+            prefs.remove(a.klar)
         }
     }
 
@@ -380,7 +434,8 @@ class TokenAblage @Inject constructor(
         if (!tresor.veraltet(neu)) prefs[AUTH_TOKEN_ENC] = neu
     }
     suspend fun saveUsername(name: String) {
-        dataStore.edit { it.setzeAngabe(USERNAME_ENC, USERNAME, name) }
+        val geheim = verschluessle(NAME, name)
+        dataStore.edit { it.setze(NAME, geheim) }
     }
 
     /** Der Geheimtext wie abgelegt, nur für den Server seiner Bindung; nie im Klartext. */
@@ -388,7 +443,7 @@ class TokenAblage @Inject constructor(
         val platte = dataStore.data.first()
         val geheim = platte[AUTH_TOKEN_ENC] ?: return null
         val server = serverUrlJetzt().ifBlank { return null }
-        val herkunft = platte[TOKEN_HERKUNFT] ?: return null
+        val herkunft = wert(platte, HERKUNFT) ?: return null
         if (herkunft != NetworkPolicy.herkunft(server)) return null
         return Entwertungsauftrag(server, geheim, pinSchluessel(server)?.let(geraet::pin), herkunft)
     }
@@ -401,12 +456,18 @@ class TokenAblage @Inject constructor(
             // Abmelden über den Altbestand wieder angemeldet.
             it.remove(AUTH_TOKEN)
             it.remove(AUTH_TOKEN_ENC)
-            it.remove(TOKEN_HERKUNFT)
-            it.remove(USERNAME)
-            it.remove(USERNAME_ENC)
+            it.entferne(HERKUNFT)
+            it.entferne(NAME)
             it.remove(ANGEMELDET_AM)
             // Die Marke des Preisalarms gehört dem Konto; das nächste bekäme sonst dessen Stand.
             it.remove(GeraeteAblage.ALARM_MARKE)
         }
     }
 }
+
+/** Eine Angabe in ihren Formen: [geheim] jetzt, [alt] unter dem Schlüssel der Pins, [klar] im Klartext. */
+private class Angabe(
+    val geheim: Preferences.Key<String>,
+    val alt: Preferences.Key<String>?,
+    val klar: Preferences.Key<String>,
+)
