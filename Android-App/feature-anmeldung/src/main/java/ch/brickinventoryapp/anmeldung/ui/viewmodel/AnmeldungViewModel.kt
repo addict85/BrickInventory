@@ -21,7 +21,7 @@ import ch.brickinventoryapp.sicherheit.hostVon
 import ch.brickinventoryapp.sicherheit.pruefeRpId
 import kotlinx.serialization.json.Json
 import ch.brickinventoryapp.vertrag.LoginResponse
-import ch.brickinventoryapp.vertrag.verwalter
+import ch.brickinventoryapp.vertrag.abbildung.verwalter
 import ch.brickinventoryapp.vertrag.PASSKEY_ANMELDEN
 import ch.brickinventoryapp.vertrag.PASSKEY_ZWEITER_FAKTOR
 import ch.brickinventoryapp.anmeldung.ui.PasskeyAbfrage
