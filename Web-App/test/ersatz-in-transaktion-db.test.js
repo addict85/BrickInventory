@@ -14,6 +14,8 @@
  *   Datenbank wirft er in Tests“.
  * - database.ts: `vomSicherungspunktAufgefangen.add(e)` entfernt → rot:
  *   „hinter einem Sicherungspunkt gilt der Ersatz“.
+ * - (14.11.2026) database.ts: setzeTransaktionsWaechter() in erzeugeDb gestrichen → rot:
+ *   „ein Datenbankfehler geht weiter“, „ausserhalb der Datenbank wirft er in Tests“.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */

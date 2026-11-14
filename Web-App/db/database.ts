@@ -5,7 +5,7 @@ import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolConfig, QueryResult } from 'pg';
 import { Benachrichtigung } from './pgNotify';
 import type { DbSchnittstelle } from './typen';
-import { fehlerCode, meldeFehler } from '../src/infra/fehler';
+import { fehlerCode, meldeFehler, setzeTransaktionsWaechter } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung, systemVerbindung } from '../src/infra/konfig';
 import { zeilenKontext } from '../src/infra/kontoKontext';
 import { queryWithRetry, istLesend } from './wiederholung';
@@ -18,6 +18,7 @@ import {
   mitCommitBegleiter,
   innereTransaktion,
   NebenDerTransaktion,
+  TRANSAKTIONS_WAECHTER,
   type TxStand,
 } from './transaktion';
 import { initSchema, initSchemaOnce, DARF_SCHEMA_AENDERN, type Erststart } from './schemaStart';
@@ -112,6 +113,8 @@ export interface Db extends DbSchnittstelle {
 /** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
  * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
 export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
+  // Erst mit einem Zugang gibt es Transaktionen; ein Import allein ändert infra/ nicht.
+  setzeTransaktionsWaechter(TRANSAKTIONS_WAECHTER);
   // Pipeline: abfrage() schickt BEGIN mit Kontext, Abfrage und COMMIT zugleich, ein Roundtrip statt drei.
   const pool = new Pool({ ...k.verbindung, ...k.pool, pipeline: true });
   // Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
