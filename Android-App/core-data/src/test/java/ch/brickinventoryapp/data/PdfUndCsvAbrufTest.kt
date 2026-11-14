@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.testing.SetDateienRepository
 import ch.brickinventoryapp.testing.TestApi

@@ -4,12 +4,13 @@ Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: die Kantenregel verbietet Bereich an Bereich
 
 diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
+index 8632c80..257cd33 100644
 --- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
 +++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
-@@ -49,7 +49,7 @@
+@@ -88,7 +88,7 @@ object Modulkanten {
              // api reicht ein Modul an jeden weiter, der dieses kennt; nur die Modelle sind gemeinsame Sprache.
-             k.konfiguration == "api" && k.nach != "core-model" ->
-                 "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
+             k.konfiguration == "api" && k.nach !in setOf("core-model", "core-vertrag") ->
+                 "Modulkanten per api nur zu core-model und core-vertrag: ${k.von} → ${k.nach}"
 -            k.nurTest -> null
 +            false -> null
              k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"

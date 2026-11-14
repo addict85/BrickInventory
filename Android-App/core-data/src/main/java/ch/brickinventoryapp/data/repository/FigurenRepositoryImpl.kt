@@ -10,19 +10,19 @@ import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.model.data.model.AddMinifigRequest
-import ch.brickinventoryapp.model.data.model.AddMinifigResponse
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.GenericResponse
-import ch.brickinventoryapp.model.data.model.LagerortRequest
-import ch.brickinventoryapp.model.data.model.LagerortResponse
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
-import ch.brickinventoryapp.model.data.model.VerwendendeSetsResponse
+import ch.brickinventoryapp.vertrag.AddMinifigRequest
+import ch.brickinventoryapp.vertrag.AddMinifigResponse
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.GenericResponse
+import ch.brickinventoryapp.vertrag.LagerortRequest
+import ch.brickinventoryapp.vertrag.LagerortResponse
+import ch.brickinventoryapp.vertrag.Minifig
+import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
+import ch.brickinventoryapp.vertrag.VerwendendeSetsResponse
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
+import ch.brickinventoryapp.vertrag.MinifigStatsResponse
 
 /**
  * Minifiguren aus Sets und manuell erfasste — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.

@@ -7,7 +7,7 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
-import ch.brickinventoryapp.model.data.model.AddSetResponse
+import ch.brickinventoryapp.vertrag.AddSetResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.testing.KatalogRepository
 import kotlinx.coroutines.flow.first

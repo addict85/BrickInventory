@@ -2,16 +2,16 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.model.data.model.AddSetRequest
-import ch.brickinventoryapp.model.data.model.GenericResponse
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.MerkpostenAntwort
-import ch.brickinventoryapp.model.data.model.MerkpostenInhaberAntwort
-import ch.brickinventoryapp.model.data.model.MerkpostenInhaberRequest
-import ch.brickinventoryapp.model.data.model.MerkpostenPreiseResponse
-import ch.brickinventoryapp.model.data.model.MerkpostenRequest
-import ch.brickinventoryapp.model.data.model.MerkpostenUebernahmeRequest
-import ch.brickinventoryapp.model.data.model.MerkpostenUebernahmeResponse
+import ch.brickinventoryapp.vertrag.AddSetRequest
+import ch.brickinventoryapp.vertrag.GenericResponse
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.MerkpostenAntwort
+import ch.brickinventoryapp.vertrag.MerkpostenInhaberAntwort
+import ch.brickinventoryapp.vertrag.MerkpostenInhaberRequest
+import ch.brickinventoryapp.vertrag.MerkpostenPreiseResponse
+import ch.brickinventoryapp.vertrag.MerkpostenRequest
+import ch.brickinventoryapp.vertrag.MerkpostenUebernahmeRequest
+import ch.brickinventoryapp.vertrag.MerkpostenUebernahmeResponse
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal

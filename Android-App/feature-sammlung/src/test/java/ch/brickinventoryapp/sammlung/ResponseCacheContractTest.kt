@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.sammlung
 
-import ch.brickinventoryapp.model.data.model.MinifigsResponse
-import ch.brickinventoryapp.model.data.model.SetsResponse
-import ch.brickinventoryapp.model.data.model.ValuationSet
-import ch.brickinventoryapp.model.data.model.StatsResponse
+import ch.brickinventoryapp.vertrag.MinifigsResponse
+import ch.brickinventoryapp.vertrag.SetsResponse
+import ch.brickinventoryapp.vertrag.ValuationSet
+import ch.brickinventoryapp.vertrag.StatsResponse
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Minifig
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.Minifig
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 

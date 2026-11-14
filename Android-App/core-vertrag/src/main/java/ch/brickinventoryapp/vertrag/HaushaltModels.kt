@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.data.model
+package ch.brickinventoryapp.vertrag
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 /**
  * Haushalt, Erfassungen und Verschieben — ein Sachgebiet der Modelle. Getrennte
  * Dateien, damit parallele Änderungen nicht immer dieselbe Datei berühren; das
- * Paket bleibt ch.brickinventoryapp.model.data.model, Kotlin bindet an das Paket, nicht
+ * Paket bleibt ch.brickinventoryapp.vertrag, Kotlin bindet an das Paket, nicht
  * an die Datei.
  */
 

@@ -170,10 +170,10 @@ jobs:
       - name: Unit-Tests
         # Mitschnitt, weil Gradle den roten Test einmal mitten ins Protokoll
         # schreibt; pipefail, sonst bestimmt tee den Rückgabewert. core-model
-        # ist reines Kotlin und hat `test` statt testDebugUnitTest.
+        # und core-vertrag sind reines Kotlin und haben `test` statt testDebugUnitTest.
         run: |
           set -o pipefail
-          ./gradlew --no-daemon testDebugUnitTest :core-model:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
+          ./gradlew --no-daemon testDebugUnitTest :core-model:test :core-vertrag:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
 
       # Das Vergleichsbild liegt nur als Artefakt vor, das hier nicht abrufbar ist:
       # Lage und Grösse der Abweichung je rotem Foto stehen deshalb im Log.
@@ -433,7 +433,7 @@ jobs:
       sha256_apk: ${{ needs.build.outputs.sha256_apk }}
       sha256_aab: ${{ needs.build.outputs.sha256_aab }}
 
-  # Die Modelle aus core-model gegen den Vertrag des Servers, auch hier: Ein Android-Lauf
+  # Die Modelle aus core-vertrag gegen den Vertrag des Servers, auch hier: Ein Android-Lauf
   # soll selbst rot sein, wenn ein Modell den Vertrag nicht mehr lesen kann.
   vertrag:
     if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
@@ -533,7 +533,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys \
-            testDebugUnitTest :core-model:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
+            testDebugUnitTest :core-model:test :core-vertrag:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys

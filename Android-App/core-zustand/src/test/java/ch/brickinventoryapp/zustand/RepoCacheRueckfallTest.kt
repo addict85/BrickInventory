@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
+import ch.brickinventoryapp.vertrag.CatalogMetaResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest

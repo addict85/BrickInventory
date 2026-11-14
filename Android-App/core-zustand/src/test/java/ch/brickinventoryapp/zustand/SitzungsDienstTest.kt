@@ -4,9 +4,9 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
-import ch.brickinventoryapp.model.data.model.AppThemeResponse
-import ch.brickinventoryapp.model.data.model.SettingsResponse
-import ch.brickinventoryapp.model.data.model.UserSettings
+import ch.brickinventoryapp.vertrag.AppThemeResponse
+import ch.brickinventoryapp.vertrag.SettingsResponse
+import ch.brickinventoryapp.vertrag.UserSettings
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -15,9 +15,9 @@ import ch.brickinventoryapp.sitzung.Kontowerte
 import ch.brickinventoryapp.sitzung.Sitzung
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
-import ch.brickinventoryapp.model.data.model.MeResponse
-import ch.brickinventoryapp.model.data.model.StartupStatus
-import ch.brickinventoryapp.model.data.model.User
+import ch.brickinventoryapp.vertrag.MeResponse
+import ch.brickinventoryapp.vertrag.StartupStatus
+import ch.brickinventoryapp.vertrag.User
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sitzung.Abmeldevorgang
 import ch.brickinventoryapp.sitzung.SitzungsDienst

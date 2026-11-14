@@ -2,7 +2,7 @@ package ch.brickinventoryapp.dienste
 
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
+import ch.brickinventoryapp.vertrag.CsvImportStatus
 import ch.brickinventoryapp.dienste.service.folgeStrom
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.flow

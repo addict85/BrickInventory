@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.data.model.AddMinifigRequest
-import ch.brickinventoryapp.model.data.model.AddPartRequest
-import ch.brickinventoryapp.model.data.model.AddSetRequest
-import ch.brickinventoryapp.model.data.model.MerkpostenRequest
-import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
+import ch.brickinventoryapp.vertrag.AddMinifigRequest
+import ch.brickinventoryapp.vertrag.AddPartRequest
+import ch.brickinventoryapp.vertrag.AddSetRequest
+import ch.brickinventoryapp.vertrag.MerkpostenRequest
+import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi

@@ -1,13 +1,11 @@
 package ch.brickinventoryapp.model.ui.model
 
-import ch.brickinventoryapp.model.data.model.AppToken
-import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_VOLL
-
 /**
  * Ein angemeldetes Gerät, wie die Geräteliste es zeigt. Die Frist ist schon
  * entschieden: Von gleitender und fester Frist zählt die frühere — der Tag, an
  * dem das Gerät ausgesperrt wird.
  */
+
 data class GeraetAnsicht(
     val tokenId: String,
     val bezeichnung: String,
@@ -18,16 +16,4 @@ data class GeraetAnsicht(
     val laeuftAb: String?,
     val vollerZugriff: Boolean,
     val ipBereich: String?,
-)
-
-fun AppToken.alsGeraet(): GeraetAnsicht = GeraetAnsicht(
-    tokenId = tokenId,
-    bezeichnung = label?.takeIf { it.isNotBlank() } ?: "—",
-    aktuell = aktuell,
-    angelegt = createdAt,
-    zuletztBenutzt = lastUsed,
-    // ISO-Zeitstempel lassen sich als Text vergleichen.
-    laeuftAb = listOfNotNull(expiresAt.takeUnless { neverExpires }, hardExpiresAt).minOrNull(),
-    vollerZugriff = scope == TOKEN_SCOPE_VOLL,
-    ipBereich = ipBereich?.takeIf { it.isNotBlank() },
 )

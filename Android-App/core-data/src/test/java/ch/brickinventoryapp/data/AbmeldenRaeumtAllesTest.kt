@@ -13,8 +13,8 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.testing.Testablage
-import ch.brickinventoryapp.model.data.model.SetItem
-import ch.brickinventoryapp.model.data.model.StatsResponse
+import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.vertrag.StatsResponse
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.data.repository.KontoDatenLoeschung
 import ch.brickinventoryapp.zustand.ui.Abmeldehaken

@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.data.model
+package ch.brickinventoryapp.vertrag
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

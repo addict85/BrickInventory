@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model
+package ch.brickinventoryapp.vertrag
 
 import org.junit.Assert.assertEquals
 import java.lang.reflect.Method
@@ -9,26 +9,26 @@ import java.lang.reflect.WildcardType
 /**
  * Baut Server-Modelle, in denen jedes Feld einen eigenen Wert hat, und
  * vergleicht sie mit ihrer Ansicht — über Java-Reflexion, damit jede neue
- * Abbildung in ui/model ohne eigenen Test mitgeprüft wird.
+ * Abbildung in vertrag/abbildung ohne eigenen Test mitgeprüft wird.
  */
 object Beispielfueller {
     private var zaehler = 0
 
     /**
-     * Die Dateien in ui/model mit Abbildungen, beim Namen genannt: Unter Gradle
+     * Die Dateien in vertrag/abbildung, beim Namen genannt: Unter Gradle
      * liegen die Hauptklassen in einem Jar, ein Ordner-Durchgang fand dort nichts.
      * Dass die Liste vollständig ist, prüft UiModellAbbildungTest am Quelltext.
      */
     val ABBILDUNGSDATEIEN = listOf(
-        "EinzelAnsichten", "FinanzAnsichten", "GutscheinKlartextAnsicht", "HaushaltAnsichten", "HintergrundAnsichten",
-        "KatalogAnsichten", "KontoAnsichten", "PreisAnsichten", "SetAnsichten", "TeileAnsichten", "VerwaltungAnsichten",
+        "EinzelAbbildungen", "FinanzAbbildungen", "GutscheinKlartextAbbildung", "HaushaltAbbildungen", "HintergrundAbbildungen",
+        "KatalogAbbildungen", "KontoAbbildungen", "PreisAbbildungen", "SetAbbildungen", "TeileAbbildungen", "VerwaltungAbbildungen",
     )
 
-    /** Alle `alsAnsicht(<data.model.X>)` der Dateien in [ABBILDUNGSDATEIEN]. */
+    /** Alle `alsAnsicht(<vertrag.X>)` der Dateien in [ABBILDUNGSDATEIEN]. */
     fun abbildungen(): List<Method> {
-        return ABBILDUNGSDATEIEN.map { Class.forName("ch.brickinventoryapp.model.ui.model.${it}Kt") }
+        return ABBILDUNGSDATEIEN.map { Class.forName("ch.brickinventoryapp.vertrag.abbildung.${it}Kt") }
             .flatMap { k -> k.methods.filter { it.name == "alsAnsicht" && it.parameterCount == 1 } }
-            .filter { it.parameterTypes[0].name.startsWith("ch.brickinventoryapp.model.data.model.") && !it.parameterTypes[0].isEnum }
+            .filter { it.parameterTypes[0].name.startsWith("ch.brickinventoryapp.vertrag.") && !it.parameterTypes[0].isEnum }
             .sortedBy { it.parameterTypes[0].name }
     }
 

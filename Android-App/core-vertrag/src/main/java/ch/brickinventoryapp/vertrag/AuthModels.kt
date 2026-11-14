@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.data.model
+package ch.brickinventoryapp.vertrag
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.DesignOderNichts
@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Anmeldung, Konto und Sitzung. Die Modelle liegen je Sachgebiet in einer Datei,
- * alle im Paket data.model.
+ * alle im Paket vertrag.
  */
 
 /**

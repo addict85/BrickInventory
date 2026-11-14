@@ -5,12 +5,12 @@ import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.data.api.KatalogApi
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
+import ch.brickinventoryapp.vertrag.CatalogMetaResponse
+import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
+import ch.brickinventoryapp.vertrag.CatalogSetsResponse
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.vertrag.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.

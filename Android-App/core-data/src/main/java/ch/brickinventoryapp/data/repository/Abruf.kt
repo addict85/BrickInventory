@@ -7,7 +7,7 @@ import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Fach
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.Offlineablage.Wirkung
-import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.vertrag.Fehlercode
 import retrofit2.Response
 import ch.brickinventoryapp.netz.util.KlartextAbgelehnt
 

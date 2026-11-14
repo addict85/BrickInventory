@@ -1,5 +1,6 @@
-package ch.brickinventoryapp.model.data.model
+package ch.brickinventoryapp.vertrag
 
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
@@ -7,7 +8,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Preise, Bewertung, Verlauf und Gewinn/Verlust. Die Modelle liegen je Sachgebiet
- * in einer Datei, alle im Paket data.model.
+ * in einer Datei, alle im Paket vertrag.
  */
 
 @Serializable

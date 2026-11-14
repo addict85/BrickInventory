@@ -4,12 +4,12 @@ import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.data.model.SetAggregate
+import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
 import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

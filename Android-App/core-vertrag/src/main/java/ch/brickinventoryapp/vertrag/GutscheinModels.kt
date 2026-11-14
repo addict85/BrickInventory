@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.data.model
+package ch.brickinventoryapp.vertrag
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import kotlinx.serialization.SerialName
@@ -108,12 +108,6 @@ data class GutscheinRequest(
     val amount: Double,
     val currency: Waehrung = Waehrung.CHF,
 )
-
-/** So steht ein vorhandener PIN in jeder Gutschein-Antwort; PUT nimmt ihn als „unverändert“. */
-const val GUTSCHEIN_PIN_MASKE = "•••"
-
-/** Ob [nummer] die Maske des Servers ist („…1234“) und nicht die Kartennummer. */
-fun istGutscheinMaske(nummer: String): Boolean = nummer.startsWith("…")
 
 /**
  * Nummer und PIN im Klartext (POST /vouchers/{id}/klartext). Nur nach Passwort

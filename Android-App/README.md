@@ -289,7 +289,7 @@ R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
 Konstruktor und `doWork()` und Rooms Datenbank-Konstruktoren. Die API-Modelle
 werden umbenannt; ihre Serializer hält die Regel von kotlinx.serialization, und
-`tools/apk-pruefen.py` prüft am fertigen APK, dass `data.model.SetItem` nicht
+`tools/apk-pruefen.py` prüft am fertigen APK, dass `vertrag.SetItem` nicht
 mehr unter seinem Namen steht.
 
 **PDFs im isolierten Prozess:** `PdfRenderer` (pdfium) läuft nur in
@@ -339,11 +339,12 @@ Modulkanten und echte Zusatzabhängigkeiten:
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
 des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
-`core-model` bleibt reines Kotlin (`brickinventory.jvm.library`).
+`core-model` und `core-vertrag` bleiben reines Kotlin (`brickinventory.jvm.library`).
 
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
-| `core-model` | `ch.brickinventoryapp.model` | Server- und UI-Modelle, reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
+| `core-model` | `ch.brickinventoryapp.model` | Fach- und Anzeigetypen (Ansichten), reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
+| `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers (`@Serializable`), `Fehlercode`, und unter `vertrag.abbildung` ihre Abbildung auf die Ansichten in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt |
 | `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
 | `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
 | `core-sicherheit` | `ch.brickinventoryapp.sicherheit` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |

@@ -5,8 +5,8 @@ import ch.brickinventoryapp.data.CsvImportBeobachter
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
-import ch.brickinventoryapp.model.data.model.GenericAdminResponse
+import ch.brickinventoryapp.vertrag.CsvImportStatus
+import ch.brickinventoryapp.vertrag.GenericAdminResponse
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
 import kotlinx.coroutines.Dispatchers

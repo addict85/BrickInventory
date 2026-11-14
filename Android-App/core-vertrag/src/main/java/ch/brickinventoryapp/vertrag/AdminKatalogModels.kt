@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.data.model
+package ch.brickinventoryapp.vertrag
 
 import ch.brickinventoryapp.model.fach.Laufstatus
 import kotlinx.serialization.SerialName
@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 /**
  * Monitoring, Grenzwerte, Einstellungen und Katalog — ein Sachgebiet der Modelle.
  * Getrennte Dateien, damit parallele Änderungen nicht immer dieselbe Datei
- * berühren; das Paket bleibt ch.brickinventoryapp.model.data.model, Kotlin bindet an das
+ * berühren; das Paket bleibt ch.brickinventoryapp.vertrag, Kotlin bindet an das
  * Paket, nicht an die Datei.
  */
 

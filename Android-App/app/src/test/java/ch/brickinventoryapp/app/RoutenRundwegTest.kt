@@ -7,7 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeZiel

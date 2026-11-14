@@ -43,7 +43,7 @@ und quittiert. Test: `ManualEntryAfterScanTest`
 
 **Zwei Preisfelder.** Sets schicken `purchase_price`, Teile und Figuren `unit_price`; der
 Rumpf entsteht nur über `fuerSet()` bzw. `fuerStueck()`.
-Datei: `model/data/model/HaushaltModels.kt` · Test: `KaeufeViewModelTest`
+Datei: `vertrag/HaushaltModels.kt` · Test: `KaeufeViewModelTest`
 
 ## Sitzung und Netz
 
@@ -108,6 +108,8 @@ in fester Schichtung (build-logic, `Modulkanten`). Zustand und alles darunter oh
 (`ohneOberflaeche`); die Bereiche bekommen die App nur als `Bereichsumgebung` aus einzelnen
 Flüssen und Rückrufen, nie den AppViewModel. Ein ViewModel liegt nur mit Grund in
 core-zustand (`zustandsViewModels`).
+Das Wire-Format liegt in core-vertrag (kennt core-model, nicht umgekehrt); Bereiche nehmen
+Ansichten, ihre Importe aus core-vertrag sind eine Ratsche.
 Datei: `navigation/Bereichsumgebung.kt` · Tests: `ModulgrenzenTest`, `SchichtregelnTest`
 
 **Bildschirme sind zustandslos.** Nur ein Composable `…Route` nimmt ein ViewModel und reicht
@@ -177,7 +179,7 @@ Test: `PriceChartMathTest`
 
 **Bewertung je Erfassung.** Jede Erfassung mit dem Marktpreis ihres Zustands; der Server
 rechnet, die App rechnet nicht nach. Dateien: `finanzen/ui/screens/FinanceScreen.kt`,
-`model/data/model/FinanzModels.kt` · Test: `PriceHistorySerializationTest`
+`vertrag/FinanzModels.kt` · Test: `PriceHistorySerializationTest`
 
 ## Bau und Plattform
 

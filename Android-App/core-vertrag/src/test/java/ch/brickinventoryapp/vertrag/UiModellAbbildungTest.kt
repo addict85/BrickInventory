@@ -1,23 +1,14 @@
-package ch.brickinventoryapp.model
+package ch.brickinventoryapp.vertrag
 
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.data.model.ChartPoint
-import ch.brickinventoryapp.model.data.model.CsvArt
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
-import ch.brickinventoryapp.model.data.model.HouseholdStatusResponse
-import ch.brickinventoryapp.model.data.model.KontoName
-import ch.brickinventoryapp.model.data.model.Profil
-import ch.brickinventoryapp.model.data.model.Gutschein
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.model.data.model.StartupStatus
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.ui.model.CsvImportArt
 import ch.brickinventoryapp.model.ui.model.KontoAnsicht
 import ch.brickinventoryapp.model.ui.model.OHNE_FARBE
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.model.ui.model.alsDaten
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsDaten
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -38,7 +29,7 @@ import java.io.File
  *   C  in PreisalarmAnsicht.unter `== Alarmrichtung.UNTER` → `UEBER` → rot
  *   D  Hauptklassen als Jar statt Ordner (wie unter Gradle): Die alte Suche über
  *      den Klassenordner → rot „URI is not hierarchical“; mit der Liste grün
- *   E  „TeileAnsichten“ aus Beispielfueller.ABBILDUNGSDATEIEN gestrichen → rot
+ *   E  „TeileAbbildungen“ aus Beispielfueller.ABBILDUNGSDATEIEN gestrichen → rot
  *      „jede Datei mit Abbildungen steht in der Liste“ und „Nur 48 Abbildungen“
  *   F  in Profil.alsAnsicht `emailBestaetigt = emailVerified` → `= !emailVerified`
  *      → rot „Profil, Haushalt und CSV-Stand …“; elternkonten aus `parents` → rot „ohne parents gilt linked_to“
@@ -106,7 +97,7 @@ class UiModellAbbildungTest {
 
     @Test
     fun `jede Datei mit Abbildungen steht in der Liste`() {
-        val ordner = File("src/main/java/ch/brickinventoryapp/model/ui/model")
+        val ordner = File("src/main/java/ch/brickinventoryapp/vertrag/abbildung")
         val mitAbbildung = ordner.listFiles().orEmpty()
             .filter { f -> f.name.endsWith(".kt") && Regex("""fun \S+\.alsAnsicht\(""").containsMatchIn(f.readText()) }
             .map { it.name.removeSuffix(".kt") }.sorted()

@@ -2,9 +2,9 @@ package ch.brickinventoryapp.teile.ui
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
-import ch.brickinventoryapp.model.data.model.BestandTeil
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.Part
+import ch.brickinventoryapp.vertrag.BestandTeil
+import ch.brickinventoryapp.vertrag.Minifig
+import ch.brickinventoryapp.vertrag.Part
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetKatalogRepository
 import ch.brickinventoryapp.data.repository.TeileRepository

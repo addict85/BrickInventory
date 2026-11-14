@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.sammlung
 
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.data.model.SetItem
-import ch.brickinventoryapp.model.data.model.StatsResponse
+import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.vertrag.StatsResponse
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.sammlung.ui.Galerie

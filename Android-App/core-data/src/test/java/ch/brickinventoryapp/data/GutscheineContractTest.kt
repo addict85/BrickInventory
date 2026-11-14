@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.data.model.GutscheinRequest
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.vertrag.GutscheinRequest
+import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

@@ -1,9 +1,6 @@
-package ch.brickinventoryapp.model
+package ch.brickinventoryapp.vertrag
 
-import ch.brickinventoryapp.model.data.model.DashboardStats
-import ch.brickinventoryapp.model.data.model.PartsStatsResponse
-import ch.brickinventoryapp.model.data.model.StatsResponse
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

@@ -4,6 +4,7 @@ package ch.brickinventoryapp.model.lokal
  * Was lokal liegt; [stand] ist der Zeitpunkt der letzten Serverantwort, null = nie geladen.
  * [verworfen] zählt Zeilen, die sich nicht mehr lesen liessen — sie fehlen in [liste].
  */
+
 data class Lokal<T>(val liste: List<T>, val stand: Long?, val verworfen: Int = 0)
 
 /**

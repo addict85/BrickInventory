@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.service
 
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.fach.PdfFortschritt
 import kotlinx.coroutines.flow.Flow

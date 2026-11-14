@@ -1,20 +1,14 @@
-package ch.brickinventoryapp.model.data.model
+package ch.brickinventoryapp.vertrag
 
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
  * Teile, Minifiguren und Farben. Die Modelle liegen je Sachgebiet in einer Datei,
- * alle im Paket data.model.
+ * alle im Paket vertrag.
  */
-
-/**
- * „Keine Farbe“ wie bei Rebrickable ([No Color/Any Color]) und auf dem Server
- * (utils/validate.ts). 0 ist Schwarz: Wer 0 für „keine“ schickt, macht aus
- * einem Teil ohne Farbangabe ein schwarzes.
- */
-const val KEINE_FARBE = 9999
 
 @Serializable
 data class AddPartRequest(

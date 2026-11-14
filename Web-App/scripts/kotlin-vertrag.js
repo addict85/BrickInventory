@@ -144,7 +144,7 @@ function kotlinModelle(wurzel) {
   /** @type {KModelle} */
   const modelle = new Map();
   // Eine Wurzel oder mehrere: Seit der Aufteilung der App liegen die Modelle in
-  // core-model, einige in core-data und app.
+  // core-vertrag, einige in core-data und app.
   for (const datei of (Array.isArray(wurzel) ? wurzel : [wurzel]).flatMap(w => kotlinDateien(w))) {
     const roh = fs.readFileSync(datei, 'utf8');
     const src = entschaerfe(roh);

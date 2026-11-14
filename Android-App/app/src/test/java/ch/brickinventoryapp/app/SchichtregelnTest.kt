@@ -18,6 +18,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.KontoApi` in AppTexte → dasselbe rot
  *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
  *                               „core-zustand und core-sitzung kennen keinen Context“
+ *   bereich-mehr-wireformat     ein weiterer Import eines Antworttyps in CatalogViewModel → rot
+ *                               „Bereiche importieren das Wire-Format seltener …“
  */
 class SchichtregelnTest {
 
@@ -60,6 +62,21 @@ class SchichtregelnTest {
     fun `ein Bereich kennt die Retrofit-Schnittstellen nicht`() {
         val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
         assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api (M2):\n  " + f.joinToString("\n  ") }
+    }
+
+    /**
+     * Bereiche arbeiten mit Ansichten (core-model); das Wire-Format (core-vertrag) sehen sie nur,
+     * wo ein Aufruf es noch verlangt. Eine Ratsche: Die Zahl der Importe darf sinken, nie steigen;
+     * die Abbildungen (vertrag.abbildung) zählen nicht, sie gehören in die ViewModels.
+     */
+    @Test
+    fun `Bereiche importieren das Wire-Format seltener, nie oefter`() {
+        val SCHRANKE = 45
+        val n = dateien.filter { it.modul.startsWith("feature-") }.sumOf { d ->
+            d.importe.count { it.startsWith("ch.brickinventoryapp.vertrag.") && !it.startsWith("ch.brickinventoryapp.vertrag.abbildung.") }
+        }
+        assert(n <= SCHRANKE) { "$n Importe aus core-vertrag in den Bereichen, erlaubt $SCHRANKE: Ansicht statt Antworttyp nehmen." }
+        assert(n == SCHRANKE) { "Nur noch $n Importe aus core-vertrag: SCHRANKE auf $n senken." }
     }
 
     /** AppTexte.kt ist die bewusste Ausnahme: Texte und Dateien gehen über Context, bis M7 sie verlegt. */

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.data.model.AcquisitionsResponse
+import ch.brickinventoryapp.vertrag.AcquisitionsResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File

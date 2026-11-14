@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.model.data.model
+package ch.brickinventoryapp.vertrag
 
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Laufstatus
@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Sets: Bestand, Details, Anlegen und Ändern. Die Modelle liegen je Sachgebiet in
- * einer Datei, alle im Paket data.model — Aufrufer binden an das Paket, nicht an
+ * einer Datei, alle im Paket vertrag — Aufrufer binden an das Paket, nicht an
  * die Datei.
  */
 

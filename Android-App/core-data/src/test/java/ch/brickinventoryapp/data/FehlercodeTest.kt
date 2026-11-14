@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.vertrag.Fehlercode
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.repository.fehlerTextZuCode
 import ch.brickinventoryapp.data.repository.KontoRepository

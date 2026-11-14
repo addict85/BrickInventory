@@ -170,15 +170,13 @@ test('der Vergleich schlägt an, wo die App nicht lesen kann', () => {
 test('jeder Fehlercode der App steht im Vertrag', () => {
   const datei = path.join(
     ANDROID,
-    'core-model',
+    'core-vertrag',
     'src',
     'main',
     'java',
     'ch',
     'brickinventoryapp',
-    'model',
-    'data',
-    'model',
+    'vertrag',
     'Fehlercode.kt',
   );
   const kennungen = kotlinFehlercodes(datei);

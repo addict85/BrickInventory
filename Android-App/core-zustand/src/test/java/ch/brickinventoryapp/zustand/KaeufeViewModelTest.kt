@@ -9,7 +9,7 @@ import ch.brickinventoryapp.testing.FigurenRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
 import ch.brickinventoryapp.testing.HaushaltRepository
 import ch.brickinventoryapp.testing.TeileRepository
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

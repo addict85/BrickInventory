@@ -1,10 +1,11 @@
-package ch.brickinventoryapp.model.data.model
+package ch.brickinventoryapp.vertrag
 
 /**
  * Die Fehlercodes des Servers, nach denen die App verzweigt. Eine Aufzählung statt
  * verstreuter Zeichenketten, damit ein Tippfehler nicht übersetzt und
  * vertrag-kotlin.test.js jede Kennung gegen components.schemas.Fehlercode prüfen kann.
  */
+
 enum class Fehlercode(val kennung: String) {
     AKTUELLES_PASSWORT_ERFORDERLICH("aktuelles_passwort_erforderlich"),
     AKTUELLES_PASSWORT_FALSCH("aktuelles_passwort_falsch"),

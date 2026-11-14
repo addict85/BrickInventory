@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.model.data.model.MerkpostenRequest
+import ch.brickinventoryapp.vertrag.MerkpostenRequest
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.offline.Bearbeitung
 import androidx.lifecycle.SavedStateHandle

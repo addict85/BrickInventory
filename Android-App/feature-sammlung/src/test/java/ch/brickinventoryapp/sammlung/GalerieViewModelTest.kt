@@ -3,10 +3,10 @@ package ch.brickinventoryapp.sammlung
 import ch.brickinventoryapp.model.fach.Setsortierung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.data.model.SetAggregate
+import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.model.data.model.AddPartRequest
+import ch.brickinventoryapp.vertrag.AddPartRequest
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import kotlinx.coroutines.Dispatchers
