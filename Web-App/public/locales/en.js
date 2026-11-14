@@ -1516,6 +1516,8 @@ window.I18N_EN = {
   'alerts.new_ok': 'Price alert for {set} added.',
   'alerts.new_preis': 'Threshold price',
   'gallery.card.unbekannt': 'not in catalogue',
+  'wanted.unbekannt_kurz': 'Set not in the catalogue yet',
+  'wanted.unbekannt': 'Set not in the catalogue yet — name, year and theme follow once Rebrickable knows it.',
   'gallery.card.unbekannt_hint': 'The catalogue does not know this number yet. Name and image follow once it is known.',
   'gallery.add.unbekannt':
     'Set {num} is not (yet) in the catalogue. Please check the number. If it is right, you can still add it — name and image follow once Rebrickable knows it.',

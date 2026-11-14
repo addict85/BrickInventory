@@ -70,7 +70,11 @@ function zeile(w) {
   // nachführt.
   const titel = w.name ? esc(w.name) : esc(w.set_number);
   // Ohne Namen steht die Nummer schon als Titel — nicht noch einmal darunter.
-  const unter = [w.name ? esc(w.set_number) : null, w.year ? String(w.year) : null, zustandText(w.condition)]
+  const unter = [
+    w.name ? esc(w.set_number) : esc(tRaw('wanted.unbekannt_kurz')),
+    w.year ? String(w.year) : null,
+    zustandText(w.condition),
+  ]
     .filter(Boolean)
     .join(' · ');
 
@@ -94,11 +98,11 @@ function zeile(w) {
       : html`<span class="mk-preis text-mut mk-preis-offen" title="${tRaw('wanted.preis_offen_hint')}">${tRaw('wanted.preis_offen')}</span>`;
 
   const arg = `${w.set_number}|${w.condition}|${w.user_id}`;
+  const k = kachelName(w.name || w.set_number, w.name ? w.set_number : '', 2);
   return html`
     <!-- Die GANZE Zeile oeffnet das Detail — wie die Karte in der App.
          Der Papierkorb sitzt oben rechts und haelt seinen Klick an
          (merkpostenLoeschenStop), genau wie auf der Set-Kachel. Marcos
-  const k = kachelName(w.name || w.set_number, w.name ? w.set_number : '', 2);
          Vorgabe vom 24.09., zweiter Teil: „soll auf den Kacheln […] sowie bei
          den Merkliste Eintraegen der Papierkorb oben rechts angezeigt werden
          analog den Kacheln bei den Sets. Dies aber nur in der webapp."
@@ -111,7 +115,7 @@ function zeile(w) {
          Template-Literals und wuerde es sonst beenden. Genau daran ist der
          erste Entwurf gescheitert — dieselbe Falle wie in
          src/teile/abfragen.ts, wo derselbe Hinweis steht. -->
-    <div class="mk-zeile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
+    <div class="mk-zeile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
       <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
            title="${tRaw('wanted.remove')}">${TRASH_ICON_SVG}</span></div>
       ${bild}
@@ -425,16 +429,19 @@ export async function oeffneMerkpostenDetail(arg) {
 
   // Katalog: Thema, Teile, Minifiguren, BrickLink. Schlägt er fehl (ein Set, das rb_sets nicht kennt), bleibt
   // der Block stehen, wie er ist — die Angaben aus der Zeile sind dann alles, was es gibt.
-  api('GET', `/v1/catalog/sets/${encodeURIComponent(set_number)}`)
-    .then(d => {
-      if (_detail !== arg || !d?.success) return;
-      katalogNachtragen(d.set, w);
-      zeigeAdresse('mk-m-bricklink', d.set?.bricklink?.url);
-      // Mit dem Katalognamen wird die Suche besser („LEGO 75192 Millennium Falcon" statt nur der Nummer) — aber
-      // nur, wenn wirklich einer kam.
-      zeigeAdresse('mk-m-vergleich', d.set?.preisvergleich_url || w.preisvergleich_url);
-    })
-    .catch(() => {});
+  // Ohne Namen kennt der Katalog das Set nicht (siehe zeile()); die Anfrage endete nur mit einer 404 in der
+  // Konsole.
+  if (w.name)
+    api('GET', `/v1/catalog/sets/${encodeURIComponent(set_number)}`)
+      .then(d => {
+        if (_detail !== arg || !d?.success) return;
+        katalogNachtragen(d.set, w);
+        zeigeAdresse('mk-m-bricklink', d.set?.bricklink?.url);
+        // Mit dem Katalognamen wird die Suche besser („LEGO 75192 Millennium Falcon" statt nur der Nummer) — aber
+        // nur, wenn wirklich einer kam.
+        zeigeAdresse('mk-m-vergleich', d.set?.preisvergleich_url || w.preisvergleich_url);
+      })
+      .catch(() => {});
 
   // Der VERLAUF — die Zeilen darüber stehen da schon. Er kommt aus price_history, das der stündliche
   // Preislauf füllt; für einen Merkposten seit dieser Änderung ebenfalls (src/finanzen/preisLauf.ts). Ein frischer
@@ -483,12 +490,19 @@ const zahl = (/** @type {unknown} */ n) => (n == null ? STRICH : Number(n).toLoc
  */
 /** @param {Merkposten} w */
 function zeilen(w) {
+  // Kennt der Katalog das Set nicht, sagt eine Zeile das, statt vier Striche bei Jahr, Thema, Teilen, Figuren.
+  /** @type {[string, string | import('./escapen.js').SicheresHtml, string | null][]} */
+  const katalog = w.name
+    ? [
+        ['detail.year', w.year != null ? String(w.year) : STRICH, null],
+        ['detail.theme', STRICH, 'mk-m-theme'],
+        ['detail.pieces', zahl(w.num_parts), 'mk-m-pieces'],
+        ['detail.minifigs', STRICH, 'mk-m-minifigs'],
+      ]
+    : [['nav.catalog', esc(tRaw('wanted.unbekannt')), null]];
   /** @type {[string, string | import('./escapen.js').SicheresHtml, string | null][]} */
   const z = [
-    ['detail.year', w.year != null ? String(w.year) : STRICH, null],
-    ['detail.theme', STRICH, 'mk-m-theme'],
-    ['detail.pieces', zahl(w.num_parts), 'mk-m-pieces'],
-    ['detail.minifigs', STRICH, 'mk-m-minifigs'],
+    ...katalog,
     ['common.condition', esc(zustandText(w.condition)), null],
     ['household.for_account', inhaberWahl(w), null],
     ['wanted.since', w.created_at ? `${ico('kalender')} ${esc(fmtDatum(w.created_at))}` : STRICH, null],

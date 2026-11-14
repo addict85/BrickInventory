@@ -1543,6 +1543,8 @@ window.I18N_DE = {
   'alerts.new_ok': 'Preisalarm für {set} angelegt.',
   'alerts.new_preis': 'Grenzpreis',
   'gallery.card.unbekannt': 'nicht im Katalog',
+  'wanted.unbekannt_kurz': 'Set noch nicht im Katalog',
+  'wanted.unbekannt': 'Set noch nicht im Katalog — Name, Jahr und Thema kommen nach, sobald Rebrickable es kennt.',
   'gallery.card.unbekannt_hint':
     'Der Katalog kennt diese Nummer noch nicht. Name und Bild kommen nach, sobald sie bekannt ist.',
   'gallery.add.unbekannt':
