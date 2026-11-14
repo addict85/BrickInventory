@@ -1664,6 +1664,9 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 [data-theme="werkbank"]{--chart-wert:var(--messing)}
 /* Der Dialog selbst bekommt beim Öffnen den Fokus nur als Ausgangspunkt für Tab; ein Ring um die ganze Fläche lenkt ab. */
 .ovl > [tabindex="-1"]:focus-visible{outline:none}
+/* Als Flex verliert summary sein Dreieck; ohne Zeichen sah „Einzelne Aufträge“ wie eine Überschrift aus. */
+.mon-einzeln > summary::before{content:"";flex:none;width:.45em;height:.45em;margin:0 .2em;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg)}
+.mon-einzeln[open] > summary::before{transform:rotate(45deg)}
 /* Grosse Schrift auf schmalem Schirm: Knopftexte brechen im Knopf um, statt über den Rand zu ragen. */
 .ssec .btn,.lcard .btn,.sform .btn,.ew-aktion .btn,#tab-monitor .btn{white-space:normal;overflow-wrap:break-word;hyphens:auto;max-width:100%;text-align:center}
 .btn > span{min-width:0}

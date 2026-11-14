@@ -84,6 +84,9 @@
   /* Filter hinter einem Knopf: Suche und Ansicht bleiben, die Auswahlfelder
      klappen auf. Vorher belegten fünf Felder den halben Bildschirm. */
   .filter-knopf { display: inline-flex; align-items: center; gap: 6px; }
+  /* Aufgeklappt sieht der Knopf gedrückt aus, wie die gewählte Ansicht daneben: aria-expanded allein sah
+     man nicht. */
+  .filter-knopf[aria-expanded="true"] { background: var(--b50); color: var(--b700); border-color: var(--b600); box-shadow: inset 0 0 0 1px var(--b600); }
   .filterleiste > input.si, .filterleiste > input.suchfeld { flex: 1 1 140px; width: auto !important; min-width: 0; }
   .filterleiste > select { display: none; }
   /* max-width und min-width 0: Sonst nimmt das Feld die Breite seiner längsten Option an (60 Zeichen). */
@@ -145,8 +148,9 @@
 
   /* Zwei Spalten ab etwa 360 px, darunter und bei grosser Schrift eine. */
   .sgrid       { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: .7rem; }
-  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.75rem), 1fr)); gap: .6rem; }
-  .man-grid    { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.75rem), 1fr)); gap: .6rem; }
+  /* Teile und Figuren in zwei Spalten wie die Sets: Drei schmale Spalten (113 px) liessen bei ein, zwei
+     Figuren die halbe Zeile leer und sahen anders aus als die Sammlung daneben. Bei 320 px bleiben es zwei. */
+  .parts-grid, .parts-list, .man-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr)); gap: .7rem; }
   /* minmax(0, …) statt 1fr: Eine Spalte darf schmaler werden als ihre längste
      Zahl, die dann umbricht — sonst schob „Gesamtwert“ die Kachel über den Rand. */
   .fgrid       { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
@@ -492,7 +496,6 @@
 
 @media (max-width: 380px) {
   .sgrid      { gap: .5rem; }
-  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6rem), 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
   .ntab       { font-size: var(--fs-0); }
   /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
@@ -516,7 +519,8 @@
   /* Kennzahlen (alle Designs) als eine kompakte Zeile „4 Sets · 394 Teile …“:
      Als Kacheln füllten sie am Telefon den ersten Bildschirm. Die Aufschlüsselung
      darunter steht im jeweiligen Reiter. */
-  .brick-stats { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .1rem 0; margin-bottom: var(--sp-4); }
+  /* Auf der Grundlinie: Mit flex-start stand eine Kennzahl ohne Trennpunkt (die letzte sichtbare) 2–3 px höher. */
+  .brick-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: .1rem 0; margin-bottom: var(--sp-4); }
   /* Reiner Text mit Punkt dazwischen, ohne Fläche: Als Pille sah die Zahl wie ein zweiter Umschalter
      Sets/Teile/Minifiguren aus, bedienbar ist aber nur der obere. */
   .bstat, [data-theme="brick"] .bstat { display: inline-flex; flex-direction: row-reverse; align-items: baseline; gap: .35em;
