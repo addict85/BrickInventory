@@ -10,7 +10,6 @@ export const GRUENDE = {
   anmeldeRueckfall: 'Rückfall der Anmeldebremse, wenn die Datenbank klemmt: zählt gerade ohne sie',
   tokenSperre: 'Abkürzung der Fehlversuchssperre je Adresse; gezählt wird in der Datenbank',
   bildCacheZuwachs: 'der Bildcache ist ein Ordner auf der Platte dieses Rechners, gleich welcher Zugang ihn füllt',
-  importProzess: 'Pfad des Import-Skripts, das dieser Prozess als Kind startet; gesetzt vom Einstieg (jobs/)',
   konfig: 'die Umgebung des Prozesses, einmal gelesen; konfig() steht im heissen Pfad jeder Anfrage',
   appVersion: 'version.json des Baus, aus dem dieser Prozess läuft',
   datenSchluessel: 'der Datenschlüssel kommt aus Umgebung oder Datei des Rechners, nicht aus einem Zugang',

@@ -11,6 +11,5 @@ export { setnummerKandidaten } from './produkttitel';
 export { katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from './setStamm';
 export { erzeugeKatalog } from './bereich';
 export type { KatalogDienste } from './bereich';
-export { setzeImportProzess } from './csvAbgleich';
 export { katalogImporte, parseCsvLine } from './csvImport';
 export { pdfAufgegeben } from './pdf/pdfErzeugung';
