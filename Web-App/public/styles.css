@@ -1498,6 +1498,10 @@ p.mon-leise{margin:0 0 .35rem}
   #set-modal .detail-knopf,#set-modal select.alarm-feld,#set-modal input.alarm-feld,#set-modal .detail-feld,#set-modal .dr select{min-height:36px}
   #set-modal .menge-knopf{min-width:36px}
 }
+/* Der Preiskasten schliesst die Kachel unten ab, das Kaufdatum steht darüber: Bricht das Datum („2 Käufe,
+   zuletzt …“) um, stand der Kasten sonst tiefer als in den Nachbarkacheln. */
+#gallery .scb > .price-badge{order:1}
+#gallery .scb > .price-badge:not([hidden]) + .kachel-datum{margin-bottom:.35rem}
 #set-modal .detail-knopf{font-size:var(--fs-2);padding:4px 12px}
 #set-modal .menge-knopf{font-size:var(--fs-4);padding:0 10px;line-height:1}
 #set-modal .menge-feld{flex:0 0 auto;width:5em}
