@@ -82,6 +82,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
+  /** @param {string} methode @param {string} pfad @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
   const rufe = (methode, pfad, { body, cookie, token } = {}) =>
     fetch(`http://127.0.0.1:${srv.address().port}/api/v1/auth${pfad}`, {
       method: methode,

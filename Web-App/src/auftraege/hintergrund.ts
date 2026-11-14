@@ -29,7 +29,7 @@ export async function auftraegeImUeberblick(
     k.auftraege.laufendePausen(),
     k.laufzustand.liesZustand('jobs_lebenszeichen'),
   ]);
-  const alterSek = lebenszeichen ? Math.round((Date.now() - new Date(lebenszeichen).getTime()) / 1000) : null;
+  const alterSek = lebenszeichen ? Math.round((k.uhr.jetzt() - new Date(lebenszeichen).getTime()) / 1000) : null;
   return {
     auftraege,
     zusammenfassung,

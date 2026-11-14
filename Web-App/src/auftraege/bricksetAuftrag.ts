@@ -9,8 +9,8 @@ const schluessel = (sn: string) => `brickset:${sn}`;
 
 /** Bald (Störung der Gegenseite) oder zur Tageszeit. */
 export async function bricksetFaelligAb(k: AuftraegeKontext, bald: boolean): Promise<Date> {
-  if (bald) return new Date(Date.now() + 30 * 60_000);
-  return naechsteUhrzeit(await taeglicheUhrzeit(k, 'brickset_retry'));
+  if (bald) return new Date(k.uhr.jetzt() + 30 * 60_000);
+  return naechsteUhrzeit(await taeglicheUhrzeit(k, 'brickset_retry'), k.uhr.datum());
 }
 
 /** @returns false, wenn es schon BRICKSET_HOECHSTENS Mal vorgemerkt war. */

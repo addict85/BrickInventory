@@ -57,16 +57,16 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
   await S.setGlobalSetting('rebrickable_api_key', 'testschluessel-pfade');
   const echt = https.get;
   const abgerufen = [];
-  https.get = (url, opt, cb) => {
+  /** @type {any} */ (https).get = (url, opt, cb) => {
     // httpsGetRobust ruft mit Optionen statt Adresse.
     abgerufen.push(typeof url === 'string' ? url : `https://${url.hostname}${url.path}`);
     const fertig = typeof opt === 'function' ? opt : cb;
-    const req = new EventEmitter();
+    const req = /** @type {any} */ (new EventEmitter());
     req.setTimeout = () => req;
     req.destroy = () => {};
     req.end = () => {};
     setImmediate(() => {
-      const r = new EventEmitter();
+      const r = /** @type {any} */ (new EventEmitter());
       r.statusCode = 404;
       r.headers = {};
       r.resume = () => {};

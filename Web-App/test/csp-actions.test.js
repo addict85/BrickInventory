@@ -164,11 +164,11 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit
   // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
-  for (const [file, expected] of [
+  for (const [file, expected] of /** @type {[string, number][]} */ ([
     ['gallery.js', 1],
     ['parts.js', 1],
     ['minifigs.js', 2],
-  ]) {
+  ])) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     const n = (src.match(/<div class="ca"><(?:button|span) class="delbtn"/g) || []).length;
     assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);

@@ -55,7 +55,7 @@ async function fetchAndCachePrice(
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? ''), 10));
   // Dieselbe Frisch-Regel wie im Anfrageweg: Auch eine Null-Zeile wird nach sechs Stunden erneut versucht.
   const vorhanden = await preisAusCache(k, setNumber, condition, currency, ttl);
-  if (cacheUsable(vorhanden, ttl)) return 'skipped';
+  if (cacheUsable(vorhanden, ttl, k.uhr.jetzt())) return 'skipped';
 
   const rl = await k.katalog.kontingentFrei('bricklink');
   if (!rl.allowed) return 'rate_limited';
@@ -199,7 +199,7 @@ async function meldeErgebnis(kx: FinanzenKontext, st: Laufstand, dur: number, k?
     `Done: ${st.updated} updated, ${st.skipped} skipped, ${st.errors} errors${st.ausgelassen ? `, ${st.ausgelassen} wegen ${grund} ausgelassen` : ''} — ${(dur / 1000).toFixed(1)}s`,
   );
   await merkeStand(kx, {
-    lastRun: new Date().toISOString(),
+    lastRun: kx.uhr.datum().toISOString(),
     lastDuration: dur,
     lastUpdated: st.updated,
     lastErrors: st.errors,
@@ -220,8 +220,8 @@ async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
   }
   const releaseLock = await acquireRunLock(kx);
   if (!releaseLock)
-    throw new AuftragVerschieben(new Date(Date.now() + 60_000), 'Läuft bereits in einem anderen Prozess');
-  const t0 = Date.now();
+    throw new AuftragVerschieben(new Date(kx.uhr.jetzt() + 60_000), 'Läuft bereits in einem anderen Prozess');
+  const t0 = kx.uhr.jetzt();
   const st: Laufstand = { updated: 0, skipped: 0, errors: 0, ausgelassen: 0, current: 0, total: 0 };
   await k?.fortschritt({ erledigt: 0, gesamt: 0, text: 'Starte…' });
   try {
@@ -229,13 +229,13 @@ async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
     st.total = [...jeKonto.values()].reduce((n, l) => n + l.length, 0);
     if (!st.total) {
       log('No sets, nothing to do');
-      await merkeStand(kx, { lastRun: new Date().toISOString() });
+      await merkeStand(kx, { lastRun: kx.uhr.datum().toISOString() });
       return;
     }
     log(`Starting: ${st.total} set-slots`);
     await k?.fortschritt({ erledigt: 0, gesamt: st.total, text: `0/${st.total} Sets` });
     for (const [userId, setNumbers] of jeKonto) await aktualisiereKonto(kx, userId, setNumbers, st, k);
-    await meldeErgebnis(kx, st, Date.now() - t0, k);
+    await meldeErgebnis(kx, st, kx.uhr.jetzt() - t0, k);
     await nachDemLauf(kx, k);
   } catch (e) {
     log(`Fatal: ${fehlertext(e)}`);

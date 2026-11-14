@@ -10,8 +10,10 @@ import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
 import type { BestandDienste } from '../bestand';
 import type { Nacharbeit } from '../auftraege';
+import type { Uhr } from '../infra/uhr';
 
 export interface FigurenAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   einstellungen: EinstellungenDienste;
   haushalt: HaushaltDienste;

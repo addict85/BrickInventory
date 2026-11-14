@@ -50,12 +50,12 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle je Seite', () 
   // aus der Antwort.
   const wurzel = path.join(__dirname, '..', '..');
   const treffer = [];
-  for (const [basis, filter] of [
+  for (const [basis, filter] of /** @type {[string, (f: string) => boolean][]} */ ([
     [path.join(wurzel, 'Web-App'), f => /\.(ts|js)$/.test(f)],
     ...require('./helpers/android')
       .quellwurzeln()
       .map(w => [w, f => f.endsWith('.kt')]),
-  ]) {
+  ])) {
     const stapel = [basis];
     while (stapel.length) {
       const d = stapel.pop();

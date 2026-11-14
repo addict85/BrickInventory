@@ -2,6 +2,7 @@
 
 import { meldeFehler, fehlertext } from '../infra/fehler';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import { resolveWebPath } from '../infra/appPaths';
 import { isDecodable } from './imageGuard';
@@ -60,7 +61,7 @@ export async function generateThumb(localPath: string) {
   try {
     // ATOMAR schreiben: Ein Schreibvorgang auf den endgültigen Namen ist für
     // parallele Anfragen sichtbar, bevor er fertig ist.
-    const tmpThumb = `${thumbFs}.${process.pid}.${Date.now()}.tmp.jpg`;
+    const tmpThumb = `${thumbFs}.${process.pid}.${randomUUID()}.tmp.jpg`;
     await verkleinern(fsPath, tmpThumb);
     await fs.promises.rename(tmpThumb, thumbFs);
     return thumbWeb;

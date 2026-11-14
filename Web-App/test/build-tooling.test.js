@@ -408,14 +408,14 @@ test('der CI-Workflow prüft, was er prüfen soll', () => {
     .split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');
-  for (const [muster, warum] of [
+  for (const [muster, warum] of /** @type {[RegExp, string][]} */ ([
     [/\bnpm ci\b/, 'npm install würde ein abweichendes Lockfile stillschweigend hinnehmen'],
     [/\bnpx tsc --noEmit/, 'ohne Typprüfung sagt der Lauf nichts über strictNullChecks'],
     [/\bnpm run build\b/, 'ohne frischen Build prüft CI womöglich ein altes dist/'],
     [/\bnpm test\b/, 'ohne Tests ist der ganze Lauf sinnlos'],
     [/\bnpm run typecheck:strict/, 'die gestaffelte noImplicitAny-Prüfung fehlt'],
     [/\bnpm run typecheck:frontend/, 'die Typprüfung der Oberfläche fehlt'],
-  ]) {
+  ])) {
     assert.match(code, muster, `CI-Workflow: ${warum}`);
   }
   // Gegenprobe zur Kommentar-Regel: `npm install` steht NUR im Fliesstext der

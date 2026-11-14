@@ -72,11 +72,11 @@ test('je Design eine Palette mit der Primärfarbe der Webapp', () => {
 test('Vorlage, Knopf und Infobox zeichnen im übergebenen Design', () => {
   const { MAIL_THEMES, emailTemplate, emailBtn, infoBox } = _req('src/mail/vorlage.js');
   const { classic, brick } = MAIL_THEMES;
-  for (const [name, bau] of [
+  for (const [name, bau] of /** @type {[string, (theme: string | undefined) => string][]} */ ([
     ['emailTemplate', th => emailTemplate('Titel', 'Vorschau', '<p>x</p>', th)],
     ['emailBtn', th => emailBtn('https://lego.example.org/', 'Los', th)],
     ['infoBox', th => infoBox('Hinweis', th)],
-  ]) {
+  ])) {
     const mitBrick = bau(brick);
     assert.ok(mitBrick.includes(brick.primary) || mitBrick.includes(brick.bg), `${name}: das Design kommt nicht an`);
     assert.ok(

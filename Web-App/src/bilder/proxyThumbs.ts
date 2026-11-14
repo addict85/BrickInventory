@@ -108,7 +108,7 @@ export async function makeProxyThumb(k: BilderKontext, srcFile: string, thumbFil
       bg.composite(img, 0, 0);
       bg.cover({ w: PROXY_THUMB_SIZE, h: PROXY_THUMB_SIZE });
       // ATOMAR schreiben: erst daneben, dann umbenennen.
-      const tmpThumb = `${thumbFile}.${process.pid}.${Date.now()}.tmp.jpg`;
+      const tmpThumb = `${thumbFile}.${process.pid}.${k.uhr.jetzt()}.tmp.jpg`;
       await bg.write(tmpThumb as `${string}.${string}`, { quality: 80 });
       await fs.promises.rename(tmpThumb, thumbFile);
       return true;

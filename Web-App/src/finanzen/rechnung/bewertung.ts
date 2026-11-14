@@ -74,7 +74,8 @@ type SetErfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
 /** Was jede Zeile braucht: Einstellungen des Betrachters und die vorgeladenen Tabellen. */
 type Bewertungslage = {
   ttl: number;
-  pre: Parameters<typeof setPreisAusVorrat>[3];
+  jetzt: number;
+  pre: Parameters<typeof setPreisAusVorrat>[4];
   fehlt: Posten[];
   ohneZugang: string | null;
 };
@@ -85,7 +86,9 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
   // Ohne Erfassung gilt das Set als neu (effectiveCondition ohne Zähler).
   const fallbackCond: Zustand = 'N';
   const needed: Zustand[] = acqs.length ? [...new Set(acqs.map(a => zustand(a.condition)))] : [fallbackCond];
-  const preise = new Map<Zustand, PreisDaten>(needed.map(c => [c, setPreisAusVorrat(set.set_number, c, l.ttl, l.pre)]));
+  const preise = new Map<Zustand, PreisDaten>(
+    needed.map(c => [c, setPreisAusVorrat(set.set_number, c, l.ttl, l.jetzt, l.pre)]),
+  );
   const preisMap = new Map<string, number>();
   for (const [cond, p] of preise) {
     const markt = marktpreisAus(p);
@@ -213,6 +216,7 @@ export async function computeSetsValuation(kx: FinanzenKontext, viewerId: number
       );
   const lage: Bewertungslage = {
     ttl,
+    jetzt: kx.uhr.jetzt(),
     fehlt: [],
     ohneZugang,
     pre: {
@@ -340,7 +344,7 @@ export async function computeMinifigsValuation(k: FinanzenKontext, viewerId: num
       const acqs = acqByFig.get(`${fig.user_id}|${key}`) || [];
       const { priceMap, priceData } = preiseJeZustand(key, conditionsOf(acqs), (cond): FigurPreis => {
         if (fig.bl_fig_number) {
-          const p = preisAusVorrat(c => figVorrat.get(`${fig.bl_fig_number}|${c}`), cond, ttl);
+          const p = preisAusVorrat(c => figVorrat.get(`${fig.bl_fig_number}|${c}`), cond, ttl, k.uhr.jetzt());
           if (p.ausstehend) fehlt.push({ art: 'figur', nummer: fig.bl_fig_number, zustand: cond });
           return p;
         }
@@ -416,7 +420,7 @@ export async function computePartsValuation(k: FinanzenKontext, viewerId: number
     const acqs = acqByPart.get(`${part.user_id}|${key}`) || [];
     const vorratsSchluessel = await teilSchluessel(k, blNummer(part), part.color_id ?? KEINE_FARBE);
     const { priceMap, priceData } = preiseJeZustand(key, conditionsOf(acqs), cond => {
-      const p = preisAusVorrat(c => teilVorrat.get(`${vorratsSchluessel}|${c}`), cond, ttl);
+      const p = preisAusVorrat(c => teilVorrat.get(`${vorratsSchluessel}|${c}`), cond, ttl, k.uhr.jetzt());
       if (p.ausstehend)
         fehlt.push({ art: 'teil', nummer: blNummer(part), farbe: part.color_id ?? KEINE_FARBE, zustand: cond });
       return p;

@@ -4,8 +4,10 @@ import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository';
+import type { Uhr } from '../infra/uhr';
 
 export interface HaushaltAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   /** Das Gedächtnis der Haushalte je Zugang; erzeugeHaushalt legt es an. */
   faecher: Faecher;

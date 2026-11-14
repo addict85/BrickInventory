@@ -23,6 +23,7 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { portVon } = require('./helpers/server');
 const { vertragsRouter } = _req('src/http/vertragsRouter.js');
 const { setzeKonfig } = _req('src/infra/konfig.js');
 
@@ -38,7 +39,7 @@ function server(t, antworten) {
   app.use('/api/v1/auth', router);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  return `http://127.0.0.1:${srv.address().port}/api/v1/auth`;
+  return `http://127.0.0.1:${portVon(srv)}/api/v1/auth`;
 }
 
 test('eine abweichende Antwort wird zur 500', async t => {

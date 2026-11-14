@@ -8,7 +8,7 @@ import type { MailAbhaengigkeiten, MailKontext } from './kontext';
 export type { MailAbhaengigkeiten, MailKontext } from './kontext';
 
 export function erzeugeMail(a: MailAbhaengigkeiten, einblick?: Einblick<MailKontext>) {
-  const k: MailKontext = { einstellungen: a.einstellungen, konfig: a.konfig };
+  const k: MailKontext = { einstellungen: a.einstellungen, konfig: a.konfig, uhr: a.uhr };
   einblick?.(k);
   const dienste = {
     baueAlarmMail: mit(k)(mailer.baueAlarmMail),

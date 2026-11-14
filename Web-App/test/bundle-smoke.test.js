@@ -12,6 +12,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { BUENDEL: BUNDLE, stelleBuendelSicher } = require('./helpers/buendel');
+const { portVon } = require('./helpers/server');
 stelleBuendelSicher();
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
@@ -86,8 +87,8 @@ test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () =
     if (q.url === '/api/bare500') return sende(500, 'application/json', JSON.stringify({ message: 'oops' }));
     return sende(200, 'application/json', JSON.stringify({ success: true, wert: 42 }));
   });
-  await new Promise(r => srv.listen(0, r));
-  const port = srv.address().port;
+  await new Promise(r => srv.listen(0, () => r(null)));
+  const port = portVon(srv);
 
   const { JSDOM } = require('jsdom');
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: `http://localhost:${port}/` });

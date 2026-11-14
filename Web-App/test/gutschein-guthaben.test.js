@@ -240,7 +240,7 @@ test('Guthaben-Abfrage', async t => {
     });
     await assert.rejects(
       () => G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf }),
-      e => {
+      (/** @type {any} */ e) => {
         assert.ok(!e.message.includes(PIN), `Die PIN steht in der Meldung: ${e.message}`);
         assert.ok(!e.message.includes(NUMMER), `Die ganze Nummer steht in der Meldung: ${e.message}`);
         assert.ok(
@@ -258,7 +258,7 @@ test('Guthaben-Abfrage', async t => {
     });
     await assert.rejects(
       () => G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: b.abruf }),
-      e => !e.message.includes(PIN) && !e.message.includes(NUMMER),
+      (/** @type {any} */ e) => !e.message.includes(PIN) && !e.message.includes(NUMMER),
     );
   });
 

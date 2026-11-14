@@ -58,6 +58,7 @@ testBildwerk(null, {
 });
 const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
+const { portVon } = require('./helpers/server');
 const db = testDaten();
 const IQ = _req('src/bilder/bildbedarfLauf.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
@@ -393,14 +394,14 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.session = { userId: uid, isAdmin: 1 };
-    req.apiUser = { user_id: uid, is_admin: 1 };
+    /** @type {any} */ (req).session = { userId: uid, isAdmin: 1 };
+    /** @type {any} */ (req).apiUser = { user_id: uid, is_admin: 1 };
     next();
   });
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   try {
-    const kachel = (await (await fetch(`http://localhost:${srv.address().port}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
+    const kachel = (await (await fetch(`http://localhost:${portVon(srv)}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
     assert.ok(
       kachel?.queueLastRun,
       'Die Kachel kennt den Durchgang des anderen Prozesses nicht. Genau so kam ' +

@@ -67,8 +67,8 @@ export const PDF_JOB_TTL = 10 * 60 * 1000;
 export const MAX_JOBS_PRO_BENUTZER = 2;
 
 /** Nicht erratbar, aber sortierbar. */
-export function neueJobId(): string {
-  return `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+export function neueJobId(jetzt: number): string {
+  return `${jetzt}-${crypto.randomBytes(6).toString('hex')}`;
 }
 
 export async function cleanOldPdfJobs(k: AuftraegeKontext) {
@@ -83,7 +83,7 @@ export async function cleanOldPdfJobs(k: AuftraegeKontext) {
   for (const f of files) {
     const fp = path.join(PDF_JOB_DIR, f);
     const st = await fsp.stat(fp).catch(ohneFehlendeDatei('pdf:datei pruefen'));
-    if (st && Date.now() - st.mtimeMs > PDF_JOB_TTL)
+    if (st && k.uhr.jetzt() - st.mtimeMs > PDF_JOB_TTL)
       await fsp.unlink(fp).catch(ohneFehlendeDatei('pdf:datei loeschen'));
   }
 }
@@ -121,7 +121,7 @@ export async function pdfAuftragStarten(
 ): Promise<{ jobId: string } | { laufend: number }> {
   const laufend = await laufendeAuftraege(k, uid, PDF_JOB_TTL);
   if (laufend >= MAX_JOBS_PRO_BENUTZER) return { laufend };
-  const jobId = neueJobId();
+  const jobId = neueJobId(k.uhr.jetzt());
   // Bildangaben des Clients gehen nicht in den Auftrag: Die Bilder kommen aus dem Katalog.
   const ohneBilder = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));
   const missingImages = await fehlendeBilder(k, sets, parts);

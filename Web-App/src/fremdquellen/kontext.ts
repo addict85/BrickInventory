@@ -7,8 +7,10 @@ import type { EinstellungenDienste } from '../einstellungen';
 import * as apiKontingent from './repository/apiKontingent';
 import * as apiTakt from './repository/apiTakt';
 import type { Quellen } from './quellen';
+import type { Uhr } from '../infra/uhr';
 
 export interface FremdquellenAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;

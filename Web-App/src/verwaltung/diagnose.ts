@@ -71,14 +71,14 @@ function liesStrom(a: AbrufStrom, genug = Infinity) {
 }
 
 async function probeVariante(url: string, v: { name: string; headers: Record<string, string> }) {
-  const t0 = Date.now();
+  const t0 = performance.now();
   try {
     const a = await offenOhneUmleitung(url, v.headers);
     const { bytes, truncated } = await liesStrom(a);
     const k = a.kopf;
     return {
       variant: v.name,
-      ms: Date.now() - t0,
+      ms: Math.round(performance.now() - t0),
       status: a.status,
       content_type: k['content-type'] || null,
       content_length: k['content-length'] || null,
@@ -94,7 +94,7 @@ async function probeVariante(url: string, v: { name: string; headers: Record<str
   } catch (e) {
     return {
       variant: v.name,
-      ms: Date.now() - t0,
+      ms: Math.round(performance.now() - t0),
       error: fehlertext(e),
       code: e instanceof AbrufFehler ? e.grund : undefined,
     };

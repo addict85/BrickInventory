@@ -243,6 +243,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   // Die drei Abschriften, und die alte Tabelle. parts_summary.bl_part_number
   // ist ausgenommen: Diese Tabelle ist ein Zwischenspeicher, sie hält den
   // Gruppenschlüssel als fertige Spalte (src/teile/partsSummary.ts).
+  /** @type {[string, RegExp][]} */
   const muster = [
     ['setzt parts.bl_part_number', /UPDATE\s+parts\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
     ['setzt minifigs.bl_fig_number', /UPDATE\s+minifigs\s+SET\s+[^;`']*\bbl_fig_number\s*=/i],

@@ -113,7 +113,7 @@ test('ungültige Werte: alle auf einmal, mit Namen', () => {
   assert.throws(
     () =>
       ladeKonfig({ PORT: '0', SESSION_IDLE_MINUTES: 'viel', COOKIE_SECURE: 'ja', APP_BASE_URL: 'lego.example.org' }),
-    e => {
+    (/** @type {any} */ e) => {
       assert.ok(e instanceof KonfigFehler);
       assert.deepEqual(
         e.fehler.map(f => f.split('=')[0]),

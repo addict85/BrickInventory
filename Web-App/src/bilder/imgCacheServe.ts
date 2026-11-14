@@ -78,8 +78,8 @@ export async function cacheTreffer(
     const cst = await fs.promises.stat(cacheFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
     // Der Deckel löscht nach letzter Nutzung; unter noatime merkt sich das
     // sonst niemand. mtime bleibt, sie steckt im ETag.
-    if (cst && Date.now() - cst.atimeMs > 86_400_000)
-      fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(ohneFehlendeDatei('bild-cache:utimes'));
+    if (cst && k.uhr.jetzt() - cst.atimeMs > 86_400_000)
+      fs.promises.utimes(cacheFile, k.uhr.datum(), cst.mtime).catch(ohneFehlendeDatei('bild-cache:utimes'));
     return {
       datei: cacheFile,
       typ: bildTyp(ctRaw),
@@ -97,10 +97,10 @@ const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
 
 /** 30 Tage nicht angefasst → weg; danach, falls der Cache noch über der
  * Grenze liegt, die am längsten unbenutzten Bilder samt .ct und Vorschau. */
-export async function raeumeBildCacheAuf(maxBytes: number): Promise<number> {
+export async function raeumeBildCacheAuf(maxBytes: number, jetzt: number): Promise<number> {
   const cacheDir = CACHE_DIR();
   const files = await fs.promises.readdir(cacheDir).catch(ohneFehlendeDatei('bildcache:lesen', [] as string[]));
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const cutoff = jetzt - 30 * 24 * 60 * 60 * 1000;
   const gruppen = new Map<string, { dateien: string[]; bytes: number; zuletzt: number }>();
   let weg = 0,
     summe = 0;
@@ -152,7 +152,7 @@ export function merkeCacheZuwachs(bytes: number, max: number): void {
   if (z.laeuft || z.bytes < max / 10) return;
   z.bytes = 0;
   z.laeuft = true;
-  raeumeBildCacheAuf(max)
+  raeumeBildCacheAuf(max, Date.now())
     .catch(e => meldeFehler('bild-cache:deckel', e))
     .finally(() => {
       z.laeuft = false;

@@ -43,6 +43,7 @@ const { quellwurzeln, ANDROID } = require('./helpers/android');
 const API = path.join(ANDROID, 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api');
 const dok = _req('src/vertrag/openapi.js').openapi();
 const modelle = kotlinModelle(quellwurzeln());
+/** @type {{ methode: string, pfad: string, typ?: string, rumpf?: string, anfrage?: { name: string }[] }[]} */
 const routen = [
   ...apiRouten(API).map(r => ({ methode: 'GET', pfad: r.pfad, typ: r.typ, anfrage: r.anfrage })),
   ...schreibRouten(API),

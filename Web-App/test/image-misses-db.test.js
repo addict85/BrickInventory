@@ -1,5 +1,8 @@
 /**
  * Fehlende Bilder werden EINMAL geholt — nicht je Prozess und Besuch neu.
+ *
+ * Gegenprobe (14.11.2026): in istBekanntFehlend `k.uhr.jetzt()` → `Date.now()` → rot:
+ * „nach einer Woche wird erneut gesucht“ (die Uhr der Dienste wirkte nicht).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +12,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Der Bild-Download über das Bildwerk der Dienste: null = das CDN hat kein Bild.
 let versuche = 0;
 
-const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testBildwerk, testUhr } = require('./helpers/sources');
 const _req = buildAndRequire();
 testBildwerk(null, {
   setBildLaden: async () => {
@@ -76,6 +79,18 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
         true,
         'Ohne die Tabelle ist das Wissen nach einem Neustart weg — dann sucht ' + 'jeder Arbeitsprozess von vorn',
       );
+    });
+
+    await t.test('nach einer Woche wird erneut gesucht (gestellte Uhr statt Warten)', () => {
+      const IM = _req('src/bilder/imageMisses.js');
+      IM.merkeFehlend('set:' + PRAEFIX + '_frist');
+      assert.equal(IM.istBekanntFehlend('set:' + PRAEFIX + '_frist'), true);
+      testUhr().vor(7 * 24 * 60 * 60 * 1000 + 1);
+      try {
+        assert.equal(IM.istBekanntFehlend('set:' + PRAEFIX + '_frist'), false, 'die Frist ist abgelaufen');
+      } finally {
+        testUhr().zurueck();
+      }
     });
 
     await t.test('ein Bild, das es gibt, wird nicht gemerkt', async () => {

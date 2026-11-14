@@ -40,7 +40,11 @@ https.get = (url, _opts, cb) => {
       ? { avg_price: '12.50', qty_avg_price: '12.00', min_price: '10', max_price: '15', total_quantity: '3' }
       : { avg_price: '0', qty_avg_price: '0', min_price: '0', max_price: '0', total_quantity: '0' };
   setImmediate(() => {
-    cb(Object.assign(Readable.from([JSON.stringify({ meta: { code: 200 }, data })]), { statusCode: 200, headers: {} }));
+    cb(
+      /** @type {any} */ (
+        Object.assign(Readable.from([JSON.stringify({ meta: { code: 200 }, data })]), { statusCode: 200, headers: {} })
+      ),
+    );
   });
   return req;
 };

@@ -20,6 +20,7 @@ const { ROOT, buildAndRequire, ohneKommentare, testDaten, testZugang } = require
 const _reqCsv = buildAndRequire();
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
+const { portVon } = require('./helpers/server');
 const db = testDaten();
 
 /** Datei ohne Kommentare lesen (siehe ohneKommentare() in helpers/sources.js). */
@@ -232,7 +233,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
   const app = express();
   let geschrieben = 0;
   app.use((req, res, next) => {
-    req.session = { userId: uid };
+    /** @type {any} */ (req).session = { userId: uid };
     const schreibe = res.write.bind(res);
     res.write = (...a) => {
       schreibe(...a);
@@ -251,7 +252,7 @@ test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', asy
   // Der Strom hört auf NOTIFY anderer Worker; die Verbindung dafür hielte den Prozess offen.
   t.after(() => testZugang().benachrichtigung.close());
   const { csvImportBus } = _req('src/auftraege/importAuftrag.js');
-  const r = await fetch(`http://localhost:${srv.address().port}/api/v1/sets/import/csv/stream`, {
+  const r = await fetch(`http://localhost:${portVon(srv)}/api/v1/sets/import/csv/stream`, {
     signal: AbortSignal.timeout(10_000),
   });
   const text = await r.text();

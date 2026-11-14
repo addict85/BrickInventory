@@ -30,10 +30,11 @@ const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { warte } = require('./helpers/zeit');
+const { portVon } = require('./helpers/server');
 const freierPort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = s.address().port;
+      const p = portVon(s);
       s.close(() => r(p));
     });
   });
@@ -118,10 +119,10 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
   });
 
   await t.test('kaputtes JSON und zu grosse Anfragen: einheitliche Antwort ohne Parsertext', async () => {
-    for (const [pfad, mitKeks] of [
+    for (const [pfad, mitKeks] of /** @type {[string, boolean][]} */ ([
       ['/api/v1/auth/login', false],
       ['/api/v1/vouchers', true],
-    ]) {
+    ])) {
       const r = await (mitKeks ? holen : (p, o) => fetch(basis + p, o))(pfad, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },

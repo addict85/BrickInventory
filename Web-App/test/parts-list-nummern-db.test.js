@@ -14,6 +14,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
+const { portVon } = require('./helpers/server');
 const db = testDaten();
 
 async function seed() {
@@ -63,8 +64,8 @@ test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, 
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.session = { userId: 1 };
-    req.apiUser = { user_id: 1, is_admin: 0 };
+    /** @type {any} */ (req).session = { userId: 1 };
+    /** @type {any} */ (req).apiUser = { user_id: 1, is_admin: 0 };
     next();
   });
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
@@ -74,7 +75,7 @@ test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, 
     await db.pool.end().catch(() => {});
   });
 
-  const r = await fetch(`http://127.0.0.1:${srv.address().port}/api/v1/sets/60052-1/parts-list`);
+  const r = await fetch(`http://127.0.0.1:${portVon(srv)}/api/v1/sets/60052-1/parts-list`);
   const d = await r.json();
   assert.equal(d.success, true, JSON.stringify(d));
   const nach = nr => d.parts.find(p => p.part_number === nr);

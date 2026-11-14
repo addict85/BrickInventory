@@ -23,6 +23,7 @@ import { meldeFehler } from '../src/infra/fehler';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
 import { konfig, type Konfig } from '../src/infra/konfig';
+import { systemUhr, type Uhr } from '../src/infra/uhr';
 import type { Dienste } from '../src/dienste';
 
 export type { Dienste } from '../src/dienste';
@@ -68,8 +69,10 @@ export interface Bauteile {
   kontexte?: Record<string, unknown>;
   /** Die Konfiguration; ohne Angabe die des Prozesses (src/infra/konfig.ts). */
   konfig?: Readonly<Konfig>;
+  /** Die Zeit der Dienste (k.uhr); ohne Angabe die des Systems. */
+  uhr?: Uhr;
 }
-type Gesetzt = Bauteile & { konfig: Readonly<Konfig> };
+type Gesetzt = Bauteile & { konfig: Readonly<Konfig>; uhr: Uhr };
 
 /** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
  * der tieferen, die er braucht, als Teil seines Kontexts. */
@@ -82,6 +85,7 @@ export function baueDienste(db: Db, bauteile: Bauteile = {}): Dienste {
   fertig.d = baueBereiche(db, bauteile.nacharbeit ?? baueNacharbeit(d), {
     ...bauteile,
     konfig: bauteile.konfig ?? konfig(),
+    uhr: bauteile.uhr ?? systemUhr,
   });
   return fertig.d;
 }
@@ -99,20 +103,23 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
 }
 
 /** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
-function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig }: Gesetzt, zeige: Zeige) {
-  const einstellungen = erzeugeEinstellungen({ db }, zeige('einstellungen'));
-  const mail = erzeugeMail({ einstellungen, konfig }, zeige('mail'));
-  const auftraege = erzeugeAuftraege({ db, einstellungen }, zeige('auftraege'));
-  const haushalt = erzeugeHaushalt({ db, einstellungen }, zeige('haushalt'));
-  const konto = erzeugeKonto({ db, konfig, einstellungen, auftraege, haushalt, nacharbeit, mail }, zeige('konto'));
-  const idempotenz = erzeugeIdempotenz({ db }, zeige('idempotenz'));
-  const fremdquellen = erzeugeFremdquellen({ db, einstellungen, auftraege, ersatz: quellen }, zeige('fremdquellen'));
+function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
+  const einstellungen = erzeugeEinstellungen({ db, uhr }, zeige('einstellungen'));
+  const mail = erzeugeMail({ uhr, einstellungen, konfig }, zeige('mail'));
+  const auftraege = erzeugeAuftraege({ db, uhr, einstellungen }, zeige('auftraege'));
+  const haushalt = erzeugeHaushalt({ db, uhr, einstellungen }, zeige('haushalt'));
+  const konto = erzeugeKonto({ db, uhr, konfig, einstellungen, auftraege, haushalt, nacharbeit, mail }, zeige('konto'));
+  const idempotenz = erzeugeIdempotenz({ db, uhr }, zeige('idempotenz'));
+  const fremdquellen = erzeugeFremdquellen(
+    { db, uhr, einstellungen, auftraege, ersatz: quellen },
+    zeige('fremdquellen'),
+  );
   const bilder = erzeugeBilder(
-    { db, konfig, auftraege, haushalt, nacharbeit, fremdquellen, bildwerk },
+    { db, uhr, konfig, auftraege, haushalt, nacharbeit, fremdquellen, bildwerk },
     zeige('bilder'),
   );
   const katalog = erzeugeKatalog(
-    { db, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bilder },
+    { db, uhr, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bilder },
     zeige('katalog'),
   );
   return { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, bilder, katalog };
@@ -122,32 +129,32 @@ function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienst
   const zeige = einblickIn(bauteile.kontexte);
   const grund = baueGrund(db, nacharbeit, bauteile, zeige);
   const { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, katalog } = grund;
-  const { konfig } = bauteile;
+  const { konfig, uhr } = bauteile;
   const finanzen = erzeugeFinanzen(
-    { db, konfig, einstellungen, auftraege, haushalt, katalog, nacharbeit, mail },
+    { db, uhr, konfig, einstellungen, auftraege, haushalt, katalog, nacharbeit, mail },
     zeige('finanzen'),
   );
-  const bestand = erzeugeBestand({ db, einstellungen, haushalt, konto, katalog, finanzen }, zeige('bestand'));
+  const bestand = erzeugeBestand({ db, uhr, einstellungen, haushalt, konto, katalog, finanzen }, zeige('bestand'));
   const sets = erzeugeSets(
-    { db, konfig, nacharbeit, katalog, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
+    { db, uhr, konfig, nacharbeit, katalog, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
     zeige('sets'),
   );
-  const teile = erzeugeTeile({ db, einstellungen, haushalt, katalog, finanzen, bestand }, zeige('teile'));
+  const teile = erzeugeTeile({ db, uhr, einstellungen, haushalt, katalog, finanzen, bestand }, zeige('teile'));
   const figuren = erzeugeFiguren(
-    { db, einstellungen, haushalt, katalog, finanzen, bestand, nacharbeit },
+    { db, uhr, einstellungen, haushalt, katalog, finanzen, bestand, nacharbeit },
     zeige('figuren'),
   );
   const merkliste = erzeugeMerkliste(
-    { db, einstellungen, haushalt, katalog, finanzen, sets, nacharbeit },
+    { db, uhr, einstellungen, haushalt, katalog, finanzen, sets, nacharbeit },
     zeige('merkliste'),
   );
-  const gutscheine = erzeugeGutscheine({ db, einstellungen, konto, fremdquellen }, zeige('gutscheine'));
+  const gutscheine = erzeugeGutscheine({ db, uhr, einstellungen, konto, fremdquellen }, zeige('gutscheine'));
   const sammlung = erzeugeSammlung(
-    { db, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, figuren, merkliste },
+    { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, figuren, merkliste },
     zeige('sammlung'),
   );
   const verwaltung = erzeugeVerwaltung(
-    { db, einstellungen, auftraege, konto, idempotenz, katalog, finanzen, bestand, sets, merkliste, mail },
+    { db, uhr, einstellungen, auftraege, konto, idempotenz, katalog, finanzen, bestand, sets, merkliste, mail },
     zeige('verwaltung'),
   );
   return { ...grund, finanzen, bestand, sets, teile, figuren, merkliste, gutscheine, sammlung, verwaltung };

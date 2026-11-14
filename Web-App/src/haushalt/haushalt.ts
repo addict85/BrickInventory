@@ -125,7 +125,7 @@ export async function einladungAnlegen(k: HaushaltKontext, uid: number) {
     return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };
 
   const code = neuerCode();
-  await repo.legeEinladungAn(k.db, einladungsHash(code), id, new Date(Date.now() + INVITE_TTL_MS));
+  await repo.legeEinladungAn(k.db, einladungsHash(code), id, new Date(k.uhr.jetzt() + INVITE_TTL_MS));
   return { code, expires_in: INVITE_TTL_MS / 1000 };
 }
 

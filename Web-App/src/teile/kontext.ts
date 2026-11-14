@@ -11,8 +11,10 @@ import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
 import type { BestandDienste } from '../bestand';
+import type { Uhr } from '../infra/uhr';
 
 export interface TeileAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   /** Zustand je Zugang (Neuaufbau der Teilezusammenfassung); erzeugeTeile legt sie an. */
   faecher: Faecher;

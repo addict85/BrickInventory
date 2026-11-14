@@ -12,8 +12,10 @@ import type { FinanzenDienste } from '../finanzen';
 import type { BestandDienste } from '../bestand';
 import type { SetsDienste } from '../sets';
 import type { MerklisteDienste } from '../merkliste';
+import type { Uhr } from '../infra/uhr';
 
 export interface VerwaltungAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;

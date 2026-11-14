@@ -7,8 +7,10 @@ import * as auftraege from './repository/auftraege';
 import * as importStand from './repository/importStand';
 import * as laufzustand from './repository/laufzustand';
 import * as pdfAuftraege from './repository/pdfAuftraege';
+import type { Uhr } from '../infra/uhr';
 
 export interface AuftraegeAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   faecher: Faecher;
   einstellungen: EinstellungenDienste;

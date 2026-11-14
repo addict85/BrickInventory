@@ -116,7 +116,7 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   // schaltete eine davon ab, und der Test blieb gruen: Er traf die Datei statt
   // der Stelle — dieselbe Fehlerart wie beim Bruecken-Test, wo der Basisordner
   // statt der Kotlin-Datei geprueft wurde.
-  for (const [voll, anzahl, name] of [
+  for (const [voll, anzahl, name] of /** @type {[string, number, string][]} */ ([
     // Seit dem 16.10. steht die Kontokarte auf ihrer eigenen Seite: Der
     // Einstellungsbildschirm traegt nur noch die Liste dorthin.
     [
@@ -180,7 +180,7 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
       1,
       'Registrieren',
     ],
-  ]) {
+  ])) {
     const kurz = path.basename(voll);
     assert.ok(fs.existsSync(voll), `${kurz} steht nicht mehr dort — Pfad im Test veraltet`);
     const treffer = (fs.readFileSync(voll, 'utf8').match(/passwortZuKurz\(/g) || []).length;

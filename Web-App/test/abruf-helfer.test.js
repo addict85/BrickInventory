@@ -25,6 +25,7 @@ const https = require('node:https');
 const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { portVon } = require('./helpers/server');
 const { holeHttps, oeffneHttps, AbrufFehler } = _req('src/infra/abruf.js');
 const { setBildHerunterladen } = _req('src/bilder/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
@@ -91,8 +92,8 @@ const opt = (mehr = {}) => ({ hosts: [`localhost:${port}`], maxBytes: 1000, zeit
 const basis = () => `https://localhost:${port}`;
 
 test.before(async () => {
-  await new Promise(r => server.listen(0, '127.0.0.1', r));
-  port = server.address().port;
+  await new Promise(r => server.listen(0, '127.0.0.1', () => r(null)));
+  port = portVon(server);
 });
 test.after(() => {
   server.closeAllConnections();

@@ -12,6 +12,7 @@ import { effectiveCondition } from './zustand';
 import { KEINE_FARBE } from '../../infra/validate';
 import { versuche } from '../../infra/ergebnis';
 import type { FinanzenKontext } from '../kontext';
+import type { Uhr } from '../../infra/uhr';
 
 /** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
 export type { Blickfeld } from '../../haushalt';
@@ -57,13 +58,13 @@ export async function preisAusCache(
   return k.preisCache.setPreisFrisch(setNumber, condition, currency, ttlStunden);
 }
 
-export function cacheUsable(row: PreisZeile, ttlHours: number) {
+export function cacheUsable(row: PreisZeile, ttlHours: number, jetzt: number) {
   if (!row) return false;
   // avg_price ist numeric, und pg liefert numeric als Zeichenkette.
   if (hatPreis(row)) return true;
   // 0-Eintrag: nur kurz vertrauen, danach neu versuchen.
   if (!row.fetched_at) return false;
-  const ageH = (Date.now() - new Date(row.fetched_at).getTime()) / 3600000;
+  const ageH = (jetzt - new Date(row.fetched_at).getTime()) / 3600000;
   return ageH < Math.min(ZERO_PRICE_TTL_HOURS, ttlHours);
 }
 
@@ -168,7 +169,7 @@ async function holePreisMitRueckfall(
   const anderer = zustand === 'N' ? 'U' : 'N';
   const z = await q.lies(zustand);
   if (hatPreis(z)) return ausZeile(z!);
-  const bekanntLeer = cacheUsable(z, ttl);
+  const bekanntLeer = cacheUsable(z, ttl, k.uhr.jetzt());
   let pd: CacheZeile | null = null;
   if (!bekanntLeer) {
     if (!(await k.katalog.kontingentFrei('bricklink')).allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
@@ -177,7 +178,7 @@ async function holePreisMitRueckfall(
   }
   const zf = await q.lies(anderer);
   if (hatPreis(zf)) return ausZeile(zf!, { condition_used: anderer, is_fallback: true });
-  if (bekanntLeer && cacheUsable(zf, ttl)) return { ...OHNE_PREIS, from_cache: true, no_price: true };
+  if (bekanntLeer && cacheUsable(zf, ttl, k.uhr.jetzt())) return { ...OHNE_PREIS, from_cache: true, no_price: true };
   const frei = (await k.katalog.kontingentFrei('bricklink')).allowed;
   const pd2 = frei ? await rufeAb(q, anderer) : null;
   if (hatPreis(pd2)) return ausZeile(pd2!, { from_cache: false, condition_used: anderer, is_fallback: true });
@@ -233,13 +234,14 @@ export function preisAusVorrat(
   lies: (zustand: 'N' | 'U') => CacheZeile | null | undefined,
   zustand: 'N' | 'U',
   ttlStunden: number,
+  jetzt: number,
 ): PreisDaten {
   const anderer = zustand === 'N' ? 'U' : 'N';
   const z = lies(zustand) ?? null;
   if (hatPreis(z)) return ausZeile(z!);
   const zf = lies(anderer) ?? null;
   if (hatPreis(zf)) return ausZeile(zf!, { condition_used: anderer, is_fallback: true });
-  if (cacheUsable(z, ttlStunden) && cacheUsable(zf, ttlStunden))
+  if (cacheUsable(z, ttlStunden, jetzt) && cacheUsable(zf, ttlStunden, jetzt))
     return { ...OHNE_PREIS, from_cache: true, no_price: true };
   return { ...OHNE_PREIS, from_cache: false, ausstehend: true };
 }
@@ -248,11 +250,12 @@ export function setPreisAusVorrat(
   setNumber: string,
   zustand: 'N' | 'U',
   ttlStunden: number,
+  jetzt: number,
   pre: { catalog: Map<string, unknown>; cache: Map<string, CacheZeile> },
 ): PreisDaten {
   if (ohneBricklinkPreis((pre.catalog.get(mitVersion(setNumber)) as Parameters<typeof ohneBricklinkPreis>[0]) ?? null))
     return { ...OHNE_PREIS, from_cache: true, no_price: true, bl_unbekannt: true };
-  return preisAusVorrat(c => pre.cache.get(`${setNumber}|${c}`), zustand, ttlStunden);
+  return preisAusVorrat(c => pre.cache.get(`${setNumber}|${c}`), zustand, ttlStunden, jetzt);
 }
 
 export async function teilSchluessel(k: FinanzenKontext, partNumber: string, rbColorId: number): Promise<string> {
@@ -281,10 +284,10 @@ const NACHSCHLAG_TTL_MS = 10 * 60 * 1000;
 const NACHSCHLAG_MAX = 5000;
 
 /** Ein `null` (nichts gefunden) wird nicht gemerkt. */
-function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
+function nachschlagwerk<S, W>(uhr: Uhr, hole: (schluessel: S) => Promise<W | null>) {
   const karte = new Map<S, { wert: W; zeit: number }>();
   const frage = async (schluessel: S): Promise<W | null> => {
-    const jetzt = Date.now();
+    const jetzt = uhr.jetzt();
     const treffer = karte.get(schluessel);
     if (treffer && jetzt - treffer.zeit < NACHSCHLAG_TTL_MS) return treffer.wert;
     const wert = await hole(schluessel);
@@ -299,11 +302,11 @@ function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
   // Kein Leeren: Die Quelltabellen werden nur ergänzt, ein Treffer bleibt richtig.
   frage.kennt = (schluessel: S) => {
     const treffer = karte.get(schluessel);
-    return !!treffer && Date.now() - treffer.zeit < NACHSCHLAG_TTL_MS;
+    return !!treffer && uhr.jetzt() - treffer.zeit < NACHSCHLAG_TTL_MS;
   };
   frage.merken = (schluessel: S, wert: W) => {
     if (karte.size >= NACHSCHLAG_MAX) karte.clear();
-    karte.set(schluessel, { wert, zeit: Date.now() });
+    karte.set(schluessel, { wert, zeit: uhr.jetzt() });
   };
   return frage;
 }
@@ -315,7 +318,7 @@ function nachschlagwerk<S, W>(hole: (schluessel: S) => Promise<W | null>) {
 type Farbstand = { karte: Map<number, number> | null; zeit: number; ladung: Promise<Map<number, number>> | null };
 export async function farbkarte(k: FinanzenKontext): Promise<Map<number, number>> {
   const st = k.faecher.fach<Farbstand>('farbkarte', () => ({ karte: null, zeit: 0, ladung: null }));
-  const jetzt = Date.now();
+  const jetzt = k.uhr.jetzt();
   if (st.karte && jetzt - st.zeit < NACHSCHLAG_TTL_MS) return st.karte;
   if (st.ladung) return st.ladung;
   st.ladung = (async () => {
@@ -347,7 +350,9 @@ export async function resolveBlColorId(k: FinanzenKontext, rbColorId: number): P
 // Ohne Übersetzung antwortet BrickLink für RB-Nummern mit 404. Eine Quelle
 // (bl_zuordnung), damit nicht zwei Orte auseinanderlaufen. Je Satz Dienste ein Gedächtnis.
 const blTeil = (k: FinanzenKontext) =>
-  k.faecher.fach('blTeil', () => nachschlagwerk((partNumber: string) => k.katalog.blAbrufNummer('part', partNumber)));
+  k.faecher.fach('blTeil', () =>
+    nachschlagwerk(k.uhr, (partNumber: string) => k.katalog.blAbrufNummer('part', partNumber)),
+  );
 
 /** Mit `konto` zuerst dessen eigene Zuordnung (Migration 0094); sie geht am
  * gemeinsamen Gedächtnis vorbei, weil sie nur für dieses Konto gilt. */

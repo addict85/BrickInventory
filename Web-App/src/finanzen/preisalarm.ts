@@ -134,7 +134,7 @@ export async function ausgeloesteSeit(k: FinanzenKontext, userId: number, seit: 
   // Die Zeit der Datenbank: Postgres speichert Mikro-, JavaScript nur
   // Millisekunden; mit der JS-Uhr käme eine Meldung zweimal.
   const jetztRow = await repo.datenbankJetzt(k.db);
-  const jetzt = jetztRow?.jetzt ?? new Date();
+  const jetzt = jetztRow?.jetzt ?? k.uhr.datum();
 
   // `instanceof Date` ZUERST: String(date) verliert die Millisekunden, und eine
   // Meldung aus derselben Sekunde käme ein zweites Mal.

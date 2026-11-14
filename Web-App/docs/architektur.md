@@ -106,6 +106,9 @@ Absicht, solange es nur von unten gebraucht wird:
   `t`), wirft die Datenbankschicht `UngebundeneAbfrage`: Sie liefe sonst über eine
   zweite Verbindung neben der Transaktion. Erkannt wird das am Aufrufrahmen; ein Weg
   in die Transaktion ist er nicht.
+- Die Zeit kommt über `k.uhr` (`src/infra/uhr.ts`, `baueDienste(db, { uhr })`), nicht über
+  `Date.now()`: Tests stellen sie (`testUhr().vor(ms)`), statt eine Frist abzuwarten. Drosseln
+  mit echten Zeitgebern bleiben bei der Systemzeit; den Rest zählt `test/ratschen.test.js`.
 - `konfig()` liest nur der Start (`startup/`, `server.ts`); Fachbereiche, Routen und
   Jobs bekommen die Konfiguration gereicht (`baueDienste` → `k.konfig`, sonst als
   Parameter). Übrig sind Helfer des Prozesses in `src/infra`, `src/http`, `db/` und der

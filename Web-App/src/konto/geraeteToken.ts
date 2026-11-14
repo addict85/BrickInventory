@@ -93,7 +93,7 @@ export async function pruefeToken(
   o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {},
 ): Promise<TokenPruefung> {
   if (!token) return { nutzer: null };
-  const now = Date.now();
+  const now = k.uhr.jetzt();
   const ergebnis = (u: TokenBenutzer): TokenPruefung =>
     o.zweck !== 'rotation' && rotationPflicht(u, now)
       ? { nutzer: null, grund: 'token_rotation_noetig' }
@@ -157,7 +157,7 @@ export async function validateToken(
  * Entscheidung fällt am gelesenen Datensatz, damit sie über mehrere Worker
  * gilt; die WHERE-Klausel fängt den Wettlauf. */
 function _touchLastUsed(k: KontoKontext, entry: CacheEintrag, ip?: string | null): void {
-  const jetzt = Date.now();
+  const jetzt = k.uhr.jetzt();
   const u = entry.user;
   const zuletzt = u.last_used ? new Date(u.last_used).getTime() : 0;
   const ziel = jetzt + k.konfig.tokenLeerlaufTage * TAG_MS;

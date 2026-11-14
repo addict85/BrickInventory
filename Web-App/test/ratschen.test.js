@@ -441,6 +441,21 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
     console.log(`  ℹ unknown-Parameter: ${unbekannt} (Schranke ${SCHRANKE_UNKNOWN}) — Schranke nachziehen`);
 });
 
+test('direkte Uhr-Aufrufe in Fachbereichen werden weniger, nie mehr', () => {
+  // Die Zeit kommt über k.uhr (src/infra/uhr.ts): Ein Test stellt sie, statt zu warten.
+  // Übrig sind Drosseln mit echten Zeitgebern, Zeitstempel ohne Kontext und src/konto
+  // (dort arbeitet gerade eine andere Runde an Sitzungsfristen und Anmeldebremse).
+  // Gegenprobe (14.11.2026): `const x = Date.now();` in src/sets/setService.ts → rot (44 von 43).
+  const SCHRANKE = 43;
+  const UHR = /\bDate\.now\(\)|\bnew Date\(\)/g;
+  assert.equal('Date.now(); new Date(); new Date(x); k.uhr.jetzt()'.match(UHR)?.length, 2, 'Selbstbeweis');
+  const fach = (/** @type {string} */ f) =>
+    /^(src[\\/](?!infra|http|vertrag)\w+|jobs)[\\/]/.test(path.relative(WEB, f));
+  const ist = zaehle([UHR], fach);
+  assert.ok(ist <= SCHRANKE, `${ist} direkte Uhr-Aufrufe in Fachbereichen und Jobs, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ Uhr-Aufrufe: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('keine Testdatei prüft REQUIRE_DB selbst', () => {
   // Die Regel steht in test/helpers/db.js (dbOderSkip, keineDb,
   // fehltVoraussetzung); eine eigene Fassung war 115-mal kopiert.

@@ -40,11 +40,12 @@ const NAME = `stile_${process.pid}`,
   PASS = 'stile-Passwort-1';
 
 const { chrome, warte } = require('./helpers/app-browser');
+const { portVon } = require('./helpers/server');
 
 const freierPort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = s.address().port;
+      const p = portVon(s);
       s.close(() => r(p));
     });
   });

@@ -193,6 +193,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
 
   // Nur parts und minifigs. Die Katalog- und Erfassungstabellen schreiben ihre
   // quantity natuerlich fort — sie sind die Wahrheit, nicht die Abschrift.
+  /** @type {[string, RegExp][]} */
   const muster = [
     ['setzt parts', /UPDATE\s+parts\s+SET\s+[^;`']*\bquantity\s*=/i],
     ['setzt minifigs', /UPDATE\s+minifigs\s+SET\s+[^;`']*\bquantity\s*=/i],
