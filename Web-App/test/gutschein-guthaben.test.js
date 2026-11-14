@@ -303,7 +303,7 @@ test('Guthaben-Abfrage', async t => {
     const { abruf } = doppel({ Login: antwort({ json: { errors: [{ message: 'gesperrt' }] } }) });
     await assert.rejects(
       () => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf }),
-      e => e instanceof G.LoginAbgelehnt && e.message === 'Login: gesperrt',
+      e => e instanceof G.LoginAbgelehnt && String(Object(e).message) === 'Login: gesperrt',
     );
   });
 

@@ -73,7 +73,7 @@ function fortschrittsKette(d: AuftraegeDienste, a: AuftragsZeile, ac: AbortContr
 }
 
 /** Was nicht mehr läuft, steht sonst bis zum Ablauf der Frist auf 'laeuft'; die Frist heilt auch einen Fehler hier. */
-async function gibZurueck(d: AuftraegeDienste, a: AuftragsZeile): Promise<void> {
+async function zurueckInDieTabelle(d: AuftraegeDienste, a: AuftragsZeile): Promise<void> {
   await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
 }
 
@@ -170,7 +170,7 @@ async function unterbrichLaufende(d: AuftraegeDienste, laufend: Map<string, Lauf
   for (const l of alle) if (!l.ac.signal.aborted) l.ac.abort(new AuftragUnterbrochen());
   await Promise.race([Promise.all(alle.map(l => l.fertig)), new Promise(r => setTimeout(r, wartenMs).unref())]);
   const rest = [...laufend.values()];
-  for (const { a } of rest) await gibZurueck(d, a);
+  for (const { a } of rest) await zurueckInDieTabelle(d, a);
   return rest;
 }
 
@@ -195,7 +195,7 @@ function erzeugeWorker(d: AuftraegeDienste, bearbeiter: Bearbeitertabelle, o: Wo
     const a = await d.belegeAuftrag(arten, fristSek, belegKennung(), exklusiv, [...laufend.keys()]);
     if (!a) return null;
     if (beendet) {
-      await gibZurueck(d, a);
+      await zurueckInDieTabelle(d, a);
       return null;
     }
     const ac = new AbortController();
