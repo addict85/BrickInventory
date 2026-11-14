@@ -12,3 +12,4 @@ export { erzeugeKatalog } from './bereich';
 export type { KatalogDienste } from './bereich';
 export { katalogImporte, parseCsvLine } from './csvImport';
 export { pdfAufgegeben } from './pdf/pdfErzeugung';
+export type { Bildposten } from './bildlage';

@@ -68,7 +68,7 @@ const GEMEINSAM = {
     art: KATALOG,
     eingabe: false,
     schreiber: [
-      'src/bilder/repository/bildlage.ts',
+      'src/katalog/repository/bildlage.ts',
       'src/katalog/repository/csvTausch.ts',
       'src/katalog/repository/setStamm.ts',
     ],
@@ -99,7 +99,7 @@ const GEMEINSAM = {
     art: KATALOG,
     eingabe: false,
     schreiber: [
-      'src/bilder/repository/bildlage.ts',
+      'src/katalog/repository/bildlage.ts',
       'src/katalog/repository/csvTausch.ts',
       'src/katalog/repository/setStamm.ts',
     ],
@@ -249,17 +249,6 @@ const BESITZER = {
 const FREMDSCHREIBER = [
   // Der Schemastart schreibt die Zeitzone, bevor es Dienste gibt.
   'db/schemaStart.ts → global_settings',
-  // Teile und Figuren eines Sets: Der Katalog liegt unter dem Bestand und kann ihn nicht rufen.
-  'src/katalog/repository/setInhalt.ts → minifigs',
-  'src/katalog/repository/setInhalt.ts → parts',
-  // Das Set-Bild im Katalogeintrag: Die Bilder liegen unter dem Katalog und können ihn nicht rufen.
-  'src/bilder/repository/bildlage.ts → rb_sets',
-  'src/bilder/repository/bildlage.ts → set_catalog',
-  'src/figuren/repository/manuelleFiguren.ts → minifigs',
-  'src/teile/repository/manuelleTeile.ts → parts',
-  'src/teile/repository/teilFarbe.ts → parts',
-  'src/sammlung/repository/loeschen.ts → minifig_acquisitions',
-  'src/sammlung/repository/loeschen.ts → part_acquisitions',
 ];
 
 const bereichVon = datei => (datei.startsWith('src/') ? datei.split('/').slice(0, 2).join('/') : datei.split('/')[0]);

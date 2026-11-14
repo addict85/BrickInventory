@@ -4,6 +4,7 @@
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import { versuche } from '../infra/ergebnis';
 import { setErgaenzen, type NacharbeitArt } from './erfassen';
+import { importiereFiguren, importiereTeile } from './setInhaltImport';
 import type { SetsKontext } from './kontext';
 
 async function zieheNach(
@@ -25,8 +26,8 @@ async function zieheNach(
   };
   // Die Figuren in jedem Zweig: Der Import behält den Lagerort vorhandener
   // Figuren, und so holt ein Zweiterfassen nach, was beim ersten Mal scheiterte.
-  await sk.katalog.importiereFiguren(setNumber, userId);
-  await sk.katalog.importiereTeile(setNumber, userId);
+  await importiereFiguren(sk, setNumber, userId);
+  await importiereTeile(sk, setNumber, userId);
   pruefeAbbruch(lauf);
 
   if (art === 'zweit') await schritt('bl-nummern', () => sk.katalog.blNummernNachladen(lauf));
@@ -40,7 +41,7 @@ async function zieheNach(
   await schritt('teile-anreichern', () => sk.katalog.enrichSetParts(setNumber));
   await schritt('figuren-anreichern', () => sk.katalog.enrichSetMinifigs(setNumber));
   // Brickset füllt nur Lücken; der CSV-Import fragt es beim Anlegen nicht.
-  if (art === 'csv') await schritt('brickset', () => sk.katalog.bilder.fuelleAusBrickset(setNumber));
+  if (art === 'csv') await schritt('brickset', () => sk.katalog.fuelleAusBrickset(setNumber));
   pruefeAbbruch(lauf);
   await schritt('bilder', () => sk.katalog.downloadSetImages(setNumber));
   if (ohne.length) await lauf?.fortschritt?.({ text: `ohne ${ohne.join(', ')}`, ohne });

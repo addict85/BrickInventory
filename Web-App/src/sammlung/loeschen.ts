@@ -1,6 +1,5 @@
 /** Eine Stelle für Teil, Figur und „alles löschen", damit alle Wege dieselben
  * Zeilen in den Papierkorb nehmen. */
-import * as repo from './repository/loeschen';
 import type { SammlungKontext } from './kontext';
 
 export async function loescheTeil(
@@ -14,7 +13,7 @@ export async function loescheTeil(
     const r = await t.bestand.loescheManuellesTeil(besitzer, pn, cid);
     if (r.changes === 0) return null;
     // Erfassungen mit: Die Finanzsummen zählten das Teil sonst weiter.
-    await repo.loescheTeilErfassungen(t.db, besitzer, pn, cid || 0);
+    await t.teile.loescheTeilErfassungen(besitzer, pn, cid || 0);
     return id;
   });
 }
@@ -24,7 +23,7 @@ export async function loescheFigur(k: SammlungKontext, besitzer: number, fn: str
     const id = await t.bestand.legeInPapierkorb('figur', besitzer, fn);
     const r = await t.bestand.loescheManuelleFigur(besitzer, fn);
     if (r.changes === 0) return null;
-    await repo.loescheFigurErfassungen(t.db, besitzer, fn);
+    await t.figuren.loescheFigurErfassungen(besitzer, fn);
     return id;
   });
 }

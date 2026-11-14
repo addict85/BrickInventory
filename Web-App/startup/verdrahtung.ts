@@ -43,6 +43,7 @@ export function baueNacharbeit(d: () => Dienste): Nacharbeit & { ueber(db: Db): 
     bildVormerken: (url, sn) => d().bilder.merkeGebraucht(url, sn),
     setTeileAnreichern: sn => d().katalog.enrichSetParts(sn),
     figurenAnreichern: sn => d().katalog.enrichSetMinifigs(sn),
+    setBildLokalEintragen: (sn, quelle) => d().katalog.setBildLokalEintragen(sn, quelle),
     setBilderLaden: sn =>
       d().auftraege.stelleAuftragEin(
         'bilder',

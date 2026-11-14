@@ -9,6 +9,7 @@ import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { BilderDienste } from '../bilder';
 import * as anleitungen from './repository/anleitungen';
+import * as bildlage from './repository/bildlage';
 import * as blZuordnung from './repository/blZuordnung';
 import * as csvKatalog from './repository/csvKatalog';
 import * as katalogCache from './repository/katalogCache';
@@ -35,6 +36,18 @@ export interface KatalogAbhaengigkeiten {
 
 /** Anleitungen, BrickLink-Zuordnung und CSV-Katalog. */
 const anleitungszugang = (db: Db) => ({
+  bildlage: {
+    setsMitFehlendenKatalogbildern: mit(db)(bildlage.setsMitFehlendenKatalogbildern),
+    manuelleTeileOhneBild: mit(db)(bildlage.manuelleTeileOhneBild),
+    figurenOhneBild: mit(db)(bildlage.figurenOhneBild),
+    setBilderOhneDatei: mit(db)(bildlage.setBilderOhneDatei),
+    merkeSetBildLokal: mit(db)(bildlage.merkeSetBildLokal),
+    lokaleKatalogbilder: mit(db)(bildlage.lokaleKatalogbilder),
+    teilbilder: mit(db)(bildlage.teilbilder),
+    figurenbilder: mit(db)(bildlage.figurenbilder),
+    fuelleSetLuecken: mit(db)(bildlage.fuelleSetLuecken),
+    setsOhneAnleitungsabruf: mit(db)(bildlage.setsOhneAnleitungsabruf),
+  },
   anleitungen: {
     zaehleAnleitungen: mit(db)(anleitungen.zaehleAnleitungen),
     anleitungenDesSets: mit(db)(anleitungen.anleitungenDesSets),
@@ -104,10 +117,6 @@ const stammzugang = (db: Db) => ({
   },
   setInhalt: {
     figurenDesSetkatalogs: mit(db)(setInhalt.figurenDesSetkatalogs),
-    fuegeSetFigurenEin: mit(db)(setInhalt.fuegeSetFigurenEin),
-    entferneFremdeSetFiguren: mit(db)(setInhalt.entferneFremdeSetFiguren),
-    fuegeSetTeileEin: mit(db)(setInhalt.fuegeSetTeileEin),
-    entferneFremdeSetTeile: mit(db)(setInhalt.entferneFremdeSetTeile),
     teileOhneBlZuordnung: mit(db)(setInhalt.teileOhneBlZuordnung),
   },
   teileAnreicherung: {

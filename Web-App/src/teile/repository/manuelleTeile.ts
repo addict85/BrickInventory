@@ -30,20 +30,6 @@ export function teilZeileMitZustand(db: DbSchnittstelle, uid: number, partNumber
   );
 }
 
-/** Ohne Menge: Sie entsteht aus der ersten Erfassung. */
-export async function legeTeilManuellAn(
-  db: DbSchnittstelle,
-  uid: number,
-  partNumber: string,
-  colorId: number,
-): Promise<void> {
-  await db.run(
-    `INSERT INTO parts (user_id, set_number, part_number, color_id, source)
-                VALUES ($1, NULL, $2, $3, 'manual') ON CONFLICT DO NOTHING`,
-    [uid, partNumber, colorId],
-  );
-}
-
 export async function rbFarbcode(db: DbSchnittstelle, colorId: number): Promise<string | null> {
   return (await db.get<{ rgb: string | null }>('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]))?.rgb || null;
 }
@@ -88,4 +74,12 @@ export function teilErfassungen(db: DbSchnittstelle, uids: number[], partNumber:
      ORDER BY a.created_at ASC, a.id ASC`,
     [uids, partNumber, colorId],
   );
+}
+
+export function loescheTeilErfassungen(tx: DbSchnittstelle, besitzer: number, partNumber: string, colorId: number) {
+  return tx.run('DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3', [
+    besitzer,
+    partNumber,
+    colorId,
+  ]);
 }

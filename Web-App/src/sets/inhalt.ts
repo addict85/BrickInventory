@@ -8,6 +8,7 @@ import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/setDetail';
 import type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
 import { versuche, wertOder } from '../infra/ergebnis';
+import { importiereTeile } from './setInhaltImport';
 import type { SetsKontext } from './kontext';
 
 /** Ohne Eintrag null. */
@@ -187,7 +188,7 @@ export async function teileDesSetsImportieren(sk: SetsKontext, uid: number, sn: 
   if (!set) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
   const takt = await sk.konto.zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
   if (takt.count > 30) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: takt.waitMin });
-  return sk.katalog.importiereTeile(set.set_number, set.owner_user_id);
+  return importiereTeile(sk, set.set_number, set.owner_user_id);
 }
 
 /** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */

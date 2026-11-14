@@ -1,6 +1,7 @@
 import { downloadSetInstructions, anzahlAnleitungen } from './instructions';
 import { logAndContinue, meldeFehler } from '../infra/fehler';
 import { type Nutzlast, pruefeAbbruch, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
+import * as bildlage from './bildlage';
 import type { KatalogKontext } from './kontext';
 
 /** Ist das Tageskontingent aufgebraucht, wartet die ganze Art bis zur
@@ -24,7 +25,7 @@ async function bricksetNachlauf(k: KatalogKontext, n: Nutzlast<'brickset'>, lauf
 
   pruefeAbbruch(lauf);
   // Ist das Kontingent mittendrin weg, merkt getSetInfo das Set selbst erneut vor.
-  if (await k.bilder.fuelleAusBrickset(sn)) console.log(`[brickset] Retry OK: ${sn}`);
+  if (await bildlage.fuelleAusBrickset(k, sn)) console.log(`[brickset] Retry OK: ${sn}`);
   pruefeAbbruch(lauf);
   if ((await anzahlAnleitungen(k, sn)) === 0) {
     await downloadSetInstructions(k, sn).catch(logAndContinue('brickset-retry:downloadSetInstructions'));

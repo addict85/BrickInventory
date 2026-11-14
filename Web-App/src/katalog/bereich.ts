@@ -2,6 +2,7 @@
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as anleitungLaden from './anleitungLaden';
+import * as bildlageDienst from './bildlage';
 import * as blZuordnungDienst from './blZuordnung';
 import * as bricklinkLink from './bricklinkLink';
 import * as bricklinkPreise from './bricklinkPreise';
@@ -59,6 +60,14 @@ function katalogDienste(k: KatalogKontext) {
     get bilder() {
       return k.bilder;
     },
+    fuelleAusBrickset: mit(k)(bildlageDienst.fuelleAusBrickset),
+    anleitungenNachtragen: mit(k)(bildlageDienst.anleitungenNachtragen),
+    setBilderNachladen: mit(k)(bildlageDienst.setBilderNachladen),
+    vorschaubilderNachtragen: mit(k)(bildlageDienst.vorschaubilderNachtragen),
+    setBildLokalEintragen: mit(k)(bildlageDienst.setBildLokalEintragen),
+    bilderFuerNachlauf: mit(k)(bildlageDienst.bilderFuerNachlauf),
+    bilderAusKatalog: <T extends bildlageDienst.Bildposten>(posten: T[], istFigur: (p: T) => boolean) =>
+      bildlageDienst.bilderAusKatalog(k, posten, istFigur),
     merkeBlNummer: mit(k)(blZuordnungDienst.merkeBlNummer),
     merkeEigeneBlNummer: mit(k)(blZuordnungDienst.merkeEigeneBlNummer),
     blNummerVon: mit(k)(blZuordnungDienst.blNummerVon),
@@ -95,8 +104,11 @@ function katalogDienste(k: KatalogKontext) {
     katalogTeil: mit(k)(katalogPflege.katalogTeil),
     katalogFigur: mit(k)(katalogPflege.katalogFigur),
     figurenAusKatalog: mit(k)(minifigsImport.figurenAusKatalog),
-    importiereFiguren: mit(k)(minifigsImport.importiereFiguren),
-    importiereTeile: mit(k)(partsImport.importiereTeile),
+    setFigurenLaden: mit(k)(minifigsImport.setFigurenLaden),
+    setFigurenMerken: mit(k)(minifigsImport.setFigurenMerken),
+    setTeileLaden: mit(k)(partsImport.setTeileLaden),
+    setTeileMerken: mit(k)(partsImport.setTeileMerken),
+    setTeilBilderEinreihen: mit(k)(partsImport.setTeilBilderEinreihen),
     blNummernNachladen: mit(k)(partsImport.blNummernNachladen),
     inventarFuerKandidaten: mit(k)(rbInventar.inventarFuerKandidaten),
     neuestesInventar: mit(k)(rbInventar.neuestesInventar),

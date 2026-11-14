@@ -15,6 +15,5 @@ export { raeumeBildCacheAuf } from './imgCacheServe';
 export { imgProxyFailures } from './imgProxyStats';
 export { setBildHerunterladen, rebrickableSetBild } from './setImages';
 export { generateThumb } from './thumbs';
-export type { Bildposten } from './bildlage';
 export { erzeugeBilder } from './bereich';
 export type { BilderAbhaengigkeiten, BilderDienste, BilderKontext, Bildwerk } from './bereich';

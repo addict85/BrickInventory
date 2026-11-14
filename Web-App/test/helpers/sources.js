@@ -234,6 +234,7 @@ function buildAndRequire() {
     'setTeileAnreichern',
     'figurenAnreichern',
     'setBilderLaden',
+    'setBildLokalEintragen',
   ])
     _nacharbeit[k] = (...a) => nacharbeit()[k](...a);
   // In einer Transaktion (Kontext `t`) die Nacharbeit über deren Zugang; ersetzte Methoden bleiben.
@@ -542,6 +543,7 @@ function setKernQuelle() {
     ['src/sets/erfassen.ts'],
     ['src/katalog/partsImport.ts'],
     ['src/katalog/minifigsImport.ts'],
+    ['src/sets/setInhaltImport.ts'],
   ]
     .map(p => dienstQuelle(p[0]))
     .join('\n');
@@ -582,7 +584,7 @@ function startQuelle() {
     'src/katalog/bildNachlauf.ts',
     'src/verwaltung/startNachlaeufe.ts',
     'src/verwaltung/aufraeumen.ts',
-    'src/bilder/bildlage.ts',
+    'src/katalog/bildlage.ts',
   ].map(f => dienstQuelle(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {

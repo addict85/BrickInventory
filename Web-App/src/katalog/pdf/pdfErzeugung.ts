@@ -8,6 +8,7 @@ import { zeichnePdfImFaden, type PdfTeil } from './pdfZeichnen';
 import { KEINE_FARBE } from '../../infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../katalogPflege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../../infra/setNummer';
+import { bilderAusKatalog as bilderAusKatalogLesen } from '../bildlage';
 import type { KatalogKontext } from '../kontext';
 
 /** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
@@ -20,7 +21,7 @@ const cdnAdresse = (url: string) => {
 };
 
 /** Nur geprüfte Bildquellen aus dem Katalog (src/bilder/bildlage.ts). */
-export const bilderAusKatalog = (k: KatalogKontext, parts: PdfTeil[]) => k.bilder.bilderAusKatalog(parts, istFigur);
+export const bilderAusKatalog = (k: KatalogKontext, parts: PdfTeil[]) => bilderAusKatalogLesen(k, parts, istFigur);
 
 async function figurenOhneAdresse(k: KatalogKontext, parts: PdfTeil[]) {
   for (const p of parts.filter(

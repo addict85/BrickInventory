@@ -84,11 +84,11 @@ export async function aendereTeilFarbe(
       // Die Zielzeile bleibt. Ihren Lagerort übernimmt sie nur, wenn sie keinen hat:
       // „Kiste 3" soll durch eine Farbkorrektur nicht verschwinden.
       if (quelle.storage_id && !ziel.storage_id) {
-        await repo.setzeTeilLagerort(t.db, quelle.storage_id, ziel.id);
+        await t.bestand.setzeTeilLagerort(quelle.storage_id, ziel.id);
       }
-      await repo.loescheTeilzeile(t.db, quelle.id);
+      await t.bestand.loescheTeilzeile(quelle.id);
     } else {
-      await repo.faerbeTeilzeileUm(t.db, neu, quelle.id);
+      await t.bestand.faerbeTeilzeileUm(neu, quelle.id);
     }
 
     return {

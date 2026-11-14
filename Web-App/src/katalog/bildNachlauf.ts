@@ -6,10 +6,11 @@ import { KEINE_FARBE } from '../infra/validate';
 import * as enrich from './teileAnreicherung';
 import { AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
 import { versuche } from '../infra/ergebnis';
+import { bilderFuerNachlauf } from './bildlage';
 import type { KatalogKontext } from './kontext';
 
 async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<void> {
-  const { sets, teile: manualParts, figuren: figsToFetch } = await kx.bilder.bilderFuerNachlauf();
+  const { sets, teile: manualParts, figuren: figsToFetch } = await bilderFuerNachlauf(kx);
   if (!sets.length && !manualParts.length && !figsToFetch.length) {
     await k.fortschritt({ erledigt: 0, gesamt: 0, text: 'Alle Bilder gecacht' });
     return;
