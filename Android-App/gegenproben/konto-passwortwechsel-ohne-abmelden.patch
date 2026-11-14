@@ -6,11 +6,11 @@ Rot: nach dem Passwortwechsel wird abgemeldet
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
-@@ -139,7 +139,6 @@
+@@ -138,7 +138,6 @@
+             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
              when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
-                 is Ergebnis.Success ->
-                     if (r.data.success) {
--                        sitzungsDienst.abmelden()
-                         meldungen.zeige(Meldung.Ressource(R.string.konto_password_changed))
-                         _kontoState.value = KontoUiState()
-                     } else {
+                 is Ergebnis.Success -> {
+-                    sitzungsDienst.abmelden()
+                     meldungen.zeige(Meldung.Ressource(R.string.konto_password_changed))
+                     _kontoState.value = KontoUiState()
+                 }

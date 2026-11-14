@@ -73,6 +73,6 @@ class ZweiterFaktorUebernahmeTest {
             """{"success":true,"user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}"""
         val me = konto.getMe()
         assertTrue("aus /auth/me", me is Ergebnis.Success &&
-            me.data.user?.zweiterFaktorPflicht == true)
+            me.data?.zweiterFaktorPflicht == true)
     }
 }

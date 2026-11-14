@@ -74,7 +74,7 @@ sealed class Ergebnis<out T> {
 }
 
 /** Die Daten eines Erfolgs umformen; Stand und Puffer bleiben, ein Fehler bleibt derselbe. */
-inline fun <T, R> Ergebnis<T>.abgebildet(f: (T) -> R): Ergebnis<R> = when (this) {
+internal inline fun <T, R> Ergebnis<T>.abgebildet(f: (T) -> R): Ergebnis<R> = when (this) {
     is Ergebnis.Success -> Ergebnis.Success(f(data), stand, gepuffert)
     is Ergebnis.Error -> this
 }

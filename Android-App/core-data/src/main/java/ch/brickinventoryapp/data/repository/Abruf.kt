@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
@@ -211,3 +212,6 @@ internal inline fun <T, R> Ergebnis<T>.zugesagt(erfolg: (T) -> Boolean, satz: (T
 
 /** Für Aktionen, deren Antwort niemand liest. */
 internal fun Ergebnis<*>.ohneInhalt(): Ergebnis<Unit> = abgebildet { }
+
+/** Die übliche Antwort einer Änderung: zugesagt oder abgesagt, sonst nichts zu lesen. */
+internal fun Ergebnis<GenericResponse>.erledigt(): Ergebnis<Unit> = zugesagt({ it.success }, { it.error }) { }

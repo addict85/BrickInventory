@@ -257,7 +257,7 @@ class MonitoringViewModel @Inject constructor(
             _state.update { it.copy(cacheTtl = r.data) }
         }
         (konto.getDefaultCondition() as? Ergebnis.Success)?.let { r ->
-            _state.update { it.copy(vorgabeZustand = r.data.condition) }
+            _state.update { it.copy(vorgabeZustand = r.data) }
         }
     }
 
@@ -297,7 +297,7 @@ class MonitoringViewModel @Inject constructor(
      */
     internal suspend fun ladeDesignVorgabe() {
         (konto.getAppTheme() as? Ergebnis.Success)?.let { r ->
-            if (r.data.success) _state.update { it.copy(vorgabeDesign = r.data.vorgabe ?: r.data.theme) }
+            _state.update { it.copy(vorgabeDesign = r.data.vorgabe ?: r.data.wirksam) }
         }
     }
 
