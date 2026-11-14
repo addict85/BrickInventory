@@ -43,12 +43,12 @@ und quittiert. Test: `ManualEntryAfterScanTest`
 
 **Zwei Preisfelder.** Sets schicken `purchase_price`, Teile und Figuren `unit_price`; der
 Rumpf entsteht nur über `fuerSet()` bzw. `fuerStueck()`.
-Datei: `model/data/model/HaushaltModels.kt` · Test: `KaeufeViewModelTest`
+Datei: `vertrag/HaushaltModels.kt` · Test: `KaeufeViewModelTest`
 
 ## Sitzung und Netz
 
-**HTTP 401.** `safeCall()` meldet ihn als `Ergebnis.Error.Abgewiesen`; `cached()` fällt
-dann **nicht** auf die Platte zurück; der Interceptor meldet nur, wenn ein Token mitging
+**HTTP 401.** `safeCall()` meldet ihn als `Ergebnis.Error.Abgewiesen`; `abgeglichen()` und
+`abgeglichenEinzeln()` fallen dann **nicht** auf die Ablage zurück; der Interceptor meldet nur, wenn ein Token mitging
 und es der eigene Server war.
 Dateien: `data/repository/Abruf.kt`, `app/di/AppModule.kt`, `data/SessionExpiredSignal.kt`,
 `sitzung/SitzungsDienst.kt` · Test: `SessionAndLifecycleTest`
@@ -71,7 +71,9 @@ Datei: `data/repository/Ergebnis.kt` · Test: `MediaAuthTest`
 
 **Fehlermeldungen an einer Stelle.** Die Datenschicht meldet die Art des Fehlers, keinen
 Satz; den Satz bildet `AppTexte.meldung()`, die Meldung des Servers hat Vorrang.
-`technisch` gehört ins Log, nie in die Anzeige. Tests: `ErrorMessageLayerTest`, `AppTexteTest`
+`technisch` gehört ins Log, nie in die Anzeige. Ein Bildschirmzustand trägt `Laden<T>` und eine
+`Meldung` (`fehlerMeldung()`), keinen fertigen Satz; alte Formen zählt `QuelltextRatscheTest`.
+Tests: `ErrorMessageLayerTest`, `AppTexteTest`, `LadenTest`, `QuelltextRatscheTest`
 
 **Eine Json-Konfiguration.** Server, Ablage und Cache lesen und schreiben mit `BrickJson`
 (per DI als `Json`); keine zweite `Json { }`.
@@ -85,6 +87,12 @@ neue Fassung daneben. Lesen schreibt nie; ein unlesbarer Posten wird über
 `raeumeUnlesbare()` als verworfen gemeldet, nie still gelöscht.
 Dateien: `offline/Ausgangsform.kt`, `offline/room/RoomAblagen.kt`, `data/lokal/Abgleich.kt` ·
 Tests: `AusgangsformTest`, `BestandDatenbankTest`, `AusgangsmelderTest`
+
+**Eine Ablage.** Was offline gelten soll, liegt als Fach (`Bestandsart`) in der Room-Ablage,
+auch eine einzelne Antwort ohne Liste (`abgeglichenEinzeln()`); kein zweiter Plattenspeicher
+daneben. Den früheren (`noBackupFilesDir/api-*`) räumt `raeumeAlteAntwortablage()`.
+Dateien: `offline/Offlineablage.kt`, `data/repository/Abruf.kt`, `data/cache/CacheBesitzer.kt` ·
+Tests: `CacheBereichTest`, `RepoCacheRueckfallTest`
 
 **Schema.** Wer das Room-Schema ändert, erhöht die Fassung, schreibt eine Migration und
 checkt das Schema unter `core-offline/schemas` ein. Test: `BestandMigrationTest`
@@ -102,6 +110,8 @@ in fester Schichtung (build-logic, `Modulkanten`). Zustand und alles darunter oh
 (`ohneOberflaeche`); die Bereiche bekommen die App nur als `Bereichsumgebung` aus einzelnen
 Flüssen und Rückrufen, nie den AppViewModel. Ein ViewModel liegt nur mit Grund in
 core-zustand (`zustandsViewModels`).
+Das Wire-Format liegt in core-vertrag (kennt core-model, nicht umgekehrt); Bereiche nehmen
+Ansichten, ihre Importe aus core-vertrag sind eine Ratsche.
 Datei: `navigation/Bereichsumgebung.kt` · Tests: `ModulgrenzenTest`, `SchichtregelnTest`
 
 **Bildschirme sind zustandslos.** Nur ein Composable `…Route` nimmt ein ViewModel und reicht
@@ -171,7 +181,7 @@ Test: `PriceChartMathTest`
 
 **Bewertung je Erfassung.** Jede Erfassung mit dem Marktpreis ihres Zustands; der Server
 rechnet, die App rechnet nicht nach. Dateien: `finanzen/ui/screens/FinanceScreen.kt`,
-`model/data/model/FinanzModels.kt` · Test: `PriceHistorySerializationTest`
+`vertrag/FinanzModels.kt` · Test: `PriceHistorySerializationTest`
 
 ## Bau und Plattform
 
@@ -195,8 +205,8 @@ Test: `ResourceAndCacheTest`
 |---|---|---|
 | geheim | Token | nur AES-GCM mit Keystore-Schlüssel (`TokenTresor`) |
 | geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), ein Gutschein-PDF nur im Speicher (memfd) |
-| vertraulich | Sets, Teile, Figuren, Merkliste, Preisalarme, Lagerorte, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
-| vertraulich | API-Antworten, Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
+| vertraulich | Sets, Teile, Figuren, Merkliste, Preisalarme, Lagerorte, Bewertungen, Gutschein-Nummer und -Betrag, Kennzahlen, Katalog-Metadaten (Room `bestand.db`), Ausgang | SQLCipher |
+| vertraulich | Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
 | vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
 | Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre`, überlebt das Abmelden; unlesbar heisst „nicht vertraut“ (`VertrauenVerschluesseltTest`) |
 

@@ -1,0 +1,17 @@
+Gegenprobe: der Merklistenzustand trägt wieder einen fertigen Fehlersatz
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: Zustaende tragen Laden und Meldung
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt
+index b8f9d3e..7bbc8a7 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt
+@@ -22,6 +22,7 @@ data class MerklisteUiState(
+     val merkposten: List<MerkpostenAnsicht> = emptyList(),
+     /** Der letzte Abruf vom Server; die Liste selbst kommt aus der Ablage. */
+     val abruf: Laden<Unit> = Laden.Daten(Unit),
++    val fehlerText: String? = null,
+     // Drei Werte hier; der vierte, der Inhaber, steht wie in jeder Ansicht in
+     // AppUiState.scopeModes — dieselbe Wahl unter demselben Schlüssel wie in Galerie, Teilen,
+     // Minifiguren und Finanzen.

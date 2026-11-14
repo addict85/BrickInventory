@@ -5,6 +5,7 @@ package ch.brickinventoryapp.model.fach
  * Typ statt des Werts für `accounts=`, damit kein Aufrufer „own“ oder eine Zahl
  * als Text zusammensetzt; übersetzt wird nur auf dem Server (scopeIds).
  */
+
 sealed interface Kontoauswahl {
     /** Der Wert für `accounts=`. */
     val anfrage: String

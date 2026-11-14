@@ -60,6 +60,7 @@
     <string name="nutzer_ca_frage_ja">Turn on anyway</string>
     <string name="setup_qr_titel">Use this server?</string>
     <string name="setup_qr_ziel">The QR code points to this server:</string>
+    <string name="setup_qr_ziel_bestaetigen">Yes, %1$s is my server</string>
     <string name="setup_qr_hinweis">The app will only send your login there. Continue only if this is your server.</string>
     <string name="setup_qr_international" tools:ignore="TypographyDashes">The server name contains characters from other alphabets and is shown in its technical form (xn--…). Such letters can look exactly like familiar ones: compare the name character by character with your server.</string>
     <string name="setup_qr_anderer_server">This code leads to a different server than the current one (%1$s). If you continue, you will be signed out there and everything you enter from now on goes to the new server.</string>
@@ -1017,6 +1018,9 @@
     <string name="zert_bisher">Previously confirmed</string>
     <string name="zert_vertrauen">Trust this certificate</string>
     <string name="zert_vertrauen_neu">Accept the new certificate</string>
+    <string name="zert_titel_schluessel_neu">The server has a new key</string>
+    <string name="zert_text_schluessel_neu">%1$s shows a valid certificate from the same certificate authority, but with a different key than before. That is normal after the server renewed its certificate – but it can also be a certificate issued to someone else. Nothing has been sent. Only accept it if the server\'s certificate was just renewed.</string>
+    <string name="zert_erstkontakt_abtippen">Type the fingerprint instead</string>
     <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
     <string name="zert_geaendert_eingabe">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
@@ -1147,6 +1151,7 @@
     <string name="alerts_intro_more">You are notified once per crossing — the same alert can only fire again after the price has moved back to the other side.</string>
     <string name="zf_pflicht_kurz">Administrator rights require a second factor.</string>
     <string name="zf_share">Share</string>
+    <string name="zf_codes_speichern">Save as file</string>
     <string name="zf_share_title">Recovery codes</string>
     <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
     <string name="erfassen_nummer_fehlt">Enter a set number first.</string>

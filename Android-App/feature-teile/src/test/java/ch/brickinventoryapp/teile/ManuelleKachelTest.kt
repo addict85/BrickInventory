@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.teile
 
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.PartValuationItem
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.PartValuationItem
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File

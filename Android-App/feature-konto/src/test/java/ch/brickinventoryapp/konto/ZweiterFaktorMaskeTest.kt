@@ -43,6 +43,10 @@ import org.robolectric.annotation.GraphicsMode
 import android.content.ClipboardManager
 import android.content.Intent
 import androidx.core.content.IntentCompat
+import android.app.Activity
+import android.net.Uri
+import ch.brickinventoryapp.konto.ui.screens.CODES_DATEI
+import java.io.ByteArrayOutputStream
 import java.util.Locale
 import org.robolectric.Shadows
 
@@ -65,6 +69,8 @@ import org.robolectric.Shadows
  *   codes-teilen-ueber-ablage      „Teilen“ legt die Codes in die Zwischenablage → rot „die Notfallcodes lassen sich teilen …“
  *   codes-wieder-kopierbar         ein Knopf kopiert die Codes in die Ablage → rot „kein Knopf der Codes …“
  *   schluessel-kopieren-vor-33     Schlüssel kopierbar ab API 30 → rot „der Schluessel ist erst ab API 33 …“
+ *   codes-sichern-als-teilen       „Als Datei speichern“ teilt wieder (ACTION_SEND) → rot „die Notfallcodes
+ *                                  lassen sich als Datei speichern …“ (angelegt 14.11.2026, nicht lokal gemessen)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -179,6 +185,30 @@ class ZweiterFaktorMaskeTest {
         assertEquals("aaaa-bbbb\ncccc-dddd", senden?.getStringExtra(Intent.EXTRA_TEXT))
         val ablage = compose.activity.getSystemService(ClipboardManager::class.java)
         assertTrue("Teilen legt nichts in die Zwischenablage", !ablage.hasPrimaryClip())
+    }
+
+    /** Bevorzugt eine Datei am Ort der Wahl: Beim Teilen läse die Ziel-App mit. */
+    @Test
+    fun `die Notfallcodes lassen sich als Datei speichern, das hakt gesichert an`() {
+        zustand.value = codes
+        zeige()
+        knopf(R.string.zf_pflicht_weiter).assertIsNotEnabled()
+        knopf(R.string.zf_codes_speichern).performScrollTo().performClick()
+        compose.waitForIdle()
+        val gestartet = Shadows.shadowOf(compose.activity).nextStartedActivityForResult
+        assertEquals(Intent.ACTION_CREATE_DOCUMENT, gestartet?.intent?.action)
+        assertEquals("text/plain", gestartet?.intent?.type)
+        assertEquals(CODES_DATEI, gestartet?.intent?.getStringExtra(Intent.EXTRA_TITLE))
+
+        val ziel = Uri.parse("content://dokumente.test/codes.txt")
+        val datei = ByteArrayOutputStream()
+        Shadows.shadowOf(compose.activity.contentResolver).registerOutputStream(ziel, datei)
+        Shadows.shadowOf(compose.activity).receiveResult(gestartet!!.intent, Activity.RESULT_OK, Intent().setData(ziel))
+        compose.waitForIdle()
+        assertEquals("aaaa-bbbb\ncccc-dddd\n", datei.toString(Charsets.UTF_8.name()))
+        knopf(R.string.zf_pflicht_weiter).assertIsEnabled()
+        val ablage = compose.activity.getSystemService(ClipboardManager::class.java)
+        assertTrue("Speichern legt nichts in die Zwischenablage", !ablage.hasPrimaryClip())
     }
 
     /** Jeder Knopf des Codeschritts getippt (ausser Abmelden): Die Ablage bleibt leer. */

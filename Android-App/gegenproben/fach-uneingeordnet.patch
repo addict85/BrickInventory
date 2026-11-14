@@ -1,0 +1,29 @@
+Gegenprobe: ein neues Fach in Bestandsart, ohne es einzuordnen
+Modul: core-data
+Test: ch.brickinventoryapp.data.CacheBereichTest
+Rot: die Offline-Ablage kennt genau die eingeordneten Faecher
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/lokal/Lokal.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/lokal/Lokal.kt
+index f3d66d9..7de19c9 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/lokal/Lokal.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/lokal/Lokal.kt
+@@ -12,5 +12,5 @@ data class Lokal<T>(val liste: List<T>, val stand: Long?, val verworfen: Int = 0
+  */
+ enum class Bestandsart {
+     SETS, MERKLISTE, TEILE, FIGUREN, MANUELLE_TEILE, MANUELLE_FIGUREN, GUTSCHEINE, PREISALARME, LAGERORTE,
+-    KENNZAHLEN, KATALOG_META,
++    KENNZAHLEN, KATALOG_META, PROBE,
+ }
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+index 0c9232a..d5ac501 100644
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
+@@ -343,7 +343,7 @@ class Offlineablage(
+         Bestandsart.LAGERORTE -> aendere(Faecher.LAGERORTE, b, w)
+         // Nur vom Server geliefert, nie lokal bearbeitet.
+         Bestandsart.TEILE, Bestandsart.FIGUREN, Bestandsart.GUTSCHEINE, Bestandsart.KENNZAHLEN,
+-        Bestandsart.KATALOG_META -> Unit
++        Bestandsart.KATALOG_META, Bestandsart.PROBE -> Unit
+     }
+ 
+     /** Senden anstossen, z. B. beim Start, falls vom letzten Mal noch etwas wartet. */

@@ -34,7 +34,8 @@ class Teilelistentresor(private val chiffre: AblageChiffre) {
     fun lies(intern: File): ByteArray? {
         val datei = File(File(intern, "pdf"), TEILELISTE_DATEI)
         if (!datei.isFile) return null
-        return chiffre.entschluessle(datei.readBytes(), ZWECK)
+        // Ein gesperrter Keystore wirft (AblageChiffre): Der Anbieter meldet dann „keine Datei“, statt abzustürzen.
+        return runCatching { chiffre.entschluessle(datei.readBytes(), ZWECK) }.getOrNull()
     }
 
     private companion object {

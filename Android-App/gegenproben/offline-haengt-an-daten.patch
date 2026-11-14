@@ -4,10 +4,11 @@ Test: ch.brickinventoryapp.app.ModulgrenzenTest
 Rot: Schichtung der Kernmodule
 
 diff --git a/Android-App/core-offline/build.gradle.kts b/Android-App/core-offline/build.gradle.kts
+index f655dff..6423e6b 100644
 --- a/Android-App/core-offline/build.gradle.kts
 +++ b/Android-App/core-offline/build.gradle.kts
-@@ -25,6 +25,7 @@ dependencies {
-     api(project(":core-model"))
+@@ -27,6 +27,7 @@ dependencies {
+     api(project(":core-vertrag"))
      // Der Schlüssel der Datenbank kommt aus dem Ablageschlüssel.
      implementation(project(":core-sicherheit"))
 +    implementation(project(":core-ui"))

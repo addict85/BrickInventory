@@ -63,6 +63,7 @@ const tageBis = d => (new Date(d).getTime() - Date.now()) / TAG;
 
 test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
+  await require('./helpers/attestation').widerrufslisteAblegen(db);
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(

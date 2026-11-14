@@ -1,7 +1,11 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.os.Build
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -39,9 +43,33 @@ import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
 import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.ui.components.SettingsCard
 
+/** Der vorgeschlagene Name; den Ort wählt der Nutzer im Speicherdialog des Systems. */
+internal const val CODES_DATEI = "brickinventory-wiederherstellungscodes.txt"
+
+/** false, wenn der gewählte Ort nicht beschreibbar war; dann bleibt „Teilen“. */
+internal fun schreibeCodes(resolver: ContentResolver, ziel: Uri, codes: List<String>): Boolean = runCatching {
+    resolver.openOutputStream(ziel, "wt")?.use { it.write((codes.joinToString("\n") + "\n").toByteArray()) } != null
+}.getOrDefault(false)
+
+/**
+ * Die Codes als Datei an einen Ort der Wahl (ACTION_CREATE_DOCUMENT): Beim Teilen läse die
+ * Ziel-App mit, und manche legen den Text in ihren Verlauf oder in eine Cloud. [onGesichert]
+ * hakt „gesichert“ an, sobald die Datei geschrieben ist.
+ */
+@Composable
+internal fun rememberCodesSichern(codes: List<String>, onGesichert: () -> Unit): () -> Unit {
+    val resolver = LocalContext.current.contentResolver
+    val aktuell by rememberUpdatedState(codes)
+    val waehlen = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { ziel ->
+        if (ziel != null && schreibeCodes(resolver, ziel, aktuell)) onGesichert()
+    }
+    return { runCatching { waehlen.launch(CODES_DATEI) } }
+}
+
 /**
  * Die Notfallcodes an eine App der Wahl (Passwortmanager, Notizen): nur auf Tipp und
  * über die Auswahl des Systems, nicht über die Zwischenablage, deren Verlauf sie behielte.
+ * Zweite Wahl nach [rememberCodesSichern], für Geräte ohne Dokumentanbieter.
  */
 internal fun teileCodes(ctx: Context, titel: String, codes: List<String>) {
     val senden = Intent(Intent.ACTION_SEND).apply {
@@ -132,6 +160,8 @@ internal fun ZweiterFaktorCard(
                 Text(zfZustand.codes.joinToString("\n"),
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.vorgelesenAls(zfZustand.codes.joinToString(", ") { zeichenweise(it) }))
+                val sichern = rememberCodesSichern(zfZustand.codes) { gesichert = true }
+                Button(onClick = sichern) { Text(stringResource(R.string.zf_codes_speichern)) }
                 OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, zfZustand.codes) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_share)) }
                 CodesGesichert(gesichert) { gesichert = it }
                 Button(onClick = onZurueck, enabled = gesichert) { Text(stringResource(R.string.zf_codes_done)) }

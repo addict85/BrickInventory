@@ -5,7 +5,6 @@ import ch.brickinventoryapp.testing.FigurenRepository
 import ch.brickinventoryapp.testing.HaushaltRepository
 import ch.brickinventoryapp.testing.Kontosicht
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.SetsRepository
 import ch.brickinventoryapp.testing.SpeicherAblage
 import ch.brickinventoryapp.testing.TeileRepository
@@ -44,12 +43,11 @@ class SammlungVorwaermenTest {
         val ordner = File(System.getProperty("java.io.tmpdir"), "bim-sammlung-${System.nanoTime()}").apply { mkdirs() }
         try {
             val api = TestApi.fuer(pfade.server)
-            val cache = ResponseCache { ordner }
-            val teile = TeileRepository(api, cache)
-            val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), teile)
+            val teile = TeileRepository(api)
+            val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api), teile)
             val adressen = runBlocking {
                 for (v in listOf(ScopeFilter.View.GALLERY, ScopeFilter.View.PARTS, ScopeFilter.View.MINIFIGS)) blickfeld.setzeKonto(v, "own")
-                bildAdressenDerSammlung(SetsRepository(api, cache), teile, FigurenRepository(api, cache), Kontosicht(api), blickfeld,
+                bildAdressenDerSammlung(SetsRepository(api), teile, FigurenRepository(api), Kontosicht(api), blickfeld,
                     "https://brick.example")
             }
             assertEquals(listOf("set", "teil", "figur", "mteil", "mfigur").map { "https://brick.example/b/${it}_thumb.jpg" },

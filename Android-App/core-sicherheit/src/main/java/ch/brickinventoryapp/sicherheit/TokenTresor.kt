@@ -25,7 +25,7 @@ import javax.crypto.spec.GCMParameterSpec
 // [alias]: Die lokalen Ablagen umhüllen ihren Schlüssel unter einem eigenen (Ablageschluessel).
 internal class KeystoreTokenTresor(
     private val alias: String = ALIAS,
-    /** setUnlockedDeviceRequired: nur für das Token (EntsperrTresor), nie für die Ablagen. */
+    /** setUnlockedDeviceRequired: Token und Ablagen (EntsperrTresor), nicht das Vertrauen (Pins). */
     private val nurEntsperrt: Boolean = false,
 ) : TokenVerschluesselung {
 

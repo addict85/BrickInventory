@@ -9,7 +9,7 @@ diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/fin
 @@ -3,6 +3,7 @@
  import ch.brickinventoryapp.model.ui.Meldung
  import ch.brickinventoryapp.model.fach.Waehrung
- import ch.brickinventoryapp.model.data.model.Fehlercode
+ import ch.brickinventoryapp.vertrag.Fehlercode
 +import android.net.Uri
  import androidx.lifecycle.ViewModel
  import androidx.lifecycle.viewModelScope

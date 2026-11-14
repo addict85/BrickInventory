@@ -5,7 +5,7 @@ import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.katalog.ui.CatalogUiState

@@ -4,9 +4,9 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
-import ch.brickinventoryapp.model.data.model.AppThemeResponse
-import ch.brickinventoryapp.model.data.model.SettingsResponse
-import ch.brickinventoryapp.model.data.model.UserSettings
+import ch.brickinventoryapp.vertrag.AppThemeResponse
+import ch.brickinventoryapp.vertrag.SettingsResponse
+import ch.brickinventoryapp.vertrag.UserSettings
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -15,9 +15,9 @@ import ch.brickinventoryapp.sitzung.Kontowerte
 import ch.brickinventoryapp.sitzung.Sitzung
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
-import ch.brickinventoryapp.model.data.model.MeResponse
-import ch.brickinventoryapp.model.data.model.StartupStatus
-import ch.brickinventoryapp.model.data.model.User
+import ch.brickinventoryapp.vertrag.MeResponse
+import ch.brickinventoryapp.vertrag.StartupStatus
+import ch.brickinventoryapp.vertrag.User
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sitzung.Abmeldevorgang
 import ch.brickinventoryapp.sitzung.SitzungsDienst
@@ -105,13 +105,12 @@ class SitzungsDienstTest {
 
     @After fun ab() {
         Dispatchers.resetMain()
-        t.cacheDir.deleteRecursively()
     }
 
     /** Erzeugt und startet den Dienst, führt [block] aus und beendet seine Koroutinen. */
     private fun mitVm(block: suspend TestScope.(SitzungsDienst) -> Unit) = runTest(takt) {
         val bereich = CoroutineScope(SupervisorJob() + takt)
-        val echt = KontoRepository(fake.api, t.cache)
+        val echt = KontoRepository(fake.api)
         val konto = object : KontoRepository by echt {
             override suspend fun getSettings(): Ergebnis<SettingsResponse> {
                 val (dauer, waehrung) = einstellungen.removeFirstOrNull() ?: return echt.getSettings()
@@ -120,7 +119,7 @@ class SitzungsDienstTest {
             }
         }
         val dienst = SitzungsDienst(
-            konto = konto, verwaltung = VerwaltungRepository(fake.api, t.cache), prefs = prefs, sessionExpired = abgelaufenSignal, rechte = rechte,
+            konto = konto, verwaltung = VerwaltungRepository(fake.api), prefs = prefs, sessionExpired = abgelaufenSignal, rechte = rechte,
             meldungen = t.meldungen, sitzung = sitzung, blickfeld = t.blickfeld,
             abgleich = t.abgleich, zweiterFaktorPflicht = ZweiterFaktorPflicht(),
             abmeldevorgang = Abmeldevorgang {

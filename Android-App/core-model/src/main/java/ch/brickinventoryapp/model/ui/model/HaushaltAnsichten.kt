@@ -3,12 +3,6 @@ package ch.brickinventoryapp.model.ui.model
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.data.model.Acquisition
-import ch.brickinventoryapp.model.data.model.AcquisitionTotals
-import ch.brickinventoryapp.model.data.model.HouseholdMember
-import ch.brickinventoryapp.model.data.model.KontoName
-import ch.brickinventoryapp.model.data.model.Lagerort
-import ch.brickinventoryapp.model.data.model.LagerortEintrag
 
 // Konten, Käufe und Lagerorte, wie die Oberfläche sie zeigt.
 
@@ -32,20 +26,9 @@ data class MitgliedAnsicht(
     val isSelf: Boolean = false,
 )
 
-fun HouseholdMember.alsAnsicht() = MitgliedAnsicht(
-    id = id,
-    username = username,
-    isSelf = isSelf,
-)
-
 data class KontoAnsicht(
     val id: Int = 0,
     val username: String = "",
-)
-
-fun KontoName.alsAnsicht() = KontoAnsicht(
-    id = id,
-    username = username,
 )
 
 data class KaufAnsicht(
@@ -63,26 +46,9 @@ data class KaufAnsicht(
     val effectivePrice: Double? get() = purchasePrice ?: unitPrice
 }
 
-fun Acquisition.alsAnsicht() = KaufAnsicht(
-    id = id,
-    quantity = quantity,
-    purchasePrice = purchasePrice,
-    unitPrice = unitPrice,
-    condition = condition,
-    createdAt = createdAt,
-    ownerUserId = ownerUserId,
-    priceEstimated = priceEstimated,
-    currency = currency,
-)
-
 data class KaufSummenAnsicht(
     val quantity: Int = 0,
     val amount: Double? = null,
-)
-
-fun AcquisitionTotals.alsAnsicht() = KaufSummenAnsicht(
-    quantity = quantity,
-    amount = amount,
 )
 
 data class LagerortAnsicht(
@@ -91,20 +57,8 @@ data class LagerortAnsicht(
     val teile: Int = 0,
 )
 
-fun Lagerort.alsAnsicht() = LagerortAnsicht(
-    ort = ort,
-    sets = sets,
-    teile = teile,
-)
-
 data class LagerortEintragAnsicht(
     val id: Int = 0,
     val userId: Int = 0,
     val name: String = "",
-)
-
-fun LagerortEintrag.alsAnsicht() = LagerortEintragAnsicht(
-    id = id,
-    userId = userId,
-    name = name,
 )

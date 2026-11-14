@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.model.data.model.BarcodeResponse
-import ch.brickinventoryapp.model.data.model.MinifigsResponse
-import ch.brickinventoryapp.model.data.model.PartsResponse
-import ch.brickinventoryapp.model.data.model.SetDetailResponse
-import ch.brickinventoryapp.model.data.model.SetExistsResponse
-import ch.brickinventoryapp.model.data.model.SetInfoResponse
+import ch.brickinventoryapp.vertrag.BarcodeResponse
+import ch.brickinventoryapp.vertrag.MinifigsResponse
+import ch.brickinventoryapp.vertrag.PartsResponse
+import ch.brickinventoryapp.vertrag.SetDetailResponse
+import ch.brickinventoryapp.vertrag.SetExistsResponse
+import ch.brickinventoryapp.vertrag.SetInfoResponse
 import javax.inject.Inject
 import javax.inject.Singleton
 

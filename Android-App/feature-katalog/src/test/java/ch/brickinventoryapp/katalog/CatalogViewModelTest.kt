@@ -2,23 +2,23 @@ package ch.brickinventoryapp.katalog
 
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.model.data.model.CatalogSetDetail
-import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetItem
-import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
-import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
-import ch.brickinventoryapp.model.data.model.JahrAnzahl
+import ch.brickinventoryapp.vertrag.CatalogSetDetail
+import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
+import ch.brickinventoryapp.vertrag.CatalogSetItem
+import ch.brickinventoryapp.vertrag.CatalogSetsResponse
+import ch.brickinventoryapp.vertrag.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.vertrag.JahrAnzahl
 import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.katalog.ui.KatalogZiel
 import ch.brickinventoryapp.katalog.ui.Merkwunsch
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.MerklisteResponse
-import ch.brickinventoryapp.model.data.model.MerkpostenAntwort
-import ch.brickinventoryapp.model.data.model.PreisalarmRequest
-import ch.brickinventoryapp.model.data.model.PreisalarmResponse
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.MerklisteResponse
+import ch.brickinventoryapp.vertrag.MerkpostenAntwort
+import ch.brickinventoryapp.vertrag.PreisalarmRequest
+import ch.brickinventoryapp.vertrag.PreisalarmResponse
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.Fehlerklasse
@@ -74,14 +74,13 @@ class CatalogViewModelTest {
 
     @After fun ab() {
         Dispatchers.resetMain()
-        t.cacheDir.deleteRecursively()
     }
 
     private fun seite(vararg nummern: String) =
         CatalogSetsResponse(success = true, total = 120, sets = nummern.map { CatalogSetItem(setNumber = it, name = "Set $it") })
 
     private fun mitVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(takt) {
-        val vm = CatalogViewModel(KatalogRepository(fake.api, t.cache), t.meldungen, NummernTexte, t.merkliste(), t.alarme(), t.scrollMemory)
+        val vm = CatalogViewModel(KatalogRepository(fake.api), t.meldungen, NummernTexte, t.merkliste(), t.alarme(), t.scrollMemory)
         try {
             block(vm)
         } finally {

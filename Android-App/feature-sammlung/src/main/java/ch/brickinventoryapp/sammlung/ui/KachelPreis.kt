@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.model.data.model.PnlSetZeile
+import ch.brickinventoryapp.vertrag.PnlSetZeile
 import java.math.BigDecimal
 import java.math.RoundingMode
 

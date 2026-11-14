@@ -1,0 +1,17 @@
+Gegenprobe: Ein Code mit der Wurzel tauscht den Serverschlüssel nicht mehr, die App fragt
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: ein Code vom angemeldeten Bildschirm tauscht den Serverschluessel
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -286,7 +286,7 @@
+         val neu = spkiFingerabdruck(blatt)
+         val gemerkt = pins.pin(blattPinSchluessel(schluessel))
+         if (gemerkt == neu) return
+-        if (gemerkt == null || ausCode) return pins.merkePin(blattPinSchluessel(schluessel), neu)
++        if (gemerkt == null) return pins.merkePin(blattPinSchluessel(schluessel), neu)
+         throw gemeldet(ZertifikatUngeklaert(schluessel, neu, ZertifikatUngeklaert.Art.SCHLUESSEL_NEU, erwartet = gemerkt))
+     }
+ 

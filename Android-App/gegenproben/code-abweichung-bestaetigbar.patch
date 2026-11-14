@@ -6,11 +6,11 @@ Rot: ein Code mit System-Wurzel muss genau diese Wurzel treffen
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -179,7 +179,6 @@
+@@ -194,7 +194,6 @@
       */
      override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
          val f = _offen.value ?: return false
 -        if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
-         if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
-         pins.merkePin(f.schluessel, f.fingerabdruck)
-         _offen.value = null
+         val freiwillig = f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && eingabe.isNullOrBlank() ||
+             f.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+         if (!freiwillig && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false

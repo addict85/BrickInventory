@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.sammlung.MerklisteViewModelTest
 Rot: die Liste folgt der Ablage, auch gefiltert
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
-index 0ae1308..d93af97 100644
+index 0823fbd..b0b1d4f 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
-@@ -141,7 +141,7 @@ class MerklisteViewModel @Inject constructor(
-             _merklisteState.update { it.copy(laedt = true, fehler = null) }
+@@ -143,7 +143,7 @@ class MerklisteViewModel @Inject constructor(
+             _merklisteState.update { it.copy(abruf = Laden.Laedt) }
              val konto = kontoAbfrage(f)
              quelle.value = konto?.let { kontosicht.merkliste.beobachte(it) }
 -                ?: merkliste.beobachteMerkliste(f.query.trim().ifBlank { null }, f.zustandFilter, f.sortierung)

@@ -1,0 +1,16 @@
+Gegenprobe: Ein Ablageschlüssel unter dem Schlüssel ohne Entsperr-Bedingung wird nicht umgeschlüsselt
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.AblageEntsperrtTest
+Rot: ein Altbestand ohne Bedingung kommt beim ersten Lesen
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
+@@ -31,7 +31,6 @@
+             val umhuellt = datei.readText().trim()
+             when (val befund = tresor.oeffne(umhuellt)) {
+                 is Tresorbefund.Lesbar -> hexZuBytes(befund.klartext)?.takeIf { it.size == LAENGE }?.let {
+-                    if (tresor.veraltet(umhuellt)) umhuelleNeu(befund.klartext)
+                     bekannt = it
+                     return it
+                 }

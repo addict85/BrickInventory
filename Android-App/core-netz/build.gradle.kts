@@ -16,8 +16,9 @@ android {
 }
 
 dependencies {
-    // Fehlerrumpf zeigt Fehlercode nach aussen.
     api(project(":core-model"))
+    // Fehlerrumpf zeigt Fehlercode (Wire-Format) nach aussen.
+    api(project(":core-vertrag"))
     // OkHttp nur als implementation: Kein Modul darüber soll es sehen (wie in core-data).
     implementation(libs.okhttp)
 }

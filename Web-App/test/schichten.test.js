@@ -212,7 +212,7 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
   assert.deepEqual(fremd, [], 'Der Worker kennt keine Fachbereiche, nur Aufträge');
   const zuLang = dateien.filter(d => d !== KERN && codeZeilen(d) > 80).map(d => `${d} (${codeZeilen(d)})`);
   assert.deepEqual(zuLang, [], 'Ein Bearbeiter ruft einen Dienst; seine Arbeit gehört nach src/<bereich>/');
-  const SCHRANKE = 328;
+  const SCHRANKE = 326;
   const summe = dateien.reduce((n, d) => n + codeZeilen(d), 0);
   assert.ok(summe <= SCHRANKE, `${summe} Codezeilen in jobs/, erlaubt sind ${SCHRANKE}`);
   if (summe < SCHRANKE) console.log(`  ℹ Codezeilen in jobs/: ${summe} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
