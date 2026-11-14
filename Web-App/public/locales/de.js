@@ -523,6 +523,10 @@ window.I18N_DE = {
   'settings.password.fill_all': 'Bitte aktuelles und neues Passwort ausfüllen',
 
   'gallery.adding_set': 'Set {num} hinzufügen',
+  'gallery.delete.konten':
+    '{name} gehört mehreren Konten: {konten}. Gelöschtes kommt mit seinen Teilen für 30 Tage in den Papierkorb.',
+  'gallery.delete.alle': 'Aus allen Konten löschen ({n} Stück)',
+  'gallery.delete.nur': 'Nur bei {konto} löschen ({n} Stück)',
   'gallery.delete.name_parts':
     '{name} kommt mit seinen Teilen für 30 Tage in den Papierkorb und lässt sich von dort zurückholen.',
   'detail.importing_parts': 'Importiere Teile für {sn}…',

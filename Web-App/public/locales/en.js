@@ -520,6 +520,10 @@ window.I18N_EN = {
   'settings.password.fill_all': 'Please fill in current and new password',
 
   'gallery.adding_set': 'Adding set {num}',
+  'gallery.delete.konten':
+    '{name} belongs to several accounts: {konten}. Deleted copies go to the trash with their parts for 30 days.',
+  'gallery.delete.alle': 'Delete from all accounts ({n} pcs)',
+  'gallery.delete.nur': 'Delete only for {konto} ({n} pcs)',
   'gallery.delete.name_parts': '{name} and its parts go to the trash for 30 days and can be restored from there.',
   'detail.importing_parts': 'Importing parts for {sn}…',
   'detail.parts_imported': '{count} parts imported',
