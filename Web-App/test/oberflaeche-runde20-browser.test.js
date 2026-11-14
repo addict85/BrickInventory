@@ -19,7 +19,8 @@
  *   L  mobile.css wieder `.bstat:not(:first-child)::after` → rot: „200 % Schrift am Telefon“ (Zeile beginnt
  *      mit „·“)
  *   M  @container leiste ohne `.ntab .ico { display: none }` → rot: ebenda (Leiste 106 px hoch)
- *   N  finanzenFehlen() wieder mit „Keine Verbindung“ in den Karten → rot: „Finanzen ohne Verbindung“
+ *   N  finanzenFehlen() wieder mit „Keine Verbindung“ in den Karten → rot: „Finanzen ohne Verbindung“;
+ *      seit Runde 24 (14.11.2026): `G('fin-sum').hidden = true` entfernt → rot: ebenda („Karten ohne Zahl“)
  *   O  finanzenFehlen() ohne das Sperren der Zeitraumknöpfe → rot: ebenda (Knöpfe bedienbar)
  *   P  #pw-pk wieder mit dem langen Text im Etikett, ohne aria-describedby → rot: „Passwortwechsel“
  */
@@ -49,13 +50,14 @@ async function finanzenOffline(_t, a) {
   await b.tab('Network.emulateNetworkConditions', { offline: true, ...NETZ });
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-    await bis(`!!document.querySelector('#fin-tbl .fehler-zustand')`, 'Fehlerzustand der Liste');
+    // Seit Runde 24 (M2) steht der Fehler oben im Diagrammkasten, die Karten fallen weg.
+    await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Fehlerzustand oben');
     const z = await b.auswerten(`({
-      karten: ['fin-einstand', 'fin-wert', 'fin-total-pnl', 'portfolio-current'].map(id => document.getElementById(id).textContent.trim()),
+      karten: document.getElementById('fin-sum').checkVisibility() ? 'sichtbar' : 'weg',
       hinweise: document.querySelectorAll('#tab-finance .fval-hinweis').length,
       erneut: [...document.querySelectorAll('#tab-finance [data-click="loadFinance"], #tab-finance [data-click="loadPortfolioChart"]')].filter(e => e.checkVisibility()).length,
       zeitraum: [...document.querySelectorAll('.zeitraum-wahl .period-btn')].map(k => k.disabled) })`);
-    assert.deepEqual(z.karten, ['—', '—', '—', '—'], 'Karten');
+    assert.equal(z.karten, 'weg', 'Karten ohne Zahl');
     assert.equal(z.hinweise, 0, '„Keine Verbindung“ in den Karten');
     assert.equal(z.erneut, 1, 'genau ein „Erneut versuchen“');
     assert.deepEqual(z.zeitraum, [true, true, true, true], 'Zeitraumknöpfe bedienbar');
@@ -63,7 +65,7 @@ async function finanzenOffline(_t, a) {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETZ });
   }
   // Zurück am Netz lädt die Liste von selbst; sonst hilft der Knopf.
-  await b.auswerten(`document.querySelector('#fin-tbl [data-click="loadFinance"]')?.click(); true`);
+  await b.auswerten(`document.querySelector('#tab-finance [data-click="loadFinance"]')?.click(); true`);
   await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
   await bis(
     `[...document.querySelectorAll('.zeitraum-wahl .period-btn')].every(k => !k.disabled)`,
