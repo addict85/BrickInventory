@@ -121,15 +121,8 @@ test('routes/sets gegen echte Datenbank', async t => {
   });
 
   await t.test('die geteilte Datei bleibt liegen, solange eine Zeile darauf zeigt', async () => {
-    // Beim Verschieben eines Sets wird die Zeile kopiert und der Pfad wörtlich
-    // übernommen — zwei Konten teilen sich dann EINE Datei. Löscht das eine
-    // seine Zeile, muss die Datei bleiben; sonst zeigt der Eintrag des anderen
-    // ins Leere und gibt beim Klick 404.
-    //
-    // ── Gegenprobe ─────────────────────────────────────────────────────────
-    // Die Zählung in der Route wurde durch `const rest = null` ersetzt — also
-    // die alte Fassung, die ungefragt löschte. Ergebnis: Diese Prüfung wird
-    // rot. Zurückgebaut, wieder 6/6 grün.
+    // Nach dem Verschieben teilen sich zwei Konten EINE Datei; löscht eines seine Zeile,
+    // bleibt sie. Gegenprobe: die Zählung durch `const rest = null` ersetzt → rot.
     const rel = '/data/uploads/geteilt/x.pdf';
     const abs = path.join(ROOT, rel.slice(1));
     fs.mkdirSync(path.dirname(abs), { recursive: true });

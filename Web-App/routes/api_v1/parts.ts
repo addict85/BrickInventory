@@ -1,4 +1,3 @@
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
@@ -7,6 +6,7 @@ import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
+import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 
 export function bauePartsRouter(
   d: Pick<
@@ -35,8 +35,8 @@ export function bauePartsRouter(
     requireToken,
     kontoSchranke('upload'),
     csvEmpfang.single('file'),
-    async (req, res) => {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    async req => {
+      if (!req.file) fachfehler('ungueltig', 'keine_datei');
       return {
         ...(await d.auftraege.importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', {
           text: req.file.buffer.toString('utf-8'),
@@ -69,13 +69,12 @@ export function bauePartsRouter(
   });
 
   // Eigene Adresse: Die Farbe ist schon Teil der Adresse von PUT /parts/:nr/:farbe.
-  router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId/color', requireToken, async (req, res) => {
+  router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId/color', requireToken, async req => {
     const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
     // ein stilles Leeren mit Erfolgsmeldung.
-    const roh = req.eingabe.color_id;
-    const neueFarbe = Number(roh);
-    if (roh === undefined || roh === null || neueFarbe < 0) return sendeFehler(req, res, 400, 'farbe_erforderlich');
+    const neueFarbe = req.eingabe.color_id;
+    if (neueFarbe == null || neueFarbe < 0) fachfehler('ungueltig', 'farbe_erforderlich');
     const ergebnis = await d.teile.aendereTeilFarbe(besitzer, req.pfad.partNumber, req.pfad.colorId, neueFarbe, {
       color_name: req.eingabe.color_name ?? null,
       color_hex: req.eingabe.color_hex ?? null,
@@ -83,11 +82,11 @@ export function bauePartsRouter(
     return { ...ergebnis };
   });
 
-  router.endpunkt('DELETE /api/v1/parts/:partNumber/:colorId', requireToken, async (req, res) => {
+  router.endpunkt('DELETE /api/v1/parts/:partNumber/:colorId', requireToken, async req => {
     // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
     const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     const geloescht = await d.sammlung.loescheTeil(besitzer, req.pfad.partNumber, req.pfad.colorId);
-    if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
+    if (geloescht === null) nichtGefunden('teil_nicht_manuell');
     return { papierkorb: [geloescht] };
   });
 
@@ -110,7 +109,7 @@ export function bauePartsRouter(
     const n = await d.bestand.lagerortDienst.setzeLagerort(
       'part',
       { schreiber: req.apiUser.user_id },
-      [req.pfad.partNumber, String(req.pfad.colorId)],
+      [req.pfad.partNumber, req.pfad.colorId],
       ort,
     );
     return { storage: ort, changed: n };
@@ -154,7 +153,5 @@ export function bauePartsRouter(
     });
     return { item, sets };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

@@ -5,7 +5,15 @@ import fs from 'node:fs';
 import type { Request, Response, NextFunction } from 'express';
 import type { ServerResponse } from 'node:http';
 import { konfig } from '../infra/konfig';
-import { FEHLER, fehlerText, antwortSprache, dateiFehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
+import {
+  FEHLER,
+  Fachfehler,
+  fehlerText,
+  antwortSprache,
+  dateiFehler,
+  type FehlerArt,
+  type FehlerCode,
+} from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
 import { statusVon } from './fehlerArt';
 
@@ -62,6 +70,7 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
   // Sprache des Anfragenden.
   if (typeof e?.code === 'string' && e.code in FEHLER) {
     res.status(code).json({
+      ...(e instanceof Fachfehler ? e.zusatz : undefined),
       success: false,
       code: e.code,
       error: fehlerText(e.code as FehlerCode, antwortSprache(req), e.vars),

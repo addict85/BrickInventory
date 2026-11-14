@@ -8,7 +8,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Zeilenweise Kommentarentfernung — siehe test/abgleich-baumbruecken.test.js. */
+/** Kommentare zeilenweise entfernen: Ein Regex hielte das /* in '/data/x/*' für einen Kommentar. */
 function ohneKommentare(s) {
   const zeilen = [];
   let imBlock = false;

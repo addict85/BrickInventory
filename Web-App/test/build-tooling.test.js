@@ -227,12 +227,6 @@ test('die Adresse der Test-Datenbank hat überall einen Rückfallwert', () => {
 });
 
 /**
- * BEIDE Workflows sagen, was rot war: Ohne Annotationen ist die Ursache nur im
- * ganzen Protokoll zu finden, das von aussen nicht zu holen ist. Geprüft wird
- * die WIRKUNG — Mitschnitt, Schritt für den Fehlerfall, Annotationen für beide
- * Ausgänge und die Summenzeile.
- */
-/**
  * Der pg-Klient in CI hat die Hauptversion des Dienstes, und die Zahl steht
  * EINMAL: pg_dump verweigert eine ältere Fassung als der Server, und zwei
  * Zahlen für dieselbe Sache laufen auseinander.
@@ -529,14 +523,8 @@ test('Dockerfile und CI laufen auf derselben, unterstützten Node-Version', () =
 });
 
 /**
- * @types/node beschreibt dieselbe Node-Hauptversion, die auch läuft.
- *
- * Der Anlass: Beim Wechsel auf Node 26 stand @types/node bereits
- * auf ^26 — zufällig passend, weil `npm update` es kurz vorher hochgezogen
- * hatte. Andersherum wäre es unbemerkt geblieben: Der Übersetzer prüfte dann
- * gegen eine andere Standardbibliothek als die ausgeführte, und ein Aufruf, den
- * es in der laufenden Fassung gar nicht gibt, käme sauber durch.
- *
+ * @types/node beschreibt dieselbe Node-Hauptversion, die auch läuft: Sonst prüfte der
+ * Übersetzer gegen eine andere Standardbibliothek als die ausgeführte.
  * Die allgemeine Regel „Typpaket und Paket in derselben Hauptversion" weiter
  * oben greift hier nicht: `node` ist keine Abhängigkeit in package.json, die
  * Version steht im Dockerfile.
@@ -610,24 +598,8 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async t => {
     'Das Aufraeumen hat .js-Dateien angefasst. Es darf ausschliesslich quellenlose ' + 'Nicht-TS-Abbilder entfernen.',
   );
 
-  // ── Gegenprobe ────────────────────────────────────────────────────────────
-  //
-  // Ohne diesen Teil hiesse „die Datei ist weg" nur, dass der zweite Bau das
-  // Verzeichnis irgendwie neu angelegt hat. Zwei voneinander unabhaengige
-  // Zusicherungen schliessen das aus:
-  //
-  //  1. Der Bau NENNT die entfernte Datei. Verschwaende sie aus einem anderen
-  //     Grund — ein geleertes Verzeichnis, ein neuer Zielpfad —, stuende sie
-  //     nicht im Protokoll von entferneVerwaiste().
-  //  2. Eine Datei, die nicht zu den mitkopierten Endungen gehoert, bleibt
-  //     LIEGEN. Wuerde irgendetwas pauschal aufraeumen, waere auch sie weg.
-  //
-  // Erwogen und verworfen: eine Fassung des Skripts ohne den Aufruf laufen zu
-  // lassen. Die Kopie muesste in scripts/ liegen, weil build-ts.js seine Wurzel
-  // aus __dirname ableitet — und eine Testdatei, die auf einen Pfad verweist,
-  // den es nur waehrend des Laufs gibt, bricht `eigenbruecken.test.js`. Dieser
-  // Waechter hat recht: Ein Test, der eine verschwundene Quelle liest, prueft
-  // irgendwann nichts mehr und schweigt dabei.
+  // Zwei unabhängige Belege, dass entferneVerwaiste() die Datei nahm: Der Bau nennt sie,
+  // und eine Datei mit fremder Endung bleibt liegen (sonst räumte etwas pauschal auf).
   const fremdTxt = path.join(gebaut, 'nicht-mitkopiert.md');
   fs.writeFileSync(fremd, '-- zweiter Versuch\nSELECT 1;\n');
   fs.writeFileSync(fremdTxt, 'keine mitkopierte Endung — darf liegen bleiben\n');

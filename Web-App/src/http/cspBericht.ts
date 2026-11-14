@@ -4,10 +4,7 @@
  * gedrosselt und ohne Antwortinhalt. */
 import express from 'express';
 import type { Request, Response } from 'express';
-import { fehlerAntwort } from './httpAntwort';
 import { prozessweit } from '../infra/prozessweit';
-
-const router = express.Router();
 
 const FENSTER_MS = 60_000;
 const JE_ADRESSE = 10;
@@ -21,7 +18,7 @@ function absender(adresse: string): string {
   return adresse.includes(':') ? adresse.split(':').slice(0, 4).join(':') : adresse;
 }
 
-function cspMeldungFrei(adresse: string, jetzt = Date.now()): boolean {
+export function cspMeldungFrei(adresse: string, jetzt = Date.now()): boolean {
   const _jeAdresse = F.jeAdresse;
   if (jetzt - F.seit >= FENSTER_MS) {
     if (F.gedrosselt) console.warn(`[csp] ${F.gedrosselt} gedrosselt`);
@@ -111,29 +108,29 @@ function probe(regel: string, v: unknown): string {
   return v.replace(/[^\x20-\x7e]/g, ' ').slice(0, 80);
 }
 
-router.post('/csp-bericht', express.raw({ type: () => true, limit: '8kb' }), (req: Request, res: Response) => {
-  res.status(204).end();
-  if (!cspMeldungFrei(req.ip ?? '?')) return;
-  let daten: unknown;
-  try {
-    daten = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '');
-  } catch {
-    return;
-  }
-  for (const v of verstoesse(daten)) {
-    const regel = direktive(v.regel);
-    if (!regel || bildansicht(v.seite)) continue;
-    const p = probe(regel, v.probe);
-    // Die Teile sind schon gefiltert; das Ersetzen ist die Form, die CodeQL als Schutz erkennt.
-    console.warn(
-      `[csp] ${regel} blockierte ${berichtsAdresse(v.blockiert, true)} auf ${berichtsAdresse(v.seite)}${p ? ` (${p})` : ''}`.replace(
-        /\n|\r/g,
-        '',
-      ),
-    );
-  }
-});
-
-router.use(fehlerAntwort);
-
-export = Object.assign(router, { cspMeldungFrei });
+export function baueCspBerichtRouter() {
+  return express
+    .Router()
+    .post('/csp-bericht', express.raw({ type: () => true, limit: '8kb' }), (req: Request, res: Response) => {
+      res.status(204).end();
+      if (!cspMeldungFrei(req.ip ?? '?')) return;
+      let daten: unknown;
+      try {
+        daten = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '');
+      } catch {
+        return;
+      }
+      for (const v of verstoesse(daten)) {
+        const regel = direktive(v.regel);
+        if (!regel || bildansicht(v.seite)) continue;
+        const p = probe(regel, v.probe);
+        // Die Teile sind schon gefiltert; das Ersetzen ist die Form, die CodeQL als Schutz erkennt.
+        console.warn(
+          `[csp] ${regel} blockierte ${berichtsAdresse(v.blockiert, true)} auf ${berichtsAdresse(v.seite)}${p ? ` (${p})` : ''}`.replace(
+            /\n|\r/g,
+            '',
+          ),
+        );
+      }
+    });
+}

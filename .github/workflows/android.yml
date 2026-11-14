@@ -20,7 +20,7 @@ on:
       # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
       - 'Web-App/public/i18n.js'
       - 'Web-App/src/vertrag/**'
-      - 'Web-App/scripts/kotlin-vertrag.js'
+      - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/vertrag-kotlin-dtos.js'
       - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'
       - 'Web-App/docs/openapi.json'
@@ -33,7 +33,7 @@ on:
       # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
       - 'Web-App/public/i18n.js'
       - 'Web-App/src/vertrag/**'
-      - 'Web-App/scripts/kotlin-vertrag.js'
+      - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/vertrag-kotlin-dtos.js'
       - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'
       - 'Web-App/docs/openapi.json'
@@ -461,10 +461,15 @@ jobs:
           cache-dependency-path: Web-App/package-lock.json
       - name: Abhängigkeiten installieren
         run: npm ci --ignore-scripts && npm rebuild esbuild
+      # Was die App vom Server braucht (shared/app-schnittstelle.json) und wie sie es liest,
+      # gegen docs/openapi.json; dazu die Release-Wege. Die Web-Suite liest keinen Kotlin-Quelltext.
+      - name: Routen nehmen die erzeugten Typen, Schnittstelle und Release-Wege
+        run: node --test ../Android-App/tools/vertrag/vertrag-kotlin.test.js ../Android-App/tools/release-wege.test.js
+      - name: Erzeugte Design-Tokens aktuell
+        run: node scripts/generate-design-tokens.js --pruefen
+      # Die erzeugten Antworttypen (core-vertrag, vertrag.erzeugt) passen zu docs/openapi.json.
       - name: Erzeugte Kotlin-Typen aktuell
         run: node --test test/vertrag-kotlin-dtos.test.js
-      - name: Routen nehmen die erzeugten Typen
-        run: node --test test/vertrag-kotlin.test.js
 
   # Gerätetests (app/src/androidTest) auf einem Emulator, den Gradle anlegt (Managed
   # Device pixel6Api34, ATD-Abbild): Hilt, Room mit SQLCipher und Keystore laufen nur

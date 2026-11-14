@@ -22,6 +22,7 @@ export const sichtVon = (req: AuthedRequest & { abfrage: { accounts?: string | u
   konten: req.abfrage.accounts,
 });
 import { sendeFehler } from '../../src/http/httpAntwort';
+import { Fachfehler, fachfehler } from '../../src/infra/fehlerTexte';
 import { waechter } from '../../src/http/vertragsRouter';
 
 export function bearerToken(req: { headers: { authorization?: string | undefined } }): string | null {
@@ -91,15 +92,15 @@ function eingangFuer(konto: KontoDienste) {
   /** Die Sperren „Passwortwechsel nötig“ und „2. Faktor Pflicht“ für einen schon
    * erkannten Nutzer. Auch Dateien und Bild-Proxy hängen davor, weil sie vor dem
    * Eingang stehen und sonst an beiden Regeln vorbeiliefen. */
-  async function eingangsSperre(req: Request, res: Response, next: NextFunction) {
+  async function eingangsSperre(req: Request, _res: Response, next: NextFunction) {
     const methode = req.method === 'HEAD' ? 'GET' : req.method;
     if (!(methode === 'POST' && VOR_DEM_WECHSEL.test(req.path)) && (await mussWechseln(req)))
-      return sendeFehler(req, res, 403, 'passwort_wechsel_noetig');
+      fachfehler('verboten', 'passwort_wechsel_noetig');
     if (
       !ZUR_EINRICHTUNG.some(([m, re]) => m === methode && re.test(req.path)) &&
       (await zweiterFaktorPflicht(konto, req))
     )
-      return sendeFehler(req, res, 403, 'zweiter_faktor_pflicht');
+      fachfehler('verboten', 'zweiter_faktor_pflicht');
     next();
   }
 
@@ -107,7 +108,7 @@ function eingangFuer(konto: KontoDienste) {
 }
 
 function tokenWaechterFuer(konto: KontoDienste) {
-  const requireToken = waechter<AuthedRequest>((req, res, next) => {
+  const requireToken = waechter<AuthedRequest>((req, _res, next) => {
     // Schon am Eingang geprüft: kein zweiter Datenbankzugriff.
     if (req.apiUser) return next();
     if (req.session?.userId) {
@@ -122,13 +123,13 @@ function tokenWaechterFuer(konto: KontoDienste) {
     konto
       .validateToken(token, { ip: req.ip })
       .then(user => {
-        if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
+        if (!user) return next(new Fachfehler('nicht_angemeldet', 'token_ungueltig'));
         req.apiUser = { ...user, is_admin: user.is_admin === true };
         next();
       })
       .catch((e: unknown) => {
         meldeFehler('eingang:token', e);
-        sendeFehler(req, res, 401, 'auth_fehler');
+        next(new Fachfehler('nicht_angemeldet', 'auth_fehler'));
       });
   });
 
@@ -136,8 +137,9 @@ function tokenWaechterFuer(konto: KontoDienste) {
     requireToken,
     /** Ohne Systemrahmen: Wer über Konten geht, betritt ihn im Dienst (src/konto/kontext.ts). */
     requireApiAdmin: waechter<AuthedRequest>((req, res, next) => {
-      requireToken(req, res, () => {
-        if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
+      requireToken(req, res, (e?: unknown) => {
+        if (e) return next(e);
+        if (!req.apiUser?.is_admin) return next(new Fachfehler('verboten', 'nur_admins'));
         // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
         verlangeFreigabe(konto, req, res, next, 'verwaltung');
       });
@@ -156,6 +158,7 @@ const unangemeldet = (req: Request) => nutzerId(req) === null;
 const RUMPF_FRIST_MS = 10_000;
 function rumpfFrist(req: Request, res: Response, next: NextFunction) {
   if (req.complete) return next();
+  // Ausnahme vom Fehlerweg: Die Uhr läuft nach next(), die Kette ist schon weiter.
   const uhr = setTimeout(() => {
     if (req.complete || res.headersSent) return;
     res.setHeader('Connection', 'close');
@@ -180,8 +183,10 @@ export const rumpfLesen: RequestHandler[] = [
     if (req.body === undefined) req.body = {};
     next();
   }, // Express 5: sonst undefined
-  (req, res, next) =>
-    zuGrosseId(req.body) || zuGrosseId(req.query) ? sendeFehler(req, res, 400, 'id_ungueltig') : next(),
+  (req, _res, next) => {
+    if (zuGrosseId(req.body) || zuGrosseId(req.query)) fachfehler('ungueltig', 'id_ungueltig');
+    next();
+  },
 ];
 
 /** Vor dem Empfang des Rumpfs: Am Limit wird die Datei gar nicht erst gelesen. */
@@ -190,7 +195,7 @@ export function kontoSchranke(art: Schranke) {
     const uid = nutzerId(req);
     if (uid === null) return next();
     const frei = belegeKontoPlatz(art, uid);
-    if (!frei) return sendeFehler(req, res, 429, art === 'strom' ? 'zu_viele_verbindungen' : 'upload_laeuft');
+    if (!frei) fachfehler('zu_viele', art === 'strom' ? 'zu_viele_verbindungen' : 'upload_laeuft');
     res.once('finish', frei); // ein sofort folgender Upload käme sonst vor 'close' an
     res.once('close', frei);
     next();

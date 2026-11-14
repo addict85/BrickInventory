@@ -1,4 +1,3 @@
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { normalisiereLagerort } from '../../src/bestand';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
@@ -7,6 +6,7 @@ import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
+import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 
 export function baueMinifigsRouter(
   d: Pick<
@@ -48,11 +48,11 @@ export function baueMinifigsRouter(
     return { storage: ort, changed: n };
   });
 
-  router.endpunkt('DELETE /api/v1/minifigs/:figNumber', requireToken, async (req, res) => {
+  router.endpunkt('DELETE /api/v1/minifigs/:figNumber', requireToken, async req => {
     // Ohne den Parameter das eigene Konto.
     const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     const geloescht = await d.sammlung.loescheFigur(besitzer, req.pfad.figNumber);
-    if (geloescht === null) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
+    if (geloescht === null) nichtGefunden('minifig_nicht_manuell');
     return { papierkorb: [geloescht] };
   });
 
@@ -91,8 +91,8 @@ export function baueMinifigsRouter(
     requireToken,
     kontoSchranke('upload'),
     csvEmpfang.single('file'),
-    async (req, res) => {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    async req => {
+      if (!req.file) fachfehler('ungueltig', 'keine_datei');
       return {
         ...(await d.auftraege.importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', {
           text: req.file.buffer.toString('utf-8'),
@@ -109,7 +109,5 @@ export function baueMinifigsRouter(
     });
     return { item, sets };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

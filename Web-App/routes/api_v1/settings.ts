@@ -1,14 +1,12 @@
 /** /api/v1/settings — ein Router, weil die Reihenfolge vor und nach router.use(requireLogin)
  * hier an einer Stelle entschieden wird; settingsGlobal.ts hängt dahinter. */
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { bearerToken, waechterFuer } from './middleware';
 import { baueSettingsGlobalRouter } from './settingsGlobal';
 import { resolveUserId, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
-
-const kennung = (v: string | number | null | undefined) => (v == null ? null : Number(v));
+import { fachfehler } from '../../src/infra/fehlerTexte';
 
 export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'haushalt' | 'konto' | 'verwaltung'>) {
   const { requireToken, requireLoginOrToken } = waechterFuer(d.konto);
@@ -25,8 +23,7 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
     return { ...(await d.einstellungen.designFuer(uid)) };
   });
 
-  // Vor router.use(requireLogin), weil requireLogin nur die Sitzung kennt und
-  // die App ihre Zugänge mit Token verwaltet.
+  // Vor router.use(requireLogin): Die App verwaltet ihre Zugänge mit Token, nicht mit Sitzung.
   router.endpunkt('GET /api/v1/settings/tokens', requireToken, async req => {
     const eigener = bearerToken(req);
     // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
@@ -94,15 +91,13 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
 
   router.endpunkt('GET /api/v1/settings', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    // readSettings(), weil price_cache_ttl und default_price_condition global
-    // sind; eine eigene Abfrage las sie nicht.
+    // readSettings(): price_cache_ttl und default_price_condition sind global.
     const alle = await d.einstellungen.readSettings(uid, false);
     const gespeichert = Object.fromEntries(APP_FELDER.map(feld => [feld, alle[feld] ?? APP_VORGABEN[feld] ?? '']));
     return {
       settings: {
         ...(gespeichert as Record<(typeof APP_FELDER)[number], string>),
-        // Die Regel steht in src/einstellungen/settings.ts, damit sie nicht neben dem
-        // Webapp-Weg ein zweites Mal existiert.
+        // Die Regel steht einmal, in src/einstellungen/settings.ts.
         effective_condition: await d.einstellungen.nutzerStandardZustand(uid),
         // Das wirksame Design des Kontos, nicht die Vorgabe des Verwalters.
         app_theme: (await d.einstellungen.designFuer(uid)).theme,
@@ -117,7 +112,7 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
     for (const key of allowed) {
       if (req.eingabe[key] !== undefined) {
         // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
-        await d.konto.setUserSetting(uid, key, String(req.eingabe[key]));
+        await d.konto.setUserSetting(uid, key, req.eingabe[key]);
         updated++;
       }
     }
@@ -134,9 +129,8 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
     return { condition: await d.einstellungen.nutzerStandardZustand(req.apiUser.user_id) };
   });
 
-  router.endpunkt('POST /api/v1/settings/user/default-condition', requireToken, async (req, res) => {
-    const condition = String(req.eingabe.condition ?? '');
-    if (!['N', 'U', ''].includes(condition)) return sendeFehler(req, res, 400, 'zustand_n_oder_u');
+  router.endpunkt('POST /api/v1/settings/user/default-condition', requireToken, async req => {
+    const condition = req.eingabe.condition ?? '';
     if (condition === '') {
       await d.einstellungen.deleteUserSetting(req.apiUser.user_id, 'user_default_condition');
     } else {
@@ -146,53 +140,38 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
     return { condition: condition || null };
   });
 
-  // ── Haushalt: Konten verknüpfen ──────────────────────────────────────────────
-  // Dieselbe Umsetzung wie die Webapp (src/haushalt/haushalt.ts), damit die App
-  // nicht ihre eigenen Regeln bekommt.
+  // ── Haushalt: Konten verknüpfen (Regeln in src/haushalt/haushalt.ts) ─────────────
   router.endpunkt('GET /api/v1/settings/household', requireToken, async req => {
     return { ...(await d.haushalt.haushaltsStand(req.apiUser.user_id)) };
   });
 
-  router.endpunkt('POST /api/v1/settings/household/invite', requireToken, async (req, res) => {
-    const r = await d.haushalt.einladungAnlegen(req.apiUser.user_id);
-    if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
-    return { ...r };
+  router.endpunkt('POST /api/v1/settings/household/invite', requireToken, async req => {
+    return { ...(await d.haushalt.einladungAnlegen(req.apiUser.user_id)) };
   });
 
-  router.endpunkt('POST /api/v1/settings/household/redeem/pruefen', requireToken, async (req, res) => {
+  router.endpunkt('POST /api/v1/settings/household/redeem/pruefen', requireToken, async req => {
     const zuOft = await d.konto.kontoGedrosselt('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
-    if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-    const r = await d.haushalt.pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
-    if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler);
-    return { ...r };
+    if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
+    return { ...(await d.haushalt.pruefeEinladung(req.apiUser.user_id, req.eingabe.code)) };
   });
 
-  // Mit Passwort: Das Hauptkonto liest und schreibt danach den Bestand dieses
-  // Kontos, auch über einen Passwortwechsel hinweg. Ein erbeutetes Token allein
-  // soll das nicht einrichten können.
+  // Mit Passwort: Das Hauptkonto schreibt danach den Bestand dieses Kontos; ein
+  // erbeutetes Token allein soll das nicht einrichten können.
   router.endpunkt('POST /api/v1/settings/household/redeem', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password, 'faktor_code'))) return;
-    const r = await d.konto.haushaltBeitreten(uid, String(req.eingabe.code || ''));
-    if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
-    return { ...r };
+    return { ...(await d.konto.haushaltBeitreten(uid, req.eingabe.code)) };
   });
 
   router.endpunkt('POST /api/v1/settings/household/unlink', requireToken, async req => {
     return {
-      ...(await d.haushalt.kontenTrennen(
-        req.apiUser.user_id,
-        kennung(req.eingabe.sub_user_id),
-        kennung(req.eingabe.main_user_id),
-      )),
+      ...(await d.haushalt.kontenTrennen(req.apiUser.user_id, req.eingabe.sub_user_id, req.eingabe.main_user_id)),
     };
   });
 
-  router.endpunkt('POST /api/v1/settings/household/former/dismiss', requireToken, async (req, res) => {
-    const sub = parseInt(String(req.eingabe.sub_user_id), 10);
-    if (!Number.isFinite(sub)) return sendeFehler(req, res, 400, 'konto_id_ungueltig');
-    return { ...(await d.haushalt.verwerfeGetrennt(req.apiUser.user_id, sub)) };
+  router.endpunkt('POST /api/v1/settings/household/former/dismiss', requireToken, async req => {
+    return { ...(await d.haushalt.verwerfeGetrennt(req.apiUser.user_id, req.eingabe.sub_user_id)) };
   });
 
   router.use('/settings', requireLogin);
@@ -210,7 +189,5 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
   });
 
   router.haengeEin(baueSettingsGlobalRouter(d));
-
-  router.use(fehlerAntwort);
   return router;
 }
