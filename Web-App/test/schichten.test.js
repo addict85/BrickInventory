@@ -108,8 +108,9 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
 
 test('keine Route importiert eine andere Routendatei', () => {
   // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
-  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (10.11.2026): `import { requireLogin } from
-  // '../auth'` in routes/api_v1/minifigs.ts → rot.
+  // api_v1/index.ts, auth.ts (aus routes/auth/) und api_v1/settings.ts (settingsGlobal hinter requireLogin).
+  // Gegenprobe (10.11.2026): `import { requireLogin } from '../auth'` in routes/api_v1/minifigs.ts → rot;
+  // (14.11.2026) `import { baueSetsRouter } from './sets'` in routes/api_v1/settingsGlobal.ts → rot.
   const dateien = [];
   const lauf = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -127,7 +128,8 @@ test('keine Route importiert eine andere Routendatei', () => {
       if (
         voll.startsWith('routes/') &&
         voll !== 'routes/api_v1/middleware' &&
-        !(d === 'routes/auth.ts' && voll.startsWith('routes/auth/'))
+        !(d === 'routes/auth.ts' && voll.startsWith('routes/auth/')) &&
+        !(d === 'routes/api_v1/settings.ts' && voll === 'routes/api_v1/settingsGlobal')
       )
         treffer.push(`${d} -> ${ziel}`);
     }

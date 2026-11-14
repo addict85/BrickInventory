@@ -315,8 +315,6 @@ export function baueAuthRouter(d: Dienste) {
     },
   );
 
-  // ── Passkey-Anmeldung; Verwalten in routes/auth/passkey.ts ──────────────────
-
   // Öffentlich; die Drossel begrenzt, wie viele Challenges eine Adresse anlegt.
   router.post(
     '/passkey/anmelden/optionen',

@@ -79,8 +79,9 @@ const AUSGENOMMEN = new Map([
 ]);
 
 function leserouten() {
-  const quelle = require('node:fs')
-    .readFileSync(require('node:path').join(__dirname, '..', 'routes/api_v1/settings.ts'), 'utf8')
+  const quelle = ['settings.ts', 'settingsGlobal.ts']
+    .map(f => require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'routes/api_v1', f), 'utf8'))
+    .join('\n')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
   const gefunden = [...quelle.matchAll(/router\.get\(\s*'\/settings([^']*)'/g)].map(m => m[1] || '/');
