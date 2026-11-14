@@ -1,15 +1,18 @@
 /**
  * Vorschaubilder der eigenen Bilder (generateThumb) entstehen mit sharp:
- * höchstens 200 je Seite, Seitenverhältnis erhalten (UX-Prüfung 25, B1),
- * Transparenz auf Weiss. Lässt sich sharp nicht laden, rechnet Jimp dasselbe.
+ * höchstens 200 je Seite, Seitenverhältnis erhalten (UX-Prüfung 25, B1).
+ * Durchsichtige Bilder bleiben PNG mit Alpha (sonst im Dunkelmodus eine weisse
+ * Fläche), deckende werden JPEG auf Weiss. Ohne sharp rechnet Jimp dasselbe.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, dist neu gebaut), alle in
+ * Gegenproben (14.11.2026 gemessen, je einzeln, dist neu gebaut), alle in
  * src/bilder/thumbs.ts:
- *   A  `.flatten({ background: '#ffffff' })` entfernt → rot: „sharp: 200 × 200 …“
- *      (Ecke schwarz)
- *   B  (14.11.2026) `fit: 'inside'` → `fit: 'cover'` → rot: ebenda (200 × 200);
- *      jimpEinpassen() wieder mit cover() → rot: „ohne sharp …“ (200 × 200)
+ *   A  in verkleinern() die Prüfung `isOpaque` entfernt (immer JPEG auf Weiss)
+ *      → rot: „sharp: durchsichtig …“ (jpeg statt png)
+ *   B  `fit: 'inside'` → `fit: 'cover'` → rot: „sharp: durchsichtig …“ und
+ *      „sharp: deckend …“ (200 × 200); jimpEinpassen() wieder mit cover() → rot:
+ *      „ohne sharp …“ (200 × 200)
  *   C  im catch um require('sharp') `throw e` statt Jimp → rot: „ohne sharp …“
+ *   D  in jimpVorschau() `durchsichtig` fest false → rot: „ohne sharp …“ (jpeg)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,11 +29,11 @@ const { DATA_DIR } = _req('src/infra/appPaths.js');
 const { generateThumb } = _req('src/bilder/thumbs.js');
 const ordner = path.join(DATA_DIR, 'images', 'sets');
 
-/** Ein halbdurchsichtiges grünes PNG 300 × 200 unter /images/sets/. */
-async function lege(name) {
+/** Ein grünes PNG 300 × 200 mit Alphakanal unter /images/sets/; `alpha` 0 = ganz durchsichtig, 1 = deckend. */
+async function lege(name, alpha) {
   fs.mkdirSync(ordner, { recursive: true });
   const datei = path.join(ordner, `${name}.png`);
-  await sharp({ create: { width: 300, height: 200, channels: 4, background: { r: 10, g: 200, b: 10, alpha: 0 } } })
+  await sharp({ create: { width: 300, height: 200, channels: 4, background: { r: 10, g: 200, b: 10, alpha } } })
     .png()
     .toFile(datei);
   return {
@@ -43,47 +46,64 @@ async function lege(name) {
   };
 }
 
-async function pruefeVorschau(datei) {
+async function pruefeVorschau(datei, durchsichtig) {
   const meta = await sharp(datei).metadata();
-  assert.deepEqual([meta.format, meta.width, meta.height], ['jpeg', 200, 133]);
-  const roh = await sharp(datei).raw().toBuffer();
-  assert.ok(roh[0] > 200 && roh[1] > 200 && roh[2] > 200, `Grund (${roh[0]},${roh[1]},${roh[2]}) ist nicht weiss`);
+  assert.deepEqual([meta.format, meta.width, meta.height], [durchsichtig ? 'png' : 'jpeg', 200, 133]);
+  const { data, info } = await sharp(datei).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  assert.equal(info.channels, 4);
+  if (durchsichtig) assert.equal(data[3], 0, 'Transparenz ging verloren');
+  else assert.ok(data[1] > 150 && data[3] === 255, `Grund (${[...data.subarray(0, 4)]}) ist nicht das deckende Grün`);
 }
 
-test('sharp: 200 × 133, nicht zugeschnitten, Transparenz auf Weiss', async () => {
-  const b = await lege(`zz-sharp-${process.pid}`);
+test('sharp: durchsichtig bleibt PNG mit Alpha, 200 × 133', async () => {
+  const b = await lege(`zz-sharp-${process.pid}`, 0);
   try {
     assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));
-    await pruefeVorschau(b.vorschau);
+    await pruefeVorschau(b.vorschau, true);
+  } finally {
+    b.weg();
+  }
+});
+
+test('sharp: deckend mit Alphakanal wird JPEG, 200 × 133', async () => {
+  const b = await lege(`zz-deckend-${process.pid}`, 1);
+  try {
+    assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));
+    await pruefeVorschau(b.vorschau, false);
   } finally {
     b.weg();
   }
 });
 
 test('ohne sharp rechnet Jimp dieselbe Vorschau', async () => {
-  const b = await lege(`zz-jimp-${process.pid}`);
-  const laden = Module._load;
-  const warnungen = [];
-  const warn = console.warn;
-  Module._load = function (/** @type {string} */ anfrage, /** @type {unknown[]} */ ...rest) {
-    if (anfrage === 'sharp') throw new Error('Cannot find module sharp');
-    return laden.call(this, anfrage, ...rest);
-  };
-  console.warn = (...a) => warnungen.push(a.join(' '));
-  try {
-    assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));
-  } finally {
-    Module._load = laden;
-    console.warn = warn;
-  }
-  try {
-    await pruefeVorschau(b.vorschau);
-    assert.ok(
-      warnungen.some(w => /sharp nicht verfügbar.*Jimp/.test(w)),
-      warnungen.join('\n'),
-    );
-  } finally {
-    b.weg();
+  for (const [alpha, durchsichtig] of [
+    [0, true],
+    [1, false],
+  ]) {
+    const b = await lege(`zz-jimp-${alpha}-${process.pid}`, alpha);
+    const laden = Module._load;
+    const warnungen = [];
+    const warn = console.warn;
+    Module._load = function (/** @type {string} */ anfrage, /** @type {unknown[]} */ ...rest) {
+      if (anfrage === 'sharp') throw new Error('Cannot find module sharp');
+      return laden.call(this, anfrage, ...rest);
+    };
+    console.warn = (...a) => warnungen.push(a.join(' '));
+    try {
+      assert.equal(await generateThumb(b.web), b.web.replace('.png', '_thumb.jpg'));
+    } finally {
+      Module._load = laden;
+      console.warn = warn;
+    }
+    try {
+      await pruefeVorschau(b.vorschau, durchsichtig);
+      assert.ok(
+        warnungen.some(w => /sharp nicht verfügbar.*Jimp/.test(w)),
+        warnungen.join('\n'),
+      );
+    } finally {
+      b.weg();
+    }
   }
 });
 

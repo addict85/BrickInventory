@@ -378,16 +378,32 @@ G('set-modal').addEventListener('click', e => e.target === e.currentTarget && cl
 
 /** @type {number | null} */
 let _autosaveTimer = null;
+/** Die noch nicht gespeicherte Mengenänderung; null, wenn nichts aussteht. @type {(() => void) | null} */
+let _mengeAusstehend = null;
+
+/** Beim Schliessen sofort speichern: Der Dialog vergisst curSet, und 400 ms nach „−“ geschlossen ging die
+ * Änderung verloren. Beobachtet statt an jedem Schliessweg (Knopf, Esc, Hintergrund, Kaufpreis-Dialog). */
+function mengeSofortSpeichern() {
+  if (_autosaveTimer !== null) clearTimeout(_autosaveTimer);
+  _autosaveTimer = null;
+  _mengeAusstehend?.();
+}
+if (typeof MutationObserver === 'function')
+  new MutationObserver(() => {
+    if (!G('set-modal').classList.contains('open')) mengeSofortSpeichern();
+  }).observe(G('set-modal'), { attributes: true, attributeFilter: ['class'] });
 
 export function autosaveSet() {
   if (!curSet) return;
   setzeMengenfeld();
-  clearTimeout(_autosaveTimer);
-  _autosaveTimer = setTimeout(() => {
-    if (!curSet) return;
+  if (_autosaveTimer !== null) clearTimeout(_autosaveTimer);
+  const set = curSet;
+  _mengeAusstehend = () => {
+    _mengeAusstehend = null;
     const qty = parseInt(G('m-qty').value, 10) || 1;
-    aendereMenge({ quantity: qty }, qty - (curSet.quantity || qty), G('m-qty'));
-  }, 400);
+    aendereMenge({ quantity: qty }, qty - (set.quantity || qty), G('m-qty'), set);
+  };
+  _autosaveTimer = setTimeout(mengeSofortSpeichern, 400);
 }
 
 /** Der Regler eines Kontos im Haushalt: ein Schritt, relativ, für genau dieses Konto.
@@ -405,10 +421,9 @@ function mengeJeKonto(konto, schritt) {
  * und die Kaufpreis-Linie im Diagramm). Eine Verringerung nennt den Kauf, der entfiel, und bietet Rückgängig
  * wie das Löschen; eine Erhöhung nennt den geschätzten Preis.
  * @param {{ quantity?: number, quantity_delta?: number, owner_user_id?: number }} body @param {number} schritt
- * @param {Element | null} feld
+ * @param {Element | null} feld @param {import('./zustand.js').Kachel | null} [set] das Set, auch wenn der Dialog schon zu ist
  */
-async function aendereMenge(body, schritt, feld) {
-  const set = curSet;
+async function aendereMenge(body, schritt, feld, set = curSet) {
   if (!set || !schritt) return;
   const sn = set.set_number;
   const d = await api('PUT', `/v1/sets/${esc(sn)}`, body);
