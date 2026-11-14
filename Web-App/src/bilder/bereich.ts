@@ -10,6 +10,7 @@ import * as bildNachschlagen from './bildNachschlagen';
 import * as proxyThumbs from './proxyThumbs';
 import * as imgCacheServe from './imgCacheServe';
 import * as bildDatei from './bildDatei';
+import * as vorschauenEinpassen from './vorschauenEinpassen';
 import { setBildHerunterladen } from './setImages';
 import { generateThumb } from './thumbs';
 import { zugang, type Bildwerk, type BilderAbhaengigkeiten, type BilderKontext } from './kontext';
@@ -63,6 +64,8 @@ export function erzeugeBilder(
       cacheTreffer: mit(k)(imgCacheServe.cacheTreffer),
       raeumeBildCacheAuf: imgCacheServe.raeumeBildCacheAuf,
       ladeBild: mit(k)(bildDatei.ladeBild),
+      zugeschnitteneVorschauenEinpassen: (lokale: { web: string; datei: string }[]) =>
+        vorschauenEinpassen.zugeschnitteneVorschauenEinpassen(k, lokale),
       bildOeffnen: (...x: Parameters<BilderKontext['fremdquellen']['quellen']['oeffneBild']>) =>
         k.fremdquellen.quellen.oeffneBild(...x),
     }),

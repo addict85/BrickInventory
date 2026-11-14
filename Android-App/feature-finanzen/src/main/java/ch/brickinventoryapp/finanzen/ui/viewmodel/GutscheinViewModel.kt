@@ -2,7 +2,7 @@ package ch.brickinventoryapp.finanzen.ui.viewmodel
 
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.vertrag.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R

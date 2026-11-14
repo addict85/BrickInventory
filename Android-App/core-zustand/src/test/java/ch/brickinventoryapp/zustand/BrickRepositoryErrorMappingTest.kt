@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.netz.di.ServerWaechter
 import ch.brickinventoryapp.netz.di.Zugangslage
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 
 /**
  * Der erste Test in diesem Projekt, der VERHALTEN ausführt statt Quelltext zu
@@ -69,7 +69,7 @@ class BrickRepositoryErrorMappingTest {
         // seit der Aufteilung dort. Geprueft wird hier die Fehlerumsetzung in
         // sicherAufrufen() — die steht in Abruf.kt und ist fuer alle fuenf
         // Teil-Repositories dieselbe; getMe ist nur das Vehikel.
-        return KontoRepository(api)
+        return testKontoRepository(api)
     }
 
     @Before

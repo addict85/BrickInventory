@@ -198,15 +198,9 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
 });
 
 /**
- * Befund 3: der Lagerortfilter der Set-Liste — über die ROUTE geprüft.
- *
- * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
- *
- *   a) `storage` aus der Weitergabe in routes/api_v1/sets.ts entfernt → der
- *      Fall wird rot („2 Sets statt 1"). Das ist der Zustand, den Marco
- *      gemeldet hat.
- *   b) Der Fall OHNE Filter prüft, dass dann wirklich beide Sets kommen —
- *      sonst wäre der Test auch grün, wenn die Liste immer leer wäre.
+ * Der Lagerortfilter der Set-Liste, über die ROUTE geprüft. Gegenprobe: `storage` aus
+ * der Weitergabe in routes/api_v1/sets.ts entfernt → rot („2 Sets statt 1“); ohne Filter
+ * kommen beide Sets (sonst bestünde auch eine leere Liste).
  */
 test('der Lagerortfilter der Listen wirkt über die Route', async t => {
   try {

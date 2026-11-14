@@ -141,12 +141,7 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
 });
 
 /**
- * Nachtrag vom 17.10.: der Verwalter-Hinweis steht IM Namen
- *
- * Gegenproben (durchgeführt): `ME.isAdmin` in der Bedingung durch `true`
- * ersetzt → „ohne Verwalterrecht steht nur der Name" rot. Den Zusatz ganz
- * entfernt → „mit Verwalterrecht steht (Admin) dahinter" rot.
- * Gegenproben (08.11.2026 gemessen, am Bündel): zeigeBenutzernamen() ohne
+ * Der Verwalter-Hinweis steht IM Namen. Gegenproben (08.11.2026, am Bündel): zeigeBenutzernamen() ohne
  * `ME.isAdmin &&` bzw. mit fest „Admin“ statt tRaw('users.admin_badge') →
  * rot (englisch stünde „Verwalter“); die Profilseite wieder mit eigenem `G('ubadge').textContent =
  * username` statt zeigeBenutzernamen() → rot (nach dem Speichern).

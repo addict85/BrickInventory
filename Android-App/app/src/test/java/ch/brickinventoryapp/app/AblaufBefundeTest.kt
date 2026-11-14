@@ -42,8 +42,8 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
@@ -256,7 +256,7 @@ class AblaufBefundeTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF","sub_accounts":[]}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"ABCD-1234","expires_in":86400}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api), KontoRepository(welt.t.api)))
+            testHaushaltRepository(welt.t.api), testKontoRepository(welt.t.api)))
         zeige { HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
         compose.onNodeWithText(ctx.getString(R.string.household_redeem_sperrgrund)).performScrollTo()

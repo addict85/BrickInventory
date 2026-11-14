@@ -36,8 +36,8 @@ import { idempotenz } from '../src/idempotenz/http/middleware';
 import { baueDatenDateienRouter } from '../routes/datenDateien';
 import { baueApiRouter } from '../routes/api_v1/index';
 import { baueAuthRouter } from '../routes/auth';
-import zertifikatRouter from '../routes/zertifikat';
-import cspBerichtRouter from '../src/http/cspBericht';
+import { baueZertifikatRouter } from '../routes/zertifikat';
+import { baueCspBerichtRouter } from '../src/http/cspBericht';
 import { baueWellKnownRouter } from '../routes/wellKnown';
 import { baueGesundheitRouter } from '../routes/gesundheit';
 import { baueSeitenRouter } from '../routes/seiten';
@@ -116,7 +116,7 @@ function grundschutz(app: express.Express, k: Konfig): void {
 
   app.use(nurEigenerHost);
   // Vor der Herkunftsprüfung: Browser schicken CSP-Berichte ohne verlässliche Herkunft.
-  app.use(cspBerichtRouter);
+  app.use(baueCspBerichtRouter());
   app.use(nurEigeneHerkunft);
   // no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
   // gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
@@ -227,7 +227,7 @@ function sitzung(app: express.Express, speicher: RequestHandler, konto: KontoDie
 
 function dateienUndBilder(app: express.Express, d: Dienste, konfig: Konfig): void {
   app.use(baueDatenDateienRouter(d));
-  app.use(zertifikatRouter);
+  app.use(baueZertifikatRouter());
   app.use(baueWellKnownRouter(konfig));
   registerImgProxy(app, d);
 
@@ -285,6 +285,7 @@ function rueckfaelle(app: express.Express, profil: ProfilDienste): void {
     await sendeStartseite(profil, res, req.session?.userId);
   });
 
-  // Für Fehler, die an den Route-Catches vorbeikommen: loggt voll, antwortet generisch.
+  // Der eine Fehlerweg aller Router: Ein Fehler überspringt alles ohne Fehlerparameter
+  // bis hierher; die Router selbst hängen keinen eigenen an.
   app.use(fehlerAntwort);
 }

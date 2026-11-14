@@ -1,7 +1,6 @@
 /** Die Seiten der Oberfläche: Bilder unter /images/ und die Links aus E-Mails.
  * Der Rückfall auf die Startseite bleibt als letzte Route in server.ts. */
 import express from 'express';
-import { fehlerAntwort } from '../src/http/httpAntwort';
 import { sendeStartseite, tokenInsFragment } from '../src/profil/http/startseite';
 import { liefereBild } from '../src/bilder/http/bildAuslieferung';
 import { waechterFuer } from './api_v1/middleware';
@@ -22,7 +21,5 @@ export function baueSeitenRouter(d: Pick<Dienste, 'konto' | 'profil' | 'bilder'>
     if (tokenInsFragment(req, res)) return;
     await sendeStartseite(d.profil, res);
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

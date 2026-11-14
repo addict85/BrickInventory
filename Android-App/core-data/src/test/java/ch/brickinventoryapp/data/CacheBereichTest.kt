@@ -8,7 +8,7 @@ import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.SpeicherAusgang
 import ch.brickinventoryapp.offline.SpeicherBestand
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.testing.TestApi
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
@@ -57,7 +57,7 @@ class CacheBereichTest {
     /** Ein Bereich je Abfrage aus der Warteschlange, sonst der feste. */
     private val quelle: suspend () -> String? = { if (bereiche.isEmpty()) bereich else bereiche.removeFirst() }
 
-    private fun repo() = KatalogRepository(TestApi.fuer(server), Offlineablage(bestand, SpeicherAusgang(), quelle))
+    private fun repo() = testKatalogRepository(TestApi.fuer(server), Offlineablage(bestand, SpeicherAusgang(), quelle))
 
     private fun antwort(jahr: Int) =
         """{"success":true,"themes":[],"year_min":$jahr,"year_max":$jahr,"year_counts":[]}"""

@@ -3,7 +3,7 @@ package ch.brickinventoryapp.app
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import android.content.Context
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -107,8 +107,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 
 /**
  * Die Befunde der Barrierefreiheitsprüfung 17, als Verhalten: Was TalkBack, Tastatur und
@@ -226,9 +226,9 @@ class BarrierefreiheitBefundeTest {
         }
         val welt = Beispiele.Welt(KontextTexte())
         try {
-            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich, KontoRepository(welt.t.api),
-                VerwaltungRepository(welt.t.api), welt.t.alarme(),
-                TeileRepository(welt.t.api),
+            val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich, testKontoRepository(welt.t.api),
+                testVerwaltungRepository(welt.t.api), welt.t.alarme(),
+                testTeileRepository(welt.t.api),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))

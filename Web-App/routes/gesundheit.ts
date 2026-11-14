@@ -1,7 +1,6 @@
 /** Startzustand und Gesundheit: ohne Anmeldung (compose.yaml) und vor den
  * übrigen /api/v1-Routen eingehängt, gefragt wird schon während des Starts. */
 import express from 'express';
-import { fehlerAntwort } from '../src/http/httpAntwort';
 import { versuche, wertOder } from '../src/infra/ergebnis';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import { nutzerIdDerAnfrage, istVerwalter } from '../src/konto/http/anmeldung';
@@ -41,7 +40,5 @@ export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'v
       !!wertOder(await versuche('health:anmeldung', nutzerIdDerAnfrage(d.konto, req)), null) && istVerwalter(req);
     res.json(await d.verwaltung.gesundheitsBericht(verwalter));
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

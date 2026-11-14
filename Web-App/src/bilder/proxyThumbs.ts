@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { merkeFehlend, istBekanntFehlend } from './imageMisses';
 import { imgProxyFailures, zaehleProxyFehler } from './imgProxyStats';
 import { isDecodable } from './imageGuard';
-import { jimpEinpassen } from './thumbs';
+import { jimpVorschau } from './thumbs';
 import { LOCKS } from '../infra/lockNamespaces';
 import * as sperre from './repository/sitzungsSperre';
 import type { BilderKontext } from './kontext';
@@ -102,15 +102,9 @@ export async function makeProxyThumb(k: BilderKontext, srcFile: string, thumbFil
         merkeFehlend(k, 'thumb:' + thumbFile);
         return false;
       }
-      // Erst hier geladen: Jimp ist schwer und nur der Rückfall ohne sharp.
-      const { Jimp } = require('jimp');
-      const img = await Jimp.read(srcFile);
-      const bg = new Jimp({ width: img.bitmap.width, height: img.bitmap.height, color: 0xffffffff });
-      bg.composite(img, 0, 0);
-      jimpEinpassen(bg, PROXY_THUMB_SIZE);
       // ATOMAR schreiben: erst daneben, dann umbenennen.
       const tmpThumb = `${thumbFile}.${process.pid}.${Date.now()}.tmp.jpg`;
-      await bg.write(tmpThumb as `${string}.${string}`, { quality: 80 });
+      await jimpVorschau(srcFile, tmpThumb, PROXY_THUMB_SIZE);
       await fs.promises.rename(tmpThumb, thumbFile);
       return true;
     } catch (e) {

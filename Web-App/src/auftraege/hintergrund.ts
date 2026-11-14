@@ -43,14 +43,17 @@ export async function auftraegeImUeberblick(
 }
 
 /** Bei einer geplanten Art steht danach der nächste reguläre Termin an. */
-export async function auftragAbbrechen(k: AuftraegeKontext, id: string) {
+export async function auftragAbbrechen(k: AuftraegeKontext, kennung: number) {
+  // Die Antwort nennt die Kennung als Text wie die Übersicht (bigint).
+  const id = String(kennung);
   const a = await brichAb(k, id);
   if (!a) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
   if (hatZeitplan(a.art)) await planeNaechsten(k, a.art);
   return { id, status: 'abgebrochen' };
 }
 
-export async function auftragWiederholen(k: AuftraegeKontext, id: string) {
+export async function auftragWiederholen(k: AuftraegeKontext, kennung: number) {
+  const id = String(kennung);
   if (!(await wiederhole(k, id))) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
   return { id, status: 'offen' };
 }

@@ -12,13 +12,13 @@ import retrofit2.http.DELETE
 import retrofit2.http.PUT
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.AlarmRepository
+import ch.brickinventoryapp.testing.testAlarmRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
  * Die Preisalarm-Uebersicht gibt es in der App genauso wie in der Webapp: Ein Alarm,
  * der nur im Detail seines Sets steht, ist nur auffindbar, wenn man das Set schon kennt.
- * Die Webapp prüft die Gegenrichtung (test/abgleich-webapp-endpunkte.test.js).
+ * Die Webapp prüft die Gegenrichtung (test/webapp-endpunkte.test.js).
  *
  * Gegenprobe (gegenproben/alarm-besitzt-vorgabe-falsch.patch): Vorgabe von `besitzt`
  * auf false → rot „ein fehlendes besitzt-Feld …“. Laden, Ändern, Löschen nach Rückfrage,
@@ -37,7 +37,7 @@ class AlarmUebersichtTest {
         val pfade = PfadServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
         try {
             runBlocking {
-                AlarmRepository(TestApi.fuer(pfade.server)).aktualisiereAlarme()
+                testAlarmRepository(TestApi.fuer(pfade.server)).aktualisiereAlarme()
             }
             assertEquals(listOf("GET /api/v1/alerts"), pfade.anfragen.toList())
         } finally {
@@ -177,7 +177,7 @@ class AlarmUebersichtTest {
 
     // Die Gegenrichtung — „hat die WEBAPP die Rubrik auch?" — steht bewusst
     // NICHT hier. Sie hat dort ihre eigene Regel: Web-App/test/
-    // abgleich-webapp-endpunkte.test.js verlangt, dass eine Adresse, die nur die Webapp
+    // webapp-endpunkte.test.js verlangt, dass eine Adresse, die nur die Webapp
     // ruft, entweder von der App nachgezogen wird oder einen Grund bei sich
     // traegt. Genau diese Regel hat den Bau dieser Rubrik ausgeloest.
     //

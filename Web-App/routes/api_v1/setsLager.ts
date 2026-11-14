@@ -1,10 +1,10 @@
 /** Lagerorte und Preisalarme der Sets; eigene Pfade, deshalb ohne Rücksicht auf die Reihenfolge in sets.ts. */
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { zustand } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
+import { fachfehler } from '../../src/infra/fehlerTexte';
 
 export function baueSetsLagerRouter(d: Pick<Dienste, 'konto' | 'finanzen' | 'bestand' | 'sets'>) {
   const { requireToken } = waechterFuer(d.konto);
@@ -51,8 +51,8 @@ export function baueSetsLagerRouter(d: Pick<Dienste, 'konto' | 'finanzen' | 'bes
     requireToken,
     kontoSchranke('upload'),
     csvEmpfang.single('file'),
-    async (req, res) => {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    async req => {
+      if (!req.file) fachfehler('ungueltig', 'keine_datei');
       return { ...(await d.sets.alarmCsvImportStarten(req.apiUser.user_id, req.file.buffer.toString('utf-8'))) };
     },
   );
@@ -65,15 +65,13 @@ export function baueSetsLagerRouter(d: Pick<Dienste, 'konto' | 'finanzen' | 'bes
    * Einstellung mit genau einem Wert ist. */
   router.endpunkt('PUT /api/v1/storage/default', requireToken, async req => {
     // Fehlt das Feld, meint der Client dasselbe wie null.
-    const roh = req.eingabe.id;
-    const id = roh === null || roh === undefined ? null : Number(roh);
-    return { vorgabe: await d.bestand.setzeVorgabe(req.apiUser.user_id, id) };
+    return { vorgabe: await d.bestand.setzeVorgabe(req.apiUser.user_id, req.eingabe.id ?? null) };
   });
 
-  router.endpunkt('POST /api/v1/storage/locations', requireToken, async (req, res) => {
+  router.endpunkt('POST /api/v1/storage/locations', requireToken, async req => {
     const konto = await d.bestand.lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
     const { ort, war_neu } = await d.bestand.lagerortDienst.legeOrtAn(konto, req.eingabe.name);
-    if (!war_neu) return sendeFehler(req, res, 409, 'lagerort_doppelt');
+    if (!war_neu) fachfehler('konflikt', 'lagerort_doppelt');
     return { ort };
   });
 
@@ -93,7 +91,5 @@ export function baueSetsLagerRouter(d: Pick<Dienste, 'konto' | 'finanzen' | 'bes
     const ids = sichtVon(req);
     return { orte: await d.bestand.lagerortDienst.lagerorte(ids) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

@@ -6,7 +6,7 @@ import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.SetKatalogRepository
+import ch.brickinventoryapp.testing.testSetKatalogRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -38,7 +38,7 @@ class AddExistingSetTest {
     fun `die Existenzpruefung schickt keinen Kontofilter mit`() {
         val pfade = PfadServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
         try {
-            val sets = SetKatalogRepository(TestApi.fuer(pfade.server))
+            val sets = testSetKatalogRepository(TestApi.fuer(pfade.server))
             runBlocking { sets.getSetExists("75192-1") }
             assertEquals(listOf("GET /api/v1/sets/exists/75192-1"), pfade.anfragen.toList())
         } finally {

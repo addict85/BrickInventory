@@ -8,7 +8,7 @@ import { pfadSegmente } from '../../http/httpAntwort';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from '../../http/dateiAusliefern';
 import { zaehleProxyFehler } from '../imgProxyStats';
 import { bildFreigegeben } from '../bildBlickfeld';
-import { generateThumb } from '../thumbs';
+import { generateThumb, vorschauTyp } from '../thumbs';
 import { IMG_PROXY_PFAD } from '../images';
 import type { BildDienste } from './bildProxy';
 
@@ -45,6 +45,7 @@ export async function liefereBild(d: BildDienste, req: Request, res: Response) {
   if (!filePath || !(await bildFreigegeben(imgUserId, segmente))) return res.status(404).send('Datei nicht gefunden');
   // private: Die Antwort hängt an einer Anmeldung. max-age=0, damit ein ersetztes Bild sofort gilt.
   res.setHeader('Cache-Control', 'private, max-age=0');
+  if (/_thumb\.jpg$/.test(filePath)) res.type(await vorschauTyp(filePath));
   sendeDatei(res, filePath, async err => {
     if (!err || res.headersSent) return;
     // Ein Fehler MIT eigener Zahl (416, 403) ist keine fehlende Datei.

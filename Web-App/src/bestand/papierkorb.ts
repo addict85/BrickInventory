@@ -4,6 +4,7 @@ import * as repo from './repository/papierkorb';
 import * as kauf from './repository/kaufErfassungen';
 import type { PapierArt } from './repository/papierkorb';
 import type { BestandKontext } from './kontext';
+import { fachfehler, nichtGefunden } from '../infra/fehlerTexte';
 
 export type Art = PapierArt;
 export const AUFBEWAHRUNG_TAGE = 30;
@@ -95,9 +96,7 @@ export async function listePapierkorb(k: BestandKontext, uidsWahl: Schreiber | n
   });
 }
 
-export type Wiederherstellung =
-  | { ok: true; art: Art; nummer: string; user_id: number }
-  | { ok: false; code: 'nicht_gefunden' | 'papierkorb_schon_vorhanden' };
+export type Wiederherstellung = { art: Art; nummer: string; user_id: number };
 
 /** Gibt es das Element inzwischen wieder, greift ein eindeutiger Index — dann
  * wird nichts verändert und der Eintrag bleibt. */
@@ -110,32 +109,28 @@ export async function stelleWiederHer(
   try {
     return await k.transaktion(async (t): Promise<Wiederherstellung> => {
       const e = await repo.eintragSperren(t.db, id, uids);
-      if (!e) return { ok: false, code: 'nicht_gefunden' };
+      if (!e) nichtGefunden();
       const art = e.art as Art;
       const kaeufe = art === 'set' && !e.zeilen?.sets?.length ? (e.zeilen?.set_acquisitions ?? []) : null;
       if (kaeufe) {
-        if (!(await stelleKaeufeWiederHer(t.db, e, kaeufe))) return { ok: false, code: 'nicht_gefunden' };
+        if (!(await stelleKaeufeWiederHer(t.db, e, kaeufe))) nichtGefunden();
         await repo.entferneEintrag(t.db, id);
-        return { ok: true, art, nummer: e.nummer, user_id: e.user_id };
+        return { art, nummer: e.nummer, user_id: e.user_id };
       }
       for (const tabelle of repo.tabellenDerArt(art))
         await repo.schreibeZurueck(t.db, tabelle, e.zeilen?.[tabelle] ?? []);
       await repo.entferneEintrag(t.db, id);
-      return { ok: true, art, nummer: e.nummer, user_id: e.user_id };
+      return { art, nummer: e.nummer, user_id: e.user_id };
     });
   } catch (err) {
-    if ((err as { code?: string })?.code === '23505') return { ok: false, code: 'papierkorb_schon_vorhanden' };
+    if ((err as { code?: string })?.code === '23505') fachfehler('konflikt', 'papierkorb_schon_vorhanden');
     throw err;
   }
 }
 
-export async function loescheEndgueltig(
-  k: BestandKontext,
-  uidsWahl: Schreiber | number[],
-  id: number,
-): Promise<boolean> {
+export async function loescheEndgueltig(k: BestandKontext, uidsWahl: Schreiber | number[], id: number): Promise<void> {
   const uids = await k.haushalt.schreibbereichAus(uidsWahl);
-  return (await k.papierkorb.entferneEintragDesKontos(id, uids)) > 0;
+  if (!(await k.papierkorb.entferneEintragDesKontos(id, uids))) nichtGefunden();
 }
 
 export async function leerePapierkorb(k: BestandKontext, uidsWahl: Schreiber | number[]): Promise<number> {

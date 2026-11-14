@@ -1,6 +1,6 @@
 /** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
 import { waechterFuer } from './api_v1/middleware';
-import { fehlerAntwort, pfadSegmente } from '../src/http/httpAntwort';
+import { pfadSegmente } from '../src/http/httpAntwort';
 import express, { type Request, type Response } from 'express';
 import path from 'node:path';
 import { liefereDatei, FREMDE_DATEI_CSP } from '../src/http/dateiAusliefern';
@@ -59,7 +59,5 @@ export function baueDatenDateienRouter(d: Pick<Dienste, 'haushalt' | 'konto' | '
       liefereDatei(res, filePath);
     },
   );
-
-  router.use(fehlerAntwort);
   return router;
 }

@@ -1,7 +1,7 @@
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { waechterFuer } from './middleware';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
+import { nichtGefunden } from '../../src/infra/fehlerTexte';
 
 export function baueCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
   const { requireToken } = waechterFuer(d.konto);
@@ -39,12 +39,9 @@ export function baueCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
     return { ...seite };
   });
 
-  router.endpunkt('GET /api/v1/catalog/sets/:setNumber', requireToken, async (req, res) => {
+  router.endpunkt('GET /api/v1/catalog/sets/:setNumber', requireToken, async req => {
     const set = await d.katalog.katalogSet(req.apiUser.user_id, req.pfad.setNumber);
-    if (!set) {
-      sendeFehler(req, res, 404, (await d.katalog.katalogGeladen()) ? 'set_nicht_im_katalog' : 'katalog_nicht_geladen');
-      return;
-    }
+    if (!set) nichtGefunden((await d.katalog.katalogGeladen()) ? 'set_nicht_im_katalog' : 'katalog_nicht_geladen');
     return { set };
   });
 
@@ -63,7 +60,5 @@ export function baueCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
     );
     return { links: Object.fromEntries(map) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

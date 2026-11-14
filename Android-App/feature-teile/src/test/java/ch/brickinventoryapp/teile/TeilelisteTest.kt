@@ -12,8 +12,8 @@ import org.junit.Before
 import org.junit.Test
 import java.net.URLEncoder
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.SetKatalogRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testSetKatalogRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
@@ -62,7 +62,7 @@ class TeilelisteTest {
             }}""",
         )
         t = TestDienste(pfade.server)
-        liste = Teileliste(SetKatalogRepository(t.api), TeileRepository(t.api))
+        liste = Teileliste(testSetKatalogRepository(t.api), testTeileRepository(t.api))
     }
 
     @After

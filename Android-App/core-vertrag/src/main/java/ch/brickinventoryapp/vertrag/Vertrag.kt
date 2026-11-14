@@ -8,6 +8,7 @@ package ch.brickinventoryapp.vertrag
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.fach.Laufstatus
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_APP
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.theme.Design

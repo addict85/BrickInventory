@@ -1,0 +1,28 @@
+/**
+ * Derselbe Operand zweimal in der Webapp.
+ *
+ * Die Regel steht in scripts/check-doppelte-operanden.js; dort ist auch
+ * begründet, warum es sie gibt. Dieser Test führt sie im normalen Lauf mit aus.
+ *
+ * Gegenproben (durchgeführt):
+ *   a) Den bekannten `avg > 0 || avg > 0` in financeCalc.ts zurückgeholt → rot.
+ *   b) `SELECT avg_price, avg_price` zurückgeholt → rot.
+ *   d) Den Pfad zu den Quellen verbogen → rot mit eigener Meldung, statt still
+ *      grün auf der halben Menge.
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
+
+test('kein Ausdruck steht zweimal auf beiden Seiten', () => {
+  const skript = path.join(__dirname, '..', 'scripts', 'check-doppelte-operanden.js');
+  try {
+    execFileSync(process.execPath, [skript], { encoding: 'utf8', stdio: 'pipe' });
+  } catch (e) {
+    assert.fail(
+      `${e.stdout || ''}${e.stderr || ''}`.trim() ||
+        'check-doppelte-operanden.js ist fehlgeschlagen, ohne etwas zu melden',
+    );
+  }
+});

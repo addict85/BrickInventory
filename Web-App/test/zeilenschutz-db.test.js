@@ -309,8 +309,13 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     await su.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [D]);
     await su.run(`UPDATE user_settings SET value = 'USD' WHERE user_id = $1 AND key = 'currency'`, [A]);
     const { code } = await als(A, () => haushalt.einladungAnlegen(A));
-    const r = await als(D, () => haushalt.einladungEinloesen(D, code));
-    assert.deepEqual(r, { fehler: 'waehrung_ungleich', vars: { haupt: 'USD', unter: 'EUR' } });
+    await assert.rejects(
+      als(D, () => haushalt.einladungEinloesen(D, code)),
+      {
+        code: 'waehrung_ungleich',
+        vars: { haupt: 'USD', unter: 'EUR' },
+      },
+    );
   });
 
   await t.test('ein Währungswechsel erreicht auch das Unterkonto des Unterkontos', async () => {

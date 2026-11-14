@@ -40,7 +40,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
@@ -80,7 +80,7 @@ class CatalogViewModelTest {
         CatalogSetsResponse(success = true, total = 120, sets = nummern.map { CatalogSetItem(setNumber = it, name = "Set $it") })
 
     private fun mitVm(block: suspend TestScope.(CatalogViewModel) -> Unit) = runTest(takt) {
-        val vm = CatalogViewModel(KatalogRepository(fake.api), t.meldungen, NummernTexte, t.merkliste(), t.alarme(), t.scrollMemory)
+        val vm = CatalogViewModel(testKatalogRepository(fake.api), t.meldungen, NummernTexte, t.merkliste(), t.alarme(), t.scrollMemory)
         try {
             block(vm)
         } finally {

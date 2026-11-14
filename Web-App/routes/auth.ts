@@ -2,7 +2,6 @@
 import { waechterFuer } from './api_v1/middleware';
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
 import { meldeFehler } from '../src/infra/fehler';
-import { fehlerAntwort, sendeFehler } from '../src/http/httpAntwort';
 import {
   anmelden,
   establishSession,
@@ -14,13 +13,12 @@ import {
 } from '../src/konto/http/anmeldung';
 import type { Request, Response } from 'express';
 import { meldeZugangsAenderung } from '../src/konto/http/zugangsWache';
-import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
+import { fehlerText, antwortSprache, fachfehler, nichtGefunden, Fachfehler } from '../src/infra/fehlerTexte';
 import { baueBenutzerRouter } from './auth/benutzer';
 import { baueZweiterFaktorRouter } from './auth/zweiterFaktor';
 import { baueRegistrierungRouter } from './auth/registrierung';
 import { baueQrRouter } from './auth/qr';
 import { bauePasskeyRouter } from './auth/passkey';
-import { STATUS_DER_ART } from '../src/http/fehlerArt';
 import { vertragsRouter } from '../src/http/vertragsRouter';
 import {
   assertLoginAllowed,
@@ -62,17 +60,15 @@ async function angemeldetAntworten(
 }
 
 /** `zweiter_faktor` zeigt das Codefeld (oder `passkey`), `unverified` blendet
- * „E-Mail erneut senden?" ein; sendeFehler kennt beide Felder nicht. */
-function anmeldungAbsagen(req: Request, res: Response, absage: Absage) {
+ * „E-Mail erneut senden?" ein. */
+function anmeldungAbsagen(absage: Absage): never {
   const { art, code, vars, unverified, zweiterFaktor, passkey } = absage;
-  const status = STATUS_DER_ART[art];
-  if (!zweiterFaktor && !unverified) return sendeFehler(req, res, status, code, vars);
-  res.status(status).json({
-    success: false,
-    code,
-    ...(zweiterFaktor ? { zweiter_faktor: true, ...(passkey ? { passkey: true } : {}) } : { unverified: true }),
-    error: fehlerText(code, antwortSprache(req), vars),
-  });
+  const zusatz = zweiterFaktor
+    ? { zweiter_faktor: true, ...(passkey ? { passkey: true } : {}) }
+    : unverified
+      ? { unverified: true }
+      : undefined;
+  throw new Fachfehler(art, code, vars, zusatz);
 }
 
 type GeprueftesToken = NonNullable<Awaited<ReturnType<Dienste['konto']['pruefeToken']>>['nutzer']>;
@@ -124,16 +120,15 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1/auth');
 
-  // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
-  // einem reinen Sitzungswächter von Routen ausgesperrt.
+  // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung.
   const requireLogin = requireLoginOrToken;
 
   /** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen. */
   router.endpunkt('POST /api/v1/auth/login', async (req, res) => {
     const { username, password, code: zweiterCode, ohne_token, passkey } = req.eingabe;
-    if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
+    if (!geraeteNameInhaltGueltig(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
     const pruefung = await anmelden(d.konto, req, username, password, zweiterCode, passkey);
-    if (!pruefung.ok) return anmeldungAbsagen(req, res, pruefung.absage);
+    if (!pruefung.ok) anmeldungAbsagen(pruefung.absage);
     await angemeldetAntworten(d, req, res, pruefung.user as Angemeldet, req.eingabe, ohne_token !== true, true);
   });
 
@@ -174,26 +169,24 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
       });
     };
     await antworte().catch((e: unknown) => {
-      // Ein Lesefehler ist keine Abmeldung: Mit 401 oder „nicht angemeldet“
-      // verwürfe die App ihren Token, und der Browser zeigte die Anmeldemaske.
+      // Ein Lesefehler ist keine Abmeldung: Mit 401 verwürfe die App ihren Token.
       meldeFehler('auth:me', e);
-      if (!res.headersSent) sendeFehler(req, res, 503, 'server_ausgelastet');
+      fachfehler('nicht_verfuegbar', 'server_ausgelastet');
     });
   });
 
-  /** Öffentlich, weil ein unbegrenzter Token nach der Pflichtfrist nur noch hier
-   * gilt; die Prüfung steht deshalb hier. */
+  /** Öffentlich: Ein unbegrenzter Token gilt nach der Pflichtfrist nur noch hier. */
   router.endpunkt(
     'POST /api/v1/auth/token-rotieren',
     ipThrottle(d.konto, 'token-rotieren', 120, 60 * 60 * 1000),
-    async (req, res) => {
+    async req => {
       const auth = String(req.headers.authorization || '');
       const alt = auth.startsWith('Bearer ') ? auth.slice(7) : '';
       if (!alt || !(await d.konto.pruefeToken(alt, { ip: req.ip, zweck: 'rotation' })).nutzer)
-        return sendeFehler(req, res, 401, 'token_ungueltig');
+        fachfehler('nicht_angemeldet', 'token_ungueltig');
       const t = await d.konto.rotiereToken(alt, req.ip);
-      if (t === 'laeuft') return sendeFehler(req, res, 409, 'tausch_laeuft');
-      if (!t) return sendeFehler(req, res, 401, 'token_ungueltig');
+      if (t === 'laeuft') fachfehler('konflikt', 'tausch_laeuft');
+      if (!t) fachfehler('nicht_angemeldet', 'token_ungueltig');
       return {
         token: t.token,
         token_info: {
@@ -213,40 +206,38 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
   /** Nur aus einer Sitzung, mit Passwort und zweitem Faktor: Sonst prägte ein
    * erbeuteter Zugang einen dauerhaften. Die Mail meldet ihn dem Inhaber. */
   router.endpunkt('POST /api/v1/auth/token-create', requireLogin, async (req, res) => {
-    if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
-    if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
+    if (!req.session?.userId) fachfehler('verboten', 'nur_mit_sitzung');
+    if (!geraeteNameInhaltGueltig(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
     const userId = angemeldeteNutzerId(req);
     if (!(await bestaetigeMitFaktor(d.konto, req, res, userId, req.eingabe.password))) return;
     const t = await d.konto.geraeteTokenAusstellen(userId, req.eingabe.label, req.eingabe.scope, req.ip);
     return { token: t.token, label: t.label, never_expires: false, token_info: t.token_info };
   });
 
-  router.endpunkt('GET /api/v1/auth/profile', requireLogin, async (req, res) => {
+  router.endpunkt('GET /api/v1/auth/profile', requireLogin, async req => {
     const user = await d.konto.profil(nutzerId(req)!);
-    if (!user) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (!user) nichtGefunden('benutzer_nicht_gefunden');
     return { user };
   });
 
   router.endpunkt('PUT /api/v1/auth/profile', requireLogin, async (req, res) => {
     const { username, email, first_name, last_name, password, password_current } = req.eingabe;
     const user = await d.konto.kontoVollVon(nutzerId(req)!);
-    if (!user) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (!user) nichtGefunden('benutzer_nicht_gefunden');
 
-    // Das Passwort nur über /change-password: Nur dort werden danach alle
-    // übrigen Sitzungen und Token verworfen.
-    if (password) return sendeFehler(req, res, 400, 'passwort_ueber_change_password');
+    // Das Passwort nur über /change-password: Nur dort fallen danach alle anderen Zugänge.
+    if (password) fachfehler('ungueltig', 'passwort_ueber_change_password');
 
     // Dieselbe Regex wie Login/Register: Sonst liesse sich eine fremde E-Mail als
     // Benutzername eintragen, und der Login sucht „username ODER email".
     if (username !== undefined && !USERNAME_RE.test(String(username || '')))
-      return sendeFehler(req, res, 400, 'benutzername_ungueltig');
-    if (!nameGueltig(first_name) || !nameGueltig(last_name)) return sendeFehler(req, res, 400, 'name_ungueltig');
+      fachfehler('ungueltig', 'benutzername_ungueltig');
+    if (!nameGueltig(first_name) || !nameGueltig(last_name)) fachfehler('ungueltig', 'name_ungueltig');
 
-    if (emailWirdGeaendert(user, email) && !emailGueltig(email)) return sendeFehler(req, res, 400, 'email_ungueltig');
-    // Jede Änderung mit Passwort (und zweitem Faktor): Über eine neue Adresse liesse
-    // sich das Passwort zurücksetzen, und erst danach verrät die Vergabeprüfung, ob
-    // es einen Namen oder eine Adresse schon gibt.
-    if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
+    if (emailWirdGeaendert(user, email) && !emailGueltig(email)) fachfehler('ungueltig', 'email_ungueltig');
+    // Mit Passwort (und zweitem Faktor): Über eine neue Adresse liesse sich das Passwort
+    // zurücksetzen; erst danach verrät die Vergabeprüfung, ob es Name oder Adresse gibt.
+    if (!password_current) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, user.id, String(password_current)))) return;
     const r = await d.profil.profilAendern(user, { username, email, first_name, last_name });
     if (r.emailChanged) return { emailChanged: true, emailSent: r.emailSent ?? false };
@@ -257,17 +248,16 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
   router.endpunkt('DELETE /api/v1/auth/konto', requireLogin, async (req, res) => {
     const uid = angemeldeteNutzerId(req);
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt')
-      return sendeFehler(req, res, 409, 'letzter_verwalter');
+    if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt') fachfehler('konflikt', 'letzter_verwalter');
     console.log(`[konto] Konto ${uid} hat sich selbst gelöscht`);
     req.session.destroy(() => res.clearCookie(sitzungsKeksName(), sitzungsKeksOptionen()).json({ success: true }));
   });
 
   router.endpunkt('POST /api/v1/auth/change-password', requireLogin, async (req, res) => {
     const { current, newPassword } = req.eingabe;
-    if (!current || !newPassword) return sendeFehler(req, res, 400, 'alle_felder_erforderlich');
+    if (!current || !newPassword) fachfehler('ungueltig', 'alle_felder_erforderlich');
     const uid = nutzerId(req);
-    if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
+    if (uid == null) fachfehler('nicht_angemeldet', 'nicht_angemeldet');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, String(current)))) return;
     // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
     // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
@@ -288,10 +278,10 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
   router.endpunkt(
     'POST /api/v1/auth/passkey/anmelden/optionen',
     ipThrottle(d.konto, 'passkey-optionen', 60, 60 * 60 * 1000),
-    async (req, res) => {
+    async req => {
       const zweck = req.eingabe.zweck === 'zweiter_faktor' ? 'zweiter_faktor' : 'anmelden';
       const optionen = await d.konto.anmeldeOptionen(zweck);
-      if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
+      if (!optionen) fachfehler('nicht_verfuegbar', 'passkey_ohne_domain');
       return { optionen };
     },
   );
@@ -301,13 +291,13 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
     'POST /api/v1/auth/passkey/anmelden',
     ipThrottle(d.konto, 'passkey-anmelden', 30, 60 * 60 * 1000),
     async (req, res) => {
-      if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
+      if (!geraeteNameInhaltGueltig(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
       const uid = await d.konto.anmeldungPruefen(req.eingabe.antwort, 'anmelden');
-      if (!uid) return sendeFehler(req, res, 401, 'passkey_ungueltig');
+      if (!uid) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
       const user = await d.konto.kontoVollVon(uid);
-      if (!user) return sendeFehler(req, res, 401, 'passkey_ungueltig');
+      if (!user) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
       const gesperrt = assertLoginAllowed(user);
-      if (gesperrt) return sendeFehler(req, res, STATUS_DER_ART[gesperrt.art], gesperrt.code);
+      if (gesperrt) fachfehler(gesperrt.art, gesperrt.code);
       meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'passkey' });
       await angemeldetAntworten(d, req, res, user, req.eingabe, req.eingabe.mit_token === true);
     },
@@ -318,6 +308,5 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
   router.haengeEin(baueBenutzerRouter(d));
   router.haengeEin(baueZweiterFaktorRouter(d));
   router.haengeEin(baueRegistrierungRouter(d));
-  router.use(fehlerAntwort);
   return router;
 }

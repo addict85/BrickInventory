@@ -266,23 +266,23 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
     constructor(server: MockWebServer, texte: Texte = NummernTexte) : this(TestApi.fuer(server), texte)
 
     val sitzung = Sitzung()
-    val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api), TeileRepository(api))
+    val blickfeld = Blickfeld(SpeicherAblage(), testHaushaltRepository(api), testTeileRepository(api))
     val meldungen = MeldungsKanal()
 
     /** Eine Ablage für alle Repositories dieses Tests: Was eines schreibt, sehen die Listen der anderen. */
     val ablage = Testablage()
-    val kontosicht: Kontosicht = Kontosicht(api, ablage)
-    val abgleich: Bestandsabgleich = Bestandsabgleich(api, ablage)
+    val kontosicht: Kontosicht = testKontosicht(api, ablage)
+    val abgleich: Bestandsabgleich = testBestandsabgleich(api, ablage)
 
     /** Dieselbe Instanz, wo ein ViewModel nur liest, wann sich der Bestand geändert hat. */
     val aenderungen: Bestandsabgleich get() = abgleich
-    fun sets(): SetsRepository = SetsRepository(api, ablage)
-    fun merkliste(): MerklisteRepository = MerklisteRepository(api, ablage)
-    fun alarme(): AlarmRepository = AlarmRepository(api, ablage)
-    fun setKatalog(): SetKatalogRepository = SetKatalogRepository(api)
-    fun setDateien(): SetDateienRepository = SetDateienRepository(api)
-    fun teile(): TeileRepository = TeileRepository(api, ablage)
-    fun figuren(): FigurenRepository = FigurenRepository(api, ablage)
+    fun sets(): SetsRepository = testSetsRepository(api, ablage)
+    fun merkliste(): MerklisteRepository = testMerklisteRepository(api, ablage)
+    fun alarme(): AlarmRepository = testAlarmRepository(api, ablage)
+    fun setKatalog(): SetKatalogRepository = testSetKatalogRepository(api)
+    fun setDateien(): SetDateienRepository = testSetDateienRepository(api)
+    fun teile(): TeileRepository = testTeileRepository(api, ablage)
+    fun figuren(): FigurenRepository = testFigurenRepository(api, ablage)
     val scrollMemory = ScrollMemory()
     val hinweise = Meldungen(meldungen, texte)
 

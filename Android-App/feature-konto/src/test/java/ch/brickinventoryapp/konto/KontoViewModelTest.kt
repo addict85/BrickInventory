@@ -20,7 +20,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.testing.NummernTexte
 import ch.brickinventoryapp.testing.ReihenServer
@@ -89,7 +89,7 @@ class KontoViewModelTest {
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-konto-${System.nanoTime()}")
         cacheDir.mkdirs()
         kanal = MeldungsKanal()
-        vm = KontoViewModel(KontoRepository(server.api, takt), NummernTexte, kanal,
+        vm = KontoViewModel(testKontoRepository(server.api, takt), NummernTexte, kanal,
                             Sitzung(), SitzungsAttrappe { abgemeldet = true })
     }
 

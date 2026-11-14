@@ -6,8 +6,8 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.model.ui.model.AuftragStatus
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.screens.auftragsArtText
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
@@ -73,7 +73,7 @@ class HintergrundarbeitenTest {
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-hg-${System.nanoTime()}")
     private val kanal = MeldungsKanal()
     private val vm = TestApi.fuer(pfade.server).let { api ->
-        MonitoringViewModel(VerwaltungRepository(api), KontoRepository(api), Saetze, kanal)
+        MonitoringViewModel(testVerwaltungRepository(api), testKontoRepository(api), Saetze, kanal)
     }
 
     @After

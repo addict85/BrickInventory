@@ -9,7 +9,7 @@ import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.vertrag.AddSetResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.sammlung.ui.Pruefphase
@@ -105,7 +105,7 @@ class ErfassungViewModelTest {
     }
 
     private fun vm(anleger: Anleger = Anleger(emptyList())) = t.merke(
-        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.merkliste(), KatalogRepository(t.api), anleger)
+        ErfassungViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.merkliste(), testKatalogRepository(t.api), anleger)
     ).also { anleger.vm = it }
 
     @Before

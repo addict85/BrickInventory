@@ -74,7 +74,6 @@ export function verwalterHinweisNebenher(k: KontoKontext, art: KontoHinweis, ang
  * damit die Antwort nicht auf den Mailserver wartet. */
 export async function haushaltBeitreten(k: KontoKontext, uid: number, code: string) {
   const r = await k.haushalt.einladungEinloesen(uid, code);
-  if ('fehler' in r) return r;
   const ich = await k.konten.profilZeile(uid);
   if (ich?.email) {
     const sprache = await k.einstellungen
