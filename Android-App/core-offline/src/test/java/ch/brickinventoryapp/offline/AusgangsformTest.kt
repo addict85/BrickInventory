@@ -20,7 +20,7 @@ import org.junit.Test
  * Co. als JSON); sie liegen so auf Geräten und müssen lesbar bleiben.
  *
  * Gegenproben (mit kotlinc gegen core-model und core-offline gemessen):
- *   A  in SetAnfrageF1 `@SerialName("set_number")` → `"setNumber"` → rot „liest und schreibt jede
+ *   A  gegenproben/ausgangsform-feldname-geaendert.patch (SetAnfrageF1 `set_number` → `setNumber`) → rot „liest und schreibt jede
  *      eingefrorene Zeile“ (set_erfassen) und „ein Posten einer älteren App …“
  *   B  in AddSetRequest (Servermodell) `@SerialName("set_number")` → `"set_nr"` → bleibt grün:
  *      Eine Änderung am Netzmodell erreicht die Platte nicht mehr
