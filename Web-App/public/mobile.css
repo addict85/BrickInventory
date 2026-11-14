@@ -712,10 +712,9 @@
    Gewinn daneben, die übrigen Angaben darunter. Sonst füllte das Bild den ersten Bildschirm. */
 @media (max-width: 640px), (max-height: 600px) and (max-width: 899px) {
   #set-modal .m-kopfteil { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .5rem .75rem; align-items: start; }
-  #set-modal .m-kopfteil > #m-det { display: contents; }
-  #set-modal .m-kopfteil > #m-det > * { grid-column: 1 / -1; }
-  #set-modal .m-kopfteil > .mimg { grid-column: 1; grid-row: 1; max-height: none; margin: 0; }
-  #set-modal .m-kopfteil > #m-det > .m-wertkopf { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
+  #set-modal .m-kopfteil :is(#m-det, #m-det-links) > * { grid-column: 1 / -1; }
+  #set-modal .m-kopfteil .mimg { grid-column: 1; grid-row: 1; max-height: none; margin: 0; }
+  #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
   #set-modal .wk-wert { font-size: var(--fs-4); }
 }
 /* Grosse Schrift: neben dem Bild bliebe kein Platz für den Betrag. Gemessen
@@ -724,8 +723,8 @@
 @media (max-width: 640px) { #set-modal > .modal { container: setdialog / inline-size; } }
 @container setdialog (max-width: 19rem) {
   #set-modal .m-kopfteil { grid-template-columns: minmax(0, 1fr); }
-  #set-modal .m-kopfteil > #m-det > .m-wertkopf { grid-column: 1; grid-row: auto; }
-  #set-modal .m-kopfteil > .mimg { width: 7.5rem; }
+  #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 1; grid-row: auto; }
+  #set-modal .m-kopfteil .mimg { width: 7.5rem; }
 }
 
 /* Die Erklärung zu „0 Teile“ bleibt auch am Telefon stehen. */

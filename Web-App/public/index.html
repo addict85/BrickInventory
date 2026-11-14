@@ -1629,7 +1629,11 @@
   <div class="modal">
     <div class="mhd"><div><h2 class="mtit" id="m-tit">Set</h2><div class="muntertit" id="m-untertit"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div class="m-kopfteil">
-      <img id="m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
+      <!-- Links unter dem Bild Wert und Preisverlauf: Die Spalte stand am Rechner sonst ~800 px leer. -->
+      <div class="m-links">
+        <img id="m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
+        <div id="m-det-links"></div>
+      </div>
       <div id="m-det"></div>
     </div>
     <div id="m-instr" class="il"></div>

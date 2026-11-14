@@ -93,10 +93,11 @@ function untertitel(set) {
   return html`${nr}${nr && wem ? ' · ' : ''}${wem}`;
 }
 
-/** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
+/** Inhalt des Set-Dialogs aus curSet und den Erfassungen: Wert und Verlauf links unter dem Bild, die Angaben
+ * rechts. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
   const set = curSet;
-  if (!set) return '';
+  if (!set) return null;
   const addedFmt = set.added_at ? fmtDatum(set.added_at) : '—';
   // Marktpreis und Entwicklung je Zustand, aus derselben Abfrage wie der Preisverlauf; hier nur der
   // Platzhalter. Ein Wert fürs ganze Set vermischte neu und gebraucht.
@@ -121,8 +122,12 @@ function setDetailHtml(sn, acqs) {
     },
   );
 
-  return html`
-    ${priceRow}${pnlRow}
+  const links = html`${priceRow}${pnlRow}
+    <div id="m-price-chart">
+      <h3 class="bereich-titel" data-stil="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
+      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
+    </div>`;
+  const rechts = html`
     ${acqRows}
     ${detailZeile(t('detail.year'), oderStrich(set.year))}
     ${detailZeile(t('detail.theme'), esc(oderStrich(set.theme)))}
@@ -147,11 +152,8 @@ function setDetailHtml(sn, acqs) {
       t('detail.created'),
       html`${ico('kalender')} ${addedFmt} <span class="text-klein">(${tRaw('detail.created_hint')})</span>`,
       { klasse: 'dr-leise' },
-    )}
-    <div id="m-price-chart" data-stil="margin-top:.75rem">
-      <h3 class="bereich-titel" data-stil="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
-      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
-    </div>`;
+    )}`;
+  return { links, rechts };
 }
 
 /** Figurenzahl und Preisverlauf nachladen, ohne den Dialog aufzuhalten. @param {string} sn */
@@ -198,6 +200,7 @@ export async function openModal(sn) {
   G('m-untertit').textContent = '';
   setzeDialogbild(G('m-img'), PLATZHALTER_SET, PLATZHALTER_SET);
   setzeHtml(G('m-det'), skelettZeilen(4, tRaw('common.loading')));
+  G('m-det-links')?.replaceChildren();
   G('m-instr').replaceChildren();
   G('set-modal').dataset.nummer = sn;
   G('set-modal').classList.add('open');
@@ -239,7 +242,9 @@ export async function openModal(sn) {
   setzeDialogbild(img, fullUrl(set.image_local || set.image_url) || PLATZHALTER_SET, PLATZHALTER_SET);
   img.style.display = 'block';
 
-  setzeHtml(G('m-det'), setDetailHtml(sn, ad?.acquisitions || []));
+  const inhalt = setDetailHtml(sn, ad?.acquisitions || []);
+  setzeHtml(G('m-det-links'), inhalt ? inhalt.links : '');
+  setzeHtml(G('m-det'), inhalt ? inhalt.rechts : '');
 
   const feld = G('m-qty');
   if (feld) feld.value = String(set.quantity);
