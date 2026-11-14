@@ -24,7 +24,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import ch.brickinventoryapp.ui.components.KachelAusgleich
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.NoppenReihe
@@ -127,11 +127,13 @@ fun CatalogSetCard(
                     }
                 }
                 // Der Name zuerst, wie er vorgelesen wird; Nummer, Jahr und Teile darunter.
+                // Ein kurzer Name lässt keine Lücke; die Zeile fehlt am Fuss (KachelAusgleich).
+                var namensZeilen by remember { mutableIntStateOf(2) }
                 Box {
                     Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                         Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                            maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
+                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namensZeilen = it.lineCount })
                         Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -153,6 +155,7 @@ fun CatalogSetCard(
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
+                        KachelAusgleich(2 - namensZeilen)
                     }
                     if (besitzAnsage != null) Box(Modifier.semantics { contentDescription = besitzAnsage })
                 }
