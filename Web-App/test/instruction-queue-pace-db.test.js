@@ -44,7 +44,7 @@ test('ein bereits versorgtes Set löst keinen Abruf aus', async t => {
   ])
     for (const art of ['request', 'get']) {
       const echt = modul[art];
-      t.mock.method(modul, art, (...a) => {
+      t.mock.method(/** @type {any} */ (modul), art, (/** @type {any[]} */ ...a) => {
         abrufe.push(`${name}.${art}`);
         return echt.apply(modul, a);
       });
