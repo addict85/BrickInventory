@@ -25,7 +25,7 @@ import ch.brickinventoryapp.testing.TestApi
  * und entscheidet dort, wo nach dem Fall verzweigt wird.
  *
  * Gegenproben:
- *   A  in safeCall() `code = rumpf.code` weggelassen → rot „der Code des
+ *   A  in sicherAufrufen() `code = rumpf.code` weggelassen → rot „der Code des
  *      Servers kommt im Fehler an“
  *   B  in guthaben() wieder nach Status 429 statt nach Code verzweigt → rot
  *      „eine andere 429 bleibt ein Fehler mit Satz und Code“

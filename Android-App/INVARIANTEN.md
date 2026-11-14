@@ -47,7 +47,7 @@ Datei: `vertrag/HaushaltModels.kt` · Test: `KaeufeViewModelTest`
 
 ## Sitzung und Netz
 
-**HTTP 401.** `safeCall()` meldet ihn als `Ergebnis.Error.Abgewiesen`; `abgeglichen()` und
+**HTTP 401.** `sicherAufrufen()` meldet ihn als `Ergebnis.Error.Abgewiesen`; `abgeglichen()` und
 `abgeglichenEinzeln()` fallen dann **nicht** auf die Ablage zurück; der Interceptor meldet nur, wenn ein Token mitging
 und es der eigene Server war.
 Dateien: `data/repository/Abruf.kt`, `app/di/AppModule.kt`, `data/SessionExpiredSignal.kt`,

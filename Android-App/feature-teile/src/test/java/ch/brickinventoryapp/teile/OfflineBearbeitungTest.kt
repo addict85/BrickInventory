@@ -53,7 +53,7 @@ import ch.brickinventoryapp.testing.TestApi
  *   (E–I gemessen)
  *   E  in Offlineablage.schreibe (Abruf.kt) beim Puffern nach dem direkten Versuch einen neuen
  *      Schlüssel nehmen (`puffere(bearbeitung)`) → rot „… denselben Schlüssel“
- *   F  in TeileRepository.deletePart wieder direkt `safeCall` statt `schreibe` →
+ *   F  in TeileRepository.deletePart wieder direkt `sicherAufrufen` statt `schreibe` →
  *      rot „offline gelöscht …“ (Ergebnis.Error statt gepuffert)
  *   G  in LokaleAnwendung bei TeilLoeschen `filterNot` → `filter` → rot „… verschwindet sofort“
  *   H  in TeileRepository.updatePart `quantityDelta = null` → rot „… als Menge und Schritt“
