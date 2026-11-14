@@ -1,6 +1,6 @@
 import { istVertraut, registerActions, resolveAction } from './registry.js';
 import { bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl, zoomStand, PLATZHALTER_SET } from './bilder.js';
-import { G } from './dom.js';
+import { G, beiTelefonWechsel } from './dom.js';
 import { setLang } from './konto.js';
 import { toast } from './meldungen.js';
 import { tRaw } from '../i18n.js';
@@ -391,6 +391,9 @@ function renderFigsAll() {
   renderFigs(alleFiguren());
   renderManualFigsTable();
 }
+beiTelefonWechsel(() => {
+  if (G('figs-view')?.value === 'table') renderFigsAll();
+});
 
 // ── Wrapper für Handler, die vorher als Ausdruck im Attribut standen ────────
 // Alle bekommen `this` = auslösendes Element und das Ereignis als letztes Argument (siehe Dispatcher oben).

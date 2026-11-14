@@ -1086,6 +1086,8 @@ html[data-offline] label:has(> input[data-offline-gesperrt]){opacity:.5;cursor:n
 input.suchfeld{width:220px}
 /* Die Suche nimmt den Rest der Zeile: Die Filterzeile endet an der Rasterkante. */
 .filterzeile > input.suchfeld{flex:1 1 14rem;width:auto;min-width:0}
+/* Neben sechs Auswahlfeldern der Teile stand der Ansichtsumschalter sonst allein in der zweiten Zeile. */
+.filterleiste > input.suchfeld{flex-basis:9rem}
 /* Auswahlfelder, deren Optionen erst mit den Daten kommen, haben eine feste Breite: Mit der längsten Option
    wuchsen sie nach dem Laden, und das Suchfeld daneben schrumpfte sichtbar. */
 @media (min-width:641px){#gtheme{width:14rem}:is(#parts-color,#parts-cat){width:12rem}}
@@ -1710,8 +1712,8 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .alarm-ue-betrag{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .filter-zahl{display:inline-grid;place-items:center;min-width:1.25rem;height:1.25rem;padding:0 4px;border-radius:999px;background:var(--b600);color:var(--auf-primaer,#fff);font-size:var(--fs-0);font-weight:700}
 .filter-zahl[hidden]{display:none}
-#tab-gallery .filterleiste > .filter-knopf{position:relative}
-#tab-gallery .filterleiste > .filter-knopf > .filter-zahl{position:absolute;top:-6px;right:-6px}
+.filterleiste > .filter-knopf{position:relative}
+.filterleiste > .filter-knopf > .filter-zahl{position:absolute;top:-6px;right:-6px}
 /* minmax(0, …): Bei grosser Schrift schrumpfen die Spalten und der Knopf bricht
    um, statt die Seite seitlich zu verschieben (WCAG 1.4.10). */
 .haushalt-liste{list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:minmax(0,max-content) minmax(0,max-content);align-items:center;column-gap:.6rem;row-gap:.4rem}

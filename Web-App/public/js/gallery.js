@@ -30,6 +30,8 @@ import {
   alle,
   fuegeHtmlEin,
   setzeHtml,
+  telefonBreite,
+  beiTelefonWechsel,
 } from './dom.js';
 import { fmtDatum, fmtBig, fmtGeld, fmtN, istGeschenk } from './format.js';
 import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
@@ -88,6 +90,7 @@ export async function loadStats() {
 
 // ── GALLERY ───────────────────────────────────────────
 let curView = 'grid';
+const alsKarten = () => curView === 'grid' || telefonBreite();
 
 /**
  * Übernimmt das Zustands-Aggregat vom Server: Die eigene Nachrechnung nahm die zuletzt erfasste Position und
@@ -162,7 +165,7 @@ function appendGallery(batch) {
   const c = G('gallery');
   const grid = c.querySelector('.sgrid');
   const tbody = c.querySelector('.dt tbody');
-  if (curView === 'grid' && grid) {
+  if (alsKarten() && grid) {
     fuegeHtmlEin(grid, 'beforeend', batch.map(gridCard));
     observeLazyImages(grid);
   } else if (tbody) {
@@ -320,15 +323,13 @@ export function renderGallery() {
         : leerZustand({
             ico: 'set',
             titel: tRaw('gallery.empty'),
-            text: tRaw(
-              window.matchMedia?.('(max-width: 640px)').matches ? 'gallery.empty_hint_telefon' : 'gallery.empty_hint',
-            ),
+            text: tRaw(telefonBreite() ? 'gallery.empty_hint_telefon' : 'gallery.empty_hint'),
             knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' },
           }),
     );
     return;
   }
-  if (curView === 'grid') {
+  if (alsKarten()) {
     setzeHtml(c, html`<div class="sgrid">${list.map(gridCard)}</div>`);
     observeLazyImages(c);
   } else {
@@ -622,6 +623,9 @@ async function doAddSet() {
   }
 }
 
+beiTelefonWechsel(() => {
+  if (G('gallery')?.querySelector('.sgrid, .tw, .empty.leer:not(.fehler-zustand)')) renderGallery();
+});
 G('vg').onclick = () => {
   curView = 'grid';
   G('vg').classList.add('active');
