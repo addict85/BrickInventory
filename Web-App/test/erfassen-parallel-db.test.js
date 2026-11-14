@@ -7,10 +7,11 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testKontext } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
@@ -35,8 +36,9 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     c.release();
   }
 
-  const { recordAcquisitionForDay } = _req('src/bestand/acquisitions.js');
-  const { mitInventarSperre } = _req('db/txLock.js');
+  // Ungebunden geladen: In der Transaktion bekommt der Dienst ihren Kontext `t`.
+  const { recordAcquisitionForDay } = require(path.join(__dirname, '..', 'dist', 'src', 'bestand', 'acquisitions.js'));
+  const bestand = testKontext('bestand');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('last','x')");
   const uid = (await db.get("SELECT id FROM users WHERE username='last'")).id;
@@ -52,8 +54,9 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     await haeltSet(db, uid, '70001-1', 0);
     await Promise.all(
       Array.from({ length: 10 }, () =>
-        mitInventarSperre(testZugang(), uid, '70001-1', tx =>
-          recordAcquisitionForDay('set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }, tx),
+        bestand.transaktion(
+          tt => recordAcquisitionForDay(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
+          { sperren: [{ konto: uid, schluessel: '70001-1' }] },
         ),
       ),
     );
@@ -192,7 +195,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   const schreibt = (addSet.match(/recordAcquisition\(/g) || []).length;
   assert.ok(schreibt >= 2, `nur ${schreibt} Erfassungs-Schreibstellen gefunden`);
   assert.equal(
-    (addSet.match(/mitInventarSperre\(/g) || []).length,
+    (addSet.match(/sperren: \[\{ konto: userId, schluessel: normalized \}\]/g) || []).length,
     schreibt,
     'nicht jede Schreibstelle in addSet() läuft unter der Bestandssperre',
   );
@@ -232,7 +235,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   // gehen über csvZeilenAusAnfrage() und csvImportBericht() in
   // src/infra/csvExport.ts. Je Weg zählen Route, Dienst und Auftrag zusammen.
   for (const [rel, dienst] of [
-    ['routes/api_v1/sets.ts', 'src/sets/csvImport.ts'],
+    ['routes/api_v1/setsImport.ts', 'src/sets/csvImport.ts'],
     ['routes/api_v1/parts.ts', 'src/teile/manuelleTeile.ts'],
     ['routes/api_v1/minifigs.ts', 'src/figuren/manuelleFiguren.ts'],
   ]) {

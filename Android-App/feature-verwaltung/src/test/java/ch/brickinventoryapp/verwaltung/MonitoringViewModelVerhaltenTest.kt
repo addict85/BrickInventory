@@ -23,7 +23,7 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.NummernTexte
 
 /**
@@ -78,7 +78,7 @@ class MonitoringViewModelVerhaltenTest {
             .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
-        val json = ApiJson
+        val json = BrickJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)

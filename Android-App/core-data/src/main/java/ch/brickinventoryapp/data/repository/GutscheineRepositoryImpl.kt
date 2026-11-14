@@ -17,6 +17,8 @@ import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import ch.brickinventoryapp.model.json.BrickJson
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,6 +31,7 @@ import javax.inject.Singleton
 class GutscheineRepositoryImpl @Inject constructor(
     private val api: GutscheineApi,
     private val ablage: Offlineablage,
+    private val json: Json = BrickJson,
 ) : GutscheineRepository {
 
     override suspend fun liste(): Ergebnis<GutscheinListe> =
@@ -75,7 +78,7 @@ class GutscheineRepositoryImpl @Inject constructor(
                 (roh ?: "").toResponseBody("application/json".toMediaType()))
         }
         val geparst = roh?.let {
-            runCatching { nachsichtigesJson.decodeFromString<GuthabenAntwort>(it) }.getOrNull()
+            runCatching { json.decodeFromString<GuthabenAntwort>(it) }.getOrNull()
         }
         if (geparst != null) retrofit2.Response.success(geparst)
         else retrofit2.Response.error(antwort.code(), (roh ?: "").toResponseBody("application/json".toMediaType()))
@@ -113,7 +116,7 @@ class GutscheineRepositoryImpl @Inject constructor(
                 // Ein Fehler mit Satz und Code, sonst hiesse es „unvollständig gelesen“.
                 val zuLang = Fehlerrumpf.lies(roh).fehlercode == Fehlercode.PDF_ZU_VIELE_SEITEN
                 val geparst = roh?.takeIf { !zuLang }?.let {
-                    runCatching { nachsichtigesJson.decodeFromString<GutscheinAntwort>(it) }.getOrNull()
+                    runCatching { json.decodeFromString<GutscheinAntwort>(it) }.getOrNull()
                 }
                 when {
                     geparst != null -> retrofit2.Response.success(geparst)
@@ -128,14 +131,6 @@ class GutscheineRepositoryImpl @Inject constructor(
     // dem angemeldeten Client (AnleitungsLader — Token, Klartext-Verbot und
     // 401-Meldung hängen daran). Ein eigener Weg wäre eine zweite Fassung und legte
     // Nummer und PIN in den Cache des Geräts.
-
-    /**
-     * Für den 422-Rumpf. Eine eigene Instanz statt der aus dem NetzModule, die am
-     * Retrofit-Konverter hängt — durchgeschleift wäre sie ein Konstruktor-Argument für
-     * eine Zeile. `ignoreUnknownKeys` wie dort: Ein neues Feld des Servers darf eine
-     * ältere App nicht zum Absturz bringen.
-     */
-    private val nachsichtigesJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
     companion object {
         /** Was offline von einem Gutschein bleibt: keine PIN, von der Nummer die letzten vier Ziffern. */

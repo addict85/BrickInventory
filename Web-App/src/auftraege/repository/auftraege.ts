@@ -69,6 +69,9 @@ export async function fuegeAuftragEin(
   return z ? String(z.id) : null;
 }
 
+/** Derselbe Schreibweg ohne Systemrahmen gebunden (src/auftraege/kontext.ts). */
+export const fuegeEigenenAuftragEin = fuegeAuftragEin;
+
 /** Je Schlüssel ein offener Auftrag, der die neuen Posten zu seinen dazunimmt:
  * Jede Bewertung meldet, was noch fehlt; eine neue Liste ist kein neuer Auftrag.
  * Läuft einer, entsteht daneben höchstens ein offener (eindeutig nur unter 'offen'). */
@@ -469,10 +472,10 @@ export function laufendePausen(db: DbSchnittstelle) {
   );
 }
 
-export function auftragsStand(db: DbSchnittstelle, id: string) {
+export function auftragsStand(db: DbSchnittstelle, id: string, uid: number) {
   return db.get<{ status: AuftragsStatus; fortschritt: Fortschritt | null; ergebnis: Record<string, unknown> | null }>(
-    'SELECT status, fortschritt, ergebnis FROM auftraege WHERE id = $1',
-    [id],
+    'SELECT status, fortschritt, ergebnis FROM auftraege WHERE id = $1 AND user_id = $2',
+    [id, uid],
   );
 }
 

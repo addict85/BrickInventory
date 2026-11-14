@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.data.model.AcquisitionsResponse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -14,7 +14,7 @@ import org.junit.Test
  * Server sie schickt (GET …/acquisitions, Migration 0047).
  *
  * Ein falscher Feldname fällt sonst nirgends auf: Das Feld hat einen
- * Standardwert, und ApiJson übergeht unbekannte Schlüssel.
+ * Standardwert, und BrickJson übergeht unbekannte Schlüssel.
  *
  * Gegenprobe (am 28.10.2026 gemessen, kotlinc mit Serialisierungs-Plugin):
  *   A  @SerialName("price_estimated") in "preis_geschaetzt" geändert → rot:
@@ -32,7 +32,7 @@ class ErfassungFelderTest {
 
     @Test
     fun `Schaetzkennzeichen und Waehrung kommen an`() {
-        val r = ApiJson.decodeFromString(AcquisitionsResponse.serializer(), antwort)
+        val r = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), antwort)
         assertTrue(r.acquisitions[0].priceEstimated)
         assertEquals(Waehrung.CHF, r.acquisitions[0].currency)
         assertFalse(r.acquisitions[1].priceEstimated)
@@ -42,7 +42,7 @@ class ErfassungFelderTest {
     @Test
     fun `ein aelterer Server ohne die Felder gilt als bezahlt und ohne Waehrung`() {
         val alt = """{"success":true,"acquisitions":[{"id":1,"quantity":1,"purchase_price":10.0}]}"""
-        val a = ApiJson.decodeFromString(AcquisitionsResponse.serializer(), alt).acquisitions.single()
+        val a = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), alt).acquisitions.single()
         assertFalse(a.priceEstimated)
         assertNull(a.currency)
     }

@@ -150,6 +150,7 @@ test('Haushalt gegen echte Datenbank', async t => {
   await startApi();
 
   const household = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };

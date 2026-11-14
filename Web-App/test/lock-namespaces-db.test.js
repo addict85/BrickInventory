@@ -2,7 +2,9 @@
  * Sperr-Namensräume gegen eine ECHTE Datenbank.
  *
  * Gegenprobe (am 27.10. gemessen): txLock wieder mit der user_id als erstem
- * Wert → rot: „die Bestandssperre eines Kontos trifft keinen Job".
+ * Wert → rot: „die Bestandssperre eines Kontos trifft keinen Job". Seit die Sperre
+ * eine Option von k.transaktion ist (14.11.2026) erneut: in sperreBestaende()
+ * (src/infra/bereich.ts) die Konto-ID als Klasse → rot, derselbe Test.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip (ausser
  * REQUIRE_DB=1).
@@ -12,7 +14,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testKontext } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
@@ -143,18 +145,20 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
   await t.test('die Bestandssperre eines Kontos trifft keinen Job', async () => {
     // Konto-ID = Nummer eines Jobs, Schlüssel = Setnummer: Mit der user_id als
     // erstem Wert war das genau die Sperre des Bild-Downloads für dieses Set.
-    const { mitInventarSperre } = _req('db/txLock.js');
     const SET = '60511-1';
     const zweiter = (await db.get('SELECT hashtext($1) AS h', [SET])).h;
     const frei = {};
-    await mitInventarSperre(testZugang(), LOCKS.BILD_DOWNLOAD, SET, async () => {
-      frei.bild = await nochFrei(LOCKS.BILD_DOWNLOAD, zweiter);
-      // Auf eigener Verbindung: db.get liefe hier über die Transaktion, die die Sperre schon hält.
-      frei.selbst = await nochFrei(
-        LOCKS.INVENTAR,
-        (await db.pool.query('SELECT hashtext($1) AS h', [`${LOCKS.BILD_DOWNLOAD}|${SET}`])).rows[0].h,
-      );
-    });
+    await testKontext('bestand').transaktion(
+      async () => {
+        frei.bild = await nochFrei(LOCKS.BILD_DOWNLOAD, zweiter);
+        // Auf eigener Verbindung: db.get liefe hier über die Transaktion, die die Sperre schon hält.
+        frei.selbst = await nochFrei(
+          LOCKS.INVENTAR,
+          (await db.pool.query('SELECT hashtext($1) AS h', [`${LOCKS.BILD_DOWNLOAD}|${SET}`])).rows[0].h,
+        );
+      },
+      { sperren: [{ konto: LOCKS.BILD_DOWNLOAD, schluessel: SET }] },
+    );
     assert.equal(frei.bild, true, 'Die Bestandssperre von Konto 42 hält den Bild-Download des Sets auf');
     assert.equal(
       frei.selbst,

@@ -40,7 +40,7 @@ import ch.brickinventoryapp.data.Widgetablage
 import ch.brickinventoryapp.data.Zugangsdaten
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.util.LanguageManager
 import dagger.hilt.EntryPoint
@@ -61,7 +61,7 @@ internal object WidgetAblage {
     private fun ablage(ctx: Context) = EntryPointAccessors.fromApplication(ctx, WidgetZugang::class.java).widgetablage()
 
     fun lies(ctx: Context): WidgetZahlen? = runCatching {
-        ablage(ctx).widgetStand()?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it) }
+        ablage(ctx).widgetStand()?.let { BrickJson.decodeFromString(WidgetZahlen.serializer(), it) }
     }.getOrNull()
 
     fun leeren(ctx: Context) {
@@ -69,7 +69,7 @@ internal object WidgetAblage {
         ctx.deleteSharedPreferences(ALTE_DATEI)
     }
 
-    fun schreibe(ctx: Context, z: WidgetZahlen) = ablage(ctx).setzeWidgetStand(ApiJson.encodeToString(WidgetZahlen.serializer(), z))
+    fun schreibe(ctx: Context, z: WidgetZahlen) = ablage(ctx).setzeWidgetStand(BrickJson.encodeToString(WidgetZahlen.serializer(), z))
 }
 
 /**

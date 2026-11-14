@@ -15,7 +15,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-praesentation-netz  `import retrofit2.Response` in GalleryScreen → rot „Präsentation …“
  *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in MerklisteViewModel
  *                               → rot „ein Bereich kennt die Retrofit-Schnittstellen nicht“
- *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.ApiJson` in AppTexte → dasselbe rot
+ *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.KontoApi` in AppTexte → dasselbe rot
  *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
  *                               „core-zustand und core-sitzung kennen keinen Context“
  */

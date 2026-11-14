@@ -1,7 +1,7 @@
 /** Relativ (`quantity_delta`) für Geräte, die offline sammeln: Zwei
  * gleichzeitige „+1" ergeben +2, eine absolute Menge aus altem Stand
  * überschriebe den anderen Zugang. */
-import { mitInventarSperre, bestandsSchluessel } from '../../db/txLock';
+import { bestandsSchluessel } from '../../db/txLock';
 import { bestandsMenge } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { Abstriche } from '../infra/ergebnis';
@@ -43,28 +43,30 @@ export async function passeManuelleMengeAn(
 ): Promise<number> {
   const vorab = await k.manuelleMengen.summeDerErfassungen(art, uid, schluessel);
   const mp = ziel(wunsch, vorab) > vorab ? await ab.oder('kaufpreis', marktpreis, null) : null;
-  return mitInventarSperre(k.db, uid, bestandsSchluessel(art, schluessel), async tx => {
-    const erfassungen = await repo.erfassungenNeuesteZuerst(tx, art, uid, schluessel);
-    const bisher = erfassungen.reduce((s, r) => s + r.quantity, 0);
-    const soll = ziel(wunsch, bisher);
-    if (soll > bisher) {
-      await recordAcquisitionForDay(
-        k,
-        art,
-        uid,
-        schluessel,
-        { quantity: soll - bisher, price: mp, condition: zustand, geschaetzt: true },
-        tx,
-      );
-    }
-    let rest = bisher - soll;
-    for (const a of erfassungen) {
-      if (rest <= 0) break;
-      const weg = Math.min(a.quantity, rest);
-      if (weg >= a.quantity) await repo.entferneErfassung(tx, art, a.id, [uid]);
-      else await repo.kuerzeErfassung(tx, art, a.id, weg, [uid]);
-      rest -= weg;
-    }
-    return soll;
-  });
+  const sperren = [{ konto: uid, schluessel: bestandsSchluessel(art, schluessel) }];
+  return k.transaktion(
+    async t => {
+      const erfassungen = await repo.erfassungenNeuesteZuerst(t.db, art, uid, schluessel);
+      const bisher = erfassungen.reduce((s, r) => s + r.quantity, 0);
+      const soll = ziel(wunsch, bisher);
+      if (soll > bisher) {
+        await recordAcquisitionForDay(t, art, uid, schluessel, {
+          quantity: soll - bisher,
+          price: mp,
+          condition: zustand,
+          geschaetzt: true,
+        });
+      }
+      let rest = bisher - soll;
+      for (const a of erfassungen) {
+        if (rest <= 0) break;
+        const weg = Math.min(a.quantity, rest);
+        if (weg >= a.quantity) await repo.entferneErfassung(t.db, art, a.id, [uid]);
+        else await repo.kuerzeErfassung(t.db, art, a.id, weg, [uid]);
+        rest -= weg;
+      }
+      return soll;
+    },
+    { sperren },
+  );
 }

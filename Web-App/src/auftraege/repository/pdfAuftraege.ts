@@ -2,7 +2,8 @@ import type { DbSchnittstelle } from '../../../db/database';
 
 /** Datenzugriff auf die PDF-Aufträge (Art 'pdf' der Auftragstabelle). */
 
-export function pdfAuftragZeile(db: DbSchnittstelle, schluessel: string) {
+/** Nur der eigene: Die Kennung steht in der Adresse, sie allein ist kein Recht. */
+export function pdfAuftragZeile(db: DbSchnittstelle, schluessel: string, uid: number) {
   return db.get<{
     status: string;
     fehler: string | null;
@@ -10,8 +11,8 @@ export function pdfAuftragZeile(db: DbSchnittstelle, schluessel: string) {
     fortschritt: { fehlendeBilder?: number; etaSekunden?: number } | null;
   }>(
     `SELECT status, fehler, user_id, fortschritt FROM auftraege
-      WHERE art = 'pdf' AND schluessel = $1 ORDER BY id DESC LIMIT 1`,
-    [schluessel],
+      WHERE art = 'pdf' AND schluessel = $1 AND user_id = $2 ORDER BY id DESC LIMIT 1`,
+    [schluessel, uid],
   );
 }
 
@@ -24,8 +25,11 @@ export function zaehleLaufendePdf(db: DbSchnittstelle, uid: number, fristSek: nu
   );
 }
 
-export function loeschePdfAuftrag(db: DbSchnittstelle, schluessel: string) {
-  return db.run(`DELETE FROM auftraege WHERE art = 'pdf' AND schluessel = $1 AND status <> 'laeuft'`, [schluessel]);
+export function loeschePdfAuftrag(db: DbSchnittstelle, schluessel: string, uid: number) {
+  return db.run(`DELETE FROM auftraege WHERE art = 'pdf' AND schluessel = $1 AND user_id = $2 AND status <> 'laeuft'`, [
+    schluessel,
+    uid,
+  ]);
 }
 
 /** Fertige nach Ablauf der Frist; liefert die Schlüssel für das Löschen der Dateien. */

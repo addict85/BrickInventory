@@ -354,7 +354,8 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine, geheime Zwischenablage); kennt keine Ansichten und keine Servermodelle |
 | `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
 | `core-sitzung` | `ch.brickinventoryapp.sitzung` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
-| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` |
+| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` und ohne Compose (`Modulkanten.ohneOberflaeche`) |
+| `core-navigation` | `ch.brickinventoryapp.navigation` | `Bereichsumgebung`: was jeder Bereich von der App zum Zeigen seiner Ziele bekommt (NavController, Bilder, Snackbar, Sitzung, Blickfeld, Rollgedächtnis) — einzelne Flüsse und Rückrufe, kein AppViewModel |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
 | `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
 | `feature-katalog` | `ch.brickinventoryapp.katalog` | Katalog und Katalog-Detail |

@@ -1,19 +1,17 @@
 import * as repo from './repository/sets';
-import { entferneSetInhalt, legeInPapierkorb } from '../bestand';
-import type { DbSchnittstelle } from '../../db/database';
-import { asIds, blickfeldAus, schreibbereich, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
+import { asIds, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import type { SetsKontext } from './kontext';
 
-// Für Löschen und Wegfall; sonst verwaisen Teile.
-export async function deleteSetRows(tx: DbSchnittstelle, uids: number[], setNumber: string) {
-  await repo.entferneSetZeilen(tx, uids, setNumber);
-  await entferneSetInhalt(tx, uids, setNumber);
+// Für Löschen und Wegfall; sonst verwaisen Teile. In der Transaktion des Aufrufers (`t`).
+export async function deleteSetRows(t: SetsKontext, uids: number[], setNumber: string) {
+  await repo.entferneSetZeilen(t.db, uids, setNumber);
+  await t.bestand.entferneSetInhalt(uids, setNumber);
 }
 
 /** Standardmässig im ganzen Schreibbereich; eine Kontenwahl schränkt ihn ein, erweitert ihn nie. */
 export async function loescheSetFuer(sk: SetsKontext, s: Sicht, setNumber: string) {
-  const schreibbar = await schreibbereich(sk.db, s.nutzer);
-  const gewaehlt = s.konten === undefined ? schreibbar : await blickfeldAus(sk.db, s);
+  const schreibbar = await sk.haushalt.schreibbereich(s.nutzer);
+  const gewaehlt = s.konten === undefined ? schreibbar : await sk.haushalt.blickfeldAus(s);
   return loescheSet(
     sk,
     gewaehlt.filter(id => schreibbar.includes(id)),
@@ -32,10 +30,10 @@ export async function loescheSet(sk: SetsKontext, userId: Blickfeld, setNumber: 
     // Ein Eintrag je Konto: Wiederhergestellt wird in das Konto, dem es gehörte.
     const papierkorb: number[] = [];
     for (const b of besitzer) {
-      const id = await legeInPapierkorb(t.db, 'set', b.user_id, setNumber);
+      const id = await t.bestand.legeInPapierkorb('set', b.user_id, setNumber);
       if (id !== null) papierkorb.push(id);
     }
-    await deleteSetRows(t.db, uids, setNumber);
+    await deleteSetRows(t, uids, setNumber);
     return papierkorb;
   });
 }

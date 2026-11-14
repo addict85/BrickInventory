@@ -34,7 +34,7 @@ import ch.brickinventoryapp.ui.components.ListeUndDetail
 import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.MitZiel
 import ch.brickinventoryapp.ui.listeUndDetail
-import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
+import ch.brickinventoryapp.navigation.Bereichsumgebung
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 
 /** Was die Sammlung von der App braucht; die Erfassung hängt am Ziel, das scannt. */
@@ -71,7 +71,6 @@ fun NavGraphBuilder.sammlungGraph(navigation: SammlungNavigation) {
 private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
     composable<SammlungZiel.Gallery> { eintrag ->
-        val vm = navigation.app
         val galerieVm: GalerieViewModel = hiltViewModel()
         val state by galerieVm.state.collectAsStateWithLifecycle()
         val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
@@ -81,7 +80,7 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory.
         val galleryGridState = remember { LazyGridState() }
         ScrollPositionKeeper(
-            SammlungZiel.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
+            SammlungZiel.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), navigation.rollgedaechtnis)
         // Das Set-Detail gibt ein gelöschtes Set als Ergebnis an diesen Eintrag zurück;
         // die Galerie merkt es mit „Rückgängig“ vor. Kein Zugriff auf ihr ViewModel von aussen.
         val zuLoeschen by eintrag.savedStateHandle.getStateFlow<ArrayList<String>?>(LOESCHEN_VORMERKEN, null)
@@ -113,8 +112,7 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
 private fun NavGraphBuilder.setDetailZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
     composable<SammlungZiel.SetDetail> { backStack ->
-        val vm = navigation.app
-        val state by vm.state.collectAsStateWithLifecycle()
+        val state by navigation.sitzung.collectAsStateWithLifecycle()
         val setNumber = backStack.toRoute<SammlungZiel.SetDetail>().setNumber
         // Liegt die Galerie darunter (Startziel), nimmt sie ein gelöschtes Set als Ergebnis
         // entgegen und bietet „Rückgängig“ an.
@@ -174,7 +172,7 @@ private fun GalerieNebenDetailRoute(
     val galerieZustand by galerie.galleryState.collectAsStateWithLifecycle()
     val gridState = remember { LazyGridState() }
     ScrollPositionKeeper(SammlungZiel.Gallery.rollSchluessel, gridState, galerieZustand.sets.isNotEmpty(),
-        navigation.app.scrollMemory)
+        navigation.rollgedaechtnis)
     // Die Erfassung der Galerie; den Scan gibt der Scanner diesem Ziel zurück.
     val erfassung: ErfassungViewModel = hiltViewModel(galerieEintrag)
     Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }

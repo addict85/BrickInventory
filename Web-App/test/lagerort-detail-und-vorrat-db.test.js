@@ -64,6 +64,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
   };
   const S = require('./helpers/sources').bereichsSeite('sets');
   const household = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };
@@ -104,7 +105,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
 
     // ── GEGENPROBE: die Abfrage in ihrer frueheren Form ────────────────────
     // `SELECT s.*` ohne aufgeloesten Namen. Sie liefert storage_id und kein
-    // storage — genau das Bild aus Marcos Bericht.
+    // storage — genau das gemeldete Bild.
     const alt = await db.get(`SELECT s.* FROM sets s WHERE s.user_id = ANY($1) AND s.set_number = $2 LIMIT 1`, [
       schreibbar,
       SN,

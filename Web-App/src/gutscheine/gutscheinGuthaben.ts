@@ -51,6 +51,9 @@ export class NichtAngemeldet extends Error {}
  * fragt eine Weile gar nicht mehr. */
 export class BotSchutz extends Error {}
 
+/** Die Anmeldung nannte ihre Fehler im Rumpf; anders als ein unlesbarer Rumpf geht das weiter. */
+export class LoginAbgelehnt extends Error {}
+
 export interface Guthaben {
   betrag: number;
   waehrung: string;
@@ -177,10 +180,10 @@ async function baueSitzung(abruf: Abruf, locale: string): Promise<Sitzung> {
         token = aus;
         topf.set('gqauth', aus);
       } else if (rumpf?.errors?.length) {
-        throw new Error('Login: ' + rumpf.errors.map(e => e.message ?? '?').join('; '));
+        throw new LoginAbgelehnt('Login: ' + rumpf.errors.map(e => e.message ?? '?').join('; '));
       }
     } catch (e) {
-      if (e instanceof Error && e.message.startsWith('Login:')) throw e;
+      if (e instanceof LoginAbgelehnt) throw e;
     }
   }
   if (!token) {

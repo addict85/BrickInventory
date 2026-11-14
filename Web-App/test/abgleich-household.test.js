@@ -38,7 +38,11 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
-  const hh = { ..._req('src/haushalt/haushalt.js'), ...require('./helpers/sources').testBereich('haushalt') };
+  const hh = {
+    ..._req('src/haushalt/regeln.js'),
+    ..._req('src/haushalt/haushalt.js'),
+    ...require('./helpers/sources').testBereich('haushalt'),
+  };
   const namen = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
@@ -192,13 +196,13 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
     kompakt(read('src/sets/dienst.ts')).includes('verschiebeSet(sk, sn, fromId'),
     'Das Verschieben läuft über verschiebeSet',
   );
-  assert.ok(mv.includes('mitInventarSperre(sk.db, fromId, sn'), 'Serialisiert über das Quellkonto');
+  assert.ok(kompakt(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialisiert über das Quellkonto');
   // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
   const acq = read('routes/api_v1/acquisitions.ts');
   const calls =
-    (mv.match(/moveSetBetweenAccounts\((?:sk, )?tx, sn/g) || []).length +
-    (acq.match(/moveSetBetweenAccounts\(tx, sn/g) || []).length;
+    (mv.match(/moveSetBetweenAccounts\(t, sn/g) || []).length +
+    (acq.match(/moveSetBetweenAccounts\(t, sn/g) || []).length;
   assert.ok(
     calls >= 1,
     'Der Eigentümerwechsel muss über moveSetBetweenAccounts laufen — in routes/sets.ts ' +
@@ -408,7 +412,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
   const f = 'src/sammlung/erfassungen.ts';
   const src = kompakt(read(f));
-  assert.ok(src.includes('moveManualAcquisition(tx, art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
+  assert.ok(src.includes('t.sets.moveManualAcquisition(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,
     /if \(to === null\) fachfehler\('verboten', 'kein_schreibrecht'\)/,
@@ -426,8 +430,8 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
   assert.match(v1, /body\.owner_user_id/, 'Der Erfassungsdienst muss owner_user_id auswerten');
   assert.match(
     v1,
-    /moveSetBetweenAccounts\(tx, String\(keys\[0\]\), from, to, \[id\]\)/,
+    /t\.sets\.moveSetBetweenAccounts\(String\(keys\[0\]\), from, to, \[id\]\)/,
     'Sets wandern über dieselbe Umsetzung wie beim Verschieben',
   );
-  assert.match(v1, /moveManualAcquisition\(tx, art, keys, id, from, to\)/);
+  assert.match(v1, /t\.sets\.moveManualAcquisition\(art, keys, id, from, to\)/);
 });

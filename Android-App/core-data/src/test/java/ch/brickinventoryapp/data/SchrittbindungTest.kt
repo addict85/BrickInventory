@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.api.GeraetApi
 import ch.brickinventoryapp.data.repository.SchrittbindungImpl
 import ch.brickinventoryapp.model.schritt.Schluesselnonce
@@ -35,7 +35,7 @@ class SchrittbindungTest {
 
     private val server = MockWebServer().apply { start() }
     private val api = Retrofit.Builder().baseUrl(server.url("/"))
-        .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
+        .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
         .build().create(GeraetApi::class.java)
     private val bindung = SchrittbindungImpl(api)
 

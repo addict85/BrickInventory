@@ -19,7 +19,7 @@ import ch.brickinventoryapp.katalog.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
+import ch.brickinventoryapp.navigation.Bereichsumgebung
 
 /**
  * Was der Katalog von anderen Bereichen braucht: Erfassen gehört der Galerie, die
@@ -43,9 +43,8 @@ fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {
     val navController = navigation.navController
     navigation<KatalogZiel.Bereich>(startDestination = KatalogZiel.Catalog) {
         composable<KatalogZiel.Catalog> { eintrag ->
-            val vm = navigation.app
             val katalog = katalogViewModel(navController, eintrag)
-            val state by vm.state.collectAsStateWithLifecycle()
+            val state by navigation.sitzung.collectAsStateWithLifecycle()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
             LaunchedEffect(state.serverUrl) {
                 if (state.serverUrl.isNotBlank() && catalogState.loadedPages.isEmpty() && !catalogState.isLoading) {
@@ -57,7 +56,7 @@ fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {
                     katalog = katalog,
                     serverUrl = state.serverUrl,
                     imageLoader = navigation.bilder,
-                    rollgedaechtnis = vm.scrollMemory,
+                    rollgedaechtnis = navigation.rollgedaechtnis,
                     onSetClick = { navController.navigate(KatalogZiel.CatalogDetail(it)) },
                 )
             }
@@ -70,13 +69,12 @@ fun NavGraphBuilder.katalogGraph(navigation: KatalogNavigation) {
 @Composable
 private fun KatalogDetailZiel(navigation: KatalogNavigation, backStack: NavBackStackEntry) {
     val navController = navigation.navController
-    val vm = navigation.app
     val katalog = katalogViewModel(navController, backStack)
-    val state by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val state by navigation.sitzung.collectAsStateWithLifecycle()
+    val blick by navigation.blickfeld.collectAsStateWithLifecycle()
     val catSetNumber = backStack.toRoute<KatalogZiel.CatalogDetail>().setNumber
     val catalogState by katalog.state.collectAsStateWithLifecycle()
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val lagerZustand by navigation.lager.collectAsStateWithLifecycle()
     // Steht das Set schon auf der Merkliste? Dann zeigt das Detail den Posten statt „Auf die Merkliste“.
     val gemerkt by remember(katalog, catSetNumber) { katalog.gemerkt(catSetNumber) }.collectAsStateWithLifecycle(null)
     val erfasse = navigation.erfassen(backStack)

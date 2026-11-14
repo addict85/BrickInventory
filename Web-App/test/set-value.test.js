@@ -242,7 +242,6 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
 });
 
 test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
-  // Marcos Konsole
   const src = require('./helpers/sources').adminQuelle();
   const i = src.indexOf("api('GET', `/v1/minifigs?source=set`)");
   assert.ok(i > 0, 'Die Nachfrage nach den Minifiguren fehlt');

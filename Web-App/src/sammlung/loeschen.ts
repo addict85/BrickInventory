@@ -1,6 +1,5 @@
 /** Eine Stelle für Teil, Figur und „alles löschen", damit alle Wege dieselben
  * Zeilen in den Papierkorb nehmen. */
-import { legeInPapierkorb, loescheManuellesTeil, loescheManuelleFigur } from '../bestand';
 import * as repo from './repository/loeschen';
 import type { SammlungKontext } from './kontext';
 
@@ -11,8 +10,8 @@ export async function loescheTeil(
   cid: number,
 ): Promise<number | null> {
   return k.transaktion(async t => {
-    const id = await legeInPapierkorb(t.db, 'teil', besitzer, pn, cid);
-    const r = await loescheManuellesTeil(t.db, besitzer, pn, cid);
+    const id = await t.bestand.legeInPapierkorb('teil', besitzer, pn, cid);
+    const r = await t.bestand.loescheManuellesTeil(besitzer, pn, cid);
     if (r.changes === 0) return null;
     // Erfassungen mit: Die Finanzsummen zählten das Teil sonst weiter.
     await repo.loescheTeilErfassungen(t.db, besitzer, pn, cid || 0);
@@ -22,8 +21,8 @@ export async function loescheTeil(
 
 export async function loescheFigur(k: SammlungKontext, besitzer: number, fn: string): Promise<number | null> {
   return k.transaktion(async t => {
-    const id = await legeInPapierkorb(t.db, 'figur', besitzer, fn);
-    const r = await loescheManuelleFigur(t.db, besitzer, fn);
+    const id = await t.bestand.legeInPapierkorb('figur', besitzer, fn);
+    const r = await t.bestand.loescheManuelleFigur(besitzer, fn);
     if (r.changes === 0) return null;
     await repo.loescheFigurErfassungen(t.db, besitzer, fn);
     return id;

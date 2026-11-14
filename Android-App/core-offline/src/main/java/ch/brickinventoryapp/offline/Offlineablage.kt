@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.offline
 
 import kotlinx.coroutines.flow.mapLatest
+import ch.brickinventoryapp.model.json.BrickJson
+import kotlinx.serialization.json.Json
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
@@ -113,6 +115,7 @@ class Offlineablage(
     bereichFluss: Flow<String?> = flow { emit(bereichQuelle()) },
     /** Wohin eine Meldung über Verworfenes geht; im Gerät das Log. */
     private val protokoll: (String) -> Unit = {},
+    private val json: Json = BrickJson,
 ) {
     /**
      * Was ein Schreibvorgang an den lokalen Listen ändert. Zwei Arten, damit der Typ
@@ -123,13 +126,6 @@ class Offlineablage(
         /** Die Listen, die sich ändern. */
         val arten: Set<Bestandsart>
     }
-
-    /**
-     * Eine Änderung, die ohne Verbindung im Ausgang wartet. Sie trägt genau die
-     * Anfrage, die online gegangen wäre — beim Senden entsteht nichts Neues, und
-     * der Server entscheidet wie sonst auch. Mengen von Sets gehen als Schritt,
-     * damit zwei Geräte, die offline je +1 tippen, zusammen +2 ergeben.
-     */
 
     /**
      * Das Ergebnis eines Schreibvorgangs, der nur online geht, für die lokale Liste.
@@ -354,14 +350,14 @@ class Offlineablage(
     }
 
     private fun <T : Any> kodiere(fach: Fach<T>, liste: List<T>) =
-        liste.map { LokaleZeile(fach.schluessel(it), fach.form.kodiere(AblageJson, it), fach.spalten(it)) }
+        liste.map { LokaleZeile(fach.schluessel(it), fach.form.kodiere(json, it), fach.spalten(it)) }
 
     /**
      * Zeilen, die sich nicht mehr lesen lassen, fallen weg statt die Liste zu sperren —
      * aber nicht still: Ihre Zahl steht in [Lokal.verworfen] und geht ins [protokoll].
      */
     private fun <T : Any> dekodiere(fach: Fach<T>, l: Lokal<LokaleZeile>): Lokal<T> {
-        val gelesen = l.liste.mapNotNull { z -> runCatching { fach.form.dekodiere(AblageJson, z.inhalt) }.getOrNull() }
+        val gelesen = l.liste.mapNotNull { z -> runCatching { fach.form.dekodiere(json, z.inhalt) }.getOrNull() }
         val verworfen = l.liste.size - gelesen.size
         if (verworfen > 0) protokoll("Ablage ${fach.art}: $verworfen von ${l.liste.size} Zeilen unlesbar, verworfen")
         return Lokal(gelesen, l.stand, verworfen)

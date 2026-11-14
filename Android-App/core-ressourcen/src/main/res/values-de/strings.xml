@@ -132,6 +132,7 @@
     <string name="offline_stand">Offline – Stand von %1$s</string>
     <string name="offline_verworfen">Nicht übernommen: %1$s – %2$s</string>
     <string name="offline_verworfen_ohne_grund">der Server hat die Änderung nicht angenommen</string>
+    <string name="offline_verworfen_unlesbar">nach einem Update nicht mehr lesbar, nicht gesendet</string>
     <plurals name="offline_ausgang">
         <item quantity="one">Offline gespeichert – %1$d Änderung wird beim nächsten Verbinden gesendet</item>
         <item quantity="other">Offline gespeichert – %1$d Änderungen werden beim nächsten Verbinden gesendet</item>

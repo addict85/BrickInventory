@@ -4,10 +4,10 @@ Test: ch.brickinventoryapp.offline.OhneNetzFilterTest
 Rot: ein Prozentzeichen oder Unterstrich
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
-index 05df034..4faaab3 100644
+index 460fbe7..e1c11bc 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
-@@ -62,7 +62,7 @@ private fun LokaleZeile.alsZeile(bereich: String, art: Bestandsart, position: In
+@@ -67,7 +67,7 @@ private fun alsZeile(z: LokaleZeile, bereich: String, art: Bestandsart, position
  
  /** „Enthält“ als LIKE-Muster; `%`, `_` und `\` gelten wörtlich wie beim Server (likeSuche.ts). */
  internal fun enthaeltMuster(suche: String): String =
@@ -15,4 +15,4 @@ index 05df034..4faaab3 100644
 +    "%" + suche.lowercase().replace("\\", "\\\\") + "%"
  
  /**
-  * [Ausgang] über Room. Ein Posten, der sich nicht mehr lesen lässt (Format einer
+  * [Ausgang] über Room; jeder Posten liegt in der [Ausgangsform]. Lesen schreibt nie:

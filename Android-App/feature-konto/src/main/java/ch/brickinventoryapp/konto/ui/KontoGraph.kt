@@ -20,7 +20,7 @@ import ch.brickinventoryapp.konto.ui.viewmodel.HaushaltViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
-import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
+import ch.brickinventoryapp.navigation.Bereichsumgebung
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
 
@@ -51,21 +51,20 @@ fun NavGraphBuilder.kontoGraph(navigation: KontoNavigation) {
 
 private fun NavGraphBuilder.einstellungenZiel(navigation: KontoNavigation) {
     composable<KontoZiel.Settings> {
-        val vm = navigation.app
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
         val settingsScrollState = remember { ScrollState(0) }
-        val state by vm.state.collectAsStateWithLifecycle()
+        val state by navigation.sitzung.collectAsStateWithLifecycle()
         // Beim Öffnen der Einstellungen laden: Der Zustand ändert sich ausserhalb kaum,
         // ein Dauerabo wäre Aufwand ohne Nutzen. Haushalt, Gutscheine, Profil und Geräte
         // holt jede Unterseite selbst, wenn man sie öffnet — wer die Sprache umstellt,
         // braucht keine Gutscheinliste.
-        LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
+        LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) navigation.ladeEinstellungen() }
         navigation.Reiter(stringResource(R.string.nav_settings)) {
             ScrollPositionKeeper(
-                KontoZiel.Settings.rollSchluessel, settingsScrollState, vm.scrollMemory)
+                KontoZiel.Settings.rollSchluessel, settingsScrollState, navigation.rollgedaechtnis)
             SettingsRoute(
                 vm = hiltViewModel<EinstellungenViewModel>(),
-                onLogout = { vm.logout(); navigation.abgemeldet() },
+                onLogout = { navigation.abmelden(); navigation.abgemeldet() },
                 onServerWechseln = navigation::oeffneEinrichtung,
                 // Die Rubriken führen nicht von hier weiter, sondern stehen auf „Mehr“
                 // (MehrBildschirm.kt).
@@ -86,7 +85,7 @@ private fun NavGraphBuilder.unterseiten(navigation: KontoNavigation) {
     val navController = navigation.navController
     val snackbarHostState = navigation.snackbar
     composable<KontoZiel.Preisalarme> {
-        val state by navigation.app.state.collectAsStateWithLifecycle()
+        val state by navigation.sitzung.collectAsStateWithLifecycle()
         PreisalarmeRoute(
             vm = hiltViewModel<EinstellungenViewModel>(),
             imageLoader = navigation.bilder,

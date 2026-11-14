@@ -1,7 +1,7 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
 
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds, blickfeldAus, type Sicht } from '../haushalt';
+import { asIds, type Sicht } from '../haushalt';
 import { buildChart } from './chartData';
 import { marktpreisAus } from '../katalog';
 import { entwicklungProzent } from './setValue';
@@ -50,7 +50,7 @@ export async function preisverlaufSet(
   setNumber: string,
   currency: string,
 ) {
-  const uids = asIds(await blickfeldAus(k.db, uidWahl));
+  const uids = asIds(await k.haushalt.blickfeldAus(uidWahl));
   const condition = await resolveSetCondition(k, uids, setNumber);
 
   const [historyNew, historyUsed] = await Promise.all([

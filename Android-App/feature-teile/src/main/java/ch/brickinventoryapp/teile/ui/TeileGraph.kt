@@ -36,7 +36,7 @@ import ch.brickinventoryapp.ui.components.ListeUndDetail
 import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.detailSchluessel
 import ch.brickinventoryapp.ui.listeUndDetail
-import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
+import ch.brickinventoryapp.navigation.Bereichsumgebung
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeViewModel
 import coil3.ImageLoader
 
@@ -74,7 +74,6 @@ fun NavGraphBuilder.teileGraph(navigation: TeileNavigation) {
 /** Teile: Reiter mit Liste und Detail daneben. */
 private fun NavGraphBuilder.teileZiel(navigation: TeileNavigation) {
     composable<TeileZiel.Parts> {
-        val vm = navigation.app
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
         val partsGridState = remember { LazyGridState() }
         val teileVm: TeileViewModel = hiltViewModel()
@@ -98,7 +97,7 @@ private fun NavGraphBuilder.teileZiel(navigation: TeileNavigation) {
                 // `isNotEmpty()` würde die Position bei jemandem ohne eigene Teile nie
                 // wiederhergestellt.
                 bereit = partsState.parts.isNotEmpty() && partsState.manualParts != null,
-                speicher = vm.scrollMemory,
+                speicher = navigation.rollgedaechtnis,
                 obenNachziehend = partsState.manualParts?.size ?: 0)
             // Das Detail eines Teils (aus Sets oder manuell) steht auf dem Tablet neben
             // der Liste, auf dem Telefon als Blatt bzw. eigene Seite. Hier und nicht im
@@ -124,7 +123,6 @@ private fun NavGraphBuilder.teileZiel(navigation: TeileNavigation) {
 /** Minifiguren, wie die Teile mit Detail daneben. */
 private fun NavGraphBuilder.figurenZiel(navigation: TeileNavigation) {
     composable<TeileZiel.Minifigs> {
-        val vm = navigation.app
         val minifigsGridState = remember { LazyGridState() }
         val teileVm: TeileViewModel = hiltViewModel()
         val state by teileVm.state.collectAsStateWithLifecycle()
@@ -137,7 +135,7 @@ private fun NavGraphBuilder.figurenZiel(navigation: TeileNavigation) {
                 // wer keine manuell erfassten Minifiguren hat, nie eine Position
                 // wiederhergestellt.
                 bereit = partsState.minifigs.isNotEmpty() && partsState.manualFigs != null,
-                speicher = vm.scrollMemory,
+                speicher = navigation.rollgedaechtnis,
                 obenNachziehend = partsState.manualFigs?.size ?: 0)
             // Wie im Teile-Reiter; das Detail unterscheidet Teile und Figuren selbst.
             TeileListeUndDetailRoute(teileVm, navigation.bilder, state.serverUrl,
@@ -190,13 +188,12 @@ private fun NavGraphBuilder.einzelstueckZiel(navigation: TeileNavigation) {
 private fun NavGraphBuilder.teilelistenZiel(navigation: TeileNavigation) {
     val navController = navigation.navController
     composable<TeileZiel.PartsList> { eintrag ->
-        val vm = navigation.app
-        val state by vm.state.collectAsStateWithLifecycle()
-        val blick by vm.blickfeld.collectAsStateWithLifecycle()
+        val state by navigation.sitzung.collectAsStateWithLifecycle()
+        val blick by navigation.blickfeld.collectAsStateWithLifecycle()
         val scan = navigation.teilelistenScan(eintrag)
         // Die Liste lebt im ViewModel des Ziels und ist bei der Rückkehr vom Scanner schon da.
         val teilelistenState = remember { LazyListState() }
-        ScrollPositionKeeper(TEILELISTE_ROLLSCHLUESSEL, teilelistenState, bereit = true, speicher = vm.scrollMemory)
+        ScrollPositionKeeper(TEILELISTE_ROLLSCHLUESSEL, teilelistenState, bereit = true, speicher = navigation.rollgedaechtnis)
         navigation.Reiter(stringResource(R.string.nav_partslist)) {
             PartsListRoute(
                 serverUrl = state.serverUrl,

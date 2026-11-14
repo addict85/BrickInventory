@@ -32,8 +32,9 @@ export type PdfAuftrag = {
 
 const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft: 'running', erledigt: 'done' };
 
-export async function liesAuftrag(k: AuftraegeKontext, id: string): Promise<PdfAuftrag | null> {
-  const z = await k.pdfAuftraege.pdfAuftragZeile(pdfSchluessel(id));
+/** Unter Zeilenschutz und nach Konto gefiltert: Ein fremder Auftrag ist keiner. */
+export async function liesAuftrag(k: AuftraegeKontext, id: string, uid: number): Promise<PdfAuftrag | null> {
+  const z = await k.pdfAuftraege.pdfAuftragZeile(pdfSchluessel(id), uid);
   return z
     ? {
         status: STATUS[z.status] ?? 'error',
@@ -51,8 +52,8 @@ export async function laufendeAuftraege(k: AuftraegeKontext, uid: number, ttlMs:
   return z?.n ?? 0;
 }
 
-export async function loescheAuftrag(k: AuftraegeKontext, id: string): Promise<void> {
-  await k.pdfAuftraege.loeschePdfAuftrag(pdfSchluessel(id));
+export async function loescheAuftrag(k: AuftraegeKontext, id: string, uid: number): Promise<void> {
+  await k.pdfAuftraege.loeschePdfAuftrag(pdfSchluessel(id), uid);
 }
 
 /** @returns die Kennungen, damit die PDF-Dateien mitgehen */

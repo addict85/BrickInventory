@@ -149,7 +149,7 @@ test('3. eine Quelle fuer QR-Code, Mail-Knopf und Reset-Links', () => {
   // Der QR-Zweig darf keinen Host raten: Fuer diesen Code gilt dasselbe wie
   // fuer einen Link in einer Mail — eine geratene Adresse ist schlechter als
   // keine. (getBaseUrl weiter unten DARF es, siehe die Begruendung dort.)
-  const auth = lies('routes/auth.ts');
+  const auth = lies('routes/auth/qr.ts');
   const i = auth.search(/router\.post\(\s*'\/qr-token'/);
   assert.ok(i > 0, 'Die Route /qr-token ist verschwunden — umbenannt?');
   const rumpf = auth.slice(i, auth.indexOf('\n  router.', i + 10));

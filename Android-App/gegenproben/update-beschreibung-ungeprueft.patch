@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.update.UpdateSignaturTest
 Rot: fremder Schluessel
 
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt
+index 067c9c0..57af70e 100644
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt
 +++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateSignatur.kt
-@@ -33,7 +33,6 @@
+@@ -33,7 +33,6 @@ fun gepruefteBeschreibung(roh: String, schluessel: List<ByteArray>): UpdateBesch
      val daten = runCatching { Base64.getDecoder().decode(huelle.daten) }.getOrNull() ?: return null
      val signatur = runCatching { Base64.getDecoder().decode(huelle.beschreibungssignatur) }.getOrNull() ?: return null
      val echt = schluessel.any { beschreibungsSignaturGilt(daten, signatur, it) }
 -    if (!echt) return null
-     return runCatching { beschreibungsJson.decodeFromString<UpdateBeschreibung>(daten.decodeToString()) }.getOrNull()
+     return runCatching { BrickJson.decodeFromString<UpdateBeschreibung>(daten.decodeToString()) }.getOrNull()
  }
  

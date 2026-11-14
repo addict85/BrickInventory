@@ -91,7 +91,6 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
         `skipped=${d.skipped} statt 1 — die Rückmeldung soll nennen, wie viele ` + 'schon fertig waren',
       );
 
-      // ── Marcos Wunsch ─────────────────────────────────────
       // „Kannst du die Logik so anpassen, dass er die image_misses löscht und
       // sie erneut versucht? Aktuell stehen in der Tabelle sehr viele
       // Einträge." — Die vielen Einträge sind der Fehler aus einer früheren Runde:

@@ -20,7 +20,6 @@ import ch.brickinventoryapp.sammlung.ui.teilelistenErfassung
 import ch.brickinventoryapp.teile.ui.TeileNavigation
 import ch.brickinventoryapp.teile.ui.TeilelistenScan
 import ch.brickinventoryapp.verwaltung.ui.VerwaltungNavigation
-import ch.brickinventoryapp.zustand.ui.AppViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeZiel
@@ -47,7 +46,12 @@ class ZielUmgebung(
     VerwaltungNavigation {
     val aktivitaet: AktivitaetsZustand get() = zustaende()
 
-    override val app: AppViewModel get() = aktivitaet.app
+    override val sitzung get() = aktivitaet.app.state
+    override val blickfeld get() = aktivitaet.app.blickfeld
+    override val lager get() = aktivitaet.app.lagerState
+    override val rollgedaechtnis get() = aktivitaet.app.scrollMemory
+    override fun ladeEinstellungen() = aktivitaet.app.loadSettings()
+    override fun abmelden() { aktivitaet.app.logout() }
     override val update: UpdateViewModel get() = aktivitaet.update
     override val darstellung: DarstellungViewModel get() = aktivitaet.darstellung
     override val vertrauen: VertrauenViewModel get() = aktivitaet.vertrauen

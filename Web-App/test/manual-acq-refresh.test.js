@@ -323,6 +323,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
     'src/teile/manuelleTeile.ts',
     'src/figuren/manuelleFiguren.ts',
     'routes/api_v1/sets.ts',
+    'routes/api_v1/setsImport.ts',
     'src/sets/dienst.ts',
     'src/sets/inhalt.ts',
   ]) {
@@ -335,6 +336,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
   }
   for (const f of [
     'routes/api_v1/sets.ts',
+    'routes/api_v1/setsImport.ts',
     'src/teile/manuelleTeile.ts',
     'src/figuren/manuelleFiguren.ts',
     'routes/api_v1/acquisitions.ts',
@@ -391,14 +393,14 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // in offener Transaktion hielte Sperre und Verbindung).
   assert.match(
     fn,
-    /pricePlan \?\? \(?await priceForNewAcquisition\(sk, userId, setNumber, dbh\)/,
+    /pricePlan \?\? \(?await priceForNewAcquisition\(sk, userId, setNumber\)/,
     'Ein vorab ermittelter Preis muss durchgereicht werden können',
   );
   // Ziel der Mengenänderung ist das Konto `ziel` (ohne Angabe das eigene, im Haushalt das gewählte).
   // Die geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
   assert.match(
     src,
-    /const plan = [\s\S]{0,120}priceForNewAcquisition\(sk, ziel, sn\)[\s\S]{0,400}mitInventarSperre\(sk\.db, ziel, sn/,
+    /const plan = [\s\S]{0,120}priceForNewAcquisition\(sk, ziel, sn\)[\s\S]{0,400}sk\.transaktion\(/,
     'In updateSet muss der Preis VOR der Sperre stehen',
   );
   assert.doesNotMatch(src, /function isToday\(/, 'Die eigene Tagesprüfung gehört entfernt');
@@ -415,7 +417,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Ziel ist das Konto `ziel` — die Regel bleibt: EINE gesperrte Transaktion für Menge und Erfassungen.
   assert.match(
     fn,
-    /mitInventarSperre\(sk\.db, ziel, sn/,
+    /sperren: \[\{ konto: ziel, schluessel: sn \}\]/,
     'Menge und Erfassungen gehören in EINE gesperrte Transaktion',
   );
   assert.doesNotMatch(
@@ -434,7 +436,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Die Abfrage steht seit Migration 0036 in db/bestandsmenge.ts; hier …
   assert.match(
     fn,
-    /repo\.setMenge\(dbh, 'blickfeld', leseFeld/,
+    /repo\.setMenge\(s\.db, 'blickfeld', leseFeld/,
     'Die Ausgangsmenge muss über das Blickfeld summiert werden',
   );
 });

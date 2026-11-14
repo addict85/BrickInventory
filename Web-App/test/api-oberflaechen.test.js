@@ -97,7 +97,6 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
 });
 
 test('jeder Router haengt unter /api/v1', () => {
-  // Marcos Frage
   const NOCH_NICHT = new Map([]);
 
   const einhaengungen = webRouter();

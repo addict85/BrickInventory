@@ -17,7 +17,7 @@ import ch.brickinventoryapp.data.Anmeldeablage
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.AnlegenMitAblage
 import ch.brickinventoryapp.data.TokenTausch
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.repository.KontoRepository
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -31,7 +31,7 @@ internal object DatenModule {
 
     @Provides
     @Singleton
-    fun provideJson(): Json = ApiJson
+    fun provideJson(): Json = BrickJson
 
     /** Ein DataStore je Datei und Prozess; über Hilt statt über eine Erweiterung an Context. */
     @Provides

@@ -463,8 +463,9 @@ class QuelltextRatscheTest {
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene, über core-data und
         // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
         // Darin UPDATE_ORDNER: öffentlich, weil core-data und core-update ihn teilen.
-        val GRENZE = 223
-        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-sitzung", "core-testing")
+        val GRENZE = 222
+        val andere = setOf("core-model", "core-ressourcen", "core-ui", "core-ui-bestand", "core-zustand", "core-navigation", "core-sitzung",
+            "core-testing")
         val module = Quellen.module.filter { it.name.startsWith("core-") && it.name !in andere }
         assert("core-data" in module.map { it.name }) { "core-data nicht unter ${module.map { it.name }} — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen in ${module.joinToString { it.name }}", GRENZE, oeffentlich(module, 100),

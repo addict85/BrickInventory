@@ -94,7 +94,7 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets', { conc
     assert.equal(parseFloat(j.by_condition.U.purchase_price), 18.2, 'Kaufpreis des Unterkontos');
     assert.equal(parseFloat(j.by_condition.U.market_price), 22.5);
 
-    // 3. Dieselbe Logik am Webapp-Weg (gemeinsamer Helfer — Marcos Wunsch).
+    // 3. Dieselbe Logik am Webapp-Weg (gemeinsamer Helfer).
     r = await fetch(`${base}/api/finance/price-history/${SET}`);
     if (r.status === 404) {
       // Pfadform prüfen, ohne die Webapp-Route zu raten: query-Variante.

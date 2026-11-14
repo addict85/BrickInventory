@@ -27,8 +27,9 @@ import org.robolectric.RobolectricTestRunner
  *
  * Gegenproben: in der CI zu messen, sobald der Lauf grün ist —
  *   A  in BestandDao.beobachte `ORDER BY position` entfernen → „hält die Reihenfolge“
- *   B  in AusgangDao.erster `ORDER BY id` → `ORDER BY id DESC` → „sendet der Reihe nach“
- *   C  in RoomAusgang.lies das Entfernen weglassen → „ein unlesbarer Posten blockiert nicht“
+ *   B  in AusgangDao.alle `ORDER BY id` → `ORDER BY id DESC` → „sendet der Reihe nach“
+ *   C  in RoomAusgang.raeumeUnlesbare das merkeVerworfen streichen → „ein unlesbarer Posten wird
+ *      gemeldet …“ (kein Hinweis); in RoomAusgang.alle wieder entfernen → ebenda (Lesen schreibt)
  *   D  in RoomAusgang.lies `z.schluessel` → `""` → „ein unlesbarer Posten …“ (Schlüssel kommt nicht zurück)
  *   gegenproben/ablage-aendert-ganze-liste.patch (Offlineablage.aendere ersetzt wieder die
  *      ganze Liste) → rot „eine lokale Bearbeitung schreibt nur die betroffene Zeile“
@@ -131,12 +132,18 @@ class BestandDatenbankTest {
     }
 
     @Test
-    fun `ein unlesbarer Posten blockiert nicht`() = runBlocking {
-        db.ausgang().fuegeEin(AusgangZeile(bereich = "a", bearbeitung = "{\"type\":\"gibt_es_nicht\"}", erstellt = 1,
-            schluessel = "k0"))
+    fun `ein unlesbarer Posten wird gemeldet, nie still gelöscht, und blockiert nicht`() = runBlocking {
+        db.ausgang().fuegeEin(AusgangZeile(bereich = "a", bearbeitung = "{\"type\":\"gibt_es_nicht\",\"setNumber\":\"10001-1\"}",
+            erstellt = 1, schluessel = "k0"))
         ausgang.einreihen("a", Bearbeitung.SetMenge("1-1", 1), 2, "k1")
         assertEquals(Bearbeitung.SetMenge("1-1", 1), ausgang.erster("a")!!.bearbeitung)
         assertEquals("der Schlüssel kommt so zurück, wie er abgelegt wurde", "k1", ausgang.erster("a")!!.schluessel)
-        assertEquals(1, ausgang.anzahl("a").first())
+        assertEquals(1, ausgang.alle("a").size)
+        assertEquals("Lesen schreibt nicht: der unlesbare Posten liegt noch da", 2, ausgang.anzahl("a").first())
+
+        val abgleich = Abgleich(Offlineablage(bestand, ausgang, { "a" }), ausgang) { _, _ -> Sendeergebnis.Angenommen }
+        assertEquals(Abgleichsergebnis.FERTIG, abgleich.sende())
+        assertEquals(listOf(VerworfenerPosten("k0", "10001-1", "", null, unlesbar = true)), ausgang.verworfene("a").first())
+        assertEquals(0, ausgang.anzahl("a").first())
     }
 }

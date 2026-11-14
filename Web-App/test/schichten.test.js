@@ -108,8 +108,9 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
 
 test('keine Route importiert eine andere Routendatei', () => {
   // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
-  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (10.11.2026): `import { requireLogin } from
-  // '../auth'` in routes/api_v1/minifigs.ts → rot.
+  // api_v1/index.ts, auth.ts (aus routes/auth/) und api_v1/settings.ts (settingsGlobal hinter requireLogin).
+  // Gegenprobe (10.11.2026): `import { requireLogin } from '../auth'` in routes/api_v1/minifigs.ts → rot;
+  // (14.11.2026) `import { baueSetsRouter } from './sets'` in routes/api_v1/settingsGlobal.ts → rot.
   const dateien = [];
   const lauf = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -127,7 +128,8 @@ test('keine Route importiert eine andere Routendatei', () => {
       if (
         voll.startsWith('routes/') &&
         voll !== 'routes/api_v1/middleware' &&
-        !(d === 'routes/auth.ts' && voll.startsWith('routes/auth/'))
+        !(d === 'routes/auth.ts' && voll.startsWith('routes/auth/')) &&
+        !(d === 'routes/api_v1/settings.ts' && voll === 'routes/api_v1/settingsGlobal')
       )
         treffer.push(`${d} -> ${ziel}`);
     }
@@ -185,7 +187,7 @@ const codeZeilen = rel =>
 test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
   // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle
   // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
-  // Gemessen 351 Codezeilen am 13.11.2026 (Biome-Format, Zeilenbreite 120).
+  // Codezeilen im Biome-Format (Zeilenbreite 120).
   // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
   // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
@@ -210,7 +212,7 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
   assert.deepEqual(fremd, [], 'Der Worker kennt keine Fachbereiche, nur Aufträge');
   const zuLang = dateien.filter(d => d !== KERN && codeZeilen(d) > 80).map(d => `${d} (${codeZeilen(d)})`);
   assert.deepEqual(zuLang, [], 'Ein Bearbeiter ruft einen Dienst; seine Arbeit gehört nach src/<bereich>/');
-  const SCHRANKE = 351;
+  const SCHRANKE = 328;
   const summe = dateien.reduce((n, d) => n + codeZeilen(d), 0);
   assert.ok(summe <= SCHRANKE, `${summe} Codezeilen in jobs/, erlaubt sind ${SCHRANKE}`);
   if (summe < SCHRANKE) console.log(`  ℹ Codezeilen in jobs/: ${summe} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -465,6 +467,7 @@ const DB_AUSSERHALB = new Set([
   'erzeugeDb',
   'dbKonfigAusUmgebung',
   'TxOptionen',
+  'TxGriff',
 ]);
 
 test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
@@ -604,6 +607,10 @@ function routenNurUeberFabrik() {
   assert.deepEqual(treffer, []);
 }
 
+/** Dienste, die noch einen rohen Griff nehmen; die Liste darf nur schrumpfen. Der Katalog
+ * wird gerade geteilt (eigener Zweig): dort folgt die Umstellung auf `t`. */
+const ROHER_GRIFF_NOCH = new Set(['src/katalog/katalogPflege.ts']);
+
 /** Eine Arbeitseinheit steht am Aufrufort: k.transaktion(t => …). */
 function arbeitseinheitAmAufrufort() {
   // Eine Transaktionsform: Dienste öffnen sie mit k.transaktion, der Rumpf bekommt den
@@ -612,12 +619,21 @@ function arbeitseinheitAmAufrufort() {
   // Gegenproben: (13.11.2026) in src/sammlung/loeschen.ts wieder `k.db.transaction(async tx =>`
   // → rot; (13.11.2026) ebenso in src/bestand/lagerortSetzen.ts und in
   // src/konto/repository/zweiterFaktor.ts → rot „…: .transaction(“.
+  // Ebenso db/txLock.ts: Bestandssperren sind eine Option von k.transaktion, kein eigener
+  // Weg mit rohem tx; und kein Dienst nimmt einen rohen Griff (tx/dbh), er nimmt `t`.
+  // Gegenproben (14.11.2026): eine Funktion mit `z.transaction(` in db/txLock.ts → rot
+  // „db/txLock.ts: .transaction(“; `export async function probe(tx: DbSchnittstelle, …)` in
+  // src/bestand/papierkorb.ts → rot „…: Dienst mit rohem Griff probe“.
   const treffer = [];
-  const alle = [...tsUnter('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts'];
+  const alle = [...tsUnter('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts', 'db/txLock.ts'];
   for (const d of alle) {
     const s = quelltext(d);
     if (d !== 'src/infra/bereich.ts' && /\.transaction\s*(?:<[^>]*>)?\(/.test(s)) treffer.push(`${d}: .transaction(`);
     if (/transaktion\(\s*(?:async\s*)?\(\)/.test(s)) treffer.push(`${d}: transaktion ohne Kontext`);
+    if (d.startsWith('src/') && !istRepository(d) && !ROHER_GRIFF_NOCH.has(d))
+      for (const m of s.matchAll(/export\s+(?:async\s+)?function\s+(\w+)[^(]*\(([^)]*)\)/g))
+        if (/\b(?:tx|dbh)\??\s*:\s*(?:Pick<\s*)?(?:DbSchnittstelle|Db|Schreiber)\b/.test(m[2]))
+          treffer.push(`${d}: Dienst mit rohem Griff ${m[1]}`);
   }
   assert.ok(
     tsUnter('src').some(d => /\.transaktion\(async t\b/.test(quelltext(d))) &&

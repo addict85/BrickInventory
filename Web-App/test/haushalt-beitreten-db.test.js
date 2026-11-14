@@ -63,6 +63,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const { einladungAnlegen } = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };

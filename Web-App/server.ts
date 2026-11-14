@@ -151,9 +151,13 @@ async function starte(): Promise<void> {
         process.exit(1);
       })
     : null;
-  if (web) await dienste.mail.meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
-  if (web) await dienste.konto.meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
-  if (web) await dienste.konto.meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
+  // Hinweise ins Protokoll: Einer, der scheitert, hält weder den Start noch die übrigen auf.
+  const hinweise: [string, () => Promise<unknown>][] = [
+    ['start:smtp-altlast', () => dienste.mail.meldeSmtpAltlast()],
+    ['start:adressen', () => dienste.konto.meldeUngueltigeAdressen()],
+    ['start:ausstehende-adressen', () => dienste.konto.meldeAusstehendeAdressen()],
+  ];
+  if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));
   if (web) dienste.konto.horcheAufTokenWiderruf();
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
@@ -173,8 +177,8 @@ async function starte(): Promise<void> {
   process.on('SIGINT', () => {
     void herunterfahren('SIGINT', httpServer, jobs, zugang, dienste, webSperreFrei);
   });
-  // Aufträge arbeiten über Kontogrenzen; HTTP-Anfragen erben diesen Rahmen nicht.
-  if (jobs) await imSystemkontext('auftraege', () => starteJobs(dienste, web));
+  // Ohne Rahmen: Warteschlange und Aufträge betreten ihn selbst (src/auftraege/kontext.ts, dienst.ts).
+  if (jobs) await starteJobs(dienste, web);
 }
 
 // Ohne Worker weiterzulaufen täuschte einen Dienst vor.

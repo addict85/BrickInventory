@@ -6,10 +6,12 @@ import { FEHLER, fehlerText, antwortSprache, type FehlerCode } from './fehlerTex
  * lassen, aber eine Spur hinterlassen.
  * @param kontext kurze Herkunftsangabe, z. B. 'parts:image_local' */
 export function logAndContinue(kontext: string) {
-  return (e: unknown) => {
-    pruefeErsatzInTransaktion(kontext, e);
-    protokolliereWarnung(kontext, e);
-  };
+  return (e: unknown) => weiterTrotzFehler(kontext, e);
+}
+
+function weiterTrotzFehler(kontext: string, e: unknown) {
+  pruefeErsatzInTransaktion(kontext, e);
+  protokolliereWarnung(kontext, e);
 }
 
 function protokolliereWarnung(kontext: string, e: unknown) {
@@ -20,7 +22,7 @@ function protokolliereWarnung(kontext: string, e: unknown) {
 /** Mit Ersatzwert, wo der Aufrufer weiterrechnet. */
 export function meldeUndLiefere<T>(kontext: string, ersatz: T) {
   return (e: unknown): T => {
-    logAndContinue(kontext)(e);
+    weiterTrotzFehler(kontext, e);
     return ersatz;
   };
 }
@@ -61,7 +63,7 @@ export function ohneFehlendeDatei(kontext: string): (e: unknown) => void;
 export function ohneFehlendeDatei<T>(kontext: string, ersatz: T): (e: unknown) => T;
 export function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
   return (e: unknown): T | undefined => {
-    if (fehlerCode(e) !== 'ENOENT') logAndContinue(kontext)(e);
+    if (fehlerCode(e) !== 'ENOENT') weiterTrotzFehler(kontext, e);
     return ersatz;
   };
 }
