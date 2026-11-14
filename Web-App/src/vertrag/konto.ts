@@ -241,6 +241,8 @@ export const ProfilGespeichert = GenericResponse.extend({
  * `label` fehlt, weil tokenLabel() jeden Wert kürzt oder ersetzt. */
 const txt = (n: number) => z.string().max(n).optional();
 const txtLeer = (n: number) => z.string().max(n).nullable().optional();
+/** Bei einem Verwalterkonto: ab wann die Änderung gilt (src/konto/verwalterAktionen.ts). */
+const VerwalterWeg = Erfolg.extend({ wirksam_ab: z.string().optional() });
 const PASSWORT = 1024;
 const code = z
   .union([z.string().max(64), z.number()])
@@ -354,12 +356,12 @@ export const routen = {
   },
   'PUT /api/v1/auth/users/:id/freischalten': { antwort: Erfolg, ...verwalterBestaetigt() },
   'PUT /api/v1/auth/users/:id/password': {
-    antwort: Erfolg,
+    antwort: VerwalterWeg,
     ...verwalterBestaetigt({ password: z.string().max(PASSWORT).optional() }),
   },
   'DELETE /api/v1/auth/users/:id': { antwort: Erfolg, ...verwalterBestaetigt() },
   'DELETE /api/v1/auth/konto': { antwort: Erfolg, ...bestaetigt() },
-  'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: Erfolg, ...verwalterBestaetigt() },
+  'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: VerwalterWeg, ...verwalterBestaetigt() },
   'POST /api/v1/auth/token-create': { antwort: TokenErstellt, ...bestaetigt(tokenWunsch), geheim: true },
   'POST /api/v1/auth/qr-token': {
     antwort: QrToken,

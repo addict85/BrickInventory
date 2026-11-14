@@ -227,8 +227,7 @@ window.I18N_EN = {
   'settings.password.change': 'Change password',
   'settings.password.mismatch': 'Passwords do not match',
   'settings.password.too_short': 'The password must be at least {n} characters long',
-  'settings.password.too_long':
-    'The password may be at most {n} bytes long (accented letters and symbols count double)',
+  'settings.password.too_long': 'The password may be at most {n} characters long',
   'settings.cache_cleared': 'Price cache cleared',
   'settings.all_cache.cleared': 'All caches cleared',
   'settings.cache_prices.confirm_title': 'Clear stored prices?',
@@ -509,6 +508,10 @@ window.I18N_EN = {
   'users.aktion.gutschein_klartext': 'Voucher number and PIN shown',
   'users.aktion.gutschein_pdf': 'Voucher PDF released',
   'users.aktion.gutschein_export': 'Vouchers exported as PDF',
+  'users.aktion.uebernahme_angekuendigt': 'Change to an administrator account announced',
+  'users.aktion.uebernahme_abgebrochen': 'Announced change dropped by sign-in',
+  'users.uebernahme_spaeter':
+    'This is an administrator account: the change takes effect on {zeit} unless it signs in before then. It was notified by email.',
   'acq.geschaetzt': 'Purchase price estimated: market price, not the amount paid',
   'acq.legende_geschaetzt': '≈ estimated: market price, not the amount paid',
   'acq.exemplar_geschaetzt': 'Copy added with estimated price {preis}',

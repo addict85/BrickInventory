@@ -241,6 +241,8 @@ async function sichereNutzerdaten(client: ClientBase, offen: string[], sperre = 
         for (const { name } of rows) {
           const t = client.escapeIdentifier(name);
           await client.query(`CREATE TABLE ${schema}.${t} AS TABLE public.${t}`);
+          // Die Kopie trägt keine Policy des Originals: ohne Policy sieht die Laufzeitrolle keine Zeile.
+          await client.query(`ALTER TABLE ${schema}.${t} ENABLE ROW LEVEL SECURITY`);
         }
         await client.query(`COMMENT ON SCHEMA ${schema} IS ${client.escapeLiteral(`vor ${offen.join(', ')}`)}`);
         await client.query('COMMIT');

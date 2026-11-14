@@ -106,8 +106,10 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
     const antworten = await Promise.all([setze('Erstes-Neu-2026x'), setze('Zweites-Neu-2026x')]);
     assert.deepEqual(antworten.map(a => a[0]).sort(), [200, 400], JSON.stringify(antworten));
     const sieger = antworten.find(a => a[0] === 200)[2];
-    const bcrypt = require('bcryptjs');
     const { password_hash } = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
-    assert.ok(bcrypt.compareSync(sieger, password_hash), 'es gilt das Passwort der Anfrage, die 200 bekam');
+    assert.ok(
+      await _req('src/konto/passwortHash.js').passwortPasst(sieger, password_hash),
+      'es gilt das Passwort der Anfrage, die 200 bekam',
+    );
   });
 });

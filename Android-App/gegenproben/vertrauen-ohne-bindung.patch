@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
 Rot: ein Geheimtext unter fremdem Namen gilt nicht
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
-index 1ec3faf..10eb61e 100644
+index 25f2ada..977fd1e 100644
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
-@@ -12,11 +12,11 @@ class Vertrauenschiffre(schluessel: () -> ByteArray) {
-     private val chiffre = AblageChiffre(schluessel)
+@@ -26,11 +26,11 @@ class Vertrauenschiffre(
+     private val angaben: () -> ByteArray = angaben ?: schluessel
  
      fun verschluessle(wert: String, bindung: String): String? = runCatching {
 -        Base64.getEncoder().encodeToString(chiffre.verschluessle(wert.toByteArray(Charsets.UTF_8), ZWECK + bindung))
@@ -20,4 +20,4 @@ index 1ec3faf..10eb61e 100644
 +        chiffre.entschluessle(Base64.getDecoder().decode(gespeichert), ZWECK)?.toString(Charsets.UTF_8)
      }.getOrNull()
  
-     private companion object {
+     /**

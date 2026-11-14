@@ -41,7 +41,10 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
             }
         }
         val neu = ByteArray(LAENGE).also(SecureRandom()::nextBytes)
-        schreibe(tresor.verschluessle(neu.joinToString("") { "%02x".format(it) }))
+        // Wie beim Lesen: Ein Keystore, der gesperrt nicht verschlüsselt, heisst „später“.
+        val umhuellt = fangeAusserAbbruch { tresor.verschluessle(neu.joinToString("") { "%02x".format(it) }) }
+            .getOrElse { throw IOException("Keystore gerade nicht bereit", it) }
+        schreibe(umhuellt)
         neuAngelegt = true
         bekannt = neu
         return neu
@@ -55,12 +58,12 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
     }
 
     /**
-     * Ein Schlüssel unter dem schwächeren Tresor (Altbestand, Ausweg bei gesperrtem Gerät)
-     * kommt beim ersten lesbaren Zugriff unter den, der nur entsperrt arbeitet. Derselbe
-     * Schlüssel, nur anders umhüllt: Die Ablagen bleiben lesbar. Scheitert es, beim nächsten Start.
+     * Ein Schlüssel unter dem schwächeren Tresor früherer Fassungen kommt beim ersten
+     * lesbaren Zugriff unter den, der nur entsperrt arbeitet. Derselbe Schlüssel, nur anders
+     * umhüllt: Die Ablagen bleiben lesbar. Scheitert es (gesperrt), beim nächsten Zugriff.
      */
     private fun umhuelleNeu(hex: String) {
-        fangeAusserAbbruch { tresor.verschluessle(hex).takeUnless(tresor::veraltet)?.let(::schreibe) }
+        fangeAusserAbbruch { schreibe(tresor.verschluessle(hex)) }
             .onFailure { Protokoll.warnung("Ablage", "Ablageschlüssel nicht umgeschlüsselt", it) }
     }
 
@@ -85,7 +88,9 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
         runCatching { tresor.vergiss() }
         bekannt = null
         stand++
-        hole()
+        // Gesperrt entsteht der neue erst beim nächsten Zugriff: Ein Abmelden im Hintergrund
+        // soll nicht scheitern, nur weil das Gerät gerade nichts verschlüsseln lässt.
+        fangeAusserAbbruch { hole() }
     }
 
     /** Abgeleitet mit HMAC-SHA256: Datenbank und Dateien teilen keinen Schlüssel. */

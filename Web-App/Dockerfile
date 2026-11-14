@@ -8,7 +8,8 @@ FROM node:26-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ea
 WORKDIR /app
 
 # Keine Build-Werkzeuge (python3/make/g++): Kein Paket baut aus C++-Quellen;
-# sharp und esbuild laden fertige Binärdateien. Braucht eine neue Abhängigkeit
+# sharp, esbuild und @node-rs/argon2 laden fertige Binärdateien (auch für musl,
+# ohne Install-Skript). Braucht eine neue Abhängigkeit
 # doch node-gyp, scheitert `npm ci` mit „gyp ERR! find Python“ und
 # `RUN apk add --no-cache python3 make g++` gehört zurück (test/dockerfile.test.js
 # meldet das vorher an der Lockfile).

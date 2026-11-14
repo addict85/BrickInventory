@@ -15,9 +15,6 @@ import retrofit2.http.POST
 internal interface GeraetApi {
 
     @POST("api/v1/geraet/schluessel")
-    suspend fun hinterlegeSchluessel(@Body anfrage: GeraeteSchluesselAnfrage): Response<Erledigt>
-
-    @POST("api/v1/geraet/schluessel")
     suspend fun hinterlegeKette(@Body anfrage: GeraeteSchluesselAnfrage): Response<Erledigt>
 
     @POST("api/v1/geraet/schluessel/nonce")

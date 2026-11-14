@@ -3893,7 +3893,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                  "$ref": "#/components/schemas/PUT_api_v1_auth_users_id_password"
                 }
               }
             }
@@ -3996,7 +3996,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                  "$ref": "#/components/schemas/PUT_api_v1_auth_users_id_password"
                 }
               }
             }
@@ -17611,6 +17611,7 @@
           "upload_ungueltig",
           "datei_inhalt_falsch",
           "upload_kontingent_voll",
+          "upload_gesamt_voll",
           "datei_nicht_verfuegbar",
           "json_ungueltig",
           "anfrage_json_ungueltig",
@@ -24395,6 +24396,22 @@
             ]
           }
         },
+        "additionalProperties": {}
+      },
+      "PUT_api_v1_auth_users_id_password": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "wirksam_ab": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success"
+        ],
         "additionalProperties": {}
       },
       "PUT_api_v1_sets_setNumber_acquisitions_acqId": {

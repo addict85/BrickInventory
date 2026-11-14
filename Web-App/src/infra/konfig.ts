@@ -49,6 +49,8 @@ export interface Konfig {
   port: number;
   hstsMaxAge: number;
   trustProxy: string | undefined;
+  /** Ein Netz über acht Adressen in TRUST_PROXY ist gewollt (src/infra/proxyVertrauen.ts). */
+  proxyNetzBestaetigt: boolean;
   sessionSecret: string | undefined;
   /** null: nach NODE_ENV (secure nur in Produktion). */
   cookieSecure: boolean | null;
@@ -79,6 +81,7 @@ export interface Konfig {
   erfassungZeitzone: string;
   preisverlaufTage: number;
   uploadKontingentMb: number;
+  uploadGesamtMb: number;
   mailKonsoleMitToken: boolean;
   bildUserAgent: string | null;
   bildCacheMaxMb: number;
@@ -130,6 +133,7 @@ export const VARIABLEN = [
   'PORT',
   'HSTS_MAX_AGE',
   'TRUST_PROXY',
+  'PROXY_NETZ_BESTAETIGT',
   'SESSION_SECRET',
   'COOKIE_SECURE',
   'SESSION_IDLE_MINUTES',
@@ -163,6 +167,7 @@ export const VARIABLEN = [
   'TZ',
   'PRICE_HISTORY_KEEP_DAYS',
   'UPLOAD_KONTINGENT_MB',
+  'UPLOAD_GESAMT_MB',
   'MAIL_KONSOLE_MIT_TOKEN',
   'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB',
@@ -326,6 +331,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     port: ganzzahl(env, 'PORT', 3000, 1, 65535, f),
     hstsMaxAge: ganzzahl(env, 'HSTS_MAX_AGE', 31_536_000, 0, 2 ** 31 - 1, f),
     trustProxy: env.TRUST_PROXY,
+    proxyNetzBestaetigt: schalter(env, 'PROXY_NETZ_BESTAETIGT', f) === true,
     sessionSecret: env.SESSION_SECRET || undefined,
     cookieSecure: schalter(env, 'COOKIE_SECURE', f),
     sitzungLeerlaufMin: ganzzahl(env, 'SESSION_IDLE_MINUTES', VORGABE.sitzungLeerlaufMin, 1, 525_600, f),
@@ -352,6 +358,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     // 0 oder weniger schaltet das Beschneiden des Preisverlaufs ab.
     preisverlaufTage: ganzzahl(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),
     uploadKontingentMb: zahl(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
+    uploadGesamtMb: zahl(env, 'UPLOAD_GESAMT_MB', 20_480, f),
     mailKonsoleMitToken: env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1',
     bildUserAgent: env.IMG_USER_AGENT?.trim() || null,
     bildCacheMaxMb: zahl(env, 'BILD_CACHE_MAX_MB', 2048, f),
@@ -466,7 +473,7 @@ export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
         'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).',
     );
   try {
-    proxyVertrauen(env.TRUST_PROXY);
+    proxyVertrauen(env.TRUST_PROXY, env.PROXY_NETZ_BESTAETIGT?.trim() === '1');
   } catch (e) {
     gruende.push(`[proxy] ${(e as Error).message} Start verweigert.`);
   }

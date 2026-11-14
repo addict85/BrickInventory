@@ -54,7 +54,6 @@ class SchrittfreigabeTest {
             }
             return if (passt && challenge == c.challenge) Schrittantwort.Frei else Schrittantwort.Abgelehnt("abgelehnt")
         }
-        override suspend fun hinterlege(oeffentlich: ByteArray) = true
     }
 
     private val offen = Schrittantwort.Challenge("c1", "BrickInventory-Schritt/1\ngutschein\nc1")
@@ -110,7 +109,7 @@ class SchrittfreigabeTest {
     }
 
     @Test
-    fun `ein Server ohne Schrittschutz laesst die Pruefung im Geraet`() = runBlocking {
+    fun `ein Schritt ohne Aktion am Server bleibt bei der Pruefung im Geraet`() = runBlocking {
         val server = Server(geraet.public, Schrittantwort.NichtGebunden)
         assertEquals(Schrittablauf.Ausgang.Weiter,
             Schrittablauf(server, freigabe).bestaetige(Schrittaktion.LOKAL) { signatur(geraet.private) })

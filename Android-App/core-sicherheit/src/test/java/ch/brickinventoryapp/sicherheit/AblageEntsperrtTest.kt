@@ -16,15 +16,18 @@ import java.util.Base64
  * entsperrt arbeitet (EntsperrTresor). Ein Altbestand unter dem Schlüssel ohne Bedingung wird beim
  * ersten lesbaren Zugriff umgeschlüsselt, ohne dass eine Ablage unlesbar wird; gesperrt entsteht
  * kein neuer Schlüssel, und eine Ablage meldet „gesperrt“ statt „unlesbar“ (sonst löschte sie).
+ * Neu verschlüsselt wird nur noch unter der Entsperr-Bedingung, nie mit einem Ausweg.
  *
- * Gegenproben (14.11.2026, kotlinc und JUnit lokal):
+ * Gegenproben (kotlinc und JUnit lokal):
  *   A  in hole() `if (tresor.veraltet(umhuellt)) umhuelleNeu(…)` gestrichen → rot „ein Altbestand
  *      … kommt beim ersten Lesen unter den entsperrten …“; gegenproben/ablage-bleibt-ohne-sperre.patch
- *   B  in umhuelleNeu() ohne `takeUnless(tresor::veraltet)` → rot „kann der entsperrte Tresor nicht
- *      verschluesseln …“ (die Datei wurde ohne Not neu geschrieben);
- *      gegenproben/ablage-umhuellt-ohne-not.patch
  *   C  in AblageChiffre.oeffne() den Schlüssel wieder in runCatching → rot „gesperrt entsteht kein
  *      neuer Schluessel …“ (null statt IOException); gegenproben/ablage-gesperrt-wie-unlesbar.patch
+ *   D  EntsperrTresor.verschluessle() weicht wieder auf den Altbestand-Schlüssel aus → rot
+ *      „gesperrt legt der Entsperr-Tresor nichts unter dem schwaecheren Schluessel ab“;
+ *      gegenproben/entsperrtresor-mit-ausweg.patch
+ *   E  erneuere() ruft hole() ohne fangeAusserAbbruch → rot „Abmelden bei gesperrtem Geraet …“;
+ *      gegenproben/ablage-erneuern-gesperrt-wirft.patch
  */
 class AblageEntsperrtTest {
 
@@ -113,5 +116,37 @@ class AblageEntsperrtTest {
         entsperrt.kaputt = false
         neu().hole()
         assertTrue("Beim nächsten Start umgeschlüsselt", abgelegt().startsWith(ENTSPERRT_PRAEFIX))
+    }
+
+    @Test
+    fun `gesperrt legt der Entsperr-Tresor nichts unter dem schwaecheren Schluessel ab`() {
+        val tresor = EntsperrTresor(entsperrt, immer)
+        entsperrt.gesperrt = true
+        try {
+            tresor.verschluessle("neu-getauscht")
+            fail("Gesperrt darf kein Geheimtext unter dem Schlüssel ohne Bedingung entstehen")
+        } catch (_: IllegalStateException) {
+            // erwartet: der Entsperr-Schlüssel arbeitet gerade nicht
+        }
+        entsperrt.gesperrt = false
+        assertTrue(tresor.verschluessle("neu-getauscht").startsWith(ENTSPERRT_PRAEFIX + "n:"))
+    }
+
+    @Test
+    fun `Abmelden bei gesperrtem Geraet loescht den alten Schluessel, den neuen gibt es erst entsperrt`() {
+        val k = neu()
+        val alt = k.hole()
+        entsperrt.gesperrt = true
+        k.erneuere()
+        assertFalse("Der alte Schlüssel ist weg", datei.exists())
+        try {
+            k.hole()
+            fail("Gesperrt entsteht kein neuer Schlüssel")
+        } catch (_: IOException) {
+            // erwartet: später
+        }
+        entsperrt.gesperrt = false
+        assertFalse("Ein neuer Schlüssel", alt.contentEquals(k.hole()))
+        assertTrue(abgelegt().startsWith(ENTSPERRT_PRAEFIX + "n:"))
     }
 }

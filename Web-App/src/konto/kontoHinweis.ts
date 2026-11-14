@@ -5,7 +5,13 @@ import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { imSystemkontext } from '../infra/kontoKontext';
 import type { KontoKontext } from './kontext';
 
-type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };
+type Angaben = {
+  name?: string | undefined;
+  konto?: string | undefined;
+  durch?: string | undefined;
+  was?: string | undefined;
+  bis?: string | undefined;
+};
 
 // Läuft auch vor der Anmeldung und für andere Konten (alle Verwalter): Sprache
 // und Haushalt des Empfängers liest es daher im Systemrahmen.
@@ -35,6 +41,8 @@ async function meldeKontoaenderungFuer(
     ...(angaben.name ? { passkey: angaben.name } : {}),
     konto: angaben.konto,
     durch: angaben.durch,
+    was: angaben.was,
+    bis: angaben.bis,
   });
   return r.success;
 }

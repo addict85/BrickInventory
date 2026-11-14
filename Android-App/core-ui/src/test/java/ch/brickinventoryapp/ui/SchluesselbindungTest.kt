@@ -18,7 +18,7 @@ import java.util.Base64
  * Die Bindung des Geräteschlüssels nach der Anmeldung, ohne Keystore: Der
  * Schlüssel entsteht mit der Nonce des Servers als Attestation-Challenge, die
  * ganze Kette geht zum Server. Ein Gerät ohne Attestation bekommt eine eigene
- * Meldung und schickt nichts; ein Server ohne Attestation bekommt den blossen Schlüssel.
+ * Meldung und schickt nichts; ohne Nonce (auch bei 404) entsteht kein Schlüssel.
  *
  * Gegenproben (11.11.2026; lokal mit kotlinc gegen Attrappen, Robolectric entscheidet die CI):
  *   A  die Nonce nicht dekodiert, sondern als UTF-8-Bytes eingesetzt → rot „die Nonce
@@ -35,13 +35,8 @@ class SchluesselbindungTest {
 
     private class Server(var nonce: Schluesselnonce, var antwort: Schrittantwort = Schrittantwort.Frei) : Schrittbindung {
         val ketten = mutableListOf<List<ByteArray>>()
-        val schluessel = mutableListOf<ByteArray>()
         override suspend fun challenge(aktion: Schrittaktion) = Schrittantwort.NichtGebunden
         override suspend fun freigeben(challenge: String, signatur: ByteArray) = Schrittantwort.Frei
-        override suspend fun hinterlege(oeffentlich: ByteArray): Boolean {
-            schluessel += oeffentlich
-            return true
-        }
         override suspend fun schluesselNonce() = nonce
         override suspend fun hinterlegeKette(kette: List<ByteArray>): Schrittantwort {
             ketten += kette
@@ -55,7 +50,6 @@ class SchluesselbindungTest {
             challenges += challenge
             return kette(challenge)
         }
-        override fun oeffentlichFuerServer() = byteArrayOf(9)
     }
 
     private fun binde(server: Server, keystore: Keystore) =
@@ -79,7 +73,6 @@ class SchluesselbindungTest {
             val server = Server(Schluesselnonce.Nonce(nonce))
             assertEquals(Schluesselbindung.Ausgang.OhneAttestation, binde(server, keystore))
             assertTrue(server.ketten.isEmpty())
-            assertTrue(server.schluessel.isEmpty())
         }
     }
 
@@ -92,17 +85,11 @@ class SchluesselbindungTest {
     @Test
     fun `ohne Nonce entsteht kein Schluessel`() {
         val keystore = Keystore { listOf(blatt, zwischen) }
-        val server = Server(Schluesselnonce.Abgelehnt("Bitte neu anmelden."))
-        assertEquals(Schluesselbindung.Ausgang.Abgelehnt("Bitte neu anmelden."), binde(server, keystore))
-        assertTrue(keystore.challenges.isEmpty())
-    }
-
-    @Test
-    fun `ein Server ohne Attestation bekommt den blossen Schluessel`() {
-        val keystore = Keystore { listOf(blatt, zwischen) }
-        val server = Server(Schluesselnonce.NichtGebunden)
-        assertEquals(Schluesselbindung.Ausgang.Gebunden, binde(server, keystore))
-        assertArrayEquals(byteArrayOf(9), server.schluessel.single())
+        for (absage in listOf(Schluesselnonce.Abgelehnt("Bitte neu anmelden."), Schluesselnonce.Abgelehnt(null))) {
+            val server = Server(absage)
+            assertEquals(Schluesselbindung.Ausgang.Abgelehnt(absage.meldung), binde(server, keystore))
+            assertTrue(server.ketten.isEmpty())
+        }
         assertTrue(keystore.challenges.isEmpty())
     }
 }

@@ -35,7 +35,7 @@ export function erzeugeKonto(a: Omit<KontoAbhaengigkeiten, 'faecher'>, einblick?
   return baueBereich(
     { ...a, faecher: new Faecher() },
     zugang,
-    (k: KontoKontext) => ({ ...anmeldungUndGeraete(k), ...konten(k), ...ausDemZugang(k) }),
+    (k: KontoKontext) => ({ ...anmeldungUndGeraete(k), ...konten(k), ...verwaltung(k), ...ausDemZugang(k) }),
     einblick,
   );
 }
@@ -112,12 +112,6 @@ function konten(k: KontoKontext) {
     horcheAufTokenWiderruf: mit(k)(tokenCache.horcheAufTokenWiderruf),
     leereTokenCache: mit(k)(tokenCache.leereTokenCache),
     tokenAngaben: mit(k)(tokenWunsch.tokenAngaben),
-    registrierungFreischalten: mit(k)(verwalterAktionen.registrierungFreischalten),
-    zweitenFaktorEntfernen: mit(k)(verwalterAktionen.zweitenFaktorEntfernen),
-    aktivSetzen: mit(k)(verwalterAktionen.aktivSetzen),
-    verwalterRolleSetzen: mit(k)(verwalterAktionen.verwalterRolleSetzen),
-    verwalterAktionMerken: mit(k)(verwalterProtokoll.verwalterAktionMerken),
-    verwaltungsProtokoll: mit(k)(verwalterProtokoll.verwaltungsProtokoll),
     zugaengeListe: mit(k)(zugaengeDienst.zugaengeListe),
     zugangBeenden: mit(k)(zugaengeDienst.zugangBeenden),
     andereZugaengeBeenden: mit(k)(zugaengeDienst.andereZugaengeBeenden),
@@ -141,6 +135,22 @@ function konten(k: KontoKontext) {
     aktuelleSitzungsVersion: mit(k)(sitzungsVersion.aktuelleSitzungsVersion),
     renderIndexHtml: mit(k)(indexHtml.renderIndexHtml),
     setzeGlobalesDesign: mit(k)(indexHtml.setzeGlobalesDesign),
+  };
+}
+
+/** Verwalter an fremden Konten: Änderungen, Übernahmen und ihr Protokoll. */
+function verwaltung(k: KontoKontext) {
+  return {
+    registrierungFreischalten: mit(k)(verwalterAktionen.registrierungFreischalten),
+    zweitenFaktorEntfernen: mit(k)(verwalterAktionen.zweitenFaktorEntfernen),
+    aktivSetzen: mit(k)(verwalterAktionen.aktivSetzen),
+    verwalterRolleSetzen: mit(k)(verwalterAktionen.verwalterRolleSetzen),
+    passwortDurchVerwalter: mit(k)(verwalterAktionen.passwortDurchVerwalter),
+    faktorDurchVerwalter: mit(k)(verwalterAktionen.faktorDurchVerwalter),
+    fuehreFaelligeUebernahmenAus: mit(k)(verwalterAktionen.fuehreFaelligeUebernahmenAus),
+    uebernahmenAbbrechen: mit(k)(verwalterAktionen.uebernahmenAbbrechen),
+    verwalterAktionMerken: mit(k)(verwalterProtokoll.verwalterAktionMerken),
+    verwaltungsProtokoll: mit(k)(verwalterProtokoll.verwaltungsProtokoll),
   };
 }
 

@@ -17,19 +17,6 @@ import javax.inject.Inject
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509ExtendedTrustManager
 
-/**
- * Was eine spätere Entwertung braucht: der Server, dem das Token gehört, das Token
- * nur verschlüsselt (der Auftrag liegt in der Datenbank von WorkManager), der Pin
- * dieses Servers und die Herkunft, an die das Token gebunden ist. Passt [herkunft]
- * nicht zu [serverUrl], geht das Token nirgends hin (Entwerter).
- */
-data class Entwertungsauftrag(
-    val serverUrl: String,
-    val tokenGeheim: String,
-    val pin: String? = null,
-    val herkunft: String? = NetworkPolicy.herkunft(serverUrl),
-)
-
 /** Legt einen Auftrag in die dauerhafte Warteschlange (data/lokal/EntwertungsWorker). */
 fun interface EntwertungsPlaner {
     fun plane(auftrag: Entwertungsauftrag)

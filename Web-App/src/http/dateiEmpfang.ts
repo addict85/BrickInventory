@@ -1,4 +1,5 @@
 import { konfig } from '../infra/konfig';
+import { DATA_DIR } from '../infra/appPaths';
 import multer from 'multer';
 import crypto from 'node:crypto';
 import type { Request } from 'express';
@@ -111,6 +112,22 @@ export async function kontingentReichtFuer(ordner: string, laenge: number): Prom
   return (await belegterPlatz(ordner)) + laenge <= uploadKontingentBytes();
 }
 
+/** Das Kontingent je Konto hält viele Konten nicht auf; diese Grenze gilt für alle zusammen. */
+const GESAMT_WURZELN = ['uploads', 'vouchers'].map(n => path.join(DATA_DIR, n));
+export const uploadGesamtMb = (): number => konfig().uploadGesamtMb;
+
+async function gesamtBelegt(): Promise<number> {
+  let summe = 0;
+  for (const w of GESAMT_WURZELN)
+    for (const k of await fs.promises.readdir(w, { withFileTypes: true }).catch(ohneFehlendeDatei('upload:gesamt', [])))
+      if (k.isDirectory()) summe += await belegterPlatz(path.join(w, k.name));
+  return summe;
+}
+
+export async function gesamtReichtFuer(laenge: number): Promise<boolean> {
+  return (await gesamtBelegt()) + laenge <= uploadGesamtMb() * 1024 * 1024;
+}
+
 /** Der Pfad kommt aus der Anfrage (multer); was ausserhalb der Ablage läge, fasst der Dienst nicht an. */
 export function unterWurzel(wurzel: string, datei: string): string {
   const w = path.resolve(wurzel);
@@ -125,14 +142,16 @@ export async function pruefeEmpfangeneDatei(
   wurzel: string,
   empfangen: string,
   mime: string,
-): Promise<null | 'datei_inhalt_falsch' | 'upload_kontingent_voll'> {
+): Promise<null | 'datei_inhalt_falsch' | 'upload_kontingent_voll' | 'upload_gesamt_voll'> {
   const datei = unterWurzel(wurzel, empfangen);
   await fs.promises.chmod(datei, 0o600);
   const grund = !(await inhaltPasstZuTyp(datei, mime))
     ? ('datei_inhalt_falsch' as const)
     : (await belegterPlatz(path.dirname(datei))) > uploadKontingentBytes()
       ? ('upload_kontingent_voll' as const)
-      : null;
+      : !(await gesamtReichtFuer(0))
+        ? ('upload_gesamt_voll' as const)
+        : null;
   if (grund) await fs.promises.rm(datei, { force: true });
   return grund;
 }

@@ -96,17 +96,9 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
     // eine offene Verwaltersitzung allein genügt dafür nicht.
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    if (!(await d.konto.setzeFremdesPasswort(targetId, password ?? '', angemeldeteNutzerId(req))))
-      return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-    // Wie beim entfernten Faktor: Eine Übernahme durch eine erbeutete Verwaltersitzung bliebe sonst unbemerkt.
-    const durch = nutzerName(req) ?? '';
-    d.konto.hinweisNebenher(targetId, 'passwort_durch_verwalter', undefined, { durch });
-    d.konto.verwalterHinweisNebenher('verwaltung_passwort_gesetzt', {
-      konto: await d.konto.kontoAnzeigeName(targetId),
-      durch,
-    });
-
-    return {};
+    const r = await d.konto.passwortDurchVerwalter(angemeldeteNutzerId(req), targetId, password ?? '');
+    if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    return r.wirksamAb ? { wirksam_ab: r.wirksamAb.toISOString() } : {};
   });
 
   router.endpunkt('DELETE /api/v1/auth/users/:id', requireAdmin, async (req, res) => {
@@ -123,14 +115,8 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
     if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
-    await d.konto.zweitenFaktorEntfernen(angemeldeteNutzerId(req), id);
-    const durch = nutzerName(req) ?? '';
-    d.konto.hinweisNebenher(id, 'zweiter_faktor_entfernt', undefined, { durch });
-    d.konto.verwalterHinweisNebenher('verwaltung_faktor_entfernt', {
-      konto: await d.konto.kontoAnzeigeName(id),
-      durch,
-    });
-    return {};
+    const r = await d.konto.faktorDurchVerwalter(angemeldeteNutzerId(req), id);
+    return r.wirksamAb ? { wirksam_ab: r.wirksamAb.toISOString() } : {};
   });
 
   router.use(fehlerAntwort);

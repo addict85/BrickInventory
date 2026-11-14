@@ -15,7 +15,7 @@ export type KontoEntfernt = 'entfernt' | 'nicht_gefunden' | typeof repo.LETZTER_
 
 /** @param durch der Verwalter, der löscht; null, wenn das Konto sich selbst löscht */
 export async function kontoEntfernen(k: KontoKontext, ziel: number, durch: number | null): Promise<KontoEntfernt> {
-  // Ein fremdes Konto liegt ausserhalb des Zeilenschutzes des Verwalters: nur dann im Systemrahmen.
+  // Immer im Systemrahmen: Sitzungen und die Kopien vor Migrationen sieht nur die Systemrolle.
   const fremd = durch !== null && durch !== ziel;
   const loeschen = () =>
     k.transaktion(async t => {
@@ -29,7 +29,7 @@ export async function kontoEntfernen(k: KontoKontext, ziel: number, durch: numbe
       await t.zugaenge.loescheSitzungenDesKontos(ziel);
       return 'entfernt' as const;
     });
-  const r = await (fremd ? imSystemkontext('kontenverwaltung', loeschen) : loeschen()).catch((e: unknown) => {
+  const r = await imSystemkontext('kontenverwaltung', loeschen).catch((e: unknown) => {
     if (e instanceof Abbruch) return e.ergebnis;
     throw e;
   });

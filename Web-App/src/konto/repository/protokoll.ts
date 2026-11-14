@@ -16,7 +16,9 @@ export type VerwalterAktion =
   | 'einstellungen_geaendert'
   | 'gutschein_klartext'
   | 'gutschein_pdf'
-  | 'gutschein_export';
+  | 'gutschein_export'
+  | 'uebernahme_angekuendigt'
+  | 'uebernahme_abgebrochen';
 
 /** Vor dem Löschen aufrufen — danach ist der Name nicht mehr zu ermitteln. */
 export async function protokolliere(

@@ -4,10 +4,11 @@ Test: ch.brickinventoryapp.app.GeraeteSchutzTest
 Rot: ein anderer Pfad auf demselben Host verwirft den Token
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 0287f52..a8395b7 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -219,8 +219,7 @@
-             val herkunft = platte[TOKEN_HERKUNFT] ?: _tokenHerkunftState.value ?: alteAdresse
+@@ -280,8 +280,7 @@ class TokenAblage @Inject constructor(
+             val herkunft = wert(platte, HERKUNFT) ?: _tokenHerkunftState.value ?: alteAdresse
              val hatToken = platte[AUTH_TOKEN_ENC] != null || tokenJetzt().isNotBlank()
              val anderer = hatToken &&
 -                (!NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||

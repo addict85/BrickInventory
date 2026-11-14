@@ -887,7 +887,7 @@ data class GenericResponse(
 @Serializable
 data class GeraeteSchluesselAnfrage(
     @SerialName("oeffentlich") @EncodeDefault(EncodeDefault.Mode.NEVER) val oeffentlich: String? = null,
-    @SerialName("kette") @EncodeDefault(EncodeDefault.Mode.NEVER) val kette: List<String>? = null,
+    @SerialName("kette") val kette: List<String>,
 )
 
 @Serializable
@@ -1656,6 +1656,12 @@ data class PasswortAenderung(
     @SerialName("current") val current: String,
     @SerialName("code") val code: String? = null,
     @SerialName("passkey") @EncodeDefault(EncodeDefault.Mode.NEVER) val passkey: JsonObject? = null,
+)
+
+@Serializable
+data class PasswortGesetzt(
+    @SerialName("success") val success: Boolean = false,
+    @SerialName("wirksam_ab") val wirksamAb: String = "",
 )
 
 @Serializable

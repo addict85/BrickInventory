@@ -4,9 +4,10 @@ Test: ch.brickinventoryapp.data.TokenTresorTest
 Rot: nach dem Entsperren kommt ein Token unter dem alten Schluessel sofort unter den strengen
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 0287f52..bb432dc 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -356,7 +356,7 @@
+@@ -403,7 +403,7 @@ class TokenAblage @Inject constructor(
       */
      override suspend fun stufeTokenHoch() {
          if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(tresor::veraltet) != true) return
@@ -14,4 +15,4 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Token
 +        return
      }
  
-     /** Adresse und Name im Klartext älterer Fassungen verschlüsselt ablegen; scheitert es, beim nächsten Start. */
+     /**

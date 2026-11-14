@@ -19,14 +19,17 @@ import retrofit2.Retrofit
 import java.util.Base64
 
 /**
- * Die Bindung des Schrittschutzes an den Server: Nur ein 404 (ein Server ohne
- * Schrittschutz) lässt die App bei der Prüfung im Gerät; jede andere Absage
- * und ein Netzfehler halten den Schritt an. Die Signatur geht als Base64.
+ * Die Bindung des Schrittschutzes an den Server: Jede Absage, auch ein 404, und
+ * ein Netzfehler halten den Schritt an; nur ein Schritt ohne Aktion am Server
+ * bleibt im Gerät. Die Signatur geht als Base64.
  *
- * Gegenprobe (nur in der CI messbar, lokal fehlt das Android-SDK):
+ * Gegenproben (nur in der CI messbar, lokal fehlt das Android-SDK):
  *   A  in challenge() jede Absage und jeden Netzfehler als NichtGebunden → erwartet
  *      rot „eine Absage des Servers haelt an“ und „ohne Netz kein Rueckfall …“;
  *      gegenproben/schrittbindung-absage-als-ungebunden.patch
+ *   C  in challenge() ein 404 wieder als NichtGebunden (der frühere Rückfall) →
+ *      erwartet rot „ein 404 auf die Challenge haelt an“;
+ *      gegenproben/schrittbindung-404-als-ungebunden.patch
  *   B  in hinterlegeKette() die Zertifikate mit dem URL-Alphabet kodiert →
  *      erwartet rot „die Kette geht als Base64 je Zertifikat …“;
  *      gegenproben/schrittbindung-kette-base64url.patch
@@ -61,9 +64,11 @@ class SchrittbindungTest {
     }
 
     @Test
-    fun `ein Server ohne Schrittschutz laesst die Pruefung im Geraet`() = runBlocking {
+    fun `ein 404 auf die Challenge haelt an`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":false,"code":"api_pfad_unbekannt","error":"x"}""", 404))
-        assertEquals(Schrittantwort.NichtGebunden, bindung.challenge(Schrittaktion.GUTSCHEIN))
+        assertEquals(Schrittantwort.Abgelehnt("x"), bindung.challenge(Schrittaktion.GUTSCHEIN))
+        assertEquals(Schrittantwort.NichtGebunden, bindung.challenge(Schrittaktion.LOKAL))
+        assertEquals(1, server.requestCount)
     }
 
     @Test
@@ -83,12 +88,12 @@ class SchrittbindungTest {
     }
 
     @Test
-    fun `die Nonce kommt an, ein Server ohne Attestation sagt 404, eine Absage bringt ihren Satz`() = runBlocking {
+    fun `die Nonce kommt an, ein 404 und eine Absage bringen ihren Satz`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":true,"nonce":"ab_-"}"""))
         assertEquals(Schluesselnonce.Nonce("ab_-"), bindung.schluesselNonce())
         assertEquals("/api/v1/geraet/schluessel/nonce", server.takeRequest().path)
         server.enqueue(TestApi.antwort("""{"success":false,"code":"api_pfad_unbekannt","error":"x"}""", 404))
-        assertEquals(Schluesselnonce.NichtGebunden, bindung.schluesselNonce())
+        assertEquals(Schluesselnonce.Abgelehnt("x"), bindung.schluesselNonce())
         server.enqueue(TestApi.antwort("""{"success":false,"code":"geraeteschluessel_frist","error":"Bitte neu anmelden."}""", 403))
         assertEquals(Schluesselnonce.Abgelehnt("Bitte neu anmelden."), bindung.schluesselNonce())
     }

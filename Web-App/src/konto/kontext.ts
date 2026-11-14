@@ -12,6 +12,7 @@ import * as passkeys from './repository/passkeys';
 import * as protokoll from './repository/protokoll';
 import * as qrKopplung from './repository/qrKopplung';
 import * as startVerwalter from './repository/startVerwalter';
+import * as uebernahmen from './repository/uebernahmen';
 import * as zugaenge from './repository/zugaenge';
 import * as zweiterFaktor from './repository/zweiterFaktor';
 import type { EinstellungenDienste } from '../einstellungen';
@@ -36,6 +37,8 @@ export interface KontoAbhaengigkeiten {
 const OHNE_KONTO = 'Anmeldung oder Token-Prüfung: Es gibt noch kein Konto, für das der Zeilenschutz gälte';
 const ALLE_KONTEN = 'Aufräumen über alle Konten';
 const FREMDES_KONTO = 'Verwaltung oder Passwort vergessen: ändert ein Konto, das die Anfrage nicht trägt';
+const NUR_SYSTEMROLLE = 'Passwort-Hash oder Sitzungsspeicher: nur die Systemrolle darf sie lesen';
+const UEBERNAHME = 'Verwalterübernahme: Verwalter und Ziel sind verschiedene Konten';
 
 /** Anmeldung ohne Konto: Zähler, Schlüssel und Geheimnisse der Geräte. */
 const anmeldezugang = (db: Db) => ({
@@ -119,7 +122,7 @@ const kontenzugang = (db: Db) => ({
     tokenStand: imSystem(db, 'Token-Prüfung: sucht über den Hash, ohne Konto', konten.tokenStand),
     zugangLoeschen: mit(db)(konten.zugangLoeschen),
     andereZugaengeLoeschen: mit(db)(konten.andereZugaengeLoeschen),
-    loescheAndereSitzungen: mit(db)(konten.loescheAndereSitzungen),
+    loescheAndereSitzungen: imSystem(db, NUR_SYSTEMROLLE, konten.loescheAndereSitzungen),
     mussPasswortAendern: mit(db)(konten.mussPasswortAendern),
   },
   passkeys: {
@@ -162,6 +165,12 @@ const sitzungszugang = (db: Db) => ({
     zaehleQrFehlversuch: imSystem(db, 'wie markiereBestaetigt', qrKopplung.zaehleQrFehlversuch),
     markiereAbgelehnt: imSystem(db, 'Auch das Gerät ohne Konto lehnt ab', qrKopplung.markiereAbgelehnt),
   },
+  uebernahmen: {
+    kuendigeAn: imSystem(db, UEBERNAHME, uebernahmen.kuendigeAn),
+    verwalterOderEbenGewesen: imSystem(db, UEBERNAHME, uebernahmen.verwalterOderEbenGewesen),
+    nimmFaellige: imSystem(db, UEBERNAHME, uebernahmen.nimmFaellige),
+    brichUebernahmenAb: imSystem(db, UEBERNAHME, uebernahmen.brichUebernahmenAb),
+  },
   startVerwalter: {
     kontenVorhanden: mit(db)(startVerwalter.kontenVorhanden),
     startpasswortOffen: mit(db)(startVerwalter.startpasswortOffen),
@@ -186,16 +195,17 @@ const sitzungszugang = (db: Db) => ({
       zugaenge.loescheToken,
     ),
     loescheTokensDesKontos: imSystem(db, FREMDES_KONTO, zugaenge.loescheTokensDesKontos),
-    kappeSitzungen: mit(db)(zugaenge.kappeSitzungen),
+    kappeSitzungen: imSystem(db, NUR_SYSTEMROLLE, zugaenge.kappeSitzungen),
     kappeTokens: imSystem(db, 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto', zugaenge.kappeTokens),
-    loescheSitzungenDesKontos: mit(db)(zugaenge.loescheSitzungenDesKontos),
+    loescheSitzungenDesKontos: imSystem(db, NUR_SYSTEMROLLE, zugaenge.loescheSitzungenDesKontos),
     sitzungsVersion: mit(db)(zugaenge.sitzungsVersion),
     zaehleSitzungsVersionHoch: mit(db)(zugaenge.zaehleSitzungsVersionHoch),
     ziehAltzeilenNach: imSystem(db, ALLE_KONTEN, zugaenge.ziehAltzeilenNach),
     loescheAbgelaufene: imSystem(db, ALLE_KONTEN, zugaenge.loescheAbgelaufene),
     loescheUngenutzte: imSystem(db, ALLE_KONTEN, zugaenge.loescheUngenutzte),
-    kontoZurAnmeldung: mit(db)(zugaenge.kontoZurAnmeldung),
-    passwortHash: mit(db)(zugaenge.passwortHash),
+    kontoZurAnmeldung: imSystem(db, NUR_SYSTEMROLLE, zugaenge.kontoZurAnmeldung),
+    passwortHash: imSystem(db, NUR_SYSTEMROLLE, zugaenge.passwortHash),
+    ersetzePasswortHash: imSystem(db, NUR_SYSTEMROLLE, zugaenge.ersetzePasswortHash),
   },
   zweiterFaktor: {
     ersetzeCodes: mit(db)(zweiterFaktor.ersetzeCodes),

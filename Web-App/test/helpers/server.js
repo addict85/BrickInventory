@@ -34,7 +34,7 @@ function testServer(_req, { sitzung = {}, t } = {}) {
   const { testZugang, testDienste } = require('./sources');
   const gestellt = alsSitzung(sitzung);
   const app = _req('startup/app.js').baueApp({
-    pool: testZugang().pool,
+    pool: testZugang().systemPool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
     dienste: testDienste(),

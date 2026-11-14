@@ -194,7 +194,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       const opfer = await anmelden('pw_opfer', 'perLinkGesetzt12');
       assert.match(await setze(opfer.cookie, chefId), /^403 /, 'nur für Verwalter');
       assert.ok(
-        await bcrypt.compare(
+        await _req('src/konto/passwortHash.js').passwortPasst(
           'nochNeuer1234',
           (await db.get('SELECT password_hash FROM users WHERE id = $1', [chefId])).password_hash,
         ),

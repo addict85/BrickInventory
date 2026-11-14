@@ -1,0 +1,19 @@
+Gegenprobe: Der Entsperr-Tresor weicht bei gesperrtem Gerät wieder auf den Schlüssel ohne Bedingung aus
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.AblageEntsperrtTest
+Rot: gesperrt legt der Entsperr-Tresor nichts unter dem schwaecheren Schluessel ab
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
+index eb4b676..f852081 100644
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
+@@ -41,7 +41,8 @@ class EntsperrTresor(
+     private val nurEntsperrt: TokenVerschluesselung,
+     private val altbestand: TokenVerschluesselung,
+ ) : TokenVerschluesselung {
+-    override fun verschluessle(klartext: String): String = ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext)
++    override fun verschluessle(klartext: String): String =
++        fangeAusserAbbruch { ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext) }.getOrElse { altbestand.verschluessle(klartext) }
+ 
+     override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext
+ 

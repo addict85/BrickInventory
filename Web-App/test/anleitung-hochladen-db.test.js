@@ -14,6 +14,11 @@
  *   E  (04.11.2026) chmod der Datei im Upload entfernt → rot: „nur für den Dienst
  *      lesbar“ (0644); privaterOrdner() ohne chmod → rot: dieselbe Prüfung
  *      (der schon bestehende Ordner blieb 0755)
+ *   F  (14.11.2026) in vorDemUpload die Gesamtgrenze gestrichen → rot: „über der Grenze
+ *      aller Konten …“ (keine Antwort, solange der Inhalt fehlt); zusätzlich die Prüfung
+ *      nach dem Schreiben gestrichen → rot: dieselbe (200, die Datei lag im Ordner)
+ *   G  (14.11.2026) in POST /vouchers/pdf die Gesamtgrenze gestrichen → rot: dieselbe
+ *      Prüfung („Gutschein-PDF“: 422 statt 507)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -108,6 +113,42 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
     assert.equal(r.status, 413, JSON.stringify(r.body));
     assert.equal(r.body.code, 'upload_kontingent_voll');
     assert.equal(dateien().length, vorher, 'die Datei über dem Kontingent liegt noch im Ordner');
+  });
+
+  await t.test('über der Grenze aller Konten zusammen: 507, nichts abgelegt', async st => {
+    umgebung({ UPLOAD_KONTINGENT_MB: '1000', UPLOAD_GESAMT_MB: String(1 / 1024) }); // zusammen 1 KB
+    st.after(() => umgebung({ UPLOAD_GESAMT_MB: undefined }));
+    const vorher = dateien().length;
+    const r = await hochladen(Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]), 'application/pdf', 'gesamt.pdf');
+    assert.deepEqual([r.status, r.body.code], [507, 'upload_gesamt_voll'], JSON.stringify(r.body));
+    assert.match(r.body.error, /alle Konten|all accounts/);
+    assert.equal(dateien().length, vorher);
+    const form = new FormData();
+    form.append('file', new Blob([PDF, Buffer.alloc(2048, 0x20)], { type: 'application/pdf' }), 'gutschein.pdf');
+    const g = await fetch(`${base}/api/v1/vouchers/pdf`, { method: 'POST', body: form });
+    assert.deepEqual([g.status, (await g.json()).code], [507, 'upload_gesamt_voll'], 'Gutschein-PDF');
+    // Schon am Kopf: Antwort, obwohl der Inhalt nie kommt.
+    const vorab = await new Promise((fertig, fehl) => {
+      const a = require('node:http').request(
+        `${base}/api/v1/sets/${SET}/instructions/upload`,
+        { method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': '4096' } },
+        antwort => {
+          antwort.resume();
+          fertig(antwort.statusCode);
+          a.destroy();
+        },
+      );
+      a.on('error', () => {});
+      a.write('--x\r\n');
+      setTimeout(() => {
+        a.destroy();
+        fehl(new Error('keine Antwort, solange der Inhalt fehlt'));
+      }, 3000);
+    });
+    assert.equal(vorab, 507);
+    // Ohne Grenze (Vorgabe 20 GB) geht dasselbe durch.
+    umgebung({ UPLOAD_GESAMT_MB: undefined });
+    assert.equal((await hochladen(PDF, 'application/pdf', 'gesamt.pdf')).status, 200);
   });
 
   await t.test('abgewiesen, bevor der Inhalt ankommt', async () => {

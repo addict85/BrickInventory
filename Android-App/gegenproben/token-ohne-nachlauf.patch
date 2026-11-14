@@ -4,15 +4,16 @@ Test: ch.brickinventoryapp.data.TokenSpeicherwertTest
 Rot: ein neuer Prozess
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 0287f52..700d405 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -178,9 +178,6 @@
-         // Der Nachlauf aus dem DataStore: für den Kaltstart und für Änderungen,
-         // die nicht über die save-Funktionen kamen (Umschlüsseln beim Start).
-         spiegle<String, String>(::adresseAus, _serverUrlState) { r, melde -> melde(r) }
+@@ -235,9 +235,6 @@ class TokenAblage @Inject constructor(
+         spiegle<List<String?>, String>({ roh(it, ADRESSE) }, _serverUrlState) { r, melde ->
+             liesGeduldig({ oeffne(r, ADRESSE) }, null, melde = { melde(schemaKlein(it)) }, sperre = sperre)
+         }
 -        spiegle<String?, String>({ it[AUTH_TOKEN_ENC] }, _authTokenState) { geheim, melde ->
 -            liesToken(tresor, geheim, null, melde, sperre = sperre)
 -        }
-         spiegle<String?, String?>({ it[TOKEN_HERKUNFT] }, _tokenHerkunftState) { r, melde -> melde(r) }
-         prefsScope.launch {
-             try {
+         spiegle<List<String?>, String?>({ roh(it, HERKUNFT) }, _tokenHerkunftState) { r, melde ->
+             liesGeduldig({ oeffne(r, HERKUNFT) }, null, melde = { melde(it.ifEmpty { null }) }, sperre = sperre)
+         }

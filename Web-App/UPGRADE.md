@@ -2100,3 +2100,90 @@ wird). Hinweise:
 - **Zu tun:** nichts, ausser der Job-Prozess erreicht das Internet nicht. Der
   Stichtag für Altschlüssel ohne Attestation (Abschnitt 49, 1. Februar 2027)
   bleibt.
+
+<a id="runde-24"></a>
+
+## 61. Runde 24 – Zugangsdaten, Kontotabellen, Proxy, Passwörter (Migrationen 0114–0116)
+
+- **Zugangsdaten nur für das eigene Konto (0114):** Passkeys, zweiter Faktor,
+  Tokens, Geräteschlüssel und Schrittfreigaben sieht die Laufzeitrolle nur noch für
+  das Konto der Anfrage, nicht mehr für dessen Unterkonten. Nichts zu tun.
+- **Passwort-Hashes und Sitzungen nur über die Systemrolle (0115):** Die
+  Laufzeitrolle `brickinventory_app` liest `users.password_hash` nicht mehr und
+  `user_sessions` gar nicht; Anmeldung und Sitzungsspeicher laufen über
+  `brickinventory_system`. Die Migration setzt die Rechte selbst, `db-rolle`
+  (`postgres/app-rolle.sh`) bei jedem `docker compose up -d` erneut. Wer eigene
+  Werkzeuge mit der Laufzeitrolle auf diese Spalte oder die Sitzungstabelle
+  zugreifen lässt, nimmt dafür die Systemrolle. Ohne Docker mit getrennten Rollen:
+  nach dem Update einmal `postgres/app-rolle.sh` ausführen.
+- **Haushalt (0115):** `account_links`, `account_link_invites` und
+  `household_former_links` stehen unter Zeilenschutz. Kopien vor Migrationen
+  (`vor_migration_*`) liest die Laufzeitrolle nicht mehr. Nichts zu tun.
+- **Proxy-Netze nur noch klein oder bestätigt — vor dem Update prüfen:**
+  `TRUST_PROXY` und `VORGELAGERTER_PROXY` nehmen ohne weiteres nur noch einzelne
+  Adressen oder Netze bis 8 Adressen (IPv4 `/29`, IPv6 `/120`). Steht in `.env`
+  ein weiteres Netz (etwa `172.18.0.0/16`), startet die App nicht („TRUST_PROXY
+  enthält …“) bzw. Caddy nicht („… ist zu weit“). Am besten die feste Adresse des
+  Proxys eintragen (README.md, „Proxy vor Caddy“); wer das Netz wirklich braucht,
+  setzt zusätzlich `PROXY_NETZ_BESTAETIGT=1` in `.env` (höchstens `/16` bzw.
+  `/64` wie bisher). Wer nur Adressen oder `keiner` eingetragen hat: nichts zu tun.
+- **Verwalter setzt Passwort oder zweiten Faktor zurück (0116):** Danach enden
+  alle Anmeldungen und App-Tokens des Kontos, auch beim zweiten Faktor (bisher nur
+  beim Passwort). Ist das Konto selbst Verwalter (oder hat es die Rolle in den
+  letzten 24 Stunden verloren), gilt die Änderung **erst nach 24 Stunden**: Das
+  Konto und alle Verwalter bekommen eine Mail, die Oberfläche nennt den Zeitpunkt.
+  Meldet sich das Konto vorher an (Passwort oder Passkey), entfällt die Änderung;
+  ebenso, wenn der auslösende Verwalter bis dahin kein Verwalter mehr ist.
+  Ausgeführt wird sie im stündlichen Aufräumlauf (Dienst `jobs`). Nichts zu tun.
+- **Gesamtgrenze für Uploads:** Eigene Anleitungen und Gutschein-PDFs aller Konten
+  zusammen dürfen höchstens `UPLOAD_GESAMT_MB` belegen (Vorgabe 20480 = 20 GB);
+  darüber antwortet der Upload mit 507 und der Meldung, den Verwalter zu fragen.
+  Wer mehr Platz hat und braucht, setzt den Wert in `.env`. Die Grenze je Konto
+  (`UPLOAD_KONTINGENT_MB`, 2048) bleibt.
+- **Passwörter als argon2id:** Neue und geänderte Passwörter werden mit argon2id
+  gespeichert, vorhandene bcrypt-Hashes bei der nächsten erfolgreichen Anmeldung
+  ersetzt. Passwörter dürfen jetzt bis 1024 Zeichen lang sein (bisher 72 Byte).
+  Nichts zu tun. **Zurück auf eine ältere Fassung** geht danach nur mit einer
+  Sicherung von vorher: Die alte Fassung kennt argon2id nicht, und wer sich
+  inzwischen angemeldet hat, käme nicht mehr hinein (Ausweg: „Passwort vergessen“
+  oder ein Verwalter setzt das Passwort neu).
+
+<a id="schluessel-behalten"></a>
+
+## 62. Caddy behält seinen Schlüssel; Android-App mit strengeren Vorgaben
+
+- **Caddy:** Das Caddyfile setzt `reuse_private_keys`. Beim Erneuern eines
+  Zertifikats (Let's Encrypt alle 60–90 Tage, Caddys CA alle paar Stunden)
+  bleibt der Schlüssel derselbe. Grund: Die Android-App pinnt unter einer
+  öffentlichen CA zusätzlich den Schlüssel des Servers. Ein neuer Schlüssel
+  heisst dort ab dieser Fassung auf Android 11–15 **abtippen** (siehe unten);
+  mit diesem Schalter kommt das nur noch vor, wenn jemand den Schlüssel
+  bewusst wechselt — und dann fällt es auf. Nachteil: Ein Schlüssel wechselt
+  nicht mehr von selbst; nach einem Verdacht wechselt man ihn von Hand.
+- **Schlüssel bewusst wechseln** (etwa nach einem Verdacht): Caddy anhalten,
+  unter `caddy/data/caddy/certificates/<aussteller>/<BRICK_HOST>/` die Dateien
+  `.key`, `.crt` und `.json` löschen, Caddy starten. Danach fragt jede App
+  einmal nach; vorher die Geräte informieren.
+- **Android-App, neuer Serverschlüssel:** Auf Android 11–15 (ohne erzwungene
+  Certificate Transparency) genügt bei einem neuen Schlüssel unter derselben
+  öffentlichen CA kein Tipp mehr. Die App verlangt die letzten 24 Hex-Zeichen
+  des neuen Schlüssels: im Browser am Rechner das Schloss → Zertifikat →
+  *Fingerabdrücke → Öffentlicher Schlüssel (SHA-256)*, oder
+  `openssl s_client -connect <BRICK_HOST>:443 </dev/null | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256`.
+  Ab Android 16 prüft das System CT selbst; dort bleibt es beim bewussten Tipp.
+- **Android-App, Daten auf dem Gerät:** Adresse, Benutzername und Herkunft des
+  Tokens, Widget-Zahlen und Abmeldeaufträge liegen unter einem Schlüssel, der
+  nur bei entsperrtem Gerät arbeitet; Pins tragen keinen Hostnamen mehr im
+  Namen; Konto- und Lagerortfilter liegen nur noch im Speicher (nach einem
+  Neustart der App wieder „alle“). Die Übernahme läuft beim ersten Start nach
+  dem Update von selbst, sobald das Gerät entsperrt ist; das Widget zeigt bis
+  zum nächsten Abruf „leer“.
+- **Android-App, Token-Tausch:** Bei gesperrtem Gerät tauscht die App ihr Token
+  nicht mehr; der Tausch kommt mit dem nächsten Abruf nach dem Entsperren.
+  Der Server braucht dafür nichts Neues. Den Geräteschlüssel des Schrittschutzes
+  legt die App nur noch mit Attestation an (kein Rückfall bei 404) und, wo
+  vorhanden, im StrongBox-Chip.
+- **Android-App, App-Sperre:** Neu installiert und mit Displaysperre steht sie
+  auf 5 Minuten und wird in der Einrichtung angeboten. Ein Update stellt nichts um.
+- **Zu tun:** Caddy neu starten (`docker compose up -d caddy`), damit das
+  Caddyfile gilt. Sonst nichts.

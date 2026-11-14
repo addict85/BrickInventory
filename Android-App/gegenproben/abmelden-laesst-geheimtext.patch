@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.data.TokenTresorTest
 Rot: Abmelden entfernt beide Eintraege
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 0287f52..d54d0c8 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -374,7 +374,6 @@
+@@ -455,7 +455,6 @@ class TokenAblage @Inject constructor(
              // BEIDE Schlüssel: Bliebe der alte stehen, wäre man nach dem
              // Abmelden über den Altbestand wieder angemeldet.
              it.remove(AUTH_TOKEN)
 -            it.remove(AUTH_TOKEN_ENC)
-             it.remove(TOKEN_HERKUNFT)
-             it.remove(USERNAME)
-             it.remove(USERNAME_ENC)
+             it.entferne(HERKUNFT)
+             it.entferne(NAME)
+             it.remove(ANGEMELDET_AM)

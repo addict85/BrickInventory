@@ -18,8 +18,10 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import ch.brickinventoryapp.data.Auftragslage
+import ch.brickinventoryapp.data.Auftragsablage
 import ch.brickinventoryapp.data.Entwerter
-import ch.brickinventoryapp.data.Entwertungsprotokoll
+import ch.brickinventoryapp.data.GeraeteAblage
 import ch.brickinventoryapp.data.Entwertungsauftrag
 import ch.brickinventoryapp.data.EntwertungsPlaner
 import ch.brickinventoryapp.data.Entwertungsschritt
@@ -51,20 +53,37 @@ class EntwertungsWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val entwerter: Entwerter,
     private val tresor: TokenVerschluesselung,
-    private val protokoll: Entwertungsprotokoll,
     private val bereiche: Anwendungsbereiche,
     private val sperre: Geraetesperre,
+    /** Liest den Auftrag (Auftragsablage) und merkt einen gescheiterten (Entwertungsprotokoll). */
+    private val geraet: GeraeteAblage,
 ) : CoroutineWorker(context, params) {
 
-    override suspend fun doWork(): Result {
-        val server = inputData.getString(SERVER) ?: return Result.success()
-        val geheim = inputData.getString(TOKEN) ?: return Result.success()
-        val pin = inputData.getString(PIN)
-        // Aufträge älterer Fassungen tragen keine Herkunft; sie galten dem eingetragenen Server.
+    /** Neu nur verschlüsselt ([AUFTRAG]); ein Auftrag älterer Fassung trägt noch Felder. */
+    private fun lage(): Auftragslage? {
+        inputData.getString(AUFTRAG)?.let { return geraet.auftragsablage().lies(it) }
+        val server = inputData.getString(SERVER) ?: return null
+        val geheim = inputData.getString(TOKEN) ?: return null
+        // Aufträge älterer Fassungen ohne Herkunft galten dem eingetragenen Server.
         val herkunft = inputData.getString(HERKUNFT) ?: NetworkPolicy.herkunft(server)
+        return Auftragslage.Da(Entwertungsauftrag(server, geheim, inputData.getString(PIN), herkunft))
+    }
+
+    override suspend fun doWork(): Result {
+        val auftrag = when (val l = withContext(bereiche.io) { lage() }) {
+            null -> return Result.success()
+            is Auftragslage.Da -> l.auftrag
+            Auftragslage.Gesperrt -> return Result.retry()
+            Auftragslage.Unlesbar -> {
+                // Ohne Adresse lässt sich auch nicht sagen, welcher Zugang noch gilt.
+                Protokoll.warnung("Abmelden", "Abmeldeauftrag nicht lesbar, aufgegeben")
+                return Result.failure()
+            }
+        }
+        val server = auftrag.serverUrl
         val schritt = withContext(bereiche.io) {
-            entwertungsSchritt(tresor.oeffne(geheim), runAttemptCount, sperre.gesperrt()) {
-                entwerter.entwerte(server, it, pin, herkunft)
+            entwertungsSchritt(tresor.oeffne(auftrag.tokenGeheim), runAttemptCount, sperre.gesperrt()) {
+                entwerter.entwerte(server, it, auftrag.pin, auftrag.herkunft)
             }
         }
         return when (schritt) {
@@ -73,7 +92,7 @@ class EntwertungsWorker @AssistedInject constructor(
             Entwertungsschritt.AUFGEGEBEN -> {
                 Protokoll.warnung("Abmelden", "Token am Server nicht entwertet, Auftrag aufgegeben")
                 // Still aufzugeben hiesse: Das Token gilt am Server weiter, und niemand weiss es.
-                protokoll.merkeGescheiterteEntwertung(server)
+                geraet.merkeGescheiterteEntwertung(server)
                 zeigeMeldung(applicationContext, server)
                 Result.failure()
             }
@@ -81,6 +100,9 @@ class EntwertungsWorker @AssistedInject constructor(
     }
 
     companion object {
+        /** Der ganze Auftrag als Geheimtext (Auftragsablage). */
+        const val AUFTRAG = "auftrag_geheim"
+        /** Felder älterer Fassungen: nur noch gelesen. */
         const val SERVER = "server"
         const val TOKEN = "token_geheim"
         const val PIN = "pin"
@@ -116,16 +138,21 @@ class EntwertungsWorker @AssistedInject constructor(
     }
 }
 
+/** Der Auftrag unter dem Schlüssel der Angaben, für Planer und Arbeiter derselbe. */
+internal fun GeraeteAblage.auftragsablage() = Auftragsablage(this::verschluessleAngabe, this::oeffneAngabe)
+
 /** Ein Auftrag je Abmeldung; ohne Netz wartet er, gescheitert kommt er mit Rückzug wieder. */
 internal class WorkManagerEntwertung @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val geraet: GeraeteAblage,
 ) : EntwertungsPlaner {
     override fun plane(auftrag: Entwertungsauftrag) {
+        // Gesperrt entsteht kein Geheimtext; dann weiss der Nutzer beim nächsten Start Bescheid,
+        // statt dass die Adresse lesbar in der Warteschlange läge.
+        val geheim = geraet.auftragsablage().ablegen(auftrag)
+            ?: return geraet.merkeGescheiterteEntwertung(auftrag.serverUrl)
         val arbeit = OneTimeWorkRequestBuilder<EntwertungsWorker>()
-            .setInputData(Data.Builder().putString(EntwertungsWorker.SERVER, auftrag.serverUrl)
-                .putString(EntwertungsWorker.TOKEN, auftrag.tokenGeheim)
-                .putString(EntwertungsWorker.PIN, auftrag.pin)
-                .putString(EntwertungsWorker.HERKUNFT, auftrag.herkunft).build())
+            .setInputData(Data.Builder().putString(EntwertungsWorker.AUFTRAG, geheim).build())
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()

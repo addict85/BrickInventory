@@ -98,6 +98,7 @@ const NAMEN = {
   POSTApiV1MinifigsImportCsvResultsEintrag: 'CsvImportZeile',
   POSTApiV1AuthEmailBestaetigenVorschau: 'EmailVorschau',
   PdfStand: 'PdfAuftragStand',
+  PUTApiV1AuthUsersIdPassword: 'PasswortGesetzt',
   PasskeyAnmeldung: 'LoginResponse',
   PdfAuftrag: 'PdfAuftragAntwort',
   PdfFreigabe: 'GutscheinPdfFreigabe',
@@ -449,6 +450,7 @@ const NULLBAR = new Set([
 
 /** Rumpffelder, die die App immer schickt, nie null: Der Vertrag lässt sie für ältere Clients offen. */
 const PFLICHT = new Set([
+  'GeraeteSchluesselAnfrage.kette',
   'MerkpostenRequest.condition',
   'PreisalarmRequest.condition',
   'GutscheinRequest.currency',

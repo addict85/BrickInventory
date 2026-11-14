@@ -4,18 +4,18 @@ Test: ch.brickinventoryapp.data.TokenSpeicherwertTest
 Rot: Token und Adresse gelten
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 0287f52..cfff768 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -258,7 +258,6 @@
-      */
-     private suspend fun schreibeToken(token: String, herkunft: String?, angemeldetAm: Long?) {
+@@ -338,13 +338,13 @@ class TokenAblage @Inject constructor(
+         val geheim = tresor.verschluessle(token)
+         val herkunftGeheim = herkunft?.let { verschluessle(HERKUNFT, it) }
          _tokenHerkunftState.value = herkunft
 -        _authTokenState.value = token
-         val geheim = tresor.verschluessle(token)
          dataStore.edit {
              it[AUTH_TOKEN_ENC] = geheim
-@@ -266,6 +265,7 @@
-             if (herkunft != null) it[TOKEN_HERKUNFT] = herkunft else it.remove(TOKEN_HERKUNFT)
+             it.remove(AUTH_TOKEN)
+             if (herkunftGeheim != null) it.setze(HERKUNFT, herkunftGeheim) else it.entferne(HERKUNFT)
              if (angemeldetAm != null) it[ANGEMELDET_AM] = angemeldetAm
          }
 +        _authTokenState.value = token

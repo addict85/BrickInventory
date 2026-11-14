@@ -13,6 +13,10 @@
  *   H  (14.11.2026) die Prüfung der Präfixe gestrichen → rot: „ein zu weites
  *      Netz startet nicht …“ (0.0.0.0/0: Caddy startet)
  *   I  (14.11.2026) min=8 statt 16 → rot: dieselbe (192.168.0.0/15 startet)
+ *   J  (14.11.2026, Runde 24) eng=16 statt 29 → rot: „ein Netz über acht Adressen nur
+ *      mit …“ (172.18.0.0/16 startet ohne Bestätigung)
+ *   K  (14.11.2026) die Zeile `min=$$eng; [ … ] && min=$$weit` ohne Bestätigungszweig →
+ *      rot: dieselbe (mit Bestätigung startet 172.18.0.0/16 nicht)
  *
  * Gegenproben (13.11.2026 gemessen mit Caddy v2.11.8, je einzeln):
  *   A  `trusted_proxies static {$VORGELAGERTER_PROXY}` gestrichen → rot:
@@ -40,7 +44,7 @@ if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=
 
 const COMPOSE = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 /** Das Startskript von Caddy aus compose.yaml ($$ → $); statt `exec caddy` gibt es den Wert aus, den Caddy bekäme. */
-function startskript(wert) {
+function startskript(wert, bestaetigt = false) {
   const z = COMPOSE.split('\n');
   const start = z.findIndex(l => /^ {2}caddy:\s*$/.test(l));
   const i = z.findIndex((l, j) => j > start && /^\s+- \|\s*$/.test(l));
@@ -61,6 +65,7 @@ function startskript(wert) {
       PATH: process.env.PATH,
       BRICK_TLS: 'acme',
       ...(wert === undefined ? {} : { VORGELAGERTER_PROXY: wert }),
+      ...(bestaetigt ? { PROXY_NETZ_BESTAETIGT: '1' } : {}),
     };
     return spawnSync('sh', ['-c', skript], { env, encoding: 'utf8', timeout: 10_000 });
   } finally {
@@ -82,16 +87,24 @@ test('VORGELAGERTER_PROXY ist Pflicht: keiner oder Adressen', async t => {
   });
   await t.test('ein zu weites Netz startet nicht (wie TRUST_PROXY: IPv4 ab /16, IPv6 ab /64)', () => {
     for (const wert of ['0.0.0.0/0', '::/0', '172.28.73.20 10.0.0.0/8', '192.168.0.0/15', 'fd00::/48', '10.0.0.1/']) {
-      const r = startskript(wert);
+      const r = startskript(wert, true);
       assert.notEqual(r.status, 0, `${wert}: Caddy startet`);
       assert.equal(r.stdout, '', wert);
       assert.match(r.stderr, /ist zu weit/, wert);
     }
   });
+  await t.test('ein Netz über acht Adressen nur mit PROXY_NETZ_BESTAETIGT=1', () => {
+    for (const wert of ['172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
+      const r = startskript(wert);
+      assert.notEqual(r.status, 0, `${wert}: Caddy startet ohne Bestätigung`);
+      assert.match(r.stderr, /PROXY_NETZ_BESTAETIGT=1/, wert);
+      assert.deepEqual([startskript(wert, true).status, startskript(wert, true).stdout], [0, wert]);
+    }
+  });
   await t.test('keiner ergibt die leere Liste, Adressen bleiben', () => {
     assert.deepEqual([startskript('keiner').status, startskript('keiner').stdout], [0, '']);
-    const r = startskript('172.28.73.20 fd00::/64 172.18.0.0/16 fd00::1');
-    assert.deepEqual([r.status, r.stdout], [0, '172.28.73.20 fd00::/64 172.18.0.0/16 fd00::1'], r.stderr);
+    const r = startskript('172.28.73.20 fd00::100/120 172.18.0.8/29 fd00::1');
+    assert.deepEqual([r.status, r.stdout], [0, '172.28.73.20 fd00::100/120 172.18.0.8/29 fd00::1'], r.stderr);
   });
 });
 

@@ -365,6 +365,11 @@ export async function kontoZurAnmeldung(db: DbSchnittstelle, name: string) {
   return treffer.length === 1 ? treffer[0] : undefined;
 }
 
+/** Nur wenn der alte Hash noch gilt: Ein gleichzeitig geändertes Passwort bleibt stehen. */
+export async function ersetzePasswortHash(db: DbSchnittstelle, id: number, alt: string, neu: string): Promise<void> {
+  await db.run('UPDATE users SET password_hash = $3 WHERE id = $1 AND password_hash = $2', [id, alt, neu]);
+}
+
 export function passwortHash(db: DbSchnittstelle, id: number) {
   return db.get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = $1', [id]);
 }

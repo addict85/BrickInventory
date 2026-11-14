@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.sicherheit.EntsperrTresor
 import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
+import ch.brickinventoryapp.sicherheit.Tresorbefund
+import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,6 +26,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
+import java.io.IOException
 
 /**
  * Das Token liegt nur verschlüsselt, ein Klartext älterer Fassungen gilt nie und wird
@@ -40,9 +43,14 @@ import java.io.File
  *                                   „ein Token unter dem alten Schluessel kommt beim Start …“
  *   klartext-token-gilt-wieder      der Spiegel liest AUTH_TOKEN wieder als Token → rot
  *                                   „ein Klartext-Token aelterer Fassungen gilt nie …“
- *   angaben-im-klartext             setzeAngabe() schreibt den Klartext → rot
+ *   angaben-im-klartext             setze() schreibt zusätzlich den Klartext → rot
  *                                   „Adresse und Name liegen nur verschluesselt …“
  *   angaben-ohne-uebernahme         uebernimmAngaben() lässt den Klartext stehen → rot, derselbe Test
+ *   angaben-unter-pin-schluessel    verschluessleAngabe() nimmt wieder den Schlüssel der Pins →
+ *                                   rot „Adresse und Name frueherer Fassungen kommen unter den
+ *                                   Entsperr-Schluessel …“
+ *   angaben-gesperrt-geloescht      uebernimmAngaben() entfernt die frühere Form auch ohne neue →
+ *                                   rot „gesperrt bleibt die fruehere Form liegen …“
  *   hochstufen-erst-beim-start      stufeTokenHoch() ohne Wirkung → rot „nach dem Entsperren kommt
  *                                   ein Token …“
  */
@@ -64,9 +72,9 @@ class TokenTresorTest {
     /** Je Test eine eigene Datei; DataStore erlaubt je Datei nur eine Instanz im Prozess. */
     private val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "tresor-${System.nanoTime()}.preferences_pb") }
 
-    private fun start(tresor: TokenVerschluesselung = Attrappe()): TokenAblage {
+    private fun start(tresor: TokenVerschluesselung = Attrappe(), chiffre: Vertrauenschiffre = testVertrauenschiffre()): TokenAblage {
         val bereich = CoroutineScope(SupervisorJob() + Dispatchers.IO).also { bereiche += it }
-        return TokenAblage(store, tresor, GeraeteAblage(ctx, store, testVertrauenschiffre()), bereich).also { it.warteAufStart() }
+        return TokenAblage(store, tresor, GeraeteAblage(ctx, store, chiffre), bereich).also { it.warteAufStart() }
     }
 
     private fun platte(): Preferences = runBlocking { store.data.first() }
@@ -103,7 +111,7 @@ class TokenTresorTest {
         val p = platte()
         assertNull("Die Adresse liegt nach dem Start noch im Klartext", p[TokenAblage.SERVER_URL])
         assertNull("Der Name liegt nach dem Start noch im Klartext", p[TokenAblage.USERNAME])
-        for (geheim in listOf(p[TokenAblage.SERVER_URL_ENC], p[TokenAblage.USERNAME_ENC]))
+        for (geheim in listOf(p[TokenAblage.SERVER_URL_GEHEIM], p[TokenAblage.USERNAME_GEHEIM]))
             assertTrue("Geheimtext fehlt oder verrät den Wert: $geheim",
                 geheim != null && "brick" !in geheim && "marco" !in geheim)
         assertEquals("https://brick.example", runBlocking { prefs.serverUrlJetzt() })
@@ -115,6 +123,50 @@ class TokenTresorTest {
         val neu = start()
         assertEquals("https://brick.example/neu", runBlocking { neu.serverUrlJetzt() })
         assertEquals("anna", runBlocking { neu.username.first() })
+    }
+
+    /** Die Angaben unter dem eigenen Schlüssel, die Pins unter einem anderen: so im Gerät (SicherheitModule). */
+    private var gesperrt = false
+    private val zweiSchluessel = Vertrauenschiffre(angaben = {
+        if (gesperrt) throw IOException("Keystore gerade nicht bereit")
+        ByteArray(32) { 3 }
+    }) { ByteArray(32) { 7 } }
+
+    @Test
+    fun `Adresse und Name frueherer Fassungen kommen unter den Entsperr-Schluessel`() {
+        runBlocking {
+            store.edit {
+                it[TokenAblage.SERVER_URL_ENC] = testVertrauenschiffre().verschluessle("https://brick.example", "angabe:server_url_enc")!!
+                it[TokenAblage.USERNAME_ENC] = testVertrauenschiffre().verschluessle("marco", "angabe:username_enc")!!
+            }
+        }
+        val prefs = start(chiffre = zweiSchluessel)
+        assertEquals("https://brick.example", runBlocking { prefs.serverUrlJetzt() })
+        assertEquals("marco", runBlocking { prefs.username.first() })
+        val p = platte()
+        assertFalse("Die frühere Form ist weg", TokenAblage.SERVER_URL_ENC in p.asMap() || TokenAblage.USERNAME_ENC in p.asMap())
+        assertEquals(Tresorbefund.Lesbar("https://brick.example"),
+            zweiSchluessel.oeffneAngabe(p[TokenAblage.SERVER_URL_GEHEIM]!!, TokenAblage.SERVER_URL_GEHEIM.name))
+        assertEquals("Nicht unter dem Schlüssel der Pins", null,
+            testVertrauenschiffre().entschluessle(p[TokenAblage.SERVER_URL_GEHEIM]!!, "angabe:server_url_geheim"))
+    }
+
+    @Test
+    fun `gesperrt bleibt die fruehere Form liegen und die neue gilt nach dem Entsperren`() {
+        lege()
+        gesperrt = true
+        val vorher = start(chiffre = zweiSchluessel)
+        assertEquals("Ein Klartext älterer Fassung bleibt lesbar", "https://brick.example", runBlocking { vorher.serverUrlJetzt() })
+        assertEquals("Gesperrt nicht übernommen, aber auch nicht verloren", "https://brick.example", platte()[TokenAblage.SERVER_URL])
+        gesperrt = false
+        val danach = start(chiffre = zweiSchluessel)
+        assertEquals("https://brick.example", runBlocking { danach.serverUrlJetzt() })
+        assertNull(platte()[TokenAblage.SERVER_URL])
+        gesperrt = true
+        assertEquals("Gesperrt ist die Adresse nicht lesbar", "", runBlocking { start(chiffre = zweiSchluessel).serverUrlJetzt() })
+        assertTrue("Und doch nicht gelöscht", TokenAblage.SERVER_URL_GEHEIM in platte().asMap())
+        gesperrt = false
+        assertEquals("https://brick.example", runBlocking { start(chiffre = zweiSchluessel).serverUrlJetzt() })
     }
 
     @Test

@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
 Rot: ohne Schluessel bleibt nichts
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-index a2bb27d..7670db3 100644
+index c5ab2dd..3355d26 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
-@@ -310,7 +310,7 @@ class GeraeteAblage @Inject constructor(
-             designSpiegel.edit { putString(PIN_GEHEIM_PRAEFIX + schluessel, geheim) }
+@@ -343,7 +343,7 @@ class GeraeteAblage @Inject constructor(
+             designSpiegel.edit { putString(eintrag, geheim); remove(PIN_GEHEIM_PRAEFIX + schluessel) }
              ungesichert.remove(schluessel)
          } else {
 -            ungesichert[schluessel] = fingerabdruck

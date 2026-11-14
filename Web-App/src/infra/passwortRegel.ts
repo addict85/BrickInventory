@@ -11,9 +11,9 @@ export function passwortZuKurz(passwort: unknown): boolean {
   return String(passwort ?? '').length < PASSWORT_MIN_ZEICHEN;
 }
 
-/** bcrypt liest nur die ersten 72 Byte: Was dahinter steht, prüfte nie jemand,
- * und zwei Passwörter mit gleichem Anfang wären gleich. */
-export const PASSWORT_MAX_BYTE = 72;
+/** argon2id liest das ganze Passwort; die Grenze hält nur übergrosse Eingaben fern
+ * (dieselbe wie im API-Vertrag, src/vertrag/konto.ts). */
+export const PASSWORT_MAX_ZEICHEN = 1024;
 
 /** Mitgeliefert (haeufige-passwoerter.txt neben dieser Datei), ohne Netzabfrage. */
 function haeufige(): Set<string> {
@@ -34,7 +34,7 @@ function haeufige(): Set<string> {
 export function passwortMangel(passwort: unknown, benutzername?: unknown): FehlerCode | null {
   if (passwortZuKurz(passwort)) return 'passwort_zu_kurz';
   const p = String(passwort);
-  if (Buffer.byteLength(p, 'utf8') > PASSWORT_MAX_BYTE) return 'passwort_zu_lang';
+  if (p.length > PASSWORT_MAX_ZEICHEN) return 'passwort_zu_lang';
   const klein = p.toLowerCase();
   if (haeufige().has(klein) || (typeof benutzername === 'string' && klein === benutzername.toLowerCase()))
     return 'passwort_zu_haeufig';

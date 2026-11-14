@@ -27,7 +27,6 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testDaten();
 const { keineDb } = require('./helpers/db');
-const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('Startpasswort in einer Datei statt im Log', async t => {
   try {
@@ -63,9 +62,9 @@ test('Startpasswort in einer Datei statt im Log', async t => {
   const [name, passwort] = fs.readFileSync(datei, 'utf8').split('\n');
   const admin = await db.get("SELECT id, password_hash, must_change_password FROM users WHERE username = 'admin'");
 
-  await t.test('die Datei trägt das Passwort des Kontos', () => {
+  await t.test('die Datei trägt das Passwort des Kontos', async () => {
     assert.equal(name, 'admin');
-    assert.ok(bcrypt.compareSync(passwort, admin.password_hash));
+    assert.ok(await _req('src/konto/passwortHash.js').passwortPasst(passwort, admin.password_hash));
     assert.equal(admin.must_change_password, true);
   });
   await t.test('nur der Dienst kann sie lesen', () => {

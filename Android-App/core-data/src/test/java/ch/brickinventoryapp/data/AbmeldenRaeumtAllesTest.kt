@@ -158,7 +158,8 @@ class AbmeldenRaeumtAllesTest {
 
         val platte = store.data.first()
         assertEquals("Token", "", prefs.tokenJetzt())
-        assertFalse("Benutzername", TokenAblage.USERNAME in platte.asMap() || TokenAblage.USERNAME_ENC in platte.asMap())
+        assertFalse("Benutzername", listOf(TokenAblage.USERNAME, TokenAblage.USERNAME_ENC, TokenAblage.USERNAME_GEHEIM)
+            .any { it in platte.asMap() })
         assertFalse("Marke des Preisalarms", GeraeteAblage.ALARM_MARKE in platte.asMap())
         assertNull("Kennzahlen", offline.lies(Faecher.KENNZAHLEN)?.liste?.takeIf { it.isNotEmpty() })
         assertNull("Bestand", offline.lies(Faecher.SETS)?.liste?.takeIf { it.isNotEmpty() })

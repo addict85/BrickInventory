@@ -1,0 +1,18 @@
+Gegenprobe: Der Abmeldeauftrag liegt wieder lesbar in der Warteschlange von WorkManager
+Modul: core-data
+Test: ch.brickinventoryapp.data.AuftragsablageTest
+Rot: der Auftrag liegt nur verschluesselt in der Warteschlange
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertungsauftrag.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertungsauftrag.kt
+index 1bc1ead..c0f6e15 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertungsauftrag.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertungsauftrag.kt
+@@ -36,7 +36,7 @@ internal class Auftragsablage(
+     private val oeffne: (geheim: String, bindung: String) -> Tresorbefund,
+ ) {
+     /** null: gerade nicht verschlüsselbar (gesperrt); dann wird nichts in die Warteschlange gelegt. */
+-    fun ablegen(auftrag: Entwertungsauftrag): String? = verschluessle(alsText(auftrag), BINDUNG)
++    fun ablegen(auftrag: Entwertungsauftrag): String? = alsText(auftrag).also { verschluessle(it, BINDUNG) }
+ 
+     fun lies(geheim: String): Auftragslage = when (val b = oeffne(geheim, BINDUNG)) {
+         is Tresorbefund.Lesbar -> ausText(b.klartext)?.let { Auftragslage.Da(it) } ?: Auftragslage.Unlesbar

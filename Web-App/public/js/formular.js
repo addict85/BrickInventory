@@ -27,8 +27,8 @@ export function passwortZuKurzText() {
   return tRaw('settings.password.too_short', { n: PASSWORT_MIN_ZEICHEN });
 }
 
-/** bcrypt liest 72 Byte; dieselbe Grenze wie PASSWORT_MAX_BYTE im Server. */
-export const PASSWORT_MAX_BYTE = 72;
+/** Dieselbe Grenze wie PASSWORT_MAX_ZEICHEN im Server (src/infra/passwortRegel.ts). */
+export const PASSWORT_MAX_ZEICHEN = 1024;
 
 /**
  * Was der Browser vor dem Absenden prüfen kann, als Meldung, sonst null. Die Liste häufiger Passwörter kennt
@@ -37,8 +37,7 @@ export const PASSWORT_MAX_BYTE = 72;
  */
 export function passwortRegelText(p) {
   if (passwortZuKurz(p)) return passwortZuKurzText();
-  if (new TextEncoder().encode(String(p)).length > PASSWORT_MAX_BYTE)
-    return tRaw('settings.password.too_long', { n: PASSWORT_MAX_BYTE });
+  if (String(p).length > PASSWORT_MAX_ZEICHEN) return tRaw('settings.password.too_long', { n: PASSWORT_MAX_ZEICHEN });
   return null;
 }
 

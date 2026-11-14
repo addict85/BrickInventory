@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.data.TokenTresorTest
 Rot: Adresse und Name liegen nur verschluesselt, alte Klartexte werden beim Start uebernommen
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 0287f52..14f9afa 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
-@@ -338,7 +338,6 @@
-         for ((geheim, klar) in listOf(SERVER_URL_ENC to SERVER_URL, USERNAME_ENC to USERNAME)) {
-             val wert = prefs[klar] ?: continue
-             if (prefs[geheim] == null) geraet.verschluessleAngabe(wert, geheim.name)?.let { prefs[geheim] = it } ?: continue
--            prefs.remove(klar)
+@@ -418,7 +418,6 @@ class TokenAblage @Inject constructor(
+                 prefs[a.geheim] = geraet.verschluessleAngabe(vorher, a.geheim.name) ?: continue
+             }
+             a.alt?.let { prefs.remove(it) }
+-            prefs.remove(a.klar)
          }
      }
  

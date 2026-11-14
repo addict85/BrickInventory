@@ -119,7 +119,7 @@ export async function einladungAnlegen(k: HaushaltKontext, uid: number) {
   const id = parseInt(String(uid), 10);
   // Jedes Konto darf einladen, auch ein Unterkonto: Ein Zwischenkonto ist Vater
   // UND Kind.
-  await repo.raeumeEinladungenAuf(k.db);
+  await k.repository.raeumeEinladungenAuf();
   // Jede offene Einladung ist ein Zugang zum Haushalt; beliebig viele braucht niemand.
   if ((await repo.offeneEinladungen(k.db, id)) >= OFFENE_EINLADUNGEN_MAX)
     return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };
@@ -133,7 +133,7 @@ export async function einladungAnlegen(k: HaushaltKontext, uid: number) {
 export async function pruefeEinladung(k: HaushaltKontext, uid: number, code: string) {
   if (typeof code !== 'string' || code.trim().length < 8) return { fehler: 'einladungscode_ungueltig' as const };
   const subId = parseInt(String(uid), 10);
-  const mainId = await repo.einladenderZuCode(k.db, einladungsHash(code));
+  const mainId = await k.repository.einladenderZuCode(einladungsHash(code));
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
   if (mainId === subId) return { fehler: 'konto_mit_sich_selbst' as const };
   if (await repo.istVerknuepft(k.db, mainId, subId)) return { fehler: 'konto_bereits_verknuepft' as const };

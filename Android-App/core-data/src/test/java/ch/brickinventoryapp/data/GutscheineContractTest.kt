@@ -174,7 +174,7 @@ class GutscheineContractTest {
         }
         assert(repo.contains("422")) {
             "Der 422-Rumpf wird nicht ausgewertet — dann geht `gelesen` verloren, " +
-                "weil safeCall aus einem Fehlerrumpf nur `error` holt."
+                "weil sicherAufrufen aus einem Fehlerrumpf nur `error` holt."
         }
     }
 

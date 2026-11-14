@@ -1,63 +1,51 @@
 package ch.brickinventoryapp.data
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
+import javax.inject.Singleton
 import ch.brickinventoryapp.model.data.ScopeFilter
 
 /**
- * Wo die Wahl des Konto- und Lagerortfilters liegt: im DataStore des Geräts. Getrennt
- * von [ScopeFilter], damit die Regeln dort ohne Android auskommen und die Oberfläche
- * sie lesen kann, ohne die Ablage zu kennen.
+ * Wo die Wahl des Konto- und Lagerortfilters liegt: nur im Speicher. Die Werte nennen Konten
+ * und Lagerorte und gelten ohnehin nur bis zur nächsten Anmeldung; auf der Platte lägen sie
+ * im Klartext neben der Adresse. Nach einem Prozessende gilt wieder „alle“, wie für die
+ * Rollposition. Getrennt von [ScopeFilter], damit die Regeln dort ohne Android auskommen.
  */
-class ScopeFilterSpeicher @Inject constructor(private val dataStore: DataStore<Preferences>) {
+@Singleton
+class ScopeFilterSpeicher @Inject constructor() {
 
-    private fun prefKey(view: ScopeFilter.View) = stringPreferencesKey("scope_${view.key}")
+    private val werte = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    private fun prefKey(view: ScopeFilter.View) = "scope_${view.key}"
 
     fun flow(view: ScopeFilter.View): Flow<String> =
-        dataStore.data.map { it[prefKey(view)] ?: ScopeFilter.ALL }
+        werte.map { it[prefKey(view)] ?: ScopeFilter.ALL }
 
-    suspend fun set(view: ScopeFilter.View, value: String) {
-        dataStore.edit { it[prefKey(view)] = value }
+    fun set(view: ScopeFilter.View, value: String) {
+        werte.update { it + (prefKey(view) to value) }
     }
 
     /**
      * Kontofilter aller Ansichten bei jeder Anmeldung zurücksetzen: Ein überlebender
      * Filter auf ein einzelnes Konto sähe nach dem Login aus, als sei die halbe
-     * Sammlung verschwunden. Innerhalb einer Sitzung bleibt die Wahl — wie in der
-     * Webapp.
+     * Sammlung verschwunden. Der Lagerortfilter gleich mit, aus demselben Grund.
      */
-    suspend fun resetAll() {
-        dataStore.edit { prefs ->
-            for (view in ScopeFilter.View.values()) {
-                prefs.remove(prefKey(view))
-                // Der Lagerortfilter haengt an derselben Begruendung und wird
-                // deshalb hier mit zurueckgesetzt — nicht in einem zweiten
-                // Aufruf, den jemand vergisst.
-                prefs.remove(lagerKey(view))
-            }
-        }
+    fun resetAll() {
+        werte.value = emptyMap()
     }
 
-    // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter ═══
-    //
-    // In dieser Datei, weil er derselbe Gegenstand ist und dieselben Regeln teilt:
-    // gefiltert am Server, zurückgesetzt beim Anmelden. Wie in public/js/scope.js.
+    // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter (public/js/scope.js) ═══
 
-    /** Ansichten mit einem Lagerortfilter. Nur Sets und Teile haben einen. */
-    private fun lagerKey(view: ScopeFilter.View) = stringPreferencesKey("lager_${view.key}")
+    private fun lagerKey(view: ScopeFilter.View) = "lager_${view.key}"
 
     /** Leerer Text = nicht gefiltert. */
     fun lagerFlow(view: ScopeFilter.View): Flow<String> =
-        dataStore.data.map { it[lagerKey(view)] ?: "" }
+        werte.map { it[lagerKey(view)] ?: "" }
 
-    suspend fun setLager(view: ScopeFilter.View, value: String) {
-        dataStore.edit {
-            if (value.isBlank()) it.remove(lagerKey(view)) else it[lagerKey(view)] = value
-        }
+    fun setLager(view: ScopeFilter.View, value: String) {
+        werte.update { if (value.isBlank()) it - lagerKey(view) else it + (lagerKey(view) to value) }
     }
 }
