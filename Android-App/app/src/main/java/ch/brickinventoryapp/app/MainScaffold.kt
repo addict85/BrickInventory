@@ -312,7 +312,9 @@ private fun ReiterLeiste(
     val messer = rememberTextMeasurer()
     val dichte = LocalDensity.current
     Surface(color = farben.leiste) {
-        BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)) {
+        // Ein Rand links und rechts: Bei 200 % stiess „Mehr“ samt Punkt an den Bildschirmrand.
+        BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
+            .padding(horizontal = LEISTE_RAND)) {
             val satz = with(dichte) {
                 reiterSatz(ziele.map { messer.measure(it.beschriftung, stil).size.width.toFloat() },
                     ziele.indexOfFirst { gewaehlt(it.ziel) }, maxWidth.toPx(), (Abstaende.winzig * 2).toPx(),
@@ -381,6 +383,8 @@ private val ANZEIGE_HOEHE = 32.dp
 /** Breite eines unbeschrifteten Ziels: Anzeige und Rand. */
 private val ANZEIGE_MIN = 64.dp
 private val LEISTE_HOEHE = 80.dp
+/** Abstand der äussersten Ziele zum Bildschirmrand. */
+private val LEISTE_RAND = 8.dp
 private val SEITENLEISTE_BREITE = 80.dp
 
 /** Der Schlüssel der gemerkten Rollposition; Ziele ohne Liste haben keinen eigenen. */
@@ -419,7 +423,7 @@ private fun androidx.navigation.NavController.zuReiter(ziel: Any) =
 
 /**
  * Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. Ein Wechsel
- * der Ansicht, darum Segmente, auch bei 200 % Schrift (dann seitlich rollbar).
+ * der Ansicht, darum Segmente, auch bei 200 % Schrift (dann untereinander).
  */
 @Composable
 private fun SammlungUmschalter(aktuell: Any, onWahl: (Any) -> Unit, modifier: Modifier = Modifier) {

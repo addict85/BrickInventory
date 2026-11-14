@@ -1,0 +1,18 @@
+Gegenprobe: Sets | Teile | Minifiguren auch bei 200 % in einer Zeile
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Rot: der Sammlungs-Umschalter zeigt bei 200 Prozent
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
+index 03e9500..4c7281f 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/WahlChips.kt
+@@ -100,7 +100,7 @@ fun <T> AnsichtUmschalter(
+     onWahl: (T) -> Unit,
+     modifier: Modifier = Modifier,
+ ) {
+-    if (LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB) {
++    if (LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB * 2) {
+         SegmentSpalte(optionen, gewaehlt, onWahl, modifier)
+         return
+     }

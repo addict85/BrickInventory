@@ -32,7 +32,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
@@ -138,35 +137,9 @@ internal fun AcquisitionManagementScreen(
             contentPadding = PaddingValues(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
         ) {
-            // Header row
-            item {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(stringResource(R.string.common_quantity),
-                        Modifier.width(72.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold)
-                    Text(stringResource(R.string.common_condition),
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center)
-                    Text(stringResource(R.string.detail_purchase_price),
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.End)
-                    Spacer(Modifier.width(Abstaende.riesig))
-                }
-                HorizontalDivider(Modifier.padding(top = Abstaende.winzig), thickness = 2.dp)
-            }
-
+            // Keine Spaltenköpfe: Anzahl und Preis stehen nebeneinander, der Zustand darunter;
+            // Köpfe über drei Spalten passten zu keiner der Zeilen. Jedes Feld trägt seine
+            // Beschriftung selbst.
             moveMessage?.let { msg ->
                 item {
                     Text(msg, style = MaterialTheme.typography.bodySmall,
@@ -377,12 +350,13 @@ private fun AcquisitionManagementRow(
         OutlinedTextField(
             value = qtyText,
             onValueChange = { qtyText = NumericInput.quantity(it) },
+            label = { Text(stringResource(R.string.common_quantity)) },
             prefix = { Text(stringResource(R.string.common_times), fontWeight = FontWeight.Bold) },
             // onFocusChanged zusätzlich zu onDone: Wer den Wert ändert und zurücktippt, ohne
             // „Fertig“ zu drücken, verlöre die Eingabe. Gespeichert wird beim Fokusverlust
             // nur, wenn sich der Wert geändert hat.
             modifier = Modifier
-                .width(72.dp)
+                .width(ANZAHL_BREITE)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
             keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
@@ -403,6 +377,7 @@ private fun AcquisitionManagementRow(
                 .weight(1f)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
+            label = { Text(stringResource(R.string.detail_purchase_price)) },
             placeholder = { Text(stringResource(R.string.detail_price_placeholder), style = MaterialTheme.typography.bodySmall) },
             // Ein Marktpreis, den der Server eingesetzt hat, ist kein bezahlter
             // Betrag; das „≈" sagt es, bis jemand den echten Preis einträgt.
@@ -435,3 +410,6 @@ private fun AcquisitionManagementRow(
     )
     }
 }
+
+/** Breite des Anzahlfelds: Platz für „×“, drei Ziffern und die Beschriftung „Anzahl“. */
+private val ANZAHL_BREITE = 96.dp

@@ -9,6 +9,7 @@ import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.ui.model.SetPreisAnsicht
 import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Meldung
 
 /**
  * Galerie: Liste, Filter, Blätterstand und Kennzahlen. Eigener Fluss, weil sich
@@ -27,10 +28,10 @@ data class GalleryUiState(
     /** Die Quelle wird gefüllt; die Liste steht schon da, soweit sie abgelegt ist. */
     val galleryLoading: Boolean = false,
     /**
-     * Warum die erste Seite nicht kam, als Satz für die Anzeige; null nach
-     * Erfolg. Ohne das sah ein Ladefehler aus wie eine leere Sammlung.
+     * Warum die erste Seite nicht kam; null nach Erfolg. Ohne das sah ein Ladefehler aus
+     * wie eine leere Sammlung. Den Satz bildet der Bildschirm in seiner Sprache.
      */
-    val galleryFehler: String? = null,
+    val galleryFehler: Meldung? = null,
     /** Wofür der Fehler steht — Symbol und Rat im Fehlerzustand. */
     val galleryFehlerKlasse: Fehlerklasse? = null,
     /** Liste aus dem Plattenspeicher statt vom Server: Zeitpunkt der Ablage, sonst null. */

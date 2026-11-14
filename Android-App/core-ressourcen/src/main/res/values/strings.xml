@@ -35,7 +35,7 @@
     <string name="settings_language">Language</string>
     <string name="settings_language_system">Follow system</string>
     <string name="settings_language_en">English</string>
-    <string name="settings_language_de">German</string>
+    <string name="settings_language_de">Deutsch</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
     <string name="login_title">Sign in to your server</string>
@@ -78,10 +78,10 @@
     <string name="csv_import_done">Import complete</string>
 
     <!-- ══════════════ Portfolio chart ══════════════ -->
-    <string name="chart_portfolio_value">Portfolio value trend</string>
+    <string name="chart_portfolio_value">Collection value over time</string>
     <string name="chart_no_history">No history data yet</string>
-    <string name="chart_summary">Portfolio value, %1$s to %2$s: from %3$s to %4$s, change %5$s</string>
-    <string name="chart_summary_no_change">Portfolio value, %1$s to %2$s: from %3$s to %4$s</string>
+    <string name="chart_summary">Collection value, %1$s to %2$s: from %3$s to %4$s, change %5$s</string>
+    <string name="chart_summary_no_change">Collection value, %1$s to %2$s: from %3$s to %4$s</string>
     <string name="price_chart_summary">Price history %1$s, %2$s to %3$s: from %4$s to %5$s, lowest %6$s, highest %7$s</string>
     <string name="chart_period_week">Week</string>
     <string name="chart_period_month">Month</string>
@@ -241,8 +241,7 @@
     <string name="detail_alert_saved">Saved: price %1$s %2$s · %3$s</string>
     <string name="detail_price_none_yet">no price yet</string>
     <string name="detail_purchase_none">not recorded</string>
-    <string name="detail_storage_ph">e.g. box 3</string>
-    <string name="detail_storage_choose">Pick from the list or type a new one</string>
+    <string name="detail_storage_ph">Pick one or type a new one, e.g. box 3</string>
     <string name="detail_storage_none">No storage location</string>
     <string name="filter_condition_all">All</string>
     <string name="filter_storage_all">All locations</string>
@@ -464,7 +463,7 @@
     <string name="parts_filter_no_spare">Without spare parts</string>
     <string name="parts_filter_spare">Spare parts only</string>
     <string name="common_quantity">Quantity</string>
-    <string name="common_unit_price">Purchase price/pc (optional)</string>
+    <string name="common_unit_price">Purchase price per piece (optional)</string>
     <string name="common_unit_price_placeholder">Empty = current market price</string>
     <string name="common_loading">Loading…</string>
     <string name="detail_price_loading">Loading price…</string>
@@ -905,7 +904,6 @@
     <string name="vouchers_edit">Edit voucher</string>
     <string name="vouchers_number">Voucher number</string>
     <string name="vouchers_pin">PIN</string>
-    <string name="vouchers_copy_hint">Tap the number or PIN to copy it</string>
     <string name="vouchers_copied_number">Voucher number copied</string>
     <string name="vouchers_copied_pin">PIN copied</string>
     <string name="vouchers_amount">Amount</string>
@@ -1093,7 +1091,6 @@
     <string name="art_bild_nachlauf">Image download (CDN)</string>
     <string name="art_aufraeumen">Clean-up (hourly)</string>
     <string name="art_aufraeumen_taeglich">Clean-up (daily)</string>
-    <string name="hintergrund_titel">Background jobs</string>
     <string name="hintergrund_kein_prozess">No job process reports in — is the “jobs” service running?</string>
     <string name="hintergrund_pause">%1$s paused until %2$s: %3$s</string>
     <string name="hintergrund_leer">No open or failed jobs</string>
@@ -1254,4 +1251,13 @@
     <string name="household_invite_gueltig_bis">Valid until %1$s</string>
     <string name="household_redeem_sperrgrund">Enter code and password, then link.</string>
     <string name="household_redeem_sperrgrund_faktor">Enter code, password and second-factor code, then link.</string>
+    <string name="parts_quantity_hint">Number of identical parts</string>
+    <string name="minifigs_quantity_hint">Number of identical minifigures</string>
+    <string name="hintergrund_auftraege">Jobs</string>
+    <string name="monitoring_darstellung_vorgabe">Appearance (default for everyone)</string>
+    <string name="vouchers_menu_cd">More actions for all vouchers</string>
+    <string name="gallery_detail_leer">Tap a set to see it here</string>
+    <string name="partslist_reset_titel">Reset parts list?</string>
+    <string name="partslist_reset_text">All sets and the generated list will be removed.</string>
+    <string name="alerts_schwelle">Threshold</string>
 </resources>

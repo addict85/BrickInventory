@@ -1,0 +1,22 @@
+Gegenprobe: „(2 Sets)“ wieder als zweiter Text im Knopf
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: N1
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
+index 491d500..df6fb74 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
+@@ -279,11 +279,7 @@ fun PartsListScreen(
+                     if (anzahl > 0) {
+                         val vorgelesen = pluralStringResource(R.plurals.partslist_generate_anzahl, anzahl, anzahl)
+                         Spacer(Modifier.width(Abstaende.klein))
+-                        Badge(
+-                            containerColor = MaterialTheme.colorScheme.onPrimary,
+-                            contentColor = MaterialTheme.colorScheme.primary,
+-                            modifier = Modifier.clearAndSetSemantics { contentDescription = vorgelesen },
+-                        ) { Text("$anzahl", style = MaterialTheme.typography.labelMedium) }
++                        Text(vorgelesen)
+                     }
+                 }
+                 if (generated && parts.isNotEmpty()) {

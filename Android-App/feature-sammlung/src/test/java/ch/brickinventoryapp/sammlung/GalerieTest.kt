@@ -10,6 +10,7 @@ import ch.brickinventoryapp.sammlung.ui.Galerie
 import ch.brickinventoryapp.sammlung.ui.GalerieAnzeige
 import ch.brickinventoryapp.sammlung.ui.GalleryUiState
 import ch.brickinventoryapp.sammlung.ui.galerieAnzeige
+import ch.brickinventoryapp.model.ui.Meldung
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -35,7 +36,7 @@ import org.junit.Test
  *      die Galerie nur die neue Quelle“ (die alte Quelle schreibt weiter hinein)
  *   B  in laden() den Zweig „ohne Netz mit Stand“ entfernt → rot „ohne Netz bleibt
  *      die Quelle stehen, mit ihrem Stand“
- *   C  in laden() `galleryFehler = beschreibeFehler(r)` entfernt → rot „ein
+ *   C  in laden() `galleryFehler = fehlerMeldung(r)` entfernt → rot „ein
  *      Ladefehler wird zur Fehleranzeige mit Grund“
  *   D  `galleryFehler = null` beim neuen Versuch entfernt → rot „ein
  *      erfolgreicher neuer Versuch raeumt den Fehler weg“
@@ -67,7 +68,6 @@ class GalerieTest {
         scope = vordergrund(),
         quelle = { st -> q.ablage.map { l -> l.copy(liste = l.liste.filter { st.galleryTheme.isBlank() || it.theme == st.galleryTheme }) } },
         aktualisiere = { st -> q.aktualisiert += st.galleryTheme; delay(10); ergebnis() },
-        beschreibeFehler = { "Grund: ${it.message}" },
         holeKennzahlen = { Ergebnis.Success(StatsResponse(success = true)) },
         meldeFehler = {},
         vergissScroll = {},
@@ -127,7 +127,7 @@ class GalerieTest {
         val g = galerie(Quelle(Lokal(emptyList(), null))) { Ergebnis.Error.Server(504, "Zeitüberschreitung") }
         g.laden(); advanceUntilIdle()
         val st = g.state.value
-        assertEquals("Grund: Zeitüberschreitung", st.galleryFehler)
+        assertEquals(Meldung.Text("Zeitüberschreitung"), st.galleryFehler)
         assertEquals(GalerieAnzeige.FEHLER, galerieAnzeige(st, gefiltert = false))
     }
 
@@ -171,7 +171,7 @@ class GalerieTest {
 
     @Test
     fun `geladene Sets bleiben stehen, auch wenn das Neuladen scheitert`() {
-        val st = GalleryUiState(sets = listOf(set(1).alsAnsicht()), galleryFehler = "Netz")
+        val st = GalleryUiState(sets = listOf(set(1).alsAnsicht()), galleryFehler = Meldung.Text("Netz"))
         assertEquals(GalerieAnzeige.LISTE, galerieAnzeige(st, gefiltert = false))
     }
 }

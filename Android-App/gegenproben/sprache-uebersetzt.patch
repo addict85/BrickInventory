@@ -1,0 +1,31 @@
+Gegenprobe: die Sprachauswahl nennt Englisch auf Deutsch wieder „Englisch“
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: M7
+
+diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/StringResourceParityTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/StringResourceParityTest.kt
+index 28ded58..946d9d8 100644
+--- a/Android-App/app/src/test/java/ch/brickinventoryapp/app/StringResourceParityTest.kt
++++ b/Android-App/app/src/test/java/ch/brickinventoryapp/app/StringResourceParityTest.kt
+@@ -188,7 +188,7 @@ class StringResourceParityTest {
+             // Zähler „5/24“ unter dem Fingerabdruckfeld: nur Zahlen.
+             "zert_eingabe_zaehler",
+             // Eine Sprache heisst in der Auswahl, wie sie sich selbst nennt (UxPruefungZweiTest M7).
+-            "settings_language_en", "settings_language_de",
++            "settings_language_de",
+         )
+ 
+         val en = texte("values/strings.xml")
+diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+index 4d47196..7663e04 100644
+--- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
++++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+@@ -18,7 +18,7 @@
+     <string name="settings_logout">Abmelden</string>
+     <string name="settings_language">Sprache</string>
+     <string name="settings_language_system">System-Sprache</string>
+-    <string name="settings_language_en">English</string>
++    <string name="settings_language_en">Englisch</string>
+     <string name="settings_language_de">Deutsch</string>
+ 
+     <!-- ══════════════ Login screen ══════════════ -->

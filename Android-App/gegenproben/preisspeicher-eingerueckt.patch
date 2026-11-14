@@ -1,0 +1,18 @@
+Gegenprobe: Preisspeicher wieder mit eigenem Seitenrand
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: M4
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+index 41c4f1a..eb4b6e4 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+@@ -85,7 +85,7 @@ private fun CacheKarte(
+     }
+ 
+     // ── Price Cache ───────────────────────────────────────────────────────────
+-    AppKarte {
++    AppKarte(Modifier.padding(horizontal = Abstaende.gross)) {
+         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+             Abschnittstitel(stringResource(R.string.monitoring_price_cache))
+ 

@@ -402,7 +402,8 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = 
     val akzent = LocalAkzentflaechen.current
     val status = LocalStatusFarben.current
     // Betrag und Prozent wie in den Finanzen („+CHF 112.50 · +16.1 %“), nicht nur Prozent.
-    val pnlText = pnl?.let { listOfNotNull(pnlBetrag, fmtProzent(it)).joinToString(" · ") } ?: "—"
+    val pnlTeile = pnl?.let { listOfNotNull(pnlBetrag, fmtProzent(it)) } ?: listOf("—")
+    val pnlEinzeilig = pnlTeile.joinToString(" · ")
     val marktKachel: @Composable (Modifier) -> Unit = { m ->
         WertKachel(stringResource(R.string.detail_section_market), markt, akzent.markt, akzent.aufMarkt, m)
     }
@@ -412,7 +413,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = 
         WertKachel(stringResource(R.string.detail_purchase_price), kauf, akzent.kauf, akzent.aufKauf, m,
             rand = farben.outlineVariant)
     }
-    val pnlKachel: @Composable (Modifier) -> Unit = { m ->
+    val pnlKachel: @Composable (Modifier, String) -> Unit = { m, pnlText ->
         // Nur die Zahl in Grün oder Rot: Die Beschriftung in Statusfarbe las sich wie ein Urteil.
         WertKachel(stringResource(R.string.detail_pnl_tile), pnlText, farben.surface,
             when { pnl == null -> farben.onSurfaceVariant; pnl < 0 -> status.fehler; else -> status.erfolg },
@@ -422,35 +423,37 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = 
     val stil = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
     val dichte = androidx.compose.ui.platform.LocalDensity.current
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        val breitester = listOf(markt, kauf, pnlText).maxOf {
-            messer.measure(it, stil, softWrap = false, maxLines = 1).size.width
-        }
-        val bedarf = with(dichte) { breitester.toDp() } + Abstaende.mittel * 2 + 2.dp
+        fun breite(text: String) = with(dichte) {
+            messer.measure(text, stil, softWrap = false, maxLines = 1).size.width.toDp()
+        } + Abstaende.mittel * 2 + 2.dp
+        val bedarf = listOf(markt, kauf, pnlEinzeilig).maxOf { breite(it) }
+        // Passt „Betrag · Prozent“ nicht einmal in die volle Breite, stehen beide untereinander.
+        val pnlText = if (breite(pnlEinzeilig) > maxWidth) pnlTeile.joinToString("\n") else pnlEinzeilig
         val abstand = Abstaende.klein
         val gleichHoch = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
         when (kachelAnordnung(maxWidth, bedarf, abstand)) {
             KachelAnordnung.DREI -> Row(gleichHoch, horizontalArrangement = Arrangement.spacedBy(abstand)) {
                 marktKachel(Modifier.weight(1f).fillMaxHeight())
                 kaufKachel(Modifier.weight(1f).fillMaxHeight())
-                pnlKachel(Modifier.weight(1f).fillMaxHeight())
+                pnlKachel(Modifier.weight(1f).fillMaxHeight(), pnlText)
             }
             KachelAnordnung.EINS_UEBER_ZWEI -> Column(verticalArrangement = Arrangement.spacedBy(abstand)) {
                 marktKachel(Modifier.fillMaxWidth())
                 Row(gleichHoch, horizontalArrangement = Arrangement.spacedBy(abstand)) {
                     kaufKachel(Modifier.weight(1f).fillMaxHeight())
-                    pnlKachel(Modifier.weight(1f).fillMaxHeight())
+                    pnlKachel(Modifier.weight(1f).fillMaxHeight(), pnlText)
                 }
             }
             KachelAnordnung.UNTEREINANDER -> Column(verticalArrangement = Arrangement.spacedBy(abstand)) {
                 marktKachel(Modifier.fillMaxWidth())
                 kaufKachel(Modifier.fillMaxWidth())
-                pnlKachel(Modifier.fillMaxWidth())
+                pnlKachel(Modifier.fillMaxWidth(), pnlText)
             }
         }
     }
 }
 
-/** Eine Kachel der Wertreihe: Bezeichnung klein, Betrag gross und immer in einer Zeile. */
+/** Eine Kachel der Wertreihe: Bezeichnung klein, Betrag gross, ohne Umbruch im Betrag. */
 @Composable
 private fun WertKachel(label: String, wert: String, flaeche: Color, schrift: Color, modifier: Modifier = Modifier,
                        rand: Color? = null, beschriftung: Color = schrift) {
@@ -463,7 +466,8 @@ private fun WertKachel(label: String, wert: String, flaeche: Color, schrift: Col
             .semantics(mergeDescendants = true) {},
     ) {
         Text(label, color = beschriftung, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        // Umbrüche nur dort, wo der Aufrufer sie setzt: ein Betrag bricht nie in sich.
         Text(wert, color = schrift, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-            maxLines = 1, softWrap = false)
+            maxLines = wert.count { it == '\n' } + 1, softWrap = false)
     }
 }

@@ -1,0 +1,18 @@
+Gegenprobe: die Wertentwicklung heisst wieder „Portfolio“
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: N5
+
+diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+index 4d47196..194041a 100644
+--- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
++++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+@@ -62,7 +62,7 @@
+     <string name="csv_import_done">Import abgeschlossen</string>
+ 
+     <!-- ══════════════ Portfolio chart ══════════════ -->
+-    <string name="chart_portfolio_value">Wertentwicklung der Sammlung</string>
++    <string name="chart_portfolio_value">Wertentwicklung Portfolio</string>
+     <string name="chart_no_history">Noch keine Verlaufsdaten</string>
+     <string name="chart_summary">Sammlungswert, %1$s bis %2$s: von %3$s auf %4$s, Veränderung %5$s</string>
+     <string name="chart_summary_no_change">Sammlungswert, %1$s bis %2$s: von %3$s auf %4$s</string>

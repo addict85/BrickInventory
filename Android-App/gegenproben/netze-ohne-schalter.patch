@@ -1,0 +1,18 @@
+Gegenprobe: die Netze des Vorwärmens ohne Schalterrolle
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: M4
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+index 41c4f1a..c65416f 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
+@@ -232,7 +232,7 @@ private fun VorwaermNetzWahl(netze: Map<VorwaermNetz, Boolean>, onNetz: (Vorwaer
+         val erlaubt = netze[netz] == true
+         Row(
+             Modifier.fillMaxWidth().heightIn(min = 48.dp)
+-                .toggleable(value = erlaubt, role = Role.Switch, onValueChange = { onNetz(netz, it) }),
++                .toggleable(value = erlaubt, role = Role.Button, onValueChange = { onNetz(netz, it) }),
+             verticalAlignment = Alignment.CenterVertically,
+         ) {
+             Text(stringResource(text), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))

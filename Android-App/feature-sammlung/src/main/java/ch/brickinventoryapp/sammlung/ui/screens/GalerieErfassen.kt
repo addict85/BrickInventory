@@ -6,7 +6,6 @@ import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +20,8 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.ErfassenDialog
+import ch.brickinventoryapp.gemeinsam.ui.AnzahlFeld
+import ch.brickinventoryapp.gemeinsam.ui.KaufpreisFeld
 import ch.brickinventoryapp.gemeinsam.ui.LagerortErfassung
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
@@ -67,25 +68,6 @@ private fun nummerFehler(nummer: String, geprueft: Boolean): Int? = when {
     nummer.isBlank() -> R.string.erfassen_nummer_fehlt
     !NumericInput.istSetnummer(nummer) -> R.string.erfassen_nummer_ungueltig
     else -> null
-}
-
-/** Der Hinweis als Hilfezeile statt Platzhalter: Der verschwand mit dem ersten Tippen. */
-@Composable
-private fun KaufpreisFeld(preis: String, onPreis: (String) -> Unit, onFertig: () -> Unit) {
-    OutlinedTextField(
-        value = preis,
-        onValueChange = { onPreis(NumericInput.price(it)) },
-        label = { Text(stringResource(R.string.gallery_purchase_price)) },
-        isError = NumericInput.preisUngueltig(preis),
-        supportingText = {
-            if (NumericInput.preisUngueltig(preis)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen())
-            else Text(stringResource(R.string.common_unit_price_placeholder))
-        },
-        modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.feld,
-        keyboardOptions = NumericInput.preisTastatur(),
-        keyboardActions = KeyboardActions(onDone = { onFertig() })
-    )
 }
 
 @Composable
@@ -175,21 +157,10 @@ fun AddSetDialog(
             shape = Formen.feld,
             keyboardOptions = NumericInput.setnummerTastatur()
         )
-        OutlinedTextField(
-            value = quantity,
-            onValueChange = { quantity = NumericInput.quantity(it) },
-            label = { Text(stringResource(R.string.common_quantity)) },
-            isError = NumericInput.mengeUngueltig(quantity),
-            // Jedes Feld mit einer Hilfezeile: Ohne sie standen die Felder ungleich weit auseinander.
-            supportingText = {
-                if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen())
-                else Text(stringResource(R.string.gallery_quantity_hint))
-            },
-            modifier = Modifier.fillMaxWidth(), singleLine = true,
-            shape = Formen.feld,
-            keyboardOptions = NumericInput.ganzzahlTastatur()
-        )
-        KaufpreisFeld(purchasePrice, { purchasePrice = it }) { keyboard?.hide(); submit() }
+        AnzahlFeld(quantity, { quantity = it }, stringResource(R.string.gallery_quantity_hint))
+        KaufpreisFeld(purchasePrice, { purchasePrice = it }, stringResource(R.string.gallery_purchase_price)) {
+            keyboard?.hide(); submit()
+        }
         Zustandszeile(zustand = condition, onZustand = { condition = it })
         LagerortErfassung(lagerort, lagerorte, { lagerort = it })
     }

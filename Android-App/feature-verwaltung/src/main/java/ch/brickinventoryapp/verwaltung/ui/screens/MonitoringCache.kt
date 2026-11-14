@@ -5,7 +5,6 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.layout.*
@@ -17,14 +16,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.data.VorwaermNetz
 import ch.brickinventoryapp.model.ui.model.CacheKennzahlenAnsicht
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -45,9 +44,6 @@ class CacheEreignisse(
     val grenzwerte: (rebrickable: Int, bricklink: Int, brickset: Int) -> Unit,
 )
 
-// ExperimentalLayoutApi: fuer die FlowRow der Design-Auswahl weiter unten.
-// Seit es vier Designs gibt, passen die Chips nicht mehr in eine Zeile.
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CacheAndLimitsSection(
     monState: MonitoringUiState,
@@ -58,16 +54,19 @@ internal fun CacheAndLimitsSection(
     ablageBytes: Long,
     ereignisse: CacheEreignisse,
 ) {
-    CacheKarte(monState, netze, wirksamesDesign, ablageBytes, ereignisse)
-    KontingentAbschnitt(monState, ereignisse)
+    // Derselbe Abstand und Rand wie zwischen den übrigen Karten der Seite.
+    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+        CacheKarte(monState, netze, ablageBytes, ereignisse)
+        DarstellungKarte(monState.vorgabeDesign ?: wirksamesDesign, ereignisse.design)
+        KontingentAbschnitt(monState, ereignisse)
+    }
 }
 
-/** Preis-Cache: Zahlen, Vorgaben, Vorschau-Ablage, Netze, Design, Dauer und Leeren. */
+/** Preis-Cache: Zahlen, Vorgaben, Vorschau-Ablage, Netze, Dauer und Leeren. */
 @Composable
 private fun CacheKarte(
     monState: MonitoringUiState,
     netze: Map<VorwaermNetz, Boolean>,
-    wirksamesDesign: Design,
     ablageBytes: Long,
     ereignisse: CacheEreignisse,
 ) {
@@ -86,8 +85,8 @@ private fun CacheKarte(
     }
 
     // ── Price Cache ───────────────────────────────────────────────────────────
-    AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    AppKarte {
+        Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Abschnittstitel(stringResource(R.string.monitoring_price_cache))
 
             cacheStats?.let { cs -> CacheZahlen(cs) }
@@ -109,25 +108,9 @@ private fun CacheKarte(
 
             // ── In welchen Netzen darf vorgewärmt werden ──
             //
-            // Drei unabhängige Chips, je einer für eine Lage; die Begründung steht an den
+            // Drei unabhängige Schalter, je einer für eine Lage; die Begründung steht an den
             // Schlüsseln in GeraeteAblage (VORWAERMEN_*).
             VorwaermNetzWahl(netze, ereignisse.netz)
-
-            // ── Design ──
-            //
-            // Das globale Design auch am Telefon ändern können. loadSettings() danach zieht
-            // das wirksame Design neu; ohne eigenes Design des Kontos ist es die neue Vorgabe.
-            Text(stringResource(R.string.monitoring_theme),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // Eine Wahl aus mehreren: dieselben Radio-Chips wie in den Einstellungen.
-            WahlChips(
-                optionen = Design.entries.map { it to stringResource(it.titel()) },
-                gewaehlt = monState.vorgabeDesign ?: wirksamesDesign,
-                onWahl = ereignisse.design,
-            )
-            // Die Netze darüber sind Schalter (mehrere zugleich), das Design eine
-            // Einfachwahl: zwei Bauformen, weil es zwei Entscheidungen sind.
 
             // Cache TTL
             CacheDauerZeile(
@@ -165,6 +148,29 @@ private fun CacheKarte(
     }
 }
 
+/**
+ * Das Design, das für alle gilt, die keines gewählt haben — eine eigene Karte: Im
+ * Preisspeicher stand es zwischen Netzen und Cache-Dauer, wo es niemand sucht.
+ * loadSettings() danach zieht das wirksame Design neu.
+ */
+@Composable
+private fun DarstellungKarte(gewaehlt: Design, onWahl: (Design) -> Unit) {
+    AppKarte {
+        Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+            Abschnittstitel(stringResource(R.string.monitoring_darstellung_vorgabe))
+            Text(stringResource(R.string.monitoring_theme),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Eine Wahl aus mehreren: dieselben Radio-Chips wie in den Einstellungen.
+            WahlChips(
+                optionen = Design.entries.map { it to stringResource(it.titel()) },
+                gewaehlt = gewaehlt,
+                onWahl = onWahl,
+            )
+        }
+    }
+}
+
 /** Wie viel im Cache liegt: Preise, davon veraltet, Teilelisten, Katalog. */
 @Composable
 private fun CacheZahlen(cs: CacheKennzahlenAnsicht) {
@@ -179,18 +185,13 @@ private fun CacheZahlen(cs: CacheKennzahlenAnsicht) {
 /** Der Zustand, mit dem neue Erfassungen beginnen (Neu oder Gebraucht). */
 @Composable
 private fun VorgabeZustandZeile(defaultCondition: Zustand, onSelect: (Zustand) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth(),
-        Arrangement.SpaceBetween,
-        Alignment.CenterVertically
-    ) {
+    // Beschriftung über der Wahl: Neben ihr blieb der Wahl so wenig Breite, dass
+    // „Gebraucht“ im Wort umbrach.
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         Text(stringResource(R.string.monitoring_default_condition),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ConditionToggle(
-            selected = defaultCondition,
-            onSelect = onSelect
-        )
+        ConditionToggle(selected = defaultCondition, onSelect = onSelect)
     }
 }
 
@@ -213,28 +214,29 @@ private fun VorschauAblageZeile(ablageBytes: Long, onLeeren: () -> Unit) {
     }
 }
 
-/** Je Netzlage ein Schalter, ob dort vorgewärmt werden darf, und der Hinweis zum gemessenen WLAN. */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Je Netzlage ein Schalter, ob dort vorgewärmt werden darf, und der Hinweis zum gemessenen
+ * WLAN. Schalter statt Chips: Drei ungewählte Chips sahen aus wie drei Knöpfe, ob ein
+ * Netz erlaubt ist, sah man nicht.
+ */
 @Composable
 private fun VorwaermNetzWahl(netze: Map<VorwaermNetz, Boolean>, onNetz: (VorwaermNetz, Boolean) -> Unit) {
     Text(stringResource(R.string.monitoring_vorwaermen_netz),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
-    androidx.compose.foundation.layout.FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-    ) {
-        for ((netz, text) in listOf(
-            VorwaermNetz.WLAN to R.string.monitoring_vorwaermen_wlan,
-            VorwaermNetz.MOBIL to R.string.monitoring_vorwaermen_mobil,
-            VorwaermNetz.ROAMING to R.string.monitoring_vorwaermen_roaming,
-        )) {
-            val erlaubt = netze[netz] == true
-            AuswahlChip(
-                selected = erlaubt,
-                onClick = { onNetz(netz, !erlaubt) },
-                label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
-            )
+    for ((netz, text) in listOf(
+        VorwaermNetz.WLAN to R.string.monitoring_vorwaermen_wlan,
+        VorwaermNetz.MOBIL to R.string.monitoring_vorwaermen_mobil,
+        VorwaermNetz.ROAMING to R.string.monitoring_vorwaermen_roaming,
+    )) {
+        val erlaubt = netze[netz] == true
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .toggleable(value = erlaubt, role = Role.Switch, onValueChange = { onNetz(netz, it) }),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(text), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Switch(checked = erlaubt, onCheckedChange = null)
         }
     }
     // Ein gemessenes WLAN — der Hotspot eines anderen Telefons —

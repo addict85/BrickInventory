@@ -1,0 +1,17 @@
+Gegenprobe: Kaufpreise wieder mit Spaltenkopf „Zustand“ über den Zeilen
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: M2
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/AcquisitionManagementScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/AcquisitionManagementScreen.kt
+index 63c0d28..b712439 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/AcquisitionManagementScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/AcquisitionManagementScreen.kt
+@@ -137,6 +137,7 @@ internal fun AcquisitionManagementScreen(
+             contentPadding = PaddingValues(Abstaende.gross),
+             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
+         ) {
++            item { Text(stringResource(R.string.common_condition), style = MaterialTheme.typography.labelMedium) }
+             // Keine Spaltenköpfe: Anzahl und Preis stehen nebeneinander, der Zustand darunter;
+             // Köpfe über drei Spalten passten zu keiner der Zeilen. Jedes Feld trägt seine
+             // Beschriftung selbst.

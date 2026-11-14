@@ -48,6 +48,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   merkliste-laedt-wieder     MerklisteUiState wieder mit einem Feld `nochLaedt: Boolean` → rot
  *                              „Bildschirme stossen das Laden nicht …, Zustaende tragen Laden …“
  *   merkliste-fehler-als-text  MerklisteUiState mit `fehlerText: String?` → rot, derselbe Test
+ *   galerie-fehler-als-text    GalleryUiState mit `galleryFehlerSatz: String?` → rot, derselbe Test
  *   englischer-bezeichner      `fun loadMerklisteNeu()` in MerklisteViewModel → rot „… englische Bezeichner auch“
  */
 class QuelltextRatscheTest {
@@ -482,7 +483,7 @@ class QuelltextRatscheTest {
     fun `die oeffentliche Flaeche der Bereiche waechst nicht`() {
         // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
         // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
-        val GRENZE = 148
+        val GRENZE = 142
         val module = Quellen.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
         ratsche("öffentliche Deklarationen der Bereiche", GRENZE, oeffentlich(module, 100),
@@ -498,7 +499,7 @@ class QuelltextRatscheTest {
     fun `feste Zahlen in padding werden nicht mehr`() {
         // Abstände haben Namen (ui/theme/Abstaende); ein blankes `padding(… 14.dp)` hält sich
         // an keine Skala, und zwei Karten nebeneinander stehen verschieden weit ein.
-        val GRENZE = 50
+        val GRENZE = 46
         // Ebenso die Abstände zwischen Geschwistern: spacedBy und Spacer.
         val ZWISCHEN = 44
         val fest = Regex("""\bpadding\([^()]*?\b\d+(?:\.\d+)?\.dp""")
@@ -579,7 +580,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger, englische Bezeichner auch`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 201
+        val HAUPT = 199
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->
@@ -628,7 +629,7 @@ class QuelltextRatscheTest {
         // `laedt: Boolean` und `fehler: String?`, und Meldung oder Fehlerklasse statt eines
         // übersetzten Satzes: Der Satz entsteht beim Zeichnen, in der Sprache von dann.
         val ALT = 24
-        val TEXT = 25
+        val TEXT = 24
         val laden = Regex("""(?i)^(laedt|laden|.*loading|.*laedt)$""")
         val text = Regex("""(?i)(fehler|error|meldung|message|hinweis)""")
         val zustand = Regex("""data class [A-Za-z0-9_]*(UiState|Zustand)\b""")

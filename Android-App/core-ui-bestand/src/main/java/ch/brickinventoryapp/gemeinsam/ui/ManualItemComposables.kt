@@ -9,6 +9,7 @@ import ch.brickinventoryapp.model.ui.model.KaufAnsicht
 import ch.brickinventoryapp.model.ui.model.KontoAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.foundation.background
@@ -247,6 +248,8 @@ fun ManuelleKachelFuss(preis: Double?, waehrung: Waehrung) {
 fun ErfassungsFelder(
     anzahl: String,
     onAnzahl: (String) -> Unit,
+    /** Was gezählt wird („Anzahl gleicher Teile“). */
+    anzahlHinweis: String,
     preis: String,
     onPreis: (String) -> Unit,
     zustand: Zustand,
@@ -259,27 +262,51 @@ fun ErfassungsFelder(
     onLagerort: (String) -> Unit = {},
     lagerorte: List<String> = emptyList(),
 ) {
+    AnzahlFeld(anzahl, onAnzahl, anzahlHinweis)
+    KaufpreisFeld(preis, onPreis, stringResource(R.string.common_unit_price))
+    Zustandszeile(zustand = zustand, onZustand = onZustand)
+    LagerortErfassung(lagerort, lagerorte, onLagerort)
+}
+
+/**
+ * Das Anzahlfeld jeder Erfassung, immer mit Hilfezeile: Ohne sie standen die Felder
+ * ungleich weit auseinander, und ein Dialog liess eine leere Lücke.
+ */
+@Composable
+fun AnzahlFeld(wert: String, onWert: (String) -> Unit, hinweis: String) {
     OutlinedTextField(
-        value = anzahl, onValueChange = { onAnzahl(NumericInput.quantity(it)) },
+        value = wert, onValueChange = { onWert(NumericInput.quantity(it)) },
         label = { Text(stringResource(R.string.common_quantity)) },
-        isError = NumericInput.mengeUngueltig(anzahl),
-        supportingText = { if (NumericInput.mengeUngueltig(anzahl)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
+        isError = NumericInput.mengeUngueltig(wert),
+        supportingText = {
+            if (NumericInput.mengeUngueltig(wert)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen())
+            else Text(hinweis)
+        },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
         shape = Formen.feld,
         keyboardOptions = NumericInput.ganzzahlTastatur(),
     )
+}
+
+/**
+ * Das Kaufpreisfeld jeder Erfassung. Der Hinweis steht als Hilfezeile statt als
+ * Platzhalter: Der verschwand mit dem ersten Tippen.
+ */
+@Composable
+fun KaufpreisFeld(wert: String, onWert: (String) -> Unit, beschriftung: String, onFertig: (() -> Unit)? = null) {
     OutlinedTextField(
-        value = preis, onValueChange = { onPreis(NumericInput.price(it)) },
-        label = { Text(stringResource(R.string.common_unit_price)) },
-        placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
-        isError = NumericInput.preisUngueltig(preis),
-        supportingText = { if (NumericInput.preisUngueltig(preis)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
+        value = wert, onValueChange = { onWert(NumericInput.price(it)) },
+        label = { Text(beschriftung) },
+        isError = NumericInput.preisUngueltig(wert),
+        supportingText = {
+            if (NumericInput.preisUngueltig(wert)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen())
+            else Text(stringResource(R.string.common_unit_price_placeholder))
+        },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
         shape = Formen.feld,
         keyboardOptions = NumericInput.preisTastatur(),
+        keyboardActions = if (onFertig != null) KeyboardActions(onDone = { onFertig() }) else KeyboardActions.Default,
     )
-    Zustandszeile(zustand = zustand, onZustand = onZustand)
-    LagerortErfassung(lagerort, lagerorte, onLagerort)
 }
 
 /**

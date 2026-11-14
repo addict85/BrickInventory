@@ -144,8 +144,8 @@ internal fun PreisalarmeCard(
                 }
                 // Ein Speichermodell wie im Set- und Merkposten-Detail: Getipptes speichert nach
                 // der Ruhezeit von selbst (im ViewModel, damit es das Verlassen übersteht), die
-                // Zeile darunter bestätigt. Die Richtung steht als Beschriftung im Feld, so
-                // beginnen alle Felder an derselben Stelle.
+                // Zeile darunter bestätigt. Die Richtung nennt die Wahl darüber; das Feld heisst
+                // „Schwelle“, statt sie ein zweites Mal zu nennen.
                 val zahl = Alarmeingabe.zahl(wert)
                 // Die Richtung umschaltbar wie in der Web-App; gespeichert wird sofort.
                 SegmentWahl(
@@ -162,8 +162,7 @@ internal fun PreisalarmeCard(
                         aktionen.setzeAlarmSchwelle(a.setNumber, a.condition, a.richtung, wert)
                     },
                     singleLine = true,
-                    label = { Text(stringResource(if (a.richtung == Alarmrichtung.UNTER) R.string.detail_alert_chip_below
-                                                  else R.string.detail_alert_chip_above)) },
+                    label = { Text(stringResource(R.string.alerts_schwelle)) },
                     // Vorangestellt wie jeder Betrag der App („CHF 750.00“).
                     prefix = { Text(a.currencyCode.code + "\u00A0") },
                     // Nur „Gespeichert“: Richtung, Betrag und Zustand stehen schon in Feld und
@@ -233,7 +232,7 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
     )
     OutlinedTextField(
         value = schwelle, onValueChange = { schwelle = NumericInput.price(it) },
-        label = { Text(stringResource(R.string.wanted_threshold)) }, singleLine = true,
+        label = { Text(stringResource(R.string.alerts_schwelle)) }, singleLine = true,
         keyboardOptions = NumericInput.preisTastatur(), shape = Formen.feld,
         modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
     )
@@ -245,8 +244,11 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
     ) { Text(stringResource(R.string.alerts_anlegen)) }
 }
 
-/** Breite eines Betragsfelds: Platz für Beschriftung, fünf Stellen und Währung. */
-private val BETRAG_BREITE = 320.dp
+/**
+ * Höchstbreite der Felder und Wahlen eines Alarms: Auf dem Telefon füllen sie die Karte
+ * und enden am selben Rand wie Kopf und Trennlinie; erst auf dem Tablet bleiben sie schmal.
+ */
+private val BETRAG_BREITE = 420.dp
 
 /**
  * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen

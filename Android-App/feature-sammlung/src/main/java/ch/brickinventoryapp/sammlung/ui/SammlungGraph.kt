@@ -3,7 +3,6 @@ package ch.brickinventoryapp.sammlung.ui
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -20,6 +19,7 @@ import ch.brickinventoryapp.sammlung.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.sammlung.ui.screens.BarcodeScannerScreen
 import ch.brickinventoryapp.sammlung.ui.screens.ComparisonScreen
 import ch.brickinventoryapp.sammlung.ui.screens.GalerieRueckgaengigRoute
+import ch.brickinventoryapp.sammlung.ui.screens.GalerieUndDetail
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.sammlung.ui.screens.MerkpostenDetailRoute
@@ -30,8 +30,6 @@ import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.sammlung.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
-import ch.brickinventoryapp.ui.components.ListeUndDetail
-import ch.brickinventoryapp.ui.components.LocalOffenesDetail
 import ch.brickinventoryapp.ui.components.MitZiel
 import ch.brickinventoryapp.ui.listeUndDetail
 import ch.brickinventoryapp.navigation.Bereichsumgebung
@@ -93,16 +91,20 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
 
         GalerieRueckgaengigRoute(galerieVm, navigation.snackbar)
         val ziel = this
+        val scannen = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) }
+        val oeffnen: (String) -> Unit = { navController.navigate(SammlungZiel.SetDetail(it)) }
         navigation.Reiter(stringResource(R.string.nav_collection)) {
             MitZiel(ziel) {
-            GalleryRoute(
-                vm = galerieVm,
-                erfassung = erfassung,
-                imageLoader = navigation.bilder,
-                onScanBarcode = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
-                onSetClick = { navController.navigate(SammlungZiel.SetDetail(it)) },
-                gridState = galleryGridState
-            )
+            // Auf breiten Fenstern steht die Fläche fürs Detail schon vor dem ersten Tipp da.
+            BoxWithConstraints {
+                if (listeUndDetail(maxWidth.value)) {
+                    GalerieUndDetail(galerieVm, erfassung, navigation.bilder, offen = null, onSetClick = oeffnen,
+                        onScanBarcode = scannen, gridState = galleryGridState) {}
+                } else {
+                    GalleryRoute(vm = galerieVm, erfassung = erfassung, imageLoader = navigation.bilder,
+                        onScanBarcode = scannen, onSetClick = oeffnen, gridState = galleryGridState)
+                }
+            }
             }
         }
     }
@@ -177,23 +179,18 @@ private fun GalerieNebenDetailRoute(
     val erfassung: ErfassungViewModel = hiltViewModel(galerieEintrag)
     Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
     navigation.Reiter(stringResource(R.string.nav_collection)) {
-        ListeUndDetail(
-            liste = {
-                CompositionLocalProvider(LocalOffenesDetail provides setNumber) {
-                    GalleryRoute(
-                        vm = galerie,
-                        erfassung = erfassung,
-                        imageLoader = navigation.bilder,
-                        onScanBarcode = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
-                        onSetClick = { sn ->
-                            if (sn != setNumber) navController.navigate(SammlungZiel.SetDetail(sn)) {
-                                popUpTo<SammlungZiel.SetDetail> { inclusive = true }
-                            }
-                        },
-                        gridState = gridState,
-                    )
+        GalerieUndDetail(
+            galerie = galerie,
+            erfassung = erfassung,
+            imageLoader = navigation.bilder,
+            offen = setNumber,
+            onScanBarcode = { navController.navigate(SammlungZiel.BarcodeScanner(Scannerherkunft.GALERIE_SUCHE)) },
+            onSetClick = { sn ->
+                if (sn != setNumber) navController.navigate(SammlungZiel.SetDetail(sn)) {
+                    popUpTo<SammlungZiel.SetDetail> { inclusive = true }
                 }
             },
+            gridState = gridState,
             detail = detail,
         )
     }

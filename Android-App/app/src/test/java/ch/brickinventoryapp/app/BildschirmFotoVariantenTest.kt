@@ -3,7 +3,6 @@ package ch.brickinventoryapp.app
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.teile.ui.TeileListeUndDetailRoute
-import ch.brickinventoryapp.app.nav.Reiter
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.layout.Box
@@ -11,13 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavDestination.Companion.hasRoute
 import android.os.Looper
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.automirrored.filled.ShowChart
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.ViewInAr
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -46,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.ressourcen.R
+import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -70,6 +63,7 @@ import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.runBlocking
+import ch.brickinventoryapp.data.VorwaermNetz
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
@@ -94,6 +88,7 @@ import ch.brickinventoryapp.model.ui.model.BrickLinkAnsicht
 import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
 import ch.brickinventoryapp.sammlung.ui.screens.AddSetDialog
+import ch.brickinventoryapp.sammlung.ui.screens.GalerieUndDetail
 import ch.brickinventoryapp.katalog.ui.screens.CatalogDetailScreen
 import ch.brickinventoryapp.katalog.ui.screens.CatalogScreen
 import ch.brickinventoryapp.sammlung.ui.screens.ComparisonScreen
@@ -167,8 +162,6 @@ import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.TeileRepository
 import ch.brickinventoryapp.app.nav.AppZiel
-import ch.brickinventoryapp.finanzen.ui.FinanzZiel
-import ch.brickinventoryapp.katalog.ui.KatalogZiel
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 
 /**
@@ -440,19 +433,13 @@ class BildschirmFotoVariantenTest {
         offlineStand: Long? = null,
     ) {
         val nav = rememberNavController()
-        val reiter = remember {
-            listOf(
-                Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                Reiter(FinanzZiel.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
-                Reiter(SammlungZiel.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
-                Reiter(KatalogZiel.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
-                Reiter(AppZiel.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
-            )
-        }
+        // Dieselben Reiter wie die App, aus den Ressourcen: Fest deutsche Namen standen
+        // auch im englischen Foto.
+        val reiter = reiterDerLeiste()
         // Der Titel folgt dem Ziel wie in der App (ToolsGraph setzt nav_more): Fest
         // „Sammlung“ zeigte das Foto von „Mehr“ mit dem falschen Titel.
         val ziel by nav.currentBackStackEntryAsState()
-        val titel = if (ziel?.destination?.hasRoute<AppZiel.Mehr>() == true) "Mehr" else "Sammlung"
+        val titel = stringResource(if (ziel?.destination?.hasRoute<AppZiel.Mehr>() == true) R.string.nav_more else R.string.nav_collection)
         MainScaffold(
             title = titel, navController = nav, bottomNavItems = reiter,
             snackbarHostState = snackbar,
@@ -500,7 +487,8 @@ class BildschirmFotoVariantenTest {
         zeige(name, dunkel = dunkel, geraet = geraet, sprache = sprache, schrift = schrift, bereit = galerieFertig(galerie),
             zustand = { galerie.galleryState.value }) { Geruest(galerie) }
         // Bei grosser Schrift ist nur das gewählte Ziel beschriftet; die übrigen tragen ihren Namen als Beschreibung.
-        compose.onNode((hasText("Mehr") or hasContentDescription("Mehr")) and hasClickAction()).performClick()
+        val mehr = ApplicationProvider.getApplicationContext<Context>().getString(R.string.nav_more)
+        compose.onNode((hasText(mehr) or hasContentDescription(mehr)) and hasClickAction()).performClick()
         compose.waitForIdle()
         foto(name, dunkel = dunkel, geraet = geraet)
     }
@@ -655,6 +643,21 @@ class BildschirmFotoVariantenTest {
         foto("merkliste-detail", geraet = "tablet")
     }
 
+    /** Galerie und Set-Detail nebeneinander, wie das Tablet sie nach einem Tipp zeigt. */
+    @Test
+    fun galerieMitDetailTablet() {
+        val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
+        val detail = welt.setDetail()
+        zeige("galerie-mit-detail", geraet = "tablet", bereit = { galerieFertig(galerie)() && detailFertig(detail)() },
+            zustand = { galerie.galleryState.value }) {
+            GalerieUndDetail(galerie, erfassung(), bilder, offen = Beispiele.SET, onSetClick = {}, onScanBarcode = {}) {
+                Detail(detail)
+            }
+        }
+        anhalten()
+        foto("galerie-mit-detail", geraet = "tablet")
+    }
+
     // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
@@ -803,8 +806,18 @@ class BildschirmFotoVariantenTest {
         foto("galerie-laedt")
     }
 
+    /**
+     * Die Sprache des Fotos schon vor dem Laden: Ein ViewModel, das seinen Satz beim Laden
+     * bildet, tat das sonst auf Englisch, und das deutsche Foto zeigte einen englischen Fehler.
+     */
+    private fun deutschVorDemLaden() {
+        RuntimeEnvironment.setQualifiers(DEUTSCH)
+        Locale.setDefault(Locale.forLanguageTag("de-CH"))
+    }
+
     @Test
     fun galerieFehler() {
+        deutschVorDemLaden()
         welt.pfade.codes["/api/v1/sets"] = 500
         val galerie = welt.galerie().also { it.loadSets() }
         zeige("galerie-fehler", bereit = { galerie.galleryState.value.let { !it.galleryLoading && it.galleryFehler != null } },
@@ -1069,6 +1082,7 @@ class BildschirmFotoVariantenTest {
 
     @Test
     fun merklisteFehler() {
+        deutschVorDemLaden()
         welt.pfade.codes["/api/v1/wanted"] = 500
         val vm = welt.merkliste().also { it.ladeMerkliste() }
         zeige("merkliste-fehler", bereit = { vm.merklisteState.value.let { !it.laedt && it.fehler != null } },
@@ -1091,6 +1105,7 @@ class BildschirmFotoVariantenTest {
 
     @Test
     fun teileFehler() {
+        deutschVorDemLaden()
         welt.pfade.codes["/api/v1/parts"] = 500
         val vm = welt.teile().also { it.loadParts() }
         zeige("teile-fehler", dunkel = true, bereit = { vm.partsState.value.let { !it.partsLoading && it.partsFehler != null } },
@@ -1101,6 +1116,7 @@ class BildschirmFotoVariantenTest {
 
     @Test
     fun finanzenFehler() {
+        deutschVorDemLaden()
         welt.pfade.codes["/api/v1/finance/valuation"] = 500
         val vm = welt.finanzen().also { it.loadValuation() }
         zeige("finanzen-fehler", bereit = { vm.financeState.value.let { !it.valuationLoading && !it.historyLoading && it.valuationFehler != null } },
@@ -1300,8 +1316,9 @@ class BildschirmFotoVariantenTest {
         runBlocking { vm.ladeHintergrund() }
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         zeige("hintergrundarbeiten", dunkel = dunkel, geraet = geraet, warten = false) {
+            // WLAN erlaubt, die übrigen nicht: beide Stellungen der Schalter im Bild.
             MonitoringScreen(MonitoringZustand(MonitoringUiState(), vm.hintergrund.value, VerwaltungUiState(),
-                emptyMap(), Design.CLASSIC, 0L), vm, ereignisse)
+                mapOf(VorwaermNetz.WLAN to true), Design.CLASSIC, 0L), vm, ereignisse)
         }
         anhalten()
         foto("hintergrundarbeiten", dunkel = dunkel, geraet = geraet)

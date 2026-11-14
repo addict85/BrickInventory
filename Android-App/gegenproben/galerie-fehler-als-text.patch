@@ -1,0 +1,17 @@
+Gegenprobe: der Galeriezustand trägt wieder einen fertigen Fehlersatz
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: Bildschirme stossen das Laden nicht
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandSammlung.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandSammlung.kt
+index 9cc7401..d3c5d53 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandSammlung.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandSammlung.kt
+@@ -32,6 +32,7 @@ data class GalleryUiState(
+      * wie eine leere Sammlung. Den Satz bildet der Bildschirm in seiner Sprache.
+      */
+     val galleryFehler: Meldung? = null,
++    val galleryFehlerSatz: String? = null,
+     /** Wofür der Fehler steht — Symbol und Rat im Fehlerzustand. */
+     val galleryFehlerKlasse: Fehlerklasse? = null,
+     /** Liste aus dem Plattenspeicher statt vom Server: Zeitpunkt der Ablage, sonst null. */

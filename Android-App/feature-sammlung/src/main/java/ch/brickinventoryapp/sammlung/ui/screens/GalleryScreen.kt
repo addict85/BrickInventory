@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Merksortierung
@@ -282,7 +283,7 @@ private fun GalerieInhalt(
         // Fehler und leere Sammlung sehen verschieden aus und bieten
         // Verschiedenes an: hier den Grund und einen neuen Versuch.
         GalerieAnzeige.FEHLER -> GalerieHinweis {
-            FehlerHinweis(galerie.galleryFehler, onRefresh,
+            FehlerHinweis(galerie.galleryFehler?.satz(), onRefresh,
                 galerie.galleryFehlerKlasse)
         }
         GalerieAnzeige.LEER -> GalerieLeer(onErfassen, onScanBarcode)

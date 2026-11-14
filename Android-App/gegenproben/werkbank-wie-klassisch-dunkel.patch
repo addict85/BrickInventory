@@ -1,0 +1,30 @@
+Gegenprobe: Werkbank wieder mit kühlem Anthrazit und Hellblau als Zweitfarbe
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.FarbrollenTest
+Rot: Werkbank und Klassisch dunkel
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+index 0db71be..f93a4b1 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -142,16 +142,16 @@ private val WerkbankColors = darkColorScheme(
+     onPrimary            = Color(0xFF1E1608),
+     primaryContainer     = WerkbankAzurDunkel,
+     onPrimaryContainer   = WerkbankAzurHell,
+-    secondary            = Color(0xFFC9963F),
+-    onSecondary          = Color(0xFF1E1608),
++    secondary            = WerkbankAzurHell,
++    onSecondary          = Color(0xFF0E1620),
+     secondaryContainer   = Color(0xFF2A2418),
+     onSecondaryContainer = Color(0xFFD9A84E),
+     tertiary             = Color(0xFFD9A84E),
+     onTertiary           = Color(0xFF241C0C),
+     tertiaryContainer    = Color(0xFF2A2418),
+     onTertiaryContainer  = Color(0xFFD9A84E),
+-    background           = Color(0xFF17140F),
+-    surface              = Color(0xFF211C16),
++    background           = Color(0xFF14181D),
++    surface              = Color(0xFF191E25),
+     // Muss sich von surface unterscheiden — dieselbe Ueberlegung wie im
+     // Grunddesign: Flaechen, die mit surfaceVariant AUF surface liegen,
+     // verschwaenden sonst.

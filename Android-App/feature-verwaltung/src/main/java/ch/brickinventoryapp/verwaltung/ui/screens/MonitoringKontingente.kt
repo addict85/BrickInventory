@@ -82,8 +82,8 @@ private fun KontingentKarte(
     onSpeichern: () -> Unit,
 ) {
     val (bsInput, blInput, rbInput) = eingaben
-    AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+    AppKarte {
+        Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Abschnittstitel(stringResource(R.string.monitoring_api_calls))
                 MitTooltip(stringResource(R.string.cd_edit_limits)) {

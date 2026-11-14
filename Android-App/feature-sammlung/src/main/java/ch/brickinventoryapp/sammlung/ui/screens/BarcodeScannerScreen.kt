@@ -26,6 +26,10 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FlashlightOff
+import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.foundation.BorderStroke
+import ch.brickinventoryapp.ui.components.mitSchrift
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
@@ -121,17 +125,7 @@ fun BarcodeScannerScreen(
                     hinweis = statusText,
                     unten = {
                         Spacer(Modifier.height(Abstaende.gross))
-                        FilledTonalButton(
-                            onClick = { torchOn = !torchOn },
-                            // Deckende Flächen wie das Schild darüber: Auf hellem Motiv war Weiss
-                            // auf durchscheinendem Weiss nicht zu lesen.
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = if (torchOn) Color.White else Color.Black.copy(alpha = 0.72f),
-                                contentColor   = if (torchOn) Color.Black else Color.White
-                            )
-                        ) {
-                            Text(if (torchOn) stringResource(R.string.scanner_torch_off) else stringResource(R.string.scanner_torch_on), style = MaterialTheme.typography.bodyMedium)
-                        }
+                        LichtKnopf(torchOn) { torchOn = !torchOn }
                     },
                 ) {
                     // Scanning frame
@@ -164,11 +158,34 @@ fun BarcodeScannerScreen(
                 KameraErlaubnisHinweis(cameraPermission.dauerhaftVerweigert) { cameraPermission.erlauben() }
             }
         }
-        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+        // Oben links wie jedes Schliessen einer Vollbildseite (ZurueckKnopf).
+        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopStart)) {
             IconButton(onClick = onDismiss, modifier = Modifier.padding(Abstaende.gross)) {
                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
             }
         }
+    }
+}
+
+/**
+ * Die Lampe als Knopf mit Rand und Symbol: Schwarz auf schwarzem Grund las sich „Licht
+ * ein“ wie ein Hinweis, nicht wie etwas zum Antippen. Deckende Flächen wie das Schild
+ * darüber: Auf hellem Motiv war Weiss auf durchscheinendem Weiss nicht zu lesen.
+ */
+@Composable
+private fun LichtKnopf(an: Boolean, onUmschalten: () -> Unit) {
+    OutlinedButton(
+        onClick = onUmschalten,
+        border = BorderStroke(1.dp, Color.White),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (an) Color.White else Color.Black.copy(alpha = 0.72f),
+            contentColor = if (an) Color.Black else Color.White,
+        ),
+    ) {
+        Icon(if (an) Icons.Default.FlashlightOff else Icons.Default.FlashlightOn, null, Modifier.size(mitSchrift(18.dp)))
+        Spacer(Modifier.width(Abstaende.klein))
+        Text(stringResource(if (an) R.string.scanner_torch_off else R.string.scanner_torch_on),
+            style = MaterialTheme.typography.bodyMedium)
     }
 }
 
