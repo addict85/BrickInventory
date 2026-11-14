@@ -25,8 +25,8 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { rebrickableSetBild } = _req('src/katalog/bilder/setImages.js');
-const { setNummerAusBildAdresse } = _req('src/katalog/http/bildProxy.js');
+const { rebrickableSetBild } = _req('src/bilder/setImages.js');
+const { setNummerAusBildAdresse } = _req('src/bilder/http/bildProxy.js');
 const MIGRATION = fs.readFileSync(
   path.join(__dirname, '..', 'db/migrations/0101-setbilder-von-rebrickable.sql'),
   'utf8',

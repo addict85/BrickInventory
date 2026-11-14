@@ -1,6 +1,6 @@
-import { logAndContinue } from '../../infra/fehler';
-import { versuche } from '../../infra/ergebnis';
-import type { KatalogKontext } from '../kontext';
+import { meldeFehler } from '../infra/fehler';
+import { versuche } from '../infra/ergebnis';
+import type { BilderKontext } from './kontext';
 
 /** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt. */
 const ERNEUT_PRUEFEN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -9,21 +9,26 @@ const ERNEUT_PRUEFEN_MS = 7 * 24 * 60 * 60 * 1000;
  * Routen die Verbindungen. Der Speicher wird im Takt aufgefrischt. */
 const AUFFRISCHEN_MS = 5 * 60 * 1000;
 
-const _vorne = new Map<string, number>();
-/** Getrennt von `_vorne`: istBekanntFehlend() ist der heisseste synchrone Pfad,
- * der Grund interessiert nur die Diagnose. */
-const _gruende = new Map<string, string>();
-const _takte: NodeJS.Timeout[] = [];
+/** Je Satz Dienste. `gruende` getrennt, weil istBekanntFehlend() der heisseste Pfad ist;
+ * `zuSchreiben` puffert die Tabelle, sonst wäre ein Schwung 404er ein Schwung INSERTs. */
+const stand = (k: BilderKontext) =>
+  k.faecher.fach('fehlanzeige', () => ({
+    vorne: new Map<string, number>(),
+    gruende: new Map<string, string>(),
+    zuSchreiben: new Map<string, string>(),
+    takte: [] as NodeJS.Timeout[],
+  }));
 
-export async function initImageMisses(k: KatalogKontext): Promise<void> {
+export async function initImageMisses(k: BilderKontext): Promise<void> {
+  const _takte = stand(k).takte;
   if (_takte.length) return;
   // Prozesslokal: Muss deshalb in JEDEM Arbeitsprozess laufen.
   _takte.push(
     setInterval(() => {
-      auffrischen(k).catch(logAndContinue('bild-fehlanzeige:auffrischen'));
+      auffrischen(k).catch(e => meldeFehler('bild-fehlanzeige:auffrischen', e));
     }, AUFFRISCHEN_MS),
     setInterval(() => {
-      schreibePuffer(k).catch(logAndContinue('bild-fehlanzeige:schreibePuffer'));
+      schreibePuffer(k).catch(e => meldeFehler('bild-fehlanzeige:schreibePuffer', e));
     }, 10_000),
   );
   for (const t of _takte) t.unref();
@@ -31,13 +36,14 @@ export async function initImageMisses(k: KatalogKontext): Promise<void> {
 }
 
 /** Vor dem Schliessen des Pools: Takte beenden, gemerkte Fehlschläge noch schreiben. */
-export async function stoppeFehlanzeige(k: KatalogKontext): Promise<void> {
-  for (const t of _takte.splice(0)) clearInterval(t);
+export async function stoppeFehlanzeige(k: BilderKontext): Promise<void> {
+  for (const t of stand(k).takte.splice(0)) clearInterval(t);
   await schreibePuffer(k);
 }
 
 /** Synchron und ohne Datenbank; höchstens ein Auffrisch-Intervall alt. */
-export function istBekanntFehlend(key: string): boolean {
+export function istBekanntFehlend(k: BilderKontext, key: string): boolean {
+  const _vorne = stand(k).vorne;
   const vorne = _vorne.get(key);
   if (vorne === undefined) return false;
   if (Date.now() - vorne < ERNEUT_PRUEFEN_MS) return true;
@@ -45,11 +51,12 @@ export function istBekanntFehlend(key: string): boolean {
   return false;
 }
 
-async function auffrischen(k: KatalogKontext): Promise<void> {
+async function auffrischen(k: BilderKontext): Promise<void> {
   // Nicht lesbar: Der bisherige Stand im Speicher bleibt, bis der nächste Abgleich gelingt.
   const r = await versuche('bild-fehlanzeige:rows', k.bildFehlschlaege.frischeFehlschlaege(String(ERNEUT_PRUEFEN_MS)));
   if (!r.ok) return;
   const rows = r.wert;
+  const { vorne: _vorne, gruende: _gruende } = stand(k);
   _vorne.clear();
   _gruende.clear();
   for (const r of rows) {
@@ -58,24 +65,24 @@ async function auffrischen(k: KatalogKontext): Promise<void> {
   }
 }
 
-/** Sofort im Speicher, in die Tabelle GEPUFFERT: Ein Schwung 404er wäre sonst
- * ein Schwung INSERTs und damit wieder Verbindungen aus dem Pool. */
-const _zuSchreiben = new Map<string, string>();
-export function merkeFehlend(key: string, grund = ''): void {
+/** Sofort im Speicher, in die Tabelle gepuffert (stand().zuSchreiben). */
+export function merkeFehlend(k: BilderKontext, key: string, grund = ''): void {
+  const { vorne: _vorne, gruende: _gruende, zuSchreiben: _zuSchreiben } = stand(k);
   _vorne.set(key, Date.now());
   if (grund) _gruende.set(key, grund);
   _zuSchreiben.set(key, grund);
 }
 
-export function grundFuer(key: string): string {
-  return _gruende.get(key) || '';
+export function grundFuer(k: BilderKontext, key: string): string {
+  return stand(k).gruende.get(key) || '';
 }
 
 // Der Weg zurück aus der Sperre.
-export async function vergissFehlend(kx: KatalogKontext, keys?: string[]): Promise<number> {
+export async function vergissFehlend(kx: BilderKontext, keys?: string[]): Promise<number> {
   const r = keys?.length
     ? await kx.bildFehlschlaege.vergissFehlschlaege(keys)
     : await kx.bildFehlschlaege.vergissAlleFehlschlaege();
+  const { vorne: _vorne, gruende: _gruende, zuSchreiben: _zuSchreiben } = stand(kx);
   if (keys?.length)
     for (const k of keys) {
       _vorne.delete(k);
@@ -90,7 +97,8 @@ export async function vergissFehlend(kx: KatalogKontext, keys?: string[]): Promi
   return r?.changes || 0;
 }
 
-async function schreibePuffer(kx: KatalogKontext): Promise<void> {
+async function schreibePuffer(kx: BilderKontext): Promise<void> {
+  const _zuSchreiben = stand(kx).zuSchreiben;
   if (!_zuSchreiben.size) return;
   const keys = [..._zuSchreiben.keys()];
   const gruende = keys.map(k => _zuSchreiben.get(k) || '');
@@ -103,8 +111,8 @@ async function schreibePuffer(kx: KatalogKontext): Promise<void> {
   });
 }
 
-export function _leereVordergrund(): void {
-  _vorne.clear();
-  _gruende.clear();
+export function _leereVordergrund(k: BilderKontext): void {
+  stand(k).vorne.clear();
+  stand(k).gruende.clear();
 }
 export { schreibePuffer as _schreibePuffer, auffrischen as _auffrischen };

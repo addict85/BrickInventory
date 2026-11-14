@@ -9,7 +9,7 @@ import {
   scrapeInstructionsFromFallback,
 } from './instructions';
 import { fehlertext } from '../infra/fehler';
-import { alsAbrufFehler } from './quellen';
+import { alsAbrufFehler } from '../fremdquellen';
 import { type Nutzlast, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
 import { LOCKS } from '../infra/lockNamespaces';
 import type { KatalogKontext } from './kontext';
@@ -62,7 +62,7 @@ async function anleitungLaden(k: KatalogKontext, n: Nutzlast<'anleitung'>, lauf?
       const anzahl = await downloadSetInstructions(k, sn, true);
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
       if (await k.auftraege.liesPause('anleitung')) await k.auftraege.beendePause('anleitung');
-      if (letzterAbrufWarExtern())
+      if (letzterAbrufWarExtern(k))
         await k.auftraege.pausiereArt(
           'anleitung',
           new Date(Date.now() + TAKT_NACH_ABRUF_MS),

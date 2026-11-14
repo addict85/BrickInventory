@@ -14,9 +14,9 @@ import {
 import { STATUS_DER_ART } from '../../src/http/fehlerArt';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { otpauthAdresse } from '../../src/konto';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueZweiterFaktorRouter(d: Dienste) {
+export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
   const requireLogin = requireLoginOrToken;

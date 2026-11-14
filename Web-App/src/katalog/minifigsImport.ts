@@ -1,4 +1,3 @@
-import { getSetMinifigs } from './quellen';
 import { logAndContinue } from '../infra/fehler';
 import { mitVersion } from '../infra/setNummer';
 import { merkeFiguren, merkeSetFiguren } from './katalogPflege';
@@ -27,7 +26,7 @@ export async function importiereFiguren(k: KatalogKontext, setNumber: string, us
         quantity: f.quantity || 1,
         image_url: f.image_url || null,
       }))
-    : await getSetMinifigs(setNumber);
+    : await k.fremdquellen.quellen.getSetMinifigs(setNumber);
   const jeNummer = new Map<string, Figur>();
   for (const f of roh) {
     if (!f.fig_number) continue;

@@ -1,9 +1,9 @@
 import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { sichtVon, waechterFuer } from './middleware';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueMiscRouter(d: Dienste) {
+export function baueMiscRouter(d: Pick<Dienste, 'konto' | 'bestand'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

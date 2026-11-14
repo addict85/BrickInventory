@@ -11,7 +11,7 @@ import { fehlertext, logAndContinue } from './src/infra/fehler';
 import { startVerbote, startWarnungen } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { bereiteDatenbankVor } from './startup/datenbank';
-import { starteJobs, stoppeJobs } from './startup/jobsProzess';
+import { starteJobs, stoppeJobs, type JobsLauf } from './startup/jobsProzess';
 import { verdrahteProzess, type Dienste } from './startup/verdrahtung';
 import { baueApp } from './startup/app';
 import { HTTP_FRISTEN } from './src/infra/httpFristen';
@@ -65,9 +65,15 @@ function sitzungsGeheimnis(): string {
 /** SSE-Ströme zuerst beenden: Sie enden nie von selbst und hielten close() auf.
  * Ohne geordnetes Ende bräche jedes Deploy laufende Antworten ab. */
 const SHUTDOWN_TIMEOUT_MS = 8000;
-let _beendetWird = false;
+
+/** Was der Start hält und das Beenden braucht; ein zweites Signal findet `beendetWird`. */
+interface Lauf {
+  beendetWird: boolean;
+  jobs: JobsLauf | null;
+}
 
 async function herunterfahren(
+  lauf: Lauf,
   signal: string,
   httpServer: Server | null,
   jobs: boolean,
@@ -75,8 +81,8 @@ async function herunterfahren(
   dienste: Dienste,
   webSperreFrei: (() => Promise<void>) | null,
 ): Promise<void> {
-  if (_beendetWird) return;
-  _beendetWird = true;
+  if (lauf.beendetWird) return;
+  lauf.beendetWird = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
   // Notbremse für eine hängende Verbindung; Exit-Code 0, denn sie ist kein Fehler.
   const notbremse = setTimeout(() => {
@@ -92,7 +98,7 @@ async function herunterfahren(
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
     }
     // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
-    if (jobs) await stoppeJobs(dienste);
+    if (jobs && lauf.jobs) await stoppeJobs(dienste, lauf.jobs);
     await schliessePufferUndTakte(zugang, dienste);
     await webSperreFrei?.();
     await zugang.pool.end().catch(logAndContinue('server:end'));
@@ -171,14 +177,15 @@ async function starte(): Promise<void> {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
         })
     : null;
+  const lauf: Lauf = { beendetWird: false, jobs: null };
   process.on('SIGTERM', () => {
-    void herunterfahren('SIGTERM', httpServer, jobs, zugang, dienste, webSperreFrei);
+    void herunterfahren(lauf, 'SIGTERM', httpServer, jobs, zugang, dienste, webSperreFrei);
   });
   process.on('SIGINT', () => {
-    void herunterfahren('SIGINT', httpServer, jobs, zugang, dienste, webSperreFrei);
+    void herunterfahren(lauf, 'SIGINT', httpServer, jobs, zugang, dienste, webSperreFrei);
   });
   // Ohne Rahmen: Warteschlange und Aufträge betreten ihn selbst (src/auftraege/kontext.ts, dienst.ts).
-  if (jobs) await starteJobs(dienste, web);
+  if (jobs) lauf.jobs = await starteJobs(dienste, web);
 }
 
 // Ohne Worker weiterzulaufen täuschte einen Dienst vor.

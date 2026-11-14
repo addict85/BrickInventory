@@ -3,11 +3,11 @@
 import express from 'express';
 import { fehlerAntwort } from '../src/http/httpAntwort';
 import { sendeStartseite, tokenInsFragment } from '../src/konto/http/startseite';
-import { liefereBild } from '../src/katalog/http/bildAuslieferung';
+import { liefereBild } from '../src/bilder/http/bildAuslieferung';
 import { waechterFuer } from './api_v1/middleware';
-import type { Dienste } from '../startup/verdrahtung';
+import type { Dienste } from '../src/dienste';
 
-export function baueSeitenRouter(d: Dienste) {
+export function baueSeitenRouter(d: Pick<Dienste, 'konto' | 'bilder'>) {
   const router = express.Router();
   const { requireLoginOrToken, eingangsSperre } = waechterFuer(d.konto);
 

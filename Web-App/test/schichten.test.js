@@ -190,7 +190,7 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
   // Codezeilen im Biome-Format (Zeilenbreite 120).
   // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
-  // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
+  // Zeilen); `import { STAPEL } from '../src/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
   const KERN = 'jobs/auftragsWorker.ts';
   const dateien = tsUnter('jobs');
   assert.ok(
@@ -284,15 +284,48 @@ test('ins Netz geht nur clients/ über src/infra/abruf.ts', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('startup/ importiert nichts aus routes/', () => {
-  // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route
-  // gehört nur in den Zusammenbau der App (startup/app.ts).
-  // Gegenprobe (10.11.2026): `import { startPdfJobCleanup } from
-  // '../routes/api_v1/pdf'` in startup/jobsProzess.ts → rot.
+test('startup/ und routes/ kennen einander nur in einer Richtung, Routerfabriken nehmen Pick<Dienste, …>', () => {
+  // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route gehört nur in
+  // den Zusammenbau der App (startup/app.ts). Umgekehrt hängen routes/ und jobs/ nicht
+  // an startup/: Den Typ Dienste gibt es in src/dienste.ts, und jede Routerfabrik
+  // verengt ihn auf die Bereiche, die sie ruft.
+  // Gegenproben: `import { startPdfJobCleanup } from '../routes/api_v1/pdf'` in
+  // startup/jobsProzess.ts → rot (10.11.2026); `import type { Dienste } from
+  // '../../startup/verdrahtung'` zurück in routes/api_v1/catalog.ts → rot mit dieser Datei,
+  // `baueCatalogRouter(d: Dienste)` ebendort → rot mit „baueCatalogRouter“ (14.11.2026).
   const treffer = [];
   for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts') && f !== 'app.ts'))
     for (const ziel of importe(`startup/${f}`).filter(z => /routes\//.test(z))) treffer.push(`startup/${f} -> ${ziel}`);
   assert.deepEqual(treffer, []);
+
+  const dateien = [];
+  const lauf = rel => {
+    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      const kind = path.posix.join(rel, e.name);
+      if (e.isDirectory()) lauf(kind);
+      else if (e.name.endsWith('.ts')) dateien.push(kind);
+    }
+  };
+  ['routes', 'jobs'].forEach(lauf);
+  assert.ok(dateien.length > 20, `nur ${dateien.length} Dateien in routes/ und jobs/ — greift die Suche noch?`);
+  const zuStartup = dateien.flatMap(d =>
+    importe(d)
+      .filter(z => /(^|\/)startup\//.test(z))
+      .map(z => `${d} -> ${z}`),
+  );
+  assert.deepEqual(zuStartup, []);
+
+  const fabriken = dateien.flatMap(d =>
+    [...quelltext(d).matchAll(/export function (baue\w*Router)\(\s*\w+: ([^,)]+?)[,)]/g)].map(m => ({
+      name: m[1],
+      typ: m[2].trim(),
+    })),
+  );
+  assert.ok(fabriken.length >= 23, `nur ${fabriken.length} Routerfabriken gefunden — greift die Suche noch?`);
+  assert.deepEqual(
+    fabriken.filter(f => !f.typ.startsWith('Pick<')).map(f => f.name),
+    [],
+  );
 });
 
 test('keine Importzyklen in den inneren Schichten', () => {
@@ -739,7 +772,7 @@ test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen',
   // spricht selbst HTTP nach aussen. Gegenprobe (10.11.2026): in
   // src/konto/passwortBestaetigung.ts wieder `return { status: 429, ...gesperrt }` → rot.
   const STATUS = /\bstatus\s*:\s*[1-5]\d\d\b|\bres\.status\(/;
-  // Gegenprobe (11.11.2026): `res.status(304)` zurück in src/katalog/bilder/imgCacheServe.ts → rot.
+  // Gegenprobe (11.11.2026): `res.status(304)` zurück in src/bilder/imgCacheServe.ts → rot.
   const mitStatus = tsUnter('src', 'db', 'jobs')
     .filter(d => bereichVon(d) !== 'http' && !istHttp(d))
     .filter(d => STATUS.test(quelltext(d)));
@@ -808,8 +841,10 @@ const STUFEN = [
   ['src/einstellungen'],
   ['src/mail'],
   ['src/auftraege'],
+  ['src/fremdquellen'],
   ['src/haushalt'],
   ['src/konto'],
+  ['src/bilder'],
   ['src/idempotenz', 'src/katalog'],
   ['src/finanzen'],
   ['src/bestand'],
@@ -855,21 +890,19 @@ test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
   assert.deepEqual(falsch, []);
 });
 
-test('Klienten erreicht man nur über src/katalog/quellen.ts', () => {
-  // Dort bekommen sie Schlüssel, Kontingent und Drossel; ein Weg daran vorbei
-  // fände keinen Schlüssel. `import type` ist erlaubt.
-  // Gegenprobe (05.11.2026): `import { lookupPart } from '../../clients/rebrickable'`
-  // in src/teile/manuelleTeile.ts → rot.
+test('Klienten erreicht man nur über src/fremdquellen/quellen.ts', () => {
+  // Dort bekommen sie Schlüssel, Kontingent und Drossel ihres Zugangs; ein Weg daran
+  // vorbei fände keinen Schlüssel. `import type` ist erlaubt, Ausnahmen gibt es keine.
+  // Gegenproben: `import { lookupPart } from '../../clients/rebrickable'` in
+  // src/teile/manuelleTeile.ts → rot (05.11.2026); `import { erzeugeBrickset } from
+  // '../clients/brickset'` in startup/verdrahtung.ts → rot (14.11.2026).
   const kanten = bereichsKanten();
-  // Einzige Ausnahme: startup/verdrahtung.ts setzt beim Start den Zugang der Klienten.
-  // Gegenprobe (11.11.2026): derselbe Import in src/sets/dienst.ts → rot.
-  const verdrahtung = k => k.d === 'startup/verdrahtung.ts' && /clients\/zugang(\.ts)?$/.test(k.ziel);
   const treffer = kanten
-    .filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/katalog/quellen.ts' && !verdrahtung(k))
+    .filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/fremdquellen/quellen.ts')
     .map(k => `${k.d} -> ${k.ziel}`);
   assert.deepEqual(treffer, []);
   assert.ok(
-    kanten.some(k => k.d === 'src/katalog/quellen.ts' && k.nach === 'clients'),
+    kanten.some(k => k.d === 'src/fremdquellen/quellen.ts' && k.nach === 'clients'),
     'quellen.ts holt keinen Klienten mehr?',
   );
 });

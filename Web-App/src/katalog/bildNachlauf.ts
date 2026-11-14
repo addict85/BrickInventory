@@ -1,7 +1,6 @@
 /** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
-import { bilderFuerNachlauf } from './bildlage';
 import { logAndContinue } from '../infra/fehler';
-import { generateThumb } from './bilder/thumbs';
+import { generateThumb } from '../bilder';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
 import { KEINE_FARBE } from '../infra/validate';
 import * as enrich from './teileAnreicherung';
@@ -10,7 +9,7 @@ import { versuche } from '../infra/ergebnis';
 import type { KatalogKontext } from './kontext';
 
 async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<void> {
-  const { sets, teile: manualParts, figuren: figsToFetch } = await bilderFuerNachlauf(kx);
+  const { sets, teile: manualParts, figuren: figsToFetch } = await kx.bilder.bilderFuerNachlauf();
   if (!sets.length && !manualParts.length && !figsToFetch.length) {
     await k.fortschritt({ erledigt: 0, gesamt: 0, text: 'Alle Bilder gecacht' });
     return;
@@ -44,11 +43,9 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
     );
     const local = r.ok ? r.wert : null;
     if (local) {
-      // Einmal für alle Konten in den Katalog; scheitert es, liegt das Bild zwar
-      // auf der Platte, die Oberfläche zeigt es aber nicht — darum mit Protokoll.
-      await setzeTeilBildLokal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local).catch(
-        logAndContinue(`bilder:teil ${p.part_number}`),
-      );
+      // Einmal für alle Konten in den Katalog. Ein Schreibfehler bricht den Lauf ab wie bei
+      // den Figuren; der nächste findet die Datei und schreibt nach.
+      await setzeTeilBildLokal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local);
       // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
       // bei der Originalgrösse.
       generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));

@@ -1,7 +1,7 @@
 import type { DbSchnittstelle } from '../../db/database';
 import { aktuellesKonto } from '../infra/kontoKontext';
 import * as repo from './repository/apiKontingent';
-import type { KatalogKontext } from './kontext';
+import type { FremdquellenKontext } from './kontext';
 
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 
@@ -19,7 +19,7 @@ const ALLE_KONTEN = -1;
 
 const heute = () => new Date().toISOString().slice(0, 10);
 
-export async function getLimitForApi(k: KatalogKontext, apiName: ApiName): Promise<number> {
+export async function getLimitForApi(k: FremdquellenKontext, apiName: ApiName): Promise<number> {
   return parseInt(await k.einstellungen.getGlobalSetting(`api_limit_${apiName}`, ''), 10) || VORGABEN[apiName] || 4000;
 }
 
@@ -28,7 +28,7 @@ const grenzeAlleKonten = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL
 
 /** Atomar: Das Upsert erhöht nur unter der Grenze, und scheitert die Grenze des
  * Kontos, fällt auch die Gesamtzählung zurück. */
-export async function checkAndIncrementRateLimit(k: KatalogKontext, apiName: ApiName, _vorgabe?: number) {
+export async function checkAndIncrementRateLimit(k: FremdquellenKontext, apiName: ApiName, _vorgabe?: number) {
   const limit = await getLimitForApi(k, apiName);
   const tag = heute();
   const konto = aktuellesKonto();
@@ -54,7 +54,7 @@ export async function checkAndIncrementRateLimit(k: KatalogKontext, apiName: Api
     });
 }
 
-export async function getRateLimitStatus(k: KatalogKontext, apiName: ApiName) {
+export async function getRateLimitStatus(k: FremdquellenKontext, apiName: ApiName) {
   const tag = heute();
   const [z, limit] = await Promise.all([k.apiKontingent.aufrufeHeute(tag, apiName), getLimitForApi(k, apiName)]);
   const count = Number(z?.anzahl || 0);
@@ -63,7 +63,7 @@ export async function getRateLimitStatus(k: KatalogKontext, apiName: ApiName) {
 
 /** Zählt NICHT: Die Aufrufer fragen vorher, damit ein erschöpftes Kontingent
  * als solches gemeldet wird statt als Abruffehler. */
-export async function kontingentFrei(kx: KatalogKontext, apiName: ApiName) {
+export async function kontingentFrei(kx: FremdquellenKontext, apiName: ApiName) {
   const s = await getRateLimitStatus(kx, apiName);
   const konto = aktuellesKonto();
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
@@ -75,6 +75,6 @@ export async function kontingentFrei(kx: KatalogKontext, apiName: ApiName) {
   };
 }
 
-export async function setzeKontingentZurueck(k: KatalogKontext, apiName: ApiName): Promise<void> {
+export async function setzeKontingentZurueck(k: FremdquellenKontext, apiName: ApiName): Promise<void> {
   await k.apiKontingent.setzeApiZaehlerZurueck(heute(), apiName);
 }

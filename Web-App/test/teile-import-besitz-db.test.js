@@ -32,8 +32,8 @@ const ersetze = (rel, zusatz) => {
   _req(rel);
   require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
 };
-// Der Client zuerst: Wer ihn danach lädt, bekommt schon den Ersatz.
-ersetze('clients/rebrickable.js', {
+// Rebrickable an der Verdrahtung gestellt: Jeder Satz Dienste fragt über ihn.
+quellen.testQuellen(null, {
   holeSetTeile: async n => {
     abrufe.push(n);
     return { teile: [], verweigert: false };

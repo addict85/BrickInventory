@@ -178,7 +178,7 @@ den Commits, nicht hier.
   Preisalarme des Haushalts), Anleitungen (`/data/instructions/…`) nur zu Sets
   im Bestand; fremd und fehlend antworten gleich (404). Teile- und
   Figurenbilder sind Katalog. Katalog, `/sets/info` und `/sets/barcode` nennen
-  `image_local` nur im Blickfeld: `src/katalog/bilder/bildBlickfeld.ts` —
+  `image_local` nur im Blickfeld: `src/bilder/bildBlickfeld.ts` —
   `bild-blickfeld-db`, `katalog-bilder-db`.
 - Teile-Import (`POST /sets/:setNumber/parts`) nur für Sets im Blickfeld, für
   deren Besitzer: `routes/api_v1/sets.ts` — `teile-import-besitz-db`.
@@ -224,7 +224,7 @@ den Commits, nicht hier.
 - Bild-Proxy: Cache-Schlüssel ohne Zeitstempel im Anfrageteil, CDN-Abrufe je
   Konto gedrosselt (`BILD_ABRUFE_JE_MINUTE`), Cache gedeckelt
   (`BILD_CACHE_MAX_MB`), Antworten `Cache-Control: private`:
-  `routes/imgProxy.ts`, `src/katalog/bilder/imgCacheServe.ts` — `bild-proxy-deckel`.
+  `routes/imgProxy.ts`, `src/bilder/imgCacheServe.ts` — `bild-proxy-deckel`.
   Hinaus geht nur ein Bildtyp aus einer Liste (JPEG, PNG, GIF, WebP, AVIF),
   nie der rohe Kopf des CDN; sonst JPEG (`bildTyp`) — `img-cache-serve`,
   `bild-proxy-deckel`.
@@ -271,7 +271,7 @@ den Commits, nicht hier.
   Caddy setzt je Anfrage eine neue: `src/infra/protokoll.ts` — `protokoll`.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;
   Aufträge zählen beim Konto, das sie eingestellt hat:
-  `src/katalog/apiKontingent.ts`, `src/auftraege/auftraege.ts` — `api-kontingent-konto-db`.
+  `src/fremdquellen/apiKontingent.ts`, `src/auftraege/auftraege.ts` — `api-kontingent-konto-db`.
 - Je Zieladresse (gehasht): Registrierung 3/h (429), „Passwort vergessen“ 3/h
   (still keine Mail): `src/konto/zielDrossel.ts` — `mail-fremder-text-db`.
 - Prüfung eines Haushaltscodes (`redeem/pruefen`) 30/h je Konto —

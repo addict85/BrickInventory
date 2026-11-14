@@ -6,7 +6,7 @@
  * eigener Ordner.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, dist neu gebaut), in
- * src/katalog/http/bildAuslieferung.ts:
+ * src/bilder/http/bildAuslieferung.ts:
  *   A  `if (await originalStattVorschau(res, segmente)) return;` entfernt →
  *      rot: „fehlt die Vorschau …“ (302 zum CDN statt des Originals)
  *   B  den Aufruf hinter die CDN-Heilung gestellt → rot: ebenda
@@ -29,7 +29,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const liefereBild = (...a) =>
-  _req('src/katalog/http/bildAuslieferung.js').liefereBild(require('./helpers/sources').testDienste(), ...a);
+  _req('src/bilder/http/bildAuslieferung.js').liefereBild(require('./helpers/sources').testDienste(), ...a);
 
 const ordner = path.join(wurzel, 'data', 'images', 'parts');
 const NR = `zz-vorschau-${process.pid}`;

@@ -1,4 +1,3 @@
-import { lookupPart } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/teilFarbe';
@@ -28,7 +27,7 @@ async function bildNachtragen(k: TeileKontext, partNumber: string, farbe: number
   if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
 
   // Die Änderung steht schon; ein gescheiterter Abruf lässt nur das Bild weg.
-  const info = await versuche('teilfarbe:lookupPart', () => lookupPart(partNumber, farbe));
+  const info = await versuche('teilfarbe:lookupPart', () => k.katalog.quellen.lookupPart(partNumber, farbe));
   if (!info.ok || !info.wert?.image_url) return null;
   try {
     await k.katalog.merkeTeilFarbe(partNumber, farbe, null, null, info.wert.image_url, null);

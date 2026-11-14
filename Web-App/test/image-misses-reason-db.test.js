@@ -24,8 +24,8 @@ const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
 const db = testDaten();
-const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
-const IM = _req('src/katalog/bilder/imageMisses.js');
+const IQ = _req('src/bilder/bildbedarfLauf.js');
+const IM = _req('src/bilder/imageMisses.js');
 
 const einreihen = async sn => {
   await db.run(`DELETE FROM image_wanted WHERE set_number = $1`, [sn]);
@@ -169,7 +169,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
     const proxy = ohneKommentare(require('./helpers/sources').proxyThumbQuelle());
-    const job = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/bildbedarfLauf.ts'), 'utf8'));
+    const job = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/bilder/bildbedarfLauf.ts'), 'utf8'));
     assert.match(proxy, /status === 404[\s\S]{0,200}merkeFehlend/, 'Im Proxy hängt die Fehlanzeige nicht mehr am 404');
     assert.match(
       job,
@@ -178,7 +178,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     );
     assert.doesNotMatch(
       job,
-      /\n\s*merkeFehlend\('set:' \+ r\.set_number\);/,
+      /\n\s*merkeFehlend\(k, 'set:' \+ r\.set_number\);/,
       'Es gibt wieder einen unbedingten Vermerk für Sets',
     );
   });

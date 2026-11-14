@@ -57,14 +57,15 @@ Absicht, solange es nur von unten gebraucht wird:
   und den Betrieb (Pool, eigene Verbindung).
 - `jobs/` führt Aufträge aus: Pacht, Wiederholung und Abbruch im Worker, je Art
   ein Aufruf in der Bearbeitertabelle. Was ein Auftrag tut, steht in
-  `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `katalog` …); die
+  `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `bilder` …); die
   Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/auftraege`.
 - Jeder Bereich hat eine Fabrik (`erzeugeX` in `bereich.ts`) und einen Kontext
   (`kontext.ts`): gebundene Repositories, die Dienste tieferer Bereiche und die
   Arbeitseinheit. Ein Dienst nimmt den Kontext als ersten Parameter (`k`) und holt
   alles daraus, nichts vom Prozess. `startup/verdrahtung.ts` baut alle Bereiche in
   `baueDienste(db, nacharbeit)`; Server und Testhilfe rufen dieselbe Funktion.
-- Routen sind Fabriken (`baueXRouter(d)`) und rufen Dienste nur über `d`. Die
+- Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/dienste.ts`) und
+  rufen Dienste nur über `d`; von `startup/` importieren sie nichts. Die
   Fassaden der `index.ts` und `xBereich()` holen die Dienste des Prozesses; sie
   bleiben für HTTP-Seiten, Jobs, den Start und Tests (gezählt in `test/ratschen.test.js`).
 - Mehrstufige Schreibvorgänge (Änderung und Protokoll, Zeile und Datei) sind ein
@@ -86,11 +87,13 @@ Absicht, solange es nur von unten gebraucht wird:
 - Express kennen nur die Routen, `server.ts`, `src/http` (Fehlerweg, Herkunft,
   Dateiauslieferung, Vertragsrouter) und die HTTP-Seiten der Bereiche unter
   `src/<bereich>/http/` (Anmeldung und Sitzung in `konto`, Bild-Proxy in
-  `katalog`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
+  `bilder`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
   eine HTTP-Seite; eine Absage ist eine `FehlerArt` (oder ein `Fachfehler`),
   den HTTP-Status wählt `src/http/fehlerArt.ts`.
-- Clients erreicht man nur über `src/katalog/quellen.ts`; Schlüssel und
-  Kontingent bekommen sie dort übergeben (`clients/zugang.ts`).
+- Clients erreicht man nur über `src/fremdquellen/quellen.ts`. Jeder Klient
+  entsteht dort je Satz Dienste (`erzeugeRebrickable(z)` …) mit Schlüssel,
+  Kontingent und Drossel seines Zugangs (`clients/zugang.ts`); einen Zugang des
+  Prozesses gibt es nicht. Tests stellen Klienten mit `testQuellen()`.
 - Eine Transaktion gilt zusätzlich für den ganzen Aufrufpfad (AsyncLocalStorage),
   auch für Repositories ohne `tx`-Parameter: Sicherung gegen eine zweite
   Verbindung mitten in der Arbeitseinheit, nicht der Weg, sie zu erkennen.
@@ -153,17 +156,19 @@ kennen einander nicht. Von unten nach oben:
 | 5 | `src/einstellungen` |
 | 6 | `src/mail` |
 | 7 | `src/auftraege` |
-| 8 | `src/haushalt` |
-| 9 | `src/konto` |
-| 10 | `src/idempotenz`, `src/katalog` |
-| 11 | `src/finanzen` |
-| 12 | `src/bestand` |
-| 13 | `src/sets` |
-| 14 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
-| 15 | `src/sammlung`, `src/verwaltung` |
-| 16 | `jobs`, `routes` |
-| 17 | `startup` |
-| 18 | `server.ts` |
+| 8 | `src/fremdquellen` |
+| 9 | `src/haushalt` |
+| 10 | `src/konto` |
+| 11 | `src/bilder` |
+| 12 | `src/idempotenz`, `src/katalog` |
+| 13 | `src/finanzen` |
+| 14 | `src/bestand` |
+| 15 | `src/sets` |
+| 16 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
+| 17 | `src/sammlung`, `src/verwaltung` |
+| 18 | `jobs`, `routes` |
+| 19 | `startup` |
+| 20 | `server.ts` |
 
 ## Schema
 

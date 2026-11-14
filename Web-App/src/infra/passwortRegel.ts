@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { FehlerCode } from './fehlerTexte';
+import { prozessweit } from './prozessweit';
 
 /** Eine Konstante für alle Wege, die ein Passwort setzen. Bestehende Passwörter
  * gelten weiter; die Regel greift beim nächsten Setzen. */
@@ -14,17 +15,19 @@ export function passwortZuKurz(passwort: unknown): boolean {
  * und zwei Passwörter mit gleichem Anfang wären gleich. */
 export const PASSWORT_MAX_BYTE = 72;
 
-let liste: Set<string> | null = null;
 /** Mitgeliefert (haeufige-passwoerter.txt neben dieser Datei), ohne Netzabfrage. */
 function haeufige(): Set<string> {
-  liste ??= new Set(
-    fs
-      .readFileSync(path.join(__dirname, 'haeufige-passwoerter.txt'), 'utf8')
-      .split('\n')
-      .map(z => z.trim())
-      .filter(z => z && !z.startsWith('#')),
+  return prozessweit(
+    'haeufigePasswoerter',
+    () =>
+      new Set(
+        fs
+          .readFileSync(path.join(__dirname, 'haeufige-passwoerter.txt'), 'utf8')
+          .split('\n')
+          .map(z => z.trim())
+          .filter(z => z && !z.startsWith('#')),
+      ),
   );
-  return liste;
 }
 
 /** Für jeden Weg, der ein Passwort setzt: der Grund der Ablehnung oder null. */

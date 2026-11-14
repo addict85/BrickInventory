@@ -1,5 +1,5 @@
 import type { ServerResponse } from 'node:http';
-import type { KatalogDienste } from '../bereich';
+import type { BilderDienste } from '../bereich';
 
 type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };
 interface BildAnfrage {
@@ -9,7 +9,7 @@ interface BildAnfrage {
 
 /** Aus dem Platten-Cache, falls vorhanden; true heisst beantwortet. */
 export async function liefereAusCache(
-  katalog: Pick<KatalogDienste, 'cacheTreffer'>,
+  bilder: Pick<BilderDienste, 'cacheTreffer'>,
   opts: {
     res: BildAntwort;
     req: BildAnfrage;
@@ -22,7 +22,7 @@ export async function liefereAusCache(
   },
 ): Promise<boolean> {
   const { res, req, streamFileToResponse } = opts;
-  const treffer = await katalog.cacheTreffer(opts);
+  const treffer = await bilder.cacheTreffer(opts);
   if (!treffer) return false;
   res.setHeader('Content-Type', treffer.typ);
   // Länge mitgeben: Eine chunked-Antwort kann ein Reverse-Proxy puffern.

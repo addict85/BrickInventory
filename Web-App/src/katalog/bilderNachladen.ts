@@ -1,7 +1,6 @@
 /** Fehlende Bilddateien nachladen: Verweise ohne Datei finden, laden oder leeren. */
-import { cdnImageLimiter } from './rateLimiter';
 import { fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
-import { downloadFile } from './quellen';
+import { downloadFile } from '../fremdquellen';
 
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import * as repo from './repository/teileAnreicherung';
@@ -9,13 +8,12 @@ import fs from 'node:fs';
 import type { PoolClient } from 'pg';
 import path from 'node:path';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { generateThumb } from './bilder/thumbs';
+import { generateThumb } from '../bilder';
 import { versuche } from '../infra/ergebnis';
 import type { KatalogKontext } from './kontext';
 
 // „Fehlend" = image_local gesetzt, Datei fehlt. Nicht wiederherstellbare
 // Einträge werden geleert, damit die Oberflächen auf die CDN-Adresse zurückfallen.
-let _redlRunning = false;
 
 // Für alle drei Bildarten; sonst verwarf der Nachlauf Set- und Figurenbilder.
 function _fsPathFromLocal(imageLocal: string) {
@@ -44,7 +42,8 @@ async function _redlSetStatus(k: KatalogKontext, obj: Record<string, unknown>) {
 }
 
 async function redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) {
-  if (_redlRunning) return { alreadyRunning: true };
+  const lauf_ = k.faecher.fach('bilderNachladen', () => ({ laeuft: false }));
+  if (lauf_.laeuft) return { alreadyRunning: true };
   // Sperre auf EIGENER Verbindung: Advisory-Locks hängen an der Session.
   let lockClient: PoolClient;
   try {
@@ -61,11 +60,11 @@ async function redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) {
     lockClient.release();
     return { error: fehlertext(e) || 'Sperre fehlgeschlagen' };
   }
-  _redlRunning = true;
+  lauf_.laeuft = true;
   try {
     return await _redownloadMissingImages(k, lauf);
   } finally {
-    _redlRunning = false;
+    lauf_.laeuft = false;
     await repo.gibNachlaufSperreFrei(lockClient).catch(logAndContinue('teile-enrich:pg_advisory_unlock'));
     lockClient.release();
   }
@@ -182,7 +181,7 @@ async function fehlendeNachladen(k: KatalogKontext, missing: FehlendesBild[], la
     while (idx < missing.length && !lauf?.signal?.aborted) {
       const m = missing[idx++];
       if (!m) break;
-      if (await bildNachladen(m)) redownloaded++;
+      if (await bildNachladen(k, m)) redownloaded++;
       else {
         // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
         for (const tbl of repo.KATALOGE_MIT_BILD) {
@@ -201,16 +200,16 @@ async function fehlendeNachladen(k: KatalogKontext, missing: FehlendesBild[], la
   return { done, redownloaded, cleared };
 }
 
-async function bildNachladen(m: FehlendesBild): Promise<boolean> {
+async function bildNachladen(k: KatalogKontext, m: FehlendesBild): Promise<boolean> {
   let ok = false;
   if (m.image_url) {
-    await cdnImageLimiter.acquire().catch(logAndContinue('teile-enrich:acquire'));
+    await k.cdnDrossel.acquire();
     try {
       // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler nennt beide.
       const r = await versuche('teile-enrich:downloadFile', downloadFile(m.image_url, m.fp));
       ok = r.ok && r.wert === true;
     } finally {
-      cdnImageLimiter.release();
+      k.cdnDrossel.release();
     }
   }
   if (ok) await generateThumb(m.image_local).catch(logAndContinue('teile-enrich:generateThumb'));

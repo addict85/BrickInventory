@@ -2,11 +2,11 @@
  * API-Abruf und das Tageskontingent. */
 import type { Nutzlast, AuftragsLauf as CsvLauf } from '../auftraege';
 import { fetchMissingBlIds } from './partsImport';
-import { getRbKey, httpsGetRobust, ladeKatalogCsv } from './quellen';
 import { fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { merkeBlFarbnummer, blFarbnummerAus } from './blZuordnung';
 import fs from 'node:fs';
 import path from 'node:path';
+import { prozessweit } from '../infra/prozessweit';
 import { DATA_DIR } from '../infra/appPaths';
 import { fork as _fork } from 'node:child_process';
 import { versuche } from '../infra/ergebnis';
@@ -22,9 +22,9 @@ function log(msg: string) {
 
 // Der Import läuft in einem eigenen Prozess; dessen Einstieg ist Ausführung und
 // liegt in jobs/, der Auftrag setzt ihn ein (jobs/auftraegeStarten.ts).
-let _workerPath: string | null = null;
+const importProzess = () => prozessweit('importProzess', () => ({ pfad: null as string | null }));
 export function setzeImportProzess(pfad: string): void {
-  _workerPath = pfad;
+  importProzess().pfad = pfad;
 }
 
 // Jede Datei belegt einen Abschnitt von TOTAL_STEPS, damit der Balken
@@ -62,7 +62,7 @@ async function runWorker(
   const tmpFile = path.join(DATA_DIR, filename.replace('.gz', '.tmp'));
   let letzter = 0;
   try {
-    await ladeKatalogCsv(filename, tmpFile, {
+    await k.fremdquellen.quellen.ladeKatalogCsv(filename, tmpFile, {
       ...(lauf.signal ? { signal: lauf.signal } : {}),
       beiFortschritt: (bytes, gesamt) => {
         if (Date.now() - letzter < 700) return;
@@ -86,6 +86,7 @@ async function runWorker(
 function importInWorker(kx: KatalogKontext, lauf: CsvLauf, task: string, stepNum: number, stepLabel: string) {
   const melde = melder(kx, lauf);
   return new Promise((resolve, reject) => {
+    const _workerPath = importProzess().pfad;
     if (!_workerPath) {
       reject(new Error('Kein Importprozess eingesetzt (jobs/auftraegeStarten.ts)'));
       return;
@@ -183,7 +184,7 @@ async function ladeAlles(kx: KatalogKontext, lauf: CsvLauf, today: string): Prom
 }
 
 async function ladeBlFarben(k: KatalogKontext): Promise<void> {
-  const key = await getRbKey();
+  const key = await k.fremdquellen.quellen.getRbKey();
   if (!key) return;
   log('[colors] Fetching BrickLink color mapping from Rebrickable API…');
   let page = 1,
@@ -193,7 +194,7 @@ async function ladeBlFarben(k: KatalogKontext): Promise<void> {
     // Ohne Antwort bleibt die bisherige Zuordnung; der nächste Abgleich versucht es wieder.
     const abruf = await versuche(
       'csv-abgleich:abruf',
-      httpsGetRobust(
+      k.fremdquellen.quellen.httpsGetRobust(
         `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
         { Authorization: `key ${key}` },
         30000,

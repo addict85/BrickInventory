@@ -30,9 +30,8 @@ Module.prototype.require = function (name, ...rest) {
       ...m,
       starteAuftragsWorker: () => {
         workerGestartet++;
-        return { letzteRunde: () => Date.now() };
+        return { letzteRunde: () => Date.now(), stoppe: async () => {} };
       },
-      stoppeAuftragsWorker: async () => {},
     };
   return m;
 };
@@ -44,8 +43,11 @@ const { warte } = require('./helpers/zeit');
 
 test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 1 }, async t => {
   const db = testDaten();
+  /** Was starteJobs zurückgibt: Der Test hält es wie server.ts. */
+  const laeufe = [];
   t.after(async () => {
-    await _req('startup/jobsProzess.js').stoppeJobs(require('./helpers/sources').testDienste());
+    for (const lauf of laeufe)
+      await _req('startup/jobsProzess.js').stoppeJobs(require('./helpers/sources').testDienste(), lauf);
     await testZugang()
       .benachrichtigung.close()
       .catch(() => {});
@@ -59,7 +61,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     return;
   }
   await db.run('DELETE FROM auftraege');
-  await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste(), true);
+  laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste(), true));
 
   const zeilen = await db.all(`SELECT art, schluessel, nutzlast, EXTRACT(EPOCH FROM faellig_ab - NOW())::int AS in_sek
                                  FROM auftraege WHERE status = 'offen'`);
@@ -86,7 +88,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
         zeilen.some(z => z.schluessel === `nachlauf:${schritt}`),
         `Nachlauf ${schritt} fehlt`,
       );
-    await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste(), true);
+    laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste(), true));
     const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE status = 'offen'
                                     GROUP BY schluessel HAVING COUNT(*) > 1 LIMIT 1`);
     assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');
@@ -101,9 +103,9 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
     for (let i = 0; i < 50 && !(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL)); i++) await warte(20);
     assert.ok(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), 'nach dem Start fehlt das Lebenszeichen');
-    await jp.stoppeJobs(require('./helpers/sources').testDienste());
+    for (const lauf of laeufe) await jp.stoppeJobs(require('./helpers/sources').testDienste(), lauf);
     await loescheZustand(jp.LEBENSZEICHEN_SCHLUESSEL);
-    await jp.erneuereLebenszeichen(require('./helpers/sources').testDienste());
+    await jp.erneuereLebenszeichen(require('./helpers/sources').testDienste(), laeufe[0].worker);
     assert.equal(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), null, 'ohne Worker kein Lebenszeichen');
   });
 });

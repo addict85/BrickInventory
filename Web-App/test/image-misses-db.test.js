@@ -52,7 +52,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
   try {
     // Die Liste löst seit einer früheren Runde gar keine Bildarbeit mehr aus (sie lief
     // an allen Drosselungen vorbei). Der Weg führt jetzt über den Proxy und
-    // src/katalog/bilder/bildbedarfLauf.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
+    // src/bilder/bildbedarfLauf.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
     // die Liste.
     await besuch();
     assert.equal(versuche, 0, `${versuche} Downloads aus der Liste — sie darf keine mehr auslösen`);
@@ -61,7 +61,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
       // Der Kern der Sache: Der Server läuft im Cluster. Ein Merker im
       // Arbeitsspeicher hilft nur DEM Prozess, der ihn angelegt hat — bei vier
       // Arbeitsprozessen wird dasselbe Bild viermal geholt.
-      const IM = _req('src/katalog/bilder/imageMisses.js');
+      const IM = _req('src/bilder/imageMisses.js');
       IM.merkeFehlend('set:' + PRAEFIX + '_probe');
       await IM._schreibePuffer();
       IM._leereVordergrund();
@@ -81,7 +81,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
     await t.test('ein Bild, das es gibt, wird nicht gemerkt', async () => {
       // Gegenrichtung: Sonst wäre der Test auch grün, wenn pauschal alles als
       // fehlend gälte — und kein Bild würde je geladen.
-      const IM = _req('src/katalog/bilder/imageMisses.js');
+      const IM = _req('src/bilder/imageMisses.js');
       IM._leereVordergrund();
       assert.equal(IM.istBekanntFehlend('set:gibt-es-nicht-in-der-tabelle'), false);
     });

@@ -6,9 +6,9 @@ import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { USERNAME_RE, LETZTER_VERWALTER } from '../../src/konto';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueBenutzerRouter(d: Dienste) {
+export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
   const { requireApiAdmin: requireAdmin } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

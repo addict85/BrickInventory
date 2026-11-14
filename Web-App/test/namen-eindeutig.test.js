@@ -29,10 +29,7 @@ const ERLAUBT = new Map([
     'clients/bricklink und clients/brickset — jeder mit der Signatur seines ' +
       'Dienstes (BrickLink braucht einen Authorization-Kopf, Brickset nicht).',
   ],
-  [
-    'schreibePuffer',
-    'src/katalog/bilder/bildbedarfLauf und src/katalog/bilder/imageMisses — jeder schreibt SEINEN Puffer.',
-  ],
+  ['schreibePuffer', 'src/bilder/bildbedarfLauf und src/bilder/imageMisses — jeder schreibt SEINEN Puffer.'],
 ]);
 
 test('ein Funktionsname bedeutet eine Sache', () => {

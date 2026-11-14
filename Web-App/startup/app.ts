@@ -84,7 +84,7 @@ function grundschutz(app: express.Express, k: Konfig): void {
   // ohnehin auf die App zugeschnitten sein.
   app.use(sicherheitsKoepfe(k.hstsMaxAge));
 
-  // Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
+  // Das Konto der Anfrage für Zähler tief unten (src/fremdquellen/apiKontingent.ts).
   app.use(merkeAnfrage);
 
   // Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyVertrauen.ts).

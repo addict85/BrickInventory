@@ -24,7 +24,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const k = _req('src/katalog/apiKontingent.js');
+const k = _req('src/fremdquellen/apiKontingent.js');
 const { imNamenVon } = _req('src/infra/kontoKontext.js');
 
 test('Tageskontingent je Konto', { concurrency: 1 }, async t => {

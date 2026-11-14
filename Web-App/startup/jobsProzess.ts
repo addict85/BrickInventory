@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { logAndContinue, meldeFehler } from '../src/infra/fehler';
-import { starteAuftragsWorker, stoppeAuftragsWorker } from '../jobs/auftraegeStarten';
+import { starteAuftragsWorker } from '../jobs/auftraegeStarten';
 import { NACHLAEUFE, type Nachlauf } from '../src/verwaltung';
 import type { Dienste } from './verdrahtung';
 
@@ -11,14 +11,18 @@ export const LEBENSZEICHEN_SCHLUESSEL = 'jobs_lebenszeichen';
 const LEBENSZEICHEN_MS = 30_000;
 /** Dreht der Worker so lange keine Runde mehr, bleibt das Lebenszeichen aus. */
 const STILL_HOECHSTENS_MS = 2 * LEBENSZEICHEN_MS;
-let _lebenszeichen: NodeJS.Timeout | null = null;
-let _worker: { letzteRunde(): number } | null = null;
+
+/** Was starteJobs startet und stoppeJobs wieder beendet; der Einstieg hält es. */
+export interface JobsLauf {
+  worker: { letzteRunde(): number; stoppe(): Promise<void> } | null;
+  lebenszeichen: NodeJS.Timeout | null;
+}
 
 /** Nur ein Worker, der seine Runden dreht, gilt als lebendig: Ein Intervall
  * allein meldete auch einen Prozess, dessen Start gescheitert ist. Das Ergebnis
  * endet mit dem Schreiben in die Datenbank, damit ein Test darauf warten kann. */
-export function erneuereLebenszeichen(d: Dienste): Promise<void> {
-  if (!_worker || Date.now() - _worker.letzteRunde() > STILL_HOECHSTENS_MS) return Promise.resolve();
+export function erneuereLebenszeichen(d: Dienste, worker: JobsLauf['worker']): Promise<void> {
+  if (!worker || Date.now() - worker.letzteRunde() > STILL_HOECHSTENS_MS) return Promise.resolve();
   fs.writeFile(LEBENSZEICHEN_DATEI, String(Date.now()), { mode: 0o600 }, e => {
     if (e) meldeFehler('jobs:lebenszeichen', e);
   });
@@ -34,7 +38,7 @@ export function erneuereLebenszeichen(d: Dienste): Promise<void> {
  * kommen einmal je Start dazu. Ein zweiter Job-Prozess wäre unschädlich:
  * Aufträge belegt jeder nur mit SKIP LOCKED.
  */
-export async function starteJobs(d: Dienste, beides: boolean): Promise<void> {
+export async function starteJobs(d: Dienste, beides: boolean): Promise<JobsLauf> {
   // Nur ein getrennter Job-Prozess hält eigene Haushalt-Caches, die der Web-Prozess ändert.
   if (!beides) d.haushalt.horcheAufAenderungen();
 
@@ -53,19 +57,21 @@ export async function starteJobs(d: Dienste, beides: boolean): Promise<void> {
       { schritt },
       { schluessel: `nachlauf:${schritt}`, nachSekunden, maxVersuche: 3 },
     );
-  if (await d.katalog.offenerBildbedarf()) await d.katalog.bildbedarfAnstossen();
+  if (await d.bilder.offenerBildbedarf()) await d.bilder.bildbedarfAnstossen();
   await d.finanzen.planeKursabruf();
-  _worker = starteAuftragsWorker(d);
-  void erneuereLebenszeichen(d);
-  _lebenszeichen ??= setInterval(() => erneuereLebenszeichen(d), LEBENSZEICHEN_MS);
-  _lebenszeichen.unref();
+  const worker = starteAuftragsWorker(d);
+  void erneuereLebenszeichen(d, worker);
+  const lebenszeichen = setInterval(() => erneuereLebenszeichen(d, worker), LEBENSZEICHEN_MS);
+  lebenszeichen.unref();
+  return { worker, lebenszeichen };
 }
 
 /** Beim Herunterfahren: laufende Aufträge zu Ende führen oder zurückgeben. */
-export async function stoppeJobs(d: Dienste): Promise<void> {
-  if (_lebenszeichen) clearInterval(_lebenszeichen);
-  _lebenszeichen = null;
-  _worker = null;
-  await stoppeAuftragsWorker().catch(logAndContinue('shutdown:auftraege'));
+export async function stoppeJobs(d: Dienste, lauf: JobsLauf): Promise<void> {
+  if (lauf.lebenszeichen) clearInterval(lauf.lebenszeichen);
+  lauf.lebenszeichen = null;
+  const worker = lauf.worker;
+  lauf.worker = null;
+  await worker?.stoppe().catch(logAndContinue('shutdown:auftraege'));
   d.auftraege.meldeProzessAb();
 }

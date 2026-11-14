@@ -4,9 +4,9 @@ import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { zustand } from '../../src/infra/validate';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueSetsLagerRouter(d: Dienste) {
+export function baueSetsLagerRouter(d: Pick<Dienste, 'konto' | 'finanzen' | 'bestand' | 'sets'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

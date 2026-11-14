@@ -1,6 +1,4 @@
-import { fuelleAusBrickset } from './bildlage';
 import { downloadSetInstructions, anzahlAnleitungen } from './instructions';
-import { getLimitForApi, getRateLimitStatus } from './apiKontingent';
 import { logAndContinue, meldeFehler } from '../infra/fehler';
 import { type Nutzlast, pruefeAbbruch, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
 import type { KatalogKontext } from './kontext';
@@ -10,7 +8,10 @@ import type { KatalogKontext } from './kontext';
 async function bricksetNachlauf(k: KatalogKontext, n: Nutzlast<'brickset'>, lauf?: AuftragsLauf): Promise<void> {
   const sn = n.set_number;
   try {
-    const [limit, status] = await Promise.all([getLimitForApi(k, 'brickset'), getRateLimitStatus(k, 'brickset')]);
+    const [limit, status] = await Promise.all([
+      k.fremdquellen.getLimitForApi('brickset'),
+      k.fremdquellen.getRateLimitStatus('brickset'),
+    ]);
     if (Math.max(0, limit - (status.count || 0)) <= 0) {
       const bis = await k.auftraege.bricksetFaelligAb(false);
       await k.auftraege.pausiereArt('brickset', bis, 'Brickset-Tageskontingent erschöpft');
@@ -23,7 +24,7 @@ async function bricksetNachlauf(k: KatalogKontext, n: Nutzlast<'brickset'>, lauf
 
   pruefeAbbruch(lauf);
   // Ist das Kontingent mittendrin weg, merkt getSetInfo das Set selbst erneut vor.
-  if (await fuelleAusBrickset(k, sn)) console.log(`[brickset] Retry OK: ${sn}`);
+  if (await k.bilder.fuelleAusBrickset(sn)) console.log(`[brickset] Retry OK: ${sn}`);
   pruefeAbbruch(lauf);
   if ((await anzahlAnleitungen(k, sn)) === 0) {
     await downloadSetInstructions(k, sn).catch(logAndContinue('brickset-retry:downloadSetInstructions'));

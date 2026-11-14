@@ -6,9 +6,9 @@ import { proxyHinweisStand } from '../../src/http/proxyHinweis';
 import { bildProbe } from '../../src/verwaltung';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueAdminRouter(d: Dienste) {
+export function baueAdminRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' | 'konto' | 'katalog' | 'verwaltung'>) {
   const { requireApiAdmin } = waechterFuer(d.konto);
   const router = vertragsRouter({ grosseIds: true });
 

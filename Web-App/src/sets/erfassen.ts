@@ -1,7 +1,7 @@
 /** Sets erfassen: Web, App, CSV und Merkliste gehen durch dieselben Regeln für
  * Blickfeld, Menge und Kaufpreis. Was das Netz braucht (Katalog, Bild,
  * Marktpreis), hält die Anfrage nicht auf, sondern läuft als Auftrag. */
-import { rebrickableSetBild, brickset, katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
+import { rebrickableSetBild, katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/sets';
@@ -167,7 +167,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     themeId = ('theme_id' in rb ? rb.theme_id : null) ?? null;
   }
   if (mitBrickset) {
-    const bs = wertOder(await versuche('set-anlegen:brickset-info', brickset.getSetInfo(sn)), null);
+    const bs = wertOder(await versuche('set-anlegen:brickset-info', sk.katalog.quellen.brickset.getSetInfo(sn)), null);
     if (bs) {
       name ??= bs.name;
       year ??= bs.year;
@@ -179,9 +179,12 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   imageUrl ??= rebrickableSetBild(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.katalog.setBildLaden(imageUrl, sn), frist]));
+  const bild = await versuche(
+    'set-anlegen:bild-laden',
+    Promise.race([sk.katalog.bilder.setBildLaden(imageUrl, sn), frist]),
+  );
   const lokal = wertOder(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.vorschauErzeugen(lokal));
+  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.bilder.vorschauErzeugen(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   await merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };

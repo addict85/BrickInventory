@@ -20,7 +20,7 @@ const { PassThrough } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
@@ -47,14 +47,12 @@ function wartungVortaeuschen(t) {
 test('BrickLink in Wartung', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const { verdrahteKlienten, zugang } = _req('clients/zugang.js');
-  const { bricklinkRequest, BricklinkNichtErreichbar } = _req('clients/bricklink.js');
+  const { erzeugeBricklink, BricklinkNichtErreichbar } = _req('clients/bricklink.js');
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
   const { runPriceRefresh } = _req('src/finanzen/preisLauf.js');
 
-  const vorher = zugang();
-  verdrahteKlienten({
-    ...vorher,
+  // Ein Klient mit allen vier Schlüsseln und freiem Kontingent, gestellt an der Verdrahtung.
+  const { bricklinkRequest } = erzeugeBricklink({
     async schluessel() {
       return 'x';
     },
@@ -62,7 +60,7 @@ test('BrickLink in Wartung', { concurrency: 1 }, async t => {
       return { allowed: true, count: 0, limit: 4000 };
     },
   });
-  t.after(() => verdrahteKlienten(vorher));
+  testQuellen(t, { bricklinkRequest });
   wartungVortaeuschen(t);
 
   await t.test('eine Umleitung ist „nicht erreichbar“', async () => {

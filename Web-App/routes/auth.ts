@@ -35,12 +35,12 @@ import {
   type TokenWunsch,
   emailWirdGeaendert,
 } from '../src/konto';
-import type { Dienste } from '../startup/verdrahtung';
+import type { Dienste } from '../src/dienste';
 type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
 /** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. Token
  * ODER Sitzung: Die Sitzung trüge die vollen Rechte am Scope des Tokens vorbei. */
 async function angemeldetAntworten(
-  d: Dienste,
+  d: Pick<Dienste, 'konto'>,
   req: Request,
   res: Response,
   user: Angemeldet,
@@ -77,7 +77,7 @@ function anmeldungAbsagen(req: Request, res: Response, absage: Absage) {
 type GeprueftesToken = NonNullable<Awaited<ReturnType<Dienste['konto']['pruefeToken']>>['nutzer']>;
 
 /** is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false. */
-async function tokenNutzer(d: Dienste, res: Response, u: GeprueftesToken) {
+async function tokenNutzer(d: Pick<Dienste, 'konto'>, res: Response, u: GeprueftesToken) {
   const faellig = rotationFaellig(u);
   if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
   return {
@@ -103,7 +103,7 @@ async function tokenNutzer(d: Dienste, res: Response, u: GeprueftesToken) {
   } as const;
 }
 
-async function sitzungsNutzer(d: Dienste, req: Request, uid: number) {
+async function sitzungsNutzer(d: Pick<Dienste, 'konto'>, req: Request, uid: number) {
   const user = await d.konto.kontoKurzVon(uid);
   if (!user) return null;
   return {
@@ -119,7 +119,7 @@ async function sitzungsNutzer(d: Dienste, req: Request, uid: number) {
   } as const;
 }
 
-export function baueAuthRouter(d: Dienste) {
+export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
