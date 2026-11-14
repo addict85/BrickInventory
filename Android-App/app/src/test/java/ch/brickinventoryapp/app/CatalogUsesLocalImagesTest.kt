@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
 import ch.brickinventoryapp.model.data.model.CatalogSetItem
 import ch.brickinventoryapp.model.data.model.CatalogSetDetail
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
@@ -42,10 +42,10 @@ class CatalogUsesLocalImagesTest {
     @Test
     fun `Katalog-Modelle kennen image_local`() {
         // Gelesen wird, was der Server schickt, und es kommt in der Ansicht an.
-        val item = ApiJson.decodeFromString(CatalogSetItem.serializer(),
+        val item = BrickJson.decodeFromString(CatalogSetItem.serializer(),
             """{"set_number": "75192-1", "image_local": "/images/sets/75192-1.jpg"}""").alsAnsicht()
         assertEquals("/images/sets/75192-1.jpg", item.imageLocal)
-        val detail = ApiJson.decodeFromString(CatalogSetDetail.serializer(),
+        val detail = BrickJson.decodeFromString(CatalogSetDetail.serializer(),
             """{"set_number": "75192-1", "image_local": "/images/sets/75192-1_thumb.jpg"}""").alsAnsicht()
         assertEquals("/images/sets/75192-1_thumb.jpg", detail.imageLocal)
     }

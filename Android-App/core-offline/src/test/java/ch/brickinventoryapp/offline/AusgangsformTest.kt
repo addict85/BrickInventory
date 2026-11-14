@@ -6,8 +6,8 @@ import ch.brickinventoryapp.model.data.model.AddSetRequest
 import ch.brickinventoryapp.model.data.model.MerkpostenRequest
 import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
 import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.descriptors.elementNames
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
@@ -30,7 +30,7 @@ import org.junit.Test
  */
 class AusgangsformTest {
 
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val json = BrickJson
 
     private val FASSUNG_1: List<Pair<String, Bearbeitung>> = listOf(
         """{"type":"set_menge","setNumber":"10001-1","schritt":-2}""" to Bearbeitung.SetMenge("10001-1", -2),

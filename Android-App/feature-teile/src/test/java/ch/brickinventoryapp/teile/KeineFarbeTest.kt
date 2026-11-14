@@ -3,7 +3,7 @@ package ch.brickinventoryapp.teile
 import ch.brickinventoryapp.model.fach.Teilerfassung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.data.model.BrickColor
 import ch.brickinventoryapp.model.data.model.KEINE_FARBE
 import ch.brickinventoryapp.model.data.model.Part
@@ -112,9 +112,9 @@ class KeineFarbeTest {
 
     @Test
     fun `ein fehlendes color_id ist keine Farbe, nicht Schwarz`() {
-        assertEquals(KEINE_FARBE, ApiJson.decodeFromString(Part.serializer(), """{"part_number":"3001"}""").colorId)
-        assertEquals(KEINE_FARBE, ApiJson.decodeFromString(PartValuationItem.serializer(), """{"part_number":"3001"}""").colorId)
-        assertEquals(0, ApiJson.decodeFromString(Part.serializer(), """{"part_number":"3001","color_id":0}""").colorId)
+        assertEquals(KEINE_FARBE, BrickJson.decodeFromString(Part.serializer(), """{"part_number":"3001"}""").colorId)
+        assertEquals(KEINE_FARBE, BrickJson.decodeFromString(PartValuationItem.serializer(), """{"part_number":"3001"}""").colorId)
+        assertEquals(0, BrickJson.decodeFromString(Part.serializer(), """{"part_number":"3001","color_id":0}""").colorId)
         assertEquals(KEINE_FARBE, ManualItemDetailUiState().colorId)
         assertEquals(KEINE_FARBE, TeileZiel.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke").colorId)
     }

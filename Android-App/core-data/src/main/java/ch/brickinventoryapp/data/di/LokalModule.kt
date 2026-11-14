@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.di
 
+import kotlinx.serialization.json.Json
 import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.AusgangPlaner
 import ch.brickinventoryapp.data.lokal.Abgleich
@@ -102,11 +103,11 @@ internal abstract class LokalModule {
         @Provides
         @Singleton
         fun offlineablage(bestand: LokalerBestand, ausgang: Ausgang, besitzer: CacheBesitzer, planer: AusgangPlaner,
-                          @ApplicationScope bereich: CoroutineScope): Offlineablage =
+                          @ApplicationScope bereich: CoroutineScope, json: Json): Offlineablage =
             Offlineablage(bestand, ausgang, bereichQuelle = { besitzer.kontoBereich()?.let { ResponseCache.bereichsName(it) } },
                 planer = planer,
                 bereichFluss = besitzer.kontoBereichFluss().map { it?.let(ResponseCache::bereichsName) }
                     .stateIn(bereich, SharingStarted.Eagerly, null),
-                protokoll = { Protokoll.warnung("Ablage", it) })
+                protokoll = { Protokoll.warnung("Ablage", it) }, json = json)
     }
 }

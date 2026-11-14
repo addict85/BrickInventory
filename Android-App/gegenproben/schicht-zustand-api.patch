@@ -10,7 +10,7 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
  import android.provider.OpenableColumns
  import androidx.core.net.toUri
  import ch.brickinventoryapp.data.Anmeldestand
-+import ch.brickinventoryapp.data.api.ApiJson
++import ch.brickinventoryapp.data.api.KontoApi
  import ch.brickinventoryapp.data.repository.fehlerTextZuCode
  import ch.brickinventoryapp.data.repository.Ergebnis
  import ch.brickinventoryapp.zustand.ui.fehlerTextArgument

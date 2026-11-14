@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.JobsResponse
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
@@ -57,7 +57,7 @@ class VerwaltungLueckenTest {
     /** Der Server schickt den Zeitplan seit jeher mit; die App liest ihn ein. */
     @Test
     fun `der Zeitplan wird eingelesen und angezeigt`() {
-        val r = ApiJson.decodeFromString(JobsResponse.serializer(),
+        val r = BrickJson.decodeFromString(JobsResponse.serializer(),
             """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""")
         assertEquals("07:05", r.schedules["prices"]?.time)
         // In den Zustand und an die Job-Karte: MonitoringNachladenTest und MonitoringJobsAnzeigeTest (app).

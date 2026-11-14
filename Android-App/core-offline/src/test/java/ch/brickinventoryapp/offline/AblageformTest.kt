@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.data.model.BrickLinkRef
 import ch.brickinventoryapp.model.data.model.Instruction
 import ch.brickinventoryapp.model.data.model.KontoName
@@ -30,7 +31,7 @@ import org.junit.Test
  */
 class AblageformTest {
 
-    private fun <T : Any> rund(fach: Fach<T>, wert: T): T = fach.form.dekodiere(AblageJson, fach.form.kodiere(AblageJson, wert))
+    private fun <T : Any> rund(fach: Fach<T>, wert: T): T = fach.form.dekodiere(BrickJson, fach.form.kodiere(BrickJson, wert))
 
     // Jedes Feld mit eigenem Wert, damit eine Vertauschung auffällt.
     private val set = SetItem("10001-1", "Burg", 1990, "Castle", 500, 4, 2, "u", "l", "2020-01-01", Zustand.GEBRAUCHT,
@@ -52,10 +53,10 @@ class AblageformTest {
     @Test
     fun `eine Zeile im frueheren Format bleibt lesbar`() {
         // Das Servermodell selbst als JSON: so liegen Zeilen, die vor der eigenen Ablageform geschrieben wurden.
-        val alt = AblageJson.encodeToString(SetItem.serializer(), set)
-        assertEquals(set, Faecher.SETS.form.dekodiere(AblageJson, alt))
-        assertEquals(merk, Faecher.MERKLISTE.form.dekodiere(AblageJson, AblageJson.encodeToString(Merkposten.serializer(), merk)))
-        assertEquals(teil, Faecher.TEILE.form.dekodiere(AblageJson, AblageJson.encodeToString(Part.serializer(), teil)))
+        val alt = BrickJson.encodeToString(SetItem.serializer(), set)
+        assertEquals(set, Faecher.SETS.form.dekodiere(BrickJson, alt))
+        assertEquals(merk, Faecher.MERKLISTE.form.dekodiere(BrickJson, BrickJson.encodeToString(Merkposten.serializer(), merk)))
+        assertEquals(teil, Faecher.TEILE.form.dekodiere(BrickJson, BrickJson.encodeToString(Part.serializer(), teil)))
     }
 
     @Test

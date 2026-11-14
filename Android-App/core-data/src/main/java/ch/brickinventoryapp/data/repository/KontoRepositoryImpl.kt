@@ -37,6 +37,8 @@ import ch.brickinventoryapp.model.data.model.ZweiterFaktorEinrichtung
 import ch.brickinventoryapp.model.data.model.ZweiterFaktorStand
 import ch.brickinventoryapp.model.data.model.ZweiterFaktorWege
 import kotlinx.serialization.decodeFromString
+import ch.brickinventoryapp.model.json.BrickJson
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
 import ch.brickinventoryapp.model.koroutinen.Dispatcher
@@ -61,6 +63,7 @@ class KontoRepositoryImpl @Inject constructor(
     private val api: KontoApi,
     /** Für den blockierenden Tausch. */
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    private val json: Json = BrickJson,
 ) : KontoRepository {
 
     // Kein Authorization-Header hier: Der OkHttp-Interceptor in di/ServerClient.kt
@@ -83,8 +86,8 @@ class KontoRepositoryImpl @Inject constructor(
             else api.login(LoginRequest(username, password, code = code, scope = scope, neverExpires = https))
             if (antwort.code() == 401) {
                 val rumpf = antwort.errorBody()?.string()
-                val geparst = rumpf?.let { runCatching { nachsichtigesJson.decodeFromString<LoginResponse>(it) }.getOrNull() }
-                rumpf?.let { runCatching { nachsichtigesJson.decodeFromString<ZweiterFaktorWege>(it) }.getOrNull() }?.let { wege = it }
+                val geparst = rumpf?.let { runCatching { json.decodeFromString<LoginResponse>(it) }.getOrNull() }
+                rumpf?.let { runCatching { json.decodeFromString<ZweiterFaktorWege>(it) }.getOrNull() }?.let { wege = it }
                 if (geparst?.zweiterFaktor == true) retrofit2.Response.success(geparst) else antwort
             } else antwort
         }
@@ -93,8 +96,6 @@ class KontoRepositoryImpl @Inject constructor(
             is Ergebnis.Error -> r
         }
     }
-
-    private val nachsichtigesJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
     /** Die Optionen für den Credential Manager; [zweck] wie PASSKEY_ANMELDEN. */
     override suspend fun passkeyOptionen(zweck: String): Ergebnis<PasskeyOptionen> =

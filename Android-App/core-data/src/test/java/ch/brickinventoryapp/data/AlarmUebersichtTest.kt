@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.BrickApiService
 import ch.brickinventoryapp.model.data.model.Preisalarm
 import ch.brickinventoryapp.data.cache.ResponseCache
@@ -89,10 +89,10 @@ class AlarmUebersichtTest {
      */
     @Test
     fun `ein fehlendes besitzt-Feld macht die Zeile nicht tot`() {
-        val alarm = ApiJson.decodeFromString(Preisalarm.serializer(),
+        val alarm = BrickJson.decodeFromString(Preisalarm.serializer(),
             """{"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}""")
         assertTrue("Ohne das Feld gilt das Set als nicht vorhanden — die ganze Rubrik waere tot", alarm.besitzt)
-        val weg = ApiJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
+        val weg = BrickJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
         assertFalse(weg.besitzt)
     }
 

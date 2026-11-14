@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.offline.room
 
-import ch.brickinventoryapp.offline.AblageJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.Ausgangsposten
 import ch.brickinventoryapp.offline.Ausgangsform
@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 /** [LokalerBestand] über Room: Zeilen und Stand je Bereich und Art. */
@@ -73,13 +74,16 @@ internal fun enthaeltMuster(suche: String): String =
  * [Ausgang] über Room; jeder Posten liegt in der [Ausgangsform]. Lesen schreibt nie:
  * Ein unlesbarer Posten bleibt liegen, bis [raeumeUnlesbare] ihn als verworfen meldet.
  */
-internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank) : Ausgang {
+internal class RoomAusgang @Inject constructor(
+    private val db: BestandDatenbank,
+    private val json: Json = BrickJson,
+) : Ausgang {
     private val dao get() = db.ausgang()
 
     override fun anzahl(bereich: String) = dao.anzahl(bereich)
 
     override suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long, schluessel: String) =
-        dao.fuegeEin(AusgangZeile(bereich = bereich, bearbeitung = Ausgangsform.kodiere(AblageJson, bearbeitung),
+        dao.fuegeEin(AusgangZeile(bereich = bereich, bearbeitung = Ausgangsform.kodiere(json, bearbeitung),
             erstellt = jetzt, schluessel = schluessel))
 
     override suspend fun alle(bereich: String) = dao.alle(bereich).mapNotNull { lies(it) }
@@ -90,7 +94,7 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
         val unlesbar = dao.alle(bereich).filter { lies(it) == null }
         for (z in unlesbar) {
             // Erst den Hinweis festhalten, dann entfernen: Stirbt der Prozess dazwischen, bleibt der Hinweis.
-            val ziel = Ausgangsform.zielAus(AblageJson, z.bearbeitung) ?: "?"
+            val ziel = Ausgangsform.zielAus(json, z.bearbeitung) ?: "?"
             merkeVerworfen(bereich, VerworfenerPosten(z.schluessel.ifBlank { "posten-${z.id}" }, ziel, "", null, unlesbar = true))
             dao.entferne(z.id)
         }
@@ -107,7 +111,7 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
 
     override suspend fun merkeVerworfen(bereich: String, v: VerworfenerPosten) {
         val position = bestand.lies(bereich, VERWORFEN).maxOfOrNull { it.position }?.plus(1) ?: 0
-        val inhalt = AblageJson.encodeToString(VerworfenZeile.serializer(), VerworfenZeile(v.ziel, v.meldung, v.httpCode, v.unlesbar))
+        val inhalt = json.encodeToString(VerworfenZeile.serializer(), VerworfenZeile(v.ziel, v.meldung, v.httpCode, v.unlesbar))
         bestand.loesche(bereich, VERWORFEN, listOf(v.id))
         bestand.fuegeEin(listOf(BestandZeile(bereich, VERWORFEN, v.id, position, inhalt)))
     }
@@ -115,7 +119,7 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
     override fun verworfene(bereich: String): Flow<List<VerworfenerPosten>> =
         bestand.beobachte(bereich, VERWORFEN).map { zeilen ->
             zeilen.mapNotNull { z ->
-                runCatching { AblageJson.decodeFromString(VerworfenZeile.serializer(), z.inhalt) }.getOrNull()
+                runCatching { json.decodeFromString(VerworfenZeile.serializer(), z.inhalt) }.getOrNull()
                     ?.let { VerworfenerPosten(z.schluessel, it.ziel, it.meldung, it.httpCode, it.unlesbar) }
             }
         }
@@ -123,7 +127,7 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
     override suspend fun quittiereVerworfen(bereich: String, id: String) = bestand.loesche(bereich, VERWORFEN, listOf(id))
 
     private fun lies(z: AusgangZeile): Ausgangsposten? =
-        runCatching { Ausgangsform.dekodiere(AblageJson, z.bearbeitung) }.getOrNull()
+        runCatching { Ausgangsform.dekodiere(json, z.bearbeitung) }.getOrNull()
             ?.let { Ausgangsposten(z.id, it, z.erstellt, z.versuche, z.schluessel) }
 }
 

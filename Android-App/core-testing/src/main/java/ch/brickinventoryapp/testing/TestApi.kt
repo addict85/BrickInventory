@@ -45,7 +45,7 @@ import retrofit2.Retrofit
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.serializer
 import okhttp3.ResponseBody
 import retrofit2.Invocation
@@ -73,7 +73,7 @@ object TestApi {
         OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build())
 
     fun fuer(basis: String, rufe: Call.Factory): BrickApiService {
-        val json = ApiJson
+        val json = BrickJson
         return Retrofit.Builder()
             .baseUrl(basis)
             .callFactory(rufe)
@@ -200,7 +200,7 @@ class PfadServer(vararg regeln: Pair<String, String>) {
     private fun pruefeGegenDto(anfrage: Request, pfad: String, text: String) {
         val typ = anfrage.tag(Invocation::class.java)?.let { antworttyp(it.method()) } ?: return
         try {
-            ApiJson.decodeFromString(ApiJson.serializersModule.serializer(typ), text)
+            BrickJson.decodeFromString(BrickJson.serializersModule.serializer(typ), text)
         } catch (e: IllegalArgumentException) {
             val grund = "${anfrage.method} $pfad: ${e.message?.lineSequence()?.firstOrNull()}"
             einlesefehler += grund

@@ -11,7 +11,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 
 /**
  * Client-seitiger API-Vertrag für den Preisverlauf und die Bewertung.
@@ -28,7 +28,7 @@ import ch.brickinventoryapp.data.api.ApiJson
 class PriceHistorySerializationTest {
 
     // Gleiche Konfiguration wie AppModule.provideJson()
-    private val json = ApiJson
+    private val json = BrickJson
 
     private val payload = """{
         "success": true,
