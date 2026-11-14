@@ -29,7 +29,7 @@ export function setImBlickfeld(db: DbSchnittstelle, ids: number[], setNumber: st
   );
 }
 
-/** Der Marktpreis ist avg_price oder qty_avg_price (marktpreisSql): eine Spalte von price_cache. */
+/** Der Marktpreis (marktpreisSql) ist eine der Preisspalten von price_cache. */
 type Marktpreis = { marktpreis: NonNullable<Tabellen['price_cache']['avg_price']> };
 
 /** Der angefragte Zustand gewinnt, wenn er einen Preis hat. */

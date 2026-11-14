@@ -1,4 +1,4 @@
-import { speicherePreis, cacheUsable, preisAusCache, parallelLimit } from './financeCalc';
+import { speicherePreis, cacheVerwendbar, preisAusCache, parallelLimit } from './financeCalc';
 import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { AuftragVerschieben, type AuftragsKontext } from '../auftraege';
 import { ohneBricklinkPreis } from '../infra/setNummer';
@@ -55,7 +55,7 @@ async function fetchAndCachePrice(
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? ''), 10));
   // Dieselbe Frisch-Regel wie im Anfrageweg: Auch eine Null-Zeile wird nach sechs Stunden erneut versucht.
   const vorhanden = await preisAusCache(k, setNumber, condition, currency, ttl);
-  if (cacheUsable(vorhanden, ttl, k.uhr.jetzt())) return 'skipped';
+  if (cacheVerwendbar(vorhanden, ttl, k.uhr.jetzt())) return 'skipped';
 
   const rl = await k.katalog.kontingentFrei('bricklink');
   if (!rl.allowed) return 'rate_limited';

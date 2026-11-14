@@ -58,7 +58,7 @@ export async function preisAusCache(
   return k.preisCache.setPreisFrisch(setNumber, condition, currency, ttlStunden);
 }
 
-export function cacheUsable(row: PreisZeile, ttlHours: number, jetzt: number) {
+export function cacheVerwendbar(row: PreisZeile, ttlHours: number, jetzt: number) {
   if (!row) return false;
   // avg_price ist numeric, und pg liefert numeric als Zeichenkette.
   if (hatPreis(row)) return true;
@@ -91,7 +91,7 @@ export async function speicherePreis(
   const qty = parseInt(String(g?.total_quantity ?? 0), 10) || 0;
 
   // Auch eine Null wird geschrieben: Sie ist die Auskunft „kein Preis" und hält
-  // den nächsten Abruf zurück; wie lange, entscheidet cacheUsable().
+  // den nächsten Abruf zurück; wie lange, entscheidet cacheVerwendbar().
   const preis = { min, avg, max, qavg, qty };
   // Cache und Verlauf zusammen: Ein Cache ohne seinen Verlaufspunkt hielte den nächsten
   // Abruf zurück, und die Lücke im Verlauf füllte niemand mehr.
@@ -169,7 +169,7 @@ async function holePreisMitRueckfall(
   const anderer = zustand === 'N' ? 'U' : 'N';
   const z = await q.lies(zustand);
   if (hatPreis(z)) return ausZeile(z!);
-  const bekanntLeer = cacheUsable(z, ttl, k.uhr.jetzt());
+  const bekanntLeer = cacheVerwendbar(z, ttl, k.uhr.jetzt());
   let pd: CacheZeile | null = null;
   if (!bekanntLeer) {
     if (!(await k.katalog.kontingentFrei('bricklink')).allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
@@ -178,7 +178,8 @@ async function holePreisMitRueckfall(
   }
   const zf = await q.lies(anderer);
   if (hatPreis(zf)) return ausZeile(zf!, { condition_used: anderer, is_fallback: true });
-  if (bekanntLeer && cacheUsable(zf, ttl, k.uhr.jetzt())) return { ...OHNE_PREIS, from_cache: true, no_price: true };
+  if (bekanntLeer && cacheVerwendbar(zf, ttl, k.uhr.jetzt()))
+    return { ...OHNE_PREIS, from_cache: true, no_price: true };
   const frei = (await k.katalog.kontingentFrei('bricklink')).allowed;
   const pd2 = frei ? await rufeAb(q, anderer) : null;
   if (hatPreis(pd2)) return ausZeile(pd2!, { from_cache: false, condition_used: anderer, is_fallback: true });
@@ -241,7 +242,7 @@ export function preisAusVorrat(
   if (hatPreis(z)) return ausZeile(z!);
   const zf = lies(anderer) ?? null;
   if (hatPreis(zf)) return ausZeile(zf!, { condition_used: anderer, is_fallback: true });
-  if (cacheUsable(z, ttlStunden, jetzt) && cacheUsable(zf, ttlStunden, jetzt))
+  if (cacheVerwendbar(z, ttlStunden, jetzt) && cacheVerwendbar(zf, ttlStunden, jetzt))
     return { ...OHNE_PREIS, from_cache: true, no_price: true };
   return { ...OHNE_PREIS, from_cache: false, ausstehend: true };
 }

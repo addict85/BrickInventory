@@ -258,8 +258,8 @@ test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
   lege('a'.repeat(40), 20);
   lege('b'.repeat(40), 10);
   lege('c'.repeat(40), 1);
-  assert.equal(await raeumeBildCacheAuf(4000), 0, 'unter der Grenze wird nichts gelöscht');
-  assert.equal(await raeumeBildCacheAuf(3000), 3);
+  assert.equal(await raeumeBildCacheAuf(4000, jetzt * 1000), 0, 'unter der Grenze wird nichts gelöscht');
+  assert.equal(await raeumeBildCacheAuf(3000, jetzt * 1000), 3);
   assert.deepEqual(
     fs
       .readdirSync(cacheDir)
