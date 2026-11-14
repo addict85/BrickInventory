@@ -9,7 +9,7 @@
     <string name="settings_default_condition">Standard-Zustand</string>
     <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
     <string name="settings_default_condition_hint">Vorbelegung beim Erfassen. Leer = globale Vorgabe aus den Hintergrundarbeiten.</string>
-    <string name="settings_default_condition_global">— Globale Vorgabe —</string>
+    <string name="settings_default_condition_global">Globale Vorgabe</string>
     <string name="monitoring_default_condition">Standard-Zustand</string>
     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
     <string name="settings_condition_new">Neuware</string>
@@ -289,9 +289,9 @@
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Teile</string>
     <string name="finance_filter_minifigs">Minifiguren</string>
-    <string name="finance_section_sets">SETS</string>
-    <string name="finance_section_parts">TEILE</string>
-    <string name="finance_section_minifigs">MINIFIGUREN</string>
+    <string name="finance_section_sets">Sets</string>
+    <string name="finance_section_parts">Teile</string>
+    <string name="finance_section_minifigs">Minifiguren</string>
     <string name="finance_subtotal_parts">Total Teile</string>
     <string name="finance_subtotal_minifigs">Total Minifiguren</string>
     <string name="finance_total_sets">Sets</string>
@@ -348,7 +348,7 @@
     <string name="monitoring_icon_retry">Erneut versuchen</string>
     <string name="monitoring_hide_error">Fehler ausblenden</string>
     <string name="monitoring_show_error">Letzten Fehler anzeigen</string>
-    <string name="monitoring_price_cache">PREISSPEICHER</string>
+    <string name="monitoring_price_cache">Preisspeicher</string>
     <string name="monitoring_cache_prices">Preise</string>
     <string name="monitoring_cache_stale">Veraltet</string>
     <string name="monitoring_cache_subsets">Teilsets</string>
@@ -360,7 +360,7 @@
     <string name="monitoring_cache_clear_confirm">Leeren</string>
     <string name="monitoring_cache_cleared">Zwischenspeicher geleert</string>
     <string name="monitoring_cache_saved">Speicherdauer gespeichert</string>
-    <string name="monitoring_api_calls">API-AUFRUFE</string>
+    <string name="monitoring_api_calls">API-Aufrufe</string>
     <string name="monitoring_limits_saved">Grenzen gespeichert</string>
     <string name="monitoring_limits_save">Grenzen speichern</string>
     <string name="monitoring_retry_queued">%1$s wird nochmals versucht</string>

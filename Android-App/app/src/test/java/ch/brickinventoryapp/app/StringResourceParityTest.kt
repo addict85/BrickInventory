@@ -283,7 +283,8 @@ class StringResourceParityTest {
      * Ein Wort je Sache (Glossar): „Setnummer“, Listenfüsse „Total“, „Kaufsumme“ für den
      * Einstand; englisch „Sign in/out“, „Profit/loss“, „administrator rights“.
      * Gegenprobe (gegenproben/begriff-set-nummer.patch): gallery_set_number wieder
-     * „Set-Nummer“ → rot.
+     * „Set-Nummer“ → rot. Ebenso versalien-im-text (PREISSPEICHER) und
+     * vorgabe-mit-strichen („— Global default —“).
      */
     @Test
     fun `ein Begriff je Sache in beiden Sprachen`() {
@@ -294,8 +295,11 @@ class StringResourceParityTest {
             "values/strings.xml" to listOf(Regex("""(?i)\blog(?:ged)? (?:in|out)\b"""), Regex("Gain/loss"),
                 Regex("""\badmin rights\b""")),
         )
+        // Auch keine Form im Wort: Versalien setzt Abschnittstitel (vorgelesen wie geschrieben),
+        // und eine Wahl in Gedankenstrichen las sich als Platzhalter.
+        val form = listOf(Regex("""^\p{Lu}[\p{Lu}\- ]{4,}$"""), Regex("""^— .* —$"""))
         val funde = verboten.flatMap { (datei, muster) ->
-            texte(datei).filterValues { t -> muster.any { it.containsMatchIn(t) } }.map { "$datei ${it.key}: ${it.value}" }
+            texte(datei).filterValues { t -> (muster + form).any { it.containsMatchIn(t) } }.map { "$datei ${it.key}: ${it.value}" }
         }
         assert(funde.isEmpty()) { "Abweichender Begriff:\n  " + funde.joinToString("\n  ") }
     }
