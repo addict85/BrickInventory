@@ -2,7 +2,7 @@ package ch.brickinventoryapp.konto.ui.viewmodel
 
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.vertrag.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

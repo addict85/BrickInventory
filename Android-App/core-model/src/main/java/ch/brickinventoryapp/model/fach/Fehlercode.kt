@@ -1,4 +1,4 @@
-package ch.brickinventoryapp.vertrag
+package ch.brickinventoryapp.model.fach
 
 /**
  * Die Fehlercodes des Servers, nach denen die App verzweigt. Eine Aufzählung statt

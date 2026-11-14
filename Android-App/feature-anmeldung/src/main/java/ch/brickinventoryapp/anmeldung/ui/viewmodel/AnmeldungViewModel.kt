@@ -5,8 +5,8 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.Anmeldeablage
 import ch.brickinventoryapp.vertrag.RegisterRequest
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.vertrag.TOKEN_SCOPE_APP
-import ch.brickinventoryapp.vertrag.TOKEN_SCOPE_VOLL
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_APP
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_VOLL
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeUiState
@@ -22,8 +22,8 @@ import ch.brickinventoryapp.sicherheit.pruefeRpId
 import kotlinx.serialization.json.Json
 import ch.brickinventoryapp.vertrag.LoginResponse
 import ch.brickinventoryapp.vertrag.abbildung.verwalter
-import ch.brickinventoryapp.vertrag.PASSKEY_ANMELDEN
-import ch.brickinventoryapp.vertrag.PASSKEY_ZWEITER_FAKTOR
+import ch.brickinventoryapp.model.fach.PASSKEY_ANMELDEN
+import ch.brickinventoryapp.model.fach.PASSKEY_ZWEITER_FAKTOR
 import ch.brickinventoryapp.anmeldung.ui.PasskeyAbfrage
 import ch.brickinventoryapp.anmeldung.ui.PasskeyErgebnis
 import kotlinx.serialization.json.JsonObject

@@ -128,13 +128,14 @@ test('jeder Abfrageparameter der App steht im Vertrag', () => {
 test('jeder Fehlercode der App steht im Vertrag', () => {
   const datei = path.join(
     ANDROID,
-    'core-vertrag',
+    'core-model',
     'src',
     'main',
     'java',
     'ch',
     'brickinventoryapp',
-    'vertrag',
+    'model',
+    'fach',
     'Fehlercode.kt',
   );
   const kennungen = kotlinFehlercodes(datei);
