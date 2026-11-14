@@ -164,8 +164,9 @@ function ladeSetNachtraege(sn, acqs) {
   const preise = (/** @type {string} */ z) =>
     new Set(acqs.filter(a => a.condition === z && a.purchase_price != null).map(a => a.unit_price ?? a.purchase_price));
   const mittel = new Set(['N', 'U'].filter(z => preise(z).size > 1));
-  // Load price history async
+  // Die Antwort kann nach dem Schliessen oder einem Setwechsel kommen; dann gehört sie nicht in den Dialog.
   api('GET', `/v1/sets/${sn}/price-history`).then(ph => {
+    if (!curSet || curSet.set_number !== sn) return;
     renderMarketRows(ph);
     const el = G('m-sparkline-content');
     if (!el) return;

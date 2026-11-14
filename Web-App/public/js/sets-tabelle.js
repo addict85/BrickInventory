@@ -25,7 +25,7 @@ function sortKopf(feld, text) {
 
 /** @param {Kachel[]} list */
 export function setsTabelle(list) {
-  return html`<div class="tw"><table class="dt sets-tabelle" aria-label="${tRaw('nav.collection')}"><thead><tr><th>${tRaw('col.image_th')}</th>${sortKopf('num', tRaw('col.nr'))}${sortKopf('name', tRaw('col.name'))}${sortKopf('year', tRaw('detail.year'))}<th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th>${sortKopf('qty', tRaw('detail.qty'))}${sortKopf('kauf', tRaw('gallery.card.bought'))}<th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('common.actions')}</span></th></tr></thead><tbody>${list.map(tableRow)}</tbody></table></div>`;
+  return html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.collection')}"><thead><tr><th>${tRaw('col.image_th')}</th>${sortKopf('num', tRaw('col.nr'))}${sortKopf('name', tRaw('col.name'))}${sortKopf('year', tRaw('detail.year'))}<th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th>${sortKopf('qty', tRaw('detail.qty'))}${sortKopf('kauf', tRaw('gallery.card.bought'))}<th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('common.actions')}</span></th></tr></thead><tbody>${list.map(tableRow)}</tbody></table></div>`;
 }
 
 /** @param {Kachel} s */

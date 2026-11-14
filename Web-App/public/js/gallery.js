@@ -410,7 +410,7 @@ function gridCard(s) {
   const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
   const k = kachelName(3);
   return html`<div class="sc"${faecherTon(s)} tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openModal" data-arg="${s.set_number}">
-    <div class="ca"><span class="delbtn" data-taste="${tRaw('kachel.entf')}" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${s.set_number}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
+    <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${s.set_number}" data-taste="${tRaw('kachel.entf')}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${s.set_number}</div>

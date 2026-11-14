@@ -85,7 +85,9 @@ test('Fokus unter festen Leisten', { concurrency: 1, timeout: 400_000 }, async t
     for (const ansicht of ANSICHTEN) {
       const { funde, gesehen } = await tabGang(app, ansicht);
       await t.test(`${breite} px${gross ? ', 200 %' : ''}: ${ansicht}`, () => {
-        assert.ok(gesehen >= 3, `nur ${gesehen} Elemente erreicht — greift der Tab-Gang?`);
+        // Die leere Bauliste hat seit Runde 24 nur Feld und „Hinzufügen“ („Neu berechnen“ erst mit Set).
+        const mindestens = ansicht === 'bauliste' ? 2 : 3;
+        assert.ok(gesehen >= mindestens, `nur ${gesehen} Elemente erreicht — greift der Tab-Gang?`);
         assert.deepEqual(funde, []);
       });
     }

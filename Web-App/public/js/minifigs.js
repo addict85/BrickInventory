@@ -278,7 +278,7 @@ export function renderFigs(list, target) {
           // den Sets. Dies aber nur in der webapp."
           const delBtn =
             f.source === 'manual'
-              ? `<div class="ca"><span class="delbtn" data-taste="${esc(tRaw('kachel.entf'))}" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
+              ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" data-taste="${esc(tRaw('kachel.entf'))}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
               : '';
           // Zustand nur bei manuell erfassten Figuren — aus Sets haben sie keinen eigenen. Die
           // Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei der Figur aus dem Set eines
@@ -429,7 +429,7 @@ export function renderManualFigsTable() {
       const condBadge = condBadges(f);
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0" data-stil="cursor:pointer">
-        <div class="ca"><span class="delbtn" data-taste="${tRaw('kachel.entf')}" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${f.fig_number}" data-arg2="${f.user_id || ''}" title="${t('figs.delete')}">${TRASH_ICON_SVG}</span></div>
+        <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${f.fig_number}" data-arg2="${f.user_id || ''}" data-taste="${tRaw('kachel.entf')}" title="${t('figs.delete')}">${TRASH_ICON_SVG}</span></div>
         ${ungeprueft(img)}
         <div class="man-tile-num">${f.fig_number}</div>
         <div class="man-tile-name">${f.fig_name || '—'}</div>

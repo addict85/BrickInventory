@@ -243,8 +243,9 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
 
 test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
   const src = require('./helpers/sources').adminQuelle();
-  const i = src.indexOf("api('GET', `/v1/minifigs?source=set`)");
-  assert.ok(i > 0, 'Die Nachfrage nach den Minifiguren fehlt');
+  // Seit Runde 24 (N7) kommt die Figurenzahl aus dem Katalog; nachgeladen wird nur noch der Preisverlauf.
+  const i = src.indexOf("api('GET', `/v1/sets/${sn}/price-history`)");
+  assert.ok(i > 0, 'Die Nachfrage nach dem Preisverlauf fehlt');
   const fn = src.slice(i, i + 500);
   assert.match(
     fn,

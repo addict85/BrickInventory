@@ -1738,17 +1738,17 @@
     <img id="cat-m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
-      <form class="zeile luecke-8 unten umbruch" data-submit="cat-m-add" novalidate>
+      <div class="zeile luecke-8 unten umbruch">
         <div class="fg max-150" id="cat-m-owner-box" data-stil="display:none"><label for="cat-m-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt" id="cat-m-owner"></select></div><div class="fg max-220" id="cat-m-storage-box"><span class="feld-titel" id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="cat-m-storage-slot"></span></div>
         <div class="fg max-74"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="cat-m-qty" value="1" min="1" /></div>
         <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-price" placeholder="—" /></div>
         <div class="fg max-110"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="cat-m-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
-      </form>
+      </div>
       <!-- Preisalarm beim Merken — Marcos „inkl. Zustand und einem … -->
-      <form class="zeile luecke-8 unten umbruch" data-submit="cat-m-wish" novalidate>
+      <div class="zeile luecke-8 unten umbruch">
         <div class="fg max-120"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select class="auswahl-kompakt" id="cat-m-alert-dir"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
         <div class="fg max-110"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-alert-val" placeholder="—" /></div>
-      </form>
+      </div>
       <!-- Marcos Vorgabe: BrickLink eine Zeile hoeher, die beiden … -->
       <div data-stil="display:flex;width:100%">
         <a class="btn bs knopf-fuellend" id="cat-m-bricklink" href="#" target="_blank" rel="noopener" data-i18n="catalog.buy_bricklink" data-ico="korb">Auf BrickLink kaufen</a>
