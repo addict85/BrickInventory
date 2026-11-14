@@ -1,7 +1,6 @@
 /** POST /settings ohne HTTP. Hier statt in src/einstellungen, weil Mail, Protokoll
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
 import { SECRET_KEYS, isMaskedValue, globalerWertGueltig, meldeGlobaleAenderung } from '../einstellungen';
-import { mailBereit } from '../mail';
 import { fachfehler } from '../infra/fehlerTexte';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../vertrag/einstellungen';
 import type { Eingabe } from '../vertrag';
@@ -52,8 +51,7 @@ async function schreibeGlobal(kx: VerwaltungKontext, uid: number, e: Einstellung
     if (String(e[key]) !== String((await kx.einstellungen.getGlobalSetting(key)) ?? '')) geaendert.push(key);
     await kx.einstellungen.setGlobalSetting(key, e[key]);
   }
-  if (geaendert.length)
-    await kx.konto.protokoll.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
+  if (geaendert.length) await kx.konto.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
   // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
   if (GLOBALE_EINSTELLUNGEN.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await kx.einstellungen.deleteGlobalSetting('smtp_insecure_tls');
@@ -73,7 +71,7 @@ export async function einstellungenSpeichern(
     if (
       String(e.registration_enabled) === '1' &&
       (await kx.einstellungen.getGlobalSetting('registration_enabled')) !== '1' &&
-      !(await mailBereit(e))
+      !(await kx.mail.mailBereit(e))
     )
       fachfehler('ungueltig', 'registrierung_braucht_mail');
   }

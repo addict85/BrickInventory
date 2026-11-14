@@ -80,8 +80,8 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
     ).id;
   const chef = await neu(`${NAME}-chef`, true);
   const nutzer = await neu(`${NAME}-nutzer`);
-  const K = _req('src/konto/index.js');
-  const G = _req('src/gutscheine/index.js');
+  const K = require('./helpers/sources').bereichsSeite('konto');
+  const G = require('./helpers/sources').bereichsSeite('gutscheine');
   const ordner = path.join(G.VOUCHER_DIR, String(nutzer));
   t.after(async () => {
     fs.rmSync(ordner, { recursive: true, force: true });

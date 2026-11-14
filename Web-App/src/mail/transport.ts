@@ -5,12 +5,12 @@ import nodemailer from 'nodemailer';
 import tls from 'node:tls';
 import type { PeerCertificate } from 'node:tls';
 import { konfig } from '../infra/konfig';
-import { getGlobalSetting } from '../einstellungen';
+import type { MailKontext } from './kontext';
 import addressparser from 'nodemailer/lib/addressparser';
 import { emailGueltig } from '../infra/validate';
 import { fehlertext } from '../infra/fehler';
 import { loeseAuf, mailserverAdresse } from '../infra/zielAdresse';
-const getSetting = (key: string) => getGlobalSetting(key, '');
+const einstellung = (k: MailKontext, key: string) => k.einstellungen.getGlobalSetting(key, '');
 
 function normiereFingerabdruck(wert: unknown): string {
   return String(wert ?? '')
@@ -20,14 +20,14 @@ function normiereFingerabdruck(wert: unknown): string {
 
 /** Die Prüfung bleibt an: Ein selbst signiertes Zertifikat kommt als PEM herein; ein
  * Fingerabdruck nagelt genau eines fest und ersetzt den Abgleich des Hostnamens. */
-async function getTransporter() {
-  const host = await getSetting('smtp_host');
-  const port = parseInt((await getSetting('smtp_port')) || '587', 10);
-  const user = await getSetting('smtp_user');
-  const pass = await getSetting('smtp_pass');
-  const secure = (await getSetting('smtp_secure')) === '1';
-  const ca = (await getSetting('smtp_tls_ca')).trim();
-  const fp = normiereFingerabdruck(await getSetting('smtp_tls_fingerprint'));
+async function getTransporter(k: MailKontext) {
+  const host = await einstellung(k, 'smtp_host');
+  const port = parseInt((await einstellung(k, 'smtp_port')) || '587', 10);
+  const user = await einstellung(k, 'smtp_user');
+  const pass = await einstellung(k, 'smtp_pass');
+  const secure = (await einstellung(k, 'smtp_secure')) === '1';
+  const ca = (await einstellung(k, 'smtp_tls_ca')).trim();
+  const fp = normiereFingerabdruck(await einstellung(k, 'smtp_tls_fingerprint'));
   if (!host || !user) return null;
   // Aufgelöst und geprüft wird hier, verbunden mit genau dieser Adresse; der Name bleibt für SNI und Zertifikat.
   const adresse = await loeseAuf(host, ip => mailserverAdresse(ip));
@@ -87,8 +87,8 @@ function smtpFehlertext(e: unknown): { text: string; zertifikat: boolean } {
 }
 
 /** Wer die entfallene Ausnahme „Zertifikat nicht prüfen" gesetzt hatte, erfährt es beim Start. */
-export async function meldeSmtpAltlast(): Promise<boolean> {
-  if ((await getSetting('smtp_insecure_tls')) !== '1') return false;
+export async function meldeSmtpAltlast(k: MailKontext): Promise<boolean> {
+  if ((await einstellung(k, 'smtp_insecure_tls')) !== '1') return false;
   console.warn(
     '⚠️  [mailer] smtp_insecure_tls wird nicht mehr ausgewertet: Das Zertifikat des Mailservers wird jetzt geprüft. ' +
       'Für ein selbst signiertes Zertifikat unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder den SHA-256-Fingerabdruck eintragen.',
@@ -96,8 +96,8 @@ export async function meldeSmtpAltlast(): Promise<boolean> {
   return true;
 }
 
-async function getFrom() {
-  return (await getSetting('smtp_from')) || 'BrickInventory Manager <noreply@brickinventory.local>';
+async function getFrom(k: MailKontext) {
+  return (await einstellung(k, 'smtp_from')) || 'BrickInventory Manager <noreply@brickinventory.local>';
 }
 
 /** Ohne Token, ausser mit MAIL_KONSOLE_MIT_TOKEN=1: Die Konsole landet in
@@ -129,31 +129,34 @@ export function einzigerEmpfaenger(to: string): boolean {
 
 /** Ohne SMTP auf der Konsole; `html` und `text` optional, weil die Konsole
  * nur `text` liest. */
-export async function sendMail({
-  to,
-  subject,
-  html,
-  text,
-  link: echterLink,
-}: {
-  to: string;
-  subject: string;
-  html?: string;
-  text?: string;
-  link?: string;
-}) {
+export async function sendMail(
+  k: MailKontext,
+  {
+    to,
+    subject,
+    html,
+    text,
+    link: echterLink,
+  }: {
+    to: string;
+    subject: string;
+    html?: string;
+    text?: string;
+    link?: string;
+  },
+) {
   if (!einzigerEmpfaenger(to)) {
     console.warn(`📧 Empfänger abgelehnt (${maskiereAdresse(to)}): keine einzelne reine Adresse`);
     return { success: false, error: 'empfaenger_ungueltig', mode: 'smtp' };
   }
   let transporter: Awaited<ReturnType<typeof getTransporter>>;
   try {
-    transporter = await getTransporter();
+    transporter = await getTransporter(k);
   } catch (e) {
     console.error(`📧 SMTP Fehler (${maskiereAdresse(to)}):`, smtpFehlertext(e).text);
     return { success: false, error: smtpFehlertext(e).text, mode: 'smtp' };
   }
-  const from = await getFrom();
+  const from = await getFrom(k);
   if (!transporter) {
     const link = linkFuerKonsole(echterLink);
     console.log('\n══════════════════════════════════════════════════');
@@ -183,9 +186,9 @@ export async function sendMail({
   }
 }
 
-export async function testSmtp() {
+export async function testSmtp(k: MailKontext) {
   try {
-    const transporter = await getTransporter();
+    const transporter = await getTransporter(k);
     // Code statt Satz: testSmtp() kennt den Anfragenden nicht.
     if (!transporter) return { success: false as const, code: 'smtp_nicht_konfiguriert' as const };
     await transporter.verify();

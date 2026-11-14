@@ -128,7 +128,7 @@ function merkeLauf(erg: StapelErgebnis): void {
 async function speichereLauf(k: KatalogKontext, erg: StapelErgebnis): Promise<void> {
   // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne await meldete die Kachel „noch
   // nicht gelaufen".
-  await k.auftraege.laufzustand
+  await k.auftraege
     .setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
     .catch(logAndContinue('bild-job:setzeZustand'));
 }
@@ -170,7 +170,7 @@ async function nachFehlschlag(
   // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures Weiterfragen verlängert die Sperre.
   if (status === 403 || status === 429) {
     const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
-    await k.auftraege.auftraege.pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
+    await k.auftraege.pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
     console.error(`[image-queue] CDN drosselt (HTTP ${status}) — Pause bis ${bis.toLocaleTimeString()}`);
     return true;
   }
@@ -190,7 +190,7 @@ async function nachFehlschlag(
 
 async function arbeiteStapel(k: KatalogKontext): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
-  const pause = await k.auftraege.auftraege.liesPause('bildbedarf');
+  const pause = await k.auftraege.liesPause('bildbedarf');
   if (pause && new Date(pause.bis).getTime() > Date.now()) return erg; // CDN hat gedrosselt, siehe unten
   const rows = await nimmBildwuensche(k, NOTIZ_GILT_MS, STAPEL);
   if (!rows.length) {
@@ -298,12 +298,12 @@ async function taktDurchgang(k: KatalogKontext): Promise<StapelErgebnis> {
 
 /** Drosselt das CDN, geht der Auftrag bis zum Ende der Pause zurück in die Tabelle. */
 export async function bildbedarfAbarbeiten(kx: KatalogKontext, k: AuftragsKontext): Promise<void> {
-  await schreibePuffer();
+  await schreibePuffer(kx);
   for (;;) {
     if (k.beendet) throw new AuftragUnterbrochen();
     const e = await taktDurchgang(kx);
     if (e.gesamt || e.zurueckgelegt) console.log(`[image-queue] ${meldung(e)}`);
-    const pause = await kx.auftraege.auftraege.liesPause('bildbedarf');
+    const pause = await kx.auftraege.liesPause('bildbedarf');
     if (pause && new Date(pause.bis).getTime() > Date.now())
       throw new AuftragVerschieben(new Date(pause.bis), pause.grund ?? 'CDN drosselt');
     if (!e.gesamt) return;

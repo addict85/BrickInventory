@@ -120,13 +120,7 @@ export async function katalogSeite(
   const wahl = await waehle(k, f);
   const [total, sets] = await Promise.all([
     k.katalogSuche.katalogAnzahl(wahl),
-    k.katalogSuche.katalogZeilen(
-      await k.haushalt.haushalt.blickfeldIds(userId),
-      wahl,
-      sortRoh,
-      limit,
-      (page - 1) * limit,
-    ),
+    k.katalogSuche.katalogZeilen(await k.haushalt.blickfeldIds(userId), wahl, sortRoh, limit, (page - 1) * limit),
   ]);
   const tree = await getThemeTree(k);
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
@@ -147,7 +141,7 @@ export const katalogGeladen = async (k: KatalogKontext) => !(await k.katalogSuch
 
 export async function katalogSet(k: KatalogKontext, userId: number, roh: string) {
   const n = mitVersion(roh.trim());
-  const set = await k.katalogSuche.katalogZeile(await k.haushalt.haushalt.blickfeldIds(userId), n);
+  const set = await k.katalogSuche.katalogZeile(await k.haushalt.blickfeldIds(userId), n);
   if (!set) return null;
   const invId = await neuestesInventar(k, n);
   const m = invId ? await k.katalogSuche.figurenImInventar(invId) : undefined;

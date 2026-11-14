@@ -11,7 +11,7 @@
  */
 function importWorker(t, _req) {
   const { starteAuftragsWorker, stoppeAuftragsWorker } = _req('jobs/auftraegeStarten.js');
-  starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
+  starteAuftragsWorker(require('./sources').testDienste(), { arten: ['csv_import'], taktMs: 50 });
   // Auch die LISTEN-Verbindung: Sie hielte den Testprozess sonst am Leben.
   t.after(async () => {
     await stoppeAuftragsWorker();

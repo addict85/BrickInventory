@@ -13,15 +13,15 @@ import { nutzerId, angemeldeteNutzerId } from '../../http/nutzerId';
 import { sendeFehler } from '../../http/httpAntwort';
 import { STATUS_DER_ART } from '../../http/fehlerArt';
 import { versuche } from '../../infra/ergebnis';
-import { kontoBereich } from '../prozess';
+import type { KontoDienste } from '../bereich';
 
 /** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
  * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
  * die Anmeldung mit Passwort verlangt nur bei aktivem TOTP einen zweiten Faktor. */
-export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
+export async function zweiterFaktorPflicht(konto: KontoDienste, req: Request): Promise<boolean> {
   const uid = nutzerId(req);
   const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
-  return uid !== null && verwalter && !(await kontoBereich().istAktiv(uid));
+  return uid !== null && verwalter && !(await konto.istAktiv(uid));
 }
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
@@ -31,18 +31,20 @@ export function adresse(req: Request): string {
 }
 
 export function anmelden(
+  konto: KontoDienste,
   req: Request,
   username: string | null | undefined,
   password: string | null | undefined,
   code?: string | number | null | undefined,
   passkeyAntwort?: unknown,
 ): Promise<AnmeldeErgebnis> {
-  return kontoBereich().pruefeAnmeldedaten({ ip: adresse(req) }, username, password, code, passkeyAntwort);
+  return konto.pruefeAnmeldedaten({ ip: adresse(req) }, username, password, code, passkeyAntwort);
 }
 
 /** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
  * Anfrage die neue ID schon kennt. */
 export async function establishSession(
+  konto: KontoDienste,
   req: Request,
   data: {
     userId: number;
@@ -54,7 +56,7 @@ export async function establishSession(
 ): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
   const sitzungsVersion =
-    (await kontoBereich()
+    (await konto
       .sitzungsVersionAusDb(data.userId)
       .catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0))) ?? 0;
   return new Promise((resolve, reject) => {
@@ -73,10 +75,9 @@ export async function establishSession(
       req.session.save((e2?: Error) =>
         e2
           ? reject(e2)
-          : versuche(
-              'anmeldung:sitzungen-begrenzen',
-              kontoBereich().begrenzeSitzungen(data.userId, req.sessionID),
-            ).then(() => resolve(undefined)),
+          : versuche('anmeldung:sitzungen-begrenzen', konto.begrenzeSitzungen(data.userId, req.sessionID)).then(() =>
+              resolve(undefined),
+            ),
       );
     });
   });
@@ -98,12 +99,12 @@ export function gnadenfristVerbrauchen(req: Request): boolean {
 
 /** Der ganze Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler nicht, ob
  * es ein Verwalter ist. ?token= zählt nicht, nur der Authorization-Header. */
-export async function resolveUserId(req: Request): Promise<number | null> {
+export async function resolveUserId(konto: KontoDienste, req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
   const token: string | null = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) return null;
-  const pruefung = await kontoBereich()
+  const pruefung = await konto
     .pruefeToken(token, { ip: req.ip })
     .catch(meldeUndLiefere<TokenPruefung>('auth:validateToken', { nutzer: null }));
   const user = pruefung.nutzer;
@@ -122,7 +123,7 @@ export function sendeTokenAbsage(req: Request, res: Response): void {
 
 /** @param opts.timeoutMs Antwortet nach dieser Zeit mit 503: Der Fortschritts-
  *   kanal soll bei voller Datenbank nicht stauen. */
-export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
+export function loginOrTokenGuard(konto: KontoDienste, opts: { timeoutMs?: number } = {}) {
   return async function requireLoginOrToken(req: Request, res: Response, next: NextFunction) {
     if (req.session?.userId || req.tokenUserId) return next();
     const timer = opts.timeoutMs
@@ -132,7 +133,7 @@ export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
       : null;
     let uid: number | null = null;
     try {
-      uid = await resolveUserId(req);
+      uid = await resolveUserId(konto, req);
     } catch (_) {
       uid = null;
     }
@@ -145,8 +146,6 @@ export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
     return sendeTokenAbsage(req, res);
   };
 }
-
-export const requireLoginOrToken = loginOrTokenGuard();
 
 /** Die Rechnung steht in src/http/nutzerId: Auch die Drossel dort braucht sie,
  * und Infra darf keine HTTP-Seite importieren. Hier bleibt der Name für die Routen. */
@@ -167,9 +166,9 @@ export function istVerwalter(req: Request): boolean {
   return !!req.apiUser?.is_admin;
 }
 
-export function ipThrottle(bucket: string, max: number, windowMs: number) {
+export function ipThrottle(konto: KontoDienste, bucket: string, max: number, windowMs: number) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const st = await kontoBereich().zaehleAnfrage(bucket, adresse(req), windowMs);
+    const st = await konto.zaehleAnfrage(bucket, adresse(req), windowMs);
     if (st.count > max) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: st.waitMin });
     next();
   };
@@ -204,6 +203,7 @@ function absagen(req: Request, res: Response, absage: BestaetigungsAbsage): void
 /** Passwort, bei aktivem zweitem Faktor auch Code oder Passkey; nur für Routen
  * mit `bestaetigung` im Vertrag, die der Wächtertest einzeln prüft. */
 export async function bestaetigeMitFaktor(
+  konto: KontoDienste,
   req: Request,
   res: Response,
   uid: number,
@@ -216,18 +216,19 @@ export async function bestaetigeMitFaktor(
   // Der geprüfte Rumpf (eingabePruefen): Felder der Bestätigung stehen im Vertrag (bestaetigt()).
   const eingabe = (req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {};
   const faktor = { code: eingabe[codeFeld], passkey: eingabe.passkey } as Faktor;
-  const absage = await kontoBereich().pruefeBestaetigung(uid, zugangVon(req), passwort, faktor);
+  const absage = await konto.pruefeBestaetigung(uid, zugangVon(req), passwort, faktor);
   if (absage) absagen(req, res, absage);
   return !absage;
 }
 
 export async function bestaetigeCode(
+  konto: KontoDienste,
   req: Request,
   res: Response,
   uid: number,
   code: string | number | null | undefined,
 ): Promise<boolean> {
-  const absage = await kontoBereich().pruefeCodeBestaetigung(uid, zugangVon(req), code);
+  const absage = await konto.pruefeCodeBestaetigung(uid, zugangVon(req), code);
   if (absage) absagen(req, res, absage);
   return !absage;
 }

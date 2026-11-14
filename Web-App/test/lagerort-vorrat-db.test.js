@@ -47,7 +47,10 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     return;
   }
   await seed();
-  const L = { ..._req('src/bestand/lagerort.js'), ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst };
+  const L = {
+    ..._req('src/bestand/lagerort.js'),
+    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+  };
 
   await t.test('anlegen, und dasselbe zweimal anlegen ist kein zweiter Eintrag', async () => {
     const a = await L.legeOrtAn(U.opa, 'Regal A');

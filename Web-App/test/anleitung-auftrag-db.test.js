@@ -53,7 +53,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
   const Q = _req('src/katalog/anleitungLaden.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+    ...require('./helpers/sources').testBereich('auftraege').auftraege,
   });
   const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
   const pause = () => A.liesPause('anleitung');

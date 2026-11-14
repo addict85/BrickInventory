@@ -13,7 +13,7 @@ import {
   type GutscheinWerte,
   type GutscheinZeile,
 } from '../../src/gutscheine';
-import { requireToken, kontoSchranke } from './middleware';
+import { kontoSchranke, waechterFuer } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
@@ -61,6 +61,7 @@ function gesperrtAntwort(req: express.Request, res: express.Response, grund: str
 }
 
 export function baueVouchersRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   /** Nur PDF: Ausgelesen wird nur Text, ein Foto könnte der Server nicht lesen. */
@@ -128,7 +129,7 @@ export function baueVouchersRouter(d: Dienste) {
       req: Anfrage<'POST /api/v1/vouchers/export/pdf-freigabe'>,
       res: Antwort<'POST /api/v1/vouchers/export/pdf-freigabe'>,
     ) => {
-      if (!(await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
       res.json({
         success: true,
         ticket: await d.gutscheine.exportFreigeben(req.apiUser.user_id),
@@ -173,7 +174,8 @@ export function baueVouchersRouter(d: Dienste) {
     requireToken,
     async (req: Anfrage<'DELETE /api/v1/vouchers/:id'>, res: Antwort<'DELETE /api/v1/vouchers/:id'>) => {
       const id = idOderAbsage(req, res);
-      if (id === null || !(await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password))) return;
+      if (id === null || !(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password)))
+        return;
       await d.gutscheine.gutscheinEntfernen(req.apiUser.user_id, id);
       res.json({ success: true });
     },
@@ -184,7 +186,8 @@ export function baueVouchersRouter(d: Dienste) {
     requireToken,
     async (req: Anfrage<'POST /api/v1/vouchers/:id/klartext'>, res: Antwort<'POST /api/v1/vouchers/:id/klartext'>) => {
       const id = idOderAbsage(req, res);
-      if (id === null || !(await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password))) return;
+      if (id === null || !(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password)))
+        return;
       const z = await d.gutscheine.gutscheinKlartext(req.apiUser.user_id, id);
       res.json({ success: true, id: z.id, number: z.number, pin: z.pin });
     },
@@ -198,7 +201,8 @@ export function baueVouchersRouter(d: Dienste) {
       res: Antwort<'POST /api/v1/vouchers/:id/pdf-freigabe'>,
     ) => {
       const id = idOderAbsage(req, res);
-      if (id === null || !(await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password))) return;
+      if (id === null || !(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password)))
+        return;
       res.json({
         success: true,
         ticket: await d.gutscheine.pdfFreigeben(req.apiUser.user_id, id),

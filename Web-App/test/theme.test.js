@@ -227,7 +227,8 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
   if (!db) return;
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
   const { invalidateTheme } = _req('src/konto/indexHtml.js');
-  const { sendeStartseite } = _req('src/konto/http/startseite.js');
+  const sendeStartseite = (...a) =>
+    _req('src/konto/http/startseite.js').sendeStartseite(require('./helpers/sources').testDienste().konto, ...a);
   const name = `theme_admin_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const admin = (

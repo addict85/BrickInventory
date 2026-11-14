@@ -1,5 +1,4 @@
 import { logAndContinue } from '../../infra/fehler';
-import { katalog } from '../prozess';
 import { versuche } from '../../infra/ergebnis';
 import type { KatalogKontext } from '../kontext';
 
@@ -16,25 +15,25 @@ const _vorne = new Map<string, number>();
 const _gruende = new Map<string, string>();
 const _takte: NodeJS.Timeout[] = [];
 
-export async function initImageMisses(): Promise<void> {
+export async function initImageMisses(k: KatalogKontext): Promise<void> {
   if (_takte.length) return;
   // Prozesslokal: Muss deshalb in JEDEM Arbeitsprozess laufen.
   _takte.push(
     setInterval(() => {
-      auffrischen().catch(logAndContinue('bild-fehlanzeige:auffrischen'));
+      auffrischen(k).catch(logAndContinue('bild-fehlanzeige:auffrischen'));
     }, AUFFRISCHEN_MS),
     setInterval(() => {
-      schreibePuffer().catch(logAndContinue('bild-fehlanzeige:schreibePuffer'));
+      schreibePuffer(k).catch(logAndContinue('bild-fehlanzeige:schreibePuffer'));
     }, 10_000),
   );
   for (const t of _takte) t.unref();
-  await auffrischen();
+  await auffrischen(k);
 }
 
 /** Vor dem Schliessen des Pools: Takte beenden, gemerkte Fehlschläge noch schreiben. */
-export async function stoppeFehlanzeige(): Promise<void> {
+export async function stoppeFehlanzeige(k: KatalogKontext): Promise<void> {
   for (const t of _takte.splice(0)) clearInterval(t);
-  await schreibePuffer();
+  await schreibePuffer(k);
 }
 
 /** Synchron und ohne Datenbank; höchstens ein Auffrisch-Intervall alt. */
@@ -46,12 +45,9 @@ export function istBekanntFehlend(key: string): boolean {
   return false;
 }
 
-async function auffrischen(): Promise<void> {
+async function auffrischen(k: KatalogKontext): Promise<void> {
   // Nicht lesbar: Der bisherige Stand im Speicher bleibt, bis der nächste Abgleich gelingt.
-  const r = await versuche(
-    'bild-fehlanzeige:rows',
-    katalog().bildFehlschlaege.frischeFehlschlaege(String(ERNEUT_PRUEFEN_MS)),
-  );
+  const r = await versuche('bild-fehlanzeige:rows', k.bildFehlschlaege.frischeFehlschlaege(String(ERNEUT_PRUEFEN_MS)));
   if (!r.ok) return;
   const rows = r.wert;
   _vorne.clear();
@@ -94,24 +90,21 @@ export async function vergissFehlend(kx: KatalogKontext, keys?: string[]): Promi
   return r?.changes || 0;
 }
 
-async function schreibePuffer(): Promise<void> {
+async function schreibePuffer(kx: KatalogKontext): Promise<void> {
   if (!_zuSchreiben.size) return;
   const keys = [..._zuSchreiben.keys()];
   const gruende = keys.map(k => _zuSchreiben.get(k) || '');
   _zuSchreiben.clear();
-  await katalog()
-    .bildFehlschlaege.merkeFehlschlaege(keys, gruende)
-    .catch(() => {
-      for (let i = 0; i < keys.length; i++) {
-        const k = keys[i];
-        if (k) _zuSchreiben.set(k, gruende[i] ?? '');
-      }
-    });
+  await kx.bildFehlschlaege.merkeFehlschlaege(keys, gruende).catch(() => {
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (k) _zuSchreiben.set(k, gruende[i] ?? '');
+    }
+  });
 }
 
 export function _leereVordergrund(): void {
   _vorne.clear();
   _gruende.clear();
 }
-export const _schreibePuffer = schreibePuffer;
-export const _auffrischen = auffrischen;
+export { schreibePuffer as _schreibePuffer, auffrischen as _auffrischen };

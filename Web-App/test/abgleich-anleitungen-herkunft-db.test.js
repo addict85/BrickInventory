@@ -16,7 +16,7 @@ const { haeltSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { getSet, getSets } = _req('src/sets/index.js');
+const { getSet, getSets } = require('./helpers/sources').bereichsSeite('sets');
 
 test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;

@@ -84,7 +84,8 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
         );
       }
     }
-    const { establishSession } = _req('src/konto/http/anmeldung.js');
+    const establishSession = (...a) =>
+      _req('src/konto/http/anmeldung.js').establishSession(require('./helpers/sources').testDienste().konto, ...a);
     const app = express();
     app.use(
       session({

@@ -54,7 +54,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
   if (!db) return;
   const A = Object.assign(
     {},
-    { ..._req('src/auftraege/dienst.js'), ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege },
+    { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege },
   );
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   t.after(async () => {
@@ -75,8 +75,16 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
         },
       },
     };
-    const w = erzeugeWorker(bearbeiter, { parallel: 2, fristSek: 1, taktMs: 300 });
-    const w2 = erzeugeWorker(bearbeiter, { parallel: 2, fristSek: 1, taktMs: 300 });
+    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
+      parallel: 2,
+      fristSek: 1,
+      taktMs: 300,
+    });
+    const w2 = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
+      parallel: 2,
+      fristSek: 1,
+      taktMs: 300,
+    });
     const id = await A.stelleAuftragEin('wechselkurse', {}, { schluessel: `pacht-${process.pid}` });
     const status = async () => (await db.get('SELECT status FROM auftraege WHERE id = $1', [id])).status;
     w.starte();
@@ -131,8 +139,12 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
 
   await t.test('Abbruch eines csv_sync im Download endet in höchstens 2 s', async () => {
     await db.run("DELETE FROM auftraege WHERE art = 'csv_sync'");
-    const { BEARBEITER } = _req('jobs/auftraegeStarten.js');
-    const w = erzeugeWorker({ csv_sync: BEARBEITER.csv_sync }, { fristSek: 60, taktMs: 100 });
+    const BEARBEITER = _req('jobs/auftraegeStarten.js').bearbeiter(require('./helpers/sources').testDienste());
+    const w = erzeugeWorker(
+      require('./helpers/sources').testDienste().auftraege,
+      { csv_sync: BEARBEITER.csv_sync },
+      { fristSek: 60, taktMs: 100 },
+    );
     const id = await A.stelleAuftragEin('csv_sync', {});
     downloadLaeuft = false;
     w.starte();

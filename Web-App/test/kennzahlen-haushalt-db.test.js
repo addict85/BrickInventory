@@ -57,10 +57,10 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
 
   const { blickfeldIds } = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+    ...require('./helpers/sources').testBereich('haushalt'),
   };
   const { getStats } = _req('src/bestand/kennzahlen.js');
-  const { getSets } = _req('src/sets/index.js');
+  const { getSets } = require('./helpers/sources').bereichsSeite('sets');
 
   for (const modus of ['all', 'own']) {
     const uids = await blickfeldIds(haupt, modus);

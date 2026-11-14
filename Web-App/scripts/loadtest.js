@@ -37,7 +37,7 @@ const dbModul = require(path.join(ROOT, 'dist/db/database.js'));
 const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
 // Die Routen rufen die Bereiche über ihre Verdrahtung, wie im Server.
 const verdrahtung = require(path.join(ROOT, 'dist/startup/verdrahtung.js'));
-verdrahtung.verdrahte(verdrahtung.baueVerdrahtung(), db);
+const dienste = verdrahtung.verdrahte(db);
 
 /**
  * Lesbarer Text eines gefangenen Fehlers.
@@ -193,7 +193,7 @@ function buildApp() {
     pool: db.pool,
     konfig: require(path.join(ROOT, 'dist/src/infra/konfig.js')).konfig(),
     sitzungsGeheimnis: 'lasttest-sitzungsgeheimnis-lang-genug',
-    dienste: verdrahtung.prozessDienste(),
+    dienste,
     sitzungsSpeicher: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {
       req.session = { userId: USER.id, username: USER.username, isAdmin: false };
       next();

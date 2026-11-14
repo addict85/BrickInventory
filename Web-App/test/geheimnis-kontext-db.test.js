@@ -39,7 +39,7 @@ const db = testDaten();
 const g = _req('src/infra/geheimnis.js');
 const gr = {
   ..._req('src/gutscheine/repository/gutscheine.js'),
-  ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine,
+  ...require('./helpers/sources').testBereich('gutscheine').gutscheine,
 };
 const dateien = _req('src/gutscheine/gutscheinDateien.js');
 const zf = _req('src/konto/zweiterFaktor.js');
@@ -205,7 +205,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     fs.mkdirSync(path.dirname(pdf), { recursive: true });
     fs.writeFileSync(pdf, Buffer.concat([Buffer.from('BIENC1\n'), roh1(PDF)]));
 
-    await _req('startup/datenbank.js').bereiteDatenbankVor(testZugang());
+    await _req('startup/datenbank.js').bereiteDatenbankVor(testZugang(), require('./helpers/sources').testDienste());
 
     const v = await db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);
     assert.ok(v.number.startsWith('v2:') && v.pin.startsWith('v2:'), JSON.stringify(v));

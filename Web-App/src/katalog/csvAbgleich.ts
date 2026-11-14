@@ -118,7 +118,7 @@ function importInWorker(kx: KatalogKontext, lauf: CsvLauf, task: string, stepNum
 
 // Nachziehen, wenn der Haupt-Sync heute schon lief, diese Dateien aber fehlen.
 async function syncCatalogExtrasDaily(k: KatalogKontext, lauf: CsvLauf, today: string) {
-  if ((await k.auftraege.laufzustand.liesZustand(CATALOG_EXTRAS_KEY)) === today) return;
+  if ((await k.auftraege.liesZustand(CATALOG_EXTRAS_KEY)) === today) return;
   try {
     await runWorker(k, lauf, 'themes', TOTAL_STEPS, 'Themen laden...', 'themes.csv.gz');
     await runWorker(
@@ -129,7 +129,7 @@ async function syncCatalogExtrasDaily(k: KatalogKontext, lauf: CsvLauf, today: s
       'Inventar-Figuren laden...',
       'inventory_minifigs.csv.gz',
     );
-    await k.auftraege.laufzustand.setzeZustand(CATALOG_EXTRAS_KEY, today);
+    await k.auftraege.setzeZustand(CATALOG_EXTRAS_KEY, today);
     log('catalog extras (themes + inventory_minifigs): Tagesimport erledigt');
   } catch (e) {
     if (lauf.signal?.aborted) throw e;
@@ -139,10 +139,10 @@ async function syncCatalogExtrasDaily(k: KatalogKontext, lauf: CsvLauf, today: s
 
 // Auch ohne Haupt-Sync täglich, falls die Datei nachträglich dazukam.
 async function syncPartCategoriesDaily(k: KatalogKontext, lauf: CsvLauf, today: string) {
-  if ((await k.auftraege.laufzustand.liesZustand(PART_CAT_KEY)) === today) return;
+  if ((await k.auftraege.liesZustand(PART_CAT_KEY)) === today) return;
   try {
     await runWorker(k, lauf, 'part_categories', TOTAL_STEPS, 'Kategorien laden...', 'part_categories.csv.gz');
-    await k.auftraege.laufzustand.setzeZustand(PART_CAT_KEY, today);
+    await k.auftraege.setzeZustand(PART_CAT_KEY, today);
     log('part_categories: Tagesimport erledigt');
   } catch (e) {
     if (lauf.signal?.aborted) throw e;
@@ -166,7 +166,7 @@ async function ladeAlles(kx: KatalogKontext, lauf: CsvLauf, today: string): Prom
   try {
     for (const [i, [task, label, datei]] of DATEIEN.entries()) await runWorker(kx, lauf, task, i + 1, label, datei);
     // Erst geschrieben, dann „heute erledigt“: Sonst gälte ein Lauf als fertig, dessen Marke fehlt.
-    for (const k of [SYNC_KEY, PART_CAT_KEY, CATALOG_EXTRAS_KEY]) await kx.auftraege.laufzustand.setzeZustand(k, today);
+    for (const k of [SYNC_KEY, PART_CAT_KEY, CATALOG_EXTRAS_KEY]) await kx.auftraege.setzeZustand(k, today);
     log(`CSV sync complete for ${today}`);
   } catch (e) {
     log(`CSV sync failed: ${fehlertext(e)}`);
@@ -218,7 +218,7 @@ async function ladeBlFarben(k: KatalogKontext): Promise<void> {
 async function run(k: KatalogKontext, lauf: CsvLauf = {}) {
   await fs.promises.mkdir(DATA_DIR, { recursive: true });
   const today = new Date().toISOString().slice(0, 10);
-  if ((await k.auftraege.laufzustand.liesZustand(SYNC_KEY)) === today) {
+  if ((await k.auftraege.liesZustand(SYNC_KEY)) === today) {
     log(`Already synced today (${today}) — skipping CSV download`);
     await syncPartCategoriesDaily(k, lauf, today);
     await syncCatalogExtrasDaily(k, lauf, today);
@@ -239,7 +239,7 @@ async function run(k: KatalogKontext, lauf: CsvLauf = {}) {
 
 /** Beim Start nur, wenn heute noch nicht geladen; der tägliche und der von Hand angestossene Lauf laden immer. */
 async function csvAbgleich(k: KatalogKontext, n: Nutzlast<'csv_sync'>, lauf: CsvLauf): Promise<void> {
-  if (!n.beimStart) await k.auftraege.laufzustand.loescheZustand(SYNC_KEY);
+  if (!n.beimStart) await k.auftraege.loescheZustand(SYNC_KEY);
   await run(k, lauf);
 }
 

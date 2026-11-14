@@ -10,8 +10,7 @@ import { logAndContinue } from '../../infra/fehler';
 import { bildFreigegeben } from '../bilder/bildBlickfeld';
 import { generateThumb } from '../bilder/thumbs';
 import { IMG_PROXY_PFAD } from '../bilder/images';
-import { katalog } from '../prozess';
-import { cdnFuerFehlendesBild } from '../bilder/bildNachschlagen';
+import type { BildDienste } from './bildProxy';
 
 /** Fehlt die Vorschau, geht sofort das Original hinaus und die Vorschau entsteht
  * nebenher; scheiterte sie beim Erfassen, gäbe es sonst keinen zweiten Anlauf. */
@@ -38,8 +37,8 @@ async function originalStattVorschau(res: Response, segmente: string[]): Promise
   return true;
 }
 
-export async function liefereBild(req: Request, res: Response) {
-  const imgUserId = await resolveUserId(req);
+export async function liefereBild(d: BildDienste, req: Request, res: Response) {
+  const imgUserId = await resolveUserId(d.konto, req);
   if (!imgUserId) return res.status(401).send('Nicht angemeldet');
   const segmente = pfadSegmente(req, 'pfad');
   const filePath = safeDataPath('images', segmente);
@@ -53,7 +52,7 @@ export async function liefereBild(req: Request, res: Response) {
     if (status && status !== 404) return antwortAufDateiFehler(res, err);
     if (await originalStattVorschau(res, segmente)) return;
     // Fehlt die Datei, über den Bild-Proxy zur CDN-Adresse: heilt ohne Aufräumen in der DB.
-    const cdn = await cdnFuerFehlendesBild(katalog(), '/images/' + segmente.join('/'));
+    const cdn = await d.katalog.cdnFuerFehlendesBild('/images/' + segmente.join('/'));
     if (cdn && !res.headersSent) return res.redirect(302, IMG_PROXY_PFAD + '?url=' + encodeURIComponent(cdn));
     antwortAufDateiFehler(res, err);
   });

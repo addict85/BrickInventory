@@ -40,7 +40,7 @@ const G = _req('src/infra/geheimnis.js');
 const zf = _req('src/konto/zweiterFaktor.js');
 const gut = {
   ..._req('src/gutscheine/repository/gutscheine.js'),
-  ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine,
+  ...require('./helpers/sources').testBereich('gutscheine').gutscheine,
 };
 const dateien = _req('src/gutscheine/gutscheinDateien.js');
 const { schluesselWechsel } = _req('startup/datenbank.js');
@@ -121,7 +121,7 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
   console.warn = () => {};
   let geschrieben;
   try {
-    geschrieben = await schluesselWechsel();
+    geschrieben = await schluesselWechsel(require('./helpers/sources').testDienste());
   } finally {
     console.warn = warn;
   }

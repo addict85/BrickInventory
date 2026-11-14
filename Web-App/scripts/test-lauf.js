@@ -246,7 +246,7 @@ async function main() {
       process.execPath,
       [
         '-e',
-        "const db = require('./dist/startup/verdrahtung.js').verdrahteProzess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e); process.exit(1); })",
+        "const { db } = require('./dist/startup/verdrahtung.js').verdrahteProzess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e); process.exit(1); })",
       ],
       {
         cwd: ROOT,

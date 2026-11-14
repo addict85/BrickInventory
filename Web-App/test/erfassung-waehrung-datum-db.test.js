@@ -42,7 +42,7 @@ test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async t => 
                   VALUES ($1,'N',$2,$3,$3,3)`,
       [SN, w, p],
     );
-  const { updateSet, addSetWithDate } = _req('src/sets/index.js');
+  const { updateSet, addSetWithDate } = require('./helpers/sources').bereichsSeite('sets');
 
   try {
     await t.test('die Mengenerhöhung nimmt den Preis in der Kontowährung', async () => {

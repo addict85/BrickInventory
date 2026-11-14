@@ -1,7 +1,7 @@
 /** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
  * Parameter; erzeugeKonto bindet ihn einmal für alle. So greift kein Dienst auf den
  * Prozess zu, und ein Test gibt einen eigenen Zugang. */
-import { baueKontext, bindeZugang } from '../infra/bereich';
+import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import * as anmeldepruefung from './anmeldepruefung';
 import * as anmeldungAblauf from './anmeldungAblauf';
 import * as geheimnisAltbestand from './geheimnisAltbestand';
@@ -32,10 +32,10 @@ import { zugang, type KontoAbhaengigkeiten, type KontoKontext } from './kontext'
 
 export type { KontoAbhaengigkeiten, KontoKontext } from './kontext';
 
-export function erzeugeKonto(a: KontoAbhaengigkeiten) {
+export function erzeugeKonto(a: KontoAbhaengigkeiten, einblick?: Einblick<KontoKontext>) {
   const k: KontoKontext = baueKontext(a, zugang);
+  einblick?.(k);
   return {
-    ...k,
     ...bindeZugang(k, anmeldepruefung, ['verifiziereEmailToken', 'pruefeAnmeldedaten']),
     ...bindeZugang(k, anmeldungAblauf, [
       'profilAendern',
@@ -72,6 +72,7 @@ export function erzeugeKonto(a: KontoAbhaengigkeiten) {
       'passwortWechselFaellig',
       'setzeFremdesPasswort',
       'setzePasswortZurueck',
+      'passwortPerLinkSetzen',
       'raeumeOffeneRegistrierungenAuf',
       'legeKontoAn',
       'registriere',
@@ -79,7 +80,7 @@ export function erzeugeKonto(a: KontoAbhaengigkeiten) {
       'setzeVerwalterRolle',
     ]),
     ...bindeZugang(k, kontoEntfernen, ['kontoEntfernen']),
-    ...bindeZugang(k, kontoHinweis, ['verwalterHinweisNebenher', 'hinweisNebenher']),
+    ...bindeZugang(k, kontoHinweis, ['verwalterHinweisNebenher', 'hinweisNebenher', 'haushaltBeitreten']),
     ...bindeZugang(k, loginLimiter, ['raeumeAnmeldezaehlerAuf', 'zaehleAnfrage']),
     ...bindeZugang(k, passkeysDienst, [
       'registrierungsOptionen',
@@ -126,7 +127,20 @@ export function erzeugeKonto(a: KontoAbhaengigkeiten) {
       'pruefeCodeBestaetigung',
     ]),
     ...bindeZugang(k, sitzungsVersion, ['sitzungsVersionAusDb', 'aktuelleSitzungsVersion']),
-    ...bindeZugang(k, indexHtml, ['renderIndexHtml']),
+    ...bindeZugang(k, indexHtml, ['renderIndexHtml', 'setzeGlobalesDesign']),
+    ...ausDemZugang(k),
+  };
+}
+
+/** Was andere Schichten brauchen, ohne Repository oder Token-Hash zu sehen: die Wache
+ * langer Ströme (http/zugangsWache.ts) ohne Zwischenspeicher, das Protokoll für die
+ * Verwaltung, der Vergleich mit dem Zugang der Anfrage für die Routen. */
+function ausDemZugang(k: KontoKontext) {
+  return {
+    gueltigerToken: k.zugaenge.gueltigerToken,
+    protokolliere: k.protokoll.protokolliere,
+    raeumeProtokollAuf: k.protokoll.raeumeProtokollAuf,
+    eigenerZugang: geraeteToken.eigenerZugang,
   };
 }
 

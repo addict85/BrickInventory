@@ -69,7 +69,7 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
       await PS.rebuildNow(UB);
       const repo = {
         ..._req('src/teile/repository/teileListe.js'),
-        ..._req('src/teile/prozess.js').teileBereich().teileListe,
+        ...require('./helpers/sources').testBereich('teile').teileListe,
       };
       const zsf = await repo.kennzahlen([UB], true);
       assert.deepEqual(zsf, live);

@@ -113,7 +113,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     delete require.cache[datei];
     const b = require(datei);
     assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
-    const konto = _req('src/infra/bereich.js').prozessDienste().konto;
+    const konto = require('./helpers/sources').testBereich('konto');
     assert.equal((await b.checkLoginAllowed(konto, IP, ZAEHLER))?.code, 'zu_viele_fehlversuche');
   });
 
@@ -400,7 +400,7 @@ test('keine Oberfläche hängt einen Token an eine Adresse', () => {
   // Eine zweite Fassung des Wächters umginge die eine Regel in src/konto/http/anmeldung.ts.
   assert.doesNotMatch(setKernQuelle(), /function requireLoginOrToken/);
   // Während eines Imports ist 503 nach 3 s besser als eine hängende Verbindung.
-  assert.match(setKernQuelle(), /loginOrTokenGuard\(\{ timeoutMs: 3000 \}\)/);
+  assert.match(setKernQuelle(), /loginOrTokenGuard\(d\.konto, \{ timeoutMs: 3000 \}\)/);
 });
 
 test('jede Preisabfrage auf price_cache nennt die Währung', () => {

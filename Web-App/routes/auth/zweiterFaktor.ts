@@ -1,9 +1,9 @@
 /** Der eigene zweite Faktor (src/konto/zweiterFaktor.ts). Einrichten und
  * Abschalten verlangen das Passwort: Wer nur eine offene Sitzung erbeutet,
  * soll das Konto weder aussperren noch den Schutz abbauen. */
+import { waechterFuer } from '../api_v1/middleware';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import {
-  requireLoginOrToken,
   angemeldeteNutzerId,
   bestaetigeCode,
   bestaetigeMitFaktor,
@@ -17,6 +17,7 @@ import { otpauthAdresse } from '../../src/konto';
 import type { Dienste } from '../../startup/verdrahtung';
 
 export function baueZweiterFaktorRouter(d: Dienste) {
+  const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
   const requireLogin = requireLoginOrToken;
 
@@ -40,9 +41,9 @@ export function baueZweiterFaktorRouter(d: Dienste) {
       // Anmeldung); sonst sperrte eine erbeutete Sitzung den Inhaber aus. Die Absage zählt nicht zur Bremse.
       const ohnePasswort = req.eingabe.password === undefined || req.eingabe.password === '';
       if (ohnePasswort) {
-        if (!((await zweiterFaktorPflicht(req)) && gnadenfristVerbrauchen(req)))
+        if (!((await zweiterFaktorPflicht(d.konto, req)) && gnadenfristVerbrauchen(req)))
           return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-      } else if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
+      } else if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       const geheimnis = await d.konto.beginneEinrichtung(uid);
       if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
       const u = await d.konto.kontoKurzVon(uid);
@@ -83,7 +84,7 @@ export function baueZweiterFaktorRouter(d: Dienste) {
     ) => {
       const uid = angemeldeteNutzerId(req);
       if (!(await d.konto.istAktiv(uid))) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-      if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       await d.konto.schalteAb(uid);
       d.konto.hinweisNebenher(uid, 'zweiter_faktor_abgeschaltet');
       res.json({ success: true });
@@ -99,7 +100,7 @@ export function baueZweiterFaktorRouter(d: Dienste) {
     ) => {
       const uid = angemeldeteNutzerId(req);
       if (!(await d.konto.istAktiv(uid))) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-      if (!(await bestaetigeCode(req, res, uid, req.eingabe.code))) return;
+      if (!(await bestaetigeCode(d.konto, req, res, uid, req.eingabe.code))) return;
       res.json({ success: true, codes: await d.konto.erneuereCodes(uid) });
     },
   );

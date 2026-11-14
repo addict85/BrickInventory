@@ -119,7 +119,7 @@ export async function verwendendeSets(
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
 ): Promise<BestandteilAntwort> {
-  const uids = await k.haushalt.haushalt.blickfeldAus(uidsWahl);
+  const uids = await k.haushalt.blickfeldAus(uidsWahl);
   const rows = await k.gemeinsam.setsMitBestandteil(uids, tabelle, schluessel);
 
   const sets: VerwendendesSet[] = rows.map(r => ({

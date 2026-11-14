@@ -123,7 +123,7 @@ const kaufsumme = (rs: Array<{ purchase_price: number | null; quantity: number }
 export async function computePnl(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   // Zwei Grössen: viewerId — wessen EINSTELLUNGEN gelten; ids — WESSEN DATEN
   // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
-  const uids = await k.haushalt.haushalt.blickfeldAus(idsWahl);
+  const uids = await k.haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
     k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),

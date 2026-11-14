@@ -4,6 +4,7 @@
 import type { Request, Response } from 'express';
 import { registerSse } from '../../http/sseRegistry';
 import { SSE_ZUGANG_BEENDET, wacheUeberZugang } from './zugangsWache';
+import type { KontoDienste } from '../bereich';
 
 export interface Strom {
   sende(daten: object): void;
@@ -21,7 +22,7 @@ export interface StromOptionen {
   herzschlag?: boolean;
 }
 
-export function oeffneStrom(req: Request, res: Response, o: StromOptionen = {}): Strom {
+export function oeffneStrom(konto: KontoDienste, req: Request, res: Response, o: StromOptionen = {}): Strom {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-store, no-transform');
   res.setHeader('Connection', 'keep-alive');
@@ -37,7 +38,7 @@ export function oeffneStrom(req: Request, res: Response, o: StromOptionen = {}):
     if (!res.writableEnded) res.end();
   };
   abmelden.push(
-    wacheUeberZugang(req, () => {
+    wacheUeberZugang(konto, req, () => {
       res.write(SSE_ZUGANG_BEENDET);
       ende();
     }),

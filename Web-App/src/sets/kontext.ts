@@ -9,9 +9,9 @@ import type { Kontext } from '../infra/bereich';
 
 /** Was der Bereich von aussen bekommt: Ein Dienst greift nie selbst auf den
  * Zugang des Prozesses zu, auch nicht über Katalog, Finanzen oder Aufträge, damit
- * ein Test (oder ein zweiter Prozess) ihm einen eigenen geben kann. Die Dienste
- * dieser Bereiche laufen über denselben Zugang (erzeugeSets prüft das). Gebaut
- * wird er in startup/verdrahtung.ts. */
+ * ein Test (oder ein zweiter Prozess) ihm einen eigenen geben kann. Dass alle über
+ * denselben Zugang laufen, sichert baueDienste (startup/verdrahtung.ts): Es baut
+ * jeden Bereich aus dem einen db. */
 export interface SetsAbhaengigkeiten {
   db: Db;
   nacharbeit: Nacharbeit;

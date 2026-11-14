@@ -126,6 +126,13 @@ async function currentLang(k: KontoKontext, userId?: number): Promise<string> {
 }
 
 // Theme und Sprache schon im HTML.
+/** Das Design steckt im serverseitig gerenderten <html data-theme>; ohne Verwerfen käme
+ * bis zum Neustart das alte. */
+export async function setzeGlobalesDesign(k: KontoKontext, theme: string): Promise<void> {
+  await k.einstellungen.setGlobalSetting('app_theme', theme);
+  invalidateTheme();
+}
+
 export async function renderIndexHtml(k: KontoKontext, userId?: number): Promise<string> {
   const html = await readIndex();
   try {

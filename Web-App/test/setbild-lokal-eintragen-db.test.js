@@ -72,7 +72,8 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     // Ein Katalog-Set ausserhalb jedes Bestands: rb_sets kennt es, set_catalog ausnahmsweise nicht.
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [proxy]);
     const express = require('express');
-    const { bildDurchreichen } = _req('src/katalog/http/bildProxy.js');
+    const bildDurchreichen = (...a) =>
+      _req('src/katalog/http/bildProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
     const { proxyAdresse, proxyCacheSchluessel } = _req('src/katalog/bilder/images.js');
     lege(path.join(SET_IMAGES_DIR, `${proxy}.jpg`));
     lege(path.join(SET_IMAGES_DIR, `${proxy}_thumb.jpg`));

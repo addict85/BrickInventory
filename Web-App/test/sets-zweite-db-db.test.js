@@ -1,5 +1,5 @@
 /**
- * Ein Sets-Bereich mit eigenem Zugang (erzeugeSets({ db: zweite, … })) liest und schreibt nur
+ * Ein Sets-Bereich mit eigenem Zugang (baueDienste(zweite, …)) liest und schreibt nur
  * dort, auch über Haushalt, Einstellungen, Lagerort, Preisalarm, Papierkorb, Katalog (Inventar),
  * Finanzen (fetchPrice, preisverlaufSet) und Aufträge. Der Zugang des Prozesses zählt mit und
  * darf keine Anfrage sehen. Das Haushaltsgedächtnis gilt je Zugang, nicht je Konto-ID.
@@ -9,7 +9,7 @@
  *      rot: „Währung aus der zweiten Datenbank“, „Preisalarm …“ (Währung des
  *      Alarms) und „der Prozesszugang blieb unberührt“
  *   B  loescheSetFuer() in src/sets/loeschen.ts mit
- *      haushaltBereich().haushalt.schreibbereich(s.nutzer) → rot: „der
+ *      haushaltBereich().schreibbereich(s.nutzer) → rot: „der
  *      Prozesszugang blieb unberührt“
  *   C  lagerortDesSetsSetzen() wieder über bestandBereich().lagerortDienst →
  *      rot: „Lagerort in der zweiten Datenbank“ und „der Prozesszugang …“
@@ -27,8 +27,6 @@
  *      Prozesszugang …“
  *   H  src/haushalt/haushalt.ts wieder mit einem Gedächtnis für alle Zugänge →
  *      rot: „Haushaltsgedächtnis je Zugang“
- *   I  die Prüfung der Zugänge in erzeugeSets() entfernt → rot: „Katalog über
- *      einen anderen Zugang wird abgelehnt“
  *
  * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
@@ -44,7 +42,6 @@ const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { erzeugeSets } = _req('src/sets/bereich.js');
 const { erzeugeDb } = _req('db/database.js');
 const H = _req('src/haushalt/haushalt.js');
 const N = _req('src/auftraege/nacharbeit.js');
@@ -112,9 +109,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
 
   // Wie der Server (startup/verdrahtung.ts), nur über den zweiten Zugang.
   const { baueDienste } = _req('startup/verdrahtung.js');
-  const alle = baueDienste(zweite, N.OHNE_NACHARBEIT);
-  const { finanzen, auftraege, bestand, einstellungen, konto } = alle;
-  const dienste = { finanzen, auftraege, bestand, einstellungen, konto };
+  const alle = baueDienste(zweite, { nacharbeit: N.OHNE_NACHARBEIT });
   const sets = alle.sets;
   const prozess = zaehle(quellen.testZugang());
   t.after(() => prozess.zurueck());
@@ -184,19 +179,6 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
 
   await t.test('der Prozesszugang blieb unberührt', () => {
     assert.equal(prozess.anfragen, 0);
-  });
-
-  await t.test('Katalog über einen anderen Zugang wird abgelehnt', () => {
-    assert.throws(
-      () =>
-        erzeugeSets({
-          db: zweite,
-          nacharbeit: N.OHNE_NACHARBEIT,
-          ...dienste,
-          katalog: baueDienste(quellen.testZugang(), N.OHNE_NACHARBEIT).katalog,
-        }),
-      /katalog/,
-    );
   });
 
   await t.test('Haushaltsgedächtnis je Zugang', async () => {

@@ -28,7 +28,7 @@ const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const { sichereNutzerdaten, raeumeAlteSicherungenAuf } = _req('db/migrate.js');
-const { raeumeProtokollAuf } = _req('src/konto/prozess.js').kontoBereich().protokoll;
+const { raeumeProtokollAuf } = require('./helpers/sources').testBereich('konto').protokoll;
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {

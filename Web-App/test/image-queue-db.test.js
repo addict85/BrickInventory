@@ -261,7 +261,7 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
   const vorbereitung = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
   const schema = vorbereitung.indexOf('await db.initSchemaOnce()');
   assert.ok(
-    schema > 0 && vorbereitung.indexOf('await initImageMisses()') > schema,
+    schema > 0 && vorbereitung.indexOf('await d.katalog.initImageMisses()') > schema,
     'initImageMisses() läuft vor den Migrationen — dann fehlt die Tabelle noch',
   );
 });
@@ -286,7 +286,11 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
   // Sie verlangte die Schreibweise `jobs/imageQueue').initImageQueue()`, also
   // ausdruecklich ein require(). Als daraus ein Top-Level-Import wurde, wurde …
-  assert.match(dbInit, /\binitImageQueue\(\)/, 'initImageQueue() wird nicht beim Aufbau der Datenbank aufgerufen');
+  assert.match(
+    dbInit,
+    /\bd\.katalog\.initImageQueue\(\)/,
+    'initImageQueue() wird nicht beim Aufbau der Datenbank aufgerufen',
+  );
 
   // Abgearbeitet wird nur im Job-Prozess: test/web-und-jobs-db.test.js prüft das am echten Server.
 });

@@ -5,8 +5,14 @@ import { imSystemkontext } from '../../src/infra/kontoKontext';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
-import { passwortWechselFaellig, validateToken } from '../../src/konto';
-import { resolveUserId, sendeTokenAbsage, nutzerId, zweiterFaktorPflicht } from '../../src/konto/http/anmeldung';
+import type { KontoDienste } from '../../src/konto';
+import {
+  loginOrTokenGuard,
+  resolveUserId,
+  sendeTokenAbsage,
+  nutzerId,
+  zweiterFaktorPflicht,
+} from '../../src/konto/http/anmeldung';
 import { belegeKontoPlatz, type Schranke } from '../../src/http/kontoSchranke';
 import { verlangeFreigabe } from '../../src/konto/http/schrittschutz';
 import type { Sicht } from '../../src/haushalt';
@@ -51,81 +57,106 @@ const ZUR_EINRICHTUNG: ReadonlyArray<readonly [string, RegExp]> = [
   ['POST', /^\/geraet\/(schluessel|schritt\/(challenge|freigabe))$/],
 ];
 
-/** Sitzungen von vor dem Feld fragen einmal die Datenbank und merken es sich. */
-async function mussWechseln(req: Request): Promise<boolean> {
-  if (!req.session?.userId) return req.apiUser?.muss_passwort_aendern === true;
-  req.session.mussPasswortAendern ??= await passwortWechselFaellig(req.session.userId);
-  return req.session.mussPasswortAendern;
+/** Die Wächter des Eingangs, gebaut aus den Diensten des Kontos: Der Eingang
+ * (startup/app.ts) und jeder Router nehmen dieselben. */
+export function waechterFuer(konto: KontoDienste) {
+  return { ...eingangFuer(konto), ...tokenWaechterFuer(konto), requireLoginOrToken: loginOrTokenGuard(konto) };
 }
 
-export async function anmeldungAmEingang(req: Request, res: Response, next: NextFunction) {
-  const methode = req.method === 'HEAD' ? 'GET' : req.method;
-  if (OEFFENTLICH.some(([m, re]) => m === methode && re.test(req.path))) return next();
-  if (req.session?.userId) {
-    req.apiUser = {
-      user_id: req.session.userId,
-      is_admin: !!req.session.isAdmin,
-      ...(req.session.username ? { username: req.session.username } : {}),
-    };
-  } else {
-    // Ein Lesefehler ist keine ungültige Anmeldung: Ein 401 meldete die App ab.
-    const uid = await resolveUserId(req);
-    if (!uid) return sendeTokenAbsage(req, res);
-    req.tokenUserId = uid;
+function eingangFuer(konto: KontoDienste) {
+  /** Sitzungen von vor dem Feld fragen einmal die Datenbank und merken es sich. */
+  async function mussWechseln(req: Request): Promise<boolean> {
+    if (!req.session?.userId) return req.apiUser?.muss_passwort_aendern === true;
+    req.session.mussPasswortAendern ??= await konto.passwortWechselFaellig(req.session.userId);
+    return req.session.mussPasswortAendern;
   }
-  return eingangsSperre(req, res, next);
-}
 
-/** Die Sperren „Passwortwechsel nötig“ und „2. Faktor Pflicht“ für einen schon
- * erkannten Nutzer. Auch Dateien und Bild-Proxy hängen davor, weil sie vor dem
- * Eingang stehen und sonst an beiden Regeln vorbeiliefen. */
-export async function eingangsSperre(req: Request, res: Response, next: NextFunction) {
-  const methode = req.method === 'HEAD' ? 'GET' : req.method;
-  if (!(methode === 'POST' && VOR_DEM_WECHSEL.test(req.path)) && (await mussWechseln(req)))
-    return sendeFehler(req, res, 403, 'passwort_wechsel_noetig');
-  if (!ZUR_EINRICHTUNG.some(([m, re]) => m === methode && re.test(req.path)) && (await zweiterFaktorPflicht(req)))
-    return sendeFehler(req, res, 403, 'zweiter_faktor_pflicht');
-  next();
-}
-
-export const requireToken = waechter<AuthedRequest>((req, res, next) => {
-  // Schon am Eingang geprüft: kein zweiter Datenbankzugriff.
-  if (req.apiUser) return next();
-  if (req.session?.userId) {
-    req.apiUser = {
-      user_id: req.session.userId,
-      is_admin: !!req.session.isAdmin,
-      ...(req.session.username ? { username: req.session.username } : {}),
-    };
-    return next();
+  async function anmeldungAmEingang(req: Request, res: Response, next: NextFunction) {
+    const methode = req.method === 'HEAD' ? 'GET' : req.method;
+    if (OEFFENTLICH.some(([m, re]) => m === methode && re.test(req.path))) return next();
+    if (req.session?.userId) {
+      req.apiUser = {
+        user_id: req.session.userId,
+        is_admin: !!req.session.isAdmin,
+        ...(req.session.username ? { username: req.session.username } : {}),
+      };
+    } else {
+      // Ein Lesefehler ist keine ungültige Anmeldung: Ein 401 meldete die App ab.
+      const uid = await resolveUserId(konto, req);
+      if (!uid) return sendeTokenAbsage(req, res);
+      req.tokenUserId = uid;
+    }
+    return eingangsSperre(req, res, next);
   }
-  const token = bearerToken(req);
-  validateToken(token, { ip: req.ip })
-    .then(user => {
-      if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
-      req.apiUser = { ...user, is_admin: user.is_admin === true };
-      next();
-    })
-    .catch((e: unknown) => {
-      meldeFehler('eingang:token', e);
-      sendeFehler(req, res, 401, 'auth_fehler');
-    });
-});
 
-function verwalterPruefung(ueberKonten: boolean) {
-  return waechter<AuthedRequest>((req, res, next) => {
-    requireToken(req, res, () => {
-      if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
-      // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
-      verlangeFreigabe(req, res, ueberKonten ? () => imSystemkontext('kontenverwaltung', next) : next, 'verwaltung');
-    });
+  /** Die Sperren „Passwortwechsel nötig“ und „2. Faktor Pflicht“ für einen schon
+   * erkannten Nutzer. Auch Dateien und Bild-Proxy hängen davor, weil sie vor dem
+   * Eingang stehen und sonst an beiden Regeln vorbeiliefen. */
+  async function eingangsSperre(req: Request, res: Response, next: NextFunction) {
+    const methode = req.method === 'HEAD' ? 'GET' : req.method;
+    if (!(methode === 'POST' && VOR_DEM_WECHSEL.test(req.path)) && (await mussWechseln(req)))
+      return sendeFehler(req, res, 403, 'passwort_wechsel_noetig');
+    if (
+      !ZUR_EINRICHTUNG.some(([m, re]) => m === methode && re.test(req.path)) &&
+      (await zweiterFaktorPflicht(konto, req))
+    )
+      return sendeFehler(req, res, 403, 'zweiter_faktor_pflicht');
+    next();
+  }
+
+  return { anmeldungAmEingang, eingangsSperre };
+}
+
+function tokenWaechterFuer(konto: KontoDienste) {
+  const requireToken = waechter<AuthedRequest>((req, res, next) => {
+    // Schon am Eingang geprüft: kein zweiter Datenbankzugriff.
+    if (req.apiUser) return next();
+    if (req.session?.userId) {
+      req.apiUser = {
+        user_id: req.session.userId,
+        is_admin: !!req.session.isAdmin,
+        ...(req.session.username ? { username: req.session.username } : {}),
+      };
+      return next();
+    }
+    const token = bearerToken(req);
+    konto
+      .validateToken(token, { ip: req.ip })
+      .then(user => {
+        if (!user) return sendeFehler(req, res, 401, 'token_ungueltig');
+        req.apiUser = { ...user, is_admin: user.is_admin === true };
+        next();
+      })
+      .catch((e: unknown) => {
+        meldeFehler('eingang:token', e);
+        sendeFehler(req, res, 401, 'auth_fehler');
+      });
   });
-}
 
-/** Ohne Systemrahmen: Was über Konten geht, fragen Verwaltung und Warteschlange selbst darin. */
-export const requireApiAdmin = verwalterPruefung(false);
-/** Für Routen, die ein anderes Konto ändern (Kontenverwaltung): ganz im Systemrahmen. */
-export const requireApiAdminUeberKonten = verwalterPruefung(true);
+  function verwalterPruefung(ueberKonten: boolean) {
+    return waechter<AuthedRequest>((req, res, next) => {
+      requireToken(req, res, () => {
+        if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
+        // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
+        verlangeFreigabe(
+          konto,
+          req,
+          res,
+          ueberKonten ? () => imSystemkontext('kontenverwaltung', next) : next,
+          'verwaltung',
+        );
+      });
+    });
+  }
+
+  return {
+    requireToken,
+    /** Ohne Systemrahmen: Was über Konten geht, fragen Verwaltung und Warteschlange selbst darin. */
+    requireApiAdmin: verwalterPruefung(false),
+    /** Für Routen, die ein anderes Konto ändern (Kontenverwaltung): ganz im Systemrahmen. */
+    requireApiAdminUeberKonten: verwalterPruefung(true),
+  };
+}
 
 const nurWenn =
   (soll: (req: Request) => boolean, schritt: RequestHandler): RequestHandler =>

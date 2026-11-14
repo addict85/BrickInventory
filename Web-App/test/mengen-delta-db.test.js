@@ -41,7 +41,7 @@ test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     await db.pool.end().catch(() => {});
   });
-  const { updateSet } = _req('src/sets/index.js');
+  const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
 
   await t.test('zwei gleichzeitige +1 ergeben +2', async () => {
     await haeltSet(db, uid, SN, 2, { preis: 40 });
