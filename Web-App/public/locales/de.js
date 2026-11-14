@@ -692,6 +692,8 @@ window.I18N_DE = {
   'storage.intro':
     'Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue Orte lassen sich auch direkt dort eintragen; hier kannst du sie umbenennen oder entfernen.',
   'storage.new_ph': 'Neuer Lagerort',
+  'storage.liste_titel': 'Deine Lagerorte',
+  'storage.umbenennen': 'Lagerort umbenennen: {name}',
   'storage.add': 'Hinzufügen',
   'storage.name_fehlt': 'Bitte einen Namen eingeben.',
   'router.nur_verwalter': 'Diese Seite ist nur für Verwalter. Hier ist deine Sammlung.',

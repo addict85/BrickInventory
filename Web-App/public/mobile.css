@@ -464,7 +464,7 @@
   /* Lagerorte: das Feld über die ganze Zeile, Belegung und Knöpfe darunter. */
   #storage-list .lager-raster { grid-template-columns: minmax(0, 1fr) max-content max-content !important; }
   #storage-list .lager-feld { grid-column: 1 / -1; border-bottom: 0 !important; padding-bottom: 0 !important; }
-  #storage-list .lager-belegt { justify-content: flex-start !important; white-space: normal !important; }
+  #storage-list .lager-belegt { justify-content: flex-start !important; white-space: normal !important; padding-left: 0 !important; }
   .erfassen-leiste .import-menue { flex: 1 1 100%; min-width: 0; }
   .erfassen-leiste .import-menue > summary { width: 100%; white-space: normal; }
   main :is(p, li, h1, h2, h3, label, .ibox, .stit, .hinweis-absatz) { hyphens: auto; }

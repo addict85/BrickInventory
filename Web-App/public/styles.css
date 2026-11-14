@@ -1455,7 +1455,8 @@ p.mon-leise{margin:0 0 .35rem}
 /* Sichten aus dem Kontomenü: am breiten Bildschirm zwei Spalten Karten statt
    einer schmalen Spalte neben leerer Fläche (I4). */
 .fg[hidden]{display:none}
-.konto-fuss{display:flex;justify-content:flex-end;margin-top:.75rem}
+/* Eine Regel für alle Menüseiten: Der Hauptknopf eines Formulars steht unten rechts, Abbrechen links daneben. */
+.konto-fuss{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:.75rem}
 .konto-fuss .btn{flex:0 0 auto}
 :is(#tab-profil,#tab-gutscheine,#tab-alarme,#tab-lagerorte,#tab-haushalt) .stit{margin-bottom:.75rem}
 @media (min-width:1100px){
@@ -1699,3 +1700,5 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .quelle-stand.quelle-ok{color:var(--gewinn,var(--g700))}
 .quelle-stand.quelle-fehler{color:var(--r700)}
 .v-btn-text{display:none}
+/* Betrag und Währung bleiben beisammen wie im Set-Detail; umbrechen darf nur die Richtung davor. */
+.alarm-ue-betrag{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}

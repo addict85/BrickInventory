@@ -1198,9 +1198,9 @@
               <div class="text-klein abstand-o-3" data-i18n="vouchers.pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</div>
             </div>
 
-            <div class="zeile luecke-05 mittig abstand-o-05">
-              <button class="btn bp btn-speichern" data-click="gutscheinSpeichern" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+            <div class="konto-fuss">
               <button class="btn" id="v-cancel" data-click="gutscheinAbbrechen" data-stil="display:none" data-i18n="common.cancel">Abbrechen</button>
+              <button class="btn bp btn-speichern" data-click="gutscheinSpeichern" data-i18n="settings.save" data-ico="speichern">Speichern</button>
             </div>
           </div>
         </div>
@@ -1214,7 +1214,7 @@
       <!-- Alle Preisalarme an einem Ort; im Set-Detail sieht man nur den eines Sets. -->
       <div class="ssec abstand-u-125" id="alerts-card">
         <div class="sform">
-          <h2 class="stit" data-i18n="alerts.list_title">Deine Preisalarme</h2>
+          <h2 class="stit" data-ico="alarm" data-i18n="alerts.list_title">Deine Preisalarme</h2>
           <div class="text-mittel" data-i18n="alerts.intro">
             Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.
           </div>
@@ -1225,7 +1225,7 @@
       </div>
       <div class="ssec abstand-u-125" id="alerts-new-card">
         <form class="sform nur-inhalt" data-submit="alarm-neu-knopf">
-          <h2 class="stit" data-i18n="alerts.new_title">Preisalarm anlegen</h2>
+          <h2 class="stit" data-ico="plus" data-i18n="alerts.new_title">Preisalarm anlegen</h2>
           <div class="profil-raster">
             <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Setnummer</label>
               <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="z. B. 75192-1" data-i18n="alerts.set_ph" data-i18n-attr="placeholder" /></div>
@@ -1254,6 +1254,7 @@
 
       <div class="ssec abstand-u-125" id="storage-card">
         <div class="sform">
+          <h2 class="stit" data-ico="lagerort" data-i18n="storage.liste_titel">Deine Lagerorte</h2>
           <div class="text-mittel" data-i18n="storage.intro">
             Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue Orte lassen sich auch direkt dort eintragen; hier kannst du sie umbenennen oder entfernen.
           </div>
@@ -1265,7 +1266,7 @@
       </div>
       <div class="ssec abstand-u-125" id="storage-new-card">
         <div class="sform">
-          <h2 class="stit" data-i18n="storage.new_ph">Neuer Lagerort</h2>
+          <h2 class="stit" data-ico="plus" data-i18n="storage.new_ph">Neuer Lagerort</h2>
           <div class="sgrid2" data-stil="gap:.5rem;grid-template-columns:1fr auto">
             <div class="fg">
               <label for="storage-new" data-i18n="col.name">Name</label>
@@ -1331,10 +1332,11 @@
               <label for="household-redeem-faktor-code" data-i18n="login.code">Code aus der Authenticator-App</label>
               <input type="text" id="household-redeem-faktor-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" />
             </div>
-            <!-- margin-top: Der Knopf klebte am Eingabefeld. .75rem ist der … -->
-            <button class="btn bp" data-click="redeemHouseholdInvite" data-stil="align-self:flex-start;margin-top:.75rem">
-              <svg class="ico" aria-hidden="true"><use href="#i-ok"/></svg> <span data-i18n="household.redeem_submit">Verknüpfen</span>
-            </button>
+            <div class="konto-fuss">
+              <button class="btn bp" data-click="redeemHouseholdInvite">
+                <svg class="ico" aria-hidden="true"><use href="#i-ok"/></svg> <span data-i18n="household.redeem_submit">Verknüpfen</span>
+              </button>
+            </div>
           </div>
     </div>
 

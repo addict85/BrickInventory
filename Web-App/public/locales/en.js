@@ -685,6 +685,8 @@ window.I18N_EN = {
   'storage.intro':
     'The places offered when you file a set or a part. You can also add new ones right there; here you can rename or remove them.',
   'storage.new_ph': 'New storage location',
+  'storage.liste_titel': 'Your storage locations',
+  'storage.umbenennen': 'Rename storage location: {name}',
   'storage.add': 'Add',
   'storage.name_fehlt': 'Please enter a name.',
   'router.nur_verwalter': 'This page is for administrators only. Here is your collection.',
