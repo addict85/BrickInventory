@@ -215,8 +215,8 @@ test('jeder genannte Pfad auf .ts, .sh, .yml und .yaml existiert', () => {
   assert.deepEqual([...new Set(fehlt)], []);
 });
 
-test('kein Dependabot: Neue Fassungen schlägt Renovate vor', () => {
-  assert.doesNotMatch(TEXT, /dependabot/i);
+test('kein Renovate: Neue Fassungen schlägt Dependabot vor', () => {
+  assert.doesNotMatch(TEXT, /renovate/i);
 });
 
 test('jeder genannte Test existiert', () => {

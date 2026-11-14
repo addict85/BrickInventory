@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * QRCode.js kommt aus der npm-Abhängigkeit qrcodejs (exakte Fassung in
- * package.json), damit npm audit und Renovate es sehen. Dieses Skript legt
+ * package.json), damit npm audit und Dependabot es sehen. Dieses Skript legt
  * Skript und Lizenz nach public/vendor/qrcode/; build-frontend.js ruft es.
  *
  *   node scripts/qrcode-kopieren.js [Zielwurzel]
