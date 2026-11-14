@@ -200,7 +200,7 @@ export async function updateManualFig(
 
 /** `uid` ist das Blickfeld (Liste). */
 export async function getFigAcquisitions(k: FigurenKontext, uidWahl: Sicht | number[], figNumber: string) {
-  const uid = await k.haushalt.haushalt.blickfeldAus(uidWahl);
+  const uid = await k.haushalt.blickfeldAus(uidWahl);
   return k.manuelleFiguren.figurErfassungen(uid, figNumber);
 }
 

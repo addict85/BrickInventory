@@ -34,7 +34,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
     }
   }
 
-  const { moveSetBetweenAccounts } = _req('src/sets/index.js');
+  const { moveSetBetweenAccounts } = require('./helpers/sources').bereichsSeite('sets');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('mv_a','x'),('mv_b','x')");
   const [a, b] = (await db.all('SELECT id FROM users ORDER BY id')).map(r => r.id);

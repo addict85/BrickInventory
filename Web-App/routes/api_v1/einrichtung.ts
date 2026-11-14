@@ -11,7 +11,7 @@ export function baueEinrichtungRouter(d: Dienste) {
 
   router.get(
     '/einrichtung/stand',
-    ipThrottle('einrichtung-stand', 120, 10 * 60 * 1000),
+    ipThrottle(d.konto, 'einrichtung-stand', 120, 10 * 60 * 1000),
     async (req: OffeneAnfrage<'GET /api/v1/einrichtung/stand'>, res: Antwort<'GET /api/v1/einrichtung/stand'>) => {
       res.set('Cache-Control', 'no-store');
       res.json({ success: true, ...(await d.konto.einrichtungStand({ verwalter: istVerwalter(req) })) });

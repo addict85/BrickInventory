@@ -208,7 +208,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
   });
 
   await t.test('verschiebeSet wiederholt bei Konflikt', async () => {
-    const { verschiebeSet } = _req('src/sets/index.js');
+    const { verschiebeSet } = require('./helpers/sources').bereichsSeite('sets');
     const { haeltSet, mengeVon } = require('./helpers/bestand');
     const von = await konto('wv_von');
     const nach = await konto('wv_nach');

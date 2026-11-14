@@ -16,7 +16,6 @@ import { logAndContinue, meldeFehler } from '../infra/fehler';
 import path from 'node:path';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';
-import { rebrickableBackgroundLimiter as rebrickableLimiter } from './rateLimiter';
 import { KEINE_FARBE } from '../infra/validate';
 import type { KatalogKontext } from './kontext';
 async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
@@ -53,7 +52,7 @@ async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
       if (fs.existsSync(dest)) {
         imageLocal = rel;
       } else {
-        await rebrickableLimiter.waitForSlot();
+        await k.drossel.hintergrund.waitForSlot();
         await downloadFile(p.image_url, dest).catch(logAndContinue('katalog-sync:downloadFile'));
         if (fs.existsSync(dest)) {
           await generateThumb(rel).catch(logAndContinue('katalog-sync:generateThumb'));

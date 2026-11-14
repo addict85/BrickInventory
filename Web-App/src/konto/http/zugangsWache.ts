@@ -4,7 +4,7 @@
  * ohne Zwischenspeicher und ohne Nebenwirkungen (kein last_used, kein Fehlversuch). */
 import type { Request } from 'express';
 import { meldeFehler } from '../../infra/fehler';
-import { kontoBereich } from '../prozess';
+import type { KontoDienste } from '../bereich';
 import { hashToken } from '../geraeteToken';
 import { beiZugangsAenderung } from '../zugangsAenderung';
 
@@ -23,29 +23,34 @@ function sitzungLebt(req: Request): Promise<boolean> {
 }
 
 /** Gilt der Zugang, mit dem die Anfrage kam, jetzt noch? */
-export async function zugangGiltNoch(req: Request): Promise<boolean> {
+export async function zugangGiltNoch(konto: KontoDienste, req: Request): Promise<boolean> {
   const s = req.session;
   if (s?.userId) {
-    if ((await kontoBereich().sitzungsVersionAusDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
+    if ((await konto.sitzungsVersionAusDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
     // Abmelden löscht nur diese eine Sitzung, die Version bleibt.
     return sitzungLebt(req);
   }
   const kopf = String(req.headers.authorization || '');
   if (!kopf.startsWith('Bearer ')) return false;
-  return !!(await kontoBereich().zugaenge.gueltigerToken(hashToken(kopf.slice(7))));
+  return !!(await konto.gueltigerToken(hashToken(kopf.slice(7))));
 }
 
 /** `beenden` läuft höchstens einmal, sobald der Zugang nicht mehr gilt. Ein
  * Lesefehler beendet nichts: Der nächste Takt fragt wieder.
  * @returns Abmelden — im Aufräumpfad des Stroms rufen. */
-export function wacheUeberZugang(req: Request, beenden: () => void, taktMs = WACHE_TAKT_MS): () => void {
+export function wacheUeberZugang(
+  konto: KontoDienste,
+  req: Request,
+  beenden: () => void,
+  taktMs = WACHE_TAKT_MS,
+): () => void {
   let aus = false,
     laeuft = false;
   const pruefe = async () => {
     if (aus || laeuft) return;
     laeuft = true;
     try {
-      if (!(await zugangGiltNoch(req)) && !aus) {
+      if (!(await zugangGiltNoch(konto, req)) && !aus) {
         abmelden();
         beenden();
       }

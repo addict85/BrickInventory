@@ -33,9 +33,7 @@ const { datenOderSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
 
 // Keine echten Mails: vor dem Laden von routes/auth ersetzen.
-const echterMailer = _req('src/mail/mailer.js');
-const mailerPfad = require.resolve(path.join(S.DIST, 'src/mail/mailer.js'));
-require.cache[mailerPfad].exports = Object.assign({}, echterMailer, {
+require('./helpers/sources').ersetzeDienste('mail', {
   sendEmailGeaendertMail: async () => ({ success: true }),
   sendVerificationMail: async () => ({ success: true }),
 });

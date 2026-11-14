@@ -1,12 +1,12 @@
 /** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
+import { waechterFuer } from './api_v1/middleware';
 import { fehlerAntwort, pfadSegmente } from '../src/http/httpAntwort';
 import express, { type Request, type Response } from 'express';
 import path from 'node:path';
 import { liefereDatei, FREMDE_DATEI_CSP } from '../src/http/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
-import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
-import { eingangsSperre } from './api_v1/middleware';
+import { angemeldeteNutzerId } from '../src/konto/http/anmeldung';
 import type { Dienste } from '../startup/verdrahtung';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
@@ -19,6 +19,7 @@ function alsAnhang(res: Response, datei: string): void {
 }
 
 export function baueDatenDateienRouter(d: Dienste) {
+  const { eingangsSperre, requireLoginOrToken } = waechterFuer(d.konto);
   const router = express.Router();
 
   // Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht umgekehrt. Ein
@@ -37,8 +38,7 @@ export function baueDatenDateienRouter(d: Dienste) {
       const besitzer = Number(segments[0]);
       // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
       // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
-      if (!(await d.haushalt.haushalt.siehtKonto(userId, besitzer)))
-        return res.status(404).send('Datei nicht gefunden');
+      if (!(await d.haushalt.siehtKonto(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
       alsAnhang(res, filePath);
       liefereDatei(res, filePath);
     },

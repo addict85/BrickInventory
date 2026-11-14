@@ -1,7 +1,7 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
-import { mailEingerichtet, sendKontoHinweisMail, type KontoHinweis } from '../mail';
-import { logAndContinue } from '../infra/fehler';
+import type { KontoHinweis } from '../mail';
+import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { imSystemkontext } from '../infra/kontoKontext';
 import type { KontoKontext } from './kontext';
 
@@ -24,12 +24,12 @@ async function meldeKontoaenderungFuer(
   art: KontoHinweis,
   angaben: Angaben,
 ): Promise<boolean> {
-  if (!(await mailEingerichtet())) return false;
+  if (!(await kx.mail.mailEingerichtet())) return false;
   const k = await kx.konten.profilZeile(uid);
   if (!k?.email) return false;
   const lang = String(await kx.einstellungen.getSetting(uid, 'language', 'de'));
-  const haushalt = (await kx.haushalt.haushalt.haushaltsStand(uid)).parents.map(p => p.username);
-  const r = await sendKontoHinweisMail(k.email, k.username, art, {
+  const haushalt = (await kx.haushalt.haushaltsStand(uid)).parents.map(p => p.username);
+  const r = await kx.mail.sendKontoHinweisMail(k.email, k.username, art, {
     lang,
     haushalt,
     ...(angaben.name ? { passkey: angaben.name } : {}),
@@ -58,4 +58,21 @@ export function verwalterHinweisNebenher(k: KontoKontext, art: KontoHinweis, ang
     .aktiveVerwalter()
     .then(ids => Promise.all(ids.map(id => meldeKontoaenderung(k, id, art, angaben))))
     .catch(logAndContinue(`konto:verwalterhinweis ${art}`));
+}
+
+/** Nach dem Beitritt erfährt der Inhaber per Mail, wem er sich angeschlossen hat; nebenher,
+ * damit die Antwort nicht auf den Mailserver wartet. */
+export async function haushaltBeitreten(k: KontoKontext, uid: number, code: string) {
+  const r = await k.haushalt.einladungEinloesen(uid, code);
+  if ('fehler' in r) return r;
+  const ich = await k.konten.profilZeile(uid);
+  if (ich?.email) {
+    const sprache = await k.einstellungen
+      .getSetting(uid, 'language', 'de')
+      .catch(meldeUndLiefere('einstellungen:sprache', 'de'));
+    void k.mail
+      .sendHaushaltVerknuepftMail(ich.email, ich.username, r.linked_to.username, String(sprache ?? 'de'))
+      .catch(logAndContinue('haushalt:hinweismail'));
+  }
+  return r;
 }

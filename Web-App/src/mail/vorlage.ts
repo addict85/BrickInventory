@@ -1,7 +1,7 @@
 // Das Gerüst jeder Mail: Paletten, Kopf und Fuss, Knopf, Hinweiskasten.
 // Die Texte stehen in mailer.ts, der Versand in transport.ts.
 
-import { getGlobalSetting } from '../einstellungen';
+import type { MailKontext } from './kontext';
 import { ausTabelle } from '../infra/validate';
 
 /** `unknown`: Hier laufen Werte aus Datenbank und Formularen hinein. */
@@ -94,9 +94,9 @@ export const MAIL_THEMES = {
 };
 
 /** Bei jedem Zweifel `classic`: Eine Mail soll nie am Design scheitern. */
-export async function getMailTheme() {
+export async function getMailTheme(k: MailKontext) {
   try {
-    const gespeichert = await getGlobalSetting('app_theme');
+    const gespeichert = await k.einstellungen.getGlobalSetting('app_theme');
     // ausTabelle: Ein Wert aus der Datenbank wie 'constructor' fände sonst ein
     // geerbtes Mitglied, und der Rückfall griffe nie.
     return ausTabelle(MAIL_THEMES, gespeichert, MAIL_THEMES.classic);

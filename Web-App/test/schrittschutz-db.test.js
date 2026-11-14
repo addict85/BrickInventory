@@ -50,7 +50,7 @@ const { bis } = require('./helpers/zeit');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { geraeteSchluessel, signiere, geraetFreigeben, hinterlege } = require('./helpers/geraet');
 const attestation = require('./helpers/attestation');
-const repo = _req('src/konto/prozess.js').kontoBereich().geraeteSchluessel;
+const repo = require('./helpers/sources').testBereich('konto').geraeteSchluessel;
 const { qrKoppeln } = require('./helpers/qr');
 const freierPort = () =>
   new Promise(r => {

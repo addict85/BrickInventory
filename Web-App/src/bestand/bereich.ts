@@ -1,7 +1,7 @@
 /** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
  * Parameter; erzeugeBestand bindet ihn einmal für alle. So greift kein Dienst auf den
  * Prozess zu, und ein Test gibt einen eigenen Zugang. */
-import { baueKontext, bindeGenerisch, bindeZugang } from '../infra/bereich';
+import { baueKontext, bindeGenerisch, bindeZugang, type Einblick } from '../infra/bereich';
 import * as acquisitions from './acquisitions';
 import * as bestandExportDienst from './bestandExport';
 import * as gemeinsamDienst from './gemeinsam';
@@ -10,17 +10,16 @@ import * as manuelleMenge from './manuelleMenge';
 import * as papierkorbDienst from './papierkorb';
 import * as kaufpreisNachtrag from './kaufpreisNachtrag';
 import * as lagerortRechte from './lagerortRechte';
+import * as lagerortDienst from './lagerort';
 import * as lagerortSetzen from './lagerortSetzen';
 import { zugang, type BestandAbhaengigkeiten, type BestandKontext } from './kontext';
 
 export type { BestandAbhaengigkeiten, BestandKontext } from './kontext';
 
-export function erzeugeBestand(a: BestandAbhaengigkeiten) {
+export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<BestandKontext>) {
   const k: BestandKontext = baueKontext(a, zugang);
+  einblick?.(k);
   return {
-    ...k,
-    // Nimmt den Kontext, nicht den Zugang: Ein neuer Ort braucht k.transaktion.
-    lagerortDienst: { ...k.lagerortDienst, ...bindeZugang(k, lagerortSetzen) },
     ...bindeZugang(k, acquisitions, ['recordAcquisitionForDay', 'findSameDayAcquisition', 'setzeGeschaetztenPreis']),
     erfassungenInKontowaehrung: bindeGenerisch(k)(acquisitions.erfassungenInKontowaehrung),
     ...bindeZugang(k, bestandExportDienst, ['buildPartsCsv', 'buildFigsCsv']),
@@ -36,6 +35,21 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten) {
       'raeumePapierkorbAuf',
     ]),
     ...bindeZugang(k, kaufpreisNachtrag, ['run']),
+    // Nimmt den Zugang statt des Kontexts: Erfassungen rufen ihn mit dem Griff ihrer Transaktion.
+    // setzeLagerort nimmt den Kontext: Ein neuer Ort braucht k.transaktion.
+    lagerortDienst: {
+      ...bindeZugang(k.db, lagerortDienst, [
+        'benenneOrtUm',
+        'lagerorte',
+        'legeOrtAn',
+        'loescheOrt',
+        'ortFuerNeuerfassung',
+        'orteVon',
+        'vorgabeVon',
+      ]),
+      ...bindeZugang(k, lagerortSetzen),
+    },
+
     ...bindeZugang(k, lagerortRechte, ['setzeVorgabe', 'lagerSchreibkonto', 'orteFuer']),
   };
 }

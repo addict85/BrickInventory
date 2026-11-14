@@ -88,7 +88,11 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
       saveUninitialized: false,
     }),
   );
-  app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
+  app.use(
+    '/api/v1',
+    _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)
+      .anmeldungAmEingang,
+  );
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/settings.js'));
   app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));

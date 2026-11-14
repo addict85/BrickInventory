@@ -105,7 +105,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json() };
   };
-  const { getSets, getSet } = _req('src/sets/index.js');
+  const { getSets, getSet } = require('./helpers/sources').bereichsSeite('sets');
 
   await t.test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', async () => {
     const { getCurrentMarketPrice } = _req('src/finanzen/marketPrice.js');
@@ -118,7 +118,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', async () => {
-    const { addSet } = _req('src/sets/index.js');
+    const { addSet } = require('./helpers/sources').bereichsSeite('sets');
     const r = await addSet({ setNumber: SN, menge: 1, konto: uid, zustand: 'U' });
     assert.equal(r.action, 'updated', 'Aufbau: der Aufstock-Weg ohne Katalog und Netz');
     const neu = await db.get(

@@ -43,7 +43,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+    ...require('./helpers/sources').testBereich('auftraege').auftraege,
   });
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
@@ -68,6 +68,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.equal(tot.id, id);
       const erledigt = [];
       const w = erzeugeWorker(
+        require('./helpers/sources').testDienste().auftraege,
         {
           [ART]: {
             ausfuehren: async n => {
@@ -89,7 +90,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await leeren();
       let mal = 0;
       const aufgegeben = [];
-      const w = erzeugeWorker({
+      const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         [ART]: {
           ausfuehren: async n => {
             mal++;
@@ -140,8 +141,14 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
           },
         },
       };
-      const w1 = erzeugeWorker(bearbeiter, { parallel: 4, taktMs: 20 });
-      const w2 = erzeugeWorker(bearbeiter, { parallel: 4, taktMs: 20 });
+      const w1 = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
+        parallel: 4,
+        taktMs: 20,
+      });
+      const w2 = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
+        parallel: 4,
+        taktMs: 20,
+      });
       w1.starte();
       w2.starte();
       for (let i = 0; i < 200; i++) {
@@ -169,6 +176,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       let gleichzeitig = 0,
         hoechstens = 0;
       const w = erzeugeWorker(
+        require('./helpers/sources').testDienste().auftraege,
         {
           [EX]: {
             exklusiv: true,
@@ -198,7 +206,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await leeren();
       const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
       let zaehlt = false;
-      const w = erzeugeWorker({
+      const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         [ART]: {
           ausfuehren: async () => {
             throw new AuftragVerschieben(new Date(Date.now() + 3_600_000), 'gedrosselt', zaehlt);
@@ -231,7 +239,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       const nachAbbruch = new Promise(r => {
         abgebrochen = r;
       });
-      const w = erzeugeWorker({
+      const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         [ART]: {
           ausfuehren: async (_n, k) => {
             laeuft();
@@ -267,7 +275,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       );
       assert.equal(await Z.ziehePlanVor('aufraeumen'), true);
       let lief = 0;
-      const w = erzeugeWorker({
+      const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         aufraeumen: {
           ausfuehren: async () => {
             lief++;
@@ -294,7 +302,10 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
       const pdfA = _req('src/auftraege/pdfAuftraege.js');
       const jobId = _req('src/auftraege/pdfAuftraege.js').neueJobId();
-      _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['pdf'], taktMs: 50 });
+      _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
+        arten: ['pdf'],
+        taktMs: 50,
+      });
       try {
         await A.stelleAuftragEin(
           'pdf',

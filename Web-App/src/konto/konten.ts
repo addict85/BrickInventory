@@ -5,7 +5,7 @@ import * as repo from './repository/konten';
 import { BCRYPT_ROUNDS } from './anmeldepruefung';
 import { leereTokenCache } from './tokenCache';
 import { mitZugangsende, revokeAllSessions, zugangsTransaktion } from './zugangsende';
-import { revokeAllTokens } from './geraeteToken';
+import { hashToken, revokeAllTokens } from './geraeteToken';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
@@ -118,6 +118,11 @@ export async function aendereEigenesPasswort(
     if (o.passkeysWiderrufen) await t.passkeys.loescheAlleDesKontos(uid);
   });
   await startpasswortErledigt(k, uid);
+}
+
+/** Der Link trägt den Token im Klartext; gespeichert ist nur sein Hash. */
+export function passwortPerLinkSetzen(k: KontoKontext, token: string, passwort: string): Promise<number | null> {
+  return setzePasswortZurueck(k, hashToken(token), passwort);
 }
 
 /** Hier will man einen fremden Zugang loswerden; deshalb fallen auch alle Passkeys.

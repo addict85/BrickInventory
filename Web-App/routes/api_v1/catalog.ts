@@ -1,9 +1,10 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireToken } from './middleware';
+import { waechterFuer } from './middleware';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../startup/verdrahtung';
 
 export function baueCatalogRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   router.get('/catalog/meta', requireToken, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/catalog/meta'>) => {

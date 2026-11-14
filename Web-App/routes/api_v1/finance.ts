@@ -1,6 +1,6 @@
 import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { FEHLER, antwortSprache, fehlerText, type FehlerCode } from '../../src/infra/fehlerTexte';
-import { requireToken, sichtVon } from './middleware';
+import { sichtVon, waechterFuer } from './middleware';
 import { einzelwert } from '../../src/infra/validate';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
@@ -20,6 +20,7 @@ function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(
 }
 
 export function baueFinanceRouter(d: Dienste) {
+  const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   router.get(

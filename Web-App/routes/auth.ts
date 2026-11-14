@@ -1,5 +1,6 @@
 /** Anmeldung, Token, Profil, QR und Passkeys; setzt die Teilrouter aus
  * routes/auth/ zusammen. Alles hängt unter /api/v1/auth. */
+import { waechterFuer } from './api_v1/middleware';
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
 import { logAndContinue, meldeFehler } from '../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../src/http/httpAntwort';
@@ -7,7 +8,6 @@ import {
   perSitzung,
   anmelden,
   establishSession,
-  requireLoginOrToken,
   nutzerId,
   angemeldeteNutzerId,
   ipThrottle,
@@ -52,7 +52,7 @@ async function angemeldetAntworten(
   mitPasswort = false,
 ) {
   if (!mitToken)
-    await establishSession(req, {
+    await establishSession(d.konto, req, {
       userId: Number(user.id),
       username: user.username,
       isAdmin: user.is_admin,
@@ -117,7 +117,7 @@ async function sitzungsNutzer(d: Dienste, req: Request, uid: number) {
       username: user.username,
       is_admin: user.is_admin,
       mustChangePassword: user.must_change_password,
-      zweiterFaktorPflicht: await zweiterFaktorPflicht(req),
+      zweiterFaktorPflicht: await zweiterFaktorPflicht(d.konto, req),
     },
   } as const;
 }
@@ -147,6 +147,7 @@ const passkeyName = (roh: unknown) =>
   typeof roh === 'string' && roh.trim() ? Array.from(roh.trim()).slice(0, NAME_MAX).join('') : 'Passkey';
 
 export function baueAuthRouter(d: Dienste) {
+  const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
@@ -159,7 +160,7 @@ export function baueAuthRouter(d: Dienste) {
     async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res: Antwort<'POST /api/v1/auth/login'>) => {
       const { username, password, code: zweiterCode, ohne_token, passkey } = req.eingabe;
       if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
-      const pruefung = await anmelden(req, username, password, zweiterCode, passkey);
+      const pruefung = await anmelden(d.konto, req, username, password, zweiterCode, passkey);
       if (!pruefung.ok) return anmeldungAbsagen(req, res, pruefung.absage);
       await angemeldetAntworten(d, req, res, pruefung.user as Angemeldet, req.eingabe, ohne_token !== true, true);
     },
@@ -216,7 +217,7 @@ export function baueAuthRouter(d: Dienste) {
    * gilt; die Prüfung steht deshalb hier. */
   router.post(
     '/token-rotieren',
-    ipThrottle('token-rotieren', 120, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'token-rotieren', 120, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/token-rotieren'>,
       res: Antwort<'POST /api/v1/auth/token-rotieren'>,
@@ -254,7 +255,7 @@ export function baueAuthRouter(d: Dienste) {
       if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
       if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
       const userId = angemeldeteNutzerId(req);
-      if (!(await bestaetigeMitFaktor(req, res, userId, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, userId, req.eingabe.password))) return;
       const t = await d.konto.geraeteTokenAusstellen(userId, req.eingabe.label, req.eingabe.scope, req.ip);
       res.json({ success: true, token: t.token, label: t.label, never_expires: false, token_info: t.token_info });
     },
@@ -293,7 +294,7 @@ export function baueAuthRouter(d: Dienste) {
       // sich das Passwort zurücksetzen, und erst danach verrät die Vergabeprüfung, ob
       // es einen Namen oder eine Adresse schon gibt.
       if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-      if (!(await bestaetigeMitFaktor(req, res, user.id, String(password_current)))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, user.id, String(password_current)))) return;
       const r = await d.konto.profilAendern(user, { username, email, first_name, last_name });
       if (r.emailChanged) return res.json({ success: true, emailChanged: true, emailSent: r.emailSent ?? false });
       res.json({ success: true });
@@ -306,7 +307,7 @@ export function baueAuthRouter(d: Dienste) {
     requireLogin,
     async (req: OffeneAnfrage<'DELETE /api/v1/auth/konto'>, res: Antwort<'DELETE /api/v1/auth/konto'>) => {
       const uid = angemeldeteNutzerId(req);
-      if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt')
         return sendeFehler(req, res, 409, 'letzter_verwalter');
       console.log(`[konto] Konto ${uid} hat sich selbst gelöscht`);
@@ -325,12 +326,12 @@ export function baueAuthRouter(d: Dienste) {
       if (!current || !newPassword) return sendeFehler(req, res, 400, 'alle_felder_erforderlich');
       const uid = nutzerId(req);
       if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
-      if (!(await bestaetigeMitFaktor(req, res, uid, String(current)))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, String(current)))) return;
       // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
       // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
       const konto = await d.konto.eigenesPasswortAendern(uid, newPassword, req.eingabe.passkeys_widerrufen === true);
       if (req.session?.userId && konto) {
-        await establishSession(req, {
+        await establishSession(d.konto, req, {
           userId: uid,
           username: konto.username,
           isAdmin: req.session.isAdmin === true,
@@ -352,7 +353,7 @@ export function baueAuthRouter(d: Dienste) {
       // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
       // zugang; nur aus der Sitzung, mit Passwort und zweitem Faktor.
       if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
-      if (!(await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.password))) return;
       // Die Laufzeit wählt die angemeldete Sitzung, nicht das unangemeldete /qr-login.
       res.json({
         success: true,
@@ -364,7 +365,7 @@ export function baueAuthRouter(d: Dienste) {
   // Gedrosselt, weil der Endpunkt ohne Anmeldung in die Datenbank schreibt.
   router.post(
     '/qr-login',
-    ipThrottle('qr-login', 30, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'qr-login', 30, 60 * 60 * 1000),
     async (req: OffeneAnfrage<'POST /api/v1/auth/qr-login'>, res: Antwort<'POST /api/v1/auth/qr-login'>) => {
       const { token, label } = req.eingabe;
       if (!token?.startsWith('bim:')) return sendeFehler(req, res, 400, 'token_ungueltig');
@@ -379,7 +380,7 @@ export function baueAuthRouter(d: Dienste) {
   // Mit `vorschau` steht danach nur das Konto in der Antwort; den Token holt das Ja der App.
   router.post(
     '/qr-login/abholen',
-    ipThrottle('qr-abholen', 600, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'qr-abholen', 600, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/qr-login/abholen'>,
       res: Antwort<'POST /api/v1/auth/qr-login/abholen'>,
@@ -405,7 +406,7 @@ export function baueAuthRouter(d: Dienste) {
 
   router.post(
     '/qr-login/verwerfen',
-    ipThrottle('qr-abholen', 600, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'qr-abholen', 600, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/qr-login/verwerfen'>,
       res: Antwort<'POST /api/v1/auth/qr-login/verwerfen'>,
@@ -495,7 +496,7 @@ export function baueAuthRouter(d: Dienste) {
     ) => {
       if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
       const uid = angemeldeteNutzerId(req);
-      if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       const konto = await d.konto.kontoKurzVon(uid);
       const optionen = await d.konto.registrierungsOptionen(uid, konto?.username ?? String(uid));
       if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
@@ -533,7 +534,7 @@ export function baueAuthRouter(d: Dienste) {
       const uid = angemeldeteNutzerId(req);
       const id = req.pfad.id;
       if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-      if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       res.json({ success: true, deleted: (await d.konto.loeschePasskey(uid, id)) ? 1 : 0 });
     },
   );
@@ -541,7 +542,7 @@ export function baueAuthRouter(d: Dienste) {
   // Öffentlich; die Drossel begrenzt, wie viele Challenges eine Adresse anlegt.
   router.post(
     '/passkey/anmelden/optionen',
-    ipThrottle('passkey-optionen', 60, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'passkey-optionen', 60, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/passkey/anmelden/optionen'>,
       res: Antwort<'POST /api/v1/auth/passkey/anmelden/optionen'>,
@@ -556,7 +557,7 @@ export function baueAuthRouter(d: Dienste) {
   /** Die Sitzung für den Browser; einen Token nur auf `mit_token`, wie ihn die App braucht. */
   router.post(
     '/passkey/anmelden',
-    ipThrottle('passkey-anmelden', 30, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'passkey-anmelden', 30, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/passkey/anmelden'>,
       res: Antwort<'POST /api/v1/auth/passkey/anmelden'>,

@@ -1,4 +1,4 @@
-import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLimit } from './financeCalc';
+import { speicherePreis, cacheUsable, preisAusCache, parallelLimit } from './financeCalc';
 import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { AuftragVerschieben, type AuftragsKontext } from '../auftraege';
 import { ohneBricklinkPreis } from '../infra/setNummer';
@@ -56,7 +56,7 @@ async function fetchAndCachePrice(
   const vorhanden = await preisAusCache(k, setNumber, condition, currency, ttl);
   if (cacheUsable(vorhanden, ttl)) return 'skipped';
 
-  const rl = await kontingentFrei('bricklink');
+  const rl = await k.katalog.kontingentFrei('bricklink');
   if (!rl.allowed) return 'rate_limited';
 
   const fallback = condition === 'N' ? 'U' : 'N';
@@ -74,7 +74,7 @@ async function fetchAndCachePrice(
   const p = await speicherePreis(k, setNumber, condition, currency, g);
 
   if (!hatPreis({ avg_price: p.avg, qty_avg_price: p.qavg })) {
-    const rl2 = await kontingentFrei('bricklink');
+    const rl2 = await k.katalog.kontingentFrei('bricklink');
     if (rl2.allowed) {
       try {
         const g2 = await k.katalog.getPriceGuide(setNumber, fallback, guideType, currency);
@@ -188,7 +188,7 @@ async function nachDemLauf(k: FinanzenKontext) {
   try {
     const wartende = await k.preisLauf.setsMitAlarm();
     let gemeldet = 0;
-    for (const sn of wartende) gemeldet += await k.preisalarm.pruefeSet(sn);
+    for (const sn of wartende) gemeldet += await k.preisalarm.pruefeSet(sn, k.mail);
     if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
   } catch (e) {
     log(`Preisalarm error: ${fehlertext(e)}`);
@@ -336,11 +336,11 @@ async function refreshPriceForSet(
 }
 
 async function merkeStand(k: FinanzenKontext, neu: Record<string, unknown>): Promise<void> {
-  const alt = await k.auftraege.laufzustand.liesZustand(PREIS_STAND).then(
+  const alt = await k.auftraege.liesZustand(PREIS_STAND).then(
     r => (r ? JSON.parse(r) : {}),
     () => ({}),
   );
-  await k.auftraege.laufzustand
+  await k.auftraege
     .setzeZustand(PREIS_STAND, JSON.stringify({ ...alt, ...neu, log: _log.slice(0, 15) }))
     .catch(logAndContinue('preis-job:stand'));
 }

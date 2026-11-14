@@ -43,7 +43,7 @@ ersetze('src/merkliste/repository/merkliste.js', {
 });
 // Angelegt wird ohne Netz; scheitern kann danach nur das Ergänzen im offenen Strom.
 // Die Sets-Dienste des Prozesses mit zwei ersetzten; die Routen bekommen dieselben (routerAus).
-Object.assign(_req('src/infra/bereich.js').prozessDienste().sets, {
+Object.assign(require('./helpers/sources').testBereich('sets'), {
   setErfassen: async e => {
     if (e.setNumber === 'FACH-1') throw dateiFehler('ungueltig', 'setnummer_ungueltig');
     return {

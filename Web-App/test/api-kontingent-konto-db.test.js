@@ -75,10 +75,11 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
     const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
     const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), {
       ..._req('src/auftraege/dienst.js'),
-      ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+      ...require('./helpers/sources').testBereich('auftraege').auftraege,
     });
     const ergebnisse = [];
     const w = erzeugeWorker(
+      require('./helpers/sources').testDienste().auftraege,
       {
         wechselkurse: {
           ausfuehren: async () => {

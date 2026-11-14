@@ -1,19 +1,17 @@
 /**
  * Der Bereich Katalog bekommt seinen Datenbankzugang übergeben (src/katalog/bereich.ts,
- * verdrahtet in startup/verdrahtung.ts): Lesen, Schreiben und Transaktionen der
- * Dienste gehen über diesen Zugang. Ohne Verdrahtung wirft katalog(), statt still
- * auf den Prozesszugang zu fallen.
+ * gebaut von baueDienste in startup/verdrahtung.ts): Lesen, Schreiben und
+ * Transaktionen der Dienste gehen über diesen Zugang. Einen Prozess-Speicher, auf
+ * den sie fallen könnten, gibt es nicht mehr (Verbot in test/ratschen.test.js).
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln):
+ * Gegenproben (A, B am 10.11.2026 gemessen, je einzeln; C am 14.11.2026):
  *   A  in src/katalog/rbInventar.ts neuestesInventar() über das Repository mit
- *      standardDb() statt über katalog() → rot: „Lesen geht über den übergebenen
- *      Zugang“ (gezählt: nichts) und „ohne Verdrahtung wirft katalog()“
+ *      standardDb() statt über den Kontext → rot: „Lesen geht über den übergebenen
+ *      Zugang“ (gezählt: nichts)
  *   B  in src/katalog/apiKontingent.ts die Transaktion über standardDb() → rot:
  *      „die Transaktion geht über den übergebenen Zugang“
- *   C  in startup/verdrahtung.ts verdrahte() ohne verdrahteDienste(…) → rot:
- *      „Lesen geht …“ und „die Transaktion geht …“ (gezählt: nichts)
- *   D  katalog() baut ohne Verdrahtung erzeugeKatalog({ db: standardDb() }) → rot:
- *      „ohne Verdrahtung wirft katalog()“
+ *   C  in baueBereiche (startup/verdrahtung.ts) erzeugeKatalog mit { db: testZugang() }
+ *      statt db → rot: „Lesen geht …“ und „die Transaktion geht …“ (gezählt: nichts)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,11 +21,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { verdrahte } = _req('startup/verdrahtung.js');
+const { baueDienste } = _req('startup/verdrahtung.js');
 const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
-const K = _req('src/katalog/prozess.js');
-const { neuestesInventar } = _req('src/katalog/rbInventar.js');
-const kontingent = _req('src/katalog/apiKontingent.js');
 
 const SN = '99872-1';
 const INVENTAR = 987655;
@@ -53,7 +48,7 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
   if (!db) return;
   const weg = async () => {
     await db.run('DELETE FROM rb_inventories WHERE id = $1', [INVENTAR]);
-    await kontingent.setzeKontingentZurueck('brickset');
+    await quellen.testDienste().katalog.setzeKontingentZurueck('brickset');
   };
   t.after(async () => {
     quellen.buildAndRequire();
@@ -64,10 +59,10 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
   await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1, $2, 1)', [INVENTAR, SN]);
 
   const sql = [];
-  verdrahte({ nacharbeit: OHNE_NACHARBEIT, erststart: async () => {} }, zaehlenderZugang(quellen.testZugang(), sql));
+  const { katalog } = baueDienste(zaehlenderZugang(quellen.testZugang(), sql), { nacharbeit: OHNE_NACHARBEIT });
 
   await t.test('Lesen geht über den übergebenen Zugang', async () => {
-    assert.equal(await neuestesInventar(SN), INVENTAR);
+    assert.equal(await katalog.neuestesInventar(SN), INVENTAR);
     assert.ok(
       sql.some(s => /FROM rb_inventories/.test(s)),
       `gezählt: ${sql.join(' | ').slice(0, 300)}`,
@@ -76,17 +71,11 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
 
   await t.test('die Transaktion geht über den übergebenen Zugang', async () => {
     sql.length = 0;
-    const r = await kontingent.checkAndIncrementRateLimit('brickset');
+    const r = await katalog.checkAndIncrementRateLimit('brickset');
     assert.equal(r.allowed, true);
     assert.ok(
       sql.some(s => /INSERT INTO api_aufrufe/.test(s)),
       `gezählt: ${sql.join(' | ').slice(0, 300)}`,
     );
-  });
-
-  await t.test('ohne Verdrahtung wirft katalog()', async () => {
-    _req('src/infra/bereich.js').verdrahteDienste(null);
-    assert.throws(() => K.katalog(), /nicht verdrahtet/);
-    await assert.rejects(async () => neuestesInventar(SN), /nicht verdrahtet/);
   });
 });

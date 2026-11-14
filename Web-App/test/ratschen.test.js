@@ -196,60 +196,50 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   wegeAnDenKontextenVorbei();
 });
 
-/** Wege an den Kontexten vorbei werden weniger, nie mehr. */
+/** Wege an den Kontexten vorbei sind verboten (früher eine Ratsche). */
 function wegeAnDenKontextenVorbei() {
   // Ein Dienst bekommt seine Abhängigkeiten über den Kontext (src/<bereich>/kontext.ts);
-  // xBereich() und die Fassaden der index.ts holen sie vom Prozess. Gemessen am 13.11.2026:
-  // 35 Aufrufe in src/ (vorher 629), 67 Fassaden-Importe ausserhalb des eigenen Bereichs.
-  // Gegenproben (13.11.2026): `teileBereich()` zurück in getPartsStats() → rot (36);
-  // `import { getParts } from '../teile'` in src/sammlung/loeschen.ts → rot (68).
-  const SCHRANKE_AUFRUFE = 35,
-    SCHRANKE_FASSADEN = 67;
+  // einen Speicher der Dienste im Prozess (Holer xBereich(), Fassaden aus dienstePerAufruf)
+  // gibt es nicht mehr. Gemessen am 13.11.2026: 35 Holer-Aufrufe und 67 Fassaden-Importe,
+  // am 14.11.2026: 0 und 0.
+  // Gegenproben (14.11.2026): `export const sets = prozessStelle<SetsDienste>('sets');` in
+  // src/sets/lesen.ts → rot (1 Holer-Stelle); `import { getSets } from '../sets'` in
+  // src/sammlung/loeschen.ts (mit `export const getSets = …` in src/sets/index.ts) → rot (1 Fassade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
-  const bereiche = fs.readdirSync(src).filter(b => fs.existsSync(path.join(src, b, 'prozess.ts')));
-  const holer = bereiche.flatMap(b =>
-    [...fs.readFileSync(path.join(src, b, 'prozess.ts'), 'utf8').matchAll(/export const (\w+) = prozessStelle/g)].map(
-      m => m[1],
-    ),
+  const HOLER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
+  const holer = quellen().filter(f => HOLER.test(ohneKommentare(fs.readFileSync(f, 'utf8'))));
+  assert.deepEqual(
+    holer.map(f => path.relative(WEB, f)),
+    [],
+    'Dienste kommen über den Kontext oder als Parameter, nicht vom Prozess',
   );
-  assert.ok(
-    holer.length >= 14 && holer.includes('katalog'),
-    `nur ${holer.length} Holer gefunden — greift die Suche noch?`,
-  );
-  const AUFRUF = new RegExp(`\\b(?:${holer.join('|')})\\(\\)`, 'g');
+  const bereiche = fs.readdirSync(src).filter(b => fs.existsSync(path.join(src, b, 'bereich.ts')));
+  assert.ok(bereiche.length >= 15, `nur ${bereiche.length} Bereiche gefunden — greift die Suche noch?`);
+  // Was ein Bereich als Dienst bindet, darf keine index.ts zusätzlich als Wert exportieren.
   const dienste = new Map(
     bereiche.map(b => {
       const s = fs.readFileSync(path.join(src, b, 'bereich.ts'), 'utf8');
       const n = new Set();
       for (const m of s.matchAll(/binde(?:Zugang)?\((?:k|sk), \w+, \[([^\]]*)\]\)/g))
         for (const x of m[1].match(/\w+/g) || []) n.add(x);
-      for (const m of s.matchAll(/^ {4}(\w+): (?:bindeGenerisch|\(\(|\(<)/gm)) n.add(m[1]);
+      for (const m of s.matchAll(/^ {4}(\w+): /gm)) n.add(m[1]);
       return [b, n];
     }),
   );
-  let aufrufe = 0,
-    fassaden = 0;
+  assert.ok(dienste.get('sets').has('getSets'), 'die Dienste der Bereiche werden nicht mehr gefunden');
+  const fassaden = [];
   for (const f of quellen()) {
     const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
-    if (f.startsWith(src + path.sep)) aufrufe += (s.match(AUFRUF) || []).length;
     for (const m of s.matchAll(/^import \{([^}]*)\} from '([^']+)';/gm)) {
       const b = path.relative(src, path.resolve(path.dirname(f), m[2]));
       if (!dienste.has(b) || f.startsWith(path.join(src, b) + path.sep)) continue;
       for (const x of m[1].split(',').map(y => y.trim()))
-        if (x && !x.startsWith('type ') && dienste.get(b).has(x.split(/\s+as\s+/)[0])) fassaden++;
+        if (x && !x.startsWith('type ') && dienste.get(b).has(x.split(/\s+as\s+/)[0]))
+          fassaden.push(`${path.relative(WEB, f)}: ${x}`);
     }
   }
-  assert.ok(
-    aufrufe <= SCHRANKE_AUFRUFE,
-    `${aufrufe} Aufrufe der Dienste des Prozesses in src/, erlaubt sind ${SCHRANKE_AUFRUFE}`,
-  );
-  assert.ok(
-    fassaden > 10 && fassaden <= SCHRANKE_FASSADEN,
-    `${fassaden} Fassaden-Importe, erlaubt sind ${SCHRANKE_FASSADEN}`,
-  );
-  if (aufrufe < SCHRANKE_AUFRUFE || fassaden < SCHRANKE_FASSADEN)
-    console.log(`  ℹ an den Kontexten vorbei: ${aufrufe} Aufrufe, ${fassaden} Fassaden — Schranke nachziehen`);
+  assert.deepEqual(fassaden, [], 'Dienste eines anderen Bereichs kommen über d oder den Kontext, nicht als Import');
 }
 
 test('any wird weniger, nie mehr', () => {
@@ -430,10 +420,22 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
  * blosses `await` zählt nicht: Es wartet ebenso auf fs.promises.readFile.
  */
 const FALL_FUEHRT_AUS =
-  /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang)\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
+  /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang|Dienste|Kontext|Bereich|Nacharbeit)\(|\b(?:bereichsSeite|ersetzeDienste)\(|\btestServer\(|\bstarteApp\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
 const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
 /** Aus helpers/sources führen nur diese aus; die übrigen lesen Quelltext. */
-const SOURCES_FUEHRT_AUS = new Set(['buildAndRequire', 'baueDist', 'umgebung', 'testDaten', 'testZugang']);
+const SOURCES_FUEHRT_AUS = new Set([
+  'buildAndRequire',
+  'baueDist',
+  'umgebung',
+  'testDaten',
+  'testZugang',
+  'testDienste',
+  'testKontext',
+  'testBereich',
+  'testNacharbeit',
+  'bereichsSeite',
+  'ersetzeDienste',
+]);
 const HILFE = /require\(\s*['"]\.\/helpers\/([\w-]+)['"]\s*\)/;
 
 /** Ob ein Modul unter test/helpers selbst etwas ausführt. */

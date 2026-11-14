@@ -42,7 +42,7 @@ test('Barcode-Treffer und lokales Bild', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[eigen, fremd]]);
     if (vorher) await S.setGlobalSetting('rebrickable_api_key', vorher);
   });
-  const { setZumBarcode } = _req('src/sets/index.js');
+  const { setZumBarcode } = require('./helpers/sources').bereichsSeite('sets');
 
   await t.test('der Treffer nennt das lokale Bild', async () => {
     const r = await setZumBarcode(SN);

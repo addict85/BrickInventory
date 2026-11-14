@@ -160,7 +160,7 @@ export async function merkpostenVon(
   waehrung = 'EUR',
   filter?: MerkFilter,
 ): Promise<Merkposten[]> {
-  const userIds = await k.haushalt.haushalt.blickfeldAus(userIdsWahl);
+  const userIds = await k.haushalt.blickfeldAus(userIdsWahl);
   if (!userIds?.length) return [];
   // Unbekannt heisst „beide", nicht „keine": Eine geleerte Liste sähe aus wie
   // eine leere Merkliste.

@@ -15,7 +15,6 @@ import type { HaushaltDienste } from '../haushalt';
 import type { KontoDienste } from '../konto';
 import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
-import * as lagerortDienst from './lagerort';
 
 export interface BestandAbhaengigkeiten {
   db: Db;
@@ -43,15 +42,6 @@ export const zugang = (db: Db) => ({
     'orteMitBestand',
     'schreibeOrtNamen',
     'vorgabeOrt',
-  ]),
-  lagerortDienst: bindeZugang(db, lagerortDienst, [
-    'benenneOrtUm',
-    'lagerorte',
-    'legeOrtAn',
-    'loescheOrt',
-    'ortFuerNeuerfassung',
-    'orteVon',
-    'vorgabeVon',
   ]),
   manuelleMengen: bindeZugang(db, manuelleMengen, ['summeDerErfassungen']),
   nachtrag: bindeZugang(db, nachtrag),

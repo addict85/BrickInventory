@@ -1,7 +1,7 @@
 /** Füllt set_parts_catalog aus der Rebrickable-API, damit die Teileliste eines
  * Sets Namen und Bilder hat. Bilder lädt setBilderLaden.ts im Hintergrund; bis
  * dahin gilt die CDN-Adresse. */
-import { rebrickableBackgroundLimiter as rebrickableLimiter, consumeRebrickableDaily } from './rateLimiter';
+import { consumeRebrickableDaily } from './rateLimiter';
 import { logAndContinue } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
@@ -21,11 +21,11 @@ async function apiGet(k: KatalogKontext, url: string, rbKey: string) {
   let serverErrors = 0;
   while (true) {
     if (!(await consumeRebrickableDaily(k))) return null;
-    await rebrickableLimiter.waitForSlot();
+    await k.drossel.hintergrund.waitForSlot();
     const result: JobHttpResult = await rebrickableRoh(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
-      rebrickableLimiter.throttle(wait);
+      k.drossel.hintergrund.throttle(wait);
       await new Promise(r => setTimeout(r, wait));
       continue;
     }

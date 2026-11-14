@@ -505,7 +505,7 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
       process.execPath,
       [
         '-e',
-        "const db = require('./dist/startup/verdrahtung.js').verdrahteProzess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })",
+        "const { db } = require('./dist/startup/verdrahtung.js').verdrahteProzess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })",
       ],
       { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: url }, timeout: AUFRUF_FRIST },
     );

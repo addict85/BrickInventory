@@ -75,7 +75,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
     // Stuende `success` schon im Ergebnis von setErfassen(), pruefte alles Weitere
     // nichts: Die Routen muessten es dann gar nicht erst hinzufuegen. Der
     // „exists"-Zweig laeuft rein auf der Datenbank und braucht kein Netz.
-    const { setErfassen } = _req('src/sets/index.js');
+    const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
     const echt = await setErfassen({ anfragender: uid, setNumber: DA });
     assert.equal(echt.action, 'exists', 'der Aufbau des Tests stimmt nicht mehr');
     assert.equal(

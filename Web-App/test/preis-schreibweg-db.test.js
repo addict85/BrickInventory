@@ -120,7 +120,7 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
 
     // 3. Scheitert der Verlaufspunkt, gilt auch der Cache nicht: Sonst hielte er den
     //    nächsten Abruf zurück, und die Lücke im Verlauf füllte niemand mehr.
-    const fk = _req('src/finanzen/prozess.js').finanzenBereich();
+    const fk = require('./helpers/sources').testKontext('finanzen');
     /** Derselbe Kontext, dessen Verlauf nicht schreibbar ist — ausserhalb und in der Transaktion. */
     const kaputt = z => ({
       ...z,

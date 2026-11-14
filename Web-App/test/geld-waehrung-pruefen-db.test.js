@@ -66,8 +66,8 @@ test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async t 
     assert.equal(await abgelehnt(erfasse(-1, 'CHF')), '23514');
     assert.equal(
       await abgelehnt(
-        _req('src/gutscheine/prozess.js')
-          .gutscheineBereich()
+        require('./helpers/sources')
+          .testBereich('gutscheine')
           .gutscheine.gutscheinAnlegen(uid, { number: '5045076374450019999', pin: null, amount: -5, currency: 'CHF' }),
       ),
       '23514',

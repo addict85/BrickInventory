@@ -38,7 +38,7 @@ function _fsPathFromLocal(imageLocal: string) {
 
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
 async function _redlSetStatus(k: KatalogKontext, obj: Record<string, unknown>) {
-  await k.auftraege.laufzustand
+  await k.auftraege
     .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }

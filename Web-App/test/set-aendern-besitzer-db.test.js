@@ -50,7 +50,7 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
       [subId, SET],
     );
 
-    const { updateSet } = _req('src/sets/index.js');
+    const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
     // Die sets-Zeile traegt seit Migration 0032 nur noch Menge und Besitzer —
     // Kaufpreis und Zustand stehen in der Erfassung.
     const stand = async () => ({

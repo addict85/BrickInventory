@@ -4,7 +4,7 @@
 import path from 'node:path';
 import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
 import fs from 'node:fs';
-import { zaehleAnfrage } from '../../konto';
+import type { KontoDienste } from '../../konto';
 import { resolveUserId } from '../../konto/http/anmeldung';
 import { vorDem, ohneFehlendeDatei, fehlertext, logAndContinue } from '../../infra/fehler';
 import { streamFileToResponse } from '../../http/httpAntwort';
@@ -23,9 +23,13 @@ import { setBildVollstaendig } from '../bilder/setImages';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
 
 import { einmalDekodiert, urlOderNull } from '../../infra/validate';
-import { katalog } from '../prozess';
-import { queueThumb } from '../bilder/proxyThumbs';
-import { setBildLokalEintragen } from '../bildlage';
+import type { KatalogDienste } from '../bereich';
+
+/** Was der Proxy von der Anwendung braucht: Katalog (Cache, Vorschau, Vormerken) und Konto (Anmeldung, Takt). */
+export interface BildDienste {
+  katalog: KatalogDienste;
+  konto: KontoDienste;
+}
 /** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten. */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 
@@ -130,6 +134,7 @@ async function alsSetBildAblegen(cacheFile: string, setNummer: string): Promise<
 
 /** Der entpackte Strom geht nebenher in den Cache — erst in .tmp, dann atomar. */
 function inDenCache(
+  d: BildDienste,
   body: Readable,
   res: Response,
   o: {
@@ -196,10 +201,10 @@ function inDenCache(
       await fs.promises.writeFile(cacheFile + '.ct', contentType);
       await fs.promises.rename(tmpFile, cacheFile);
       merkeCacheZuwachs(st.size);
-      if (o.setNummer) await setBildAusCache(url, o.setNummer, cacheFile).catch(logAndContinue('img-proxy:setbild'));
+      if (o.setNummer) await setBildAusCache(d, url, o.setNummer, cacheFile).catch(logAndContinue('img-proxy:setbild'));
       // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
       if (wantThumb) {
-        if (darfErzeugen) queueThumb(katalog(), cacheFile, thumbFile);
+        if (darfErzeugen) d.katalog.queueThumb(cacheFile, thumbFile);
         else notiere();
       }
     } catch (_) {
@@ -250,11 +255,11 @@ const liegtDa = (datei: string) =>
   );
 
 /** @returns true, wenn Bild oder Vorschau unter images/sets noch fehlen */
-async function setBildFehlt(setNummer: string, quelle: string): Promise<boolean> {
+async function setBildFehlt(d: BildDienste, setNummer: string, quelle: string): Promise<boolean> {
   if (!(await setBildVollstaendig(setNummer))) return true;
   // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht
   // mehr hier. Ohne Warten — ein Schreibfehler darf die Auslieferung nicht aufhalten.
-  void setBildLokalEintragen(katalog(), setNummer, quelle).catch(logAndContinue('img-proxy:setBildLokal'));
+  void d.katalog.setBildLokalEintragen(setNummer, quelle).catch(logAndContinue('img-proxy:setBildLokal'));
   return false;
 }
 
@@ -263,18 +268,24 @@ async function setBildFehlt(setNummer: string, quelle: string): Promise<boolean>
  * Set-Nummern die Notizen des Bild-Auftrags. */
 const VORMERKEN_FRIST_MS = 15 * 60_000;
 const _vorgemerkt = new Map<string, number>();
-function vormerkenEinmal(url: string, setNummer: string): void {
+function vormerkenEinmal(d: BildDienste, url: string, setNummer: string): void {
   const jetzt = Date.now();
   if (jetzt - (_vorgemerkt.get(setNummer) ?? -Infinity) < VORMERKEN_FRIST_MS) return;
   if (_vorgemerkt.size >= 5000)
     for (const [sn, t] of _vorgemerkt) if (jetzt - t >= VORMERKEN_FRIST_MS) _vorgemerkt.delete(sn);
   _vorgemerkt.set(setNummer, jetzt);
-  katalog().nacharbeit.bildVormerken(url, setNummer);
+  d.katalog.bildVormerken(url, setNummer);
 }
 
-function ausSetBildern(req: Request, res: Response, setNummer: string, wantThumb: boolean): Promise<boolean> {
+function ausSetBildern(
+  d: BildDienste,
+  req: Request,
+  res: Response,
+  setNummer: string,
+  wantThumb: boolean,
+): Promise<boolean> {
   const stamm = path.join(SET_IMAGES_DIR, setNummer.replace(/[^a-z0-9-]/gi, '_'));
-  return liefereAusCache({
+  return liefereAusCache(d.katalog, {
     res,
     req,
     cacheFile: `${stamm}.jpg`,
@@ -287,18 +298,18 @@ function ausSetBildern(req: Request, res: Response, setNummer: string, wantThumb
 }
 
 /** Aus dem Cache des Proxys nach images/sets, dann vormerken; ohne Cache-Datei nichts. */
-async function setBildAusCache(url: string, setNummer: string, cacheFile: string): Promise<void> {
+async function setBildAusCache(d: BildDienste, url: string, setNummer: string, cacheFile: string): Promise<void> {
   try {
     await alsSetBildAblegen(cacheFile, setNummer);
   } catch (e) {
     return ohneFehlendeDatei('img-proxy:setbild')(e);
   }
-  vormerkenEinmal(url, setNummer);
+  vormerkenEinmal(d, url, setNummer);
 }
 
-export async function bildDurchreichen(req: Request, res: Response) {
+export async function bildDurchreichen(d: BildDienste, req: Request, res: Response) {
   // Ohne Login-Pflicht ein offener Proxy (Bandbreite, IP-Verschleierung).
-  const proxyUserId = await resolveUserId(req);
+  const proxyUserId = await resolveUserId(d.konto, req);
   if (!proxyUserId) return res.status(401).end();
   const ziel = proxyZiel(String(req.query.url || ''));
   if (typeof ziel === 'number') return res.status(ziel).end();
@@ -315,24 +326,33 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const setAusUrl = () => setNummerAusBildAdresse(String(url || ''));
   const notiere = () => {
     const sn = setAusUrl();
-    if (sn) katalog().nacharbeit.bildVormerken(String(url), sn);
+    if (sn) d.katalog.bildVormerken(String(url), sn);
   };
   const thumbFile = cacheFile + '_thumb.jpg';
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
   // sobald es einmal über den Proxy gefragt war.
   const setNummer = setAusUrl();
-  const setFehlt = setNummer ? await setBildFehlt(setNummer, url) : false;
+  const setFehlt = setNummer ? await setBildFehlt(d, setNummer, url) : false;
   // Liegt nur noch die Vorschau im Cache (die Pflege löscht das unbenutzte Original
   // nach 30 Tagen), holt der Proxy das Original neu: Den Abruf des Bild-Jobs mit
   // eigener Kennung weist das CDN ab, ohne diesen Weg bekäme das Set nie eine Datei.
   const originalFehlt = setFehlt && !(await liegtDa(cacheFile));
-  if (setFehlt && setNummer && !originalFehlt) await setBildAusCache(url, setNummer, cacheFile);
+  if (setFehlt && setNummer && !originalFehlt) await setBildAusCache(d, url, setNummer, cacheFile);
 
   // Liegt das Set-Bild samt Vorschau in images/sets, kommt es von dort statt aus
   // Cache oder CDN: Den Proxy-Cache räumt die Pflege nach 30 Tagen, images/sets nicht.
-  if (setNummer && !setFehlt && (await ausSetBildern(req, res, setNummer, wantThumb))) return;
+  if (setNummer && !setFehlt && (await ausSetBildern(d, req, res, setNummer, wantThumb))) return;
   const ausCache = () =>
-    liefereAusCache({ res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse });
+    liefereAusCache(d.katalog, {
+      res,
+      req,
+      cacheFile,
+      thumbFile,
+      wantThumb,
+      darfErzeugen,
+      notiere,
+      streamFileToResponse,
+    });
   // Scheitert der neue Abruf, bleibt es bei der Vorschau aus dem Cache.
   const ersatz = async () => originalFehlt && (await ausCache());
   if (!originalFehlt && (await ausCache())) return;
@@ -342,7 +362,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   if (istBekanntFehlend(cacheKey)) return sendePlatzhalter(res);
 
   // Nur Abrufe beim CDN zählen: Jeder füllt Platte und Bandbreite, Treffer nicht.
-  const takt = await zaehleAnfrage('bild-abruf', `konto:${proxyUserId}`, 60_000);
+  const takt = await d.konto.zaehleAnfrage('bild-abruf', `konto:${proxyUserId}`, 60_000);
   if (takt.count > konfig().bildAbrufeJeMinute) {
     if (await ersatz()) return;
     res.setHeader('Retry-After', String(takt.waitMin * 60));
@@ -353,7 +373,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   const r = await vomCdn(url, cacheKey, res, ersatz);
   if (!r) return;
   const setZiel = setFehlt ? setNummer : null;
-  return weiterreichen(r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, setZiel });
+  return weiterreichen(d, r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, setZiel });
 }
 
 /** Die Adresse aus ?url=, oder der Status, mit dem abgewiesen wird. */
@@ -370,6 +390,7 @@ function proxyZiel(roh: string): string | number {
 
 /** Die Antwort des CDN an den Client und zugleich in den Cache. */
 function weiterreichen(
+  d: BildDienste,
   r: AbrufStrom,
   res: Response,
   o: {
@@ -410,7 +431,7 @@ function weiterreichen(
   // Kurz: Ungeprüft gestreamt nagelte ein langes max-age Fehler im Browser fest.
   res.setHeader('Cache-Control', 'private, max-age=3600, must-revalidate');
 
-  inDenCache(body, res, {
+  inDenCache(d, body, res, {
     url,
     cacheDir,
     cacheFile,

@@ -6,8 +6,7 @@ import { passwortMangel } from '../../src/infra/passwortRegel';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../../src/infra/basisUrl';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
-import { USERNAME_RE, emailGueltig, nameGueltig, vertrauenspartei, hashToken } from '../../src/konto';
-import { mailBereit } from '../../src/mail';
+import { USERNAME_RE, emailGueltig, nameGueltig, vertrauenspartei } from '../../src/konto';
 import type { Dienste } from '../../startup/verdrahtung';
 
 /** Der Grund der ersten Absage, oder null, wenn die Eingabe genügt. */
@@ -26,7 +25,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
   router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
-    const mail = await mailBereit();
+    const mail = await d.mail.mailBereit();
     res.json({
       enabled: mail && (await d.einstellungen.registrierungOffen()),
       passkey: !!vertrauenspartei(),
@@ -37,10 +36,10 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/register',
-    ipThrottle('register', 5, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'register', 5, 60 * 60 * 1000),
     async (req: OffeneAnfrage<'POST /api/v1/auth/register'>, res: Antwort<'POST /api/v1/auth/register'>) => {
       const { username, email, first_name, last_name, password, language } = req.eingabe;
-      if (!(await d.einstellungen.registrierungOffen()) || !(await mailBereit()))
+      if (!(await d.einstellungen.registrierungOffen()) || !(await d.mail.mailBereit()))
         return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
       const mangel = registrierungsMangel(req.eingabe);
       if (mangel || !username || !email || !password)
@@ -69,7 +68,7 @@ export function baueRegistrierungRouter(d: Dienste) {
   // Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
   router.post(
     '/bestaetigung-erneut',
-    ipThrottle('bestaetigung-erneut', 5, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'bestaetigung-erneut', 5, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/bestaetigung-erneut'>,
       res: Antwort<'POST /api/v1/auth/bestaetigung-erneut'>,
@@ -87,7 +86,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/email-bestaetigen/vorschau',
-    ipThrottle('email-vorschau', 30, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'email-vorschau', 30, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/email-bestaetigen/vorschau'>,
       res: Antwort<'POST /api/v1/auth/email-bestaetigen/vorschau'>,
@@ -101,7 +100,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/email-bestaetigen',
-    ipThrottle('email-bestaetigen', 30, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'email-bestaetigen', 30, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/email-bestaetigen'>,
       res: Antwort<'POST /api/v1/auth/email-bestaetigen'>,
@@ -115,7 +114,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/forgot-password',
-    ipThrottle('forgot-password', 5, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'forgot-password', 5, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/forgot-password'>,
       res: Antwort<'POST /api/v1/auth/forgot-password'>,
@@ -135,7 +134,7 @@ export function baueRegistrierungRouter(d: Dienste) {
 
   router.post(
     '/reset-password',
-    ipThrottle('reset-password', 10, 60 * 60 * 1000),
+    ipThrottle(d.konto, 'reset-password', 10, 60 * 60 * 1000),
     async (
       req: OffeneAnfrage<'POST /api/v1/auth/reset-password'>,
       res: Antwort<'POST /api/v1/auth/reset-password'>,
@@ -150,7 +149,7 @@ export function baueRegistrierungRouter(d: Dienste) {
       const nameMangel = passwortMangel(password, user.username);
       if (nameMangel) return sendeFehler(req, res, 400, nameMangel);
       // Nur die Anfrage, die den Link verbraucht, setzt ihr Passwort.
-      const uid = await d.konto.setzePasswortZurueck(hashToken(token), password);
+      const uid = await d.konto.passwortPerLinkSetzen(token, password);
       if (!uid) return sendeFehler(req, res, 400, 'token_ungueltig');
       d.konto.hinweisNebenher(uid, 'passwort_zurueckgesetzt');
       res.json({ success: true, message: 'Passwort erfolgreich geändert.' });

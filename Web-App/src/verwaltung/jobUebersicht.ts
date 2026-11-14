@@ -23,7 +23,7 @@ const zahl = (ab: Abstriche, p: Promise<number>, ort: string) => ab.oder(ort, p,
 
 /** Ein JSON-Stand aus laufzustand; ein beschädigter zählt wie keiner. */
 async function liesStand<T>(k: VerwaltungKontext, ab: Abstriche, schluessel: string): Promise<T | null> {
-  const roh = await ab.oder(schluessel, k.auftraege.laufzustand.liesZustand(schluessel), null);
+  const roh = await ab.oder(schluessel, k.auftraege.liesZustand(schluessel), null);
   try {
     return roh ? (JSON.parse(roh) as T) : null;
   } catch {
@@ -101,7 +101,7 @@ async function bildKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> 
     zahl(ab, k.verwaltung.katalogBilderOffen(), 'bilder'),
   ]);
   const offen = teileOffen + setFiguren + bestandsFiguren;
-  const job = await ab.oder('bilder', k.auftraege.get('imgDl'), null);
+  const job = await ab.oder('bilder', k.auftraege.kachel('imgDl'), null);
   // Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz.
   let aktiv = await ab.oder('bilder', k.auftraege.imgDlPending(), 0);
   if (offen === 0 && aktiv > 0) {
@@ -237,7 +237,7 @@ async function zeitplaene(
 
 /** Ergänzt um Zahlen, die nur die Datenbank kennt; je Kachel eine Funktion. */
 export async function jobUebersicht(k: VerwaltungKontext) {
-  const jobs: Kacheln = await k.auftraege.all(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
+  const jobs: Kacheln = await k.auftraege.kacheln(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
   const ab = new Abstriche();
   const [anleitungen, gemappt, blGesamt, rbTeile, rbInventar, lastSync] = await Promise.all([
     anleitungsAuftraege(k, ab),
@@ -245,7 +245,7 @@ export async function jobUebersicht(k: VerwaltungKontext) {
     zahl(ab, k.verwaltung.bricklinkTeile(), 'bl_zuordnung'),
     zahl(ab, k.verwaltung.rbTeile(), 'katalog'),
     zahl(ab, k.verwaltung.rbInventarTeile(), 'katalog'),
-    k.auftraege.laufzustand.liesZustand('rb_csv_last_sync'),
+    k.auftraege.liesZustand('rb_csv_last_sync'),
   ]);
   const blIds = blIdsKachel(jobs.blIds ?? {}, gemappt, blGesamt);
   if (blIds) jobs.blIds = blIds;

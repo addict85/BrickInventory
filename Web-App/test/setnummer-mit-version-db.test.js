@@ -205,7 +205,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
         `${S}c-1`,
       ]);
       await db.run(`INSERT INTO catalog_cache (set_number) VALUES ($1)`, [`${S}d-1`]);
-      const { setInfo } = _req('src/sets/index.js');
+      const { setInfo } = require('./helpers/sources').bereichsSeite('sets');
       const stamm = async n => {
         const r = await setInfo(n);
         return r && { name: r.name, year: r.year, platzhalter: r.platzhalter };

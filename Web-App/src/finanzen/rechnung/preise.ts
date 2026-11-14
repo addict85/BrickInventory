@@ -4,17 +4,7 @@
 
 import type { DbSchnittstelle } from '../../../db/database';
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
-import {
-  type KatalogEintrag,
-  checkAndIncrementRateLimit,
-  kontingentFrei,
-  getLimitForApi,
-  getRateLimitStatus,
-  bricklinkRequest,
-  hatPreis,
-  marktpreisAus,
-  blAbrufNummer,
-} from '../../katalog';
+import { type KatalogEintrag, bricklinkRequest, hatPreis, marktpreisAus } from '../../katalog';
 import { asIds } from '../../haushalt';
 import { fehlertext, logAndContinue } from '../../infra/fehler';
 import { Fachfehler, fachfehler } from '../../infra/fehlerTexte';
@@ -357,26 +347,25 @@ export async function resolveBlColorId(k: FinanzenKontext, rbColorId: number): P
 }
 
 // Ohne Übersetzung antwortet BrickLink für RB-Nummern mit 404. Eine Quelle
-// (bl_zuordnung), damit nicht zwei Orte auseinanderlaufen.
-const _blTeil = nachschlagwerk(async (partNumber: string) => {
-  return await blAbrufNummer('part', partNumber);
-});
+// (bl_zuordnung), damit nicht zwei Orte auseinanderlaufen. Je Satz Dienste ein Gedächtnis.
+const blTeil = (k: FinanzenKontext) =>
+  k.faecher.fach('blTeil', () => nachschlagwerk((partNumber: string) => k.katalog.blAbrufNummer('part', partNumber)));
 
 /** Mit `konto` zuerst dessen eigene Zuordnung (Migration 0094); sie geht am
  * gemeinsamen Gedächtnis vorbei, weil sie nur für dieses Konto gilt. */
 export async function resolveBlPartNumber(k: FinanzenKontext, partNumber: string, konto: number | null = null) {
   // Ohne Fang: Mit der Rebrickable-Nummer käme der Preis eines anderen Teils.
   if (konto !== null) return (await k.katalog.blAbrufNummer('part', partNumber, konto)) ?? partNumber;
-  return (await _blTeil(partNumber)) ?? partNumber;
+  return (await blTeil(k)(partNumber)) ?? partNumber;
 }
 
 /** In zwei Abfragen, weil das Gedächtnis innerhalb einer Bewertung nicht hilft:
  * Jedes Teil hat eine andere Nummer. */
 export async function ladeBlNummernVor(k: FinanzenKontext, teilnummern: string[]): Promise<void> {
-  const offen = [...new Set(teilnummern.filter(Boolean).map(String))].filter(n => !_blTeil.kennt(n));
+  const offen = [...new Set(teilnummern.filter(Boolean).map(String))].filter(n => !blTeil(k).kennt(n));
   if (!offen.length) return;
   // Die Abfrage steht in src/katalog/blZuordnung.ts.
-  for (const [rb, bl] of await k.katalog.blAbrufNummern('part', offen)) _blTeil.merken(rb, bl);
+  for (const [rb, bl] of await k.katalog.blAbrufNummern('part', offen)) blTeil(k).merken(rb, bl);
 }
 
 /** Sonst fragte jedes Teil je Zustand einzeln. Schlüssel wie in fetchPartPrice:
@@ -499,5 +488,3 @@ export async function fetchMinifigPrice(
   };
   return holePreisMitRueckfall(k, quelle, condition, ttl);
 }
-
-export { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus };

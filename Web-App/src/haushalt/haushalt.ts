@@ -3,9 +3,8 @@ import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
 import type { DbSchnittstelle } from '../../db/database';
-import type { HaushaltKontext } from './kontext';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { getSetting } from '../einstellungen';
+import type { HaushaltKontext } from './kontext';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -162,7 +161,6 @@ export async function pruefeEinladung(db: DbSchnittstelle, uid: number, code: st
 
 // Atomar entwertet, bei Fehlschlag frei.
 export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: string) {
-  const { db } = k;
   const subId = parseInt(String(uid), 10);
   if (typeof code !== 'string' || code.length < 8) {
     return { fehler: 'einladungscode_ungueltig' as const };
@@ -170,11 +168,11 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
   const th = hash(code);
 
   // Ein Lesefehler ist kein abgelaufener Code: Er geht weiter.
-  const mainId = await repo.belegeEinladung(db, th, subId);
+  const mainId = await k.repository.belegeEinladung(th, subId);
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
 
   const release = async () => {
-    await repo.gibEinladungFrei(db, th).catch(logAndContinue('haushalt:release'));
+    await k.repository.gibEinladungFrei(th).catch(logAndContinue('haushalt:release'));
   };
 
   if (mainId === subId) {
@@ -185,8 +183,8 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
   // Frisch: Ein fünf Minuten alter Stand könnte einen Kreis durchlassen, den
   // eine gleichzeitige Einlösung gerade erst möglich gemacht hat.
   const [schonDa, umgekehrt] = await Promise.all([
-    repo.istVerknuepft(db, mainId, subId),
-    repo.istVerknuepft(db, subId, mainId),
+    k.repository.istVerknuepft(mainId, subId),
+    k.repository.istVerknuepft(subId, mainId),
   ]);
   if (schonDa) {
     await release();
@@ -206,8 +204,8 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
     k.transaktion(async t => {
       await sperreHaushaltswaehrung(t.db);
       const [curMain, curSub] = await Promise.all([
-        getSetting(mainId, 'currency', 'EUR'),
-        getSetting(subId, 'currency', 'EUR'),
+        k.einstellungen.getSetting(mainId, 'currency', 'EUR'),
+        k.einstellungen.getSetting(subId, 'currency', 'EUR'),
       ]);
       if (String(curMain) !== String(curSub)) return { haupt: String(curMain), unter: String(curSub) };
       await t.repository.verknuepfe(mainId, subId);
@@ -218,10 +216,10 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
     await release();
     return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
   }
-  meldeHaushaltsaenderung(db);
+  meldeHaushaltsaenderung(k.db);
   // Die Verknüpfung steht schon; fehlt nur der Name, trägt die Antwort die ID und sagt es.
   const ab = new Abstriche();
-  const name = await ab.oder('kontoname', repo.kontoName(db, mainId), null);
+  const name = await ab.oder('kontoname', k.repository.kontoName(mainId), null);
   return { linked_to: { id: mainId, username: name || String(mainId) }, ...ab.angabe() };
 }
 
@@ -248,16 +246,16 @@ export async function verwerfeGetrennt(db: DbSchnittstelle, uid: number, subUser
   return { removed: await repo.loescheGetrenntHinweis(db, parseInt(String(uid), 10), parseInt(String(subUserId), 10)) };
 }
 
-export async function haushaltsStand(db: DbSchnittstelle, uid: number) {
+export async function haushaltsStand(k: HaushaltKontext, uid: number) {
   const id = parseInt(String(uid), 10);
-  const h = await haushaltVon(db, id);
-  const members = await haushaltsMitglieder(db, id);
+  const h = await haushaltVon(k.db, id);
+  const members = await haushaltsMitglieder(k.db, id);
   const ab = new Abstriche();
   const [eltern, openInvites, currency, getrennt] = await Promise.all([
-    repo.kontoNamen(db, h.elternIds, 'username'),
-    ab.oder('einladungen', repo.offeneEinladungen(db, id), 0),
-    getSetting(id, 'currency', 'EUR'),
-    repo.getrennteKetten(db, id),
+    k.repository.kontoNamen(h.elternIds, 'username'),
+    ab.oder('einladungen', k.repository.offeneEinladungen(id), 0),
+    k.einstellungen.getSetting(id, 'currency', 'EUR'),
+    k.repository.getrennteKetten(id),
   ]);
   const elternListe = eltern;
   return {

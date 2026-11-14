@@ -67,10 +67,13 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   const b = await konto(`csvauftrag-b-${process.pid}`);
   const { stelleAuftragEin } = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ..._req('src/auftraege/prozess.js').auftraegeBereich().auftraege,
+    ...require('./helpers/sources').testBereich('auftraege').auftraege,
   });
   const { jobSet } = _req('src/auftraege/importAuftrag.js');
-  const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker({ arten: ['csv_import'], taktMs: 50 });
+  const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
+    arten: ['csv_import'],
+    taktMs: 50,
+  });
   const nacharbeit = uid =>
     db.all(
       `SELECT nutzlast->>'set_number' AS sn, nutzlast->>'art' AS art FROM auftraege
@@ -109,7 +112,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
       assert.deepEqual(aufrufe, ['76001-1'], 'der Import steckt im ersten Set');
 
       const SN = `7${process.pid % 10000}-1`;
-      const r = await _req('src/sets/index.js').addSet({
+      const r = await require('./helpers/sources').bereichsSeite('sets').addSet({
         setNumber: SN,
         menge: 1,
         konto: b,

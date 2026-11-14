@@ -169,7 +169,7 @@ function bewertungsSummen(
 export async function computeSetsValuation(kx: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten" fehlt das fragende Konto in ids.
-  const uids = await kx.haushalt.haushalt.blickfeldAus(idsWahl);
+  const uids = await kx.haushalt.blickfeldAus(idsWahl);
   const [currency, ttlHours, guideType] = await Promise.all([
     kx.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
     kx.einstellungen.getSetting(viewerId, 'price_cache_ttl', '24'),
@@ -227,7 +227,7 @@ export async function computeSetsValuation(kx: FinanzenKontext, viewerId: number
     if (l) l.push(a);
     else jeKontoUndSet.set(k, [a]);
   }
-  const results = await kx.haushalt.haushalt.besitzerAnhaengen(
+  const results = await kx.haushalt.besitzerAnhaengen(
     uids,
     sets.map(set => bewerteSet(set, jeKontoUndSet.get(`${set.user_id}|${set.set_number}`) || [], lage)),
   );
@@ -296,7 +296,7 @@ function gesamt(zeilen: Array<{ total_value: string }>) {
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
 export async function computeMinifigsValuation(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const uids = asIds(await k.haushalt.haushalt.blickfeldAus(idsWahl));
+  const uids = asIds(await k.haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
     k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
@@ -330,7 +330,7 @@ export async function computeMinifigsValuation(k: FinanzenKontext, viewerId: num
   ]);
   const fehlt: Posten[] = [];
 
-  const results = await k.haushalt.haushalt.besitzerAnhaengen(
+  const results = await k.haushalt.besitzerAnhaengen(
     uids,
     manualFigs.map(fig => {
       // Je vorkommendem Zustand: Ein neu gekauftes Exemplar bekommt den Neupreis,
@@ -379,7 +379,7 @@ export async function computeMinifigsValuation(k: FinanzenKontext, viewerId: num
 }
 
 export async function computePartsValuation(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const uids = asIds(await k.haushalt.haushalt.blickfeldAus(idsWahl));
+  const uids = asIds(await k.haushalt.blickfeldAus(idsWahl));
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.getSetting(viewerId, 'currency', 'EUR'),
     k.einstellungen.getGlobalSetting('price_cache_ttl', '24'),
@@ -441,7 +441,7 @@ export async function computePartsValuation(k: FinanzenKontext, viewerId: number
     };
   });
 
-  const results = await k.haushalt.haushalt.besitzerAnhaengen(uids, await parallelLimit(tasks, 5));
+  const results = await k.haushalt.besitzerAnhaengen(uids, await parallelLimit(tasks, 5));
   return {
     currency,
     parts: results,

@@ -64,7 +64,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
   });
   const { einladungAnlegen } = {
     ..._req('src/haushalt/haushalt.js'),
-    ..._req('src/haushalt/prozess.js').haushaltBereich().haushalt,
+    ...require('./helpers/sources').testBereich('haushalt'),
   };
   const { base } = testServer(_req, { sitzung: { userId: kind }, t });
   const einloesen = body =>

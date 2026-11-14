@@ -44,7 +44,7 @@ test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
     pool: db.pool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 'p'.repeat(48),
-    dienste: _req('src/infra/bereich.js').prozessDienste(),
+    dienste: require('./helpers/sources').testDienste(),
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
