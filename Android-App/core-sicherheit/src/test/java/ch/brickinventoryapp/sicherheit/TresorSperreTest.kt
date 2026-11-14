@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.sicherheit
 
-import ch.brickinventoryapp.netz.util.Protokoll
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -31,13 +30,9 @@ import javax.crypto.BadPaddingException
  * Gegenproben zum Schlüssel, der nur bei entsperrtem Gerät arbeitet (lokal gemessen):
  *   E  liesToken() zählt jeden Versuch (`versuch++` ohne Bedingung) → rot „bei
  *      gesperrtem Geraet wartet das Lesen …“; gegenproben/sperre-zaehlt-versuche.patch
- *   F  EntsperrTresor.verschluessle() ohne Ausweg (nur `nurEntsperrt`) → rot „kann der
- *      Entsperr-Schluessel nicht …“; gegenproben/entsperrtresor-ohne-ausweg.patch
  *   G  EntsperrTresor.oeffne() immer über `nurEntsperrt` → rot „ein Geheimtext ohne
  *      Praefix …“; gegenproben/entsperrtresor-vergisst-altbestand.patch
- *   H  im Ausweg von EntsperrTresor.verschluessle() die Protokollzeile entfernt → rot „der
- *      Rueckfall auf den schwaecheren Schluessel wird protokolliert …“;
- *      gegenproben/entsperrtresor-rueckfall-still.patch
+ * Dass EntsperrTresor nie auf den Schlüssel ohne Bedingung ausweicht, prüft AblageEntsperrtTest.
  */
 class TresorSperreTest {
 
@@ -124,36 +119,6 @@ class TresorSperreTest {
         assertTrue(geheim, geheim.contains("streng("))
         assertFalse(tresor.veraltet(geheim))
         assertEquals(Tresorbefund.Lesbar("token"), tresor.oeffne(geheim))
-    }
-
-    @Test
-    fun `kann der Entsperr-Schluessel nicht verschluesseln, nimmt der andere den Wert`() {
-        var gesperrt = true
-        val tresor = EntsperrTresor(Attrappe("streng") { gesperrt }, Attrappe("immer"))
-        val geheim = tresor.verschluessle("neu-getauscht")
-        assertEquals("immer(thcsuateg-uen)", geheim)
-        assertTrue("Der nächste Start schlüsselt um", tresor.veraltet(geheim))
-        assertEquals(Tresorbefund.Lesbar("neu-getauscht"), tresor.oeffne(geheim))
-        gesperrt = false
-        assertFalse(tresor.veraltet(tresor.verschluessle("neu-getauscht")))
-    }
-
-    @Test
-    fun `der Rueckfall auf den schwaecheren Schluessel wird protokolliert, nicht still`() {
-        val zeilen = mutableListOf<String>()
-        val vorherZiel = Protokoll.ziel
-        val vorherAktiv = Protokoll.aktiv
-        Protokoll.aktiv = true
-        Protokoll.ziel = { stufe, tag, _, _ -> zeilen += "$stufe $tag" }
-        try {
-            EntsperrTresor(Attrappe("streng"), Attrappe("immer")).verschluessle("a")
-            assertEquals("Der strenge Schlüssel meldet nichts", emptyList<String>(), zeilen)
-            EntsperrTresor(Attrappe("streng") { true }, Attrappe("immer")).verschluessle("a")
-            assertEquals(listOf("WARNUNG Tresor"), zeilen)
-        } finally {
-            Protokoll.ziel = vorherZiel
-            Protokoll.aktiv = vorherAktiv
-        }
     }
 
     @Test

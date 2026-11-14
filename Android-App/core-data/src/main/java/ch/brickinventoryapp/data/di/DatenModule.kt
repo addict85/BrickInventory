@@ -59,11 +59,13 @@ internal object DatenModule {
         p: TokenAblage,
         konto: javax.inject.Provider<KontoRepository>,
         @ApplicationScope bereich: kotlinx.coroutines.CoroutineScope,
+        sperre: ch.brickinventoryapp.sicherheit.Geraetesperre,
     ): TokenTausch = TokenTausch(
         stand = { p.tokenStand() },
         ersetze = { vorher, neu, herkunft -> p.ersetzeGetauschtenToken(vorher, neu, herkunft) },
         rotiere = { konto.get().tokenRotieren(it) },
         hintergrund = bereich,
+        bereit = { !sperre.gesperrt() },
     )
 
     @Provides

@@ -64,8 +64,8 @@ class BrickInventoryApp : Application(), Configuration.Provider {
             ausgangsmelderLazy.get().starte(bereiche.anwendung)
         })
 
-        // Ein Token, das bei gesperrtem Gerät unter dem schwächeren Schlüssel landete (Tausch im
-        // Hintergrund), kommt gleich nach dem Entsperren unter den strengen, nicht erst beim nächsten Start.
+        // Ein Token früherer Fassungen unter dem schwächeren Schlüssel kommt gleich nach dem
+        // Entsperren unter den strengen, nicht erst beim nächsten Start.
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 bereiche.anwendung.launch { fangeAusserAbbruch { tokenuebernahme.stufeTokenHoch() } }

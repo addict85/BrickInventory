@@ -107,6 +107,11 @@ internal class TokenTausch(
     private val hintergrund: CoroutineScope,
     /** So lange hält noetig() einen Thread des OkHttp-Dispatchers fest. */
     private val warten: Long = NOETIG_WARTEN_MS,
+    /**
+     * Darf jetzt getauscht werden? Bei gesperrtem Gerät nicht: Den neuen Token nähme nur ein
+     * Schlüssel ohne Entsperr-Bedingung auf, und den gibt es nicht mehr (EntsperrTresor).
+     */
+    private val bereit: () -> Boolean = { true },
 ) : Rotationsanlass {
     private val sperre = Mutex()
 
@@ -146,6 +151,7 @@ internal class TokenTausch(
     private suspend fun tauscheGesperrt(alterToken: String): Tauschergebnis {
         val vorher = stand()
         if (vorher.token != alterToken) return Tauschergebnis.SCHON_GETAUSCHT
+        if (!bereit()) return Tauschergebnis.SPAETER
         val beginn = uhr()
         for (versuch in 0..pausen.size) {
             // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.

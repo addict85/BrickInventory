@@ -350,9 +350,9 @@ class TokenAblage @Inject constructor(
     }
 
     /**
-     * Ein Tausch bei gesperrtem Gerät legt das Token unter den schwächeren Schlüssel. Bis zum
-     * nächsten Start blieb es dort lesbar für jeden, der das gesperrte Gerät ausliest; darum
-     * gleich nach dem Entsperren (BrickInventoryApp, ACTION_USER_PRESENT). Ohne Altbestand kein Schreiben.
+     * Ein Token früherer Fassungen unter dem schwächeren Schlüssel bliebe bis zum nächsten Start
+     * lesbar für jeden, der das gesperrte Gerät ausliest; darum gleich nach dem Entsperren
+     * (BrickInventoryApp, ACTION_USER_PRESENT). Ohne Altbestand kein Schreiben.
      */
     override suspend fun stufeTokenHoch() {
         if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(tresor::veraltet) != true) return
@@ -369,9 +369,9 @@ class TokenAblage @Inject constructor(
     }
 
     /**
-     * Ein Geheimtext unter dem schwächeren Schlüssel (älterer Stand, Tausch bei gesperrtem
-     * Gerät) kommt unter den, der nur entsperrt arbeitet. Im selben edit wie das Lesen:
-     * Ein Tausch dazwischen würde sonst vom alten Token überschrieben.
+     * Ein Geheimtext unter dem schwächeren Schlüssel früherer Fassungen kommt unter den, der
+     * nur entsperrt arbeitet. Im selben edit wie das Lesen: Ein Tausch dazwischen würde sonst
+     * vom alten Token überschrieben.
      */
     private fun umschluesseln(prefs: MutablePreferences) {
         val geheim = prefs[AUTH_TOKEN_ENC]?.takeIf(tresor::veraltet) ?: return
