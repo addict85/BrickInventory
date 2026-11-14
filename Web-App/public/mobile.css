@@ -696,7 +696,8 @@
   .kopf-weg .knopf-schwebend > span { display: none; }
   /* Tippziel am Telefon: Der Zeilenknopf einer Tabelle wird so hoch wie ein Finger. */
   .zeile-oeffnen { min-height: 44px; min-width: 44px; }
-  .toast-zu { min-width: 44px; min-height: 44px; }
+  .toast-zu { min-width: 44px; min-height: 44px; top: 0; right: 0; }
+  .toast:has(> .toast-zu) { padding-right: 48px; }
 }
 @container haupt (min-width: 15em) and (max-width: 22em) {
   .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }

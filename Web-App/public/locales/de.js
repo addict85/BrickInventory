@@ -187,6 +187,7 @@ window.I18N_DE = {
   'liste.details': 'Technische Details',
   'liste.erneut': 'Erneut versuchen',
   'liste.alter_stand_kurz': 'Konnte nicht aktualisieren — der letzte Stand bleibt sichtbar.',
+  'liste.gedrosselt': 'Zu viele Anfragen – in {minuten} Min. wieder möglich.',
   'net.offline': 'Keine Verbindung zum Server.',
   'net.offline_since': 'Keine Verbindung seit {zeit}.',
   'net.liste_offline': 'Keine Verbindung zum Server. Die Liste lädt von selbst, sobald sie zurück ist.',

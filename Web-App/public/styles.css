@@ -533,7 +533,7 @@
     .acq-ok[hidden]{display:inline-flex;visibility:hidden}
     /* Knopf einer anklickbaren Tabellenzeile: sieht aus wie der Zellentext, bedient sich wie ein Knopf. */
     .zeile-oeffnen{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:32px;min-width:32px;display:inline-flex;align-items:center;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
-    .toast-zu{background:none;border:0;color:inherit;cursor:pointer;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;border-radius:6px;flex:0 0 auto}
+    .toast-zu{position:absolute;top:6px;right:6px;background:none;border:0;color:inherit;cursor:pointer;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
     .toast-zu .ico{width:1rem;height:1rem}
     .alarm-waehrung{font-size:var(--fs-1);color:var(--mut);margin-left:4px;font-weight:600}
     /* Platz für „aktiv“/„gemeldet“ reserviert: Sonst rückte die Zeile beim Speichern. */
@@ -803,7 +803,9 @@
     /* TOAST */
     #toasts{position:fixed;bottom:1.25rem;right:1.25rem;display:flex;flex-direction:column;gap:7px;z-index:9999}
     .toast{background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 15px;font-size:var(--fs-3);min-width:240px;max-width:360px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh2);animation:tIn .25s ease}
-    .toast{cursor:default;flex-wrap:wrap}
+    /* Das Schliessen bleibt oben rechts, wie umbrechend der Rest auch steht. */
+    .toast{cursor:default;flex-wrap:wrap;position:relative}
+    .toast:has(> .toast-zu){padding-right:40px}
     /* Bei grosser Schrift rückt der Knopf unter den Text, statt ihn auf eine Spalte zu drücken. */
     .toast-text{flex:1 1 9em;min-width:0}
     .toast-details{margin-top:.35rem;font-size:var(--fs-2)}

@@ -250,7 +250,8 @@ export async function loadGallery(opts = {}) {
   }
   _galGen++;
   _galPage = 1;
-  _galDone = false;
+  // Bis die erste Seite da ist, lädt der Sentinel nichts nach: Er fragte sonst Seite 2 einer alten Liste ab.
+  _galDone = true;
   _galLoadingMore = false;
   const gen = _galGen;
   const hatteListe = allSets.length > 0;
@@ -265,7 +266,7 @@ export async function loadGallery(opts = {}) {
   // Seitenzähler an die tatsächlich geholte Menge angleichen, damit die nächste Folgeseite am richtigen
   // Versatz ansetzt.
   _galPage = Math.max(1, Math.ceil(allSets.length / GAL_PAGE_SIZE));
-  if (allSets.length >= _galTotal) _galDone = true;
+  _galDone = allSets.length >= _galTotal;
   bindGallerySentinel();
   // Füllt die erste Seite den Bildschirm nicht, gäbe es nie ein Scroll-Ereignis.
   requestAnimationFrame(maybeLoadMoreGallery);

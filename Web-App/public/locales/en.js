@@ -186,6 +186,7 @@ window.I18N_EN = {
   'liste.details': 'Technical details',
   'liste.erneut': 'Try again',
   'liste.alter_stand_kurz': 'Could not refresh — the last state is still shown.',
+  'liste.gedrosselt': 'Too many requests – possible again in {minuten} min.',
   'net.offline': 'No connection to the server.',
   'net.offline_since': 'No connection since {zeit}.',
   'net.liste_offline': 'No connection to the server. The list reloads on its own once it is back.',
