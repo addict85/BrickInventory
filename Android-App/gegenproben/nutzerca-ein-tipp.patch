@@ -6,12 +6,12 @@ Rot: ueber eine Nutzer-CA
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
-@@ -64,7 +64,7 @@
-     val host = frage.schluessel.substringBeforeLast(':')
+@@ -63,7 +63,7 @@
      val (titel, text) = titelUndText(frage.art)
-     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
--    val abschreiben = frage.art != ZertifikatUngeklaert.Art.ERSTKONTAKT
-+    val abschreiben = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
+     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT || frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+     val erstkontakt = frage.art == ZertifikatUngeklaert.Art.ERSTKONTAKT
+-    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.art != ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
++    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.art == ZertifikatUngeklaert.Art.GEAENDERT
      AlertDialog(
          onDismissRequest = onAbbrechen,
          properties = schliessbar(eingabe),
