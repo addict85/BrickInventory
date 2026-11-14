@@ -4,13 +4,15 @@ Test: ch.brickinventoryapp.zustand.DarstellungUndVertrauenTest
 Rot: ohne bekannte CA zaehlt nur der abgetippte Fingerabdruck
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+index 6ec1f8a..ad57a2e 100644
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -197,7 +197,6 @@
+@@ -208,7 +208,7 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
+     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
+         val f = _offen.value ?: return false
          if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
-         val freiwillig = f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && eingabe.isNullOrBlank() ||
-             f.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
--        if (!freiwillig && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
+-        val pruefen = f.abschriftNoetig || f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && !eingabe.isNullOrBlank()
++        val pruefen = f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && !eingabe.isNullOrBlank()
+         if (pruefen && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
          pins.merkePin(f.ablageSchluessel, f.fingerabdruck)
          f.blatt?.let { pins.merkePin(blattPinSchluessel(f.schluessel), it) }
-         _offen.value = null

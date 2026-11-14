@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data.api
 
 import ch.brickinventoryapp.vertrag.GeraeteKettenAnfrage
-import ch.brickinventoryapp.vertrag.GeraeteSchluesselAnfrage
 import ch.brickinventoryapp.vertrag.GeraeteSchluesselAntwort
 import ch.brickinventoryapp.vertrag.SchluesselNonce
 import ch.brickinventoryapp.vertrag.SchrittChallenge
@@ -14,9 +13,6 @@ import retrofit2.http.POST
 
 /** Geräteschlüssel und Freigabe heikler Schritte; nur SchrittbindungImpl braucht ihn, darum nicht in BrickApiService. */
 internal interface GeraetApi {
-
-    @POST("api/v1/geraet/schluessel")
-    suspend fun hinterlegeSchluessel(@Body anfrage: GeraeteSchluesselAnfrage): Response<GeraeteSchluesselAntwort>
 
     @POST("api/v1/geraet/schluessel")
     suspend fun hinterlegeKette(@Body anfrage: GeraeteKettenAnfrage): Response<GeraeteSchluesselAntwort>

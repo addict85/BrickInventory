@@ -47,7 +47,7 @@ Datei: `vertrag/HaushaltModels.kt` · Test: `KaeufeViewModelTest`
 
 ## Sitzung und Netz
 
-**HTTP 401.** `safeCall()` meldet ihn als `Ergebnis.Error.Abgewiesen`; `abgeglichen()` und
+**HTTP 401.** `sicherAufrufen()` meldet ihn als `Ergebnis.Error.Abgewiesen`; `abgeglichen()` und
 `abgeglichenEinzeln()` fallen dann **nicht** auf die Ablage zurück; der Interceptor meldet nur, wenn ein Token mitging
 und es der eigene Server war.
 Dateien: `data/repository/Abruf.kt`, `app/di/AppModule.kt`, `data/SessionExpiredSignal.kt`,
@@ -60,6 +60,14 @@ auslöst, gilt nur der Sitzung, in der die Anfrage hinausging (Generation der
 Dateien: `netz/di/ServerWaechter.kt`, `data/Entwertung.kt`, `sicherheit/Tresorbefund.kt` ·
 Tests: `ServerwechselTest`, `TokenTauschTest`, `UmleitungTest`, `BasisPfadTest`,
 `EntwertungTest`, `TresorSperreTest`
+
+**Schrittschutz nur mit Attestation.** Der Geräteschlüssel entsteht mit der Nonce des
+Servers und geht nur als Kette hinaus; jede Absage (auch 404) hält an, es gibt keinen
+blossen Schlüssel und keinen Rückfall auf die Prüfung im Gerät. Erzeugt zuerst im
+StrongBox, nur ohne Chip im TEE (`strongBoxZuerst`).
+Dateien: `ui/components/Schluesselbindung.kt`, `data/repository/SchrittbindungImpl.kt`,
+`ui/components/StrongBoxZuerst.kt` · Tests: `SchluesselbindungTest`, `SchrittbindungTest`,
+`StrongBoxZuerstTest`
 
 **Ein OkHttp-Stack.** Kein eigener `OkHttpClient.Builder()`: Er liefe am Wächter vorbei
 (Token, Klartext-Verbot, 401). Abweichende Zeiten über `newBuilder()` des injizierten
@@ -206,9 +214,11 @@ Test: `ResourceAndCacheTest`
 | geheim | Token | nur AES-GCM mit Keystore-Schlüssel (`TokenTresor`) |
 | geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), ein Gutschein-PDF nur im Speicher (memfd) |
 | vertraulich | Sets, Teile, Figuren, Merkliste, Preisalarme, Lagerorte, Bewertungen, Gutschein-Nummer und -Betrag, Kennzahlen, Katalog-Metadaten (Room `bestand.db`), Ausgang | SQLCipher |
-| vertraulich | Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
+| vertraulich | Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
+| vertraulich | Server-Adresse, Benutzername, Herkunft des Tokens, Widget-Zahlen, Abmeldeaufträge (WorkManager), gescheiterte Entwertungen | `Vertrauenschiffre.verschluessleAngabe`: eigener Schlüssel, nur entsperrt (`setUnlockedDeviceRequired`), überlebt das Abmelden; gesperrt heisst „später“, nie „weg“ (`VertrauenschiffreTest`, `TokenTresorTest`, `AuftragsablageTest`) |
+| vertraulich | Konto- und Lagerortfilter | nur im Speicher (`ScopeFilterSpeicher`); Reste früherer Fassungen räumt `KlartextReste` (`KlartextResteTest`) |
 | vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
-| Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre`, überlebt das Abmelden; unlesbar heisst „nicht vertraut“ (`VertrauenVerschluesseltTest`) |
+| Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre`, überlebt das Abmelden, arbeitet auch gesperrt (jede TLS-Verbindung fragt); Eintragsnamen per HMAC, kein Host im Namen; unlesbar heisst „nicht vertraut“ (`VertrauenVerschluesseltTest`) |
 
 Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
 (`NetzsicherheitTest`), beim Abmelden geleert, jede Ablage gehört Server und Konto
@@ -225,7 +235,12 @@ Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
 - **Schritt-Schutz ohne Displaysperre:** Warnung, erst „Ungeschützt fortfahren“ öffnet;
   eine Bestätigung gilt 60 s und verfällt im Hintergrund.
 - **Token ohne Nutzerauthentisierung:** Hintergrundarbeit (Preisalarm, Widget, Ausgang,
-  Entwertung) braucht ihn; dagegen 180 Tage Höchstdauer, Rotation, Entwertung.
+  Entwertung) braucht ihn; dagegen 180 Tage Höchstdauer, Rotation, Entwertung. Er liegt
+  unter einem Schlüssel, der nur entsperrt arbeitet, ohne Ausweg auf einen schwächeren
+  (`EntsperrTresor`); bei gesperrtem Gerät wird nicht getauscht (`TokenTauschTest`).
+- **Pins unter einem Schlüssel ohne Entsperr-Bedingung:** Die TLS-Prüfung braucht sie bei
+  jeder Verbindung. Sie sind öffentlich (Fingerabdrücke), nur ihre Unverfälschtheit zählt;
+  die Namen verraten den Server nicht.
 - **Unsignierte `version.json` bis 01.02.2027** nur für Fassungen ohne signierte
   Beschreibung; danach löscht der Release-Lauf den Anhang.
 - **Teileliste 30 Minuten im Klartext:** Die Ziel-App kann keinen Geheimtext lesen.

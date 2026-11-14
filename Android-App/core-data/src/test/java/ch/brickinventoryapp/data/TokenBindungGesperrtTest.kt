@@ -82,7 +82,9 @@ class TokenBindungGesperrtTest {
             erst.saveServerUrl(a)
             erst.saveAuthToken("tA")
         }
-        assertEquals(NetworkPolicy.herkunft(a), platte()[TokenAblage.TOKEN_HERKUNFT])
+        assertFalse("Die Herkunft liegt nicht im Klartext", TokenAblage.TOKEN_HERKUNFT in platte().asMap())
+        assertTrue(TokenAblage.TOKEN_HERKUNFT_GEHEIM in platte().asMap())
+        assertEquals(NetworkPolicy.herkunft(a), runBlocking { erst.tokenStand().herkunft })
         beende()
 
         // Neustart: Die ersten vier Öffnungen (Anlauf) sind gesperrt, der Speicher meldet "".
@@ -94,7 +96,7 @@ class TokenBindungGesperrtTest {
         val p = platte()
         assertFalse("Das Token von A liegt nach dem Wechsel noch da", TokenAblage.AUTH_TOKEN_ENC in p.asMap())
         assertFalse(TokenAblage.AUTH_TOKEN in p.asMap())
-        assertFalse(TokenAblage.TOKEN_HERKUNFT in p.asMap())
+        assertFalse(TokenAblage.TOKEN_HERKUNFT in p.asMap() || TokenAblage.TOKEN_HERKUNFT_GEHEIM in p.asMap())
         val auftrag = runBlocking { gesperrt.entwertungsauftrag() }
         assertTrue("Ein Auftrag für B trüge das Token von A dorthin: $auftrag", auftrag == null || auftrag.serverUrl == a)
         assertEquals("A wird nachgeholt abgemeldet, mit dem Token von A", listOf(a to "ENC:tA"),
@@ -118,7 +120,8 @@ class TokenBindungGesperrtTest {
         }
         val prefs = start(Tresor(0))
         val erwartet = NetworkPolicy.herkunft("https://alt.example/brick")
-        assertEquals(erwartet, platte()[TokenAblage.TOKEN_HERKUNFT])
+        assertTrue("Gebunden, und zwar verschlüsselt", TokenAblage.TOKEN_HERKUNFT_GEHEIM in platte().asMap())
+        assertFalse(TokenAblage.TOKEN_HERKUNFT in platte().asMap())
         assertEquals(erwartet, prefs.tokenHerkunftState.value)
         assertEquals("alt", runBlocking { prefs.tokenJetzt() })
     }

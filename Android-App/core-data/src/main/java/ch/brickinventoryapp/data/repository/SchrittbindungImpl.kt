@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.GeraetApi
 import ch.brickinventoryapp.vertrag.GeraeteKettenAnfrage
-import ch.brickinventoryapp.vertrag.GeraeteSchluesselAnfrage
 import ch.brickinventoryapp.model.schritt.Schluesselnonce
 import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.model.schritt.Schrittantwort
@@ -14,9 +13,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Der Schrittschutz am Server. Nur ein 404 heisst „kennt ihn nicht“: Jede andere
- * Absage, auch ein Netzfehler, hält den Schritt an, sonst öffnete ein
- * abgeschnittener Server den Weg ohne Bindung.
+ * Der Schrittschutz am Server. Jede Absage, auch ein 404 oder ein Netzfehler, hält
+ * den Schritt an: Der Server kennt ihn seit Langem, und ein Rückfall auf die Prüfung
+ * im Gerät oder einen Schlüssel ohne Attestation wäre ein Weg, den ein Dritter
+ * nur auszulösen bräuchte.
  */
 @Singleton
 internal class SchrittbindungImpl @Inject constructor(
@@ -27,8 +27,7 @@ internal class SchrittbindungImpl @Inject constructor(
         val kennung = aktion.kennung ?: return Schrittantwort.NichtGebunden
         return when (val r = sicherAufrufen { api.schrittChallenge(SchrittChallengeAnfrage(kennung)) }) {
             is Ergebnis.Success -> Schrittantwort.Challenge(r.data.challenge, r.data.nachricht)
-            is Ergebnis.Error -> if (r is Ergebnis.Error.Server && r.status == 404) Schrittantwort.NichtGebunden
-                else Schrittantwort.Abgelehnt(r.message.ifBlank { null })
+            is Ergebnis.Error -> Schrittantwort.Abgelehnt(r.message.ifBlank { null })
         }
     }
 
@@ -40,13 +39,9 @@ internal class SchrittbindungImpl @Inject constructor(
         }
     }
 
-    override suspend fun hinterlege(oeffentlich: ByteArray): Boolean =
-        sicherAufrufen { api.hinterlegeSchluessel(GeraeteSchluesselAnfrage(Base64.getEncoder().encodeToString(oeffentlich))) } is Ergebnis.Success
-
     override suspend fun schluesselNonce(): Schluesselnonce = when (val r = sicherAufrufen { api.schluesselNonce() }) {
         is Ergebnis.Success -> Schluesselnonce.Nonce(r.data.nonce)
-        is Ergebnis.Error -> if (r is Ergebnis.Error.Server && r.status == 404) Schluesselnonce.NichtGebunden
-            else Schluesselnonce.Abgelehnt(r.message.ifBlank { null })
+        is Ergebnis.Error -> Schluesselnonce.Abgelehnt(r.message.ifBlank { null })
     }
 
     /** Den Satz des Servers nur bei seiner Absage: Ein Netzfehler nach der Anmeldung ist keine Meldung wert. */

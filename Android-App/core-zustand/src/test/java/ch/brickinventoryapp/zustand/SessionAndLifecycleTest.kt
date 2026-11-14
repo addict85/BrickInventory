@@ -42,7 +42,7 @@ class SessionAndLifecycleTest {
      * Gegenprobe: in sicherAufrufen() 401 als Server statt Abgewiesen → rot.
      */
     @Test
-    fun `safeCall meldet 401 als abgewiesen`() {
+    fun `sicherAufrufen meldet 401 als abgewiesen`() {
         val pfade = PfadServer()
         pfade.codes["/api/v1/stats"] = 401
         pfade.codes["/api/v1/finance/pnl"] = 500

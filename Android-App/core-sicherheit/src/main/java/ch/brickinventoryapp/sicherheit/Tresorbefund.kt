@@ -32,37 +32,32 @@ fun interface Geraetesperre {
 
 /**
  * Das Token unter einem Schlüssel, der nur bei entsperrtem Gerät arbeitet ([nurEntsperrt]):
- * Wer ein gesperrtes Gerät ausliest, bekommt den Geheimtext, aber keinen Klartext. Kann
- * er nicht verschlüsseln (Tausch bei gesperrtem Gerät, Keystore ohne diese Bedingung),
- * nimmt [immer] den Wert, bis ihn das nächste Entsperren umschlüsselt (TokenAblage.stufeTokenHoch).
+ * Wer ein gesperrtes Gerät ausliest, bekommt den Geheimtext, aber keinen Klartext. Kann er
+ * nicht verschlüsseln, wirft er; ein schwächerer Ausweg wäre genau das, was ein gesperrtes
+ * Gerät preisgibt. [altbestand] liest nur noch, was frühere Fassungen ohne Bedingung
+ * ablegten, bis das nächste Entsperren es umschlüsselt (TokenAblage.stufeTokenHoch).
  */
 class EntsperrTresor(
     private val nurEntsperrt: TokenVerschluesselung,
-    private val immer: TokenVerschluesselung,
+    private val altbestand: TokenVerschluesselung,
 ) : TokenVerschluesselung {
-    override fun verschluessle(klartext: String): String =
-        fangeAusserAbbruch { ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext) }
-            .getOrElse {
-                // Nicht still: Wer im Debug-Log sucht, warum ein Token schwächer liegt, findet es hier.
-                Protokoll.warnung("Tresor", "Token unter dem Schlüssel ohne Entsperr-Bedingung abgelegt", it)
-                immer.verschluessle(klartext)
-            }
+    override fun verschluessle(klartext: String): String = ENTSPERRT_PRAEFIX + nurEntsperrt.verschluessle(klartext)
 
     override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext
 
     override fun oeffne(gespeichert: String): Tresorbefund =
         if (gespeichert.startsWith(ENTSPERRT_PRAEFIX)) nurEntsperrt.oeffne(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))
-        else immer.oeffne(gespeichert)
+        else altbestand.oeffne(gespeichert)
 
     override fun veraltet(gespeichert: String): Boolean = !gespeichert.startsWith(ENTSPERRT_PRAEFIX)
 
     override fun vergiss() {
         nurEntsperrt.vergiss()
-        immer.vergiss()
+        altbestand.vergiss()
     }
 }
 
-/** Base64 kennt keinen Doppelpunkt: Geheimtexte ohne dieses Präfix stammen vom Schlüssel ohne Bedingung. */
+/** Base64 kennt keinen Doppelpunkt: Geheimtexte ohne dieses Präfix stammen vom Schlüssel ohne Bedingung (Altbestand). */
 internal const val ENTSPERRT_PRAEFIX = "e1:"
 
 /** Was beim Öffnen des Tokens herauskam. */
@@ -122,10 +117,24 @@ suspend fun liesToken(
     sperre: Geraetesperre = Geraetesperre { false },
 ) {
     if (geheim == null) return melde(alt ?: "")
+    liesGeduldig({ tresor.oeffne(geheim) }, alt, melde, warte, sperre)
+}
+
+/**
+ * Wie [liesToken] für jeden Wert unter einem Schlüssel, der nur entsperrt arbeitet (auch
+ * Adresse und Name der TokenAblage): [oeffne] je Versuch, [alt] bei „weg“.
+ */
+suspend fun liesGeduldig(
+    oeffne: () -> Tresorbefund,
+    alt: String?,
+    melde: suspend (String) -> Unit,
+    warte: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
+    sperre: Geraetesperre = Geraetesperre { false },
+) {
     var versuch = 0
     var leerGemeldet = false
     while (true) {
-        when (val b = tresor.oeffne(geheim)) {
+        when (val b = oeffne()) {
             is Tresorbefund.Lesbar -> return melde(b.klartext)
             Tresorbefund.Weg -> return melde(alt ?: "")
             Tresorbefund.Gesperrt -> {

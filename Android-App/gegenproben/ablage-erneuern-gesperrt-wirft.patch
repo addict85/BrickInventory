@@ -1,0 +1,18 @@
+Gegenprobe: Abmelden bei gesperrtem Gerät scheitert, weil der neue Ablageschlüssel nicht entstehen kann
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.AblageEntsperrtTest
+Rot: Abmelden bei gesperrtem Geraet
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
+index 2f06ee6..64fbfdc 100644
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
+@@ -90,7 +90,7 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
+         stand++
+         // Gesperrt entsteht der neue erst beim nächsten Zugriff: Ein Abmelden im Hintergrund
+         // soll nicht scheitern, nur weil das Gerät gerade nichts verschlüsseln lässt.
+-        fangeAusserAbbruch { hole() }
++        hole()
+     }
+ 
+     /** Abgeleitet mit HMAC-SHA256: Datenbank und Dateien teilen keinen Schlüssel. */

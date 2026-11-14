@@ -2,6 +2,7 @@ package ch.brickinventoryapp.data.di
 
 import ch.brickinventoryapp.model.ui.Meldung
 import javax.inject.Inject
+import android.os.Build
 import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.Netzvertrauen
 import ch.brickinventoryapp.data.Tokenspiegel
@@ -91,8 +92,12 @@ private fun serverVertrauen(prefs: Netzablagen, frage: ZertifikatsFrage): PinVer
         eigenerServer = { pinSchluessel(prefs.token.kopplungszielState.value ?: prefs.token.serverUrlState.value.orEmpty()) },
         frage = frage,
         fremdeHosts = system,
+        ctErzwungen = Build.VERSION.SDK_INT >= ANDROID_16,
     ).also { gemeinsamesVertrauen = it }
 }
+
+/** Ab hier verlangt network_security_config Certificate Transparency für öffentliche CAs. */
+private const val ANDROID_16 = 36
 
 /** Token und Vertrauen zusammen: Die Server-Clients brauchen beides, sonst nichts aus den Ablagen. */
 class Netzablagen @Inject constructor(val token: Tokenspiegel, val vertrauen: Netzvertrauen)

@@ -27,6 +27,8 @@ import ch.brickinventoryapp.data.util.raeumeVertraulichePdfsAuf
 import android.os.Build
 import android.content.BroadcastReceiver
 import android.content.Context
+import androidx.glance.appwidget.updateAll
+import ch.brickinventoryapp.app.widget.SammlungsWidget
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.core.content.ContextCompat
@@ -64,11 +66,13 @@ class BrickInventoryApp : Application(), Configuration.Provider {
             ausgangsmelderLazy.get().starte(bereiche.anwendung)
         })
 
-        // Ein Token, das bei gesperrtem Gerät unter dem schwächeren Schlüssel landete (Tausch im
-        // Hintergrund), kommt gleich nach dem Entsperren unter den strengen, nicht erst beim nächsten Start.
+        // Ein Token früherer Fassungen unter dem schwächeren Schlüssel kommt gleich nach dem
+        // Entsperren unter den strengen, nicht erst beim nächsten Start. Das Widget zeichnet neu:
+        // Gesperrt konnte es seine Zahlen nicht lesen (GeraeteAblage.widgetStand).
         ContextCompat.registerReceiver(this, object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 bereiche.anwendung.launch { fangeAusserAbbruch { tokenuebernahme.stufeTokenHoch() } }
+                bereiche.anwendung.launch { fangeAusserAbbruch { SammlungsWidget().updateAll(context) } }
             }
         }, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
 

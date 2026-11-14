@@ -1,0 +1,18 @@
+Gegenprobe: Eine Angabe gilt bei gesperrtem Gerät als weg statt als „später“
+Modul: core-sicherheit
+Test: ch.brickinventoryapp.sicherheit.VertrauenschiffreTest
+Rot: gesperrt ist eine Angabe spaeter lesbar
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
+index 25f2ada..f750307 100644
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
+@@ -51,7 +51,7 @@ class Vertrauenschiffre(
+     /** Lesbar, weg (verändert, fremd gebunden, anderer Schlüssel) oder gesperrt (später noch einmal). */
+     fun oeffneAngabe(gespeichert: String, bindung: String): Tresorbefund {
+         // Der Schlüssel ausserhalb der Prüfung: Kann er gerade nicht, ist der Wert nicht weg.
+-        val k = runCatching { angaben() }.getOrElse { return Tresorbefund.Gesperrt }
++        val k = runCatching { angaben() }.getOrElse { return Tresorbefund.Weg }
+         val roh = runCatching { Base64.getDecoder().decode(gespeichert) }.getOrElse { return Tresorbefund.Weg }
+         return AblageChiffre { k }.entschluessle(roh, ANGABE + bindung)
+             ?.let { Tresorbefund.Lesbar(it.toString(Charsets.UTF_8)) } ?: Tresorbefund.Weg

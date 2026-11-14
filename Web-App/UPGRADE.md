@@ -2100,3 +2100,43 @@ wird). Hinweise:
 - **Zu tun:** nichts, ausser der Job-Prozess erreicht das Internet nicht. Der
   Stichtag für Altschlüssel ohne Attestation (Abschnitt 49, 1. Februar 2027)
   bleibt.
+
+<a id="schluessel-behalten"></a>
+
+## 61. Caddy behält seinen Schlüssel; Android-App mit strengeren Vorgaben
+
+- **Caddy:** Das Caddyfile setzt `reuse_private_keys`. Beim Erneuern eines
+  Zertifikats (Let's Encrypt alle 60–90 Tage, Caddys CA alle paar Stunden)
+  bleibt der Schlüssel derselbe. Grund: Die Android-App pinnt unter einer
+  öffentlichen CA zusätzlich den Schlüssel des Servers. Ein neuer Schlüssel
+  heisst dort ab dieser Fassung auf Android 11–15 **abtippen** (siehe unten);
+  mit diesem Schalter kommt das nur noch vor, wenn jemand den Schlüssel
+  bewusst wechselt — und dann fällt es auf. Nachteil: Ein Schlüssel wechselt
+  nicht mehr von selbst; nach einem Verdacht wechselt man ihn von Hand.
+- **Schlüssel bewusst wechseln** (etwa nach einem Verdacht): Caddy anhalten,
+  unter `caddy/data/caddy/certificates/<aussteller>/<BRICK_HOST>/` die Dateien
+  `.key`, `.crt` und `.json` löschen, Caddy starten. Danach fragt jede App
+  einmal nach; vorher die Geräte informieren.
+- **Android-App, neuer Serverschlüssel:** Auf Android 11–15 (ohne erzwungene
+  Certificate Transparency) genügt bei einem neuen Schlüssel unter derselben
+  öffentlichen CA kein Tipp mehr. Die App verlangt die letzten 24 Hex-Zeichen
+  des neuen Schlüssels: im Browser am Rechner das Schloss → Zertifikat →
+  *Fingerabdrücke → Öffentlicher Schlüssel (SHA-256)*, oder
+  `openssl s_client -connect <BRICK_HOST>:443 </dev/null | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256`.
+  Ab Android 16 prüft das System CT selbst; dort bleibt es beim bewussten Tipp.
+- **Android-App, Daten auf dem Gerät:** Adresse, Benutzername und Herkunft des
+  Tokens, Widget-Zahlen und Abmeldeaufträge liegen unter einem Schlüssel, der
+  nur bei entsperrtem Gerät arbeitet; Pins tragen keinen Hostnamen mehr im
+  Namen; Konto- und Lagerortfilter liegen nur noch im Speicher (nach einem
+  Neustart der App wieder „alle“). Die Übernahme läuft beim ersten Start nach
+  dem Update von selbst, sobald das Gerät entsperrt ist; das Widget zeigt bis
+  zum nächsten Abruf „leer“.
+- **Android-App, Token-Tausch:** Bei gesperrtem Gerät tauscht die App ihr Token
+  nicht mehr; der Tausch kommt mit dem nächsten Abruf nach dem Entsperren.
+  Der Server braucht dafür nichts Neues. Den Geräteschlüssel des Schrittschutzes
+  legt die App nur noch mit Attestation an (kein Rückfall bei 404) und, wo
+  vorhanden, im StrongBox-Chip.
+- **Android-App, App-Sperre:** Neu installiert und mit Displaysperre steht sie
+  auf 5 Minuten und wird in der Einrichtung angeboten. Ein Update stellt nichts um.
+- **Zu tun:** Caddy neu starten (`docker compose up -d caddy`), damit das
+  Caddyfile gilt. Sonst nichts.

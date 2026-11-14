@@ -12,9 +12,6 @@ import java.util.Base64
 interface AttestierbarerSchluessel {
     /** Ein neuer Schlüssel mit [challenge] als Attestation-Challenge; seine Kette als DER, Blatt zuerst. */
     fun erzeugeMitAttestation(challenge: ByteArray): List<ByteArray>
-
-    /** Der blosse öffentliche Schlüssel (X.509), für einen Server ohne Attestation. */
-    fun oeffentlichFuerServer(): ByteArray
 }
 
 /**
@@ -37,7 +34,6 @@ class Schluesselbindung(
     suspend fun binde(): Ausgang {
         val nonce = when (val n = bindung.schluesselNonce()) {
             is Schluesselnonce.Nonce -> n.wert
-            Schluesselnonce.NichtGebunden -> return ohneAttestationAmServer()
             is Schluesselnonce.Abgelehnt -> return Ausgang.Abgelehnt(n.meldung)
         }
         val challenge = runCatching { Base64.getUrlDecoder().decode(nonce) }.getOrNull()
@@ -50,11 +46,5 @@ class Schluesselbindung(
             is Schrittantwort.Abgelehnt -> Ausgang.Abgelehnt(r.meldung)
             is Schrittantwort.Challenge, Schrittantwort.NichtGebunden -> Ausgang.Abgelehnt(null)
         }
-    }
-
-    private suspend fun ohneAttestationAmServer(): Ausgang {
-        val oeffentlich = withContext(keystore) { runCatching { schluessel.oeffentlichFuerServer() }.getOrNull() }
-            ?: return Ausgang.Abgelehnt(null)
-        return if (bindung.hinterlege(oeffentlich)) Ausgang.Gebunden else Ausgang.Abgelehnt(null)
     }
 }

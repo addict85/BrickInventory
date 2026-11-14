@@ -64,6 +64,10 @@ https://{$BRICK_HOST} {
 	# acme oder ausdrücklich Caddys CA). Fehlt er, ist diese Datei ungültig:
 	# kein stiller Rückfall auf eine CA ohne Namensbeschränkung.
 	tls {
+		# Beim Erneuern derselbe Schlüssel: Die Android-App pinnt unter einer
+		# öffentlichen CA den Schlüssel des Blatts und fragt bei einem neuen nach.
+		# So bleibt ein Wechsel selten und auffällig (UPGRADE.md#schluessel-behalten).
+		reuse_private_keys
 		issuer {$BRICK_TLS_AUSSTELLER} {
 			{$BRICK_TLS_OPTIONEN}
 		}

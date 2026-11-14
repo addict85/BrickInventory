@@ -1,0 +1,18 @@
+Gegenprobe: Ein neuer Serverschlüssel unter öffentlicher CA gilt wieder mit einem Tipp, auch ohne CT-Pflicht
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Rot: ein neuer Serverschluessel unter derselben oeffentlichen Wurzel fragt bewusst nach
+
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+index 6ec1f8a..8ca13a5 100644
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+@@ -142,7 +142,7 @@ class ZertifikatUngeklaert(
+      */
+     val abschriftNoetig: Boolean get() = when (art) {
+         Art.ERSTKONTAKT, Art.CODE_ABWEICHUNG -> false
+-        Art.SCHLUESSEL_NEU -> !ctErzwungen
++        Art.SCHLUESSEL_NEU -> false
+         Art.UNBEKANNTE_CA, Art.NUTZER_CA, Art.GEAENDERT -> true
+     }
+ 

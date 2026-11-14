@@ -1,0 +1,18 @@
+Gegenprobe: Der Start entfernt Adresse und Name früherer Form, auch wenn die neue gesperrt nicht entstand
+Modul: core-data
+Test: ch.brickinventoryapp.data.TokenTresorTest
+Rot: gesperrt bleibt die fruehere Form liegen
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+index 0287f52..b7f201e 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
+@@ -415,7 +415,7 @@ class TokenAblage @Inject constructor(
+         for (a in listOf(ADRESSE, NAME, HERKUNFT)) {
+             if (prefs[a.geheim] == null) {
+                 val vorher = frueher(roh(prefs, a), a) ?: continue
+-                prefs[a.geheim] = geraet.verschluessleAngabe(vorher, a.geheim.name) ?: continue
++                geraet.verschluessleAngabe(vorher, a.geheim.name)?.let { prefs[a.geheim] = it }
+             }
+             a.alt?.let { prefs.remove(it) }
+             prefs.remove(a.klar)

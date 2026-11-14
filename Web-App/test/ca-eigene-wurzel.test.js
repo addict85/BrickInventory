@@ -28,6 +28,8 @@
  *      Name mit acme …“ (die alte Wurzel bleibt für /ca.crt)
  *   H  die Fingerabdruck-Zeile im Startskript gestrichen → rot: „… nennt den
  *      Fingerabdruck der Wurzel“
+ *   K  (14.11.2026, lokal mit Caddy 2.11.8) `reuse_private_keys` im Caddyfile
+ *      gestrichen → rot: „Caddy behält beim Erneuern den Schlüssel“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -430,7 +432,19 @@ test('ohne Aussteller ist das Caddyfile ungültig', { skip: !CADDY && 'kein Cadd
     const r = adapt({ BRICK_TLS_AUSSTELLER: aussteller, BRICK_TLS_OPTIONEN: optionen });
     assert.equal(r.status, 0, r.stderr);
     assert.deepEqual(JSON.parse(r.stdout).apps.tls.automation.policies, [
-      { subjects: ['nas.example.lan'], issuers: [erwartet] },
+      { subjects: ['nas.example.lan'], issuers: [erwartet], reuse_private_keys: true },
     ]);
+  }
+});
+
+test('Caddy behält beim Erneuern den Schlüssel', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, () => {
+  for (const aussteller of ['internal', 'acme']) {
+    const r = spawnSync(CADDY, ['adapt', '--config', path.join(ROOT, 'Caddyfile'), '--adapter', 'caddyfile'], {
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH, BRICK_HOST: 'nas.example.lan', BRICK_TLS_AUSSTELLER: aussteller },
+    });
+    assert.equal(r.status, 0, r.stderr);
+    const [politik] = JSON.parse(r.stdout).apps.tls.automation.policies;
+    assert.equal(politik.reuse_private_keys, true, `${aussteller}: ein neuer Schlüssel je Erneuerung`);
   }
 });

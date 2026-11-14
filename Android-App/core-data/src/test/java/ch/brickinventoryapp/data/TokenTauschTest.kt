@@ -53,11 +53,18 @@ import org.junit.Test
  * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; tausch-noetig-ohne-frist.patch):
  *   L  noetigWartend() wartet ohne withTimeoutOrNull auf den Tausch → rot „noetig
  *      wartet hoechstens die Frist, der Tausch laeuft weiter“ (keine Rückkehr nach der Frist)
+ * Gegenprobe:
+ *   M  in tauscheGesperrt() die Prüfung `bereit()` entfernt → rot „bei gesperrtem Geraet
+ *      wird nicht getauscht …“; gegenproben/tausch-trotz-sperre.patch
  */
 class TokenTauschTest {
 
     /** [hintergrund] nimmt faellig() auf; ohne Angabe ein Bereich, den niemand abarbeitet. */
-    private class Welt(hintergrund: CoroutineScope = CoroutineScope(Job()), warten: Long = TokenTausch.NOETIG_WARTEN_MS) {
+    private class Welt(
+        hintergrund: CoroutineScope = CoroutineScope(Job()),
+        warten: Long = TokenTausch.NOETIG_WARTEN_MS,
+        bereit: () -> Boolean = { true },
+    ) {
         var gespeichert = "alt"
         var herkunft: String? = HIER
         var antwortHerkunft: String? = HIER
@@ -91,10 +98,23 @@ class TokenTauschTest {
             pausen = listOf(1, 1, 1),
             hintergrund = hintergrund,
             warten = warten,
+            bereit = bereit,
         )
     }
 
     private val verloren: Ergebnis.Error = Ergebnis.Error.Netz()
+
+    @Test
+    fun `bei gesperrtem Geraet wird nicht getauscht, nach dem Entsperren schon`() = runTest {
+        var gesperrt = true
+        val w = Welt(bereit = { !gesperrt })
+        assertEquals(Tauschergebnis.SPAETER, w.tausch.tausche("alt"))
+        assertEquals("Der Server sah keinen Tausch", emptyList<String>(), w.protokoll)
+        assertEquals("alt", w.gespeichert)
+        gesperrt = false
+        assertEquals(Tauschergebnis.GETAUSCHT, w.tausch.tausche("alt"))
+        assertEquals("neu", w.gespeichert)
+    }
 
     @Test
     fun `der neue Token ist gespeichert, bevor der Tausch endet`() = runTest {

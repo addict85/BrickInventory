@@ -64,7 +64,8 @@ private fun ZertifikatFrageDialog(
     val (titel, text) = titelUndText(frage.art)
     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT || frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
     val erstkontakt = frage.art == ZertifikatUngeklaert.Art.ERSTKONTAKT
-    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.art != ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+    val schluesselNeu = frage.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
+    val abschreiben = if (erstkontakt) abtippenGewaehlt else frage.abschriftNoetig
     val fenster = stringResource(titel)
     AlertDialog(
         onDismissRequest = onAbbrechen,
@@ -84,10 +85,11 @@ private fun ZertifikatFrageDialog(
                         eingabe = eingabe,
                         onEingabe = { eingabe = it; befund = null },
                         noetig = Abschrift.NOETIG,
-                        hilfe = stringResource(if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe),
+                        hilfe = stringResource(eingabeHilfe(frage.art)),
                         fehler = { gezaehlt -> abschriftFehler(befund, gezaehlt) },
                     )
-                    Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
+                    // Unter einer öffentlichen CA trägt der Code keinen Fingerabdruck; dort hilft er nicht.
+                    if (!schluesselNeu) Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
                 }
                 // Die einzige Stelle, an der nach Nutzer-CAs gefragt wird: beim Fehler,
                 // mit Erklärung. Danach fragt der Dialog erneut (NUTZER_CA), wieder zum Abtippen.
@@ -172,6 +174,13 @@ private fun abschriftFehler(befund: Abschrift?, gezaehlt: Int): String? = when (
     null, Abschrift.PASST -> null
     Abschrift.LEER, Abschrift.ZU_KURZ -> stringResource(R.string.zert_eingabe_zu_kurz, gezaehlt, Abschrift.NOETIG)
     Abschrift.PASST_NICHT -> stringResource(R.string.zert_eingabe_falsch)
+}
+
+/** Woher die Abschrift kommt: Den neuen Serverschlüssel einer öffentlichen CA kennt die Webapp nicht. */
+private fun eingabeHilfe(art: ZertifikatUngeklaert.Art): Int = when (art) {
+    ZertifikatUngeklaert.Art.SCHLUESSEL_NEU -> R.string.zert_schluessel_neu_eingabe
+    ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_geaendert_eingabe
+    else -> R.string.zert_unbekannt_eingabe
 }
 
 /** Überschrift und Erklärung je Art der Frage. */

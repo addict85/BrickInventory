@@ -1,0 +1,17 @@
+Gegenprobe: Pins älterer Fassungen behalten Host und Port im Namen
+Modul: core-data
+Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
+Rot: ein Pin frueherer Fassung kommt unter einen Namen
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+index c5ab2dd..a24cd25 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/GeraeteAblage.kt
+@@ -135,7 +135,6 @@ class GeraeteAblage @Inject constructor(
+     fun bereiteVor() {
+         uebernimmAltenCaStand()
+         uebernimmKlartextVertrauen()
+-        uebernimmPinNamen()
+         designSpiegel.edit { KlartextReste.SPIEGEL.forEach { remove(it) } }
+     }
+ 
