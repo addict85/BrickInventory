@@ -2,10 +2,10 @@
  * transaktion.ts, Wiederholung in wiederholung.ts, Erststart in schemaStart.ts. */
 
 import { Pool, types as pgTypes, Client } from 'pg';
-import type { PoolConfig, QueryResult } from 'pg';
+import type { PoolClient, PoolConfig, QueryResult } from 'pg';
 import { Benachrichtigung, type Signale } from './pgNotify';
 import type { DbSchnittstelle } from './typen';
-import { fehlerCode, meldeFehler, setzeTransaktionsWaechter } from '../src/infra/fehler';
+import { fehlerCode, meldeFehler } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung, systemVerbindung } from '../src/infra/konfig';
 import { queryWithRetry, istLesend } from './wiederholung';
 import { inTransaktionsPfad, zeilenKontext } from '../src/infra/kontoKontext';
@@ -17,7 +17,8 @@ import {
   mitCommitBegleiter,
   innereTransaktion,
   NebenDerTransaktion,
-  TRANSAKTIONS_WAECHTER,
+  neuerTxStand,
+  TransaktionBeendet,
   UngebundeneAbfrage,
   type TxGriffVon,
   type TxStand,
@@ -159,6 +160,8 @@ interface Rahmen {
   pool: Pool;
   systemPool: Pool;
   streng: boolean;
+  /** Der beständige Zugang je Verbindung (verbindungsZugang). */
+  jeVerbindung: WeakMap<PoolClient, Verbindungsplatz>;
 }
 
 const poolDesRahmens = (r: Rahmen): Pool => (zeilenKontext().system ? r.systemPool : r.pool);
@@ -219,7 +222,7 @@ async function einmaligeTransaktion<T>(
 ): Promise<T> {
   const p = poolDesRahmens(r);
   const client = await p.connect();
-  const stand: TxStand = { client, offen: true, db: r.ich, pool: p, innerster: null, kontext: '', streng: r.streng };
+  const stand = neuerTxStand({ client, db: r.ich, pool: p, streng: r.streng });
   let kaputt: Error | undefined;
   // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
   // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
@@ -283,6 +286,7 @@ function griff(
   punkt: string | null,
 ): TxGriff {
   const q = txAbfragen(stand, () => pruefeRahmen(r, stand));
+  if (punkt === null) return { ...q, db: verbindungsZugang(r, zugang, zaehler, stand) };
   const tdb: Db = {
     ...zugang,
     ...q,
@@ -296,13 +300,60 @@ function griff(
   return { ...q, db: tdb };
 }
 
+/** Je Verbindung ein beständiger Zugang für die äusserste Ebene ihrer Transaktion: Die Bereiche
+ * über ihm (Bereich.ueber) entstehen einmal je Verbindung statt je Transaktion (gemessen gut 1 ms
+ * je Transaktion). Er fragt über die Transaktion, die gerade auf der Verbindung läuft, und nur aus
+ * deren Aufrufpfad; ein Nachzügler einer früheren bekommt TransaktionBeendet. */
+interface Verbindungsplatz {
+  stand: TxStand | null;
+  q: DbSchnittstelle | null;
+  db: Db;
+}
+function verbindungsZugang(r: Rahmen, zugang: Db, zaehler: { sicherungspunkte: number }, stand: TxStand): Db {
+  const da = r.jeVerbindung.get(stand.client);
+  const platz = da ?? neuerPlatz(r, zugang, zaehler);
+  if (!da) r.jeVerbindung.set(stand.client, platz);
+  platz.stand = stand;
+  platz.q = txAbfragen(stand, () => pruefeRahmen(r, stand));
+  return platz.db;
+}
+
+function neuerPlatz(r: Rahmen, zugang: Db, zaehler: { sicherungspunkte: number }): Verbindungsplatz {
+  const aktiv = (): { stand: TxStand; q: DbSchnittstelle } => {
+    const { stand, q } = platz;
+    if (!stand || !q || laufendeTx() !== stand) throw new TransaktionBeendet();
+    return { stand, q };
+  };
+  const q: DbSchnittstelle = {
+    all: (sql, p) => aktiv().q.all(sql, p),
+    get: (sql, p) => aktiv().q.get(sql, p),
+    run: (sql, p) => aktiv().q.run(sql, p),
+    exec: sql => aktiv().q.exec(sql),
+  };
+  const platz: Verbindungsplatz = {
+    stand: null,
+    q: null,
+    db: {
+      ...zugang,
+      ...q,
+      transaction: (fn, o = {}) => {
+        const { stand } = aktiv();
+        return innereTransaktion(stand, null, ++zaehler.sicherungspunkte, name =>
+          mitSperren(fn, o.sperren)(griff(r, zugang, zaehler, stand, name)),
+        );
+      },
+      benachrichtigung: zugang.benachrichtigung.ueber(q.run),
+      inTransaktion: () => true,
+    },
+  };
+  return platz;
+}
+
 /** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
  * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
 export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
-  // Erst mit einem Zugang gibt es Transaktionen; ein Import allein ändert infra/ nicht.
-  setzeTransaktionsWaechter(TRANSAKTIONS_WAECHTER);
   const { pool, systemPool } = erzeugePools(k);
-  const r: Rahmen = { ich: {}, pool, systemPool, streng: k.streng === true };
+  const r: Rahmen = { ich: {}, pool, systemPool, streng: k.streng === true, jeVerbindung: new WeakMap() };
   const zaehler = { sicherungspunkte: 0 };
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche

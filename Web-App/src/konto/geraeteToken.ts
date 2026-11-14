@@ -282,7 +282,7 @@ export async function rotiereToken(
       }
       if (offen && offen.alter_s < TAUSCH_SPERRE_S) return 'laeuft' as const;
       if (z.ersetzt_durch) await repo.loescheUnbenutztenNachfolger(t.db, z.ersetzt_durch, altHash);
-      const zeile = await repo.legeNachfolgerAn(t.db, neuHash, altHash, z, kx.konfig.tokenLeerlaufTage, ipBereich(ip));
+      const zeile = await repo.legeNachfolgerAn(t.db, neuHash, altHash, z, t.konfig.tokenLeerlaufTage, ipBereich(ip));
       const vorher = await repo.befristeVorgaenger(t.db, altHash, neuHash, UEBERLAPPUNG_MS / 1000);
       return {
         token: neu,

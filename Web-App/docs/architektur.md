@@ -73,8 +73,9 @@ Absicht, solange es nur von unten gebraucht wird:
 - Mehrstufige Schreibvorgänge (Änderung und Protokoll, Zeile und Datei) sind ein
   Dienst mit `k.transaktion(async t => …)`: Der Rumpf schreibt über `t`, einen
   Kontext an der Verbindung der Transaktion. `t` ist ganz über deren Zugang gebaut
-  (`tx.db`): Jeder Satz Dienste tieferer Bereiche entsteht darüber neu
-  (`ueber(tx.db)`, je Transaktion einmal), Zustand im Speicher bleibt geteilt. So
+  (`tx.db`): Jeder Satz Dienste tieferer Bereiche entsteht darüber
+  (`ueber(tx.db)`), je Verbindung einmal; der Zugang fragt nur aus dem Aufrufpfad
+  der laufenden Transaktion. Zustand im Speicher bleibt geteilt. So
   steht am Aufrufort, was zusammen gilt, und nichts leitet eine Abfrage still um.
   Das ist die einzige Form: Repositories öffnen keine Transaktion, sie nehmen den
   `tx` des Aufrufers; `.transaction(` steht nur in `src/infra/bereich.ts` und `db/`.
@@ -99,6 +100,8 @@ Absicht, solange es nur von unten gebraucht wird:
   entsteht dort je Satz Dienste (`erzeugeRebrickable(z)` …) mit Schlüssel,
   Kontingent und Drossel seines Zugangs (`clients/zugang.ts`); einen Zugang des
   Prozesses gibt es nicht. Tests stellen Klienten mit `testQuellen()`.
+- Den Rumpf `k.transaktion(async t => …)` prüft vorher die Lint-Regel
+  `biome/transaktionsrumpf.grit`: kein `k`, `sk`, `kx` oder Empfänger darin.
 - Fragt mitten in einer Transaktion jemand über den ungebundenen Zugang (`k` statt
   `t`), wirft die Datenbankschicht `UngebundeneAbfrage`: Sie liefe sonst über eine
   zweite Verbindung neben der Transaktion. Erkannt wird das am Aufrufrahmen; ein Weg
@@ -152,8 +155,9 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
   eigene Ratsche für Fänge ohne Meldung (`public/js`).
 - Ein Signal ist eine **Fehlerklasse** (`StromGeschlossen`, `AuftragVerloren` …),
   keine Zeichenkette, die der Fänger vergleicht.
-- Der Transaktionswächter (kein Ersatzwert in einer laufenden Transaktion) kommt
-  mit dem Zugang: `erzeugeDb()` setzt ihn, kein Import.
+- Der Transaktionswächter (kein Ersatzwert in einer laufenden Transaktion) ist die
+  Transaktion selbst: Ihr Stand (`neuerTxStand`, `db/transaktion.ts`) reist im
+  Aufrufrahmen, kein Zustand des Prozesses.
 
 ## Zeilenschutz: was er leistet und was nicht
 

@@ -27,6 +27,7 @@ const SCHRANKEN = require('../scripts/lint-schranken.json');
 function probebaum() {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-baum-'));
   fs.copyFileSync(path.join(ROOT, 'biome.json'), path.join(d, 'biome.json'));
+  fs.cpSync(path.join(ROOT, 'biome'), path.join(d, 'biome'), { recursive: true });
   fs.mkdirSync(path.join(d, 'src'));
   fs.writeFileSync(
     path.join(d, 'src', 'probe.ts'),

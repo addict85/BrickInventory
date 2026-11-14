@@ -249,8 +249,9 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
   // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60. (14.11.2026) Schranke 2 (Transaktionswächter,
   // Sicherungspunkte in db/); `const sitzungen = new Map<string, Sitzung>();` zurück in
-  // src/gutscheine/gutscheinGuthaben.ts → rot (3 von 2).
-  const ZUSTAND_SCHRANKE = 2;
+  // src/gutscheine/gutscheinGuthaben.ts → rot (3 von 2). Schranke 1: Der Transaktionswächter
+  // reist mit der Transaktion im Aufrufrahmen; übrig sind die Sicherungspunkte in db/.
+  const ZUSTAND_SCHRANKE = 1;
   const ZUSTAND =
     /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
   const zaehleZustand = s => (s.match(ZUSTAND) || []).length;
