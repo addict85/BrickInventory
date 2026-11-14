@@ -34,11 +34,8 @@ async function zugeschnitten(original: string, vorschau: string): Promise<boolea
 
 const pause = () => new Promise(r => setTimeout(r, 10));
 
-/**
- * Eigene Bilder (`lokale`: Webpfad und Datei) bekommen ihre Vorschau neu; im Proxy-Cache wird die alte nur
- * gelöscht, der Proxy legt sie beim nächsten Abruf neu an. Gedrosselt, damit der Job-Prozess ansprechbar bleibt.
- * @returns wie viele Vorschauen ersetzt wurden, oder null, wenn es schon einmal lief
- */
+/** Eigene Bilder bekommen ihre Vorschau neu, im Proxy-Cache wird die alte nur gelöscht; gedrosselt.
+ * @returns wie viele Vorschauen ersetzt wurden, oder null, wenn es schon einmal lief */
 export async function zugeschnitteneVorschauenEinpassen(
   k: Pick<BilderKontext, 'auftraege'>,
   lokale: { web: string; datei: string }[],
