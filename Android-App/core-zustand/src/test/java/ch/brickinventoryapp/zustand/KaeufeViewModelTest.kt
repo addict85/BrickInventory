@@ -5,10 +5,10 @@ import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testFigurenRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Faecher
 import kotlinx.coroutines.flow.first
@@ -62,8 +62,8 @@ class KaeufeViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, HaushaltRepository(t.api), t.sets(),
-        FinanzenRepository(t.api), TeileRepository(t.api), FigurenRepository(t.api)))
+    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testHaushaltRepository(t.api), t.sets(),
+        testFinanzenRepository(t.api), testTeileRepository(t.api), testFigurenRepository(t.api)))
 
     @Before
     fun auf() {

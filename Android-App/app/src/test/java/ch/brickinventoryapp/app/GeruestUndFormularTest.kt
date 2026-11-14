@@ -49,7 +49,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.konto.ui.KontoUiState
@@ -98,8 +98,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsNode
 import java.util.Locale
 import org.robolectric.Shadows
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 
 /**
@@ -240,9 +240,9 @@ class GeruestUndFormularTest {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-                KontoRepository(welt.t.api, welt.t.io),
-                VerwaltungRepository(welt.t.api), welt.t.alarme(),
-                TeileRepository(welt.t.api),
+                testKontoRepository(welt.t.api, welt.t.io),
+                testVerwaltungRepository(welt.t.api), welt.t.alarme(),
+                testTeileRepository(welt.t.api),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))
@@ -320,9 +320,9 @@ class GeruestUndFormularTest {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-                KontoRepository(welt.t.api, welt.t.io),
-                VerwaltungRepository(welt.t.api), welt.t.alarme(),
-                TeileRepository(welt.t.api),
+                testKontoRepository(welt.t.api, welt.t.io),
+                testVerwaltungRepository(welt.t.api), welt.t.alarme(),
+                testTeileRepository(welt.t.api),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))

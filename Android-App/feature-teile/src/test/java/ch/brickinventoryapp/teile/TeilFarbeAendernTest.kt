@@ -14,10 +14,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.testing.FigurenRepository
+import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
@@ -58,7 +58,7 @@ class TeilFarbeAendernTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api), FigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
     private val screen by lazy {
         Quellen.ohneKommentare(Quellen.lies("teile/ui/screens/ManualItemDetailScreen.kt"))
     }

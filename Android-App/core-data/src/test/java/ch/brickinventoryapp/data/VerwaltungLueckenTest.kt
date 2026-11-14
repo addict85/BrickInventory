@@ -10,7 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestApi
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 
 /**
  * Drei Verwalter-Handlungen, die die Webapp schon kann, auch in der App: Zeitplan eines
@@ -35,7 +35,7 @@ class VerwaltungLueckenTest {
     fun `die App ruft alle drei Adressen`() {
         val pfade = PfadServer()
         try {
-            val admin = VerwaltungRepository(TestApi.fuer(pfade.server))
+            val admin = testVerwaltungRepository(TestApi.fuer(pfade.server))
             runBlocking {
                 admin.setJobSchedule("prices", zeit = "07:05")
                 admin.queueCatalogImages()

@@ -20,9 +20,9 @@ import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.TeileRepository
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testTeileRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
@@ -78,8 +78,8 @@ class PreisalarmeAnzeigeTest {
          "name":"Ultimate Falcon","besitzt":false,"ausgeloest":true}]}"""
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-        KontoRepository(welt.t.api, welt.t.io), VerwaltungRepository(welt.t.api),
-        welt.t.alarme(), TeileRepository(welt.t.api),
+        testKontoRepository(welt.t.api, welt.t.io), testVerwaltungRepository(welt.t.api),
+        welt.t.alarme(), testTeileRepository(welt.t.api),
         object : DateiLeser {
             override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))

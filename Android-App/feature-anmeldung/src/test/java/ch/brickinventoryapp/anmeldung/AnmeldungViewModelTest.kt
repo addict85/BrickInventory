@@ -20,8 +20,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld
 import ch.brickinventoryapp.zustand.ui.FilterAblage
 import ch.brickinventoryapp.anmeldung.ui.QrKonto
@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.SitzungsAttrappe
 import ch.brickinventoryapp.testing.SpeicherAblage
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.sicherheit.PinAblage
 import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
@@ -139,11 +139,11 @@ class AnmeldungViewModelTest {
             override suspend fun allesVergessen() { ablage.protokoll += "filter-leer" }
         }
         val blickfeld = Blickfeld(blickAblage,
-            HaushaltRepository(t.api),
-            TeileRepository(t.api))
+            testHaushaltRepository(t.api),
+            testTeileRepository(t.api))
         val abmelden = SitzungsAttrappe { ablage.protokoll += "abmelden" }
         return t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
-            KontoRepository(t.api), ablage, frage) { it in wurzeln })
+            testKontoRepository(t.api), ablage, frage) { it in wurzeln })
     }
 
     @Before

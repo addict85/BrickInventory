@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.teile
 
-import ch.brickinventoryapp.testing.MerklisteRepository
+import ch.brickinventoryapp.testing.testMerklisteRepository
 import ch.brickinventoryapp.model.fach.Zustand
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
@@ -32,9 +32,9 @@ import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.BrickApiService
 import java.net.ConnectException
 import java.net.SocketTimeoutException
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testFigurenRepository
+import ch.brickinventoryapp.testing.testSetsRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -114,10 +114,10 @@ class OfflineBearbeitungTest {
         }.build())
         .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
         .build().create(BrickApiService::class.java)
-    private val repo = SetsRepository(api, ablage)
-    private val merkliste = MerklisteRepository(api, ablage)
-    private val teile = TeileRepository(api, ablage)
-    private val figuren = FigurenRepository(api, ablage)
+    private val repo = testSetsRepository(api, ablage)
+    private val merkliste = testMerklisteRepository(api, ablage)
+    private val teile = testTeileRepository(api, ablage)
+    private val figuren = testFigurenRepository(api, ablage)
     private val abgleich = Abgleich(ablage, ausgang, ServerSender(api, api, api))
 
     @After

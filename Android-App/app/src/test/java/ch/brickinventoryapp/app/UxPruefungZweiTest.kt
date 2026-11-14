@@ -44,12 +44,12 @@ import ch.brickinventoryapp.sammlung.ui.screens.AcquisitionManagementRoute
 import ch.brickinventoryapp.sammlung.ui.screens.AddSetDialog
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.testing.HaushaltRepository
-import ch.brickinventoryapp.testing.KatalogRepository
-import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testFigurenRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
+import ch.brickinventoryapp.testing.testHaushaltRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
+import ch.brickinventoryapp.testing.testSetsRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.SetAnlegenSchritt
@@ -75,8 +75,8 @@ import java.util.Locale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.state.ToggleableState
 import ch.brickinventoryapp.data.VorwaermNetz
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
 import ch.brickinventoryapp.verwaltung.ui.screens.CacheEreignisse
@@ -222,7 +222,7 @@ class UxPruefungZweiTest {
         texte.firstOrNull { it.first == gesucht }?.second ?: error("„$gesucht“ fehlt in ${texte.map { it.first }}")
 
     private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise,
-        SetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(), KatalogRepository(welt.t.api),
+        testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(), testKatalogRepository(welt.t.api),
         object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
@@ -233,8 +233,8 @@ class UxPruefungZweiTest {
     @Test
     fun `M2 die Kaufpreise tragen Feldbeschriftungen statt Spaltenkoepfen`() {
         val vm = welt.t.merke(KaeufeViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.aenderungen,
-            HaushaltRepository(welt.t.api), welt.t.sets(), FinanzenRepository(welt.t.api), TeileRepository(welt.t.api),
-            FigurenRepository(welt.t.api)))
+            testHaushaltRepository(welt.t.api), welt.t.sets(), testFinanzenRepository(welt.t.api), testTeileRepository(welt.t.api),
+            testFigurenRepository(welt.t.api)))
         zeige {
             AcquisitionManagementRoute(vm, type = Postenart.SET, id = Beispiele.SET, title = "Millennium Falcon", onBack = {})
         }
@@ -299,7 +299,7 @@ class UxPruefungZweiTest {
                "aktualisiert":null,"fortschritt":null,"fehler":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
             "zusammenfassung":[],"pausen":[],"bildbedarf":0,
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
-        val vm = MonitoringViewModel(VerwaltungRepository(welt.t.api), KontoRepository(welt.t.api, welt.t.io),
+        val vm = MonitoringViewModel(testVerwaltungRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io),
             KontextTexte(), welt.t.meldungen)
         runBlocking { vm.ladeHintergrund() }
         val netze = mapOf(VorwaermNetz.WLAN to true, VorwaermNetz.MOBIL to false, VorwaermNetz.ROAMING to false)
@@ -402,7 +402,7 @@ class UxPruefungZweiTest {
         welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
         val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            KontoRepository(welt.t.api, welt.t.io), VerwaltungRepository(welt.t.api), welt.t.alarme(), TeileRepository(welt.t.api),
+            testKontoRepository(welt.t.api, welt.t.io), testVerwaltungRepository(welt.t.api), welt.t.alarme(), testTeileRepository(welt.t.api),
             object : DateiLeser {
                 override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
             })).also { it.ladeAlarmUebersicht() }

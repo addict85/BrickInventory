@@ -5,8 +5,8 @@ import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.testing.mitRepo
 
 /**
@@ -21,7 +21,7 @@ class DesignVorAnmeldungTest {
      */
     @Test
     fun `Stufe zwei - die oeffentliche Adresse wird gerufen`() {
-        mitRepo(::KontoRepository) { pfade, admin ->
+        mitRepo(::testKontoRepository) { pfade, admin ->
             runBlocking { admin.getAppTheme() }
             assertEquals(listOf("GET /api/v1/settings/theme"), pfade.anfragen.toList())
         }
@@ -38,7 +38,7 @@ class CacheLeerenTest {
      * VerwaltungRepository.clearCache immer `emptyMap()` → rot.
      */
     @Test
-    fun `die App kennt die Adresse und beide Umfaenge`() = mitRepo(::VerwaltungRepository) { pfade, admin ->
+    fun `die App kennt die Adresse und beide Umfaenge`() = mitRepo(::testVerwaltungRepository) { pfade, admin ->
         runBlocking {
             admin.clearCache(alles = false)
             admin.clearCache(alles = true)

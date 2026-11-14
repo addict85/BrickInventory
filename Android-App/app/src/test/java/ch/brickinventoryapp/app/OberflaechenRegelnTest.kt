@@ -45,7 +45,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.sammlung.ui.KachelPreis
@@ -93,7 +93,7 @@ import coil3.intercept.Interceptor
 import coil3.request.ErrorResult
 import java.math.BigDecimal
 import java.util.Locale
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.app.nav.AppZiel
 import ch.brickinventoryapp.finanzen.ui.FinanzZiel
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
@@ -344,8 +344,8 @@ class OberflaechenRegelnTest {
     /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
     private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
         val vm = welt.galerie().also { it.loadSets() }
-        val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
-            KatalogRepository(welt.t.api),
+        val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+            testKatalogRepository(welt.t.api),
             object : SetAnleger {
                 override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                      ownerUserId: Int?, storage: String?) =
@@ -550,8 +550,8 @@ class OberflaechenRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.galerie().also { it.loadSets() }
-            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
-                KatalogRepository(welt.t.api),
+            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+                testKatalogRepository(welt.t.api),
                 object : SetAnleger {
                     override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =

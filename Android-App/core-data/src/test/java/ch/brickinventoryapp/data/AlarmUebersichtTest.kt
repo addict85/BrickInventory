@@ -12,7 +12,7 @@ import retrofit2.http.DELETE
 import retrofit2.http.PUT
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.AlarmRepository
+import ch.brickinventoryapp.testing.testAlarmRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -37,7 +37,7 @@ class AlarmUebersichtTest {
         val pfade = PfadServer("/api/v1/alerts" to """{"success":true,"alerts":[]}""")
         try {
             runBlocking {
-                AlarmRepository(TestApi.fuer(pfade.server)).aktualisiereAlarme()
+                testAlarmRepository(TestApi.fuer(pfade.server)).aktualisiereAlarme()
             }
             assertEquals(listOf("GET /api/v1/alerts"), pfade.anfragen.toList())
         } finally {

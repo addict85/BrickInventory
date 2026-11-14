@@ -17,12 +17,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import javax.inject.Singleton
-import ch.brickinventoryapp.testing.FigurenRepository
-import ch.brickinventoryapp.testing.FinanzenRepository
+import ch.brickinventoryapp.testing.testFigurenRepository
+import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.SetsRepository
-import ch.brickinventoryapp.testing.TeileRepository
+import ch.brickinventoryapp.testing.testSetsRepository
+import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
@@ -153,12 +153,12 @@ class MeldungsKanalTest {
         pfade.codes["/api/v1/parts/3001/5/color"] = 500
         val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
-            val galerie = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, SetsRepository(t.api),
-                t.kontosicht, FinanzenRepository(t.api), SavedStateHandle()))
+            val galerie = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testSetsRepository(t.api),
+                t.kontosicht, testFinanzenRepository(t.api), SavedStateHandle()))
             galerie.deleteSet("75192-1")
             assertTrue("Meldung der Galerie", t.meldungen.text != null)
             t.meldungen.quittiere()
-            val teile = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api), FigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
+            val teile = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
             teile.setzeTeilFarbe("3001", 5, 11)
             assertTrue("Meldung der Teile", t.meldungen.text != null)
         } finally {

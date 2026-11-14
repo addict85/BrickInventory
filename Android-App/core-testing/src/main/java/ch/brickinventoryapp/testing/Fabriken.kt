@@ -59,52 +59,52 @@ import kotlinx.coroutines.Job
 fun Testablage(bereich: String? = "test", ausgang: Ausgang = SpeicherAusgang(), planer: AusgangPlaner = AusgangPlaner {}) =
     Offlineablage(SpeicherBestand(), ausgang, { bereich }, planer)
 
-fun SetsRepository(api: SetsApi, ablage: Offlineablage = Testablage()): SetsRepository =
+fun testSetsRepository(api: SetsApi, ablage: Offlineablage = Testablage()): SetsRepository =
     SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun MerklisteRepository(api: SetsApi, ablage: Offlineablage = Testablage()): MerklisteRepository =
+fun testMerklisteRepository(api: SetsApi, ablage: Offlineablage = Testablage()): MerklisteRepository =
     MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun AlarmRepository(api: SetsApi, ablage: Offlineablage = Testablage()): AlarmRepository =
+fun testAlarmRepository(api: SetsApi, ablage: Offlineablage = Testablage()): AlarmRepository =
     AlarmRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun SetKatalogRepository(api: SetsApi): SetKatalogRepository =
+fun testSetKatalogRepository(api: SetsApi): SetKatalogRepository =
     SetKatalogRepositoryImpl(api)
 
-fun SetDateienRepository(api: SetsApi): SetDateienRepository =
+fun testSetDateienRepository(api: SetsApi): SetDateienRepository =
     SetDateienRepositoryImpl(api)
 
-fun TeileRepository(api: TeileApi, ablage: Offlineablage = Testablage()): TeileRepository =
+fun testTeileRepository(api: TeileApi, ablage: Offlineablage = Testablage()): TeileRepository =
     TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun FigurenRepository(api: FigurenApi, ablage: Offlineablage = Testablage()): FigurenRepository =
+fun testFigurenRepository(api: FigurenApi, ablage: Offlineablage = Testablage()): FigurenRepository =
     FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun GutscheineRepository(api: GutscheineApi): GutscheineRepository =
+fun testGutscheineRepository(api: GutscheineApi): GutscheineRepository =
     GutscheineRepositoryImpl(api, Testablage())
 
-fun KontoRepository(
+fun testKontoRepository(
     api: KontoApi,
     io: CoroutineDispatcher = Dispatchers.IO,
 ): KontoRepository = KontoRepositoryImpl(api, io)
 
-fun FinanzenRepository(api: FinanzenApi, ablage: Offlineablage = Testablage()): FinanzenRepository = FinanzenRepositoryImpl(api, ablage)
+fun testFinanzenRepository(api: FinanzenApi, ablage: Offlineablage = Testablage()): FinanzenRepository = FinanzenRepositoryImpl(api, ablage)
 
-fun HaushaltRepository(api: HaushaltApi): HaushaltRepository =
+fun testHaushaltRepository(api: HaushaltApi): HaushaltRepository =
     HaushaltRepositoryImpl(api)
 
-fun VerwaltungRepository(api: VerwaltungApi): VerwaltungRepository =
+fun testVerwaltungRepository(api: VerwaltungApi): VerwaltungRepository =
     VerwaltungRepositoryImpl(api)
 
-fun KatalogRepository(api: KatalogApi, ablage: Offlineablage = Testablage()): KatalogRepository =
+fun testKatalogRepository(api: KatalogApi, ablage: Offlineablage = Testablage()): KatalogRepository =
     KatalogRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
 /** Die Sicht über gewählte Konten; mit derselben [ablage] wie die Repositories, damit Schreiben sie neu fragt. */
-fun Kontosicht(api: BrickApiService, ablage: Offlineablage = Testablage()): Kontosicht =
+fun testKontosicht(api: BrickApiService, ablage: Offlineablage = Testablage()): Kontosicht =
     Kontosicht(api, api, api, ablage, Wiederholung.EINMAL)
 
 /** Sets, Teile und Figuren auf einer gemeinsamen [ablage]. */
-fun Bestandsabgleich(api: BrickApiService, ablage: Offlineablage): Bestandsabgleich =
+fun testBestandsabgleich(api: BrickApiService, ablage: Offlineablage): Bestandsabgleich =
     Bestandsabgleich(SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL), MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL),
         TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL),
         FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL), ablage)
