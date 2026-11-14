@@ -49,7 +49,7 @@ class OfflineablageTest {
     fun `offline Bearbeitetes steht sofort in der Liste`() = runBlocking {
         ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1), set("10002-1", 3)))
         ablage.puffere(Bearbeitung.SetMenge("10001-1", 2))
-        ablage.puffere(Bearbeitung.SetErfassen(AddSetRequest("10003-1", quantity = 1, condition = Zustand.NEU)))
+        ablage.puffere(Bearbeitung.SetErfassen(AddSetRequest(setNumber = "10003-1", quantity = 1, condition = Zustand.NEU)))
         val l = ablage.beobachte(Faecher.SETS).first().liste
         assertEquals(listOf("10003-1" to 1, "10001-1" to 3, "10002-1" to 3), l.map { it.setNumber to it.quantity })
         assertEquals(2, ablage.offene().first())
@@ -77,14 +77,14 @@ class OfflineablageTest {
     @Test
     fun `Merkposten und manuelle Teile werden lokal angelegt und geändert`() = runBlocking {
         ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = Zustand.NEU, userId = 7)))
-        ablage.puffere(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("20002-1", Zustand.GEBRAUCHT, 7)))
+        ablage.puffere(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest(setNumber = "20002-1", condition = Zustand.GEBRAUCHT, ownerUserId = 7)))
         ablage.puffere(Bearbeitung.MerkpostenLoeschen("20001-1", Zustand.NEU, 7))
         assertEquals(listOf("20002-1|U|7"),
             ablage.lies(Faecher.MERKLISTE)!!.liste.map { "${it.setNumber}|${it.condition.kennung}|${it.userId}" })
 
         ablage.uebernimm(Faecher.MANUELLE_TEILE, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 4, userId = 7)))
         ablage.puffere(Bearbeitung.TeilAendern("3001", 5, UpdateManualItemRequest(quantity = 9), 7))
-        ablage.puffere(Bearbeitung.TeilErfassen(AddPartRequest("3002", colorId = 1, quantity = 2)))
+        ablage.puffere(Bearbeitung.TeilErfassen(AddPartRequest(partNumber = "3002", colorId = 1, quantity = 2)))
         assertEquals(listOf("3002" to 2, "3001" to 9),
             ablage.lies(Faecher.MANUELLE_TEILE)!!.liste.map { it.partNumber to it.quantity })
     }

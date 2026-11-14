@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.offline.AblageformTest
 Rot: jedes Feld von Set, Merkposten und Teil uebersteht die Ablage
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt
-index 4af1a40..69533a8 100644
+index 904a4bd..512b372 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Ablagezeilen.kt
 @@ -123,7 +123,7 @@ internal object Ablagezeilen {
  
-     fun set(z: SetZeile) = SetItem(z.setNumber, z.name, z.year, z.theme, z.pieces, z.minifigs, z.quantity, z.imageUrl,
-         z.imageLocal, z.addedAt, z.condition, z.storage, z.conditions, z.owners.map { KontoName(it.id, it.username) },
--        z.maxPurchasePrice, z.avgPurchasePrice, z.usedCount,
-+        z.avgPurchasePrice, z.maxPurchasePrice, z.usedCount,
-         z.instructions.map { Instruction(it.id, it.url, it.description, it.localPath, it.isManual) },
-         z.bricklink?.let { BrickLinkRef(it.type, it.number, it.url, it.exact, it.resolved) }, z.preisvergleichUrl)
+     fun set(z: SetZeile) = SetItem(setNumber = z.setNumber, name = z.name, year = z.year, theme = z.theme, pieces = z.pieces, minifigs = z.minifigs, quantity = z.quantity, imageUrl = z.imageUrl,
+         imageLocal = z.imageLocal, addedAt = z.addedAt, condition = z.condition, storage = z.storage, conditions = z.conditions, owners = z.owners.map { KontoName(id = it.id, username = it.username) },
+-        maxPurchasePrice = z.maxPurchasePrice, avgPurchasePrice = z.avgPurchasePrice, usedCount = z.usedCount,
++        maxPurchasePrice = z.avgPurchasePrice, avgPurchasePrice = z.maxPurchasePrice, usedCount = z.usedCount,
+         instructions = z.instructions.map { Instruction(id = it.id, url = it.url, description = it.description, localPath = it.localPath, isManual = it.isManual) },
+         bricklink = z.bricklink?.let { BrickLinkRef(type = it.type, number = it.number, url = it.url, exact = it.exact, resolved = it.resolved) }, preisvergleichUrl = z.preisvergleichUrl)
  

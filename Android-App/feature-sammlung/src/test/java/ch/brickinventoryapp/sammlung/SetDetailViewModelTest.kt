@@ -108,7 +108,7 @@ class SetDetailViewModelTest {
 
     @Test
     fun `eine geaenderte Menge steht sofort da und in der Ablage`() {
-        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1", quantity = 1))) }
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1", quantity = 1))) }
         val vm = vm()
         geladen(vm)
         serverHatDanachDrei()
@@ -137,7 +137,7 @@ class SetDetailViewModelTest {
 
     @Test
     fun `ein geaenderter Kauf eines anderen Sets laedt hier nichts, einer dieses Sets schon`() {
-        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem("75192-1"), SetItem("10294-1"))) }
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1"), SetItem(setNumber = "10294-1"))) }
         val vm = vm()
         geladen(vm)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size

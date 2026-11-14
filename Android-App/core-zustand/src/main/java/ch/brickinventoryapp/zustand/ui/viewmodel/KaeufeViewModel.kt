@@ -6,7 +6,7 @@ import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.model.fach.KEINE_FARBE
-import ch.brickinventoryapp.vertrag.UpdateAcquisitionRequest
+import ch.brickinventoryapp.vertrag.aenderungFuerStueck
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -156,7 +156,7 @@ class KaeufeViewModel @Inject constructor(
         unitPrice: Double?, condition: Zustand?, quantity: Int?, date: String?,
     ) {
         viewModelScope.launch {
-            val req = UpdateAcquisitionRequest.fuerStueck(preis = unitPrice, condition = condition,
+            val req = aenderungFuerStueck(preis = unitPrice, condition = condition,
                                                           quantity = quantity, date = date)
             val r = if (type == Postenart.FIG) haushalt.updateFigAcquisition(id, acqId, req)
                     else haushalt.updatePartAcquisition(id, colorId, acqId, req)
@@ -190,7 +190,7 @@ class KaeufeViewModel @Inject constructor(
         toUserId: Int, onDone: (String?, Int, Int) -> Unit,
     ) {
         viewModelScope.launch {
-            val req = UpdateAcquisitionRequest.fuerStueck(ownerUserId = toUserId)
+            val req = aenderungFuerStueck(ownerUserId = toUserId)
             val r = when (type) {
                 Postenart.SET -> haushalt.updateAcquisition(id, acqId, ownerUserId = toUserId)
                 Postenart.FIG -> haushalt.updateFigAcquisition(id, acqId, req)

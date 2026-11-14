@@ -9,6 +9,7 @@ import ch.brickinventoryapp.vertrag.HouseholdInviteResponse
 import ch.brickinventoryapp.vertrag.HouseholdMembersResponse
 import ch.brickinventoryapp.vertrag.HouseholdStatusResponse
 import ch.brickinventoryapp.vertrag.UpdateAcquisitionRequest
+import ch.brickinventoryapp.vertrag.aenderungFuerSet
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -63,8 +64,8 @@ class HaushaltRepositoryImpl @Inject constructor(
                                   condition: Zustand?, quantity: Int?, date: String?,
                                   ownerUserId: Int?): Ergebnis<GenericResponse> =
         sicherAufrufen { api.updateAcquisition(setNumber, acqId,
-            // fuerSet(): Sets tragen den Preis als `purchase_price` — Erklärung am Modell.
-            UpdateAcquisitionRequest.fuerSet(purchasePrice, condition, quantity, date, ownerUserId)) }
+            // aenderungFuerSet(): Sets tragen den Preis als `purchase_price`.
+            aenderungFuerSet(purchasePrice, condition, quantity, date, ownerUserId)) }
 
     override suspend fun deleteAcquisition(setNumber: String, acqId: Int): Ergebnis<GenericResponse> =
         sicherAufrufen { api.deleteAcquisition(setNumber, acqId) }

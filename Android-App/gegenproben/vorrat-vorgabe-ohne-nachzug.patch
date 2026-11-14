@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.data.AlarmUndVorratAblageTest
 Rot: Anlegen, Umbenennen und der Stern aendern den Vorrat in der Ablage
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
-index fc1caf6..22e7a7d 100644
+index ec69751..ece98d8 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
 @@ -180,7 +180,7 @@ internal object LokaleAnwendung {
-             if (liste.any { it.ort.id == b.ort.id }) liste else liste + VorratsOrt(b.ort, vorgabe = false)
+             if (liste.any { it.ort.id == b.ort.id }) liste else liste + VorratsOrt(ort = b.ort, vorgabe = false)
          is Nachzug.LagerortUmbenannt -> liste.map { if (it.ort.id == b.neu.id) it.copy(ort = b.neu) else it }
          is Nachzug.LagerortGeloescht -> liste.filterNot { it.ort.id == b.id }
 -        is Nachzug.LagerortVorgabe -> liste.map { it.copy(vorgabe = it.ort.id == b.id) }

@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.sammlung.SetDetailViewModelTest
 Rot: eine geaenderte Menge steht sofort da und in der Ablage
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
+index ec44476..aa681d0 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
-@@ -58,7 +58,7 @@
+@@ -45,7 +45,7 @@ class SetsRepositoryImpl @Inject constructor(
  
      override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<GenericResponse> =
          // Der Server kann deckeln (fremde Exemplare bleiben): Es gilt seine Zahl.
 -        ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
 +        ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, quantity).takeIf { r.success } }) {
-             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
+             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity = quantity, quantityDelta = null, purchasePrice = purchasePrice, condition = condition)) }
          }
  

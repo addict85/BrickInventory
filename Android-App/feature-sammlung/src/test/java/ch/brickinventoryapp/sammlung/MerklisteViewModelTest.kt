@@ -189,8 +189,8 @@ class MerklisteViewModelTest {
         vm.setzeMerklisteSuche("10294")
         uhr.advanceTimeBy(400)
         assertTrue("Suche geladen", vm.merklisteState.value.merkposten.isNotEmpty())
-        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("99999-1", Zustand.NEU, 1))) }
-        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest("10294-1", Zustand.GEBRAUCHT, 1))) }
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest(setNumber = "99999-1", condition = Zustand.NEU, ownerUserId = 1))) }
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest(setNumber = "10294-1", condition = Zustand.GEBRAUCHT, ownerUserId = 1))) }
         uhr.advanceTimeBy(100)
         assertEquals("die Suche filtert auch offline Angelegtes", listOf("10294-1|U", "10294-1|N"),
             vm.merklisteState.value.merkposten.map { "${it.setNumber}|${it.condition.kennung}" })

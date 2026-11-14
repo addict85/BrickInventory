@@ -463,11 +463,12 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `scheitert die Kopplung mit einem anderen Server, steht der Fehler da und die Anmeldung bleibt`() {
-        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Code abgelaufen"}"""
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Code abgelaufen","code":"qr_abgelaufen"}"""
+        pfade.codes["/api/v1/auth/qr-login"] = 410
         t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://neu.example", "einmalig")
-        assertEquals("Code abgelaufen", vm.anmeldeState.value.loginError)
+        assertEquals("Fehler des Servers (Satz bildet AppTexte)", "fehler", vm.anmeldeState.value.loginError)
         assertEquals(listOf("ziel:https://neu.example", "ziel:null"), ablage.protokoll.toList())
         assertTrue(t.sitzung.state.value.isLoggedIn)
     }

@@ -189,7 +189,7 @@ class TeilelisteViewModel @Inject constructor(
     private fun exportAuftrag(sets: List<PlSet>, parts: List<PlPart>): PdfAuftragAnfrage {
         val serverUrl = sitzung.state.value.serverUrl.trimEnd('/')
         return PdfAuftragAnfrage(
-            sets = sets.map { PdfAuftragSet(it.setNumber, it.name) },
+            sets = sets.map { PdfAuftragSet(setNumber = it.setNumber, name = it.name) },
             parts = parts.map { p ->
                 val imgUrl = p.imageUrl ?: ""
                 PdfAuftragTeil(partNumber = p.partNumber, blPartNumber = p.blPartNumber ?: p.partNumber, partName = p.partName,

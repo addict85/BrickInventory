@@ -53,7 +53,12 @@ class GalerieTest {
     private fun kurz(l: List<SetAnsicht>) = l.map { "${it.setNumber}x${it.quantity}" }
 
     /** Die Quelle je Thema; [aktualisiert] schreibt mit, für welches Thema gefüllt wurde. */
-    private class Quelle(start: Lokal<SetItem> = Lokal(listOf(SetItem("1-1"), SetItem("2-1", theme = "Star Wars")), 1L)) {
+    private class Quelle(
+        start: Lokal<SetItem> = Lokal(
+            listOf(SetItem(setNumber = "1-1"), SetItem(setNumber = "2-1", theme = "Star Wars")),
+            1L,
+        ),
+    ) {
         val ablage = MutableStateFlow(start)
         val aktualisiert = mutableListOf<String>()
     }

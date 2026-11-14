@@ -185,7 +185,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
       'ch',
       'brickinventoryapp',
       'vertrag',
-      'SetModels.kt',
+      'Vertrag.kt',
     );
     const kt = ohneKommentare(require('node:fs').readFileSync(ktPfad, 'utf8'));
     const ab = kt.indexOf('data class AddSetResponse(');
