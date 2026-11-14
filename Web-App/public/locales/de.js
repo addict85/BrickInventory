@@ -1680,6 +1680,8 @@ window.I18N_DE = {
   'startup.sitzung_offen': 'Anmeldung konnte nicht geprüft werden',
   'startup.naechster_versuch': 'Neuer Versuch in {sek} s.',
   'settings.zugang_entfernt': 'Zugang entfernt – die Felder sind leer.',
+  'startup.gedrosselt_titel': 'Zu viele Anfragen',
+  'startup.gedrosselt_text': 'Der Server nimmt gerade keine weiteren Anfragen an. Neuer Versuch in {sek} s.',
   'settings.bl.ck': 'Anwendungsschlüssel (Consumer Key)',
   'settings.bl.cs': 'Anwendungsgeheimnis (Consumer Secret)',
   'settings.bl.tv': 'Zugangsschlüssel (Token Value)',

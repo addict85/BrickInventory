@@ -1651,6 +1651,8 @@ window.I18N_EN = {
   'startup.sitzung_offen': 'Could not check your sign-in',
   'startup.naechster_versuch': 'Retrying in {sek} s.',
   'settings.zugang_entfernt': 'Access removed – the fields are empty.',
+  'startup.gedrosselt_titel': 'Too many requests',
+  'startup.gedrosselt_text': 'The server is not accepting further requests right now. Trying again in {sek} s.',
   'settings.bl.ck': 'Consumer key',
   'settings.bl.cs': 'Consumer secret',
   'settings.bl.tv': 'Token value',
