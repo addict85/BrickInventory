@@ -77,7 +77,7 @@
  *      und Systemrolle dürfen …“ und „der Zeilenschutz gilt …“ (permission denied)
  *
  *   Kontotabellen (14.11.2026, je einzeln):
- *   AD in 0114 die Schleife über die Rollen gestrichen → rot: „… schon nach der
+ *   AD in 0115 die Schleife über die Rollen gestrichen → rot: „… schon nach der
  *      Migration“ (SELECT password_hash gelingt der Laufzeitrolle)
  *   AE in app-rolle.sh den Block für users/user_sessions gestrichen → rot: „… und
  *      nach jedem Lauf von app-rolle.sh …“ (GRANT ON ALL TABLES gibt beides zurück)
@@ -409,7 +409,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
   };
 
   await t.test('Passwort-Hashes und Sitzungen liest nur die Systemrolle, schon nach der Migration', async () => {
-    // „neue Installation“ hat migriert, ohne app-rolle.sh danach: Das leistet Migration 0114 allein.
+    // „neue Installation“ hat migriert, ohne app-rolle.sh danach: Das leistet Migration 0115 allein.
     await kontotabellenPruefen(neu);
   });
 

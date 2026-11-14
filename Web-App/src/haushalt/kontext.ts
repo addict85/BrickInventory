@@ -13,7 +13,7 @@ export interface HaushaltAbhaengigkeiten {
   einstellungen: EinstellungenDienste;
 }
 
-// Einladungen sieht nur ihr Konto (0114); wer einlöst, gehört nicht dazu, Aufräumen gilt allen.
+// Einladungen sieht nur ihr Konto (0115); wer einlöst, gehört nicht dazu, Aufräumen gilt allen.
 const FREMDE_EINLADUNG = 'Einlösen: Die Einladung gehört dem einladenden Konto';
 export const zugang = (db: Db) => ({
   repository: bindeJeFunktion(db, repository, 'haushalt', {

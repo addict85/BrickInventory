@@ -31,8 +31,8 @@
  *   S  pdfAuftraege wieder ganz mit bindeImSystemrahmen und ohne `AND user_id = $2`
  *      in pdfAuftragZeile → rot: „ein PDF-Auftrag eines fremden Kontos …“
  *
- * Gegenprobe Zugangsdaten nur des eigenen Kontos (Migration 0113, 14.11.2026 gemessen):
- *   T  in 0113 wieder `user_id = ANY (zeilenschutz_konten())` statt `= zeilenschutz_konto()`
+ * Gegenprobe Zugangsdaten nur des eigenen Kontos (Migration 0114, 14.11.2026 gemessen):
+ *   T  in 0114 wieder `user_id = ANY (zeilenschutz_konten())` statt `= zeilenschutz_konto()`
  *      → rot: „Zugangsdaten des Unterkontos bleiben …“ (A sah den Passkey von B)
  *
  * Gegenproben Zeilenschutz (13.11.2026, vor der Systemrolle):

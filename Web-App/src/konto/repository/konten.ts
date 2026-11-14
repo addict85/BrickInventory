@@ -29,7 +29,7 @@ export function kontoKurz(db: DbSchnittstelle, id: number): Promise<KontoKurz | 
   return db.get('SELECT id, username, is_admin, must_change_password FROM users WHERE id = $1', [id]);
 }
 
-/** Alles ausser dem Passwort-Hash: Den liest die Laufzeitrolle nicht (Migration 0114). */
+/** Alles ausser dem Passwort-Hash: Den liest die Laufzeitrolle nicht (Migration 0115). */
 const KONTO_SPALTEN = `id, username, email, first_name, last_name, is_admin, is_active, email_verified,
   must_change_password, created_at, sitzungs_version, registrierung_offen, email_neu`;
 

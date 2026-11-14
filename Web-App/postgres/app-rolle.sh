@@ -283,7 +283,7 @@ BEGIN
   END LOOP;
 
   -- Passwort-Hashes und Sitzungen liest nur die Systemrolle (Anmeldung, Sitzungsspeicher);
-  -- eine eingeschleuste Abfrage der Laufzeitrolle kommt an beides nicht (Migration 0114).
+  -- eine eingeschleuste Abfrage der Laufzeitrolle kommt an beides nicht (Migration 0115).
   -- Kopien vor Migrationen ohne Policy: sichtbar nur für Systemrolle und Eigentümerin.
   IF pg_catalog.to_regclass('public.users') IS NOT NULL THEN
     EXECUTE pg_catalog.format('REVOKE SELECT ON public.users FROM %I', rolle);

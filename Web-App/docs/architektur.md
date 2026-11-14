@@ -124,7 +124,7 @@ je Konto, Zugangsdaten wie `api_tokens`, `passkeys`, `zweiter_faktor`, Aufträge
 sieht und ändert die Laufzeitrolle nur Zeilen von `app.konto` und dessen direkten
 Unterkonten, ohne Konto keine. Zugangsdaten (Passkeys, zweiter Faktor, Tokens,
 Geräteschlüssel, Schrittfreigaben) sieht nur das Konto selbst, kein Hauptkonto
-(Migration 0113). Die Datenbankschicht setzt `app.konto` je
+(Migration 0114). Die Datenbankschicht setzt `app.konto` je
 Transaktion (`set_config(…, true)`) aus dem Konto der Anfrage. Den Systemrahmen
 trägt die Systemrolle (`BYPASSRLS`), keine Einstellung.
 
@@ -134,7 +134,7 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
   Rolle aufrufen; wer SQL über die Laufzeitrolle ausführen kann, setzt sich jedes
   Konto und sieht dessen Zeilen. Dagegen schützen nur Parameter statt
   zusammengesetzter Abfragen.
-- Der Haushalt (Migration 0114): `account_links` liest jedes Konto, anlegen darf
+- Der Haushalt (Migration 0115): `account_links` liest jedes Konto, anlegen darf
   nur der Systemrahmen, lösen nur ein beteiligtes Konto; `account_link_invites`
   und `household_former_links` sieht nur ein beteiligtes Konto.
 - Ohne Zeilenschutz sind `users`, `verwaltungsprotokoll`, `rate_limit_attempts`,

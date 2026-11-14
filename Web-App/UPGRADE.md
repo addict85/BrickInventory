@@ -2075,12 +2075,12 @@ wird). Hinweise:
 
 <a id="runde-24"></a>
 
-## 60. Runde 24 – Zugangsdaten, Kontotabellen, Proxy, Passwörter (Migrationen 0113–0115)
+## 60. Runde 24 – Zugangsdaten, Kontotabellen, Proxy, Passwörter (Migrationen 0114–0116)
 
-- **Zugangsdaten nur für das eigene Konto (0113):** Passkeys, zweiter Faktor,
+- **Zugangsdaten nur für das eigene Konto (0114):** Passkeys, zweiter Faktor,
   Tokens, Geräteschlüssel und Schrittfreigaben sieht die Laufzeitrolle nur noch für
   das Konto der Anfrage, nicht mehr für dessen Unterkonten. Nichts zu tun.
-- **Passwort-Hashes und Sitzungen nur über die Systemrolle (0114):** Die
+- **Passwort-Hashes und Sitzungen nur über die Systemrolle (0115):** Die
   Laufzeitrolle `brickinventory_app` liest `users.password_hash` nicht mehr und
   `user_sessions` gar nicht; Anmeldung und Sitzungsspeicher laufen über
   `brickinventory_system`. Die Migration setzt die Rechte selbst, `db-rolle`
@@ -2088,7 +2088,7 @@ wird). Hinweise:
   Werkzeuge mit der Laufzeitrolle auf diese Spalte oder die Sitzungstabelle
   zugreifen lässt, nimmt dafür die Systemrolle. Ohne Docker mit getrennten Rollen:
   nach dem Update einmal `postgres/app-rolle.sh` ausführen.
-- **Haushalt (0114):** `account_links`, `account_link_invites` und
+- **Haushalt (0115):** `account_links`, `account_link_invites` und
   `household_former_links` stehen unter Zeilenschutz. Kopien vor Migrationen
   (`vor_migration_*`) liest die Laufzeitrolle nicht mehr. Nichts zu tun.
 - **Proxy-Netze nur noch klein oder bestätigt — vor dem Update prüfen:**
@@ -2099,7 +2099,7 @@ wird). Hinweise:
   Proxys eintragen (README.md, „Proxy vor Caddy“); wer das Netz wirklich braucht,
   setzt zusätzlich `PROXY_NETZ_BESTAETIGT=1` in `.env` (höchstens `/16` bzw.
   `/64` wie bisher). Wer nur Adressen oder `keiner` eingetragen hat: nichts zu tun.
-- **Verwalter setzt Passwort oder zweiten Faktor zurück (0115):** Danach enden
+- **Verwalter setzt Passwort oder zweiten Faktor zurück (0116):** Danach enden
   alle Anmeldungen und App-Tokens des Kontos, auch beim zweiten Faktor (bisher nur
   beim Passwort). Ist das Konto selbst Verwalter (oder hat es die Rolle in den
   letzten 24 Stunden verloren), gilt die Änderung **erst nach 24 Stunden**: Das
