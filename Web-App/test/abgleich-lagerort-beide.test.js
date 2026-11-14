@@ -526,13 +526,15 @@ test('App: gespeichert wird beim Tippen, die Ruhezeit lebt im ViewModel', () => 
 
 test('App: Filter neben dem Kontofilter, beim Anmelden zurückgesetzt, nicht im Speicher der vollen Liste', () => {
   assert.match(KT_SCOPE, /fun lagerAsQuery/, 'Der App fehlt die Umsetzung in den Parameter');
-  const i = KT_SCOPE.indexOf('suspend fun resetAll');
+  // Beide Filter liegen nur im Speicher, in derselben Tabelle; resetAll leert sie ganz.
+  const i = KT_SCOPE.indexOf('fun resetAll');
   assert.ok(i > 0, 'resetAll nicht gefunden');
   assert.match(
-    KT_SCOPE.slice(i, KT_SCOPE.indexOf('\n    /**', i)),
-    /remove\(lagerKey\(view\)\)/,
-    'Die App setzt den Lagerortfilter beim Anmelden nicht zurück',
+    KT_SCOPE.slice(i, KT_SCOPE.indexOf('\n    }', i)),
+    /werte\.value = emptyMap\(\)/,
+    'Die App setzt die Filter beim Anmelden nicht zurück',
   );
+  assert.match(KT_SCOPE, /fun setLager[^}]*werte\.update/, 'Der Lagerortfilter liegt nicht neben dem Kontofilter');
   // Sets filtert die Ablage selbst; Teile mit Lagerort gehen über die Serversicht (Kontosicht).
   const KT_SETS_REPO = lies(
     path.join(
