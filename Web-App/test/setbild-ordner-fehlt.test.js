@@ -4,7 +4,7 @@
  * Bild endete mit ENOENT auf der .teil-Datei.
  *
  * Gegenprobe (11.11.2026 gemessen):
- *   A  in src/katalog/bilder/setImages.ts das mkdir vor dem Schreiben gestrichen
+ *   A  in src/bilder/setImages.ts das mkdir vor dem Schreiben gestrichen
  *      → rot: „das Bild landet, auch wenn der Ordner fehlt“ (null statt Pfad)
  */
 const test = require('node:test');
@@ -18,7 +18,7 @@ const tls = require('node:tls');
 const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'setbild-ordner-'));
 process.env.APP_ROOT = wurzel;
 const _req = require('./helpers/sources').buildAndRequire();
-const { downloadSetImage } = _req('src/katalog/bilder/setImages.js');
+const { downloadSetImage } = _req('src/bilder/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 const FIX = path.join(__dirname, 'fixtures');

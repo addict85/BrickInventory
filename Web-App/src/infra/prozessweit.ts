@@ -11,6 +11,9 @@ export const GRUENDE = {
   tokenSperre: 'Abkürzung der Fehlversuchssperre je Adresse; gezählt wird in der Datenbank',
   haushaltGedaechtnis:
     'je Zugang über den Schlüssel (das db-Objekt, auch einer Transaktion): Die Haushaltsdienste nehmen db, nicht k',
+  bildCacheZuwachs: 'der Bildcache ist ein Ordner auf der Platte dieses Rechners, gleich welcher Zugang ihn füllt',
+  importProzess: 'Pfad des Import-Skripts, das dieser Prozess als Kind startet; gesetzt vom Einstieg (jobs/)',
+  platzhalterBild: 'Inhalt einer Datei aus public/, für jeden Zugang derselbe und beim Blättern dutzendfach gebraucht',
 } as const;
 
 const faecher = new Faecher();

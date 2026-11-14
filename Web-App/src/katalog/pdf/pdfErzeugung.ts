@@ -1,6 +1,5 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { bilderAusKatalog as katalogbilder } from '../bildlage';
 import { MINIFIG_IMAGES_DIR } from '../../infra/appPaths';
 import { logAndContinue, meldeFehler } from '../../infra/fehler';
 import { pdfDateiPfad, type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../../auftraege';
@@ -20,8 +19,8 @@ const cdnAdresse = (url: string) => {
   return roh ? decodeURIComponent(roh) : url;
 };
 
-/** Nur geprüfte Bildquellen aus dem Katalog (src/katalog/bildlage.ts). */
-export const bilderAusKatalog = (k: KatalogKontext, parts: PdfTeil[]) => katalogbilder(k, parts, istFigur);
+/** Nur geprüfte Bildquellen aus dem Katalog (src/bilder/bildlage.ts). */
+export const bilderAusKatalog = (k: KatalogKontext, parts: PdfTeil[]) => k.bilder.bilderAusKatalog(parts, istFigur);
 
 async function figurenOhneAdresse(k: KatalogKontext, parts: PdfTeil[]) {
   for (const p of parts.filter(

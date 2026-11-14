@@ -30,7 +30,7 @@ function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
       ['Papierkorb', k.bestand.raeumePapierkorbAuf],
       ['PDF-Aufträge', k.auftraege.cleanOldPdfJobs],
       ['alte Aufträge', k.auftraege.raeumeErledigteAuf],
-      ['verfallene Bildwünsche', k.katalog.loescheVerfallene],
+      ['verfallene Bildwünsche', k.katalog.bilder.loescheVerfallene],
       ['Idempotenzschlüssel', k.idempotenz.raeumeIdempotenzAuf],
     ],
     lauf,

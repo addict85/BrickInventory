@@ -27,6 +27,7 @@ export function baueApiRouter(
     | 'haushalt'
     | 'konto'
     | 'katalog'
+    | 'bilder'
     | 'finanzen'
     | 'bestand'
     | 'sets'

@@ -5,7 +5,7 @@
  * die lokal abgelegten Bilder, obwohl sie die Proxy-Adresse anfragt.
  *
  * Gegenprobe (09.11.2026 gemessen): in bildDurchreichen()
- * (src/katalog/http/bildProxy.ts) die Zeile mit ausSetBildern() gestrichen →
+ * (src/bilder/http/bildProxy.ts) die Zeile mit ausSetBildern() gestrichen →
  * rot: „das Original kommt aus images/sets, nicht aus dem Proxy-Cache“ und
  * „mit thumb=1 kommt die lokale Vorschau …“ (je der Inhalt des Caches) sowie
  * „ohne Proxy-Cache und über der Drossel …“ (429 statt 200).
@@ -22,10 +22,10 @@ const _req = require('./helpers/sources').buildAndRequire();
 test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
   const express = require('express');
   const bildDurchreichen = (...a) =>
-    _req('src/katalog/http/bildProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
+    _req('src/bilder/http/bildProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
   // Ein Objekt für alle Bereiche (test/helpers/sources.js): die Methode darin ersetzen.
   const nacharbeit = require('./helpers/sources').testNacharbeit();
-  const { proxyAdresse, proxyCacheSchluessel } = _req('src/katalog/bilder/images.js');
+  const { proxyAdresse, proxyCacheSchluessel } = _req('src/bilder/images.js');
   const { DATA_DIR, SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
   const vorher = nacharbeit.bildVormerken;

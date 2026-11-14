@@ -1,11 +1,11 @@
-import { fehlertext } from '../../infra/fehler';
-import { konfig } from '../../infra/konfig';
+import { fehlertext } from '../infra/fehler';
+import { konfig } from '../infra/konfig';
 import path from 'node:path';
 import fs from 'node:fs';
-import { AbrufFehler } from '../../infra/abruf';
-import { holeBild, BILD_KOPFZEILEN } from '../../fremdquellen';
-import { SET_IMAGES_DIR } from '../../infra/appPaths';
-import { mitVersion } from '../../infra/setNummer';
+import { AbrufFehler } from '../infra/abruf';
+import { holeBild, BILD_KOPFZEILEN } from '../fremdquellen';
+import { SET_IMAGES_DIR } from '../infra/appPaths';
+import { mitVersion } from '../infra/setNummer';
 
 // Set-Bilder vom CDN holen; hier statt im Router, damit die Aufrufer echt importieren.
 
@@ -55,7 +55,7 @@ export async function downloadSetImage(url: string, setNumber: string, info?: { 
       r => {
         if (r.status === 200) return r.koerper;
         // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
-        // echten Code gilt es in src/katalog/bilder/bildbedarfLauf.ts als vorübergehend.
+        // echten Code gilt es in src/bilder/bildbedarfLauf.ts als vorübergehend.
         const nichtVorhanden = r.status === 404 || r.status === 410;
         (nichtVorhanden ? console.warn : console.error)(
           `[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`,

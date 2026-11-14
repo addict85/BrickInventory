@@ -7,7 +7,7 @@ import type { Dienste } from '../src/dienste';
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
 const bearbeiter = (
-  d: Pick<Dienste, 'auftraege' | 'katalog' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
+  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
 ): Bearbeitertabelle => ({
   nacharbeit: {
     ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k),
@@ -32,7 +32,7 @@ const bearbeiter = (
   wechselkurse: { ausfuehren: (_n, k) => d.finanzen.kursauftrag(undefined, k) },
   anleitung: { ausfuehren: (n, k) => d.katalog.anleitungLaden(n, k), exklusiv: true },
   brickset: { ausfuehren: (n, k) => d.katalog.bricksetNachlauf(n, k), exklusiv: true },
-  bildbedarf: { ausfuehren: (_n, k) => d.katalog.bildbedarfAbarbeiten(k), exklusiv: true },
+  bildbedarf: { ausfuehren: (_n, k) => d.bilder.bildbedarfAbarbeiten(k), exklusiv: true },
   bilder_neu_laden: {
     ausfuehren: async (_n, k) => {
       await d.katalog.redownloadMissingImages(k);
@@ -55,7 +55,7 @@ setzeImportProzess(path.join(__dirname, 'csvImportWorker.js'));
 let _worker: ReturnType<typeof erzeugeWorker> | null = null;
 
 function starteAuftragsWorker(
-  d: Pick<Dienste, 'auftraege' | 'katalog' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
+  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
   o: WorkerOptionen & { arten?: AuftragsArt[] } = {},
 ) {
   if (_worker) return _worker;

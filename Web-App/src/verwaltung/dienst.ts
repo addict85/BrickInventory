@@ -189,7 +189,7 @@ export async function zeitplanNeuPlanen(k: VerwaltungKontext) {
  * werden mitgezählt. */
 export async function katalogBilderEinreihen(kx: VerwaltungKontext, alleErneut: boolean) {
   const zuVergessen = await (alleErneut ? kx.verwaltung.setFehlanzeigen() : kx.verwaltung.setFehlanzeigenOhne404());
-  const verworfen = zuVergessen.length ? await kx.katalog.vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
+  const verworfen = zuVergessen.length ? await kx.katalog.bilder.vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
   // Was schon fertig ist, wird nicht wieder eingereiht.
   const vorhanden: Set<string> = new Set();
   try {
@@ -220,8 +220,8 @@ export async function katalogBilderEinreihen(kx: VerwaltungKontext, alleErneut: 
 
   let neuEingereiht = 0;
   if (offenUrls.length) {
-    neuEingereiht = await kx.katalog.katalogBilderVormerken(offenUrls, offenSets);
-    await kx.katalog.bildbedarfAnstossen();
+    neuEingereiht = await kx.katalog.bilder.katalogBilderVormerken(offenUrls, offenSets);
+    await kx.katalog.bilder.bildbedarfAnstossen();
   }
   const offen = await kx.verwaltung.offeneBildauftraege();
   // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
@@ -245,7 +245,7 @@ export async function bildFehlanzeigenVergessen(
   const v = k.verwaltung;
   const schluessel = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setFehlanzeigen()).map(r => r.cache_key);
   if (vorschauen) schluessel.push(...(await v.vorschauFehlanzeigen()).map(r => r.cache_key));
-  return schluessel.length ? k.katalog.vergissFehlend(schluessel) : 0;
+  return schluessel.length ? k.katalog.bilder.vergissFehlend(schluessel) : 0;
 }
 
 export function serverProtokollSeit(k: VerwaltungKontext, minuten: number) {

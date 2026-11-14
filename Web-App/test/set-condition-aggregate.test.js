@@ -463,7 +463,7 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   // Ohne IPv6-Route liefen Bildabrufe stumm bis zur Frist. Der Set-Bild-Download
   // beim Import geht über den gemeinsamen Abrufhelfer; dass der und der Pool
   // der Bild-CDNs IPv4 erzwingen, prüft der Test darunter am laufenden Code.
-  const setsFile = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
+  const setsFile = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
     /await hole(?:Https|Bild)\(url, \{/,
@@ -509,7 +509,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
     src.indexOf('for (const f of figsToFetch) {'),
   );
   // UMFORMULIERT in: Geprüft wurde der WORTLAUT der Zeile
-  //     const { generateThumb } = require('./src/katalog/bilder/thumbs');
+  //     const { generateThumb } = require('./src/bilder/thumbs');
   // Beim Umbau der späten require() auf echte import-Anweisungen wurde daraus
   // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre …
   assert.match(src, /generateThumb/, 'generateThumb ist in server.ts nicht mehr verfügbar');

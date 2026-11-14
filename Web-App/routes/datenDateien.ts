@@ -18,7 +18,7 @@ function alsAnhang(res: Response, datei: string): void {
   res.attachment(path.basename(datei));
 }
 
-export function baueDatenDateienRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'katalog'>) {
+export function baueDatenDateienRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'bilder'>) {
   const { eingangsSperre, requireLoginOrToken } = waechterFuer(d.konto);
   const router = express.Router();
 
@@ -53,7 +53,7 @@ export function baueDatenDateienRouter(d: Pick<Dienste, 'haushalt' | 'konto' | '
     async (req: WildcardRequest, res: Response) => {
       const segmente = pfadSegmente(req, 'pfad');
       const filePath = safeDataPath('instructions', segmente);
-      if (!filePath || !(await d.katalog.anleitungFreigegeben(angemeldeteNutzerId(req), segmente)))
+      if (!filePath || !(await d.bilder.anleitungFreigegeben(angemeldeteNutzerId(req), segmente)))
         return res.status(404).send('Datei nicht gefunden');
       alsAnhang(res, filePath);
       liefereDatei(res, filePath);

@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { logAndContinue } from '../../infra/fehler';
-import { setBildLokalEintragen } from '../bildlage';
+import { logAndContinue } from '../infra/fehler';
+import { setBildLokalEintragen } from './bildlage';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
-import { SET_IMAGES_DIR } from '../../infra/appPaths';
-import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../../auftraege';
+import { SET_IMAGES_DIR } from '../infra/appPaths';
+import { AuftragUnterbrochen, AuftragVerschieben, type AuftragsKontext } from '../auftraege';
 import {
   STAPEL,
   TAKT_MS,
@@ -18,13 +18,13 @@ import {
   anfragenJeMinute,
   nimmBildwuensche,
 } from './bildbedarf';
-import { versuche } from '../../infra/ergebnis';
-import type { KatalogKontext } from '../kontext';
+import { versuche } from '../infra/ergebnis';
+import type { BilderKontext } from './kontext';
 
 /** Über den Proxy angefragte Bilder im HINTERGRUND lokal ablegen, samt
  * Vorschau — damit die Anfrage selbst nie auf das CDN wartet. */
 
-/** Abstand zwischen zwei Arbeitsschritten (siehe STAPEL in src/katalog/bilder/bildbedarf.ts). */
+/** Abstand zwischen zwei Arbeitsschritten (siehe STAPEL in src/bilder/bildbedarf.ts). */
 const VERZOEGERUNG_MIN_MS = 500;
 const VERZOEGERUNG_MAX_MS = 1000;
 
@@ -46,28 +46,26 @@ function pause(): number {
   return VERZOEGERUNG_MIN_MS + Math.floor(Math.random() * (VERZOEGERUNG_MAX_MS - VERZOEGERUNG_MIN_MS));
 }
 
-/** Modulweit statt je Stapel, damit auch der erste Schritt eines Folgestapels
- * Abstand hält; prozesslokal, weil er DIESEN Prozess drosselt. */
-let _letzteArbeit = 0;
-
-/** Vor dem ALLERERSTEN Schritt wird nicht gewartet — der Ablauf soll nicht künstlich später beginnen. */
-async function pauseVorArbeit(): Promise<void> {
+/** Je Satz Dienste statt je Stapel, damit auch der erste Schritt eines Folgestapels
+ * Abstand hält. Vor dem ALLERERSTEN Schritt wird nicht gewartet. */
+async function pauseVorArbeit(k: BilderKontext): Promise<void> {
+  const takt = k.faecher.fach('bildbedarf:letzteArbeit', () => ({ am: 0 }));
   const soll = pause();
-  if (_letzteArbeit) {
-    const seit = Date.now() - _letzteArbeit;
+  if (takt.am) {
+    const seit = Date.now() - takt.am;
     if (seit < soll) await warte(soll - seit);
   }
-  _letzteArbeit = Date.now();
+  takt.am = Date.now();
 }
 
 /** Ein Fehlschlag wird gemerkt, sonst kostet jede nicht lesbare Datei bei
  * jedem Durchgang einen vergeblichen Lauf. */
-async function vorschauErzeugen(k: KatalogKontext, relPfad: string, schluessel: string): Promise<boolean> {
-  if (istBekanntFehlend('thumb:' + schluessel)) return false;
+async function vorschauErzeugen(k: BilderKontext, relPfad: string, schluessel: string): Promise<boolean> {
+  if (istBekanntFehlend(k, 'thumb:' + schluessel)) return false;
   // Auch ein Fehler wird gemerkt: Die Datei käme sonst bei jedem Durchgang wieder.
   const r = await versuche('bild-job:generateThumb', () => k.bildwerk.vorschauErzeugen(relPfad));
   const ok = r.ok && !!r.wert;
-  if (!ok) merkeFehlend('thumb:' + schluessel, 'Vorschau konnte nicht erzeugt werden');
+  if (!ok) merkeFehlend(k, 'thumb:' + schluessel, 'Vorschau konnte nicht erzeugt werden');
   return ok;
 }
 
@@ -84,6 +82,8 @@ export type StapelErgebnis = {
   bekanntFehlend: number;
   ohneNummer: number;
   zurueckgelegt: number;
+  /** Bild liegt da, der Eintrag im Katalog scheiterte: Die Oberfläche geht weiter über den Proxy. */
+  ohneEintrag?: number;
   /** Downloads und Verkleinerungen, NICHT angefasste Notizen: Der Takt
    * entscheidet daran, ob er noch einen Stapel nachholt. */
   arbeit: number;
@@ -113,6 +113,7 @@ export function meldung(e: StapelErgebnis): string {
   if (e.bekanntFehlend) teile.push(`${e.bekanntFehlend} als fehlend bekannt`);
   if (e.ohneNummer) teile.push(`${e.ohneNummer} ohne Setnummer`);
   if (e.zurueckgelegt) teile.push(`${e.zurueckgelegt} zurückgelegt`);
+  if (e.ohneEintrag) teile.push(`${e.ohneEintrag} ohne Katalogeintrag`);
   return `${e.gesamt} bearbeitet: ${teile.join(', ')}`;
 }
 
@@ -125,7 +126,7 @@ function merkeLauf(erg: StapelErgebnis): void {
 }
 
 /** Einmal je Takt, nicht je Stapel: Die Kachel liest Minuten, und eine SD-Karte schont das. */
-async function speichereLauf(k: KatalogKontext, erg: StapelErgebnis): Promise<void> {
+async function speichereLauf(k: BilderKontext, erg: StapelErgebnis): Promise<void> {
   // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne await meldete die Kachel „noch
   // nicht gelaufen".
   await k.auftraege
@@ -138,17 +139,17 @@ type StapelStand = { erg: StapelErgebnis; gruende: string[]; etwasZuTun: boolean
 
 /** Die Datei ist da, höchstens die Vorschau fehlt. Bekannt gescheiterte nicht
  * anfassen: Jedes webp-Bild kostete sonst bei JEDEM Durchgang einen Lauf. */
-async function nurVorschau(k: KatalogKontext, setNummer: string, vorschau: string, st: StapelStand): Promise<void> {
+async function nurVorschau(k: BilderKontext, setNummer: string, vorschau: string, st: StapelStand): Promise<void> {
   if (fs.existsSync(vorschau)) {
     st.erg.uebersprungen++;
     return;
   }
-  if (istBekanntFehlend('thumb:' + vorschau)) {
+  if (istBekanntFehlend(k, 'thumb:' + vorschau)) {
     st.erg.bekanntFehlend++;
     return;
   }
   // Auch hier warten: Eine Verkleinerung kostet mehr als ein Download.
-  await pauseVorArbeit();
+  await pauseVorArbeit(k);
   st.arbeit++;
   if (await vorschauErzeugen(k, `/images/sets/${setNummer}.jpg`, vorschau)) {
     st.erg.vorschau++;
@@ -161,7 +162,7 @@ async function nurVorschau(k: KatalogKontext, setNummer: string, vorschau: strin
 
 /** @returns true, wenn das CDN drosselt und der Stapel abbricht */
 async function nachFehlschlag(
-  k: KatalogKontext,
+  k: BilderKontext,
   setNummer: string,
   info: { status?: number },
   st: StapelStand,
@@ -177,7 +178,7 @@ async function nachFehlschlag(
   // NUR ein 404/410 heisst „das Bild gibt es nicht"; Zeitüberschreitungen und Netzaussetzer dürfen ein Bild
   // nicht dauerhaft sperren.
   const hartFehlend = info.status === 404 || info.status === 410;
-  if (hartFehlend) merkeFehlend('set:' + setNummer, `HTTP ${status} vom CDN`);
+  if (hartFehlend) merkeFehlend(k, 'set:' + setNummer, `HTTP ${status} vom CDN`);
   else st.etwasZuTun = true;
   st.erg.nichtGeladen++;
   st.gruende.push(
@@ -188,7 +189,7 @@ async function nachFehlschlag(
   return false;
 }
 
-async function arbeiteStapel(k: KatalogKontext): Promise<StapelErgebnis> {
+async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
   const pause = await k.auftraege.liesPause('bildbedarf');
   if (pause && new Date(pause.bis).getTime() > Date.now()) return erg; // CDN hat gedrosselt, siehe unten
@@ -213,24 +214,25 @@ async function arbeiteStapel(k: KatalogKontext): Promise<StapelErgebnis> {
     if (fs.existsSync(datei)) {
       // kein zweiter Download
       await nurVorschau(k, r.set_number, vorschau, st);
-      await setBildLokalEintragen(k, r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
+      if (!(await versuche('bild-job:setBildLokal', setBildLokalEintragen(k, r.set_number, r.url))).ok)
+        erg.ohneEintrag = (erg.ohneEintrag ?? 0) + 1;
       continue;
     }
 
     // Bekannt fehlende Bilder nicht erst holen, wie der Knopf „Katalogbilder holen" auch.
-    if (istBekanntFehlend('set:' + r.set_number)) {
+    if (istBekanntFehlend(k, 'set:' + r.set_number)) {
       erg.bekanntFehlend++;
       // Den Namen nennen: Ohne Setnummer führt kein Weg zu image-diag.
       st.gruende.push(
         `${r.set_number}: als fehlend bekannt` +
-          (grundFuer('set:' + r.set_number) ? ` (${grundFuer('set:' + r.set_number)})` : ''),
+          (grundFuer(k, 'set:' + r.set_number) ? ` (${grundFuer(k, 'set:' + r.set_number)})` : ''),
       );
       continue;
     }
 
     // Die Pause steht ZWISCHEN zwei Anfragen ans CDN — nicht vor der ersten und nicht für Sets, deren Datei
     // schon da ist.
-    await pauseVorArbeit();
+    await pauseVorArbeit(k);
     st.arbeit++;
 
     const info: { status?: number } = {};
@@ -256,7 +258,8 @@ async function arbeiteStapel(k: KatalogKontext): Promise<StapelErgebnis> {
     // Originaldatei.
     await vorschauErzeugen(k, lokal, vorschau);
     // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
-    await setBildLokalEintragen(k, r.set_number, r.url).catch(logAndContinue('bild-job:setBildLokal'));
+    if (!(await versuche('bild-job:setBildLokal', setBildLokalEintragen(k, r.set_number, r.url))).ok)
+      erg.ohneEintrag = (erg.ohneEintrag ?? 0) + 1;
     erg.geholt++;
   }
   // Zurückgelegte Zeilen sind NICHT bearbeitet.
@@ -275,7 +278,7 @@ async function arbeiteStapel(k: KatalogKontext): Promise<StapelErgebnis> {
 }
 
 /** Der Abbruch hängt an echter Arbeit, nicht an angefassten Notizen. */
-async function taktDurchgang(k: KatalogKontext): Promise<StapelErgebnis> {
+async function taktDurchgang(k: BilderKontext): Promise<StapelErgebnis> {
   const summe = leeresErgebnis();
   while (summe.gesamt < DURCHGANG_MAX_NOTIZEN && summe.arbeit < STAPEL) {
     const e = await arbeiteStapel(k);
@@ -289,6 +292,7 @@ async function taktDurchgang(k: KatalogKontext): Promise<StapelErgebnis> {
     summe.bekanntFehlend += e.bekanntFehlend;
     summe.ohneNummer += e.ohneNummer;
     summe.zurueckgelegt += e.zurueckgelegt;
+    if (e.ohneEintrag) summe.ohneEintrag = (summe.ohneEintrag ?? 0) + e.ohneEintrag;
     if (!e.gesamt) break;
   }
   // Auch ein Takt, der nichts vorfand, ist ein Lebenszeichen für die Kachel.
@@ -297,7 +301,7 @@ async function taktDurchgang(k: KatalogKontext): Promise<StapelErgebnis> {
 }
 
 /** Drosselt das CDN, geht der Auftrag bis zum Ende der Pause zurück in die Tabelle. */
-export async function bildbedarfAbarbeiten(kx: KatalogKontext, k: AuftragsKontext): Promise<void> {
+export async function bildbedarfAbarbeiten(kx: BilderKontext, k: AuftragsKontext): Promise<void> {
   await schreibePuffer(kx);
   for (;;) {
     if (k.beendet) throw new AuftragUnterbrochen();

@@ -68,7 +68,7 @@ const GEMEINSAM = {
     art: KATALOG,
     eingabe: false,
     schreiber: [
-      'src/katalog/repository/bildlage.ts',
+      'src/bilder/repository/bildlage.ts',
       'src/katalog/repository/csvTausch.ts',
       'src/katalog/repository/setStamm.ts',
     ],
@@ -99,7 +99,7 @@ const GEMEINSAM = {
     art: KATALOG,
     eingabe: false,
     schreiber: [
-      'src/katalog/repository/bildlage.ts',
+      'src/bilder/repository/bildlage.ts',
       'src/katalog/repository/csvTausch.ts',
       'src/katalog/repository/setStamm.ts',
     ],
@@ -186,6 +186,7 @@ const BESITZER = {
   ],
   'src/gutscheine': ['gutschein_guthaben_schranke', 'vouchers'],
   'src/haushalt': ['account_link_invites', 'account_links', 'household_former_links'],
+  'src/bilder': ['image_misses', 'image_wanted'],
   'src/fremdquellen': ['api_aufrufe', 'api_takt'],
   'src/idempotenz': ['idempotenz'],
   'src/infra': ['app_logs'],
@@ -194,8 +195,6 @@ const BESITZER = {
     'bl_zuordnung_eigen',
     'catalog_cache',
     'figur_eigen',
-    'image_misses',
-    'image_wanted',
     'minifig_parts_cache',
     'minifigs_catalog',
     'part_catalog',
@@ -251,6 +250,9 @@ const FREMDSCHREIBER = [
   // Teile und Figuren eines Sets: Der Katalog liegt unter dem Bestand und kann ihn nicht rufen.
   'src/katalog/repository/setInhalt.ts → minifigs',
   'src/katalog/repository/setInhalt.ts → parts',
+  // Das Set-Bild im Katalogeintrag: Die Bilder liegen unter dem Katalog und können ihn nicht rufen.
+  'src/bilder/repository/bildlage.ts → rb_sets',
+  'src/bilder/repository/bildlage.ts → set_catalog',
   'src/figuren/repository/manuelleFiguren.ts → minifigs',
   'src/teile/repository/manuelleTeile.ts → parts',
   'src/teile/repository/teilFarbe.ts → parts',

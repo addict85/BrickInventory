@@ -53,7 +53,7 @@ export async function starteJobs(d: Dienste, beides: boolean): Promise<void> {
       { schritt },
       { schluessel: `nachlauf:${schritt}`, nachSekunden, maxVersuche: 3 },
     );
-  if (await d.katalog.offenerBildbedarf()) await d.katalog.bildbedarfAnstossen();
+  if (await d.bilder.offenerBildbedarf()) await d.bilder.bildbedarfAnstossen();
   await d.finanzen.planeKursabruf();
   _worker = starteAuftragsWorker(d);
   void erneuereLebenszeichen(d);

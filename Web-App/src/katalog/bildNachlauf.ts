@@ -1,7 +1,6 @@
 /** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
-import { bilderFuerNachlauf } from './bildlage';
 import { logAndContinue } from '../infra/fehler';
-import { generateThumb } from './bilder/thumbs';
+import { generateThumb } from '../bilder';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
 import { KEINE_FARBE } from '../infra/validate';
 import * as enrich from './teileAnreicherung';
@@ -10,7 +9,7 @@ import { versuche } from '../infra/ergebnis';
 import type { KatalogKontext } from './kontext';
 
 async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<void> {
-  const { sets, teile: manualParts, figuren: figsToFetch } = await bilderFuerNachlauf(kx);
+  const { sets, teile: manualParts, figuren: figsToFetch } = await kx.bilder.bilderFuerNachlauf();
   if (!sets.length && !manualParts.length && !figsToFetch.length) {
     await k.fortschritt({ erledigt: 0, gesamt: 0, text: 'Alle Bilder gecacht' });
     return;

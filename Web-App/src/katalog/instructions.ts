@@ -15,10 +15,10 @@ const PDF_ANFANG = Buffer.from('%PDF-');
 /** Mehrere Quellen, weil keine allein alle Sets führt; aus Bildseiten notfalls
  * ein PDF. */
 
-/** Damit der Takt der Warteschlange nur nach echten Abrufen wartet. */
-let _letzterAbrufWarExtern = false;
-export function letzterAbrufWarExtern(): boolean {
-  return _letzterAbrufWarExtern;
+/** Damit der Takt der Warteschlange nur nach echten Abrufen wartet; je Satz Dienste. */
+const abruf = (k: KatalogKontext) => k.faecher.fach('anleitungen:abruf', () => ({ extern: false }));
+export function letzterAbrufWarExtern(k: KatalogKontext): boolean {
+  return abruf(k).extern;
 }
 
 // Zählen, lesen, löschen an einer Stelle statt verstreut.
@@ -109,14 +109,14 @@ export async function downloadSetInstructions(k: KatalogKontext, setNumber: stri
 
   // Merken, ob ein fremder Server befragt wurde: Der Takt soll nicht an Sets
   // hängen, die längst eine Anleitung haben.
-  _letzterAbrufWarExtern = false;
+  abruf(k).extern = false;
 
   const existing = await anzahlAnleitungen(k, n);
   if (existing > 0) {
     return existing;
   }
 
-  _letzterAbrufWarExtern = true; // ab hier wird wirklich gefragt
+  abruf(k).extern = true; // ab hier wird wirklich gefragt
   const { instrList, bricksetSucceededEmpty } = await anleitungsQuellen(k, n);
 
   if (!instrList.length && bricksetSucceededEmpty && (await bdpRueckfall(k, n, eigenerTakt))) return 1;

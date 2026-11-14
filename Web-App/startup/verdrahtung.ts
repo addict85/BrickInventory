@@ -14,7 +14,8 @@ import { erzeugeMerkliste } from '../src/merkliste';
 import { erzeugeGutscheine } from '../src/gutscheine';
 import { erzeugeSammlung } from '../src/sammlung';
 import { erzeugeVerwaltung } from '../src/verwaltung';
-import { type Bildwerk, erzeugeKatalog } from '../src/katalog';
+import { erzeugeKatalog } from '../src/katalog';
+import { type Bildwerk, erzeugeBilder } from '../src/bilder';
 import { erzeugeFinanzen } from '../src/finanzen';
 import { mitVersion } from '../src/infra/setNummer';
 import { erzeugeKonto } from '../src/konto';
@@ -35,7 +36,7 @@ export function baueNacharbeit(d: () => Dienste): Nacharbeit {
         .catch((e: unknown) => meldeFehler('einstellungen:preis-job-anstossen', e));
     },
     preisFuerSetHolen: (sn, uid, zustand) => d().finanzen.refreshPriceForSet(sn, uid, zustand),
-    bildVormerken: (url, sn) => d().katalog.merkeGebraucht(url, sn),
+    bildVormerken: (url, sn) => d().bilder.merkeGebraucht(url, sn),
     setTeileAnreichern: sn => d().katalog.enrichSetParts(sn),
     figurenAnreichern: sn => d().katalog.enrichSetMinifigs(sn),
     setBilderLaden: sn =>
@@ -90,11 +91,12 @@ function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen }: Bautei
   const konto = erzeugeKonto({ db, einstellungen, auftraege, haushalt, nacharbeit, mail }, zeige('konto'));
   const idempotenz = erzeugeIdempotenz({ db }, zeige('idempotenz'));
   const fremdquellen = erzeugeFremdquellen({ db, einstellungen, auftraege, ersatz: quellen }, zeige('fremdquellen'));
+  const bilder = erzeugeBilder({ db, auftraege, haushalt, nacharbeit, fremdquellen, bildwerk }, zeige('bilder'));
   const katalog = erzeugeKatalog(
-    { db, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bildwerk },
+    { db, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bilder },
     zeige('katalog'),
   );
-  return { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, katalog };
+  return { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, bilder, katalog };
 }
 
 function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Bauteile): Dienste {

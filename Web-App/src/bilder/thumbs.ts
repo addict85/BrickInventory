@@ -1,9 +1,9 @@
 // sharp rechnet ausserhalb des Event-Loops.
 
-import { meldeFehler, fehlertext } from '../../infra/fehler';
+import { meldeFehler, fehlertext } from '../infra/fehler';
 import path from 'node:path';
 import fs from 'node:fs';
-import { resolveWebPath } from '../../infra/appPaths';
+import { resolveWebPath } from '../infra/appPaths';
 import { isDecodable } from './imageGuard';
 
 const THUMB_SIZE = 200;

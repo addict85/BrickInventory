@@ -188,7 +188,7 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
   // Gemessen 351 Codezeilen am 13.11.2026 (Biome-Format, Zeilenbreite 120).
   // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
-  // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
+  // Zeilen); `import { STAPEL } from '../src/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
   const KERN = 'jobs/auftragsWorker.ts';
   const dateien = tsUnter('jobs');
   assert.ok(
@@ -756,7 +756,7 @@ test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen',
   // spricht selbst HTTP nach aussen. Gegenprobe (10.11.2026): in
   // src/konto/passwortBestaetigung.ts wieder `return { status: 429, ...gesperrt }` → rot.
   const STATUS = /\bstatus\s*:\s*[1-5]\d\d\b|\bres\.status\(/;
-  // Gegenprobe (11.11.2026): `res.status(304)` zurück in src/katalog/bilder/imgCacheServe.ts → rot.
+  // Gegenprobe (11.11.2026): `res.status(304)` zurück in src/bilder/imgCacheServe.ts → rot.
   const mitStatus = tsUnter('src', 'db', 'jobs')
     .filter(d => bereichVon(d) !== 'http' && !istHttp(d))
     .filter(d => STATUS.test(quelltext(d)));
@@ -828,6 +828,7 @@ const STUFEN = [
   ['src/fremdquellen'],
   ['src/haushalt'],
   ['src/konto'],
+  ['src/bilder'],
   ['src/idempotenz', 'src/katalog'],
   ['src/finanzen'],
   ['src/bestand'],

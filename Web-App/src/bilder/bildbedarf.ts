@@ -1,5 +1,6 @@
-import { logAndContinue } from '../../infra/fehler';
-import type { KatalogKontext } from '../kontext';
+import { logAndContinue } from '../infra/fehler';
+import { Zwischenspeicher } from '../infra/zwischenspeicher';
+import type { BilderKontext } from './kontext';
 
 /** Daten, keine Warteschlange: je Adresse eine Zeile. Abgearbeitet vom EINEN
  * Auftrag 'bildbedarf', der in Stapeln mit Rücksicht auf das CDN holt. */
@@ -16,37 +17,53 @@ export function anfragenJeMinute(): number {
 }
 
 /** Steht er schon offen, bleibt es bei einem. */
-export async function bildbedarfAnstossen(k: KatalogKontext): Promise<void> {
+export async function bildbedarfAnstossen(k: BilderKontext): Promise<void> {
   await k.auftraege.stelleAuftragEin('bildbedarf', {}, { schluessel: BILDBEDARF_SCHLUESSEL, maxVersuche: 3 });
 }
 
 /** Ein INSERT je Bildanfrage leerte bei einer Kachelwand den Pool. Was bei
  * einem Absturz im Puffer liegt, fragt der nächste Aufruf wieder an. */
-const _puffer = new Map<string, string>(); // url → set_number
+const puffer = (k: BilderKontext) => k.faecher.fach('bildbedarf:puffer', () => new Map<string, string>()); // url → set_number
+const takte = (k: BilderKontext) => k.faecher.fach('bildbedarf:takte', (): NodeJS.Timeout[] => []);
 
-/** Hält die Anfrage nie auf. */
-export function merkeGebraucht(url: string, setNumber: string | null): void {
-  if (!setNumber) return;
-  if (_puffer.size < 500) _puffer.set(url, setNumber);
+/** Je Set einmal in 15 Minuten, höchstens 5000 gemerkt: Der Bild-Proxy fragt für jede
+ * Kachel, und ein Konto mit erfundenen Nummern füllte sonst die Notizen. */
+export function bildEinmalVormerken(k: BilderKontext, url: string, setNummer: string): void {
+  const gemerkt = k.faecher.fach('bildbedarf:vorgemerkt', () => new Zwischenspeicher<string, true>(5000, 15 * 60_000));
+  if (gemerkt.hole(setNummer)) return;
+  gemerkt.setze(setNummer, true);
+  k.nacharbeit.bildVormerken(url, setNummer);
 }
 
-export async function notiereBildbedarf(k: KatalogKontext, urls: string[], sets: (string | null)[]): Promise<void> {
+/** Hält die Anfrage nie auf. */
+export function merkeGebraucht(k: BilderKontext, url: string, setNumber: string | null): void {
+  if (!setNumber) return;
+  if (puffer(k).size < 500) puffer(k).set(url, setNumber);
+}
+
+export async function notiereBildbedarf(k: BilderKontext, urls: string[], sets: (string | null)[]): Promise<void> {
   await k.bildbedarf.merkeBildwuensche(urls, sets);
 }
 
 /** Geschrieben über den Kontext dessen, der den Takt gestartet hat (initImageQueue). */
-export async function schreibePuffer(k: KatalogKontext): Promise<void> {
+export async function schreibePuffer(k: BilderKontext): Promise<void> {
+  const _puffer = puffer(k);
   if (!_puffer.size) return;
   const urls = [..._puffer.keys()];
   const sets = urls.map(u => _puffer.get(u)!);
   _puffer.clear();
-  await notiereBildbedarf(k, urls, sets).catch(logAndContinue('bild-job:sets'));
-  await bildbedarfAnstossen(k).catch(logAndContinue('bild-job:anstossen'));
+  // Scheitert das Schreiben, geht der Puffer zurück und der Fehler an den Takt: nichts geht verloren.
+  try {
+    await notiereBildbedarf(k, urls, sets);
+  } catch (e) {
+    urls.forEach((u, i) => _puffer.set(u, sets[i]!));
+    throw e;
+  }
+  await bildbedarfAnstossen(k);
 }
 
-const _takte: NodeJS.Timeout[] = [];
-
-export async function initImageQueue(k: KatalogKontext): Promise<void> {
+export async function initImageQueue(k: BilderKontext): Promise<void> {
+  const _takte = takte(k);
   if (_takte.length) return;
   _takte.push(
     setInterval(() => {
@@ -57,33 +74,33 @@ export async function initImageQueue(k: KatalogKontext): Promise<void> {
 }
 
 /** Vor dem Schliessen des Pools: Was im Puffer liegt, braucht noch eine Verbindung. */
-export async function stoppeBildbedarf(k: KatalogKontext): Promise<void> {
-  for (const t of _takte.splice(0)) clearInterval(t);
+export async function stoppeBildbedarf(k: BilderKontext): Promise<void> {
+  for (const t of takte(k).splice(0)) clearInterval(t);
   await schreibePuffer(k);
 }
 
 // Sonst bleiben alte Notizen.
-export async function loescheVerfallene(k: KatalogKontext): Promise<number> {
+export async function loescheVerfallene(k: BilderKontext): Promise<number> {
   const r = await k.bildbedarf.loescheAlteBildwuensche(String(NOTIZ_GILT_MS));
   return r?.changes || 0;
 }
 
 /** Katalogbilder für den Bildbedarf vormerken; liefert, wie viele neu dazukamen. */
-export async function katalogBilderVormerken(k: KatalogKontext, urls: string[], sets: string[]): Promise<number> {
+export async function katalogBilderVormerken(k: BilderKontext, urls: string[], sets: string[]): Promise<number> {
   return (await k.bildbedarf.reiheKatalogBilderEin(urls, sets))?.n ?? 0;
 }
 
-export async function offenerBildbedarf(k: KatalogKontext): Promise<number> {
+export async function offenerBildbedarf(k: BilderKontext): Promise<number> {
   return (await k.bildbedarf.zaehleBildwuensche())?.n ?? 0;
 }
 
-export async function leereBildbedarf(k: KatalogKontext): Promise<number> {
+export async function leereBildbedarf(k: BilderKontext): Promise<number> {
   return (await k.bildbedarf.loescheAlleBildwuensche())?.changes ?? 0;
 }
 
 /** In einem Schritt herausgenommen, damit zwei Läufe nicht dieselben Bilder holen. */
 export function nimmBildwuensche(
-  k: KatalogKontext,
+  k: BilderKontext,
   gueltigMs: number,
   anzahl: number,
 ): Promise<{ url: string; set_number: string | null }[]> {

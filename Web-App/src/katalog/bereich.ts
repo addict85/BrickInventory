@@ -4,7 +4,6 @@
 import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as anleitungLaden from './anleitungLaden';
-import * as bildlageDienst from './bildlage';
 import * as blZuordnungDienst from './blZuordnung';
 import * as bricklinkLink from './bricklinkLink';
 import * as bricklinkPreise from './bricklinkPreise';
@@ -20,30 +19,19 @@ import * as partsImport from './partsImport';
 import * as rbInventar from './rbInventar';
 import * as rebrickableKatalog from './rebrickableKatalog';
 import * as teileAnreicherungDienst from './teileAnreicherung';
-import * as bildbedarfDienst from './bilder/bildbedarf';
-import * as bildbedarfLauf from './bilder/bildbedarfLauf';
-import * as imageMisses from './bilder/imageMisses';
 import { ConcurrentRateLimiter } from '../fremdquellen';
 import * as bildNachlauf from './bildNachlauf';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
-import * as bildBlickfeldDienst from './bilder/bildBlickfeld';
-import * as bildNachschlagen from './bilder/bildNachschlagen';
-import * as proxyThumbs from './bilder/proxyThumbs';
-import * as imgCacheServe from './bilder/imgCacheServe';
-import { downloadSetImage } from './bilder/setImages';
-import { generateThumb } from './bilder/thumbs';
-import { zugang, type Bildwerk, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
+import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
 
-export type { Bildwerk, KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
+export type { KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
 
-/** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/verdrahtung.ts baueDienste). */
 export function erzeugeKatalog(
-  a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'bildwerk' | 'cdnDrossel'> & { bildwerk?: Bildwerk | undefined },
+  a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'cdnDrossel'>,
   einblick?: Einblick<KatalogKontext>,
 ) {
-  const bildwerk = a.bildwerk ?? { setBildLaden: downloadSetImage, vorschauErzeugen: generateThumb };
   const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
-  const k: KatalogKontext = baueKontext({ ...a, bildwerk, cdnDrossel, faecher: new Faecher() }, zugang);
+  const k: KatalogKontext = baueKontext({ ...a, cdnDrossel, faecher: new Faecher() }, zugang);
   const fq = a.fremdquellen;
   einblick?.(k);
   return {
@@ -56,13 +44,8 @@ export function erzeugeKatalog(
     getLimitForApi: fq.getLimitForApi,
     rebrickableDailyStatus: fq.rebrickableDailyStatus,
     quellen: fq.quellen,
-    ...bindeZugang(k, bildlageDienst, [
-      'fuelleAusBrickset',
-      'anleitungenNachtragen',
-      'setBilderNachladen',
-      'vorschaubilderNachtragen',
-      'setBildLokalEintragen',
-    ]),
+    /** Die Bilddienste, weitergereicht für die Bereiche darüber. */
+    bilder: a.bilder,
     ...bindeZugang(k, blZuordnungDienst, [
       'merkeBlNummer',
       'merkeEigeneBlNummer',
@@ -110,27 +93,8 @@ export function erzeugeKatalog(
       'enrichSetMinifigs',
       'redownloadMissingImages',
     ]),
-    ...bindeZugang(k, bildbedarfDienst, [
-      'loescheVerfallene',
-      'katalogBilderVormerken',
-      'offenerBildbedarf',
-      'leereBildbedarf',
-      'bildbedarfAnstossen',
-    ]),
-    ...bindeZugang(k, bildbedarfLauf, ['bildbedarfAbarbeiten', 'initImageQueue', 'stoppeBildbedarf']),
-    merkeGebraucht: bildbedarfDienst.merkeGebraucht,
-    // Über die Nacharbeit, damit ein Test sie an einer Stelle ersetzt.
-    bildVormerken: (url: string, setNummer: string) => k.nacharbeit.bildVormerken(url, setNummer),
-    // Beim Aufruf nachgeschlagen: Ein Test ersetzt Teile des Bildwerks nach dem Bau.
-    setBildLaden: (...a: Parameters<Bildwerk['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
-    vorschauErzeugen: (relPfad: string) => k.bildwerk.vorschauErzeugen(relPfad),
-    ...bindeZugang(k, imageMisses, ['vergissFehlend', 'initImageMisses', 'stoppeFehlanzeige']),
     ...bindeZugang(k, bildNachlauf, ['bildNachlauf']),
     ...bindeZugang(k, pdfErzeugung, ['erzeugePdf']),
-    ...bindeZugang(k, bildBlickfeldDienst, ['anleitungFreigegeben', 'setNummerImBlickfeld']),
-    ...bindeZugang(k, bildNachschlagen, ['cdnFuerFehlendesBild']),
-    ...bindeZugang(k, proxyThumbs, ['queueThumb']),
-    ...bindeZugang(k, imgCacheServe, ['cacheTreffer']),
   };
 }
 

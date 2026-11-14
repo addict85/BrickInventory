@@ -57,7 +57,7 @@ Absicht, solange es nur von unten gebraucht wird:
   und den Betrieb (Pool, eigene Verbindung).
 - `jobs/` führt Aufträge aus: Pacht, Wiederholung und Abbruch im Worker, je Art
   ein Aufruf in der Bearbeitertabelle. Was ein Auftrag tut, steht in
-  `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `katalog` …); die
+  `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `bilder` …); die
   Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/auftraege`.
 - Jeder Bereich hat eine Fabrik (`erzeugeX` in `bereich.ts`) und einen Kontext
   (`kontext.ts`): gebundene Repositories, die Dienste tieferer Bereiche und die
@@ -87,7 +87,7 @@ Absicht, solange es nur von unten gebraucht wird:
 - Express kennen nur die Routen, `server.ts`, `src/http` (Fehlerweg, Herkunft,
   Dateiauslieferung, Vertragsrouter) und die HTTP-Seiten der Bereiche unter
   `src/<bereich>/http/` (Anmeldung und Sitzung in `konto`, Bild-Proxy in
-  `katalog`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
+  `bilder`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
   eine HTTP-Seite; eine Absage ist eine `FehlerArt` (oder ein `Fachfehler`),
   den HTTP-Status wählt `src/http/fehlerArt.ts`.
 - Clients erreicht man nur über `src/fremdquellen/quellen.ts`. Jeder Klient
@@ -141,15 +141,16 @@ kennen einander nicht. Von unten nach oben:
 | 8 | `src/fremdquellen` |
 | 9 | `src/haushalt` |
 | 10 | `src/konto` |
-| 11 | `src/idempotenz`, `src/katalog` |
-| 12 | `src/finanzen` |
-| 13 | `src/bestand` |
-| 14 | `src/sets` |
-| 15 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
-| 16 | `src/sammlung`, `src/verwaltung` |
-| 17 | `jobs`, `routes` |
-| 18 | `startup` |
-| 19 | `server.ts` |
+| 11 | `src/bilder` |
+| 12 | `src/idempotenz`, `src/katalog` |
+| 13 | `src/finanzen` |
+| 14 | `src/bestand` |
+| 15 | `src/sets` |
+| 16 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
+| 17 | `src/sammlung`, `src/verwaltung` |
+| 18 | `jobs`, `routes` |
+| 19 | `startup` |
+| 20 | `server.ts` |
 
 ## Schema
 

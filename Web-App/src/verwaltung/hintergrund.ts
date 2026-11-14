@@ -7,7 +7,7 @@ export async function auftragsUebersicht(
 ) {
   const [uebersicht, bildbedarf] = await Promise.all([
     k.auftraege.auftraegeImUeberblick(filter),
-    k.katalog.offenerBildbedarf(),
+    k.katalog.bilder.offenerBildbedarf(),
   ]);
   return { ...uebersicht, bildbedarf };
 }
@@ -15,5 +15,5 @@ export async function auftragsUebersicht(
 /** Beim Bildbedarf gehen auch die Notizen. */
 export async function auftragsArtLeeren(k: VerwaltungKontext, artRoh: string) {
   const r = await k.auftraege.leereAuftragsArt(artRoh);
-  return r.art === 'bildbedarf' ? { ...r, entfernt: r.entfernt + (await k.katalog.leereBildbedarf()) } : r;
+  return r.art === 'bildbedarf' ? { ...r, entfernt: r.entfernt + (await k.katalog.bilder.leereBildbedarf()) } : r;
 }

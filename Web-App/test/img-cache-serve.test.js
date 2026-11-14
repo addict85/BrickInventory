@@ -15,8 +15,8 @@ const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const liefereAusCache = (...a) =>
-  _req('src/katalog/http/bildCacheAuslieferung.js').liefereAusCache(
-    require('./helpers/sources').testDienste().katalog,
+  _req('src/bilder/http/bildCacheAuslieferung.js').liefereAusCache(
+    require('./helpers/sources').testDienste().bilder,
     ...a,
   );
 
@@ -196,11 +196,11 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
   });
 
   await t.test('der Dienst nennt Datei, Typ, Länge und ETag, ohne zu senden', async () => {
-    // Gesendet wird in src/katalog/http/; der Dienst bekommt keine Antwort zu sehen.
+    // Gesendet wird in src/bilder/http/; der Dienst bekommt keine Antwort zu sehen.
     aufraeumen();
     datei(orig, 5000);
     fs.writeFileSync(orig + '.ct', 'image/png');
-    const { cacheTreffer } = _req('src/katalog/bilder/imgCacheServe.js');
+    const { cacheTreffer } = _req('src/bilder/imgCacheServe.js');
     const treffer = await cacheTreffer({
       cacheFile: orig,
       thumbFile: thumb,

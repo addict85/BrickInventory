@@ -1,7 +1,7 @@
 /** Alles hier gilt für alle Konten. */
 import { setTimeout as warte } from 'node:timers/promises';
 import { downloadFile } from '../fremdquellen';
-import { generateThumb } from './bilder/thumbs';
+import { generateThumb } from '../bilder';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import {

@@ -3,6 +3,7 @@
  * jede Routerfabrik verengt ihn mit Pick<> auf die Bereiche, die sie wirklich ruft. */
 import type { AuftraegeDienste } from './auftraege';
 import type { BestandDienste } from './bestand';
+import type { BilderDienste } from './bilder';
 import type { EinstellungenDienste } from './einstellungen';
 import type { FigurenDienste } from './figuren';
 import type { FinanzenDienste } from './finanzen';
@@ -27,6 +28,7 @@ export interface Dienste {
   konto: KontoDienste;
   idempotenz: IdempotenzDienste;
   fremdquellen: FremdquellenDienste;
+  bilder: BilderDienste;
   katalog: KatalogDienste;
   finanzen: FinanzenDienste;
   bestand: BestandDienste;

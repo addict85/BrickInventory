@@ -192,9 +192,12 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
   imageUrl ??= rebrickableSetBild(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.katalog.setBildLaden(imageUrl, sn), frist]));
+  const bild = await versuche(
+    'set-anlegen:bild-laden',
+    Promise.race([sk.katalog.bilder.setBildLaden(imageUrl, sn), frist]),
+  );
   const lokal = wertOder(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.vorschauErzeugen(lokal));
+  if (lokal) void versuche('set-anlegen:vorschau', sk.katalog.bilder.vorschauErzeugen(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   await merkeSetKatalog(sk.db, sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };

@@ -1,3 +1,4 @@
+import { Zwischenspeicher } from '../infra/zwischenspeicher';
 /** Erst der eigene Bestand (CSV-Tabellen, Zwischenspeicher), dann der Client:
  * Das Kontingent ist knapp. Der Client fragt nur ab, ablegen tut dieser Dienst. */
 import type { Quellen } from '../fremdquellen';
@@ -67,8 +68,9 @@ async function setTeileAusCsv(k: KatalogKontext, setNumber: string) {
 
 /** Eine leere Antwort (404, Abbruch) kurz merken: Sonst kostet jeder
  * wiederholte Import einer unbekannten Nummer erneut Kontingent. */
-const _leer = new Map<string, number>();
 const LEER_MS = 10 * 60 * 1000;
+const leer = (k: KatalogKontext) =>
+  k.faecher.fach('rebrickable:leer', () => new Zwischenspeicher<string, true>(5000, LEER_MS));
 
 export async function getAllSetParts(k: KatalogKontext, setNumber: string) {
   const csvParts = await setTeileAusCsv(k, setNumber);
@@ -78,14 +80,11 @@ export async function getAllSetParts(k: KatalogKontext, setNumber: string) {
     await k.rebrickableCache.teilelisteAusCache(n),
   );
   if (gemerkt) return gemerkt;
-  if (Date.now() - (_leer.get(n) ?? 0) < LEER_MS) return [];
+  if (leer(k).hole(n)) return [];
   const { teile, verweigert } = await k.fremdquellen.quellen.holeSetTeile(n);
   // Eine Absage (403) wird als leere Liste gemerkt, damit nicht jeder Import erneut fragt.
   if (teile.length > 0 || verweigert) await k.rebrickableCache.merkeTeileliste(n, JSON.stringify(teile));
-  else {
-    if (_leer.size > 5000) _leer.clear();
-    _leer.set(n, Date.now());
-  }
+  else leer(k).setze(n, true);
   return teile;
 }
 

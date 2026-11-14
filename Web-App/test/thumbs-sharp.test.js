@@ -4,7 +4,7 @@
  * nicht laden, rechnet Jimp dasselbe.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, dist neu gebaut), alle in
- * src/katalog/bilder/thumbs.ts:
+ * src/bilder/thumbs.ts:
  *   A  `.flatten({ background: '#ffffff' })` entfernt → rot: „sharp: 200 × 200 …“
  *      (Ecke schwarz)
  *   B  `fit: 'cover'` → `fit: 'inside'` → rot: ebenda (200 × 133)
@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const sharp = require('sharp');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
-const { generateThumb } = _req('src/katalog/bilder/thumbs.js');
+const { generateThumb } = _req('src/bilder/thumbs.js');
 const ordner = path.join(DATA_DIR, 'images', 'sets');
 
 /** Ein halbdurchsichtiges grünes PNG 300 × 200 unter /images/sets/. */

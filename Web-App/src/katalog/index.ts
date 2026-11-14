@@ -1,18 +1,23 @@
 /** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
  * damit die Aufteilung der Dateien darunter frei bleibt. */
 export { istVermutung } from './barcodeQuelle';
-export { anfragenJeMinute } from './bilder/bildbedarf';
+// Was ohne Zugang auskommt, aus den Bildern weitergereicht; ihre Dienste über `katalog.bilder`.
 export {
+  IMG_PROXY_PFAD,
+  IMG_PROXY_PFAD_ALT,
+  anfragenJeMinute,
+  downloadSetImage,
+  generateThumb,
+  imgProxyFailures,
   proxyCachePathFor,
   proxyCacheSchluessel,
   proxyImageUrl,
+  raeumeBildCacheAuf,
+  rebrickableSetBild,
   resolveIfExists,
   resolveImageLocal,
-} from './bilder/images';
-export { raeumeBildCacheAuf } from './bilder/imgCacheServe';
-export { imgProxyFailures } from './bilder/imgProxyStats';
-export { downloadSetImage, rebrickableSetBild } from './bilder/setImages';
-export { generateThumb } from './bilder/thumbs';
+} from '../bilder';
+export type { Bildwerk } from '../bilder';
 export { blFarbnummerAus } from './blZuordnung';
 export { hatPreis, marktpreisAus } from './bricklinkPreise';
 export type { KatalogEintrag } from './bricklinkPreise';
@@ -43,8 +48,7 @@ export {
 export type { Abruf, Kurs, LegoAbruf, Quellen, RbSetTeil } from '../fremdquellen';
 export { katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from './setStamm';
 export { erzeugeKatalog } from './bereich';
-export type { KatalogDienste, Bildwerk } from './bereich';
-export { IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT } from './bilder/images';
+export type { KatalogDienste } from './bereich';
 export { setzeImportProzess } from './csvAbgleich';
 export { katalogImporte, parseCsvLine } from './csvImport';
 export { pdfAufgegeben } from './pdf/pdfErzeugung';

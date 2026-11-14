@@ -62,7 +62,7 @@ async function anleitungLaden(k: KatalogKontext, n: Nutzlast<'anleitung'>, lauf?
       const anzahl = await downloadSetInstructions(k, sn, true);
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
       if (await k.auftraege.liesPause('anleitung')) await k.auftraege.beendePause('anleitung');
-      if (letzterAbrufWarExtern())
+      if (letzterAbrufWarExtern(k))
         await k.auftraege.pausiereArt(
           'anleitung',
           new Date(Date.now() + TAKT_NACH_ABRUF_MS),

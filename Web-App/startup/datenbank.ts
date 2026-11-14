@@ -82,6 +82,6 @@ export async function bereiteDatenbankVor(db: Db, d: Dienste): Promise<void> {
     );
   await altbestandAufruesten(d);
   await schluesselWechsel(d);
-  await d.katalog.initImageMisses().catch(logAndContinue('db:image_misses'));
-  await d.katalog.initImageQueue().catch(logAndContinue('db:image_wanted'));
+  await d.bilder.initImageMisses().catch(logAndContinue('db:image_misses'));
+  await d.bilder.initImageQueue().catch(logAndContinue('db:image_wanted'));
 }

@@ -19,7 +19,7 @@ export async function setInfo(sk: SetsKontext, setNumber: string): Promise<SetSt
 export async function setInfoFuerKonto(sk: SetsKontext, uid: number, setNumber: string) {
   const n = mitVersion(setNumber);
   const stamm = await setInfo(sk, n);
-  const fremderPlatzhalter = !!stamm?.platzhalter && !(await sk.katalog.setNummerImBlickfeld(uid, n));
+  const fremderPlatzhalter = !!stamm?.platzhalter && !(await sk.katalog.bilder.setNummerImBlickfeld(uid, n));
   if (!stamm || fremderPlatzhalter) return { set_number: n, name: n, im_katalog: false as const };
   const { platzhalter: _platzhalter, ...row } = stamm;
   return { set_number: n, ...row, name: row.name || n, im_katalog: true as const };

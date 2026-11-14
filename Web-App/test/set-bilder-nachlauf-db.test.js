@@ -36,9 +36,9 @@ const db = testDaten();
 
 test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
-  const repo = _req('src/katalog/repository/bildlage.js');
-  const { setBilderNachladen } = _req('src/katalog/bildlage.js');
-  const IM = _req('src/katalog/bilder/imageMisses.js');
+  const repo = _req('src/bilder/repository/bildlage.js');
+  const { setBilderNachladen } = _req('src/bilder/bildlage.js');
+  const IM = _req('src/bilder/imageMisses.js');
 
   const P = `zzbn${process.pid}`;
   const gehalten = `${P}a-1`;

@@ -7,12 +7,8 @@ import type { ConcurrentRateLimiter, FremdquellenDienste } from '../fremdquellen
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
+import type { BilderDienste } from '../bilder';
 import * as anleitungen from './repository/anleitungen';
-import * as bildBlickfeld from './repository/bildBlickfeld';
-import * as bildFehlschlaege from './repository/bildFehlschlaege';
-import * as bildStammCdn from './repository/bildStammCdn';
-import * as bildbedarf from './repository/bildbedarf';
-import * as bildlage from './repository/bildlage';
 import * as blZuordnung from './repository/blZuordnung';
 import * as csvKatalog from './repository/csvKatalog';
 import * as katalogCache from './repository/katalogCache';
@@ -22,15 +18,6 @@ import * as rebrickableCache from './repository/rebrickableCache';
 import * as setInhalt from './repository/setInhalt';
 import * as teileAnreicherung from './repository/teileAnreicherung';
 
-/** Set-Bild holen und verkleinern über den Kontext statt über den Import: So ersetzt ein
- * Test Netz und sharp an der Verdrahtung (baueDienste), statt Module umzubiegen. */
-export interface Bildwerk {
-  /** Lädt das Set-Bild nach images/sets; null, wenn es scheitert (`info.status` nennt den HTTP-Code). */
-  setBildLaden(url: string, setNumber: string, info?: { status?: number }): Promise<string | null>;
-  /** Legt die Vorschau neben das Bild und liefert ihren Pfad; null, wenn es nicht ging. */
-  vorschauErzeugen(relPfad: string): Promise<string | null>;
-}
-
 export interface KatalogAbhaengigkeiten {
   db: Db;
   faecher: Faecher;
@@ -38,7 +25,8 @@ export interface KatalogAbhaengigkeiten {
   fremdquellen: FremdquellenDienste;
   /** Höchstens zwei Bildabrufe beim CDN zugleich, je Satz Dienste einer. */
   cdnDrossel: ConcurrentRateLimiter;
-  bildwerk: Bildwerk;
+  /** Bilder dieses Satzes Dienste (src/bilder). */
+  bilder: BilderDienste;
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
@@ -47,11 +35,6 @@ export interface KatalogAbhaengigkeiten {
 
 export const zugang = (db: Db) => ({
   anleitungen: bindeZugang(db, anleitungen),
-  bildBlickfeld: bindeZugang(db, bildBlickfeld),
-  bildFehlschlaege: bindeZugang(db, bildFehlschlaege),
-  bildStammCdn: bindeZugang(db, bildStammCdn),
-  bildbedarf: bindeZugang(db, bildbedarf),
-  bildlage: bindeZugang(db, bildlage),
   blZuordnung: bindeZugang(db, blZuordnung),
   csvKatalog: bindeZugang(db, csvKatalog),
   katalogCache: bindeZugang(db, katalogCache),
