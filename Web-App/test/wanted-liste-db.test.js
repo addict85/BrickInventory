@@ -374,7 +374,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     assert.equal(bericht.angelegt, 1, 'Der abbildbare Posten muss angelegt werden');
   });
 
-  // Abbrechen (Marcos Wunsch vom 20.10., indirekt)
+  // Abbrechen
 
   await t.test('ein Abbruch hält nach spätestens zehn Posten an', async () => {
     // 25 abbildbare Posten derselben Nummer in verschiedenen Mengen; die

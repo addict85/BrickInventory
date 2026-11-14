@@ -187,7 +187,7 @@ const codeZeilen = rel =>
 test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
   // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle
   // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
-  // Gemessen 351 Codezeilen am 13.11.2026 (Biome-Format, Zeilenbreite 120).
+  // Codezeilen im Biome-Format (Zeilenbreite 120).
   // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und zustaendeJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
   // Zeilen); `import { STAPEL } from '../src/katalog/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.

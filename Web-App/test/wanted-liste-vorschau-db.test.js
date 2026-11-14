@@ -375,7 +375,6 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
   });
 
   await t.test('5b. auch eine bei Rebrickable nachgeschlagene Nummer wird gemerkt', async () => {
-    // Marcos Frage vom 20.10.
     const gemerkt = [];
     const xml = liste(item('P', '98765', 5, 1));
     const b = await importiereWantedListe(1, xml, {

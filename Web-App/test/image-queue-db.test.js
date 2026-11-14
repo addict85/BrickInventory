@@ -91,7 +91,6 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
 });
 
 test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { concurrency: 1 }, async t => {
-  // Marcos Wunsch
   try {
     await db.initSchemaOnce();
   } catch (e) {

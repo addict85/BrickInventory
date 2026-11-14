@@ -68,8 +68,7 @@ test('die Suche findet die Quellen ueberhaupt', () => {
 });
 
 test('stille Faenge werden weniger, nie mehr', () => {
-  // Gemessen 0 am 11.11.2026: Die beiden letzten (Rebrickable-Teilezuordnung)
-  // fangen nur noch 404, das rbGet() selbst als null liefert.
+  // Die Rebrickable-Teilezuordnung fängt nur 404, das rbGet() selbst als null liefert.
   const SCHRANKE = 0;
   // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
   const ersatz = STILLE_FAENGE[STILLE_FAENGE.length - 1];
@@ -163,7 +162,6 @@ function nimmtProzesszugang(f) {
 test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gemessen 0 am 11.11.2026 (server.ts und startup/ ohne Prozesszugang).
   // Gegenproben: ein `import * as db from '../../db/database'` in src/sets/zeilen.ts → rot (09.11.2026);
   // `import { get as _probe } from '../../db/database'` ebendort → rot mit 1 (11.11.2026).
   // `import * as _probe from './database'` in db/txLock.ts → rot mit 1 (11.11.2026).
@@ -181,7 +179,6 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // Modulweiter Zustand (let und leer angelegte Map/Set/WeakMap/WeakSet): Ihn teilen alle
   // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/zwischenspeicher.ts),
   // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
-  // Gemessen 13.11.2026: 44 let + 28 Sammlungen = 72 vorher, 39 + 20 = 59 danach.
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
   // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60.
   const ZUSTAND_SCHRANKE = 59;
@@ -209,8 +206,7 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
 function wegeAnDenKontextenVorbei() {
   // Ein Dienst bekommt seine Abhängigkeiten über den Kontext (src/<bereich>/kontext.ts);
   // einen Speicher der Dienste im Prozess (Holer xBereich(), Fassaden aus dienstePerAufruf)
-  // gibt es nicht mehr. Gemessen am 13.11.2026: 35 Holer-Aufrufe und 67 Fassaden-Importe,
-  // am 14.11.2026: 0 und 0.
+  // gibt es nicht mehr.
   // Gegenproben (14.11.2026): `export const sets = prozessStelle<SetsDienste>('sets');` in
   // src/sets/lesen.ts → rot (1 Holer-Stelle); `import { getSets } from '../sets'` in
   // src/sammlung/loeschen.ts (mit `export const getSets = …` in src/sets/index.ts) → rot (1 Fassade).
@@ -252,7 +248,6 @@ function wegeAnDenKontextenVorbei() {
 }
 
 test('any wird weniger, nie mehr', () => {
-  // Gemessen 1 am 12.11.2026 (die Lint-Korrekturen ersetzten die übrigen).
   const SCHRANKE = 1;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(
@@ -268,7 +263,7 @@ test('any wird weniger, nie mehr', () => {
 
 test('any in allen Formen, unknown-Parameter und success in Diensten werden weniger, nie mehr', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`. Gemessen 8 am 12.11.2026.
+  // nur `as any` und `: any`.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
   const SCHRANKE = 8;
   const ist = zaehle([/\bany\b/g]);
@@ -276,8 +271,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   if (ist < SCHRANKE) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
   // Dieselbe Art Zählung: Die Hülle der Antwort setzt die Route, ein Dienst
-  // liefert das Fachobjekt. Gemessen 7 am 11.11.2026 (vorher 35): Zeilenstatus in
-  // Importberichten, Mailversand und der Import-Fortschritt (ein Strom-Format) bleiben.
+  // liefert das Fachobjekt. Übrig sind Zeilenstatus in Importberichten, Mailversand und der Import-Fortschritt (ein Strom-Format) bleiben.
   // Gegenprobe (11.11.2026): in auftragAbbrechen() wieder `success: true` → rot.
   const SUCCESS_SCHRANKE = 7;
   const success = zaehle([/\bsuccess:\s*true\b/g], f =>
@@ -291,7 +285,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
     console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_SCHRANKE}) — Schranke nachziehen`);
   // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
   // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
-  // (src/vertrag, src/infra, src/http) und Fehlerparameter. Gemessen 74 am 11.11.2026.
+  // (src/vertrag, src/infra, src/http) und Fehlerparameter.
   // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (75).
   const SCHRANKE_UNKNOWN = 74;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
@@ -342,7 +336,7 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
-  // Übersetzer ohnehin ein Typargument. Gemessen 62 am 12.11.2026.
+  // Übersetzer ohnehin ein Typargument.
   // Gegenprobe (05.11.2026): Schranke auf 68 → rot.
   const SCHRANKE = 62;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
@@ -353,7 +347,7 @@ test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
 test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
   // Eine Route liest req.eingabe und req.abfrage: geprüft und getypt aus dem
   // Vertrag. Übrig sind die Middleware vor der Prüfung, der Bild-Proxy (ohne
-  // Vertrag) und routes/auth/registrierung.ts. Gemessen 4 am 05.11.2026.
+  // Vertrag) und routes/auth/registrierung.ts.
   // Gegenprobe (05.11.2026): in routes/api_v1/sets.ts ein `req.body.storage` zurück → rot.
   const SCHRANKE = 4;
   let ist = 0;
@@ -370,7 +364,7 @@ test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
 
 test('Schreibziele in Routen werden weniger, nie mehr', () => {
   // schreibziel() prüft im Haushalt, für wen geschrieben wird; besser nimmt der
-  // Dienst den Wunsch selbst entgegen. Gemessen 13 am 09.11.2026.
+  // Dienst den Wunsch selbst entgegen.
   // Gegenprobe (05.11.2026): Schranke auf 16 → rot.
   const SCHRANKE = 13;
   let ist = 0;
@@ -406,7 +400,6 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  // Gemessen 37 am 10.11.2026.
   const SCHRANKE = 37;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
@@ -556,8 +549,7 @@ function quelltextFaelle() {
 }
 
 test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
-  // Gemessen 428 am 12.11.2026 mit der strukturellen Erkennung (die Zählung mit
-  // `await ` als Ausführung ergab 336 und hielt reine Lesefälle für ausführend).
+  // Strukturelle Erkennung: `await ` allein hielte reine Lesefälle für ausführend.
   // Gegenprobe (12.11.2026): `await ` wieder in FALL_FUEHRT_AUS → rot „Selbstbeweis“.
   const probe = [
     "const _req = require('./helpers/sources').buildAndRequire();",
@@ -619,9 +611,8 @@ const ERSATZWEGE = {
 };
 
 test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weniger', () => {
-  // Fassade: 387 Dateien am 12.11.2026, 0 seit testDaten()/testZugang() (13.11.2026).
-  // Umgebogen: 26 Testdateien am 13.11.2026, 14 nach Bildwerk und toten Abfängen.
-  // routerServer: 124 Dateien bauten am 13.11.2026 eigene Router, 13 tun es noch.
+  // Die DB-Fassade ist durch testDaten()/testZugang() ersetzt; umgebogene require und
+  // eigene Router (routerServer) werden weniger.
   // Gegenproben (13.11.2026): in indizes-db.test.js wieder `_req('db/database.js')` → rot
   // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14);
   // in app-kette-db.test.js testServer → routerServer → rot (14 statt 13).
@@ -737,7 +728,7 @@ function festeWartezeiten(/** @type {string} */ text) {
 test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
   // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
   // eine Bedingung (helpers/zeit.js bis(), ruhig()). Übrig sind Pausen, die zeigen,
-  // dass etwas NICHT geschieht, oder die der geprüfte Code verlangt. Gemessen 40 am 12.11.2026.
+  // dass etwas NICHT geschieht, oder die der geprüfte Code verlangt.
   // Gegenprobe (05.11.2026): `await warte(500);` in verlauf-browser.test.js → rot.
   const SCHRANKE = 40;
   assert.equal(
@@ -770,7 +761,6 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
  * Skripte schalten es um.
  */
 test('Inline-Stile in index.html werden weniger, nie mehr', () => {
-  // Gemessen 35 am 06.11.2026.
   const SCHRANKE = 33;
   const html = require('./helpers/sources').ohneHtmlKommentare(
     fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'),
@@ -835,7 +825,7 @@ test('kein Modul wird in einer Datei zweimal importiert', () => {
 });
 
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
-  // Gezählt in server.ts, routes/, src/ und jobs/. Gemessen 9,7 % am 12.11.2026 (Biome-Format).
+  // Gezählt in server.ts, routes/, src/ und jobs/, im Biome-Format.
   const SCHRANKE = 9.7;
   let zeilen = 0,
     kommentar = 0;
@@ -871,7 +861,7 @@ function oberflaeche() {
 const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
 
 test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
-  // Ohne Typzeilen gezählt. Gemessen 14,1 % am 12.11.2026 (Biome-Format).
+  // Ohne Typzeilen gezählt, im Biome-Format.
   // Gegenprobe: 300 Kommentarzeilen an dom.js → rot.
   const SCHRANKE = 14.1;
   let zeilen = 0,
@@ -906,7 +896,7 @@ test('any in den Typangaben der Oberfläche wird weniger, nie mehr', () => {
 
 test('kein Kommentar der Oberfläche hat mehr als fünf Zeilen Prosa', () => {
   // CLAUDE.md: Ein Kommentar sagt in zwei bis fünf Zeilen, warum. JSDoc-Tags
-  // (@param, @returns …) zählen nicht mit. Gemessen 0 am 10.11.2026.
+  // (@param, @returns …) zählen nicht mit.
   // Gegenprobe: ein //-Block mit sechs Zeilen in dom.js → rot mit Fundstelle.
   const lang = [];
   let bloecke = 0;
@@ -951,7 +941,7 @@ function funktionsLaengen(dateien = oberflaeche()) {
 }
 
 test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, nie mehr', () => {
-  // Gemessen im Biome-Format am 12.11.2026: die acht unten über 100, 22 über 80. Gegenprobe: loadFinance
+  // Im Biome-Format. Gegenprobe: loadFinance
   // wieder in einem Stück (vor dem Aufteilen) → rot mit „finance.js loadFinance“.
   const SCHRANKE_80 = 20;
   const BEKANNT_100 = [
@@ -1067,8 +1057,8 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
 });
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
-  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen im Biome-Format am 12.11.2026:
-  // grösste 792, zwölf über 600. Gegenprobe (09.11.2026): an finance.js Leerzeilen gehängt → rot.
+  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
+  // Gegenprobe (09.11.2026): an finance.js Leerzeilen gehängt → rot.
   const SCHRANKE_GROESSTE = 792,
     SCHRANKE_UEBER_600 = 12;
   const laengen = oberflaeche().map(f => ({
@@ -1149,7 +1139,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
 });
 
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
-  // Je Ordner eine Schranke, gemessen im Biome-Format am 12.11.2026.
+  // Je Ordner eine Schranke, im Biome-Format.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
   const SCHRANKE = { db: 20.6, clients: 13.9, scripts: 22.2 };
   const zuViel = [];
@@ -1186,12 +1176,13 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
 test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
-  // den typischen Erzählmarken. Gemessen 50 am 11.11.2026.
+  // den typischen Erzählmarken, auch „Gemessen … am <Datum>“.
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  const SCHRANKE = 50;
+  // Gegenprobe (14.11.2026): eine Zeile `// Gemessen 7 am` samt Datum an diesen Kopf gehängt → rot (38 von 37).
+  const SCHRANKE = 37;
 
   const MARKE =
-    /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
+    /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Gemessen\b[^.]*\bam [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
   const dateien = [
     ...fs
       .readdirSync(__dirname)
@@ -1217,7 +1208,7 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gezählt in test/*.js und test/helpers/. Gemessen 17 % am 12.11.2026 (Biome-Format).
+  // den Commit. Gezählt in test/*.js und test/helpers/, im Biome-Format.
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
   const SCHRANKE = 17;
   const dateien = [
@@ -1271,8 +1262,7 @@ test('kein Verweis auf das frühere Begründungsarchiv', () => {
 
 test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
   // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
-  // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Gemessen
-  // 20,4 % am 12.11.2026. Das Caddyfile zählt nicht mit:
+  // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Das Caddyfile zählt nicht mit:
   // Kein Block darin ist länger als fünf Zeilen.
   // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
   const SCHRANKE = 20.4;
@@ -1338,7 +1328,6 @@ function langeBloecke(/** @type {string} */ text) {
 test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie mehr', () => {
   // Im Code steht das Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md);
   // Gegenprobenlisten zählen nicht.
-  // Gemessen am 12.11.2026: Tests 58 Blöcke, scripts 0, index.html 162 Zeilen.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
   const SCHRANKE = { tests: 58, scripts: 0, indexHtml: 162 };
   const js = (/** @type {string} */ d) =>
@@ -1368,7 +1357,7 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 72 am 11.11.2026.
+  // werden beim Anfassen nachgetragen.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
   const SCHRANKE = 71;
   const ohne = fs
