@@ -762,7 +762,7 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
  */
 test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   // Gemessen 35 am 06.11.2026.
-  const SCHRANKE = 35;
+  const SCHRANKE = 33;
   const html = require('./helpers/sources').ohneHtmlKommentare(
     fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'),
   );
@@ -944,7 +944,7 @@ function funktionsLaengen(dateien = oberflaeche()) {
 test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, nie mehr', () => {
   // Gemessen im Biome-Format am 12.11.2026: die acht unten über 100, 22 über 80. Gegenprobe: loadFinance
   // wieder in einem Stück (vor dem Aufteilen) → rot mit „finance.js loadFinance“.
-  const SCHRANKE_80 = 21;
+  const SCHRANKE_80 = 20;
   const BEKANNT_100 = [
     'public/js/acquisition-modals.js acqSave',
     'public/js/diagramme.js priceChartSVG',
@@ -1022,7 +1022,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
   // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
   // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
   // Gegenprobe (13.11.2026, Schranke 87): in gutscheine.js ein `${ungeprueft(KOPIE_ICON_SVG)}` zurück → rot.
-  const SCHRANKE = 87;
+  const SCHRANKE = 86;
   assert.deepEqual(
     ungeprueftArgumente(
       "function ungeprueft(t) {}\na(ungeprueft(`<i>${b(c)}</i>`), ungeprueft(d.map(e).join('')), x.ungeprueft(f))",
@@ -1362,7 +1362,7 @@ test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
   // werden beim Anfassen nachgetragen. Gemessen 72 am 11.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 72;
+  const SCHRANKE = 71;
   const ohne = fs
     .readdirSync(__dirname)
     .filter(n => n.endsWith('.test.js'))
@@ -1376,7 +1376,8 @@ test('in Testkommentaren genannte Pfade gibt es', () => {
   // Eine Gegenprobe, die eine verschwundene Datei nennt, lässt sich nicht wiederholen. Geprüft wird jede
   // Kommentarzeile in test/ und test/helpers/; ein .js-Pfad gilt auch, wenn die .ts-Quelle dazu existiert.
   // Gegenprobe (10.11.2026): in acquisition-scope-db.test.js den Pfad bei schreibbereich auf den früheren der
-  // Set-Routen zurückgesetzt → rot mit dieser Zeile als Fundstelle.
+  // Set-Routen zurückgesetzt → rot mit dieser Zeile als Fundstelle. Gegenprobe (14.11.2026): ohne gebautes
+  // Bündel und ohne ERZEUGNISSE → rot (buendel-gebaut.test.js); `public/js/app.bundle2.js` → rot.
   const REPO = path.join(WEB, '..');
   const ordner = [WEB, REPO]
     .flatMap(w =>
@@ -1391,7 +1392,10 @@ test('in Testkommentaren genannte Pfade gibt es', () => {
       '(?:ts|js|sql|html|css|json|md|sh|ya?ml|kt|kts|xml|txt))\\b',
     'g',
   );
+  // Das Bündel entsteht erst mit `npm run build`; ein frischer Checkout hat es nicht.
+  const ERZEUGNISSE = new Set([`public/${require('../scripts/build-frontend').OUT_REL}`]);
   const gibt = (/** @type {string} */ p) =>
+    ERZEUGNISSE.has(p) ||
     [WEB, REPO].some(
       w => fs.existsSync(path.join(w, p)) || (p.endsWith('.js') && fs.existsSync(path.join(w, `${p.slice(0, -3)}.ts`))),
     );
