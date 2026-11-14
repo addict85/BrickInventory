@@ -12,6 +12,7 @@ import {
   meldeAnmeldung,
   faktorCodeGesperrt,
   faktorCodeFalsch,
+  tagesgrenzeErreicht,
   MAX_ATTEMPTS,
   type Anmeldeereignis,
   type Anmeldeweg,
@@ -138,6 +139,9 @@ export async function pruefeAnmeldedaten(
   }
 
   const user = await k.zugaenge.kontoZurAnmeldung(name);
+  const mitFaktor = (passkeyAntwort !== undefined && passkeyAntwort !== null) || !!String(code ?? '').trim();
+  if (await nurNochMitFaktor(k, ip, name, user?.id, mitFaktor))
+    return absage('zu_viele', 'konto_tagesgrenze', undefined, false, true);
   // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen. Wer sich von
   // hier zuletzt angemeldet hat, wartet unter Last vorne: Eine Flut fremder Adressen sperrt ihn nicht aus.
   const vorrang = await bekannteAnmeldung(k, ip, name);
@@ -191,6 +195,22 @@ export async function pruefeAnmeldedaten(
   return { ok: true, user };
 }
 
+/** Über der Tagesgrenze nur mit Code oder Passkey und aktivem Faktor. Vor der Passwortprüfung
+ * und ohne deren Ergebnis entschieden: Eine eigene Absage danach verriete das Passwort. */
+async function nurNochMitFaktor(
+  k: KontoKontext,
+  ip: string,
+  name: string,
+  konto: number | undefined,
+  mitFaktor: boolean,
+): Promise<boolean> {
+  if (!(await tagesgrenzeErreicht(k, name))) return false;
+  if (mitFaktor && konto !== undefined && (await zf.istAktiv(k, konto))) return false;
+  await gibAnmeldeplatzFrei(k, ip, name);
+  meldeAnmeldeereignis('anmeldung_tagesgrenze', { ip, konto: konto ?? null });
+  return true;
+}
+
 /** Beim Erreichen der Kontosperre erfährt es der Inhaber, höchstens einmal am Tag:
  * Nur er weiss, ob er sich vertippt hat. */
 async function fehlversuch(
@@ -201,6 +221,9 @@ async function fehlversuch(
   konto?: number,
 ): Promise<void> {
   meldeAnmeldeereignis(ereignis, { ip, konto: konto ?? null });
-  if ((await anmeldungGescheitert(k, ip, name)) !== MAX_ATTEMPTS || konto === undefined) return;
-  if (!(await kontoGedrosselt(k, 'sperr-hinweis', konto, 1, TAG_MS))) hinweisNebenher(k, konto, 'anmeldung_gebremst');
+  const { n, tagesgrenze } = await anmeldungGescheitert(k, ip, name);
+  if (konto === undefined) return;
+  if (tagesgrenze) hinweisNebenher(k, konto, 'anmeldung_tagesgrenze');
+  else if (n === MAX_ATTEMPTS && !(await kontoGedrosselt(k, 'sperr-hinweis', konto, 1, TAG_MS)))
+    hinweisNebenher(k, konto, 'anmeldung_gebremst');
 }

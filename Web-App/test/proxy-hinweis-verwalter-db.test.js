@@ -27,12 +27,14 @@ test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t 
   const db = await zugangOderSkip(t, _req);
   if (!db) return;
   const NAME = `proxyhinweis-${process.pid}`;
-  await db.run('DELETE FROM users WHERE username=$1', [NAME]);
+  // Konten legt die Eigentümerin an: Die Laufzeitrolle schreibt in users nur Namen (0117).
+  const daten = require('./helpers/sources').testDaten();
+  await daten.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (
-    await db.get(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true) RETURNING id`, [NAME])
+    await daten.get(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true) RETURNING id`, [NAME])
   ).id;
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
+    await daten.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
   // Wie startup/app.ts: Der Hinweisgeber liegt am App-Objekt, die Verwaltung liest ihn dort.

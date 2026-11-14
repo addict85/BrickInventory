@@ -45,7 +45,13 @@ export async function initSchema(eigeneVerbindung: () => Promise<Client>, erstst
 // Starten web und jobs zugleich, migriert genau einer; der andere wartet.
 // Die Laufzeitrolle (compose.yaml) darf kein Schema ändern: Sie prüft nur,
 // ob der Dienst migration fertig ist, statt an CREATE zu scheitern.
-export async function initSchemaOnce(pool: Pool, initSchema: () => Promise<boolean>, zeitzone: string): Promise<void> {
+/** `systemPool` schreibt die Zeitzone, wenn die Laufzeitrolle nur prüft: global_settings liest sie nur (0117). */
+export async function initSchemaOnce(
+  pool: Pool,
+  initSchema: () => Promise<boolean>,
+  zeitzone: string,
+  systemPool: Pool = pool,
+): Promise<void> {
   const client = await pool.connect();
   try {
     // Warten auf den anderen Prozess ist hier gewollt, auch länger als lock_timeout
@@ -54,7 +60,7 @@ export async function initSchemaOnce(pool: Pool, initSchema: () => Promise<boole
     await client.query('SET statement_timeout = 0');
     await client.query(`SELECT pg_advisory_lock(${LOCKS.SCHEMA_INIT})`);
     await client.query('RESET statement_timeout');
-    if (!(await darfSchemaAendernAuf(client))) return await nurStandPruefen(client, zeitzone);
+    if (!(await darfSchemaAendernAuf(client))) return await nurStandPruefen(client, zeitzone, systemPool);
     const neu = await initSchema();
     if (!neu) await pruefeMindeststand(client);
     // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
@@ -93,7 +99,7 @@ async function darfSchemaAendernAuf(client: import('pg').ClientBase): Promise<bo
 
 /** Für die Laufzeitrolle: Ein leeres oder nicht migriertes Schema hält den Start
  * an, statt dass Anfragen auf fehlende Spalten treffen. */
-async function nurStandPruefen(client: import('pg').ClientBase, zeitzone: string): Promise<void> {
+async function nurStandPruefen(client: import('pg').ClientBase, zeitzone: string, systemPool: Pool): Promise<void> {
   const leer = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
   const offen = leer ? [] : await offeneMigrationen(client);
   if (leer || offen.length)
@@ -101,7 +107,16 @@ async function nurStandPruefen(client: import('pg').ClientBase, zeitzone: string
       `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
         'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md#migrationsrolle).',
     );
-  await schreibeErfassungsZeitzone(client, zeitzone);
+  // Meist hat der Dienst migration denselben Wert schon geschrieben; sonst die Systemrolle.
+  const da = await client.query("SELECT value FROM global_settings WHERE key = 'erfassung_zeitzone'");
+  if (da.rows[0]?.value !== zeitzone) {
+    const sys = await systemPool.connect();
+    try {
+      await schreibeErfassungsZeitzone(sys, zeitzone);
+    } finally {
+      sys.release();
+    }
+  }
   console.log('✅ Schema aktuell (eingespielt vom Dienst migration)');
 }
 

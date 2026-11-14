@@ -26,10 +26,13 @@ const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
 /** Wie kontoEntfernen(), ohne Protokoll: Dessen Eintrag zum gleichzeitig gelöschten Verwalter stiesse an den Fremdschlüssel. */
+/** Im Systemrahmen wie dort: Konten löscht nur die Systemrolle (0117). */
 const entferne = (ziel, durch) =>
-  require('./helpers/sources')
-    .testKontext('konto')
-    .transaktion(t => t.konten.loescheKonto(ziel, durch));
+  _req('src/infra/kontoKontext.js').imSystemkontext('test', () =>
+    require('./helpers/sources')
+      .testKontext('konto')
+      .transaktion(t => t.konten.loescheKonto(ziel, durch)),
+  );
 
 const RUNDEN = 12;
 

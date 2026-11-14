@@ -425,13 +425,13 @@ und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 
 ## Abhängigkeiten und Lieferkette
 
-`renovate.json` liegt im Wurzelverzeichnis (nur dort liest Renovate sie) und
-gilt für Gradle, die npm-Pakete der Web-App, die Docker-Images (Digests) und
-die GitHub-Actions (Commit-SHAs). Renovate erzeugt montags früh gesammelte Pull-Requests für kleine
-Sprünge und einzelne für grosse. `graphics-path` steigt nicht automatisch,
-`datastore-preferences` kommt als eigener PR: Ob die Bibliotheken 16-KB-
-ausgerichtet sind, misst die CI am fertigen APK (siehe INVARIANTEN.md). Die
-Begründung steht als `description` direkt in der Regel.
+`.github/dependabot.yml` gilt für Gradle, die npm-Pakete der Web-App, die
+Docker-Images (Digests) und die GitHub-Actions (Commit-SHAs). Dependabot erzeugt
+montags früh gesammelte Pull-Requests für kleine Sprünge und einzelne für grosse,
+neue Fassungen frühestens drei Tage nach Erscheinen. `graphics-path` steigt nicht
+automatisch, `datastore-preferences` kommt als eigener PR: Ob die Bibliotheken
+16-KB-ausgerichtet sind, misst die CI am fertigen APK (siehe INVARIANTEN.md). Die
+Begründung steht als Kommentar an der Regel.
 
 ### Gradle-Wrapper
 
