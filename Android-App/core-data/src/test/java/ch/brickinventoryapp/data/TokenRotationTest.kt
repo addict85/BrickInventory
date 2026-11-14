@@ -30,7 +30,7 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import java.io.IOException
 import okhttp3.mockwebserver.SocketPolicy
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -121,7 +121,7 @@ class TokenRotationTest {
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     init {
-        konto = KontoRepository(Retrofit.Builder().baseUrl(PLATZHALTER_BASIS).client(client)
+        konto = testKontoRepository(Retrofit.Builder().baseUrl(PLATZHALTER_BASIS).client(client)
             .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java))
     }
@@ -155,7 +155,7 @@ class TokenRotationTest {
         val c = OkHttpClient.Builder().dispatcher(plaetze)
             .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = t))
             .readTimeout(2, TimeUnit.SECONDS).build()
-        k = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
+        k = testKontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
             .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java))
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())

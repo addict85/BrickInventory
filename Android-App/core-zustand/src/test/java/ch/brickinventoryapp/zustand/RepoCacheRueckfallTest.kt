@@ -10,7 +10,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -47,7 +47,7 @@ class RepoCacheRueckfallTest {
         server.start()
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-cache-${System.nanoTime()}")
         cacheDir.mkdirs()
-        repo = KatalogRepository(TestApi.fuer(server))
+        repo = testKatalogRepository(TestApi.fuer(server))
     }
 
     @After

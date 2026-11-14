@@ -23,7 +23,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 test('CSP-Berichte', async t => {
   const app = express();
   app.set('trust proxy', true);
-  app.use(_req('src/http/cspBericht.js'));
+  app.use(_req('src/http/cspBericht.js').baueCspBerichtRouter());
   const srv = app.listen(0);
   t.after(() => srv.close());
   const basis = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}/csp-bericht`;

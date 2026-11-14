@@ -1,6 +1,6 @@
-/** Die Reihenfolge der Router ist unkritisch: Kein Pfad-Muster eines Routers trifft
- * einen Pfad eines anderen. Innerhalb eines Routers zählt sie (feste Pfade vor
- * `:setNumber` in sets.ts, vor `:id` in vouchers.ts). Die Anmeldung hängt unter /api/v1/auth. */
+/** Die Reihenfolge der Router hier ist unkritisch: Kein Pfad-Muster und keine
+ * Middleware eines Routers trifft einen Pfad eines anderen (test/api-router-reihenfolge).
+ * Innerhalb eines Routers zählt sie (feste Pfade vor `:setNumber` in sets.ts). */
 import { baueSetsRouter } from './sets';
 import { baueSetsLagerRouter } from './setsLager';
 import { baueSetsImportRouter } from './setsImport';
@@ -45,8 +45,8 @@ export function baueApiRouter(
 ) {
   const router = vertragsRouter('/api/v1');
 
-  router.haengeEin(baueEinrichtungRouter(d)); // /einrichtung/stand — öffentlich, vor der Anmeldung
-  router.haengeEin(bauePdfRouter(d)); // /sets/partslist-pdf/* (literale Pfade)
+  router.haengeEin(baueEinrichtungRouter(d)); // /einrichtung/stand (öffentlich, siehe anmeldungAmEingang)
+  router.haengeEin(bauePdfRouter(d)); // /sets/partslist-pdf/*
   router.haengeEin(baueSetsRouter(d)); // /sets, /sets/barcode, /sets/:setNumber/*
   router.haengeEin(baueSetsLagerRouter(d)); // /storage, /alerts, /sets/:setNumber/{storage,alert}
   router.haengeEin(baueSetsImportRouter(d)); // /sets/import/csv/*, /sets/add-stream, /sets/:setNumber/parts

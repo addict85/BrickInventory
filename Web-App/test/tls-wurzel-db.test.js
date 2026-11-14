@@ -103,7 +103,7 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
       saveUninitialized: false,
     }),
   );
-  app.use(_req('routes/zertifikat.js'));
+  app.use(_req('routes/zertifikat.js').baueZertifikatRouter());
   app.use(
     '/api/v1',
     _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)

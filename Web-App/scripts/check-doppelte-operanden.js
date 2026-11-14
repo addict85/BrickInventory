@@ -6,8 +6,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-// Alle Module der App; ihre build-Ordner fallen unten heraus.
-const ANDROID = path.join(ROOT, '..', 'Android-App');
 
 /** Stellen, an denen die Wiederholung Absicht ist. Jede mit Grund. */
 const ERLAUBT = new Map([
@@ -97,10 +95,8 @@ function dateien(wurzel, endungen, aus) {
   return out;
 }
 
-const quellen = [
-  ...dateien(ROOT, ['.ts', '.js'], ['node_modules', `${path.sep}dist`, 'app.bundle', 'vendor', '.d.ts']),
-  ...dateien(ANDROID, ['.kt'], [`${path.sep}build`]),
-];
+// Nur die Webapp: Kotlin-Quelltext gehört in die Android-Suite, nicht in diese.
+const quellen = dateien(ROOT, ['.ts', '.js'], ['node_modules', `${path.sep}dist`, 'app.bundle', 'vendor', '.d.ts']);
 if (quellen.length < 300) {
   console.error(
     `❌ Nur ${quellen.length} Quelldateien gefunden — Pfad veraltet? ` +

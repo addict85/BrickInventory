@@ -643,7 +643,11 @@ export type FehlerArt =
   | 'konflikt'
   | 'zu_gross'
   | 'falscher_typ'
+  | 'zu_langsam'
+  | 'nicht_mehr_da'
+  | 'nicht_verarbeitbar'
   | 'zu_viele'
+  | 'speicher_voll'
   | 'intern'
   | 'fremddienst'
   | 'nicht_verfuegbar'
@@ -652,10 +656,12 @@ export type FehlerArt =
 /** Art und Code reisen mit, der Satz entsteht erst in der Antwort in der
  * Sprache des Anfragenden. */
 export class Fachfehler extends Error {
+  /** `zusatz`: Felder, die die Antwort neben code und error trägt (z. B. `wartenSek`). */
   constructor(
     readonly art: FehlerArt,
     readonly code: FehlerCode,
     readonly vars?: Record<string, string | number>,
+    readonly zusatz?: Record<string, unknown>,
   ) {
     super(fehlerText(code, 'de', vars));
     this.name = 'Fachfehler';
@@ -683,6 +689,11 @@ export function doppeltAls<T>(wert: T): (e: unknown) => T {
 /** Bricht den Dienst mit einem Grund ab, den die Route dem Anfragenden nennt. */
 export function fachfehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): never {
   throw new Fachfehler(art, code, vars);
+}
+
+/** Ein Lesepfad fand nichts: 404 mit dem Code, der sagt, was fehlt. */
+export function nichtGefunden(code: FehlerCode = 'nicht_gefunden', vars?: Record<string, string | number>): never {
+  throw new Fachfehler('nicht_gefunden', code, vars);
 }
 
 /** Für Rückrufe wie multers fileFilter, die einen Fehler übergeben statt ihn zu werfen. */

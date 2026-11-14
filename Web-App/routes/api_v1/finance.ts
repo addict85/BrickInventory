@@ -1,4 +1,3 @@
-import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { FEHLER, antwortSprache, fehlerText, type FehlerCode } from '../../src/infra/fehlerTexte';
 import { sichtVon, waechterFuer } from './middleware';
 import { einzelwert } from '../../src/infra/validate';
@@ -56,7 +55,5 @@ export function baueFinanceRouter(d: Pick<Dienste, 'konto' | 'finanzen'>) {
     const period = einzelwert(req.abfrage.period, 'week');
     return { ...(await d.finanzen.getPortfolioHistory(uid, sichtVon(req), period)) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

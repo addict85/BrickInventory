@@ -97,15 +97,7 @@ test('ein fremder Host mit unserem Namen als Anfang zaehlt nicht als unserer', (
 test('beide Lauscher gehen durch die Pruefung', () => {
   // Nicht nur der fuer Ablehnungen: `window.onerror` faengt Skriptfehler, und
   // die einer Erweiterung landen dort genauso.
-  //
-  // ── Warum Klammern gezaehlt werden ──────────────────────────────────────
-  //
-  // Die erste Fassung schnitt den Lauscher mit `indexOf('});')` heraus. Die
-  // GEGENPROBE — die Pruefung im Ablehnungs-Lauscher ausbauen — blieb damit
-  // gruen: Ohne geschweiften Block endet der Aufruf mit `);`, das gesuchte
-  // `});` stand erst im NAECHSTEN Lauscher, und der trug die Pruefung noch.
-  // Der Test hat also den falschen Text angesehen und bestanden. Gezaehlte
-  // Klammern nehmen genau ein Argument.
+  // Klammern gezählt statt `indexOf('});')`: Ohne geschweiften Block träfe das den nächsten Lauscher.
   const argument = (text, ab) => {
     let tiefe = 0;
     for (let i = text.indexOf('(', ab); i < text.length; i++) {

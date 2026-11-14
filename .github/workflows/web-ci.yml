@@ -1,9 +1,10 @@
 # CI der Web-App: frisch ausgecheckt, aus der Lockfile installiert, neu gebaut,
 # gegen ein leeres PostgreSQL. REQUIRE_DB und REQUIRE_BROWSER machen aus einer
 # fehlenden Datenbank oder einem fehlenden Chrome einen Fehler statt eines
-# stillen Überspringens. Der paths-Filter schliesst ein, was die Suite liest: Die
-# Abgleich-Dateien (test/abgleich-*.test.js und die vier in test/ratschen.test.js)
-# lesen Android-Quellen, workflow-ort.test.js die Workflows und die Wurzeldateien.
+# stillen Überspringens. Der paths-Filter schliesst ein, was die Suite liest: shared/
+# (darunter app-schnittstelle.json, was die App vom Server braucht), die aus dem Vertrag
+# erzeugten Kotlin-Typen, workflow-ort.test.js die Workflows und die Wurzeldateien.
+# Android-Quelltext liest die Suite nicht (test/ratschen.test.js).
 name: CI
 
 on:
@@ -12,9 +13,7 @@ on:
     paths:
       - 'Web-App/**'
       - 'shared/**'
-      - 'Android-App/**/src/**'
-      - 'Android-App/**/*.kt'
-      - 'Android-App/*/build.gradle.kts'
+      - 'Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/erzeugt/**'
       - '.github/**'
       - 'docs/**'
       - 'README.md'
@@ -23,9 +22,7 @@ on:
     paths:
       - 'Web-App/**'
       - 'shared/**'
-      - 'Android-App/**/src/**'
-      - 'Android-App/**/*.kt'
-      - 'Android-App/*/build.gradle.kts'
+      - 'Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/erzeugt/**'
       - '.github/**'
       - 'docs/**'
       - 'README.md'

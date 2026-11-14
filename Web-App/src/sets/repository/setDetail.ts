@@ -113,14 +113,14 @@ export function fuegeAnleitungEin(
   );
 }
 
-export function anleitungsPfad(db: DbSchnittstelle, id: string, uid: number) {
+export function anleitungsPfad(db: DbSchnittstelle, id: number, uid: number) {
   return db.get<{ local_path: string | null }>('SELECT local_path FROM instructions WHERE id = $1 AND user_id = $2', [
     id,
     uid,
   ]);
 }
 
-export function loescheAnleitung(db: DbSchnittstelle, id: string, uid: number) {
+export function loescheAnleitung(db: DbSchnittstelle, id: number, uid: number) {
   return db.run('DELETE FROM instructions WHERE id = $1 AND user_id = $2', [id, uid]);
 }
 

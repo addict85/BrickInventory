@@ -6,7 +6,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.vertrag.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.konto.ui.HouseholdUiState
 import dagger.hilt.android.lifecycle.HiltViewModel

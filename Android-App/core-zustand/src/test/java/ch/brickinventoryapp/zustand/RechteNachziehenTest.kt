@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.rechteNachziehen
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -29,7 +29,7 @@ class RechteNachziehenTest {
 
     private val pfade = PfadServer()
     private val t = TestDienste(pfade.server)
-    private val konto = KontoRepository(t.api)
+    private val konto = testKontoRepository(t.api)
 
     @After
     fun zu() { t.aufraeumen(); pfade.server.shutdown() }

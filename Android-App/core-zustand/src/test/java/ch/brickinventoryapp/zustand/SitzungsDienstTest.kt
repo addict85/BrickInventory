@@ -44,10 +44,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.SpeicherSitzungsablage
 import ch.brickinventoryapp.testing.TestDienste
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.testing.text
 import ch.brickinventoryapp.model.ui.Meldung
 
@@ -110,7 +110,7 @@ class SitzungsDienstTest {
     /** Erzeugt und startet den Dienst, führt [block] aus und beendet seine Koroutinen. */
     private fun mitVm(block: suspend TestScope.(SitzungsDienst) -> Unit) = runTest(takt) {
         val bereich = CoroutineScope(SupervisorJob() + takt)
-        val echt = KontoRepository(fake.api)
+        val echt = testKontoRepository(fake.api)
         val konto = object : KontoRepository by echt {
             override suspend fun getSettings(): Ergebnis<SettingsResponse> {
                 val (dauer, waehrung) = einstellungen.removeFirstOrNull() ?: return echt.getSettings()
@@ -119,7 +119,7 @@ class SitzungsDienstTest {
             }
         }
         val dienst = SitzungsDienst(
-            konto = konto, verwaltung = VerwaltungRepository(fake.api), prefs = prefs, sessionExpired = abgelaufenSignal, rechte = rechte,
+            konto = konto, verwaltung = testVerwaltungRepository(fake.api), prefs = prefs, sessionExpired = abgelaufenSignal, rechte = rechte,
             meldungen = t.meldungen, sitzung = sitzung, blickfeld = t.blickfeld,
             abgleich = t.abgleich, zweiterFaktorPflicht = ZweiterFaktorPflicht(),
             abmeldevorgang = Abmeldevorgang {

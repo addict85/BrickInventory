@@ -1,4 +1,3 @@
-import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { sichtVon, waechterFuer } from './middleware';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -49,7 +48,5 @@ export function baueMiscRouter(d: Pick<Dienste, 'konto' | 'bestand'>) {
 
   // Hinter requireToken: Die Übersicht verriete sonst die ganze API-Fläche.
   router.endpunkt('GET /api/v1/', requireToken, (_req, res) => res.json(UEBERSICHT));
-
-  router.use(fehlerAntwort);
   return router;
 }

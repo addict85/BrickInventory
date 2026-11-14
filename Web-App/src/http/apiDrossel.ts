@@ -1,11 +1,5 @@
-/** Ein Budget je Konto für die angemeldete API: Wer ein Konto hat, kann teure
- * Wege (PDF, Importe, Katalogabrufe) sonst im Takt rufen, bis der Prozess
- * antwortet und niemand mehr. Die Kosten sind gewichtet, damit ein Katalog-
- * Abruf nicht so viel zählt wie ein Leseaufruf; Aufträge haben zusätzlich
- * einen eigenen, kleinen Topf.
- * Gezählt wird im Prozess: Der Web-Prozess ist genau einer (src/http/kontoSchranke.ts
- * sagt dasselbe für gleichzeitige Uploads). Bei mehreren Replicas gälte das
- * Budget je Replica — dann wäre es zu erhöhen, nicht zu vertrauen. */
+/** Ein Budget je Konto für die angemeldete API, gewichtet nach Kosten (PDF, Importe, Katalog), damit
+ * ein Konto teure Wege nicht im Takt rufen kann. Gezählt im Prozess: Es gibt genau einen Web-Prozess. */
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from './nutzerId';
 import { sendeFehler } from './httpAntwort';

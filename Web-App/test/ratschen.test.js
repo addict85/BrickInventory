@@ -549,7 +549,7 @@ function reineQuelltextTests() {
 }
 
 test('reine Quelltext-Tests werden weniger, nie mehr', () => {
-  const SCHRANKE = 37;
+  const SCHRANKE = 35;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -733,7 +733,7 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
-  const SCHRANKE = 427;
+  const SCHRANKE = 385;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
@@ -791,37 +791,29 @@ test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weni
 });
 
 /**
- * Web-Tests, die Android-Quellen lesen, sind Abgleich-Dateien: `abgleich-*.test.js` oder eine
- * der vier, deren Namen Web-Code nennt. Nur für sie schliesst der paths-Filter von web-ci
- * Android-App/ ein; was nur die App betrifft, prüft die Android-Suite.
+ * Web-Tests lesen keinen Android-Quelltext: Was die App vom Server braucht, steht in
+ * shared/app-schnittstelle.json (im Android-Lauf aus ihrem Quelltext erzeugt und geprüft);
+ * was nur die App betrifft, prüft die Android-Suite. Gezählt werden auch die Helfer.
  */
-const LIEST_ANDROID =
-  /require\(['"]\.\/helpers\/android['"]\)|kotlin-vertrag|check-(antwortfelder|doppelte-operanden)|generate-design-tokens|['"`]Android-App['"`/]|\.kt['"`]/;
-const ABGLEICH_OHNE_PRAEFIX = [
-  'theme.test.js',
-  'passwortlaenge.test.js',
-  'vertrag-kotlin.test.js',
-  'vertrag-lesen-db.test.js',
-];
+const LIEST_ANDROID = /require\(['"]\.\/helpers\/android['"]\)|['"`]Android-App['"`/]|\.kt['"`]/;
 
-test('Web-Tests, die Android-Quellen lesen, sind Abgleich-Dateien und werden weniger', () => {
-  // Gegenprobe: `const k = 'x.kt';` in a11y.test.js → rot „ausserhalb des Abgleichs: a11y.test.js“.
-  const SCHRANKE = 38;
-  const lesend = fs
-    .readdirSync(__dirname)
-    .filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js')
-    .filter(n => LIEST_ANDROID.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
-  assert.ok(lesend.length >= 10, `Nur ${lesend.length} Treffer — greift das Muster noch?`);
-  const fremd = lesend.filter(n => !n.startsWith('abgleich-') && !ABGLEICH_OHNE_PRAEFIX.includes(n));
-  assert.deepEqual(
-    fremd,
-    [],
-    `ausserhalb des Abgleichs: ${fremd.join(', ')}. ` +
-      'Was nur die App betrifft, gehört in die Android-Suite; ein Abgleich heisst abgleich-*.test.js.',
+test('Web-Tests lesen keinen Android-Quelltext', () => {
+  // Gegenprobe: `const k = 'x.kt';` in a11y.test.js → rot (nennt a11y.test.js); dasselbe in
+  // test/helpers/vertrag.js → rot (nennt helpers/vertrag.js).
+  const SCHRANKE = 0;
+  for (const probe of ["path.join(ROOT, '..', 'Android-App', 'x')", "'Theme.kt'", "require('./helpers/android')"])
+    assert.ok(LIEST_ANDROID.test(probe), `das Muster greift nicht mehr: ${probe}`);
+  const dateien = [
+    ...fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js') && n !== 'ratschen.test.js'),
+    ...fs.readdirSync(path.join(__dirname, 'helpers')).map(n => path.join('helpers', n)),
+  ];
+  assert.ok(dateien.length > 500, `nur ${dateien.length} Dateien — greift die Suche noch?`);
+  const lesend = dateien.filter(n => LIEST_ANDROID.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
+  assert.ok(
+    lesend.length <= SCHRANKE,
+    `${lesend.length} Web-Testdateien lesen Android-Quellen, erlaubt sind ${SCHRANKE}: ${lesend.join(', ')}. ` +
+      'Den Server gegen shared/app-schnittstelle.json prüfen; was nur die App betrifft, gehört in die Android-Suite.',
   );
-  assert.ok(lesend.length <= SCHRANKE, `${lesend.length} Abgleich-Dateien, erlaubt sind ${SCHRANKE}.`);
-  if (lesend.length < SCHRANKE)
-    console.log(`  ℹ Abgleich-Dateien: ${lesend.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 /**
@@ -930,7 +922,7 @@ test('kein Verweis auf „Nachtrag N" unter Web-App/', () => {
   // Kommentar verweist auf eine Liste, die es im Baum nicht gibt. Ausgenommen:
   // docs/, CHANGELOG* und db/ (angewandte Migrationen dürfen sich nicht ändern).
   // Gegenproben: eine Nachtragsnummer in src/konto/geraeteToken.ts → rot; dasselbe in
-  // test/abgleich-tab-layout.test.js und in public/index.html → rot (05.11.2026).
+  // test/tab-layout.test.js und in public/index.html → rot (05.11.2026).
   const RAUS = new Set(['node_modules', 'dist', 'coverage', 'data', 'docs', 'CHANGELOG', 'db', '.git']);
   const treffer = [];
   let dateien = 0;
@@ -1350,8 +1342,8 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
   // den typischen Erzählmarken, auch „Gemessen … am <Datum>“.
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  // Gegenprobe (14.11.2026): eine Zeile `// Gemessen 7 am` samt Datum an diesen Kopf gehängt → rot (5 von 4).
-  const SCHRANKE = 4;
+  // Gegenprobe (14.11.2026): eine Zeile `// Gemessen 7 am` samt Datum an diesen Kopf gehängt → rot (4 von 3).
+  const SCHRANKE = 3;
 
   const MARKE =
     /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Gemessen\b[^.]*\bam [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
@@ -1501,7 +1493,7 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
   // Im Code steht das Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md);
   // Gegenprobenlisten zählen nicht.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
-  const SCHRANKE = { tests: 58, scripts: 0, indexHtml: 162 };
+  const SCHRANKE = { tests: 49, scripts: 0, indexHtml: 162 };
   const js = (/** @type {string} */ d) =>
     fs
       .readdirSync(d)

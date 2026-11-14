@@ -258,11 +258,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Preisvergleich haengt am Merkposten, nicht am Katalog', async () => {
-    // Marco: „Der Link für den Vergleich fehlt noch auf der Detailseite der
-    // Merkliste." Beide Oberflächen holten ihn aus /catalog/sets/:nr —
-    // derselben Anfrage wie Thema und Teilezahl. Für ein Set, das rb_sets
-    // nicht kennt, antwortet die Route 404, und der Knopf blieb aus. Dabei
-    // braucht die Adresse nur die Setnummer.
+    // Die Adresse braucht nur die Setnummer, nicht den Katalog (der kennt nicht jedes Set).
     //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
     //   a) `preisvergleich_url: fuerSet(...)` aus merkpostenVon() entfernt →
@@ -359,9 +355,6 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Inhaber laesst sich wechseln — mit Alarm und Datum', async () => {
-    // Marcos Befund: „Auf dem Detail-Dialog der Merkliste kann der Inhaber
-    // nicht geändert werden. Auch in der Android-App nicht."
-    //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
     //   a) In verschiebeMerkposten() das UPDATE der price_alerts entfernt →
     //      „der Alarm zieht mit" wird rot.

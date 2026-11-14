@@ -1,12 +1,11 @@
 /** Sets in Mengen und im Strom erfassen: CSV-Import samt Fortschritt, Export, Erfassen mit Ergänzung. */
 import type express from 'express';
 import { oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { uebersprungenHinweis } from '../../src/infra/csvExport';
 import { sendeCsv } from '../../src/http/csvAntwort';
-import { antwortSprache } from '../../src/infra/fehlerTexte';
+import { antwortSprache, fachfehler } from '../../src/infra/fehlerTexte';
 import { oeffneStrom, StromGeschlossen, type Strom } from '../../src/konto/http/strom';
 import { loginOrTokenGuard, angemeldeteNutzerId } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
@@ -74,8 +73,8 @@ export function baueSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
     requireToken,
     kontoSchranke('upload'),
     csvEmpfang.single('file'),
-    async (req, res) => {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    async req => {
+      if (!req.file) fachfehler('ungueltig', 'keine_datei');
       const { total, uebersprungen, vorhanden, gestartet } = await d.sets.setCsvImportStarten(
         angemeldeteNutzerId(req),
         req.file.buffer.toString('utf-8'),
@@ -134,7 +133,5 @@ export function baueSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
   router.endpunkt('POST /api/v1/sets/:setNumber/parts', requireToken, async req => {
     return { count: await d.sets.teileDesSetsImportieren(angemeldeteNutzerId(req), req.pfad.setNumber) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

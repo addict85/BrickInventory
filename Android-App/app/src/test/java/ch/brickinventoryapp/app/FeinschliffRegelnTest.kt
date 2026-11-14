@@ -29,7 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.testing.KatalogRepository
+import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,7 +58,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.SemanticsMatcher
 import java.util.Locale
 import org.robolectric.RuntimeEnvironment
-import ch.brickinventoryapp.testing.SetsRepository
+import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.app.nav.AppZiel
 import ch.brickinventoryapp.finanzen.ui.FinanzZiel
 import ch.brickinventoryapp.katalog.ui.KatalogZiel
@@ -249,8 +249,8 @@ class FeinschliffRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.galerie().also { it.loadSets() }
-            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
-                KatalogRepository(welt.t.api),
+            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, testSetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+                testKatalogRepository(welt.t.api),
                 object : SetAnleger {
                     override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =

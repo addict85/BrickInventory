@@ -105,12 +105,7 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
 /**
  * Die Startseite geht durch den Renderer — nicht an ihm vorbei.
  *
- * Gegenproben (durchgefuehrt, Ergebnisse abgeschrieben):
- *   `index: false` entfernt → dieser Fall rot.
- *   Beim ERSTEN Versuch blieb er gruen: Die Pruefung las den Quelltext samt
- *   Kommentaren, und der Kommentar ueber der Option nennt sie beim Namen.
- *   Dieselbe Falle wie bei scripts/check-global-settings.js, das Erwaehnungen
- *   in Kommentaren mitzaehlt.
+ * Gegenprobe: `index: false` entfernt → dieser Fall rot (gelesen ohne Kommentare).
  */
 test('3. die Startseite geht durch den Renderer', () => {
   // OHNE KOMMENTARE, und das ist nicht Zierde: Der Erklaerkommentar ueber der

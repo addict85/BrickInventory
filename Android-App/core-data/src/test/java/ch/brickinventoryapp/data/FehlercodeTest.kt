@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.vertrag.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.repository.fehlerTextZuCode
 import ch.brickinventoryapp.data.repository.KontoRepository
@@ -16,8 +16,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.GutscheineRepository
-import ch.brickinventoryapp.testing.KontoRepository
+import ch.brickinventoryapp.testing.testGutscheineRepository
+import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -57,8 +57,8 @@ class FehlercodeTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun admin() = KontoRepository(TestApi.fuer(server))
-    private fun gutscheine() = GutscheineRepository(TestApi.fuer(server))
+    private fun admin() = testKontoRepository(TestApi.fuer(server))
+    private fun gutscheine() = testGutscheineRepository(TestApi.fuer(server))
 
     private fun fehler(r: Ergebnis<*>): Ergebnis.Error {
         assert(r is Ergebnis.Error) { "Erwartet wurde ein Fehler, kam: $r" }

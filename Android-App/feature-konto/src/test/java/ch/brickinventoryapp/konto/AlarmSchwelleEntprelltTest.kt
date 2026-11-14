@@ -5,9 +5,9 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
-import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.TeileRepository
-import ch.brickinventoryapp.testing.VerwaltungRepository
+import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testTeileRepository
+import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
@@ -61,9 +61,9 @@ class AlarmSchwelleEntprelltTest {
 
     @Test
     fun `getippte Schwelle speichert nach der Ruhezeit einmal, die letzte`() {
-        val vm = t.merke(EinstellungenViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, KontoRepository(t.api),
-            VerwaltungRepository(t.api), t.alarme(),
-            TeileRepository(t.api), keinLeser))
+        val vm = t.merke(EinstellungenViewModel(t.sitzung, t.filter(), t.hinweise, t.abgleich, testKontoRepository(t.api),
+            testVerwaltungRepository(t.api), t.alarme(),
+            testTeileRepository(t.api), keinLeser))
         vm.setzeAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, "4")
         vm.setzeAlarmSchwelle("75192-1", Zustand.NEU, Alarmrichtung.UNTER, "449,90")
         uhr.advanceTimeBy(500)

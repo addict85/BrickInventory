@@ -1,10 +1,10 @@
 /** /api/v1/sets — Anlegen, Lesen, Ändern und Löschen eines Sets. Lager und Alarme,
  * Import und Anleitungen hängen als eigene Router daneben (index.ts). Die Arbeit liegt in src/sets/. */
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { sichtVon, waechterFuer } from './middleware';
 import { normalisiereSetNummer } from '../../src/infra/setNummer';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
+import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 
 export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) {
   const { requireToken } = waechterFuer(d.konto);
@@ -24,11 +24,9 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
     return { exists: !!treffer, ...(treffer || { set_number: normalisiereSetNummer(sn) }) };
   });
 
-  router.endpunkt('GET /api/v1/sets/barcode/:barcode', requireToken, async (req, res) => {
+  router.endpunkt('GET /api/v1/sets/barcode/:barcode', requireToken, async req => {
     const barcode = req.pfad.barcode.trim();
-    const treffer = await d.sets.setZumBarcode(barcode);
-    if (treffer) return { ...treffer };
-    sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
+    return { ...((await d.sets.setZumBarcode(barcode)) ?? nichtGefunden('barcode_kein_set', { barcode })) };
   });
 
   router.endpunkt('GET /api/v1/sets/:setNumber/parts-list', requireToken, async req => {
@@ -46,12 +44,12 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
     return { count: r.sets.length, total: r.total, sets: r.sets, ...(r.themes ? { themes: r.themes } : {}) };
   });
 
-  router.endpunkt('GET /api/v1/sets/:setNumber/price', requireToken, async (req, res) => {
+  router.endpunkt('GET /api/v1/sets/:setNumber/price', requireToken, async req => {
     const uid = req.apiUser.user_id;
     const sn = req.pfad.setNumber;
     // Blickfeld statt eigener ID: Im Haushalt gehört das Set oft einem Unterkonto.
     const preis = await d.sets.setPreis(uid, sichtVon(req), sn);
-    if (!preis) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+    if (!preis) nichtGefunden('set_nicht_gefunden');
     return { ...preis };
   });
 
@@ -67,9 +65,9 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
     return { members: await d.haushalt.haushaltsMitglieder(req.apiUser.user_id) };
   });
 
-  router.endpunkt('GET /api/v1/sets/:setNumber', requireToken, async (req, res) => {
+  router.endpunkt('GET /api/v1/sets/:setNumber', requireToken, async req => {
     const set = await d.sets.getSet(sichtVon(req), req.pfad.setNumber);
-    if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+    if (!set) nichtGefunden('set_nicht_gefunden');
     return { set };
   });
 
@@ -92,7 +90,7 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
     return { ...antwort };
   });
 
-  router.endpunkt('PUT /api/v1/sets/:setNumber', requireToken, async (req, res) => {
+  router.endpunkt('PUT /api/v1/sets/:setNumber', requireToken, async req => {
     const e = req.eingabe;
     if (
       e.quantity === undefined &&
@@ -100,7 +98,7 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
       e.purchase_price === undefined &&
       e.condition === undefined
     ) {
-      return sendeFehler(req, res, 400, 'erfassung_felder');
+      fachfehler('ungueltig', 'erfassung_felder');
     }
     // Die Antwort trägt die Gesamtmenge NACH der Änderung: Eine bei 0 gedeckelte
     // Verringerung ergibt eine andere Zahl als die gesendete.
@@ -109,9 +107,9 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
   });
 
   /** Standardmässig im ganzen SCHREIB-Blickfeld. */
-  router.endpunkt('DELETE /api/v1/sets/:setNumber', requireToken, async (req, res) => {
+  router.endpunkt('DELETE /api/v1/sets/:setNumber', requireToken, async req => {
     const papierkorb = await d.sets.loescheSetFuer(sichtVon(req), req.pfad.setNumber);
-    if (!papierkorb) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+    if (!papierkorb) nichtGefunden('set_nicht_gefunden');
     return { papierkorb };
   });
 
@@ -129,7 +127,5 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
       )),
     };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

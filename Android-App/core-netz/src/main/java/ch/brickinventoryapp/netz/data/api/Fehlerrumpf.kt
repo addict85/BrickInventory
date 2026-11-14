@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.netz.data.api
 
-import ch.brickinventoryapp.vertrag.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 /**
  * Was der Server bei einem Fehler in den Rumpf legt: `{success:false, error, code}`.
  *

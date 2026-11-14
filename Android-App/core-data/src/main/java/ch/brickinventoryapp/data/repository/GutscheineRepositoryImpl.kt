@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.vertrag.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.GuthabenAntwort
 import ch.brickinventoryapp.vertrag.Gutschein

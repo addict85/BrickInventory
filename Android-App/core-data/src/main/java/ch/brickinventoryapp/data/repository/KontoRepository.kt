@@ -24,7 +24,7 @@ import ch.brickinventoryapp.vertrag.RegisterRequest
 import ch.brickinventoryapp.vertrag.RegisterResponse
 import ch.brickinventoryapp.vertrag.RegistrationStatusResponse
 import ch.brickinventoryapp.vertrag.SettingsResponse
-import ch.brickinventoryapp.vertrag.TOKEN_SCOPE_APP
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_APP
 import ch.brickinventoryapp.vertrag.TokenWiderruf
 import ch.brickinventoryapp.vertrag.TokensResponse
 import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage

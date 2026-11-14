@@ -45,12 +45,7 @@ test('kein Servermodul holt ein anderes per spätem require()', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // Dieselbe Frage für die TESTS: laden sie Module, die es noch gibt?
 // ═══════════════════════════════════════════════════════════════════════════
-/**
- * Der Anlass: set-condition-aggregate.test.js holte auf Zeile
- * 679 `utils/handlers.js` — aufgeteilt seit. Der Aufruf steht auf
- * DATEIEBENE, also starb die ganze Datei beim Laden; die zehn Prüfungen
- * darunter liefen nie mehr. Sichtbar war das nur an einer Zahl („nicht ok" für …
- */
+/** Ein fehlendes Modul auf Dateiebene liesse die ganze Datei beim Laden sterben, ohne einen Fall rot. */
 test('kein Test holt ein Modul aus dist/, das es nicht gibt', () => {
   buildAndRequire(); // stellt sicher, dass dist/ steht
   const dir = path.join(ROOT, 'test');

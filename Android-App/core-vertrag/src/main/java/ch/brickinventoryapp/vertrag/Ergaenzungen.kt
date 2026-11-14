@@ -5,14 +5,6 @@ import ch.brickinventoryapp.model.fach.Zustand
 // Kennungen und abgeleitete Werte zu den erzeugten Typen (Vertrag.kt): Der Erzeuger
 // schreibt nur Felder; was die App daraus liest, steht einmal hier statt je Aufrufer.
 
-/** Token-Umfang: "app" ohne Verwalterrechte, "voll" mit — immer ausdrücklich gewählt. */
-const val TOKEN_SCOPE_APP = "app"
-const val TOKEN_SCOPE_VOLL = "voll"
-
-/** Zweck einer Passkey-Abfrage (routes/auth.ts). */
-const val PASSKEY_ANMELDEN = "anmelden"
-const val PASSKEY_ZWEITER_FAKTOR = "zweiter_faktor"
-
 /** Nur die Zustände, zu denen der Server eine Zeile geliefert hat. */
 fun PriceByCondition.present(): List<Pair<Zustand, ConditionValuation>> = buildList {
     new?.let { add(Zustand.NEU to it) }
