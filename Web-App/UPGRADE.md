@@ -2099,6 +2099,11 @@ wird). Hinweise:
   Proxys eintragen (README.md, „Proxy vor Caddy“); wer das Netz wirklich braucht,
   setzt zusätzlich `PROXY_NETZ_BESTAETIGT=1` in `.env` (höchstens `/16` bzw.
   `/64` wie bisher). Wer nur Adressen oder `keiner` eingetragen hat: nichts zu tun.
+- **Gesamtgrenze für Uploads:** Eigene Anleitungen und Gutschein-PDFs aller Konten
+  zusammen dürfen höchstens `UPLOAD_GESAMT_MB` belegen (Vorgabe 20480 = 20 GB);
+  darüber antwortet der Upload mit 507 und der Meldung, den Verwalter zu fragen.
+  Wer mehr Platz hat und braucht, setzt den Wert in `.env`. Die Grenze je Konto
+  (`UPLOAD_KONTINGENT_MB`, 2048) bleibt.
 - **Passwörter als argon2id:** Neue und geänderte Passwörter werden mit argon2id
   gespeichert, vorhandene bcrypt-Hashes bei der nächsten erfolgreichen Anmeldung
   ersetzt. Passwörter dürfen jetzt bis 1024 Zeichen lang sein (bisher 72 Byte).

@@ -1,7 +1,7 @@
 // Für beide Apps: Cookie und Token. Die Arbeit liegt in src/gutscheine/dienst.ts.
 import type express from 'express';
 import multer from 'multer';
-import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
+import { FORMULAR_GRENZEN, gesamtReichtFuer, uploadGesamtMb } from '../../src/http/dateiEmpfang';
 import { FREMDE_DATEI_CSP } from '../../src/http/dateiAusliefern';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../src/infra/fehlerTexte';
@@ -101,6 +101,10 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
     '/vouchers/pdf',
     requireToken,
     kontoSchranke('gutscheinPdf'),
+    async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (await gesamtReichtFuer(Number(req.headers['content-length']) || 0)) return next();
+      sendeFehler(req, res, 507, 'upload_gesamt_voll', { mb: uploadGesamtMb() });
+    },
     upload.single('file'),
     async (req: Anfrage<'POST /api/v1/vouchers/pdf'>, res: Antwort<'POST /api/v1/vouchers/pdf'>) => {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');

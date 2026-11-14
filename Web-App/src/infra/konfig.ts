@@ -81,6 +81,7 @@ export interface Konfig {
   erfassungZeitzone: string;
   preisverlaufTage: number;
   uploadKontingentMb: number;
+  uploadGesamtMb: number;
   mailKonsoleMitToken: boolean;
   bildUserAgent: string | null;
   bildCacheMaxMb: number;
@@ -158,6 +159,7 @@ export const VARIABLEN = [
   'TZ',
   'PRICE_HISTORY_KEEP_DAYS',
   'UPLOAD_KONTINGENT_MB',
+  'UPLOAD_GESAMT_MB',
   'MAIL_KONSOLE_MIT_TOKEN',
   'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB',
@@ -338,6 +340,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     // 0 oder weniger schaltet das Beschneiden des Preisverlaufs ab.
     preisverlaufTage: ganzzahl(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),
     uploadKontingentMb: zahl(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
+    uploadGesamtMb: zahl(env, 'UPLOAD_GESAMT_MB', 20_480, f),
     mailKonsoleMitToken: env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1',
     bildUserAgent: env.IMG_USER_AGENT?.trim() || null,
     bildCacheMaxMb: zahl(env, 'BILD_CACHE_MAX_MB', 2048, f),

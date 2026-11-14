@@ -336,6 +336,10 @@ export const FEHLER = {
     de: 'Der Platz für eigene Anleitungen ({mb} MB) ist belegt — bitte erst alte löschen',
     en: 'The space for your own instructions ({mb} MB) is full — please delete old ones first',
   },
+  upload_gesamt_voll: {
+    de: 'Der Speicherplatz für hochgeladene Dateien auf dem Server ({mb} MB für alle Konten) ist belegt — bitte den Verwalter fragen',
+    en: 'The server space for uploaded files ({mb} MB for all accounts) is full — please ask the administrator',
+  },
   datei_nicht_verfuegbar: { de: 'Datei nicht verfügbar', en: 'File not available' },
   json_ungueltig: { de: 'Ungültige JSON-Datei', en: 'Invalid JSON file' },
   anfrage_json_ungueltig: { de: 'Die Anfrage ist kein gültiges JSON', en: 'The request body is not valid JSON' },

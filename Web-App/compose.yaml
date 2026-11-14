@@ -283,6 +283,8 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-172.28.73.10}
       # Ein Netz über acht Adressen in TRUST_PROXY nur mit 1 (UPGRADE.md, Abschnitt 60).
       PROXY_NETZ_BESTAETIGT: ${PROXY_NETZ_BESTAETIGT:-0}
+      # Platz für Uploads aller Konten zusammen in MB.
+      UPLOAD_GESAMT_MB: ${UPLOAD_GESAMT_MB:-20480}
       # Das Wurzelzertifikat der CA für /ca.crt und den Fingerabdruck im QR-Code.
       CA_ZERTIFIKAT: /caddy-ca/root.crt
       # Legt der erste Start an. Ältere Installationen mit data/.datenschluessel

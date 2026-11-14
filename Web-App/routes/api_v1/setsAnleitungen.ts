@@ -8,6 +8,8 @@ import {
   privaterOrdner,
   privaterEmpfang,
   kontingentReichtFuer,
+  gesamtReichtFuer,
+  uploadGesamtMb,
   pruefeEmpfangeneDatei,
 } from '../../src/http/dateiEmpfang';
 import { ANLEITUNGS_WURZEL } from '../../src/sets';
@@ -25,13 +27,11 @@ const vorDemUpload =
     const uid = angemeldeteNutzerId(req);
     if (!(await d.sets.setGehoertKonto(uid, pfadParam(req, 'setNumber'))))
       return sendeFehler(req, res, 404, 'nicht_gefunden');
-    if (
-      !(await kontingentReichtFuer(
-        path.join(ANLEITUNGS_WURZEL, String(uid)),
-        Number(req.headers['content-length']) || 0,
-      ))
-    )
+    const laenge = Number(req.headers['content-length']) || 0;
+    if (!(await kontingentReichtFuer(path.join(ANLEITUNGS_WURZEL, String(uid)), laenge)))
       return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: uploadKontingentMb() });
+    if (!(await gesamtReichtFuer(laenge)))
+      return sendeFehler(req, res, 507, 'upload_gesamt_voll', { mb: uploadGesamtMb() });
     next();
   };
 
@@ -78,6 +78,7 @@ export function baueSetsAnleitungenRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
       const grund = await pruefeEmpfangeneDatei(ANLEITUNGS_WURZEL, req.file.path, req.file.mimetype);
       if (grund === 'upload_kontingent_voll') return sendeFehler(req, res, 413, grund, { mb: uploadKontingentMb() });
+      if (grund === 'upload_gesamt_voll') return sendeFehler(req, res, 507, grund, { mb: uploadGesamtMb() });
       if (grund) return sendeFehler(req, res, 400, grund);
       const uid = angemeldeteNutzerId(req),
         sn = req.pfad.setNumber;
