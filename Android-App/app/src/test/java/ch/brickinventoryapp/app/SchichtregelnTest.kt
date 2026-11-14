@@ -19,7 +19,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
  *                               „core-zustand und core-sitzung kennen keinen Context“
  *   bereich-mehr-wireformat     ein weiterer Import eines Antworttyps in CatalogViewModel → rot
- *                               „Bereiche importieren das Wire-Format seltener …“
+ *                               „ein Bereich kennt … das Wire-Format immer seltener“
  */
 class SchichtregelnTest {
 
@@ -57,20 +57,15 @@ class SchichtregelnTest {
         assert(f.isEmpty()) { "Präsentation mit OkHttp oder Retrofit (H3):\n  " + f.joinToString("\n  ") }
     }
 
-    /** Auch der Zustand nicht: Er sieht Repositories und Ergebnis, nicht den Retrofit-Weg dahinter. */
-    @Test
-    fun `ein Bereich kennt die Retrofit-Schnittstellen nicht`() {
-        val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
-        assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api (M2):\n  " + f.joinToString("\n  ") }
-    }
-
     /**
-     * Bereiche arbeiten mit Ansichten (core-model); das Wire-Format (core-vertrag) sehen sie nur,
-     * wo ein Aufruf es noch verlangt. Eine Ratsche: Die Zahl der Importe darf sinken, nie steigen;
-     * die Abbildungen (vertrag.abbildung) zählen nicht, sie gehören in die ViewModels.
+     * Auch der Zustand nicht: Er sieht Repositories und Ergebnis, nicht den Retrofit-Weg dahinter.
+     * Das Wire-Format (core-vertrag) sehen Bereiche nur, wo ein Aufruf es noch verlangt: Die Zahl
+     * der Importe darf sinken, nie steigen; die Abbildungen (vertrag.abbildung) zählen nicht.
      */
     @Test
-    fun `Bereiche importieren das Wire-Format seltener, nie oefter`() {
+    fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format immer seltener`() {
+        val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
+        assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api (M2):\n  " + f.joinToString("\n  ") }
         val SCHRANKE = 45
         val n = dateien.filter { it.modul.startsWith("feature-") }.sumOf { d ->
             d.importe.count { it.startsWith("ch.brickinventoryapp.vertrag.") && !it.startsWith("ch.brickinventoryapp.vertrag.abbildung.") }

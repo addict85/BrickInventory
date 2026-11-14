@@ -483,7 +483,7 @@ class BildschirmFotoVariantenTest {
     @Test fun geruestTelefon() = geruestFoto("telefon")
     @Test fun geruestTablet() = geruestFoto("tablet")
 
-    /** Der Umschalter Sets | Teile | Minifiguren bei 200 %: als Chips, kein Wort gebrochen. */
+    /** Der Umschalter Sets | Teile | Minifiguren bei 200 %: Segmente, seitlich rollbar, kein Wort gebrochen. */
     @Test
     fun geruestSchrift200() {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }

@@ -71,7 +71,9 @@ Datei: `data/repository/Ergebnis.kt` · Test: `MediaAuthTest`
 
 **Fehlermeldungen an einer Stelle.** Die Datenschicht meldet die Art des Fehlers, keinen
 Satz; den Satz bildet `AppTexte.meldung()`, die Meldung des Servers hat Vorrang.
-`technisch` gehört ins Log, nie in die Anzeige. Tests: `ErrorMessageLayerTest`, `AppTexteTest`
+`technisch` gehört ins Log, nie in die Anzeige. Ein Bildschirmzustand trägt `Laden<T>` und eine
+`Meldung` (`fehlerMeldung()`), keinen fertigen Satz; alte Formen zählt `QuelltextRatscheTest`.
+Tests: `ErrorMessageLayerTest`, `AppTexteTest`, `LadenTest`, `QuelltextRatscheTest`
 
 **Eine Json-Konfiguration.** Server, Ablage und Cache lesen und schreiben mit `BrickJson`
 (per DI als `Json`); keine zweite `Json { }`.

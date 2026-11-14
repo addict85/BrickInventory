@@ -45,6 +45,10 @@ import ch.brickinventoryapp.testing.Quellen
  *   string-format-ohne-locale  MonitoringScreen wieder `String.format(fmt, sn)` → rot „kein String-format …“
  *   laden-im-bildschirm        SetDetailScreen lädt wieder per LaunchedEffect(setNumber)
  *                              → rot „Bildschirme stossen das Laden nicht …“
+ *   merkliste-laedt-wieder     MerklisteUiState wieder mit einem Feld `nochLaedt: Boolean` → rot
+ *                              „Bildschirme stossen das Laden nicht …, Zustaende tragen Laden …“
+ *   merkliste-fehler-als-text  MerklisteUiState mit `fehlerText: String?` → rot, derselbe Test
+ *   englischer-bezeichner      `fun loadMerklisteNeu()` in MerklisteViewModel → rot „… englische Bezeichner auch“
  */
 class QuelltextRatscheTest {
 
@@ -573,7 +577,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
+    fun `voll qualifizierte Namen fremder Pakete werden weniger, englische Bezeichner auch`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
         val HAUPT = 202
         val TESTS = 0
@@ -588,10 +592,27 @@ class QuelltextRatscheTest {
         assertTrue("Keine voll qualifizierten Namen gefunden — greift das Muster noch?", haupt + tests > 0)
         ratsche("voll qualifizierte Namen im Hauptcode", HAUPT, haupt)
         ratsche("voll qualifizierte Namen in Tests", TESTS, tests)
+        // Die Fachsprache des Projekts ist Deutsch. Gezählt werden Deklarationen, deren Name ein
+        // englisches Wort trägt; ausgenommen sind Überschreibungen (Android, Compose, Room) und
+        // core-vertrag, dessen Namen dem Wire-Format folgen.
+        val GRENZE = 999
+        val dekl = Regex("""^\s*(?:@[A-Za-z0-9_.]+(?:\([^)]*\))?\s+)*(?:(?:private|internal|public|protected|data|sealed|abstract|open|enum|inline|value|const|suspend|lateinit|operator|infix|tailrec|annotation)\s+)*(?:fun|val|var|class|interface|object)\s+(?:<[^>]*>\s*)?(?:[A-Za-z0-9_.<>?, ]+\.)?([A-Za-z_][A-Za-z0-9_]*)""")
+        val teil = Regex("""[A-Z]?[a-z]+|[A-Z]+(?![a-z])""")
+        val englisch = setOf("get", "load", "loading", "update", "delete", "remove", "add", "show", "hide", "click", "fetch",
+            "save", "search", "refresh", "state", "error", "response", "request", "item", "items", "screen", "button", "dialog",
+            "card", "image", "color", "price", "user", "owner", "value", "count", "list", "open", "close", "select",
+            "selected", "current", "handle", "on", "is", "has", "to", "from", "with", "new")
+        val funde = zeilenJeModul().filter { (modul, _) -> modul != "core-vertrag" }.sumOf { (_, zeilen) ->
+            zeilen.count { z ->
+                "override" !in z && dekl.find(z)?.groupValues?.get(1)
+                    ?.let { name -> teil.findAll(name).any { it.value.lowercase() in englisch } } == true
+            }
+        }
+        ratsche("englische Bezeichner", GRENZE, funde, "Neue und angefasste Namen deutsch wie im Rest.")
     }
 
     @Test
-    fun `Bildschirme stossen das Laden nicht per LaunchedEffect an`() {
+    fun `Bildschirme stossen das Laden nicht per LaunchedEffect an, Zustaende tragen Laden und Meldung`() {
         // Ziel 0: Das ViewModel lädt selbst (init, ladeBeimBeobachten); der Bildschirm ruft
         // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
         val LADEND = 17
@@ -603,5 +624,38 @@ class QuelltextRatscheTest {
         assertTrue("Kein LaunchedEffect gefunden — greift das Muster noch?",
             produktivDateien().any { "LaunchedEffect(" in it.readText() })
         ratsche("LaunchedEffect, die laden", LADEND, funde.size, funde.joinToString())
+        // Ein Bildschirmzustand trägt Laden<T> (model/ui/Laden.kt) statt eines Paars aus
+        // `laedt: Boolean` und `fehler: String?`, und Meldung oder Fehlerklasse statt eines
+        // übersetzten Satzes: Der Satz entsteht beim Zeichnen, in der Sprache von dann.
+        val ALT = 24
+        val TEXT = 25
+        val laden = Regex("""(?i)^(laedt|laden|.*loading|.*laedt)$""")
+        val text = Regex("""(?i)(fehler|error|meldung|message|hinweis)""")
+        val zustand = Regex("""data class [A-Za-z0-9_]*(UiState|Zustand)\b""")
+        var alt = 0
+        var texte = 0
+        for ((modul, zeilen) in zeilenJeModul()) {
+            if (praesentation.none { modul.startsWith(it) }) continue
+            val istZustand = zustand.containsMatchIn(zeilen.joinToString("\n"))
+            for (z in zeilen) {
+                val m = eigenschaft.find(z) ?: continue
+                val (name, typ) = m.destructured
+                if (typ == "Boolean" && laden.matches(name)) alt++
+                if (istZustand && typ != "Boolean" && text.containsMatchIn(name)) texte++
+            }
+        }
+        assertTrue("Keine Ladeform gefunden — greift das Muster noch?", alt + texte > 0)
+        ratsche("alte Ladeformen (Boolean laedt/…Loading)", ALT, alt, "Laden<T> aus model/ui/Laden.kt nehmen.")
+        ratsche("fertige Texte im Zustand (String fehler/meldung/…)", TEXT, texte,
+            "Meldung (model/ui/Meldung.kt) oder Fehlerklasse ablegen, den Satz bildet der Bildschirm.")
     }
+
+    /** Die Hauptquellen eines Moduls, Zeile für Zeile; die Regeln unten lesen nur Zeilenanfänge. */
+    private fun zeilenJeModul(): List<Pair<String, List<String>>> = Quellen.module.flatMap { m ->
+        File(m, "src/main/java").walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .map { m.name to it.readText().split("\n") }.toList()
+    }
+
+    private val eigenschaft = Regex("""^\s*(?:(?:private|internal|public|override)\s+)*(?:val|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(Boolean|String\?|String)(?![A-Za-z0-9_<?])""")
+    private val praesentation = listOf("feature-", "core-zustand", "core-sitzung", "app")
 }
