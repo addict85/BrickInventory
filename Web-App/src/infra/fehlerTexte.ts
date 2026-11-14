@@ -654,18 +654,6 @@ export class Fachfehler extends Error {
   }
 }
 
-/** Ein eigener Satz ohne Code: handleRouteError zeigt ihn, den Text einer
- * Bibliothek dagegen nicht. */
-export class Meldung extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = 'Meldung';
-  }
-}
-
 /** Zwei gleichzeitige Anlagen (23505) sind eine Nutzereingabe, kein
  * Serverfehler; alles andere geht unverändert weiter. */
 export function alsDoppelt(code: FehlerCode): (e: unknown) => never {

@@ -1,6 +1,6 @@
 /** POST /settings ohne HTTP. Hier statt in src/einstellungen, weil Mail, Protokoll
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
-import { SECRET_KEYS, isMaskedValue, globalerWertGueltig, meldeGlobaleAenderung } from '../einstellungen';
+import { SECRET_KEYS, isMaskedValue, globalerWertGueltig } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../vertrag/einstellungen';
 import type { Eingabe } from '../vertrag';
@@ -95,7 +95,7 @@ export async function einstellungenSpeichern(
   });
   if (!global) return true;
   // Erst nach dem COMMIT: Ein Zwischenspeicher läse vorher noch den alten Wert ein.
-  meldeGlobaleAenderung();
+  kx.einstellungen.meldeGlobaleAenderung();
   if (heikel.some(k => !k.startsWith('smtp_')))
     kx.konto.verwalterHinweisNebenher('einstellungen_geaendert', { konto: heikel.join(', '), durch: o.name });
   if (bricksetAlt !== null) await bricksetLimitGesetzt(kx, bricksetAlt, parseInt(String(e.api_limit_brickset), 10));

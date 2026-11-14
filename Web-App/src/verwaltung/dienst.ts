@@ -6,7 +6,8 @@ import { naechsteUhrzeit, DAILY_JOBS } from '../auftraege';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
-import { anfragenJeMinute, alsAbrufFehler } from '../katalog';
+import { anfragenJeMinute } from '../bilder';
+import { alsAbrufFehler } from '../fremdquellen';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import type { VerwaltungKontext } from './kontext';
 
@@ -207,7 +208,7 @@ export async function katalogBilderEinreihen(kx: VerwaltungKontext, alleErneut: 
 
   const kandidaten = await kx.verwaltung.katalogBildKandidaten();
 
-  // Dieselbe Namensregel wie downloadSetImage(), sonst fände der Vergleich nichts.
+  // Dieselbe Namensregel wie setBildHerunterladen(), sonst fände der Vergleich nichts.
   const dateiname = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
   const offenSets: string[] = [];
   const offenUrls: string[] = [];

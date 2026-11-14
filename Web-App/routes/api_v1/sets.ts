@@ -2,7 +2,7 @@
  * Import und Anleitungen hängen als eigene Router daneben (index.ts). Die Arbeit liegt in src/sets/. */
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { sichtVon, waechterFuer } from './middleware';
-import { normalizeSetNumber } from '../../src/sets';
+import { normalisiereSetNummer } from '../../src/infra/setNummer';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
@@ -21,7 +21,7 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
   router.endpunkt('GET /api/v1/sets/exists/:setNumber', requireToken, async req => {
     const sn = req.pfad.setNumber;
     const treffer = await d.sets.findSetInScope(req.apiUser.user_id, sn);
-    return { exists: !!treffer, ...(treffer || { set_number: normalizeSetNumber(sn) }) };
+    return { exists: !!treffer, ...(treffer || { set_number: normalisiereSetNummer(sn) }) };
   });
 
   router.endpunkt('GET /api/v1/sets/barcode/:barcode', requireToken, async (req, res) => {

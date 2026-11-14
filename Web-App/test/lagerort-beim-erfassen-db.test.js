@@ -2,7 +2,7 @@
  * Der Lagerort lässt sich beim ERFASSEN setzen — nicht erst danach.
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Der Lagerort-Aufruf in addSet() entfernt            → Schritt 1 rot.
+ *   a) Der Lagerort-Aufruf in setErfassen() entfernt       → Schritt 1 rot.
  *   b) desgleichen in addManualPart()                      → Schritt 3 rot.
  *   c) desgleichen in addManualFig()                       → Schritt 4 rot.
  *   d) `storage` in uebernimm() nicht durchgereicht        → Schritt 5 rot.
@@ -91,10 +91,15 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
   };
 
   await t.test('1. Ein Set kommt mit seinem Lagerort in die Galerie', async () => {
-    // Ohne Netz: getSetInfo/Brickset scheitern still und addSet legt die Zeile
-    // trotzdem an („Set 10179-1"). Genau das ist hier erwünscht — geprüft wird
-    // der Lagerort, nicht die Anreicherung.
-    await setService.addSet({ setNumber: '10179-1', menge: 1, konto: U.ich, zustand: 'N', lagerort: 'Kiste 3' });
+    // Wie der CSV-Import (aufstocken); den Katalog holt der Auftrag, geprüft wird der Lagerort.
+    await setService.setErfassen({
+      anfragender: U.ich,
+      setNumber: '10179-1',
+      menge: 1,
+      zustand: 'N',
+      lagerort: 'Kiste 3',
+      wennVorhanden: 'aufstocken',
+    });
     const ort = await ortVon(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '10179-1']);
     assert.equal(ort, 'Kiste 3', 'Das Set wurde erfasst, aber ohne den mitgegebenen Lagerort.');
   });

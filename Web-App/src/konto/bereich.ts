@@ -59,7 +59,7 @@ function anmeldungUndGeraete(k: KontoKontext) {
     pruefeToken: mit(k)(geraeteToken.pruefeToken),
     rotiereToken: mit(k)(geraeteToken.rotiereToken),
     deleteToken: mit(k)(geraeteToken.deleteToken),
-    purgeExpiredTokens: mit(k)(geraeteToken.purgeExpiredTokens),
+    tokensAufraeumen: mit(k)(geraeteToken.tokensAufraeumen),
     validateToken: mit(k)(geraeteToken.validateToken),
   };
 }

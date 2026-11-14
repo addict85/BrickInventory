@@ -39,10 +39,7 @@ export function erneuereLebenszeichen(d: Dienste, worker: JobsLauf['worker']): P
  * kommen einmal je Start dazu. Ein zweiter Job-Prozess wäre unschädlich:
  * Aufträge belegt jeder nur mit SKIP LOCKED.
  */
-export async function starteJobs(d: Dienste, beides: boolean): Promise<JobsLauf> {
-  // Nur ein getrennter Job-Prozess hält eigene Haushalt-Caches, die der Web-Prozess ändert.
-  if (!beides) d.haushalt.horcheAufAenderungen();
-
+export async function starteJobs(d: Dienste): Promise<JobsLauf> {
   const uebernommen = await d.auftraege.meldeProzessAn();
   if (uebernommen) console.log(`[auftraege] ${uebernommen} Aufträge eines beendeten Prozesses übernommen`);
   await d.auftraege.meldeStartZustand({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });

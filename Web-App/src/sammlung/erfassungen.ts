@@ -26,7 +26,7 @@ const arten = (k: SammlungKontext): Record<ErfassungsArt, Art> => ({
     resolvePrice: (uid, [sn], cond) => k.finanzen.getCurrentMarketPrice(String(sn), uid, cond || null),
     // Wie beim ausdrücklichen Löschen: Teile und Figuren des Sets stünden sonst
     // ohne Set in Teileliste und Finanzsummen.
-    cleanupWhenEmpty: (t, ownerId, [sn]) => t.sets.deleteSetRows([ownerId], String(sn)),
+    cleanupWhenEmpty: (t, ownerId, [sn]) => t.sets.setZeilenLoeschen([ownerId], String(sn)),
   },
   part: {
     notFound: 'nicht_gefunden',
@@ -91,7 +91,7 @@ async function antwort(
   keys: Schluessel,
   payload: Record<string, unknown>,
 ) {
-  return art === 'set' ? k.sets.withSetAggregate(uid, String(keys[0]), payload) : payload;
+  return art === 'set' ? k.sets.mitSetAggregat(uid, String(keys[0]), payload) : payload;
 }
 
 export interface Aenderung {
@@ -120,12 +120,12 @@ export async function erfassungAendern(
     const to = await k.haushalt.schreibzielOderNull(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { unchanged: true };
-    // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
+    // Wie setVerschieben(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
     const moved = await k.transaktion(
       t =>
         art === 'set'
-          ? t.sets.moveSetBetweenAccounts(String(keys[0]), from, to, [id])
-          : t.sets.moveManualAcquisition(art, keys, id, from, to),
+          ? t.sets.setErfassungenUmhaengen(String(keys[0]), from, to, [id])
+          : t.sets.manuelleErfassungUmhaengen(art, keys, id, from, to),
       { sperren: [{ konto: from, schluessel: bestandsSchluessel(art, keys) }], wiederholeBeiKonflikt: true },
     );
     return { from_user_id: from, to_user_id: to, ...moved };

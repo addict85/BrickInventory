@@ -27,7 +27,9 @@ export {
 export { RbSet, RbSetFigur, rbSeite } from '../../clients/antworten';
 import { ladeKatalogCsv } from '../../clients/rebrickableCsv';
 export { oeffneBild, holeBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../clients/bildCdn';
-export { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../../clients/legoGuthaben';
+import { legoAbruf } from '../../clients/legoGuthaben';
+export { legoAbruf };
+export { ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../../clients/legoGuthaben';
 export type { Abruf, Kurs } from '../../clients/ezb';
 export type { RbSetTeil } from '../../clients/rebrickable';
 export type { KlientenZugang } from '../../clients/zugang';
@@ -49,6 +51,8 @@ export function baueQuellen(z: KlientenZugang) {
     brickset: bs,
     produktTitel: (ean13: string) => produktTitel(rb.httpsGetRobust, ean13),
     ladeKatalogCsv,
+    /** Ohne Schlüssel; hier, damit ein Test ihn je Satz Dienste ersetzt (testQuellen). */
+    legoAbruf,
     widerrufslisteAbruf,
   };
 }

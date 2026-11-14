@@ -5,7 +5,7 @@ import * as repo from './repository/konten';
 import { BCRYPT_ROUNDS } from './anmeldepruefung';
 import { leereTokenCache } from './tokenCache';
 import { mitZugangsende, revokeAllSessions, zugangsTransaktion } from './zugangsende';
-import { hashToken, revokeAllTokens } from './geraeteToken';
+import { hashToken, alleTokensWiderrufen } from './geraeteToken';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
@@ -79,7 +79,7 @@ export function passwortWechselFaellig(k: KontoKontext, id: number): Promise<boo
 const hashe = (passwort: string) => hashePasswort(passwort, BCRYPT_ROUNDS);
 
 async function zugaengeBeenden(k: KontoKontext, uid: number): Promise<void> {
-  await revokeAllTokens(k, uid);
+  await alleTokensWiderrufen(k, uid);
   await revokeAllSessions(k, uid);
 }
 

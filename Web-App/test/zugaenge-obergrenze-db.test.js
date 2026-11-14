@@ -8,7 +8,7 @@
  *   A  establishSession() ohne begrenzeSitzungen() → rot: „höchstens 50 Sitzungen …“
  *   B  in kappeSitzungen() `ORDER BY expire ASC` → rot: dieselbe Prüfung (die
  *      zuletzt benutzten fielen)
- *   C  createToken() ohne kappeTokens() → rot: „höchstens 50 Tokens …“
+ *   C  tokenAnlegen() ohne kappeTokens() → rot: „höchstens 50 Tokens …“
  *   D  kappeTokens() ohne `ersetzt_durch IS NULL` → rot: dieselbe Prüfung (der
  *      getauschte Token in seiner Überlappung fiel)
  *   E  bekannteAnmeldung() ohne den Zähler `login-erfolg` → rot: „nach 30
@@ -127,7 +127,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
       [`grenze_${uid}_00`, `grenze_${uid}_54`],
     );
     const auth = _req('src/konto/geraeteToken.js');
-    const neu = auth.hashToken(await auth.createToken(uid, 'neu'));
+    const neu = auth.hashToken(await auth.tokenAnlegen(uid, 'neu'));
     const rest = (await db.all('SELECT token FROM api_tokens WHERE user_id = $1 ORDER BY token', [uid])).map(
       z => z.token,
     );
@@ -147,11 +147,11 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
     const L = _req('src/konto/loginLimiter.js');
     const ip = '203.0.113.77';
     assert.equal(await L.bekannteAnmeldung(ip, NAME), false, 'ein unbekanntes Gerät hat keinen Vorrang');
-    for (let i = 0; i < L.ERFOLGE_MIT_VORRANG - 1; i++) await L.recordLoginSuccess(ip, NAME);
+    for (let i = 0; i < L.ERFOLGE_MIT_VORRANG - 1; i++) await L.anmeldungGelungen(ip, NAME);
     assert.equal(await L.bekannteAnmeldung(ip, NAME), true);
-    await L.recordLoginSuccess(ip, NAME);
+    await L.anmeldungGelungen(ip, NAME);
     assert.equal(await L.bekannteAnmeldung(ip, NAME), false, 'nach 30 Anmeldungen …');
-    assert.equal(await L.checkLoginAllowed(ip, NAME), null, 'die weiche Grenze sperrt nicht');
+    assert.equal(await L.anmeldungErlaubt(ip, NAME), null, 'die weiche Grenze sperrt nicht');
     await L.gibAnmeldeplatzFrei(ip, NAME);
   });
 });

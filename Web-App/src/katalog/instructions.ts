@@ -4,7 +4,7 @@ import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { setTimeout as warte } from 'node:timers/promises';
 import { downloadFile } from '../fremdquellen';
-import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
+import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import { versuche } from '../infra/ergebnis';
@@ -87,9 +87,8 @@ export async function scrapeInstructionsFromFallback(k: KatalogKontext, setNumbe
       return 1;
     }
   } catch (e) {
-    console.log(
-      `[brickinstructions] Fallback failed for ${n}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-    );
+    // Ausnahme: BrickInstructions ist die letzte Quelle; ohne sie bleibt das Set ohne Anleitung (0).
+    meldeFehler(`anleitung:brickinstructions ${n}`, e);
   }
   return 0;
 }
@@ -174,7 +173,8 @@ async function bdpRueckfall(k: KatalogKontext, n: string, eigenerTakt: boolean):
       return true;
     }
   } catch (e) {
-    console.log(`[instr] BDP failed: ${fehlertext(e)}`);
+    // Ausnahme: Der BDP-Rückfall ist eine von mehreren Quellen; false lässt die nächste fragen.
+    meldeFehler(`anleitung:bdp ${n}`, e);
   }
   if (!eigenerTakt) await warte(5000);
   return false;
@@ -193,7 +193,8 @@ async function brickinstructionsQuelle(k: KatalogKontext, n: string): Promise<An
       brickinstructions_first: fund.erstesBild,
     };
   } catch (e) {
-    console.log(`  BrickInstructions probe failed: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    // Ausnahme: Die Suche zeigt dann die übrigen Quellen; null heisst hier „keine Vorschau“.
+    meldeFehler(`anleitung:brickinstructions-probe ${n}`, e);
     return null;
   }
 }
@@ -250,31 +251,23 @@ async function collectAndBuildPDF(
   relPath: string,
   setNumber: string,
 ) {
-  try {
-    const imageBuffers = [firstPageBuf];
-    for (let p = 2; p <= 99; p++) {
-      await warte(500);
-      try {
-        const r = await k.fremdquellen.quellen.httpsGetRobust(
-          `${baseUrl}/${String(p).padStart(3, '0')}.jpg`,
-          hdrs,
-          8000,
-        );
-        if (r.status !== 200 || !r.buffer || r.buffer.length < 500) break;
-        imageBuffers.push(r.buffer);
-      } catch (_) {
-        break;
-      }
+  const imageBuffers = [firstPageBuf];
+  for (let p = 2; p <= 99; p++) {
+    await warte(500);
+    try {
+      const r = await k.fremdquellen.quellen.httpsGetRobust(`${baseUrl}/${String(p).padStart(3, '0')}.jpg`, hdrs, 8000);
+      if (r.status !== 200 || !r.buffer || r.buffer.length < 500) break;
+      imageBuffers.push(r.buffer);
+    } catch (_) {
+      break;
     }
-    console.log(`  Building PDF for ${setNumber}: ${imageBuffers.length} pages`);
-    await warte(100);
-    const ok = await buildImagePDF_fromBuffers(imageBuffers, pdfDest);
-    if (ok) {
-      await k.anleitungen.setzeAnleitungsdatei(relPath, setNumber);
-      console.log(`  ✅ PDF ready for ${setNumber}`);
-    }
-  } catch (e) {
-    console.log(`  PDF build failed for ${setNumber}: ${fehlertext(e)}`);
+  }
+  console.log(`  Building PDF for ${setNumber}: ${imageBuffers.length} pages`);
+  await warte(100);
+  const ok = await buildImagePDF_fromBuffers(imageBuffers, pdfDest);
+  if (ok) {
+    await k.anleitungen.setzeAnleitungsdatei(relPath, setNumber);
+    console.log(`  ✅ PDF ready for ${setNumber}`);
   }
 }
 

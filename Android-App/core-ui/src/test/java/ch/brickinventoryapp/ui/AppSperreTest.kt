@@ -17,7 +17,7 @@ import org.junit.Test
  *   C  in imVordergrund() der Vergleich des Gerätestarts gestrichen (`neugestartet = false`)
  *      → rot „nach einem Neustart gesperrt, auch wenn die Uhr schon weiter ist“;
  *      gegenproben/app-sperre-ohne-geraetestart.patch
- *   D  (14.11.2026, kotlinc) verdecktWidget() nur `ablage.gesperrt()` → rot „das Widget
+ *   D  (kotlinc) verdecktWidget() nur `ablage.gesperrt()` → rot „das Widget
  *      verdeckt seine Betraege, sobald die Sperre greifen kann“; gegenproben/widget-trotz-sperre.patch
  */
 class AppSperreTest {

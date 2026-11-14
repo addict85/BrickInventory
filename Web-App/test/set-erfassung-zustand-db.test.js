@@ -13,7 +13,7 @@ const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = testDaten();
 const { setUserSetting } = _req('src/konto/nutzerEinstellung.js');
-const { addSet } = require('./helpers/sources').bereichsSeite('sets');
+const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
 
 test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
@@ -36,7 +36,7 @@ test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurre
 
     // Erfassung OHNE Zustandsangabe. Preis mitgeben, damit kein Netzaufruf
     // nötig ist; um den Preis geht es hier nicht.
-    await addSet({ setNumber: SET, menge: 1, konto: uid, kaufpreis: 20 });
+    await setErfassen({ anfragender: uid, setNumber: SET, menge: 1, kaufpreis: 20, wennVorhanden: 'aufstocken' });
 
     const zeilen = await db.all(
       `SELECT id, quantity, condition FROM set_acquisitions

@@ -1,0 +1,15 @@
+Gegenprobe: Der Kachelausgleich steht nur da, wenn eine Namenszeile fehlt (dann kostet er einen Abstand mehr)
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetKachelTest
+Rot: Kacheln einer Reihe
+
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KachelAusgleich.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/KachelAusgleich.kt
+@@ -14,6 +14,7 @@
+  */
+ @Composable
+ fun KachelAusgleich(zeilen: Int) {
++    if (zeilen <= 0) return
+     val hoehe = with(LocalDensity.current) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
+     // Auch ohne fehlende Zeile ein Kind der Spalte: Mit spacedBy kostet jedes Kind den Abstand,
+     // und nur die Kachel mit Ausgleich wäre um ihn höher.

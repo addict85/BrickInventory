@@ -38,8 +38,8 @@ test('Set verschieben', { concurrency: 1 }, async t => {
   const sammlung = require('./helpers/sources').testKontext('sammlung');
   // Zwei fremde Konten: über beide hinweg nur im Systemrahmen (die Daten legt die Eigentümerin an).
   const { imSystemkontext } = _req('src/infra/kontoKontext.js');
-  const moveSetBetweenAccounts = (...a) =>
-    imSystemkontext('Testdaten', () => sammlung.transaktion(t => t.sets.moveSetBetweenAccounts(...a)));
+  const setErfassungenUmhaengen = (...a) =>
+    imSystemkontext('Testdaten', () => sammlung.transaktion(t => t.sets.setErfassungenUmhaengen(...a)));
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('mv_a','x'),('mv_b','x')");
   const [a, b] = (await db.all('SELECT id FROM users ORDER BY id')).map(r => r.id);
@@ -67,7 +67,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
     const horcher = w => warnungen.push(String(w?.message || w));
     process.on('warning', horcher);
     try {
-      await moveSetBetweenAccounts('10001-1', a, b);
+      await setErfassungenUmhaengen('10001-1', a, b);
       // Warnungen laufen über den Ereignisfaden — kurz warten, sonst käme die
       // Meldung erst nach dem Test an und niemand sähe sie.
       await new Promise(r => setTimeout(r, 50));
@@ -85,7 +85,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
 
   await t.test('Teile und Minifiguren wandern mit und werden gezählt', async () => {
     await bestandAnlegen('10002-1', 4, 1);
-    const r = await moveSetBetweenAccounts('10002-1', a, b);
+    const r = await setErfassungenUmhaengen('10002-1', a, b);
 
     assert.equal(r.parts, 4, `${r.parts} statt 4 Teile gemeldet`);
     assert.equal(r.minifigs, 1, `${r.minifigs} statt 1 Minifigur gemeldet`);
@@ -109,7 +109,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
     // importiert wurden, meldet 0 — die Zahl ist wahr, nur die Meldung in der
     // App wirkt wie ein Fehler.
     await bestandAnlegen('10003-1', 0, 0);
-    const r = await moveSetBetweenAccounts('10003-1', a, b);
+    const r = await setErfassungenUmhaengen('10003-1', a, b);
     assert.equal(r.parts, 0);
     assert.equal(r.minifigs, 0);
     assert.equal(r.quantity, 1, 'das Exemplar selbst muss trotzdem gewandert sein');
@@ -118,7 +118,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
   await t.test('hat das Ziel schon Teile, wird nicht doppelt kopiert', async () => {
     await bestandAnlegen('10004-1', 2, 0);
     await haeltTeil(db, b, '3000', { setNumber: '10004-1', menge: 2, colorId: 4 });
-    const r = await moveSetBetweenAccounts('10004-1', a, b);
+    const r = await setErfassungenUmhaengen('10004-1', a, b);
     assert.equal(r.parts, 0, 'Teile wurden trotz vorhandener Zeilen erneut kopiert');
     const n = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND set_number='10004-1'`, [b]);
     assert.equal(n.c, 1, 'doppelte Zeilen — die Zusammenfassung zählte die Menge zweimal');
@@ -149,12 +149,12 @@ test('Set verschieben', { concurrency: 1 }, async t => {
           [uid],
         );
 
-      const r1 = await moveSetBetweenAccounts('10005-1', a, b, [erste]);
+      const r1 = await setErfassungenUmhaengen('10005-1', a, b, [erste]);
       assert.equal(r1.source_emptied, false);
       assert.deepEqual(await z(a), { sets: 1, teile: 2, figuren: 1, manuell: 1 });
       assert.deepEqual(await z(b), { sets: 1, teile: 2, figuren: 1, manuell: 0 });
 
-      const r2 = await moveSetBetweenAccounts('10005-1', a, b, [zweite]);
+      const r2 = await setErfassungenUmhaengen('10005-1', a, b, [zweite]);
       assert.equal(r2.source_emptied, true);
       assert.deepEqual(await z(a), { sets: 0, teile: 0, figuren: 0, manuell: 1 });
     },

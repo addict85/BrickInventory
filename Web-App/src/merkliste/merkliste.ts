@@ -2,15 +2,15 @@
  * statt Code in den Routen, weil beide Oberflächen und mehrere Erfassungswege
  * dieselben Regeln brauchen. */
 import type { Sicht } from '../haushalt';
-import { sanitizeSetNumber } from '../sets';
 import * as V from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { geldEingabe } from '../infra/geld';
 import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
-import { fuerSet, resolveIfExists } from '../katalog';
+import { fuerSet } from '../katalog';
+import { resolveIfExists } from '../bilder';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
-import { moeglicheSetNummer, mitVersion } from '../infra/setNummer';
+import { moeglicheSetNummer, mitVersion, normalisiereSetNummer } from '../infra/setNummer';
 import type { MerklisteKontext } from './kontext';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere
@@ -85,7 +85,7 @@ export async function legeMerkpostenAn(
   condition: string | null | undefined,
   aufgenommenAm?: string | null,
 ): Promise<{ merkposten: Merkposten | null; war_neu: boolean }> {
-  const sn = sanitizeSetNumber(setNumber);
+  const sn = normalisiereSetNummer(setNumber);
   const c = await zustandOder(k, condition, userId);
   const r = await k.merkliste.merkeSetVor(userId, sn, c, aufgenommenAm ?? null);
   const liste = await merkpostenVon(k, [userId], sn);
@@ -99,7 +99,7 @@ export async function loescheMerkposten(
   setNumber: string,
   c: V.Zustand,
 ): Promise<number> {
-  const r = await k.merkliste.streicheVormerkung(userId, sanitizeSetNumber(setNumber), c);
+  const r = await k.merkliste.streicheVormerkung(userId, normalisiereSetNummer(setNumber), c);
   return r.changes ?? 0;
 }
 
@@ -126,7 +126,7 @@ export async function verschiebeMerkposten(
   c: V.Zustand,
   zuId: number,
 ): Promise<{ verschoben: boolean; zusammengefuehrt: boolean }> {
-  const sn = sanitizeSetNumber(setNumber);
+  const sn = normalisiereSetNummer(setNumber);
   if (vonId === zuId) return { verschoben: false, zusammengefuehrt: false };
 
   return mitMerkpostenSperre(k, [vonId, zuId], sn, c, async t => {
@@ -168,7 +168,7 @@ export async function merkpostenVon(
   const rows = await k.merkliste.merklisteImBlickfeld(
     userIds,
     {
-      nurSet: nurSet ? sanitizeSetNumber(nurSet) : null,
+      nurSet: nurSet ? normalisiereSetNummer(nurSet) : null,
       suche: String(filter?.suche ?? '').trim() || null,
       zustand: zustand === 'N' || zustand === 'U' ? zustand : null,
       sortierung: filter?.sortierung,
@@ -234,7 +234,7 @@ export async function uebernimm(
     storage?: unknown;
   } = {},
 ): Promise<{ action: string; set_number: string }> {
-  const sn = sanitizeSetNumber(setNumber);
+  const sn = normalisiereSetNummer(setNumber);
 
   // Zwei Zustände: `condition` ist der Schlüssel des Merkpostens, der
   // verschwindet; `eingabe.condition` der, in dem das Set erfasst wird.

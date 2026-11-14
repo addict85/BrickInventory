@@ -14,7 +14,8 @@ import androidx.compose.ui.platform.LocalDensity
  */
 @Composable
 fun KachelAusgleich(zeilen: Int) {
-    if (zeilen <= 0) return
     val hoehe = with(LocalDensity.current) { MaterialTheme.typography.bodyMedium.lineHeight.toDp() }
-    Spacer(Modifier.height(hoehe * zeilen))
+    // Auch ohne fehlende Zeile ein Kind der Spalte: Mit spacedBy kostet jedes Kind den Abstand,
+    // und nur die Kachel mit Ausgleich wäre um ihn höher.
+    Spacer(Modifier.height(hoehe * zeilen.coerceAtLeast(0)))
 }

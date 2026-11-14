@@ -24,7 +24,7 @@ fun interface CacheBesitzer {
 }
 
 /** Name des Bereichs in der Ablage: gestreut, damit weder Adresse noch Token auf der Platte stehen. */
-fun bereichsName(bereich: String): String =
+internal fun bereichsName(bereich: String): String =
     MessageDigest.getInstance("SHA-256").digest(bereich.toByteArray()).joinToString("") { "%02x".format(it) }.take(32)
 
 /**

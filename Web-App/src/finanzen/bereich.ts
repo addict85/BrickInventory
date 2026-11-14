@@ -28,7 +28,7 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
         alarmeFuer: mit(k)(preisalarm.alarmeFuer),
         alleAlarme: mit(k)(preisalarm.alleAlarme),
         ausgeloesteSeit: mit(k)(preisalarm.ausgeloesteSeit),
-        buildPreisalarmeCsv: mit(k)(preisalarm.buildPreisalarmeCsv),
+        preisalarmeAlsCsv: mit(k)(preisalarm.preisalarmeAlsCsv),
         loescheAlarm: mit(k)(preisalarm.loescheAlarm),
         pruefeSet: mit(k)(preisalarm.pruefeSet),
         setzeAlarm: mit(k)(preisalarm.setzeAlarm),

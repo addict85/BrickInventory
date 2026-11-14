@@ -193,19 +193,19 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // zusammen, nicht eines statt des anderen.
   assert.ok(src.includes('sets.setVerschieben('), 'Die Route ruft den Dienst');
   assert.ok(
-    kompakt(read('src/sets/dienst.ts')).includes('verschiebeSet(sk, sn, fromId'),
-    'Das Verschieben läuft über verschiebeSet',
+    kompakt(read('src/sets/setMove.ts')).includes('setErfassungenUmhaengen(t, sn, fromId'),
+    'Das Verschieben läuft über setErfassungenUmhaengen',
   );
   assert.ok(kompakt(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialisiert über das Quellkonto');
   // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
   const acq = read('routes/api_v1/acquisitions.ts');
   const calls =
-    (mv.match(/moveSetBetweenAccounts\(t, sn/g) || []).length +
-    (acq.match(/moveSetBetweenAccounts\(t, sn/g) || []).length;
+    (mv.match(/setErfassungenUmhaengen\(t, sn/g) || []).length +
+    (acq.match(/setErfassungenUmhaengen\(t, sn/g) || []).length;
   assert.ok(
     calls >= 1,
-    'Der Eigentümerwechsel muss über moveSetBetweenAccounts laufen — in routes/sets.ts ' +
+    'Der Eigentümerwechsel muss über setErfassungenUmhaengen laufen — in routes/sets.ts ' +
       '(ganzes Set) oder in der gemeinsamen Fabrik (einzelne Kaufpreise)',
   );
 });
@@ -268,7 +268,10 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
   // Frisch ist die Sicht nur, wenn sie es für JEDES Konto ist — „zwei von drei
   // sind aktuell" ergäbe eine Summe aus frischen und alten Beständen.
   const ps = read('src/teile/partsSummary.ts');
-  assert.match(ps, /const results = await Promise\.all\(ids\.map\(id => ensureFresh\((?:k, )?id, opts\)\)\);/);
+  assert.match(
+    ps,
+    /const results = await Promise\.all\(ids\.map\(id => zusammenfassungFrisch\((?:k, )?id, opts\)\)\);/,
+  );
   assert.match(ps, /return results\.every\(Boolean\);/);
 });
 
@@ -402,7 +405,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
   // Inhalt — es wandern nur Menge und Erfassung.
   const mv = kompakt(read('src/sets/setMove.ts'));
-  assert.match(mv, /export async function moveManualAcquisition/);
+  assert.match(mv, /export async function manuelleErfassungUmhaengen/);
   assert.match(mv, /recordAcquisitionForDay\(kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
 
   // Die Erfassungs-Routen stehen nur noch in der v1-Fabrik, die
@@ -412,7 +415,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
   const f = 'src/sammlung/erfassungen.ts';
   const src = kompakt(read(f));
-  assert.ok(src.includes('t.sets.moveManualAcquisition(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
+  assert.ok(src.includes('t.sets.manuelleErfassungUmhaengen(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,
     /if \(to === null\) fachfehler\('verboten', 'kein_schreibrecht'\)/,
@@ -430,8 +433,8 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
   assert.match(v1, /body\.owner_user_id/, 'Der Erfassungsdienst muss owner_user_id auswerten');
   assert.match(
     v1,
-    /t\.sets\.moveSetBetweenAccounts\(String\(keys\[0\]\), from, to, \[id\]\)/,
+    /t\.sets\.setErfassungenUmhaengen\(String\(keys\[0\]\), from, to, \[id\]\)/,
     'Sets wandern über dieselbe Umsetzung wie beim Verschieben',
   );
-  assert.match(v1, /t\.sets\.moveManualAcquisition\(art, keys, id, from, to\)/);
+  assert.match(v1, /t\.sets\.manuelleErfassungUmhaengen\(art, keys, id, from, to\)/);
 });

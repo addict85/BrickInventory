@@ -1,9 +1,7 @@
-import { fehlertext } from '../infra/fehler';
 import { einstellungMitZugang } from '../einstellungen';
-import { deleteSetRows } from './loeschen';
+import { setZeilenLoeschen } from './loeschen';
 import { toCsv } from '../infra/csvExport';
-import { normalisiereSetNummer } from '../infra/setNummer';
-import { recordAcquisition } from './erfassen';
+import { erfassungBuchen } from './erfassen';
 import { fachfehler } from '../infra/fehlerTexte';
 import { bestandsMenge, zustand } from '../infra/validate';
 import * as repo from './repository/sets';
@@ -13,11 +11,6 @@ import type { SetsKontext } from './kontext';
 
 /** Sets anlegen, ändern und ausgeben — eine Umsetzung für Web und App, damit
  * beide dieselben Regeln für Menge, Kaufpreis und Blickfeld erfüllen. */
-
-// `unknown`: Hier kommen Formularfelder und CSV-Zellen an, nicht garantierte Zeichenketten.
-export function sanitizeSetNumber(input: unknown) {
-  return normalisiereSetNummer(input);
-}
 
 /** Reihenfolge Preis-Cache → BrickLink → Historie; bleibt alles leer, trägt
  * src/bestand/kaufpreisNachtrag.ts nach. */
@@ -73,7 +66,7 @@ async function adjustAcquisitionsToQuantity(
         // Aufstocken oder neue Tageszeile entscheidet recordAcquisitionForDay(), damit die Regel nur einmal
         // existiert.
         const plan = pricePlan ?? (await priceForNewAcquisition(sk, userId, setNumber));
-        await recordAcquisition(sk, {
+        await erfassungBuchen(sk, {
           konto: userId,
           setNumber,
           menge: delta,
@@ -85,7 +78,7 @@ async function adjustAcquisitionsToQuantity(
       }
     } else {
       const plan = pricePlan ?? (await priceForNewAcquisition(sk, userId, setNumber));
-      await recordAcquisition(sk, {
+      await erfassungBuchen(sk, {
         konto: userId,
         setNumber,
         menge: newTotalQty,
@@ -190,7 +183,7 @@ export async function updateSet(
         if (eigenZiel === 0) {
           entfallen = entfallenAntwort(await repo.setErfassungenAlsJson(t.db, ziel, sn));
           papierkorb = await t.bestand.legeInPapierkorb('set', ziel, sn);
-          await deleteSetRows(t, [ziel], sn);
+          await setZeilenLoeschen(t, [ziel], sn);
         } else {
           // Auch einzelne Käufe gehen durch den Papierkorb: Sonst verschwände ein Kaufpreis ohne Rückweg.
           const weg = await adjustAcquisitionsToQuantity(t, ziel, sn, eigenZiel, plan);
@@ -216,13 +209,8 @@ export async function updateSet(
   }
   // null heisst „nicht gesetzt", nicht 'N'.
   if (body.condition !== undefined && body.condition !== null && !hasQuantity) {
-    const cond = zustand(body.condition);
-    try {
-      // ownerId: Mit dem Aufrufer träfe das UPDATE beim Unterkonto keine Zeile.
-      await schreibeInLetzteErfassung(sk, 'condition', cond, ownerId, sn);
-    } catch (e) {
-      console.error('[updateSet] condition update skipped (migration pending?):', fehlertext(e));
-    }
+    // ownerId: Mit dem Aufrufer träfe das UPDATE beim Unterkonto keine Zeile.
+    await schreibeInLetzteErfassung(sk, 'condition', zustand(body.condition), ownerId, sn);
   }
   // Geschrieben ist schon; scheitert nur das Nachlesen, sagt die Antwort „unbekannt“ statt 0.
   const nachher = await ab.oder(
@@ -238,7 +226,7 @@ export async function updateSet(
   };
 }
 
-export async function buildSetsCsv(sk: SetsKontext, uid: number) {
+export async function setsAlsCsv(sk: SetsKontext, uid: number) {
   const rows = await repo.setsFuerCsv(sk.db, uid);
 
   return toCsv(

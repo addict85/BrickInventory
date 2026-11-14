@@ -106,15 +106,15 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
   await t.test('Anmeldezähler: ein zweiter Prozess sieht die Sperre', async () => {
     const IP = '203.0.113.7';
     const a = _req('src/konto/loginLimiter.js');
-    assert.equal(await a.checkLoginAllowed(IP, ZAEHLER), null, 'Vorbedingung: frei');
-    for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.recordLoginFailure(IP, ZAEHLER);
+    assert.equal(await a.anmeldungErlaubt(IP, ZAEHLER), null, 'Vorbedingung: frei');
+    for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.anmeldungGescheitert(IP, ZAEHLER);
     // Ein frisch geladenes Modul hat leeren Speicher, wie ein zweiter Arbeitsprozess.
     const datei = path.join(ROOT, 'dist', 'src', 'konto', 'loginLimiter.js');
     delete require.cache[datei];
     const b = require(datei);
     assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
     const konto = require('./helpers/sources').testBereich('konto');
-    assert.equal((await b.checkLoginAllowed(konto, IP, ZAEHLER))?.code, 'zu_viele_fehlversuche');
+    assert.equal((await b.anmeldungErlaubt(konto, IP, ZAEHLER))?.code, 'zu_viele_fehlversuche');
   });
 
   await t.test('Anmeldezähler: ohne Datenbank bremst der Speicher', async () => {
@@ -124,10 +124,10 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     console.warn = () => {};
     await db.run('ALTER TABLE rate_limit_attempts RENAME TO rate_limit_attempts_weg');
     try {
-      assert.equal(await l.checkLoginAllowed(IP, ZAEHLER), null, 'ein Datenbankfehler sperrt die Anmeldung');
-      for (let i = 0; i < l.MAX_ATTEMPTS; i++) await l.recordLoginFailure(IP, ZAEHLER);
+      assert.equal(await l.anmeldungErlaubt(IP, ZAEHLER), null, 'ein Datenbankfehler sperrt die Anmeldung');
+      for (let i = 0; i < l.MAX_ATTEMPTS; i++) await l.anmeldungGescheitert(IP, ZAEHLER);
       assert.equal(
-        (await l.checkLoginAllowed(IP, ZAEHLER))?.code,
+        (await l.anmeldungErlaubt(IP, ZAEHLER))?.code,
         'zu_viele_fehlversuche',
         'ohne Datenbank keine Bremse',
       );

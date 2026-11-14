@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import { type SetCsvNutzlast, type ImportErgebnis, AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
-import { addSetWithDate, nacharbeitEinstellen } from './erfassen';
+import { setErfassen } from './erfassen';
 import { fehlertext } from '../infra/fehler';
 import { Fachfehler, fehlerText, type FehlerCode } from '../infra/fehlerTexte';
 import type { SetsKontext } from './kontext';
@@ -27,53 +27,46 @@ async function importiereZeile(sk: SetsKontext, z: CsvZeile, userId: number): Pr
   return { ...(await bucheZeile(sk, z, userId)), ...wo };
 }
 
+/** Ohne Netz (setErfassen); die Frist fängt nur eine klemmende Datenbank. Nach einer
+ * Zeitüberschreitung bucht der Versuch womöglich noch, deshalb keine Wiederholung. */
 async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise<ImportErgebnis> {
-  for (let versuch = 1; ; versuch++) {
-    let wecker: NodeJS.Timeout | undefined;
-    try {
-      const r = await Promise.race([
-        addSetWithDate(sk, z.sn, z.qty, userId, z.purchasePrice, z.condition, z.acquiredAt),
-        new Promise<never>((_, rej) => {
-          wecker = setTimeout(() => rej(new Error('Timeout')), sk.konfig.csvZeileFristMs);
-        }),
-      ]).finally(() => clearTimeout(wecker));
-      await nacharbeitEinstellen(sk, r.set_number ?? z.sn, userId, 'csv');
-      return {
-        set_number: z.sn,
-        success: true,
-        action: r.action,
+  let wecker: NodeJS.Timeout | undefined;
+  try {
+    const r = await Promise.race([
+      setErfassen(sk, {
+        anfragender: userId,
+        setNumber: z.sn,
         menge: z.qty,
-        ...('katalog_offen' in r && r.katalog_offen ? { katalog_offen: true } : {}),
-      };
-    } catch (e) {
-      const msg = fehlertext(e) || 'Unbekannter Fehler';
-      const isTimeout = msg.includes('Timeout');
-      const isRateLimit = msg.includes('429') || msg.includes('rate limit') || msg.includes('Daily limit');
-      // Nur ein Kontingent-Fehler wird wiederholt: Nach einer Zeitüberschreitung
-      // läuft der erste Versuch weiter und bucht womöglich noch.
-      if (isRateLimit && !isTimeout && versuch < 2) {
-        console.warn(`CSV: ${z.sn} retry after ${msg}...`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
-        await new Promise(r => setTimeout(r, 5000));
-        continue;
-      }
-      const isWarning = isTimeout || isRateLimit;
-      console[isWarning ? 'warn' : 'error'](`CSV: ${z.sn} ${isWarning ? 'WARNING' : 'FAILED'}: ${msg}`);
-      const code: FehlerCode | undefined =
-        e instanceof Fachfehler
-          ? e.code
-          : isTimeout
-            ? 'import_zeitueberschreitung'
-            : isRateLimit
-              ? 'import_kontingent'
-              : undefined;
-      return {
-        set_number: z.sn,
-        success: false,
-        error: msg,
-        isWarning,
-        ...(code ? { code, ...(e instanceof Fachfehler && e.vars ? { vars: e.vars } : {}) } : {}),
-      };
-    }
+        kaufpreis: z.purchasePrice,
+        zustand: z.condition,
+        erfasstAm: z.acquiredAt,
+        wennVorhanden: 'aufstocken',
+        nacharbeit: 'csv',
+      }),
+      new Promise<never>((_, rej) => {
+        wecker = setTimeout(() => rej(new Error('Timeout')), sk.konfig.csvZeileFristMs);
+      }),
+    ]).finally(() => clearTimeout(wecker));
+    return {
+      set_number: z.sn,
+      success: true,
+      action: r.action,
+      menge: z.qty,
+      ...(r.action === 'added' && r.katalog_offen ? { katalog_offen: true } : {}),
+    };
+  } catch (e) {
+    const msg = fehlertext(e) || 'Unbekannter Fehler';
+    const isWarning = msg.includes('Timeout');
+    console[isWarning ? 'warn' : 'error'](`CSV: ${z.sn} ${isWarning ? 'WARNING' : 'FAILED'}: ${msg}`);
+    const code: FehlerCode | undefined =
+      e instanceof Fachfehler ? e.code : isWarning ? 'import_zeitueberschreitung' : undefined;
+    return {
+      set_number: z.sn,
+      success: false,
+      error: msg,
+      isWarning,
+      ...(code ? { code, ...(e instanceof Fachfehler && e.vars ? { vars: e.vars } : {}) } : {}),
+    };
   }
 }
 

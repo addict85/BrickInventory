@@ -34,7 +34,7 @@ export function kontextSql(): string {
 }
 const KONTEXT_LEER = "SELECT set_config('app.konto', '', true)";
 
-/** Wechselt das Konto mitten in der Transaktion (imNamenVon), folgt die Einstellung. */
+/** Wechselt das Konto mitten in der Transaktion (alsAnfrage), folgt die Einstellung. */
 export async function kontextAbgleich(stand: TxStand): Promise<void> {
   const soll = kontextSql();
   if (soll === stand.kontext) return;

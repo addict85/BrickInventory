@@ -499,7 +499,8 @@ class BildschirmFotoVariantenTest {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
         zeige(name, dunkel = dunkel, geraet = geraet, sprache = sprache, schrift = schrift, bereit = galerieFertig(galerie),
             zustand = { galerie.galleryState.value }) { Geruest(galerie) }
-        compose.onNodeWithText("Mehr").performClick()
+        // Bei grosser Schrift ist nur das gewählte Ziel beschriftet; die übrigen tragen ihren Namen als Beschreibung.
+        compose.onNode((hasText("Mehr") or hasContentDescription("Mehr")) and hasClickAction()).performClick()
         compose.waitForIdle()
         foto(name, dunkel = dunkel, geraet = geraet)
     }

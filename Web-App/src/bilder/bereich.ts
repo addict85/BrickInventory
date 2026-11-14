@@ -10,7 +10,7 @@ import * as bildBlickfeldDienst from './bildBlickfeld';
 import * as bildNachschlagen from './bildNachschlagen';
 import * as proxyThumbs from './proxyThumbs';
 import * as imgCacheServe from './imgCacheServe';
-import { bildUserAgent, downloadSetImage } from './setImages';
+import { bildUserAgent, setBildHerunterladen } from './setImages';
 import { generateThumb } from './thumbs';
 import { zugang, type Bildwerk, type BilderAbhaengigkeiten, type BilderKontext } from './kontext';
 
@@ -23,7 +23,7 @@ export function erzeugeBilder(
 ) {
   const bildwerk = a.bildwerk ?? {
     setBildLaden: (url: string, sn: string, info?: { status?: number }) =>
-      downloadSetImage(url, sn, info, bildUserAgent(a.konfig)),
+      setBildHerunterladen(url, sn, info, bildUserAgent(a.konfig)),
     vorschauErzeugen: generateThumb,
   };
   return baueBereich(

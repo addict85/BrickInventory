@@ -137,7 +137,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
 
   await t.test('Figur: der dritte Zweig, und er wird sonst nirgends ausgeführt', async () => {
     // Bis hierher war fuer die Figuren NUR zugesichert, dass der Quelltext
-    // `moveManualAcquisition(tx, 'fig'` enthaelt. Genau diese Art Zusicherung
+    // `manuelleErfassungUmhaengen(tx, 'fig'` enthaelt. Genau diese Art Zusicherung
     // hat heute zweimal bestanden, waehrend der Weg kaputt war.
     const id = await erfassungId('minifig_acquisitions', 'fig_number', 'sw0001');
     const a = await setze(`/api/v1/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });

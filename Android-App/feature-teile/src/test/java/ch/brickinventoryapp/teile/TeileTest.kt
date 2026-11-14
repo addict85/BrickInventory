@@ -130,7 +130,8 @@ class TeileTest {
     fun `die Liste folgt der Quelle, auch ohne Abruf`() = runTest {
         val t = teile()
         t.laden(); runCurrent()
-        assertEquals(listOf("3001", "3023"), t.state.value.parts.map { it.partNumber })
+        // Vorgabe ist „nach Farbe“ (TeileOrdnung): Blue vor Red, nicht die Reihenfolge der Quelle.
+        assertEquals(listOf("3023", "3001"), t.state.value.parts.map { it.partNumber })
         // Offline erfasst: Die Ablage ändert sich, die Liste folgt.
         manuelleTeile.value = Lokal(listOf(PartValuationItem(partNumber = "neu", quantity = 3)), 2L)
         runCurrent()

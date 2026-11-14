@@ -70,7 +70,7 @@ import org.robolectric.Shadows
  *   codes-wieder-kopierbar         ein Knopf kopiert die Codes in die Ablage → rot „kein Knopf der Codes …“
  *   schluessel-kopieren-vor-33     Schlüssel kopierbar ab API 30 → rot „der Schluessel ist erst ab API 33 …“
  *   codes-sichern-als-teilen       „Als Datei speichern“ teilt wieder (ACTION_SEND) → rot „die Notfallcodes
- *                                  lassen sich als Datei speichern …“ (angelegt 14.11.2026, nicht lokal gemessen)
+ *                                  lassen sich als Datei speichern …“ (nicht lokal gemessen)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

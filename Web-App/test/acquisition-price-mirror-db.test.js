@@ -1,7 +1,7 @@
 /**
  * Kaufpreis ändern → die Kachel zieht mit, auf BEIDEN Wegen.
  *
- * Gegenprobe (durchgeführt): in getSetConditionAggregate() avg_purchase_price
+ * Gegenprobe (durchgeführt): in zustandsAggregat() avg_purchase_price
  * auf `MAX(purchase_price)` umgestellt → „Gegenrichtung" wird rot
  * (erwartet 125, bekommen 200). Danach zurückgesetzt.
  *
@@ -53,7 +53,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concur
   // `SELECT purchase_price FROM sets` — die gespiegelte Spalte, die es seit
   // Migration 0032 nicht mehr gibt.
   const kachel = async () =>
-    (await require('./helpers/sources').bereichsSeite('sets').getSetConditionAggregate([uid], SN)).avg_purchase_price;
+    (await require('./helpers/sources').bereichsSeite('sets').zustandsAggregat([uid], SN)).avg_purchase_price;
 
   try {
     for (const [name, pfad] of [

@@ -31,7 +31,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const zf = _req('src/konto/zweiterFaktor.js');
-const { createToken } = _req('src/konto/geraeteToken.js');
+const { tokenAnlegen } = _req('src/konto/geraeteToken.js');
 const { entschluessele } = _req('src/infra/geheimnis.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
@@ -160,7 +160,7 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
 
   await t.test('der Tausch des Tokens setzt die Bremse nicht zurück', async () => {
     await leeren();
-    const token = await createToken(karl, 'Probe', true);
+    const token = await tokenAnlegen(karl, 'Probe', true);
     const mit = tk => ({ authorization: `Bearer ${tk}` });
     for (let i = 0; i < 5; i++) await ruf('DELETE', '/api/v1/bestand', { password: `falsch${i}` }, mit(token));
     assert.equal((await ruf('DELETE', '/api/v1/bestand', { password: PASS }, mit(token))).status, 429, 'Vorbedingung');

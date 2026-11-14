@@ -61,7 +61,7 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
   assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
 
   await t.test('ein Widerruf aus einem anderen Prozess gilt sofort', async () => {
-    const token = await auth.createToken(uid, 'Probe', true);
+    const token = await auth.tokenAnlegen(uid, 'Probe', true);
     assert.ok((await auth.pruefeToken(token)).nutzer, 'Vorbedingung: Token gilt');
     await anderer.query('DELETE FROM api_tokens WHERE token = $1', [auth.hashToken(token)]);
     assert.ok((await auth.pruefeToken(token)).nutzer, 'Vorbedingung: der Zwischenspeicher trägt ihn noch');
@@ -78,7 +78,7 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
     const gehoert = [];
     anderer.on('notification', m => gehoert.push(m.channel));
     await anderer.query('LISTEN token_widerrufen');
-    await auth.revokeAllTokens(uid);
+    await auth.alleTokensWiderrufen(uid);
     for (let i = 0; i < 40 && !gehoert.length; i++) await new Promise(r => setTimeout(r, 25));
     assert.deepEqual(gehoert.slice(0, 1), ['token_widerrufen']);
   });

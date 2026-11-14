@@ -121,7 +121,7 @@ function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig }
 function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienste {
   const zeige = einblickIn(bauteile.kontexte);
   const grund = baueGrund(db, nacharbeit, bauteile, zeige);
-  const { einstellungen, mail, auftraege, haushalt, konto, idempotenz, katalog } = grund;
+  const { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, katalog } = grund;
   const { konfig } = bauteile;
   const finanzen = erzeugeFinanzen(
     { db, konfig, einstellungen, auftraege, haushalt, katalog, nacharbeit, mail },
@@ -141,7 +141,7 @@ function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienst
     { db, einstellungen, haushalt, katalog, finanzen, sets, nacharbeit },
     zeige('merkliste'),
   );
-  const gutscheine = erzeugeGutscheine({ db, einstellungen, konto }, zeige('gutscheine'));
+  const gutscheine = erzeugeGutscheine({ db, einstellungen, konto, fremdquellen }, zeige('gutscheine'));
   const sammlung = erzeugeSammlung(
     { db, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, figuren, merkliste },
     zeige('sammlung'),

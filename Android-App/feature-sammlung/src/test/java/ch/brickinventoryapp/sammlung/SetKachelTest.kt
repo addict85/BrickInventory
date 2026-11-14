@@ -49,6 +49,8 @@ import java.util.Locale
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   grosse-schrift-kachel-row       Prozent wieder neben dem Betrag in einer Row → rot „Kachel …“
  *   kachel-hoehe-nach-inhalt        die fehlende Namenszeile ohne Ausgleich → rot „Kacheln einer Reihe …“
+ *   kachel-ausgleich-nur-bei-bedarf Ausgleich nur bei fehlender Zeile, kostet dann einen Spaltenabstand
+ *                                   mehr → rot „Kacheln einer Reihe …“ (1 dp)
  *   kachel-name-zwei-feste-zeilen   wieder minLines = 2 am Namen → rot „ein kurzer Name …“
  */
 @RunWith(RobolectricTestRunner::class)

@@ -67,7 +67,7 @@ test('die Suche findet die Quellen ueberhaupt', () => {
   assert.ok(n >= 80, `Nur ${n} TypeScript-Quellen gefunden — greift die Suche noch?`);
 });
 
-test('stille Faenge werden weniger, nie mehr', () => {
+test('stille Fänge (Server, nur gemeldete, Oberfläche) werden weniger, nie mehr', () => {
   // Die Rebrickable-Teilezuordnung fängt nur 404, das rbGet() selbst als null liefert.
   const SCHRANKE = 0;
   // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
@@ -89,6 +89,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
   if (ist < SCHRANKE) {
     console.log(`  ℹ stille Faenge: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }
+  nurGemeldeteFaenge();
+  stilleFaengeDerOberflaeche();
 });
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
@@ -124,6 +126,71 @@ test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', 
     [],
   );
 });
+
+/** Fänge, die nur melden und weiterlaufen, werden weniger, nie mehr. */
+function nurGemeldeteFaenge() {
+  // Jede Form ohne throw: `catch (e) { meldeFehler(…) }`, mit `return x`/`continue` danach, und
+  // `.catch(e => console.warn(…))`. Sie verschweigen den Fehler dem Aufrufer wie meldeUndLiefere,
+  // nur ohne dessen Namen. Wer direkt in die Konsole schreibt statt meldeFehler, nennt sein
+  // Warum als „Ausnahme:“ im Fang. Nur src/: Routen fangen nicht, Jobs und db/ haben eigene Regeln.
+  // Gegenproben (14.11.2026): in src/sets/setService.ts den Zustandswechsel wieder in
+  // `try { … } catch (e) { console.error(…) }` → rot (62 von 61); in src/mail/transport.ts die
+  // „Ausnahme:“ am Fang gestrichen → rot „ohne Ausnahme: …“ (src/mail/transport.ts:155).
+  const { faenge, nurGemeldet } = require('./helpers/faenge');
+  const SCHRANKE = 61;
+  const probe = (/** @type {string} */ q) => faenge(q).filter(nurGemeldet).length;
+  assert.equal(
+    probe('try { a(); } catch (e) { meldeFehler("x", e); }') +
+      probe('try { a(); } catch { console.error("x"); return null; }') +
+      probe('x.catch(e => console.warn(e.message));') +
+      probe('for (;;) { try { a(); } catch (e) { log(`${e}`); continue; } }'),
+    4,
+  );
+  assert.equal(
+    probe('try { a(); } catch (e) { meldeFehler("x", e); throw e; }') +
+      probe('try { a(); } catch (e) { meldeFehler("x", e); await nochmal(); }') +
+      probe('x.catch(logAndContinue("x"));') +
+      probe('// catch (e) { console.error(e) }'),
+    0,
+  );
+  const src = quellen().filter(f => /^src[\\/]/.test(path.relative(WEB, f)));
+  const treffer = src.flatMap(f =>
+    faenge(fs.readFileSync(f, 'utf8'))
+      .filter(nurGemeldet)
+      .map(x => ({ ...x, wo: `${path.relative(WEB, f)}:${x.zeile}` })),
+  );
+  assert.ok(treffer.length > 20, `nur ${treffer.length} gemeldete Fänge gefunden — greift die Suche noch?`);
+  assert.ok(
+    treffer.length <= SCHRANKE,
+    `${treffer.length} Fänge melden nur und laufen weiter, erlaubt sind ${SCHRANKE}`,
+  );
+  if (treffer.length < SCHRANKE)
+    console.log(`  ℹ nur gemeldete Fänge: ${treffer.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  assert.deepEqual(
+    treffer.filter(x => /\bconsole\./.test(x.rumpf) && !/Ausnahme:/.test(x.roh)).map(x => x.wo),
+    [],
+    'ohne Ausnahme: direkt in die Konsole statt meldeFehler',
+  );
+}
+
+/** Stille Fänge der Oberfläche werden weniger, nie mehr. */
+function stilleFaengeDerOberflaeche() {
+  // Ein Fang in public/js ohne throw, Meldung (toast, zeige…, melde…, console) oder sichtbaren Text
+  // verschluckt den Fehler: Die Ansicht zeigt dann „leer“ statt „gescheitert“. Viele sind Absicht
+  // (localStorage, abgebrochene Ströme); neue braucht es nicht.
+  // Gegenprobe (14.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
+  // `.catch(() => null)` → rot (128 von 127).
+  const { faenge, stillImBrowser } = require('./helpers/faenge');
+  const SCHRANKE = 127;
+  const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
+  assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
+  assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { zeigeFehler(e); }'), 0);
+  const ist = oberflaeche().reduce((n, f) => n + faenge(fs.readFileSync(f, 'utf8')).filter(stillImBrowser).length, 0);
+  assert.ok(ist > 30, `nur ${ist} stille Fänge in public/js — greift die Suche noch?`);
+  assert.ok(ist <= SCHRANKE, `${ist} stille Fänge in public/js, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE)
+    console.log(`  ℹ stille Fänge der Oberfläche: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+}
 
 /** Die Fabrik (erzeugeDb, dbKonfigAusUmgebung) und Typen sind kein Prozesszugang. */
 const PROZESSZUGANG = new Set([
@@ -180,8 +247,10 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/zwischenspeicher.ts),
   // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
-  // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60.
-  const ZUSTAND_SCHRANKE = 8;
+  // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60. (14.11.2026) Schranke 2 (Transaktionswächter,
+  // Sicherungspunkte in db/); `const sitzungen = new Map<string, Sitzung>();` zurück in
+  // src/gutscheine/gutscheinGuthaben.ts → rot (3 von 2).
+  const ZUSTAND_SCHRANKE = 2;
   const ZUSTAND =
     /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
   const zaehleZustand = s => (s.match(ZUSTAND) || []).length;
@@ -351,7 +420,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
   // (src/vertrag, src/infra, src/http) und Fehlerparameter.
   // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (75).
-  const SCHRANKE_UNKNOWN = 74;
+  const SCHRANKE_UNKNOWN = 73;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(
     ('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length,
@@ -1166,7 +1235,29 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
   return raus;
 }
 
-test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie mehr', () => {
+/** Englische Namen exportierter Funktionen in src/ werden weniger, nie mehr. */
+function englischeExportnamen() {
+  // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“). Gezählt wird das Verb am
+  // Anfang (test/helpers/namen.js). Routen und src/http benennt dieser Zähler nicht um, er zählt sie.
+  // Gegenprobe (14.11.2026): in src/sets/setService.ts `setsAlsCsv` wieder `buildSetsCsv` → rot (124 von 123).
+  const { englischerName } = require('./helpers/namen');
+  const SCHRANKE = 123;
+  assert.deepEqual(
+    ['fetchPrice', 'getSetInfo', 'isDecodable', 'setUserSetting', 'setErfassen', 'haushaltVon', 'setVerschieben'].map(
+      englischerName,
+    ),
+    [true, true, true, true, false, false, false],
+  );
+  const namen = quellen()
+    .filter(f => /^src[\\/]/.test(path.relative(WEB, f)))
+    .flatMap(f => [...fs.readFileSync(f, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]));
+  assert.ok(namen.length > 1000, `nur ${namen.length} exportierte Funktionen in src/ — greift die Suche noch?`);
+  const ist = namen.filter(englischerName).length;
+  assert.ok(ist <= SCHRANKE, `${ist} englische Exportnamen in src/, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ englische Exportnamen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+}
+
+test('Funktionen im Server (über 80/150 Zeilen, englische Exportnamen) werden weniger, nie mehr', () => {
   // Ab 100 Zeilen zählen Top-Level-Funktionen samt Pfeilfunktionen; keine ist bekannt.
   // Gegenproben: buildPdf in src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026);
   // erzeugeDb in db/database.ts wieder als eine Closure → rot „ab 100“ und „über 150“ (14.11.2026).
@@ -1200,6 +1291,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
   assert.ok(ueber(80).length <= SCHRANKE_80, `${ueber(80).length} über 80 Zeilen, erlaubt sind ${SCHRANKE_80}`);
   if (ueber(80).length < SCHRANKE_80)
     console.log(`  ℹ Server-Funktionen über 80 Zeilen: ${ueber(80).length} — Schranke nachziehen`);
+  englischeExportnamen();
 });
 
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {

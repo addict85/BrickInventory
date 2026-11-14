@@ -1,5 +1,6 @@
 /** Proben für Verwalter: Bild- und Preisabruf und die Fragen zu einer leeren Kachel. */
-import { proxyCacheSchluessel, proxyCachePathFor, imgProxyFailures, oeffneBild } from '../katalog';
+import { proxyCacheSchluessel, proxyCachePathFor, imgProxyFailures } from '../bilder';
+import { oeffneBild } from '../fremdquellen';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
 import { urlOderNull } from '../infra/validate';
 import type { KontoBildzeile } from './repository/verwaltung';

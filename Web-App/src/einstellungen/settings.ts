@@ -122,11 +122,11 @@ export function globalerWertGueltig(key: string, value: unknown): boolean {
   return regelFuer(key)?.safeParse(value).success ?? false;
 }
 
-const _beiGlobalerAenderung: Array<() => void> = [];
-/** Für Zwischenspeicher, die aus globalen Werten rechnen: Sie leeren sich selbst,
- * statt dass jede Schreibstelle sie kennen muss. */
-export function beiGlobalerAenderung(fn: () => void): void {
-  _beiGlobalerAenderung.push(fn);
+const abonnenten = (k: EinstellungenKontext) => k.faecher.fach('globaleAenderung', () => new Set<() => void>());
+/** Für Zwischenspeicher, die aus globalen Werten rechnen: Sie leeren sich selbst, statt dass
+ * jede Schreibstelle sie kennen muss. Je Satz Dienste, sonst wüchse die Liste mit jedem. */
+export function beiGlobalerAenderung(k: EinstellungenKontext, fn: () => void): void {
+  abonnenten(k).add(fn);
 }
 
 /** Die EINE Schreibstelle; jeder Schlüssel braucht eine Regel in GLOBALE_REGELN. */
@@ -141,12 +141,12 @@ export async function setGlobalSetting(k: EinstellungenKontext, key: string, val
     key,
     SECRET_KEYS.has(key) ? verschluessele(r.data, globalerKontext(key)) : r.data,
   );
-  meldeGlobaleAenderung();
+  meldeGlobaleAenderung(k);
 }
 
 /** Auch nach dem COMMIT einer Transaktion: Ein Zwischenspeicher, der dazwischen las, hielte den alten Wert. */
-export function meldeGlobaleAenderung(): void {
-  for (const fn of _beiGlobalerAenderung) fn();
+export function meldeGlobaleAenderung(k: EinstellungenKontext): void {
+  for (const fn of abonnenten(k)) fn();
 }
 
 /** Offen nur bei genau '1'; fehlt die Zeile, bleibt sie zu. */

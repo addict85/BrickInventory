@@ -462,7 +462,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   );
 
   // rebuildNow() und nicht rebuild(): Die Listenaufrufe darueber haben ueber
-  // ensureFresh() schon einen HINTERGRUNDaufbau angestossen, und der haelt
+  // zusammenfassungFrisch() schon einen HINTERGRUNDaufbau angestossen, und der haelt
   // die Sperre pg_try_advisory_xact_lock. rebuild() direkt gerufen sieht die
   // Sperre, kehrt stillschweigend zurueck („ein anderer baut gerade") und baut …
   const { rebuildNow } = _req('src/teile/partsSummary.js');

@@ -5,11 +5,16 @@ import * as guthabenSchranke from './repository/guthabenSchranke';
 import * as gutscheine from './repository/gutscheine';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { KontoDienste } from '../konto';
+import type { FremdquellenDienste } from '../fremdquellen';
+import type { Faecher } from '../infra/zwischenspeicher';
 
 export interface GutscheineAbhaengigkeiten {
   db: Db;
   einstellungen: EinstellungenDienste;
   konto: KontoDienste;
+  fremdquellen: FremdquellenDienste;
+  /** Sitzungen der Guthabenabfrage und PDF-Tickets dieses Satzes Dienste. */
+  faecher: Faecher;
 }
 
 export const zugang = (db: Db) => ({

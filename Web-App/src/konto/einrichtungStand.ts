@@ -5,7 +5,6 @@
  * und nennt das Zertifikat, das ohnehin unter /ca.crt öffentlich ist. */
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { tlsStand } from '../infra/tlsWurzel';
-import { beiGlobalerAenderung } from '../einstellungen';
 import type { KontoKontext } from './kontext';
 
 export type SchrittId = 'datenbank' | 'basis_url' | 'https' | 'ca' | 'konto' | 'quelle';
@@ -28,12 +27,17 @@ export interface EinrichtungStandAntwort {
 /** Die Seite ist öffentlich und kostet je Aufruf rund zehn Abfragen (Entschlüsselung,
  * Kontenzählung): Es rechnet der erste Aufruf je Fenster, auch bei gleichzeitigen. */
 const ZWISCHENSPEICHER_MS = 5000;
-const _gemerkt = new Map<boolean, { bis: number; antwort: Promise<EinrichtungStandAntwort> }>();
+type Gemerkt = Map<boolean, { bis: number; antwort: Promise<EinrichtungStandAntwort> }>;
+const gemerkt = (k: KontoKontext) =>
+  k.faecher.fach<Gemerkt>('einrichtungStand', () => {
+    const m: Gemerkt = new Map();
+    k.einstellungen.beiGlobalerAenderung(() => m.clear());
+    return m;
+  });
 
-export function einrichtungStandVergessen(): void {
-  _gemerkt.clear();
+export function einrichtungStandVergessen(k: KontoKontext): void {
+  gemerkt(k).clear();
 }
-beiGlobalerAenderung(einrichtungStandVergessen);
 
 /** Ein Fehler beim Prüfen ist selbst eine Auskunft: Die Zeile steht dann auf
  * „fehlt", `degradiert` nennt den Teil und das Protokoll den Grund.
@@ -42,6 +46,7 @@ beiGlobalerAenderung(einrichtungStandVergessen);
  * Beide Antworten werden getrennt gemerkt, sonst sähe die öffentliche Seite die des Verwalters. */
 export function einrichtungStand(k: KontoKontext, { verwalter = false } = {}): Promise<EinrichtungStandAntwort> {
   const jetzt = Date.now();
+  const _gemerkt = gemerkt(k);
   const alt = _gemerkt.get(verwalter);
   if (alt && alt.bis > jetzt) return alt.antwort;
   const antwort = berechne(k, verwalter);

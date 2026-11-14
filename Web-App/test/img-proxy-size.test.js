@@ -35,7 +35,7 @@ const { datenOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const bildDurchreichen = (...a) =>
   _req('routes/imgProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
-const { SET_IMG_MAX_BYTES, downloadSetImage } = _req('src/bilder/setImages.js');
+const { SET_IMG_MAX_BYTES, setBildHerunterladen } = _req('src/bilder/setImages.js');
 const { imgProxyFailures } = _req('src/bilder/imgProxyStats.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 
@@ -160,7 +160,7 @@ test('der lokale Download verwirft dasselbe Bild und meldet es', async () => {
   cdnRumpf = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 5);
   let pfad = 'unberührt';
   const zeilen = await mitFehlern(async () => {
-    pfad = await downloadSetImage(adresse('lokal'), '99999-1');
+    pfad = await setBildHerunterladen(adresse('lokal'), '99999-1');
   });
   assert.equal(pfad, null);
   assert.ok(
@@ -169,7 +169,7 @@ test('der lokale Download verwirft dasselbe Bild und meldet es', async () => {
   );
   cdnRumpf = Buffer.alloc(SET_IMG_MAX_BYTES, 5);
   assert.equal(
-    await downloadSetImage(adresse('lokal2'), '99998-1'),
+    await setBildHerunterladen(adresse('lokal2'), '99998-1'),
     '/images/sets/99998-1.jpg',
     'an der Grenze nicht gespeichert',
   );

@@ -108,7 +108,7 @@ test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
   // endeten alle in einem stummen `return null`. Genau diese Stille hat die
   // Bild-Fehlersuche über fünf Nachträge gestreckt.
   const src = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
-  const start = src.indexOf('async function downloadSetImage');
+  const start = src.indexOf('async function setBildHerunterladen');
   const fn = src
     .slice(start, src.indexOf('\n}\n', start))
     .split('\n')
@@ -117,7 +117,7 @@ test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
   const meldungen = (fn.match(/console\.(error|log)/g) || []).length;
   assert.ok(
     meldungen >= 4,
-    `downloadSetImage meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
+    `setBildHerunterladen meldet nur ${meldungen} Fehlerwege — Statuscode, Netzwerkfehler, ` +
       'zu kleine Antwort und der umschliessende catch müssen alle eine Spur hinterlassen',
   );
 });

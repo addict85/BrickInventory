@@ -17,6 +17,8 @@ import {
   type TokenBenutzer,
 } from './tokenCache';
 import type { KontoKontext } from './kontext';
+import { meldeFehler } from '../infra/fehler';
+import { versuche } from '../infra/ergebnis';
 
 export type { TokenScope, TokenBenutzer };
 
@@ -170,7 +172,7 @@ function _touchLastUsed(k: KontoKontext, entry: CacheEintrag, ip?: string | null
       u.last_used = new Date(jetzt);
       if (fristHinkt || (u.sliding === true && u.expires_at)) u.expires_at = new Date(ziel);
     })
-    .catch(e => console.warn('[auth] last_used konnte nicht geschrieben werden:', e?.message || e))
+    .catch((e: unknown) => meldeFehler('token:last_used schreiben', e))
     .finally(() => {
       entry.schreibt = false;
     });
@@ -218,7 +220,7 @@ export const ZUGAENGE_HOECHSTENS = 50;
 /** @param dauerhaft  true = Gerätezugang mit Gleitfrist; false = sieben feste
  *                   Tage — Benutzung durch einen Angreifer soll ihn nicht verlängern.
  * @param festeTage  `UNBEGRENZT` (0) = ohne Ablauf, nur über HTTPS und mit Rotationspflicht. */
-export async function createToken(
+export async function tokenAnlegen(
   k: KontoKontext,
   userId: number,
   label = 'Android App',
@@ -310,26 +312,29 @@ export async function deleteToken(k: KontoKontext, token: string): Promise<void>
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer
  * Erfolg, während die alten Tokens weitergelten. */
-export async function revokeAllTokens(k: KontoKontext, userId: number): Promise<void> {
+export async function alleTokensWiderrufen(k: KontoKontext, userId: number): Promise<void> {
   await k.zugaenge.loescheTokensDesKontos(userId);
   leereTokenCache(k);
 }
 
-/** Altzeilen ohne Ablaufdatum bekommen vorher ihre Gleitfrist, damit sie nach
- * derselben Regel fallen wie neue. */
-export async function purgeExpiredTokens(k: KontoKontext) {
-  const warn = (was: string) => (e: Error) => {
-    console.warn(`[tokens] ${was}:`, e?.message || e);
-    return 0;
+/** Altzeilen bekommen zuerst ihre Gleitfrist, damit sie fallen wie neue. Jeder Schritt
+ * läuft; scheitert einer, wirft der Lauf danach, und das Aufräumen wiederholt ihn. */
+export async function tokensAufraeumen(k: KontoKontext) {
+  const ohne: string[] = [];
+  const schritt = async (was: string, arbeit: () => Promise<number>) => {
+    const r = await versuche(`tokens:${was}`, arbeit);
+    if (!r.ok) ohne.push(was);
+    return r.ok ? r.wert : 0;
   };
-  const m = await k.zugaenge.ziehAltzeilenNach(k.konfig.tokenLeerlaufTage).catch(warn('Altzeilen nachziehen'));
+  const m = await schritt('Altzeilen nachziehen', () => k.zugaenge.ziehAltzeilenNach(k.konfig.tokenLeerlaufTage));
   if (m)
     console.log(
       `[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.konfig.tokenLeerlaufTage} Tagen gesetzt`,
     );
-  const abgelaufen = await k.zugaenge.loescheAbgelaufene().catch(warn('Aufräumen abgelaufener Tokens'));
-  const n = await k.zugaenge.loescheUngenutzte(k.konfig.tokenLeerlaufTage).catch(warn('Aufräumen ungenutzter Tokens'));
-  await k.zugaenge.loescheVerwaisteVerbrauchte().catch(warn('Aufräumen verbrauchter Tokens'));
+  const abgelaufen = await schritt('abgelaufene', () => k.zugaenge.loescheAbgelaufene());
+  const n = await schritt('ungenutzte', () => k.zugaenge.loescheUngenutzte(k.konfig.tokenLeerlaufTage));
+  await schritt('verbrauchte', () => k.zugaenge.loescheVerwaisteVerbrauchte());
   if (n) console.log(`[tokens] ${n} Token seit über ${k.konfig.tokenLeerlaufTage} Tagen ungenutzt — entfernt`);
+  if (ohne.length) throw new Error(`Token-Aufräumen ohne: ${ohne.join(', ')}`);
   return abgelaufen + n;
 }

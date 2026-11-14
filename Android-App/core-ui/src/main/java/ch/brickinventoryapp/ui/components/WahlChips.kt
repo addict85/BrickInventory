@@ -5,10 +5,12 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -106,7 +108,10 @@ fun <T> AnsichtUmschalter(
                     onClick = { onWahl(wert) },
                     shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
                 ) {
-                    Text(text, maxLines = 1, softWrap = false)
+                    // Genau so breit wie das Wort: Dann heisst ein Überlauf im Textlayout wirklich
+                    // abgeschnitten, nicht bloss „Platz neben dem Wort“ (das Segment reserviert
+                    // daneben immer Raum fürs Häkchen).
+                    Text(text, Modifier.width(IntrinsicSize.Max), maxLines = 1, softWrap = false)
                 }
             }
         }

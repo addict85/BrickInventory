@@ -141,7 +141,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
   });
 
   await t.test('eine Zeitüberschreitung sperrt NICHT sieben Tage aus', async () => {
-    // Kein Statuscode: genau das Bild eines Netzwerkfehlers. downloadSetImage
+    // Kein Statuscode: genau das Bild eines Netzwerkfehlers. setBildHerunterladen
     // setzt info.status ausschliesslich bei einer Antwort ≠ 200 — bricht die
     // Verbindung ab, bleibt das Feld leer.
     const sn = `${P}_timeout`;

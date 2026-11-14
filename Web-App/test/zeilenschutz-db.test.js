@@ -68,11 +68,11 @@ const _req = q.buildAndRequire();
 const { zugangOderSkip, fehltVoraussetzung } = require('./helpers/db');
 const { testName, raeumeReste, id } = require('./helpers/testnamen');
 const { erzeugeDb, dbKonfigAusUmgebung } = require(path.join(q.DIST, 'db', 'database.js'));
-const { imNamenVon, imSystemkontext, alsAnfrage } = _req('src/infra/kontoKontext.js');
+const { imSystemkontext, alsAnfrage } = _req('src/infra/kontoKontext.js');
 
 const ROLLE = testName('zeilen');
 const SYSTEM = testName('zeilsys');
-const als = (uid, f) => imNamenVon({ apiUser: { user_id: uid } }, f);
+const als = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
 /** Alle Bereiche über einen Zugang, wie startup/verdrahtung.ts sie baut, samt ihren Kontexten. */
@@ -358,7 +358,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
       C,
     ]);
     assert.equal((await d.konto.validateToken(token))?.user_id, C);
-    await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).revokeAllTokens(kontexte.konto, C);
+    await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).alleTokensWiderrufen(kontexte.konto, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });
 

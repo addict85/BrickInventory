@@ -5,7 +5,7 @@
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
 import { type KatalogEintrag, hatPreis, marktpreisAus } from '../../katalog';
 import { asIds } from '../../haushalt';
-import { fehlertext, logAndContinue } from '../../infra/fehler';
+import { logAndContinue, meldeFehler } from '../../infra/fehler';
 import { Fachfehler, fachfehler } from '../../infra/fehlerTexte';
 import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
 import { effectiveCondition } from './zustand';
@@ -151,7 +151,8 @@ async function rufeAb(q: Preisquelle, zustand: string): Promise<CacheZeile | nul
   try {
     return await q.merke(zustand, await q.frage(zustand));
   } catch (e) {
-    console.log(`  ${q.name} cond=${zustand} error: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
+    // Ausnahme: holePreisMitRueckfall macht aus null den Rückfall oder einen Fachfehler.
+    meldeFehler(`preisabruf:${q.name} ${zustand}`, e);
     return null;
   }
 }

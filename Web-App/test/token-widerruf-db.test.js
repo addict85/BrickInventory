@@ -58,7 +58,7 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
   assert.ok(await bis(() => pgNotify.hoertZu('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
   /** Ein Token, der im Cache steht; danach ist seine Zeile still gelöscht. */
   const imCacheOhneZeile = async () => {
-    const token = await auth.createToken(uid, 'Test');
+    const token = await auth.tokenAnlegen(uid, 'Test');
     assert.ok(await auth.validateToken(token), 'Vorbedingung: der Token gilt');
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
     assert.ok(await auth.validateToken(token), 'Gegenprobe: der Cache bedient ihn noch');
@@ -78,9 +78,9 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein Passwortwechsel widerruft auch zwischengespeicherte Tokens', async () => {
-    const token = await auth.createToken(uid, 'Test');
+    const token = await auth.tokenAnlegen(uid, 'Test');
     assert.ok(await auth.validateToken(token));
-    await auth.revokeAllTokens(uid);
+    await auth.alleTokensWiderrufen(uid);
     assert.equal(await auth.validateToken(token), null);
   });
 

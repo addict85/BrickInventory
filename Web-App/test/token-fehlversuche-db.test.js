@@ -88,7 +88,7 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
 
   await t.test('ein gültiger Token im Cache wird auch gebremster Adresse bedient', async () => {
     await bremse.vergissFehlversuche();
-    const token = await auth.createToken(uid, 'Cache');
+    const token = await auth.tokenAnlegen(uid, 'Cache');
     assert.equal((await ruf(token)).status, 200, 'Vorbedingung: der Token gilt und steht im Cache');
     for (let i = 0; i < bremse.FEHLVERSUCH_MAX + 1; i++) await ruf(zufall(i));
     assert.equal((await ruf(token)).status, 200);
@@ -113,7 +113,7 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
 
   await t.test('ein wiederverwendeter Token zählt nicht als Fehlversuch', async () => {
     await bremse.vergissFehlversuche();
-    const alt = await auth.createToken(uid, 'Alt', true);
+    const alt = await auth.tokenAnlegen(uid, 'Alt', true);
     const neu = await auth.rotiereToken(alt, null);
     assert.ok(neu && neu !== 'laeuft', 'Vorbedingung: der Tausch hat geklappt');
     assert.equal((await ruf(neu.token)).status, 200, 'der Nachfolger wird benutzt, der Vorgänger ist damit verbraucht');

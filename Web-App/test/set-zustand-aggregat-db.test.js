@@ -3,12 +3,12 @@
  * vorher als Muster im Quelltext suchte, hier an Ergebnissen.
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  getSetConditionAggregate ohne max_purchase_price → rot „getSet liefert
+ *   A  zustandsAggregat ohne max_purchase_price → rot „getSet liefert
  *      dieselben Aggregatfelder …“
- *   B  erfassungAendern gibt die nackte Antwort ohne withSetAggregate zurück →
+ *   B  erfassungAendern gibt die nackte Antwort ohne mitSetAggregat zurück →
  *      rot „beide Wege einer Erfassung …“ (und der folgende Fall, der auf
  *      dessen Teil aufbaut)
- *   C  POST /api/v1/sets reicht `null` statt des Zustands an addSet → rot
+ *   C  POST /api/v1/sets reicht `null` statt des Zustands an setErfassen → rot
  *      „der im Formular gewählte Zustand kommt beim Anlegen an“
  *   D  getCurrentMarketPrice: `if (!condition)` → `if (true)` → rot „ein
  *      ausdrücklich angefragter Zustand …“ und „der Marktpreis als Kaufpreis …“
@@ -31,7 +31,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Der Nachzug nach dem Erfassen läuft sonst nach dem Test gegen einen
-// geschlossenen Pool; addSet lässt sich für die Route stellen.
+// geschlossenen Pool; setErfassen lässt sich für die Route stellen.
 /** @type {null | ((...a: unknown[]) => Promise<unknown>)} */
 let gestellteAddSet = null;
 const Module = require('node:module');
@@ -52,6 +52,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
+const { katalogSet } = require('./helpers/bestand');
 
 test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   const db = await datenOderSkip(t, _req);
@@ -65,6 +66,8 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     await db.run('DELETE FROM sets WHERE set_number = $1', [SN]);
+    await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SN]);
+    await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
   };
   await weg();
   t.after(async () => {
@@ -120,9 +123,18 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', async () => {
-    const { addSet } = require('./helpers/sources').bereichsSeite('sets');
-    const r = await addSet({ setNumber: SN, menge: 1, konto: uid, zustand: 'U' });
+    const { setErfassen, setErgaenzen } = require('./helpers/sources').bereichsSeite('sets');
+    const r = await setErfassen({
+      anfragender: uid,
+      setNumber: SN,
+      menge: 1,
+      zustand: 'U',
+      wennVorhanden: 'aufstocken',
+    });
     assert.equal(r.action, 'updated', 'Aufbau: der Aufstock-Weg ohne Katalog und Netz');
+    // Den geschätzten Preis trägt die Nacharbeit nach; mit Katalog fragt sie kein Netz.
+    await katalogSet(db, SN, { name: 'Zustand', image_local: `/images/sets/${SN}.jpg` });
+    await setErgaenzen(SN, uid);
     const neu = await db.get(
       `SELECT condition, purchase_price::float AS preis FROM set_acquisitions
         WHERE user_id = $1 AND set_number = $2 AND id <> $3`,

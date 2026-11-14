@@ -130,7 +130,7 @@ trotzdem nur eine Quelle gibt, prüft der Haushalt, der „wer fragt“ auslegt
 (`haushaltVon`, `schreibbereich`, `darfSchreibenFuer`, `siehtKonto`), dass dieses Konto
 das des Rahmens ist (`pruefeAnfragender`). Ein anderes wirft `FremdesKonto`, statt
 still nur zu sehen, was der Zeilenschutz des Anfragenden zeigt; im Systemrahmen gilt
-jedes Konto. Wer für ein anderes Konto arbeitet, sagt es am Aufruf (`imNamenVon`,
+jedes Konto. Wer für ein anderes Konto arbeitet, sagt es am Aufruf (`alsAnfrage`,
 `imSystemkontext`).
 
 ## Fehler
@@ -145,7 +145,11 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
 - **`logAndContinue`** nur für Nebenwirkungen ohne Folgen für das Ergebnis: Mail
   und Signal nebenher, Fortschritt und Stand, Aufräumen nach dem eigentlichen
   Fehler, Herunterfahren. Einen Ersatzwert liefert `meldeUndLiefere` und nennt
-  sein Warum im Code. `test/ratschen.test.js` zählt beide.
+  sein Warum im Code. `test/ratschen.test.js` zählt beide, dazu jeden Fang in
+  `src/`, der nur meldet und weiterläuft (`catch (e) { meldeFehler(…) }`, auch mit
+  `return x` danach): Er ist ein Ersatzwert ohne Namen. Wer dort direkt in die
+  Konsole schreibt, nennt sein Warum als „Ausnahme:“. Die Oberfläche hat eine
+  eigene Ratsche für Fänge ohne Meldung (`public/js`).
 - Ein Signal ist eine **Fehlerklasse** (`StromGeschlossen`, `AuftragVerloren` …),
   keine Zeichenkette, die der Fänger vergleicht.
 - Der Transaktionswächter (kein Ersatzwert in einer laufenden Transaktion) kommt
@@ -252,8 +256,13 @@ Bestand der Abweichungen (Stand 11.11.2026):
 
 Innen (Funktionen, Typen) heissen die Dinge deutsch und wie im Bereich:
 `haushaltVon`, `schreibbereich`, `blickfeldIds`, `darfSchreibenFuer`,
-`preisverlaufSet`/`…Teil`/`…Figur`. Übrig sind englische Namen in
-Finanzen und Katalog (`fetchPrice`, `resolveSetCondition`, `getCurrentMarketPrice`).
+`preisverlaufSet`/`…Teil`/`…Figur`. Übrig sind englische Namen vor allem in
+Finanzen, Katalog und Konto (`fetchPrice`, `resolveSetCondition`, `getCurrentMarketPrice`);
+`test/ratschen.test.js` zählt die exportierten Funktionen in `src/` mit englischem Verb.
+Eine Regel hat einen Namen: Setnummern normalisiert nur `normalisiereSetNummer`
+(`src/infra/setNummer`), Sets verschiebt `setVerschieben` (Einstieg) über
+`setErfassungenUmhaengen`; Bild- und Quellenhelfer importiert man aus `bilder` bzw.
+`fremdquellen`, nicht über `katalog`.
 
 ## Begründungen
 

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import PDFDocument from 'pdfkit';
 import { IMAGES_DIR, resolveWebPath } from '../../infra/appPaths';
+import { meldeFehler } from '../../infra/fehler';
 import type { Nutzlast } from '../../auftraege';
 
 /** Im worker_thread: pdfkit zeichnet synchron und hielte bei tausenden Zeilen
@@ -199,12 +200,12 @@ function teilZeichnen(doc: Doc, p: Zeile, bilder: Map<string, Buffer | null>, ne
   const imgBuf = fp ? bilder.get(fp) || null : null;
   let imgOffset = 0;
   if (imgBuf) {
-    // Ein Bild, das pdfkit nicht lesen kann, fällt weg; die Zeile bleibt.
     try {
       doc.image(imgBuf, START_X, rowY, { width: 30, height: 30, fit: [30, 30] });
       imgOffset = 36;
     } catch (e) {
-      console.warn(`[PDF] Bild für ${p.part_number} unlesbar: ${(e as Error).message}`);
+      // Ausnahme: Ein Bild, das pdfkit nicht lesen kann, fällt weg; die Zeile bleibt.
+      meldeFehler(`pdf:teilbild ${p.part_number}`, e);
     }
   }
   doc.fontSize(8).font('Helvetica').fillColor('#1e293b');

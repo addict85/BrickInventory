@@ -33,10 +33,6 @@ export function aktuellesKonto(): { id: number; verwalter: boolean } | null {
   return { id, verwalter };
 }
 
-export function imNamenVon<T>(quelle: KontoQuelle, f: () => T): T {
-  return mitRahmen({ quelle }, f);
-}
-
 /** Arbeit über Kontogrenzen: Abfragen gehen dann über die Systemrolle (BYPASSRLS, Migration 0112).
  * Der Grund steht am Aufruf, auffindbar per `imSystemkontext(`. */
 export function imSystemkontext<T>(grund: string, f: () => T): T {
@@ -52,8 +48,7 @@ export function zeilenKontext(): { system: boolean; konto: number | null } {
   return { system: !!jetzt().system, konto: aktuellesKonto()?.id ?? null };
 }
 
-/** Ein Dienst bekam ein anderes Konto als das, unter dessen Zeilenschutz er fragt: Er sähe
- * still weniger, als er meint. Fremde Konten gehen ausdrücklich über imNamenVon oder den Systemrahmen. */
+/** Ein Dienst für ein anderes Konto als das des Zeilenschutzes sähe still weniger; fremde über alsAnfrage. */
 export class FremdesKonto extends Error {
   constructor(uid: number, konto: number) {
     super(`Dienst für Konto ${uid} unter dem Zeilenschutz von Konto ${konto}`);
@@ -67,7 +62,7 @@ export function pruefeAnfragender(uid: number): void {
   if (konto !== undefined && konto !== uid) throw new FremdesKonto(uid, konto);
 }
 
-/** Für die Wachen der Datenbank (db/transaktion.ts): welche Transaktion dieser Pfad offen hält. */
+/** Für die Wachen der Datenbank (db/transaktion.ts), den Commit-Begleiter der Idempotenz und das Protokoll. */
 export function inTransaktionsPfad<T>(transaktion: object, f: () => T): T {
   return mitRahmen({ transaktion }, f);
 }
@@ -75,7 +70,6 @@ export function transaktionDesPfads(): object | null {
   return jetzt().transaktion;
 }
 
-/** Ein Rückruf, den jede äusserste Transaktion dieses Pfads vor ihrem COMMIT ausführt (Idempotenz). */
 export function mitBegleiter<T>(begleiter: unknown, f: () => T): T {
   return mitRahmen({ begleiter }, f);
 }
@@ -83,7 +77,6 @@ export function begleiterDesPfads(): unknown {
   return jetzt().begleiter;
 }
 
-/** Die Kennung der Anfrage für ihre Logzeilen (src/infra/protokoll.ts). */
 export const anfrageKontext = {
   run: <T>(w: { rid: string }, f: () => T): T => mitRahmen({ rid: w.rid }, f),
   getStore: (): { rid: string } | undefined => {

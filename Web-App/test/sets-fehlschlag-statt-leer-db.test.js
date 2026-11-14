@@ -33,7 +33,7 @@ ersetze('src/katalog/rebrickableKatalog.js', { getAllSetParts: stoerung });
 testQuellen(null, { getSetMinifigs: stoerung });
 // Die Nacharbeit: Teile und Figuren gelingen, zwei Anreicherungen scheitern.
 const still = async () => {};
-ersetze('src/katalog/partsImport.js', { importiereTeile: still, fetchMissingBlIds: still });
+ersetze('src/katalog/partsImport.js', { importiereTeile: still, blNummernNachladen: still });
 ersetze('src/katalog/minifigsImport.js', { importiereFiguren: still });
 ersetze('src/auftraege/anleitungsAuftrag.js', { anleitungEinreihen: still });
 ersetze('src/katalog/teileAnreicherung.js', {
@@ -82,12 +82,18 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
     rebrickable = 'gestoert';
     const staende = [];
     const { zieheNach } = require('./helpers/sources').bereichsSeite('sets');
-    await zieheNach(SN, 0, 'zweit', {
-      fortschritt: async f => {
-        staende.push(f);
-        return true;
-      },
-    });
+    // Mit Katalog und Bild: Die Nacharbeit fragt dann kein Netz für den Stamm, nur die Schritte danach.
+    await require('./helpers/bestand').katalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
+    try {
+      await zieheNach(SN, 0, 'zweit', {
+        fortschritt: async f => {
+          staende.push(f);
+          return true;
+        },
+      });
+    } finally {
+      await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
+    }
     assert.deepEqual(
       staende.map(f => f.ohne),
       [['teile-anreichern', 'bilder']],

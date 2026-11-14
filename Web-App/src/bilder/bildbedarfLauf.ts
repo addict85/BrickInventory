@@ -237,7 +237,7 @@ async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
 
     const info: { status?: number } = {};
     // Ein Fehler zählt wie ein vergeblicher Abruf; über die Wiederholung entscheidet nachFehlschlag().
-    const abruf = await versuche('bild-job:downloadSetImage', k.bildwerk.setBildLaden(r.url, r.set_number, info));
+    const abruf = await versuche('bild-job:setBildHerunterladen', k.bildwerk.setBildLaden(r.url, r.set_number, info));
     const lokal = abruf.ok ? abruf.wert : null;
     if (!lokal) {
       if (await nachFehlschlag(k, r.set_number, info, st)) {
@@ -254,7 +254,7 @@ async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
       }
       continue;
     }
-    // Die Vorschau entsteht NICHT in downloadSetImage(); ohne diesen Aufruf bliebe es bei der grossen
+    // Die Vorschau entsteht NICHT in setBildHerunterladen(); ohne diesen Aufruf bliebe es bei der grossen
     // Originaldatei.
     await vorschauErzeugen(k, lokal, vorschau);
     // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.

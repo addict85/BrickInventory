@@ -2,11 +2,10 @@
 export {
   DESIGNS,
   SECRET_KEYS,
-  beiGlobalerAenderung,
   globalerWertGueltig,
   isMaskedValue,
   nutzerWertGueltig,
 } from './settings';
-export { meldeGlobaleAenderung, einstellungMitZugang } from './settings';
+export { einstellungMitZugang } from './settings';
 export { erzeugeEinstellungen } from './bereich';
 export type { EinstellungenDienste, EinstellungenKontext } from './bereich';

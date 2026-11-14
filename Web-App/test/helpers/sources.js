@@ -208,7 +208,7 @@ let _datenFabrik = null;
 /** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
  *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
 const _bildwerk = {
-  setBildLaden: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).downloadSetImage(...a),
+  setBildLaden: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).setBildHerunterladen(...a),
   vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).generateThumb(...a),
 };
 

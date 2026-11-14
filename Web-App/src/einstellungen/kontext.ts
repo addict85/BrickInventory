@@ -1,10 +1,13 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
+import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository';
 
 export interface EinstellungenAbhaengigkeiten {
   db: Db;
+  /** Wer auf Änderungen globaler Werte horcht; erzeugeEinstellungen legt es an. */
+  faecher: Faecher;
 }
 
 export const zugang = (db: Db) => ({

@@ -32,7 +32,7 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
       [NAME],
     )
   ).id;
-  const token = await auth.createToken(uid, 'Lesefehler', false, null, { scope: 'app' });
+  const token = await auth.tokenAnlegen(uid, 'Lesefehler', false, null, { scope: 'app' });
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});

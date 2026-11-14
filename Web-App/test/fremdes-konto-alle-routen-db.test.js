@@ -256,7 +256,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   await ok('POST', '/api/v1/sets', { set_number: SET3, quantity: 1, condition: 'N' });
   await ok('DELETE', `/api/v1/sets/${SET3}`);
   const papierkorb = (await db.get('SELECT id FROM papierkorb WHERE user_id = $1', [opfer])).id;
-  const token = await auth.createToken(opfer, `Gerät ${MARKE}`, true);
+  const token = await auth.tokenAnlegen(opfer, `Gerät ${MARKE}`, true);
   const nonce = `fremd${process.pid}${Date.now()}`;
   const qr = (
     await db.get(
