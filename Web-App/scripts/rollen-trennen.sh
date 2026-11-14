@@ -36,7 +36,7 @@ SELECT (SELECT count(*) FROM pg_catalog.pg_class c
            AND c.relowner <> (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = :'mig')
            AND NOT EXISTS (SELECT FROM pg_catalog.pg_depend d WHERE d.objid = c.oid AND d.deptype IN ('e', 'a', 'i')))
        || ' ' || pg_catalog.has_schema_privilege(:'app', 'public', 'CREATE')
-       || ' ' || pg_catalog.has_table_privilege(:'app', 'public.users', 'INSERT')
+       || ' ' || pg_catalog.has_table_privilege(:'app', 'public.sets', 'INSERT')
        || ' ' || (SELECT pg_catalog.pg_get_userbyid(datdba) FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database());
 SQL
 )

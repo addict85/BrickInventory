@@ -285,6 +285,9 @@ services:
       PROXY_NETZ_BESTAETIGT: ${PROXY_NETZ_BESTAETIGT:-0}
       # Platz für Uploads aller Konten zusammen in MB.
       UPLOAD_GESAMT_MB: ${UPLOAD_GESAMT_MB:-20480}
+      # Kürzere Fristen für Verwaltersitzungen: Leerlauf in Minuten, Höchstdauer in Stunden.
+      SESSION_ADMIN_IDLE_MINUTES: ${SESSION_ADMIN_IDLE_MINUTES:-30}
+      SESSION_ADMIN_MAX_HOURS: ${SESSION_ADMIN_MAX_HOURS:-12}
       # Das Wurzelzertifikat der CA für /ca.crt und den Fingerabdruck im QR-Code.
       CA_ZERTIFIKAT: /caddy-ca/root.crt
       # Legt der erste Start an. Ältere Installationen mit data/.datenschluessel
@@ -414,8 +417,8 @@ services:
   #   • BRICK_TLS=acme: öffentlicher Name mit Let's Encrypt, ohne eigene CA
   #   • CA_OHNE_NAMENSBESCHRAENKUNG=ja: Caddys eigene CA, gilt auf jedem Gerät
   #     für jede Adresse — nur ausdrücklich, nie als stiller Rückfall.
-  # Ohne einen davon startet Caddy nicht. Port 80 leitet um und liefert nur
-  # /ca.crt im Klartext; den Fingerabdruck nennt das Protokoll zum Abgleich.
+  # Ohne einen davon startet Caddy nicht. Port 80 leitet nur um, /ca.crt gibt es
+  # nur über HTTPS; den Fingerabdruck nennt das Protokoll zum Abgleich.
   # ── Rechte für Caddy ─────────────────────────────────────────────────────────
   # Caddy läuft ohne root als 10443:10443. Dieser Dienst übergibt ihm bei jedem
   # `up` seine Ordner, das Volume der Wurzel und den Schlüssel der eigenen CA

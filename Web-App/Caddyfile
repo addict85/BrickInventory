@@ -4,7 +4,7 @@
 	# Keine Verwaltungsschnittstelle: Die Konfiguration ändert sich nur mit
 	# dieser Datei und einem Neustart.
 	admin off
-	# Die Umleitung auf https steht unten selbst, weil /ca.crt ausgenommen ist.
+	# Die Umleitung auf https steht unten selbst: auf BRICK_BASE_URL, nicht auf den Namen der Anfrage.
 	auto_https disable_redirects
 	# Caddy soll die CA nicht in den Container-Truststore eintragen.
 	skip_install_trust
@@ -86,18 +86,8 @@ https://{$BRICK_HOST} {
 }
 
 http:// {
-	# Nur das Wurzelzertifikat gibt es im Klartext: Ein Gerät braucht es, bevor
-	# es HTTPS vertraut. Echt ist es nur, wenn der Fingerabdruck auf dem Gerät
-	# dem im Protokoll von Caddy gleicht (UPGRADE.md#wurzelzertifikat).
-	# Nur GET und HEAD auf genau diese Datei; alles andere geht auf HTTPS.
-	@wurzel {
-		method GET HEAD
-		path /ca.crt
-	}
-	handle @wurzel {
-		reverse_proxy app:3000
-	}
-	handle {
-		redir {$BRICK_BASE_URL}{uri} 308
-	}
+	# Port 80 leitet nur um, auch /ca.crt: Ein Gerät ohne die Wurzel lädt sie über
+	# HTTPS nach einmal bestätigter Warnung (UPGRADE.md#wurzelzertifikat). Echt ist
+	# sie erst, wenn der Fingerabdruck dem im Protokoll von Caddy gleicht.
+	redir {$BRICK_BASE_URL}{uri} 308
 }

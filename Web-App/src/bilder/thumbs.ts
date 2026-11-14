@@ -8,6 +8,15 @@ import { isDecodable } from './imageGuard';
 
 const THUMB_SIZE = 200;
 
+/** Höchstens THUMB_SIZE je Seite, Seitenverhältnis bleibt: Zugeschnitten fehlten breiten Bildern die Ränder,
+ * vergrössert wurden kleine unscharf. Die Kachel passt das Bild selbst ein (object-fit). */
+export function jimpEinpassen(
+  bild: { bitmap: { width: number; height: number }; scaleToFit(o: { w: number; h: number }): unknown },
+  groesse: number,
+) {
+  if (bild.bitmap.width > groesse || bild.bitmap.height > groesse) bild.scaleToFit({ w: groesse, h: groesse });
+}
+
 /** Erst sharp, Jimp nur bei einem LADEfehler (native Bibliothek fehlt). Ein
  * defektes Bild soll scheitern und gemerkt werden, nicht zweimal gerechnet. */
 async function verkleinern(quelle: string, ziel: string): Promise<void> {
@@ -23,7 +32,7 @@ async function verkleinern(quelle: string, ziel: string): Promise<void> {
     // Weisser Grund: Transparente PNGs würden als JPEG sonst schwarz.
     await sharp(quelle)
       .flatten({ background: '#ffffff' })
-      .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'cover' })
+      .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 80 })
       .toFile(ziel);
     return;
@@ -34,7 +43,7 @@ async function verkleinern(quelle: string, ziel: string): Promise<void> {
   const image = await Jimp.read(quelle);
   const bg = new Jimp({ width: image.bitmap.width, height: image.bitmap.height, color: 0xffffffff });
   bg.composite(image, 0, 0);
-  bg.cover({ w: THUMB_SIZE, h: THUMB_SIZE });
+  jimpEinpassen(bg, THUMB_SIZE);
   await bg.write(ziel as `${string}.${string}`, { quality: 80 });
 }
 

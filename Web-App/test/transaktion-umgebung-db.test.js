@@ -36,8 +36,13 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
   const db = await zugangOderSkip(t, _req);
   if (!db) return;
   const S = `tx_umgebung_${process.pid}`;
+  // global_settings schreibt nur die Systemrolle (0117): Die Transaktionen laufen in ihrem Rahmen.
+  const { imSystemkontext } = _req('src/infra/kontoKontext.js');
+  const transaktion = fn => imSystemkontext('test', () => db.transaction(fn));
   t.after(async () => {
-    await db.run('DELETE FROM global_settings WHERE key LIKE $1', [`${S}%`]).catch(() => {});
+    await imSystemkontext('test', () => db.run('DELETE FROM global_settings WHERE key LIKE $1', [`${S}%`])).catch(
+      () => {},
+    );
     await db.pool.end().catch(() => {});
   });
   const { getGlobalSetting } = _req('src/einstellungen/settings.js');
@@ -51,7 +56,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
     async () => {
       let gesehen;
       await assert.rejects(
-        db.transaction(async tx => {
+        transaktion(async tx => {
           await schreibe(tx, 'a', 'eins');
           await assert.rejects(getGlobalSetting(`${S}a`), { name: 'Error', message: /ungebundenen Zugang/ });
           gesehen = await in_(tx).getGlobalSetting(`${S}a`);
@@ -65,7 +70,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
   );
 
   await t.test('eine gescheiterte innere Transaktion lässt die äussere weiterlaufen', async () => {
-    await db.transaction(async tx => {
+    await transaktion(async tx => {
       await schreibe(tx, 'b', 'aussen');
       await assert.rejects(
         tx.db.transaction(async inner => {
@@ -85,7 +90,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
 
   await t.test('wer nach COMMIT fragt, bekommt den Pool', async () => {
     let spaeter, drinnen;
-    await db.transaction(async tx => {
+    await transaktion(async tx => {
       await schreibe(tx, 'e', 'fest');
       drinnen = db.inTransaktion();
       spaeter = new Promise(r => setTimeout(r, 50)).then(async () => [

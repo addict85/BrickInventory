@@ -635,20 +635,23 @@
   .erfassen-leiste .import-text, .filterleiste .filter-text { display: none; }
   :is(.erfassen-leiste, .filterleiste) .nur-telefon { display: inline; }
   .erfassen-leiste .import-klappe { left: auto; right: 0; width: min(18rem, calc(100vw - 32px)); }
+  :root { --schwebend-unten: calc(4.75rem + env(safe-area-inset-bottom)); --schwebend-hoehe: 52px; }
   .knopf-schwebend {
-    position: fixed; z-index: 90; right: 16px; bottom: calc(4.75rem + env(safe-area-inset-bottom));
-    min-height: 52px; padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
+    position: fixed; z-index: 90; right: 16px; bottom: var(--schwebend-unten);
+    min-height: var(--schwebend-hoehe); padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
   }
   .erfassen-leiste .btn.bp.knopf-schwebend { flex: none; }
   /* Katalog aufgeklappt: die beiden Jahre nebeneinander, sie gehören zusammen. */
   #tab-catalog .filterleiste.offen > :is(#cat-year-from, #cat-year-to) { flex: 1 1 40%; width: auto; }
   /* Set hinzufügen: Preis und Währung brauchen die Breite der ganzen Zeile, in einer halben Spalte blieb für „z. B. 79,99“ nichts. */
   .erfassen-raster > .fg:has(> .preis-mit-waehrung) { grid-column: 1 / -1; }
+  /* Bauliste: das Feld für mehrere Setnummern über die ganze Breite, „Hinzufügen“ darunter. */
+  .pl-setnr { flex-basis: 100%; }
   /* Gesperrt (offline) deckend und grau: Halbtransparent lagen Knopf- und
      Kartentext übereinander und waren beide nicht zu lesen. */
   :root .btn.knopf-schwebend:disabled { opacity: 1; background: var(--s100); color: var(--mut); border-color: var(--bdr); }
-  /* Die letzte Karte rollt unter dem schwebenden Knopf hervor. */
-  main:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) { padding-bottom: 9rem; }
+  /* Die letzte Zeile rollt über dem schwebenden Knopf aus: Abstand bis zu seiner Oberkante und etwas Luft. */
+  main:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) { padding-bottom: calc(var(--schwebend-unten) + var(--schwebend-hoehe) + 1rem); }
 
   /* Kennzahlen umbrechend: Mit fünfstelligen Zahlen passte die Zeile nicht mehr und schob die Seite auf. */
   .brick-stats { flex-wrap: wrap; gap: .35rem; margin-bottom: var(--sp-3); }

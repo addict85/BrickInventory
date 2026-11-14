@@ -10,6 +10,9 @@ import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
 import { verwalterAktionMerken } from './verwalterProtokoll';
 import { alsDoppelt } from '../infra/fehlerTexte';
+import type { Geloest } from '../mail';
+import { hinweisNebenher } from './kontoHinweis';
+import { loescheTagesgrenze } from './loginLimiter';
 import type { KontoKontext } from './kontext';
 
 export { LETZTER_VERWALTER } from './repository/konten';
@@ -124,27 +127,34 @@ export function passwortPerLinkSetzen(k: KontoKontext, token: string, passwort: 
   return setzePasswortZurueck(k, hashToken(token), passwort);
 }
 
-/** Hier will man einen fremden Zugang loswerden; deshalb fallen auch alle Passkeys.
- * @returns das Konto, oder null, wenn der Link schon verbraucht oder abgelaufen ist */
+/** Hier will man einen Eindringling loswerden: Passkeys, Hauptkonten über diesem Konto, offene
+ * Einladungen und ein Adresswechsel fallen mit (beim normalen Wechsel nicht: den löst der
+ * angemeldete Inhaber aus). @returns das Konto, oder null, wenn der Link schon verbraucht oder abgelaufen ist */
 export async function setzePasswortZurueck(
   k: KontoKontext,
   tokenHash: string,
   passwort: string,
 ): Promise<number | null> {
   const hash = await hashe(passwort);
-  const konto = await mitZugangsende(
+  const r = await mitZugangsende(
     k,
-    (id: number | null) => id,
+    (e: { uid: number; geloest: Geloest } | null) => e?.uid ?? null,
     async t => {
       const uid = (await t.konten.setzePasswortNachRuecksetzen(tokenHash, hash))?.id;
       if (!uid) return null;
       await zugaengeBeenden(t, uid);
       await t.passkeys.loescheAlleDesKontos(uid);
-      return uid;
+      const haushalt = await t.haushalt.fremdzugriffLoesen(uid);
+      const adresse = await t.konten.verwirfAusstehendeAdresse(uid);
+      await loescheTagesgrenze(t, uid);
+      return { uid, geloest: { haushalt: haushalt.hauptkonten, einladungen: haushalt.einladungen, adresse } };
     },
   );
-  if (konto) await startpasswortErledigt(k, konto);
-  return konto;
+  if (!r) return null;
+  k.haushalt.meldeHaushaltsaenderung();
+  await startpasswortErledigt(k, r.uid);
+  hinweisNebenher(k, r.uid, 'passwort_zurueckgesetzt', undefined, { geloest: r.geloest });
+  return r.uid;
 }
 
 /** Dieselbe Rechenzeit wie registriere(): Die Antwortzeit verriete sonst eine vergebene Adresse. */
@@ -169,17 +179,15 @@ export async function legeKontoAn(
   alsVerwalter: boolean,
 ): Promise<number | null> {
   const hash = await hashe(passwort);
-  return k
-    .transaktion(async t => {
-      // Auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
-      if (await t.konten.nameVergeben(username, 0)) return null;
-      const neu = await t.konten.fuegeKontoEin(username, hash, alsVerwalter);
-      if (neu === null) return null;
-      await verwalterAktionMerken(t, verwalter, neu, 'konto_angelegt');
-      if (alsVerwalter) await verwalterAktionMerken(t, verwalter, neu, 'verwalter_ernannt');
-      return neu;
-    })
-    .catch(alsDoppelt('benutzername_vergeben'));
+  return zugangsTransaktion(k, async t => {
+    // Auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
+    if (await t.konten.nameVergeben(username, 0)) return null;
+    const neu = await t.konten.fuegeKontoEin(username, hash, alsVerwalter);
+    if (neu === null) return null;
+    await verwalterAktionMerken(t, verwalter, neu, 'konto_angelegt');
+    if (alsVerwalter) await verwalterAktionMerken(t, verwalter, neu, 'verwalter_ernannt');
+    return neu;
+  }).catch(alsDoppelt('benutzername_vergeben'));
 }
 
 export async function registriere(

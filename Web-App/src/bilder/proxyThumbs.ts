@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { merkeFehlend, istBekanntFehlend } from './imageMisses';
 import { imgProxyFailures, zaehleProxyFehler } from './imgProxyStats';
 import { isDecodable } from './imageGuard';
+import { jimpEinpassen } from './thumbs';
 import { LOCKS } from '../infra/lockNamespaces';
 import * as sperre from './repository/sitzungsSperre';
 import type { BilderKontext } from './kontext';
@@ -106,7 +107,7 @@ export async function makeProxyThumb(k: BilderKontext, srcFile: string, thumbFil
       const img = await Jimp.read(srcFile);
       const bg = new Jimp({ width: img.bitmap.width, height: img.bitmap.height, color: 0xffffffff });
       bg.composite(img, 0, 0);
-      bg.cover({ w: PROXY_THUMB_SIZE, h: PROXY_THUMB_SIZE });
+      jimpEinpassen(bg, PROXY_THUMB_SIZE);
       // ATOMAR schreiben: erst daneben, dann umbenennen.
       const tmpThumb = `${thumbFile}.${process.pid}.${Date.now()}.tmp.jpg`;
       await bg.write(tmpThumb as `${string}.${string}`, { quality: 80 });

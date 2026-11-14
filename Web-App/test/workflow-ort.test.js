@@ -222,51 +222,62 @@ test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden 
   assert.ok(fs.existsSync(path.join(WURZEL, '.github', 'zap-regeln.tsv')), 'die ZAP-Regeln fehlen');
 });
 
-// Renovate liest nur die renovate.json im Wurzelverzeichnis; eine zweite unter Web-App/
-// bliebe ohne Wirkung, Dependabot daneben öffnete jede Aktualisierung doppelt.
-// Gegenproben (02.11.2026 gemessen): `npm` aus enabledManagers gestrichen → rot; eine leere
-// renovate.json unter Web-App/ angelegt → rot; minimumReleaseAge gestrichen → rot.
-// Gegenproben (12.11.2026): prConcurrentLimit gestrichen → rot „begrenzt“; eine Dependabot-
-// Konfiguration angelegt → rot „nur ein Werkzeug“; `gradle` aus enabledManagers → rot.
-test('Renovate pflegt npm der Web-App aus der Wurzel-Konfiguration', () => {
-  const konf = JSON.parse(fs.readFileSync(path.join(WURZEL, 'renovate.json'), 'utf8'));
-  assert.ok(konf.enabledManagers.includes('npm'), 'Die npm-Pakete der Web-App hält niemand aktuell');
-  // Alle vier Quellen wöchentlich, gruppiert und mit begrenzter Zahl offener PRs.
-  for (const m of ['npm', 'github-actions', 'dockerfile', 'docker-compose', 'gradle', 'gradle-wrapper'])
-    assert.ok(konf.enabledManagers.includes(m), `${m}: hält niemand aktuell`);
-  assert.match(String(konf.schedule), /on monday/, 'wöchentlich');
-  assert.ok(konf.prConcurrentLimit > 0 && konf.prConcurrentLimit <= 5, 'offene PRs begrenzt');
-  assert.ok(
-    konf.packageRules.some(r => r.groupName && r.matchUpdateTypes?.includes('minor')),
-    'gruppiert',
-  );
-  assert.ok(
-    !fs.existsSync(path.join(WURZEL, '.github', 'dependabot.yml')),
-    'nur ein Werkzeug: Dependabot neben Renovate öffnete jede Aktualisierung doppelt',
-  );
-  assert.ok(
-    konf.packageRules.some(r => r.matchManagers?.includes('npm') && r.matchPackageNames?.includes('pdfjs-dist')),
-    'Die Regel für die eingecheckte PDF.js-Kopie fehlt',
-  );
-  for (const m of ['npm', 'gradle']) {
-    assert.ok(
-      konf.packageRules.some(
-        r => r.matchManagers?.includes(m) && !r.matchPackageNames && /^[1-9]\d* days?$/.test(r.minimumReleaseAge ?? ''),
-      ),
-      `${m}: neue Fassungen ohne Wartezeit`,
-    );
+/** Die Einträge von .github/dependabot.yml, je `- package-ecosystem:` ein Block. */
+function dependabot() {
+  const text = fs.readFileSync(path.join(WURZEL, '.github', 'dependabot.yml'), 'utf8');
+  return text
+    .split(/\n {2}- (?=package-ecosystem:)/)
+    .slice(1)
+    .map(b => ({
+      oekosystem: b.match(/^package-ecosystem: (\S+)/)?.[1],
+      ordner: b.match(/\n {4}directory: (\S+)/)?.[1],
+      text: b,
+    }));
+}
+
+// Dependabot liest nur .github/dependabot.yml; Renovate lief nie (keine App, kein PR seit dem
+// 2. November) und daneben öffnete es jede Aktualisierung doppelt.
+// Gegenproben (14.11.2026 gemessen, je einzeln): den npm-Eintrag gestrichen → rot „npm …
+// hält niemand aktuell“; `cooldown` beim npm-Eintrag gestrichen → rot „ohne Wartezeit“;
+// renovate.json wieder angelegt → rot „nur ein Werkzeug“; die postgres-Ausnahme gestrichen →
+// rot „Hauptversion“.
+test('Dependabot pflegt npm, Gradle, Images und Actions aus der Wurzel-Konfiguration', () => {
+  const eintraege = dependabot();
+  const finde = (oe, ordner) => eintraege.find(e => e.oekosystem === oe && e.ordner === ordner);
+  for (const [oe, ordner] of [
+    ['npm', '/Web-App'],
+    // Der Name zusammengesetzt: abgleich-baumbruecken liest jede Erwähnung als Pfad in den Baum.
+    ['gradle', `/${'Android'}-App`],
+    ['docker', '/Web-App'],
+    ['docker-compose', '/Web-App'],
+    ['github-actions', '/'],
+  ]) {
+    const e = finde(oe, ordner);
+    assert.ok(e, `${oe} in ${ordner}: hält niemand aktuell`);
+    assert.match(e.text, /interval: weekly/, `${oe}: wöchentlich`);
+    assert.match(e.text, /open-pull-requests-limit: [1-5]\b/, `${oe}: offene PRs begrenzt`);
   }
-  const daneben = [];
+  for (const oe of ['npm', 'gradle'])
+    assert.match(
+      eintraege.find(e => e.oekosystem === oe).text,
+      /\n {4}cooldown:\s*\n\s*default-days: [1-9]/,
+      `${oe}: neue Fassungen ohne Wartezeit`,
+    );
+  assert.match(
+    finde('docker-compose', '/Web-App').text,
+    /dependency-name: postgres\s*\n\s*update-types: \[version-update:semver-major\]/,
+    'eine PostgreSQL-Hauptversion braucht einen Umzug der Daten, kein stilles Update',
+  );
+  const renovate = [];
   (function lauf(dir) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (['node_modules', '.git', '.claude', 'build', '.gradle', 'dist'].includes(e.name)) continue;
       const voll = path.join(dir, e.name);
       if (e.isDirectory()) lauf(voll);
-      else if (/^renovate\.json5?$|^\.renovaterc/.test(e.name) && dir !== WURZEL)
-        daneben.push(path.relative(WURZEL, voll));
+      else if (/^renovate\.json5?$|^\.renovaterc/.test(e.name)) renovate.push(path.relative(WURZEL, voll));
     }
   })(WURZEL);
-  assert.deepEqual(daneben, [], 'Diese Renovate-Dateien liest niemand');
+  assert.deepEqual(renovate, [], 'nur ein Werkzeug: Renovate neben Dependabot öffnete jede Aktualisierung doppelt');
 });
 
 /** Der `run:`-Block des Schritts mit `id: <id>`, ohne Einrückung. */
@@ -283,8 +294,8 @@ function schrittSkript(yml, id) {
 }
 
 // Gegenproben (02.11.2026 gemessen): im sed-Muster `@sha256` durch `@sha512`
-// ersetzt → rot (Exit 1, „Kein Image per Digest gefunden“); (03.11.2026) `docker-compose` aus enabledManagers in renovate.json gestrichen → rot
-// „docker-compose: … ohne Update-Pfad“; dependabot.yml wieder angelegt → rot „… doppelt“;
+// ersetzt → rot (Exit 1, „Kein Image per Digest gefunden“); (14.11.2026) den Eintrag
+// `docker-compose` in dependabot.yml gestrichen → rot „docker-compose: … ohne Update-Pfad“;
 // `matrix.image` im Trivy-Job durch ein festes Image ersetzt → rot.
 test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy', () => {
   const yml = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
@@ -310,18 +321,12 @@ test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy'
   const trivy = yml.slice(yml.indexOf('\n  trivy-compose:'), yml.indexOf('\n  zap:'));
   assert.match(trivy, /matrix:\s*\n\s*image: \$\{\{ fromJSON\(needs\.compose-images\.outputs\.images\) \}\}/);
   assert.match(trivy, /image-ref: \$\{\{ matrix\.image \}\}/);
-  const renovate = JSON.parse(fs.readFileSync(path.join(WURZEL, 'renovate.json'), 'utf8'));
-  for (const m of ['docker-compose', 'dockerfile', 'github-actions']) {
-    assert.ok(renovate.enabledManagers.includes(m), `${m}: Digests und Action-SHAs stehen ohne Update-Pfad fest`);
+  // Digests in compose.yaml und Dockerfile, SHAs der Actions: Dependabot zieht sie nach.
+  for (const oe of ['docker-compose', 'docker', 'github-actions'])
     assert.ok(
-      renovate.packageRules.some(r => r.matchManagers?.includes(m) && r.pinDigests === true),
-      `${m}: ohne pinDigests`,
+      dependabot().some(e => e.oekosystem === oe),
+      `${oe}: Digests und Action-SHAs stehen ohne Update-Pfad fest`,
     );
-  }
-  assert.ok(
-    !fs.existsSync(path.join(WURZEL, '.github', 'dependabot.yml')),
-    'Dependabot und Renovate schlügen dieselben Updates doppelt vor',
-  );
   // Gegenprobe (03.11.2026 gemessen): wieder exit-code '0' → rot „nicht scharf".
   assert.match(trivy, /exit-code: '1'/, 'Trivy für die Betriebs-Images ist nicht scharf');
   const liste = trivy.match(/trivyignores: (\S+)/)?.[1];

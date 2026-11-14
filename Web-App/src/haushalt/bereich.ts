@@ -21,6 +21,7 @@ export function erzeugeHaushalt(a: Omit<HaushaltAbhaengigkeiten, 'faecher'>, ein
       pruefeEinladung: mit(k)(haushalt.pruefeEinladung),
       einladungEinloesen: mit(k)(haushalt.einladungEinloesen),
       kontenTrennen: mit(k)(haushalt.kontenTrennen),
+      fremdzugriffLoesen: mit(k)(haushalt.fremdzugriffLoesen),
       verwerfeGetrennt: mit(k)(haushalt.verwerfeGetrennt),
       haushaltsStand: mit(k)(haushalt.haushaltsStand),
       blickfeldIds: mit(k)(haushalt.blickfeldIds),
