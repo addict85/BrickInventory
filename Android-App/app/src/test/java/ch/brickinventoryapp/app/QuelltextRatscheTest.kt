@@ -48,6 +48,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   merkliste-laedt-wieder     MerklisteUiState wieder mit einem Feld `nochLaedt: Boolean` → rot
  *                              „Bildschirme stossen das Laden nicht …, Zustaende tragen Laden …“
  *   merkliste-fehler-als-text  MerklisteUiState mit `fehlerText: String?` → rot, derselbe Test
+ *   englischer-bezeichner      `fun loadMerklisteNeu()` in MerklisteViewModel → rot „… englische Bezeichner auch“
  */
 class QuelltextRatscheTest {
 
@@ -576,7 +577,7 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
+    fun `voll qualifizierte Namen fremder Pakete werden weniger, englische Bezeichner auch`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
         val HAUPT = 202
         val TESTS = 0
@@ -591,6 +592,23 @@ class QuelltextRatscheTest {
         assertTrue("Keine voll qualifizierten Namen gefunden — greift das Muster noch?", haupt + tests > 0)
         ratsche("voll qualifizierte Namen im Hauptcode", HAUPT, haupt)
         ratsche("voll qualifizierte Namen in Tests", TESTS, tests)
+        // Die Fachsprache des Projekts ist Deutsch. Gezählt werden Deklarationen, deren Name ein
+        // englisches Wort trägt; ausgenommen sind Überschreibungen (Android, Compose, Room) und
+        // core-vertrag, dessen Namen dem Wire-Format folgen.
+        val GRENZE = 999
+        val dekl = Regex("""^\s*(?:@[A-Za-z0-9_.]+(?:\([^)]*\))?\s+)*(?:(?:private|internal|public|protected|data|sealed|abstract|open|enum|inline|value|const|suspend|lateinit|operator|infix|tailrec|annotation)\s+)*(?:fun|val|var|class|interface|object)\s+(?:<[^>]*>\s*)?(?:[A-Za-z0-9_.<>?, ]+\.)?([A-Za-z_][A-Za-z0-9_]*)""")
+        val teil = Regex("""[A-Z]?[a-z]+|[A-Z]+(?![a-z])""")
+        val englisch = setOf("get", "load", "loading", "update", "delete", "remove", "add", "show", "hide", "click", "fetch",
+            "save", "search", "refresh", "state", "error", "response", "request", "item", "items", "screen", "button", "dialog",
+            "card", "image", "color", "price", "user", "owner", "value", "count", "list", "open", "close", "select",
+            "selected", "current", "handle", "on", "is", "has", "to", "from", "with", "new")
+        val funde = zeilenJeModul().filter { (modul, _) -> modul != "core-vertrag" }.sumOf { (_, zeilen) ->
+            zeilen.count { z ->
+                "override" !in z && dekl.find(z)?.groupValues?.get(1)
+                    ?.let { name -> teil.findAll(name).any { it.value.lowercase() in englisch } } == true
+            }
+        }
+        ratsche("englische Bezeichner", GRENZE, funde, "Neue und angefasste Namen deutsch wie im Rest.")
     }
 
     @Test
