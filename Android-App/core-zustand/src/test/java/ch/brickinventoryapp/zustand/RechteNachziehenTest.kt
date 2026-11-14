@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.rechteNachziehen
 import kotlinx.coroutines.runBlocking

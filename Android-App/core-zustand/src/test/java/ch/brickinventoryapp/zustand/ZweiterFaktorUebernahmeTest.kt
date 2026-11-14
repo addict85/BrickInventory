@@ -3,7 +3,6 @@ package ch.brickinventoryapp.zustand
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.vertrag.LoginResponse
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.kontoUebernehmen
 import kotlinx.coroutines.runBlocking
@@ -74,6 +73,6 @@ class ZweiterFaktorUebernahmeTest {
             """{"success":true,"user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}"""
         val me = konto.getMe()
         assertTrue("aus /auth/me", me is Ergebnis.Success &&
-            me.data.user?.zweiterFaktorPflicht == true)
+            me.data?.zweiterFaktorPflicht == true)
     }
 }

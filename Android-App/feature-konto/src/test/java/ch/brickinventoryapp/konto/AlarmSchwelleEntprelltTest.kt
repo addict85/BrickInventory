@@ -2,9 +2,6 @@ package ch.brickinventoryapp.konto
 
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository

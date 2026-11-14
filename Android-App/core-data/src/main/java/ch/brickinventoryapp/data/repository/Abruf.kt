@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
@@ -197,3 +198,20 @@ internal suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebn
         Ergebnis.Error.Unbekannt(technisch = e.message)
     }
 }
+
+/**
+ * Ein Erfolg, dessen Rumpf [erfolg] verneint, wird zur Absage mit dem Satz des Servers;
+ * sonst [f]. So kennt kein Aufrufer das `success`-Feld des Wire-Formats.
+ */
+internal inline fun <T, R> Ergebnis<T>.zugesagt(erfolg: (T) -> Boolean, satz: (T) -> String?, f: (T) -> R): Ergebnis<R> =
+    when (this) {
+        is Ergebnis.Success -> if (erfolg(data)) Ergebnis.Success(f(data), stand, gepuffert)
+            else Ergebnis.Error.Absage(satz(data).orEmpty())
+        is Ergebnis.Error -> this
+    }
+
+/** Für Aktionen, deren Antwort niemand liest. */
+internal fun Ergebnis<*>.ohneInhalt(): Ergebnis<Unit> = abgebildet { }
+
+/** Die übliche Antwort einer Änderung: zugesagt oder abgesagt, sonst nichts zu lesen. */
+internal fun Ergebnis<GenericResponse>.erledigt(): Ergebnis<Unit> = zugesagt({ it.success }, { it.error }) { }

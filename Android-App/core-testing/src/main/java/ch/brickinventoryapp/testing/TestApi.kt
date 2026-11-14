@@ -277,6 +277,7 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
     /** Dieselbe Instanz, wo ein ViewModel nur liest, wann sich der Bestand geändert hat. */
     val aenderungen: Bestandsabgleich get() = abgleich
     fun sets(): SetsRepository = testSetsRepository(api, ablage)
+    fun haushalt(): HaushaltRepository = testHaushaltRepository(api, ablage)
     fun merkliste(): MerklisteRepository = testMerklisteRepository(api, ablage)
     fun alarme(): AlarmRepository = testAlarmRepository(api, ablage)
     fun setKatalog(): SetKatalogRepository = testSetKatalogRepository(api)

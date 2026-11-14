@@ -17,6 +17,7 @@ fun fehlerTextId(f: Ergebnis.Error): Int = when (f) {
     Ergebnis.Error.Zeitueberschreitung -> R.string.err_timeout
     is Ergebnis.Error.LeereAntwort -> R.string.err_empty_response
     is Ergebnis.Error.Server -> R.string.err_server
+    is Ergebnis.Error.Absage -> R.string.err_abgesagt
     is Ergebnis.Error.Abgewiesen -> R.string.err_session_expired
     Ergebnis.Error.Klartext -> R.string.err_klartext
     is Ergebnis.Error.Unbekannt -> R.string.err_unknown
@@ -32,7 +33,7 @@ fun fehlerklasse(f: Ergebnis.Error): Fehlerklasse = when (f) {
     is Ergebnis.Error.Netz, Ergebnis.Error.Zeitueberschreitung, Ergebnis.Error.Abgebrochen -> Fehlerklasse.OFFLINE
     is Ergebnis.Error.LeereAntwort -> Fehlerklasse.SERVER
     is Ergebnis.Error.Server -> if (f.status >= 500 || f.message.isBlank()) Fehlerklasse.SERVER else Fehlerklasse.UNBEKANNT
-    Ergebnis.Error.Klartext, is Ergebnis.Error.Unbekannt -> Fehlerklasse.UNBEKANNT
+    is Ergebnis.Error.Absage, Ergebnis.Error.Klartext, is Ergebnis.Error.Unbekannt -> Fehlerklasse.UNBEKANNT
 }
 
 /**

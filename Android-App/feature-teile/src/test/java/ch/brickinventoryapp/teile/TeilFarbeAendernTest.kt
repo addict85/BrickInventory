@@ -1,8 +1,6 @@
 package ch.brickinventoryapp.teile
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

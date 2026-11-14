@@ -22,8 +22,6 @@ import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository
@@ -48,7 +46,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.model.ui.model.BrickLinkAnsicht
 import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiLeser

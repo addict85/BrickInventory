@@ -2,10 +2,6 @@ package ch.brickinventoryapp.app
 
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
 import kotlinx.coroutines.Dispatchers

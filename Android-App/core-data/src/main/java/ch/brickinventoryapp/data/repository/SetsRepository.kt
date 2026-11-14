@@ -4,7 +4,6 @@ import ch.brickinventoryapp.vertrag.AddSetResponse
 import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.LagerortResponse
 import ch.brickinventoryapp.vertrag.MoveSetResponse
-import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -41,8 +40,6 @@ interface SetsRepository {
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>? = null): Ergebnis<MoveSetResponse>
 
-    /** Ein Kauf hat sich geändert; die Zusammenfassung des Servers geht in die Ablage. */
-    suspend fun uebernimmZusammenfassung(agg: SetAggregate)
 
     /** Lagerort eines Sets setzen. Leerer Text löscht ihn. */
     suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse>

@@ -3,19 +3,18 @@ package ch.brickinventoryapp.konto.ui.viewmodel
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Fehlercode
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.vertrag.ProfilAenderung
 import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.model.fach.Bestaetigung
+import ch.brickinventoryapp.model.fach.Designstand
+import ch.brickinventoryapp.model.fach.Profilaenderung
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.vertrag.abbildung.alsGeraet
 import ch.brickinventoryapp.konto.ui.DesignWahl
 import ch.brickinventoryapp.konto.ui.GeraeteRueckfrage
 import ch.brickinventoryapp.konto.ui.GeraeteUiState
-import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.sitzung.SitzungsRepository
@@ -26,7 +25,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.vertrag.AppThemeResponse
 import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
@@ -73,8 +71,7 @@ class KontoViewModel @Inject constructor(
     private suspend fun holeProfil() {
         when (val r = konto.getProfil()) {
             is Ergebnis.Success -> _kontoState.update {
-                it.copy(laedt = false, profil = r.data.user?.alsAnsicht(),
-                        fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else it.fehler)
+                it.copy(laedt = false, profil = r.data)
             }
             is Ergebnis.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
         }
@@ -91,22 +88,21 @@ class KontoViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
-            val aenderung = ProfilAenderung(
-                username = benutzername.trim(),
+            val aenderung = Profilaenderung(
+                benutzer = benutzername.trim(),
                 email = email.trim(),
                 // Leer heisst „nicht angegeben", nicht „leerer Vorname".
-                firstName = vorname.trim().ifBlank { null },
-                lastName = nachname.trim().ifBlank { null },
-                passwordCurrent = passwort,
+                vorname = vorname.trim().ifBlank { null },
+                nachname = nachname.trim().ifBlank { null },
+                passwortAktuell = passwort,
                 code = code?.trim()?.ifBlank { null },
             )
             when (val r = konto.updateProfil(aenderung)) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
+                is Ergebnis.Success -> {
                         // Eine neue Adresse gilt erst nach dem Link: „gespeichert“ allein liesse
                         // glauben, sie gelte schon, und ohne Mail wartet sie umsonst.
-                        val neueAdresse = r.data.emailChanged == true
-                        val ohneMail = neueAdresse && r.data.emailSent != true
+                        val neueAdresse = r.data.neueAdresse
+                        val ohneMail = neueAdresse && !r.data.mailGesendet
                         _kontoState.update { it.copy(speichert = false, codeNoetig = false,
                             meldung = when {
                                 ohneMail -> null
@@ -116,9 +112,6 @@ class KontoViewModel @Inject constructor(
                             fehler = if (ohneMail) texte.text(R.string.konto_email_nicht_gesendet) else null) }
                         // Neu holen: Der Server normalisiert, die Karte zeigt seinen Stand.
                         holeProfil()
-                    } else {
-                        _kontoState.update { it.copy(speichert = false,
-                            fehler = r.data.error ?: texte.text(R.string.err_generic)) }
                     }
                 is Ergebnis.Error -> abgelehnt(r)
             }
@@ -144,15 +137,11 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
             when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        sitzungsDienst.abmelden()
-                        meldungen.zeige(Meldung.Ressource(R.string.konto_password_changed))
-                        _kontoState.value = KontoUiState()
-                    } else {
-                        _kontoState.update { it.copy(speichert = false,
-                            fehler = r.data.error ?: texte.text(R.string.err_generic)) }
-                    }
+                is Ergebnis.Success -> {
+                    sitzungsDienst.abmelden()
+                    meldungen.zeige(Meldung.Ressource(R.string.konto_password_changed))
+                    _kontoState.value = KontoUiState()
+                }
                 is Ergebnis.Error -> abgelehnt(r)
             }
         }
@@ -164,7 +153,7 @@ class KontoViewModel @Inject constructor(
     fun ladeDesign() {
         viewModelScope.launch {
             val r = konto.getAppTheme()
-            if (r is Ergebnis.Success && r.data.success) _kontoState.update { it.copy(design = designWahl(r.data)) }
+            if (r is Ergebnis.Success) _kontoState.update { it.copy(design = designWahl(r.data)) }
         }
     }
 
@@ -175,19 +164,18 @@ class KontoViewModel @Inject constructor(
     fun waehleDesign(eigenes: Design?) {
         viewModelScope.launch {
             when (val r = konto.setzeEigenesDesign(eigenes)) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        r.data.theme?.let(sitzung::setzeDesign)
-                        _kontoState.update { it.copy(design = designWahl(r.data), fehler = null) }
-                    } else _kontoState.update { it.copy(fehler = r.data.error ?: texte.text(R.string.err_generic)) }
+                is Ergebnis.Success -> {
+                    r.data.wirksam?.let(sitzung::setzeDesign)
+                    _kontoState.update { it.copy(design = designWahl(r.data), fehler = null) }
+                }
                 is Ergebnis.Error -> _kontoState.update { it.copy(fehler = texte.meldung(r)) }
             }
         }
     }
 
     /** Ohne `vorgabe` ist der Server älter und kennt kein Design je Konto: dann keine Auswahl. */
-    private fun designWahl(a: AppThemeResponse) =
-        a.vorgabe?.let { DesignWahl(a.theme ?: it, it, a.eigenes) }
+    private fun designWahl(a: Designstand) =
+        a.vorgabe?.let { DesignWahl(a.wirksam ?: it, it, a.eigenes) }
 
     /** Meldung/Fehler der Kontokarte wegräumen, wenn der Nutzer weitertippt. */
     fun kontoMeldungWeg() = _kontoState.update { it.copy(meldung = null, fehler = null) }
@@ -198,9 +186,7 @@ class KontoViewModel @Inject constructor(
         viewModelScope.launch {
             _geraeteState.update { it.copy(laedt = true, fehler = null) }
             when (val r = konto.getTokens()) {
-                is Ergebnis.Success ->
-                    if (r.data.success) _geraeteState.update { it.copy(laedt = false, geraete = r.data.tokens.map { it.alsGeraet() }, fehler = null) }
-                    else _geraeteState.update { it.copy(laedt = false, fehler = r.data.error) }
+                is Ergebnis.Success -> _geraeteState.update { it.copy(laedt = false, geraete = r.data, fehler = null) }
                 is Ergebnis.Error -> _geraeteState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
             }
         }
@@ -230,13 +216,13 @@ class KontoViewModel @Inject constructor(
         val frage = _geraeteState.value.rueckfrage ?: return
         if (frage.laeuft) return
         _geraeteState.update { it.copy(rueckfrage = frage.copy(laeuft = true, fehler = null)) }
-        val anfrage = ZweiterFaktorAnfrage(password = passwort, code = code?.trim()?.ifEmpty { null })
+        val anfrage = Bestaetigung(passwort = passwort, code = code?.trim()?.ifEmpty { null })
         viewModelScope.launch {
             val fehler: Ergebnis.Error? = if (frage.tokenId != null) {
                 when (val r = konto.revokeToken(frage.tokenId, anfrage)) {
                     is Ergebnis.Success -> {
                         // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
-                        meldungen.zeige(Meldung.Ressource(if (r.data.deleted > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
+                        meldungen.zeige(Meldung.Ressource(if (r.data > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
                         null
                     }
                     is Ergebnis.Error -> r
@@ -244,7 +230,7 @@ class KontoViewModel @Inject constructor(
             } else {
                 when (val r = konto.andereBeenden(anfrage)) {
                     is Ergebnis.Success -> {
-                        val weg = r.data.zugaenge
+                        val weg = r.data
                         meldungen.zeige(Meldung.Menge(R.plurals.tokens_revoked_n, weg))
                         null
                     }
@@ -274,11 +260,11 @@ class KontoViewModel @Inject constructor(
 
     fun bestaetigeZweitenFaktor(code: String) =
         zweiterFaktor({ konto.zweiterFaktorBestaetigen(code.trim()) }, R.string.zf_enabled) { s, d ->
-        s.copy(aktiv = true, codesUebrig = d.codes.size, geheimnis = null, otpauth = null, codes = d.codes)
+        s.copy(aktiv = true, codesUebrig = d.size, geheimnis = null, otpauth = null, codes = d)
     }
 
     fun erneuereZweiterFaktorCodes(code: String) = zweiterFaktor({ konto.zweiterFaktorNeueCodes(code.trim()) }) { s, d ->
-        s.copy(codesUebrig = d.codes.size, codes = d.codes)
+        s.copy(codesUebrig = d.size, codes = d)
     }
 
     fun schalteZweitenFaktorAb(passwort: String, code: String) =

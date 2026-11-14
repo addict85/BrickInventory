@@ -8,8 +8,6 @@ import ch.brickinventoryapp.vertrag.MerkpostenRequest
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.offline.Bearbeitung
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel

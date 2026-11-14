@@ -4,10 +4,9 @@ Test: ch.brickinventoryapp.zustand.FehlerTexteTest
 Rot: jede Fehlerart hat einen eigenen Text
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
-index 3300543..fe39cf7 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt
-@@ -13,7 +13,7 @@ import ch.brickinventoryapp.ui.Fehlerklasse
+@@ -14,7 +14,7 @@
   */
  fun fehlerTextId(f: Ergebnis.Error): Int = when (f) {
      is Ergebnis.Error.Netz, Ergebnis.Error.Abgebrochen -> R.string.err_network
@@ -15,4 +14,4 @@ index 3300543..fe39cf7 100644
 +    Ergebnis.Error.Zeitueberschreitung -> R.string.err_network
      is Ergebnis.Error.LeereAntwort -> R.string.err_empty_response
      is Ergebnis.Error.Server -> R.string.err_server
-     is Ergebnis.Error.Abgewiesen -> R.string.err_session_expired
+     is Ergebnis.Error.Absage -> R.string.err_abgesagt

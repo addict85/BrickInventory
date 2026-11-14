@@ -71,7 +71,6 @@ import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
-import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.ui.components.BILD_ERSATZ
 import ch.brickinventoryapp.ui.components.SegmentWahl
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute

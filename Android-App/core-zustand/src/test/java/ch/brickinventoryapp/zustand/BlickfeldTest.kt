@@ -2,8 +2,6 @@ package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.fach.Kontoauswahl
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.testing.testHaushaltRepository
 import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld

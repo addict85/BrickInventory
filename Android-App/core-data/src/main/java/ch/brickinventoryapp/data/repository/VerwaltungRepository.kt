@@ -1,78 +1,76 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.vertrag.ApiLimitsResponse
-import ch.brickinventoryapp.vertrag.AuftraegeResponse
-import ch.brickinventoryapp.vertrag.AuftragAenderung
-import ch.brickinventoryapp.vertrag.AuftragsArtLeerung
-import ch.brickinventoryapp.vertrag.AuftragsArtStart
-import ch.brickinventoryapp.vertrag.BricksetQueueResponse
-import ch.brickinventoryapp.vertrag.CacheStatsResponse
-import ch.brickinventoryapp.vertrag.CacheTtlResponse
-import ch.brickinventoryapp.vertrag.CsvArt
-import ch.brickinventoryapp.vertrag.CsvImportErgebnis
-import ch.brickinventoryapp.vertrag.GenericAdminResponse
-import ch.brickinventoryapp.vertrag.JobsResponse
-import ch.brickinventoryapp.vertrag.ProtokollResponse
-import ch.brickinventoryapp.vertrag.StartupStatus
+import ch.brickinventoryapp.model.ui.model.ApiGrenzenAnsicht
+import ch.brickinventoryapp.model.ui.model.BricksetEintragAnsicht
+import ch.brickinventoryapp.model.ui.model.CacheKennzahlenAnsicht
+import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
+import ch.brickinventoryapp.model.ui.model.CsvImportArt
+import ch.brickinventoryapp.model.ui.model.HintergrundAnsicht
+import ch.brickinventoryapp.model.ui.model.JobsAnsicht
+import ch.brickinventoryapp.model.ui.model.ProtokollZeileAnsicht
+import ch.brickinventoryapp.model.ui.model.StartzustandAnsicht
+import ch.brickinventoryapp.model.ui.theme.Design
+
 /**
- * Die Verwaltung des Servers (nur Verwalter).
- * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
- * Retrofit und Ablage hängen (VerwaltungRepositoryImpl).
+ * Die Verwaltung des Servers (nur Verwalter), in Ansichten: Das Wire-Format bleibt
+ * hinter der Umsetzung (VerwaltungRepositoryImpl). Aktionen ohne verwertbare Antwort
+ * liefern Unit; ein `success: false` des Servers kommt als [Ergebnis.Error.Absage].
  */
 interface VerwaltungRepository {
-    suspend fun importiereCsv(
-        art: CsvArt, dateiname: String, inhalt: ByteArray,
-    ): Ergebnis<CsvImportErgebnis>
+    suspend fun importiereCsv(art: CsvImportArt, dateiname: String, inhalt: ByteArray): Ergebnis<CsvErgebnisAnsicht>
 
-    suspend fun getProtokoll(minuten: Int): Ergebnis<ProtokollResponse>
+    suspend fun getProtokoll(minuten: Int): Ergebnis<List<ProtokollZeileAnsicht>>
 
-    suspend fun setJobSchedule(name: String, zeit: String? = null, minuten: Int? = null): Ergebnis<GenericAdminResponse>
+    suspend fun setJobSchedule(name: String, zeit: String? = null, minuten: Int? = null): Ergebnis<Unit>
 
-    suspend fun queueCatalogImages(): Ergebnis<GenericAdminResponse>
+    suspend fun queueCatalogImages(): Ergebnis<Unit>
 
-    suspend fun setAppTheme(theme: Design): Ergebnis<GenericAdminResponse>
+    suspend fun setAppTheme(theme: Design): Ergebnis<Unit>
 
-    suspend fun getStartupStatus(): Ergebnis<StartupStatus>
+    suspend fun getStartupStatus(): Ergebnis<StartzustandAnsicht>
 
-    suspend fun getJobs(): Ergebnis<JobsResponse>
+    suspend fun getJobs(): Ergebnis<JobsAnsicht>
 
-    suspend fun getCacheStats(): Ergebnis<CacheStatsResponse>
+    suspend fun getCacheStats(): Ergebnis<CacheKennzahlenAnsicht>
 
-    suspend fun getCacheTtl(): Ergebnis<CacheTtlResponse>
+    /** Die Cache-Dauer in Stunden, wie der Server sie schreibt. */
+    suspend fun getCacheTtl(): Ergebnis<String>
 
-    suspend fun setCacheTtl(hours: Int): Ergebnis<GenericAdminResponse>
+    suspend fun setCacheTtl(hours: Int): Ergebnis<Unit>
 
-    suspend fun clearCache(alles: Boolean = false): Ergebnis<GenericAdminResponse>
+    suspend fun clearCache(alles: Boolean = false): Ergebnis<Unit>
 
-    suspend fun getApiLimits(): Ergebnis<ApiLimitsResponse>
+    suspend fun getApiLimits(): Ergebnis<ApiGrenzenAnsicht>
 
-    suspend fun setApiLimits(rb: Int, bl: Int, bs: Int): Ergebnis<GenericAdminResponse>
+    suspend fun setApiLimits(rb: Int, bl: Int, bs: Int): Ergebnis<Unit>
 
-    suspend fun getBricksetQueue(): Ergebnis<BricksetQueueResponse>
+    suspend fun getBricksetQueue(): Ergebnis<List<BricksetEintragAnsicht>>
 
-    suspend fun retryBricksetEntry(setNumber: String): Ergebnis<GenericAdminResponse>
+    suspend fun retryBricksetEntry(setNumber: String): Ergebnis<Unit>
 
-    suspend fun deleteBricksetEntry(setNumber: String): Ergebnis<GenericAdminResponse>
+    suspend fun deleteBricksetEntry(setNumber: String): Ergebnis<Unit>
 
-    suspend fun redownloadMissingImages(): Ergebnis<GenericAdminResponse>
+    suspend fun redownloadMissingImages(): Ergebnis<Unit>
 
-    suspend fun getAuftraege(status: String? = null, art: String? = null): Ergebnis<AuftraegeResponse>
+    suspend fun getAuftraege(status: String? = null, art: String? = null): Ergebnis<HintergrundAnsicht>
 
-    suspend fun brichAuftragAb(id: String): Ergebnis<AuftragAenderung>
+    suspend fun brichAuftragAb(id: String): Ergebnis<Unit>
 
-    suspend fun wiederholeAuftrag(id: String): Ergebnis<AuftragAenderung>
+    suspend fun wiederholeAuftrag(id: String): Ergebnis<Unit>
 
-    suspend fun starteAuftragsArt(art: String): Ergebnis<AuftragsArtStart>
+    /** true, wenn wirklich ein Auftrag angelegt wurde; false, wenn schon einer lief. */
+    suspend fun starteAuftragsArt(art: String): Ergebnis<Boolean>
 
-    suspend fun leereAuftragsArt(art: String): Ergebnis<AuftragsArtLeerung>
+    /** Wie viele wartende Aufträge entfernt wurden. */
+    suspend fun leereAuftragsArt(art: String): Ergebnis<Int>
 
-    suspend fun triggerCsvSync(): Ergebnis<GenericAdminResponse>
+    suspend fun triggerCsvSync(): Ergebnis<Unit>
 
-    suspend fun reimportInstructions(): Ergebnis<GenericAdminResponse>
+    /** Wie viele Sets zum Neueinlesen eingereiht wurden. */
+    suspend fun reimportInstructions(): Ergebnis<Int>
 
-    suspend fun triggerPriceJob(): Ergebnis<GenericAdminResponse>
+    suspend fun triggerPriceJob(): Ergebnis<Unit>
 
-    suspend fun setDefaultCondition(condition: Zustand): Ergebnis<GenericAdminResponse>
+    suspend fun setDefaultCondition(condition: Zustand): Ergebnis<Unit>
 }

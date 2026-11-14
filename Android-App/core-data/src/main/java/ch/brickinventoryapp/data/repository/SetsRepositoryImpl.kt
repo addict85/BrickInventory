@@ -9,7 +9,6 @@ import ch.brickinventoryapp.vertrag.LagerortRequest
 import ch.brickinventoryapp.vertrag.LagerortResponse
 import ch.brickinventoryapp.vertrag.MoveSetRequest
 import ch.brickinventoryapp.vertrag.MoveSetResponse
-import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.vertrag.UpdateQuantityRequest
 import ch.brickinventoryapp.model.fach.Setsortierung
@@ -74,10 +73,6 @@ class SetsRepositoryImpl @Inject constructor(
         ablage.nachgezogen({ r -> Nachzug.SetVerschoben(setNumber, fromUserId, toUserId, acquisitionIds == null).takeIf { r.success } }) {
             sicherAufrufen { api.moveSet(setNumber, MoveSetRequest(fromUserId = fromUserId, toUserId = toUserId, acquisitionIds = acquisitionIds)) }
         }
-
-    override suspend fun uebernimmZusammenfassung(agg: SetAggregate) {
-        if (agg.setNumber.isNotBlank()) ablage.wendeAn(Nachzug.SetZusammenfassung(agg))
-    }
 
     override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =
         ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage).takeIf { r.success } }) {

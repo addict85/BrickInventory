@@ -2,7 +2,6 @@ package ch.brickinventoryapp.konto
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -231,7 +230,8 @@ class KontoViewModelTest {
         bis("Fehler") { vm.kontoState.value.fehler != null }
 
         assertFalse(abgemeldet)
-        assertEquals("Aktuelles Passwort falsch", vm.kontoState.value.fehler)
+        // Die Absage kommt als Fehler; den Satz bildet Texte.meldung (hier „fehler“).
+        assertEquals("fehler", vm.kontoState.value.fehler)
         assertNull(kanal.text)
     }
 

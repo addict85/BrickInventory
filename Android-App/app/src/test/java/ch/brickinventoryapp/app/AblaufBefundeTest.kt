@@ -39,8 +39,6 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextClearance
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.testing.testHaushaltRepository
 import ch.brickinventoryapp.testing.testKontoRepository

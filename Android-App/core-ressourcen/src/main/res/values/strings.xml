@@ -665,6 +665,7 @@
     <string name="err_server">Server error (%1$d)</string>
     <string name="err_session_expired">Session expired — please sign in again</string>
     <string name="err_klartext">The server address is unencrypted (http). The app only connects via https – please enter the https address under “Change server” or scan the QR code again.</string>
+    <string name="err_abgesagt">The server declined the request.</string>
     <string name="err_unknown">Something went wrong</string>
     <string name="err_upload_laeuft">An upload of this kind is already running for this account. Please wait until it has finished.</string>
     <string name="err_zu_viele_verbindungen">Too many open connections for this account. Please close other windows or devices and try again shortly.</string>

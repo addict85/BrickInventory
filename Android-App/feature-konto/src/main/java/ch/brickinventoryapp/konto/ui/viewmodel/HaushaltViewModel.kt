@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.HaushaltRepository
@@ -62,7 +61,7 @@ class HaushaltViewModel @Inject constructor(
         viewModelScope.launch {
             _householdState.update { it.copy(isLoading = true, message = null) }
             when (val r = haushalt.getHousehold()) {
-                is Ergebnis.Success -> _householdState.update { it.copy(isLoading = false, status = r.data.alsAnsicht(), inviteCode = null) }
+                is Ergebnis.Success -> _householdState.update { it.copy(isLoading = false, status = r.data, inviteCode = null) }
                 is Ergebnis.Error -> _householdState.update { it.copy(isLoading = false, message = meldungen.meldung(r)) }
             }
         }
@@ -72,10 +71,8 @@ class HaushaltViewModel @Inject constructor(
         viewModelScope.launch {
             _householdState.update { it.copy(isLoading = true, message = null) }
             when (val r = haushalt.createHouseholdInvite()) {
-                is Ergebnis.Success ->
-                    if (r.data.success) _householdState.update { it.copy(isLoading = false, inviteCode = r.data.code,
-                        inviteGueltigBis = r.data.expiresIn?.let { s -> jetzt() + s * 1000L }) }
-                    else _householdState.update { it.copy(isLoading = false, message = r.data.error) }
+                is Ergebnis.Success -> _householdState.update { it.copy(isLoading = false, inviteCode = r.data.code,
+                    inviteGueltigBis = r.data.gueltigSekunden?.let { s -> jetzt() + s * 1000L }) }
                 is Ergebnis.Error -> _householdState.update { it.copy(isLoading = false, message = meldungen.meldung(r)) }
             }
         }
@@ -92,9 +89,8 @@ class HaushaltViewModel @Inject constructor(
             _householdState.update { it.copy(isLoading = true, message = null, passwortFalsch = false, faktorFalsch = false) }
             when (val r = haushalt.redeemHouseholdInvite(code.trim(), passwort, faktorCode)) {
                 is Ergebnis.Success -> {
-                    _householdState.update { it.copy(isLoading = false, message = r.data.error,
-                        eingeloest = if (r.data.success) it.eingeloest + 1 else it.eingeloest) }
-                    if (r.data.success) kontenGeaendert(bestandGeaendert = false)
+                    _householdState.update { it.copy(isLoading = false, message = null, eingeloest = it.eingeloest + 1) }
+                    kontenGeaendert(bestandGeaendert = false)
                 }
                 // Kennt die App den zweiten Faktor noch nicht, zeigt erst diese Antwort das Codefeld.
                 is Ergebnis.Error -> _householdState.update { it.copy(isLoading = false,

@@ -46,6 +46,12 @@ data class KaufAnsicht(
     val effectivePrice: Double? get() = purchasePrice ?: unitPrice
 }
 
+/** Die Käufe eines Eintrags samt Summen, aus einer Antwort. */
+data class KaeufeAnsicht(val kaeufe: List<KaufAnsicht>, val summen: KaufSummenAnsicht)
+
+/** Eine Einladung in den Haushalt; [gueltigSekunden] null heisst ohne Frist. */
+data class EinladungAnsicht(val code: String, val gueltigSekunden: Int?)
+
 data class KaufSummenAnsicht(
     val quantity: Int = 0,
     val amount: Double? = null,

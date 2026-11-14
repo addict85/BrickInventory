@@ -2,7 +2,6 @@ package ch.brickinventoryapp.finanzen
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.finanzen.ui.GutscheinPdfZiel
 import ch.brickinventoryapp.finanzen.ui.GutscheinSchritt
 import ch.brickinventoryapp.finanzen.ui.Kopierauftrag

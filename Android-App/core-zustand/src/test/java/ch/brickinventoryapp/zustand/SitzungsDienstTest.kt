@@ -5,8 +5,8 @@ import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.vertrag.AppThemeResponse
-import ch.brickinventoryapp.vertrag.SettingsResponse
-import ch.brickinventoryapp.vertrag.UserSettings
+import ch.brickinventoryapp.model.fach.Kontoeinstellungen
+import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.data.Sitzungsablage
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -112,10 +112,10 @@ class SitzungsDienstTest {
         val bereich = CoroutineScope(SupervisorJob() + takt)
         val echt = testKontoRepository(fake.api)
         val konto = object : KontoRepository by echt {
-            override suspend fun getSettings(): Ergebnis<SettingsResponse> {
+            override suspend fun getSettings(): Ergebnis<Kontoeinstellungen> {
                 val (dauer, waehrung) = einstellungen.removeFirstOrNull() ?: return echt.getSettings()
                 delay(dauer)
-                return Ergebnis.Success(SettingsResponse(success = true, settings = UserSettings(currency = waehrung)))
+                return Ergebnis.Success(Kontoeinstellungen(waehrung, Zustand.NEU, Zustand.NEU, Zustand.NEU))
             }
         }
         val dienst = SitzungsDienst(

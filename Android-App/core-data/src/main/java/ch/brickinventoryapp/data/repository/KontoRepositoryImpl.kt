@@ -5,36 +5,36 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.KontoApi
-import ch.brickinventoryapp.vertrag.Erledigt
+import ch.brickinventoryapp.model.fach.Anmeldung
+import ch.brickinventoryapp.model.fach.Bestaetigung
+import ch.brickinventoryapp.model.fach.Designstand
+import ch.brickinventoryapp.model.fach.Kontoanlage
+import ch.brickinventoryapp.model.fach.Kontoeinstellungen
+import ch.brickinventoryapp.model.fach.Kontoinhaber
+import ch.brickinventoryapp.model.fach.ProfilGespeichert
+import ch.brickinventoryapp.model.fach.Profilaenderung
+import ch.brickinventoryapp.model.fach.QrAbholstand
+import ch.brickinventoryapp.model.fach.QrKopplung
+import ch.brickinventoryapp.model.fach.Registrierung
+import ch.brickinventoryapp.model.fach.Registrierungsstand
+import ch.brickinventoryapp.model.fach.ZweiterFaktorEinrichtung
+import ch.brickinventoryapp.model.fach.ZweiterFaktorStand
+import ch.brickinventoryapp.model.ui.model.GeraetAnsicht
+import ch.brickinventoryapp.model.ui.model.ProfilAnsicht
+import ch.brickinventoryapp.vertrag.ProfilAenderung
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsGeraet
+import ch.brickinventoryapp.vertrag.abbildung.verwalter
 import ch.brickinventoryapp.vertrag.AndereBeendenAnfrage
-import ch.brickinventoryapp.vertrag.AndereBeendet
-import ch.brickinventoryapp.vertrag.AppThemeResponse
-import ch.brickinventoryapp.vertrag.DefaultConditionResponse
 import ch.brickinventoryapp.vertrag.ForgotPasswordRequest
-import ch.brickinventoryapp.vertrag.ForgotPasswordResponse
-import ch.brickinventoryapp.vertrag.GenericAdminResponse
-import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.LoginRequest
 import ch.brickinventoryapp.vertrag.LoginResponse
-import ch.brickinventoryapp.vertrag.MeResponse
 import ch.brickinventoryapp.vertrag.PasskeyAnmeldungAnfrage
-import ch.brickinventoryapp.vertrag.PasskeyOptionen
 import ch.brickinventoryapp.vertrag.PasskeyOptionenAnfrage
 import ch.brickinventoryapp.vertrag.PasswortAenderung
-import ch.brickinventoryapp.vertrag.ProfilAenderung
-import ch.brickinventoryapp.vertrag.ProfilGespeichert
-import ch.brickinventoryapp.vertrag.ProfilResponse
 import ch.brickinventoryapp.vertrag.QrVerwerfen
 import ch.brickinventoryapp.vertrag.RegisterRequest
-import ch.brickinventoryapp.vertrag.RegisterResponse
-import ch.brickinventoryapp.vertrag.RegistrationStatusResponse
-import ch.brickinventoryapp.vertrag.SettingsResponse
-import ch.brickinventoryapp.vertrag.TokenWiderruf
-import ch.brickinventoryapp.vertrag.TokensResponse
 import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
-import ch.brickinventoryapp.vertrag.ZweiterFaktorCodes
-import ch.brickinventoryapp.vertrag.ZweiterFaktorEinrichtung
-import ch.brickinventoryapp.vertrag.ZweiterFaktorStand
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import ch.brickinventoryapp.model.json.BrickJson
@@ -49,9 +49,7 @@ import ch.brickinventoryapp.data.Entwertungsergebnis
 import ch.brickinventoryapp.data.GetauschterToken
 import ch.brickinventoryapp.data.einordnenEntwertung
 import ch.brickinventoryapp.vertrag.QrAbholRequest
-import ch.brickinventoryapp.vertrag.QrAbholung
 import ch.brickinventoryapp.vertrag.QrLoginRequest
-import ch.brickinventoryapp.vertrag.QrMeldung
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.netz.util.Protokoll
 
@@ -92,70 +90,91 @@ class KontoRepositoryImpl @Inject constructor(
             } else antwort
         }
         return when (r) {
-            is Ergebnis.Success -> Ergebnis.Success(Anmeldeantwort(r.data, wege.passkey), stand = r.stand, gepuffert = r.gepuffert)
+            is Ergebnis.Success -> Ergebnis.Success(Anmeldeantwort(r.data.alsAnmeldung(), wege.passkey), stand = r.stand, gepuffert = r.gepuffert)
             is Ergebnis.Error -> r
         }
     }
 
     /** Die Optionen für den Credential Manager; [zweck] wie PASSKEY_ANMELDEN. */
-    override suspend fun passkeyOptionen(zweck: String): Ergebnis<PasskeyOptionen> =
-        sicherAufrufen { api.passkeyOptionen(PasskeyOptionenAnfrage(zweck = zweck)) }
+    override suspend fun passkeyOptionen(zweck: String): Ergebnis<JsonObject> =
+        sicherAufrufen { api.passkeyOptionen(PasskeyOptionenAnfrage(zweck = zweck)) }.abgebildet { it.optionen }
 
     /** Ohne Passwort; derselbe Token wie bei [login], mit denselben Regeln für den Ablauf. */
-    override suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String): Ergebnis<LoginResponse> =
+    override suspend fun passkeyAnmelden(serverUrl: String, antwort: JsonObject, scope: String): Ergebnis<Anmeldung> =
         sicherAufrufen { api.passkeyAnmelden(PasskeyAnmeldungAnfrage(antwort = antwort, scope = scope,
-            neverExpires = NetworkPolicy.istHttps(serverUrl))) }
+            neverExpires = NetworkPolicy.istHttps(serverUrl))) }.abgebildet { it.alsAnmeldung() }
 
-    override suspend fun qrLogin(token: String, label: String): Ergebnis<QrMeldung> =
+    override suspend fun qrLogin(token: String, label: String): Ergebnis<QrKopplung> =
         sicherAufrufen { api.qrLogin(QrLoginRequest(token = token, label = label)) }
+            .zugesagt({ it.success && it.abholung.isNotEmpty() && it.code.isNotEmpty() }, { null }) {
+                QrKopplung(it.abholung, it.code, it.expiresIn)
+            }
 
-    override suspend fun qrAbholen(abholung: String, vorschau: Boolean): Ergebnis<QrAbholung> =
-        sicherAufrufen { api.qrAbholen(QrAbholRequest(abholung = abholung, vorschau = vorschau)) }
+    override suspend fun qrAbholen(abholung: String, vorschau: Boolean): Ergebnis<QrAbholstand> =
+        sicherAufrufen { api.qrAbholen(QrAbholRequest(abholung = abholung, vorschau = vorschau)) }.abgebildet {
+            QrAbholstand(token = it.token, benutzer = it.username ?: it.user?.username, wartet = it.wartet,
+                vorschau = it.vorschau, fehler = it.error)
+        }
 
-    override suspend fun qrVerwerfen(abholung: String): Ergebnis<Erledigt> =
-        sicherAufrufen { api.qrVerwerfen(QrVerwerfen(abholung = abholung)) }
+    override suspend fun qrVerwerfen(abholung: String): Ergebnis<Unit> =
+        sicherAufrufen { api.qrVerwerfen(QrVerwerfen(abholung = abholung)) }.ohneInhalt()
 
-    override suspend fun getMe(): Ergebnis<MeResponse> = sicherAufrufen { api.getMe() }
+    override suspend fun getMe(): Ergebnis<Kontoinhaber?> = sicherAufrufen { api.getMe() }.abgebildet { r ->
+        r.user?.let { Kontoinhaber(it.id, it.username, it.isAdmin, it.zweiterFaktorPflicht) }
+    }
 
     // Konto anlegen und Passwort vergessen — beides ohne bestehende Anmeldung.
-    override suspend fun getRegistrationStatus(): Ergebnis<RegistrationStatusResponse> =
-        sicherAufrufen { api.getRegistrationStatus() }
+    override suspend fun getRegistrationStatus(): Ergebnis<Registrierungsstand> =
+        sicherAufrufen { api.getRegistrationStatus() }.abgebildet {
+            Registrierungsstand(it.enabled, it.passkey, it.passwortVergessen, it.mailVersand)
+        }
 
-    override suspend fun register(request: RegisterRequest): Ergebnis<RegisterResponse> =
-        sicherAufrufen { api.register(request) }
+    override suspend fun register(anlage: Kontoanlage): Ergebnis<Registrierung> =
+        sicherAufrufen {
+            api.register(RegisterRequest(username = anlage.benutzer, email = anlage.email, firstName = anlage.vorname,
+                lastName = anlage.nachname, password = anlage.passwort, language = anlage.sprache))
+        }.zugesagt({ it.success }, { it.error }) { Registrierung(it.message, it.consoleMode) }
 
-    override suspend fun forgotPassword(email: String): Ergebnis<ForgotPasswordResponse> =
-        sicherAufrufen { api.forgotPassword(ForgotPasswordRequest(email = email)) }
+    override suspend fun forgotPassword(email: String): Ergebnis<String?> =
+        sicherAufrufen { api.forgotPassword(ForgotPasswordRequest(email = email)) }.zugesagt({ it.success }, { it.error }) { it.message }
 
-    override suspend fun getProfil(): Ergebnis<ProfilResponse> = sicherAufrufen { api.getProfil() }
+    override suspend fun getProfil(): Ergebnis<ProfilAnsicht> =
+        sicherAufrufen { api.getProfil() }.zugesagt({ it.user != null }, { it.error }) { it.user!!.alsAnsicht() }
 
-    override suspend fun zweiterFaktorStand(): Ergebnis<ZweiterFaktorStand> = sicherAufrufen { api.zweiterFaktorStand() }
+    override suspend fun zweiterFaktorStand(): Ergebnis<ZweiterFaktorStand> =
+        sicherAufrufen { api.zweiterFaktorStand() }.zugesagt({ it.success }, { it.error }) { ZweiterFaktorStand(it.aktiv, it.codesUebrig) }
 
     override suspend fun zweiterFaktorEinrichten(passwort: String): Ergebnis<ZweiterFaktorEinrichtung> =
         sicherAufrufen { api.zweiterFaktorEinrichten(ZweiterFaktorAnfrage(password = passwort)) }
+            .zugesagt({ it.success }, { it.error }) { ZweiterFaktorEinrichtung(it.geheimnis, it.otpauth) }
 
-    override suspend fun zweiterFaktorBestaetigen(code: String): Ergebnis<ZweiterFaktorCodes> =
-        sicherAufrufen { api.zweiterFaktorBestaetigen(ZweiterFaktorAnfrage(code = code)) }
+    override suspend fun zweiterFaktorBestaetigen(code: String): Ergebnis<List<String>> =
+        sicherAufrufen { api.zweiterFaktorBestaetigen(ZweiterFaktorAnfrage(code = code)) }.zugesagt({ it.success }, { it.error }) { it.codes }
 
-    override suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Ergebnis<GenericResponse> =
-        sicherAufrufen { api.zweiterFaktorAbschalten(ZweiterFaktorAnfrage(password = passwort, code = code)) }
+    override suspend fun zweiterFaktorAbschalten(passwort: String, code: String): Ergebnis<Unit> =
+        sicherAufrufen { api.zweiterFaktorAbschalten(ZweiterFaktorAnfrage(password = passwort, code = code)) }.erledigt()
 
-    override suspend fun zweiterFaktorNeueCodes(code: String): Ergebnis<ZweiterFaktorCodes> =
-        sicherAufrufen { api.zweiterFaktorNeueCodes(ZweiterFaktorAnfrage(code = code)) }
+    override suspend fun zweiterFaktorNeueCodes(code: String): Ergebnis<List<String>> =
+        sicherAufrufen { api.zweiterFaktorNeueCodes(ZweiterFaktorAnfrage(code = code)) }.zugesagt({ it.success }, { it.error }) { it.codes }
 
-    override suspend fun updateProfil(aenderung: ProfilAenderung): Ergebnis<ProfilGespeichert> =
-        sicherAufrufen { api.updateProfil(aenderung) }
+    override suspend fun updateProfil(aenderung: Profilaenderung): Ergebnis<ProfilGespeichert> =
+        sicherAufrufen {
+            api.updateProfil(ProfilAenderung(username = aenderung.benutzer, email = aenderung.email, firstName = aenderung.vorname,
+                lastName = aenderung.nachname, passwordCurrent = aenderung.passwortAktuell, code = aenderung.code))
+        }.zugesagt({ it.success }, { it.error }) { ProfilGespeichert(neueAdresse = it.emailChanged == true, mailGesendet = it.emailSent == true) }
 
-    override suspend fun changePassword(aktuell: String, neu: String, code: String?): Ergebnis<GenericResponse> =
-        sicherAufrufen { api.changePassword(PasswortAenderung(current = aktuell, newPassword = neu, code = code)) }
+    override suspend fun changePassword(aktuell: String, neu: String, code: String?): Ergebnis<Unit> =
+        sicherAufrufen { api.changePassword(PasswortAenderung(current = aktuell, newPassword = neu, code = code)) }.erledigt()
 
-    override suspend fun getTokens(): Ergebnis<TokensResponse> = sicherAufrufen { api.getTokens() }
+    override suspend fun getTokens(): Ergebnis<List<GeraetAnsicht>> =
+        sicherAufrufen { api.getTokens() }.zugesagt({ it.success }, { it.error }) { r -> r.tokens.map { it.alsGeraet() } }
 
-    override suspend fun revokeToken(tokenId: String, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<TokenWiderruf> =
-        sicherAufrufen { api.revokeToken(tokenId, bestaetigung) }
+    override suspend fun revokeToken(tokenId: String, bestaetigung: Bestaetigung): Ergebnis<Int> =
+        sicherAufrufen { api.revokeToken(tokenId, bestaetigung.alsAnfrage()) }.abgebildet { it.deleted }
 
-    override suspend fun andereBeenden(bestaetigung: ZweiterFaktorAnfrage): Ergebnis<AndereBeendet> =
-        sicherAufrufen { api.andereBeenden(AndereBeendenAnfrage(password = bestaetigung.password, code = bestaetigung.code)) }
+    override suspend fun andereBeenden(bestaetigung: Bestaetigung): Ergebnis<Int> =
+        sicherAufrufen { api.andereBeenden(AndereBeendenAnfrage(password = bestaetigung.passwort, code = bestaetigung.code)) }
+            .abgebildet { it.zugaenge }
 
     /**
      * Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch).
@@ -193,28 +212,40 @@ class KontoRepositoryImpl @Inject constructor(
         Entwertungsergebnis.SPAETER
     }
 
-    override suspend fun getSettings(): Ergebnis<SettingsResponse> =
-        sicherAufrufen { api.getSettings() }
+    override suspend fun getSettings(): Ergebnis<Kontoeinstellungen> =
+        sicherAufrufen { api.getSettings() }.abgebildet {
+            val e = it.settings
+            Kontoeinstellungen(e.currency, e.priceCondition, e.defaultPriceCondition, e.effectiveCondition)
+        }
 
     /** Das wirksame Design: mit Token das des Kontos, sonst die Vorgabe. Siehe KontoApi.getAppTheme. */
-    override suspend fun getAppTheme(): Ergebnis<AppThemeResponse> = sicherAufrufen { api.getAppTheme() }
+    override suspend fun getAppTheme(): Ergebnis<Designstand> =
+        sicherAufrufen { api.getAppTheme() }.zugesagt({ it.success }, { it.error }) { Designstand(it.theme, it.vorgabe, it.eigenes) }
 
     /** Eigenes Design setzen; null stellt auf die Vorgabe des Verwalters zurück ("" auf der Leitung). */
-    override suspend fun setzeEigenesDesign(theme: Design?): Ergebnis<AppThemeResponse> =
+    override suspend fun setzeEigenesDesign(theme: Design?): Ergebnis<Designstand> =
         sicherAufrufen { api.setzeEigenesDesign(mapOf("theme" to (theme?.kennung ?: ""))) }
+            .zugesagt({ it.success }, { it.error }) { Designstand(it.theme, it.vorgabe, it.eigenes) }
 
-    override suspend fun updateSettings(currency: Waehrung, condition: Zustand): Ergebnis<GenericResponse> =
-        sicherAufrufen { api.updateSettings(mapOf("currency" to currency.code, "price_condition" to condition.kennung)) }
+    override suspend fun updateSettings(currency: Waehrung, condition: Zustand): Ergebnis<Unit> =
+        sicherAufrufen { api.updateSettings(mapOf("currency" to currency.code, "price_condition" to condition.kennung)) }.erledigt()
 
-    override suspend fun getDefaultCondition(): Ergebnis<DefaultConditionResponse> = sicherAufrufen { api.getDefaultCondition() }
+    override suspend fun getDefaultCondition(): Ergebnis<Zustand> = sicherAufrufen { api.getDefaultCondition() }.abgebildet { it.condition }
 
     // User-level: saves per-user default (empty string = revert to global)
-    override suspend fun setUserDefaultCondition(condition: Zustand?): Ergebnis<GenericAdminResponse> = sicherAufrufen { api.setUserDefaultCondition(mapOf("condition" to condition?.kennung.orEmpty())) }
+    override suspend fun setUserDefaultCondition(condition: Zustand?): Ergebnis<Unit> =
+        sicherAufrufen { api.setUserDefaultCondition(mapOf("condition" to condition?.kennung.orEmpty())) }.zugesagt({ it.success }, { it.error }) { }
 }
 
 /** Die Antwort auf [KontoRepository.login]; [passkeyStattCode], wenn der Server beim
  * zweiten Faktor auch einen Passkey nimmt. */
-data class Anmeldeantwort(val antwort: LoginResponse, val passkeyStattCode: Boolean = false)
+data class Anmeldeantwort(val antwort: Anmeldung, val passkeyStattCode: Boolean = false)
+
+private fun LoginResponse.alsAnmeldung() =
+    Anmeldung(erfolg = success, token = token, benutzer = user?.username, verwalter = verwalter,
+        zweiterFaktor = zweiterFaktor, fehler = error)
+
+private fun Bestaetigung.alsAnfrage() = ZweiterFaktorAnfrage(password = passwort, code = code)
 
 /** Aus der 401-Antwort auf den zweiten Faktor: Geht statt des Codes ein Passkey? Steht nicht im Vertrag (Fehler trägt Zusatzfelder frei). */
 @Serializable

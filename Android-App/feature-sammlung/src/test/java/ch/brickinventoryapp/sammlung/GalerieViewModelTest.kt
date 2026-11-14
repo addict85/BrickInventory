@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.fach.Setsortierung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.vertrag.SetAggregate
-import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.vertrag.AddPartRequest
 import ch.brickinventoryapp.offline.Bearbeitung
@@ -238,8 +238,8 @@ class GalerieViewModelTest {
         // Gezählt ab hier: Die erste Ladung holt die Kennzahlen schon selbst.
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
-        // So schreibt KaeufeViewModel die Antwort des Servers in die Ablage.
-        runBlocking { t.sets().uebernimmZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1)) }
+        // So schreibt HaushaltRepository die Antwort des Servers in die Ablage.
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1))) }
         assertTrue("Kennzahlen neu", pfade.anfragenAn("GET /api/v1/stats").size > zahlenVorher)
         assertTrue("Kachel geändert", vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1)
         assertEquals("Die Liste darf nicht neu geholt werden", vorher, abrufe().size)

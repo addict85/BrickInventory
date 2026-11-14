@@ -3,12 +3,6 @@ package ch.brickinventoryapp.app
 import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.testHaushaltRepository

@@ -43,7 +43,6 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
-import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.model.ui.model.PreisDiagrammAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisPunktAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisReiheAnsicht

@@ -9,7 +9,6 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.model.CsvImportArt
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.vertrag.abbildung.alsDaten
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -133,18 +132,17 @@ class EinstellungenViewModel @Inject constructor(
                 is Gelesen.Inhalt -> g.bytes
             }
             val name = leser.name(datei) ?: "import.csv"
-            when (val r = verwaltung.importiereCsv(art.alsDaten(), name, bytes)) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data.alsAnsicht())
-                        when (art) {
-                            CsvImportArt.MERKLISTE -> abgleich.merkliste()
-                            CsvImportArt.PREISALARME -> alarmeNeu()
-                            CsvImportArt.TEILE -> abgleich.teile()
-                            CsvImportArt.MINIFIGUREN -> abgleich.figuren()
-                            CsvImportArt.SETS -> abgleich.sets()
-                        }
-                    } else _csvHochladenState.value = CsvHochladenUiState(fehler = r.data.error ?: meldungen.text(R.string.err_generic))
+            when (val r = verwaltung.importiereCsv(art, name, bytes)) {
+                is Ergebnis.Success -> {
+                    _csvHochladenState.value = CsvHochladenUiState(ergebnis = r.data)
+                    when (art) {
+                        CsvImportArt.MERKLISTE -> abgleich.merkliste()
+                        CsvImportArt.PREISALARME -> alarmeNeu()
+                        CsvImportArt.TEILE -> abgleich.teile()
+                        CsvImportArt.MINIFIGUREN -> abgleich.figuren()
+                        CsvImportArt.SETS -> abgleich.sets()
+                    }
+                }
                 is Ergebnis.Error -> _csvHochladenState.value = CsvHochladenUiState(fehler = meldungen.meldung(r))
             }
         }

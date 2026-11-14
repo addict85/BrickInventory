@@ -4,8 +4,6 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel

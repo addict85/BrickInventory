@@ -46,8 +46,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.teile.ui.TeilelisteUiState
 import ch.brickinventoryapp.konto.ui.screens.CsvImportRoute
 import ch.brickinventoryapp.konto.ui.screens.HaushaltRoute

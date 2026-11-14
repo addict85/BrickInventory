@@ -57,6 +57,7 @@ private fun einordnenFehler(r: Ergebnis.Error): Sendeergebnis = when (r) {
     is Ergebnis.Error.Server ->
         if (r.status in 400..499 && r.status !in setOf(401, 408, 429)) Sendeergebnis.Abgelehnt(r.message, r.status)
         else Sendeergebnis.Spaeter
+    is Ergebnis.Error.Absage -> Sendeergebnis.Abgelehnt(r.message, null)
     is Ergebnis.Error.Abgewiesen, is Ergebnis.Error.Netz, Ergebnis.Error.Zeitueberschreitung,
     Ergebnis.Error.Abgebrochen, Ergebnis.Error.Klartext, is Ergebnis.Error.Unbekannt -> Sendeergebnis.Spaeter
 }

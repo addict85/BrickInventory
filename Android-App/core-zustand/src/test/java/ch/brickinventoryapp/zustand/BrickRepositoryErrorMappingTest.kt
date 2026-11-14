@@ -178,7 +178,7 @@ class BrickRepositoryErrorMappingTest {
         // `when` statt Cast: Ergebnis hat genau zwei Varianten, also ist es
         // erschöpfend — und der Smart Cast im Zweig liefert den Typ mit.
         when (val r = repo.getMe()) {
-            is Ergebnis.Success -> assert(r.data.success) { "success war false" }
+            is Ergebnis.Success -> assert(r.data?.benutzer == "marco") { "Konto nicht gelesen: ${r.data}" }
             is Ergebnis.Error   -> assert(false) { "Erwartet wurde Erfolg, kam: $r" }
         }
     }

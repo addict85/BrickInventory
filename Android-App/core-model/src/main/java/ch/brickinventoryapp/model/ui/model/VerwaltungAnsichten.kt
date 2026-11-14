@@ -12,6 +12,12 @@ data class JobZustandAnsicht(
     val sub: String? = null,
 )
 
+/** Die Jobs des Servers und ihr Zeitplan, aus einer Antwort. */
+data class JobsAnsicht(
+    val jobs: Map<String, JobZustandAnsicht> = emptyMap(),
+    val zeitplaene: Map<String, ZeitplanAnsicht> = emptyMap(),
+)
+
 data class ZeitplanAnsicht(
     val type: String = "daily",
     val time: String? = null,

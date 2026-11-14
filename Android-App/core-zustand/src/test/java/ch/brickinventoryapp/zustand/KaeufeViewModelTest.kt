@@ -1,10 +1,6 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.model.fach.Postenart
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.testHaushaltRepository
@@ -62,7 +58,7 @@ class KaeufeViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testHaushaltRepository(t.api), t.sets(),
+    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.haushalt(), t.sets(),
         testFinanzenRepository(t.api), testTeileRepository(t.api), testFigurenRepository(t.api)))
 
     @Before

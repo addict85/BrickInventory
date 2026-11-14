@@ -126,8 +126,8 @@ class SitzungsZustand @Inject constructor(private val werte: Kontowerte) : Sitzu
 suspend fun Sitzung.ladeEinstellungen(konto: KontoRepository) {
     val r = konto.getSettings()
     if (r is Ergebnis.Success) {
-        val e = r.data.settings
-        einstellungenGeladen(e.currency, e.priceCondition, e.defaultPriceCondition, e.effectiveCondition)
+        val e = r.data
+        einstellungenGeladen(e.waehrung, e.preisZustand, e.vorgabeZustand, e.wirksamerZustand)
     }
 }
 
@@ -140,7 +140,7 @@ suspend fun Sitzung.rechteNachziehen(konto: KontoRepository): Boolean {
     if (!state.value.isAdmin) return false
     val me = konto.getMe()
     // Ohne Antwort gilt das 403: Der Server hat das Recht eben verneint.
-    val verwalter = me is Ergebnis.Success && me.data.user?.isAdmin == true
+    val verwalter = me is Ergebnis.Success && me.data?.verwalter == true
     verwalterGeaendert(verwalter)
     return !verwalter
 }
@@ -156,8 +156,8 @@ suspend fun Sitzung.kontoUebernehmen(
 ) {
     val me = konto.getMe()
     if (me !is Ergebnis.Success) return
-    val nutzer = me.data.user
-    verwalterGeaendert(nutzer?.isAdmin == true)
+    val nutzer = me.data
+    verwalterGeaendert(nutzer?.verwalter == true)
     if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.melde()
 }
 

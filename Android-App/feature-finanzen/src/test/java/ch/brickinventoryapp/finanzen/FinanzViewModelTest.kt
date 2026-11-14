@@ -3,7 +3,6 @@ package ch.brickinventoryapp.finanzen
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import kotlinx.coroutines.runBlocking
 import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel

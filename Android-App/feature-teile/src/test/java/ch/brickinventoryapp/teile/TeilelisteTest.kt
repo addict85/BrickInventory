@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.teile
 
-import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.teile.ui.Teileliste
 import kotlinx.coroutines.runBlocking
 import org.junit.After
