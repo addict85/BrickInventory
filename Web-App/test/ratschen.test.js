@@ -761,8 +761,8 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
  * Skripte schalten es um.
  */
 test('Inline-Stile in index.html werden weniger, nie mehr', () => {
-  // Gemessen 35 am 06.11.2026.
-  const SCHRANKE = 35;
+  // Gemessen 33 am 14.11.2026.
+  const SCHRANKE = 33;
   const html = require('./helpers/sources').ohneHtmlKommentare(
     fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'),
   );
@@ -944,7 +944,7 @@ function funktionsLaengen(dateien = oberflaeche()) {
 test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, nie mehr', () => {
   // Gemessen im Biome-Format am 12.11.2026: die acht unten über 100, 22 über 80. Gegenprobe: loadFinance
   // wieder in einem Stück (vor dem Aufteilen) → rot mit „finance.js loadFinance“.
-  const SCHRANKE_80 = 21;
+  const SCHRANKE_80 = 20;
   const BEKANNT_100 = [
     'public/js/acquisition-modals.js acqSave',
     'public/js/diagramme.js priceChartSVG',
@@ -1022,7 +1022,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
   // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
   // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
   // Gegenprobe (13.11.2026, Schranke 87): in gutscheine.js ein `${ungeprueft(KOPIE_ICON_SVG)}` zurück → rot.
-  const SCHRANKE = 87;
+  const SCHRANKE = 85;
   assert.deepEqual(
     ungeprueftArgumente(
       "function ungeprueft(t) {}\na(ungeprueft(`<i>${b(c)}</i>`), ungeprueft(d.map(e).join('')), x.ungeprueft(f))",
@@ -1059,8 +1059,8 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen im Biome-Format am 12.11.2026:
-  // grösste 792, zwölf über 600. Gegenprobe (09.11.2026): an finance.js Leerzeilen gehängt → rot.
-  const SCHRANKE_GROESSTE = 792,
+  // grösste 778, zwölf über 600. Gegenprobe (09.11.2026): an finance.js Leerzeilen gehängt → rot.
+  const SCHRANKE_GROESSTE = 778,
     SCHRANKE_UEBER_600 = 12;
   const laengen = oberflaeche().map(f => ({
     f: path.relative(WEB, f),
@@ -1360,9 +1360,9 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
 
 test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen. Gemessen 72 am 11.11.2026.
+  // werden beim Anfassen nachgetragen. Gemessen 71 am 14.11.2026.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 72;
+  const SCHRANKE = 71;
   const ohne = fs
     .readdirSync(__dirname)
     .filter(n => n.endsWith('.test.js'))
