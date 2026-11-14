@@ -287,7 +287,7 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
   );
   assert.match(
     plan.slice(plan.indexOf('function aufraeumenTaeglich')),
-    /raeumeBildCacheAuf\]/,
+    /raeumeBildCacheAuf\(/,
     'Der Bild-Cache gehört zum täglichen Aufräumen',
   );
 });
