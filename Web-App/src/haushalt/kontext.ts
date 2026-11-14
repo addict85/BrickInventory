@@ -13,8 +13,7 @@ export interface HaushaltAbhaengigkeiten {
   einstellungen: EinstellungenDienste;
 }
 
-/** Einladungen stehen unter Zeilenschutz ihres Kontos (0114); wer einen Code einlöst,
- * gehört nicht dazu, und das Aufräumen gilt allen. */
+// Einladungen sieht nur ihr Konto (0114); wer einlöst, gehört nicht dazu, Aufräumen gilt allen.
 const FREMDE_EINLADUNG = 'Einlösen: Die Einladung gehört dem einladenden Konto';
 export const zugang = (db: Db) => ({
   repository: bindeJeFunktion(db, repository, 'haushalt', {

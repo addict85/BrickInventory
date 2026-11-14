@@ -94,8 +94,8 @@ export const FEHLER = {
     en: 'The password must be at least 12 characters long.',
   },
   passwort_zu_lang: {
-    de: 'Das Passwort ist zu lang: höchstens 72 Byte (Umlaute und Sonderzeichen zählen doppelt).',
-    en: 'The password is too long: at most 72 bytes (accented letters and symbols count double).',
+    de: 'Das Passwort ist zu lang: höchstens 1024 Zeichen.',
+    en: 'The password is too long: at most 1024 characters.',
   },
   passwort_zu_haeufig: {
     de: 'Dieses Passwort ist zu häufig oder aus Datenlecks bekannt. Bitte ein anderes wählen.',

@@ -1,9 +1,8 @@
 import net from 'node:net';
 
-/** Nur ausdrücklich genannte Adressen: Jeder vertraute Absender kann seine
- * Client-Adresse frei angeben und so die Anmeldesperre umgehen. Hop-Zahlen,
- * „true" und ganze Netze werden abgelehnt; ein Netz über acht Adressen nur mit
- * `netzBestaetigt` (PROXY_NETZ_BESTAETIGT=1), weil darin meist auch Clients stehen. */
+/** Nur ausdrücklich genannte Adressen: Jeder vertraute Absender kann seine Client-Adresse frei
+ * angeben und so die Anmeldesperre umgehen. Ein Netz über acht Adressen nur mit `netzBestaetigt`
+ * (PROXY_NETZ_BESTAETIGT=1): Darin stehen meist auch Clients. */
 export function proxyVertrauen(
   wert?: string,
   netzBestaetigt = false,
@@ -13,7 +12,13 @@ export function proxyVertrauen(
   if (/^(false|nein|no|off)$/i.test(v)) return false;
   const eintraege = v.split(/[\s,]+/).filter(Boolean);
   const falsch = eintraege.filter(e => !proxyEintragGueltig(e, netzBestaetigt));
-  if (falsch.length) throw new Error(proxyFehlertext(falsch, falsch.every(e => proxyEintragGueltig(e, true))));
+  if (falsch.length)
+    throw new Error(
+      proxyFehlertext(
+        falsch,
+        falsch.every(e => proxyEintragGueltig(e, true)),
+      ),
+    );
   return eintraege;
 }
 

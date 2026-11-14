@@ -35,7 +35,6 @@ export interface KontoAbhaengigkeiten {
 const OHNE_KONTO = 'Anmeldung oder Token-Prüfung: Es gibt noch kein Konto, für das der Zeilenschutz gälte';
 const ALLE_KONTEN = 'Aufräumen über alle Konten';
 const FREMDES_KONTO = 'Verwaltung oder Passwort vergessen: ändert ein Konto, das die Anfrage nicht trägt';
-/** Migration 0114: Passwort-Hashes und Sitzungen liest die Laufzeitrolle nicht. */
 const NUR_SYSTEMROLLE = 'Passwort-Hash oder Sitzungsspeicher: nur die Systemrolle darf sie lesen';
 
 export const zugang = (db: Db) => ({
@@ -96,6 +95,7 @@ export const zugang = (db: Db) => ({
     beendeUeberlappung: OHNE_KONTO,
     beruehreToken: OHNE_KONTO,
     gueltigerToken: OHNE_KONTO,
+    ersetzePasswortHash: NUR_SYSTEMROLLE,
     kappeSitzungen: NUR_SYSTEMROLLE,
     kappeTokens: 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto',
     kontoZurAnmeldung: NUR_SYSTEMROLLE,

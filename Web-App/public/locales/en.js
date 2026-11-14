@@ -222,8 +222,7 @@ window.I18N_EN = {
   'settings.password.change': 'Change password',
   'settings.password.mismatch': 'Passwords do not match',
   'settings.password.too_short': 'The password must be at least {n} characters long',
-  'settings.password.too_long':
-    'The password may be at most {n} bytes long (accented letters and symbols count double)',
+  'settings.password.too_long': 'The password may be at most {n} characters long',
   'settings.cache_cleared': 'Price cache cleared',
   'settings.all_cache.cleared': 'All caches cleared',
   'settings.cache_prices.confirm_title': 'Clear stored prices?',

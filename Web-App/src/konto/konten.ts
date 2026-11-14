@@ -1,8 +1,7 @@
 /** Jeder Weg, der ein Passwort ändert, beendet danach alle Zugänge — an einer
  * Stelle, damit kein Weg den Schritt vergisst. */
-import { hashePasswort } from './bcryptSchranke';
+import { hashePasswort } from './passwortHash';
 import * as repo from './repository/konten';
-import { BCRYPT_ROUNDS } from './anmeldepruefung';
 import { leereTokenCache } from './tokenCache';
 import { mitZugangsende, revokeAllSessions, zugangsTransaktion } from './zugangsende';
 import { hashToken, revokeAllTokens } from './geraeteToken';
@@ -76,7 +75,7 @@ export function passwortWechselFaellig(k: KontoKontext, id: number): Promise<boo
   return k.konten.mussPasswortAendern(id);
 }
 
-const hashe = (passwort: string) => hashePasswort(passwort, BCRYPT_ROUNDS);
+const hashe = (passwort: string) => hashePasswort(passwort);
 
 async function zugaengeBeenden(k: KontoKontext, uid: number): Promise<void> {
   await revokeAllTokens(k, uid);

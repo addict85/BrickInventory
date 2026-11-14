@@ -2099,3 +2099,10 @@ wird). Hinweise:
   Proxys eintragen (README.md, „Proxy vor Caddy“); wer das Netz wirklich braucht,
   setzt zusätzlich `PROXY_NETZ_BESTAETIGT=1` in `.env` (höchstens `/16` bzw.
   `/64` wie bisher). Wer nur Adressen oder `keiner` eingetragen hat: nichts zu tun.
+- **Passwörter als argon2id:** Neue und geänderte Passwörter werden mit argon2id
+  gespeichert, vorhandene bcrypt-Hashes bei der nächsten erfolgreichen Anmeldung
+  ersetzt. Passwörter dürfen jetzt bis 1024 Zeichen lang sein (bisher 72 Byte).
+  Nichts zu tun. **Zurück auf eine ältere Fassung** geht danach nur mit einer
+  Sicherung von vorher: Die alte Fassung kennt argon2id nicht, und wer sich
+  inzwischen angemeldet hat, käme nicht mehr hinein (Ausweg: „Passwort vergessen“
+  oder ein Verwalter setzt das Passwort neu).

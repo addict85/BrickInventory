@@ -1,7 +1,7 @@
 /** Anmeldedaten prüfen: Passwort, Kontozustand, zweiter Faktor, Bremse. */
 import * as passwortRegel from '../infra/passwortRegel';
-import bcrypt from 'bcryptjs';
-import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
+import { BcryptUeberlast } from './bcryptSchranke';
+import { brauchtNeuenHash, hashePasswort, hashePasswortSofort, passwortPasst } from './passwortHash';
 import {
   checkLoginAllowed,
   bekannteAnmeldung,
@@ -54,8 +54,6 @@ export async function verifiziereEmailToken(
   return ok ? { ok: true, userId: id } : { ok: false, grund: 'vergeben', userId: id };
 }
 
-export const BCRYPT_ROUNDS = 12;
-
 /** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen. */
 export const PASSWORT_MIN_ZEICHEN = passwortRegel.PASSWORT_MIN_ZEICHEN;
 export const passwortZuKurz = passwortRegel.passwortZuKurz;
@@ -72,9 +70,9 @@ export function assertLoginAllowed(
   return null;
 }
 
-/** Für unbekannte Namen: bcrypt.compare() braucht dann dieselbe Zeit wie bei
- * einem echten Konto, mit denselben Runden erzeugt. */
-const DUMMY_HASH = bcrypt.hashSync('nonexistent-account-placeholder', BCRYPT_ROUNDS);
+/** Für unbekannte Namen: Die Prüfung braucht dann dieselbe Zeit wie bei einem
+ * Konto mit aktuellem Hash. */
+const DUMMY_HASH = hashePasswortSofort('nonexistent-account-placeholder');
 
 /** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/fehlerArt.ts). */
 export interface AnmeldeAbsage {
@@ -185,6 +183,9 @@ export async function pruefeAnmeldedaten(
       return ergaenzt(absage('nicht_angemeldet', grund, undefined, false, true));
     }
   }
+  // Erst jetzt, nach Passwort und zweitem Faktor: Den Klartext gibt es nur bei einer Anmeldung.
+  if (brauchtNeuenHash(user.password_hash))
+    await k.zugaenge.ersetzePasswortHash(user.id, user.password_hash, await hashePasswort(password));
   await recordLoginSuccess(k, ip, name);
   meldeAnmeldung({ ip, konto: Number(user.id), zugang });
   return { ok: true, user };

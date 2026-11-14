@@ -224,7 +224,7 @@ window.I18N_DE = {
   'settings.password.change': 'Passwort ändern',
   'settings.password.mismatch': 'Passwörter stimmen nicht überein',
   'settings.password.too_short': 'Passwort muss mindestens {n} Zeichen lang sein',
-  'settings.password.too_long': 'Passwort darf höchstens {n} Byte lang sein (Umlaute und Sonderzeichen zählen doppelt)',
+  'settings.password.too_long': 'Passwort darf höchstens {n} Zeichen lang sein',
   'settings.cache_cleared': 'Gespeicherte Preise gelöscht',
   'settings.all_cache.cleared': 'Zwischenspeicher geleert',
   'settings.cache_prices.confirm_title': 'Gespeicherte Preise löschen?',
