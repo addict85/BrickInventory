@@ -513,7 +513,7 @@ L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
 - **Neuer Serverschlüssel unter öffentlicher CA** (Prüfung 476e4a4, M1): Auf
   Android 11–15 nur mit abgetipptem Fingerabdruck aus dem Browser am Rechner,
   ab Android 16 (CT im System) mit einem bewussten Tipp. Caddy behält seinen
-  Schlüssel beim Erneuern (`reuse_private_keys`, UPGRADE.md Abschnitt 61), damit
+  Schlüssel beim Erneuern (`reuse_private_keys`, UPGRADE.md Abschnitt 62), damit
   die Frage selten und auffällig bleibt.
 - **Daten auf dem Gerät** (N1, N3): Adresse, Benutzername, Herkunft des Tokens,
   Widget-Zahlen und Abmeldeaufträge liegen unter einem Keystore-Schlüssel, der

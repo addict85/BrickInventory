@@ -1,6 +1,6 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import { mit, type Kontext } from '../infra/bereich';
+import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository';
@@ -12,6 +12,8 @@ export interface HaushaltAbhaengigkeiten {
   einstellungen: EinstellungenDienste;
 }
 
+// Einladungen sieht nur ihr Konto (0115); wer einlöst, gehört nicht dazu, Aufräumen gilt allen.
+const FREMDE_EINLADUNG = 'Einlösen: Die Einladung gehört dem einladenden Konto';
 export const zugang = (db: Db) => ({
   repository: {
     unterkonten: mit(db)(repository.unterkonten),
@@ -19,11 +21,11 @@ export const zugang = (db: Db) => ({
     istVerknuepft: mit(db)(repository.istVerknuepft),
     kontoNamen: mit(db)(repository.kontoNamen),
     kontoName: mit(db)(repository.kontoName),
-    raeumeEinladungenAuf: mit(db)(repository.raeumeEinladungenAuf),
+    raeumeEinladungenAuf: imSystem(db, 'Abgelaufene Einladungen aller Konten', repository.raeumeEinladungenAuf),
     legeEinladungAn: mit(db)(repository.legeEinladungAn),
-    belegeEinladung: mit(db)(repository.belegeEinladung),
-    einladenderZuCode: mit(db)(repository.einladenderZuCode),
-    gibEinladungFrei: mit(db)(repository.gibEinladungFrei),
+    belegeEinladung: imSystem(db, FREMDE_EINLADUNG, repository.belegeEinladung),
+    einladenderZuCode: imSystem(db, FREMDE_EINLADUNG, repository.einladenderZuCode),
+    gibEinladungFrei: imSystem(db, FREMDE_EINLADUNG, repository.gibEinladungFrei),
     verknuepfe: mit(db)(repository.verknuepfe),
     trenne: mit(db)(repository.trenne),
     loescheGetrenntHinweis: mit(db)(repository.loescheGetrenntHinweis),

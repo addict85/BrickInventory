@@ -47,6 +47,8 @@ const AKTIONEN = {
   gutschein_klartext: () => tRaw('users.aktion.gutschein_klartext'),
   gutschein_pdf: () => tRaw('users.aktion.gutschein_pdf'),
   gutschein_export: () => tRaw('users.aktion.gutschein_export'),
+  uebernahme_angekuendigt: () => tRaw('users.aktion.uebernahme_angekuendigt'),
+  uebernahme_abgebrochen: () => tRaw('users.aktion.uebernahme_abgebrochen'),
 };
 /** Wer hat an welchem fremden Konto was geändert — die letzten Einträge. */
 async function ladeProtokoll() {
@@ -193,7 +195,12 @@ G('btn-rpw').onclick = async () => {
   );
   if (d === null) return;
   if (d.success) {
-    toast(tRaw('users.pw_reset'), 'success');
+    toast(
+      d.wirksam_ab
+        ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.wirksam_ab, 'tagzeit') })
+        : tRaw('users.pw_reset'),
+      'success',
+    );
     G('pw-modal').classList.remove('open');
   } else toast(d.error || t('settings.error'), 'error');
 };

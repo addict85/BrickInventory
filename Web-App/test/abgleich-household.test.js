@@ -65,7 +65,8 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
 
   await t.test('der Einladungscode steht nur als Hash in der Datenbank', async () => {
     // Wie bei API-Tokens: Wer die Datenbank liest, soll keine Einladung einlösen können.
-    const { code } = await hh.einladungAnlegen(ids[0]);
+    // Wie eine Anfrage des Kontos: Einladungen stehen unter seinem Zeilenschutz.
+    const { code } = await require('./helpers/sources').alsKonto(ids[0], () => hh.einladungAnlegen(ids[0]));
     assert.ok(code, 'kein Code erzeugt');
     const zeilen = await db.all('SELECT token_hash FROM account_link_invites WHERE main_user_id = $1', [ids[0]]);
     assert.equal(zeilen.length, 1);

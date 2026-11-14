@@ -860,6 +860,7 @@ enum class Fehlercode {
     @SerialName("upload_ungueltig") UPLOAD_UNGUELTIG,
     @SerialName("datei_inhalt_falsch") DATEI_INHALT_FALSCH,
     @SerialName("upload_kontingent_voll") UPLOAD_KONTINGENT_VOLL,
+    @SerialName("upload_gesamt_voll") UPLOAD_GESAMT_VOLL,
     @SerialName("datei_nicht_verfuegbar") DATEI_NICHT_VERFUEGBAR,
     @SerialName("json_ungueltig") JSON_UNGUELTIG,
     @SerialName("anfrage_json_ungueltig") ANFRAGE_JSON_UNGUELTIG,
@@ -1898,6 +1899,12 @@ data class POSTApiV1SetsImportCsvCancel(
     @SerialName("success") val success: Boolean,
     @SerialName("error") val error: String? = null,
     @SerialName("enqueued") val enqueued: Long? = null,
+)
+
+@Serializable
+data class PUTApiV1AuthUsersIdPassword(
+    @SerialName("success") val success: Boolean,
+    @SerialName("wirksam_ab") val wirksamAb: String? = null,
 )
 
 @Serializable

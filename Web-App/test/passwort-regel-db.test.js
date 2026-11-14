@@ -2,7 +2,7 @@
  * Eine Passwortregel für jeden Weg, der ein Passwort setzt: Registrierung,
  * Ändern, Zurücksetzen, Konto anlegen und Passwort setzen durch den
  * Verwalter, das Startpasswort aus ADMIN_PASSWORD. Abgewiesen werden zu kurze,
- * mehr als 72 Byte lange (bcrypt kürzte sie still) und häufige oder aus
+ * übergrosse (mehr als 1024 Zeichen) und häufige oder aus
  * Datenlecks bekannte Passwörter (mitgelieferte Liste, keine Netzabfrage).
  *
  * Gegenproben (01.11.2026 gemessen):
@@ -10,6 +10,10 @@
  *      zuerst „häufige Passwörter …" (alle fünf Routen nehmen das häufige an)
  *   B  Byte-Grenze gestrichen → rot: „die Regel selbst" und „mehr als 72
  *      Byte …" (danach „ein gutes Passwort …": das Konto gibt es schon)
+ *      (14.11.2026, argon2id: Grenze 1024 Zeichen; Längenprüfung gestrichen → rot:
+ *      „die Regel selbst“ und „übergrosse Passwörter …“)
+ *   E  (14.11.2026) hashe() in src/konto/konten.ts wieder bcrypt mit 12 Runden → rot:
+ *      „jeder Weg hasht mit denselben Kosten“ (vier Wege „anders“ statt argon2id)
  *   C  /reset-password prüft wieder nur die Länge → rot: „häufige
  *      Passwörter …" und „mehr als 72 Byte …" (nur diese Route nimmt es an)
  *   D  src/konto/startVerwalter.ts nimmt ADMIN_PASSWORD ungeprüft → rot: „ein schwaches
@@ -34,7 +38,7 @@ const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe')
 mailAttrappe();
 const db = testDaten();
 const { passwortMangel } = _req('src/infra/passwortRegel.js');
-const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
+const { passwortPasst, ARGON2_PRAEFIX } = _req('src/konto/passwortHash.js');
 
 test('die Regel selbst', () => {
   assert.equal(passwortMangel('Brick-Sammlung-2026'), null);
@@ -48,9 +52,9 @@ test('die Regel selbst', () => {
     'passwort_zu_haeufig',
     'der Benutzername als Passwort',
   );
-  assert.equal(passwortMangel('a'.repeat(72)), null, '72 Byte gehen noch');
-  assert.equal(passwortMangel('a'.repeat(73)), 'passwort_zu_lang');
-  assert.equal(passwortMangel('ä'.repeat(37)), 'passwort_zu_lang', '37 Zeichen, aber 74 Byte');
+  // argon2id liest das ganze Passwort: lange Sätze und Umlaute gehen, nur Übergrösse nicht.
+  assert.equal(passwortMangel('ä'.repeat(1024)), null, '1024 Zeichen gehen noch');
+  assert.equal(passwortMangel('a'.repeat(1025)), 'passwort_zu_lang');
 });
 
 test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, async t => {
@@ -59,7 +63,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     ZIEL = `regel_ziel_${process.pid}`,
     PASS = 'Regel-Pruefung-7';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ZIEL]]);
-  const hash = bcrypt.hashSync(PASS, 4);
+  const hash = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs')).hashSync(PASS, 4);
   const chef = (
     await db.get(
       `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
@@ -132,12 +136,13 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     assert.match(text, /zu häufig oder aus Datenlecks bekannt/);
   });
 
-  await t.test('mehr als 72 Byte werden gemeldet statt gekürzt', async () => {
+  // Über 1024 Zeichen weist schon der Vertrag ab (eingabe_ungueltig), sonst die Regel.
+  await t.test('übergrosse Passwörter werden abgewiesen', async () => {
     const ist = [];
-    for (const w of wege('Ä'.repeat(40))) ist.push(await ruf(w));
+    for (const w of wege('Ä'.repeat(1025))) ist.push((await ruf(w)).replace(/ \S*$/, ''));
     assert.deepEqual(
       ist,
-      wege('').map(([, p]) => `${p} 400 passwort_zu_lang`),
+      wege('').map(([, p]) => `${p} 400`),
     );
   });
 
@@ -187,7 +192,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
       '400 passwort_zu_haeufig',
     );
     assert.ok(
-      bcrypt.compareSync(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash),
+      await passwortPasst(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash),
     );
   });
 
@@ -215,10 +220,12 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
       '/reset-password 400 passwort_zu_haeufig',
     );
     assert.ok(
-      !bcrypt.compareSync(
+      !(await passwortPasst(
         ZIEL.toUpperCase(),
-        (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash,
-      ),
+        (
+          await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])
+        ).password_hash,
+      )),
     );
   });
 
@@ -233,10 +240,9 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     );
   });
 
-  // Gegenprobe (11.11.2026 gemessen): in setzeFremdesPasswort (src/konto/konten.ts)
-  // mit 4 statt BCRYPT_ROUNDS gehasht → rot (PUT /users/:id/password: 4).
+  // Gegenprobe (11.11.2026 gemessen, damals bcrypt): in setzeFremdesPasswort (src/konto/konten.ts)
+  // mit 4 statt BCRYPT_ROUNDS gehasht → rot (PUT /users/:id/password: 4); seit argon2id siehe E im Kopf.
   await t.test('jeder Weg hasht mit denselben Kosten', async () => {
-    const { BCRYPT_ROUNDS } = _req('src/konto/anmeldepruefung.js');
     const NEU = `regel_neu_${process.pid}`,
       VW = `regel_vw_${process.pid}`;
     t.after(() => db.run('DELETE FROM users WHERE username = ANY($1)', [[NEU, VW]]));
@@ -246,8 +252,13 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
       require('node:crypto').createHash('sha256').update(roh).digest('hex'),
     ]);
     const runden = async name =>
-      bcrypt.getRounds((await db.get('SELECT password_hash FROM users WHERE username = $1', [name])).password_hash);
-    const gut = 'Brick-Sammlung-2026';
+      (await db.get('SELECT password_hash FROM users WHERE username = $1', [name])).password_hash.startsWith(
+        ARGON2_PRAEFIX,
+      )
+        ? 'argon2id'
+        : 'anders';
+    // Über 72 Byte: bcrypt hätte den Rest abgeschnitten, die alte Regel wies es ab.
+    const gut = `Brick-Sammlung-2026-${'ä'.repeat(40)}`;
     // Das eigene Passwort zuletzt: Die Wege davor bestätigen mit PASS.
     /** @type {[string, string, object, string][]} */
     const schritte = [
@@ -265,7 +276,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     assert.deepEqual(
       ist,
       ['/register', '/reset-password', '/users', `/users/${ziel}/password`, '/change-password'].map(
-        p => `${p} 200 ${BCRYPT_ROUNDS}`,
+        p => `${p} 200 argon2id`,
       ),
     );
   });
@@ -285,7 +296,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
       umgebung({ ADMIN_PASSWORD: undefined });
     }
     const admin = await db.get("SELECT password_hash, must_change_password FROM users WHERE username = 'admin'");
-    assert.equal(bcrypt.compareSync('passwort123', admin.password_hash), false, 'das schwache Passwort gilt');
+    assert.equal(await passwortPasst('passwort123', admin.password_hash), false, 'das schwache Passwort gilt');
     assert.equal(admin.must_change_password, true);
     assert.ok(
       warnungen.some(w => /ADMIN_PASSWORD wird nicht verwendet/.test(w)),

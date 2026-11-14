@@ -173,7 +173,7 @@ async function starte(): Promise<void> {
     ? http
         .createServer(
           { ...HTTP_FRISTEN },
-          baueApp({ pool: zugang.pool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
+          baueApp({ pool: zugang.systemPool, konfig: k, sitzungsGeheimnis: geheimnis, dienste }),
         )
         .listen(k.port, () => {
           console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);

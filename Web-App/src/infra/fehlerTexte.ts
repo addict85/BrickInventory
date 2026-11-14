@@ -94,8 +94,8 @@ export const FEHLER = {
     en: 'The password must be at least 12 characters long.',
   },
   passwort_zu_lang: {
-    de: 'Das Passwort ist zu lang: höchstens 72 Byte (Umlaute und Sonderzeichen zählen doppelt).',
-    en: 'The password is too long: at most 72 bytes (accented letters and symbols count double).',
+    de: 'Das Passwort ist zu lang: höchstens 1024 Zeichen.',
+    en: 'The password is too long: at most 1024 characters.',
   },
   passwort_zu_haeufig: {
     de: 'Dieses Passwort ist zu häufig oder aus Datenlecks bekannt. Bitte ein anderes wählen.',
@@ -335,6 +335,10 @@ export const FEHLER = {
   upload_kontingent_voll: {
     de: 'Der Platz für eigene Anleitungen ({mb} MB) ist belegt — bitte erst alte löschen',
     en: 'The space for your own instructions ({mb} MB) is full — please delete old ones first',
+  },
+  upload_gesamt_voll: {
+    de: 'Der Speicherplatz für hochgeladene Dateien auf dem Server ({mb} MB für alle Konten) ist belegt — bitte den Verwalter fragen',
+    en: 'The server space for uploaded files ({mb} MB for all accounts) is full — please ask the administrator',
   },
   datei_nicht_verfuegbar: { de: 'Datei nicht verfügbar', en: 'File not available' },
   json_ungueltig: { de: 'Ungültige JSON-Datei', en: 'Invalid JSON file' },

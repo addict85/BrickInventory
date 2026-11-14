@@ -21,7 +21,8 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { assertLoginAllowed, BCRYPT_ROUNDS } = _req('src/konto/anmeldepruefung.js');
+const { assertLoginAllowed } = _req('src/konto/anmeldepruefung.js');
+const { ARGON2_KOSTEN } = _req('src/konto/passwortHash.js');
 const { USERNAME_RE } = _req('src/konto/namensRegeln.js');
 const { escapeLike } = _req('src/konto/geraeteToken.js');
 const { ohneKommentare } = require('./helpers/sources');
@@ -171,5 +172,5 @@ test('die Gleitfrist lässt sich nicht abschalten', () => {
   const { ladeKonfig } = _req('src/infra/konfig.js');
   assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
   assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenLeerlaufTage, 23);
-  assert.ok(BCRYPT_ROUNDS >= 12);
+  assert.ok(ARGON2_KOSTEN.memoryCost >= 19_456 && ARGON2_KOSTEN.timeCost >= 2);
 });

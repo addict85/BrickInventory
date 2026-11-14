@@ -17,6 +17,10 @@
  *   K  (30.10.) proxyVertrauen nimmt wieder „docker" (172.16/12 ohne Gateway)
  *      an → rot: „angenommen: docker"; Präfixgrenze in proxyEintragGueltig
  *      entfernt → rot: „angenommen: 172.16.0.0/12"
+ *   L  (14.11.2026) in proxyEintragGueltig die enge Grenze wieder /16 bzw. /64 → rot:
+ *      „ohne Bestätigung angenommen: 192.168.1.0/24“
+ *   M  (14.11.2026) die Bestätigung erlaubt alles (`p <= max`) → rot: „bestätigt
+ *      angenommen: 172.16.0.0/12“
  *   H  (28.10.) kontoKennung() liefert wieder den rohen Namen → rot: „Name
  *      und E-Mail zählen gemeinsam" (und der Zähler je Konto fehlt)
  *   I  (28.10.) wartezeitSekunden() fest auf 1 s → rot: „Sperre je
@@ -119,11 +123,19 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
     '172.28.73.10, docker',
   ])
     assert.throws(() => proxyVertrauen(falsch), /TRUST_PROXY enthält/, `angenommen: ${falsch}`);
-  assert.deepEqual(proxyVertrauen('172.28.73.10, 192.168.1.0/24 fd00::7'), [
+  assert.deepEqual(proxyVertrauen('172.28.73.10, 192.168.1.8/29 fd00::7 fd00::100/120'), [
     '172.28.73.10',
-    '192.168.1.0/24',
+    '192.168.1.8/29',
     'fd00::7',
+    'fd00::100/120',
   ]);
+  // Ein Netz über acht Adressen nur bestätigt, und auch dann höchstens /16 bzw. /64.
+  for (const weit of ['192.168.1.0/24', '172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
+    assert.throws(() => proxyVertrauen(weit), /PROXY_NETZ_BESTAETIGT=1/, `ohne Bestätigung angenommen: ${weit}`);
+    assert.deepEqual(proxyVertrauen(weit, true), [weit]);
+  }
+  for (const zuWeit of ['172.16.0.0/12', 'fd00::/48'])
+    assert.throws(() => proxyVertrauen(zuWeit, true), /TRUST_PROXY enthält/, `bestätigt angenommen: ${zuWeit}`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
   // Rechner im Heimnetz geben ihre Adresse nicht selbst an.

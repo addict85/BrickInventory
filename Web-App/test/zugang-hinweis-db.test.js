@@ -134,9 +134,22 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     );
   });
 
+  // `zwei` ist Verwalter: Die Änderung wird angekündigt und gilt erst im Aufräumlauf nach der Frist.
+  const faellig = async () => {
+    await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
+      zwei,
+    ]);
+    assert.equal(await S.testDienste().konto.fuehreFaelligeUebernahmenAus(), 1);
+  };
+
   await t.test('entfernter zweiter Faktor', async () => {
     await db.run(`INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, 'x', true)`, [zwei]);
     await ruf('DELETE', `/users/${zwei}/zweiter-faktor`, { admin_password: PASS });
+    assert.deepEqual(
+      (await mails('uebernahme_angekuendigt', 1)).map(m => [m.an, m.durch]),
+      [[NAMEN[1], NAMEN[0]]],
+    );
+    await faellig();
     assert.deepEqual(
       (await mails('zweiter_faktor_entfernt', 1)).map(m => [m.an, m.durch]),
       [[NAMEN[1], NAMEN[0]]],
@@ -153,6 +166,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
 
   await t.test('fremdes Passwort durch einen Verwalter', async () => {
     await ruf('PUT', `/users/${zwei}/password`, { password: 'Neues-Langes-Passwort-9', admin_password: PASS });
+    await faellig();
     assert.deepEqual(
       (await mails('passwort_durch_verwalter', 1)).map(m => [m.an, m.durch]),
       [[NAMEN[1], NAMEN[0]]],

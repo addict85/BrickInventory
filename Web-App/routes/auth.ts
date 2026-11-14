@@ -48,6 +48,7 @@ async function angemeldetAntworten(
   mitToken: boolean,
   mitPasswort = false,
 ) {
+  await d.konto.uebernahmenAbbrechen(Number(user.id));
   if (!mitToken)
     await establishSession(d.konto, req, {
       userId: Number(user.id),

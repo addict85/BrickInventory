@@ -27,6 +27,7 @@ function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
     [
       ['abgelaufene Tokens', k.konto.tokensAufraeumen],
       ['Anmeldezähler', k.konto.raeumeAnmeldezaehlerAuf],
+      ['Verwalterübernahmen', k.konto.fuehreFaelligeUebernahmenAus],
       ['Papierkorb', k.bestand.raeumePapierkorbAuf],
       ['PDF-Aufträge', k.auftraege.cleanOldPdfJobs],
       ['alte Aufträge', k.auftraege.raeumeErledigteAuf],

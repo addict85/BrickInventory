@@ -49,7 +49,7 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
   });
 
   const app = _req('startup/app.js').baueApp({
-    pool: db.pool,
+    pool: db.systemPool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 's'.repeat(48),
     dienste: require('./helpers/sources').testDienste(),

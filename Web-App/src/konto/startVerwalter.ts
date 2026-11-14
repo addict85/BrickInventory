@@ -2,10 +2,9 @@
  * für jedes andere Konto; ein schwaches ADMIN_PASSWORD wird durch ein zufälliges
  * ersetzt, das beim ersten Login zu ändern ist. */
 import crypto from 'node:crypto';
-import bcrypt from 'bcryptjs';
 import { passwortMangel } from '../infra/passwortRegel';
 import { entferneStartpasswort, schreibeStartpasswort } from '../infra/startpasswort';
-import { BCRYPT_ROUNDS } from './anmeldepruefung';
+import { hashePasswortSofort } from './passwortHash';
 import type { KontoKontext } from './kontext';
 
 export async function legeStartVerwalterAn(k: KontoKontext): Promise<void> {
@@ -22,8 +21,8 @@ export async function legeStartVerwalterAn(k: KontoKontext): Promise<void> {
   // Vor dem Anlegen: Ist die Datei nicht schreibbar, bricht der Start ab, statt
   // ein Konto mit einem Passwort zu hinterlassen, das niemand kennt.
   const datei = ausUmgebung ? null : schreibeStartpasswort('admin', passwort);
-  // Dieselben Runden wie jedes Konto: Mit weniger antwortete ein Fehlversuch gegen „admin“ messbar schneller.
-  const hash = bcrypt.hashSync(passwort, BCRYPT_ROUNDS);
+  // Dieselben Kosten wie jedes Konto: Mit weniger antwortete ein Fehlversuch gegen „admin“ messbar schneller.
+  const hash = hashePasswortSofort(passwort);
   await k.startVerwalter.legeVerwalterAn(hash, !ausUmgebung);
   if (!datei) console.log('✅ Standard-Admin erstellt (Passwort aus ADMIN_PASSWORD).');
   else
