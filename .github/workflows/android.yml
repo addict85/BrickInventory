@@ -465,6 +465,49 @@ jobs:
       - name: Erzeugte Kotlin-Typen aktuell
         run: node --test test/vertrag-kotlin-dtos.test.js
 
+  # Gerätetests (app/src/androidTest) auf einem Emulator, den Gradle anlegt (Managed
+  # Device pixel6Api34, ATD-Abbild): Hilt, Room mit SQLCipher und Keystore laufen nur
+  # auf Android. Nur die Debug-Fassung, nichts wird signiert oder veröffentlicht.
+  geraetetests:
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+        with:
+          cache-read-only: true
+      # Der Emulator braucht KVM; auf den Linux-Runnern ist /dev/kvm da, aber nicht freigegeben.
+      - name: KVM freigeben
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Gerätetests
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon pixel6Api34DebugAndroidTest \
+            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: ${{ failure() }}
+        with:
+          name: geraetetests-berichte
+          path: Android-App/app/build/outputs/androidTest-results
+
   # ── Gegenproben ────────────────────────────────────────────────────────────
   # Jeder Patch unter gegenproben/ macht etwas kaputt; die Testklasse aus seinem Kopf
   # muss danach ROT sein (tools/gegenproben.py). Auf einem Push nur die Patches, deren
@@ -541,6 +584,7 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys \
             testDebugUnitTest :core-model:test :core-vertrag:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
+            :app:assembleDebugAndroidTest \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys
