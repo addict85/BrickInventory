@@ -177,6 +177,18 @@ export function zeilenKnopf(ziel, sichtbar, name) {
   return html`<button type="button" class="zeile-oeffnen" data-click="${ziel.click}"${ziel.arg !== undefined ? html` data-arg="${ziel.arg}"` : ''}${ziel.arg2 !== undefined ? html` data-arg2="${ziel.arg2}"` : ''}${ziel.arg3 !== undefined ? html` data-arg3="${ziel.arg3}"` : ''} aria-label="${name}"><span>${sichtbar}</span></button>`;
 }
 
+let _kachelNr = 0;
+/**
+ * Name einer Kachel (role=button) nur aus Name und Nummer; der übrige Inhalt hängt per aria-describedby als
+ * Beschreibung an. Ohne Namen las der Vorleser den ganzen Kachelinhalt als Namen, rund 190 Zeichen je Karte.
+ * @param {string} name @param {string} nummer @param {number} [teile] Anzahl beschreibender Elemente
+ */
+export function kachelName(name, nummer, teile = 1) {
+  const id = `kachel-${++_kachelNr}`;
+  const ids = Array.from({ length: teile }, (_, i) => `${id}-${i + 1}`);
+  return { attr: html` aria-label="${nummer ? `${name}, ${nummer}` : name}" aria-describedby="${ids.join(' ')}"`, ids };
+}
+
 /** „≈“ vor einem Kaufpreis, der ein eingesetzter Marktpreis ist; sonst läse er sich wie bezahlt.
  * @param {string | import('./escapen.js').SicheresHtml} markup schon maskiertes Markup */
 export function geschaetztKauf(markup) {

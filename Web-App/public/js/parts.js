@@ -9,6 +9,7 @@ import {
   condBadges,
   ownerBadges,
   zeilenKnopf,
+  kachelName,
 } from './bausteine.js';
 import { registerActions, echt } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
@@ -436,6 +437,7 @@ function ersatzteilPlakette(p) {
 
 /** @param {TeilZeile} p */
 function partsCard(p) {
+  const k = kachelName(`${p.part_name || '—'}, ${colorName(p.color_name)}`, p.bl_part_number || p.part_number);
   // data-orig speist den Zoom (actions.js, openImageLightboxFromEl): ÜBER den Server-Proxy in voller
   // Auflösung (imgUrl(fullUrl(...), false)), nicht mehr die rohe CDN-Adresse direkt im Browser. Anders als
   // bei Sets bewusst so — auf Nutzerwunsch soll auch das Detailbild der Teile über das Backend laufen, nicht
@@ -444,13 +446,15 @@ function partsCard(p) {
   // Die Kachel oeffnet den Detail-Dialog (Marcos Wunsch). Bis hierher war sie tot: Anders als bei manuell
   // erfassten Teilen gab es zu einem Teil aus einem Set nichts zu sehen — kein Bild in voller Groesse, keine
   // Angabe, aus welchem Set es stammt.
-  return html`<div class="part-card" data-stil="cursor:pointer" tabindex="0" role="button" data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
+  return html`<div class="part-card" data-stil="cursor:pointer" tabindex="0" role="button"${k.attr} data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
     ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc) || rawSrc, true), alt: '', klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' }) : html`<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}
     <div class="part-num" title="${p.part_number}">${p.bl_part_number || p.part_number}</div>
     <div class="part-name">${p.part_name || '—'}</div>
     <div class="part-color"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${colorName(p.color_name)}</div>
+    <div class="kachel-mehr" id="${k.ids[0]}">
     <div class="part-qty">×${(p.total_quantity || 0).toLocaleString(locale())}</div>
     ${ersatzteilPlakette(p)}
+    </div>
   </div>`;
 }
 
@@ -622,16 +626,22 @@ export function renderManualParts() {
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
       const priceStr = partPrice != null ? fmtN(partPrice, CURRENCY) : '—';
       const condBadge = condBadges(p);
-      return html`<div class="man-tile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}" data-stil="cursor:pointer">
+      const k = kachelName(
+        p.color_name ? `${p.part_name || '—'}, ${colorName(p.color_name)}` : p.part_name || '—',
+        p.bl_part_number || p.part_number,
+      );
+      return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}" data-stil="cursor:pointer">
         <div class="ca"><span class="delbtn" data-click="deleteManualPartStop"${echt()} aria-hidden="true" data-arg="${p.part_number}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}" title="${t('parts.delete.title')}">${TRASH_ICON_SVG}</span></div>
         ${ungeprueft(img)}
         <div class="man-tile-num" title="${p.part_number}">${p.bl_part_number || p.part_number}</div>
         <div class="man-tile-name">${p.part_name || '—'}</div>
         ${ungeprueft(colorRow)}
+        <div class="kachel-mehr" id="${k.ids[0]}">
         <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span class="qbadge">×${p.quantity}</span>${ungeprueft(condBadge)}${ownerBadges(p)}
         </div>
         <div class="preis man-preis">${ungeprueft(priceStr)}</div>
+        </div>
       </div>`;
     })}
   </div>`,

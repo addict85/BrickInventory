@@ -484,6 +484,8 @@
     /* Lange Themennamen enden mit „…“; der volle Name steht im title. */
     .smeta-text{flex:1 1 auto;min-width:0;overflow-wrap:break-word}
     .smeta > div{flex:0 0 auto}
+    /* Hülle für den beschreibenden Teil einer Kachel (kachelName): nur für aria-describedby, ohne eigenes Layout. */
+    .kachel-mehr{display:contents}
     .qbadge{background:var(--b100);color:var(--b700);font-weight:700;font-size:var(--fs-0);padding:2px 7px;border-radius:999px}
     .ibadge{background:var(--g100);color:var(--g700);font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}
     .pbadge{background:var(--p100);color:var(--p600);font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}

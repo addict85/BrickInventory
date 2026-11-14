@@ -16,7 +16,7 @@ import {
 import { fmtDatum, fmtN, leseBetrag } from './format.js';
 import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
-import { detailZeile, listeLadefehler, skelettZeilen, csvHochladen } from './bausteine.js';
+import { detailZeile, kachelName, listeLadefehler, skelettZeilen, csvHochladen } from './bausteine.js';
 import { loadGallery, loadStats } from './gallery.js';
 import { addScopeParam } from './scope.js';
 import { CURRENCY } from './zustand.js';
@@ -98,6 +98,7 @@ function zeile(w) {
     <!-- Die GANZE Zeile oeffnet das Detail — wie die Karte in der App.
          Der Papierkorb sitzt oben rechts und haelt seinen Klick an
          (merkpostenLoeschenStop), genau wie auf der Set-Kachel. Marcos
+  const k = kachelName(w.name || w.set_number, w.name ? w.set_number : '', 2);
          Vorgabe vom 24.09., zweiter Teil: „soll auf den Kacheln […] sowie bei
          den Merkliste Eintraegen der Papierkorb oben rechts angezeigt werden
          analog den Kacheln bei den Sets. Dies aber nur in der webapp."
@@ -116,9 +117,9 @@ function zeile(w) {
       ${bild}
       <div class="mk-text">
         <div class="mk-titel">${ungeprueft(titel)}</div>
-        <div class="mk-unter">${ungeprueft(unter)}</div>
+        <div class="mk-unter" id="${k.ids[0]}">${ungeprueft(unter)}</div>
       </div>
-      <div class="mk-rechts">
+      <div class="mk-rechts" id="${k.ids[1]}">
         ${alarm}${schon}${preis}
       </div>
     </div>`;
