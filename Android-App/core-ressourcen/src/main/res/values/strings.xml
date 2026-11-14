@@ -917,6 +917,7 @@
     <string name="schritt_kein_schluessel">The device lock cannot be checked right now. Please try again later.</string>
     <string name="schritt_ohne_attestation">This device cannot prove that its key lives in its security hardware. Sensitive steps (voucher PIN, administration) are therefore only available in the web app.</string>
     <string name="schritt_server_fehler">The server did not accept the confirmation. Please try again.</string>
+    <string name="app_sperre_einrichten">On a new installation it is set to 5 minutes if the phone has a screen lock. It covers the app and asks for your fingerprint or device lock; you can change it at any time in Settings.</string>
     <string name="app_sperre_titel">Lock the app</string>
     <string name="app_sperre_hint">After this many minutes in the background the app asks for your fingerprint or device lock. Applies to this device.</string>
     <string name="app_sperre_ohne_displaysperre">Needs a screen lock on this device.</string>

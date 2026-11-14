@@ -903,6 +903,7 @@
     <string name="schritt_kein_schluessel">Die Gerätesperre lässt sich gerade nicht prüfen. Bitte später erneut versuchen.</string>
     <string name="schritt_ohne_attestation">Dieses Gerät kann nicht belegen, dass sein Schlüssel in der Sicherheitshardware liegt. Heikle Schritte (Gutschein-PIN, Verwaltung) gehen darum nur in der Web-App.</string>
     <string name="schritt_server_fehler">Der Server hat die Bestätigung nicht angenommen. Bitte erneut versuchen.</string>
+    <string name="app_sperre_einrichten">Neu installiert ist sie auf 5 Minuten gestellt, wenn das Telefon eine Displaysperre hat. Sie verdeckt die App und fragt nach Fingerabdruck oder Gerätesperre; ändern lässt sie sich jederzeit in den Einstellungen.</string>
     <string name="app_sperre_titel">App sperren</string>
     <string name="app_sperre_hint">Nach so vielen Minuten im Hintergrund fragt die App nach Fingerabdruck oder Gerätesperre. Gilt für dieses Gerät.</string>
     <string name="app_sperre_ohne_displaysperre">Braucht eine Displaysperre auf diesem Gerät.</string>

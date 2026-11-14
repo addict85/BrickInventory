@@ -1,0 +1,18 @@
+Gegenprobe: Auch eine neue Installation mit Displaysperre beginnt ohne App-Sperre
+Modul: core-ui
+Test: ch.brickinventoryapp.ui.AppSperreTest
+Rot: neu installiert mit Displaysperre ist die Sperre an
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+index c291082..a5c5ca5 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+@@ -77,7 +77,7 @@ class AppSperre(private val uhr: () -> Long, private val ablage: Ablage, private
+          * bisher hatte; ohne Displaysperre gäbe es nichts, womit sich entsperren liesse.
+          */
+         fun vorgabe(neuInstalliert: Boolean, geraetGesichert: Boolean): Int =
+-            if (neuInstalliert && geraetGesichert) VORGABE_MINUTEN else 0
++            0
+ 
+         /**
+          * Ob das Widget Geldwerte verdeckt: gesperrt, oder bei eingeschalteter Sperre schon im

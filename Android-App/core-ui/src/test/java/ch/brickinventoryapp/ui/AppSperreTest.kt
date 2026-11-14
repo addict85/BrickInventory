@@ -1,13 +1,15 @@
 package ch.brickinventoryapp.ui
 
 import ch.brickinventoryapp.ui.components.AppSperre
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Die App-Sperre: standardmässig aus; an, sperrt sie erst nach Ablauf der Minuten im
- * Hintergrund, und eine neue Activity (Drehen, Prozessende) entsperrt nicht von selbst.
+ * Die App-Sperre: neu installiert mit Displaysperre an, sonst aus; an, sperrt sie erst nach
+ * Ablauf der Minuten im Hintergrund, und eine neue Activity (Drehen, Prozessende) entsperrt
+ * nicht von selbst.
  *
  * Gegenproben (09.11.2026 lokal mit kotlinc gemessen):
  *   A  in imVordergrund() jede Rückkehr gesperrt (`jetzt - seit >= 0`) → rot „vor Ablauf
@@ -19,6 +21,8 @@ import org.junit.Test
  *      gegenproben/app-sperre-ohne-geraetestart.patch
  *   D  (kotlinc) verdecktWidget() nur `ablage.gesperrt()` → rot „das Widget
  *      verdeckt seine Betraege, sobald die Sperre greifen kann“; gegenproben/widget-trotz-sperre.patch
+ *   E  (kotlinc) vorgabe() immer 0 → rot „neu installiert mit Displaysperre …“;
+ *      gegenproben/app-sperre-vorgabe-aus.patch
  */
 class AppSperreTest {
 
@@ -130,5 +134,13 @@ class AppSperreTest {
         assertTrue("Gesperrt im Vordergrund", AppSperre.verdecktWidget(ablage))
         s.entsperrt()
         assertFalse(AppSperre.verdecktWidget(ablage))
+    }
+
+    @Test
+    fun `neu installiert mit Displaysperre ist die Sperre an, sonst bleibt sie aus`() {
+        assertTrue(AppSperre.VORGABE_MINUTEN in AppSperre.WAHL && AppSperre.VORGABE_MINUTEN > 0)
+        assertEquals(AppSperre.VORGABE_MINUTEN, AppSperre.vorgabe(neuInstalliert = true, geraetGesichert = true))
+        assertEquals("Ohne Displaysperre liesse sich nicht entsperren", 0, AppSperre.vorgabe(neuInstalliert = true, geraetGesichert = false))
+        assertEquals("Ein Update stellt nichts um", 0, AppSperre.vorgabe(neuInstalliert = false, geraetGesichert = true))
     }
 }
