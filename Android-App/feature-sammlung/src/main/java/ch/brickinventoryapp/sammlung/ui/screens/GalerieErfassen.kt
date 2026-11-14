@@ -154,6 +154,8 @@ fun AddSetDialog(
         bestaetigen = stringResource(R.string.gallery_add),
         onBestaetigen = { submit() },
         onAbbrechen = onDismiss,
+        geaendert = setNumber.isNotBlank() || quantity != "1" || purchasePrice.isNotEmpty() ||
+            condition != defaultCondition || lagerort != vorgabe,
         // Ohne eigene Zeile „Bitte Set-Nummer eingeben“: Dreimal derselbe Hinweis schob bei
         // 200 % die Knöpfe aus dem Bild; was fehlt, sagt das Feld erst beim Tippen.
     ) {

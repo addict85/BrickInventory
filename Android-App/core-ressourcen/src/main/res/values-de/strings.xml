@@ -1127,6 +1127,11 @@
     <string name="zf_share_title">Wiederherstellungscodes</string>
     <string name="passwort_aendern_fehlt">Aktuelles Passwort, neues Passwort und Wiederholung eingeben, dann ändern.</string>
     <string name="erfassen_nummer_fehlt">Zuerst eine Setnummer eingeben.</string>
+    <string name="parts_nummer_fehlt">Zuerst eine Teilenummer eingeben.</string>
+    <string name="minifigs_nummer_fehlt">Zuerst eine Minifigur-Nummer eingeben.</string>
+    <string name="erfassen_verwerfen_titel">Änderungen verwerfen?</string>
+    <string name="erfassen_verwerfen_text">Was du eingegeben hast, geht verloren.</string>
+    <string name="erfassen_verwerfen">Verwerfen</string>
     <string name="gallery_quantity_hint">Anzahl gleicher Sets</string>
     <string name="erfassen_menge_ungueltig">Eine ganze Anzahl ab 1 eingeben.</string>
     <string name="erfassen_preis_ungueltig">Einen Betrag wie 12,50 oder 1.299,00 eingeben.</string>

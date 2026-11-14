@@ -50,6 +50,7 @@ internal fun UebernahmeDialog(
         onBestaetigen = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand,
                                         lagerort.trim().takeIf { it.isNotEmpty() }) },
         onAbbrechen = onDismiss,
+        geaendert = anzahl != "1" || preis.isNotEmpty() || zustand != merkposten.condition || lagerort != lagerortVorgabe,
     ) {
         Text(merkposten.name ?: merkposten.setNumber, style = MaterialTheme.typography.bodyMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
@@ -121,6 +122,7 @@ internal fun MerkpostenErfassenDialog(
             else onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null)
         },
         onAbbrechen = onDismiss,
+        geaendert = nummer.isNotBlank() || zustand != defaultCondition,
     ) {
         OutlinedTextField(
             value = nummer,

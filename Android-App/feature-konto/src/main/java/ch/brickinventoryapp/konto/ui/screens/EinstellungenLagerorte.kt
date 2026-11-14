@@ -159,6 +159,7 @@ private fun LagerortNameDialog(
         onBestaetigen = { onFertig(name.trim()) },
         onAbbrechen = onAbbrechen,
         bestaetigenAn = name.isNotBlank(),
+        geaendert = name != start,
     ) {
         OutlinedTextField(
             shape = Formen.feld,

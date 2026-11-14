@@ -1146,6 +1146,11 @@
     <string name="zf_share_title">Recovery codes</string>
     <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
     <string name="erfassen_nummer_fehlt">Enter a set number first.</string>
+    <string name="parts_nummer_fehlt">Enter a part number first.</string>
+    <string name="minifigs_nummer_fehlt">Enter a minifigure number first.</string>
+    <string name="erfassen_verwerfen_titel">Discard changes?</string>
+    <string name="erfassen_verwerfen_text">What you entered will be lost.</string>
+    <string name="erfassen_verwerfen">Discard</string>
     <string name="gallery_quantity_hint">Number of identical sets</string>
     <string name="erfassen_menge_ungueltig">Enter a whole quantity of 1 or more.</string>
     <string name="erfassen_preis_ungueltig">Enter an amount such as 12.50 or 1,299.00.</string>
