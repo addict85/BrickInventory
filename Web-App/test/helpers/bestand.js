@@ -96,10 +96,6 @@ async function haltZeile(db, userId, setNumber) {
  *                       (Migration 0008, erweitert in 0040) erlaubt je Konto,
  *                       Teil, Farbe, TAG und ZUSTAND nur eine Erfassung —
  *                       genau wie bei den Sets.
- *                       Hier stand das Gegenteil, und es war falsch:
- *                       GEMESSEN brachen fuenf Testdateien mit „duplicate
- *                       key value violates unique constraint
- *                       idx_part_acq_tag_zustand" ab.
  * @param [opt.storageId]  Lagerort
  * @param [opt.egalWennDa]  ohne Wirkung für Teile; nur der Gleichheit mit haeltSet halber
  */

@@ -80,8 +80,8 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
   const M = _req('src/merkliste/merkliste.js');
 
   await t.test('1. Der Preis kommt als Zahl an', async () => {
-    // Dass er das tut, liegt am Typ-Leser in db/database.ts (NACHGEMESSEN,
-    // siehe Gegenprobe c) — nicht am Number() in merkliste.ts. Die Prüfung
+    // Dass er das tut, liegt am Typ-Leser in db/database.ts (Gegenprobe c),
+    // nicht am Number() in merkliste.ts. Die Prüfung
     // steht trotzdem hier: Fiele der Leser weg, verglichen beide Oberflächen
     // später Text, und das fiele sonst erst beim Sortieren auf.
     const liste = await M.merkpostenVon([U.ich], undefined, 'EUR');

@@ -1,6 +1,6 @@
 /**
- * Anführungszeichen in der Oberfläche: deutsch „…“, englisch “…”. Vorher stand
- * „Keine Sets gefunden für „xyzxyz"“ — unten öffnend, oben ein gerades Zeichen.
+ * Anführungszeichen in der Oberfläche: deutsch „…“, englisch “…”, nie unten öffnend
+ * und oben ein gerades Zeichen.
  *
  * Geprüft wird die gezeigte Meldung im echten Bündel (jsdom) und jeder Text
  * der beiden Wörterbücher, wie das Bündel sie lädt.

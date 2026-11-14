@@ -348,8 +348,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
 
   // Der Kindprozess kennt NICHTS aus diesem hier — er baut nicht, sondern nutzt
   // das bereits erzeugte dist/ und legt nur einen Takt hin.
-  // ── Warum das Kind die Adresse NICHT selbst setzt ────────────────────────
-  // Hier stand als erste Zeile des Kind-Skripts …
+  // Das Kind setzt die Adresse NICHT selbst, es erbt sie über die Umgebung.
   execFileSync(
     process.execPath,
     [

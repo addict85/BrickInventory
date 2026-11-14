@@ -204,7 +204,7 @@ function alarmZustand() {
  * @param {string} sn
  */
 export async function ladeAlarm(sn) {
-  const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`).catch(() => null);
+  const d = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`);
   const dir = G(alarmId('dir')),
     val = G(alarmId('val'));
   if (!dir || !val) return;
@@ -369,7 +369,7 @@ export async function ladeOrtAuswahl(besitzer) {
     .map((/** @type {{ id: number } | number} */ o) => (typeof o === 'number' ? o : (o?.id ?? o)))
     .filter(n => Number.isFinite(Number(n)));
   const frage = ids.length ? '?owner=' + encodeURIComponent(ids.join(',')) : '';
-  const d = await api('GET', `/v1/storage/locations${frage}`).catch(() => null);
+  const d = await api('GET', `/v1/storage/locations${frage}`);
   if (!d?.success) return;
   setzeHtml(
     dl,
@@ -391,8 +391,8 @@ export async function ladeLagerorte(konten) {
   if (konten) _vorratKonten = konten;
   const frage = _vorratKonten.length > 1 ? '?owner=' + encodeURIComponent(_vorratKonten.join(',')) : '';
   const [vorrat, belegt] = await Promise.all([
-    api('GET', `/v1/storage/locations${frage}`).catch(() => null),
-    api('GET', `/v1/storage${scopeQuery('gallery')}`).catch(() => null),
+    api('GET', `/v1/storage/locations${frage}`),
+    api('GET', `/v1/storage${scopeQuery('gallery')}`),
   ]);
   if (vorrat?.success) {
     const namen = (vorrat.orte || []).map(o => o.name);

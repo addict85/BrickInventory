@@ -181,7 +181,7 @@ function stilleFaengeDerOberflaeche() {
   // Gegenprobe (14.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
   // `.catch(() => null)` → rot (128 von 127).
   const { faenge, stillImBrowser } = require('./helpers/faenge');
-  const SCHRANKE = 127;
+  const SCHRANKE = 91;
   const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
   assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
   assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { zeigeFehler(e); }'), 0);
@@ -1350,8 +1350,8 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
   // den typischen Erzählmarken, auch „Gemessen … am <Datum>“.
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  // Gegenprobe (14.11.2026): eine Zeile `// Gemessen 7 am` samt Datum an diesen Kopf gehängt → rot (38 von 37).
-  const SCHRANKE = 37;
+  // Gegenprobe (14.11.2026): eine Zeile `// Gemessen 7 am` samt Datum an diesen Kopf gehängt → rot (5 von 4).
+  const SCHRANKE = 4;
 
   const MARKE =
     /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Gemessen\b[^.]*\bam [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;

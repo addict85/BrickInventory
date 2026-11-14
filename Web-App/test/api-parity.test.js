@@ -436,10 +436,8 @@ test('API-Parität Webapp ↔ Android', async t => {
   });
 
   await t.test('ohne Auth: beide Absicherungen lehnen ab', async () => {
-    // Hier stand `/api/sets/` gegen `/api/v1/sets` — „beide Familien". Seit
-    // dem Zusammenlegen der API-Oberflaechen gibt es nur noch EINEN
-    // Adressraum; die alte Adresse antwortet gar nicht mehr, und der Test
-    // haette einen 404 fuer eine bestandene Abweisung gehalten.
+    // Es gibt nur EINEN Adressraum (/api/v1): Eine Adresse ausserhalb antwortete
+    // mit 404, und das sähe aus wie eine bestandene Abweisung.
     const mitToken = await get('/api/v1/sets', { 'x-no-session': '1' });
     const nurSitzung = await get('/api/v1/settings/raw', { 'x-no-session': '1' });
     assert.equal(mitToken.status, 401, 'requireToken laesst ohne Ausweis durch');

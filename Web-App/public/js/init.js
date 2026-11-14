@@ -250,7 +250,7 @@ async function plFuelleBestand() {
   // (src/haushalt/haushalt.ts, parseScopeMode) — die Wahl ist also nur eine andere Bedienung derselben Sache,
   // kein zweiter Begriff daneben.
   const mitSubs = !!G('pl-bestand-subs')?.checked;
-  const d = await api('POST', `/v1/parts/owned${mitSubs ? '' : '?accounts=own'}`, { teile }).catch(() => null);
+  const d = await api('POST', `/v1/parts/owned${mitSubs ? '' : '?accounts=own'}`, { teile });
   frei();
   if (!d?.success) {
     toast(d?.error || t('settings.error'), 'error');

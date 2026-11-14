@@ -192,9 +192,8 @@ export async function openManDetail(type, id, colorId) {
   let item = finde(manuelleFiguren(), manuelleTeile());
   // Die Caches der Reiter Teile und Minifiguren folgen deren Suche, Lagerort und Kontowahl; die Finanztabelle
   // nicht. Fehlt der Eintrag, wird er deshalb ungefiltert gesucht — der Cache des Reiters bleibt, wie er ist.
-  if (!item && type === 'fig')
-    item = finde((await api('GET', '/v1/minifigs/manual').catch(() => null))?.figs, undefined);
-  if (!item && type !== 'fig') item = finde(undefined, (await api('GET', '/v1/parts/manual').catch(() => null))?.parts);
+  if (!item && type === 'fig') item = finde((await api('GET', '/v1/minifigs/manual'))?.figs, undefined);
+  if (!item && type !== 'fig') item = finde(undefined, (await api('GET', '/v1/parts/manual'))?.parts);
   // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die Eintraege aller Konten; ohne diese
   // Angabe schrieb der Server in die Zeile des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte
   // des Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher 99|9), und die Antwort
@@ -221,7 +220,7 @@ export async function openManDetail(type, id, colorId) {
     type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
       : `/v1/parts/${encodeURIComponent(id)}/${parseInt(String(colorId), 10) || 0}/acquisitions`;
-  const ad = await api('GET', acqUrl).catch(() => null);
+  const ad = await api('GET', acqUrl);
   const acqs = ad?.acquisitions || [];
 
   setzeHtml(bodyEl, verbinde(manDetailZeilen(type, id, ziel.colorId, item, acqs, ad)));
@@ -396,11 +395,11 @@ async function loadManAcqModal(type, id, colorId) {
     type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
       : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
-  const ad = await api('GET', url).catch(() => null);
+  const ad = await api('GET', url);
   // Wie im Set-Dialog: Ohne Mitgliederliste und ohne owner_user_id wüsste die Eigentümer-Auswahl nicht,
   // worauf sie steht.
   if (!erfassung.mitglieder.length) {
-    const hm = await api('GET', '/v1/sets/household-members').catch(() => null);
+    const hm = await api('GET', '/v1/sets/household-members');
     erfassung.mitglieder = hm?.members || [];
   }
   erfassung.besitzer = ad?.owner_user_id ?? ME?.id ?? null;
@@ -579,7 +578,7 @@ async function manAcqDelete(type, id, colorId, acqId) {
   // Mengenfeld im Detaildialog nachführen
   const qEl = G('man-det-qty');
   if (qEl && d.new_quantity !== undefined) qEl.value = d.new_quantity;
-  const ad = await api('GET', listUrl).catch(() => null);
+  const ad = await api('GET', listUrl);
   const acqs = ad?.acquisitions || [];
   // Zusammenfassung im Detaildialog auffrischen
   const sumEl = G('man-acq-summary');

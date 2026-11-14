@@ -36,8 +36,7 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
   assert.equal(passwortZuKurz(123), true, 'Eine Zahl hat kein .length — sie darf nicht durchrutschen');
   // Die Gegenrichtung, damit die Zeile darueber nicht bloss „alles ist zu
   // kurz" beweist: Aus der Zahl wird ihre Ziffernfolge, und die ist lang
-  // genug. (Hier stand zuerst `true` — ein Irrtum beim Schreiben dieses
-  // Tests, nicht im Code: `String(123456789)` hat neun Zeichen.)
+  // genug (`String(123456789012)` hat zwölf Zeichen).
   assert.equal(passwortZuKurz(123456789012), false);
 });
 
@@ -110,10 +109,9 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
 
   // Gezaehlt, nicht bloss gesucht
   //
-  // Hier stand `assert.match(quelle, /passwortZuKurz\(/)` — also „kommt in der
-  // Datei vor". SettingsScreen benutzt die Regel an DREI Stellen derselben
-  // Ansicht (Hinweistext, Fehlermarkierung, Knopf-Freigabe). Die Gegenprobe
-  // schaltete eine davon ab, und der Test blieb gruen: Er traf die Datei statt
+  // „Kommt in der Datei vor“ reicht nicht: SettingsScreen benutzt die Regel an DREI
+  // Stellen derselben Ansicht (Hinweistext, Fehlermarkierung, Knopf-Freigabe), und
+  // eine abgeschaltete fiele nicht auf: Die Probe träfe die Datei statt
   // der Stelle — dieselbe Fehlerart wie beim Bruecken-Test, wo der Basisordner
   // statt der Kotlin-Datei geprueft wurde.
   for (const [voll, anzahl, name] of /** @type {[string, number, string][]} */ ([

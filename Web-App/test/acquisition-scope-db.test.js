@@ -75,10 +75,8 @@ test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern', { c
     assert.equal(r.status, 200, 'die Webapp-Route darf nicht mehr 404 „Not found" liefern');
     assert.equal(await preis(), 25.5, 'der neue Kaufpreis muss gespeichert sein');
 
-    // Geschrieben wird in die Erfassung des BESITZERS, nicht des Betrachters.
-    // Hier stand die Spiegelung nach sets.purchase_price; die Spalte ist mit
-    // Migration 0032 weg, die Besitzerfrage bleibt dieselbe — und sie ist der
-    // Grund, aus dem dieser Test existiert.
+    // Geschrieben wird in die Erfassung des BESITZERS, nicht des Betrachters:
+    // Um diese Besitzerfrage geht es in diesem Test.
     const beimBesitzer = await db.get(
       `SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`,
       [subId, SET],

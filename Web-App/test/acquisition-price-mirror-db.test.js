@@ -49,9 +49,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concur
     );
     return (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])).id;
   };
-  // Was die Kachel zeigt: das Aggregat aus den Erfassungen. Hier stand
-  // `SELECT purchase_price FROM sets` — die gespiegelte Spalte, die es seit
-  // Migration 0032 nicht mehr gibt.
+  // Was die Kachel zeigt: das Aggregat aus den Erfassungen, keine gespiegelte Spalte.
   const kachel = async () =>
     (await require('./helpers/sources').bereichsSeite('sets').zustandsAggregat([uid], SN)).avg_purchase_price;
 

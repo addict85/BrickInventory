@@ -197,8 +197,8 @@ export async function openModal(sn) {
   G('set-modal').classList.add('open');
   const [d, ad, hm] = await Promise.all([
     api('GET', `/v1/sets/${sn}`),
-    api('GET', `/v1/sets/${sn}/acquisitions`).catch(() => null),
-    _schreibbar ? null : api('GET', '/v1/sets/household-members').catch(() => null),
+    api('GET', `/v1/sets/${sn}/acquisitions`),
+    _schreibbar ? null : api('GET', '/v1/sets/household-members'),
   ]);
   if (hm?.success) _schreibbar = hm.members.map(m => m.id);
   // Inzwischen geschlossen oder ein anderes Set geöffnet: nichts mehr zeichnen.
@@ -442,7 +442,7 @@ function meldeEntfallen(sn, d, konto) {
 async function frischeDetailAuf(sn, feld) {
   const [d, ad] = await Promise.all([
     api('GET', `/v1/sets/${esc(sn)}`),
-    api('GET', `/v1/sets/${esc(sn)}/acquisitions`).catch(() => null),
+    api('GET', `/v1/sets/${esc(sn)}/acquisitions`),
   ]);
   if (!d?.success || !d.set || curSet?.set_number !== sn || !G('set-modal').classList.contains('open')) return ad;
   set_curSet(d.set);

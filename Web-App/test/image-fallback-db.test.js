@@ -43,8 +43,7 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog', { co
   await haeltSet(db, uid, OHNE, 1);
   await katalogSet(db, OHNE, { name: 'F1 Truck', image_url: CDN });
 
-  // Gegenstück: eine ANDERE Adresse im Katalog — sie muss unveraendert
-  // durchkommen. Vorher stand sie an der sets-Zeile ($1 = EIGEN).
+  // Gegenstück: eine ANDERE Adresse im Katalog — sie muss unveraendert durchkommen.
   await haeltSet(db, uid, MIT, 1);
   await katalogSet(db, MIT, { name: 'Anderes', image_url: EIGEN });
 

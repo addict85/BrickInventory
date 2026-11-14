@@ -60,11 +60,8 @@ test('das Bündel lässt sich auswerten, ohne zu werfen', async () => {
   dom.window.close();
 });
 
-// HINWEIS: Hier stand der Versuch eines Wächters gegen vergessene Importe —
-// erst als Klick-Test durch alle Reiter, dann als statische Prüfung "jeder
-// modulfremde Aufruf muss importiert sein".
-//
-// Beide sind wieder entfernt, weil sie nicht funktionierten:
+// Kein Wächter gegen vergessene Importe (Klick-Test durch alle Reiter oder statische
+// Prüfung „jeder modulfremde Aufruf muss importiert sein“), weil beide nicht tragen:
 //   • Der Klick-Test scheiterte an abgewiesenen Zusagen aus den Datenabrufen.
 //     Der Node-Test-Runner rechnet die dem Test an, unabhängig von einem
 //     eigenen unhandledRejection-Abfang.

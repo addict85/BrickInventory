@@ -192,8 +192,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
     'Ein fremdes Konto darf die eigene Zusammenfassung nicht entwerten',
   );
   // Die eigene Änderung dagegen schon. `updated_at=updated_at` schreibt
-  // nichts Neues — der Trigger hängt am UPDATE, nicht am Wert. Hier stand
-  // `quantity=quantity`; die Spalte ist mit Migration 0036 weg.
+  // nichts Neues — der Trigger hängt am UPDATE, nicht am Wert.
   await db.run("UPDATE sets SET updated_at=updated_at WHERE user_id=$1 AND set_number='A-1'", [U]);
   assert.equal(
     await PS.zusammenfassungFrisch(U, { strict: true }),

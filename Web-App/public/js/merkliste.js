@@ -262,7 +262,7 @@ export async function katalogAufMerkliste() {
  */
 async function merkMeldung(neu, num) {
   const nr = /-\d+$/.test(num) ? num : num + '-1';
-  const eigen = neu ? await api('GET', `/v1/sets/${encodeURIComponent(nr)}`).catch(() => null) : null;
+  const eigen = neu ? await api('GET', `/v1/sets/${encodeURIComponent(nr)}`) : null;
   const vorhanden = eigen?.success && eigen.set ? eigen.set : null;
   toast(
     vorhanden

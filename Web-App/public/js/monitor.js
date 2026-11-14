@@ -174,7 +174,7 @@ function translateJobSub(sub) {
  * @param {Element} [feld]
  */
 export async function saveJobSchedule(name, payload, feld) {
-  const d = await api('POST', '/v1/admin/job-schedule', { name, ...payload }).catch(() => null);
+  const d = await api('POST', '/v1/admin/job-schedule', { name, ...payload });
   if (d?.success) meldeAmFeld(feld);
   else toast(d?.error || t('settings.error'), 'error');
 }
@@ -461,7 +461,7 @@ const auftragsZeile = (a, mehrfach) => {
 async function zeigeAuftraege() {
   const el = G('auftraege-karte');
   if (!el) return;
-  const d = await api('GET', '/v1/admin/auftraege').catch(() => null);
+  const d = await api('GET', '/v1/admin/auftraege');
   if (!d?.success) {
     el.replaceChildren();
     return;
@@ -542,21 +542,21 @@ if (typeof document !== 'undefined')
 
 /** @param {string} id */
 async function auftragAbbrechen(id) {
-  const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`).catch(() => null);
+  const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();
 }
 
 /** @param {string} art */
 async function auftragsArtJetzt(art) {
-  const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(art)}/jetzt`).catch(() => null);
+  const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(art)}/jetzt`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();
 }
 
 /** @param {string} art */
 async function auftragsArtLeeren(art) {
-  const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(art)}`).catch(() => null);
+  const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(art)}`);
   if (d?.success) toast(tRaw('monitor.auftraege.geleert', { n: d.entfernt }), 'success');
   else toast(d?.error || t('settings.error'), 'error');
   await zeigeAuftraege();

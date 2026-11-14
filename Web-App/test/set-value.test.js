@@ -224,10 +224,8 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   );
   assert.match(sv, /r\.purchase_price != null/, 'Erfassungen ohne Kaufpreis dürfen den Nenner nicht aufblähen');
 
-  // Hier stand eine Regel auf den Rueckfall `set.purchase_price != null ?
-  // parseFloat(set.purchase_price) : null` in der Bewertung. Mit Migration 0032
-  // gibt es die Spalte nicht mehr; die Bewertung nimmt ausschliesslich den
-  // gewichteten Kaufpreis aus den Erfassungen. Das ist die Nachfolgeregel.
+  // Die Bewertung nimmt ausschliesslich den gewichteten Kaufpreis aus den
+  // Erfassungen, keinen Rueckfall auf eine Spalte der Bestandszeile.
   const fc = require('./helpers/sources').finanzQuelle();
   assert.match(
     fc,

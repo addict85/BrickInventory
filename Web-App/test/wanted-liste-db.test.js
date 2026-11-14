@@ -249,7 +249,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
  * `# pass 21 / # fail 0`; die Zahlen von A bis C verschieben sich
  * entsprechend.
  *
- *   M  `unit_price` wieder weggelassen (der Stand vor Marcos Wunsch)
+ *   M  `unit_price` weggelassen
  *      → `# pass 19 / # fail 2`. Rot: „MAXPRICE wird zum Kaufpreis".
  *   N  `unit_price: a.posten.maxPreis` ohne die Bedingung, also auch bei
  *      MAXPRICE=-1 ein Feld mit `null`
