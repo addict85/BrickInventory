@@ -189,13 +189,17 @@ test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
   // ── Sendereihenfolge, wie der Erfassungsstrom sie erzeugt ───────────────
   // Die Route meldet vor und nach dem Ergänzen selbst; dazwischen meldet katalogHolen().
   const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-  const route = require('./helpers/sources').kompakt(lies('routes/api_v1/sets.ts'));
+  const route = require('./helpers/sources').kompakt(lies('routes/api_v1/setsImport.ts'));
   // Die Route und ihr Helfer ergaenzeImStrom (vor der Router-Fabrik).
   const strom =
     route.slice(
       route.indexOf("router.post('/sets/add-stream'"),
       route.indexOf("router.post('/sets/:setNumber/parts'"),
-    ) + route.slice(route.indexOf('async function ergaenzeImStrom('), route.indexOf('const uploadKontingentMb'));
+    ) +
+    route.slice(
+      route.indexOf('async function ergaenzeImStrom('),
+      route.indexOf('export function baueSetsImportRouter'),
+    );
   assert.ok(strom.includes('setErgaenzen('), 'Erfassungsstrom nicht gefunden — Anker stimmt nicht mehr');
   const erfassen = lies('src/sets/erfassen.ts');
   const katalog = erfassen.slice(
