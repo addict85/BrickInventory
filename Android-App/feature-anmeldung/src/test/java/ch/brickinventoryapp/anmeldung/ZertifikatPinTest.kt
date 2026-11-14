@@ -7,6 +7,8 @@ import ch.brickinventoryapp.sicherheit.WahlVertrauen
 import ch.brickinventoryapp.sicherheit.ZertifikatUngeklaert
 import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
 import ch.brickinventoryapp.sicherheit.Abschrift
+import ch.brickinventoryapp.sicherheit.CA_FAMILIEN
+import ch.brickinventoryapp.sicherheit.blattPinSchluessel
 import ch.brickinventoryapp.sicherheit.fingerabdruckAnfang
 import ch.brickinventoryapp.sicherheit.fingerabdruckLesbar
 import ch.brickinventoryapp.sicherheit.passtZumPin
@@ -114,6 +116,18 @@ import javax.net.ssl.SSLEngine
  *   AA in Abschrift.von() zu kurz wieder PASST_NICHT → rot „eine Abschrift mit
  *      Doppelpunkten ist zu kurz …“; gegenproben/abschrift-zu-kurz-unerkannt.patch
  *   (Die Doppelpunkte beim Tippen prüft core-ui, AbschriftformTest.)
+ * Gegenproben zum zweiten Pin und zu den CA-Familien (14.11.2026, kotlinc gegen
+ * ServerVertrauen.kt, JUnit lokal):
+ *   AB in pruefe() wieder `if (traegtPin(…)) return` ohne pruefeBlatt() → rot „ein neuer
+ *      Serverschluessel unter derselben oeffentlichen Wurzel …“;
+ *      gegenproben/blattpin-ungeprueft.patch
+ *   AC gleicherBetreiber() wieder über das O= im Subjekt → rot „dasselbe O= im Subjekt
+ *      macht noch keine Familie …“; gegenproben/familie-nach-subjekt.patch
+ *   AD in bestaetige() das Abtippen beim Erstkontakt nicht geprüft (`freiwillig` auch mit
+ *      Eingabe) → rot „beim Erstkontakt darf man abtippen …“;
+ *      gegenproben/erstkontakt-abschrift-ungeprueft.patch
+ *   AE in pruefeBlatt() `|| ausCode` gestrichen → rot „ein Code vom angemeldeten Bildschirm
+ *      tauscht den Serverschluessel …“; gegenproben/blattpin-code-fragt.patch
  */
 class ZertifikatPinTest {
 
@@ -154,8 +168,13 @@ class ZertifikatPinTest {
 
     private fun eigener() = "${server.url("/").host}:${server.port}"
 
-    private fun hole(kette: X509ExtendedTrustManager, eigen: String = eigener(), fremd: X509ExtendedTrustManager = kette): Boolean {
-        val tm = PinVertrauen(kette, pins, eigenerServer = { eigen }, frage = frage, fremdeHosts = fremd)
+    private fun hole(
+        kette: X509ExtendedTrustManager,
+        eigen: String = eigener(),
+        fremd: X509ExtendedTrustManager = kette,
+        familien: Map<String, String> = PROBE_FAMILIE,
+    ): Boolean {
+        val tm = PinVertrauen(kette, pins, eigenerServer = { eigen }, frage = frage, fremdeHosts = fremd, familien = familien)
         val ctx = SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
         val c = OkHttpClient.Builder().sslSocketFactory(ctx.socketFactory, tm)
             .connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build()
@@ -413,8 +432,8 @@ class ZertifikatPinTest {
     /**
      * Let's Encrypt wechselt Zwischenstellen (R10, R11, E5, E6 …) und Wurzeln derselben
      * Familie (ISRG Root X1 → X2). Beides darf nicht nach einem neuen Fingerabdruck fragen,
-     * sonst lernt man, die Warnung wegzutippen. Erkannt wird die Familie an der Organisation
-     * im Subjekt der System-Wurzel; ohne CT gilt sie nur, wenn das System beide kennt.
+     * sonst lernt man, die Warnung wegzutippen. Erkannt wird die Familie an einer festen
+     * Liste (CA_FAMILIEN, hier PROBE_FAMILIE); ohne CT gilt sie nur, wenn das System beide kennt.
      */
     @Test
     fun `eine neue Wurzel desselben Betreibers gilt ohne neue Frage`() {
@@ -525,7 +544,7 @@ class ZertifikatPinTest {
     @Test
     fun `ohne Host gilt ein oeffentlicher Pin nur fuer seine Wurzel und deren Familie`() {
         val sys = system(OEFF_WURZEL, OEFF2_WURZEL, FAM_X1, FAM_X2)
-        val tm = PinVertrauen(sys, pins, eigenerServer = { "nas:8443" }, frage = frage, fremdeHosts = sys)
+        val tm = PinVertrauen(sys, pins, eigenerServer = { "nas:8443" }, frage = frage, fremdeHosts = sys, familien = PROBE_FAMILIE)
         pins.merkePin("nas:8443", spkiFingerabdruck(zert(OEFF_WURZEL)))
         tm.checkServerTrusted(arrayOf(zert(OEFF_BLATT_A), zert(OEFF_ZW_A)), "ECDHE_ECDSA")
         val fremd = runCatching { tm.checkServerTrusted(arrayOf(zert(OEFF2_BLATT)), "ECDHE_ECDSA") }.isFailure
@@ -639,10 +658,104 @@ class ZertifikatPinTest {
         assertNull(parseQrPayload("""{"url":"https://nas","token":"fremd"}"""))
     }
 
+    /**
+     * Nach einer Erneuerung mit neuem Schlüssel unter derselben öffentlichen Wurzel. Pins ziehen
+     * mit auf den neuen Port des Testservers, wie bei einem Neustart desselben Servers.
+     */
+    private fun neuerServer(blattKey: String, kette: List<String>) {
+        val alt = eigener()
+        server.shutdown()
+        server = MockWebServer()
+        starte(blattKey, kette)
+        pins.map.filterKeys { it.startsWith(alt) }.forEach { (k, v) -> pins.map[k.replaceFirst(alt, eigener())] = v }
+    }
+
+    @Test
+    fun `ein neuer Serverschluessel unter derselben oeffentlichen Wurzel fragt bewusst nach`() {
+        starte(OEFF_BLATT_A_KEY, listOf(OEFF_BLATT_A, OEFF_ZW_A))
+        assertFalse(hole(system(OEFF_WURZEL)))
+        assertTrue(frage.bestaetige(pins))
+        assertEquals("Mit dem Ja zur Wurzel ist auch das Blatt gemerkt",
+            spkiFingerabdruck(zert(OEFF_BLATT_A)), pins.pin(blattPinSchluessel(eigener())))
+        assertTrue(hole(system(OEFF_WURZEL)))
+
+        neuerServer(OEFF_BLATT_B_KEY, listOf(OEFF_BLATT_B, OEFF_ZW_B))
+        assertFalse("Ein anderer Serverschlüssel geht nicht still durch", hole(system(OEFF_WURZEL)))
+        assertEquals(0, server.requestCount)
+        val f = frage.offen.value!!
+        assertEquals(ZertifikatUngeklaert.Art.SCHLUESSEL_NEU, f.art)
+        assertEquals(spkiFingerabdruck(zert(OEFF_BLATT_A)), f.erwartet)
+        assertEquals(spkiFingerabdruck(zert(OEFF_BLATT_B)), f.fingerabdruck)
+        assertEquals("Der Wurzel-Pin bleibt", spkiFingerabdruck(zert(OEFF_WURZEL)), pins.pin(eigener()))
+        assertTrue("Bewusst bestätigt gilt der neue Schlüssel", frage.bestaetige(pins))
+        assertEquals(spkiFingerabdruck(zert(OEFF_BLATT_B)), pins.pin(blattPinSchluessel(eigener())))
+        assertTrue(hole(system(OEFF_WURZEL)))
+    }
+
+    @Test
+    fun `ohne gemerkten Serverschluessel wird er beim ersten Durchlauf festgehalten`() {
+        starte(OEFF_BLATT_A_KEY, listOf(OEFF_BLATT_A, OEFF_ZW_A))
+        pins.merkePin(eigener(), spkiFingerabdruck(zert(OEFF_WURZEL)))
+        assertTrue("Ältere Fassung ohne zweiten Pin: keine Frage", hole(system(OEFF_WURZEL)))
+        assertNull(frage.offen.value)
+        assertEquals(spkiFingerabdruck(zert(OEFF_BLATT_A)), pins.pin(blattPinSchluessel(eigener())))
+    }
+
+    @Test
+    fun `ein Code vom angemeldeten Bildschirm tauscht den Serverschluessel ohne Frage`() {
+        starte(OEFF_BLATT_B_KEY, listOf(OEFF_BLATT_B, OEFF_ZW_B))
+        pins.merkePin(blattPinSchluessel(eigener()), spkiFingerabdruck(zert(OEFF_BLATT_A)))
+        pins.halteVor(eigener(), spkiFingerabdruck(zert(OEFF_WURZEL)))
+        assertTrue(hole(system(OEFF_WURZEL)))
+        assertNull(frage.offen.value)
+        assertEquals(spkiFingerabdruck(zert(OEFF_BLATT_B)), pins.pin(blattPinSchluessel(eigener())))
+    }
+
+    @Test
+    fun `der Serverschluessel bindet nur unter einer oeffentlichen Wurzel, eine eigene CA erneuert still`() {
+        starte(ERNEUERT_BLATT1_KEY, listOf(ERNEUERT_BLATT1, ERNEUERT_WURZEL))
+        pins.merkePin(eigener(), spkiFingerabdruck(zert(ERNEUERT_WURZEL)))
+        pins.merkePin(blattPinSchluessel(eigener()), spkiFingerabdruck(zert(ERNEUERT_BLATT2)))
+        assertTrue("Caddy erneuert sein internes Blatt alle paar Stunden", hole(system(FREMD)))
+        assertNull(frage.offen.value)
+    }
+
+    @Test
+    fun `dasselbe O= im Subjekt macht noch keine Familie, nur die feste Liste`() {
+        starte(FAM_BLATT1_KEY, listOf(FAM_BLATT1, FAM_ZW1))
+        val beide = system(FAM_X1, FAM_X2, OEFF_WURZEL)
+        pins.merkePin(eigener(), spkiFingerabdruck(zert(FAM_X2)))
+        assertFalse("Gleiches O=, aber in keiner Familie", hole(beide, familien = emptyMap()))
+        assertEquals(ZertifikatUngeklaert.Art.GEAENDERT, frage.offen.value?.art)
+        frage.verwerfen()
+        assertTrue("Dieselben Wurzeln als Familie eingetragen", hole(beide))
+
+        assertEquals(CA_FAMILIEN["C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M="], CA_FAMILIEN["diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI="])
+        assertFalse("ISRG und Google sind verschiedene Betreiber",
+            CA_FAMILIEN["C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M="] == CA_FAMILIEN["hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc="])
+        assertTrue(CA_FAMILIEN.keys.all { Base64.getDecoder().decode(it).size == 32 })
+    }
+
+    @Test
+    fun `beim Erstkontakt darf man abtippen, falsch Abgetipptes gilt nicht`() {
+        starte()
+        assertFalse(hole(system(ROOT)))
+        assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
+        assertFalse("Falsch abgetippt", frage.bestaetige(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
+        assertNull(pins.pin(eigener()))
+        assertTrue("Richtig abgetippt", frage.bestaetige(pins, abgeschrieben()))
+        assertTrue(hole(system(ROOT)))
+    }
+
     private companion object {
         val PW = "test".toCharArray()
         fun zert(b64: String): X509Certificate = CertificateFactory.getInstance("X.509")
             .generateCertificate(Base64.getDecoder().decode(b64).inputStream()) as X509Certificate
+
+        /** Die Probe-Wurzeln X1 und X2 als eine Familie, wie ISRG Root X1 und X2 in [CA_FAMILIEN]. */
+        val PROBE_FAMILIE: Map<String, String> by lazy {
+            mapOf(spkiFingerabdruck(zert(FAM_X1)) to "Probe CA", spkiFingerabdruck(zert(FAM_X2)) to "Probe CA")
+        }
 
         const val ROOT = "MIIBlTCCATugAwIBAgIUCbgn7Upu9fEAMGToKKauXo+baGUwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQnJpY2sgV3VyemVsMCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAXMRUwEwYDVQQDDAxCcmljayBXdXJ6ZWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAR8FJcl3BEyvVpJgfQ/T5qw/+pweuS6179KUZKyiCZGxiBp5q11Lyk/Z/qZ3lYWC8vf5F1vn/BNqU7bbKB3HhkPo2MwYTAdBgNVHQ4EFgQUXGDtWh02N49g+YF9OEkqvnoC1EgwHwYDVR0jBBgwFoAUXGDtWh02N49g+YF9OEkqvnoC1EgwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIhALnFIf/TxItrcCD4WHUT6D3XfqsMqHQ8Rx7Qjc7304s4AiADtT8yG+NtvZHTDM/cmC/eJWf/LsA1xnJTA5yXuGlxzg=="
         const val INTER = "MIIBlzCCAT2gAwIBAgIUQyjZ8Us4p6zbuUu9OD8NEe+rg0IwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQnJpY2sgV3VyemVsMCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAZMRcwFQYDVQQDDA5CcmljayBad2lzY2hlbjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABKHmNbAOfGEGwyrPGQynBjdkBGW5x/8pNc/Lcpad3cW5GqsvY5WChv5QSJhnj/3jWqC/9hIcIgoOR6w1OsgpN16jYzBhMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS/HkuEroFohODqD2wk4HPnlSdDQDAfBgNVHSMEGDAWgBRcYO1aHTY3j2D5gX04SSq+egLUSDAKBggqhkjOPQQDAgNIADBFAiAb/nz4SUy5/d2t/ci7w0eBD9c7HadJ4CcVtCs4ugUuFwIhAJAxMmuBap9q2jYYNRmSymGdOBt78fT12KETYQ4uWnaO"

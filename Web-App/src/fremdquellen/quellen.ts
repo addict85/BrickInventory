@@ -5,6 +5,7 @@ import { erzeugeBricklink } from '../../clients/bricklink';
 import { erzeugeBrickset } from '../../clients/brickset';
 import { erzeugeRebrickable } from '../../clients/rebrickable';
 import { produktTitel } from '../../clients/upcitemdb';
+import { widerrufslisteAbruf } from '../../clients/googleAttestation';
 
 export { alsAbrufFehler } from '../../clients/abrufFehler';
 export { BricklinkNichtErreichbar } from '../../clients/bricklink';
@@ -48,6 +49,7 @@ export function baueQuellen(z: KlientenZugang) {
     brickset: bs,
     produktTitel: (ean13: string) => produktTitel(rb.httpsGetRobust, ean13),
     ladeKatalogCsv,
+    widerrufslisteAbruf,
   };
 }
 

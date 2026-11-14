@@ -44,6 +44,7 @@
     <string name="nutzer_ca_frage_ja">Trotzdem einschalten</string>
     <string name="setup_qr_titel">Diesen Server übernehmen?</string>
     <string name="setup_qr_ziel">Der QR-Code führt zu diesem Server:</string>
+    <string name="setup_qr_ziel_bestaetigen">Ja, %1$s ist mein Server</string>
     <string name="setup_qr_hinweis">Die App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
     <string name="setup_qr_international" tools:ignore="TypographyDashes">Der Servername enthält Zeichen aus anderen Schriften und steht hier in seiner technischen Form (xn--…). Solche Buchstaben sehen bekannten zum Verwechseln ähnlich: Vergleiche den Namen Zeichen für Zeichen mit deinem Server.</string>
     <string name="setup_qr_anderer_server">Dieser Code führt zu einem anderen Server als dem bisherigen (%1$s). Fährst du fort, wirst du dort abgemeldet, und alles, was du ab jetzt erfasst, geht an den neuen Server.</string>
@@ -998,6 +999,9 @@
     <string name="zert_bisher">Bisher bestätigt</string>
     <string name="zert_vertrauen">Diesem Zertifikat vertrauen</string>
     <string name="zert_vertrauen_neu">Neues Zertifikat annehmen</string>
+    <string name="zert_titel_schluessel_neu">Der Server hat einen neuen Schlüssel</string>
+    <string name="zert_text_schluessel_neu">%1$s zeigt ein gültiges Zertifikat derselben Zertifizierungsstelle, aber mit einem anderen Schlüssel als bisher. Das ist nach einer Erneuerung des Zertifikats normal – es kann aber auch ein Zertifikat sein, das jemand anderem ausgestellt wurde. Es wurde nichts gesendet. Nur annehmen, wenn das Zertifikat des Servers gerade erneuert wurde.</string>
+    <string name="zert_erstkontakt_abtippen">Fingerabdruck stattdessen abtippen</string>
     <string name="zert_nutzer_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
     <string name="zert_geaendert_eingabe">Die letzten 12 Paare des neuen Fingerabdrucks (z. B. 3F:A2:…), abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Web-App scannen.</string>
@@ -1128,6 +1132,7 @@
     <string name="alerts_intro_more">Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
     <string name="zf_pflicht_kurz">Verwalterrechte brauchen einen zweiten Faktor.</string>
     <string name="zf_share">Teilen</string>
+    <string name="zf_codes_speichern">Als Datei speichern</string>
     <string name="zf_share_title">Wiederherstellungscodes</string>
     <string name="passwort_aendern_fehlt">Aktuelles Passwort, neues Passwort und Wiederholung eingeben, dann ändern.</string>
     <string name="erfassen_nummer_fehlt">Zuerst eine Setnummer eingeben.</string>

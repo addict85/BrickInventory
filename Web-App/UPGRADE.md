@@ -1772,7 +1772,8 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
   Schlüssel mehr hinterlegen: zuerst die App aktualisieren.
 - **Geräte ohne Attestation** (sehr alte oder veränderte Geräte, Emulatoren)
   bekommen in der App eine Meldung und führen heikle Schritte in der Webapp aus.
-- **Widerrufsliste:** Die Liste widerrufener Attestierungsschlüssel
+- **Widerrufsliste** (**überholt durch Abschnitt 60**, dort wird sie geprüft):
+  Die Liste widerrufener Attestierungsschlüssel
   (`https://android.googleapis.com/attestation/status`) prüft der Server nicht,
   er bräuchte dafür Zugang ins Internet. Ein widerrufener Schlüssel eines
   kompromittierten Geräts käme durch, bräuchte aber weiterhin einen Token in
@@ -2072,3 +2073,30 @@ wird). Hinweise:
 - Zweiter Faktor: Nach 20 falschen Codes in 24 Stunden geht die Anmeldung für
   dieses Konto nur noch mit Wiederherstellungscode oder Passkey; der Inhaber
   bekommt sofort eine Mail. Nichts zu tun.
+
+## 60. Widerrufsliste und gesperrter Bootloader bei der Attestation (Migration 0113)
+
+- **Was sich ändert:** Ein Geräteschlüssel wird nur noch angenommen, wenn
+  1. kein Zertifikat seiner Kette auf Googles Widerrufsliste steht
+     (`https://android.googleapis.com/attestation/status`),
+  2. die Attestation einen gesperrten Bootloader (`deviceLocked`) und einen
+     verifizierten Start (`verifiedBootState = Verified`) meldet. Geräte mit
+     offenem Bootloader oder eigenem ROM mit eigenem Startschlüssel (`SelfSigned`)
+     führen heikle Schritte in der Webapp aus.
+- **Woher die Liste kommt:** Der Job-Prozess lädt sie als geplanten Auftrag
+  `widerrufsliste` beim Start und danach alle sechs Stunden und legt sie in der
+  Datenbank ab (`laufzustand`). Eine unlesbare Antwort oder ein Netzfehler lässt
+  die letzte gute Liste stehen; der Auftrag erscheint dann unter
+  **Hintergrundarbeiten** als gescheitert.
+- **Ohne Netz:** Ist die letzte geladene Liste älter als
+  `ATTESTATION_WIDERRUF_TAGE` (Vorgabe 7) oder gab es nie eine, nimmt der Server
+  **keinen neuen Geräteschlüssel** an (`… abgewiesen: widerrufsliste_fehlt` im
+  Protokoll). Schon hinterlegte Schlüssel gelten weiter. Der Job-Prozess braucht
+  dafür HTTPS zu `android.googleapis.com`; wer ihn ohne Internet betreibt, kann
+  in der App keine Schlüssel mehr hinterlegen und nutzt die Webapp für heikle
+  Schritte.
+- **Optional:** `ATTESTATION_PATCH_MINDESTENS=JJJJMM` verlangt mindestens diesen
+  Sicherheitspatch des Geräts (`… abgewiesen: patchstand_alt`).
+- **Zu tun:** nichts, ausser der Job-Prozess erreicht das Internet nicht. Der
+  Stichtag für Altschlüssel ohne Attestation (Abschnitt 49, 1. Februar 2027)
+  bleibt.

@@ -17,6 +17,7 @@ export const AUFTRAGS_ARTEN = [
   'aufraeumen_taeglich',
   'preise_nachladen',
   'konto_dateien',
+  'widerrufsliste',
 ] as const;
 export type AuftragsArt = (typeof AUFTRAGS_ARTEN)[number];
 

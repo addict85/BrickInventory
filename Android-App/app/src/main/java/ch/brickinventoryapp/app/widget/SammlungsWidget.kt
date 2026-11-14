@@ -32,7 +32,9 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import ch.brickinventoryapp.app.AppSperreAblage
 import ch.brickinventoryapp.app.MainActivity
+import ch.brickinventoryapp.ui.components.AppSperre
 import ch.brickinventoryapp.ressourcen.R
 import androidx.hilt.work.HiltWorker
 import ch.brickinventoryapp.data.Darstellungsablage
@@ -137,8 +139,9 @@ class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val zugang = runCatching { EntryPointAccessors.fromApplication(context, WidgetZugang::class.java) }.getOrNull()
         val angemeldet = fangeAusserAbbruch { zugang?.zugangsdaten()?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
-        // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt.
-        val zeigen = zugang?.darstellung()?.widgetWerteZeigen() == true
+        // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt und die App-Sperre nicht greift.
+        val zeigen = zugang?.darstellung()?.widgetWerteZeigen() == true &&
+            !AppSperre.verdecktWidget(AppSperreAblage(context))
         val zahlen = widgetAnzeige(WidgetAblage.lies(context), angemeldet)
         // Die Texte in der Sprache der App, nicht des Systems (LanguageManager).
         val ctx = LanguageManager.localizedContext(context)

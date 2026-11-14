@@ -110,6 +110,16 @@ den Commits, nicht hier.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
   einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/konto/passkeys.ts` —
   `passkeys-db`. TOTP: `src/konto/zweiterFaktor.ts` — `zweiter-faktor-db`.
+- Schrittschutz der App: Den Geräteschlüssel nimmt der Server nur mit Android
+  Key Attestation an (`src/konto/attestation/`): Kette bis zu Googles Wurzel,
+  kein Glied auf Googles Widerrufsliste, Schlüssel im TEE oder StrongBox mit
+  Gerätesperre bei jeder Benutzung, gesperrter Bootloader und verifizierter
+  Start (RootOfTrust `deviceLocked`, `verifiedBootState = Verified`), auf Wunsch
+  ein Mindest-Patchstand (`ATTESTATION_PATCH_MINDESTENS`). Die Liste lädt der
+  Job-Prozess alle sechs Stunden (Auftrag `widerrufsliste`); fehlt sie oder ist
+  sie älter als `ATTESTATION_WIDERRUF_TAGE` (7), nimmt der Server keinen neuen
+  Schlüssel an, statt ungeprüft anzunehmen (UPGRADE.md §60) —
+  `geraete-attestation`, `schrittschutz-db`, `attestation-widerrufsliste-db`.
 - Kein Weg am zweiten Faktor vorbei: Es gibt genau einen Bestätigungsweg,
   `bestaetigeMitFaktor` (`src/konto/http/anmeldung.ts`). Bei aktivem TOTP
   verlangt er immer Code oder Passkey-Antwort, auch mit dem
@@ -470,6 +480,34 @@ L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
   rendert ein isolierter Prozess.
 - R8 verkleinert und benennt um, auch die API-Modelle; Keep-Regeln nur, wo
   Reflexion oder das Framework es verlangen (`Android-App/app/proguard-rules.pro`).
+
+- **MASVS-R wird nicht angestrebt, Play Integrity nicht eingebaut** (Prüfung vom
+  14.11.2026, M3): Die App wird nicht über Google Play verteilt; Play Integrity
+  bräuchte ein Google-Cloud-Projekt und ein Play-Konto, meldete jede Prüfung an
+  Google und schlösse eigene ROMs aus. Was davon für die Daten zählt, prüft der
+  Server selbst und nicht umgehbar in der App: Den Geräteschlüssel des
+  Schrittschutzes nimmt er nur mit Key Attestation an (TEE oder StrongBox,
+  Gerätesperre, App-Paket und Signatur, gesperrter Bootloader und verifizierter
+  Start aus RootOfTrust, keine widerrufene Kette, auf Wunsch Mindest-Patchstand;
+  siehe „Anmeldung und Sitzung“). Heikle Schritte (Gutschein-PIN, Verwaltung,
+  zweiter Faktor) gehen damit nur von einem unveränderten Gerät mit echter App.
+  Nicht abgedeckt: Lesen und Ändern auf einem gerooteten oder mit Hooks
+  versehenen Gerät ausserhalb dieser Schritte (Anzeige, Bestand) und eine
+  Lücke im Gerät selbst, die RootOfTrust nicht verrät.
+- **App-Sperre ist ein Sichtschutz der Oberfläche** (N3): Sie verdeckt die App
+  nach der gewählten Zeit im Hintergrund und verlangt zum Weitermachen
+  Gerätesperre oder Biometrie. Sie verschlüsselt nichts zusätzlich und hält
+  Hintergrundarbeit (Ausgang, Preisalarm, Widget-Abruf) nicht auf. Die Daten
+  schützen der Keystore (Token und Ablagen nur bei entsperrtem Gerät) und der
+  Schrittschutz am Server; das Widget verdeckt Beträge, solange die Sperre
+  greifen kann.
+- **Release-Signatur** (N5): Der Signierschlüssel liegt als Base64-Secret in der
+  GitHub-Environment `release` (`.github/workflows/android-signieren.yml`); dass
+  der Inhaber seine eigene Freigabe erteilen darf (`prevent_self_review` aus),
+  meldet der Workflow nur als Warnung. Bewusste Entscheidung des
+  Ein-Personen-Projekts: Es gibt keinen zweiten Prüfer, und ein Schlüssel in
+  HSM oder Cloud-KMS wäre Infrastruktur, über die der Inhaber entscheidet. Das
+  Restrisiko steht unten („Update der Android-App per Sideload“).
 
 Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 „Daten auf dem Gerät“. Eine Änderung dieser Entscheidung gehört hierher.
