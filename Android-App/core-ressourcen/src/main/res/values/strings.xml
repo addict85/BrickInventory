@@ -1147,6 +1147,7 @@
     <string name="alerts_intro_more">You are notified once per crossing — the same alert can only fire again after the price has moved back to the other side.</string>
     <string name="zf_pflicht_kurz">Administrator rights require a second factor.</string>
     <string name="zf_share">Share</string>
+    <string name="zf_codes_speichern">Save as file</string>
     <string name="zf_share_title">Recovery codes</string>
     <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
     <string name="erfassen_nummer_fehlt">Enter a set number first.</string>
