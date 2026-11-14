@@ -48,7 +48,7 @@ import ch.brickinventoryapp.ui.components.FabPlatz
 import ch.brickinventoryapp.ui.components.KnopfStapel
 import ch.brickinventoryapp.ui.components.ListeUndDetail
 import ch.brickinventoryapp.ui.components.ScanKnopf
-import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.gemeinsam.ui.ScopeFilterZeile
@@ -209,12 +209,9 @@ internal fun MerklisteScreen(
                 ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
             }
 
-            // Der Zustand ist eine Einfachwahl mit drei Antworten — „beide“ ist die
-            // Vorgabe, weil ein Filter sie immer hat (Zustandszeile kennt nur zwei).
-            if (mitKopf) SegmentWahl(
-                optionen = listOf(null to stringResource(R.string.filter_condition_all),
-                                  Zustand.NEU to stringResource(R.string.condition_new),
-                                  Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
+            // Der Zustand schränkt die Liste ein: ein Filter, also Chips wie in Galerie und
+            // Finanzen; Segmente stehen nur für Ansichten (Sets | Teile | Minifiguren).
+            if (mitKopf) ZustandFilterChips(
                 gewaehlt = zustand.zustandFilter,
                 onWahl = { aktionen.setzeMerklisteZustand(it) },
                 modifier = Modifier.padding(horizontal = Abstaende.rand).padding(bottom = Abstaende.klein),
@@ -323,4 +320,17 @@ internal fun MerklisteUndDetail(
             },
         )
     } else liste()
+}
+
+/** Alle | Neu | Gebraucht als Filterchips; bei grosser Schrift brechen sie um statt abzuschneiden. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ZustandFilterChips(gewaehlt: Zustand?, onWahl: (Zustand?) -> Unit, modifier: Modifier = Modifier) {
+    val optionen = listOf(null to R.string.filter_condition_all, Zustand.NEU to R.string.condition_new,
+        Zustand.GEBRAUCHT to R.string.condition_used)
+    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+        optionen.forEach { (wert, text) ->
+            AuswahlChip(selected = wert == gewaehlt, onClick = { onWahl(wert) }, label = { Text(stringResource(text)) })
+        }
+    }
 }
