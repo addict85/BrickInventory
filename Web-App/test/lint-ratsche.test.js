@@ -10,7 +10,7 @@
  *      Probebaums“ rot (seit der Bestand 0 Funde hat, zählt ein Probebaum mit Funden;
  *      12.11.2026 wiederholt)
  *   C  check-test-typen.js: `if (meldungen.length > schranke)` → `if (false)`
- *      → „typecheck:tests …“ rot
+ *      → „typecheck:tests …“ rot (14.11.2026 mit Schranke 0 und Probe -1 wiederholt)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -78,16 +78,26 @@ for (const art of ['lint', 'format']) {
 }
 
 test('typecheck:tests: rot über der Schranke, der Bestand hält sie', () => {
-  // Ein Lauf genügt: Mit Schranke 10 ist er rot und nennt die Zahl, die die echte Schranke halten muss.
-  const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tt-')), 's.json');
-  fs.writeFileSync(datei, JSON.stringify({ testtypen: 10 }));
-  const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'check-test-typen.js')], {
-    cwd: ROOT,
-    env: { ...process.env, LINT_SCHRANKEN: datei },
-    encoding: 'utf8',
-    timeout: 300_000,
-  });
-  assert.equal(r.status, 1, r.stdout + r.stderr);
-  const ist = Number(/(\d+) Meldungen, erlaubt sind 10/.exec(r.stderr)?.[1]);
-  assert.ok(ist > 10 && ist <= SCHRANKEN.testtypen, `${ist} Meldungen, Schranke ${SCHRANKEN.testtypen}`);
+  // Der Bestand hat 0 Meldungen: Einmal mit der echten Schranke grün, einmal mit -1 rot,
+  // damit sichtbar ist, dass das Skript überhaupt vergleicht.
+  const lauf = (/** @type {number | null} */ schranke) => {
+    const env = { ...process.env };
+    if (schranke !== null) {
+      const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tt-')), 's.json');
+      fs.writeFileSync(datei, JSON.stringify({ testtypen: schranke }));
+      env.LINT_SCHRANKEN = datei;
+    }
+    return spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'check-test-typen.js')], {
+      cwd: ROOT,
+      env,
+      encoding: 'utf8',
+      timeout: 300_000,
+    });
+  };
+  const echt = lauf(null);
+  assert.equal(echt.status, 0, echt.stdout + echt.stderr);
+  assert.match(echt.stdout, new RegExp(`\\] 0 Meldungen \\(Schranke ${SCHRANKEN.testtypen}\\)`));
+  const zuKnapp = lauf(-1);
+  assert.equal(zuKnapp.status, 1, zuKnapp.stdout + zuKnapp.stderr);
+  assert.match(zuKnapp.stderr, /0 Meldungen, erlaubt sind -1/);
 });
