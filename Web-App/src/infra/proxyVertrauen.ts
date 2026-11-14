@@ -28,7 +28,7 @@ function proxyFehlertext(falsch: string[], nurZuWeit: boolean): string {
     return (
       `TRUST_PROXY enthält ${liste}: ein Netz mit mehr als 8 Adressen (IPv4 weiter als /29, IPv6 weiter als /120). ` +
       'Besser nur die feste Adresse des Proxys; wer das Netz wirklich braucht, setzt PROXY_NETZ_BESTAETIGT=1 ' +
-      '(UPGRADE.md, Abschnitt 61).'
+      '(UPGRADE.md#runde-24).'
     );
   return (
     `TRUST_PROXY enthält ${liste}. Erlaubt sind nur die feste Adresse ` +

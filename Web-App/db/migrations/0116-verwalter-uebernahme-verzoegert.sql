@@ -12,5 +12,8 @@ CREATE TABLE verwalter_uebernahmen (
   CHECK ((art = 'passwort') = (passwort_hash IS NOT NULL))
 );
 
+-- Ein gelöschter Verwalter nimmt seine Ankündigungen mit; ohne Index suchte das jede Zeile ab.
+CREATE INDEX idx_verwalter_uebernahmen_durch ON verwalter_uebernahmen (durch_id);
+
 -- Nur im Systemrahmen: RLS ohne Policy verbirgt jede Zeile vor der Laufzeitrolle.
 ALTER TABLE verwalter_uebernahmen ENABLE ROW LEVEL SECURITY;

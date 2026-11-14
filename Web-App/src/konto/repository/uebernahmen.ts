@@ -41,7 +41,7 @@ export async function nimmFaellige(db: DbSchnittstelle): Promise<{ gilt: Ueberna
   return { gilt: weg.filter(z => z.gilt), verworfen: weg.filter(z => !z.gilt).length };
 }
 
-export async function brichAb(db: DbSchnittstelle, ziel: number): Promise<UebernahmeArt[]> {
+export async function brichUebernahmenAb(db: DbSchnittstelle, ziel: number): Promise<UebernahmeArt[]> {
   const r = await db.all<{ art: UebernahmeArt }>('DELETE FROM verwalter_uebernahmen WHERE ziel_id = $1 RETURNING art', [
     ziel,
   ]);

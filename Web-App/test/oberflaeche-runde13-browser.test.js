@@ -79,7 +79,7 @@ test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async 
   });
 
   await t.test('Einladung nennt das Hauptkonto', async () => {
-    const { code } = await haushalt.einladungAnlegen(andere);
+    const { code } = await require('./helpers/sources').alsKonto(andere, () => haushalt.einladungAnlegen(andere));
     assert.match(code, CODE);
     assert.match(
       await b.auswerten(text('#household-redeem-box')),

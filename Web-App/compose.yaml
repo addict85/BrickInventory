@@ -281,7 +281,7 @@ services:
       # (feste Adresse unten). Erst damit weiss der Server, dass die Anfrage
       # über TLS kam (Cookie mit Secure, HSTS).
       TRUST_PROXY: ${TRUST_PROXY:-172.28.73.10}
-      # Ein Netz über acht Adressen in TRUST_PROXY nur mit 1 (UPGRADE.md, Abschnitt 61).
+      # Ein Netz über acht Adressen in TRUST_PROXY nur mit 1 (UPGRADE.md#runde-24).
       PROXY_NETZ_BESTAETIGT: ${PROXY_NETZ_BESTAETIGT:-0}
       # Platz für Uploads aller Konten zusammen in MB.
       UPLOAD_GESAMT_MB: ${UPLOAD_GESAMT_MB:-20480}

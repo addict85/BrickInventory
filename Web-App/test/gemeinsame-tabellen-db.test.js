@@ -151,6 +151,7 @@ const GEMEINSAM = {
   api_aufrufe: { art: KONTO, eingabe: 'Zähler je Konto (konto)' },
   gutschein_guthaben_schranke: { art: KONTO, eingabe: 'je Gutschein (id = vouchers.id)' },
   verwaltungsprotokoll: { art: KONTO, eingabe: 'Handlungen der Verwalter (verwalter_id)' },
+  verwalter_uebernahmen: { art: KONTO, eingabe: 'angekündigte Änderung an einem Verwalterkonto (ziel_id)' },
 };
 
 /** Dateien mit Tabellennamen aus einer Variablen: Wohin sie schreiben, steht daneben. */
@@ -227,6 +228,7 @@ const BESITZER = {
     'schritt_freigaben',
     'user_sessions',
     'users',
+    'verwalter_uebernahmen',
     'verwaltungsprotokoll',
     'webauthn_challenges',
     'zweiter_faktor',

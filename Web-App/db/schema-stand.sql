@@ -1075,6 +1075,7 @@ CREATE TABLE verwalter_uebernahmen (
   CONSTRAINT verwalter_uebernahmen_pkey PRIMARY KEY (ziel_id, art),
   CONSTRAINT verwalter_uebernahmen_ziel_id_fkey FOREIGN KEY (ziel_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE INDEX idx_verwalter_uebernahmen_durch ON verwalter_uebernahmen USING btree (durch_id);
 ALTER TABLE verwalter_uebernahmen ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE verwaltungsprotokoll (

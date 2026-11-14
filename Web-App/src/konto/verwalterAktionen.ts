@@ -137,7 +137,7 @@ export async function fuehreFaelligeUebernahmenAus(k: KontoKontext): Promise<num
 
 /** Nach jeder Anmeldung: Wer sich anmelden kann, braucht keinen Neuanfang durch einen anderen Verwalter. */
 export async function uebernahmenAbbrechen(k: KontoKontext, uid: number): Promise<UebernahmeArt[]> {
-  const arten = await k.uebernahmen.brichAb(uid);
+  const arten = await k.uebernahmen.brichUebernahmenAb(uid);
   if (!arten.length) return arten;
   for (const art of arten) await verwalterAktionMerken(k, uid, uid, 'uebernahme_abgebrochen', art);
   verwalterHinweisNebenher(k, 'verwaltung_uebernahme_abgebrochen', {
