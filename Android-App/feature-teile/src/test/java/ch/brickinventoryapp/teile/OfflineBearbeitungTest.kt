@@ -13,9 +13,6 @@ import ch.brickinventoryapp.data.lokal.ServerSender
 import ch.brickinventoryapp.offline.SpeicherAusgang
 import ch.brickinventoryapp.offline.SpeicherBestand
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse

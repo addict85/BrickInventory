@@ -5,8 +5,6 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.vertrag.SetAggregate
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.testHaushaltRepository
 import ch.brickinventoryapp.vertrag.SetItem

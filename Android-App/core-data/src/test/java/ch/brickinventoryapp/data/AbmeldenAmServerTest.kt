@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.KontoApi
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.netz.di.ServerWaechter
 import ch.brickinventoryapp.netz.di.Zugangslage
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory

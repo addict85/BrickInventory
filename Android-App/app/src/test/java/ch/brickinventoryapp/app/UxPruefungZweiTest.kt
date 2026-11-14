@@ -29,9 +29,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.gemeinsam.ui.ErfassungsFelder
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
@@ -50,8 +47,6 @@ import ch.brickinventoryapp.testing.testHaushaltRepository
 import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.testing.testTeileRepository
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -77,7 +72,6 @@ import androidx.compose.ui.state.ToggleableState
 import ch.brickinventoryapp.data.VorwaermNetz
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
 import ch.brickinventoryapp.verwaltung.ui.screens.CacheEreignisse
 import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringScreen

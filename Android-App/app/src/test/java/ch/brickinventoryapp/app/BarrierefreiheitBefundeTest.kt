@@ -62,7 +62,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.teile.ui.PlPart

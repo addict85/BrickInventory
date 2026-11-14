@@ -1,10 +1,6 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.model.fach.Postenart
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.testHaushaltRepository

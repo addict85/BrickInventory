@@ -3,7 +3,6 @@ package ch.brickinventoryapp.konto
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.konto.ui.DesignWahl
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.ladeEinstellungen

@@ -69,7 +69,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.ui.components.BILD_ERSATZ
 import ch.brickinventoryapp.ui.components.ErfassenFab
 import ch.brickinventoryapp.ui.components.MarkenKopf

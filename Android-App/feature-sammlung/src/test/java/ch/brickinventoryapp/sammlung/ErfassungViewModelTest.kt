@@ -8,7 +8,6 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.vertrag.AddSetResponse
-import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.testing.testKatalogRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

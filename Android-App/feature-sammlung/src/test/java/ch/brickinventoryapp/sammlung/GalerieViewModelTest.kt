@@ -4,7 +4,6 @@ import ch.brickinventoryapp.model.fach.Setsortierung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.vertrag.SetAggregate
-import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.vertrag.AddPartRequest
 import ch.brickinventoryapp.offline.Bearbeitung

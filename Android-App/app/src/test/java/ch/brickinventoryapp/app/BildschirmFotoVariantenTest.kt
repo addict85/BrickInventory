@@ -40,8 +40,6 @@ import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.data.SetAnleger
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.testHaushaltRepository
@@ -77,8 +75,6 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.katalog.ui.CatalogUiState
 import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.teile.ui.TeilelisteUiState
@@ -129,8 +125,6 @@ import org.robolectric.shadows.ShadowDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.test.performScrollTo
-import ch.brickinventoryapp.data.repository.FigurenRepository
-import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState

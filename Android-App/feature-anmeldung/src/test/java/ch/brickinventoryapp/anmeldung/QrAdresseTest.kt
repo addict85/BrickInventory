@@ -2,7 +2,6 @@ package ch.brickinventoryapp.anmeldung
 
 import ch.brickinventoryapp.data.Anmeldeablage
 import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.anmeldung.ui.qrAdresseUngueltig
 import ch.brickinventoryapp.anmeldung.ui.qrWechseltServer
 import ch.brickinventoryapp.anmeldung.ui.viewmodel.AnmeldungViewModel
@@ -19,7 +18,6 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.testing.testHaushaltRepository
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.zustand.ui.Blickfeld

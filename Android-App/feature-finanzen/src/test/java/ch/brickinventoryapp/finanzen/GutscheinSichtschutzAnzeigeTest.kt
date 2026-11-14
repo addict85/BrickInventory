@@ -8,7 +8,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheinPdfSchutz
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheineRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme

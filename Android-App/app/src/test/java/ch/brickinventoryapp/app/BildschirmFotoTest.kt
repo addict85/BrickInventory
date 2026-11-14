@@ -13,8 +13,6 @@ import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.vertrag.Gutschein
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.data.repository.KatalogRepository
-import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.testing.testKatalogRepository
 import ch.brickinventoryapp.testing.testSetsRepository
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular

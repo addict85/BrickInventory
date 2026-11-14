@@ -3,7 +3,6 @@ package ch.brickinventoryapp.zustand
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.vertrag.LoginResponse
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.sitzung.kontoUebernehmen
 import kotlinx.coroutines.runBlocking

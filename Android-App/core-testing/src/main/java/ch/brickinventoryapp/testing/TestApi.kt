@@ -16,7 +16,6 @@ import okhttp3.Request
 import java.io.IOException
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.data.repository.FigurenRepository

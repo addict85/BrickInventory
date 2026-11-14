@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse

@@ -3,8 +3,6 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.repository.fehlerTextZuCode
-import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse

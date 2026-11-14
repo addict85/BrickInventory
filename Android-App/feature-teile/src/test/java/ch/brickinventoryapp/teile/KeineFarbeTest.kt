@@ -8,8 +8,6 @@ import ch.brickinventoryapp.vertrag.BrickColor
 import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.vertrag.Part
 import ch.brickinventoryapp.vertrag.PartValuationItem
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState

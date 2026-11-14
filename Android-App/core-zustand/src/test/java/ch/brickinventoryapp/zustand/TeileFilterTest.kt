@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
-import ch.brickinventoryapp.data.repository.TeileRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test

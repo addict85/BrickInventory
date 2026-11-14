@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

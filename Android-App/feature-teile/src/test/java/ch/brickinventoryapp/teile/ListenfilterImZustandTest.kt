@@ -7,8 +7,6 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.Dispatchers
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
-import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.model.data.ScopeFilter
 import androidx.lifecycle.SavedStateHandle
 import org.junit.Test

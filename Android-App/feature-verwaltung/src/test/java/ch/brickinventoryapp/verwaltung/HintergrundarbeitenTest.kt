@@ -2,9 +2,7 @@ package ch.brickinventoryapp.verwaltung
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.model.ui.model.AuftragStatus
 import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testVerwaltungRepository
