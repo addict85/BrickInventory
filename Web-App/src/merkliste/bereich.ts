@@ -1,17 +1,17 @@
 /** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
  * Parameter; erzeugeMerkliste bindet ihn einmal für alle. So greift kein Dienst auf den
  * Prozess zu, und ein Test gibt einen eigenen Zugang. */
-import { baueKontext, bindeZugang } from '../infra/bereich';
+import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import * as merklisteDienst from './merkliste';
 import * as wantedListeDienst from './wantedListe';
 import { zugang, type MerklisteAbhaengigkeiten, type MerklisteKontext } from './kontext';
 
 export type { MerklisteAbhaengigkeiten, MerklisteKontext } from './kontext';
 
-export function erzeugeMerkliste(a: MerklisteAbhaengigkeiten) {
+export function erzeugeMerkliste(a: MerklisteAbhaengigkeiten, einblick?: Einblick<MerklisteKontext>) {
   const k: MerklisteKontext = baueKontext(a, zugang);
+  einblick?.(k);
   return {
-    ...k,
     ...bindeZugang(k, merklisteDienst, [
       'legeMerkpostenAn',
       'loescheMerkposten',

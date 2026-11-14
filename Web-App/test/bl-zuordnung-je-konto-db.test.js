@@ -138,7 +138,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   });
 
   await t.test('Bewertung: Nummern je Konto', async () => {
-    const repo = _req('src/finanzen/prozess.js').finanzenBereich().bewertung;
+    const repo = require('./helpers/sources').testBereich('finanzen').bewertung;
     // Jedes Konto bewertet seinen Bestand; zwei fremde Konten stehen nie in einer Bewertung.
     const je2 = async f => [...(await alsKonto(ANNA, () => f([ANNA]))), ...(await alsKonto(BRUNO, () => f([BRUNO])))];
     const figuren = await je2(ids => repo.manuelleFigurenZurBewertung(ids));

@@ -21,6 +21,11 @@ import type { KontoKontext } from './kontext';
 
 export type { TokenScope, TokenBenutzer };
 
+/** Ob die Kennung (Präfix des gespeicherten Hashs) zum Token der Anfrage gehört. */
+export function eigenerZugang(token: string | null, kennung: string): boolean {
+  return !!token && hashToken(token).startsWith(kennung);
+}
+
 export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }

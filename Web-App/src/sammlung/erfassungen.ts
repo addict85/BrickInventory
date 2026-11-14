@@ -119,8 +119,8 @@ export async function erfassungAendern(
 
   const ownerReq = body.owner_user_id;
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
-    const from = await k.haushalt.haushalt.umzugsQuelle(uid, art, id);
-    const to = await k.haushalt.haushalt.schreibzielOderNull(uid, ownerReq);
+    const from = await k.haushalt.umzugsQuelle(uid, art, id);
+    const to = await k.haushalt.schreibzielOderNull(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { unchanged: true };
     // Wie verschiebeSet(): Gegenrichtungen sperren die Zeilen beider Konten umgekehrt.
@@ -155,7 +155,7 @@ export async function erfassungAendern(
 
   const besitzer = await besitzerDerZeile(k, art, id, uid);
   await mitInventarSperre(k.db, besitzer, bestandsSchluessel(art, keys), async tx => {
-    const wids = await k.haushalt.haushalt.schreibbereich(uid);
+    const wids = await k.haushalt.schreibbereich(uid);
     const acq = await zeileImSchreibfeld(k, tx, art, wids, id, keys);
     // Ab hier zählt der Besitzer der Zeile, nicht der Betrachter.
     const ownerId = Number(acq.user_id);
@@ -208,7 +208,7 @@ export async function erfassungLoeschen(
   const a = arten(k)[art];
   const besitzer = await besitzerDerZeile(k, art, id, uid);
   const menge = await mitInventarSperre(k.db, besitzer, bestandsSchluessel(art, keys), async tx => {
-    const acq = await zeileImSchreibfeld(k, tx, art, await k.haushalt.haushalt.schreibbereich(uid), id, keys);
+    const acq = await zeileImSchreibfeld(k, tx, art, await k.haushalt.schreibbereich(uid), id, keys);
     const ownerId = Number(acq.user_id);
     await repo.loescheErfassung(tx, art, id, ownerId);
     const q = await mengeDesBestands(tx, art, ownerId, keys);
@@ -219,5 +219,5 @@ export async function erfassungLoeschen(
 }
 
 export async function setErfassungen(k: SammlungKontext, sicht: Sicht | number[], setNumber: string) {
-  return k.erfassungen.setErfassungenImBlickfeld(await k.haushalt.haushalt.blickfeldAus(sicht), setNumber);
+  return k.erfassungen.setErfassungenImBlickfeld(await k.haushalt.blickfeldAus(sicht), setNumber);
 }

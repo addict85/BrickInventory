@@ -64,7 +64,7 @@ test('der Cache-Stream hängt vor dem Client-Stream', () => {
   // Aufrufer vom Aufruf bis body.pipe(res).
   const start = CODE.indexOf("const rohTyp = String(r.kopf['content-type']");
   const blk = CODE.slice(start, CODE.indexOf('body.pipe(res);', start) + 20);
-  const iCache = blk.indexOf('inDenCache(body'),
+  const iCache = blk.indexOf('inDenCache(d, body'),
     iClient = blk.indexOf('body.pipe(res)');
   assert.ok(iCache > 0 && iClient > iCache, 'inDenCache(body …) muss vor body.pipe(res) stehen');
   const cache = CODE.slice(CODE.indexOf('function inDenCache('), CODE.indexOf('body.pipe(ws)'));

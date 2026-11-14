@@ -433,7 +433,7 @@ test('Webapp: der Filter steht neben dem Kontofilter und geht an den Server', as
 test('die Längengrenze steht in Server, Fehlertext, Webapp und App gleich', async () => {
   const { LAGERORT_MAX_ZEICHEN: max, normalisiereLagerort } = {
     ..._req('src/bestand/lagerort.js'),
-    ..._req('src/bestand/prozess.js').bestandBereich().lagerortDienst,
+    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
   };
   assert.ok(max > 0);
   assert.equal(normalisiereLagerort('x'.repeat(max)), 'x'.repeat(max));

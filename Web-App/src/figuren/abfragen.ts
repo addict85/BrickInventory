@@ -20,7 +20,7 @@ export async function getMinifigs(
   userIdWahl: Sicht | number | number[],
   { search, source, set_number, page = 1, page_size = null }: FigurenWunsch = {},
 ) {
-  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
@@ -50,14 +50,14 @@ export async function getMinifigs(
 
   // Mit Gesamtzahl für den Endlos-Scroll, wie bei getSets.
   return {
-    figs: await k.haushalt.haushalt.besitzerAnhaengen(uids, mappedFigs),
+    figs: await k.haushalt.besitzerAnhaengen(uids, mappedFigs),
     total: figCount ? figCount.c : mappedFigs.length,
   };
 }
 
 // Eine Zählung für Webapp und App; die App zählte vorher selbst und anders.
 export async function getMinifigStats(k: FigurenKontext, userIdWahl: Sicht | number | number[]) {
-  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const row = await k.figurenListe.figurenKennzahlen(uids);
   return {
@@ -81,7 +81,7 @@ export async function getManualMinifigs(
   }: { page?: number; page_size?: number | null; search?: string | null } = {},
   ab = new Abstriche(),
 ) {
-  const userId = await k.haushalt.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const figs = await k.figurenListe.manuelleFigurenListe(
@@ -101,5 +101,5 @@ export async function getManualMinifigs(
   );
   const mitPreis = mitZustand.map(f => ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
 
-  return k.haushalt.haushalt.besitzerAnhaengen(uids, mitPreis);
+  return k.haushalt.besitzerAnhaengen(uids, mitPreis);
 }

@@ -28,7 +28,8 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
-const { liefereBild } = _req('src/katalog/http/bildAuslieferung.js');
+const liefereBild = (...a) =>
+  _req('src/katalog/http/bildAuslieferung.js').liefereBild(require('./helpers/sources').testDienste(), ...a);
 
 const ordner = path.join(wurzel, 'data', 'images', 'parts');
 const NR = `zz-vorschau-${process.pid}`;

@@ -42,7 +42,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
   const D_ = _req('src/auftraege/dienst.js');
   const D = { ...D_, merkePreiseVor: n => alsKonto(uid, () => D_.merkePreiseVor(n)) };
-  const repo = _req('src/auftraege/prozess.js').auftraegeBereich().auftraege;
+  const repo = require('./helpers/sources').testBereich('auftraege').auftraege;
   const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
   const leeren = () => db.run(`DELETE FROM auftraege WHERE art = 'preise_nachladen'`);
   const zeilen = () =>
@@ -54,8 +54,8 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
   t.after(async () => {
     await leeren();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
-    await _req('src/auftraege/prozess.js')
-      .auftraegeBereich()
+    await require('./helpers/sources')
+      .testBereich('auftraege')
       .db.benachrichtigung.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});
@@ -159,7 +159,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     const id = await D.merkePreiseVor({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
     const stand = () => db.get('SELECT fortschritt FROM auftraege WHERE id = $1', [id]).then(r => r.fortschritt);
     const gesehen = [];
-    const w = erzeugeWorker({
+    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
       preise_nachladen: {
         ausfuehren: async (_n, k) => {
           await k.fortschritt({ erledigt: 5.532, gesamt: 8 });

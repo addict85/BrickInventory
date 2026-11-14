@@ -3,7 +3,7 @@
  * greift kein Dienst auf den Zugang des Prozesses zu. Gesucht wird beim Aufruf,
  * damit ein Test eine Funktion des Moduls ersetzen kann. */
 import type { SetsAbhaengigkeiten, SetsKontext } from './kontext';
-import { baueKontext } from '../infra/bereich';
+import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import * as erfassen from './erfassen';
 import * as setService from './setService';
 import * as lesen from './lesen';
@@ -18,27 +18,11 @@ import * as csvImport from './csvImport';
 import * as nachErfassung from './nachErfassung';
 import * as csvImportLauf from './csvImportLauf';
 
-type Gebunden<F> = F extends (sk: SetsKontext, ...a: infer A) => infer R ? (...a: A) => R : never;
-
-function binde<M, N extends keyof M & string>(
-  sk: SetsKontext,
-  modul: M,
-  namen: readonly N[],
-): { [K in N]: Gebunden<M[K]> } {
-  const gebunden: Record<string, unknown> = {};
-  for (const name of namen)
-    gebunden[name] = (...a: unknown[]) => (modul[name] as (sk: SetsKontext, ...x: unknown[]) => unknown)(sk, ...a);
-  return gebunden as { [K in N]: Gebunden<M[K]> };
-}
-
-export function erzeugeSets(a: SetsAbhaengigkeiten) {
+export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKontext>) {
   const sk: SetsKontext = baueKontext(a, () => ({}));
-  const fremd = (['katalog', 'finanzen', 'auftraege', 'bestand', 'einstellungen', 'konto'] as const).filter(
-    b => sk[b].db !== sk.db,
-  );
-  if (fremd.length) throw new Error(`erzeugeSets: ${fremd.join(', ')} über einen anderen Zugang als db`);
+  einblick?.(sk);
   return {
-    ...binde(sk, erfassen, [
+    ...bindeZugang(sk, erfassen, [
       'recordAcquisition',
       'findSetInScope',
       'setErfassen',
@@ -46,11 +30,11 @@ export function erzeugeSets(a: SetsAbhaengigkeiten) {
       'addSet',
       'addSetWithDate',
     ]),
-    ...binde(sk, setService, ['updateSet', 'buildSetsCsv']),
-    ...binde(sk, lesen, ['getSets', 'getSet', 'getSetConditionAggregate', 'withSetAggregate']),
-    ...binde(sk, loeschen, ['loescheSet', 'loescheSetFuer']),
-    ...binde(sk, setMove, ['verschiebeSet', 'moveSetBetweenAccounts', 'moveManualAcquisition']),
-    ...binde(sk, inhalt, [
+    ...bindeZugang(sk, setService, ['updateSet', 'buildSetsCsv']),
+    ...bindeZugang(sk, lesen, ['getSets', 'getSet', 'getSetConditionAggregate', 'withSetAggregate']),
+    ...bindeZugang(sk, loeschen, ['loescheSet', 'loescheSetFuer']),
+    ...bindeZugang(sk, setMove, ['verschiebeSet', 'moveSetBetweenAccounts', 'moveManualAcquisition']),
+    ...bindeZugang(sk, inhalt, [
       'setInfo',
       'setInfoFuerKonto',
       'teilelisteDesSets',
@@ -58,8 +42,8 @@ export function erzeugeSets(a: SetsAbhaengigkeiten) {
       'teileDesSetsImportieren',
       'teilelisteMitNacharbeit',
     ]),
-    ...binde(sk, barcode, ['setZumBarcode']),
-    ...binde(sk, preise, [
+    ...bindeZugang(sk, barcode, ['setZumBarcode']),
+    ...bindeZugang(sk, preise, [
       'setPreis',
       'waehrungVon',
       'setAlarmeLesen',
@@ -68,23 +52,23 @@ export function erzeugeSets(a: SetsAbhaengigkeiten) {
       'alarmCsvImportStarten',
       'setPreisVerlauf',
     ]),
-    ...binde(sk, anleitungen, ['anleitungMerken', 'anleitungLoeschen', 'anleitungenNeuLaden']),
-    ...binde(sk, csvImport, [
+    ...bindeZugang(sk, anleitungen, ['anleitungMerken', 'anleitungLoeschen', 'anleitungenNeuLaden']),
+    ...bindeZugang(sk, csvImport, [
       'setCsvImportStarten',
       'setCsvImportAbbrechen',
       'csvImportStand',
       'csvImportStandFuerStrom',
       'csvImportStandAbonnieren',
     ]),
-    ...binde(sk, dienst, [
+    ...bindeZugang(sk, dienst, [
       'rebrickableListe',
       'setGehoertKonto',
       'setVerschieben',
       'lagerortDesSetsSetzen',
       'lagerorteMitVorgabe',
     ]),
-    ...binde(sk, nachErfassung, ['zieheNach', 'ladeSetBilder']),
-    ...binde(sk, csvImportLauf, ['fuehreCsvImportAus', 'csvImportAufgegeben']),
+    ...bindeZugang(sk, nachErfassung, ['zieheNach', 'ladeSetBilder']),
+    ...bindeZugang(sk, csvImportLauf, ['fuehreCsvImportAus', 'csvImportAufgegeben']),
   };
 }
 

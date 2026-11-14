@@ -26,8 +26,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const mails = [];
-const echterMailer = _req('src/mail/mailer.js');
-require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports = Object.assign({}, echterMailer, {
+require('./helpers/sources').ersetzeDienste('mail', {
   mailEingerichtet: async () => true,
   sendKontoHinweisMail: async (an, _name, art) => {
     mails.push({ an, art });

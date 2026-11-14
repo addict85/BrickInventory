@@ -45,7 +45,7 @@ const { warte } = require('./helpers/zeit');
 test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 1 }, async t => {
   const db = testDaten();
   t.after(async () => {
-    await _req('startup/jobsProzess.js').stoppeJobs();
+    await _req('startup/jobsProzess.js').stoppeJobs(require('./helpers/sources').testDienste());
     await testZugang()
       .benachrichtigung.close()
       .catch(() => {});
@@ -59,7 +59,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     return;
   }
   await db.run('DELETE FROM auftraege');
-  await _req('startup/jobsProzess.js').starteJobs(true);
+  await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste(), true);
 
   const zeilen = await db.all(`SELECT art, schluessel, nutzlast, EXTRACT(EPOCH FROM faellig_ab - NOW())::int AS in_sek
                                  FROM auftraege WHERE status = 'offen'`);
@@ -86,7 +86,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
         zeilen.some(z => z.schluessel === `nachlauf:${schritt}`),
         `Nachlauf ${schritt} fehlt`,
       );
-    await _req('startup/jobsProzess.js').starteJobs(true);
+    await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste(), true);
     const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE status = 'offen'
                                     GROUP BY schluessel HAVING COUNT(*) > 1 LIMIT 1`);
     assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');
@@ -98,12 +98,12 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
 
   await t.test('das Lebenszeichen folgt dem Worker', async () => {
     const jp = _req('startup/jobsProzess.js');
-    const { liesZustand, loescheZustand } = _req('src/auftraege/prozess.js').auftraegeBereich().laufzustand;
+    const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
     for (let i = 0; i < 50 && !(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL)); i++) await warte(20);
     assert.ok(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), 'nach dem Start fehlt das Lebenszeichen');
-    await jp.stoppeJobs();
+    await jp.stoppeJobs(require('./helpers/sources').testDienste());
     await loescheZustand(jp.LEBENSZEICHEN_SCHLUESSEL);
-    await jp.erneuereLebenszeichen();
+    await jp.erneuereLebenszeichen(require('./helpers/sources').testDienste());
     assert.equal(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), null, 'ohne Worker kein Lebenszeichen');
   });
 });

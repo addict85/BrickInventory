@@ -69,7 +69,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
     assert.ok(roh.startsWith('v2:') && !roh.includes('8642'), roh);
     assert.equal(
-      (await _req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine.gutschein(uid, b.voucher.id)).pin,
+      (await require('./helpers/sources').testBereich('gutscheine').gutscheine.gutschein(uid, b.voucher.id)).pin,
       '8642',
       'entschlüsselt lesbar',
     );
@@ -86,7 +86,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
   await t.test('Altbestand wird nachverschlüsselt', async () => {
     const gs = {
       ..._req('src/gutscheine/repository/gutscheine.js'),
-      ..._req('src/gutscheine/prozess.js').gutscheineBereich().gutscheine,
+      ...require('./helpers/sources').testBereich('gutscheine').gutscheine,
     };
     const { id } = await gs.gutscheinAnlegen(uid, {
       number: '5045076374450013131',

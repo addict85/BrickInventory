@@ -33,9 +33,17 @@ export interface Bildwerk {
   vorschauErzeugen(relPfad: string): Promise<string | null>;
 }
 
+/** Nur die Form einer Drossel: kontext.ts lädt nichts aus rateLimiter.ts, das ihn selbst braucht. */
+interface Drossel {
+  waitForSlot(): Promise<void>;
+  throttle(waitMs: number): void;
+}
+
 export interface KatalogAbhaengigkeiten {
   db: Db;
   faecher: Faecher;
+  /** Rebrickable-Drosseln des Satzes Dienste (rateLimiter.ts); die Klienten bekommen dieselben. */
+  drossel: { vordergrund: Drossel; hintergrund: Drossel };
   bildwerk: Bildwerk;
   /** Ersetzte Fremdquellen (fremdquellen.ts); ohne sie die echten. */
   quellen?: Partial<Quellen> | undefined;

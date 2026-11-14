@@ -11,7 +11,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = testDaten();
-const { moveSetBetweenAccounts } = _req('src/sets/index.js');
+const { moveSetBetweenAccounts } = require('./helpers/sources').bereichsSeite('sets');
 
 test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;

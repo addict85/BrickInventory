@@ -14,7 +14,11 @@ const os = require('node:os');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { liefereAusCache } = _req('src/katalog/http/bildCacheAuslieferung.js');
+const liefereAusCache = (...a) =>
+  _req('src/katalog/http/bildCacheAuslieferung.js').liefereAusCache(
+    require('./helpers/sources').testDienste().katalog,
+    ...a,
+  );
 
 /** Ein res, das nur festhält, was mit ihm geschehen ist. */
 function attrappeRes() {

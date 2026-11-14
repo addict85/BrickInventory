@@ -17,9 +17,7 @@ export async function lagerKonten(
     .map(x => parseInt(x.trim(), 10))
     .filter(Number.isFinite);
   if (!gewuenscht.length) return [nutzer];
-  const erlaubt = schreiben
-    ? await k.haushalt.haushalt.schreibbereich(nutzer)
-    : await k.haushalt.haushalt.blickfeldIds(nutzer);
+  const erlaubt = schreiben ? await k.haushalt.schreibbereich(nutzer) : await k.haushalt.blickfeldIds(nutzer);
   return gewuenscht.filter(id => erlaubt.includes(id));
 }
 

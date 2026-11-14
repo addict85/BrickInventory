@@ -53,7 +53,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
     });
 
     await t.test('erneutes Erfassen ohne Quellen lässt den Katalognamen stehen', async () => {
-      const r = await _req('src/sets/index.js').addSet({
+      const r = await require('./helpers/sources').bereichsSeite('sets').addSet({
         setNumber: SN,
         menge: 1,
         konto: uid,
@@ -67,7 +67,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
     });
 
     await t.test('eine Eingabe ohne Ziffer wird nicht als Set angelegt', async () => {
-      const { addSet } = _req('src/sets/index.js');
+      const { addSet } = require('./helpers/sources').bereichsSeite('sets');
       await assert.rejects(
         addSet({ setNumber: 'abc', menge: 1, konto: uid, zustand: 'N' }),
         e => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',

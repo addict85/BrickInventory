@@ -1,6 +1,6 @@
 import {
-  auftraegeBereich,
   belegKennung,
+  type AuftraegeDienste,
   type AuftragsArt,
   type AuftragsZeile,
   type Fortschritt,
@@ -8,17 +8,8 @@ import {
   AuftragUnterbrochen,
   AuftragVerloren,
   AuftragVerschieben,
-  imNamenDesAuftrags,
-  verschoben,
-  fehlgeschlagen,
-  erledigt,
-  beiNeuemAuftrag,
-  beiAuftragsStand,
-  setzeFortschritt,
-  planeNaechsten,
   hatZeitplan,
   pruefeNutzlast,
-  pruefeZugehoerigkeit,
   NutzlastUngueltig,
   type Nutzlast,
 } from '../src/auftraege';
@@ -48,15 +39,13 @@ interface Lauf {
 
 /** Der Worker hält das Lease selbst: Ein Handler, der nie ein Lebenszeichen
  * gibt, verlöre sonst nach der Frist seine Zeile und liefe doppelt. */
-function haltePacht(a: AuftragsZeile, ac: AbortController, fristSek: number): () => void {
+function haltePacht(d: AuftraegeDienste, a: AuftragsZeile, ac: AbortController, fristSek: number): () => void {
   const erneuere = async () => {
     if (ac.signal.aborted) return;
-    const ok = await auftraegeBereich()
-      .auftraege.lebenszeichen(a, fristSek)
-      .catch((e: unknown) => {
-        logAndContinue(`auftraege:pacht ${a.art}`)(e);
-        return true;
-      });
+    const ok = await d.lebenszeichen(a, fristSek).catch((e: unknown) => {
+      logAndContinue(`auftraege:pacht ${a.art}`)(e);
+      return true;
+    });
     if (!ok) ac.abort(new AuftragVerloren());
   };
   const t = setInterval(
@@ -71,10 +60,10 @@ function haltePacht(a: AuftragsZeile, ac: AbortController, fristSek: number): ()
 
 /** Meldungen eines Laufs nacheinander, sonst überholte ein später Stand einen früheren.
  * Eine gescheiterte Meldung scheitert für ihren Aufrufer, nicht für alle folgenden. */
-function fortschrittsKette(a: AuftragsZeile, ac: AbortController, fristSek: number) {
+function fortschrittsKette(d: AuftraegeDienste, a: AuftragsZeile, ac: AbortController, fristSek: number) {
   let kette: Promise<boolean> = Promise.resolve(true);
   return (f: Fortschritt): Promise<boolean> => {
-    const melde = () => setzeFortschritt(a, f, fristSek);
+    const melde = () => d.setzeFortschritt(a, f, fristSek);
     kette = kette.then(melde, melde).then(ok => {
       if (!ok && !ac.signal.aborted) ac.abort(new AuftragVerloren());
       return ok;
@@ -84,11 +73,12 @@ function fortschrittsKette(a: AuftragsZeile, ac: AbortController, fristSek: numb
 }
 
 /** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan. */
-async function folgeplan(a: AuftragsZeile): Promise<void> {
-  if (hatZeitplan(a.art)) await planeNaechsten(a.art).catch(logAndContinue(`auftraege:plan ${a.art}`));
+async function folgeplan(d: AuftraegeDienste, a: AuftragsZeile): Promise<void> {
+  if (hatZeitplan(a.art)) await d.planeNaechsten(a.art).catch(logAndContinue(`auftraege:plan ${a.art}`));
 }
 
 function kontextFuer(
+  d: AuftraegeDienste,
   a: AuftragsZeile,
   ac: AbortController,
   fristSek: number,
@@ -96,11 +86,11 @@ function kontextFuer(
 ): AuftragsKontext {
   return {
     lebenszeichen: async () => {
-      const ok = await auftraegeBereich().auftraege.lebenszeichen(a, fristSek);
+      const ok = await d.lebenszeichen(a, fristSek);
       if (!ok && !ac.signal.aborted) ac.abort(new AuftragVerloren());
       return ok;
     },
-    fortschritt: fortschrittsKette(a, ac, fristSek),
+    fortschritt: fortschrittsKette(d, a, ac, fristSek),
     signal: ac.signal,
     get beendet() {
       return istBeendet() || ac.signal.aborted;
@@ -110,6 +100,7 @@ function kontextFuer(
 }
 
 async function fuehreAuftragAus(
+  d: AuftraegeDienste,
   a: AuftragsZeile,
   ac: AbortController,
   b: Bearbeiter | undefined,
@@ -117,24 +108,25 @@ async function fuehreAuftragAus(
   istBeendet: () => boolean,
 ): Promise<void> {
   let nutzlast: Nutzlast<AuftragsArt> | undefined;
-  const k = kontextFuer(a, ac, fristSek, istBeendet);
-  const lasseLos = haltePacht(a, ac, fristSek);
+  const k = kontextFuer(d, a, ac, fristSek, istBeendet);
+  const lasseLos = haltePacht(d, a, ac, fristSek);
   try {
     // Mehr Versuche als erlaubt: Die früheren stürzten ab, ein weiterer vermutlich auch.
     if (!b || a.versuche > a.max_versuche)
       throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.art}`);
     const geprueft = pruefeNutzlast(a.art, a.nutzlast);
     nutzlast = geprueft;
-    await imNamenDesAuftrags(a, () => b.ausfuehren(geprueft, k, a));
-    if (await erledigt(a)) await folgeplan(a);
+    await d.imNamenDesAuftrags(a, () => b.ausfuehren(geprueft, k, a));
+    if (await d.erledigt(a)) await folgeplan(d, a);
   } catch (e) {
-    await nachFehler(a, b, nutzlast, ac, e);
+    await nachFehler(d, a, b, nutzlast, ac, e);
   } finally {
     lasseLos();
   }
 }
 
 async function nachFehler(
+  d: AuftraegeDienste,
   a: AuftragsZeile,
   b: Bearbeiter | undefined,
   nutzlast: Nutzlast<AuftragsArt> | undefined,
@@ -148,38 +140,37 @@ async function nachFehler(
     return;
   }
   if (grund instanceof AuftragUnterbrochen) {
-    await auftraegeBereich().auftraege.gibZurueck(a);
+    await d.gibZurueck(a);
     return;
   }
   if (e instanceof AuftragVerschieben) {
-    if (await verschoben(a, e.bis, e.grund, e.zaehlt)) {
-      if (nutzlast) await imNamenDesAuftrags(a, async () => b?.aufgegeben?.(nutzlast, e.grund, a));
-      await folgeplan(a);
+    if (await d.verschoben(a, e.bis, e.grund, e.zaehlt)) {
+      if (nutzlast) await d.imNamenDesAuftrags(a, async () => b?.aufgegeben?.(nutzlast, e.grund, a));
+      await folgeplan(d, a);
     }
     return;
   }
   const text = fehlertext(e) || 'Unbekannter Fehler';
   console.warn(`[auftraege] ${a.art} #${a.id} Versuch ${a.versuche}/${a.max_versuche}: ${text}`);
-  if (await fehlgeschlagen(a, text, e instanceof NutzlastUngueltig)) {
-    if (nutzlast) await imNamenDesAuftrags(a, async () => b?.aufgegeben?.(nutzlast, text, a));
-    await folgeplan(a);
+  if (await d.fehlgeschlagen(a, text, e instanceof NutzlastUngueltig)) {
+    if (nutzlast) await d.imNamenDesAuftrags(a, async () => b?.aufgegeben?.(nutzlast, text, a));
+    await folgeplan(d, a);
   }
 }
 
 /** Beim Abschalten: alle Läufe unterbrechen, kurz auf sie warten, und was dann noch
  * läuft, zurückgeben — sonst stünde es bis zum Ablauf der Frist auf 'laeuft'. */
-async function unterbrichLaufende(laufend: Map<string, Lauf>, wartenMs: number): Promise<Lauf[]> {
+async function unterbrichLaufende(d: AuftraegeDienste, laufend: Map<string, Lauf>, wartenMs: number): Promise<Lauf[]> {
   const alle = [...laufend.values()];
   for (const l of alle) if (!l.ac.signal.aborted) l.ac.abort(new AuftragUnterbrochen());
   await Promise.race([Promise.all(alle.map(l => l.fertig)), new Promise(r => setTimeout(r, wartenMs).unref())]);
   const rest = [...laufend.values()];
-  for (const { a } of rest)
-    await auftraegeBereich().auftraege.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+  for (const { a } of rest) await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
   return rest;
 }
 
 /** Mehrere Worker teilen sich die Arbeit über SKIP LOCKED; das NOTIFY beim Einstellen weckt früher als der Takt. */
-function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
+function erzeugeWorker(d: AuftraegeDienste, bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const arten = Object.keys(bearbeiter);
   const exklusiv = arten.filter(a => bearbeiter[a as AuftragsArt]?.exklusiv);
   const parallel = Math.max(1, o.parallel ?? konfig().auftragParallel);
@@ -192,24 +183,21 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   let abmelden: (() => void)[] = [];
   // Am Ende jeder Runde: Daran hängt das Lebenszeichen (startup/jobsProzess.ts).
   let letzteRunde = 0;
-  const exklusivGemerkt = auftraegeBereich()
-    .auftraege.merkeExklusive(exklusiv)
-    .catch(logAndContinue('auftraege:exklusiv'));
+  const exklusivGemerkt = d.merkeExklusive(exklusiv).catch(logAndContinue('auftraege:exklusiv'));
 
   async function belegeUndStarte(): Promise<Lauf | null> {
     await exklusivGemerkt;
-    const a = await auftraegeBereich().auftraege.belegeAuftrag(arten, fristSek, belegKennung(), exklusiv, [
-      ...laufend.keys(),
-    ]);
+    const a = await d.belegeAuftrag(arten, fristSek, belegKennung(), exklusiv, [...laufend.keys()]);
     if (!a) return null;
     if (beendet) {
-      await auftraegeBereich().auftraege.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
+      await d.gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben'));
       return null;
     }
     const ac = new AbortController();
     const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
     laufend.set(a.id, lauf);
-    lauf.fertig = fuehreAuftragAus(a, ac, bearbeiter[a.art], fristSek, () => beendet)
+    // Kein Rahmen um den Lauf: Die Ausführung setzt ihn je Konto (imNamenDesAuftrags).
+    lauf.fertig = fuehreAuftragAus(d, a, ac, bearbeiter[a.art], fristSek, () => beendet)
       .catch(logAndContinue(`auftraege:${a.art}`))
       .finally(() => laufend.delete(a.id));
     return lauf;
@@ -258,7 +246,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     if (gestartet) return;
     gestartet = true;
     letzteRunde = Date.now();
-    abmelden = [beiNeuemAuftrag(geweckt), beiAuftragsStand(s => pruefeZugehoerigkeit(laufend.values(), s))];
+    abmelden = [d.beiNeuemAuftrag(geweckt), d.beiAuftragsStand(s => d.pruefeZugehoerigkeit(laufend.values(), s))];
     takt = setInterval(geweckt, o.taktMs ?? 5000);
     takt.unref();
     void pumpe();
@@ -269,7 +257,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     if (takt) clearInterval(takt);
     for (const ab of abmelden) ab();
     await pumpLauf;
-    const rest = await unterbrichLaufende(laufend, wartenMs);
+    const rest = await unterbrichLaufende(d, laufend, wartenMs);
     console.log(`[auftraege] beendet, ${rest.length} laufende Aufträge zurückgegeben`);
   }
 

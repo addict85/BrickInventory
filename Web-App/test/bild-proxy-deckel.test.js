@@ -52,7 +52,8 @@ const express = require('express');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { warte: pause, bis } = require('./helpers/zeit');
-const { bildDurchreichen } = _req('routes/imgProxy.js');
+const bildDurchreichen = (...a) =>
+  _req('routes/imgProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
 const { raeumeBildCacheAuf } = _req('src/katalog/bilder/imgCacheServe.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 

@@ -68,10 +68,16 @@ const SYSTEM = testName('zeilsys');
 const als = (uid, f) => imNamenVon({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
-/** Alle Bereiche über einen Zugang, wie startup/verdrahtung.ts sie baut. */
-const dienstMit = z =>
-  _req('startup/verdrahtung.js').baueDienste(z, _req('src/auftraege/nacharbeit.js').OHNE_NACHARBEIT);
-const verdrahteMit = z => _req('src/infra/bereich.js').verdrahteDienste(() => dienstMit(z));
+/** Alle Bereiche über einen Zugang, wie startup/verdrahtung.ts sie baut, samt ihren Kontexten. */
+const bauMit = z => {
+  const kontexte = {};
+  const d = _req('startup/verdrahtung.js').baueDienste(z, {
+    nacharbeit: _req('src/auftraege/nacharbeit.js').OHNE_NACHARBEIT,
+    kontexte,
+  });
+  return { d, kontexte };
+};
+const dienstMit = z => bauMit(z).d;
 
 test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   const su = await zugangOderSkip(t, _req);
@@ -196,9 +202,9 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   });
 
   await t.test('im Systemrahmen sieht die Aufräumarbeit alle Konten', async () => {
-    const bestand = dienstMit(app).bestand;
-    assert.equal(await bestand.papierkorb.entferneAeltere(30), 0);
-    assert.equal(await imSystemkontext('test', () => bestand.papierkorb.entferneAeltere(30)), 3);
+    const { papierkorb } = bauMit(app).kontexte.bestand;
+    assert.equal(await papierkorb.entferneAeltere(30), 0);
+    assert.equal(await imSystemkontext('test', () => papierkorb.entferneAeltere(30)), 3);
     assert.deepEqual(await su.all('SELECT id FROM papierkorb'), []);
   });
 
@@ -212,7 +218,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     const sieh = name => async () => {
       gesehen[name] = ids(await alleSets());
     };
-    const w = erzeugeWorker({
+    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
       wechselkurse: { ausfuehren: sieh('ohne Marke') },
       nacharbeit: {
         ausfuehren: async () => {
@@ -283,21 +289,20 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
 
   await t.test('wer einem Haushalt beitritt, vergleicht mit der Währung des Hauptkontos', async () => {
     // Die Dienste über den Zugang mit Zeilenschutz, wie im Betrieb.
-    verdrahteMit(app);
-    const { haushaltBereich } = _req('src/haushalt/prozess.js');
+    const haushalt = dienstMit(app).haushalt;
     const D = await konto('neu');
     await su.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [D]);
     await su.run(`UPDATE user_settings SET value = 'USD' WHERE user_id = $1 AND key = 'currency'`, [A]);
-    const { code } = await als(A, () => haushaltBereich().haushalt.einladungAnlegen(A));
-    const r = await als(D, () => haushaltBereich().haushalt.einladungEinloesen(D, code));
+    const { code } = await als(A, () => haushalt.einladungAnlegen(A));
+    const r = await als(D, () => haushalt.einladungEinloesen(D, code));
     assert.deepEqual(r, { fehler: 'waehrung_ungleich', vars: { haupt: 'USD', unter: 'EUR' } });
   });
 
   await t.test('ein Währungswechsel erreicht auch das Unterkonto des Unterkontos', async () => {
-    verdrahteMit(app);
+    const kontoDienste = dienstMit(app).konto;
     const E = await konto('enkel');
     await su.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [B, E]);
-    await als(A, () => _req('src/konto/nutzerEinstellung.js').setUserSetting(A, 'currency', 'CHF'));
+    await als(A, () => kontoDienste.setUserSetting(A, 'currency', 'CHF'));
     const w = await su.all(`SELECT user_id, value FROM user_settings WHERE key = 'currency' AND user_id = ANY($1)`, [
       [A, B, E],
     ]);
@@ -336,15 +341,15 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Anmeldung findet den Token ohne Konto, der Widerruf löscht ihn', async () => {
-    verdrahteMit(app);
+    const { d, kontexte } = bauMit(app);
     const K = _req('src/konto/index.js');
     const token = `zeilen-token-${process.pid}`;
     await su.run(`INSERT INTO api_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
       K.hashToken(token),
       C,
     ]);
-    assert.equal((await K.validateToken(token))?.user_id, C);
-    await _req('src/konto/geraeteToken.js').revokeAllTokens(C);
+    assert.equal((await d.konto.validateToken(token))?.user_id, C);
+    await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).revokeAllTokens(kontexte.konto, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });
 });

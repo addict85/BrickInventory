@@ -497,6 +497,13 @@ services:
             echo "[caddy]   Ohne sie teilen sich hinter Nginx Proxy Manager o. ä. alle Clients eine Adresse (README.md, „Proxy vor Caddy“)." >&2
             exit 1 ;;
         esac
+        # Ein Präfix bis /7 (0.0.0.0/0, ::/0) glaubte jedem Client seine Adresse: Die Drosseln je Adresse wären wirkungslos.
+        for a in $${VORGELAGERTER_PROXY}; do
+          case "$$a" in */[0-7])
+            echo "[caddy] FEHLER: VORGELAGERTER_PROXY $$a umfasst fast alle Adressen; nur den Proxy davor eintragen (z. B. 172.18.0.5 oder 172.18.0.0/16)." >&2
+            exit 1 ;;
+          esac
+        done
         q=
         if [ -s /ca-eigen/zwischen.key ]; then
           q=/ca-eigen/root.crt

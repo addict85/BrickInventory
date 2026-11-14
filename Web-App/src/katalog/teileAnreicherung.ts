@@ -1,11 +1,7 @@
 /** Füllt set_parts_catalog aus der Rebrickable-API, damit die Teileliste eines
  * Sets Namen und Bilder hat. Bilder werden im Hintergrund geladen; bis dahin
  * gilt die CDN-Adresse. */
-import {
-  cdnImageLimiter,
-  rebrickableBackgroundLimiter as rebrickableLimiter,
-  consumeRebrickableDaily,
-} from './rateLimiter';
+import { cdnImageLimiter, consumeRebrickableDaily } from './rateLimiter';
 import { meldeFehler, fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
@@ -43,11 +39,11 @@ async function apiGet(k: KatalogKontext, url: string, rbKey: string) {
   let serverErrors = 0;
   while (true) {
     if (!(await consumeRebrickableDaily(k))) return null;
-    await rebrickableLimiter.waitForSlot();
+    await k.drossel.hintergrund.waitForSlot();
     const result: JobHttpResult = await rebrickableRoh(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
-      rebrickableLimiter.throttle(wait);
+      k.drossel.hintergrund.throttle(wait);
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
@@ -511,7 +507,7 @@ function _fsPathFromLocal(imageLocal: string) {
 
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
 async function _redlSetStatus(k: KatalogKontext, obj: Record<string, unknown>) {
-  await k.auftraege.laufzustand
+  await k.auftraege
     .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }

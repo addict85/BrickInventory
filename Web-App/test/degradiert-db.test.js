@@ -87,9 +87,9 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
                   VALUES ($1, $2, 10, 'N', 1)`,
       [uid, SN],
     );
-    const { updateSet } = _req('src/sets/index.js');
+    const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
     // Sets fragt den Zustand über die Finanzdienste seines Kontexts (sk.finanzen).
-    const finanzen = _req('src/infra/bereich.js').prozessDienste().finanzen;
+    const finanzen = require('./helpers/sources').testBereich('finanzen');
     const zustandEcht = finanzen.resolveSetCondition;
     finanzen.resolveSetCondition = async (...a) => {
       if (preisKaputt) throw new Error('Zustand nicht lesbar');

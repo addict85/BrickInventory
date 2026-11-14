@@ -6,7 +6,7 @@ import { familieAus, type Schrittaktion } from '../geraeteChallenge';
 import { meldeFehler } from '../../infra/fehler';
 import { sendeFehler } from '../../http/httpAntwort';
 import { istVerwalter } from './anmeldung';
-import { kontoBereich } from '../prozess';
+import type { KontoDienste } from '../bereich';
 
 /** Die Schritte, vor denen die App ihren Schrittschutz zeigt. Die Verwaltung
  * prüft requireApiAdmin selbst, damit keine Verwalter-Route an der Liste vorbeigeht. */
@@ -22,20 +22,31 @@ export function istAppToken(req: Request): boolean {
   return !req.session?.userId && (req.headers.authorization ?? '').startsWith('Bearer ');
 }
 
-export function verlangeFreigabe(req: Request, res: Response, next: NextFunction, aktion: Schrittaktion): void {
-  void freigegeben(req, res, aktion).then(ok => {
+export function verlangeFreigabe(
+  konto: KontoDienste,
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  aktion: Schrittaktion,
+): void {
+  void freigegeben(konto, req, res, aktion).then(ok => {
     if (ok) next();
   });
 }
 
 /** Wie verlangeFreigabe, als Wert: für Routen, die nur für Verwalter mehr tun.
  * Bei `false` ist die Absage schon gesendet. */
-export async function freigegeben(req: Request, res: Response, aktion: Schrittaktion): Promise<boolean> {
+export async function freigegeben(
+  konto: KontoDienste,
+  req: Request,
+  res: Response,
+  aktion: Schrittaktion,
+): Promise<boolean> {
   if (!istAppToken(req)) return true;
   const f = familieAus(req.apiUser);
   try {
     // Ohne Familie (kein created_at) gibt es keinen Schlüssel: zu, nicht offen.
-    const p = f ? await kontoBereich().pruefeFreigabe(f, aktion) : 'kein_schluessel';
+    const p = f ? await konto.pruefeFreigabe(f, aktion) : 'kein_schluessel';
     if (p === 'frei') return true;
     sendeFehler(req, res, 403, p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
   } catch (e) {
@@ -47,16 +58,18 @@ export async function freigegeben(req: Request, res: Response, aktion: Schrittak
 
 /** Für Lesewege, die Verwaltern mehr zeigen: Ein App-Token ohne Freigabe
  * sieht dort, was jedes Konto sieht, statt eine Absage zu bekommen. */
-export async function alsVerwalter(req: Request): Promise<boolean> {
+export async function alsVerwalter(konto: KontoDienste, req: Request): Promise<boolean> {
   if (!istVerwalter(req)) return false;
   if (!istAppToken(req)) return true;
   const f = familieAus(req.apiUser);
-  return !!f && (await kontoBereich().pruefeFreigabe(f, 'verwaltung')) === 'frei';
+  return !!f && (await konto.pruefeFreigabe(f, 'verwaltung')) === 'frei';
 }
 
 /** Hinter anmeldungAmEingang, vor dem Lesen des Rumpfs. */
-export function schrittschutzAmEingang(req: Request, res: Response, next: NextFunction): void {
-  const regel = GESCHUETZT.find(([m, re]) => m === req.method && re.test(req.path));
-  if (regel) verlangeFreigabe(req, res, next, regel[2]);
-  else next();
+export function schrittschutzAmEingang(konto: KontoDienste) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const regel = GESCHUETZT.find(([m, re]) => m === req.method && re.test(req.path));
+    if (regel) verlangeFreigabe(konto, req, res, next, regel[2]);
+    else next();
+  };
 }

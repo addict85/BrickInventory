@@ -22,7 +22,7 @@ const SRC =
   fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8');
 
 test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
-  assert.match(SRC, /async function getMailTheme\(\)/, 'Loader fehlt');
+  assert.match(SRC, /async function getMailTheme\(k: MailKontext\)/, 'Loader fehlt');
   // Früher stand hier die SQL-Anweisung selbst. Seit alle Zugriffe auf
   // global_settings über src/einstellungen/settings.ts laufen, prüft der Test den Weg
   // dorthin — die Aussage ist dieselbe: Das Design ist eine GLOBALE
@@ -30,7 +30,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   // kommen.
   assert.match(
     SRC,
-    /await getGlobalSetting\('app_theme'\)/,
+    /await k\.einstellungen\.getGlobalSetting\('app_theme'\)/,
     'Das Design ist eine globale Einstellung und muss von dort kommen',
   );
   // `'./settings'` ODER `'../src/einstellungen/settings'`: Der Mailer ist mit einer früheren Runde
@@ -40,7 +40,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   // Punkte davor.
   assert.match(
     SRC,
-    /import \{[^}]*getGlobalSetting[^}]*\} from '(?:\.\.\/)*(?:einstellungen(?:\/settings)?|settings)'/,
+    /import type \{ MailKontext \} from '\.\/kontext'/,
     'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage',
   );
   // Bei jedem Zweifel classic — eine E-Mail darf nie am Design scheitern
@@ -53,7 +53,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   // Beide Versandfunktionen müssen es laden
   for (const fn of ['sendVerificationMail', 'sendPasswordResetMail']) {
     const body = SRC.slice(SRC.indexOf(`async function ${fn}(`), SRC.indexOf(`async function ${fn}(`) + 1500);
-    assert.match(body, /const theme = await getMailTheme\(\);/, `${fn} lädt das Design nicht`);
+    assert.match(body, /const theme = await getMailTheme\(k\);/, `${fn} lädt das Design nicht`);
   }
 });
 

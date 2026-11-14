@@ -16,6 +16,7 @@ import * as zweiterFaktor from './repository/zweiterFaktor';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
+import type { MailDienste } from '../mail';
 
 export interface KontoAbhaengigkeiten {
   db: Db;
@@ -23,6 +24,7 @@ export interface KontoAbhaengigkeiten {
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   nacharbeit: Nacharbeit;
+  mail: MailDienste;
 }
 
 export const zugang = (db: Db) => ({

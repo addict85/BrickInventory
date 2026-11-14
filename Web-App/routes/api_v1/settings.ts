@@ -2,21 +2,17 @@
  * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
-import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
-import { hashToken, invalidateTheme } from '../../src/konto';
+import { bearerToken, kontoSchranke, waechterFuer } from './middleware';
 import { quellePruefen, hatGlobaleWerte } from '../../src/verwaltung';
 import {
   resolveUserId,
-  requireLoginOrToken,
   istVerwalter,
   nutzerName,
   bestaetigeMitFaktor,
   perSitzung,
 } from '../../src/konto/http/anmeldung';
 import { freigegeben, alsVerwalter } from '../../src/konto/http/schrittschutz';
-import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/mail';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { emailGueltig } from '../../src/infra/validate';
@@ -26,6 +22,7 @@ import type { Dienste } from '../../startup/verdrahtung';
 const kennung = (v: string | number | null | undefined) => (v == null ? null : Number(v));
 
 export function baueSettingsRouter(d: Dienste) {
+  const { requireApiAdmin: requireAdmin, requireToken, requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
   const requireLogin = requireLoginOrToken;
@@ -35,7 +32,7 @@ export function baueSettingsRouter(d: Dienste) {
   router.get(
     '/settings/theme',
     async (req: OffeneAnfrage<'GET /api/v1/settings/theme'>, res: Antwort<'GET /api/v1/settings/theme'>) => {
-      const uid = await resolveUserId(req);
+      const uid = await resolveUserId(d.konto, req);
       res.set('Cache-Control', 'no-cache');
       res.set('Vary', 'Cookie, Authorization');
       res.json({ success: true, ...(await d.einstellungen.designFuer(uid)) });
@@ -49,7 +46,6 @@ export function baueSettingsRouter(d: Dienste) {
     requireToken,
     async (req: Anfrage<'GET /api/v1/settings/tokens'>, res: Antwort<'GET /api/v1/settings/tokens'>) => {
       const eigener = bearerToken(req);
-      const eigenerHash = eigener ? hashToken(eigener) : null;
       // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
       // Gerät ausgesperrt wird.
       const tokens = await d.konto.zugaengeListe(req.apiUser.user_id);
@@ -67,7 +63,7 @@ export function baueSettingsRouter(d: Dienste) {
           scope: t.scope,
           ip_bereich: t.ip_bereich,
           rotiert_am: t.rotiert_am,
-          aktuell: t.token === eigenerHash,
+          aktuell: d.konto.eigenerZugang(eigener, t.token),
         })),
       });
     },
@@ -85,8 +81,8 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       const uid = req.apiUser.user_id;
       const eigener = bearerToken(req);
-      const eigenesGeraet = !!eigener && hashToken(eigener).startsWith(req.pfad.tokenId);
-      if (!eigenesGeraet && !(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
+      const eigenesGeraet = d.konto.eigenerZugang(eigener, req.pfad.tokenId);
+      if (!eigenesGeraet && !(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       res.json({ success: true, deleted: await d.konto.zugangBeenden(uid, req.pfad.tokenId, eigenesGeraet) });
     },
   );
@@ -101,7 +97,7 @@ export function baueSettingsRouter(d: Dienste) {
       res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>,
     ) => {
       const uid = req.apiUser.user_id;
-      if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))) return;
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       const { beendet, version } = await d.konto.andereSitzungenBeenden(uid, req.sessionID);
       // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
       if (perSitzung(req)) req.session.sitzungsVersion = version;
@@ -217,7 +213,7 @@ export function baueSettingsRouter(d: Dienste) {
     '/settings/household',
     requireToken,
     async (req: Anfrage<'GET /api/v1/settings/household'>, res: Antwort<'GET /api/v1/settings/household'>) => {
-      res.json({ success: true, ...(await d.haushalt.haushalt.haushaltsStand(req.apiUser.user_id)) });
+      res.json({ success: true, ...(await d.haushalt.haushaltsStand(req.apiUser.user_id)) });
     },
   );
 
@@ -228,7 +224,7 @@ export function baueSettingsRouter(d: Dienste) {
       req: Anfrage<'POST /api/v1/settings/household/invite'>,
       res: Antwort<'POST /api/v1/settings/household/invite'>,
     ) => {
-      const r = await d.haushalt.haushalt.einladungAnlegen(req.apiUser.user_id);
+      const r = await d.haushalt.einladungAnlegen(req.apiUser.user_id);
       if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
       res.json({ success: true, ...r });
     },
@@ -243,7 +239,7 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       const zuOft = await d.konto.kontoGedrosselt('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
       if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-      const r = await d.haushalt.haushalt.pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
+      const r = await d.haushalt.pruefeEinladung(req.apiUser.user_id, String(req.eingabe.code || ''));
       if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler);
       res.json({ success: true, ...r });
     },
@@ -261,19 +257,9 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       const uid = req.apiUser.user_id;
       // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
-      if (!(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password, 'faktor_code'))) return;
-      const r = await d.haushalt.haushalt.einladungEinloesen(uid, String(req.eingabe.code || ''));
+      if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password, 'faktor_code'))) return;
+      const r = await d.konto.haushaltBeitreten(uid, String(req.eingabe.code || ''));
       if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
-      const ich = await d.konto.profil(uid);
-      if (ich?.email) {
-        const sprache = await d.einstellungen
-          .getSetting(uid, 'language', 'de')
-          .catch(meldeUndLiefere('einstellungen:sprache', 'de'));
-        const hauptkonto = 'linked_to' in r ? r.linked_to.username : '';
-        void sendHaushaltVerknuepftMail(ich.email, ich.username, hauptkonto, String(sprache ?? 'de')).catch(
-          logAndContinue('haushalt:hinweismail'),
-        );
-      }
       res.json({ success: true, ...r });
     },
   );
@@ -287,7 +273,7 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       res.json({
         success: true,
-        ...(await d.haushalt.haushalt.kontenTrennen(
+        ...(await d.haushalt.kontenTrennen(
           req.apiUser.user_id,
           kennung(req.eingabe.sub_user_id),
           kennung(req.eingabe.main_user_id),
@@ -305,7 +291,7 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       const sub = parseInt(String(req.eingabe.sub_user_id), 10);
       if (!Number.isFinite(sub)) return sendeFehler(req, res, 400, 'konto_id_ungueltig');
-      res.json({ success: true, ...(await d.haushalt.haushalt.verwerfeGetrennt(req.apiUser.user_id, sub)) });
+      res.json({ success: true, ...(await d.haushalt.verwerfeGetrennt(req.apiUser.user_id, sub)) });
     },
   );
 
@@ -323,12 +309,12 @@ export function baueSettingsRouter(d: Dienste) {
       const uid = req.apiUser.user_id;
       // Globale Werte eines Verwalters gehen wie jede Verwalter-Route über den Schrittschutz.
       const verwalter = istVerwalter(req) && hatGlobaleWerte(req.eingabe);
-      if (verwalter && !(await freigegeben(req, res, 'verwaltung'))) return;
+      if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
       const fertig = await d.verwaltung.einstellungenSpeichern(req.eingabe, {
         uid,
         verwalter,
         name: nutzerName(req) ?? '',
-        bestaetige: passwort => bestaetigeMitFaktor(req, res, uid, passwort),
+        bestaetige: passwort => bestaetigeMitFaktor(d.konto, req, res, uid, passwort),
       });
       if (fertig) res.json({ success: true });
     },
@@ -341,7 +327,7 @@ export function baueSettingsRouter(d: Dienste) {
     async (req: Anfrage<'GET /api/v1/settings/raw'>, res: Antwort<'GET /api/v1/settings/raw'>) => {
       res.json({
         success: true,
-        settings: await d.einstellungen.readSettings(req.apiUser.user_id, await alsVerwalter(req)),
+        settings: await d.einstellungen.readSettings(req.apiUser.user_id, await alsVerwalter(d.konto, req)),
       });
     },
   );
@@ -350,7 +336,7 @@ export function baueSettingsRouter(d: Dienste) {
     '/settings/export',
     requireToken,
     async (req: Anfrage<'GET /api/v1/settings/export'>, res: Antwort<'GET /api/v1/settings/export'>) => {
-      const verwalter = await alsVerwalter(req);
+      const verwalter = await alsVerwalter(d.konto, req);
       res.setHeader('Content-Type', 'application/json');
       res.setHeader(
         'Content-Disposition',
@@ -385,7 +371,7 @@ export function baueSettingsRouter(d: Dienste) {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
       // Als Verwalter schreibt der Import globale Werte und plant die Aufträge neu.
       const verwalter = istVerwalter(req);
-      if (verwalter && !(await freigegeben(req, res, 'verwaltung'))) return;
+      if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
       res.json({
         success: true,
         ...(await d.verwaltung.konfigImport(req.apiUser.user_id, verwalter, req.file.buffer)),
@@ -410,18 +396,12 @@ export function baueSettingsRouter(d: Dienste) {
       // Wie das Ändern der Mail-Einstellungen: an eine fremde Adresse nur mit Passwort.
       if (
         to.toLowerCase() !== eigene.toLowerCase() &&
-        !(await bestaetigeMitFaktor(req, res, uid, req.eingabe.password))
+        !(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))
       )
         return;
 
-      const verify = await testSmtp();
-      if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
-      const result = await sendMail({
-        to,
-        subject: 'BrickInventory Manager — SMTP Test',
-        text: 'Diese E-Mail bestätigt, dass deine SMTP-Konfiguration korrekt funktioniert.',
-        html: '<div style="font-family:Arial,sans-serif;padding:20px"><h2>✅ SMTP-Test erfolgreich</h2><p>Deine SMTP-Konfiguration funktioniert korrekt.</p></div>',
-      });
+      const result = await d.mail.sendeSmtpTest(to);
+      if ('code' in result) return sendeFehler(req, res, 400, result.code, 'vars' in result ? result.vars : undefined);
       res.json(result);
     },
   );
@@ -499,10 +479,7 @@ export function baueSettingsRouter(d: Dienste) {
     requireAdmin,
     async (req: Anfrage<'POST /api/v1/settings/admin/theme'>, res: Antwort<'POST /api/v1/settings/admin/theme'>) => {
       const theme = req.eingabe.theme;
-      await d.einstellungen.setGlobalSetting('app_theme', theme);
-      // Das Design steckt im serverseitig gerenderten <html data-theme>; ohne
-      // Verwerfen käme bis zum Neustart das alte.
-      invalidateTheme();
+      await d.konto.setzeGlobalesDesign(theme);
       res.json({ success: true, theme });
     },
   );

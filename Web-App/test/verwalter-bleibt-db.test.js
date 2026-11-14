@@ -22,7 +22,7 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const K = { ..._req('src/konto/konten.js'), ..._req('src/konto/prozess.js').kontoBereich().konten };
+const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
 
 const RUNDEN = 12;
 

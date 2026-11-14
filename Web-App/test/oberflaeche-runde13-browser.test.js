@@ -52,7 +52,8 @@ test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async 
   const { b, bis, db, port, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
-  const haushalt = buildAndRequire()('src/haushalt/prozess.js').haushaltBereich().haushalt;
+  buildAndRequire();
+  const haushalt = require('./helpers/sources').testDienste().haushalt;
   const geh = async pfad => {
     await b.auswerten(`location.hash = '#/${pfad}'; true`);
     await warte(300);

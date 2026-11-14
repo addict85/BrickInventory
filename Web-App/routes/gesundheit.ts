@@ -16,7 +16,7 @@ export function baueGesundheitRouter(d: Dienste) {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
-    const angemeldet = !!(await resolveUserId(req).catch(logAndContinue('startup-status:anmeldung')));
+    const angemeldet = !!(await resolveUserId(d.konto, req).catch(logAndContinue('startup-status:anmeldung')));
     res.json(oeffentlicherStartZustand(await d.auftraege.aktuellerStartZustand(), angemeldet));
   });
 
@@ -37,7 +37,8 @@ export function baueGesundheitRouter(d: Dienste) {
   // Bewusst ohne Schrittschutz: Die Details tragen nichts Geheimes, und eine
   // Überwachung fragt mit einem Token ohne Geräteschlüssel.
   router.get('/health', async (req, res) => {
-    const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
+    const verwalter =
+      !!(await resolveUserId(d.konto, req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
     res.json(await d.verwaltung.gesundheitsBericht(verwalter));
   });
 

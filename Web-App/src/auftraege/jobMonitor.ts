@@ -50,7 +50,7 @@ function alsKachel(k: { label: string; total: number }, z: LetzterStand | undefi
   };
 }
 
-export async function all(kx: AuftraegeKontext): Promise<Record<string, Kachel>> {
+export async function kacheln(kx: AuftraegeKontext): Promise<Record<string, Kachel>> {
   const zeilen = await kx.auftraege.letzteJeArt(Object.values(KACHELN).map(k => k.art));
   const je = new Map(zeilen.map(z => [z.art, z]));
   const aus: Record<string, Kachel> = { ...OHNE_AUFTRAG };
@@ -61,8 +61,8 @@ export async function all(kx: AuftraegeKontext): Promise<Record<string, Kachel>>
   return aus;
 }
 
-export async function get(k: AuftraegeKontext, name: string): Promise<Kachel | null> {
-  return (await all(k))[name] ?? null;
+export async function kachel(k: AuftraegeKontext, name: string): Promise<Kachel | null> {
+  return (await kacheln(k))[name] ?? null;
 }
 
 const IMGDL_PENDING_KEY = 'imgdl_pending_count';

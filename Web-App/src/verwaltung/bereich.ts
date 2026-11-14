@@ -1,7 +1,7 @@
 /** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
  * Parameter; erzeugeVerwaltung bindet ihn einmal für alle. So greift kein Dienst auf den
  * Prozess zu, und ein Test gibt einen eigenen Zugang. */
-import { baueKontext, bindeZugang } from '../infra/bereich';
+import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import * as aufraeumen from './aufraeumen';
 import * as datenexport from './datenexport';
 import * as diagnose from './diagnose';
@@ -15,10 +15,10 @@ import { zugang, type VerwaltungAbhaengigkeiten, type VerwaltungKontext } from '
 
 export type { VerwaltungAbhaengigkeiten, VerwaltungKontext } from './kontext';
 
-export function erzeugeVerwaltung(a: VerwaltungAbhaengigkeiten) {
+export function erzeugeVerwaltung(a: VerwaltungAbhaengigkeiten, einblick?: Einblick<VerwaltungKontext>) {
   const k: VerwaltungKontext = baueKontext(a, zugang);
+  einblick?.(k);
   return {
-    ...k,
     ...bindeZugang(k, aufraeumen, ['aufraeumen', 'aufraeumenTaeglich']),
     ...bindeZugang(k, datenexport, ['datenZip', 'konfigImport', 'konfigExport']),
     ...bindeZugang(k, diagnose, ['preisProbe', 'bildDiagnose']),
