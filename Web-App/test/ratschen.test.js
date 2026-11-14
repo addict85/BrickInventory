@@ -1116,7 +1116,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
   // Ab 100 Zeilen zählen Top-Level-Funktionen samt Pfeilfunktionen; keine ist bekannt.
   // Gegenproben: buildPdf in src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026);
   // erzeugeDb in db/database.ts wieder als eine Closure → rot „ab 100“ und „über 150“ (14.11.2026).
-  const SCHRANKE_80 = 21,
+  const SCHRANKE_80 = 18,
     SCHRANKE_150 = 0,
     BEKANNT_100 = [];
   const dateien = quellen().filter(
