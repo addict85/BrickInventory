@@ -136,7 +136,9 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
 
   // `zwei` ist Verwalter: Die Änderung wird angekündigt und gilt erst im Aufräumlauf nach der Frist.
   const faellig = async () => {
-    await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [zwei]);
+    await db.run(`UPDATE verwalter_uebernahmen SET wirksam_ab = NOW() - INTERVAL '1 minute' WHERE ziel_id = $1`, [
+      zwei,
+    ]);
     assert.equal(await S.testDienste().konto.fuehreFaelligeUebernahmenAus(), 1);
   };
 
