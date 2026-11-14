@@ -1,13 +1,12 @@
 /** Füllt set_parts_catalog aus der Rebrickable-API, damit die Teileliste eines
  * Sets Namen und Bilder hat. Bilder lädt setBilderLaden.ts im Hintergrund; bis
  * dahin gilt die CDN-Adresse. */
-import { consumeRebrickableDaily } from './rateLimiter';
 import { logAndContinue } from '../infra/fehler';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, merkeFiguren, merkeSetFiguren } from './katalogPflege';
-import { getRbKey, parseThrottleWait as ptw, rebrickableRoh } from './quellen';
+import { parseThrottleWait as ptw, rebrickableRoh } from '../fremdquellen';
 
 /** Ohne Typparameter leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
@@ -20,12 +19,12 @@ import type { KatalogKontext } from './kontext';
 async function apiGet(k: KatalogKontext, url: string, rbKey: string) {
   let serverErrors = 0;
   while (true) {
-    if (!(await consumeRebrickableDaily(k))) return null;
-    await k.drossel.hintergrund.waitForSlot();
+    if (!(await k.fremdquellen.consumeRebrickableDaily())) return null;
+    await k.fremdquellen.drossel.hintergrund.waitForSlot();
     const result: JobHttpResult = await rebrickableRoh(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
-      k.drossel.hintergrund.throttle(wait);
+      k.fremdquellen.drossel.hintergrund.throttle(wait);
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
@@ -77,7 +76,7 @@ async function enrichSetParts(k: KatalogKontext, setNumber: string) {
 
   if (!missing.length) return;
 
-  const rbKey = await getRbKey();
+  const rbKey = await k.fremdquellen.quellen.getRbKey();
   if (!rbKey) {
     console.log('[parts-enrich] No API key');
     return;
@@ -212,7 +211,7 @@ async function ergaenzeSetFiguren(k: KatalogKontext, n: string, rbKey: string): 
 
 async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
   const n = mitVersion(setNumber);
-  const rbKey = await getRbKey();
+  const rbKey = await k.fremdquellen.quellen.getRbKey();
   if (!rbKey) return;
 
   const figs = await k.teileAnreicherung.figurenDesSets(n);

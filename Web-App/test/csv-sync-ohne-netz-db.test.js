@@ -37,7 +37,7 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
@@ -46,11 +46,10 @@ const path = require('node:path');
 
 // Mit `zwischendatei` legt der Download die Datei an und gelingt; den Import danach gibt es hier nicht.
 let zwischendatei = false;
-const quellen = require.resolve(path.join(__dirname, '..', 'dist', 'src/katalog/quellen.js'));
-const echteQuellen = require(quellen);
-require.cache[quellen].exports = Object.assign({}, echteQuellen, {
+const echt = _req('clients/rebrickableCsv.js');
+testQuellen(null, {
   ladeKatalogCsv: async (datei, ziel, o) => {
-    if (!zwischendatei) return echteQuellen.ladeKatalogCsv(datei, ziel, o);
+    if (!zwischendatei) return echt.ladeKatalogCsv(datei, ziel, o);
     fs.mkdirSync(path.dirname(ziel), { recursive: true });
     fs.writeFileSync(ziel, 'id,name\n1,Rot\n');
   },

@@ -1,7 +1,7 @@
 /**
  * Der BrickLink-Preisführer, wie ihn Sets, Teile und Figuren abfragen: an
- * einer Attrappe von bricklinkRequest (clients/bricklink.js im
- * require-Zwischenspeicher ersetzt, bevor jemand sie lädt) und der Test-DB.
+ * einer Attrappe von bricklinkRequest (an der Verdrahtung gestellt,
+ * testQuellen) und der Test-DB.
  * Erst Verkäufe der letzten sechs Monate, ohne Preis dort die Angebote.
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
@@ -16,26 +16,22 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire } = require('./helpers/sources');
+const { buildAndRequire, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 
-const blPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients', 'bricklink.js'));
-const echt = require(blPfad);
 const abrufe = [];
 /** Preis je guide_type; fehlt einer, liefert BrickLink 0. */
 let preise = {};
-require.cache[blPfad].exports = {
-  ...echt,
+testQuellen(null, {
   bricklinkRequest: async (_methode, pfad, params) => {
     abrufe.push({ pfad, ...params });
     const p = String(preise[params.guide_type] ?? 0);
     return { avg_price: p, qty_avg_price: p, min_price: p, max_price: p, total_quantity: p === '0' ? '0' : '3' };
   },
-};
+});
 const { getPriceGuide } = _req('src/katalog/bricklinkPreise.js');
 const { fetchPartPrice, fetchMinifigPrice } = _req('src/finanzen/rechnung/preise.js');
 

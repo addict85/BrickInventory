@@ -2,14 +2,13 @@ import path from 'node:path';
 import type { AuftragsLauf } from '../auftraege';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
-import { type RbSetTeil, ersteBlNummer, parseThrottleWait, rebrickableRoh } from './quellen';
+import { type RbSetTeil, ersteBlNummer, parseThrottleWait, rebrickableRoh } from '../fremdquellen';
 import { getAllSetParts } from './rebrickableKatalog';
 import { fehlertext, logAndContinue, meldeFehler } from '../infra/fehler';
 import { mitVersion } from '../infra/setNummer';
 import { nummernListe } from '../infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
-import { consumeRebrickableDaily } from './rateLimiter';
 import * as inhalt from './repository/setInhalt';
 import type { KatalogKontext } from './kontext';
 
@@ -123,8 +122,8 @@ export async function fetchMissingBlIds(k: KatalogKontext, lauf: AuftragsLauf = 
     const BATCH = 500;
     let serverErrors = 0;
     for (let i = 0; i < missing.length; i += BATCH) {
-      if (lauf.signal?.aborted || !(await consumeRebrickableDaily(k))) break;
-      await k.drossel.hintergrund.waitForSlot();
+      if (lauf.signal?.aborted || !(await k.fremdquellen.consumeRebrickableDaily())) break;
+      await k.fremdquellen.drossel.hintergrund.waitForSlot();
       const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
       const result = await holeSeite(
         `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`,

@@ -37,7 +37,7 @@ const dbModul = require(path.join(ROOT, 'dist/db/database.js'));
 const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
 // Die Routen rufen die Bereiche über ihre Verdrahtung, wie im Server.
 const verdrahtung = require(path.join(ROOT, 'dist/startup/verdrahtung.js'));
-const dienste = verdrahtung.verdrahte(db);
+const dienste = verdrahtung.baueDienste(db);
 
 /**
  * Lesbarer Text eines gefangenen Fehlers.

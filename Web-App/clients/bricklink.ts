@@ -1,19 +1,18 @@
 // Ein API-Client, kein Router: Schlüssel und Kontingent kommen über ./zugang.
 import crypto from 'node:crypto';
 import { holeHttps, auszug } from '../src/infra/abruf';
-import { zugang } from './zugang';
-import type { SchluesselName } from './zugang';
+import type { KlientenZugang, SchluesselName } from './zugang';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
-async function getCredentials() {
+async function getCredentials(kl: Pick<KlientenZugang, 'schluessel'>) {
   const schluessel: SchluesselName[] = [
     'bricklink_consumer_key',
     'bricklink_consumer_secret',
     'bricklink_token',
     'bricklink_token_secret',
   ];
-  const rows = await Promise.all(schluessel.map(async key => ({ key, value: await zugang().schluessel(key) })));
+  const rows = await Promise.all(schluessel.map(async key => ({ key, value: await kl.schluessel(key) })));
   const c: Record<string, string> = {};
   rows.forEach(r => {
     c[r.key] = r.value;
@@ -107,8 +106,13 @@ function leseJson(body: string, status: number) {
   }
 }
 
-async function bricklinkRequest(method: string, path: string, queryParams: Record<string, string | number> = {}) {
-  const roh = await getCredentials();
+async function bricklinkRequest(
+  kl: Pick<KlientenZugang, 'schluessel' | 'zaehle'>,
+  method: string,
+  path: string,
+  queryParams: Record<string, string | number> = {},
+) {
+  const roh = await getCredentials(kl);
   if (
     !roh.bricklink_consumer_key ||
     !roh.bricklink_consumer_secret ||
@@ -137,7 +141,7 @@ async function bricklinkRequest(method: string, path: string, queryParams: Recor
     : '';
   // Gezählt wird hier, am einzigen Ausgang zu BrickLink: Rückfälle (sold →
   // stock, set → gear → book) sind eigene Aufrufe und kosten eigenes Kontingent.
-  const rl = await zugang().zaehle('bricklink');
+  const rl = await kl.zaehle('bricklink');
   if (!rl.allowed) throw new Error(`BrickLink Tageslimit erreicht (${rl.limit} Aufrufe/Tag)`);
   const { status, body, ziel } = await httpsGet(baseUrl + qs, buildAuthHeader(method, baseUrl, queryParams, creds));
   if (status >= 300 && status < 400)
@@ -153,8 +157,15 @@ async function bricklinkRequest(method: string, path: string, queryParams: Recor
 }
 
 /** Ein kleiner signierter Abruf — für den Testknopf der Einrichtung. */
-async function pruefeBricklinkZugang(): Promise<void> {
-  await bricklinkRequest('GET', '/colors/1');
+/** Ein Klient je Zugang: Schlüssel und Kontingent kommen von dort. */
+export function erzeugeBricklink(kl: Pick<KlientenZugang, 'schluessel' | 'zaehle'>) {
+  return {
+    bricklinkRequest: (method: string, path: string, queryParams: Record<string, string | number> = {}) =>
+      bricklinkRequest(kl, method, path, queryParams),
+    pruefeBricklinkZugang: async (): Promise<void> => {
+      await bricklinkRequest(kl, 'GET', '/colors/1');
+    },
+  };
 }
 
-export { pruefeBricklinkZugang, bricklinkRequest, BricklinkNichtErreichbar };
+export { BricklinkNichtErreichbar };

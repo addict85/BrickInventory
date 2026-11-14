@@ -17,7 +17,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { isDecodable } = _req('src/katalog/bilder/imageGuard.js');
+const { isDecodable } = _req('src/bilder/imageGuard.js');
 
 /** Eine Datei mit genau diesem Inhalt, in einem eigenen Verzeichnis. */
 function datei(name, inhalt) {

@@ -6,10 +6,10 @@ import { resolveUserId } from '../../konto/http/anmeldung';
 import { safeDataPath } from '../../infra/datenPfad';
 import { pfadSegmente } from '../../http/httpAntwort';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from '../../http/dateiAusliefern';
-import { logAndContinue } from '../../infra/fehler';
-import { bildFreigegeben } from '../bilder/bildBlickfeld';
-import { generateThumb } from '../bilder/thumbs';
-import { IMG_PROXY_PFAD } from '../bilder/images';
+import { zaehleProxyFehler } from '../imgProxyStats';
+import { bildFreigegeben } from '../bildBlickfeld';
+import { generateThumb } from '../thumbs';
+import { IMG_PROXY_PFAD } from '../images';
 import type { BildDienste } from './bildProxy';
 
 /** Fehlt die Vorschau, geht sofort das Original hinaus und die Vorschau entsteht
@@ -31,7 +31,7 @@ async function originalStattVorschau(res: Response, segmente: string[]): Promise
   )
     return false;
   setImmediate(() => {
-    void generateThumb('/images/' + originalSegs.join('/')).catch(logAndContinue('bilder:vorschau'));
+    void generateThumb('/images/' + originalSegs.join('/')).catch(e => zaehleProxyFehler('bilder:vorschau', e));
   });
   liefereDatei(res, originalPfad);
   return true;
@@ -52,7 +52,7 @@ export async function liefereBild(d: BildDienste, req: Request, res: Response) {
     if (status && status !== 404) return antwortAufDateiFehler(res, err);
     if (await originalStattVorschau(res, segmente)) return;
     // Fehlt die Datei, über den Bild-Proxy zur CDN-Adresse: heilt ohne Aufräumen in der DB.
-    const cdn = await d.katalog.cdnFuerFehlendesBild('/images/' + segmente.join('/'));
+    const cdn = await d.bilder.cdnFuerFehlendesBild('/images/' + segmente.join('/'));
     if (cdn && !res.headersSent) return res.redirect(302, IMG_PROXY_PFAD + '?url=' + encodeURIComponent(cdn));
     antwortAufDateiFehler(res, err);
   });

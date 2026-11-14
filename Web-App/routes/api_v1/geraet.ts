@@ -5,11 +5,11 @@ import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { familieAus } from '../../src/konto';
 import { istAppToken } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 const familie = (req: AuthedRequest) => (istAppToken(req) ? familieAus(req.apiUser) : null);
 
-export function baueGeraetRouter(d: Dienste) {
+export function baueGeraetRouter(d: Pick<Dienste, 'konto'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

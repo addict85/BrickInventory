@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import { queueThumb } from './proxyThumbs';
-import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/fehler';
-import { konfig } from '../../infra/konfig';
+import { vorDem, ohneFehlendeDatei, meldeFehler } from '../infra/fehler';
+import { konfig } from '../infra/konfig';
+import { prozessweit } from '../infra/prozessweit';
 import path from 'node:path';
-import { APP_ROOT } from '../../infra/appPaths';
-import type { KatalogKontext } from '../kontext';
+import { APP_ROOT } from '../infra/appPaths';
+import type { BilderKontext } from './kontext';
 
 const BILDTYPEN = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']);
 
@@ -16,7 +17,7 @@ export function bildTyp(roh: string): string {
 }
 
 /** Was aus dem Platten-Cache ausgeliefert werden kann; gesendet wird in
- * src/katalog/http/bildCacheAuslieferung.ts. */
+ * src/bilder/http/bildCacheAuslieferung.ts. */
 export interface CacheTreffer {
   datei: string;
   typ: string;
@@ -26,7 +27,7 @@ export interface CacheTreffer {
 
 /** null heisst: nicht im Cache, der Aufrufer holt beim CDN. */
 export async function cacheTreffer(
-  k: KatalogKontext,
+  k: BilderKontext,
   opts: {
     cacheFile: string;
     thumbFile: string;
@@ -79,7 +80,7 @@ export async function cacheTreffer(
     // Der Deckel löscht nach letzter Nutzung; unter noatime merkt sich das
     // sonst niemand. mtime bleibt, sie steckt im ETag.
     if (cst && Date.now() - cst.atimeMs > 86_400_000)
-      fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(logAndContinue('bild-cache:utimes'));
+      fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(ohneFehlendeDatei('bild-cache:utimes'));
     return {
       datei: cacheFile,
       typ: bildTyp(ctRaw),
@@ -144,20 +145,18 @@ export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 10
   return weg;
 }
 
-let _zuwachs = 0,
-  _deckelLaeuft = false;
-
 /** Zwischen zwei Tagesläufen kann der Cache schnell wachsen; nach je einem
  * Zehntel der Grenze an neuen Bytes wird deshalb sofort gedeckelt. */
 export function merkeCacheZuwachs(bytes: number): void {
-  _zuwachs += bytes;
+  const z = prozessweit('bildCacheZuwachs', () => ({ bytes: 0, laeuft: false }));
+  z.bytes += bytes;
   const max = konfig().bildCacheMaxMb * 1024 * 1024;
-  if (_deckelLaeuft || _zuwachs < max / 10) return;
-  _zuwachs = 0;
-  _deckelLaeuft = true;
+  if (z.laeuft || z.bytes < max / 10) return;
+  z.bytes = 0;
+  z.laeuft = true;
   raeumeBildCacheAuf(max)
-    .catch(logAndContinue('bild-cache:deckel'))
+    .catch(e => meldeFehler('bild-cache:deckel', e))
     .finally(() => {
-      _deckelLaeuft = false;
+      z.laeuft = false;
     });
 }

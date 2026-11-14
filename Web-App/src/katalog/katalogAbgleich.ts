@@ -1,7 +1,7 @@
 /** Alles hier gilt für alle Konten. */
 import { setTimeout as warte } from 'node:timers/promises';
-import { downloadFile, lookupPart } from './quellen';
-import { generateThumb } from './bilder/thumbs';
+import { downloadFile } from '../fremdquellen';
+import { generateThumb } from '../bilder';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import {
@@ -52,7 +52,7 @@ async function syncSetCatalog(k: KatalogKontext, setNumber: string) {
       if (fs.existsSync(dest)) {
         imageLocal = rel;
       } else {
-        await k.drossel.hintergrund.waitForSlot();
+        await k.fremdquellen.drossel.hintergrund.waitForSlot();
         await downloadFile(p.image_url, dest).catch(logAndContinue('katalog-sync:downloadFile'));
         if (fs.existsSync(dest)) {
           await generateThumb(rel).catch(logAndContinue('katalog-sync:generateThumb'));
@@ -108,7 +108,7 @@ async function teilfarbenbilderNachtragen(k: KatalogKontext) {
   let done = 0;
   for (const row of rows) {
     try {
-      const info = await lookupPart(row.part_number, row.color_id);
+      const info = await k.fremdquellen.quellen.lookupPart(row.part_number, row.color_id);
       if (info?.image_url) {
         await k.csvKatalog.ersetzeTeilfarbenbild(row.part_number, row.color_id, info.image_url);
         done++;

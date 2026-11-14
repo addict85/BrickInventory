@@ -18,22 +18,17 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 
-// Rebrickable vorgeben, bevor die Routen die Funktionen herausziehen (wie in
-// test/katalog-vor-rebrickable-db.test.js).
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
-const echtRb = require(rbPfad);
+// Rebrickable an der Verdrahtung gestellt (testQuellen); `abrufe` zählt, was gefragt wurde.
 let abrufe = [];
-require.cache[rbPfad].exports = Object.assign({}, echtRb, {
+testQuellen(null, {
   lookupPart: async nr => {
     abrufe.push(`lookupPart ${nr}`);
     return {

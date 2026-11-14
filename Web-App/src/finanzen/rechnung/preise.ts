@@ -3,7 +3,7 @@
  * stehen, nicht umgekehrt. */
 
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
-import { type KatalogEintrag, bricklinkRequest, hatPreis, marktpreisAus } from '../../katalog';
+import { type KatalogEintrag, hatPreis, marktpreisAus } from '../../katalog';
 import { asIds } from '../../haushalt';
 import { fehlertext, logAndContinue } from '../../infra/fehler';
 import { Fachfehler, fachfehler } from '../../infra/fehlerTexte';
@@ -406,11 +406,20 @@ export async function ladeFigurenpreiseVor(
 
 /** Erst Verkäufe, sonst Angebote: Bei Teilen in seltenen Farben ist „kein Verkauf
  * in sechs Monaten“ der Normalfall. */
-async function fragePreisfuehrer(pfad: string, zustand: string, currency: string, extra: Record<string, string> = {}) {
+async function fragePreisfuehrer(
+  k: FinanzenKontext,
+  pfad: string,
+  zustand: string,
+  currency: string,
+  extra: Record<string, string> = {},
+) {
   const qp = { guide_type: 'sold', new_or_used: zustand, currency_code: currency, vat: 'N', ...extra };
-  const g = await bricklinkRequest('GET', pfad, qp);
+  const g = await k.katalog.quellen.bricklinkRequest('GET', pfad, qp);
   if (hatPreis(g)) return g;
-  const alt = await versuche('preise:alt', bricklinkRequest('GET', pfad, { ...qp, guide_type: 'stock' }));
+  const alt = await versuche(
+    'preise:alt',
+    k.katalog.quellen.bricklinkRequest('GET', pfad, { ...qp, guide_type: 'stock' }),
+  );
   return alt.ok && hatPreis(alt.wert) ? alt.wert : g;
 }
 
@@ -446,7 +455,8 @@ export async function fetchPartPrice(
     name: `Part price ${partNumber}${nummer !== partNumber ? ` (bl ${nummer})` : ''} color ${farbe} (rb color ${rbColorId})`,
     lies: c =>
       vorrat ? (vorrat.get(`${nummer}|${f}|${c}`) ?? null) : cache.teilpreisFrisch(nummer, f, c, currency, ttl),
-    frage: c => fragePreisfuehrer(`/items/part/${nummer}/price`, c, currency, farbe ? { color_id: String(farbe) } : {}),
+    frage: c =>
+      fragePreisfuehrer(k, `/items/part/${nummer}/price`, c, currency, farbe ? { color_id: String(farbe) } : {}),
     merke: (c, g) =>
       merkeMitVerlauf(
         g,
@@ -474,7 +484,7 @@ export async function fetchMinifigPrice(
     name: `Minifig price ${figNumber}`,
     lies: c =>
       vorrat ? (vorrat.get(`${figNumber}|${c}`) ?? null) : cache.figurpreisFrisch(figNumber, c, currency, ttl),
-    frage: c => fragePreisfuehrer(`/items/minifig/${figNumber}/price`, c, currency),
+    frage: c => fragePreisfuehrer(k, `/items/minifig/${figNumber}/price`, c, currency),
     merke: (c, g) =>
       merkeMitVerlauf(
         g,

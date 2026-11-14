@@ -6,9 +6,14 @@ import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueMinifigsRouter(d: Dienste) {
+export function baueMinifigsRouter(
+  d: Pick<
+    Dienste,
+    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'figuren' | 'sammlung'
+  >,
+) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

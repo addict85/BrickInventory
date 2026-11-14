@@ -2,9 +2,9 @@
 
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { APP_ROOT, IMAGES_DIR } from '../../infra/appPaths';
+import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import path from 'node:path';
-import { Zwischenspeicher } from '../../infra/zwischenspeicher';
+import { Zwischenspeicher } from '../infra/zwischenspeicher';
 
 // Positive Treffer bleiben gültig (Vorschauen werden nie gelöscht); negative
 // nach 10 Min neu prüfen, damit frisch erzeugte erscheinen.

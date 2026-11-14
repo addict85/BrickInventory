@@ -3,10 +3,13 @@
  * Titel ist Händlertext; welche Zahl darin die Setnummer ist, entscheidet
  * src/katalog/produkttitel.ts.
  */
-import { httpsGetRobust } from './rebrickable';
+import type { Rebrickable } from './rebrickable';
 import { meldeUndLiefere } from '../src/infra/fehler';
 
-export async function produktTitel(ean13: string): Promise<string | null> {
+export async function produktTitel(
+  httpsGetRobust: Rebrickable['httpsGetRobust'],
+  ean13: string,
+): Promise<string | null> {
   try {
     const antwort = await httpsGetRobust(
       `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(ean13)}`,

@@ -1,7 +1,7 @@
-/** Die eine Stelle, an der verdrahtet wird: Bereiche, Nacharbeit und der Zugang der
- * Klienten entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
+/** Die eine Stelle, an der verdrahtet wird: Bereiche, Nacharbeit und die Klienten
+ * (über src/fremdquellen) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
  * Testhilfen) hält das Ergebnis und reicht es weiter; einen Prozess-Speicher gibt es nicht. */
-import { BRICKSET_HOECHSTENS, erzeugeAuftraege, type Nacharbeit } from '../src/auftraege';
+import { erzeugeAuftraege, type Nacharbeit } from '../src/auftraege';
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
 import { erzeugeSets } from '../src/sets';
 import { erzeugeHaushalt } from '../src/haushalt';
@@ -14,13 +14,17 @@ import { erzeugeMerkliste } from '../src/merkliste';
 import { erzeugeGutscheine } from '../src/gutscheine';
 import { erzeugeSammlung } from '../src/sammlung';
 import { erzeugeVerwaltung } from '../src/verwaltung';
-import { type Bildwerk, erzeugeKatalog } from '../src/katalog';
+import { erzeugeKatalog } from '../src/katalog';
+import { type Bildwerk, erzeugeBilder } from '../src/bilder';
 import { erzeugeFinanzen } from '../src/finanzen';
 import { mitVersion } from '../src/infra/setNummer';
 import { erzeugeKonto } from '../src/konto';
 import { meldeFehler } from '../src/infra/fehler';
-import { verdrahteKlienten, type KlientenZugang } from '../clients/zugang';
+import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
+import type { Dienste } from '../src/dienste';
+
+export type { Dienste } from '../src/dienste';
 
 /** Die Nacharbeit ruft höhere Bereiche, die beim Bau der unteren noch nicht stehen:
  * Sie greift erst beim Aufruf auf die fertigen Dienste zu (späte Bindung). */
@@ -32,7 +36,7 @@ export function baueNacharbeit(d: () => Dienste): Nacharbeit {
         .catch((e: unknown) => meldeFehler('einstellungen:preis-job-anstossen', e));
     },
     preisFuerSetHolen: (sn, uid, zustand) => d().finanzen.refreshPriceForSet(sn, uid, zustand),
-    bildVormerken: (url, sn) => d().katalog.merkeGebraucht(url, sn),
+    bildVormerken: (url, sn) => d().bilder.merkeGebraucht(url, sn),
     setTeileAnreichern: sn => d().katalog.enrichSetParts(sn),
     figurenAnreichern: sn => d().katalog.enrichSetMinifigs(sn),
     setBilderLaden: sn =>
@@ -44,38 +48,12 @@ export function baueNacharbeit(d: () => Dienste): Nacharbeit {
   };
 }
 
-/** Was die Klienten (clients/) von der Anwendung brauchen: Schlüssel, Kontingent,
- * Drossel und die Brickset-Wiedervorlage; wie die Nacharbeit spät gebunden. */
-export function baueKlientenZugang(d: () => Dienste): KlientenZugang {
-  return {
-    schluessel: async name => (await d().einstellungen.getGlobalSetting(name)) || '',
-    zaehle: api => d().katalog.checkAndIncrementRateLimit(api),
-    kontingentStand: api =>
-      api === 'rebrickable' ? d().katalog.rebrickableDailyStatus() : d().katalog.getRateLimitStatus(api),
-    drossel: {
-      vordergrund: {
-        waitForSlot: () => d().katalog.drossel.vordergrund.waitForSlot(),
-        throttle: ms => d().katalog.drossel.vordergrund.throttle(ms),
-      },
-      hintergrund: {
-        waitForSlot: () => d().katalog.drossel.hintergrund.waitForSlot(),
-        throttle: ms => d().katalog.drossel.hintergrund.throttle(ms),
-      },
-    },
-    bricksetVormerken: async (sn, fehler, bald) => ({
-      ...(await d().auftraege.bricksetVormerken(sn, fehler, bald)),
-      hoechstens: BRICKSET_HOECHSTENS,
-    }),
-    bricksetVergessen: sn => d().auftraege.bricksetAusWiedervorlage(sn),
-  };
-}
-
 /** Was ein Test statt des Echten gibt: eigene Nacharbeit, eigenes Bildwerk, eigene Fremdquellen. */
 export interface Bauteile {
   nacharbeit?: Nacharbeit;
   bildwerk?: Bildwerk;
-  /** Ersetzte Fremdquellen des Katalogs (src/katalog/fremdquellen.ts). */
-  quellen?: Parameters<typeof erzeugeKatalog>[0]['quellen'];
+  /** Ersetzte Klienten (src/fremdquellen/quellen.ts), gelesen beim Aufruf. */
+  quellen?: Partial<Quellen>;
   /** Nur Testhilfen: Hier legt jede Fabrik ihren Kontext ab (Einblick). */
   kontexte?: Record<string, unknown>;
 }
@@ -92,6 +70,8 @@ export function baueDienste(db: Db, bauteile: Bauteile = {}): Dienste {
   return fertig.d;
 }
 
+type Zeige = ReturnType<typeof einblickIn>;
+
 /** Je Bereich ein Rückruf, der seinen Kontext ablegt; ohne Ablage keiner. */
 function einblickIn(kontexte: Record<string, unknown> | undefined) {
   return (name: string) =>
@@ -102,16 +82,27 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
       : undefined;
 }
 
-function baueBereiche(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, kontexte }: Bauteile) {
-  const fremd = { bildwerk, quellen };
-  const zeige = einblickIn(kontexte);
+/** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
+function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen }: Bauteile, zeige: Zeige) {
   const einstellungen = erzeugeEinstellungen({ db }, zeige('einstellungen'));
   const mail = erzeugeMail({ einstellungen }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, einstellungen }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, einstellungen }, zeige('haushalt'));
   const konto = erzeugeKonto({ db, einstellungen, auftraege, haushalt, nacharbeit, mail }, zeige('konto'));
   const idempotenz = erzeugeIdempotenz({ db }, zeige('idempotenz'));
-  const katalog = erzeugeKatalog({ db, einstellungen, auftraege, haushalt, nacharbeit, ...fremd }, zeige('katalog'));
+  const fremdquellen = erzeugeFremdquellen({ db, einstellungen, auftraege, ersatz: quellen }, zeige('fremdquellen'));
+  const bilder = erzeugeBilder({ db, auftraege, haushalt, nacharbeit, fremdquellen, bildwerk }, zeige('bilder'));
+  const katalog = erzeugeKatalog(
+    { db, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bilder },
+    zeige('katalog'),
+  );
+  return { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, bilder, katalog };
+}
+
+function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Bauteile): Dienste {
+  const zeige = einblickIn(bauteile.kontexte);
+  const grund = baueGrund(db, nacharbeit, bauteile, zeige);
+  const { einstellungen, mail, auftraege, haushalt, konto, idempotenz, katalog } = grund;
   const finanzen = erzeugeFinanzen(
     { db, einstellungen, auftraege, haushalt, katalog, nacharbeit, mail },
     zeige('finanzen'),
@@ -132,62 +123,14 @@ function baueBereiche(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konte
   );
   const gutscheine = erzeugeGutscheine({ db, einstellungen, konto }, zeige('gutscheine'));
   const sammlung = erzeugeSammlung(
-    {
-      db,
-      haushalt,
-      auftraege,
-      katalog,
-      finanzen,
-      bestand,
-      sets,
-      teile,
-      figuren,
-      merkliste,
-    },
+    { db, haushalt, auftraege, katalog, finanzen, bestand, sets, teile, figuren, merkliste },
     zeige('sammlung'),
   );
   const verwaltung = erzeugeVerwaltung(
-    {
-      db,
-      einstellungen,
-      auftraege,
-      konto,
-      idempotenz,
-      katalog,
-      finanzen,
-      bestand,
-      sets,
-      merkliste,
-      mail,
-    },
+    { db, einstellungen, auftraege, konto, idempotenz, katalog, finanzen, bestand, sets, merkliste, mail },
     zeige('verwaltung'),
   );
-  return {
-    einstellungen,
-    mail,
-    auftraege,
-    haushalt,
-    konto,
-    idempotenz,
-    katalog,
-    finanzen,
-    bestand,
-    sets,
-    teile,
-    figuren,
-    merkliste,
-    gutscheine,
-    sammlung,
-    verwaltung,
-  };
-}
-export type Dienste = ReturnType<typeof baueBereiche>;
-
-/** Dienste und Klienten über einen Zugang; der Einstieg hält beides. */
-export function verdrahte(db: Db, bauteile: Bauteile = {}): Dienste {
-  const dienste = baueDienste(db, bauteile);
-  verdrahteKlienten(baueKlientenZugang(() => dienste));
-  return dienste;
+  return { ...grund, finanzen, bestand, sets, teile, figuren, merkliste, gutscheine, sammlung, verwaltung };
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste
@@ -200,6 +143,6 @@ export function verdrahteProzess(): { db: Db; dienste: Dienste } {
       await fertig.d.konto.legeStartVerwalterAn();
     },
   });
-  fertig.d = verdrahte(db);
+  fertig.d = baueDienste(db);
   return { db, dienste: fertig.d };
 }

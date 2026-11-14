@@ -90,7 +90,7 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
     t,
   });
   let geprueft = 0;
-  const { holeSetTeile } = _req('src/katalog/quellen.js');
+  const { holeSetTeile } = require('./helpers/sources').testDienste().fremdquellen.quellen;
   for (const roh of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {
     const r = await fetch(`${base}/api/v1/sets/${roh}/parts-list`);
     assert.equal(r.status, 400, `${roh}: kommt am Eingang durch`);

@@ -23,10 +23,10 @@ type Nachlauf = Nutzlast<'nachlauf'>['schritt'];
 function laeufe(k: VerwaltungKontext): Record<Nachlauf, () => Promise<unknown>> {
   return {
     geheimnisse: () => geheimnisseVerschluesseln(k),
-    vorschauen: () => k.katalog.vorschaubilderNachtragen(),
+    vorschauen: () => k.katalog.bilder.vorschaubilderNachtragen(),
     katalog: () => k.katalog.syncAllMissing(),
-    anleitungen: () => k.katalog.anleitungenNachtragen(),
-    set_bilder: () => k.katalog.setBilderNachladen(),
+    anleitungen: () => k.katalog.bilder.anleitungenNachtragen(),
+    set_bilder: () => k.katalog.bilder.setBilderNachladen(),
     kaufpreise: () => k.bestand.run(),
   };
 }

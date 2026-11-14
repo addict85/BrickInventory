@@ -6,7 +6,7 @@
  * lenkt — so sieht der Test den echten Aufrufer, nicht nur den Helfer.
  *
  * Gegenproben (am 01.11.2026 gemessen):
- *   A  in src/katalog/bilder/setImages.ts den alten Abruf (https.get mit
+ *   A  in src/bilder/setImages.ts den alten Abruf (https.get mit
  *      tryGet(res.headers.location)) zurückgeholt → rot: „downloadSetImage
  *      übersteht jede Umleitung" (uncaughtException ERR_INVALID_URL)
  *   B  in abruf.ts die Hostliste nur noch für die Startadresse geprüft
@@ -26,7 +26,7 @@ const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { holeHttps, oeffneHttps, AbrufFehler } = _req('src/infra/abruf.js');
-const { downloadSetImage } = _req('src/katalog/bilder/setImages.js');
+const { downloadSetImage } = _req('src/bilder/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 const FIX = path.join(__dirname, 'fixtures');

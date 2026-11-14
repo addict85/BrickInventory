@@ -6,11 +6,11 @@ import { baueSettingsGlobalRouter } from './settingsGlobal';
 import { resolveUserId, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 const kennung = (v: string | number | null | undefined) => (v == null ? null : Number(v));
 
-export function baueSettingsRouter(d: Dienste) {
+export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'haushalt' | 'konto' | 'verwaltung'>) {
   const { requireToken, requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

@@ -6,7 +6,7 @@ import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { sichtVon, waechterFuer } from './middleware';
 import type { ErfassungsArt } from '../../src/sammlung';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 /** Ohne bekannten Preis fehlt der Betrag, statt null zu sein: Geld hat im Vertrag einen Typ. */
 function ohneLeerenBetrag<T extends { amount: number | null }>(summe: T) {
@@ -16,7 +16,7 @@ function ohneLeerenBetrag<T extends { amount: number | null }>(summe: T) {
 
 /** Summe in der Kontowährung (src/bestand/acquisitions.ts), in der Form des Vertrags. */
 async function inKontowaehrung<T extends Parameters<Dienste['bestand']['erfassungenInKontowaehrung']>[0][number]>(
-  d: Dienste,
+  d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>,
   rows: T[],
   betrachter: number,
 ) {
@@ -30,7 +30,12 @@ type Loeschung = Anfrage<'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId'>;
 
 /** Drei Routen, ein Vertragsschema (Erfassungsaenderung): Der Typ der Set-Route gilt für alle. */
 const aendern =
-  (d: Dienste, art: ErfassungsArt, schluessel: Schluessel) => async (req: Aenderung, res: express.Response) => {
+  (
+    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>,
+    art: ErfassungsArt,
+    schluessel: Schluessel,
+  ) =>
+  async (req: Aenderung, res: express.Response) => {
     res.json({
       success: true,
       ...(await d.sammlung.erfassungAendern(
@@ -44,7 +49,12 @@ const aendern =
   };
 
 const loeschen =
-  (d: Dienste, art: ErfassungsArt, schluessel: Schluessel) => async (req: Loeschung, res: express.Response) => {
+  (
+    d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>,
+    art: ErfassungsArt,
+    schluessel: Schluessel,
+  ) =>
+  async (req: Loeschung, res: express.Response) => {
     res.json({
       success: true,
       ...(await d.sammlung.erfassungLoeschen(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad))),
@@ -54,7 +64,7 @@ const setSchluessel: Schluessel = p => [String(p.setNumber)];
 const teilSchluessel: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
 const figurSchluessel: Schluessel = p => [String(p.figNumber)];
 
-export function baueAcquisitionsRouter(d: Dienste) {
+export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'teile' | 'figuren' | 'sammlung'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

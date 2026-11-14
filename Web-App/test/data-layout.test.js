@@ -26,7 +26,7 @@ const SOURCES = [
   'routes/api_v1/setsAnleitungen.ts',
   'src/sets/dienst.ts',
   'src/sets/anleitungen.ts',
-  'src/katalog/bilder/thumbs.ts',
+  'src/bilder/thumbs.ts',
   'routes/api_v1/pdf.ts',
   'src/katalog/teileAnreicherung.ts',
   'src/katalog/katalogAbgleich.ts',
@@ -100,7 +100,7 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
     /router\.get\('\/images\/\*pfad',[^)]*\)\s*=>\s*liefereBild\(d, req, res\)\)/,
     'Bildroute nicht gefunden',
   );
-  const src = strip(read('src/katalog/http/bildAuslieferung.ts'));
+  const src = strip(read('src/bilder/http/bildAuslieferung.ts'));
   const start = src.indexOf('function liefereBild(');
   assert.ok(start > 0, 'Bildroute nicht gefunden');
   const route = src.slice(start, start + 2000);

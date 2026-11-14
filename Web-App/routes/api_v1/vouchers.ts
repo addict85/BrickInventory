@@ -17,7 +17,7 @@ import { kontoSchranke, waechterFuer } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 // Betrag einmal als Zahl; `hat_pdf` statt des Pfads, der niemanden etwas angeht.
 function fuerAussen(z: GutscheinZeile) {
@@ -60,7 +60,7 @@ function gesperrtAntwort(req: express.Request, res: express.Response, grund: str
   res.status(429).json({ success: false, code, error: fehlerText(code, antwortSprache(req), vars), grund, wartenSek });
 }
 
-export function baueVouchersRouter(d: Dienste) {
+export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

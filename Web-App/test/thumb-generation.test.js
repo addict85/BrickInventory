@@ -28,7 +28,7 @@ test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
   await bild.write(original);
 
   try {
-    const { generateThumb } = _req('src/katalog/bilder/thumbs.js');
+    const { generateThumb } = _req('src/bilder/thumbs.js');
     const web = await generateThumb(`/images/sets/${name}.jpg`);
 
     assert.ok(
@@ -54,8 +54,8 @@ test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
 test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
   // Die Quelltextregel zum Verhaltenstest oben: Jimp entscheidet über die
   // Endung, deshalb muss der temporäre Name auf .jpg enden.
-  // Fundort seit einer früheren Runde: src/katalog/bilder/proxyThumbs.ts.
-  for (const datei of ['src/katalog/bilder/thumbs.ts', 'src/katalog/bilder/proxyThumbs.ts']) {
+  // Fundort seit einer früheren Runde: src/bilder/proxyThumbs.ts.
+  for (const datei of ['src/bilder/thumbs.ts', 'src/bilder/proxyThumbs.ts']) {
     const src = fs
       .readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n')
@@ -73,10 +73,10 @@ test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
   // ohneKommentare() statt eines //-Filters: Der Filter liess
   // Blockkommentare stehen, und einer davon enthielt "app.get('/images/*', …)"
   // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.
-  // Die Bildroute (routes/seiten.ts) liefert über src/katalog/http/bildAuslieferung.ts;
+  // Die Bildroute (routes/seiten.ts) liefert über src/bilder/http/bildAuslieferung.ts;
   // die Vorschau stösst originalStattVorschau() dort an.
   const src = require('./helpers/sources').ohneKommentare(
-    require('node:fs').readFileSync(path.join(__dirname, '..', 'src/katalog/http/bildAuslieferung.ts'), 'utf8'),
+    require('node:fs').readFileSync(path.join(__dirname, '..', 'src/bilder/http/bildAuslieferung.ts'), 'utf8'),
   );
   const start = src.indexOf('function originalStattVorschau(');
   assert.ok(

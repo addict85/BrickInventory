@@ -302,7 +302,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
       const pdfA = _req('src/auftraege/pdfAuftraege.js');
       const jobId = _req('src/auftraege/pdfAuftraege.js').neueJobId();
-      _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
+      const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
         arten: ['pdf'],
         taktMs: 50,
       });
@@ -329,7 +329,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
         assert.equal(require('node:fs').readFileSync(datei).subarray(0, 5).toString(), '%PDF-');
         require('node:fs').rmSync(datei, { force: true });
       } finally {
-        await _req('jobs/auftraegeStarten.js').stoppeAuftragsWorker();
+        await worker.stoppe();
         await db.run('DELETE FROM users WHERE id=$1', [uid]);
       }
     });

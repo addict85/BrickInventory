@@ -3,15 +3,15 @@ import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
-import { quellePruefen, hatGlobaleWerte } from '../../src/verwaltung';
+import { hatGlobaleWerte } from '../../src/verwaltung';
 import { istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { freigegeben, alsVerwalter } from '../../src/konto/http/schrittschutz';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueSettingsGlobalRouter(d: Dienste) {
+export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'verwaltung'>) {
   const { requireApiAdmin: requireAdmin, requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 
@@ -165,7 +165,7 @@ export function baueSettingsGlobalRouter(d: Dienste) {
       req: Anfrage<'POST /api/v1/settings/quelle-testen'>,
       res: Antwort<'POST /api/v1/settings/quelle-testen'>,
     ) => {
-      const absage = await quellePruefen(String(req.eingabe.quelle ?? ''));
+      const absage = await d.verwaltung.quellePruefen(String(req.eingabe.quelle ?? ''));
       if (!absage) return res.json({ success: true });
       res.status(400).json({
         success: false,

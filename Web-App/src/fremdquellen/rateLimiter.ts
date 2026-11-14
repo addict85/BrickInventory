@@ -60,29 +60,26 @@ import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAI
 import type * as apiTaktRepo from './repository/apiTakt';
 import type { Gebunden } from '../infra/bereich';
 import { versuche } from '../infra/ergebnis';
-import type { KatalogKontext } from './kontext';
-
-// Nach einem Datenbankfehler eine Minute ohne gemeinsamen Takt: Jeder Aufruf
-// liefe sonst erst in den Verbindungs-Timeout. Die eigene Drossel bleibt.
-let taktGestoertBis = 0;
+import type { FremdquellenKontext } from './kontext';
 
 /** Ein einziges UPDATE schiebt den Zeitpunkt weiter — zwei Prozesse bekommen
  * nie denselben Platz, ohne dass einer eine Sperre hält, während er wartet. */
-export async function warteAufTakt({ api, abstandMs, apiTakt }: Takt): Promise<void> {
-  if (Date.now() < taktGestoertBis) return;
+export async function warteAufTakt(takt: Takt): Promise<void> {
+  const { api, abstandMs, apiTakt } = takt;
+  if (Date.now() < takt.gestoertBis) return;
   try {
     const r = await apiTakt.belegeTakt(api, abstandMs);
     const warte = Math.ceil(Number(r?.warte_ms) || 0);
     if (warte > 0) await new Promise(res => setTimeout(res, warte));
   } catch (e) {
-    taktGestoertBis = Date.now() + 60_000;
+    takt.gestoertBis = Date.now() + 60_000;
     meldeFehler('drossel:gemeinsamer-takt', e);
   }
 }
 
 /** Ein 429 gilt für alle Prozesse. */
-function taktAussetzen({ api, apiTakt }: Takt, waitMs: number) {
-  if (Date.now() < taktGestoertBis) return;
+function taktAussetzen({ api, apiTakt, gestoertBis }: Takt, waitMs: number) {
+  if (Date.now() < gestoertBis) return;
   apiTakt.schiebeTakt(api, waitMs).catch(e => meldeFehler('drossel:takt-aussetzen', e));
 }
 
@@ -93,16 +90,19 @@ export interface Takt {
   api: string;
   abstandMs: number;
   apiTakt: Gebunden<typeof apiTaktRepo>;
+  /** Nach einem Datenbankfehler eine Minute ohne gemeinsamen Takt: Jeder Aufruf liefe
+   * sonst erst in den Verbindungs-Timeout. Die eigene Drossel bleibt. */
+  gestoertBis: number;
 }
 
-/** Je Satz Dienste einmal (erzeugeKatalog): Vordergrund und Hintergrund teilen den Takt. */
+/** Je Satz Dienste einmal (erzeugeFremdquellen): Vordergrund und Hintergrund teilen den Takt. */
 export function rebrickableDrosseln(apiTakt: Takt['apiTakt']) {
-  const takt: Takt = { api: 'rebrickable', abstandMs: 1000, apiTakt };
+  const takt: Takt = { api: 'rebrickable', abstandMs: 1000, apiTakt, gestoertBis: 0 };
   return { vordergrund: new RateLimiter(1, 1500, takt), hintergrund: new RateLimiter(1, 1500, takt) };
 }
 
 // Gezählt in der Datenbank: Je Prozess gezählt vervielfachte sich das Limit.
-export async function consumeRebrickableDaily(k: KatalogKontext): Promise<boolean> {
+export async function consumeRebrickableDaily(k: FremdquellenKontext): Promise<boolean> {
   const rl = await versuche('takt:checkAndIncrementRateLimit', checkAndIncrementRateLimit(k, 'rebrickable'));
   // Im Zweifel durchlassen: Ein überschrittenes Tageskontingent kostet bloss
   // Aufrufe — umgekehrt als beim Login-Zähler, wo der Rückfall sperrt.
@@ -110,7 +110,7 @@ export async function consumeRebrickableDaily(k: KatalogKontext): Promise<boolea
 }
 
 export async function rebrickableDailyStatus(
-  k: KatalogKontext,
+  k: FremdquellenKontext,
 ): Promise<{ count: number; limit: number; remaining: number }> {
   return getRateLimitStatus(k, 'rebrickable');
 }
@@ -176,7 +176,5 @@ export class ConcurrentRateLimiter {
     }
   }
 }
-
-export const cdnImageLimiter = new ConcurrentRateLimiter(2, 1000);
 
 export { REBRICKABLE_DEFAULT_DAILY };
