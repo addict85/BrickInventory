@@ -297,6 +297,16 @@ test('Guthaben-Abfrage', async t => {
     assert.equal(G.landErlaubt(null), false);
   });
 
+  await t.test('5c. eine Anmeldung mit Fehlern im Rumpf geht als LoginAbgelehnt weiter', async () => {
+    // Gegenprobe (14.11.2026): im Fang von baueSitzung `throw e` gestrichen → rot (Gast-Token-Fehler).
+    G.vergesseSitzungen();
+    const { abruf } = doppel({ Login: antwort({ json: { errors: [{ message: 'gesperrt' }] } }) });
+    await assert.rejects(
+      () => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf }),
+      e => e instanceof G.LoginAbgelehnt && e.message === 'Login: gesperrt',
+    );
+  });
+
   await t.test('9. das Auswahlfeld der Webapp traegt genau die erlaubten Laender', () => {
     // Zwei Listen fuer eine Sache laufen auseinander: Im HTML steht, was der
     // Mensch waehlen kann, in LAENDER, was die Route annimmt. Waere im HTML
