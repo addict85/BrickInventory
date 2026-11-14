@@ -6,9 +6,9 @@ import { logAndContinue } from '../src/infra/fehler';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
 import { resolveUserId, istVerwalter } from '../src/konto/http/anmeldung';
 import { oeffentlicherStartZustand } from '../src/auftraege';
-import type { Dienste } from '../startup/verdrahtung';
+import type { Dienste } from '../src/dienste';
 
-export function baueGesundheitRouter(d: Dienste) {
+export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'verwaltung'>) {
   // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
   const router = express.Router({ caseSensitive: true });
 

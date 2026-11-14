@@ -22,13 +22,13 @@ import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/
 import { freigegeben } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { zustand } from '../../src/infra/validate';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 /** Das Set ist angelegt; endet der Zugang oder trennt der Client, bricht nur die
  * Ergänzung ab. Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein
  * Statuscode mehr. `success` gehört dazu: Die Clients lesen es wie eine Antwort. */
 async function ergaenzeImStrom(
-  dienste: Dienste,
+  dienste: Pick<Dienste, 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'sets'>,
   strom: Strom,
   req: express.Request,
   r: { set_number: string; besitzer: number; name?: string | null },
@@ -59,7 +59,8 @@ const uploadKontingentMb = () => Math.round(uploadKontingentBytes() / 1024 / 102
 
 /** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der Platte. */
 const vorDemUpload =
-  (d: Dienste) => async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  (d: Pick<Dienste, 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'sets'>) =>
+  async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const uid = angemeldeteNutzerId(req);
     if (!(await d.sets.setGehoertKonto(uid, pfadParam(req, 'setNumber'))))
       return sendeFehler(req, res, 404, 'nicht_gefunden');
@@ -73,7 +74,7 @@ const vorDemUpload =
     next();
   };
 
-export function baueSetsRouter(d: Dienste) {
+export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'sets'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

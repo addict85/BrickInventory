@@ -3,10 +3,12 @@ import { erzeugeWorker, type Bearbeitertabelle, type WorkerOptionen } from './au
 import { pdfAufgegeben, setzeImportProzess } from '../src/katalog';
 import type { AuftragsArt } from '../src/auftraege';
 import { loescheKontoDateien } from '../src/konto';
-import type { Dienste } from '../startup/verdrahtung';
+import type { Dienste } from '../src/dienste';
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
-const bearbeiter = (d: Dienste): Bearbeitertabelle => ({
+const bearbeiter = (
+  d: Pick<Dienste, 'auftraege' | 'katalog' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
+): Bearbeitertabelle => ({
   nacharbeit: {
     ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k),
   },
@@ -52,7 +54,10 @@ setzeImportProzess(path.join(__dirname, 'csvImportWorker.js'));
 
 let _worker: ReturnType<typeof erzeugeWorker> | null = null;
 
-function starteAuftragsWorker(d: Dienste, o: WorkerOptionen & { arten?: AuftragsArt[] } = {}) {
+function starteAuftragsWorker(
+  d: Pick<Dienste, 'auftraege' | 'katalog' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
+  o: WorkerOptionen & { arten?: AuftragsArt[] } = {},
+) {
   if (_worker) return _worker;
   const alle = bearbeiter(d);
   const tabelle: Bearbeitertabelle = o.arten ? Object.fromEntries(o.arten.map(a => [a, alle[a]])) : alle;

@@ -64,7 +64,8 @@ Absicht, solange es nur von unten gebraucht wird:
   Arbeitseinheit. Ein Dienst nimmt den Kontext als ersten Parameter (`k`) und holt
   alles daraus, nichts vom Prozess. `startup/verdrahtung.ts` baut alle Bereiche in
   `baueDienste(db, nacharbeit)`; Server und Testhilfe rufen dieselbe Funktion.
-- Routen sind Fabriken (`baueXRouter(d)`) und rufen Dienste nur über `d`. Die
+- Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/dienste.ts`) und
+  rufen Dienste nur über `d`; von `startup/` importieren sie nichts. Die
   Fassaden der `index.ts` und `xBereich()` holen die Dienste des Prozesses; sie
   bleiben für HTTP-Seiten, Jobs, den Start und Tests (gezählt in `test/ratschen.test.js`).
 - Mehrstufige Schreibvorgänge (Änderung und Protokoll, Zeile und Datei) sind ein

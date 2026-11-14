@@ -4,9 +4,9 @@ import { waechterFuer } from './middleware';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function bauePapierkorbRouter(d: Dienste) {
+export function bauePapierkorbRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'sammlung'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

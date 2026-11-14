@@ -6,9 +6,14 @@ import { normalisiereLagerort } from '../../src/bestand';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function bauePartsRouter(d: Dienste) {
+export function bauePartsRouter(
+  d: Pick<
+    Dienste,
+    'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'teile' | 'sammlung'
+  >,
+) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

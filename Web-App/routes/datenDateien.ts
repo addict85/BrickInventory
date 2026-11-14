@@ -7,7 +7,7 @@ import { liefereDatei, FREMDE_DATEI_CSP } from '../src/http/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
 import { angemeldeteNutzerId } from '../src/konto/http/anmeldung';
-import type { Dienste } from '../startup/verdrahtung';
+import type { Dienste } from '../src/dienste';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 
@@ -18,7 +18,7 @@ function alsAnhang(res: Response, datei: string): void {
   res.attachment(path.basename(datei));
 }
 
-export function baueDatenDateienRouter(d: Dienste) {
+export function baueDatenDateienRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'katalog'>) {
   const { eingangsSperre, requireLoginOrToken } = waechterFuer(d.konto);
   const router = express.Router();
 

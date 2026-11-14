@@ -17,11 +17,11 @@ import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 const kennung = (v: string | number | null | undefined) => (v == null ? null : Number(v));
 
-export function baueSettingsRouter(d: Dienste) {
+export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'haushalt' | 'konto' | 'verwaltung'>) {
   const { requireApiAdmin: requireAdmin, requireToken, requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

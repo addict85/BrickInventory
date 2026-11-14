@@ -21,6 +21,9 @@ import { erzeugeKonto } from '../src/konto';
 import { meldeFehler } from '../src/infra/fehler';
 import { verdrahteKlienten, type KlientenZugang } from '../clients/zugang';
 import { erzeugeEinstellungen } from '../src/einstellungen';
+import type { Dienste } from '../src/dienste';
+
+export type { Dienste } from '../src/dienste';
 
 /** Die Nacharbeit ruft höhere Bereiche, die beim Bau der unteren noch nicht stehen:
  * Sie greift erst beim Aufruf auf die fertigen Dienste zu (späte Bindung). */
@@ -102,7 +105,7 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
       : undefined;
 }
 
-function baueBereiche(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, kontexte }: Bauteile) {
+function baueBereiche(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, kontexte }: Bauteile): Dienste {
   const fremd = { bildwerk, quellen };
   const zeige = einblickIn(kontexte);
   const einstellungen = erzeugeEinstellungen({ db }, zeige('einstellungen'));
@@ -181,7 +184,6 @@ function baueBereiche(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konte
     verwaltung,
   };
 }
-export type Dienste = ReturnType<typeof baueBereiche>;
 
 /** Dienste und Klienten über einen Zugang; der Einstieg hält beides. */
 export function verdrahte(db: Db, bauteile: Bauteile = {}): Dienste {

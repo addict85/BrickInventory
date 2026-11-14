@@ -282,15 +282,48 @@ test('ins Netz geht nur clients/ über src/infra/abruf.ts', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('startup/ importiert nichts aus routes/', () => {
-  // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route
-  // gehört nur in den Zusammenbau der App (startup/app.ts).
-  // Gegenprobe (10.11.2026): `import { startPdfJobCleanup } from
-  // '../routes/api_v1/pdf'` in startup/jobsProzess.ts → rot.
+test('startup/ und routes/ kennen einander nur in einer Richtung, Routerfabriken nehmen Pick<Dienste, …>', () => {
+  // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route gehört nur in
+  // den Zusammenbau der App (startup/app.ts). Umgekehrt hängen routes/ und jobs/ nicht
+  // an startup/: Den Typ Dienste gibt es in src/dienste.ts, und jede Routerfabrik
+  // verengt ihn auf die Bereiche, die sie ruft.
+  // Gegenproben: `import { startPdfJobCleanup } from '../routes/api_v1/pdf'` in
+  // startup/jobsProzess.ts → rot (10.11.2026); `import type { Dienste } from
+  // '../../startup/verdrahtung'` zurück in routes/api_v1/catalog.ts → rot mit dieser Datei,
+  // `baueCatalogRouter(d: Dienste)` ebendort → rot mit „baueCatalogRouter“ (14.11.2026).
   const treffer = [];
   for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts') && f !== 'app.ts'))
     for (const ziel of importe(`startup/${f}`).filter(z => /routes\//.test(z))) treffer.push(`startup/${f} -> ${ziel}`);
   assert.deepEqual(treffer, []);
+
+  const dateien = [];
+  const lauf = rel => {
+    for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
+      const kind = path.posix.join(rel, e.name);
+      if (e.isDirectory()) lauf(kind);
+      else if (e.name.endsWith('.ts')) dateien.push(kind);
+    }
+  };
+  ['routes', 'jobs'].forEach(lauf);
+  assert.ok(dateien.length > 20, `nur ${dateien.length} Dateien in routes/ und jobs/ — greift die Suche noch?`);
+  const zuStartup = dateien.flatMap(d =>
+    importe(d)
+      .filter(z => /(^|\/)startup\//.test(z))
+      .map(z => `${d} -> ${z}`),
+  );
+  assert.deepEqual(zuStartup, []);
+
+  const fabriken = dateien.flatMap(d =>
+    [...quelltext(d).matchAll(/export function (baue\w*Router)\(\s*\w+: ([^,)]+?)[,)]/g)].map(m => ({
+      name: m[1],
+      typ: m[2].trim(),
+    })),
+  );
+  assert.ok(fabriken.length >= 23, `nur ${fabriken.length} Routerfabriken gefunden — greift die Suche noch?`);
+  assert.deepEqual(
+    fabriken.filter(f => !f.typ.startsWith('Pick<')).map(f => f.name),
+    [],
+  );
 });
 
 test('keine Importzyklen in den inneren Schichten', () => {
