@@ -59,7 +59,7 @@ testBildwerk(null, {
 const { keineDb } = require('./helpers/db');
 const { leereWarteschlange } = require('./helpers/bildwarteschlange');
 const db = testDaten();
-const IQ = _req('src/katalog/bilder/bildbedarfLauf.js');
+const IQ = _req('src/bilder/bildbedarfLauf.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 /** Stapelgrösse und Deckel aus dem Modul — der Test wiederholt keine Zahl. */
@@ -359,10 +359,10 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
     const db = erzeugeDb(dbKonfigAusUmgebung(), { erststart: async () => {} });
     const kontexte = {};
     V.baueDienste(db, { kontexte });
-    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/katalog/bilder/bildbedarfLauf.js'))});
+    const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'src/bilder/bildbedarfLauf.js'))});
     (async () => {
       await db.initSchemaOnce();
-      await IQ._taktDurchgang(kontexte.katalog);
+      await IQ._taktDurchgang(kontexte.bilder);
       await db.pool.end();
     })().catch(e => { console.error(e); process.exit(1); });
   `,
@@ -381,7 +381,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   assert.ok(Date.now() - stand.zeit < 60_000, 'Der abgelegte Zeitpunkt ist nicht plausibel');
 
   // Und jetzt bis zur KACHEL
-  const IQhier = _req('src/katalog/bilder/bildbedarfLauf.js');
+  const IQhier = _req('src/bilder/bildbedarfLauf.js');
   IQhier.letzterLauf.zeit = null;
   IQhier.letzterLauf.ergebnis = null;
 
@@ -427,7 +427,7 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
   await leereWarteschlange(db);
-  const IM = _req('src/katalog/bilder/imageMisses.js');
+  const IM = _req('src/bilder/imageMisses.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
   await t.test('Notiz ohne Setnummer', async () => {

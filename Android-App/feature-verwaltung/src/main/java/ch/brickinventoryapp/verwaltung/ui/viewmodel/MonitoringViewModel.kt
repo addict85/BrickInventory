@@ -14,7 +14,7 @@ import ch.brickinventoryapp.model.ui.model.BricksetEintragAnsicht
 import ch.brickinventoryapp.model.ui.model.CacheKennzahlenAnsicht
 import ch.brickinventoryapp.model.ui.model.JobZustandAnsicht
 import ch.brickinventoryapp.model.ui.model.ZeitplanAnsicht
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.vertrag.Fehlercode
 import ch.brickinventoryapp.model.ui.model.HintergrundAnsicht
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 

@@ -7,7 +7,7 @@ import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../../src/infra/basisUrl';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { USERNAME_RE, emailGueltig, nameGueltig, vertrauenspartei } from '../../src/konto';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 /** Der Grund der ersten Absage, oder null, wenn die Eingabe genügt. */
 function registrierungsMangel(e: OffeneAnfrage<'POST /api/v1/auth/register'>['eingabe']) {
@@ -20,7 +20,7 @@ function registrierungsMangel(e: OffeneAnfrage<'POST /api/v1/auth/register'>['ei
   return null;
 }
 
-export function baueRegistrierungRouter(d: Dienste) {
+export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto'>) {
   const router = vertragsRouter();
 
   // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.

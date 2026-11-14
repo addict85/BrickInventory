@@ -3,14 +3,7 @@ package ch.brickinventoryapp.model.ui.model
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.BrickColor
-import ch.brickinventoryapp.model.data.model.ChartPoint
-import ch.brickinventoryapp.model.data.model.ChartYAxis
-import ch.brickinventoryapp.model.data.model.CsvArt
-import ch.brickinventoryapp.model.data.model.Gutschein
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.model.data.model.StartupStatus
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 
 /** „Keine Farbe“ für die Oberfläche — derselbe Wert wie im Server-Modell, ein Name. */
 const val OHNE_FARBE: Int = KEINE_FARBE
@@ -20,16 +13,6 @@ const val OHNE_FARBE: Int = KEINE_FARBE
  * Oberfläche nicht am Server-Modell hängt; [alsDaten] übersetzt beim Hochladen.
  */
 enum class CsvImportArt { SETS, TEILE, MINIFIGUREN, MERKLISTE, PREISALARME }
-
-fun CsvImportArt.alsDaten(): CsvArt = when (this) {
-    CsvImportArt.SETS -> CsvArt.SETS
-    CsvImportArt.TEILE -> CsvArt.TEILE
-    CsvImportArt.MINIFIGUREN -> CsvArt.MINIFIGUREN
-    CsvImportArt.MERKLISTE -> CsvArt.MERKLISTE
-    CsvImportArt.PREISALARME -> CsvArt.PREISALARME
-}
-
-fun CsvArt.alsAnsicht(): CsvImportArt = CsvImportArt.valueOf(name)
 
 /** Startzustand des Servers; [anteil] ist schon gerechnet (0..1), null ohne Gesamtzahl. */
 data class StartzustandAnsicht(
@@ -42,20 +25,12 @@ data class StartzustandAnsicht(
     val anteil: Float? get() = if (gesamt > 0) (fortschritt / gesamt).toFloat().coerceIn(0f, 1f) else null
 }
 
-fun StartupStatus.alsAnsicht() = StartzustandAnsicht(bereit = ready, schritt = step, unterschritt = sub,
-    fortschritt = progress, gesamt = total)
-
 /** Ein Punkt der Wertentwicklung; [yFrac] ist die Höhe 0..1, wie sie der Server schon gerechnet hat. */
 data class DiagrammPunkt(val xLabel: String, val value: Double, val yFrac: Double)
 
 data class DiagrammAchse(val label: String, val value: Double, val frac: Double)
 
-fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value, yFrac)
-fun ChartYAxis.alsAnsicht() = DiagrammAchse(label, value, frac)
-
 data class FarbeAnsicht(val id: Int, val name: String, val hex: String?)
-
-fun BrickColor.alsAnsicht() = FarbeAnsicht(id, name, hex)
 
 /** Ein Gutschein; [pin] null heisst „keine“ oder „offline nicht abgelegt“. */
 data class GutscheinAnsicht(
@@ -68,8 +43,6 @@ data class GutscheinAnsicht(
     val createdAt: String?,
     val guthabenGeprueftAm: String?,
 )
-
-fun Gutschein.alsAnsicht() = GutscheinAnsicht(id, number, pin, amount, currency, hatPdf, createdAt, guthabenGeprueftAm)
 
 /** Ein Preisalarm; [unter] ist die Richtung als Wahrheitswert statt als Wort. */
 data class PreisalarmAnsicht(
@@ -89,6 +62,3 @@ data class PreisalarmAnsicht(
 ) {
     val unter: Boolean get() = richtung == Alarmrichtung.UNTER
 }
-
-fun Preisalarm.alsAnsicht() = PreisalarmAnsicht(setNumber, condition, richtung, schwelle, currencyCode, ausgeloest,
-    zuletztAm, zuletztPreis, name, imageLocal, imageUrl, setImgUrl, besitzt)

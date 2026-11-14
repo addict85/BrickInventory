@@ -91,9 +91,9 @@
   .filterleiste > select { display: none; }
   /* max-width und min-width 0: Sonst nimmt das Feld die Breite seiner längsten Option an (60 Zeichen). */
   .filterleiste.offen > select { display: block; flex: 1 1 100%; width: 100%; max-width: 100%; min-width: 0; }
-  /* Filterknopf und Ansicht teilen sich die erste Zeile, die Suche hat die zweite ganz. */
+  /* Am Telefon nur Karten (js/dom.js telefonBreite): Eine Tabellenzeile wäre eine Bildschirmhöhe hoch. */
   .filterleiste > .filter-knopf { order: -2; }
-  .filterleiste > .vtgl { order: -1; margin-left: auto; }
+  :is(.filterleiste, .filterzeile) > .vtgl { display: none; }
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
   .hstats             { display: none; }
@@ -631,8 +631,8 @@
   .erfassen-leiste .import-menue > summary { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
   .erfassen-leiste .import-menue :is(.import-datei, .import-pfeil) { display: none; }
   .erfassen-leiste .import-menue .import-mehr { display: inline-block; width: 22px; height: 22px; }
-  .erfassen-leiste .import-text, #tab-gallery .filter-text { display: none; }
-  :is(.erfassen-leiste, #tab-gallery) .nur-telefon { display: inline; }
+  .erfassen-leiste .import-text, .filterleiste .filter-text { display: none; }
+  :is(.erfassen-leiste, .filterleiste) .nur-telefon { display: inline; }
   .erfassen-leiste .import-klappe { left: auto; right: 0; width: min(18rem, calc(100vw - 32px)); }
   .knopf-schwebend {
     position: fixed; z-index: 90; right: 16px; bottom: calc(4.75rem + env(safe-area-inset-bottom));
@@ -662,8 +662,8 @@
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { font-size: var(--fs-1); }
 
   /* Filter als Symbol, daneben Suche und Ansicht in einer Zeile. */
-  #tab-gallery .filterleiste > .filter-knopf { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
-  #tab-gallery .filterleiste > input.suchfeld { order: -1; flex: 1 1 8rem; }
+  .filterleiste > .filter-knopf { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
+  .filterleiste > input.suchfeld { flex: 1 1 8rem; }
 
   /* Das Kartenbild 4:3 statt quadratisch: eine Karte ist so ein Viertel kürzer. */
   #gallery .sc > .sci { aspect-ratio: 4 / 3; }
@@ -672,7 +672,7 @@
    (zweizeilig lag er über dem Suchfeld). Ebenso beim Rollen nach unten, wo er sonst Karten verdeckt;
    den Namen trägt aria-label. */
 @container haupt (max-width: 20.5em) {
-  #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 100%; }
+  .filterleiste > input.suchfeld { flex: 1 1 100%; }
   #tab-catalog .filterzeile { grid-template-columns: minmax(0, 1fr); }
   .brick-stats { flex-wrap: wrap; }
   .knopf-schwebend { width: 3.5rem; min-width: 3.5rem; padding: 0; justify-content: center; }
@@ -696,10 +696,11 @@
   .kopf-weg .knopf-schwebend > span { display: none; }
   /* Tippziel am Telefon: Der Zeilenknopf einer Tabelle wird so hoch wie ein Finger. */
   .zeile-oeffnen { min-height: 44px; min-width: 44px; }
-  .toast-zu { min-width: 44px; min-height: 44px; }
+  .toast-zu { min-width: 44px; min-height: 44px; top: 0; right: 0; }
+  .toast:has(> .toast-zu) { padding-right: 48px; }
 }
 @container haupt (min-width: 15em) and (max-width: 22em) {
-  #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }
+  .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }
 }
 /* Sehr grosse Schrift: Schwebend lag der Knopf über Suchfeld und Kennzahlen;
    er steht dann rechts beim Titel unter „•••“, der Titel behält seine Breite. */
@@ -736,18 +737,18 @@
   .bstat.bstat-erklaert .bstat-s { display: block; flex: 1 1 100%; order: 1; font-size: var(--fs-0); color: var(--mut); }
 }
 
-/* Hintergrundarbeiten am Telefon: Beschriftung und Wert in einer Zeile, leere
-   Felder weg. Jede Zelle stand vorher zweizeilig; die Seite war 7300 px lang. */
+/* Hintergrundarbeiten am Telefon: Beschriftung links, die Werte untereinander in der zweiten Spalte, die
+   umbrechen darf. In einer Flexzeile ohne Umbruch drückten Name, Etikett und Hinweis die Karte breiter als das Fenster. */
 @media (max-width: 640px) {
   .mon-einzeln > summary { min-height: 44px; }
-  .mon-tabelle td::before { flex: 0 0 6.5rem; }
-  .mon-tabelle td { flex-wrap: nowrap; align-items: baseline; }
-  .mon-tabelle td > * { min-width: 0; }
+  .mon-tabelle td { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: baseline; justify-items: start; }
+  .mon-tabelle td > * { grid-column: 2; max-width: 100%; min-width: 0; }
+  .mon-rolle { white-space: normal; }
   .mon-tabelle td:empty, .mon-tabelle td:has(> .mon-knoepfe:empty) { display: none; }
 }
 @container haupt (max-width: 20.5em) {
-  .mon-tabelle td { flex-wrap: wrap; }
-  .mon-tabelle td::before { flex-basis: 100%; }
+  .mon-tabelle td { grid-template-columns: minmax(0, 1fr); }
+  .mon-tabelle td > * { grid-column: 1; }
 }
 
 /* Auftragsarten am Telefon als kompakte Zeile: Name, nur Zahlen ungleich null,

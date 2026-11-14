@@ -4,9 +4,9 @@
 import { istVerwalter, ipThrottle } from '../../src/konto/http/anmeldung';
 import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { vertragsRouter, type OffeneAnfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueEinrichtungRouter(d: Dienste) {
+export function baueEinrichtungRouter(d: Pick<Dienste, 'konto'>) {
   const router = vertragsRouter();
 
   router.get(

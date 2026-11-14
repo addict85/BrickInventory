@@ -4,13 +4,13 @@ import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { perSitzung, angemeldeteNutzerId, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { geraeteNameGueltig, vertrauenspartei } from '../../src/konto';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 const NAME_MAX = 60;
 const passkeyName = (roh: unknown) =>
   typeof roh === 'string' && roh.trim() ? Array.from(roh.trim()).slice(0, NAME_MAX).join('') : 'Passkey';
 
-export function bauePasskeyRouter(d: Dienste) {
+export function bauePasskeyRouter(d: Pick<Dienste, 'konto'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

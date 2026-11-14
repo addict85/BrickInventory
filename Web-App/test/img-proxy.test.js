@@ -3,7 +3,7 @@
  *
  * Gegenproben zu den nach bild-proxy-deckel.test.js (Typprüfung, Platzhalter)
  * und img-cache-serve.test.js (304) verlegten Fällen stehen dort; für 304 je
- * die `req.fresh`-Zeile in src/katalog/http/bildCacheAuslieferung.ts entfernt → dort rot
+ * die `req.fresh`-Zeile in src/bilder/http/bildCacheAuslieferung.ts entfernt → dort rot
  * „bekannter Stand → 304 und KEIN Bild“ (08.11.2026). Doppelte Schrägstriche
  * im Pfad → sicherheit-querschnitt-db I (Normalisierung entfernt → dort rot).
  * Zähler und Protokoll der Fehlschläge, Inhaltsprüfung der Probe →
@@ -33,10 +33,9 @@ test('gleichzeitige Anfragen schreiben in getrennte Temp-Dateien', () => {
   // Browser kann sie aber nicht dekodieren.
   assert.match(
     SERVER,
-    /const tmpFile = `\$\{cacheFile\}\.tmp-\$\{process\.pid\}-\$\{_tmpSeq\+\+\}`/,
-    'Der Temp-Name braucht eine laufende Nummer je Anfrage',
+    /const tmpFile = `\$\{cacheFile\}\.tmp-\$\{process\.pid\}-\$\{randomUUID\(\)\}`/,
+    'Der Temp-Name braucht einen eigenen Teil je Anfrage',
   );
-  assert.match(SERVER, /let _tmpSeq = 0;/, 'Zähler fehlt');
 });
 
 test('nur vollständige Dateien kommen in den Cache', () => {

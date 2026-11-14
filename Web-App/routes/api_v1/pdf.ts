@@ -10,7 +10,7 @@ import { pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad } from '../../src/
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import type { Request, Response } from 'express';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 type PdfJobStatus = {
   status?: string | undefined;
@@ -20,7 +20,7 @@ type PdfJobStatus = {
 };
 
 /** Der einzige Weg der drei Abrufrouten an einen Auftrag: nur der eigene; ein Lesefehler geht weiter. */
-function pdfJobReadFor(d: Dienste, id: string, userId: number) {
+function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'konto'>, id: string, userId: number) {
   return d.auftraege.liesAuftrag(id, userId);
 }
 /** Die Beugung steht als Platzhalter in der Tabelle, nicht hier. */
@@ -39,7 +39,7 @@ const fertig = (s: string | undefined) => s === 'done' || s === 'error';
 /** NOTIFY meldet den Stand, gleich in welchem Prozess der Auftrag läuft; ohne
  * Nutzlast (beim Wiederverbinden) und im Rückfalltakt wird ebenfalls nachgesehen,
  * falls ein Signal während einer Verbindungsstörung verloren ging. */
-function folgeAuftrag(d: Dienste, strom: Strom, jobId: string, uid: number) {
+function folgeAuftrag(d: Pick<Dienste, 'auftraege' | 'konto'>, strom: Strom, jobId: string, uid: number) {
   const pruefe = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
     if (strom.zu) return;
@@ -56,7 +56,14 @@ function folgeAuftrag(d: Dienste, strom: Strom, jobId: string, uid: number) {
 /** streamFileToResponse statt pipe(): Das Aufräumen kann die Datei zwischen Prüfung
  * und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
  * Aufgeräumt wird nur nach vollständiger Auslieferung. */
-function liefereUndRaeumeAuf(d: Dienste, req: Request, res: Response, jobId: string, uid: number, pdfPath: string) {
+function liefereUndRaeumeAuf(
+  d: Pick<Dienste, 'auftraege' | 'konto'>,
+  req: Request,
+  res: Response,
+  jobId: string,
+  uid: number,
+  pdfPath: string,
+) {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
   const aufraeumen = () => {
@@ -66,7 +73,7 @@ function liefereUndRaeumeAuf(d: Dienste, req: Request, res: Response, jobId: str
   streamFileToResponse(res, pdfPath, aufraeumen, req);
 }
 
-export function bauePdfRouter(d: Dienste) {
+export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'konto'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

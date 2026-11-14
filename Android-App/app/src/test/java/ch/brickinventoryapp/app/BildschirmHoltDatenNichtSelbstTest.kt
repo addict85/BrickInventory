@@ -51,15 +51,15 @@ class BildschirmHoltDatenNichtSelbstTest {
      * Feld oder eine andere Nullbarkeit im DTO soll im Repository oder ViewModel
      * auffallen, nicht in einem Composable. Ohne Ausnahme.
      * Gegenprobe: in GutscheineCard.kt wieder
-     * `import ch.brickinventoryapp.model.data.model.Gutschein` → rot, nennt die Datei.
+     * `import ch.brickinventoryapp.vertrag.Gutschein` → rot, nennt die Datei.
      */
     @Test
     fun `kein Bildschirm kennt die Server-Modelle`() {
         val bildschirme = listOf("screens", "components", "dialogs", "gemeinsam/ui").flatMap { Quellen.unter(it) }
         assert(bildschirme.size >= 50) { "Bildschirme nicht gefunden — Muster veraltet?" }
-        val mitModell = bildschirme.filter { "data.model" in Quellen.ohneKommentare(it.readText()) }.map { it.name }
+        val mitModell = bildschirme.filter { "brickinventoryapp.vertrag" in Quellen.ohneKommentare(it.readText()) }.map { it.name }
         assert(mitModell.isEmpty()) {
-            "Diese Bildschirme greifen auf data.model zu: $mitModell — UI-Modell aus ui/model nehmen, " +
+            "Diese Bildschirme greifen auf das Wire-Format (vertrag) zu: $mitModell — UI-Modell aus ui/model nehmen, " +
                 "die Abbildung gehört ins ViewModel."
         }
     }

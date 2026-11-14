@@ -130,7 +130,7 @@ internal fun MinifigsScreen(
             erfassen = erfassenText to { showAddDialog = true },
         )
 
-        OfflineHinweis(partsState.figurenOfflineStand)
+        OfflineHinweis(partsState.figurenOfflineStand, onErneut = onRefresh)
         when (anzeige) {
             Ladeanzeige.LAEDT ->
                 SkelettRaster(LesbareSpalten(140.dp), kachelHoehe = 196.dp)
@@ -155,8 +155,8 @@ internal fun MinifigsScreen(
                     // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
                     contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
                         end = Abstaende.mittel, bottom = FabPlatz),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
                     // Nach dem Inhalt gefragt, nicht nach der geladenen Seite: Die
                     // Zahlen meinen die ganze Sammlung, auch während einer Suche.

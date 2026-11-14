@@ -56,8 +56,8 @@ test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }
       'Hinweis verschwindet mit der Anmeldung',
     );
     await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('lc').value = '123456';
-      document.getElementById('btn-logout').click(); true`);
-    await app.bis(maske, 'Anmeldemaske');
+      window.__alt = true; document.getElementById('btn-logout').click(); true`);
+    await app.bis(`!window.__alt && ${maske}`, 'Anmeldemaske');
     const f = await app.b.auswerten(felder);
     assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
     assert.equal(f.lc, '', 'der Code steht noch im Feld');

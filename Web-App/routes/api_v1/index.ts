@@ -19,9 +19,29 @@ import { bauePapierkorbRouter } from './papierkorb';
 import { baueGeraetRouter } from './geraet';
 import { baueEinrichtungRouter } from './einrichtung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueApiRouter(d: Dienste) {
+export function baueApiRouter(
+  d: Pick<
+    Dienste,
+    | 'einstellungen'
+    | 'mail'
+    | 'auftraege'
+    | 'haushalt'
+    | 'konto'
+    | 'katalog'
+    | 'bilder'
+    | 'finanzen'
+    | 'bestand'
+    | 'sets'
+    | 'teile'
+    | 'figuren'
+    | 'merkliste'
+    | 'gutscheine'
+    | 'sammlung'
+    | 'verwaltung'
+  >,
+) {
   const router = vertragsRouter();
 
   router.use(baueEinrichtungRouter(d)); // /einrichtung/stand — öffentlich, vor der Anmeldung

@@ -49,11 +49,11 @@ test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
 
   await t.test('der geplante Auftrag legt die Liste ab und plant den nächsten Lauf', async () => {
     await d.auftraege.ziehePlanVor('widerrufsliste', 0);
-    _req('jobs/auftraegeStarten.js').starteAuftragsWorker(d, { arten: ['widerrufsliste'], taktMs: 50 });
+    const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(d, { arten: ['widerrufsliste'], taktMs: 50 });
     try {
       await bis(async () => (await gespeichert()) !== null, 10_000);
     } finally {
-      await _req('jobs/auftraegeStarten.js').stoppeAuftragsWorker();
+      await worker.stoppe(0);
     }
     const l = await gespeichert();
     assert.equal(l.nummern.length, 5);

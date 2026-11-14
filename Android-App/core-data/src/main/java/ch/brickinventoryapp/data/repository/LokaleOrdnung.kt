@@ -3,8 +3,8 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.SetItem
 
 /**
  * Die Sortierungen des Servers (SET_SORTS) für die lokale Liste ohne Netz. Sie

@@ -29,6 +29,9 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -60,6 +63,8 @@ import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute
 import ch.brickinventoryapp.teile.ui.screens.MinifigsRoute
 import ch.brickinventoryapp.teile.ui.screens.PartsRoute
+import ch.brickinventoryapp.teile.ui.PlPart
+import ch.brickinventoryapp.teile.ui.PlSet
 import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
@@ -266,8 +271,8 @@ class BildschirmFotoVariantenTest {
     private fun foto(name: String, design: String = "classic", dunkel: Boolean = false, geraet: String = "telefon") =
         compose.onRoot().captureRoboImage(pfad(name, design, dunkel, geraet))
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
-        KatalogRepository(welt.t.api, welt.t.cache),
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+        KatalogRepository(welt.t.api),
         object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
@@ -395,6 +400,14 @@ class BildschirmFotoVariantenTest {
     }
 
     @Test
+    fun teileEnglisch() {
+        val vm = welt.teile().also { it.loadParts() }
+        zeige("teile-en", sprache = ENGLISCH, bereit = { vm.partsState.value.parts.isNotEmpty() },
+            zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
+        foto("teile-en")
+    }
+
+    @Test
     fun teileSchrift200() {
         val vm = welt.teile().also { it.loadParts() }
         zeige("teile-schrift200", schrift = 2.0f, bereit = { vm.partsState.value.parts.isNotEmpty() },
@@ -470,7 +483,7 @@ class BildschirmFotoVariantenTest {
     @Test fun geruestTelefon() = geruestFoto("telefon")
     @Test fun geruestTablet() = geruestFoto("tablet")
 
-    /** Der Umschalter Sets | Teile | Minifiguren bei 200 %: als Chips, kein Wort gebrochen. */
+    /** Der Umschalter Sets | Teile | Minifiguren bei 200 %: Segmente, seitlich rollbar, kein Wort gebrochen. */
     @Test
     fun geruestSchrift200() {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
@@ -481,16 +494,20 @@ class BildschirmFotoVariantenTest {
     }
 
     /** Die Seite „Mehr“: alle übrigen Ziele gruppiert, mit dem Punkt für eine neue Version. */
-    private fun mehrFoto(geraet: String, dunkel: Boolean) {
+    private fun mehrFoto(geraet: String, dunkel: Boolean, name: String = "mehr", schrift: Float = 1f,
+                         sprache: String? = DEUTSCH) {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
-        zeige("mehr", dunkel = dunkel, geraet = geraet, bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) { Geruest(galerie) }
+        zeige(name, dunkel = dunkel, geraet = geraet, sprache = sprache, schrift = schrift, bereit = galerieFertig(galerie),
+            zustand = { galerie.galleryState.value }) { Geruest(galerie) }
         compose.onNodeWithText("Mehr").performClick()
         compose.waitForIdle()
-        foto("mehr", dunkel = dunkel, geraet = geraet)
+        foto(name, dunkel = dunkel, geraet = geraet)
     }
 
     @Test fun mehrTelefon() = mehrFoto("telefon", dunkel = true)
     @Test fun mehrTablet() = mehrFoto("tablet", dunkel = false)
+    @Test fun mehrSchrift200() = mehrFoto("telefon", dunkel = false, name = "mehr-schrift200", schrift = 2f)
+    @Test fun mehrEnglisch() = mehrFoto("telefon", dunkel = false, name = "mehr-en", sprache = ENGLISCH)
 
     // ── Dialoge ──
 
@@ -640,24 +657,26 @@ class BildschirmFotoVariantenTest {
     // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-        KontoRepository(welt.t.api, welt.t.cache, welt.t.io), VerwaltungRepository(welt.t.api, welt.t.cache),
-        welt.t.alarme(), TeileRepository(welt.t.api, welt.t.cache),
+        KontoRepository(welt.t.api, welt.t.io), VerwaltungRepository(welt.t.api),
+        welt.t.alarme(), TeileRepository(welt.t.api),
         object : DateiLeser {
             override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))
 
-    @Test
-    fun lagerorte() {
+    @Test fun lagerorte() = lagerorteFoto("lagerorte", 1f)
+    @Test fun lagerorteSchrift200() = lagerorteFoto("lagerorte-schrift200", 2f)
+
+    private fun lagerorteFoto(name: String, schrift: Float) {
         welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
         // Vor dem Zeigen laden: zeige() wartet schon vor setContent auf die Daten, und
         // ohne Aufruf hier fragte erst der Bildschirm selbst.
         val vm = einstellungen().also { it.ladeEigeneLagerorte() }
-        zeige("lagerorte", bereit = { vm.lagerState.value.eigene.size == 3 }, zustand = { vm.lagerState.value }) {
+        zeige(name, schrift = schrift, bereit = { vm.lagerState.value.eigene.size == 3 }, zustand = { vm.lagerState.value }) {
             LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
         anhalten()
-        foto("lagerorte")
+        foto(name)
     }
 
     @Test
@@ -675,7 +694,7 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.ladeHaushalt() }
+            HaushaltRepository(welt.t.api), KontoRepository(welt.t.api, welt.t.io))).also { it.ladeHaushalt() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
@@ -683,14 +702,57 @@ class BildschirmFotoVariantenTest {
         foto("haushalt")
     }
 
-    @Test
-    fun bauliste() {
-        zeige("bauliste") {
-            PartsListScreen(TeilelisteUiState(),
-                serverUrl = "", imageLoader = bilder, onScanBarcode = {})
+    @Test fun bauliste() = baulisteFoto("bauliste", TeilelisteUiState(), 1f)
+    @Test fun baulisteMitInhalt() = baulisteFoto("bauliste-inhalt", baulisteGefuellt, 1f)
+    @Test fun baulisteMitInhaltSchrift200() = baulisteFoto("bauliste-inhalt-schrift200", baulisteGefuellt, 2f)
+
+    /** Zwei Sets, erzeugt, mit Bestand: Farbgruppen, Mengen und „vorhanden“ stehen im Bild. */
+    private val baulisteGefuellt = TeilelisteUiState(
+        sets = listOf(PlSet("75192-1", "Millennium Falcon"), PlSet("21318-1", "Baumhaus")),
+        parts = listOf(
+            PlPart(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", colorHex = "C91A09",
+                colorId = 4, quantity = 12, imageUrl = null, imageLocal = "/beispiel/teil1.png", vorhanden = 8),
+            PlPart(partNumber = "3020", partName = "Plate 2 x 4", colorName = "Light Bluish Gray", colorHex = "A0A5A9",
+                colorId = 71, quantity = 30, imageUrl = null, vorhanden = 30),
+            PlPart(partNumber = "sw0001", partName = "Luke Skywalker", colorName = "", colorHex = null,
+                quantity = 1, imageUrl = null, isFig = true, vorhanden = 0),
+        ),
+        generated = true,
+    )
+
+    private fun baulisteFoto(name: String, zustand: TeilelisteUiState, schrift: Float) {
+        zeige(name, schrift = schrift) {
+            PartsListScreen(zustand, serverUrl = "", imageLoader = bilder, onScanBarcode = {})
         }
         anhalten()
-        foto("bauliste")
+        foto(name)
+    }
+
+    @Test fun dialogTeilErfassen() = erfassenFoto("dialog-teil-erfassen", figur = false, schrift = 1f)
+    @Test fun dialogTeilErfassenSchrift200() = erfassenFoto("dialog-teil-erfassen-schrift200", figur = false, schrift = 2f)
+    @Test fun dialogFigurErfassen() = erfassenFoto("dialog-figur-erfassen", figur = true, schrift = 1f)
+    @Test fun dialogFigurErfassenSchrift200() = erfassenFoto("dialog-figur-erfassen-schrift200", figur = true, schrift = 2f)
+
+    /**
+     * Teil und Figur erfassen sind intern im Bereich; geöffnet wird wie von Hand über den
+     * Erfassen-Knopf. Danach die Uhr anhalten: Ein Dialog mit Textfeld kommt sonst nie zur Ruhe.
+     */
+    private fun erfassenFoto(name: String, figur: Boolean, schrift: Float) {
+        val vm = welt.teile().also { if (figur) it.loadMinifigs() else it.loadParts() }
+        zeige(name, schrift = schrift,
+            bereit = { vm.partsState.value.let { if (figur) it.minifigs.isNotEmpty() else it.parts.isNotEmpty() } },
+            zustand = { vm.partsState.value }) {
+            if (figur) MinifigsRoute(vm = vm, imageLoader = bilder) else PartsRoute(vm = vm, imageLoader = bilder)
+        }
+        val knopf = ApplicationProvider.getApplicationContext<Context>()
+            .getString(if (figur) R.string.minifigs_add else R.string.parts_add)
+        compose.onAllNodes((hasText(knopf) or hasContentDescription(knopf)) and hasClickAction())[0].performClick()
+        compose.mainClock.autoAdvance = false
+        repeat(3) {
+            compose.mainClock.advanceTimeBy(200)
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+        }
+        dialogFoto(name, "classic", false, "telefon", schrift)
     }
 
     /** Erfassen: der Dialog der Galerie mit Nummer, Menge, Preis, Zustand und Lagerort. */
@@ -785,11 +847,13 @@ class BildschirmFotoVariantenTest {
     @Test fun katalogDetailSchrift200() = katalogDetailFoto(false, "telefon", 2f, "katalog-detail-schrift200")
     @Test fun katalogDetailTabletDunkel() = katalogDetailFoto(true, "tablet")
 
-    @Test
-    fun vergleich() {
-        zeige("vergleich") { ComparisonScreen() }
+    @Test fun vergleich() = vergleichFoto("vergleich", 1f)
+    @Test fun vergleichSchrift200() = vergleichFoto("vergleich-schrift200", 2f)
+
+    private fun vergleichFoto(name: String, schrift: Float) {
+        zeige(name, schrift = schrift) { ComparisonScreen() }
         anhalten()
-        foto("vergleich")
+        foto(name)
     }
 
     /** Konto: Profil, Design, zweiter Faktor und zwei angemeldete Geräte; auf Wunsch mit beantragter Adresse. */
@@ -803,7 +867,7 @@ class BildschirmFotoVariantenTest {
             {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
         val konto = welt.t.merke(KontoViewModel(
-            KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige(name, dunkel = dunkel, geraet = geraet) {
             KontoRoute(snackbarHostState = remember { SnackbarHostState() },
@@ -1083,14 +1147,16 @@ class BildschirmFotoVariantenTest {
     }
 
     /** Ohne Netz: Hinweis mit Stand über der Liste, drei Änderungen warten im Ausgang. */
-    @Test
-    fun offline() {
+    @Test fun offline() = offlineFoto("offline", 1f)
+    @Test fun offlineSchrift200() = offlineFoto("offline-schrift200", 2f)
+
+    private fun offlineFoto(name: String, schrift: Float) {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
-        zeige("offline", bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) {
+        zeige(name, schrift = schrift, bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) {
             Geruest(galerie, offeneAenderungen = 3, offlineStand = 1_793_000_000_000L)
         }
         anhalten()
-        foto("offline")
+        foto(name)
     }
 
     // ── Abläufe, die sonst kein Foto hatten: Einstellungen, Update, Scanner, Barcode,
@@ -1114,9 +1180,10 @@ class BildschirmFotoVariantenTest {
         override fun setWidgetWerte(an: Boolean) = Unit
     }
 
-    private fun einstellungenFoto(name: String, dunkel: Boolean, geraet: String, update: UpdateUiState = UpdateUiState()) {
+    private fun einstellungenFoto(name: String, dunkel: Boolean, geraet: String, update: UpdateUiState = UpdateUiState(),
+                                  schrift: Float = 1f, sprache: String? = DEUTSCH) {
         val vm = einstellungen()
-        zeige(name, dunkel = dunkel, geraet = geraet) {
+        zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift, sprache = sprache) {
             SettingsScreen(
                 zustand = EinstellungenZustand(AppUiState(serverUrl = "https://brick.example.org"), update,
                     "system", Design.CLASSIC, false, false, false, false),
@@ -1135,6 +1202,8 @@ class BildschirmFotoVariantenTest {
 
     @Test fun einstellungenTelefon() = einstellungenFoto("einstellungen", false, "telefon")
     @Test fun einstellungenTabletDunkel() = einstellungenFoto("einstellungen", true, "tablet")
+    @Test fun einstellungenSchrift200() = einstellungenFoto("einstellungen-schrift200", false, "telefon", schrift = 2f)
+    @Test fun einstellungenEnglisch() = einstellungenFoto("einstellungen-en", false, "telefon", sprache = ENGLISCH)
 
     @Test fun updateLaedt() = einstellungenFoto("update-laedt", false, "telefon",
         UpdateUiState(geprueft = true, fortschritt = 42,
@@ -1173,9 +1242,9 @@ class BildschirmFotoVariantenTest {
     @Test fun dialogBarcodeErgebnisDunkel() = barcodeFoto(true)
 
     private fun kaeufe() = welt.t.merke(KaeufeViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.aenderungen,
-        HaushaltRepository(welt.t.api, welt.t.cache), welt.t.sets(),
-        FinanzenRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
-        FigurenRepository(welt.t.api, welt.t.cache)))
+        HaushaltRepository(welt.t.api), welt.t.sets(),
+        FinanzenRepository(welt.t.api), TeileRepository(welt.t.api),
+        FigurenRepository(welt.t.api)))
 
     private fun kaufpreiseFoto(dunkel: Boolean, geraet: String) {
         val vm = kaeufe()
@@ -1226,8 +1295,7 @@ class BildschirmFotoVariantenTest {
             "bildbedarf":7,
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
         val api = welt.t.api
-        val cache = welt.t.cache
-        val vm = MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), KontextTexte(), welt.t.meldungen)
+        val vm = MonitoringViewModel(VerwaltungRepository(api), KontoRepository(api), KontextTexte(), welt.t.meldungen)
         runBlocking { vm.ladeHintergrund() }
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         zeige("hintergrundarbeiten", dunkel = dunkel, geraet = geraet, warten = false) {
@@ -1244,7 +1312,7 @@ class BildschirmFotoVariantenTest {
     @Test
     fun gutscheinFormular() {
         welt.pfade.antworten["/api/v1/vouchers"] = """{"success":true,"vouchers":[]}"""
-        val vm = welt.t.merke(GutscheinViewModel(GutscheineRepository(welt.t.api, welt.t.cache), KontextTexte(),
+        val vm = welt.t.merke(GutscheinViewModel(GutscheineRepository(welt.t.api), KontextTexte(),
             object : DateiLeser {
                 override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
             }, welt.t.meldungen))
@@ -1266,7 +1334,7 @@ class BildschirmFotoVariantenTest {
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache))).also { it.jetzt = { FESTE_ZEIT }; it.ladeHaushalt() }
+            HaushaltRepository(welt.t.api), KontoRepository(welt.t.api))).also { it.jetzt = { FESTE_ZEIT }; it.ladeHaushalt() }
         zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }

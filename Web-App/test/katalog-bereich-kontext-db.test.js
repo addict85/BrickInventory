@@ -8,7 +8,7 @@
  *   A  in src/katalog/rbInventar.ts neuestesInventar() über das Repository mit
  *      standardDb() statt über den Kontext → rot: „Lesen geht über den übergebenen
  *      Zugang“ (gezählt: nichts)
- *   B  in src/katalog/apiKontingent.ts die Transaktion über standardDb() → rot:
+ *   B  in src/fremdquellen/apiKontingent.ts (damals src/katalog/) die Transaktion über standardDb() → rot:
  *      „die Transaktion geht über den übergebenen Zugang“
  *   C  in baueBereiche (startup/verdrahtung.ts) erzeugeKatalog mit { db: testZugang() }
  *      statt db → rot: „Lesen geht …“ und „die Transaktion geht …“ (gezählt: nichts)

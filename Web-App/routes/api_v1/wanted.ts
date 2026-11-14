@@ -16,7 +16,7 @@ import type { WantedXmlErgebnis } from '../../src/vertrag/merkliste';
 import { jsonOderNull } from '../../src/infra/validate';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 type WantedXmlBericht = Pick<
   z.infer<typeof WantedXmlErgebnis>,
   'vorschau' | 'gelesen' | 'angelegt' | 'aufgestockt' | 'fehler' | 'posten' | 'offen'
@@ -34,7 +34,7 @@ function korrekturenAus(roh: string | undefined): Korrektur[] | undefined | null
  * Auftrag läuft als eigener weiter. Die Kopfzeilen sind hinaus: Ein Fehler kommt
  * als letzte ZEILE, sonst wartet der Client auf einen Bericht, der nie kommt. */
 async function importImStrom(
-  d: Dienste,
+  d: Pick<Dienste, 'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'merkliste'>,
   req: express.Request,
   res: express.Response,
   uid: number,
@@ -62,7 +62,7 @@ async function importImStrom(
   if (!res.writableEnded) res.end();
 }
 
-export function baueWantedRouter(d: Dienste) {
+export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'merkliste'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

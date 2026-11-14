@@ -1,0 +1,16 @@
+Gegenprobe: datenOderNull() liefert auch ohne Daten einen Wert
+Modul: core-model
+Test: ch.brickinventoryapp.model.LadenTest
+Rot: nur Daten tragen einen Wert
+
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt
+index 6242ab7..5906aa2 100644
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Laden.kt
+@@ -24,4 +24,5 @@ val Laden<*>.fehlerMeldung: Meldung? get() = (this as? Laden.Fehler)?.meldung
+ val Laden<*>.fehlerArt: Fehlerklasse? get() = (this as? Laden.Fehler)?.art
+ 
+ /** Die Daten, solange es welche gibt; beim Laden und nach einem Fehler null. */
+-fun <T> Laden<T>.datenOderNull(): T? = (this as? Laden.Daten<T>)?.wert
++@Suppress("UNCHECKED_CAST")
++fun <T> Laden<T>.datenOderNull(): T? = (this as? Laden.Daten<T>)?.wert ?: (listOf(1) as T)

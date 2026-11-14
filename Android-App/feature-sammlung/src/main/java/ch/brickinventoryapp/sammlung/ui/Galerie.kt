@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.fach.Setsortierung
-import ch.brickinventoryapp.model.data.model.SetItem
-import ch.brickinventoryapp.model.data.model.StatsResponse
+import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.vertrag.StatsResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope

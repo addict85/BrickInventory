@@ -45,7 +45,7 @@ async function zieheNach(
   await schritt('teile-anreichern', () => sk.katalog.enrichSetParts(setNumber));
   await schritt('figuren-anreichern', () => sk.katalog.enrichSetMinifigs(setNumber));
   // Brickset füllt nur Lücken; der CSV-Import fragt es beim Anlegen nicht.
-  if (art === 'csv') await schritt('brickset', () => sk.katalog.fuelleAusBrickset(setNumber));
+  if (art === 'csv') await schritt('brickset', () => sk.katalog.bilder.fuelleAusBrickset(setNumber));
   pruefeAbbruch(lauf);
   await schritt('bilder', () => sk.katalog.downloadSetImages(setNumber));
   if (ohne.length) await lauf?.fortschritt?.({ text: `ohne ${ohne.join(', ')}`, ohne });

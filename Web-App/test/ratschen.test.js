@@ -96,9 +96,9 @@ test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', 
   // versuche()/Abstriche, logAndContinue nur für Nebenwirkungen ohne Folgen; ein Ersatzwert
   // (meldeUndLiefere) begründet sich als „Ausnahme:“ im Code. Ausserhalb von src/katalog eigene Schranke.
   // Gegenproben: in src/katalog/farben.ts wieder `.catch(meldeUndLiefere('x', []))` → rot (8, Schranke 7);
-  // (14.11.2026) in routes/auth.ts beim Abmelden wieder `.catch(logAndContinue('x'))` → rot (109 von 108),
+  // (14.11.2026) in routes/auth.ts beim Abmelden wieder `.catch(logAndContinue('x'))` → rot (86 von 85),
   // mit Gesamtschranke 200 → rot „ausserhalb src/katalog“ (40 von 39).
-  const SCHRANKEN = { logAndContinue: 108, meldeUndLiefere: 7 };
+  const SCHRANKEN = { logAndContinue: 85, meldeUndLiefere: 7 };
   const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
   const AUSSERHALB_KATALOG = { logAndContinue: 39 };
   const imKatalog = (/** @type {string} */ f) => /[\\/]src[\\/]katalog[\\/]/.test(f);
@@ -181,7 +181,7 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
   // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60.
-  const ZUSTAND_SCHRANKE = 59;
+  const ZUSTAND_SCHRANKE = 8;
   const ZUSTAND =
     /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
   const zaehleZustand = s => (s.match(ZUSTAND) || []).length;
@@ -194,7 +194,7 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   );
   const zustand = quellen().reduce((n, f) => n + zaehleZustand(fs.readFileSync(f, 'utf8')), 0);
   assert.ok(
-    zustand > 20 && zustand <= ZUSTAND_SCHRANKE,
+    zustand > 0 && zustand <= ZUSTAND_SCHRANKE,
     `${zustand}-mal modulweiter Zustand, erlaubt sind ${ZUSTAND_SCHRANKE}`,
   );
   if (zustand < ZUSTAND_SCHRANKE)
@@ -1021,7 +1021,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
   // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
   // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
   // Gegenprobe (13.11.2026, Schranke 87): in gutscheine.js ein `${ungeprueft(KOPIE_ICON_SVG)}` zurück → rot.
-  const SCHRANKE = 86;
+  const SCHRANKE = 85;
   assert.deepEqual(
     ungeprueftArgumente(
       "function ungeprueft(t) {}\na(ungeprueft(`<i>${b(c)}</i>`), ungeprueft(d.map(e).join('')), x.ungeprueft(f))",
@@ -1059,7 +1059,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
   // Gegenprobe (09.11.2026): an finance.js Leerzeilen gehängt → rot.
-  const SCHRANKE_GROESSTE = 792,
+  const SCHRANKE_GROESSTE = 778,
     SCHRANKE_UEBER_600 = 12;
   const laengen = oberflaeche().map(f => ({
     f: path.relative(WEB, f),

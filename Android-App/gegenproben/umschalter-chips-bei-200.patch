@@ -1,0 +1,27 @@
+Gegenprobe: Sets | Teile | Minifiguren wieder über SegmentWahl, also Chips bei grosser Schrift
+Modul: app
+Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Rot: der Sammlungs-Umschalter bleibt bei 200 Prozent
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+index 28aaaa5..937a5b2 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -58,7 +58,7 @@ import ch.brickinventoryapp.ui.components.LocalOffeneAenderungen
+ import ch.brickinventoryapp.ui.components.LocalOfflineHinweise
+ import ch.brickinventoryapp.ui.components.LocalSnackbarPlatz
+ import ch.brickinventoryapp.ui.components.MitTooltip
+-import ch.brickinventoryapp.ui.components.AnsichtUmschalter
++import ch.brickinventoryapp.ui.components.SegmentWahl
+ import ch.brickinventoryapp.ui.components.UpdatePunkt
+ import ch.brickinventoryapp.ui.theme.Abstaende
+ import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
+@@ -425,7 +425,7 @@ private fun androidx.navigation.NavController.zuReiter(ziel: Any) =
+ private fun SammlungUmschalter(aktuell: Any, onWahl: (Any) -> Unit, modifier: Modifier = Modifier) {
+     val texte = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs)
+     val ziele = SAMMLUNGS_ZIELE.zip(texte).map { (ziel, text) -> ziel to stringResource(text) }
+-    AnsichtUmschalter<Any?>(
++    SegmentWahl<Any?>(
+         optionen = ziele,
+         gewaehlt = aktuell,
+         onWahl = { if (it != null) onWahl(it) },

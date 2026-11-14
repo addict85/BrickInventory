@@ -4,16 +4,21 @@ import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { assertLoginAllowed, geraeteNameInhaltGueltig, meldeAnmeldung, QR_TTL_MS } from '../../src/konto';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 /** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */
-async function darfAnmelden(d: Dienste, uid: number): Promise<boolean> {
+async function darfAnmelden(d: Pick<Dienste, 'konto'>, uid: number): Promise<boolean> {
   const user = await d.konto.kontoVollVon(uid);
   return !!user && !assertLoginAllowed(user);
 }
 
 /** Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei. */
-async function qrAbgeholt(d: Dienste, user: { id: number; username: string }, token: string, nonce?: string | null) {
+async function qrAbgeholt(
+  d: Pick<Dienste, 'konto'>,
+  user: { id: number; username: string },
+  token: string,
+  nonce?: string | null,
+) {
   return {
     success: true,
     wartet: false,
@@ -27,7 +32,7 @@ async function qrAbgeholt(d: Dienste, user: { id: number; username: string }, to
   } as const;
 }
 
-export function baueQrRouter(d: Dienste) {
+export function baueQrRouter(d: Pick<Dienste, 'konto'>) {
   const { requireLoginOrToken: requireLogin } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

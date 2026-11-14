@@ -28,7 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import ch.brickinventoryapp.ui.components.KachelAusgleich
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
@@ -260,11 +260,14 @@ private fun KachelTexte(
     /** Was die Bildplaketten sagen; TalkBack liest es nach dem Preis. */
     ansagen: List<String>,
 ) {
+    // Ein einzeiliger Name lässt keine Leerzeile unter sich; damit die Rasterreihe gleich hoch
+    // bleibt, steht die fehlende Zeile am Fuss der Kachel (KachelAusgleich).
+    var namensZeilen by remember { mutableIntStateOf(2) }
     Box(modifier) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                maxLines = 2, minLines = if (zeile) 1 else 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
-                lineHeight = 16.sp)
+                maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                onTextLayout = { namensZeilen = it.lineCount })
             Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(Modifier.padding(vertical = Abstaende.haar), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
@@ -292,6 +295,7 @@ private fun KachelTexte(
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             KachelBetragZeilen(set, zeile, preis, betrag, waehrung)
+            if (!zeile) KachelAusgleich(2 - namensZeilen)
         }
         // Ohne Fläche: nur die Ansage der Bildplaketten, nach dem Preis.
         val plaketten = ansagen.takeIf { !zeile && it.isNotEmpty() }

@@ -3,13 +3,11 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Fach
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.Offlineablage.Wirkung
-import ch.brickinventoryapp.model.data.model.Fehlercode
-import kotlinx.serialization.KSerializer
+import ch.brickinventoryapp.vertrag.Fehlercode
 import retrofit2.Response
 import ch.brickinventoryapp.netz.util.KlartextAbgelehnt
 
@@ -132,33 +130,22 @@ private suspend fun Offlineablage.wendeImSelbenBereichAn(w: Wirkung, vorher: Str
 }
 
 /**
- * Netzabruf mit Plattenspeicher als Rückfallebene, nur noch für einzelne
- * Antworten ohne Liste, Filter und Bearbeitung (Kennzahlen, Katalog-Metadaten):
- * Sie sind ein Wert je Bereich, keine Zeilen. Alle Listen gehen über die Ablage.
+ * Wie [abgeglichen], für eine einzelne Antwort ohne Liste (Kennzahlen, Katalog-Metadaten):
+ * eine Zeile je Bereich. Die Ablage springt nur ein, wenn der Server nicht erreichbar war;
+ * eine Antwort von ihm (401, 404, 500) ist seine Auskunft und wird nicht überdeckt.
  */
-internal suspend fun <T : Any> ResponseCache.cached(
-    key: String,
-    serializer: KSerializer<T>,
-    call: suspend () -> Ergebnis<T>,
-): Ergebnis<T> {
-    // Abgelegt und gelesen wird nur, wenn vor und nach dem Abruf derselbe
-    // Bereich gilt. Wechselt das Konto während des Abrufs, gehört die
-    // Antwort keinem der beiden sicher.
+internal suspend fun <T : Any> Offlineablage.abgeglichenEinzeln(fach: Fach<T>, call: suspend () -> Ergebnis<T>): Ergebnis<T> {
     val vorher = bereich()
-    val fresh = call()
-    val bereich = bereich()?.takeIf { it == vorher } ?: return fresh
-    if (fresh is Ergebnis.Success) {
-        put(bereich, key, serializer, fresh.data)
-        return fresh
+    val frisch = call()
+    val bereich = bereich()?.takeIf { it == vorher } ?: return frisch
+    if (frisch is Ergebnis.Success) {
+        uebernimm(fach, listOf(frisch.data), bereich)
+        return frisch
     }
-    // Die Platte springt nur ein, wenn der Server NICHT erreichbar war
-    // (transient: Verbindung, Zeitüberschreitung). Antwortet er mit 401, 404
-    // oder 500, ist das seine Auskunft — alte Daten darüber zu legen hiesse,
-    // sie zu verschweigen. Der Rückfall trägt seinen Stand, damit die Liste
-    // „Offline – Stand von …“ zeigen kann statt frisch auszusehen.
-    if (fresh !is Ergebnis.Error || !fresh.transient) return fresh
-    val (stored, stand) = getMitStand(bereich, key, serializer) ?: return fresh
-    return Ergebnis.Success(stored, stand = stand)
+    if (frisch !is Ergebnis.Error || !frisch.transient) return frisch
+    val lokal = lies(fach) ?: return frisch
+    val wert = lokal.liste.firstOrNull() ?: return frisch
+    return Ergebnis.Success(wert, stand = lokal.stand ?: return frisch)
 }
 
 /**

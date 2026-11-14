@@ -9,7 +9,7 @@
     <string name="settings_default_condition">Standard-Zustand</string>
     <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
     <string name="settings_default_condition_hint">Vorbelegung beim Erfassen. Leer = globale Vorgabe aus den Hintergrundarbeiten.</string>
-    <string name="settings_default_condition_global">— Globale Vorgabe —</string>
+    <string name="settings_default_condition_global">Globale Vorgabe</string>
     <string name="monitoring_default_condition">Standard-Zustand</string>
     <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
     <string name="settings_condition_new">Neuware</string>
@@ -291,9 +291,9 @@
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Teile</string>
     <string name="finance_filter_minifigs">Minifiguren</string>
-    <string name="finance_section_sets">SETS</string>
-    <string name="finance_section_parts">TEILE</string>
-    <string name="finance_section_minifigs">MINIFIGUREN</string>
+    <string name="finance_section_sets">Sets</string>
+    <string name="finance_section_parts">Teile</string>
+    <string name="finance_section_minifigs">Minifiguren</string>
     <string name="finance_subtotal_parts">Total Teile</string>
     <string name="finance_subtotal_minifigs">Total Minifiguren</string>
     <string name="finance_total_sets">Sets</string>
@@ -335,6 +335,9 @@
     <string name="parts_color_label">Farbe (optional)</string>
     <string name="parts_color_unknown">Farbe %1$d</string>
     <string name="parts_add_button">Hinzufügen</string>
+    <string name="parts_ordnung_farbe">Nach Farbe</string>
+    <string name="parts_ordnung_name">Nach Name</string>
+    <string name="parts_ordnung_menge">Nach Menge</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_title">Hintergrundarbeiten</string>
@@ -347,7 +350,7 @@
     <string name="monitoring_icon_retry">Erneut versuchen</string>
     <string name="monitoring_hide_error">Fehler ausblenden</string>
     <string name="monitoring_show_error">Letzten Fehler anzeigen</string>
-    <string name="monitoring_price_cache">PREISSPEICHER</string>
+    <string name="monitoring_price_cache">Preisspeicher</string>
     <string name="monitoring_cache_prices">Preise</string>
     <string name="monitoring_cache_stale">Veraltet</string>
     <string name="monitoring_cache_subsets">Teilsets</string>
@@ -359,7 +362,7 @@
     <string name="monitoring_cache_clear_confirm">Leeren</string>
     <string name="monitoring_cache_cleared">Zwischenspeicher geleert</string>
     <string name="monitoring_cache_saved">Speicherdauer gespeichert</string>
-    <string name="monitoring_api_calls">API-AUFRUFE</string>
+    <string name="monitoring_api_calls">API-Aufrufe</string>
     <string name="monitoring_limits_saved">Grenzen gespeichert</string>
     <string name="monitoring_limits_save">Grenzen speichern</string>
     <string name="monitoring_retry_queued">%1$s wird nochmals versucht</string>
@@ -1133,6 +1136,11 @@
     <string name="zf_share_title">Wiederherstellungscodes</string>
     <string name="passwort_aendern_fehlt">Aktuelles Passwort, neues Passwort und Wiederholung eingeben, dann ändern.</string>
     <string name="erfassen_nummer_fehlt">Zuerst eine Setnummer eingeben.</string>
+    <string name="parts_nummer_fehlt">Zuerst eine Teilenummer eingeben.</string>
+    <string name="minifigs_nummer_fehlt">Zuerst eine Minifigur-Nummer eingeben.</string>
+    <string name="erfassen_verwerfen_titel">Änderungen verwerfen?</string>
+    <string name="erfassen_verwerfen_text">Was du eingegeben hast, geht verloren.</string>
+    <string name="erfassen_verwerfen">Verwerfen</string>
     <string name="gallery_quantity_hint">Anzahl gleicher Sets</string>
     <string name="erfassen_menge_ungueltig">Eine ganze Anzahl ab 1 eingeben.</string>
     <string name="erfassen_preis_ungueltig">Einen Betrag wie 12,50 oder 1.299,00 eingeben.</string>

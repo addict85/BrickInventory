@@ -612,16 +612,21 @@ function _jahrAnPosition() {
  * oder Suchtext genauso daneben wie die frühere lineare Schätzung. Einmal je Listenaufbau, nicht beim Rollen.
  */
 async function _ladeJahrVerteilung() {
-  _catJahrVerteilung = [];
   const p = new URLSearchParams();
   if (_catState.q) p.set('q', _catState.q);
   if (_catState.theme) p.set('theme_id', _catState.theme);
   p.set('sort', _catState.sort);
+  if (p.toString() === _jahrVerteilungFuer && _catJahrVerteilung.length) return;
+  _jahrVerteilungFuer = p.toString();
+  _catJahrVerteilung = [];
   const gen = _catGen;
   const d = await api('GET', `/v1/catalog/year-verteilung?${p.toString()}`).catch(() => null);
   if (gen !== _catGen) return; // Filter hat inzwischen gewechselt
   if (d?.success) _catJahrVerteilung = (d.years || []).filter(y => y.year);
+  else _jahrVerteilungFuer = '';
 }
+/** Filter der geladenen Jahresverteilung: Beim Wiederbetreten des Reiters ändert sie sich nicht. */
+let _jahrVerteilungFuer = '';
 
 /** Beim Betreten des Reiters das Etikett anmelden, beim Verlassen abmelden. */
 function _initYearRail() {

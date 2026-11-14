@@ -54,7 +54,7 @@ const _req = buildAndRequire();
 const { warte: pause, bis } = require('./helpers/zeit');
 const bildDurchreichen = (...a) =>
   _req('routes/imgProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
-const { raeumeBildCacheAuf } = _req('src/katalog/bilder/imgCacheServe.js');
+const { raeumeBildCacheAuf } = _req('src/bilder/imgCacheServe.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 
 const geholt = [];
@@ -270,7 +270,7 @@ test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
 });
 
 test('Fehler werden gezählt und protokolliert', async () => {
-  const { imgProxyFailures: f } = _req('src/katalog/bilder/imgProxyStats.js');
+  const { imgProxyFailures: f } = _req('src/bilder/imgProxyStats.js');
   const vorher = { ...f };
   const fehler = [];
   const echtError = console.error;

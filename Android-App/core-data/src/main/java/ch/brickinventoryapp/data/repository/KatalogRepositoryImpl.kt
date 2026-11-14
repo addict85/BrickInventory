@@ -3,13 +3,14 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.data.api.KatalogApi
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
+import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.vertrag.CatalogMetaResponse
+import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
+import ch.brickinventoryapp.vertrag.CatalogSetsResponse
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.vertrag.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
@@ -17,14 +18,14 @@ import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
 @Singleton
 class KatalogRepositoryImpl @Inject constructor(
     private val api: KatalogApi,
-    private val cache: ResponseCache,
+    private val ablage: Offlineablage,
     private val wiederholung: Wiederholung,
 ) : KatalogRepository {
     /** Beim Blättern im Katalog: wenige Versuche, sonst stünde die nächste Seite lange aus. */
     private val knapp = wiederholung.hoechstens(KATALOG_VERSUCHE)
 
     override suspend fun getCatalogMeta(): Ergebnis<CatalogMetaResponse> =
-        wiederholung.wiederhole { cache.cached("catalog-meta", CatalogMetaResponse.serializer()) { sicherAufrufen { api.getCatalogMeta() } } }
+        wiederholung.wiederhole { ablage.abgeglichenEinzeln(Faecher.KATALOG_META) { sicherAufrufen { api.getCatalogMeta() } } }
 
     override suspend fun getCatalogSets(
         q: String?, themeId: Int?, yearFrom: Int?, yearTo: Int?,

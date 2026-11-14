@@ -32,9 +32,7 @@ const { datenOderSkip } = require('./helpers/db');
 
 // Die Quelle nennt zwei Adressen; was dort liegt, bestimmt der Test.
 const URLS = ['https://cdn.rebrickable.com/media/echt.pdf', 'https://cdn.rebrickable.com/media/seite.pdf'];
-const quellenPfad = require.resolve(path.join(S.DIST, 'src/katalog/quellen.js'));
-const echteQuellen = _req('src/katalog/quellen.js');
-require.cache[quellenPfad].exports = Object.assign({}, echteQuellen, {
+S.testQuellen(null, {
   scrapeInstructions: async () => URLS.map((url, i) => ({ url, description: `Anleitung ${i}` })),
 });
 const { downloadSetInstructions } = _req('src/katalog/instructions.js');

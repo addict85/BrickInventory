@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.AddSetRequest
-import ch.brickinventoryapp.model.data.model.AddSetResponse
+import ch.brickinventoryapp.vertrag.AddSetRequest
+import ch.brickinventoryapp.vertrag.AddSetResponse
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Offlineablage
 import kotlinx.coroutines.flow.Flow

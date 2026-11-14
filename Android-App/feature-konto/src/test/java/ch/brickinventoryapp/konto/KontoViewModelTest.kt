@@ -2,7 +2,6 @@ package ch.brickinventoryapp.konto
 
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -90,7 +89,7 @@ class KontoViewModelTest {
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-konto-${System.nanoTime()}")
         cacheDir.mkdirs()
         kanal = MeldungsKanal()
-        vm = KontoViewModel(KontoRepository(server.api, ResponseCache(io = takt) { cacheDir }, takt), NummernTexte, kanal,
+        vm = KontoViewModel(KontoRepository(server.api, takt), NummernTexte, kanal,
                             Sitzung(), SitzungsAttrappe { abgemeldet = true })
     }
 

@@ -32,6 +32,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.Badge
@@ -83,6 +85,35 @@ fun <T> SegmentWahl(
 }
 
 /**
+ * Ein Wechsel zwischen Ansichten (Sets | Teile | Minifiguren) ist immer eine Segmentzeile,
+ * auch bei grosser Schrift: Dann rollt sie seitlich, statt Beschriftungen abzuschneiden
+ * oder zu Chips zu werden, die wie Filter aussähen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> AnsichtUmschalter(
+    optionen: List<Pair<T, String>>,
+    gewaehlt: T,
+    onWahl: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val gross = LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB
+    Box(if (gross) modifier.fillMaxWidth().horizontalScroll(rememberScrollState()) else modifier.fillMaxWidth()) {
+        SingleChoiceSegmentedButtonRow(if (gross) Modifier else Modifier.fillMaxWidth()) {
+            optionen.forEachIndexed { i, (wert, text) ->
+                SegmentedButton(
+                    selected = wert == gewaehlt,
+                    onClick = { onWahl(wert) },
+                    shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
+                ) {
+                    Text(text, maxLines = 1, softWrap = false)
+                }
+            }
+        }
+    }
+}
+
+/**
  * Eine Wahl aus wenigen Möglichkeiten als Chips: Vorgelesen als Radiogruppe
  * (FilterChip meldet sich als Kontrollkästchen), umbrechend statt abgeschnitten
  * bei grosser Schrift, und die Wahl trägt Häkchen und Rand — im Dunkeln lag die
@@ -126,7 +157,7 @@ fun WahlChip(text: String, an: Boolean, onClick: () -> Unit, modifier: Modifier 
         modifier = modifier.heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.6f).fokusRahmen(Formen.chip)
             .semantics { role = Role.RadioButton },
     ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        Row(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (an) Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))

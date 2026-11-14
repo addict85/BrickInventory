@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.model.data.model.AddSetRequest
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.AddSetRequest
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.fach.ZustandSerializer
 import kotlinx.serialization.json.Json

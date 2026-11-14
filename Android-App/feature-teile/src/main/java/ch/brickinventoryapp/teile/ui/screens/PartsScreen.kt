@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.teile.ui.PartsUiState
+import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
@@ -192,10 +193,11 @@ internal fun PartsScreen(
             aktiveFilter = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus,
                 partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter),
             onFilter = { zeigeFilter = true },
+            sortierung = { TeileSortierung(partsState.partsOrdnung, aktionen::setPartsOrdnung) },
             erfassen = erfassenText to { showAddDialog = true },
         )
 
-        OfflineHinweis(partsState.teileOfflineStand)
+        OfflineHinweis(partsState.teileOfflineStand, onErneut = onRefresh)
         if (anzeige == Ladeanzeige.LAEDT) {
             SkelettRaster(LesbareSpalten(120.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
@@ -343,4 +345,20 @@ private fun TeileKennzahlen(stats: TeileKennzahlenAnsicht) {
         GalleryStatChip(stats.teileGesamt, R.plurals.parts_stat_total,
             teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln))
     }
+}
+
+/** Die Reihenfolgen der Webapp (parts-ordnung), in derselben Bauform wie Galerie und Merkliste. */
+@Composable
+private fun TeileSortierung(gewaehlt: PartsUiState.Ordnung, onWahl: (PartsUiState.Ordnung) -> Unit) {
+    SortierMenue(
+        optionen = PartsUiState.Ordnung.entries.map { it to stringResource(it.beschriftung()) },
+        gewaehlt = gewaehlt, onWahl = onWahl,
+        vorgabe = PartsUiState.Ordnung.FARBE,
+    )
+}
+
+private fun PartsUiState.Ordnung.beschriftung(): Int = when (this) {
+    PartsUiState.Ordnung.FARBE -> R.string.parts_ordnung_farbe
+    PartsUiState.Ordnung.NAME -> R.string.parts_ordnung_name
+    PartsUiState.Ordnung.MENGE -> R.string.parts_ordnung_menge
 }

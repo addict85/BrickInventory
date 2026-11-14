@@ -1,17 +1,6 @@
 package ch.brickinventoryapp.model.ui.model
 
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.BestandteilKopf
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.MinifigStats
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.PartsCategory
-import ch.brickinventoryapp.model.data.model.PartsFilterColor
-import ch.brickinventoryapp.model.data.model.PartsStats
-import ch.brickinventoryapp.model.data.model.ValuationAcquisition
-import ch.brickinventoryapp.model.data.model.VerwendendesSet
 
 // Teile und Minifiguren — aus Sets und manuell erfasst.
 
@@ -31,22 +20,6 @@ data class TeilAnsicht(
     val isSpare: Boolean = false,
 )
 
-fun Part.alsAnsicht() = TeilAnsicht(
-    partNumber = partNumber,
-    blPartNumber = blPartNumber,
-    partName = partName,
-    colorId = colorId,
-    blColorId = blColorId,
-    colorName = colorName,
-    colorHex = colorHex,
-    categoryName = categoryName,
-    imageUrl = imageUrl,
-    imageLocal = imageLocal,
-    totalQuantity = totalQuantity,
-    inSets = inSets,
-    isSpare = isSpare,
-)
-
 /** [teileGesamt] ist die Gesamtzahl wie in der Sammlung: aus Sets und einzeln erfasst zusammen. */
 data class TeileKennzahlenAnsicht(
     val uniqueParts: Int = 0,
@@ -54,18 +27,6 @@ data class TeileKennzahlenAnsicht(
     val teileGesamt: Int = 0,
     val teileAusSets: Int? = null,
     val teileEinzeln: Int? = null,
-)
-
-/**
- * /parts/stats zählt in total_parts nur Teile aus Sets, /stats beide zusammen;
- * ohne die Summe zeigten Sammlung und Teile-Reiter verschiedene Zahlen.
- */
-fun PartsStats.alsAnsicht() = TeileKennzahlenAnsicht(
-    uniqueParts = uniqueParts,
-    uniqueColors = uniqueColors,
-    teileGesamt = totalParts + (manualParts ?: 0),
-    teileAusSets = if (manualParts != null) totalParts else null,
-    teileEinzeln = manualParts,
 )
 
 data class FigurAnsicht(
@@ -83,31 +44,10 @@ data class FigurAnsicht(
     val setAddedAt: String? = null,
 )
 
-fun Minifig.alsAnsicht() = FigurAnsicht(
-    figNumber = figNumber,
-    condition = condition,
-    conditions = conditions,
-    owners = owners.map { it.alsAnsicht() },
-    avgPurchasePrice = avgPurchasePrice,
-    figName = figName,
-    quantity = quantity,
-    totalQuantity = totalQuantity,
-    imageUrl = imageUrl,
-    imageLocal = imageLocal,
-    source = source,
-    setAddedAt = setAddedAt,
-)
-
 data class FigurenKennzahlenAnsicht(
     val types: Int = 0,
     val totalQuantity: Int = 0,
     val manual: Int = 0,
-)
-
-fun MinifigStats.alsAnsicht() = FigurenKennzahlenAnsicht(
-    types = types,
-    totalQuantity = totalQuantity,
-    manual = manual,
 )
 
 data class FilterFarbeAnsicht(
@@ -117,25 +57,11 @@ data class FilterFarbeAnsicht(
     val totalQuantity: Int = 0,
 )
 
-fun PartsFilterColor.alsAnsicht() = FilterFarbeAnsicht(
-    colorName = colorName,
-    colorHex = colorHex,
-    uniqueParts = uniqueParts,
-    totalQuantity = totalQuantity,
-)
-
 data class KategorieAnsicht(
     val categoryName: String? = null,
     val label: String? = null,
     val uniqueParts: Int = 0,
     val totalQuantity: Int = 0,
-)
-
-fun PartsCategory.alsAnsicht() = KategorieAnsicht(
-    categoryName = categoryName,
-    label = label,
-    uniqueParts = uniqueParts,
-    totalQuantity = totalQuantity,
 )
 
 data class BestandteilKopfAnsicht(
@@ -153,21 +79,6 @@ data class BestandteilKopfAnsicht(
     val totalQuantity: Int = 0,
 )
 
-fun BestandteilKopf.alsAnsicht() = BestandteilKopfAnsicht(
-    nummer = nummer,
-    name = name,
-    colorId = colorId,
-    colorName = colorName,
-    colorHex = colorHex,
-    categoryName = categoryName,
-    imageLocal = imageLocal,
-    imageUrl = imageUrl,
-    isSpare = isSpare,
-    storage = storage,
-    ownerIds = ownerIds,
-    totalQuantity = totalQuantity,
-)
-
 data class VerwendendesSetAnsicht(
     val setNumber: String,
     val setName: String? = null,
@@ -175,15 +86,6 @@ data class VerwendendesSetAnsicht(
     val imageLocal: String? = null,
     val imageUrl: String? = null,
     val ownerUserId: Int = 0,
-)
-
-fun VerwendendesSet.alsAnsicht() = VerwendendesSetAnsicht(
-    setNumber = setNumber,
-    setName = setName,
-    quantity = quantity,
-    imageLocal = imageLocal,
-    imageUrl = imageUrl,
-    ownerUserId = ownerUserId,
 )
 
 data class ManuellesTeilAnsicht(
@@ -214,34 +116,6 @@ data class ManuellesTeilAnsicht(
     val storage: String? = null,
 )
 
-fun PartValuationItem.alsAnsicht() = ManuellesTeilAnsicht(
-    id = id,
-    partNumber = partNumber,
-    blPartNumber = blPartNumber,
-    partName = partName,
-    colorId = colorId,
-    colorName = colorName,
-    colorHex = colorHex,
-    quantity = quantity,
-    imageUrl = imageUrl,
-    imageLocal = imageLocal,
-    unitPrice = unitPrice,
-    purchasePrice = purchasePrice,
-    avgPurchasePrice = avgPurchasePrice,
-    qtyAvgPrice = qtyAvgPrice,
-    avgPrice = avgPrice,
-    pnlPct = pnlPct,
-    pnlProzent = pnlProzent,
-    displayValue = displayValue,
-    wertGesamt = wertGesamt,
-    condition = condition,
-    conditions = conditions,
-    userId = userId,
-    owners = owners.map { it.alsAnsicht() },
-    acquisitions = acquisitions.map { it.alsAnsicht() },
-    storage = storage,
-)
-
 data class ManuelleFigurAnsicht(
     val id: Int? = null,
     val figNumber: String = "",
@@ -267,31 +141,6 @@ data class ManuelleFigurAnsicht(
     val storage: String? = null,
 )
 
-fun FigValuationItem.alsAnsicht() = ManuelleFigurAnsicht(
-    id = id,
-    figNumber = figNumber,
-    blFigNumber = blFigNumber,
-    figName = figName,
-    quantity = quantity,
-    imageUrl = imageUrl,
-    imageLocal = imageLocal,
-    unitPrice = unitPrice,
-    purchasePrice = purchasePrice,
-    avgPurchasePrice = avgPurchasePrice,
-    qtyAvgPrice = qtyAvgPrice,
-    avgPrice = avgPrice,
-    pnlPct = pnlPct,
-    pnlProzent = pnlProzent,
-    displayValue = displayValue,
-    wertGesamt = wertGesamt,
-    condition = condition,
-    conditions = conditions,
-    userId = userId,
-    owners = owners.map { it.alsAnsicht() },
-    acquisitions = acquisitions.map { it.alsAnsicht() },
-    storage = storage,
-)
-
 data class BewertungsKaufAnsicht(
     val id: Int = 0,
     val condition: Zustand = Zustand.NEU,
@@ -304,18 +153,4 @@ data class BewertungsKaufAnsicht(
     val pnlProzent: Double? = null,
     val createdAt: String? = null,
     val ownerUserId: Int? = null,
-)
-
-fun ValuationAcquisition.alsAnsicht() = BewertungsKaufAnsicht(
-    id = id,
-    condition = condition,
-    quantity = quantity,
-    purchasePrice = purchasePrice,
-    avgPrice = avgPrice,
-    totalAvg = totalAvg,
-    wertGesamt = wertGesamt,
-    pnlPct = pnlPct,
-    pnlProzent = pnlProzent,
-    createdAt = createdAt,
-    ownerUserId = ownerUserId,
 )

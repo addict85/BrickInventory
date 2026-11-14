@@ -1,9 +1,9 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { waechterFuer } from './middleware';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueCatalogRouter(d: Dienste) {
+export function baueCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

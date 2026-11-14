@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import ch.brickinventoryapp.ui.components.Rueckfrage
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -327,24 +328,14 @@ private fun CacheDauerZeile(
 /** Rückfrage vor dem Leeren: Jeder Neuaufbau kostet Anfragen aus dem gemeinsamen Tageskontingent. */
 @Composable
 private fun CacheLeerenFrage(alles: Boolean, onSchliessen: () -> Unit, onLeeren: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onSchliessen,
-        icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-        title = { Text(stringResource(
-            if (alles) R.string.monitoring_cache_clear_all
-            else R.string.monitoring_cache_clear_prices)) },
-        text = { Text(stringResource(R.string.monitoring_cache_clear_hint)) },
-        confirmButton = {
-            TextButton(onClick = onLeeren) {
-                Text(stringResource(R.string.monitoring_cache_clear_confirm),
-                    color = MaterialTheme.colorScheme.error)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onSchliessen) {
-                Text(stringResource(R.string.common_cancel))
-            }
-        }
+    // Die gemeinsame Rückfrage: Sie nennt ihren Titel als Überschrift und Fenstername.
+    Rueckfrage(
+        titel = stringResource(if (alles) R.string.monitoring_cache_clear_all else R.string.monitoring_cache_clear_prices),
+        text = stringResource(R.string.monitoring_cache_clear_hint),
+        bestaetigen = stringResource(R.string.monitoring_cache_clear_confirm),
+        onBestaetigen = onLeeren,
+        onAbbrechen = onSchliessen,
+        symbol = Icons.Default.Delete,
     )
 }
 

@@ -4,7 +4,7 @@ import { sichtVon, waechterFuer } from './middleware';
 import { einzelwert } from '../../src/infra/validate';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 /** Preisfehler kommen mit Code aus der Bewertung; der Text folgt der Sprache der Anfrage, nicht dem Server. */
 function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(
@@ -19,7 +19,7 @@ function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(
   );
 }
 
-export function baueFinanceRouter(d: Dienste) {
+export function baueFinanceRouter(d: Pick<Dienste, 'konto' | 'finanzen'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

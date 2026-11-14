@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.offline
 
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.data.model.BrickLinkRef
-import ch.brickinventoryapp.model.data.model.Instruction
-import ch.brickinventoryapp.model.data.model.KontoName
-import ch.brickinventoryapp.model.data.model.LagerortEintrag
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.MerkpostenAlarm
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.SetItem
-import ch.brickinventoryapp.model.data.model.VorratsOrt
+import ch.brickinventoryapp.vertrag.BrickLinkRef
+import ch.brickinventoryapp.vertrag.Instruction
+import ch.brickinventoryapp.vertrag.KontoName
+import ch.brickinventoryapp.vertrag.LagerortEintrag
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.MerkpostenAlarm
+import ch.brickinventoryapp.vertrag.Part
+import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.vertrag.VorratsOrt
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand

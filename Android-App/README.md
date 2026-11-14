@@ -244,8 +244,8 @@ Der Ausgang liegt in derselben Datenbank: Senden braucht ohnehin das Token, und 
 
 | Ablage | Wie |
 | --- | --- |
-| Bestand (Room) | SQLCipher |
-| API-Antworten, Widget-Zahlen | `AblageChiffre` |
+| Bestand (Room) samt Kennzahlen und Katalog-Metadaten | SQLCipher |
+| Widget-Zahlen | `AblageChiffre` |
 | Vorschau-Ablage `files/vorschau/` | `AblageChiffre`; Klartext älterer Fassungen wird verworfen |
 | Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `VerschluesseltesDateisystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
 | Gutschein-PDF (Nummer, PIN) | nie auf der Platte: in den Speicher geladen, gerendert aus einem memfd, der mit dem Betrachter oder dem Prozess vergeht |
@@ -263,7 +263,7 @@ steckt; er vergeht mit dem Betrachter oder dem Prozess. Drucken und
 Herunterladen gibt es nur für Anleitungen, nicht für Gutscheine (der
 Druckdialog kann „Als PDF speichern“).
 
-**Abmelden:** Token, Antwort-Cache, Bestand und Ausgang, Vorschauen, beide
+**Abmelden:** Token, Bestand samt Kennzahlen und Ausgang, Vorschauen, beide
 Bildcaches, PDFs, Update-APK, Widget-Zahlen und alle Meldungen der App sind danach
 weg, die Marke des Preisalarms ebenfalls. Zuletzt erneuert `Ablageschluessel` den
 Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war, auch
@@ -314,7 +314,7 @@ R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
 Konstruktor und `doWork()` und Rooms Datenbank-Konstruktoren. Die API-Modelle
 werden umbenannt; ihre Serializer hält die Regel von kotlinx.serialization, und
-`tools/apk-pruefen.py` prüft am fertigen APK, dass `data.model.SetItem` nicht
+`tools/apk-pruefen.py` prüft am fertigen APK, dass `vertrag.SetItem` nicht
 mehr unter seinem Namen steht.
 
 **PDFs im isolierten Prozess:** `PdfRenderer` (pdfium) läuft nur in
@@ -364,11 +364,12 @@ Modulkanten und echte Zusatzabhängigkeiten:
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
 des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
-`core-model` bleibt reines Kotlin (`brickinventory.jvm.library`).
+`core-model` und `core-vertrag` bleiben reines Kotlin (`brickinventory.jvm.library`).
 
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
-| `core-model` | `ch.brickinventoryapp.model` | Server- und UI-Modelle, reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
+| `core-model` | `ch.brickinventoryapp.model` | Fach- und Anzeigetypen (Ansichten), reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
+| `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers (`@Serializable`), `Fehlercode`, unter `vertrag.abbildung` ihre Abbildung auf die Ansichten in `core-model`, unter `vertrag.erzeugt` die aus `Web-App/docs/openapi.json` erzeugten Typen (`npm run vertrag:kotlin`, nie von Hand); reines Kotlin, kennt `core-model`, nicht umgekehrt |
 | `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
 | `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
 | `core-sicherheit` | `ch.brickinventoryapp.sicherheit` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |
@@ -533,7 +534,7 @@ der Compose-Testregel auf der JVM und bekommen Verhaltenstests.
 Faustregel: Was sich aufrufen lässt, bekommt einen Verhaltenstest. Die Frage lohnt
 sich auch, wo es schwer scheint: Was schwer prüfbar ist, ist
 meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das es nicht
-braucht. `fehlerTextId()` und der Ordner-Parameter von `ResponseCache` sind
+braucht. `fehlerTextId()` und die Bereichsquelle der `Offlineablage` sind
 beides Beispiele dafür.
 
 Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Quellen.kt` —

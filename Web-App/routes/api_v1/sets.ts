@@ -4,9 +4,9 @@ import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { sichtVon, waechterFuer } from './middleware';
 import { normalizeSetNumber } from '../../src/sets';
 import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
-export function baueSetsRouter(d: Dienste) {
+export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.teile.ui
 
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.data.model.BrickColorsResponse
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.PartsCategoriesResponse
-import ch.brickinventoryapp.model.data.model.PartsFilterColorsResponse
-import ch.brickinventoryapp.model.data.model.PartsStatsResponse
+import ch.brickinventoryapp.vertrag.BrickColorsResponse
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.Minifig
+import ch.brickinventoryapp.vertrag.MinifigStatsResponse
+import ch.brickinventoryapp.vertrag.Part
+import ch.brickinventoryapp.vertrag.PartValuationItem
+import ch.brickinventoryapp.vertrag.PartsCategoriesResponse
+import ch.brickinventoryapp.vertrag.PartsFilterColorsResponse
+import ch.brickinventoryapp.vertrag.PartsStatsResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -113,7 +113,7 @@ internal class Teile(
         val st = _state.value
         teileFolgen = listOf(
             folge(ablage.teile(st)) { s, l ->
-                s.copy(parts = l.map { it.alsAnsicht() }, partsTotal = l.size, partsPage = 1)
+                s.copy(parts = sortiert(l.map { it.alsAnsicht() }, s.partsOrdnung), partsTotal = l.size, partsPage = 1)
             },
             folge(ablage.manuelleTeile(st)) { s, l -> s.copy(manualParts = l.map { it.alsAnsicht() }) },
         )
@@ -147,6 +147,13 @@ internal class Teile(
         vergissScroll()
         _state.update { it.copy(partsSpare = wert) }
         laden()
+    }
+
+    /** Nur umsortieren: Die ganze Liste liegt schon vor, ein Abruf brächte nichts Neues. */
+    fun setzeOrdnung(wert: PartsUiState.Ordnung) {
+        if (_state.value.partsOrdnung == wert) return
+        vergissScroll()
+        _state.update { it.copy(partsOrdnung = wert, parts = sortiert(it.parts, wert)) }
     }
 
     /** Karten oder Tabelle; neu laden, weil die Tabelle „In Sets" mitbestellt. */

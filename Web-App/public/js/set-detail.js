@@ -156,8 +156,12 @@ function setDetailHtml(sn, acqs) {
   return { links, rechts };
 }
 
-/** Figurenzahl und Preisverlauf nachladen, ohne den Dialog aufzuhalten. @param {string} sn */
-function ladeSetNachtraege(sn) {
+/** Figurenzahl und Preisverlauf nachladen, ohne den Dialog aufzuhalten.
+ * @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
+function ladeSetNachtraege(sn, acqs) {
+  const preise = (/** @type {string} */ z) =>
+    new Set(acqs.filter(a => a.condition === z && a.purchase_price != null).map(a => a.unit_price ?? a.purchase_price));
+  const mittel = new Set(['N', 'U'].filter(z => preise(z).size > 1));
   // Die Figurenzahl aus der Figurentabelle (verlässlicher als sets.minifigs). Die Antwort kann nach dem
   // Schliessen oder einem Setwechsel kommen; nur wenn noch dasselbe Set offen ist, wird geschrieben.
   api('GET', `/v1/minifigs?source=set`).then(md => {
@@ -183,7 +187,7 @@ function ladeSetNachtraege(sn) {
     setzeHtml(
       el,
       ph.success
-        ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el))
+        ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el), mittel)
         : html`<span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`,
     );
   });
@@ -257,7 +261,7 @@ export async function openModal(sn) {
   // Die Auswahlliste gehört dem BESITZER des Sets, nicht dem Betrachter — Begründung an ladeOrtAuswahl().
   ladeOrtAuswahl(set.owners).catch(() => {});
 
-  ladeSetNachtraege(sn);
+  ladeSetNachtraege(sn, ad?.acquisitions || []);
 }
 
 /** Aus „Weitere Aktionen“ im Set-Detail: das offene Set. */
@@ -296,7 +300,7 @@ export function renderInstructions(instr, sn) {
       <div data-stil="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
         <div data-stil="flex:1;min-width:140px">
           <label for="instr-desc" class="feld-titel-klein">${tRaw('instr.desc_placeholder')}</label>
-          <input type="text" id="instr-desc" data-stil="font-size:var(--fs-2);padding:6px 10px" />
+          <input type="text" id="instr-desc" />
         </div>
         <label class="btn bs btn-sm zeiger">
           ${ico('datei')} ${tRaw('instr.choose_file')}
@@ -481,7 +485,7 @@ async function frischeDetailAuf(sn, feld) {
         null);
   if (fokus && ziel instanceof HTMLElement) ziel.focus({ preventScroll: true });
   meldeAmFeld(ziel || menge?.querySelector('[data-rueckmeldung]'));
-  ladeSetNachtraege(sn);
+  ladeSetNachtraege(sn, acqs);
   return ad;
 }
 

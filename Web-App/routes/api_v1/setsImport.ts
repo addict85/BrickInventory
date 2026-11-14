@@ -10,13 +10,13 @@ import { antwortSprache } from '../../src/infra/fehlerTexte';
 import { oeffneStrom, StromGeschlossen, type Strom } from '../../src/konto/http/strom';
 import { loginOrTokenGuard, angemeldeteNutzerId } from '../../src/konto/http/anmeldung';
 import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 /** Das Set ist angelegt; endet der Zugang oder trennt der Client, bricht nur die
  * Ergänzung ab. Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein
  * Statuscode mehr. `success` gehört dazu: Die Clients lesen es wie eine Antwort. */
 async function ergaenzeImStrom(
-  dienste: Dienste,
+  dienste: Pick<Dienste, 'konto' | 'sets'>,
   strom: Strom,
   req: express.Request,
   r: { set_number: string; besitzer: number; name?: string | null },
@@ -40,7 +40,7 @@ async function ergaenzeImStrom(
   strom.ende();
 }
 
-export function baueSetsImportRouter(d: Dienste) {
+export function baueSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

@@ -38,7 +38,7 @@ class GalerieLaedtGefiltertTest {
             val gemerkt = SavedStateHandle(mapOf("galerie_suche" to "Falke",
                 "galerie_thema" to "Star Wars", "galerie_sortierung" to "year_desc"))
             val vm = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, t.sets(),
-                t.kontosicht, FinanzenRepository(t.api, t.cache), gemerkt))
+                t.kontosicht, FinanzenRepository(t.api), gemerkt))
             vm.setScope(ScopeFilter.View.GALLERY, "own")
             assertEquals(listOf("75192-1", "10294-1"), vm.galleryState.value.sets.map { it.setNumber })
             val abrufe = pfade.anfragenAn("GET /api/v1/sets?")

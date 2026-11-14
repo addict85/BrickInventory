@@ -14,13 +14,14 @@ import { ANLEITUNGS_WURZEL } from '../../src/sets';
 import { angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { freigegeben } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../startup/verdrahtung';
+import type { Dienste } from '../../src/dienste';
 
 const uploadKontingentMb = () => Math.round(uploadKontingentBytes() / 1024 / 1024);
 
 /** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der Platte. */
 const vorDemUpload =
-  (d: Dienste) => async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  (d: Pick<Dienste, 'konto' | 'sets'>) =>
+  async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const uid = angemeldeteNutzerId(req);
     if (!(await d.sets.setGehoertKonto(uid, pfadParam(req, 'setNumber'))))
       return sendeFehler(req, res, 404, 'nicht_gefunden');
@@ -34,7 +35,7 @@ const vorDemUpload =
     next();
   };
 
-export function baueSetsAnleitungenRouter(d: Dienste) {
+export function baueSetsAnleitungenRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter();
 

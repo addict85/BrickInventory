@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.data.model.GenericResponse
-import ch.brickinventoryapp.model.data.model.GuthabenAntwort
-import ch.brickinventoryapp.model.data.model.GutscheinAntwort
-import ch.brickinventoryapp.model.data.model.GutscheinKlartext
-import ch.brickinventoryapp.model.data.model.GutscheinListe
-import ch.brickinventoryapp.model.data.model.GutscheinPdfFreigabe
-import ch.brickinventoryapp.model.data.model.GutscheinRequest
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.vertrag.GenericResponse
+import ch.brickinventoryapp.vertrag.GuthabenAntwort
+import ch.brickinventoryapp.vertrag.GutscheinAntwort
+import ch.brickinventoryapp.vertrag.GutscheinKlartext
+import ch.brickinventoryapp.vertrag.GutscheinListe
+import ch.brickinventoryapp.vertrag.GutscheinPdfFreigabe
+import ch.brickinventoryapp.vertrag.GutscheinRequest
+import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
 /**
  * Gutscheine samt PDF und Guthabenabfrage.
  * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit

@@ -55,11 +55,8 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
       'Kaufpreis der Positionen mit Marktpreis',
       'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“',
     );
-    assert.match(
-      z.unter,
-      /^Verglichen wird nur, was einen Marktpreis hat\./,
-      'der Bezug ist erklärt (UX-Prüfung 19 N4)',
-    );
+    // Die Erklärung steht einmal, in der Zeile unter den Karten (UX-Prüfung 23 N9); hier nur die Summe aller Käufe.
+    assert.match(z.unter, /^Alle Käufe zusammen: /, 'die Summe aller Käufe ist benannt (UX-Prüfung 19 N4)');
     assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
   });
 
@@ -185,8 +182,11 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
   });
 
   await t.test('leere Anmeldung: Fokus ins erste Feld', async () => {
-    await b.auswerten(`document.getElementById('btn-logout').click(); true`);
-    await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Anmeldemaske');
+    await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
+    await bis(
+      `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none'`,
+      'Anmeldemaske',
+    );
     await b.auswerten(`document.getElementById('btn-login').click(); true`);
     await bis(`(document.getElementById('lerr').textContent || '') !== ''`, 'Fehler der Anmeldung', 100);
     assert.equal(await b.auswerten(`document.activeElement?.id`), 'lu', 'leere Anmeldung: Fokus ins erste Feld');

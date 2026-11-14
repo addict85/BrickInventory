@@ -1,19 +1,17 @@
 /** Bilder eines Sets laden: Teile und Figuren aus dem CDN in den eigenen Ordner,
  * unter einer Sperre je Set, die auch andere Prozesse sehen. */
-import { cdnImageLimiter } from './rateLimiter';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { mitVersion } from '../infra/setNummer';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
-import { BILD_KOPFZEILEN } from './quellen';
+import { BILD_KOPFZEILEN } from '../fremdquellen';
 
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.
-import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
+import { bildEndung, dateiTeil, generateThumb, zielImOrdner, ladeBild } from '../bilder';
 import { ERLAUBTE_BILD_HOSTS } from '../infra/fremdeAdressen';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } from '../infra/appPaths';
-import { generateThumb } from './bilder/thumbs';
 import type { KatalogKontext } from './kontext';
 
 /** @param kind Bestimmt Zielverzeichnis und Web-Pfad. */
@@ -70,11 +68,11 @@ async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void
   const rel = `/images/parts/${file}`;
 
   if (!fs.existsSync(dest)) {
-    await cdnImageLimiter.acquire();
+    await k.cdnDrossel.acquire();
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN, text =>
       console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
-    ).finally(() => cdnImageLimiter.release());
+    ).finally(() => k.cdnDrossel.release());
     if (!ok) return;
   }
 
@@ -123,11 +121,11 @@ async function holeBildSperre(
 }
 
 // Je Set eine Sperre: Gleichzeitige Aufrufe für dasselbe Set warten auf den ersten.
-const _downloadLocks = new Map();
+const sperren = (k: KatalogKontext) => k.faecher.fach('setBilder:sperren', () => new Map<string, Promise<void>>());
 
 async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBusy = false) {
   const n = mitVersion(setNumber);
-
+  const _downloadLocks = sperren(k);
   if (_downloadLocks.has(n)) {
     await _downloadLocks.get(n);
     return;

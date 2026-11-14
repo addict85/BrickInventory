@@ -9,7 +9,14 @@ import ch.brickinventoryapp.data.lokal.Bearbeitungssender
 import ch.brickinventoryapp.offline.LokalerBestand
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.data.cache.CacheBesitzer
-import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.data.cache.bereichsName
+import ch.brickinventoryapp.data.cache.raeumeAlteAntwortablage
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.koroutinen.Dispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.launch
 import ch.brickinventoryapp.data.lokal.ServerSender
 import ch.brickinventoryapp.data.lokal.WorkManagerPlaner
 import ch.brickinventoryapp.netz.util.Protokoll
@@ -97,17 +104,21 @@ internal abstract class LokalModule {
 
     companion object {
         /**
-         * Der Bereich kommt aus dem angemeldeten Konto, gestreut wie im Antwort-Zwischenspeicher:
-         * zum Schreiben jetzt gefragt, zum Beobachten als StateFlow der Sitzung.
+         * Der Bereich kommt aus dem angemeldeten Konto, gestreut: zum Schreiben jetzt gefragt,
+         * zum Beobachten als StateFlow der Sitzung. Beim ersten Bau räumt sie den früheren
+         * Antwort-Zwischenspeicher, den sie ersetzt.
          */
         @Provides
         @Singleton
         fun offlineablage(bestand: LokalerBestand, ausgang: Ausgang, besitzer: CacheBesitzer, planer: AusgangPlaner,
-                          @ApplicationScope bereich: CoroutineScope, json: Json): Offlineablage =
-            Offlineablage(bestand, ausgang, bereichQuelle = { besitzer.kontoBereich()?.let { ResponseCache.bereichsName(it) } },
+                          @ApplicationScope bereich: CoroutineScope, json: Json, @ApplicationContext ctx: Context,
+                          @Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher): Offlineablage {
+            bereich.launch(io) { runCatching { raeumeAlteAntwortablage(ctx.noBackupFilesDir, ctx.cacheDir) } }
+            return Offlineablage(bestand, ausgang, bereichQuelle = { besitzer.kontoBereich()?.let(::bereichsName) },
                 planer = planer,
-                bereichFluss = besitzer.kontoBereichFluss().map { it?.let(ResponseCache::bereichsName) }
+                bereichFluss = besitzer.kontoBereichFluss().map { it?.let(::bereichsName) }
                     .stateIn(bereich, SharingStarted.Eagerly, null),
                 protokoll = { Protokoll.warnung("Ablage", it) }, json = json)
+        }
     }
 }

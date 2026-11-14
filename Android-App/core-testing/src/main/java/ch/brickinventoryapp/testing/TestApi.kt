@@ -16,7 +16,6 @@ import okhttp3.Request
 import java.io.IOException
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
@@ -42,7 +41,6 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import retrofit2.Retrofit
-import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.model.json.BrickJson
@@ -267,10 +265,8 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
 
     constructor(server: MockWebServer, texte: Texte = NummernTexte) : this(TestApi.fuer(server), texte)
 
-    val cacheDir: File = File(System.getProperty("java.io.tmpdir"), "bim-vm-${System.nanoTime()}").apply { mkdirs() }
-    val cache = ResponseCache(io = io) { cacheDir }
     val sitzung = Sitzung()
-    val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api, cache), TeileRepository(api, cache))
+    val blickfeld = Blickfeld(SpeicherAblage(), HaushaltRepository(api), TeileRepository(api))
     val meldungen = MeldungsKanal()
 
     /** Eine Ablage für alle Repositories dieses Tests: Was eines schreibt, sehen die Listen der anderen. */
@@ -280,13 +276,13 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
 
     /** Dieselbe Instanz, wo ein ViewModel nur liest, wann sich der Bestand geändert hat. */
     val aenderungen: Bestandsabgleich get() = abgleich
-    fun sets(): SetsRepository = SetsRepository(api, cache, ablage)
-    fun merkliste(): MerklisteRepository = MerklisteRepository(api, cache, ablage)
-    fun alarme(): AlarmRepository = AlarmRepository(api, cache, ablage)
-    fun setKatalog(): SetKatalogRepository = SetKatalogRepository(api, cache)
-    fun setDateien(): SetDateienRepository = SetDateienRepository(api, cache)
-    fun teile(): TeileRepository = TeileRepository(api, cache, ablage)
-    fun figuren(): FigurenRepository = FigurenRepository(api, cache, ablage)
+    fun sets(): SetsRepository = SetsRepository(api, ablage)
+    fun merkliste(): MerklisteRepository = MerklisteRepository(api, ablage)
+    fun alarme(): AlarmRepository = AlarmRepository(api, ablage)
+    fun setKatalog(): SetKatalogRepository = SetKatalogRepository(api)
+    fun setDateien(): SetDateienRepository = SetDateienRepository(api)
+    fun teile(): TeileRepository = TeileRepository(api, ablage)
+    fun figuren(): FigurenRepository = FigurenRepository(api, ablage)
     val scrollMemory = ScrollMemory()
     val hinweise = Meldungen(meldungen, texte)
 
@@ -319,18 +315,16 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
         kotlinx.coroutines.runBlocking {
             kotlinx.coroutines.withTimeoutOrNull(5_000) { jobs.forEach { it.join() } }
         }
-        cacheDir.deleteRecursively()
         PfadServer.von(api)?.pruefeEinlesen()
     }
 }
 
-/** Ein Repository gegen einen Testserver, mit Ablage in einem Wegwerf-Ordner. */
-fun <R, T> mitRepo(bau: (BrickApiService, ResponseCache) -> R, block: (PfadServer, R) -> T): T {
+/** Ein Repository gegen einen Testserver; braucht es eine Ablage, bringt seine Fabrik eine mit. */
+fun <R, T> mitRepo(bau: (BrickApiService) -> R, block: (PfadServer, R) -> T): T {
     val pfade = PfadServer()
-    val ordner = File(System.getProperty("java.io.tmpdir"), "bim-repo-${System.nanoTime()}").apply { mkdirs() }
     try {
-        return block(pfade, bau(TestApi.fuer(pfade.server), ResponseCache { ordner }))
-    } finally { pfade.server.shutdown(); ordner.deleteRecursively() }
+        return block(pfade, bau(TestApi.fuer(pfade.server)))
+    } finally { pfade.server.shutdown() }
 }
 
 /** Ein Abruf, der auch asynchron gestellt im aufrufenden Faden läuft (PfadServer.imTakt). */

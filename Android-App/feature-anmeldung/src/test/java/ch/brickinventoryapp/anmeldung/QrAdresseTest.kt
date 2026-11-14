@@ -140,10 +140,10 @@ class QrAdresseTest {
         val ablage = Ablage()
         val abmelden = SitzungsAttrappe()
         val blickfeld = Blickfeld(SpeicherAblage(),
-            HaushaltRepository(t.api, t.cache),
-            TeileRepository(t.api, t.cache))
+            HaushaltRepository(t.api),
+            TeileRepository(t.api))
         val vm = t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
-            KontoRepository(t.api, t.cache), ablage, ZertifikatsFrage(), { false }))
+            KontoRepository(t.api), ablage, ZertifikatsFrage(), { false }))
         vm.loginWithQrToken("https://brick.meinserver.ch@evil.example", "bim:x")
         assertFalse(vm.saveServerUrl("https://brick.meinserver.ch@evil.example"))
         assertEquals(emptyList<String>(), ablage.protokoll.toList())

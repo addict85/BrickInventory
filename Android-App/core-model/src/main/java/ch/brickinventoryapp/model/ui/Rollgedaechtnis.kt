@@ -5,6 +5,7 @@ package ch.brickinventoryapp.model.ui
  * (AppViewModel) den Merker hält und die Bildschirme ihn nur lesen: So kennt die
  * Zustandsschicht kein Compose-Modul.
  */
+
 interface ScrollMemory {
     fun lies(schluessel: String): Pair<Int, Int>
     fun merke(schluessel: String, index: Int, offset: Int)

@@ -5,9 +5,10 @@ import ch.brickinventoryapp.model.fach.Figurenerfassung
 import ch.brickinventoryapp.model.fach.Teilerfassung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.Listenansicht
+import ch.brickinventoryapp.teile.ui.PartsUiState
 
 /**
  * Was die Teile- und Figurenbildschirme auslösen können. Die Bildschirme kennen
@@ -21,6 +22,7 @@ internal interface TeileAktionen {
     fun setPartsQuery(q: String)
     fun setPartsSpare(wert: Ersatzteilwahl)
     fun setPartsView(wert: Listenansicht)
+    fun setPartsOrdnung(wert: PartsUiState.Ordnung)
     fun setPartsColorFilter(wert: String)
     fun setPartsCategoryFilter(wert: String)
     fun setMinifigsQuery(q: String)

@@ -34,12 +34,13 @@ internal fun Project.guavaMindestens() {
 }
 
 /**
- * Ein Modul mit wenigen Abhängigkeiten griffe allein auf arch-core 2.0.0 und
- * tracing 1.1.0 zurück, die nicht im Prüfsummenverzeichnis stehen. Einschränkungen
+ * Ein Modul mit wenigen Abhängigkeiten griffe allein auf arch-core 2.0.0, tracing 1.1.0
+ * oder emoji2 1.2.0 zurück, die nicht im Prüfsummenverzeichnis stehen. Einschränkungen
  * wie bei Guava heben sie auf die Fassungen, die die App ohnehin nimmt.
  */
 internal fun Project.androidxMindestens() {
-    for (alias in listOf("androidx.arch.core.common", "androidx.arch.core.runtime", "androidx.tracing")) {
+    for (alias in listOf("androidx.arch.core.common", "androidx.arch.core.runtime", "androidx.tracing",
+        "androidx.emoji2", "androidx.emoji2.views.helper")) {
         val bib = libs.findLibrary(alias).get().get()
         dependencies.constraints.add("implementation", "${bib.module}:${bib.versionConstraint.requiredVersion}")
     }

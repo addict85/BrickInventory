@@ -3,10 +3,12 @@ import { erzeugeWorker, type Bearbeitertabelle, type WorkerOptionen } from './au
 import { pdfAufgegeben, setzeImportProzess } from '../src/katalog';
 import type { AuftragsArt } from '../src/auftraege';
 import { loescheKontoDateien } from '../src/konto';
-import type { Dienste } from '../startup/verdrahtung';
+import type { Dienste } from '../src/dienste';
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
-const bearbeiter = (d: Dienste): Bearbeitertabelle => ({
+const bearbeiter = (
+  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
+): Bearbeitertabelle => ({
   nacharbeit: { ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k) },
   bilder: {
     ausfuehren: async (n, k) => {
@@ -28,7 +30,7 @@ const bearbeiter = (d: Dienste): Bearbeitertabelle => ({
   wechselkurse: { ausfuehren: (_n, k) => d.finanzen.kursauftrag(undefined, k) },
   anleitung: { ausfuehren: (n, k) => d.katalog.anleitungLaden(n, k), exklusiv: true },
   brickset: { ausfuehren: (n, k) => d.katalog.bricksetNachlauf(n, k), exklusiv: true },
-  bildbedarf: { ausfuehren: (_n, k) => d.katalog.bildbedarfAbarbeiten(k), exklusiv: true },
+  bildbedarf: { ausfuehren: (_n, k) => d.bilder.bildbedarfAbarbeiten(k), exklusiv: true },
   bilder_neu_laden: {
     ausfuehren: async (_n, k) => {
       await d.katalog.redownloadMissingImages(k);
@@ -49,21 +51,18 @@ const bearbeiter = (d: Dienste): Bearbeitertabelle => ({
 // Der Katalog-Import läuft in einem eigenen Prozess, dessen Einstieg neben dieser Datei liegt.
 setzeImportProzess(path.join(__dirname, 'csvImportWorker.js'));
 
-let _worker: ReturnType<typeof erzeugeWorker> | null = null;
-
-function starteAuftragsWorker(d: Dienste, o: WorkerOptionen & { arten?: AuftragsArt[] } = {}) {
-  if (_worker) return _worker;
+/** Der Worker gehört dem, der ihn startet (startup/jobsProzess.ts, Testhilfen): Er hält ihn
+ * und beendet ihn mit stoppe(); ein Speicher im Modul liesse zwei Starts einander sehen. */
+function starteAuftragsWorker(
+  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
+  o: WorkerOptionen & { arten?: AuftragsArt[] } = {},
+) {
   const alle = bearbeiter(d);
   const tabelle: Bearbeitertabelle = o.arten ? Object.fromEntries(o.arten.map(a => [a, alle[a]])) : alle;
-  _worker = erzeugeWorker(d.auftraege, tabelle, o);
-  _worker.starte();
-  return _worker;
+  const worker = erzeugeWorker(d.auftraege, tabelle, o);
+  worker.starte();
+  return worker;
 }
 
-async function stoppeAuftragsWorker(): Promise<void> {
-  const w = _worker;
-  _worker = null;
-  if (w) await w.stoppe();
-}
-
-export { bearbeiter, starteAuftragsWorker, stoppeAuftragsWorker };
+export type AuftragsWorker = ReturnType<typeof starteAuftragsWorker>;
+export { bearbeiter, starteAuftragsWorker };

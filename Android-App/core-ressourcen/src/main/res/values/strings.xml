@@ -23,7 +23,7 @@
     <string name="settings_default_condition">Default condition</string>
     <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>
     <string name="settings_default_condition_hint">Used as default when adding items. Empty = global default from Background jobs.</string>
-    <string name="settings_default_condition_global">— Global default —</string>
+    <string name="settings_default_condition_global">Global default</string>
     <string name="condition_new">New</string>
     <string name="condition_used">Used</string>
     <string name="monitoring_default_condition">Default condition</string>
@@ -306,9 +306,9 @@
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Parts</string>
     <string name="finance_filter_minifigs">Minifigures</string>
-    <string name="finance_section_sets">SETS</string>
-    <string name="finance_section_parts">PARTS</string>
-    <string name="finance_section_minifigs">MINIFIGURES</string>
+    <string name="finance_section_sets">Sets</string>
+    <string name="finance_section_parts">Parts</string>
+    <string name="finance_section_minifigs">Minifigures</string>
     <string name="finance_subtotal_parts">Total parts</string>
     <string name="finance_subtotal_minifigs">Total minifigures</string>
     <string name="finance_total_sets">Sets</string>
@@ -350,6 +350,9 @@
     <string name="parts_color_label">Color (optional)</string>
     <string name="parts_color_unknown">Color %1$d</string>
     <string name="parts_add_button">Add</string>
+    <string name="parts_ordnung_farbe">By colour</string>
+    <string name="parts_ordnung_name">By name</string>
+    <string name="parts_ordnung_menge">By quantity</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_title">Background jobs</string>
@@ -362,7 +365,7 @@
     <string name="monitoring_icon_retry">Retry</string>
     <string name="monitoring_hide_error">Hide error</string>
     <string name="monitoring_show_error">Show last error</string>
-    <string name="monitoring_price_cache">PRICE CACHE</string>
+    <string name="monitoring_price_cache">Price cache</string>
     <string name="monitoring_cache_prices">Prices</string>
     <string name="monitoring_cache_stale">Stale</string>
     <string name="monitoring_cache_subsets">Subsets</string>
@@ -374,7 +377,7 @@
     <string name="monitoring_cache_clear_confirm">Clear</string>
     <string name="monitoring_cache_cleared">Cache cleared</string>
     <string name="monitoring_cache_saved">Cache duration saved</string>
-    <string name="monitoring_api_calls">API CALLS</string>
+    <string name="monitoring_api_calls">API calls</string>
     <string name="monitoring_limits_saved">Limits saved</string>
     <string name="monitoring_limits_save">Save limits</string>
     <string name="monitoring_retry_queued">%1$s will be retried</string>
@@ -1152,6 +1155,11 @@
     <string name="zf_share_title">Recovery codes</string>
     <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
     <string name="erfassen_nummer_fehlt">Enter a set number first.</string>
+    <string name="parts_nummer_fehlt">Enter a part number first.</string>
+    <string name="minifigs_nummer_fehlt">Enter a minifigure number first.</string>
+    <string name="erfassen_verwerfen_titel">Discard changes?</string>
+    <string name="erfassen_verwerfen_text">What you entered will be lost.</string>
+    <string name="erfassen_verwerfen">Discard</string>
     <string name="gallery_quantity_hint">Number of identical sets</string>
     <string name="erfassen_menge_ungueltig">Enter a whole quantity of 1 or more.</string>
     <string name="erfassen_preis_ungueltig">Enter an amount such as 12.50 or 1,299.00.</string>

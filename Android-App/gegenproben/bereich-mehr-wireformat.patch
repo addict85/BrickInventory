@@ -1,0 +1,17 @@
+Gegenprobe: ein Bereich importiert einen weiteren Antworttyp
+Modul: app
+Test: ch.brickinventoryapp.app.SchichtregelnTest
+Rot: das Wire-Format immer seltener
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+index cdeedd9..ea0e8a5 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
+@@ -1,5 +1,7 @@
+ package ch.brickinventoryapp.katalog.ui.viewmodel
+ 
++import ch.brickinventoryapp.vertrag.CatalogSetItem
++
+ import ch.brickinventoryapp.model.fach.Katalogsortierung
+ import ch.brickinventoryapp.zustand.ui.fehlerklasse
+ import androidx.lifecycle.ViewModel

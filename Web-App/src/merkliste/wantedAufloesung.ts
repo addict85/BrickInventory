@@ -1,6 +1,6 @@
 /** BL-Nummern der Wanted-Liste auf Rebrickable-Nummern abbilden: zuerst lokal
  * (Zuordnungen, Katalog), dann über Rebrickable, zuletzt die Korrekturen von Hand. */
-import { blTeilZuRb, blFilterWirkungslos, RebrickableGesperrt } from '../katalog';
+import { RebrickableGesperrt } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
 import type { WantedArt, WantedPosten } from './wantedParser';
 import type { MerklisteKontext } from './kontext';
@@ -103,6 +103,7 @@ export type WantedFortschritt = {
 };
 
 export async function loeseUeberRebrickableAuf(
+  k: MerklisteKontext,
   auf: Aufloesung[],
   grenze = 250,
   fortschritt?: (stand: WantedFortschritt) => void,
@@ -131,11 +132,17 @@ export async function loeseUeberRebrickableAuf(
     // Ein Fehler ausser „unbekannt“ trifft auch alle folgenden Posten; der Bericht
     // nennt den Grund, statt sie still als „nicht gefunden“ zu zählen.
     try {
-      rbId = await blTeilZuRb(a.posten.blId);
+      rbId = await k.katalog.quellen.blTeilZuRb(a.posten.blId);
     } catch (e) {
       if (!(e instanceof RebrickableGesperrt)) meldeFehler('wanted:rebrickable', e);
       const abgebrochen = e instanceof RebrickableGesperrt ? e.grund : 'stoerung';
-      return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: blFilterWirkungslos(), abgebrochen };
+      return {
+        auf: ergebnis,
+        gefragt,
+        gefunden,
+        filterWirkungslos: k.katalog.quellen.blFilterWirkungslos(),
+        abgebrochen,
+      };
     }
     if (rbId) {
       gefunden++;
@@ -144,7 +151,7 @@ export async function loeseUeberRebrickableAuf(
     // Nach dem Abruf: „37 von 50" heisst 37 erledigt.
     fortschritt?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
   }
-  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: blFilterWirkungslos() };
+  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.katalog.quellen.blFilterWirkungslos() };
 }
 
 /** Adressiert über den Index: Dieselbe Nummer darf mehrfach in der Liste stehen. */

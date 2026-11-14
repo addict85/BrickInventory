@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.FehlercodeTest
 Rot: Seitengrenze ist ein Fehler
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/Fehlercode.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/Fehlercode.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/Fehlercode.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/Fehlercode.kt
+diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Fehlercode.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Fehlercode.kt
+--- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Fehlercode.kt
++++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Fehlercode.kt
 @@ -14,7 +14,7 @@ enum class Fehlercode(val kennung: String) {
      NUR_ADMINS("nur_admins"),
      PASSKEY_UNGUELTIG("passkey_ungueltig"),

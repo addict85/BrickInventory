@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.vertrag.Fehlercode
 import ch.brickinventoryapp.zustand.ui.viewmodel.AppTexte
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

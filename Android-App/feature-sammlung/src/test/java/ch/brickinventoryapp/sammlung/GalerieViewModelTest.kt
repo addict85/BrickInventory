@@ -3,10 +3,10 @@ package ch.brickinventoryapp.sammlung
 import ch.brickinventoryapp.model.fach.Setsortierung
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.data.model.SetAggregate
+import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.testing.FinanzenRepository
-import ch.brickinventoryapp.model.data.model.AddPartRequest
+import ch.brickinventoryapp.vertrag.AddPartRequest
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +66,7 @@ class GalerieViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, t.sets(),
-        t.kontosicht, FinanzenRepository(t.api, t.cache), gemerkt))
+        t.kontosicht, FinanzenRepository(t.api), gemerkt))
 
     private fun abrufe(pfade: PfadServer = this.pfade) =
         pfade.anfragenAn("GET /api/v1/sets?") + pfade.anfragenAn("GET /api/v1/sets ")

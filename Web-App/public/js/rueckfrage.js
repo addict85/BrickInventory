@@ -2,6 +2,7 @@
 // damit jede Ansicht sie nutzen kann, ohne eine andere Ansicht zu importieren.
 import { api } from './api.js';
 import { G, ico, setzeHtml } from './dom.js';
+import { html } from './escapen.js';
 import { tRaw } from '../i18n.js';
 
 /**
@@ -13,6 +14,15 @@ import { tRaw } from '../i18n.js';
  */
 export function confirmDelete(title, msg, icon, knopf = null) {
   return dialogOeffnen(title, msg, icon, false, false, false, knopf).then(r => r !== null);
+}
+
+/**
+ * Löschen mit Auswahl, etwa welche Konten eines Haushalts; die erste Möglichkeit ist vorgewählt.
+ * @param {string} title @param {string} msg @param {{ wert: string, text: string }[]} wahl
+ * @returns {Promise<string | null>} der gewählte Wert, null bei Abbruch
+ */
+export function loeschenMitWahl(title, msg, wahl) {
+  return /** @type {Promise<string | null>} */ (dialogOeffnen(title, msg, 'loeschen', false, false, false, { wahl }));
 }
 
 /**
@@ -55,7 +65,7 @@ export async function mitZweitemFaktor(ruf) {
 }
 /**
  * Hauptknopf des Rückfragedialogs: Text, Art (bp blau, bd rot), Feldbeschriftung.
- * @typedef {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean }} Knopf
+ * @typedef {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean, wahl?: { wert: string, text: string }[] }} Knopf
  */
 /** Ein Bestätigen ist kein Löschen: Knopf in der Hauptfarbe statt rot. @type {Knopf} */
 const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.password.current' };
@@ -142,6 +152,12 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
     G('cd-icon').classList.toggle('neutral', !gefahr);
     G('cd-msg').classList.toggle('text-gefahr', !!knopf?.fehler);
     G('cd-pw-label').textContent = tRaw(knopf?.feld || 'confirm.admin_password');
+    const wahlFeld = G('cd-wahl');
+    wahlFeld.hidden = !knopf?.wahl;
+    setzeHtml(
+      wahlFeld,
+      html`${(knopf?.wahl || []).map((w, i) => html`<label class="cd-wahl-zeile"><input type="radio" name="cd-wahl" value="${w.wert}"${i ? '' : ' checked'}> ${w.text}</label>`)}`,
+    );
     if (mitPasswort) setTimeout(() => pw?.focus(), 0);
     else if (mitCode) setTimeout(() => codeFeld?.focus(), 0);
     /** @param {string | symbol | null} result */
@@ -155,7 +171,10 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
       if (pkKnopf) pkKnopf.onclick = null;
       resolve(result);
     }
-    const wert = () => (mitPasswort ? pw?.value || '' : mitCode ? codeFeld?.value || '' : '');
+    const gewaehlt = () =>
+      /** @type {HTMLInputElement | null} */ (wahlFeld.querySelector('input:checked'))?.value || '';
+    const wert = () =>
+      mitPasswort ? pw?.value || '' : mitCode ? codeFeld?.value || '' : knopf?.wahl ? gewaehlt() : '';
     btnYes.onclick = () => {
       const w = wert();
       cleanup(w);

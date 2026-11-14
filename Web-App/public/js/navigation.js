@@ -26,7 +26,7 @@ import { ladePapierkorb } from './papierkorb.js';
 import { ladePasskeys } from './passkeys.js';
 import { ladeZweitenFaktor } from './zweiter-faktor.js';
 import { loadFinance } from './finance.js';
-import { loadGallery, loadStats, renderGallery } from './gallery.js';
+import { loadGallery, renderGallery } from './gallery.js';
 import { loadParts, teileFilterZuruecksetzen, loadManualParts } from './parts.js';
 import { loadBrickColors } from './teil-erfassen.js';
 import { meldeAnsicht, meldeFilter } from './router.js';
@@ -163,10 +163,8 @@ export function bindTabs() {
       // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne dieses Abmelden lieferte die dort
       // angemeldete Funktion weiterhin ein Jahr — auch in der Galerie, wo die Zahl nichts bedeutet.
       if (tab !== 'catalog') setScrollLabel(null);
-      if (tab === 'gallery') {
-        loadGallery();
-        loadStats();
-      }
+      // loadGallery() lädt die Kennzahlen selbst; ein zweiter Aufruf kostete doppelt am Budget (apiDrossel.ts).
+      if (tab === 'gallery') loadGallery();
       if (tab === 'catalog') {
         initCatalog();
       }
@@ -494,10 +492,7 @@ export function onScopeChange(view) {
   if (!el) return;
   setScopeMode(view, el.value);
   sammlungUntertitel(view);
-  if (view === 'gallery') {
-    loadGallery();
-    loadStats();
-  }
+  if (view === 'gallery') loadGallery();
   // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus Sets und die manuell erfassten. Nur
   // loadParts() neu zu laden liess den manuellen Bereich ungefiltert stehen — er lädt über einen eigenen
   // Endpunkt.

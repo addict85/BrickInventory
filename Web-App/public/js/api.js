@@ -94,6 +94,8 @@ export async function api(method, path, body, o = {}) {
       error: res.ok ? tRaw('api.unexpected') : tRaw('api.server_error', { status: res.status }),
     };
   }
+  if (res.status === 429 && daten && typeof daten === 'object')
+    daten.warteSek = Number(res.headers.get('Retry-After')) || 0;
   if (!res.ok && daten && typeof daten === 'object' && daten.success === undefined) {
     return {
       ...daten,

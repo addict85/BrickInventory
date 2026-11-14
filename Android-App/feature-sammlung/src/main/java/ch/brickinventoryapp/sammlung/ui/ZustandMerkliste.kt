@@ -8,6 +8,10 @@ import ch.brickinventoryapp.model.ui.model.MerkpostenPreiseAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
 import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
 import ch.brickinventoryapp.model.ui.Fehlerklasse
+import ch.brickinventoryapp.model.ui.Laden
+import ch.brickinventoryapp.model.ui.Meldung
+import ch.brickinventoryapp.model.ui.fehlerArt
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 
 /**
  * Die Merkliste — was man haben möchte, getrennt vom Besitz. Eigener Zustand statt
@@ -16,10 +20,8 @@ import ch.brickinventoryapp.model.ui.Fehlerklasse
  */
 data class MerklisteUiState(
     val merkposten: List<MerkpostenAnsicht> = emptyList(),
-    val laedt: Boolean = false,
-    /** Der Grund, warum die Liste nicht kam; null, solange nichts scheiterte. */
-    val fehler: String? = null,
-    val fehlerKlasse: Fehlerklasse? = null,
+    /** Der letzte Abruf vom Server; die Liste selbst kommt aus der Ablage. */
+    val abruf: Laden<Unit> = Laden.Daten(Unit),
     // Drei Werte hier; der vierte, der Inhaber, steht wie in jeder Ansicht in
     // AppUiState.scopeModes — dieselbe Wahl unter demselben Schlüssel wie in Galerie, Teilen,
     // Minifiguren und Finanzen.
@@ -28,7 +30,13 @@ data class MerklisteUiState(
     /** null: beide Zustände. */
     val zustandFilter: Zustand? = null,
     val sortierung: Merksortierung = Merksortierung.VORGABE,
-)
+) {
+    val laedt: Boolean get() = abruf is Laden.Laedt
+
+    /** Der Grund, warum die Liste nicht kam; null, solange nichts scheiterte. */
+    val fehler: Meldung? get() = abruf.fehlerMeldung
+    val fehlerKlasse: Fehlerklasse? get() = abruf.fehlerArt
+}
 
 /**
  * Was das Detail eines Merkpostens zusätzlich braucht — eigener Zustand wie beim

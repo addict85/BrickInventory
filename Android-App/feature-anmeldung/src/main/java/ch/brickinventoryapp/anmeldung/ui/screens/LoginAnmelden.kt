@@ -135,7 +135,7 @@ internal fun AnmeldeFelder(
         modifier = Modifier.fillMaxWidth().toggleable(value = vollerZugriff, role = Role.Checkbox,
             onValueChange = { an -> if (an) schutz.bestaetige(vollGrund) { onVollerZugriff(true) } else onVollerZugriff(false) })) {
         Checkbox(checked = vollerZugriff, onCheckedChange = null)
-        Column(Modifier.padding(start = 8.dp, top = Abstaende.haar)) {
+        Column(Modifier.padding(start = Abstaende.klein, top = Abstaende.haar)) {
             Text(stringResource(R.string.login_full_access), style = MaterialTheme.typography.bodyMedium)
             Text(stringResource(R.string.login_full_access_hint), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)

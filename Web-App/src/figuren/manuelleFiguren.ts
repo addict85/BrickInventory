@@ -5,7 +5,7 @@ import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
-import { getMinifigInfo } from '../katalog';
+import type { Quellen } from '../katalog';
 import * as V from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -125,7 +125,7 @@ async function figurBeschreibung(
 ) {
   let fig_name = eingabe.name;
   let image_url = eingabe.bild;
-  let gefunden: Awaited<ReturnType<typeof getMinifigInfo>> | null = null;
+  let gefunden: Awaited<ReturnType<Quellen['getMinifigInfo']>> | null = null;
   if (fig_name) return { fig_name, gefunden };
 
   const lokal = await k.katalog.katalogFigur(num, uid);
@@ -137,7 +137,7 @@ async function figurBeschreibung(
   // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
   if (!fig_name || !(image_url || lokal?.hatBild)) {
     // Ohne Rebrickable wird die Figur mit dem erfasst, was der Katalog schon weiss.
-    const abruf = await versuche('figuren:getMinifigInfo', getMinifigInfo(num));
+    const abruf = await versuche('figuren:getMinifigInfo', k.katalog.quellen.getMinifigInfo(num));
     gefunden = abruf.ok ? abruf.wert : null;
     // `||`: Was der Katalog schon wusste, bleibt stehen.
     if (gefunden) fig_name = fig_name || gefunden.fig_name;
@@ -227,7 +227,7 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
       let imageUrl: string | null = null;
       if (!figName) {
         // Ohne Rebrickable wird die Figur ohne Namen erfasst; der Bildnachlauf holt ihn nicht nach.
-        const abruf = await versuche('figuren:import-info', getMinifigInfo(figNumber));
+        const abruf = await versuche('figuren:import-info', k.katalog.quellen.getMinifigInfo(figNumber));
         const info = abruf.ok ? abruf.wert : null;
         if (info) {
           figName = info.fig_name;

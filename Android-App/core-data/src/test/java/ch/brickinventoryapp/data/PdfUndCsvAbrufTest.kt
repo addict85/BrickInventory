@@ -2,9 +2,8 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
 import ch.brickinventoryapp.model.fach.Laufstatus
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.SetDateienRepository
 import ch.brickinventoryapp.testing.TestApi
 import kotlinx.coroutines.runBlocking
@@ -31,7 +30,7 @@ class PdfUndCsvAbrufTest {
 
     private val server = MockWebServer().apply { start() }
     private val ordner = File(System.getProperty("java.io.tmpdir"), "bim-pdf-${System.nanoTime()}").apply { mkdirs() }
-    private val sets: SetDateienRepository = SetDateienRepository(TestApi.fuer(server), ResponseCache { ordner })
+    private val sets: SetDateienRepository = SetDateienRepository(TestApi.fuer(server))
 
     @After
     fun zu() {

@@ -17,7 +17,7 @@ const serverOnly = () =>
   fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
 const imgProxy = () =>
-  fs.readFileSync(path.join(ROOT, 'src/katalog/http/bildProxy.ts'), 'utf8') +
+  fs.readFileSync(path.join(ROOT, 'src/bilder/http/bildProxy.ts'), 'utf8') +
   '\n' +
   fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
 
@@ -208,11 +208,11 @@ let _datenFabrik = null;
 /** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
  *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
 const _bildwerk = {
-  setBildLaden: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/setImages.js')).downloadSetImage(...a),
-  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/thumbs.js')).generateThumb(...a),
+  setBildLaden: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).downloadSetImage(...a),
+  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).generateThumb(...a),
 };
 
-/** Die ersetzten Fremdquellen der Dienste (src/katalog/fremdquellen.ts): leer heisst echt. */
+/** Die ersetzten Klienten der Dienste (src/fremdquellen/quellen.ts): leer heisst echt. */
 const _quellen = {};
 
 function buildAndRequire() {
@@ -242,21 +242,12 @@ function buildAndRequire() {
   const testDb = () => (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart }));
   _zugangFabrik = testDb;
   // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch:
-  // Viele Tests stellen Klienten nach diesem Aufruf über require.cache.
+  // Ein Test stellt Klienten über testQuellen(), auch nach diesem Aufruf.
   _dienstFabrik = () => {
     const kontexte = {};
     const d = V().baueDienste(testDb(), { nacharbeit: _nacharbeit, bildwerk: _bildwerk, quellen: _quellen, kontexte });
     return { d, kontexte };
   };
-  // Wie verdrahte(): Ohne Zugang wirft jeder Abruf eines Klienten.
-  let klienten = null;
-  const klientenEcht = () => {
-    klienten ??= V().baueKlientenZugang(testDienste);
-    return klienten;
-  };
-  require(path.join(ROOT, 'dist', 'clients/zugang.js')).verdrahteKlienten(
-    new Proxy({}, { get: (_z, k) => klientenEcht()[k] }),
-  );
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
   // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
   const eigenDb = () => (_eigenDb ??= eigentuemerZugang(dbModul, testDb, erststart));
@@ -380,7 +371,7 @@ function alsKonto(uid, f, o = {}) {
   return alsAnfrage({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
 }
 
-/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in src/katalog/quellen.ts)
+/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in baueQuellen(), src/fremdquellen/quellen.ts)
  *  an der Verdrahtung, statt Module beim Laden umzubiegen. Mit `t` bis zum Ende des Tests.
  *  @param {{ after: (f: () => void) => void } | null} t @param {Record<string, unknown>} ersatz */
 function testQuellen(t, ersatz) {
@@ -479,14 +470,14 @@ module.exports.ohneHtmlKommentare = ohneHtmlKommentare;
 const regexWoertlich = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 module.exports.regexWoertlich = regexWoertlich;
 
-/** Der Vorschau-Weg des Bild-Proxys (src/katalog/bilder/proxyThumbs.ts). */
+/** Der Vorschau-Weg des Bild-Proxys (src/bilder/proxyThumbs.ts). */
 function proxyThumbQuelle() {
   return [
-    'src/katalog/http/bildProxy.ts',
+    'src/bilder/http/bildProxy.ts',
     'routes/imgProxy.ts',
-    'src/katalog/bilder/proxyThumbs.ts',
-    'src/katalog/bilder/imgCacheServe.ts',
-    'src/katalog/http/bildCacheAuslieferung.ts',
+    'src/bilder/proxyThumbs.ts',
+    'src/bilder/imgCacheServe.ts',
+    'src/bilder/http/bildCacheAuslieferung.ts',
   ]
     .map(dienstQuelle)
     .join('\n');
@@ -573,7 +564,7 @@ function startQuelle() {
     'src/katalog/bildNachlauf.ts',
     'src/verwaltung/startNachlaeufe.ts',
     'src/verwaltung/aufraeumen.ts',
-    'src/katalog/bildlage.ts',
+    'src/bilder/bildlage.ts',
   ].map(f => dienstQuelle(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {

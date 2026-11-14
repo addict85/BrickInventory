@@ -37,6 +37,7 @@ export function erzeugeVerwaltung(a: VerwaltungAbhaengigkeiten, einblick?: Einbl
       'bricksetWiederholen',
       'bricksetEntfernen',
       'jobZeitplanSetzen',
+      'quellePruefen',
     ]),
     ...bindeZugang(k, gesundheit, ['gesundheitsBericht', 'datenbankBereit']),
     ...bindeZugang(k, jobUebersicht, ['jobUebersicht']),

@@ -131,6 +131,7 @@ import ch.brickinventoryapp.sammlung.ui.SammlungZiel
  *   detailzeile-volle-breite    Detailzeile ohne Lesebreite → rot „Detailkarten stehen auf dem Tablet …“
  *   bewegung-ohne-beobachter    Einstellung nur einmal gelesen → rot „reduzierte Bewegung folgt einer Aenderung …“
  *   startpasswort-ohne-grund    gesperrter Knopf ohne Grund → rot „Startpasswort-Maske sagt …“
+ *   offline-ohne-handlung       Banner ohne „Erneut versuchen“ → rot „Offline-Hinweis bietet an …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -224,15 +225,24 @@ class GeruestUndFormularTest {
     }
 
     @Test
+    fun `Offline-Hinweis bietet an, die Liste erneut zu holen`() {
+        var geholt = 0
+        zeige { Column { OfflineHinweis(1_793_000_000_000L, onErneut = { geholt++ }) } }
+        compose.onNode(hasText(ctx.getString(R.string.common_retry)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        assertEquals("Erneut versuchen holt die Liste", 1, geholt)
+    }
+
+    @Test
     fun `Preisalarme zeigen die Schwelle als Betrag und die Richtung im Feld`() {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-                KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-                VerwaltungRepository(welt.t.api, welt.t.cache), welt.t.alarme(),
-                TeileRepository(welt.t.api, welt.t.cache),
+                KontoRepository(welt.t.api, welt.t.io),
+                VerwaltungRepository(welt.t.api), welt.t.alarme(),
+                TeileRepository(welt.t.api),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))
@@ -310,9 +320,9 @@ class GeruestUndFormularTest {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-                KontoRepository(welt.t.api, welt.t.cache, welt.t.io),
-                VerwaltungRepository(welt.t.api, welt.t.cache), welt.t.alarme(),
-                TeileRepository(welt.t.api, welt.t.cache),
+                KontoRepository(welt.t.api, welt.t.io),
+                VerwaltungRepository(welt.t.api), welt.t.alarme(),
+                TeileRepository(welt.t.api),
                 object : DateiLeser {
                     override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
                 }))

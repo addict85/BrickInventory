@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -89,14 +90,29 @@ fun ErfassenDialog(
     onBestaetigen: () -> Unit,
     onAbbrechen: () -> Unit,
     bestaetigenAn: Boolean = true,
+    /** Ob schon etwas eingegeben ist; dann schliesst kein Fehlgriff den Dialog (siehe [erfassenSchliessbar]). */
+    geaendert: Boolean = false,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
+    var verwerfenFragen by rememberSaveable { mutableStateOf(false) }
+    // Zurück und Danebentippen landen hier; Abbrechen und das Kreuz schliessen weiter ohne Frage.
+    val schliessen: () -> Unit = { if (geaendert) { verwerfenFragen = true } else { onAbbrechen() } }
+    if (verwerfenFragen) {
+        Rueckfrage(
+            titel = stringResource(R.string.erfassen_verwerfen_titel),
+            text = stringResource(R.string.erfassen_verwerfen_text),
+            bestaetigen = stringResource(R.string.erfassen_verwerfen),
+            onBestaetigen = { verwerfenFragen = false; onAbbrechen() },
+            onAbbrechen = { verwerfenFragen = false },
+        )
+    }
     if (vollbildErfassen()) {
-        VollbildErfassen(titel, bestaetigen, onBestaetigen, onAbbrechen, bestaetigenAn, inhalt)
+        VollbildErfassen(titel, bestaetigen, onBestaetigen, onAbbrechen, schliessen, bestaetigenAn, geaendert, inhalt)
         return
     }
     AlertDialog(
-        onDismissRequest = onAbbrechen,
+        onDismissRequest = schliessen,
+        properties = erfassenSchliessbar(geaendert),
         modifier = Modifier.semantics { paneTitle = titel },
         title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Ist die Schrift gross, sind die Felder höher als das Fenster; die
@@ -111,6 +127,14 @@ fun ErfassenDialog(
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
+
+/**
+ * Daneben tippen schliesst ein ausgefülltes Formular nicht: Ein Tipp neben das Fenster
+ * verwarf bisher Set, Merkposten oder Lagerort samt allem Getippten. Zurück bleibt an,
+ * fragt dann aber erst nach (ErfassenDialog).
+ */
+fun erfassenSchliessbar(geaendert: Boolean, vollbild: Boolean = false) =
+    DialogProperties(dismissOnClickOutside = !geaendert, usePlatformDefaultWidth = !vollbild)
 
 /**
  * Vollbild statt schwebendem Dialog: auf schmalem Fenster ab grosser Schrift. Dort
@@ -133,10 +157,12 @@ private fun VollbildErfassen(
     bestaetigen: String,
     onBestaetigen: () -> Unit,
     onAbbrechen: () -> Unit,
+    onSchliessen: () -> Unit,
     bestaetigenAn: Boolean,
+    geaendert: Boolean,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(onDismissRequest = onAbbrechen, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onSchliessen, properties = erfassenSchliessbar(geaendert, vollbild = true)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxSize().imePadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig, vertical = Abstaende.klein),

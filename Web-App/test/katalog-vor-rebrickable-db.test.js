@@ -38,25 +38,17 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 
-// Rebrickable vorgeben, BEVOR die Teile- und Figurenmodule die
-// Funktionen herausziehen. esbuild exportiert ueber Getter, ein
-// `rb.lookupPart = …` liefe ins Leere — deshalb der Eintrag im
-// require-Zwischenspeicher (dasselbe Vorgehen wie in
-// test/preis-schreibweg-db.test.js).
-const rbPfad = require.resolve(path.join(ROOT, 'dist', 'clients/rebrickable.js'));
-const echtRb = require(rbPfad);
+// Rebrickable an der Verdrahtung gestellt (testQuellen); `abrufe` zählt, was gefragt wurde.
 let abrufe = [];
-require.cache[rbPfad].exports = Object.assign({}, echtRb, {
+testQuellen(null, {
   lookupPart: async (nr, farbe) => {
     abrufe.push(`lookupPart ${nr}/${farbe}`);
     return { part_name: 'VON REBRICKABLE', category_name: '42', image_url: 'https://cdn.example/rb.jpg' };
