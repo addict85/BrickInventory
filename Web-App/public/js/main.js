@@ -30,6 +30,7 @@ import './diagramme.js';
 // Ansichten
 import './detailfelder.js';
 import './konten-orte.js';
+import './sets-tabelle.js';
 import './gallery.js';
 import './set-csv-import.js';
 import './parts.js';

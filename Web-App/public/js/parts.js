@@ -632,7 +632,7 @@ export function renderManualParts() {
       const condBadge = condBadges(p);
       const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}" data-stil="cursor:pointer">
-        <div class="ca"><span class="delbtn" data-click="deleteManualPartStop"${echt()} aria-hidden="true" data-arg="${p.part_number}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}" title="${t('parts.delete.title')}">${TRASH_ICON_SVG}</span></div>
+        <div class="ca"><span class="delbtn" data-click="deleteManualPartStop"${echt()} aria-hidden="true" data-arg="${p.part_number}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}" data-taste="${tRaw('kachel.entf')}" title="${t('parts.delete.title')}">${TRASH_ICON_SVG}</span></div>
         ${ungeprueft(img)}
         <div class="man-tile-num" title="${p.part_number}">${p.bl_part_number || p.part_number}</div>
         <div class="man-tile-name">${p.part_name || '—'}</div>
@@ -685,7 +685,12 @@ export async function deleteManualPart(partNumber, colorId, owner) {
     `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
   );
   if (d.success) {
-    geloeschtMitRueckgaengig(tRaw('parts.deleted'), d);
+    geloeschtMitRueckgaengig(
+      tRaw('parts.deleted'),
+      d,
+      undefined,
+      `.man-tile[data-arg="part"][data-arg2="${CSS.escape(partNumber)}"][data-arg3="${colorId || 0}"]`,
+    );
     loadManualParts();
     return true;
   } else {

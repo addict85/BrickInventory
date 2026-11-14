@@ -72,6 +72,7 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     'finance.filter.sets',
     'finance.period.max',
     'gallery.sort.name',
+    'gallery.sort.name_desc',
     'header.sets',
     'log.auto',
     'monitor.api.bricklink',

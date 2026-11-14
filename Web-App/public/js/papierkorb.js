@@ -103,12 +103,31 @@ export async function papierkorbLeeren() {
 }
 
 /**
+ * Der Fokus geht auf den zurückgeholten Eintrag, sobald die neu geladene Liste ihn zeigt, statt auf die
+ * Überschrift. Die Liste zeichnet sich danach noch einmal (Preise, zweites Laden): Bis zur Frist holt er den
+ * Fokus zurück, solange er nur auf Seite oder Überschrift gefallen ist, nicht wenn jemand weitergegangen ist.
+ * @param {string} sel
+ */
+function fokusWennDa(sel) {
+  const ende = Date.now() + 5000;
+  const versuch = () => {
+    const el = /** @type {HTMLElement | null} */ (document.querySelector(`#app .tab.active :is(${sel})`));
+    const aktiv = document.activeElement;
+    const verloren = !aktiv || aktiv === document.body || aktiv.matches('#app .tab.active h1, #toasts *');
+    if (el && aktiv !== el && verloren) el.focus();
+    if (Date.now() < ende && (verloren || aktiv === el)) setTimeout(versuch, 100);
+  };
+  versuch();
+}
+
+/**
  * Die Erfolgsmeldung nach dem Löschen, mit „Rückgängig".
  * @param {string} meldung
  * @param {{papierkorb?: number[]}} antwort die Antwort des DELETE
  * @param {() => unknown} [nachher] was danach neu zu zeichnen ist, etwa das offene Set-Detail
+ * @param {string} [fokus] Selektor des Eintrags, der nach dem Zurückholen den Fokus bekommt
  */
-export function geloeschtMitRueckgaengig(meldung, antwort, nachher) {
+export function geloeschtMitRueckgaengig(meldung, antwort, nachher, fokus) {
   const ids = antwort?.papierkorb || [];
   toast(
     meldung,
@@ -122,6 +141,7 @@ export function geloeschtMitRueckgaengig(meldung, antwort, nachher) {
             toast(tRaw('trash.restored'), 'success');
             bestandNeuLaden();
             nachher?.();
+            if (fokus) fokusWennDa(fokus);
           },
         }
       : undefined,

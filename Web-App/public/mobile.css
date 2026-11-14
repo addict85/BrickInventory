@@ -501,7 +501,8 @@
   /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
   .ntab       { padding-left: 0; padding-right: 0; letter-spacing: -.02em; word-spacing: 0; }
   [data-theme="brick"] nav { padding-left: 2px; padding-right: 2px; column-gap: 0; }
-  [data-theme="brick"] .ntab { padding-left: 0; padding-right: 0; }
+  /* Die Grundplatte ohne seitlichen Rand: Mit 2 × 16 px fehlte der Sammlungswahl der Platz, „Minifiguren“ brach in eine zweite Reihe. */
+  [data-theme="brick"] #app { padding-left: 0; padding-right: 0; }
   /* „Minifiguren“ berührt den Rand der Sammlungswahl nicht. */
   .sammlung-wahl button { gap: 4px; padding-left: 2px; padding-right: 2px; }
   .sammlung-wahl button .ico { width: 1rem; height: 1rem; }
@@ -543,7 +544,7 @@
     background: var(--sur); border-top: 1px solid var(--bdr);
     box-shadow: 0 -2px 10px rgba(15, 23, 42, .06);
   }
-  [data-theme="brick"] .ntab { border: none; background: none; padding: 6px 2px; }
+  [data-theme="brick"] .ntab { border: none; background: none; padding: 6px 0; font-size: var(--fs-0); }
 
   /* Noppenreihen schmaler skalieren, sonst wirken sie auf dem Telefon grob */
   [data-theme="brick"] .sc::after,
@@ -639,13 +640,8 @@
     min-height: 52px; padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
   }
   .erfassen-leiste .btn.bp.knopf-schwebend { flex: none; }
-  /* Merkliste: Jeder Filter so breit wie sein längster Eintrag, sonst eine eigene Zeile („Alle Zuständ…“ bei 320 px). */
-  #tab-wanted .filterzeile > select { flex: 1 1 auto; min-width: 0; }
-  /* Katalog: Suche, Thema und Sortierung je über die ganze Breite, die beiden Jahre nebeneinander. Zu dritt in
-     einer Zeile fehlte den Jahresfeldern der Platz für „Jahr ab…“, als Fliesstext umbrach „Jahr ↓“ allein. */
-  #tab-catalog .filterzeile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
-  #tab-catalog .filterzeile > :is(#cat-search, #cat-theme, #cat-sort) { grid-column: 1 / -1; max-width: none !important; width: 100% !important; }
-  #tab-catalog .filterzeile > select { min-width: 0; width: 100%; }
+  /* Katalog aufgeklappt: die beiden Jahre nebeneinander, sie gehören zusammen. */
+  #tab-catalog .filterleiste.offen > :is(#cat-year-from, #cat-year-to) { flex: 1 1 40%; width: auto; }
   /* Set hinzufügen: Preis und Währung brauchen die Breite der ganzen Zeile, in einer halben Spalte blieb für „z. B. 79,99“ nichts. */
   .erfassen-raster > .fg:has(> .preis-mit-waehrung) { grid-column: 1 / -1; }
   /* Gesperrt (offline) deckend und grau: Halbtransparent lagen Knopf- und
@@ -673,7 +669,6 @@
    den Namen trägt aria-label. */
 @container haupt (max-width: 20.5em) {
   .filterleiste > input.suchfeld { flex: 1 1 100%; }
-  #tab-catalog .filterzeile { grid-template-columns: minmax(0, 1fr); }
   .brick-stats { flex-wrap: wrap; }
   .knopf-schwebend { width: 3.5rem; min-width: 3.5rem; padding: 0; justify-content: center; }
   .knopf-schwebend > span { display: none; }

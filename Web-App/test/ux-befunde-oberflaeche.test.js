@@ -131,7 +131,9 @@ test('Geschenk in Kachel, Tabelle und Detail', async () => {
     await reiter(w, 'gallery');
     d.querySelector('#gallery [data-click="openModal"]').click();
     await warte(() => text(d.getElementById('m-market-rows')).includes('Geschenk'));
-    assert.match(zahl(text(d.getElementById('set-modal'))), /(EUR0\.00|0\.00€)/, 'Kaufpreis im Detail');
+    // Seit UX-Prüfung 24 (N6) auch in der Kaufpreiszeile „Geschenk“ statt „0,00 €“.
+    assert.match(text(d.getElementById('m-acq-summary')), /Geschenk/, 'Kaufpreis im Detail');
+    assert.doesNotMatch(zahl(text(d.getElementById('m-acq-summary'))), /0\.00/, 'Kaufpreis im Detail als Betrag');
     assert.match(d.getElementById('m-img').getAttribute('src'), /set-placeholder\.svg$/);
   } finally {
     w.close();

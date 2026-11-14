@@ -71,35 +71,15 @@ async function plAddSet() {
 
 G('pl-setnr')?.addEventListener('keydown', e => e.key === 'Enter' && plAddSet());
 
-/**
- * „Hinzufügen“ ist der eine Hauptknopf: Es rechnet die Liste gleich mit. „Neu berechnen“ bleibt für einen
- * zweiten Versuch; gesperrt nennt er den Grund sichtbar darunter und als Beschreibung, nicht nur durch Blässe.
- * @param {boolean} leer
- */
-function plSchritt(leer) {
-  const gen = G('btn-pl-gen'),
-    hinweis = G('pl-gen-hinweis');
-  if (!gen) return;
-  if (leer) gen.setAttribute('aria-disabled', 'true');
-  else gen.removeAttribute('aria-disabled');
-  if (hinweis) hinweis.hidden = !leer;
-  const beschreibung = (gen.getAttribute('aria-describedby') || '')
-    .split(/\s+/)
-    .filter(x => x && x !== 'pl-gen-hinweis');
-  if (leer) beschreibung.unshift('pl-gen-hinweis');
-  if (beschreibung.length) gen.setAttribute('aria-describedby', beschreibung.join(' '));
-  else gen.removeAttribute('aria-describedby');
-}
-
 export function plRenderSets() {
   const c = G('pl-sets');
   if (!c) return;
   // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
-  plSchritt(!_plSets.length);
+  // Ohne Set gibt es nichts neu zu berechnen; was zu tun ist, sagt der Leerzustand einmal.
+  G('btn-pl-gen').hidden = !_plSets.length;
   if (!_plSets.length) {
-    // Was zu tun ist, sagt der Hinweis unter den Knöpfen; der Leerzustand wiederholte es mit anderen Worten.
-    setzeHtml(c, leerZustand({ ico: 'liste', titelKey: 'pl.no_sets' }));
+    setzeHtml(c, leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.leer_wie' }));
     return;
   }
   setzeHtml(

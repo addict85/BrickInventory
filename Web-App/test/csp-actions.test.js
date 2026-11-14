@@ -108,7 +108,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
   // Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei
   let knoepfeGesamt = 0;
-  for (const file of ['gallery.js', 'parts.js', 'minifigs.js', 'set-detail.js']) {
+  for (const file of ['gallery.js', 'sets-tabelle.js', 'parts.js', 'minifigs.js', 'set-detail.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
     // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis

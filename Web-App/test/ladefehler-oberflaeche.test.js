@@ -81,7 +81,8 @@ test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
       ['parts', '#parts-main'],
       ['minifigs', '#figs-list'],
       ['catalog', '#catalog-grid'],
-      ['finance', '#fin-tbl'],
+      // Seit Runde 24 (M2) oben im Diagrammkasten, solange noch nichts geladen war.
+      ['finance', '#portfolio-chart'],
     ]) {
       await reiter(w, tab);
       await warte(() => d.querySelector(`${ziel} .fehler-zustand`));
