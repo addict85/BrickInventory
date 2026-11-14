@@ -128,6 +128,7 @@ window.I18N_DE = {
   'detail.wert': 'Wert',
   'detail.created': 'In der App eingetragen',
   'detail.qty': 'Anzahl',
+  'detail.purchase_price_avg': 'Ø Kaufpreis',
   'detail.purchase_price': 'Kaufpreis',
   'detail.market_price': 'Marktpreis',
   'detail.delete': 'Set löschen',

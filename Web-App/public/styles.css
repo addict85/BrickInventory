@@ -537,7 +537,10 @@
     .toast-zu .ico{width:1rem;height:1rem}
     .alarm-waehrung{font-size:var(--fs-1);color:var(--mut);margin-left:4px;font-weight:600}
     /* Platz für „aktiv“/„gemeldet“ reserviert: Sonst rückte die Zeile beim Speichern. */
-    .alarm-stand{font-size:var(--fs-1);color:var(--mut);display:inline-block;min-width:6.5em}
+    .alarm-stand:empty{display:none}
+    .alarm-stand.alarm-marke{white-space:normal}
+    /* „Alle Preisalarme“ in eigener Zeile: Daneben las sich der Zustand „aktiv“ als Teil des Verweises. */
+    .alarm-stand ~ .zu-sicht{flex-basis:100%;text-align:end}
     .zeichen-zaehler{display:block;font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     .zeichen-zaehler[hidden]{display:none}
     .sort-knopf{background:none;border:0;padding:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:32px;min-width:32px;text-transform:inherit;letter-spacing:inherit}
@@ -867,6 +870,8 @@
 @media not (forced-colors: active){
   html{scrollbar-width:none;-ms-overflow-style:none}
   html::-webkit-scrollbar{width:0;height:0}
+  /* Rollbereiche in Dialogen sehen aus wie der eigene Balken der Seite. */
+  .ovl :is(.modal, .modal *){scrollbar-width:thin;scrollbar-color:var(--s500) transparent}
 }
 @media (forced-colors: active){#app-scrollbar{display:none !important}}
 /* Fokus nie unter Kopf oder unterer Leiste (WCAG 2.4.11); die Höhen misst js/mobile.js. */

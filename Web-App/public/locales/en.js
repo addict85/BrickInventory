@@ -127,6 +127,7 @@ window.I18N_EN = {
   'detail.wert': 'Value',
   'detail.created': 'Entered in the app',
   'detail.qty': 'Quantity',
+  'detail.purchase_price_avg': 'Ø purchase price',
   'detail.purchase_price': 'Purchase price',
   'detail.market_price': 'Market price',
   'detail.delete': 'Delete set',

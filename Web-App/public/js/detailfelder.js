@@ -230,6 +230,7 @@ function zeigeAlarmMerker(a) {
   // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der Unterschied zwischen „der Alarm steht"
   // und „der Alarm hat gefeuert" — sonst fragt man sich, warum keine Mail mehr kommt.
   st.textContent = !a ? '' : a.ausgeloest ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
+  st.className = a ? `alarm-stand alarm-marke alarm-marke-${a.ausgeloest ? 'aus' : 'an'}` : 'alarm-stand';
 }
 
 /**
