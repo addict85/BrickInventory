@@ -117,7 +117,7 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
     for (const key of allowed) {
       if (req.eingabe[key] !== undefined) {
         // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
-        await d.konto.setUserSetting(uid, key, String(req.eingabe[key]));
+        await d.einstellungen.nutzerEinstellungSetzen(uid, key, String(req.eingabe[key]));
         updated++;
       }
     }
@@ -138,10 +138,10 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
     const condition = String(req.eingabe.condition ?? '');
     if (!['N', 'U', ''].includes(condition)) return sendeFehler(req, res, 400, 'zustand_n_oder_u');
     if (condition === '') {
-      await d.einstellungen.deleteUserSetting(req.apiUser.user_id, 'user_default_condition');
+      await d.einstellungen.nutzerEinstellungLoeschen(req.apiUser.user_id, 'user_default_condition');
     } else {
-      // setUserSetting(): GENAU EINE Schreibstelle für Benutzereinstellungen.
-      await d.konto.setUserSetting(req.apiUser.user_id, 'user_default_condition', condition);
+      // nutzerEinstellungSetzen(): GENAU EINE Schreibstelle für Benutzereinstellungen.
+      await d.einstellungen.nutzerEinstellungSetzen(req.apiUser.user_id, 'user_default_condition', condition);
     }
     return { condition: condition || null };
   });
@@ -205,7 +205,7 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
   // Leer heisst „Vorgabe des Verwalters".
   router.endpunkt('POST /api/v1/settings/user/theme', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    await d.konto.setzeEigenesDesign(uid, req.eingabe.theme);
+    await d.einstellungen.setzeEigenesDesign(uid, req.eingabe.theme);
     return { ...(await d.einstellungen.designFuer(uid)) };
   });
 

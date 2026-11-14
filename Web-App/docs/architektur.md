@@ -205,22 +205,23 @@ kennen einander nicht. Von unten nach oben:
 | 2 | `src/vertrag` |
 | 3 | `src/http` |
 | 4 | `db`, `clients` |
-| 5 | `src/einstellungen` |
-| 6 | `src/mail` |
-| 7 | `src/auftraege` |
-| 8 | `src/fremdquellen` |
-| 9 | `src/haushalt` |
-| 10 | `src/konto` |
-| 11 | `src/bilder` |
-| 12 | `src/idempotenz`, `src/katalog` |
-| 13 | `src/finanzen` |
-| 14 | `src/bestand` |
-| 15 | `src/sets` |
-| 16 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
-| 17 | `src/sammlung`, `src/verwaltung` |
-| 18 | `jobs`, `routes` |
-| 19 | `startup` |
-| 20 | `server.ts` |
+| 5 | `src/drossel` |
+| 6 | `src/einstellungen` |
+| 7 | `src/mail` |
+| 8 | `src/auftraege` |
+| 9 | `src/fremdquellen` |
+| 10 | `src/haushalt` |
+| 11 | `src/konto` |
+| 12 | `src/bilder` |
+| 13 | `src/idempotenz`, `src/katalog` |
+| 14 | `src/finanzen` |
+| 15 | `src/bestand` |
+| 16 | `src/sets` |
+| 17 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
+| 18 | `src/sammlung`, `src/verwaltung` |
+| 19 | `jobs`, `routes` |
+| 20 | `startup` |
+| 21 | `server.ts` |
 
 ## Schema
 

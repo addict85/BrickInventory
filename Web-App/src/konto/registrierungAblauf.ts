@@ -7,7 +7,6 @@ import { mailBasisUrl } from '../infra/basisUrl';
 import { imSystemkontext } from '../infra/kontoKontext';
 import { hashToken } from './geraeteToken';
 import { rechneWieRegistrierung, registriere } from './konten';
-import { setUserSetting } from './nutzerEinstellung';
 import { zielGedrosselt } from './zielDrossel';
 import { alsDoppelt } from '../infra/fehlerTexte';
 import type { KontoKontext } from './kontext';
@@ -75,9 +74,9 @@ async function neuesKonto(k: KontoKontext, r: Registrierung): Promise<boolean> {
     bis: new Date(Date.now() + 24 * STUNDE_MS),
   }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
   if (neuId)
-    await imSystemkontext('registrierung', () => setUserSetting(k, neuId, 'language', r.lang)).catch(
-      logAndContinue(`registrierung:sprache ${neuId}`),
-    );
+    await imSystemkontext('registrierung', () =>
+      k.einstellungen.nutzerEinstellungSetzen(neuId, 'language', r.lang),
+    ).catch(logAndContinue(`registrierung:sprache ${neuId}`));
   const mehrere = (await k.konten.offeneRegistrierungen(r.email)) > 1;
   return versende(basis => k.mail.sendVerificationMail(r.email, token, basis, r.lang, 'registrierung', mehrere));
 }

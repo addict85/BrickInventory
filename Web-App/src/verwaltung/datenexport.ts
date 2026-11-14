@@ -105,7 +105,7 @@ export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter
   }
   // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
   for (const key of KONTO_IMPORT.filter(k => konto?.[k] !== undefined)) {
-    await kx.konto.setUserSetting(uid, key, konto![key]);
+    await kx.einstellungen.nutzerEinstellungSetzen(uid, key, konto![key]);
     imported++;
   }
   // Nur Verwalter: Sonst könnte jedes Konto per Ein-Zeilen-Datei den Preis-Cache leeren.

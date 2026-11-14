@@ -554,3 +554,13 @@ export async function mussPasswortAendern(db: DbSchnittstelle, uid: number): Pro
   ]);
   return r?.must_change_password === true;
 }
+
+export function kontoZumNamen(db: DbSchnittstelle, name: string) {
+  return db.get<{ kennung: string; id: number | null }>(
+    `
+    SELECT lower($1::text) AS kennung,
+           (SELECT id FROM users WHERE lower(username) = lower($1::text) OR lower(email) = lower($1::text)
+             ORDER BY id LIMIT 1) AS id`,
+    [name],
+  );
+}

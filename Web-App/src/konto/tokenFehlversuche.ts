@@ -41,7 +41,7 @@ export function vergissSperrenImProzess(): void {
 
 export async function vergissFehlversuche(k: KontoKontext): Promise<void> {
   gesperrt().clear();
-  await k.anmeldezaehler
+  await k.drossel
     .loescheZaehlerMitPraefix(`${BUCKET}|`)
     .catch((e: unknown) => meldeFehler('token-fehlversuch:vergessen', e));
 }

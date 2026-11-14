@@ -1,7 +1,7 @@
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fachfehler, dateiFehler } from '../infra/fehlerTexte';
 import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
-import * as repo from './repository';
+import * as repo from './repository/werte';
 import type { DbSchnittstelle } from '../../db/database';
 import type { EinstellungenKontext } from './kontext';
 
@@ -71,7 +71,7 @@ const NUTZER_REGELN: Record<string, (v: string) => boolean> = {
 };
 
 /** Prüfen und schreiben; die Währung gilt je Haushalt und geht deshalb nur
- * über setUserSetting (src/konto/nutzerEinstellung.ts). */
+ * über nutzerEinstellungSetzen (nutzerEinstellung.ts). */
 export async function schreibeNutzerEinstellung(
   k: EinstellungenKontext,
   userId: number,
@@ -79,7 +79,7 @@ export async function schreibeNutzerEinstellung(
   value: unknown,
 ): Promise<void> {
   const v = String(value).trim();
-  if (key === 'currency') throw new Error('Währung nur über setUserSetting');
+  if (key === 'currency') throw new Error('Währung nur über nutzerEinstellungSetzen');
   const regel = NUTZER_REGELN[key];
   if (regel && !regel(v)) fachfehler('ungueltig', 'wert_ungueltig');
   await k.repository.schreibeNutzerWert(userId, key, v);
@@ -169,11 +169,6 @@ export async function verschluesseleGlobaleAltwerte(k: EinstellungenKontext): Pr
 export async function deleteGlobalSetting(k: EinstellungenKontext, ...keys: string[]) {
   if (keys.length === 0) return;
   await k.repository.loescheGlobaleWerte(keys);
-}
-
-/** Danach gilt die Vorgabe der Installation. */
-export async function deleteUserSetting(k: EinstellungenKontext, userId: number, key: string) {
-  await k.repository.loescheNutzerWert(userId, key);
 }
 
 // Einstellungen LESEN — eine Fassung für beide Oberflächen, damit die Apps

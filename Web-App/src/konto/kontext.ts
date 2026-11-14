@@ -4,7 +4,6 @@ import type { Db } from '../../db/database';
 import type { Faecher } from '../infra/zwischenspeicher';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import * as altgeheimnisse from './repository/altgeheimnisse';
-import * as anmeldezaehler from './repository/anmeldezaehler';
 import * as einrichtung from './repository/einrichtung';
 import * as geraeteSchluessel from './repository/geraeteSchluessel';
 import * as konten from './repository/konten';
@@ -19,6 +18,7 @@ import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 import type { MailDienste } from '../mail';
+import type { DrosselDienste } from '../drossel';
 
 export interface KontoAbhaengigkeiten {
   konfig: Readonly<Konfig>;
@@ -30,6 +30,7 @@ export interface KontoAbhaengigkeiten {
   haushalt: HaushaltDienste;
   nacharbeit: Nacharbeit;
   mail: MailDienste;
+  drossel: DrosselDienste;
 }
 
 /** Zugangsdaten liegen unter Zeilenschutz (0112): Den Systemrahmen bekommt nur, wer ohne Konto
@@ -55,16 +56,6 @@ const anmeldezugang = (db: Db) => ({
       altgeheimnisse.ersetzeFaktorGeheimnis,
     ),
   },
-  anmeldezaehler: {
-    erhoehe: mit(db)(anmeldezaehler.erhoehe),
-    gibLaufplatzFrei: mit(db)(anmeldezaehler.gibLaufplatzFrei),
-    kontoZumNamen: mit(db)(anmeldezaehler.kontoZumNamen),
-    lies: mit(db)(anmeldezaehler.lies),
-    loescheZaehler: mit(db)(anmeldezaehler.loescheZaehler),
-    loescheZaehlerMitPraefix: mit(db)(anmeldezaehler.loescheZaehlerMitPraefix),
-    raeumeAuf: mit(db)(anmeldezaehler.raeumeAuf),
-    zaehleHoch: mit(db)(anmeldezaehler.zaehleHoch),
-  },
   einrichtung: {
     kontenStand: mit(db)(einrichtung.kontenStand),
     datenbankErreichbar: mit(db)(einrichtung.datenbankErreichbar),
@@ -88,6 +79,7 @@ const anmeldezugang = (db: Db) => ({
 const kontenzugang = (db: Db) => ({
   konten: {
     kontoKurz: mit(db)(konten.kontoKurz),
+    kontoZumNamen: mit(db)(konten.kontoZumNamen),
     kontoVoll: mit(db)(konten.kontoVoll),
     profilZeile: mit(db)(konten.profilZeile),
     nameVergeben: mit(db)(konten.nameVergeben),

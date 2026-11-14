@@ -1,4 +1,5 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+import type { DrosselDienste } from '../drossel';
 import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
 import * as guthabenSchranke from './repository/guthabenSchranke';
@@ -12,6 +13,7 @@ export interface GutscheineAbhaengigkeiten {
   db: Db;
   einstellungen: EinstellungenDienste;
   konto: KontoDienste;
+  drossel: DrosselDienste;
   fremdquellen: FremdquellenDienste;
   /** Sitzungen der Guthabenabfrage und PDF-Tickets dieses Satzes Dienste. */
   faecher: Faecher;

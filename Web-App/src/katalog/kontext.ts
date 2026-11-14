@@ -1,6 +1,7 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import { mit, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
+import type { DrosselDienste } from '../drossel';
 import type { Db } from '../../db/database';
 import type { ConcurrentRateLimiter, FremdquellenDienste } from '../fremdquellen';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
@@ -29,6 +30,7 @@ export interface KatalogAbhaengigkeiten {
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   nacharbeit: Nacharbeit;
+  drossel: DrosselDienste;
 }
 
 /** Anleitungen, BrickLink-Zuordnung und CSV-Katalog. */
@@ -36,7 +38,6 @@ const anleitungszugang = (db: Db) => ({
   anleitungen: {
     zaehleAnleitungen: mit(db)(anleitungen.zaehleAnleitungen),
     anleitungenDesSets: mit(db)(anleitungen.anleitungenDesSets),
-    zaehleQuellenAufruf: mit(db)(anleitungen.zaehleQuellenAufruf),
     loescheAnleitungenDesSets: mit(db)(anleitungen.loescheAnleitungenDesSets),
     hatBrickinstructions: mit(db)(anleitungen.hatBrickinstructions),
     merkeAnleitung: mit(db)(anleitungen.merkeAnleitung),

@@ -1,6 +1,6 @@
 /** Werte so, wie sie in der Tabelle stehen; Entschlüsseln, Prüfen und Vorgaben
  * macht src/einstellungen/settings.ts. */
-import type { DbSchnittstelle } from '../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 export interface Eintrag {
   key: string;

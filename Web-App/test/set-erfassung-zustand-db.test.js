@@ -12,7 +12,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = testDaten();
-const { setUserSetting } = _req('src/konto/nutzerEinstellung.js');
+const { nutzerEinstellungSetzen: setUserSetting } = _req('src/einstellungen/nutzerEinstellung.js');
 const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
 
 test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurrency: 1 }, async t => {

@@ -83,7 +83,7 @@ export async function einstellungenSpeichern(
   // Die Währung gilt für den ganzen Haushalt und braucht deshalb den Systemrahmen, der
   // sich in einer Transaktion nicht betreten lässt: vorher und für sich. Scheitert sie,
   // ist noch nichts geschrieben; der Preis-Job folgt nur einer echten Änderung.
-  if (e.currency !== undefined) await kx.konto.setUserSetting(o.uid, 'currency', e.currency);
+  if (e.currency !== undefined) await kx.einstellungen.nutzerEinstellungSetzen(o.uid, 'currency', e.currency);
   // Globale Werte schreibt nur die Systemrolle (0117): dann die ganze Transaktion in ihrem Rahmen.
   const rahmen = <T>(f: () => Promise<T>) => (global ? imSystemkontext('globale Einstellungen', f) : f());
   const bricksetAlt = await rahmen(() =>
@@ -94,7 +94,8 @@ export async function einstellungenSpeichern(
           : null;
       if (global) await schreibeGlobal(t, o.uid, e);
       for (const key of KONTO_EINSTELLUNGEN)
-        if (key !== 'currency' && e[key] !== undefined) await t.konto.setUserSetting(o.uid, key, e[key]);
+        if (key !== 'currency' && e[key] !== undefined)
+          await t.einstellungen.nutzerEinstellungSetzen(o.uid, key, e[key]);
       return alt;
     }),
   );

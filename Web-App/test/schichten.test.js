@@ -722,7 +722,7 @@ const istBlatt = rel => !/(?:from\s+|import\(\s*)['"]\./.test(quelltext(rel + '.
 
 test('ein Repository kennt keine Dienste, auch nicht deren Typen', () => {
   // Gegenproben: `import { getSetting } from '../settings'` in
-  // src/einstellungen/repository.ts → rot (31.10.2026); (05.11.2026)
+  // src/einstellungen/repository/werte.ts → rot (31.10.2026); (05.11.2026)
   // `import type { SetStamm } from '../dienst'` zurück in
   // src/sets/repository/setDetail.ts → rot.
   const treffer = [];
@@ -836,6 +836,7 @@ const STUFEN = [
   ['src/vertrag'],
   ['src/http'],
   ['db', 'clients'],
+  ['src/drossel'],
   ['src/einstellungen'],
   ['src/mail'],
   ['src/auftraege'],

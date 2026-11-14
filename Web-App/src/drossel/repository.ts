@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle } from '../../db/database';
 
 /** `laufend` zählt Prüfungen, die gerade laufen, damit gleichzeitige Versuche
  * die Grenze nicht gemeinsam überspringen. */
@@ -88,16 +88,6 @@ export async function loescheZaehlerMitPraefix(db: DbSchnittstelle, praefix: str
   await db.run('DELETE FROM rate_limit_attempts WHERE left(key, length($1)) = $1', [praefix]);
 }
 
-export function kontoZumNamen(db: DbSchnittstelle, name: string) {
-  return db.get<{ kennung: string; id: number | null }>(
-    `
-    SELECT lower($1::text) AS kennung,
-           (SELECT id FROM users WHERE lower(username) = lower($1::text) OR lower(email) = lower($1::text)
-             ORDER BY id LIMIT 1) AS id`,
-    [name],
-  );
-}
-
 export async function raeumeAuf(db: DbSchnittstelle, bekanntMin: number): Promise<number> {
   return (
     (
@@ -128,4 +118,35 @@ export async function zaehleHoch(
      RETURNING count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min`,
     [key, fensterMin],
   ))!;
+}
+
+/** Je Konto und Stunde (Guthabenabfrage): Die Grenze fällt erst nach einer vollen Stunde. */
+export function stundenStand(tx: DbSchnittstelle, key: string) {
+  return tx.get<{ anzahl: number; warten_sek: number }>(
+    `SELECT count AS anzahl,
+       CEIL(EXTRACT(EPOCH FROM (first_at + INTERVAL '1 hour' - NOW())))::int AS warten_sek
+     FROM rate_limit_attempts WHERE key = $1 AND first_at > NOW() - INTERVAL '1 hour'`,
+    [key],
+  );
+}
+
+export async function zaehleStunde(tx: DbSchnittstelle, key: string): Promise<void> {
+  await tx.run(
+    `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
+     ON CONFLICT (key) DO UPDATE SET last_at = NOW(),
+       count = CASE WHEN rate_limit_attempts.first_at <= NOW() - INTERVAL '1 hour' THEN 1 ELSE rate_limit_attempts.count + 1 END,
+       first_at = CASE WHEN rate_limit_attempts.first_at <= NOW() - INTERVAL '1 hour' THEN NOW() ELSE rate_limit_attempts.first_at END`,
+    [key],
+  );
+}
+
+/** Zählen und Stand liefern in einem Schritt: eine Zeile, wenn der Tag frei war. */
+export function einmalJeTag(db: DbSchnittstelle, key: string) {
+  return db.get(
+    `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
+     ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()
+       WHERE rate_limit_attempts.first_at < NOW() - INTERVAL '1 day'
+     RETURNING key`,
+    [key],
+  );
 }

@@ -4,7 +4,6 @@ import { einzelwert } from '../infra/validate';
 import { fehlertext, meldeUndLiefere } from '../infra/fehler';
 import { suchwert } from '../infra/geheimnis';
 import type { FehlerCode } from '../infra/fehlerTexte';
-import * as repo from './repository/anmeldezaehler';
 import type { KontoKontext } from './kontext';
 import { prozessweit } from '../infra/prozessweit';
 
@@ -85,7 +84,7 @@ const _restMin = (firstAt: number, windowMin: number, now = Date.now()) =>
 
 async function _read(k: KontoKontext, key: string, windowMin: number): Promise<Zaehlerstand | null> {
   try {
-    const row = await k.anmeldezaehler.lies(key, windowMin);
+    const row = await k.drossel.lies(key, windowMin);
     if (!row) return null;
     return {
       count: parseInt(row.count, 10) || 0,
@@ -106,7 +105,7 @@ async function _read(k: KontoKontext, key: string, windowMin: number): Promise<Z
 
 async function _bump(k: KontoKontext, key: string, windowMin: number): Promise<number> {
   try {
-    return await k.anmeldezaehler.erhoehe(key, windowMin);
+    return await k.drossel.erhoehe(key, windowMin);
   } catch (fehler) {
     imSpeicher('zählen', fehler);
     const now = Date.now();
@@ -134,7 +133,7 @@ async function _reserviere(
 ): Promise<{ ok: boolean; stand: Stand }> {
   try {
     return await k.transaktion(async t => {
-      const r = await repo.sperre(t.db, key, windowMin, LAUFEND_VERFALL_S);
+      const r = await t.drossel.sperre(key, windowMin, LAUFEND_VERFALL_S);
       const neu = !!r.abgelaufen;
       const stand: Stand = {
         count: neu ? 0 : parseInt(r.count, 10) || 0,
@@ -143,7 +142,7 @@ async function _reserviere(
         seitLetztem: Math.max(0, parseFloat(r.seit) || 0),
       };
       if (!erlaubt(stand)) return { ok: false, stand };
-      await repo.belegeLaufplatz(t.db, key, stand.laufend + 1, neu);
+      await t.drossel.belegeLaufplatz(key, stand.laufend + 1, neu);
       return { ok: true, stand };
     });
   } catch (fehler) {
@@ -170,7 +169,7 @@ async function _reserviere(
 
 async function _freigeben(k: KontoKontext, key: string): Promise<void> {
   try {
-    await k.anmeldezaehler.gibLaufplatzFrei(key);
+    await k.drossel.gibLaufplatzFrei(key);
   } catch (fehler) {
     imSpeicher('freigeben', fehler);
     const e = rueckfall().eintraege.get(key);
@@ -180,7 +179,7 @@ async function _freigeben(k: KontoKontext, key: string): Promise<void> {
 
 async function _clear(k: KontoKontext, key: string): Promise<void> {
   try {
-    await k.anmeldezaehler.loescheZaehler(key);
+    await k.drossel.loescheZaehler(key);
   } catch (e) {
     imSpeicher('löschen', e);
     rueckfall().eintraege.delete(key);
@@ -192,9 +191,7 @@ async function _clear(k: KontoKontext, key: string): Promise<void> {
 async function kontoKennung(k: KontoKontext, username: string): Promise<string> {
   // Ausnahme: Bei gestörter Datenbank zählt die Drossel im Speicher weiter
   // (imSpeicher); ohne Konto dann nach dem Namen, statt die Anmeldung zu sperren.
-  const z = await k.anmeldezaehler
-    .kontoZumNamen(einzelwert(username))
-    .catch(meldeUndLiefere('anmeldung:konto-kennung', null));
+  const z = await k.konten.kontoZumNamen(einzelwert(username)).catch(meldeUndLiefere('anmeldung:konto-kennung', null));
   if (z?.id) return `konto:${z.id}`;
   return `name:${namensAbdruck(z?.kennung ?? einzelwert(username).toLowerCase())}`;
 }
@@ -327,7 +324,7 @@ export async function bekannteAnmeldung(k: KontoKontext, ip: string, username: s
 
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */
 export async function raeumeAnmeldezaehlerAuf(k: KontoKontext): Promise<number> {
-  return k.anmeldezaehler.raeumeAuf(BEKANNT_MIN);
+  return k.drossel.raeumeAuf(BEKANNT_MIN);
 }
 
 /** In einem Schritt, sonst kamen gleichzeitige Anfragen durch. Abgewiesene zählen, verlängern aber nicht. */
@@ -340,7 +337,7 @@ export async function zaehleAnfrage(
   const key = `${bucket}|${drosselAdresse(ip)}`;
   const windowMin = windowMs / 60000;
   try {
-    const r = await k.anmeldezaehler.zaehleHoch(key, windowMin);
+    const r = await k.drossel.zaehleHoch(key, windowMin);
     return { count: parseInt(r.count, 10) || 0, waitMin: Math.max(1, Math.ceil(parseFloat(r.wait_min) || 1)) };
   } catch (fehler) {
     imSpeicher('anfrage', fehler);

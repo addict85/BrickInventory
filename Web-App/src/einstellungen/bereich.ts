@@ -2,6 +2,7 @@
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as settings from './settings';
+import * as nutzerEinstellung from './nutzerEinstellung';
 import { zugang, type EinstellungenAbhaengigkeiten, type EinstellungenKontext } from './kontext';
 
 export type { EinstellungenAbhaengigkeiten, EinstellungenKontext } from './kontext';
@@ -20,7 +21,9 @@ export function erzeugeEinstellungen(
       setGlobalSetting: mit(k)(settings.setGlobalSetting),
       verschluesseleGlobaleAltwerte: mit(k)(settings.verschluesseleGlobaleAltwerte),
       deleteGlobalSetting: mit(k)(settings.deleteGlobalSetting),
-      deleteUserSetting: mit(k)(settings.deleteUserSetting),
+      nutzerEinstellungSetzen: mit(k)(nutzerEinstellung.nutzerEinstellungSetzen),
+      nutzerEinstellungLoeschen: mit(k)(nutzerEinstellung.nutzerEinstellungLoeschen),
+      setzeEigenesDesign: mit(k)(nutzerEinstellung.setzeEigenesDesign),
       nutzerEinstellungen: mit(k)(settings.nutzerEinstellungen),
       readSettings: mit(k)(settings.readSettings),
       globaleWerteOhneGeheimnisse: mit(k)(settings.globaleWerteOhneGeheimnisse),

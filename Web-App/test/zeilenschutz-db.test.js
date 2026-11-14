@@ -314,10 +314,10 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein Währungswechsel erreicht auch das Unterkonto des Unterkontos', async () => {
-    const kontoDienste = dienstMit(app).konto;
+    const einstellungen = dienstMit(app).einstellungen;
     const E = await konto('enkel');
     await su.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [B, E]);
-    await als(A, () => kontoDienste.setUserSetting(A, 'currency', 'CHF'));
+    await als(A, () => einstellungen.nutzerEinstellungSetzen(A, 'currency', 'CHF'));
     const w = await su.all(`SELECT user_id, value FROM user_settings WHERE key = 'currency' AND user_id = ANY($1)`, [
       [A, B, E],
     ]);

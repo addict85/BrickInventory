@@ -3,6 +3,7 @@
 import type { AuftraegeDienste } from './auftraege';
 import type { BestandDienste } from './bestand';
 import type { BilderDienste } from './bilder';
+import type { DrosselDienste } from './drossel';
 import type { EinstellungenDienste } from './einstellungen';
 import type { FigurenDienste } from './figuren';
 import type { FinanzenDienste } from './finanzen';
@@ -20,6 +21,7 @@ import type { TeileDienste } from './teile';
 import type { VerwaltungDienste } from './verwaltung';
 
 export interface Dienste {
+  drossel: DrosselDienste;
   einstellungen: EinstellungenDienste;
   mail: MailDienste;
   auftraege: AuftraegeDienste;

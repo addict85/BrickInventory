@@ -15,7 +15,6 @@ import * as tokenWunsch from './tokenWunsch';
 import * as verwalterAktionen from './verwalterAktionen';
 import * as verwalterProtokoll from './verwalterProtokoll';
 import * as zugangsende from './zugangsende';
-import * as nutzerEinstellung from './nutzerEinstellung';
 import * as einrichtungStand from './einrichtungStand';
 import * as zielDrossel from './zielDrossel';
 import * as passwortBestaetigung from './passwortBestaetigung';
@@ -123,8 +122,6 @@ function konten(k: KontoKontext) {
     otpauthFuer: mit(k)(zweiterFaktorDienst.otpauthFuer),
     schalteAb: mit(k)(zweiterFaktorDienst.schalteAb),
     erneuereCodes: mit(k)(zweiterFaktorDienst.erneuereCodes),
-    setUserSetting: mit(k)(nutzerEinstellung.setUserSetting),
-    setzeEigenesDesign: mit(k)(nutzerEinstellung.setzeEigenesDesign),
     einrichtungStand: mit(k)(einrichtungStand.einrichtungStand),
     zielGedrosselt: mit(k)(zielDrossel.zielGedrosselt),
     kontoGedrosselt: mit(k)(zielDrossel.kontoGedrosselt),

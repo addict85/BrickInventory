@@ -171,6 +171,7 @@ const DYNAMISCH = {
 /** Je Bereich die Tabellen, in die nur er schreibt (INSERT, UPDATE, DELETE). */
 const BESITZER = {
   db: ['schema_migrations'],
+  'src/drossel': ['rate_limit_attempts'],
   'src/auftraege': ['auftraege', 'auftrag_exklusiv', 'auftrag_pausen', 'auftrags_arten', 'import_stand', 'laufzustand'],
   'src/bestand': ['minifigs', 'papierkorb', 'parts', 'storage_locations'],
   'src/einstellungen': ['global_settings', 'user_settings'],
@@ -223,7 +224,6 @@ const BESITZER = {
     'geraete_schluessel',
     'passkeys',
     'qr_login_tokens',
-    'rate_limit_attempts',
     'schritt_challenges',
     'schritt_freigaben',
     'user_sessions',
@@ -260,9 +260,6 @@ const FREMDSCHREIBER = [
   'src/teile/repository/teilFarbe.ts → parts',
   'src/sammlung/repository/loeschen.ts → minifig_acquisitions',
   'src/sammlung/repository/loeschen.ts → part_acquisitions',
-  'src/gutscheine/repository/guthabenSchranke.ts → rate_limit_attempts',
-  'src/katalog/repository/anleitungen.ts → rate_limit_attempts',
-  'src/konto/repository/waehrung.ts → user_settings',
 ];
 
 const bereichVon = datei => (datei.startsWith('src/') ? datei.split('/').slice(0, 2).join('/') : datei.split('/')[0]);
