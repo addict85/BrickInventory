@@ -188,6 +188,6 @@ internal fun fehlerText(grund: PdfFehlschlag, satz: Satz): String = when (grund)
             Ergebnis.Error.Zeitueberschreitung -> satz(R.string.err_timeout, emptyList())
             is Ergebnis.Error.Abgewiesen -> satz(R.string.err_session_expired, emptyList())
             Ergebnis.Error.Klartext -> satz(R.string.err_klartext, emptyList())
-            is Ergebnis.Error.LeereAntwort, is Ergebnis.Error.Unbekannt -> satz(R.string.pdfexp_unknown_error, emptyList())
+            is Ergebnis.Error.LeereAntwort, is Ergebnis.Error.Absage, is Ergebnis.Error.Unbekannt -> satz(R.string.pdfexp_unknown_error, emptyList())
         }
 }

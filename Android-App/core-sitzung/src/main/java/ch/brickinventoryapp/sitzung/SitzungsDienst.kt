@@ -12,7 +12,6 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import kotlinx.coroutines.CoroutineScope
@@ -199,11 +198,11 @@ class SitzungsDienst @Inject constructor(
         if (prefs.serverUrlJetzt().isBlank()) return
         while (true) {
             val r = verwaltung.getStartupStatus()
-            if (r !is Ergebnis.Success || r.data.ready) {
+            if (r !is Ergebnis.Success || r.data.bereit) {
                 sitzung.serverstartGeaendert(null)
                 return
             }
-            sitzung.serverstartGeaendert(r.data.alsAnsicht())
+            sitzung.serverstartGeaendert(r.data)
             delay(SERVERSTART_TAKT_MS)
         }
     }

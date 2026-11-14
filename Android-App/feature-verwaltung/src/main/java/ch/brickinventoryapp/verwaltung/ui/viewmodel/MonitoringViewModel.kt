@@ -14,7 +14,6 @@ import ch.brickinventoryapp.model.ui.model.BricksetEintragAnsicht
 import ch.brickinventoryapp.model.ui.model.CacheKennzahlenAnsicht
 import ch.brickinventoryapp.model.ui.model.JobZustandAnsicht
 import ch.brickinventoryapp.model.ui.model.ZeitplanAnsicht
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.ressourcen.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -87,8 +86,7 @@ class MonitoringViewModel @Inject constructor(
         _verwaltungState.update { it.copy(protokollLaden = true, protokollMinuten = minuten, fehler = null) }
         when (val r = verwaltung.getProtokoll(minuten)) {
             is Ergebnis.Success -> _verwaltungState.update {
-                it.copy(protokollLaden = false, protokoll = r.data.logs.map { it.alsAnsicht() },
-                        fehler = if (r.data.success) null else r.data.error)
+                it.copy(protokollLaden = false, protokoll = r.data, fehler = null)
             }
             is Ergebnis.Error -> _verwaltungState.update { it.copy(protokollLaden = false, fehler = texte.meldung(r)) }
         }
@@ -113,7 +111,7 @@ class MonitoringViewModel @Inject constructor(
     suspend fun ladeHintergrund() {
         _hintergrund.update { it.copy(laedt = true) }
         when (val r = verwaltung.getAuftraege()) {
-            is Ergebnis.Success -> _hintergrund.update { HintergrundUiState(ansicht = r.data.alsAnsicht()) }
+            is Ergebnis.Success -> _hintergrund.update { HintergrundUiState(ansicht = r.data) }
             is Ergebnis.Error -> {
                 _hintergrund.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
                 if (entzogen(r)) _state.update { it.copy(zugriffEntzogen = true) }
@@ -134,11 +132,11 @@ class MonitoringViewModel @Inject constructor(
 
     internal suspend fun starteAuftragsArt(art: String, name: String): String =
         nachAuftrag(verwaltung.starteAuftragsArt(art)) {
-            texte.text(if (it.gestartet) R.string.hintergrund_gestartet else R.string.hintergrund_nichts_gestartet, name)
+            texte.text(if (it) R.string.hintergrund_gestartet else R.string.hintergrund_nichts_gestartet, name)
         }
 
     internal suspend fun leereAuftragsArt(art: String): String =
-        nachAuftrag(verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
+        nachAuftrag(verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it, it) }
 
     // Im viewModelScope, nicht im Scope des Bildschirms: Wer die Seite verlässt,
     // bricht die Aktion nicht ab, und der Satz geht nicht am Zustand vorbei.
@@ -199,8 +197,7 @@ class MonitoringViewModel @Inject constructor(
         val r = verwaltung.getJobs()
         _state.update {
             if (r is Ergebnis.Success)
-                it.copy(jobs = r.data.jobs.mapValues { j -> j.value.alsAnsicht() },
-                    jobSchedules = r.data.schedules.mapValues { z -> z.value.alsAnsicht() }, aktualisiert = false)
+                it.copy(jobs = r.data.jobs, jobSchedules = r.data.zeitplaene, aktualisiert = false)
             else it.copy(aktualisiert = false, zugriffEntzogen = it.zugriffEntzogen || entzogen(r))
         }
     }
@@ -209,7 +206,7 @@ class MonitoringViewModel @Inject constructor(
         _state.update { it.copy(queueLoading = true) }
         val r = verwaltung.getBricksetQueue()
         _state.update {
-            if (r is Ergebnis.Success) it.copy(queue = r.data.entries.map { e -> e.alsAnsicht() }, queueLoading = false)
+            if (r is Ergebnis.Success) it.copy(queue = r.data, queueLoading = false)
             else it.copy(queueLoading = false)
         }
     }
@@ -235,7 +232,7 @@ class MonitoringViewModel @Inject constructor(
 
     /** Anleitungen neu einlesen; zurück kommt die Zahl der eingereihten Sets, sonst null. */
     override suspend fun leseAnleitungenNeuEin(): Int? =
-        (verwaltung.reimportInstructions() as? Ergebnis.Success)?.data?.enqueued
+        (verwaltung.reimportInstructions() as? Ergebnis.Success)?.data
 
     override suspend fun starteCsvAbgleich(): Boolean = verwaltung.triggerCsvSync() is Ergebnis.Success
 
@@ -251,13 +248,13 @@ class MonitoringViewModel @Inject constructor(
      */
     internal suspend fun ladeCacheUndGrenzen() {
         (verwaltung.getCacheStats() as? Ergebnis.Success)?.let { r ->
-            _state.update { it.copy(cacheStats = r.data.alsAnsicht()) }
+            _state.update { it.copy(cacheStats = r.data) }
         }
         (verwaltung.getApiLimits() as? Ergebnis.Success)?.let { r ->
-            _state.update { it.copy(apiLimits = r.data.limits.alsAnsicht()) }
+            _state.update { it.copy(apiLimits = r.data) }
         }
         (verwaltung.getCacheTtl() as? Ergebnis.Success)?.let { r ->
-            _state.update { it.copy(cacheTtl = r.data.ttl) }
+            _state.update { it.copy(cacheTtl = r.data) }
         }
         (konto.getDefaultCondition() as? Ergebnis.Success)?.let { r ->
             _state.update { it.copy(vorgabeZustand = r.data.condition) }
@@ -319,7 +316,7 @@ class MonitoringViewModel @Inject constructor(
         val ok = verwaltung.setApiLimits(rebrickable, bricklink, brickset) is Ergebnis.Success
         if (ok) {
             (verwaltung.getApiLimits() as? Ergebnis.Success)?.let { r ->
-                _state.update { it.copy(apiLimits = r.data.limits.alsAnsicht()) }
+                _state.update { it.copy(apiLimits = r.data) }
             }
         }
         return ok

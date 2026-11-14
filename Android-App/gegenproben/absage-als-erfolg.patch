@@ -1,0 +1,17 @@
+Gegenprobe: eine Absage (success: false) gilt wieder als Erfolg
+Modul: core-data
+Test: ch.brickinventoryapp.data.AbsageTest
+Rot: eine Absage des Servers ist ein Fehler
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
+@@ -204,7 +204,7 @@
+  */
+ internal inline fun <T, R> Ergebnis<T>.zugesagt(erfolg: (T) -> Boolean, satz: (T) -> String?, f: (T) -> R): Ergebnis<R> =
+     when (this) {
+-        is Ergebnis.Success -> if (erfolg(data)) Ergebnis.Success(f(data), stand, gepuffert)
++        is Ergebnis.Success -> if (true) Ergebnis.Success(f(data), stand, gepuffert)
+             else Ergebnis.Error.Absage(satz(data).orEmpty())
+         is Ergebnis.Error -> this
+     }

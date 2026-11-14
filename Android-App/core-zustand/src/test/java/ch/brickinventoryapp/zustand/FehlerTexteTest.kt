@@ -32,7 +32,7 @@ class FehlerTexteTest {
     private val beispiele = listOf(
         Ergebnis.Error.Netz(), Ergebnis.Error.Zeitueberschreitung, Ergebnis.Error.Abgebrochen,
         Ergebnis.Error.LeereAntwort(), Ergebnis.Error.Abgewiesen(), Ergebnis.Error.Server(500),
-        Ergebnis.Error.Klartext, Ergebnis.Error.Unbekannt(),
+        Ergebnis.Error.Klartext, Ergebnis.Error.Unbekannt(), Ergebnis.Error.Absage(),
     )
 
     private fun name(f: Ergebnis.Error): String = when (f) {
@@ -44,11 +44,12 @@ class FehlerTexteTest {
         is Ergebnis.Error.Server -> "Server"
         Ergebnis.Error.Klartext -> "Klartext"
         is Ergebnis.Error.Unbekannt -> "Unbekannt"
+        is Ergebnis.Error.Absage -> "Absage"
     }
 
     @Test
     fun `jede Fehlerart hat einen eigenen Text`() {
-        assert(beispiele.map { name(it) }.toSet().size == 8) { "Nicht jede Art hat ein Beispiel" }
+        assert(beispiele.map { name(it) }.toSet().size == 9) { "Nicht jede Art hat ein Beispiel" }
         val zuordnung = beispiele.associate { name(it) to fehlerTextId(it) }
 
         zuordnung.forEach { (art, id) ->
@@ -98,7 +99,7 @@ class FehlerTexteTest {
             "Netz" to Fehlerklasse.OFFLINE, "Zeitueberschreitung" to Fehlerklasse.OFFLINE,
             "Abgebrochen" to Fehlerklasse.OFFLINE, "Server" to Fehlerklasse.SERVER,
             "LeereAntwort" to Fehlerklasse.SERVER, "Abgewiesen" to Fehlerklasse.ANMELDUNG,
-            "Klartext" to Fehlerklasse.UNBEKANNT, "Unbekannt" to Fehlerklasse.UNBEKANNT,
+            "Klartext" to Fehlerklasse.UNBEKANNT, "Unbekannt" to Fehlerklasse.UNBEKANNT, "Absage" to Fehlerklasse.UNBEKANNT,
         )
         assert(erwartet.keys == beispiele.map { name(it) }.toSet()) { "neue Fehlerart ohne Klasse" }
         beispiele.forEach { f -> assert(fehlerklasse(f) == erwartet[name(f)]) { "${name(f)} ergab ${fehlerklasse(f)}" } }

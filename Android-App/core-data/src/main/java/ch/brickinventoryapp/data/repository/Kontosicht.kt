@@ -107,7 +107,7 @@ class Kontosicht @Inject constructor(
     val merkliste = Serversicht<MerkAbfrage, Merkposten>(ablage, arrayOf(Faecher.MERKLISTE)) { a ->
         wiederholung.wiederhole {
             sicherAufrufen { sets.getMerkliste(a.suche, a.zustand?.kennung, a.sort?.kennung, a.konten.anfrage) }
-        }.map { it.merkposten }
+        }.abgebildet { it.merkposten }
     }
 
     val teileliste = Serversicht<TeileAbfrage, Part>(ablage, arrayOf(Faecher.TEILE)) { a ->
@@ -120,21 +120,16 @@ class Kontosicht @Inject constructor(
     }
 
     val manuelleTeile = Serversicht<ManuelleAbfrage, PartValuationItem>(ablage, arrayOf(Faecher.MANUELLE_TEILE)) { a ->
-        wiederholung.wiederhole { sicherAufrufen { teile.getManualParts(a.konten?.anfrage, a.suche, a.lagerort) } }.map { it.parts }
+        wiederholung.wiederhole { sicherAufrufen { teile.getManualParts(a.konten?.anfrage, a.suche, a.lagerort) } }.abgebildet { it.parts }
     }
 
     val figurenliste = Serversicht<FigurenAbfrage, Minifig>(ablage, arrayOf(Faecher.FIGUREN)) { a ->
         wiederholung.wiederhole {
             sicherAufrufen { figuren.getMinifigs(source = "set", accounts = a.konten.anfrage, search = a.suche) }
-        }.map { it.figs }
+        }.abgebildet { it.figs }
     }
 
     val manuelleFiguren = Serversicht<FigurenAbfrage, FigValuationItem>(ablage, arrayOf(Faecher.MANUELLE_FIGUREN)) { a ->
-        wiederholung.wiederhole { sicherAufrufen { figuren.getManualMinifigs(a.konten.anfrage, a.suche) } }.map { it.figs }
+        wiederholung.wiederhole { sicherAufrufen { figuren.getManualMinifigs(a.konten.anfrage, a.suche) } }.abgebildet { it.figs }
     }
-}
-
-private inline fun <T, R> Ergebnis<T>.map(f: (T) -> R): Ergebnis<R> = when (this) {
-    is Ergebnis.Success -> Ergebnis.Success(f(data), stand, gepuffert)
-    is Ergebnis.Error -> this
 }

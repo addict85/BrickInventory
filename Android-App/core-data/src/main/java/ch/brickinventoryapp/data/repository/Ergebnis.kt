@@ -35,7 +35,7 @@ sealed class Ergebnis<out T> {
         /** Der Server war nicht erreichbar: Ein zweiter Versuch kann gelingen, der Plattenspeicher einspringen. */
         val transient: Boolean get() = when (this) {
             is Netz, Zeitueberschreitung -> true
-            Abgebrochen, is LeereAntwort, is Abgewiesen, is Server, Klartext, is Unbekannt -> false
+            Abgebrochen, is LeereAntwort, is Abgewiesen, is Server, is Absage, Klartext, is Unbekannt -> false
         }
 
         /** Host nicht auflösbar, Verbindung abgelehnt oder unterwegs abgerissen. */
@@ -59,10 +59,22 @@ sealed class Ergebnis<out T> {
             override val code: Fehlercode? = null,
         ) : Error()
 
+        /**
+         * HTTP 2xx mit `success: false`: Der Server hat geantwortet und abgelehnt. Als Fehler,
+         * damit kein Aufrufer ein Erfolgsfeld prüfen muss, das es nur im Wire-Format gibt.
+         */
+        data class Absage(override val message: String = "", override val code: Fehlercode? = null) : Error()
+
         /** Die Server-Adresse ist http; die App sendet nur über https (util/KlartextAbgelehnt). */
         data object Klartext : Error()
 
         /** Jede andere Ausnahme, ohne nähere Einordnung. */
         data class Unbekannt(override val technisch: String? = null) : Error()
     }
+}
+
+/** Die Daten eines Erfolgs umformen; Stand und Puffer bleiben, ein Fehler bleibt derselbe. */
+inline fun <T, R> Ergebnis<T>.abgebildet(f: (T) -> R): Ergebnis<R> = when (this) {
+    is Ergebnis.Success -> Ergebnis.Success(f(data), stand, gepuffert)
+    is Ergebnis.Error -> this
 }
