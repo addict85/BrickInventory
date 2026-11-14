@@ -1,6 +1,6 @@
 /** Ohne Anmeldung: Registrierung, E-Mail-Bestätigung und Passwort vergessen.
  * Jede Antwort verrät gleich wenig darüber, ob es ein Konto gibt. */
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { ipThrottle } from '../../src/konto/http/anmeldung';
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
@@ -139,7 +139,5 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
       return { message: 'Passwort erfolgreich geändert.' };
     },
   );
-
-  router.use(fehlerAntwort);
   return router;
 }

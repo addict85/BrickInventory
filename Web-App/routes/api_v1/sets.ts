@@ -1,6 +1,6 @@
 /** /api/v1/sets — Anlegen, Lesen, Ändern und Löschen eines Sets. Lager und Alarme,
  * Import und Anleitungen hängen als eigene Router daneben (index.ts). Die Arbeit liegt in src/sets/. */
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { sichtVon, waechterFuer } from './middleware';
 import { normalisiereSetNummer } from '../../src/infra/setNummer';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
@@ -129,7 +129,5 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
       )),
     };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

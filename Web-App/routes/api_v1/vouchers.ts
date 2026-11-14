@@ -3,7 +3,7 @@ import type express from 'express';
 import multer from 'multer';
 import { FORMULAR_GRENZEN, gesamtReichtFuer, uploadGesamtMb } from '../../src/http/dateiEmpfang';
 import { FREMDE_DATEI_CSP } from '../../src/http/dateiAusliefern';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../src/infra/fehlerTexte';
 import { ABSTAND_SEK, TICKET_SEK, maskiert, type GutscheinWerte, type GutscheinZeile } from '../../src/gutscheine';
 import { kontoSchranke, waechterFuer } from './middleware';
@@ -187,7 +187,5 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
       waehrung_geaendert: r.waehrungGeaendert,
     };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

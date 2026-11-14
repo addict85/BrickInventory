@@ -1,4 +1,4 @@
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
@@ -154,7 +154,5 @@ export function bauePartsRouter(
     });
     return { item, sets };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

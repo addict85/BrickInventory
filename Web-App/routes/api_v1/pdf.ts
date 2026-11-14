@@ -1,7 +1,7 @@
 /** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt. */
 import { meldeFehler, ohneFehlendeDatei } from '../../src/infra/fehler';
-import { fehlerAntwort, streamFileToResponse, sendeFehler } from '../../src/http/httpAntwort';
+import { streamFileToResponse, sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
 import _pdfFs from 'node:fs/promises';
@@ -144,7 +144,5 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'konto'>) {
     if (!pdfPath || !_fsSync.existsSync(pdfPath)) return sendeFehler(req, res, 410, 'pdf_nicht_verfuegbar');
     liefereUndRaeumeAuf(d, req, res, jobId, req.apiUser.user_id, pdfPath);
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

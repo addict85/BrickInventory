@@ -1,7 +1,7 @@
 /** Globale Einstellungen, Ein- und Ausfuhr, Einrichtung, Quellen- und SMTP-Test; in settings.ts hinter requireLogin. */
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { hatGlobaleWerte } from '../../src/verwaltung';
 import { istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
@@ -139,7 +139,5 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mai
     await d.konto.setzeGlobalesDesign(theme);
     return { theme };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

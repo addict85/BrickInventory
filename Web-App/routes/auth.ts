@@ -2,7 +2,7 @@
 import { waechterFuer } from './api_v1/middleware';
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
 import { meldeFehler } from '../src/infra/fehler';
-import { fehlerAntwort, sendeFehler } from '../src/http/httpAntwort';
+import { sendeFehler } from '../src/http/httpAntwort';
 import {
   anmelden,
   establishSession,
@@ -318,6 +318,5 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
   router.haengeEin(baueBenutzerRouter(d));
   router.haengeEin(baueZweiterFaktorRouter(d));
   router.haengeEin(baueRegistrierungRouter(d));
-  router.use(fehlerAntwort);
   return router;
 }

@@ -1,7 +1,7 @@
 /** Sets in Mengen und im Strom erfassen: CSV-Import samt Fortschritt, Export, Erfassen mit Ergänzung. */
 import type express from 'express';
 import { oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { uebersprungenHinweis } from '../../src/infra/csvExport';
@@ -134,7 +134,5 @@ export function baueSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
   router.endpunkt('POST /api/v1/sets/:setNumber/parts', requireToken, async req => {
     return { count: await d.sets.teileDesSetsImportieren(angemeldeteNutzerId(req), req.pfad.setNumber) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

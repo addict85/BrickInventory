@@ -1,7 +1,7 @@
 /** Der Geräteschlüssel der App und die Freigabe heikler Schritte; nur mit
  * App-Token, eine Browser-Sitzung bestätigt mit Passwort und zweitem Faktor. */
 import { waechterFuer } from './middleware';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { familieAus } from '../../src/konto';
 import { istAppToken } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
@@ -52,7 +52,5 @@ export function baueGeraetRouter(d: Pick<Dienste, 'konto'>) {
     if (!r) return sendeFehler(req, res, 400, 'schritt_signatur_ungueltig');
     return { aktion: r.aktion, gueltig_bis: r.bis };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

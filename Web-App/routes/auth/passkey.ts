@@ -1,6 +1,6 @@
 /** Passkeys im eigenen Konto verwalten; angemeldet wird mit ihnen in routes/auth.ts. */
 import { waechterFuer } from '../api_v1/middleware';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { perSitzung, angemeldeteNutzerId, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import { geraeteNameGueltig, vertrauenspartei } from '../../src/konto';
@@ -50,7 +50,5 @@ export function bauePasskeyRouter(d: Pick<Dienste, 'konto'>) {
     if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
     return { deleted: (await d.konto.loeschePasskey(uid, id)) ? 1 : 0 };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

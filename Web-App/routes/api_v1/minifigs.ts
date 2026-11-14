@@ -1,4 +1,4 @@
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { normalisiereLagerort } from '../../src/bestand';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
@@ -109,7 +109,5 @@ export function baueMinifigsRouter(
     });
     return { item, sets };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

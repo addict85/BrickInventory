@@ -1,6 +1,6 @@
 /** Anmelden per QR-Code; die App holt ihren Token, wenn die Web-Sitzung bestätigt (src/konto/qrKopplung.ts). */
 import { waechterFuer } from '../api_v1/middleware';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import { assertLoginAllowed, geraeteNameInhaltGueltig, meldeAnmeldung, QR_TTL_MS } from '../../src/konto';
@@ -128,7 +128,5 @@ export function baueQrRouter(d: Pick<Dienste, 'konto'>) {
       return sendeFehler(req, res, 404, 'nicht_gefunden');
     return {};
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

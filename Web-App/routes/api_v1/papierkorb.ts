@@ -1,7 +1,7 @@
 /** Sichtbar ist, was der Aufrufer schreiben darf: das eigene Konto und, als
  * Hauptkonto, die Unterkonten. */
 import { waechterFuer } from './middleware';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -42,7 +42,5 @@ export function bauePapierkorbRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'sam
     if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     return { entfernt: await d.bestand.leerePapierkorb({ schreiber: req.apiUser.user_id }) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

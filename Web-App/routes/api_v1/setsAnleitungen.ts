@@ -1,7 +1,7 @@
 /** Anleitungen eines Sets: neu laden, hochladen, löschen. */
 import type express from 'express';
 import path from 'node:path';
-import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
+import { pfadParam, sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
 import {
   uploadKontingentBytes,
@@ -85,7 +85,5 @@ export function baueSetsAnleitungenRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
       return sendeFehler(req, res, 404, 'nicht_gefunden');
     return {};
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

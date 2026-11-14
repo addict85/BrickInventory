@@ -1,7 +1,7 @@
 /** Benutzerverwaltung für Verwalter: Jede Änderung verlangt Passwort und
  * zweiten Faktor des Verwalters und steht im Protokoll. */
 import { waechterFuer } from '../api_v1/middleware';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
@@ -118,7 +118,5 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     const r = await d.konto.faktorDurchVerwalter(angemeldeteNutzerId(req), id);
     return r.wirksamAb ? { wirksam_ab: r.wirksamAb.toISOString() } : {};
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

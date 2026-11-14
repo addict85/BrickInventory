@@ -1,4 +1,4 @@
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { waechterFuer } from './middleware';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -63,7 +63,5 @@ export function baueCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
     );
     return { links: Object.fromEntries(map) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

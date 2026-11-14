@@ -1,7 +1,7 @@
 /** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
  * Prüfung vergessen kann. */
 import { waechterFuer } from './middleware';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { proxyHinweisStand } from '../../src/http/proxyHinweis';
 import { bildProbe } from '../../src/verwaltung';
 import { seiteAus } from '../../src/infra/seite';
@@ -181,7 +181,5 @@ export function baueAdminRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' |
     if (!setNumber) return sendeFehler(req, res, 400, 'parameter_set_fehlt');
     return { ...(await d.verwaltung.preisProbe(req.apiUser.user_id, setNumber, req.eingabe.live ?? false)) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

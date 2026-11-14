@@ -1,6 +1,6 @@
 /** /api/v1/settings — ein Router, weil die Reihenfolge vor und nach router.use(requireLogin)
  * hier an einer Stelle entschieden wird; settingsGlobal.ts hängt dahinter. */
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { bearerToken, waechterFuer } from './middleware';
 import { baueSettingsGlobalRouter } from './settingsGlobal';
 import { resolveUserId, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
@@ -210,7 +210,5 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
   });
 
   router.haengeEin(baueSettingsGlobalRouter(d));
-
-  router.use(fehlerAntwort);
   return router;
 }

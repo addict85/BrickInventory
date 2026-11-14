@@ -1,7 +1,6 @@
 /** Kaufpreis-Erfassungen; die Regeln stehen in src/sammlung/erfassungen.ts. */
 import { acquisitionTotals } from '../../src/bestand';
 import { Abstriche } from '../../src/infra/ergebnis';
-import { fehlerAntwort } from '../../src/http/httpAntwort';
 import { sichtVon, waechterFuer } from './middleware';
 import type { ErfassungsArt } from '../../src/sammlung';
 import { vertragsRouter, type Anfrage } from '../../src/http/vertragsRouter';
@@ -102,7 +101,5 @@ export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 't
     requireToken,
     loeschen(d, 'fig', figurSchluessel),
   );
-
-  router.use(fehlerAntwort);
   return router;
 }

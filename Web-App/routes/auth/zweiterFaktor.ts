@@ -2,7 +2,7 @@
  * Abschalten verlangen das Passwort: Wer nur eine offene Sitzung erbeutet,
  * soll das Konto weder aussperren noch den Schutz abbauen. */
 import { waechterFuer } from '../api_v1/middleware';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import {
   angemeldeteNutzerId,
   bestaetigeCode,
@@ -71,7 +71,5 @@ export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
     if (!(await bestaetigeCode(d.konto, req, res, uid, req.eingabe.code))) return;
     return { codes: await d.konto.erneuereCodes(uid) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

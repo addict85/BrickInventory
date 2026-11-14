@@ -1,5 +1,5 @@
 /** Lagerorte und Preisalarme der Sets; eigene Pfade, deshalb ohne Rücksicht auf die Reihenfolge in sets.ts. */
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import { zustand } from '../../src/infra/validate';
@@ -93,7 +93,5 @@ export function baueSetsLagerRouter(d: Pick<Dienste, 'konto' | 'finanzen' | 'bes
     const ids = sichtVon(req);
     return { orte: await d.bestand.lagerortDienst.lagerorte(ids) };
   });
-
-  router.use(fehlerAntwort);
   return router;
 }

@@ -2,7 +2,7 @@
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
 import type express from 'express';
 import { oeffentlicherFehler } from '../../src/infra/fehler';
-import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
+import { sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { wacheUeberZugang } from '../../src/konto/http/zugangsWache';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
@@ -176,7 +176,5 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
       await importImStrom(d, req, res, uid, eingabe);
     },
   );
-
-  router.use(fehlerAntwort);
   return router;
 }
