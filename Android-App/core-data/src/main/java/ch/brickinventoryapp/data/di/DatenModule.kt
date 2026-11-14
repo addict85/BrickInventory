@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.core.DataStore
 import ch.brickinventoryapp.data.KontoAblage
 import ch.brickinventoryapp.data.TokenAblage
+import ch.brickinventoryapp.sicherheit.Geraetesperre
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -59,7 +60,7 @@ internal object DatenModule {
         p: TokenAblage,
         konto: javax.inject.Provider<KontoRepository>,
         @ApplicationScope bereich: kotlinx.coroutines.CoroutineScope,
-        sperre: ch.brickinventoryapp.sicherheit.Geraetesperre,
+        sperre: Geraetesperre,
     ): TokenTausch = TokenTausch(
         stand = { p.tokenStand() },
         ersetze = { vorher, neu, herkunft -> p.ersetzeGetauschtenToken(vorher, neu, herkunft) },

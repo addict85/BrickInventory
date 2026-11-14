@@ -5,17 +5,10 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Die zwei Schlüssel der Geräteablage, die das Abmelden überleben.
- *
- * [schluessel] (Vertrauen) arbeitet auch bei gesperrtem Gerät: Pins und der Nutzer-CA-Schalter
- * entscheiden über jede TLS-Verbindung, und die Namen der Pin-Einträge leiten sich davon ab.
- * Jeder Fehler (Keystore gesperrt, Wert verändert, unter fremdem Namen abgelegt) ergibt null —
- * der Aufrufer fällt auf „nicht vertraut“ zurück.
- *
- * [angaben] arbeitet nur entsperrt: Server-Adresse, Benutzername, Herkunft des Tokens,
- * Widget-Zahlen und Abmeldeaufträge verraten, wo das Konto liegt; ein gesperrtes Gerät gibt
- * sie nicht heraus. Darum mit drei Ausgängen ([oeffneAngabe]): Gesperrt heisst warten.
- * Ohne eigenen (Tests) gilt der Vertrauensschlüssel auch für die Angaben.
+ * Zwei Schlüssel, die das Abmelden überleben. [schluessel] arbeitet auch gesperrt, weil Pins
+ * und Nutzer-CA-Schalter über jede TLS-Verbindung entscheiden; ein Fehler heisst „nicht vertraut“.
+ * [angaben] arbeitet nur entsperrt: Adresse, Name und Aufträge verraten, wo das Konto liegt.
+ * Darum dort drei Ausgänge ([oeffneAngabe]); ohne eigenen (Tests) gilt der erste auch dafür.
  */
 class Vertrauenschiffre(
     angaben: (() -> ByteArray)? = null,

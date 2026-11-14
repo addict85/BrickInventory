@@ -2,6 +2,7 @@ package ch.brickinventoryapp.data.di
 
 import ch.brickinventoryapp.model.ui.Meldung
 import javax.inject.Inject
+import android.os.Build
 import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.Netzvertrauen
 import ch.brickinventoryapp.data.Tokenspiegel
@@ -91,7 +92,7 @@ private fun serverVertrauen(prefs: Netzablagen, frage: ZertifikatsFrage): PinVer
         eigenerServer = { pinSchluessel(prefs.token.kopplungszielState.value ?: prefs.token.serverUrlState.value.orEmpty()) },
         frage = frage,
         fremdeHosts = system,
-        ctErzwungen = android.os.Build.VERSION.SDK_INT >= ANDROID_16,
+        ctErzwungen = Build.VERSION.SDK_INT >= ANDROID_16,
     ).also { gemeinsamesVertrauen = it }
 }
 

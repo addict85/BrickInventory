@@ -432,7 +432,7 @@ private const val EKU_JEDER = "2.5.29.37.0"
  * ausgestellt hat (oder es selbst ist). Server senden die Wurzel meist nicht mit;
  * ohne diesen Schritt wäre der Pin eine Zwischenstelle, die die CA austauscht.
  */
-fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509Certificate? {
+internal fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509Certificate? {
     val oben = chain.lastOrNull() ?: return null
     return vertraut.firstOrNull {
         it.subjectX500Principal == oben.issuerX500Principal && runCatching { oben.verify(it.publicKey) }.isSuccess
