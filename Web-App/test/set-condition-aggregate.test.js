@@ -285,11 +285,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
     'Der Nachtrag schreibt wieder in die sets-Zeile — dort gibt es seit ' +
       'Migration 0032 weder Kaufpreis noch Zustand',
   );
-  assert.match(
-    job,
-    /\(\) => backfillAcquisitions\(k\)/,
-    'Der Durchlauf ist nicht eingehängt',
-  );
+  assert.match(job, /\(\) => backfillAcquisitions\(k\)/, 'Der Durchlauf ist nicht eingehängt');
 
   // Und der Import selbst soll seltener ohne Preis enden
   const sets = require('./helpers/sources').setKernQuelle();

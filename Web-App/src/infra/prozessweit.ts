@@ -9,8 +9,6 @@ export const GRUENDE = {
   kontoSchranke: 'gleichzeitige Uploads und Ströme je Konto belegen Speicher dieses Prozesses',
   anmeldeRueckfall: 'Rückfall der Anmeldebremse, wenn die Datenbank klemmt: zählt gerade ohne sie',
   tokenSperre: 'Abkürzung der Fehlversuchssperre je Adresse; gezählt wird in der Datenbank',
-  haushaltGedaechtnis:
-    'je Zugang über den Schlüssel (das db-Objekt, auch einer Transaktion): Die Haushaltsdienste nehmen db, nicht k',
   bildCacheZuwachs: 'der Bildcache ist ein Ordner auf der Platte dieses Rechners, gleich welcher Zugang ihn füllt',
   importProzess: 'Pfad des Import-Skripts, das dieser Prozess als Kind startet; gesetzt vom Einstieg (jobs/)',
   konfig: 'die Umgebung des Prozesses, einmal gelesen; konfig() steht im heissen Pfad jeder Anfrage',

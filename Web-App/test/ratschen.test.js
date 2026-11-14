@@ -247,8 +247,10 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/zwischenspeicher.ts),
   // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
-  // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60.
-  const ZUSTAND_SCHRANKE = 8;
+  // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60. (14.11.2026) Schranke 2 (Transaktionswächter,
+  // Sicherungspunkte in db/); `const sitzungen = new Map<string, Sitzung>();` zurück in
+  // src/gutscheine/gutscheinGuthaben.ts → rot (3 von 2).
+  const ZUSTAND_SCHRANKE = 2;
   const ZUSTAND =
     /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
   const zaehleZustand = s => (s.match(ZUSTAND) || []).length;
@@ -1173,9 +1175,9 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
 function englischeExportnamen() {
   // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“). Gezählt wird das Verb am
   // Anfang (test/helpers/namen.js). Routen und src/http benennt dieser Zähler nicht um, er zählt sie.
-  // Gegenprobe (14.11.2026): in src/sets/setService.ts `setsAlsCsv` wieder `buildSetsCsv` → rot (125 von 124).
+  // Gegenprobe (14.11.2026): in src/sets/setService.ts `setsAlsCsv` wieder `buildSetsCsv` → rot (124 von 123).
   const { englischerName } = require('./helpers/namen');
-  const SCHRANKE = 124;
+  const SCHRANKE = 123;
   assert.deepEqual(
     ['fetchPrice', 'getSetInfo', 'isDecodable', 'setUserSetting', 'setErfassen', 'haushaltVon', 'setVerschieben'].map(
       englischerName,

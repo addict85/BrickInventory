@@ -5,14 +5,7 @@ import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { FREMDE_DATEI_CSP } from '../../src/http/dateiAusliefern';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../src/infra/fehlerTexte';
-import {
-  ABSTAND_SEK,
-  TICKET_SEK,
-  loeseTicketEin,
-  maskiert,
-  type GutscheinWerte,
-  type GutscheinZeile,
-} from '../../src/gutscheine';
+import { ABSTAND_SEK, TICKET_SEK, maskiert, type GutscheinWerte, type GutscheinZeile } from '../../src/gutscheine';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { seiteAus } from '../../src/infra/seite';
@@ -143,7 +136,8 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
     requireToken,
     async (req: Anfrage<'GET /api/v1/vouchers/export/pdf'>, res: express.Response) => {
       const uid = req.apiUser.user_id;
-      if (!loeseTicketEin(req.abfrage.ticket, uid, 'export')) return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
+      if (!d.gutscheine.loeseTicketEin(req.abfrage.ticket, uid, 'export'))
+        return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
       const { daten, befunde } = await d.gutscheine.gutscheineExportieren(uid);
       const tag = new Date().toISOString().slice(0, 10);
       res.setHeader('Content-Type', 'application/pdf');
@@ -217,7 +211,7 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
     async (req: Anfrage<'GET /api/v1/vouchers/:id/pdf'>, res: express.Response) => {
       const id = idOderAbsage(req, res);
       if (id === null) return;
-      if (!loeseTicketEin(req.abfrage.ticket, req.apiUser.user_id, String(id)))
+      if (!d.gutscheine.loeseTicketEin(req.abfrage.ticket, req.apiUser.user_id, String(id)))
         return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
       const pdf = await d.gutscheine.gutscheinPdf(req.apiUser.user_id, id);
       res.type('application/pdf');

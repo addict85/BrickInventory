@@ -61,7 +61,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     return;
   }
   await db.run('DELETE FROM auftraege');
-  laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste(), true));
+  laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste()));
 
   const zeilen = await db.all(`SELECT art, schluessel, nutzlast, EXTRACT(EPOCH FROM faellig_ab - NOW())::int AS in_sek
                                  FROM auftraege WHERE status = 'offen'`);
@@ -88,7 +88,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
         zeilen.some(z => z.schluessel === `nachlauf:${schritt}`),
         `Nachlauf ${schritt} fehlt`,
       );
-    laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste(), true));
+    laeufe.push(await _req('startup/jobsProzess.js').starteJobs(require('./helpers/sources').testDienste()));
     const doppelt = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE status = 'offen'
                                     GROUP BY schluessel HAVING COUNT(*) > 1 LIMIT 1`);
     assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');

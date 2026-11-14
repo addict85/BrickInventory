@@ -16,8 +16,6 @@ import {
   OFFENE_EINLADUNGEN_MAX,
   asIds,
   einladungsHash,
-  haushaltStand,
-  leereHaushaltCache,
   neuerCode,
   parseScopeMode,
   type Blickfeld,
@@ -28,10 +26,25 @@ import {
   type Sicht,
 } from './regeln';
 
+/** Je Satz Dienste: Der Stand zählt die Änderungen, die Abhängigen (Bilder) leeren mit. */
+const aenderungen = (k: HaushaltKontext) =>
+  k.faecher.fach('haushaltStand', () => ({ stand: 0, abhaengige: new Set<() => void>() }));
+
+/** Rückruf statt Import: Bereiche, die den Haushalt brauchen, bildeten sonst einen Zyklus. */
+export function beiHaushaltsaenderung(k: HaushaltKontext, leere: () => void): void {
+  aenderungen(k).abhaengige.add(leere);
+}
+
+export function leereHaushaltCache(k: HaushaltKontext): void {
+  const a = aenderungen(k);
+  a.stand++;
+  for (const leere of a.abhaengige) leere();
+}
+
 /** Je Zugang (zwei Datenbanken, gleiche Konto-IDs); in einer Transaktion keins, sonst bliebe nach ROLLBACK ein nie gültiger Stand. */
 function gedaechtnis(k: HaushaltKontext): Zwischenspeicher<number, Household> {
   if (k.db.inTransaktion()) return new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS);
-  const stand = haushaltStand().stand;
+  const stand = aenderungen(k).stand;
   const g = k.faecher.fach('haushalt', () => ({
     stand,
     speicher: new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS),
@@ -46,7 +59,7 @@ function gedaechtnis(k: HaushaltKontext): Zwischenspeicher<number, Household> {
 /** Fehler werden verschluckt: Das Signal ist die Beschleunigung, die Frist
  * die Zusicherung. */
 export function meldeHaushaltsaenderung(k: HaushaltKontext): void {
-  leereHaushaltCache();
+  leereHaushaltCache(k);
   repo.sendeSignal(k.db, HAUSHALT_KANAL).catch(logAndContinue('haushalt:notify'));
 }
 

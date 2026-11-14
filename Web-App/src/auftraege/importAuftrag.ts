@@ -143,8 +143,9 @@ export async function starteAuftrag(
   return true;
 }
 
+const gemeldet = (k: AuftraegeKontext) => k.faecher.fach('importGemeldet', () => new Map<number, number>());
+
 /** Gedrosselt, damit ein schneller Import nicht jede Zeile in die Datenbank schreibt. */
-const _zuletzt = new Map<number, number>();
 export async function meldeAuftrag(
   k: AuftraegeKontext,
   userId: number,
@@ -152,6 +153,7 @@ export async function meldeAuftrag(
   unbedingt = false,
 ): Promise<void> {
   const jetzt = Date.now();
+  const _zuletzt = gemeldet(k);
   if (!unbedingt && jetzt - (_zuletzt.get(userId) ?? 0) < MELDE_ABSTAND_MS) return;
   _zuletzt.set(userId, jetzt);
   await jobUpdate(k, userId, {
@@ -180,7 +182,7 @@ export async function beendeAuftrag(
     done: angaben.done,
     results: JSON.stringify(results),
   });
-  _zuletzt.delete(userId);
+  gemeldet(k).delete(userId);
   await emitJobStatus(k, userId);
 }
 

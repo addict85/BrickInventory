@@ -9,7 +9,7 @@
  *      → rot: „Verwalter- und öffentliche Antwort sind getrennt“
  *   C  ipThrottle aus routes/api_v1/einrichtung.ts entfernt
  *      → rot: „die Adresse wird gebremst“
- *   D  beiGlobalerAenderung(...) entfernt
+ *   D  beiGlobalerAenderung(...) entfernt (14.11.2026: k.einstellungen.beiGlobalerAenderung im Fach)
  *      → rot: „ein geschriebener Wert gilt sofort“
  *   E  der Zweig `if (erledigt) return …` entfernt
  *      → rot: „nach Abschluss wird kein Schlüssel gelesen“
