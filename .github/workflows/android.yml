@@ -21,6 +21,8 @@ on:
       - 'Web-App/public/i18n.js'
       - 'Web-App/src/vertrag/**'
       - 'Web-App/scripts/kotlin-vertrag.js'
+      - 'Web-App/scripts/vertrag-kotlin-dtos.js'
+      - 'Web-App/docs/openapi.json'
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
   pull_request:
@@ -31,6 +33,8 @@ on:
       - 'Web-App/public/i18n.js'
       - 'Web-App/src/vertrag/**'
       - 'Web-App/scripts/kotlin-vertrag.js'
+      - 'Web-App/scripts/vertrag-kotlin-dtos.js'
+      - 'Web-App/docs/openapi.json'
       # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf.
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
@@ -457,6 +461,9 @@ jobs:
         run: npm ci --ignore-scripts && npm rebuild esbuild
       - name: Kotlin-Modelle gegen den Vertrag
         run: node --test test/vertrag-kotlin.test.js
+      # Die erzeugten Antworttypen (core-vertrag, vertrag.erzeugt) passen zu docs/openapi.json.
+      - name: Erzeugte Kotlin-Typen aktuell
+        run: node --test test/vertrag-kotlin-dtos.test.js
 
   # ── Gegenproben ────────────────────────────────────────────────────────────
   # Jeder Patch unter gegenproben/ macht etwas kaputt; die Testklasse aus seinem Kopf
