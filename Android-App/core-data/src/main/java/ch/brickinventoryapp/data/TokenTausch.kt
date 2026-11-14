@@ -21,7 +21,7 @@ import ch.brickinventoryapp.netz.di.Rotationsanlass
  * Wie ein Tausch ausging. VERWORFEN: Während des Tauschs wurde abgemeldet, neu
  * angemeldet oder der Server gewechselt; der neue Token gehört nicht mehr hierher.
  */
-enum class Tauschergebnis { GETAUSCHT, SCHON_GETAUSCHT, SPAETER, NEU_KOPPELN, VERWORFEN }
+internal enum class Tauschergebnis { GETAUSCHT, SCHON_GETAUSCHT, SPAETER, NEU_KOPPELN, VERWORFEN }
 
 /** Was der Tausch vom Speicher sieht; [generation] zählt Anmelden, Abmelden und Serverwechsel. */
 data class TokenStand(val token: String, val herkunft: String?, val generation: Long)
