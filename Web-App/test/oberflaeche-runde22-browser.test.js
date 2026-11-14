@@ -4,7 +4,7 @@
  * M2 fehler-ohne-sprung-browser.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  kachelName() ohne aria-label/-describedby → rot: „Kachelnamen“
+ *   A  kachelName(): Teile ohne aria-hidden → rot: „Kachelnamen“, „Merkliste“
  *   B  Katalogabfrage der Merkliste ohne `if (w.name)` → rot: „Merkliste: Set
  *      nicht im Katalog“ (Anfrage an /catalog/sets/10276-1)
  *   C  ownerBadges() wieder mit o.username → rot: „Kachelnamen“, „Kontoangaben“
@@ -20,7 +20,7 @@
  *   K  .m-links als display:contents → rot: „Set-Detail nutzt die linke Spalte“
  *   L  `.filter-knopf[aria-expanded="true"]` nie zutreffend → rot: „Telefon“
  *   M  summary::before mit content:none → rot: „Telefon“ (kein Aufklappzeichen)
- *   N  .brick-stats wieder align-items:flex-start → rot: „Telefon“ (214/214/212)
+ *   N  `.bstat::after { line-height: 1 }` entfernt → rot: „Telefon“ (214/214/212)
  *   O  Teileraster wieder 6.75rem → rot: „Telefon“ (nicht zweispaltig)
  *   P  rootMargin wieder fest -64px → rot: „Telefon“ (Titel im Kopf, während
  *      die Überschrift 6 px unter ihm hervorragt)
@@ -65,30 +65,31 @@ async function kachelnamen(_t, a, name) {
   const { b } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery [data-arg="21318-1"]')`, 'Sammlung');
   const set = await vorgelesen(b, '#gallery .sc[data-arg="21318-1"]');
-  assert.equal(set.name, 'Tree House, 21318-1');
+  assert.equal(set.name, '21318-1 Tree House');
   assert.match(set.beschreibung, /2019 · Ideas/);
   assert.match(set.beschreibung, /Marktpreis/);
   assert.match(set.beschreibung, new RegExp(`${name} \\(ich\\)`));
 
   await geh(a, '#/teile', `!!document.querySelector('#tab-parts .part-card')`, 'Teile');
   const teil = await vorgelesen(b, '#tab-parts .part-card');
-  assert.match(teil.name, /^Brick 2 x 4, Schwarz, 3001$|^Plate [^,]+, [^,]+, \d+$|^[^,]+, [^,]+, \d+$/);
+  assert.match(teil.name, /^\d+ (Brick|Plate) \d x \d \S+$/);
   assert.ok(teil.name.length <= 40, teil.name);
   assert.match(teil.beschreibung, /×12/);
 
   await geh(a, '#/minifiguren', `!!document.querySelector('#tab-minifigs [role="button"]')`, 'Minifiguren');
   const figur = await vorgelesen(b, '#tab-minifigs [role="button"][data-arg2="fig-000001"]');
-  assert.equal(figur.name, 'Marty McFly, fig-000001');
+  assert.equal(figur.name, 'fig-000001 Marty McFly');
 
   await geh(a, '#/katalog', `!!document.querySelector('#catalog-grid .sc')`, 'Katalog');
   const katalog = await vorgelesen(b, '#catalog-grid .sc[data-arg="10294-1"]');
-  assert.equal(katalog.name, 'Titanic, 10294-1');
+  assert.equal(katalog.name, '10294-1 Titanic');
   assert.match(katalog.beschreibung, /Teile/);
 }
 
 async function merklisteUnbekannt(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/merkliste', `!!document.querySelector('#mk-list .mk-zeile')`, 'Merkliste');
+  assert.equal((await vorgelesen(b, '#mk-list .mk-zeile')).name, '10276-1');
   assert.match(await b.auswerten(text('#mk-list .mk-zeile .mk-unter')), /^Set noch nicht im Katalog · Neuware$/);
   const vorher = b.ereignisse.length;
   await b.auswerten(`document.querySelector('#mk-list .mk-zeile').click(); true`);
