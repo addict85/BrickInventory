@@ -31,7 +31,7 @@ class ZweiterFaktorUebernahmeTest {
 
     private val pfade = PfadServer()
     private val t = TestDienste(pfade.server)
-    private val konto = KontoRepository(t.api, t.cache)
+    private val konto = KontoRepository(t.api)
 
     @After
     fun zu() { t.aufraeumen(); pfade.server.shutdown() }

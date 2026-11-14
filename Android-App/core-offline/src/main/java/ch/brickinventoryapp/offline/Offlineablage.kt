@@ -13,6 +13,8 @@ import ch.brickinventoryapp.model.data.model.Preisalarm
 import ch.brickinventoryapp.model.data.model.Minifig
 import ch.brickinventoryapp.model.data.model.PartValuationItem
 import ch.brickinventoryapp.model.data.model.AddSetRequest
+import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
+import ch.brickinventoryapp.model.data.model.StatsResponse
 import ch.brickinventoryapp.model.data.model.SetAggregate
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -83,6 +85,15 @@ object Faecher {
         { it.ort.id.toString() }, LokaleAnwendung::lagerorte) {
         Filterspalten(suchtext(it.ort.name))
     }
+
+    /**
+     * Einzelne Antworten ohne Liste: je Bereich eine Zeile. Sie liegen wie die Listen in
+     * Room, damit Abmelden, Bereich und Verschlüsselung für alles dieselben sind.
+     */
+    val KENNZAHLEN = Fach(Bestandsart.KENNZAHLEN, Ablageform.direkt(StatsResponse.serializer()), { EINZELN })
+    val KATALOG_META = Fach(Bestandsart.KATALOG_META, Ablageform.direkt(CatalogMetaResponse.serializer()), { EINZELN })
+
+    private const val EINZELN = "einzeln"
 
     private fun suchtext(vararg felder: String?) = felder.filterNotNull().joinToString("\n").lowercase()
 }
@@ -331,7 +342,8 @@ class Offlineablage(
         Bestandsart.PREISALARME -> aendere(Faecher.PREISALARME, b, w)
         Bestandsart.LAGERORTE -> aendere(Faecher.LAGERORTE, b, w)
         // Nur vom Server geliefert, nie lokal bearbeitet.
-        Bestandsart.TEILE, Bestandsart.FIGUREN, Bestandsart.GUTSCHEINE -> Unit
+        Bestandsart.TEILE, Bestandsart.FIGUREN, Bestandsart.GUTSCHEINE, Bestandsart.KENNZAHLEN,
+        Bestandsart.KATALOG_META -> Unit
     }
 
     /** Senden anstossen, z. B. beim Start, falls vom letzten Mal noch etwas wartet. */

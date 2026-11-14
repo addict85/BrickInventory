@@ -229,8 +229,8 @@ Zweck gebunden):
 
 | Ablage | Wie |
 | --- | --- |
-| Bestand (Room) | SQLCipher |
-| API-Antworten, Widget-Zahlen | `AblageChiffre` |
+| Bestand (Room) samt Kennzahlen und Katalog-Metadaten | SQLCipher |
+| Widget-Zahlen | `AblageChiffre` |
 | Vorschau-Ablage `files/vorschau/` | `AblageChiffre`; Klartext älterer Fassungen wird verworfen |
 | Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `VerschluesseltesDateisystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
 | Gutschein-PDF (Nummer, PIN) | nie auf der Platte: in den Speicher geladen, gerendert aus einem memfd, der mit dem Betrachter oder dem Prozess vergeht |
@@ -248,7 +248,7 @@ steckt; er vergeht mit dem Betrachter oder dem Prozess. Drucken und
 Herunterladen gibt es nur für Anleitungen, nicht für Gutscheine (der
 Druckdialog kann „Als PDF speichern“).
 
-**Abmelden:** Token, Antwort-Cache, Bestand und Ausgang, Vorschauen, beide
+**Abmelden:** Token, Bestand samt Kennzahlen und Ausgang, Vorschauen, beide
 Bildcaches, PDFs, Update-APK, Widget-Zahlen und alle Meldungen der App sind danach
 weg, die Marke des Preisalarms ebenfalls. Zuletzt erneuert `Ablageschluessel` den
 Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war, auch
@@ -508,7 +508,7 @@ der Compose-Testregel auf der JVM und bekommen Verhaltenstests.
 Faustregel: Was sich aufrufen lässt, bekommt einen Verhaltenstest. Die Frage lohnt
 sich auch, wo es schwer scheint: Was schwer prüfbar ist, ist
 meistens nicht zu kompliziert, sondern nur mit etwas verwoben, das es nicht
-braucht. `fehlerTextId()` und der Ordner-Parameter von `ResponseCache` sind
+braucht. `fehlerTextId()` und die Bereichsquelle der `Offlineablage` sind
 beides Beispiele dafür.
 
 Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Quellen.kt` —

@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.JobsResponse
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import kotlinx.coroutines.runBlocking
@@ -11,7 +10,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.VerwaltungRepository
 
@@ -38,8 +36,7 @@ class VerwaltungLueckenTest {
     fun `die App ruft alle drei Adressen`() {
         val pfade = PfadServer()
         try {
-            val admin = VerwaltungRepository(TestApi.fuer(pfade.server),
-                ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-verwaltung") })
+            val admin = VerwaltungRepository(TestApi.fuer(pfade.server))
             runBlocking {
                 admin.setJobSchedule("prices", zeit = "07:05")
                 admin.queueCatalogImages()

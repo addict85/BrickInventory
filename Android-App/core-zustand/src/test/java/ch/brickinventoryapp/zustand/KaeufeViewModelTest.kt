@@ -62,8 +62,8 @@ class KaeufeViewModelTest {
     private lateinit var pfade: PfadServer
     private lateinit var t: TestDienste
 
-    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, HaushaltRepository(t.api, t.cache), t.sets(),
-        FinanzenRepository(t.api, t.cache), TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache)))
+    private fun vm() = t.merke(KaeufeViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, HaushaltRepository(t.api), t.sets(),
+        FinanzenRepository(t.api), TeileRepository(t.api), FigurenRepository(t.api)))
 
     @Before
     fun auf() {

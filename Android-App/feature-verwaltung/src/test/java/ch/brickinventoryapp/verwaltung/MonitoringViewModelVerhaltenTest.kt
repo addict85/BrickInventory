@@ -4,11 +4,9 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.VerwaltungRepository
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringViewModel
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -85,7 +83,6 @@ class MonitoringViewModelVerhaltenTest {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BrickApiService::class.java)
-        val cache = ResponseCache { cacheDir }
         // ── BENANNT und nicht nach Stellung ──────────────────────────────
         //
         // Hier standen die sechs Teile positionsweise. Als BrickRepository ein
@@ -97,7 +94,7 @@ class MonitoringViewModelVerhaltenTest {
         // Mit Namen ist die Reihenfolge gleichgueltig: Das naechste Teil kommt
         // dazu, ohne dass hier etwas bricht — und faellt eines WEG, bricht es
         // sofort und an der richtigen Stelle.
-        vm = MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), NummernTexte, MeldungsKanal())
+        vm = MonitoringViewModel(VerwaltungRepository(api), KontoRepository(api), NummernTexte, MeldungsKanal())
     }
 
     @After

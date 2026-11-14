@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -12,17 +11,17 @@ import org.junit.Before
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.KatalogRepository
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Der Plattenspeicher springt NUR ein, wenn der Server nicht erreichbar ist —
- * und sagt dann, dass er es ist.
+ * Die Ablage springt NUR ein, wenn der Server nicht erreichbar ist — und sagt dann,
+ * dass sie es ist.
  *
- * `ResponseCache.cached()` (Abruf.kt) mit echtem Server (MockWebServer) und echtem
- * Plattenspeicher; KatalogRepository.getCatalogMeta() ist nur das Vehikel.
+ * `Offlineablage.abgeglichenEinzeln()` (Abruf.kt) mit echtem Server (MockWebServer) und
+ * der Ablage im Speicher; KatalogRepository.getCatalogMeta() ist nur das Vehikel.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen die Datenschicht):
+ * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen die Datenschicht; die Regel
+ * stand damals im Antwort-Zwischenspeicher, heute in abgeglichenEinzeln()):
  *   A  die alte Regel zurück („bei jedem Fehler ausser 401 die Platte“) →
  *      rot: „ein Serverfehler wird nicht von alten Daten verdeckt“ und
  *      „ein 404 wird nicht von alten Daten verdeckt“
@@ -48,7 +47,7 @@ class RepoCacheRueckfallTest {
         server.start()
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-cache-${System.nanoTime()}")
         cacheDir.mkdirs()
-        repo = KatalogRepository(TestApi.fuer(server), ResponseCache { cacheDir })
+        repo = KatalogRepository(TestApi.fuer(server))
     }
 
     @After

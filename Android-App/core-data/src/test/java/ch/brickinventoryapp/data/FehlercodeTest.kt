@@ -3,7 +3,6 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.model.data.model.Fehlercode
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.data.repository.fehlerTextZuCode
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -19,7 +18,6 @@ import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.GutscheineRepository
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -59,8 +57,8 @@ class FehlercodeTest {
         cacheDir.deleteRecursively()
     }
 
-    private fun admin() = KontoRepository(TestApi.fuer(server), ResponseCache { cacheDir })
-    private fun gutscheine() = GutscheineRepository(TestApi.fuer(server), ResponseCache { cacheDir })
+    private fun admin() = KontoRepository(TestApi.fuer(server))
+    private fun gutscheine() = GutscheineRepository(TestApi.fuer(server))
 
     private fun fehler(r: Ergebnis<*>): Ergebnis.Error {
         assert(r is Ergebnis.Error) { "Erwartet wurde ein Fehler, kam: $r" }

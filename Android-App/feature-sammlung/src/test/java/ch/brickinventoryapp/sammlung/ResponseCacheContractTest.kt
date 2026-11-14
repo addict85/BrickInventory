@@ -14,14 +14,10 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Der Plattenspeicher (data/cache/ResponseCache.kt) legt API-Antworten als JSON
- * ab und liest sie zurück, wenn ein Abruf scheitert. Das trägt nur, solange
- * jede gecachte Antwortklasse verlustfrei durch die Serialisierung geht.
- *
- * Dieser Test braucht kein Android — er prüft genau diese Runde für die vier
- * Klassen, die tatsächlich gecacht werden. Bricht eine Modelländerung die
- * Runde, fällt es hier auf und nicht erst als leerer Bildschirm nach einem
- * Neustart ohne Netz.
+ * Die Ablage legt Kennzahlen und Katalog-Metadaten so ab, wie der Server sie schickt
+ * (Ablageform.direkt), und liest sie zurück, wenn ein Abruf scheitert. Das trägt nur,
+ * solange diese Antworten verlustfrei durch die Serialisierung gehen; die Listen
+ * prüft AblageformTest mit ihrer eigenen Form.
  */
 class ResponseCacheContractTest {
 

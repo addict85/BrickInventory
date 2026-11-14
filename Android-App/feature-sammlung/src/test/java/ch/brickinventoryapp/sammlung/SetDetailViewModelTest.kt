@@ -61,7 +61,7 @@ class SetDetailViewModelTest {
     private val keinLeser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null }
 
     private fun vm(setNumber: String = "75192-1") = t.merke(SetDetailViewModel(t.sitzung, t.filter(), t.hinweise, t.sets(), t.setKatalog(), t.alarme(), t.setDateien(),
-        FinanzenRepository(t.api, t.cache), HaushaltRepository(t.api, t.cache), keinLeser,
+        FinanzenRepository(t.api), HaushaltRepository(t.api), keinLeser,
         SavedStateHandle(mapOf("setNumber" to setNumber))))
 
     @Before

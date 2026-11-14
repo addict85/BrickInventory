@@ -2,7 +2,8 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.api.FinanzenApi
-import ch.brickinventoryapp.data.cache.ResponseCache
+import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.data.model.FigsValuationResponse
 import ch.brickinventoryapp.model.data.model.PartsValuationResponse
 import ch.brickinventoryapp.model.data.model.PnlResponse
@@ -20,7 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class FinanzenRepositoryImpl @Inject constructor(
     private val api: FinanzenApi,
-    private val cache: ResponseCache,
+    private val ablage: Offlineablage,
 ) : FinanzenRepository {
 
     override suspend fun getSetPrice(setNumber: String): Ergebnis<SetPriceResponse> =
@@ -52,6 +53,6 @@ class FinanzenRepositoryImpl @Inject constructor(
 
     override suspend fun getStats(konten: Kontoauswahl?): Ergebnis<StatsResponse> =
         if (konten == null)
-            cache.cached("stats", StatsResponse.serializer()) { sicherAufrufen { api.getStats() } }
+            ablage.abgeglichenEinzeln(Faecher.KENNZAHLEN) { sicherAufrufen { api.getStats() } }
         else sicherAufrufen { api.getStats(konten.anfrage) }
 }

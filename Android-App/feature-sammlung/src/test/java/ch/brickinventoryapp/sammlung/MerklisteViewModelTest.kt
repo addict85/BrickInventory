@@ -59,7 +59,7 @@ class MerklisteViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
-        KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), gemerkt))
+        KatalogRepository(t.api), FinanzenRepository(t.api), gemerkt))
 
     @Before
     fun auf() {

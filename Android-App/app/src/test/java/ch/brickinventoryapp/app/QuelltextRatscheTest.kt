@@ -27,7 +27,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   kdoc-doppelt               ein verwaister KDoc-Block vor Alarmabholung → rot, derselbe Test
  *   detekt-baseline-waechst    Obergrenze eins unter den Einträgen → rot „die detekt-Baseline …“
  *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
- *   cache-schluckt-abbruch     macht „kein breiter Fang …“ rot
+ *   start-schluckt-abbruch     macht „kein breiter Fang …“ rot
  *   runcatching-um-suspend     BrickInventoryApp übernimmt das alte Token wieder in runCatching
  *                              → rot „kein runCatching verschluckt …“
  *   runcatching-um-suspend-lambda  Offlineablage ruft die suspend-Quelle (ein Feld vom Typ
