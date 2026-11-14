@@ -127,6 +127,8 @@ function setDetailHtml(sn, acqs) {
       <h3 class="bereich-titel" data-stil="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
       <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
     </div>`;
+  // Die Figurenzahl kommt wie in der Tabelle aus dem Katalog: Die eigene Figurenliste zählt nur, was ein
+  // Teileimport übernommen hat, und zeigte so für dasselbe Set eine andere Zahl.
   const rechts = html`
     ${acqRows}
     ${detailZeile(t('detail.year'), oderStrich(set.year))}
@@ -156,28 +158,12 @@ function setDetailHtml(sn, acqs) {
   return { links, rechts };
 }
 
-/** Figurenzahl und Preisverlauf nachladen, ohne den Dialog aufzuhalten.
+/** Preisverlauf nachladen, ohne den Dialog aufzuhalten.
  * @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
 function ladeSetNachtraege(sn, acqs) {
   const preise = (/** @type {string} */ z) =>
     new Set(acqs.filter(a => a.condition === z && a.purchase_price != null).map(a => a.unit_price ?? a.purchase_price));
   const mittel = new Set(['N', 'U'].filter(z => preise(z).size > 1));
-  // Die Figurenzahl aus der Figurentabelle (verlässlicher als sets.minifigs). Die Antwort kann nach dem
-  // Schliessen oder einem Setwechsel kommen; nur wenn noch dasselbe Set offen ist, wird geschrieben.
-  api('GET', `/v1/minifigs?source=set`).then(md => {
-    const el = G('m-minifigs-val');
-    if (!el || !curSet || curSet.set_number !== sn) return;
-    if (md.success && md.figs) {
-      const setFigs = md.figs.filter(f => f.in_sets && String(f.in_sets).split(',').includes(sn));
-      const total = setFigs.reduce(
-        (s, f) => s + (parseInt(String(f.total_quantity), 10) || parseInt(String(f.quantity), 10) || 0),
-        0,
-      );
-      if (total > 0) el.textContent = String(total);
-      else if (!curSet.minifigs) el.textContent = '0';
-    }
-  });
-
   // Load price history async
   api('GET', `/v1/sets/${sn}/price-history`).then(ph => {
     renderMarketRows(ph);

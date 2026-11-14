@@ -99,7 +99,7 @@ function zeile(w) {
   const k = kachelName(2);
   return html`
     <div class="mk-zeile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
-      <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
+      <div class="ca"><span class="delbtn" data-taste="${tRaw('kachel.entf')}" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
            title="${tRaw('wanted.remove')}">${TRASH_ICON_SVG}</span></div>
       ${bild}
       <div class="mk-text">

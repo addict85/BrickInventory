@@ -10,12 +10,11 @@ import {
   schliesseErfassen,
   teileAufschluesselung,
   geschaetztKauf,
-  zeilenKnopf,
   kachelName,
   kontoAnzeige,
 } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
-import { locale, t, tRaw } from '../i18n.js';
+import { t, tRaw } from '../i18n.js';
 import { html, ungeprueft } from './escapen.js';
 import { fehlerMeldung, api } from './api.js';
 import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './bilder.js';
@@ -45,6 +44,7 @@ import { CURRENCY, ME, set_lastImportAt, setAllSets, allSets, curSet, _pnlCache,
 import { confirmDelete, loeschenMitWahl } from './rueckfrage.js';
 import { springe } from './ziele.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
+import { SPALTEN_SORT, setsTabelle, tableRow } from './sets-tabelle.js';
 /** @typedef {import('./zustand.js').Kachel} Kachel */
 
 /**
@@ -334,10 +334,7 @@ export function renderGallery() {
     setzeHtml(c, html`<div class="sgrid">${list.map(gridCard)}</div>`);
     observeLazyImages(c);
   } else {
-    setzeHtml(
-      c,
-      html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.collection')}"><thead><tr><th>${tRaw('col.image_th')}</th><th>${tRaw('col.nr')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.year')}</th><th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('detail.reimport_parts')}</span></th><th><span class="vh">${tRaw('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow)}</tbody></table></div>`,
-    );
+    setzeHtml(c, setsTabelle(list));
     observeLazyImages(c); // fehlte für die Listenansicht komplett
   }
 }
@@ -413,7 +410,7 @@ function gridCard(s) {
   const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
   const k = kachelName(3);
   return html`<div class="sc"${faecherTon(s)} tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openModal" data-arg="${s.set_number}">
-    <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${s.set_number}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
+    <div class="ca"><span class="delbtn" data-taste="${tRaw('kachel.entf')}" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${s.set_number}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${s.set_number}</div>
@@ -434,27 +431,22 @@ function gridCard(s) {
     </div>
   </div>`;
 }
-/** @param {Kachel} s */
-function tableRow(s) {
-  const src = s.image_local || s.image_url || '';
-  const addedFmt = s.added_at ? fmtDatum(s.added_at) : '—';
-  return html`<tr data-stil="cursor:pointer" data-click="openModal" data-arg="${s.set_number}">
-    <td>${src ? bildTag({ src: imgUrl(thumbUrl(src) || src, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
-    <td>${zeilenKnopf({ click: 'openModal', arg: s.set_number }, html`<span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1);white-space:nowrap">${s.set_number}</span>`, tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}</td>
-    <td>${s.name || '—'}</td><td>${s.year || '—'}</td><td>${s.theme || '—'}</td>
-    <td>${s.pieces ? s.pieces.toLocaleString(locale()) : '—'}</td><td>${s.minifigs || '—'}</td>
-    <td><span class="qbadge">×${s.quantity}</span></td>
-    <td data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(addedFmt)}</td>
-    <td>${s.instructions?.length ? html`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>` : '—'}</td>
-    <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${s.set_number}" title="${t('detail.reimport_parts')}" aria-label="${t('detail.reimport_parts')}">${ungeprueft(PARTS_ICON_SVG)}</button></td>
-    <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet"${echt()} data-arg="${s.set_number}" title="${t('detail.delete')}" aria-label="${t('detail.delete')}">${TRASH_ICON_SVG}</button></td>
-  </tr>`;
+/** @param {string} feld */
+async function setsSortieren(feld) {
+  const wahl = G('gsort');
+  const [erst, dann] = SPALTEN_SORT[feld];
+  wahl.value = wahl.value === erst ? dann : erst;
+  await loadGallery();
+  /** @type {HTMLElement | null} */ (
+    document.querySelector(`#gallery [data-click="setsSortieren"][data-arg="${feld}"]`)
+  )?.focus();
 }
 
 // Add set via SSE stream
 G('btn-add').onclick = doAddSet;
 G('add-num').addEventListener('input', unbekanntZuruecksetzen);
-G('add-num').addEventListener('keydown', e => e.key === 'Enter' && doAddSet());
+// Enter aus jedem Feld schickt ab: Das Formular nennt btn-add in data-submit (actions.js).
+G('add-num').form?.addEventListener('reset', unbekanntZuruecksetzen);
 /**
  * Eine Nummer, die der Katalog nicht kennt, wird erst nach Rückfrage angelegt: Sonst entsteht aus einem
  * Tippfehler ein Set ohne Namen und Bild. Die Rückfrage steht im Dialog; ein zweiter Klick legt an.
@@ -693,7 +685,13 @@ export async function delSet(sn) {
     return false;
   }
   const wem = (bekannt?.owners || []).find(o => String(o.id) === konto);
-  geloeschtMitRueckgaengig(`${tRaw('users.deleted', { name })}${wem ? ` · ${kontoAnzeige(wem)}` : ''}`, d);
+  const nr = CSS.escape(sn);
+  geloeschtMitRueckgaengig(
+    `${tRaw('users.deleted', { name })}${wem ? ` · ${kontoAnzeige(wem)}` : ''}`,
+    d,
+    undefined,
+    `.sc[data-arg="${nr}"], tr[data-arg="${nr}"] .zeile-oeffnen`,
+  );
   loadGallery();
   loadParts();
   return true;
@@ -708,10 +706,6 @@ export async function reimportParts(sn) {
   } else toast(d.error, 'error');
 }
 
-// ── MODAL ─────────────────────────────────────────────
-// Gemeinsames "Haufen von Steinen"-Icon für Teile (Nav-Tab, Platzhalter, Überschriften)
-export const PARTS_ICON_SVG =
-  '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;vertical-align:middle"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg>';
 export async function enrichGalleryWithPrices() {
   // Mit Kontofilter — aus demselben Grund wie loadStats(): Diese Funktion steht am Ende von loadGallery(),
   // und loadGallery() laeuft bei jedem Wechsel des Kontofilters. Etwas neu zu laden, das sich dadurch nicht
@@ -768,5 +762,6 @@ registerActions({
   delSet,
   reimportParts,
   renderGallery,
+  setsSortieren,
   erfassenZumSet,
 });

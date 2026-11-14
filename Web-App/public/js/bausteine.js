@@ -279,7 +279,10 @@ export function heuteIso() {
  * @param {string} [art]
  */
 export function schliesseErfassen(art) {
-  erfassenDialog(art)?.classList.remove('open');
+  const dialog = erfassenDialog(art);
+  dialog?.classList.remove('open');
+  // Geschlossen ist verworfen: Ein Preis von vorhin hinge sonst still am nächsten Set, das jemand eintippt.
+  dialog?.querySelector('form')?.reset();
 }
 
 /**

@@ -256,6 +256,7 @@ export const LESENDE_AKTIONEN = new Set([
   'setCatFilter',
   'setChartPeriod',
   'setColorFilter',
+  'setsSortieren',
   'setzeDunkel',
   'showPanel',
   'sichtAusDialog',

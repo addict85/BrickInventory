@@ -267,7 +267,7 @@
    aus. Die Kachel bleibt weiss und trägt oben die Linienfarbe des Diagramms,
    so gehören Zahl und Kurve sichtbar zusammen. */
 [data-theme="noppe"] .fstat.hi,[data-theme="hochglanz"] .fstat.hi{
-  background:var(--sur);border-color:var(--bdr);border-top:6px solid var(--chart-new);
+  background:var(--sur);border-color:var(--bdr);border-top:6px solid var(--chart-wert);
 }
 
 /* Noppe dunkel: Kopf- und Reiterleiste neutral dunkel mit roter Kante. Das

@@ -24,7 +24,8 @@
  *   N  Stückpreis wieder auch bei Menge 1 → rot: „Finanzen“
  *   O  Zoom-Knopf ohne data-i18n-aria → rot: „Abmelden …“ (aria-label deutsch)
  *   P  „davon N nach Fehler“ nie gezeigt → rot: „Hintergrundarbeiten“
- *   Q  pl.erst_set wieder ohne Grund → rot: „Bauliste“ (Sperre ohne Begründung)
+ *   Q  pl.erst_set wieder ohne Grund → rot: „Bauliste“ (Sperre ohne Begründung); seit Runde 24 ohne
+ *      Knopf: btn-pl-gen nicht verborgen → rot: „Bauliste“ (sichtbar ohne Set)
  *   R  beiTelefonWechsel() zeichnet die Sammlung nicht neu → rot: „Telefon nur
  *      Karten …“ (Zeitüberschreitung), in Folge „Drossel“, „Kontrastmodus“, „Abmelden …“
  *
@@ -179,13 +180,13 @@ async function finanzen(_t, a) {
   assert.doesNotMatch(f.linie, /der Positionen mit Marktpreis/, 'Erklärung am Diagramm doppelt');
 }
 
+/** Seit Runde 24 (N11) fehlt „Neu berechnen“ ohne Set ganz; der Leerzustand sagt einmal, was zu tun ist. */
 async function bauliste(_t, a) {
   await geh(a, '#/bauliste', `document.getElementById('tab-partslist').classList.contains('active')`, 'Bauliste');
-  const k = await a.b.auswerten(`(() => { const g = document.getElementById('btn-pl-gen');
-    const ids = (g.getAttribute('aria-describedby') || '').split(' ');
-    return { gesperrt: g.getAttribute('aria-disabled'), grund: ids.map(i => document.getElementById(i)?.textContent || '').join(' ') }; })()`);
-  assert.equal(k.gesperrt, 'true');
-  assert.match(k.grund, /Noch kein Set in der Liste/, 'Sperre ohne Begründung');
+  const k = await a.b.auswerten(`({ knopf: document.getElementById('btn-pl-gen').checkVisibility(),
+    leer: document.getElementById('pl-sets').textContent.replace(/\\s+/g, ' ') })`);
+  assert.equal(k.knopf, false, '„Neu berechnen“ ohne Set sichtbar');
+  assert.match(k.leer, /entsteht sofort/, 'Leerzustand ohne Anleitung');
 }
 
 async function leisten(_t, a) {
@@ -383,7 +384,7 @@ async function loeschen(_t, a, name) {
   );
   await bis(`!!document.querySelector('#gallery .sc[data-arg="${nr}"]')`, 'zurückgeholt');
   await a.ruhig();
-  assert.equal(await b.auswerten(aktiv), 'H1 Sets', 'Fokus nach „Rückgängig“ nicht auf der Überschrift');
+  await bis(`document.activeElement?.dataset?.arg === '${nr}'`, 'Fokus auf der zurückgeholten Karte (Runde 24)');
 }
 
 async function abmelden(_t, a, name) {

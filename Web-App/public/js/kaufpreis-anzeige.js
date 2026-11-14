@@ -3,7 +3,7 @@
 import { tRaw } from '../i18n.js';
 import { esc, html } from './escapen.js';
 import { ico } from './dom.js';
-import { fmtDatum, fmtGeld, fmtGeldCode, fmtN } from './format.js';
+import { fmtDatum, fmtGeld, fmtGeldCode, fmtN, istGeschenk } from './format.js';
 import { CURRENCY } from './zustand.js';
 /** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
 /** @typedef {import('../../frontend-typen/vertrag').Acquisition} Erfassung */
@@ -57,6 +57,8 @@ export function umgerechnetText(a, totals) {
  */
 export function erfassungsPreis(a, betrag) {
   if (betrag == null) return '';
+  // 0 heisst geschenkt; Kachel, Tabelle und Finanzen sagen es so, nicht „0,00 €“.
+  if (istGeschenk(betrag) && !a.price_estimated) return html`<strong>${tRaw('finance.gift')}</strong>`;
   const fremd = !!a.currency && a.currency !== CURRENCY;
   const zahl = fremd
     ? html`<strong>${fmtGeldCode(betrag, a.currency || CURRENCY)}</strong>${a.preis_konto != null ? html` <span class="acq-umgerechnet-inline" title="${tRaw('acq.umgerechnet_titel')}">≈ ${fmtGeld(a.preis_konto, CURRENCY)}</span>` : ''}`

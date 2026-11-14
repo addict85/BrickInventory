@@ -477,6 +477,11 @@
             <option value="price_asc" data-i18n="gallery.sort.price_asc">Preis ↑</option>
             <option value="qty_desc" data-i18n="gallery.sort.qty_desc">Anzahl ↓</option>
             <option value="qty_asc" data-i18n="gallery.sort.qty_asc">Anzahl ↑</option>
+            <option value="kauf_desc" data-i18n="gallery.sort.kauf_desc">Kaufdatum ↓</option>
+            <option value="kauf_asc" data-i18n="gallery.sort.kauf_asc">Kaufdatum ↑</option>
+            <option value="name_desc" data-i18n="gallery.sort.name_desc" hidden>Name Z–A</option>
+            <option value="num_desc" data-i18n="gallery.sort.num_desc" hidden>Nummer ↓</option>
+            <option value="year_asc" data-i18n="gallery.sort.year_asc" hidden>Jahr ↑</option>
           </select>
           <select id="scope-gallery" class="scope-select" aria-label="Konten" data-i18n="household.scope_label" data-i18n-attr="aria-label" data-change="onScopeChange" data-arg="gallery" data-stil="display:none"></select>
           <!-- Lagerort: dieselbe Form wie der Kontofilter daneben. Bleibt … -->
@@ -499,7 +504,8 @@
         <h1 class="ptitle" data-tab-title="catalog"><span class="ptitle-icon"></span><span data-i18n="catalog.title">Katalog</span></h1>
       </div>
       <!-- Suche/Filter unter dem Titel — analog Galerie, Teile, Minifiguren … -->
-      <div class="filterzeile">
+      <div class="filterleiste filterzeile">
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span></button>
           <input type="text" class="si suchfeld" id="cat-search" placeholder="Setnummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" data-i18n-aria="catalog.search_aria" aria-label="Katalog nach Setnummer oder Name durchsuchen">
           <select class="w-auto max-240" id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="catalog.filter.all_themes">Alle Themen</option>
@@ -548,7 +554,8 @@
       </details>
 
       <!-- Suche/Filter/Sortierung — dieselbe Zeile wie in der Galerie, an … -->
-      <div class="filterzeile">
+      <div class="filterleiste filterzeile">
+        <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span></button>
         <input type="text" class="si suchfeld" id="mks" placeholder="Merkliste durchsuchen…" data-i18n="wanted.search" data-i18n-attr="placeholder" data-i18n-aria="wanted.search_aria" aria-label="Merkliste durchsuchen" />
         <select class="w-auto" id="mkcond" aria-label="Zustand" data-i18n="common.condition" data-i18n-attr="aria-label" data-change="ladeMerkliste">
           <option value="" data-i18n="filter.condition_all">Alle Zustände</option>
@@ -777,10 +784,9 @@
             </div>
           </div>
           <div class="zeile mittig luecke-05 umbruch">
-            <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" aria-describedby="pl-gen-hinweis" data-i18n="pl.generate" data-ico="aktualisieren">Neu berechnen</button>
+            <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" hidden data-i18n="pl.generate" data-ico="aktualisieren">Neu berechnen</button>
             <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
           </div>
-          <p class="pl-hinweis" id="pl-gen-hinweis" data-i18n="pl.erst_set">Noch kein Set in der Liste — Setnummer eintragen und hinzufügen, die Bauliste entsteht sofort.</p>
         </div>
       </div>
       <!-- Added sets -->
@@ -1568,7 +1574,7 @@
 <div class="ovl" id="add-part-modal" role="dialog" aria-modal="true" aria-labelledby="add-part-tit">
   <div class="modal max-720">
     <div class="mhd"><h2 class="mtit" id="add-part-tit" data-i18n="parts.add_title">Teil hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="part" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
-    <div id="add-part-inline">
+    <form id="add-part-inline" data-submit="btn-add-part" novalidate>
           <div class="raster-160">
             <div class="fg"><label for="ap-num-inline" data-i18n="parts.num_label">Teilenummer *</label><input type="text" id="ap-num-inline" autocapitalize="off" autocorrect="off" spellcheck="false" data-erstfokus placeholder="z. B. 3001" data-i18n="parts.num_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
             <div class="fg"><label for="ap-color-select" data-i18n="parts.color_label">Farbe</label>
@@ -1584,16 +1590,16 @@
             <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="ap-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg"><label for="ap-date" data-i18n="erfassen.gekauft_am">Gekauft am</label><input class="hoehe-38" type="date" id="ap-date" data-heute /></div>
             <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
-            <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
+            <div class="fg unten-buendig"><button type="button" class="btn bs voll-breit hoehe-38" data-click="schliesseErfassen" data-arg="part" data-i18n="common.cancel">Abbrechen</button></div><div class="fg unten-buendig"><button type="button" class="btn bp voll-breit hoehe-38" id="btn-add-part" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
           </div>
           <div class="schrift-2 abstand-o-05 status-zeile" id="ap-inline-result" role="status"></div>
-        </div>
+        </form>
   </div>
 </div>
 <div class="ovl" id="add-fig-modal" role="dialog" aria-modal="true" aria-labelledby="add-fig-tit">
   <div class="modal max-720">
     <div class="mhd"><h2 class="mtit" id="add-fig-tit" data-i18n="figs.add_title">Minifigur hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="fig" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
-    <div id="add-fig-inline">
+    <form id="add-fig-inline" data-submit="btn-add-fig" novalidate>
         <div class="raster-160">
           <div class="fg"><label for="af-num-inline"><span data-i18n="figs.num_label">Figur-Nummer *</span> <span class="text-klein" data-i18n="figs.num_hint">(Rebrickable-Nummer)</span></label>
             <input type="text" id="af-num-inline" autocapitalize="off" autocorrect="off" spellcheck="false" data-erstfokus placeholder="z. B. fig-007357" data-i18n="figs.num_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
@@ -1606,12 +1612,11 @@
           <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="af-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg"><label for="af-date" data-i18n="erfassen.gekauft_am">Gekauft am</label><input class="hoehe-38" type="date" id="af-date" data-heute /></div>
             <div class="fg max-150" id="af-owner-box" data-stil="display:none"><label for="af-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt hoehe-38" id="af-owner"></select></div><div class="fg max-220" id="af-storage-box"><span class="feld-titel" id="af-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="af-storage-slot"></span></div>
-          <div class="fg unten-buendig">
-            <button class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
+          <div class="fg unten-buendig"><button type="button" class="btn bs voll-breit hoehe-38" data-click="schliesseErfassen" data-arg="fig" data-i18n="common.cancel">Abbrechen</button></div><div class="fg unten-buendig"><button type="button" class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-schreibend data-i18n="gallery.add.submit">Hinzufügen</button></div>
         </div>
         <div class="text-klein abstand-o-05" data-i18n="figs.add.hint" data-ico="idee">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.</div>
         <div class="schrift-2 abstand-o-05 status-zeile" id="af-inline-result" role="status"></div>
-      </div>
+      </form>
   </div>
 </div>
 <div class="ovl" id="add-set-modal" role="dialog" aria-modal="true" aria-labelledby="add-set-tit">
@@ -1619,7 +1624,7 @@
     <div class="mhd"><h2 class="mtit" id="add-set-tit" data-i18n="gallery.add.title">Set hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="set" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <!-- Ein Raster mit zwei Spalten: Beschriftungen und Felder stehen bündig,
          der Knopf schliesst rechts unten ab (vorher eine umbrechende Zeile). -->
-    <div class="erfassen-raster">
+    <form class="erfassen-raster" data-submit="btn-add" novalidate>
       <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Setnummer *</label><input type="text" id="add-num" autocapitalize="off" autocorrect="off" spellcheck="false" data-erstfokus placeholder="z. B. 75192-1" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
       <div class="fg"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
       <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label>
@@ -1631,8 +1636,8 @@
       <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
       <div class="fg" id="add-storage-box"><span class="feld-titel" id="add-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="add-storage-slot"></span></div>
       <div class="hinweis-warnung erfassen-unbekannt" id="add-unbekannt" role="status" hidden></div>
-      <div class="erfassen-fuss"><button class="btn bp" id="btn-add" data-schreibend><span id="btn-add-text" data-i18n="gallery.add.submit">Hinzufügen</span></button></div>
-    </div>
+      <div class="erfassen-fuss"><button type="button" class="btn bs" data-click="schliesseErfassen" data-arg="set" data-i18n="common.cancel">Abbrechen</button><button type="button" class="btn bp" id="btn-add" data-schreibend><span id="btn-add-text" data-i18n="gallery.add.submit">Hinzufügen</span></button></div>
+    </form>
     <div class="abstand-o-8 schrift-2" id="add-status" role="status"></div>
   </div>
 </div>
@@ -1706,14 +1711,17 @@
       <h2 class="mtit" id="mk-take-tit">—</h2>
       <button class="btn bs btn-sm" data-click="schliesseUebernahme" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
+    <form data-submit="mk-take-ok" novalidate>
     <div data-stil="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px">
       <div class="fg max-82"><label for="mk-take-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="mk-take-qty" value="1" min="1" /></div>
       <div class="fg max-120"><label for="mk-take-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="mk-take-price" placeholder="—" /></div>
       <div class="fg max-110"><label for="mk-take-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-take-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div><div class="fg max-220" id="mk-take-storage-box"><span class="feld-titel" id="mk-take-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="mk-take-storage-slot"></span></div>
     </div>
     <div class="mfooter">
-      <button class="btn bp" id="mk-take-ok" data-click="bestaetigeUebernahme" data-i18n="wanted.take" data-ico="plus">Zur Sammlung hinzufügen</button>
+      <button type="button" class="btn bs" data-click="schliesseUebernahme" data-i18n="common.cancel">Abbrechen</button>
+      <button type="button" class="btn bp" id="mk-take-ok" data-click="bestaetigeUebernahme" data-i18n="wanted.take" data-ico="plus">Zur Sammlung hinzufügen</button>
     </div>
+    </form>
   </div>
 </div>
 
@@ -1730,17 +1738,17 @@
     <img id="cat-m-img" aria-hidden="true" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-zoom-klick="openImageLightboxFromEl" />
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
-      <div class="zeile luecke-8 unten umbruch">
+      <form class="zeile luecke-8 unten umbruch" data-submit="cat-m-add" novalidate>
         <div class="fg max-150" id="cat-m-owner-box" data-stil="display:none"><label for="cat-m-owner" data-i18n="household.for_account">Konto</label><select class="auswahl-kompakt" id="cat-m-owner"></select></div><div class="fg max-220" id="cat-m-storage-box"><span class="feld-titel" id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="cat-m-storage-slot"></span></div>
         <div class="fg max-74"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="cat-m-qty" value="1" min="1" /></div>
         <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-price" placeholder="—" /></div>
         <div class="fg max-110"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="cat-m-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
-      </div>
+      </form>
       <!-- Preisalarm beim Merken — Marcos „inkl. Zustand und einem … -->
-      <div class="zeile luecke-8 unten umbruch">
+      <form class="zeile luecke-8 unten umbruch" data-submit="cat-m-wish" novalidate>
         <div class="fg max-120"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select class="auswahl-kompakt" id="cat-m-alert-dir"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
         <div class="fg max-110"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-alert-val" placeholder="—" /></div>
-      </div>
+      </form>
       <!-- Marcos Vorgabe: BrickLink eine Zeile hoeher, die beiden … -->
       <div data-stil="display:flex;width:100%">
         <a class="btn bs knopf-fuellend" id="cat-m-bricklink" href="#" target="_blank" rel="noopener" data-i18n="catalog.buy_bricklink" data-ico="korb">Auf BrickLink kaufen</a>

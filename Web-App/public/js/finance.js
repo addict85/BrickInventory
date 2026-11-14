@@ -250,6 +250,7 @@ function summenTabelle(einstand, wert, cur, basis) {
 function finanzenLaedt() {
   const hatteTabelle = !!G('fin-tbl').querySelector('table');
   if (!hatteTabelle) setzeHtml(G('fin-tbl'), ladeAnzeige(tRaw('finance.fetch_prices')));
+  G('fin-sum').hidden = false;
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').setAttribute('aria-busy', 'true');
     for (const id of KENNZAHLEN) setzeHtml(G(id), ungeprueft(WERT_SKELETT));
@@ -260,23 +261,24 @@ function finanzenLaedt() {
   return hatteTabelle;
 }
 
-/** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {{ status?: number, networkError?: boolean } | null | undefined} d */
-function finanzenFehlen(d) {
-  if (d?.status === 401) return;
-  // Grund und „Erneut versuchen“ stehen einmal, bei der Liste; Karten und Zeitraum sagten es sonst fünfmal.
-  if (!kurveDa()) {
-    setzeHtml(G('portfolio-chart'), html`<p class="fehler-zustand text-mut">${tRaw('chart.unavailable')}</p>`);
+/** Ladefehler: Grund und „Erneut versuchen“ einmal, oben im Diagrammkasten; Karten ohne Zahl fallen weg (fünfmal
+ * „—“ über der Meldung sah aus wie eine leere Sammlung). @param {Parameters<typeof listeLadefehler>[1]} d
+ * @param {boolean} hatteTabelle @returns {boolean} true, wenn es ein Fehler war */
+function finanzenFehlen(d, hatteTabelle) {
+  const imKasten = !hatteTabelle && !kurveDa();
+  const ziel = G(imKasten ? 'portfolio-chart' : 'fin-tbl');
+  if (!listeLadefehler(ziel, d, { erneut: 'loadFinance', behalten: hatteTabelle })) return false;
+  if (imKasten) {
+    setzeHtml(G('fin-tbl'), '');
     // Wieder frei gibt sie loadPortfolioChart(), sobald ein Verlauf da ist.
-    /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.zeitraum-wahl .period-btn')).forEach(
-      b => {
-        b.disabled = true;
-      },
-    );
+    for (const b of document.querySelectorAll('.zeitraum-wahl .period-btn')) b.setAttribute('disabled', '');
   }
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').removeAttribute('aria-busy');
-    for (const id of KENNZAHLEN) G(id).textContent = '—';
+    G('fin-sum').hidden = true;
+    G('portfolio-current').textContent = '—';
   }
+  return true;
 }
 
 export async function loadFinance() {
@@ -289,10 +291,7 @@ export async function loadFinance() {
     api('GET', `/v1/finance/minifigs-valuation${scopeQuery('finance')}`),
     api('GET', `/v1/finance/pnl${scopeQuery('finance')}`),
   ]);
-  if (listeLadefehler(G('fin-tbl'), d, { erneut: 'loadFinance', behalten: hatteTabelle })) {
-    finanzenFehlen(d);
-    return;
-  }
+  if (finanzenFehlen(d, hatteTabelle) || !d?.success) return;
   const cur = d.currency;
   const extra =
     parseFloat(partsVal.success ? partsVal.total_value || '0' : '0') +

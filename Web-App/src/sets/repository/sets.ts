@@ -193,8 +193,14 @@ const SET_SORTS = {
   added_desc: 's.added_at DESC',
   added_asc: 's.added_at ASC',
   name_asc: 's.name ASC NULLS LAST',
+  name_desc: 's.name DESC NULLS LAST',
   num_asc: 's.set_number ASC',
+  num_desc: 's.set_number DESC',
   year_desc: 's.year DESC NULLS LAST',
+  year_asc: 's.year ASC NULLS LAST',
+  // Die Tabelle sortiert nach der Spalte „Gekauft“: dem letzten Kauf, wie ihn Kachel und Zeile zeigen.
+  kauf_desc: 'a.letzter_kauf DESC NULLS LAST, s.added_at DESC',
+  kauf_asc: 'a.letzter_kauf ASC NULLS LAST, s.added_at DESC',
   price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
   price_asc: 'COALESCE(a.max_purchase_price, 0) ASC',
   // quantity kommt aus der Unterabfrage; added_at ordnet gleiche Mengen fest.
