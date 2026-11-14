@@ -102,7 +102,7 @@ const C = {
   'GET /api/v1/sets/:setNumber/price-history': 'nur-v1',
   'GET /api/v1/parts/:partNumber/:colorId/price-history': 'nur-v1',
   'GET /api/v1/minifigs/:figNumber/price-history': 'nur-v1',
-  // Detail-Dialog fuer Teile/Figuren AUS SETS (Marcos Wunsch): welche Sets
+  // Detail-Dialog fuer Teile/Figuren AUS SETS: welche Sets
   // verwenden dieses Teil? Beide gehen durch DIESELBE Funktion
   // (verwendendeSets in src/bestand/gemeinsam.ts) — die alte Oberflaeche hat
   // dafuer nie etwas gehabt, es gibt also kein Gegenstueck zu paaren.

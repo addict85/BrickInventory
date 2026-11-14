@@ -235,7 +235,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   // gehen über csvZeilenAusAnfrage() und csvImportBericht() in
   // src/infra/csvExport.ts. Je Weg zählen Route, Dienst und Auftrag zusammen.
   for (const [rel, dienst] of [
-    ['routes/api_v1/sets.ts', 'src/sets/csvImport.ts'],
+    ['routes/api_v1/setsImport.ts', 'src/sets/csvImport.ts'],
     ['routes/api_v1/parts.ts', 'src/teile/manuelleTeile.ts'],
     ['routes/api_v1/minifigs.ts', 'src/figuren/manuelleFiguren.ts'],
   ]) {

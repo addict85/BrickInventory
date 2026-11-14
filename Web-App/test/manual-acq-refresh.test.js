@@ -323,6 +323,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
     'src/teile/manuelleTeile.ts',
     'src/figuren/manuelleFiguren.ts',
     'routes/api_v1/sets.ts',
+    'routes/api_v1/setsImport.ts',
     'src/sets/dienst.ts',
     'src/sets/inhalt.ts',
   ]) {
@@ -335,6 +336,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
   }
   for (const f of [
     'routes/api_v1/sets.ts',
+    'routes/api_v1/setsImport.ts',
     'src/teile/manuelleTeile.ts',
     'src/figuren/manuelleFiguren.ts',
     'routes/api_v1/acquisitions.ts',

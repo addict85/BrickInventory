@@ -1,4 +1,4 @@
-import { logAndContinue } from '../infra/fehler';
+import { meldeFehler } from '../infra/fehler';
 import { versuche } from '../infra/ergebnis';
 import type { BilderKontext } from './kontext';
 
@@ -25,10 +25,10 @@ export async function initImageMisses(k: BilderKontext): Promise<void> {
   // Prozesslokal: Muss deshalb in JEDEM Arbeitsprozess laufen.
   _takte.push(
     setInterval(() => {
-      auffrischen(k).catch(logAndContinue('bild-fehlanzeige:auffrischen'));
+      auffrischen(k).catch(e => meldeFehler('bild-fehlanzeige:auffrischen', e));
     }, AUFFRISCHEN_MS),
     setInterval(() => {
-      schreibePuffer(k).catch(logAndContinue('bild-fehlanzeige:schreibePuffer'));
+      schreibePuffer(k).catch(e => meldeFehler('bild-fehlanzeige:schreibePuffer', e));
     }, 10_000),
   );
   for (const t of _takte) t.unref();

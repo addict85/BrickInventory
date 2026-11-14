@@ -111,7 +111,6 @@ test('eine gescheiterte Verkleinerung wird nicht endlos wiederholt', () => {
 });
 
 test('ein 404 darf der Browser sich merken', () => {
-  // Marcos Konsole
   const px = require('./helpers/sources').proxyThumbQuelle();
   // Der Weg heisst jetzt sendePlatzhalter
   assert.match(px, /function sendePlatzhalter\(res(: \w+)?\)/, 'Kein gemeinsamer Weg für ein fehlendes Bild');

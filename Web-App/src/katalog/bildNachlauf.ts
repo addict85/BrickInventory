@@ -43,11 +43,9 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
     );
     const local = r.ok ? r.wert : null;
     if (local) {
-      // Einmal für alle Konten in den Katalog; scheitert es, liegt das Bild zwar
-      // auf der Platte, die Oberfläche zeigt es aber nicht — darum mit Protokoll.
-      await setzeTeilBildLokal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local).catch(
-        logAndContinue(`bilder:teil ${p.part_number}`),
-      );
+      // Einmal für alle Konten in den Katalog. Ein Schreibfehler bricht den Lauf ab wie bei
+      // den Figuren; der nächste findet die Datei und schreibt nach.
+      await setzeTeilBildLokal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local);
       // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
       // bei der Originalgrösse.
       generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));

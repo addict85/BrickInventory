@@ -1,6 +1,6 @@
 /** Jimp dekodiert ohne Grenze; ein kleines Bild mit riesigen Abmessungen wäre
  * eine Dekompressionsbombe. */
-import { logAndContinue } from '../infra/fehler';
+import { meldeFehler } from '../infra/fehler';
 import fs from 'node:fs';
 
 /** Obergrenze in Pixeln (Breite × Höhe). 40 MP ≈ 160 MB Bitmap. */
@@ -82,6 +82,6 @@ export async function isDecodable(filePath: string) {
   } catch (_) {
     return false; // nicht lesbar → nicht dekodieren
   } finally {
-    await fh?.close().catch(logAndContinue('bild-wache:close'));
+    await fh?.close().catch(e => meldeFehler('bild-wache:close', e));
   }
 }

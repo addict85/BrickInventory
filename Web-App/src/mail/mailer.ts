@@ -294,22 +294,13 @@ export type KontoHinweis =
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
-export async function sendKontoHinweisMail(
-  k: MailKontext,
-  to: string,
-  username: string,
+/** Der eine Satz, was am Konto geschah. */
+function hinweisSatz(
   art: KontoHinweis,
-  o: {
-    lang?: string;
-    passkey?: string;
-    haushalt?: string[];
-    konto?: string | undefined;
-    durch?: string | undefined;
-  } = {},
-) {
-  const theme = await getMailTheme(k);
-  const en = o.lang === 'en';
-  const was = {
+  o: { passkey?: string; konto?: string | undefined; durch?: string | undefined },
+  en: boolean,
+): string {
+  return {
     passkey_neu: en
       ? `a new passkey (“${o.passkey ?? ''}”) was added to your account.`
       : `deinem Konto wurde ein neuer Passkey („${o.passkey ?? ''}“) hinzugefügt.`,
@@ -366,6 +357,24 @@ export async function sendKontoHinweisMail(
       ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
       : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   }[art];
+}
+
+export async function sendKontoHinweisMail(
+  k: MailKontext,
+  to: string,
+  username: string,
+  art: KontoHinweis,
+  o: {
+    lang?: string;
+    passkey?: string;
+    haushalt?: string[];
+    konto?: string | undefined;
+    durch?: string | undefined;
+  } = {},
+) {
+  const theme = await getMailTheme(k);
+  const en = o.lang === 'en';
+  const was = hinweisSatz(art, o, en);
   const subject = en
     ? 'BrickInventory Manager — Change to your account'
     : 'BrickInventory Manager — Änderung an deinem Konto';
@@ -452,6 +461,26 @@ export interface AlarmMailDaten {
   waehrung: string;
 }
 
+/** Marktpreis und Schwelle gross nebeneinander — die einzige Frage dieser Mail.
+ * Tabelle statt flex wegen Outlook. */
+function alarmZahlen(theme: Awaited<ReturnType<typeof getMailTheme>>, de: boolean, preis: string, schwelle: string) {
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px;table-layout:fixed">
+    <tr>
+      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
+                 padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
+        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Marktpreis' : 'Market price'}</div>
+        <div style="font-size:22px;font-weight:700;color:${theme.primary}">${esc(preis)}</div>
+      </td>
+      <td width="12%" style="width:12%;font-size:0;line-height:0">&nbsp;</td>
+      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
+                 padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
+        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Deine Schwelle' : 'Your threshold'}</div>
+        <div style="font-size:22px;font-weight:700;color:${theme.text}">${esc(schwelle)}</div>
+      </td>
+    </tr>
+  </table>`;
+}
+
 // Ohne APP_BASE_URL sagt die Mail, warum der Knopf fehlt.
 export async function baueAlarmMail(
   k: MailKontext,
@@ -491,23 +520,7 @@ export async function baueAlarmMail(
       `You get this once per crossing: it can only trigger again after the ` +
       `price has moved back to the other side.\n`;
 
-  // Marktpreis und Schwelle gross nebeneinander — die einzige Frage dieser Mail.
-  // Tabelle statt flex wegen Outlook.
-  const zahlen = `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:0 0 20px;table-layout:fixed">
-    <tr>
-      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
-                 padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
-        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Marktpreis' : 'Market price'}</div>
-        <div style="font-size:22px;font-weight:700;color:${theme.primary}">${esc(geld(d.preis))}</div>
-      </td>
-      <td width="12%" style="width:12%;font-size:0;line-height:0">&nbsp;</td>
-      <td width="44%" style="width:44%;background:${theme.bg};border:1px solid ${theme.border};border-radius:8px;
-                 padding:14px 16px;font-family:Arial,Helvetica,sans-serif">
-        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">${de ? 'Deine Schwelle' : 'Your threshold'}</div>
-        <div style="font-size:22px;font-weight:700;color:${theme.text}">${esc(geld(d.schwelle))}</div>
-      </td>
-    </tr>
-  </table>`;
+  const zahlen = alarmZahlen(theme, de, geld(d.preis), geld(d.schwelle));
 
   const einleitung = de
     ? `<p style="margin:0 0 8px">Hallo <strong>${esc(d.username)}</strong>,</p>

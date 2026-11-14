@@ -3,7 +3,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Pool, PoolClient } from 'pg';
 import type { DbSchnittstelle } from './typen';
-import { setzeTransaktionsWaechter } from '../src/infra/fehler';
+import type { TransaktionsWaechter } from '../src/infra/fehler';
 import { konfig } from '../src/infra/konfig';
 import { zeilenKontext } from '../src/infra/kontoKontext';
 
@@ -166,9 +166,9 @@ export function innereTransaktion<T>(stand: TxStand, nummer: number, fn: (tx: Tx
 /** Nach ROLLBACK TO SAVEPOINT ist die Transaktion wieder benutzbar: Wer diesen
  * Fehler auffängt und einen Ersatz liefert, verdeckt nichts. */
 const vomSicherungspunktAufgefangen = new WeakSet<object>();
-setzeTransaktionsWaechter({
+export const TRANSAKTIONS_WAECHTER: TransaktionsWaechter = {
   verdirbt: e =>
     laufendeTx.getStore()?.offen === true &&
     !(e !== null && typeof e === 'object' && vomSicherungspunktAufgefangen.has(e)),
   streng: () => konfig().nodeEnv === 'test',
-});
+};

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { queueThumb } from './proxyThumbs';
-import { vorDem, ohneFehlendeDatei, logAndContinue } from '../infra/fehler';
+import { vorDem, ohneFehlendeDatei, meldeFehler } from '../infra/fehler';
 import { konfig } from '../infra/konfig';
 import { prozessweit } from '../infra/prozessweit';
 import path from 'node:path';
@@ -80,7 +80,7 @@ export async function cacheTreffer(
     // Der Deckel löscht nach letzter Nutzung; unter noatime merkt sich das
     // sonst niemand. mtime bleibt, sie steckt im ETag.
     if (cst && Date.now() - cst.atimeMs > 86_400_000)
-      fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(logAndContinue('bild-cache:utimes'));
+      fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(ohneFehlendeDatei('bild-cache:utimes'));
     return {
       datei: cacheFile,
       typ: bildTyp(ctRaw),
@@ -155,7 +155,7 @@ export function merkeCacheZuwachs(bytes: number): void {
   z.bytes = 0;
   z.laeuft = true;
   raeumeBildCacheAuf(max)
-    .catch(logAndContinue('bild-cache:deckel'))
+    .catch(e => meldeFehler('bild-cache:deckel', e))
     .finally(() => {
       z.laeuft = false;
     });

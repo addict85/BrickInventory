@@ -1,6 +1,9 @@
 /** Die Mount-Reihenfolge ist unkritisch: Die Module haben keine überlappenden
  * Pfad-Muster. Die Anmeldung hängt als eigener Router unter /api/v1/auth. */
 import { baueSetsRouter } from './sets';
+import { baueSetsLagerRouter } from './setsLager';
+import { baueSetsImportRouter } from './setsImport';
+import { baueSetsAnleitungenRouter } from './setsAnleitungen';
 import { bauePdfRouter } from './pdf';
 import { baueAcquisitionsRouter } from './acquisitions';
 import { bauePartsRouter } from './parts';
@@ -44,6 +47,9 @@ export function baueApiRouter(
   router.use(baueEinrichtungRouter(d)); // /einrichtung/stand — öffentlich, vor der Anmeldung
   router.use(bauePdfRouter(d)); // /sets/partslist-pdf/* (literale Pfade)
   router.use(baueSetsRouter(d)); // /sets, /sets/barcode, /sets/:setNumber/*
+  router.use(baueSetsLagerRouter(d)); // /storage, /alerts, /sets/:setNumber/{storage,alert}
+  router.use(baueSetsImportRouter(d)); // /sets/import/csv/*, /sets/add-stream, /sets/:setNumber/parts
+  router.use(baueSetsAnleitungenRouter(d)); // /sets/:setNumber/instructions/*
   router.use(baueAcquisitionsRouter(d)); // Kaufpreis-Erfassungen für Sets/Teile/Figuren
   router.use(bauePartsRouter(d));
   router.use(baueMinifigsRouter(d));

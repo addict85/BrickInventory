@@ -1,4 +1,4 @@
-import { logAndContinue } from '../infra/fehler';
+import { meldeFehler } from '../infra/fehler';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
 import type { BilderKontext } from './kontext';
 
@@ -67,7 +67,7 @@ export async function initImageQueue(k: BilderKontext): Promise<void> {
   if (_takte.length) return;
   _takte.push(
     setInterval(() => {
-      schreibePuffer(k).catch(logAndContinue('bild-job:schreibePuffer'));
+      schreibePuffer(k).catch(e => meldeFehler('bild-job:schreibePuffer', e));
     }, 10_000),
   );
   _takte[0]?.unref();

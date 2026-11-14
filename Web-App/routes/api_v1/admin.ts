@@ -233,9 +233,9 @@ export function baueAdminRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' |
     '/admin/redownload-missing-images',
     requireApiAdmin,
     async (_req: AuthedRequest, res: Antwort<'POST /api/v1/admin/redownload-missing-images'>) => {
-      // Nicht abwarten: Das kann lange dauern; der Fortschritt erscheint in der
+      // Nur das Einstellen wird abgewartet; der Fortschritt erscheint in der
       // Überwachung unter „Bild-Download (CDN)".
-      d.verwaltung.fehlendeBilderNachladen();
+      await d.verwaltung.fehlendeBilderNachladen();
       res.json({ success: true, started: true });
     },
   );

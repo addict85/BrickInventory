@@ -203,7 +203,7 @@ async function fehlendeNachladen(k: KatalogKontext, missing: FehlendesBild[], la
 async function bildNachladen(k: KatalogKontext, m: FehlendesBild): Promise<boolean> {
   let ok = false;
   if (m.image_url) {
-    await k.cdnDrossel.acquire().catch(logAndContinue('teile-enrich:acquire'));
+    await k.cdnDrossel.acquire();
     try {
       // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler nennt beide.
       const r = await versuche('teile-enrich:downloadFile', downloadFile(m.image_url, m.fp));

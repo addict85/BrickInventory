@@ -227,7 +227,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     );
   });
 
-  // Der Fortschritt (Marcos Wunsch vom 20.10.)
+  // Der Fortschritt
 
   await t.test('7. mit strom=1 kommen Fortschrittszeilen, zuletzt der Bericht', async () => {
     const { status, typ, zeilen } = await hochladenStrom(srv.base, XML, '?schreiben=1&strom=1');
@@ -262,7 +262,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     assert.ok(!letzte.fortschritt, 'Der Bericht ist keine Fortschrittszeile');
   });
 
-  // Derselbe Balken wie beim Set-Import (Marcos Wunsch vom 20.10.)
+  // Derselbe Balken wie beim Set-Import
 
   await t.test('9. ein Import hinterlässt einen abgeschlossenen Auftrag', async () => {
     await db.run('DELETE FROM import_stand WHERE user_id = $1', [HAUPT]);

@@ -511,6 +511,9 @@ module.exports.adminQuelle = adminQuelle;
 function setKernQuelle() {
   return [
     ['routes/api_v1/sets.ts'],
+    ['routes/api_v1/setsImport.ts'],
+    ['routes/api_v1/setsAnleitungen.ts'],
+    ['routes/api_v1/setsLager.ts'],
     ['src/sets/dienst.ts'],
     ['src/sets/inhalt.ts'],
     ['src/sets/barcode.ts'],

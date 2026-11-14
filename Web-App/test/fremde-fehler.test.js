@@ -28,7 +28,7 @@ const UNS = 'https://lego.bigolin.online';
 
 test('eine Erweiterung loest bei uns keinen Fehler aus', () => {
   const vonUns = holeVonUns(UNS);
-  // Der Stapel aus Marcos Konsole, so wie Chromium ihn schreibt.
+  // Ein echter Stapel, so wie Chromium ihn schreibt.
   const metamask = mitStapel(
     'Failed to connect to MetaMask',
     'Error: MetaMask extension not found\n' +

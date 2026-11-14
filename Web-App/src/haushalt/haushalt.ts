@@ -102,7 +102,7 @@ export async function einladungAnlegen(k: HaushaltKontext, uid: number) {
   const id = parseInt(String(uid), 10);
   // Jedes Konto darf einladen, auch ein Unterkonto: Ein Zwischenkonto ist Vater
   // UND Kind.
-  await repo.raeumeEinladungenAuf(k.db).catch(logAndContinue('haushalt:id'));
+  await repo.raeumeEinladungenAuf(k.db);
   // Jede offene Einladung ist ein Zugang zum Haushalt; beliebig viele braucht niemand.
   if ((await repo.offeneEinladungen(k.db, id)) >= OFFENE_EINLADUNGEN_MAX)
     return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };

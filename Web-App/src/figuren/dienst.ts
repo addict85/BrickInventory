@@ -20,9 +20,10 @@ export async function teileDerFigur(kx: FigurenKontext, figNumber: string) {
   let kat = await katalogTeile(kx, figNumber);
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
     const elternSet = await kx.figurTeile.setMitFigur(figNumber);
-    if (elternSet)
-      await kx.nacharbeit.figurenAnreichern(elternSet.set_number).catch(logAndContinue('figuren:enrichSetMinifigs'));
-    else await kx.nacharbeit.setTeileAnreichern(figNumber).catch(logAndContinue('figuren:enrichSetParts'));
+    const anreichern = elternSet
+      ? kx.nacharbeit.figurenAnreichern(elternSet.set_number)
+      : kx.nacharbeit.setTeileAnreichern(figNumber);
+    await anreichern.catch(logAndContinue('figuren:anreichern'));
     kat = await katalogTeile(kx, figNumber);
   }
   const jeTeil = new Map(kat.map(r => [`${r.part_number}|${r.color_id}`, r]));

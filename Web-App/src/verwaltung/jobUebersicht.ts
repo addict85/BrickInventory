@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DAILY_JOBS } from '../auftraege';
 import { PDF_JOB_DIR } from '../infra/appPaths';
-import { meldeFehler, logAndContinue } from '../infra/fehler';
+import { meldeFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import type { VerwaltungKontext } from './kontext';
 
@@ -91,6 +91,31 @@ const frisch = (zeit: unknown) => typeof zeit === 'number' && Date.now() - zeit 
 
 /** Bestand, Neuladen und Katalog in EINER Kachel, sonst meldete sie „alle gecacht",
  * während der Hintergrund-Job nachlädt. */
+/** Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz. */
+async function bilderImLauf(k: VerwaltungKontext, ab: Abstriche, offen: number): Promise<number> {
+  const aktiv = await ab.oder('bilder', k.auftraege.imgDlPending(), 0);
+  if (offen === 0 && aktiv > 0) {
+    await k.auftraege.imgDlReset();
+    return 0;
+  }
+  return Math.min(aktiv, offen);
+}
+
+async function neuLadenStand(k: VerwaltungKontext, ab: Abstriche) {
+  const reDl = await liesStand<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>(
+    k,
+    ab,
+    'imgredl_status',
+  );
+  const laeuft = reDl?.running === true && (typeof reDl.at !== 'number' || frisch(reDl.at));
+  const sub = !laeuft
+    ? null
+    : reDl?.phase === 'scanning'
+      ? '↻ suche fehlende Bilder…'
+      : `↻ ${reDl?.done || 0}/${reDl?.total || 0} fehlende neu geladen`;
+  return { reDl, laeuft, sub };
+}
+
 async function bildKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> {
   const [teileOffen, fertig, setFiguren, bestandsFiguren, katalogOffen] = await Promise.all([
     zahl(ab, k.verwaltung.teilbilderOffen(), 'bilder'),
@@ -102,24 +127,8 @@ async function bildKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> 
   ]);
   const offen = teileOffen + setFiguren + bestandsFiguren;
   const job = await ab.oder('bilder', k.auftraege.kachel('imgDl'), null);
-  // Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz.
-  let aktiv = await ab.oder('bilder', k.auftraege.imgDlPending(), 0);
-  if (offen === 0 && aktiv > 0) {
-    await k.auftraege.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset'));
-    aktiv = 0;
-  }
-  aktiv = Math.min(aktiv, offen);
-  const reDl = await liesStand<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>(
-    k,
-    ab,
-    'imgredl_status',
-  );
-  const reDlLaeuft = reDl?.running === true && (typeof reDl.at !== 'number' || frisch(reDl.at));
-  const reDlSub = !reDlLaeuft
-    ? null
-    : reDl?.phase === 'scanning'
-      ? '↻ suche fehlende Bilder…'
-      : `↻ ${reDl?.done || 0}/${reDl?.total || 0} fehlende neu geladen`;
+  const aktiv = await bilderImLauf(k, ab, offen);
+  const { reDl, laeuft: reDlLaeuft, sub: reDlSub } = await neuLadenStand(k, ab);
   // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
   const letzterLauf = await liesStand<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;

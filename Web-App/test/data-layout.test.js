@@ -23,6 +23,7 @@ const SOURCES = [
   'server.ts',
   'routes/api_v1/parts.ts',
   'routes/api_v1/sets.ts',
+  'routes/api_v1/setsAnleitungen.ts',
   'src/sets/dienst.ts',
   'src/sets/anleitungen.ts',
   'src/bilder/thumbs.ts',

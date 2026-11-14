@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { logAndContinue } from '../infra/fehler';
+import { meldeFehler } from '../infra/fehler';
 import { setBildLokalEintragen } from './bildlage';
 import { grundFuer, istBekanntFehlend, merkeFehlend } from './imageMisses';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
@@ -131,7 +131,7 @@ async function speichereLauf(k: BilderKontext, erg: StapelErgebnis): Promise<voi
   // nicht gelaufen".
   await k.auftraege
     .setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
-    .catch(logAndContinue('bild-job:setzeZustand'));
+    .catch(e => meldeFehler('bild-job:setzeZustand', e));
 }
 
 /** Ein 404 vom CDN braucht keine Aufmerksamkeit, alles andere schon (etwasZuTun). */
@@ -248,7 +248,7 @@ async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
           k,
           rest.map(x => x.url),
           rest.map(x => x.set_number),
-        ).catch(logAndContinue('bild-job:map'));
+        ); // Scheitert das Zurücklegen, wirft es: Der Auftrag scheitert sichtbar statt still Notizen zu verlieren.
         erg.zurueckgelegt = rest.length;
         break;
       }
