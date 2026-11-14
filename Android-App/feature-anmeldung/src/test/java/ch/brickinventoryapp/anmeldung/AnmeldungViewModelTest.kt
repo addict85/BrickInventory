@@ -139,11 +139,11 @@ class AnmeldungViewModelTest {
             override suspend fun allesVergessen() { ablage.protokoll += "filter-leer" }
         }
         val blickfeld = Blickfeld(blickAblage,
-            HaushaltRepository(t.api, t.cache),
-            TeileRepository(t.api, t.cache))
+            HaushaltRepository(t.api),
+            TeileRepository(t.api))
         val abmelden = SitzungsAttrappe { ablage.protokoll += "abmelden" }
         return t.merke(AnmeldungViewModel(t.sitzung, blickfeld, t.hinweise, abmelden,
-            KontoRepository(t.api, t.cache), ablage, frage) { it in wurzeln })
+            KontoRepository(t.api), ablage, frage) { it in wurzeln })
     }
 
     @Before

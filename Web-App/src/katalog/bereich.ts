@@ -22,6 +22,7 @@ import * as teileAnreicherungDienst from './teileAnreicherung';
 import { ConcurrentRateLimiter, type FremdquellenDienste } from '../fremdquellen';
 import * as bildNachlauf from './bildNachlauf';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
+import * as widerrufsliste from './widerrufsliste';
 import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
 
 export type { KatalogAbhaengigkeiten, KatalogKontext } from './kontext';
@@ -98,6 +99,7 @@ export function erzeugeKatalog(
     ]),
     ...bindeZugang(k, bildNachlauf, ['bildNachlauf']),
     ...bindeZugang(k, pdfErzeugung, ['erzeugePdf']),
+    ...bindeZugang(k, widerrufsliste, ['ladeWiderrufsliste']),
   };
 }
 

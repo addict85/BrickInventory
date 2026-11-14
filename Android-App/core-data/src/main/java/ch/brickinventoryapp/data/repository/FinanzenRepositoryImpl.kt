@@ -2,15 +2,16 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.api.FinanzenApi
-import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.model.data.model.FigsValuationResponse
-import ch.brickinventoryapp.model.data.model.PartsValuationResponse
-import ch.brickinventoryapp.model.data.model.PnlResponse
-import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
-import ch.brickinventoryapp.model.data.model.PriceHistoryResponse
-import ch.brickinventoryapp.model.data.model.SetPriceResponse
-import ch.brickinventoryapp.model.data.model.StatsResponse
-import ch.brickinventoryapp.model.data.model.ValuationResponse
+import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Offlineablage
+import ch.brickinventoryapp.vertrag.FigsValuationResponse
+import ch.brickinventoryapp.vertrag.PartsValuationResponse
+import ch.brickinventoryapp.vertrag.PnlResponse
+import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
+import ch.brickinventoryapp.vertrag.PriceHistoryResponse
+import ch.brickinventoryapp.vertrag.SetPriceResponse
+import ch.brickinventoryapp.vertrag.StatsResponse
+import ch.brickinventoryapp.vertrag.ValuationResponse
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class FinanzenRepositoryImpl @Inject constructor(
     private val api: FinanzenApi,
-    private val cache: ResponseCache,
+    private val ablage: Offlineablage,
 ) : FinanzenRepository {
 
     override suspend fun getSetPrice(setNumber: String): Ergebnis<SetPriceResponse> =
@@ -52,6 +53,6 @@ class FinanzenRepositoryImpl @Inject constructor(
 
     override suspend fun getStats(konten: Kontoauswahl?): Ergebnis<StatsResponse> =
         if (konten == null)
-            cache.cached("stats", StatsResponse.serializer()) { sicherAufrufen { api.getStats() } }
+            ablage.abgeglichenEinzeln(Faecher.KENNZAHLEN) { sicherAufrufen { api.getStats() } }
         else sicherAufrufen { api.getStats(konten.anfrage) }
 }

@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.SseEreignis
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.sseStrom
-import ch.brickinventoryapp.model.data.model.PdfAuftragStand
+import ch.brickinventoryapp.vertrag.PdfAuftragStand
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import ch.brickinventoryapp.netz.util.Protokoll

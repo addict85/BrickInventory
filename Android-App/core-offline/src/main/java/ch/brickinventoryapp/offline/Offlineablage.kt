@@ -6,14 +6,16 @@ import kotlinx.serialization.json.Json
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.Gutschein
-import ch.brickinventoryapp.model.data.model.LagerortEintrag
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.AddSetRequest
-import ch.brickinventoryapp.model.data.model.SetAggregate
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.Gutschein
+import ch.brickinventoryapp.vertrag.LagerortEintrag
+import ch.brickinventoryapp.vertrag.Preisalarm
+import ch.brickinventoryapp.vertrag.Minifig
+import ch.brickinventoryapp.vertrag.PartValuationItem
+import ch.brickinventoryapp.vertrag.AddSetRequest
+import ch.brickinventoryapp.vertrag.CatalogMetaResponse
+import ch.brickinventoryapp.vertrag.StatsResponse
+import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -83,6 +85,15 @@ object Faecher {
         { it.ort.id.toString() }, LokaleAnwendung::lagerorte) {
         Filterspalten(suchtext(it.ort.name))
     }
+
+    /**
+     * Einzelne Antworten ohne Liste: je Bereich eine Zeile. Sie liegen wie die Listen in
+     * Room, damit Abmelden, Bereich und Verschlüsselung für alles dieselben sind.
+     */
+    val KENNZAHLEN = Fach(Bestandsart.KENNZAHLEN, Ablageform.direkt(StatsResponse.serializer()), { EINZELN })
+    val KATALOG_META = Fach(Bestandsart.KATALOG_META, Ablageform.direkt(CatalogMetaResponse.serializer()), { EINZELN })
+
+    private const val EINZELN = "einzeln"
 
     private fun suchtext(vararg felder: String?) = felder.filterNotNull().joinToString("\n").lowercase()
 }
@@ -331,7 +342,8 @@ class Offlineablage(
         Bestandsart.PREISALARME -> aendere(Faecher.PREISALARME, b, w)
         Bestandsart.LAGERORTE -> aendere(Faecher.LAGERORTE, b, w)
         // Nur vom Server geliefert, nie lokal bearbeitet.
-        Bestandsart.TEILE, Bestandsart.FIGUREN, Bestandsart.GUTSCHEINE -> Unit
+        Bestandsart.TEILE, Bestandsart.FIGUREN, Bestandsart.GUTSCHEINE, Bestandsart.KENNZAHLEN,
+        Bestandsart.KATALOG_META -> Unit
     }
 
     /** Senden anstossen, z. B. beim Start, falls vom letzten Mal noch etwas wartet. */

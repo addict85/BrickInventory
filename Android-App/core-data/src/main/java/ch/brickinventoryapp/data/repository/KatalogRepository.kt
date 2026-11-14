@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.model.fach.Katalogsortierung
-import ch.brickinventoryapp.model.data.model.CatalogMetaResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetDetailResponse
-import ch.brickinventoryapp.model.data.model.CatalogSetsResponse
-import ch.brickinventoryapp.model.data.model.CatalogYearVerteilungResponse
+import ch.brickinventoryapp.vertrag.CatalogMetaResponse
+import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
+import ch.brickinventoryapp.vertrag.CatalogSetsResponse
+import ch.brickinventoryapp.vertrag.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers.

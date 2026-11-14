@@ -64,7 +64,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   O  gegenproben/fremder-paketstamm.patch: feature-teile bekommt eine Datei im Paket
  *      ch.brickinventoryapp.sammlung → rot „außerhalb des Paketstamms ihres Moduls“
  *   V  gegenproben/daten-reicht-netz-weiter.patch: core-data bindet core-netz per api ein →
- *      rot „Modulkanten per api nur zu core-model: [core-data → core-netz]“ (Schichtung …)
+ *      rot „Modulkanten per api nur zu core-model und core-vertrag: [core-data → core-netz]“ (Schichtung …)
  *   X  gegenproben/netz-oeffnet-intent.patch: ExterneAdresse.kt importiert android.content.Intent →
  *      rot „core-netz importiert Ablage, Repositories, DI oder Android-Oberfläche“ (Schichtung …)
  *   Y  gegenproben/sitzung-haengt-an-ui.patch: core-sitzung bindet core-ui ein →
@@ -116,7 +116,7 @@ class ModulgrenzenTest {
         // Jedes Modul hat seinen eigenen Paketstamm (Tabelle in README.md): Ein Import
         // verrät so das Modul, und kein Paket verteilt sich auf zwei Module.
         val stamm = mapOf(
-            "app" to "app", "core-model" to "model", "core-netz" to "netz", "core-data" to "data",
+            "app" to "app", "core-model" to "model", "core-vertrag" to "vertrag", "core-netz" to "netz", "core-data" to "data",
             "core-sicherheit" to "sicherheit", "core-offline" to "offline",
             "core-update" to "update", "core-dienste" to "dienste", "core-ui" to "ui", "core-zustand" to "zustand",
             "core-navigation" to "navigation",
@@ -236,7 +236,7 @@ class ModulgrenzenTest {
         assertEquals(listOf("feature-teile hängt an feature-katalog"), pruefe("feature-teile", "implementation", "feature-katalog"))
         assertEquals(listOf("feature-teile hängt an app"), pruefe("feature-teile", "implementation", "app"))
         assertEquals(listOf("Schichtung der Kernmodule: core-zustand hängt an core-ui"), pruefe("core-zustand", "implementation", "core-ui"))
-        assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-netz"), pruefe("core-data", "api", "core-netz"))
+        assertEquals(listOf("Modulkanten per api nur zu core-model und core-vertrag: core-data → core-netz"), pruefe("core-data", "api", "core-netz"))
         assertEquals(listOf("feature-konto bindet core-testing nicht nur für Tests ein"), pruefe("feature-konto", "implementation", "core-testing"))
         assertEquals(listOf("feature-konto hängt an core-sicherheit, das unter dem Zustand liegt"),
             pruefe("feature-konto", "implementation", "core-sicherheit"))

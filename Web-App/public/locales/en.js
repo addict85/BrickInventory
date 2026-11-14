@@ -819,6 +819,7 @@ window.I18N_EN = {
   'monitor.art.preise': 'Update prices',
   'monitor.art.preise_nachladen': 'Fetch missing prices',
   'monitor.art.konto_dateien': 'Remove files of deleted accounts',
+  'monitor.art.widerrufsliste': 'Device key revocation list',
   'set.kaufpreis_folgt':
     'Quantity saved. The market price for the new copy was unavailable and will be filled in later.',
   'monitor.degradiert': 'Incomplete, a part could not be read: {teile}. The numbers there are placeholders.',

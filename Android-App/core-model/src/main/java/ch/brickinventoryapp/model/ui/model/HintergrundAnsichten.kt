@@ -1,9 +1,7 @@
 package ch.brickinventoryapp.model.ui.model
 
-import ch.brickinventoryapp.model.data.model.Auftrag
-import ch.brickinventoryapp.model.data.model.AuftraegeResponse
-
 /** Zustand eines Auftrags; was der Server neu einführt, landet bei UNBEKANNT statt zu brechen. */
+
 enum class AuftragStatus {
     OFFEN, LAEUFT, FEHLER, ABGEBROCHEN, ERLEDIGT, UNBEKANNT;
 
@@ -44,23 +42,4 @@ data class HintergrundAnsicht(
     val bildbedarf: Int,
     /** False: Kein Job-Prozess meldet sich — dann bewegt sich keiner der Aufträge. */
     val jobProzessLaeuft: Boolean,
-)
-
-fun Auftrag.alsAnsicht() = AuftragAnsicht(
-    id = id, art = art, status = AuftragStatus.aus(status),
-    versuch = versuche, maxVersuche = maxVersuche, geplant = geplant, faelligAb = faelligAb,
-    fortschrittText = fortschritt?.let { f ->
-        listOfNotNull(
-            if (f.erledigt != null && f.gesamt != null) "${f.erledigt}/${f.gesamt}" else null,
-            f.text?.takeIf { it.isNotBlank() },
-        ).joinToString(" · ").ifBlank { null }
-    },
-    fehler = fehler?.takeIf { it.isNotBlank() }, setNumber = setNumber,
-)
-
-fun AuftraegeResponse.alsAnsicht() = HintergrundAnsicht(
-    auftraege = auftraege.map { it.alsAnsicht() },
-    pausen = pausen.map { AuftragsPauseAnsicht(it.art, it.bis, it.grund.orEmpty()) },
-    bildbedarf = bildbedarf,
-    jobProzessLaeuft = jobProzess.laeuft,
 )

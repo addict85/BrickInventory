@@ -5,6 +5,7 @@ package ch.brickinventoryapp.model.fach
  * Datenklasse, weil die Dialoge und das ViewModel sonst sechs Werte nach ihrer
  * Stellung weiterreichen und zwei vertauschte `Int?` niemand bemerkt.
  */
+
 data class Erfassungswunsch(
     val setNumber: String,
     val menge: Int = 1,

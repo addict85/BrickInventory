@@ -2,12 +2,12 @@ package ch.brickinventoryapp.teile
 
 import ch.brickinventoryapp.model.fach.Teilerfassung
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.data.model.BrickColor
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
-import ch.brickinventoryapp.model.data.model.Part
-import ch.brickinventoryapp.model.data.model.PartValuationItem
+import ch.brickinventoryapp.vertrag.BrickColor
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
+import ch.brickinventoryapp.vertrag.Part
+import ch.brickinventoryapp.vertrag.PartValuationItem
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
 import ch.brickinventoryapp.testing.FigurenRepository
@@ -67,7 +67,7 @@ class KeineFarbeTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache), FigurenRepository(t.api, t.cache), t.kontosicht, SavedStateHandle()))
+    private fun vm() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api), FigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
 
     private fun koerperZu(methodeUndPfad: String): String {
         val i = pfade.anfragen.indexOfFirst { it == methodeUndPfad }

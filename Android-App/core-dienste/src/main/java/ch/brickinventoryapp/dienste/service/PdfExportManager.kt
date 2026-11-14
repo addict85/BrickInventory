@@ -4,11 +4,11 @@ import android.content.Context
 import ch.brickinventoryapp.data.di.Anwendungsbereiche
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetDateienRepository
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
 import ch.brickinventoryapp.data.service.PdfAuftragsStrom
 import ch.brickinventoryapp.data.service.PdfFehlschlag
 import ch.brickinventoryapp.data.util.Teilelistentresor
-import ch.brickinventoryapp.model.data.model.PdfAuftragStand
+import ch.brickinventoryapp.vertrag.PdfAuftragStand
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.model.fach.PdfFortschritt
 import ch.brickinventoryapp.model.fach.PdfSchritt

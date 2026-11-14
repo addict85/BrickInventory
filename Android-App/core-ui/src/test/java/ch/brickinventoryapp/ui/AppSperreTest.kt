@@ -17,6 +17,8 @@ import org.junit.Test
  *   C  in imVordergrund() der Vergleich des Gerätestarts gestrichen (`neugestartet = false`)
  *      → rot „nach einem Neustart gesperrt, auch wenn die Uhr schon weiter ist“;
  *      gegenproben/app-sperre-ohne-geraetestart.patch
+ *   D  (14.11.2026, kotlinc) verdecktWidget() nur `ablage.gesperrt()` → rot „das Widget
+ *      verdeckt seine Betraege, sobald die Sperre greifen kann“; gegenproben/widget-trotz-sperre.patch
  */
 class AppSperreTest {
 
@@ -110,5 +112,23 @@ class AppSperreTest {
         jetzt += AppSperre.MINUTE_MS
         s.imVordergrund()
         assertTrue("Ist der Zähler nicht mehr lesbar, ist ein Neustart nicht ausgeschlossen", s.gesperrt.value)
+    }
+
+    @Test
+    fun `das Widget verdeckt seine Betraege, sobald die Sperre greifen kann`() {
+        val s = sperre()
+        s.imHintergrund()
+        assertFalse("Ohne Sperre zeigt es sie", AppSperre.verdecktWidget(ablage))
+        s.imVordergrund()
+        s.setzeMinuten(15)
+        assertFalse("Im Vordergrund und entsperrt", AppSperre.verdecktWidget(ablage))
+        s.imHintergrund()
+        assertTrue("Im Hintergrund, auch vor Ablauf der Frist", AppSperre.verdecktWidget(ablage))
+        jetzt += 15 * AppSperre.MINUTE_MS
+        s.imVordergrund()
+        assertTrue(s.gesperrt.value)
+        assertTrue("Gesperrt im Vordergrund", AppSperre.verdecktWidget(ablage))
+        s.entsperrt()
+        assertFalse(AppSperre.verdecktWidget(ablage))
     }
 }

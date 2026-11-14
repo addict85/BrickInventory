@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.model
 
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.model.data.model.PreisalarmRequest
+import ch.brickinventoryapp.vertrag.Preisalarm
+import ch.brickinventoryapp.vertrag.PreisalarmRequest
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.fach.Zustand

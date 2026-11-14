@@ -19,6 +19,8 @@ const TAG = {
   anmeldeFrist: 505,
   nurEntsperrt: 509,
   herkunft: 702,
+  rootOfTrust: 704,
+  patchstand: 706,
   appKennung: 709,
 } as const;
 const ZWECK_SIGNIEREN = 2;
@@ -27,6 +29,7 @@ const KURVE_P256 = 1;
 const HERKUNFT_ERZEUGT = 0;
 /** PASSWORD | FINGERPRINT: die Gerätesperre oder starke Biometrie. */
 const ANMELDE_ARTEN = 0b11;
+const BOOT_VERIFIZIERT = 0;
 
 export type Sicherheit = 'software' | 'tee' | 'strongbox';
 const SICHERHEIT: readonly Sicherheit[] = ['software', 'tee', 'strongbox'];
@@ -105,7 +108,27 @@ export interface Erwartung {
   paket: string;
   /** SHA-256 der Signaturzertifikate, Hex gross; leer nimmt keine App an. */
   digests: readonly string[];
+  /** Seriennummern aus Googles Widerrufsliste (seriennummer()); Pflicht, damit kein Aufrufer sie vergisst. */
+  widerrufen: ReadonlySet<string>;
+  patchMindestens?: number | null;
   jetzt?: Date;
+}
+
+/** So schreibt Googles Liste sie: Hex klein, ohne führende Nullen. */
+export function seriennummer(c: X509Certificate): string {
+  return c.serialNumber.toLowerCase().replace(/^0+(?=.)/, '');
+}
+
+/** Gesperrter Bootloader mit Googles oder des Herstellers Schlüssel: Sonst
+ * liesse sich ein KeyMint unterschieben, das jede Sperre bestätigt. */
+function pruefeBoot(t: Tlv | undefined): string | null {
+  if (!t) return 'ohne_root_of_trust';
+  const f = kinder(erwarte(t, UNIVERSAL.SEQUENCE));
+  const gesperrt = erwarte(f[1], UNIVERSAL.BOOLEAN).inhalt;
+  if (gesperrt.length !== 1) throw new DerFehler('RootOfTrust: deviceLocked kein BOOLEAN');
+  if (!gesperrt[0]) return 'bootloader_offen';
+  if (derZahl(erwarte(f[2], UNIVERSAL.ENUMERATED)) !== BOOT_VERIFIZIERT) return 'boot_unverifiziert';
+  return null;
 }
 
 export type Pruefung =
@@ -145,6 +168,9 @@ function pruefeBeschreibung(b: Beschreibung, e: Erwartung): string | null {
   if (!zwecke || !kinder(erwarte(zwecke, UNIVERSAL.SET)).some(t => derZahl(t) === ZWECK_SIGNIEREN))
     return 'kein_signieren';
   if (z(TAG.herkunft) !== HERKUNFT_ERZEUGT) return 'importiert';
+  const boot = pruefeBoot(hw.get(TAG.rootOfTrust));
+  if (boot) return boot;
+  if (e.patchMindestens && (z(TAG.patchstand) ?? 0) < e.patchMindestens) return 'patchstand_alt';
   // Die App verlangt die Sperre bei jeder Benutzung (Frist 0, siehe GeraeteSchluessel.kt).
   if (hw.has(TAG.ohneAnmeldung) || !((z(TAG.anmeldeArt) ?? 0) & ANMELDE_ARTEN)) return 'ohne_sperre';
   if ((z(TAG.anmeldeFrist) ?? 0) !== 0) return 'sperre_mit_frist';
@@ -164,6 +190,7 @@ export function pruefeKette(ketteB64: readonly string[], e: Erwartung): Pruefung
     const z = roh.map(d => new X509Certificate(d));
     const fehler = pruefeGlieder(z, e);
     if (fehler) return { ok: false, grund: fehler };
+    if (z.some(c => e.widerrufen.has(seriennummer(c)))) return { ok: false, grund: 'widerrufen' };
     const ext = attestationErweiterung(roh[0] as Buffer);
     if (!ext) return { ok: false, grund: 'ohne_attestation' };
     const b = leseBeschreibung(ext);

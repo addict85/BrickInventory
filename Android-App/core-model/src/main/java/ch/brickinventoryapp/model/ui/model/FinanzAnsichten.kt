@@ -2,15 +2,6 @@ package ch.brickinventoryapp.model.ui.model
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.DashboardStats
-import ch.brickinventoryapp.model.data.model.FigsValuationResponse
-import ch.brickinventoryapp.model.data.model.PartsValuationResponse
-import ch.brickinventoryapp.model.data.model.PnlResponse
-import ch.brickinventoryapp.model.data.model.PnlSetZeile
-import ch.brickinventoryapp.model.data.model.PnlTotals
-import ch.brickinventoryapp.model.data.model.Totals
-import ch.brickinventoryapp.model.data.model.ValuationResponse
-import ch.brickinventoryapp.model.data.model.ValuationSet
 
 // Bewertung, Gewinn und Kennzahlen; Beträge kommen fertig vom Server.
 
@@ -24,29 +15,11 @@ data class KennzahlenAnsicht(
     val teileEinzeln: Int? = null,
 )
 
-/** total_parts ist hier schon die Summe; set_parts fehlt bei älteren Servern, dann aus der Differenz. */
-fun DashboardStats.alsAnsicht() = KennzahlenAnsicht(
-    totalSets = totalSets,
-    totalQuantity = totalQuantity,
-    totalInstructions = totalInstructions,
-    totalParts = totalParts,
-    totalMinifigs = totalMinifigs,
-    teileAusSets = setParts ?: manualParts?.let { totalParts - it },
-    teileEinzeln = manualParts,
-)
-
 data class TeileBewertungAnsicht(
     val currency: Waehrung = Waehrung.EUR,
     val parts: List<ManuellesTeilAnsicht> = emptyList(),
     val totalValue: String,
     val kaufpreiseFremdeWaehrung: Int = 0,
-)
-
-fun PartsValuationResponse.alsAnsicht() = TeileBewertungAnsicht(
-    currency = currency,
-    parts = parts.map { it.alsAnsicht() },
-    totalValue = totalValue,
-    kaufpreiseFremdeWaehrung = kaufpreiseFremdeWaehrung,
 )
 
 data class FigurenBewertungAnsicht(
@@ -56,23 +29,10 @@ data class FigurenBewertungAnsicht(
     val kaufpreiseFremdeWaehrung: Int = 0,
 )
 
-fun FigsValuationResponse.alsAnsicht() = FigurenBewertungAnsicht(
-    currency = currency,
-    figs = figs.map { it.alsAnsicht() },
-    totalValue = totalValue,
-    kaufpreiseFremdeWaehrung = kaufpreiseFremdeWaehrung,
-)
-
 data class GewinnAnsicht(
     val currency: Waehrung = Waehrung.EUR,
     val totals: GewinnSummenAnsicht,
     val sets: List<GewinnZeileAnsicht> = emptyList(),
-)
-
-fun PnlResponse.alsAnsicht() = GewinnAnsicht(
-    currency = currency,
-    totals = totals.alsAnsicht(),
-    sets = sets.map { it.alsAnsicht() },
 )
 
 data class GewinnZeileAnsicht(
@@ -88,21 +48,6 @@ data class GewinnZeileAnsicht(
     val kachelPreis: Double? = null,
     val kachelPnlPct: Double? = null,
     val kachelQuelle: String? = null,
-)
-
-fun PnlSetZeile.alsAnsicht() = GewinnZeileAnsicht(
-    setNumber = setNumber,
-    quantity = quantity,
-    currentPrice = currentPrice,
-    baselinePrice = baselinePrice,
-    pnlPct = pnlPct,
-    baselinePnlPct = baselinePnlPct,
-    pnlBetrag = pnlBetrag,
-    pnlProzent = pnlProzent,
-    baselinePnlProzent = baselinePnlProzent,
-    kachelPreis = kachelPreis,
-    kachelPnlPct = kachelPnlPct,
-    kachelQuelle = kachelQuelle,
 )
 
 data class GewinnSummenAnsicht(
@@ -123,24 +68,6 @@ data class GewinnSummenAnsicht(
     val ohneKaufpreisMarktwert: String? = null,
 )
 
-fun PnlTotals.alsAnsicht() = GewinnSummenAnsicht(
-    purchase = purchase,
-    current = current,
-    pnlPct = pnlPct,
-    pnlProzent = pnlProzent,
-    kaufpreiseFremdeWaehrung = kaufpreiseFremdeWaehrung,
-    grandTotal = grandTotal,
-    positionen = positionen,
-    positionenBewertet = positionenBewertet,
-    positionenOhneMarktpreis = positionenOhneMarktpreis,
-    positionenOhneKaufpreis = positionenOhneKaufpreis,
-    basisEinstand = basisEinstand,
-    basisMarktwert = basisMarktwert,
-    basisGuvBetrag = basisGuvBetrag,
-    ohneMarktpreisEinstand = ohneMarktpreisEinstand,
-    ohneKaufpreisMarktwert = ohneKaufpreisMarktwert,
-)
-
 data class BewertungAnsicht(
     val currency: Waehrung = Waehrung.EUR,
     val condition: Zustand = Zustand.NEU,
@@ -148,15 +75,6 @@ data class BewertungAnsicht(
     val kaufpreiseFremdeWaehrung: Int = 0,
     val sets: List<BewertungSetAnsicht> = emptyList(),
     val totals: SummenAnsicht = SummenAnsicht(),
-)
-
-fun ValuationResponse.alsAnsicht() = BewertungAnsicht(
-    currency = currency,
-    condition = condition,
-    ttlStunden = ttlStunden,
-    kaufpreiseFremdeWaehrung = kaufpreiseFremdeWaehrung,
-    sets = sets.map { it.alsAnsicht() },
-    totals = totals.alsAnsicht(),
 )
 
 data class BewertungSetAnsicht(
@@ -181,35 +99,8 @@ data class BewertungSetAnsicht(
     val error: String? = null,
 )
 
-fun ValuationSet.alsAnsicht() = BewertungSetAnsicht(
-    setNumber = setNumber,
-    addedAt = addedAt,
-    name = name,
-    year = year,
-    quantity = quantity,
-    imageLocal = imageLocal,
-    imageUrl = imageUrl,
-    avgPrice = avgPrice,
-    qtyAvgPrice = qtyAvgPrice,
-    totalQtyAvg = totalQtyAvg,
-    totalAvg = totalAvg,
-    wertGesamt = wertGesamt,
-    pnlProzent = pnlProzent,
-    purchasePrice = purchasePrice,
-    noPrice = noPrice,
-    acquisitions = acquisitions.map { it.alsAnsicht() },
-    mixed = mixed,
-    error = error,
-)
-
 data class SummenAnsicht(
     val min: String = "0.00",
     val avg: String = "0.00",
     val max: String = "0.00",
-)
-
-fun Totals.alsAnsicht() = SummenAnsicht(
-    min = min,
-    avg = avg,
-    max = max,
 )

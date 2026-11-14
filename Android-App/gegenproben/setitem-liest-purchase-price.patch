@@ -3,9 +3,9 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.PurchasePriceDisplayTest
 Rot: die Anzeigeregel steht im Modell
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/SetModels.kt
+diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt
+--- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt
++++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/SetModels.kt
 @@ -125,7 +125,8 @@
       * die Adresse statt einer je Bildschirm. Leer heisst: kein Knopf statt eines
       * Knopfs ins Leere.

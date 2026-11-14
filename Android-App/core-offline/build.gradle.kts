@@ -22,8 +22,9 @@ android {
 }
 
 dependencies {
-    // Die Listen tragen Servermodelle (SetItem, Part …); wer sie liest, braucht die Typen.
     api(project(":core-model"))
+    // Die Listen tragen Servermodelle (SetItem, Part …); wer sie liest, braucht die Typen.
+    api(project(":core-vertrag"))
     // Der Schlüssel der Datenbank kommt aus dem Ablageschlüssel.
     implementation(project(":core-sicherheit"))
     implementation(libs.androidx.core.ktx)

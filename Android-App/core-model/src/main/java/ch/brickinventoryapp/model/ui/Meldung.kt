@@ -6,6 +6,7 @@ package ch.brickinventoryapp.model.ui
  * der Sprache, die sie gerade zeigt. Ein fertiger String im Zustand bliebe nach einem
  * Sprachwechsel in der alten Sprache stehen, und ein Test könnte nur Text vergleichen.
  */
+
 sealed interface Meldung {
     /** Ein fertiger Satz, etwa der des Servers. */
     data class Text(val text: String) : Meldung

@@ -8,11 +8,11 @@ import ch.brickinventoryapp.model.fach.Merksortierung
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.data.model.Merkposten
+import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.sitzung.abgeleitet
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
@@ -38,6 +38,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import ch.brickinventoryapp.zustand.ui.fehlerklasse
+import ch.brickinventoryapp.zustand.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.Laden
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sitzung.Sitzung
@@ -138,17 +140,16 @@ class MerklisteViewModel @Inject constructor(
     override fun ladeMerkliste() {
         viewModelScope.launch {
             val f = _merklisteState.value
-            _merklisteState.update { it.copy(laedt = true, fehler = null) }
+            _merklisteState.update { it.copy(abruf = Laden.Laedt) }
             val konto = kontoAbfrage(f)
             quelle.value = konto?.let { kontosicht.merkliste.beobachte(it) }
                 ?: merkliste.beobachteMerkliste(f.query.trim().ifBlank { null }, f.zustandFilter, f.sortierung)
             // Der Abruf füllt nur die Quelle; gezeigt wird sie (merklisteState).
             val r = konto?.let { kontosicht.merkliste.aktualisiere(it) } ?: merkliste.aktualisiereMerkliste()
             when (r) {
-                is Ergebnis.Success -> _merklisteState.update { it.copy(laedt = false) }
+                is Ergebnis.Success -> _merklisteState.update { it.copy(abruf = Laden.Daten(Unit, r.stand)) }
                 is Ergebnis.Error -> {
-                    _merklisteState.update { it.copy(laedt = false, fehler = meldungen.meldung(r),
-                        fehlerKlasse = fehlerklasse(r)) }
+                    _merklisteState.update { it.copy(abruf = Laden.Fehler(fehlerklasse(r), fehlerMeldung(r))) }
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
                 }
             }

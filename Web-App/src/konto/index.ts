@@ -6,6 +6,7 @@ export { UEBERLAPPUNG_MS, hashToken, rotationFaellig } from './geraeteToken';
 export { assertLoginAllowed } from './anmeldepruefung';
 export { USERNAME_RE, emailGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig, nameGueltig } from './namensRegeln';
 export { familieAus } from './geraeteChallenge';
+export { WIDERRUF_ZUSTAND, leseWiderrufsliste } from './attestation/widerrufsliste';
 export { invalidateTheme, startStilHash } from './indexHtml';
 export { LETZTER_VERWALTER, rechneWieRegistrierung } from './konten';
 export { loescheKontoDateien } from './kontoEntfernen';

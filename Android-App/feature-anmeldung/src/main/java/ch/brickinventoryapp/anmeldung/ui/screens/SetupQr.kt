@@ -42,7 +42,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.anmeldung.ui.QrLoginPayload
+import ch.brickinventoryapp.anmeldung.ui.qrUebernehmbar
 import ch.brickinventoryapp.anmeldung.ui.qrWechseltServer
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.Sichtschutz
@@ -77,6 +80,7 @@ internal fun QrVorschlagDialog(
     // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
     var eingabe by remember(vorschlag) { mutableStateOf("") }
     var befund by remember(vorschlag) { mutableStateOf<Abschrift?>(null) }
+    var zielBestaetigt by remember(vorschlag) { mutableStateOf(false) }
     val titel = stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)
     AlertDialog(
         onDismissRequest = onAbbrechen,
@@ -100,6 +104,13 @@ internal fun QrVorschlagDialog(
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (ansicht.international) Text(stringResource(R.string.setup_qr_international),
                         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Row(
+                        Modifier.fillMaxWidth().toggleable(zielBestaetigt, role = Role.Checkbox) { zielBestaetigt = it },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = zielBestaetigt, onCheckedChange = null)
+                        Text(stringResource(R.string.setup_qr_ziel_bestaetigen, ansicht.host), fontWeight = FontWeight.Bold)
+                    }
                 }
                 Text(stringResource(R.string.setup_qr_hinweis))
                 if (bisherHost != null) Text(stringResource(R.string.setup_qr_anderer_server, bisherHost),
@@ -144,7 +155,7 @@ internal fun QrVorschlagDialog(
             }
         },
         confirmButton = {
-            TextButton(enabled = !qrGesperrt && (!abtippen || eingabe.isNotBlank()), onClick = {
+            TextButton(enabled = qrUebernehmbar(qrGesperrt, zielBestaetigt, abtippen, eingabe), onClick = {
                 val fp = vorschlag.fingerabdruck
                 val pruefung = if (abtippen) fp?.let { Abschrift.von(eingabe, it) } ?: Abschrift.PASST_NICHT else Abschrift.PASST
                 if (pruefung != Abschrift.PASST) {

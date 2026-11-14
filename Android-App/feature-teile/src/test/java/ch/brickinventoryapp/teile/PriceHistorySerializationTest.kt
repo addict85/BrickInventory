@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.teile
 
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.data.model.PriceHistoryResponse
-import ch.brickinventoryapp.model.data.model.MinifigsResponse
-import ch.brickinventoryapp.model.data.model.PartsValuationResponse
-import ch.brickinventoryapp.model.data.model.SetsResponse
-import ch.brickinventoryapp.model.data.model.ValuationResponse
+import ch.brickinventoryapp.vertrag.PriceHistoryResponse
+import ch.brickinventoryapp.vertrag.MinifigsResponse
+import ch.brickinventoryapp.vertrag.PartsValuationResponse
+import ch.brickinventoryapp.vertrag.SetsResponse
+import ch.brickinventoryapp.vertrag.ValuationResponse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
