@@ -231,7 +231,16 @@ zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
 
 Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
 (`sicherheit/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
-Zweck gebunden):
+Zweck gebunden). Der Ablageschlüssel ist wie das Token unter einem Keystore-Schlüssel
+mit `setUnlockedDeviceRequired` umhüllt (`EntsperrTresor`, Alias
+`brickinventory_ablage_entsperrt`): Ein Prozess, der bei gesperrtem Gerät neu startet,
+liest weder Bestand noch Kaufpreise. Ein Schlüssel älterer Fassungen (Alias
+`brickinventory_ablage`, ohne Bedingung) wird beim ersten Zugriff mit entsperrtem Gerät
+umgeschlüsselt, derselbe Schlüssel, nichts geht verloren (`AblageEntsperrtTest`); kann
+der Keystore die Bedingung nicht, bleibt der alte als Ausweg. Gesperrt meldet eine
+Ablage „gesperrt“ (IOException) statt „unlesbar“, damit niemand ihre Dateien löscht.
+Der Ausgang liegt in derselben Datenbank: Senden braucht ohnehin das Token, und das
+öffnet sich ebenfalls nur entsperrt; ein laufender Prozess hält beide im Speicher.
 
 | Ablage | Wie |
 | --- | --- |
@@ -261,10 +270,11 @@ Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war,
 gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `AbmeldenRaeumtAllesTest`
 prüft das ausgeführt.
 
-**Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
-Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
-`sicherheit/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
-erkennung am Server und die harte Höchstdauer von 180 Tagen.
+**Token und Ablagen unter `setUnlockedDeviceRequired`** (`EntsperrTresor`): Preisalarm,
+Widget und Ausgang arbeiten im Hintergrund nur in einem Prozess, der seit dem letzten
+Entsperren läuft; ein bei gesperrtem Gerät neu gestarteter wartet bis zum Entsperren
+(`liesToken`, Rückzug von WorkManager). Abgefedert ist der Rest durch die Rotation mit
+Wiederverwendungserkennung am Server und die harte Höchstdauer von 180 Tagen.
 
 **Pins und Nutzer-CA-Schalter verschlüsselt:** Sie liegen in `design_spiegel.xml`
 als `Vertrauenschiffre` (AES-GCM, an den Namen des Eintrags gebunden) unter einem
