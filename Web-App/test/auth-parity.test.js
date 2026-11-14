@@ -39,12 +39,14 @@ function anmeldeHandler() {
   const treffer = [];
   for (const datei of alle) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of src.matchAll(/(?:router|app)\.(post|put)\(\s*'([^']*login[^']*)'/g)) {
+    for (const m of src.matchAll(
+      /(?:router|app)\.(?:(?:post|put)\(\s*'|endpunkt\(\s*'(?:POST|PUT) )([^']*login[^']*)'/g,
+    )) {
       // Der Rumpf reicht bis zur nächsten Routendefinition. Kommentare sind
       // schon weg — sonst zählte ein Erklärtext, der „password" erwähnt, mit.
       const rel = src.slice(m.index + 1).search(/\n\s*(?:router|app)\.[a-z]+\(/);
       const koerper = rel < 0 ? src.slice(m.index) : src.slice(m.index, m.index + 1 + rel);
-      treffer.push({ datei: path.relative(ROOT, datei), pfad: m[2], koerper });
+      treffer.push({ datei: path.relative(ROOT, datei), pfad: m[1], koerper });
     }
   }
   return treffer;

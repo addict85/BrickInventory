@@ -27,7 +27,7 @@ function routen() {
     const datei = path.join(ROOT, rel + '.ts');
     if (!fs.existsSync(datei)) return;
     const s = fs.readFileSync(datei, 'utf8');
-    for (const m of s.matchAll(/router\.(get|post|put|delete|patch)\(\s*['`]([^'`]*)['`]/g)) {
+    for (const m of require('./helpers/sources').routenAusQuelle(s, praefix)) {
       raus.add(`${m[1].toUpperCase()} ${(praefix + m[2]).replace(/\/\//g, '/')}`);
     }
   }

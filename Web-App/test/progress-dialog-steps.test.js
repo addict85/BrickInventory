@@ -193,8 +193,8 @@ test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
   // Die Route und ihr Helfer ergaenzeImStrom (vor der Router-Fabrik).
   const strom =
     route.slice(
-      route.indexOf("router.post('/sets/add-stream'"),
-      route.indexOf("router.post('/sets/:setNumber/parts'"),
+      route.indexOf("router.endpunkt('POST /api/v1/sets/add-stream'"),
+      route.indexOf("router.endpunkt('POST /api/v1/sets/:setNumber/parts'"),
     ) +
     route.slice(
       route.indexOf('async function ergaenzeImStrom('),

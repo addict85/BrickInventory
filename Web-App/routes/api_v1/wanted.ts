@@ -15,7 +15,7 @@ import type { WantedXmlErgebnis } from '../../src/vertrag/merkliste';
 
 import { jsonOderNull } from '../../src/infra/validate';
 import { seiteAus } from '../../src/infra/seite';
-import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 type WantedXmlBericht = Pick<
   z.infer<typeof WantedXmlErgebnis>,
@@ -64,122 +64,85 @@ async function importImStrom(
 
 export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' | 'haushalt' | 'konto' | 'merkliste'>) {
   const { requireToken } = waechterFuer(d.konto);
-  const router = vertragsRouter();
+  const router = vertragsRouter('/api/v1');
 
   // Blickfeld wie überall: Wer ein Geschenk sucht, sieht die Merkposten der Enkel.
-  router.get(
-    '/wanted',
-    requireToken,
-    async (req: Anfrage<'GET /api/v1/wanted'>, res: Antwort<'GET /api/v1/wanted'>) => {
-      const ids = sichtVon(req);
-      // Die Währung des LESERS; price_cache ist je Währung verschlüsselt, deshalb
-      // gehört sie in die Abfrage.
-      const waehrung = await d.einstellungen.getSetting(req.apiUser.user_id, 'currency', 'EUR');
-      const merkposten = await d.merkliste.merkpostenVon(ids, undefined, waehrung, {
-        suche: req.abfrage.search,
-        zustand: req.abfrage.condition,
-        sortierung: req.abfrage.sort,
-      });
-      const { eintraege, ...seite } = seiteAus(merkposten, req.abfrage);
-      res.json({ success: true, merkposten: eintraege, ...seite });
-    },
-  );
+  router.endpunkt('GET /api/v1/wanted', requireToken, async req => {
+    const ids = sichtVon(req);
+    // Die Währung des LESERS; price_cache ist je Währung verschlüsselt, deshalb
+    // gehört sie in die Abfrage.
+    const waehrung = await d.einstellungen.getSetting(req.apiUser.user_id, 'currency', 'EUR');
+    const merkposten = await d.merkliste.merkpostenVon(ids, undefined, waehrung, {
+      suche: req.abfrage.search,
+      zustand: req.abfrage.condition,
+      sortierung: req.abfrage.sort,
+    });
+    const { eintraege, ...seite } = seiteAus(merkposten, req.abfrage);
+    return { merkposten: eintraege, ...seite };
+  });
 
   /** Alle drei Wege (Katalog, Setnummer, Barcode) landen hier, damit die Regeln
    * nicht vom Weg abhängen. */
-  router.post(
-    '/wanted',
-    requireToken,
-    async (req: Anfrage<'POST /api/v1/wanted'>, res: Antwort<'POST /api/v1/wanted'>) => {
-      const { set_number, condition, owner_user_id } = req.eingabe;
-      if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
-      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
-      const { merkposten, war_neu } = await d.merkliste.legeMerkpostenAn(owner, set_number, condition);
-      res.json({ success: true, war_neu, merkposten });
-    },
-  );
+  router.endpunkt('POST /api/v1/wanted', requireToken, async (req, res) => {
+    const { set_number, condition, owner_user_id } = req.eingabe;
+    if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
+    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
+    const { merkposten, war_neu } = await d.merkliste.legeMerkpostenAn(owner, set_number, condition);
+    return { war_neu, merkposten };
+  });
 
   // Zwei Kontenprüfungen: heraus aus dem einen UND hinein ins andere Konto.
-  router.put(
-    '/wanted/:setNumber/:condition/inhaber',
-    requireToken,
-    async (
-      req: Anfrage<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>,
-      res: Antwort<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>,
-    ) => {
-      const von = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-      const zu = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
-      const r = await d.merkliste.verschiebeMerkposten(von, req.pfad.setNumber, req.pfad.condition, zu);
-      res.json({ success: true, ...r, owner_user_id: zu });
-    },
-  );
+  router.endpunkt('PUT /api/v1/wanted/:setNumber/:condition/inhaber', requireToken, async req => {
+    const von = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const zu = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
+    const r = await d.merkliste.verschiebeMerkposten(von, req.pfad.setNumber, req.pfad.condition, zu);
+    return { ...r, owner_user_id: zu };
+  });
 
   /** Der Zustand steht im Pfad, weil er zum Schlüssel gehört: Dasselbe Set kann
    * neu UND gebraucht gewünscht sein. */
-  router.delete(
-    '/wanted/:setNumber/:condition',
-    requireToken,
-    async (
-      req: Anfrage<'DELETE /api/v1/wanted/:setNumber/:condition'>,
-      res: Antwort<'DELETE /api/v1/wanted/:setNumber/:condition'>,
-    ) => {
-      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
-      const weg = await d.merkliste.loescheMerkposten(owner, req.pfad.setNumber, req.pfad.condition);
-      res.json({ success: true, geloescht: weg });
-    },
-  );
+  router.endpunkt('DELETE /api/v1/wanted/:setNumber/:condition', requireToken, async req => {
+    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
+    const weg = await d.merkliste.loescheMerkposten(owner, req.pfad.setNumber, req.pfad.condition);
+    return { geloescht: weg };
+  });
 
   /** BEIDE Zustände, frisch geholt. */
-  router.get(
-    '/wanted/:setNumber/preise',
-    requireToken,
-    async (
-      req: Anfrage<'GET /api/v1/wanted/:setNumber/preise'>,
-      res: Antwort<'GET /api/v1/wanted/:setNumber/preise'>,
-    ) => {
-      const sn = req.pfad.setNumber;
-      const preise = await d.merkliste.preiseBeiderZustaende(req.apiUser.user_id, sn);
-      res.json({ success: true, set_number: sn, ...preise });
-    },
-  );
+  router.endpunkt('GET /api/v1/wanted/:setNumber/preise', requireToken, async req => {
+    const sn = req.pfad.setNumber;
+    const preise = await d.merkliste.preiseBeiderZustaende(req.apiUser.user_id, sn);
+    return { set_number: sn, ...preise };
+  });
 
   /** Die Regel steht in merkliste.ts:uebernimm(); hier bleibt nur, wer schreiben darf. */
-  router.post(
-    '/wanted/:setNumber/:condition/uebernehmen',
-    requireToken,
-    async (
-      req: Anfrage<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>,
-      res: Antwort<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>,
-    ) => {
-      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-      const r = await d.merkliste.uebernimm(
-        req.apiUser.user_id,
-        owner,
-        req.pfad.setNumber,
-        req.pfad.condition,
-        req.eingabe ?? {},
-      );
-      res.json({ success: true, ...r });
-    },
-  );
+  router.endpunkt('POST /api/v1/wanted/:setNumber/:condition/uebernehmen', requireToken, async req => {
+    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const r = await d.merkliste.uebernimm(
+      req.apiUser.user_id,
+      owner,
+      req.pfad.setNumber,
+      req.pfad.condition,
+      req.eingabe ?? {},
+    );
+    return { ...r };
+  });
 
   /** Das Gegenstück zu buildMerklisteCsv(). */
-  router.post(
-    '/wanted/import/csv',
+  router.endpunkt(
+    'POST /api/v1/wanted/import/csv',
     requireToken,
     kontoSchranke('upload'),
     csvEmpfang.single('file'),
-    async (req: Anfrage<'POST /api/v1/wanted/import/csv'>, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
+    async (req, res) => {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
       const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
-      res.json({
-        success: true,
+      return {
         ...(await d.auftraege.importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'merkliste_csv', {
           owner,
           text: req.file.buffer.toString('utf-8'),
         })),
-      });
+      };
     },
   );
 
@@ -187,15 +150,12 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
    * die dritte Sicherheitsstufe der Abbildung nur eine Vermutung ist. Gerechnet
    * wird im Auftrag (src/sammlung/wantedXmlImport.ts); mit `strom=1` gehen dessen
    * Zwischenstände als NDJSON-Zeilen hinaus, ohne als eine JSON-Antwort (App). */
-  router.post(
-    '/wanted-list/import/xml',
+  router.endpunkt(
+    'POST /api/v1/wanted-list/import/xml',
     requireToken,
     kontoSchranke('upload'),
     xmlEmpfang.single('file'),
-    async (
-      req: Anfrage<'POST /api/v1/wanted-list/import/xml'>,
-      res: Antwort<'POST /api/v1/wanted-list/import/xml'>,
-    ) => {
+    async (req, res) => {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
       const xml = req.file.buffer.toString('utf-8');
       // Ohne <INVENTORY> keine Wanted-Liste — eine bessere Auskunft als „0 Posten".
@@ -211,10 +171,7 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
       };
       const uid = req.apiUser.user_id;
       if (!req.abfrage.strom)
-        return res.json({
-          success: true,
-          ...(await d.auftraege.importAlsAuftrag<WantedXmlBericht>(uid, 'wanted_xml', eingabe)),
-        });
+        return { ...(await d.auftraege.importAlsAuftrag<WantedXmlBericht>(uid, 'wanted_xml', eingabe)) };
 
       await importImStrom(d, req, res, uid, eingabe);
     },

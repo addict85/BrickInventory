@@ -824,7 +824,7 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
     if (n) ist.set(d, n);
   }
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTEN));
-  for (const d of tsUnter('routes').filter(d => /router\.(get|post|put|delete|patch)\(/.test(quelltext(d))))
+  for (const d of tsUnter('routes').filter(d => /router\.(get|post|put|delete|patch|endpunkt)\(/.test(quelltext(d))))
     assert.match(quelltext(d), /router\.use\(fehlerAntwort\)/, `${d} endet nicht mit dem Fehlerweg`);
 });
 

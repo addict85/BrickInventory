@@ -6,12 +6,14 @@ import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../infra/konfig';
 import { routeZu, type Schluessel, type AntwortRumpf, type Eingabe, type Abfrage } from '../vertrag';
 import { unbekannteFelder } from '../vertrag/unbekannteFelder';
-import { FLACHE_EINGABE, Fehler, PFAD, type PfadVon } from '../vertrag/grund';
+import { FLACHE_EINGABE, Fehler, PFAD, type PfadVon, type Route } from '../vertrag/grund';
 import { GROESSTE_ID, idWert } from '../infra/validate';
 import { handleRouteError, sendeFehler } from './httpAntwort';
 
 /** Der Typ von `res` in einer Route: tsc meldet, wo die Antwort vom Vertrag abweicht. */
-export type Antwort<K extends Schluessel> = Response<AntwortRumpf<K> | z.input<typeof Fehler>>;
+export type Antwort<K extends Schluessel> = [AntwortRumpf<K>] extends [never]
+  ? Response
+  : Response<AntwortRumpf<K> | z.input<typeof Fehler>>;
 /** Der Typ von `req` in einer Route: `eingabe`, `abfrage` und `pfad` so, wie der Vertrag sie geprüft hat. */
 export type Anfrage<K extends Schluessel, R extends Request = AuthedRequest> = R & {
   eingabe: Eingabe<K>;
@@ -30,33 +32,31 @@ const ABFRAGE_HOECHSTENS = 4000;
  * Rumpf: Was das Schema umwandelt oder abweist, sieht sie nie anders. */
 const KENNUNGEN = new Set(['id', 'acqId', 'instrId']);
 
-export function eingabePruefen(req: Request, res: Response, next: NextFunction): void {
+function eingabePruefen(route: Route, req: Request, res: Response, next: NextFunction): void {
   for (const [name, wert] of Object.entries(req.query ?? {}))
     if (typeof wert !== 'string' || wert.length > ABFRAGE_HOECHSTENS) {
       sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
       return;
     }
-  const route = req.route ? routeZu(`${req.method} ${req.baseUrl}${req.route.path}`) : undefined;
   const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown; pfad: Record<string, unknown> };
   geprueft.pfad = Object.create(null) as Record<string, unknown>;
   // Geschrieben wird nur unter Namen aus PFAD, nie unter einem aus der Anfrage.
-  if (route)
-    for (const [name, schema] of Object.entries(PFAD as Record<string, z.ZodType>)) {
-      if (!Object.hasOwn(req.params ?? {}, name)) continue;
-      const r = schema.safeParse(req.params[name]);
-      if (!r.success) {
-        if (KENNUNGEN.has(name)) sendeFehler(req, res, 400, 'id_ungueltig');
-        else sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name });
-        return;
-      }
-      geprueft.pfad[name] = r.data;
+  for (const [name, schema] of Object.entries(PFAD as Record<string, z.ZodType>)) {
+    if (!Object.hasOwn(req.params ?? {}, name)) continue;
+    const r = schema.safeParse(req.params[name]);
+    if (!r.success) {
+      if (KENNUNGEN.has(name)) sendeFehler(req, res, 400, 'id_ungueltig');
+      else sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name });
+      return;
     }
-  const fremd = route && Object.keys(req.params ?? {}).find(name => !Object.hasOwn(PFAD, name));
+    geprueft.pfad[name] = r.data;
+  }
+  const fremd = Object.keys(req.params ?? {}).find(name => !Object.hasOwn(PFAD, name));
   if (fremd) {
     sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: fremd.slice(0, 40) });
     return;
   }
-  if (route?.abfrage) {
+  if (route.abfrage) {
     const q = route.abfrage.safeParse(req.query ?? {});
     if (!q.success) {
       meldeAbweichung(req, res, q.error);
@@ -65,11 +65,11 @@ export function eingabePruefen(req: Request, res: Response, next: NextFunction):
     geprueft.abfrage = q.data;
   } else geprueft.abfrage = {};
   geprueft.eingabe = {};
-  if (!route?.eingabe && (route?.formular || req.method === 'GET')) {
+  if (!route.eingabe && (route.formular || req.method === 'GET')) {
     next();
     return;
   }
-  const r = (route?.eingabe ?? FLACHE_EINGABE).safeParse(req.body ?? {});
+  const r = (route.eingabe ?? FLACHE_EINGABE).safeParse(req.body ?? {});
   if (!r.success) {
     meldeAbweichung(req, res, r.error);
     return;
@@ -108,7 +108,7 @@ function antwortGegenVertrag(req: Request, res: Response, next: NextFunction): v
   res.locals.vertragGeprueft = true;
   const senden = res.json.bind(res);
   res.json = (rumpf: unknown) => {
-    const schluessel = `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`;
+    const schluessel = String(res.locals.vertragsSchluessel ?? `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`);
     const route = res.statusCode < 300 && req.route ? routeZu(schluessel) : undefined;
     const fehler: string[] = [];
     const pruefe = (teil: string, schema: import('zod').ZodType | undefined, wert: unknown) => {
@@ -155,40 +155,73 @@ export type Waechter<R extends Request> = ((req: Request, res: Response, next: N
 export function waechter<R extends Request>(f: (req: Request, res: Response, next: NextFunction) => void): Waechter<R> {
   return Object.assign(f, { sichert: (r: R) => r });
 }
-type Schritt<R extends Request, S extends Response> = (req: R & Geprueft, res: S, next: NextFunction) => unknown;
-/** Was eingabePruefen setzt, passt zu jedem Anfrage<K>: Den Typ nennt der Vertrag der Route. */
-type Geprueft = { eingabe: never; abfrage: never; pfad: never };
-type Bewacht = <R extends Request, S extends Response>(
-  pfad: string,
-  w: Waechter<R>,
-  ...schritte: Schritt<R, S>[]
-) => VertragsRouter;
-type Offen = <S extends Response>(pfad: string, ...schritte: Schritt<Request, S>[]) => VertragsRouter;
-/** Wie express.Router; steht ein Wächter vorn, bekommen die Schritte dahinter seinen Request-Typ. */
-export type VertragsRouter = express.Router & {
-  get: Bewacht & Offen;
-  post: Bewacht & Offen;
-  put: Bewacht & Offen;
-  patch: Bewacht & Offen;
-  delete: Bewacht & Offen;
-};
 
-/** Ein Router, der Eingaben im Betrieb und seine Antworten in Tests gegen den
- * Vertrag prüft — auch dort, wo ein Test ihn ohne routes/api_v1/index.ts einhängt. */
-export function vertragsRouter(o: { grosseIds?: boolean } = {}): VertragsRouter {
+type Methode = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+/** Die Schlüssel, deren Pfad unter dem Präfix des Routers liegt: Ein anderer kompiliert nicht. */
+export type SchluesselUnter<P extends string> = Schluessel extends infer K
+  ? K extends `${Methode} ${P}/${string}` | `${Methode} ${P}`
+    ? K
+    : never
+  : never;
+/** Was eine Route zurückgibt, setzt der Router in die Hülle `{ success: true, … }`. Nur
+ * Routen, deren Vertrag `success` nennt, haben eine; die übrigen antworten selbst. */
+export type Ergebnis<K extends Schluessel> =
+  AntwortRumpf<K> extends infer R
+    ? [keyof R] extends [never]
+      ? [R] extends [never]
+        ? never
+        : Record<string, unknown>
+      : 'success' extends keyof R
+        ? Omit<R, 'success'>
+        : never
+    : never;
+// biome-ignore lint/suspicious/noConfusingVoidType: Eine Route antwortet auch selbst (`return sendeFehler(…)`), und das ist void.
+type Rueckgabe<K extends Schluessel> = Ergebnis<K> | Response | undefined | void;
+export type Handler<K extends Schluessel, R extends Request> = (
+  req: Anfrage<K, R>,
+  res: Antwort<K>,
+) => Rueckgabe<K> | Promise<Rueckgabe<K>>;
+type Zwischenschritt = (req: Request, res: Response, next: NextFunction) => unknown;
+
+interface Vertragswege<P extends string> {
+  readonly praefix: P;
+  /** Registriert die Route des Vertragsschlüssels: Methode, Pfad und Typen kommen aus ihm.
+   * Steht ein Wächter vorn, bekommt die Route seinen Request-Typ. */
+  endpunkt<K extends SchluesselUnter<P>, R extends Request>(
+    schluessel: K,
+    w: Waechter<R>,
+    ...schritte: [...Zwischenschritt[], Handler<K, R>]
+  ): VertragsRouter<P>;
+  endpunkt<K extends SchluesselUnter<P>>(
+    schluessel: K,
+    ...schritte: [...Zwischenschritt[], Handler<K, Request>]
+  ): VertragsRouter<P>;
+  /** Hängt einen Router mit gleichem oder längerem Präfix ein. */
+  haengeEin<Q extends `${P}${string}`>(kind: VertragsRouter<Q>): VertragsRouter<P>;
+}
+/** Wie express.Router, aber Routen nur über `endpunkt`: Ein Pfad ohne Vertragsschlüssel kompiliert nicht. */
+export type VertragsRouter<P extends string> = Omit<
+  express.Router,
+  'get' | 'post' | 'put' | 'patch' | 'delete' | 'route'
+> &
+  express.RequestHandler &
+  Vertragswege<P>;
+
+/** Ein Router unter einem anderen Präfix als dem seiner Schlüssel: Seine Routen wären
+ * unter einem Pfad erreichbar, den der Vertrag nicht kennt. */
+export class FalschEingehaengt extends Error {
+  constructor(praefix: string, basis: string) {
+    super(`Vertragsrouter für ${praefix} ist unter ${basis || '/'} eingehängt`);
+  }
+}
+
+/** Ein Router, der Eingaben im Betrieb und seine Antworten in Tests gegen den Vertrag
+ * prüft — auch dort, wo ein Test ihn ohne routes/api_v1/index.ts einhängt. */
+export function vertragsRouter<P extends string>(praefix: P, o: { grosseIds?: boolean } = {}): VertragsRouter<P> {
   // Wie der Vertrag: Eine andere Schreibung ist eine andere Route (404), nicht dieselbe ohne Eintrag.
   const router = express.Router({ caseSensitive: true });
   const pruefung = vertragPruefen();
   if (pruefung) router.use(pruefung);
-  // Als letzter Schritt vor der Route, nach Anmeldung und Drossel: Deren
-  // Antworten (401, 429) bleiben, wie sie sind.
-  for (const m of ['get', 'post', 'put', 'patch', 'delete'] as const) {
-    const anmelden = router[m].bind(router) as (pfad: unknown, ...schritte: unknown[]) => express.Router;
-    Object.assign(router, {
-      [m]: (pfad: unknown, ...schritte: unknown[]) =>
-        anmelden(pfad, ...schritte.slice(0, -1), eingabePruefen, ...schritte.slice(-1)),
-    });
-  }
   // Jede Pfad-ID an einer Stelle: Eine zu grosse lief sonst bis in PostgreSQL
   // und kam als 500 zurück. Aufträge zählen bigint (grosseIds).
   const hoechstens = o.grosseIds ? Number.MAX_SAFE_INTEGER : GROESSTE_ID;
@@ -197,5 +230,42 @@ export function vertragsRouter(o: { grosseIds?: boolean } = {}): VertragsRouter 
       idWert(wert, hoechstens) === null ? sendeFehler(req, res, 400, 'id_ungueltig') : next(),
     );
   }
-  return router as VertragsRouter;
+  const anmelden = (methode: string, pfad: string, schritte: unknown[]) =>
+    (router as unknown as Record<string, (p: string, ...s: unknown[]) => unknown>)[methode.toLowerCase()]?.(
+      pfad,
+      ...schritte,
+    );
+  return Object.assign(router, {
+    praefix,
+    endpunkt(schluessel: string, ...schritte: unknown[]) {
+      const route = routeZu(schluessel);
+      const [methode = '', pfad = ''] = schluessel.split(' ');
+      if (!route || !(pfad === praefix || pfad.startsWith(`${praefix}/`)))
+        throw new Error(`${schluessel} steht nicht im Vertrag unter ${praefix}`);
+      const handler = schritte.pop() as (req: Request, res: Response) => unknown;
+      // Die Prüfung als letzter Schritt vor der Route, nach Anmeldung und Drossel:
+      // Deren Antworten (401, 429) bleiben, wie sie sind.
+      anmelden(methode, pfad.slice(praefix.length) || '/', [
+        ...schritte,
+        (req: Request, res: Response, next: NextFunction) => {
+          if (req.baseUrl.toLowerCase() !== praefix.toLowerCase()) throw new FalschEingehaengt(praefix, req.baseUrl);
+          res.locals.vertragsSchluessel = schluessel;
+          eingabePruefen(route, req, res, next);
+        },
+        async (req: Request, res: Response) => {
+          const r = await handler(req, res);
+          if (r === undefined || r === res || res.headersSent) return;
+          res.json({ success: true, ...(r as object) });
+        },
+      ]);
+      return router;
+    },
+    haengeEin(kind: VertragsRouter<string>) {
+      if (!kind.praefix.startsWith(praefix)) throw new FalschEingehaengt(kind.praefix, praefix);
+      const rest = kind.praefix.slice(praefix.length);
+      if (rest) router.use(rest, kind);
+      else router.use(kind);
+      return router;
+    },
+  }) as unknown as VertragsRouter<P>;
 }

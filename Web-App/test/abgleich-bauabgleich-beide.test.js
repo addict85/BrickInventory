@@ -143,7 +143,7 @@ test('Webapp: fragt den Endpunkt in Rebrickable-Schreibweise, unterscheidet lose
 test('App: fragt den Endpunkt, den der Server anbietet', () => {
   assert.match(
     web('routes/api_v1/parts.ts'),
-    new RegExp(`router\\.post\\(\\s*'${ROUTE}'`),
+    new RegExp(`router\\.endpunkt\\(\\s*'POST /api/v1${ROUTE}'`),
     'Der Endpunkt fehlt — dann fragt niemand irgendwo',
   );
 
@@ -201,7 +201,7 @@ test('App: fragt ihr Blickfeld an DIESER Stelle', () => {
   // den Namen in IDs übersetzen.
   assert.match(
     web('routes/api_v1/parts.ts'),
-    /router\.post\(\s*'\/parts\/owned'[\s\S]{0,400}?getOwnedQuantities\(\s*sichtVon\(req\)/,
+    /router\.endpunkt\(\s*'POST \/api\/v1\/parts\/owned'[\s\S]{0,400}?getOwnedQuantities\(\s*sichtVon\(req\)/,
     'Der Endpunkt übersetzt den Kontofilter nicht in IDs',
   );
 });

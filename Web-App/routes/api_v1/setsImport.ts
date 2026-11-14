@@ -9,7 +9,7 @@ import { sendeCsv } from '../../src/http/csvAntwort';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
 import { oeffneStrom, StromGeschlossen, type Strom } from '../../src/konto/http/strom';
 import { loginOrTokenGuard, angemeldeteNutzerId } from '../../src/konto/http/anmeldung';
-import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
 /** Das Set ist angelegt; endet der Zugang oder trennt der Client, bricht nur die
@@ -42,26 +42,19 @@ async function ergaenzeImStrom(
 
 export function baueSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
   const { requireToken } = waechterFuer(d.konto);
-  const router = vertragsRouter();
+  const router = vertragsRouter('/api/v1');
 
   // ── CSV-Import: Fortschritt als Abfrage und als Strom ───────────────────────
   // 503 nach 3 s statt zu warten: Die Zustandsrouten hängen an jeder geöffneten
   // Seite und dürfen bei voller Datenbank nicht stauen.
   const zustandsWaechter = loginOrTokenGuard(d.konto, { timeoutMs: 3000 });
 
-  router.get(
-    '/sets/import/csv/status',
-    zustandsWaechter,
-    async (
-      req: OffeneAnfrage<'GET /api/v1/sets/import/csv/status'>,
-      res: Antwort<'GET /api/v1/sets/import/csv/status'>,
-    ) => {
-      res.json(await d.sets.csvImportStand(angemeldeteNutzerId(req), req));
-    },
-  );
+  router.endpunkt('GET /api/v1/sets/import/csv/status', zustandsWaechter, async (req, res) => {
+    res.json(await d.sets.csvImportStand(angemeldeteNutzerId(req), req));
+  });
 
   // Offene Ströme je Konto zählt kontoSchranke('strom') für alle Ströme gemeinsam.
-  router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), async (req, res) => {
+  router.endpunkt('GET /api/v1/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), async (req, res) => {
     const uid = angemeldeteNutzerId(req);
     const strom = oeffneStrom(d.konto, req, res, { nurAenderungen: true, gegendruck: `csv-import ${uid}` });
     // EventSource setzt keine Kopfzeilen, die Sprache kommt deshalb als ?sprache=.
@@ -76,12 +69,12 @@ export function baueSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
     await sendeStand();
   });
 
-  router.post(
-    '/sets/import/csv',
+  router.endpunkt(
+    'POST /api/v1/sets/import/csv',
     requireToken,
     kontoSchranke('upload'),
     csvEmpfang.single('file'),
-    async (req: Anfrage<'POST /api/v1/sets/import/csv'>, res: Antwort<'POST /api/v1/sets/import/csv'>) => {
+    async (req, res) => {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
       const { total, uebersprungen, vorhanden, gestartet } = await d.sets.setCsvImportStarten(
         angemeldeteNutzerId(req),
@@ -89,31 +82,23 @@ export function baueSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
         req.abfrage.pruefen === true,
       );
       // Übersprungene Zeilen gehören in die sofortige Antwort; der Import läuft weiter.
-      res.json({
-        success: true,
+      return {
         total,
         gestartet,
         vorhanden: vorhanden.length,
         vorhanden_nummern: vorhanden.slice(0, 20),
         skipped: uebersprungen.length || undefined,
         skipped_hint: uebersprungenHinweis(uebersprungen, antwortSprache(req)) || undefined,
-      });
+      };
     },
   );
 
-  router.post(
-    '/sets/import/csv/cancel',
-    requireToken,
-    async (
-      req: OffeneAnfrage<'POST /api/v1/sets/import/csv/cancel'>,
-      res: Antwort<'POST /api/v1/sets/import/csv/cancel'>,
-    ) => {
-      await d.sets.setCsvImportAbbrechen(angemeldeteNutzerId(req));
-      res.json({ success: true });
-    },
-  );
+  router.endpunkt('POST /api/v1/sets/import/csv/cancel', requireToken, async req => {
+    await d.sets.setCsvImportAbbrechen(angemeldeteNutzerId(req));
+    return {};
+  });
 
-  router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
+  router.endpunkt('GET /api/v1/sets/export/rebrickable', requireToken, async (req, res) => {
     sendeCsv(
       res,
       `rebrickable-sets-${new Date().toISOString().substring(0, 10)}.csv`,
@@ -122,45 +107,33 @@ export function baueSetsImportRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
     );
   });
 
-  router.post(
-    '/sets/add-stream',
-    requireToken,
-    kontoSchranke('strom'),
-    async (req: Anfrage<'POST /api/v1/sets/add-stream'>, res: express.Response) => {
-      const e = req.eingabe;
-      const uid = angemeldeteNutzerId(req);
-      // Erst anlegen, dann strömen: Ein schon vorhandenes Set antwortet „exists“, es gibt nichts zu verfolgen.
-      // Der Auftrag wartet: Der Strom ergänzt selbst und braucht ihn nur, wenn er abreisst.
-      const r = await d.sets.setErfassen({
-        anfragender: uid,
-        besitzerWunsch: e.owner_user_id,
-        setNumber: String(e.set_number ?? ''),
-        menge: e.quantity ?? 1,
-        kaufpreis: e.purchase_price ?? null,
-        zustand: e.condition?.toUpperCase() ?? null,
-        lagerort: e.storage ?? null,
-        erfasstAm: e.date ?? null,
-        waehrung: e.currency ?? null,
-        ergaenzenNachSekunden: 60,
-      });
-      if (r.action === 'exists') {
-        res.json({ success: true, ...r });
-        return;
-      }
-      await ergaenzeImStrom(d, oeffneStrom(d.konto, req, res, { herzschlag: false }), req, r);
-    },
-  );
+  router.endpunkt('POST /api/v1/sets/add-stream', requireToken, kontoSchranke('strom'), async (req, res) => {
+    const e = req.eingabe;
+    const uid = angemeldeteNutzerId(req);
+    // Erst anlegen, dann strömen: Ein schon vorhandenes Set antwortet „exists“, es gibt nichts zu verfolgen.
+    // Der Auftrag wartet: Der Strom ergänzt selbst und braucht ihn nur, wenn er abreisst.
+    const r = await d.sets.setErfassen({
+      anfragender: uid,
+      besitzerWunsch: e.owner_user_id,
+      setNumber: String(e.set_number ?? ''),
+      menge: e.quantity ?? 1,
+      kaufpreis: e.purchase_price ?? null,
+      zustand: e.condition?.toUpperCase() ?? null,
+      lagerort: e.storage ?? null,
+      erfasstAm: e.date ?? null,
+      waehrung: e.currency ?? null,
+      ergaenzenNachSekunden: 60,
+    });
+    if (r.action === 'exists') {
+      res.json({ success: true, ...r });
+      return;
+    }
+    await ergaenzeImStrom(d, oeffneStrom(d.konto, req, res, { herzschlag: false }), req, r);
+  });
 
-  router.post(
-    '/sets/:setNumber/parts',
-    requireToken,
-    async (req: Anfrage<'POST /api/v1/sets/:setNumber/parts'>, res: Antwort<'POST /api/v1/sets/:setNumber/parts'>) => {
-      res.json({
-        success: true,
-        count: await d.sets.teileDesSetsImportieren(angemeldeteNutzerId(req), req.pfad.setNumber),
-      });
-    },
-  );
+  router.endpunkt('POST /api/v1/sets/:setNumber/parts', requireToken, async req => {
+    return { count: await d.sets.teileDesSetsImportieren(angemeldeteNutzerId(req), req.pfad.setNumber) };
+  });
 
   router.use(fehlerAntwort);
   return router;

@@ -14,9 +14,12 @@ const { routerEinhaengungen } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 
-function scan(file) {
+function scan(file, mount) {
   const src = fs.readFileSync(file, 'utf8');
-  return [...src.matchAll(/router\.(get|post|put|delete)\(\s*'([^']+)'/g)].map(m => [m[1].toUpperCase(), m[2]]);
+  return require('./helpers/sources')
+    .routenAusQuelle(src, mount)
+    .filter(m => m[1] !== 'patch')
+    .map(m => [m[1].toUpperCase(), m[2]]);
 }
 
 function inventory() {
@@ -24,10 +27,10 @@ function inventory() {
   // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
   // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
   for (const r of routerEinhaengungen())
-    for (const [m, p] of scan(r.datei)) eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
+    for (const [m, p] of scan(r.datei, r.mount)) eps.add(`${m} ${r.mount}${p === '/' ? '' : p}`);
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')))
     if (f.endsWith('.ts') && !['index.ts', 'middleware.ts'].includes(f))
-      for (const [m, p] of scan(path.join(ROOT, 'routes/api_v1', f))) eps.add(`${m} /api/v1${p}`);
+      for (const [m, p] of scan(path.join(ROOT, 'routes/api_v1', f), '/api/v1')) eps.add(`${m} /api/v1${p}`);
   return eps;
 }
 

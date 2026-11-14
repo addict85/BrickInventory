@@ -283,6 +283,17 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   );
   if (success < SUCCESS_SCHRANKE)
     console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_SCHRANKE}) — Schranke nachziehen`);
+  // Routen geben ihr Ergebnis zurück, die Hülle setzt der Vertragsrouter (endpunkt). Übrig sind
+  // Ströme, Rückrufe nach dem Abmelden und ganze Antworten der Anmeldung.
+  // Gegenprobe (14.11.2026): in routes/api_v1/sets.ts `return { set }` als `res.json({ success: true, set })` → rot (11).
+  const ROUTEN_SCHRANKE = 10;
+  const inRouten = zaehle([/\bsuccess:\s*true\b/g], f => /^routes[\\/]/.test(path.relative(WEB, f)));
+  assert.ok(
+    inRouten > 0 && inRouten <= ROUTEN_SCHRANKE,
+    `${inRouten}-mal success: true in routes/, erlaubt sind ${ROUTEN_SCHRANKE}`,
+  );
+  if (inRouten < ROUTEN_SCHRANKE)
+    console.log(`  ℹ success in Routen: ${inRouten} (Schranke ${ROUTEN_SCHRANKE}) — Schranke nachziehen`);
   // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
   // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
   // (src/vertrag, src/infra, src/http) und Fehlerparameter.

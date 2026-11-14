@@ -110,10 +110,10 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   }
   // Und die Zweitfassung darf nicht zurückkehren: jede Haushalts-Route genau einmal.
   for (const pfad of [
-    "'/settings/household'",
-    "'/settings/household/invite'",
-    "'/settings/household/redeem'",
-    "'/settings/household/unlink'",
+    "/api/v1/settings/household'",
+    "/api/v1/settings/household/invite'",
+    "/api/v1/settings/household/redeem'",
+    "/api/v1/settings/household/unlink'",
   ])
     assert.equal(src.split(pfad).length - 1, 1, `${pfad} steht nicht genau einmal in routes/api_v1/settings.ts`);
   // Keine eigene Regel in der Route — sie stehen in src/haushalt/haushalt.ts.

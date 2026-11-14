@@ -35,7 +35,7 @@ function serverRouten() {
   const alle = new Set();
   const sammle = (datei, mount) => {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']+)'/g))
+    for (const m of require('./helpers/sources').routenAusQuelle(src, mount))
       alle.add(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
   };
   // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine

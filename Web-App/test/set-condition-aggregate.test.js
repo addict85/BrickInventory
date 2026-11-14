@@ -339,7 +339,7 @@ test('der Preisverlauf-Graph benutzt den Zustand DES SETS, nicht den globalen St
   // `const condition = DEFAULT_PRICE_CONDITION` — fest 'U', unabhängig vom
   // tatsächlichen Zustand des Sets. Für ein als „Neu" geführtes Set bevorzugte …
   const src = kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
-  const i = src.indexOf("router.get('/sets/:setNumber/price-history'");
+  const i = src.indexOf("router.endpunkt('GET /api/v1/sets/:setNumber/price-history'");
   assert.ok(i > 0, 'Die Preisverlauf-Route ist nicht mehr auffindbar');
   const fn = src.slice(i, i + 1200);
 
@@ -398,8 +398,8 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   );
 
   const historyRoute = src.slice(
-    src.indexOf("router.get('/sets/:setNumber/price-history'"),
-    src.indexOf("router.get('/sets/:setNumber'", src.indexOf('price-history')),
+    src.indexOf("router.endpunkt('GET /api/v1/sets/:setNumber/price-history'"),
+    src.indexOf("router.endpunkt('GET /api/v1/sets/:setNumber'", src.indexOf('price-history')),
   );
   assert.doesNotMatch(
     historyRoute,
