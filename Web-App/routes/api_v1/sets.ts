@@ -2,7 +2,7 @@
  * Pfade vor :setNumber an einer Stelle steht. Die Arbeit liegt in src/sets/. */
 import type express from 'express';
 import path from 'node:path';
-import { fehlertext, oeffentlicherFehler } from '../../src/infra/fehler';
+import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam, sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import {
@@ -17,7 +17,7 @@ import { uebersprungenHinweis } from '../../src/infra/csvExport';
 import { sendeCsv } from '../../src/http/csvAntwort';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
 import { ANLEITUNGS_WURZEL, normalizeSetNumber } from '../../src/sets';
-import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
+import { oeffneStrom, StromGeschlossen, type Strom } from '../../src/konto/http/strom';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { freigegeben } from '../../src/konto/http/schrittschutz';
 import { vertragsRouter, type Anfrage, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
@@ -37,17 +37,14 @@ async function ergaenzeImStrom(
   const ergebnis = { success: true, action: 'added', set_number: r.set_number };
   send({ step: 'meta', set: r.set_number });
   await dienste.sets
-    .setErgaenzen(r.set_number, r.besitzer, d => {
-      if (strom.zu) throw new Error('CANCELLED');
-      send(d);
-    })
+    .setErgaenzen(r.set_number, r.besitzer, d => strom.sendeOderBrichAb(d))
     .then(
       k => {
         send({ step: 'done_meta', set: r.set_number });
         send({ step: 'done', ...ergebnis, name: k.name ?? r.name, katalog_offen: !k.name, ergaenzung: 'erledigt' });
       },
       (f: unknown) => {
-        if (fehlertext(f) === 'CANCELLED') return;
+        if (f instanceof StromGeschlossen) return;
         oeffentlicherFehler(f, 'sets:add-stream', req);
         send({ step: 'done', ...ergebnis, name: r.name, katalog_offen: true, ergaenzung: 'ausstehend' });
       },
