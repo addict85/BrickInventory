@@ -32,6 +32,7 @@ import * as bildBlickfeldDienst from './bilder/bildBlickfeld';
 import * as bildNachschlagen from './bilder/bildNachschlagen';
 import * as proxyThumbs from './bilder/proxyThumbs';
 import * as imgCacheServe from './bilder/imgCacheServe';
+import * as widerrufsliste from './widerrufsliste';
 import { downloadSetImage } from './bilder/setImages';
 import { generateThumb } from './bilder/thumbs';
 import { zugang, type Bildwerk, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
@@ -134,6 +135,7 @@ export function erzeugeKatalog(
     ...bindeZugang(k, bildNachschlagen, ['cdnFuerFehlendesBild']),
     ...bindeZugang(k, proxyThumbs, ['queueThumb']),
     ...bindeZugang(k, imgCacheServe, ['cacheTreffer']),
+    ...bindeZugang(k, widerrufsliste, ['ladeWiderrufsliste']),
   };
 }
 

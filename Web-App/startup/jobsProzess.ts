@@ -47,6 +47,7 @@ export async function starteJobs(d: Dienste, beides: boolean): Promise<void> {
   await d.auftraege.ziehePlanVor('preise', 30);
   await d.auftraege.ziehePlanVor('bild_nachlauf', 30);
   await d.auftraege.ziehePlanVor('aufraeumen_taeglich', 60);
+  await d.auftraege.ziehePlanVor('widerrufsliste', 0);
   for (const [schritt, { nachSekunden }] of Object.entries(NACHLAEUFE) as [Nachlauf, { nachSekunden: number }][])
     await d.auftraege.stelleAuftragEin(
       'nachlauf',

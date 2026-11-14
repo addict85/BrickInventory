@@ -24,6 +24,7 @@ const ganz = n => {
 const aufz = n => tlv([0x0a], ganz(n).subarray(2));
 const oktette = b => tlv([0x04], Buffer.from(b));
 const nichts = () => Buffer.from([0x05, 0x00]);
+const wahr = b => tlv([0x01], Buffer.from([b ? 0xff : 0x00]));
 const oid = s => {
   const z = s.split('.').map(Number);
   const teile = [40 * z[0] + z[1]];
@@ -85,6 +86,20 @@ const PAKET = 'ch.brickinventoryapp';
 const DIGEST = createHash('sha256').update('brickinventory-test-signatur').digest();
 const DIGEST_HEX = DIGEST.toString('hex').toUpperCase();
 
+/**
+ * Eine geladene Widerrufsliste in laufzustand, wie sie der Auftrag `widerrufsliste`
+ * ablegt; ohne sie nimmt der Server keinen Schlüssel an.
+ * @param {{ run: (sql: string, p: unknown[]) => Promise<unknown> }} db
+ * @param {string[]} [nummern] @param {Date} [stand]
+ */
+function widerrufslisteAblegen(db, nummern = [], stand = new Date()) {
+  return db.run(
+    `INSERT INTO laufzustand (schluessel, wert) VALUES ('attestation_widerruf', $1)
+     ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`,
+    [JSON.stringify({ stand: stand.toISOString(), nummern })],
+  );
+}
+
 /** Die Umgebung, mit der ein Server die Testketten annimmt. */
 const UMGEBUNG = {
   ATTESTATION_WURZELN: WURZEL.pem,
@@ -95,9 +110,11 @@ const UMGEBUNG = {
 /**
  * @typedef {{ challenge: Buffer, wurzel?: ReturnType<typeof neueWurzel>, sicherheit?: number,
  *   paket?: string, digest?: Buffer, ohneSperre?: boolean, auchOhneAnmeldung?: boolean,
- *   ohneErweiterung?: boolean, frist?: number, herkunft?: number, kurve?: number, algorithmus?: number }} Abweichung
+ *   ohneErweiterung?: boolean, frist?: number, herkunft?: number, kurve?: number, algorithmus?: number,
+ *   bootloaderOffen?: boolean, bootZustand?: number, ohneRootOfTrust?: boolean, patch?: number }} Abweichung
  * ohneSperre: noAuthRequired statt userAuthType; auchOhneAnmeldung: beide, wie es ein
- * manipuliertes KeyMint melden könnte; sicherheit: 0 Software, 1 TEE, 2 StrongBox.
+ * manipuliertes KeyMint melden könnte; sicherheit: 0 Software, 1 TEE, 2 StrongBox;
+ * bootZustand: 0 Verified, 1 SelfSigned, 2 Unverified, 3 Failed; patch: osPatchLevel JJJJMM.
  */
 
 /** @param {Abweichung} o */
@@ -111,6 +128,20 @@ function beschreibung(o) {
     ...(o.ohneSperre ? [] : [kontext(504, ganz(3))]),
     ...(o.frist ? [kontext(505, ganz(o.frist))] : []),
     kontext(702, ganz(o.herkunft ?? 0)),
+    ...(o.ohneRootOfTrust
+      ? []
+      : [
+          kontext(
+            704,
+            seq(
+              oktette(Buffer.alloc(32, 9)),
+              wahr(!o.bootloaderOffen),
+              aufz(o.bootZustand ?? 0),
+              oktette(Buffer.alloc(32, 3)),
+            ),
+          ),
+        ]),
+    kontext(706, ganz(o.patch ?? 202610)),
   ];
   const app = seq(set(seq(oktette(Buffer.from(o.paket ?? PAKET)), ganz(1))), set(oktette(o.digest ?? DIGEST)));
   const sw = [kontext(709, oktette(app))];
@@ -158,4 +189,14 @@ function kette(o) {
   };
 }
 
-module.exports = { WURZEL, PAKET, DIGEST, DIGEST_HEX, UMGEBUNG, neueWurzel, kette, beschreibung };
+module.exports = {
+  WURZEL,
+  PAKET,
+  DIGEST,
+  DIGEST_HEX,
+  UMGEBUNG,
+  neueWurzel,
+  kette,
+  beschreibung,
+  widerrufslisteAblegen,
+};

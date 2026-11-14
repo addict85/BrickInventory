@@ -110,6 +110,16 @@ den Commits, nicht hier.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
   einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/konto/passkeys.ts` —
   `passkeys-db`. TOTP: `src/konto/zweiterFaktor.ts` — `zweiter-faktor-db`.
+- Schrittschutz der App: Den Geräteschlüssel nimmt der Server nur mit Android
+  Key Attestation an (`src/konto/attestation/`): Kette bis zu Googles Wurzel,
+  kein Glied auf Googles Widerrufsliste, Schlüssel im TEE oder StrongBox mit
+  Gerätesperre bei jeder Benutzung, gesperrter Bootloader und verifizierter
+  Start (RootOfTrust `deviceLocked`, `verifiedBootState = Verified`), auf Wunsch
+  ein Mindest-Patchstand (`ATTESTATION_PATCH_MINDESTENS`). Die Liste lädt der
+  Job-Prozess alle sechs Stunden (Auftrag `widerrufsliste`); fehlt sie oder ist
+  sie älter als `ATTESTATION_WIDERRUF_TAGE` (7), nimmt der Server keinen neuen
+  Schlüssel an, statt ungeprüft anzunehmen (UPGRADE.md §60) —
+  `geraete-attestation`, `schrittschutz-db`, `attestation-widerrufsliste-db`.
 - Kein Weg am zweiten Faktor vorbei: Es gibt genau einen Bestätigungsweg,
   `bestaetigeMitFaktor` (`src/konto/http/anmeldung.ts`). Bei aktivem TOTP
   verlangt er immer Code oder Passkey-Antwort, auch mit dem

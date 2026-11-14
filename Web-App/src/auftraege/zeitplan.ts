@@ -9,7 +9,13 @@ type Zeitplan =
   | { taeglich: { einstellung: string; vorgabe: string } }
   | { minuten: { einstellung?: string; vorgabe: number; mindestens?: number } };
 
-export type GeplanteArt = 'csv_sync' | 'preise' | 'bild_nachlauf' | 'aufraeumen' | 'aufraeumen_taeglich';
+export type GeplanteArt =
+  | 'csv_sync'
+  | 'preise'
+  | 'bild_nachlauf'
+  | 'aufraeumen'
+  | 'aufraeumen_taeglich'
+  | 'widerrufsliste';
 type PlanNutzlast = NutzlastEingabe<GeplanteArt>;
 
 export const ZEITPLAENE: Record<GeplanteArt, Zeitplan> = {
@@ -18,6 +24,7 @@ export const ZEITPLAENE: Record<GeplanteArt, Zeitplan> = {
   bild_nachlauf: { minuten: { vorgabe: 60 } },
   aufraeumen: { minuten: { vorgabe: 60 } },
   aufraeumen_taeglich: { minuten: { vorgabe: 24 * 60 } },
+  widerrufsliste: { minuten: { vorgabe: 6 * 60 } },
 };
 
 /** Brickset hat keinen geplanten Lauf: Jeder wartende Eintrag ist ein Auftrag,

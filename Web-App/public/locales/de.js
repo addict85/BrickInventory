@@ -820,6 +820,7 @@ window.I18N_DE = {
   'monitor.art.preise': 'Preise aktualisieren',
   'monitor.art.preise_nachladen': 'Fehlende Preise holen',
   'monitor.art.konto_dateien': 'Dateien gelöschter Konten entfernen',
+  'monitor.art.widerrufsliste': 'Widerrufsliste der Geräteschlüssel',
   'set.kaufpreis_folgt':
     'Menge gespeichert. Der Marktpreis für das neue Exemplar war nicht erreichbar und wird nachgetragen.',
   'monitor.degradiert': 'Unvollständig, ein Teil liess sich nicht lesen: {teile}. Die Zahlen dort sind Ersatzwerte.',

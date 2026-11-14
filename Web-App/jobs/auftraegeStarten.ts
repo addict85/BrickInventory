@@ -7,9 +7,7 @@ import type { Dienste } from '../startup/verdrahtung';
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
 const bearbeiter = (d: Dienste): Bearbeitertabelle => ({
-  nacharbeit: {
-    ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k),
-  },
+  nacharbeit: { ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k) },
   bilder: {
     ausfuehren: async (n, k) => {
       if (n.nur_bilder) await d.katalog.downloadSetImages(n.set_number);
@@ -45,6 +43,7 @@ const bearbeiter = (d: Dienste): Bearbeitertabelle => ({
   aufraeumen_taeglich: { ausfuehren: (_n, k) => d.verwaltung.aufraeumenTaeglich(k), exklusiv: true },
   preise_nachladen: { ausfuehren: (n, k) => d.finanzen.preiseNachladen(n, k), exklusiv: true },
   konto_dateien: { ausfuehren: n => loescheKontoDateien(n.user_id) },
+  widerrufsliste: { ausfuehren: (_n, k) => d.katalog.ladeWiderrufsliste(k) },
 });
 
 // Der Katalog-Import läuft in einem eigenen Prozess, dessen Einstieg neben dieser Datei liegt.

@@ -45,6 +45,7 @@ export { ladeKatalogCsv } from '../../clients/rebrickableCsv';
 export { oeffneBild, holeBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../clients/bildCdn';
 export { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../../clients/legoGuthaben';
 export { rebrickableRoh } from '../../clients/rebrickable';
+export { widerrufslisteAbruf, type WiderrufAbruf } from '../../clients/googleAttestation';
 export * as brickset from '../../clients/brickset';
 export type { Abruf, Kurs } from '../../clients/ezb';
 export type { RbSetTeil } from '../../clients/rebrickable';

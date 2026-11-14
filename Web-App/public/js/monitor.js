@@ -390,6 +390,7 @@ const ARTNAMEN = {
   aufraeumen: () => tRaw('monitor.art.aufraeumen'),
   aufraeumen_taeglich: () => tRaw('monitor.art.aufraeumen_taeglich'),
   konto_dateien: () => tRaw('monitor.art.konto_dateien'),
+  widerrufsliste: () => tRaw('monitor.art.widerrufsliste'),
 };
 /** @type {Record<string, () => string>} */
 const STATUSNAMEN = {
