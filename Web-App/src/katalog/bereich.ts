@@ -19,7 +19,7 @@ import * as partsImport from './partsImport';
 import * as rbInventar from './rbInventar';
 import * as rebrickableKatalog from './rebrickableKatalog';
 import * as teileAnreicherungDienst from './teileAnreicherung';
-import { ConcurrentRateLimiter } from '../fremdquellen';
+import { ConcurrentRateLimiter, type FremdquellenDienste } from '../fremdquellen';
 import * as bildNachlauf from './bildNachlauf';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
 import { zugang, type KatalogAbhaengigkeiten, type KatalogKontext } from './kontext';
@@ -32,19 +32,23 @@ export function erzeugeKatalog(
 ) {
   const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
   const k: KatalogKontext = baueKontext({ ...a, cdnDrossel, faecher: new Faecher() }, zugang);
-  const fq = a.fremdquellen;
+  const fq = () => k.fremdquellen;
   einblick?.(k);
   return {
     ...bindeZugang(k, anleitungLaden, ['anleitungLaden']),
-    // Kontingent und Klienten der Fremdquellen, weitergereicht für die Bereiche darüber.
-    checkAndIncrementRateLimit: fq.checkAndIncrementRateLimit,
-    getRateLimitStatus: fq.getRateLimitStatus,
-    kontingentFrei: fq.kontingentFrei,
-    setzeKontingentZurueck: fq.setzeKontingentZurueck,
-    getLimitForApi: fq.getLimitForApi,
-    rebrickableDailyStatus: fq.rebrickableDailyStatus,
-    quellen: fq.quellen,
-    bilder: a.bilder,
+    // Beim Aufruf nachgeschlagen, wie bindeZugang: Der Bau des Katalogs liest die Fremdquellen nicht.
+    checkAndIncrementRateLimit: (...x: P<'checkAndIncrementRateLimit'>) => fq().checkAndIncrementRateLimit(...x),
+    getRateLimitStatus: (...x: P<'getRateLimitStatus'>) => fq().getRateLimitStatus(...x),
+    kontingentFrei: (...x: P<'kontingentFrei'>) => fq().kontingentFrei(...x),
+    setzeKontingentZurueck: (...x: P<'setzeKontingentZurueck'>) => fq().setzeKontingentZurueck(...x),
+    getLimitForApi: (...x: P<'getLimitForApi'>) => fq().getLimitForApi(...x),
+    rebrickableDailyStatus: () => fq().rebrickableDailyStatus(),
+    get quellen() {
+      return fq().quellen;
+    },
+    get bilder() {
+      return k.bilder;
+    },
     ...bindeZugang(k, blZuordnungDienst, [
       'merkeBlNummer',
       'merkeEigeneBlNummer',
@@ -96,5 +100,14 @@ export function erzeugeKatalog(
     ...bindeZugang(k, pdfErzeugung, ['erzeugePdf']),
   };
 }
+
+type P<
+  N extends
+    | 'checkAndIncrementRateLimit'
+    | 'getRateLimitStatus'
+    | 'kontingentFrei'
+    | 'setzeKontingentZurueck'
+    | 'getLimitForApi',
+> = Parameters<FremdquellenDienste[N]>;
 
 export type KatalogDienste = ReturnType<typeof erzeugeKatalog>;

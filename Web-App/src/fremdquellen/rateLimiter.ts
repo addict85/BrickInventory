@@ -177,6 +177,4 @@ export class ConcurrentRateLimiter {
   }
 }
 
-export const cdnImageLimiter = new ConcurrentRateLimiter(2, 1000);
-
 export { REBRICKABLE_DEFAULT_DAILY };
