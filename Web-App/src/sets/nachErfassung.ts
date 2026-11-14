@@ -3,12 +3,8 @@
  * Anreicherungen danach melden ihren Fehler, ohne den Auftrag scheitern zu lassen. */
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import { versuche } from '../infra/ergebnis';
-import { setErgaenzen } from './erfassen';
+import { setErgaenzen, type NacharbeitArt } from './erfassen';
 import type { SetsKontext } from './kontext';
-
-/** zweit: ein vorhandenes Set noch einmal erfasst; neu: angelegt; csv: aus dem CSV-Import;
- * ergaenzen: ohne Netz angelegt (setErfassen), Katalog, Bild und Kaufpreis fehlen noch. */
-export type NacharbeitArt = 'zweit' | 'neu' | 'csv' | 'ergaenzen';
 
 async function zieheNach(
   sk: SetsKontext,
@@ -17,11 +13,10 @@ async function zieheNach(
   artWunsch: NacharbeitArt,
   lauf?: AuftragsLauf,
 ): Promise<void> {
-  // Ohne Katalog fehlt dem Set der Name; scheitert er, versucht es der Auftrag noch einmal.
-  if (artWunsch === 'ergaenzen') {
-    await setErgaenzen(sk, setNumber, userId);
-    pruefeAbbruch(lauf);
-  }
+  // Jede Art: setErfassen() holt nichts aus dem Netz, Katalog und geschätzter Preis kommen von hier.
+  // Scheitert der Katalog, versucht es der Auftrag noch einmal.
+  await setErgaenzen(sk, setNumber, userId, null, artWunsch !== 'csv');
+  pruefeAbbruch(lauf);
   const art = artWunsch === 'ergaenzen' ? 'neu' : artWunsch;
   // Ein gescheiterter Schritt hält die übrigen nicht auf, steht aber im Stand des Auftrags.
   const ohne: string[] = [];

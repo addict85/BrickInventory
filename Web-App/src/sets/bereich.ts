@@ -22,14 +22,7 @@ export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKont
   const sk: SetsKontext = baueKontext(a, () => ({}));
   einblick?.(sk);
   return {
-    ...bindeZugang(sk, erfassen, [
-      'recordAcquisition',
-      'findSetInScope',
-      'setErfassen',
-      'setErgaenzen',
-      'addSet',
-      'addSetWithDate',
-    ]),
+    ...bindeZugang(sk, erfassen, ['recordAcquisition', 'findSetInScope', 'setErfassen', 'setErgaenzen']),
     ...bindeZugang(sk, setService, ['updateSet', 'buildSetsCsv']),
     ...bindeZugang(sk, lesen, ['getSets', 'getSet', 'getSetConditionAggregate', 'withSetAggregate']),
     ...bindeZugang(sk, loeschen, ['loescheSet', 'loescheSetFuer', 'deleteSetRows']),

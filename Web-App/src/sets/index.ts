@@ -5,12 +5,12 @@
 export { erzeugeSets } from './bereich';
 export type { SetsDienste } from './bereich';
 export type { SetsKontext } from './kontext';
-export { normalizeSetNumber, nacharbeitEinstellen } from './erfassen';
+export { normalizeSetNumber } from './erfassen';
 export { sanitizeSetNumber } from './setService';
 export { QUELLE_GESTOERT } from './inhalt';
 export { setCsvZeilen } from './csvImport';
 export { ANLEITUNGS_WURZEL } from './anleitungen';
-export type { Erfassung, NeuesSet, SetErfasst, SetHinzufuegen, VorhandenesSet, Fortschritt } from './erfassen';
+export type { Erfassung, NeuesSet, SetErfasst, VorhandenesSet, Fortschritt } from './erfassen';
 export type { MoveResult } from './setMove';
 export type { BarcodeTreffer } from './barcode';
 export type { ImportZeile } from './csvImport';

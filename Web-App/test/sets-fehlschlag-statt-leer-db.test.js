@@ -82,12 +82,18 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
     rebrickable = 'gestoert';
     const staende = [];
     const { zieheNach } = require('./helpers/sources').bereichsSeite('sets');
-    await zieheNach(SN, 0, 'zweit', {
-      fortschritt: async f => {
-        staende.push(f);
-        return true;
-      },
-    });
+    // Mit Katalog und Bild: Die Nacharbeit fragt dann kein Netz für den Stamm, nur die Schritte danach.
+    await require('./helpers/bestand').katalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
+    try {
+      await zieheNach(SN, 0, 'zweit', {
+        fortschritt: async f => {
+          staende.push(f);
+          return true;
+        },
+      });
+    } finally {
+      await db.run('DELETE FROM rb_sets WHERE set_num = $1', [SN]);
+    }
     assert.deepEqual(
       staende.map(f => f.ohne),
       [['teile-anreichern', 'bilder']],

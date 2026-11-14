@@ -15,6 +15,8 @@
  *      unterbrochener Import setzt fort“ (r2 wurde ein zweites Mal gebucht)
  *   C' (13.11.2026) C mit echtem Erfassen und gestelltem Rebrickable wiederholt
  *      → rot: „ein unterbrochener Import setzt fort“ (91002-1 ein zweites Mal)
+ *   C" (14.11.2026) C, seit das Erfassen kein Netz mehr fragt: Der Import steckt an
+ *      der gehaltenen Sperre je Setnummer → rot: „ein unterbrochener Import setzt fort“
  *   D  (13.11.2026) im Worker den Auftrag ohne sein Konto (imNamenDesAuftrags mit
  *      alsAnfrage({})) → rot: beide Teiltests (der Import sieht seinen Stand nicht)
  *
@@ -31,9 +33,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Rebrickable gestellt: Jede Katalogfrage wird gezählt und wartet auf `freigabe`.
-const aufrufe = [];
-let freigabe = Promise.resolve();
+// Der Import hält im ersten Set an der Sperre je Setnummer, solange der Test sie hält.
 let loslassen = () => {};
 
 const { buildAndRequire, testDaten, testZugang, alsKonto, testQuellen, testBildwerk } = require('./helpers/sources');
@@ -44,14 +44,26 @@ const { warte } = require('./helpers/zeit');
 
 test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
+  // Erfassen fragt kein Netz; gestellt nur, damit eine Rückkehr dorthin auffiele.
   testQuellen(t, {
-    // Nur das Set des Imports wartet; das Set des anderen Kontos geht durch.
-    holeSet: async sn => {
-      aufrufe.push(sn);
-      if (sn === '76001-1') await freigabe;
-      return null;
+    holeSet: async () => {
+      throw new Error('Netz beim Erfassen');
     },
   });
+  const { sperreBisZumEnde } = _req('db/txLock.js');
+  const { LOCKS } = _req('src/infra/lockNamespaces.js');
+  /** Hält die Sperre, die setErfassen() je Setnummer nimmt, bis loslassen(). */
+  const halteSperre = sn =>
+    new Promise(gehalten => {
+      const fertig = db.transaction(async tx => {
+        await sperreBisZumEnde(tx, LOCKS.SET_ERFASSEN, sn);
+        await new Promise(r => {
+          loslassen = r;
+          gehalten();
+        });
+      });
+      halteSperre.fertig = fertig;
+    });
   testBildwerk(t, { setBildLaden: async () => null });
 
   const schluessel = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consumer_key'];
@@ -79,6 +91,13 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
       [uid],
     );
   const stand = () => db.get('SELECT status, done, results, current FROM import_stand WHERE user_id=$1', [a]);
+  const gebucht = (uid, nummern) =>
+    db
+      .all('SELECT set_number FROM sets WHERE user_id = $1 AND set_number = ANY($2) ORDER BY set_number', [
+        uid,
+        nummern,
+      ])
+      .then(z => z.map(x => x.set_number));
   const bisFertig = async () => {
     for (let i = 0; i < 200; i++) {
       const s = await stand();
@@ -90,10 +109,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
 
   try {
     await t.test('ein Set eines anderen Kontos bekommt während des Imports seine Nacharbeit', async () => {
-      aufrufe.length = 0;
-      freigabe = new Promise(r => {
-        loslassen = r;
-      });
+      await halteSperre('76001-1');
       const lauf = `lauf-${process.pid}-1`;
       const rows = [{ sn: '76001-1', qty: 1, purchasePrice: null, condition: null, acquiredAt: null }];
       await alsKonto(a, () =>
@@ -108,19 +124,20 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
         }),
       );
       await stelleAuftragEin('csv_import', { user_id: a, lauf, rows }, { userId: a });
-      for (let i = 0; i < 100 && !aufrufe.length; i++) await warte(20);
-      assert.deepEqual(aufrufe, ['76001-1'], 'der Import steckt im ersten Set');
+      for (let i = 0; i < 100 && (await stand())?.current !== '76001-1'; i++) await warte(20);
+      assert.equal((await stand())?.current, '76001-1', 'der Import steckt im ersten Set');
 
       const SN = `7${process.pid % 10000}-1`;
       const r = await alsKonto(b, () =>
         require('./helpers/sources')
           .bereichsSeite('sets')
-          .addSet({ setNumber: SN, menge: 1, konto: b, kaufpreis: 10, zustand: 'N' }),
+          .setErfassen({ anfragender: b, setNumber: SN, menge: 1, kaufpreis: 10, zustand: 'N' }),
       );
       assert.equal(r.action, 'added');
-      assert.deepEqual(await nacharbeit(b), [{ sn: SN, art: 'neu' }]);
+      assert.deepEqual(await nacharbeit(b), [{ sn: SN, art: 'ergaenzen' }]);
 
       loslassen();
+      await halteSperre.fertig;
       assert.equal((await bisFertig()).status, 'done');
       assert.deepEqual(
         await nacharbeit(a),
@@ -130,8 +147,6 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
     });
 
     await t.test('ein unterbrochener Import setzt fort', async () => {
-      aufrufe.length = 0;
-      freigabe = Promise.resolve();
       const lauf = `lauf-${process.pid}-2`;
       const [r1, r2, r3] = ['91001-1', '91002-1', '91003-1'];
       const rows = [r1, r2, r3].map(sn => ({
@@ -161,7 +176,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
       );
       const s = await bisFertig();
       assert.equal(s.status, 'done');
-      assert.deepEqual(aufrufe, [r3], 'r1 ist fertig, r2 ungewiss — gebucht wird nur r3');
+      assert.deepEqual(await gebucht(a, [r1, r2, r3]), [r3], 'r1 ist fertig, r2 ungewiss — gebucht wird nur r3');
       assert.deepEqual(
         s.results.map(z => [z.set_number, z.success, !!z.isWarning]),
         [

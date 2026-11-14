@@ -7,7 +7,7 @@ export interface SetStamm {
   minifigs?: number | null;
   image_url: string | null;
   image_local: string | null;
-  /** Von addSet ohne Katalogtreffer angelegt: sagt nur, dass irgendein Konto die Nummer erfasst hat. */
+  /** Von setErfassen ohne Katalog angelegt: sagt nur, dass irgendein Konto die Nummer erfasst hat. */
   platzhalter?: boolean;
 }
 export interface ListenTeil {

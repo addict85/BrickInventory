@@ -145,17 +145,17 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
     );
     assert.equal(beide.is_self, true);
 
-    // 4. AUSNAHME: Der CSV-Import ruft addSet() direkt und fasst weiterhin
-    //    zusammen. Die Regel darf nicht dort hineingerutscht sein.
-    // Fundort: src/sets/erfassen.ts, erreichbar über den Einstieg src/sets.
-    const { addSet } = require('./helpers/sources').bereichsSeite('sets');
+    // 4. AUSNAHME: Der CSV-Import stockt auf (wennVorhanden: 'aufstocken').
+    const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
     const vorImport = await stand(KIND);
-    const erg = await addSet({ setNumber: KIND, menge: 1, konto: subId, zustand: 'N' });
-    assert.equal(
-      erg.action,
-      'updated',
-      'addSet() selbst muss weiterhin zusammenfassen — sonst steht der CSV-Import still',
-    );
+    const erg = await setErfassen({
+      anfragender: subId,
+      setNumber: KIND,
+      menge: 1,
+      zustand: 'N',
+      wennVorhanden: 'aufstocken',
+    });
+    assert.equal(erg.action, 'updated', 'der Import muss aufstocken — sonst steht der CSV-Import still');
     assert.equal((await stand(KIND)).menge, vorImport.menge + 1);
   } finally {
     await aufraeumen();
