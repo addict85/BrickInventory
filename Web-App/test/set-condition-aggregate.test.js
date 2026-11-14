@@ -288,7 +288,10 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   assert.match(job, /\(\) => backfillAcquisitions\(k\)/, 'Der Durchlauf ist nicht eingehängt');
 
   // Und der Import selbst soll seltener ohne Preis enden
-  const sets = require('./helpers/sources').setKernQuelle();
+  // Den Marktpreis aus Cache und Verlauf liest der Set-Dienst über finanzen (Besitzer von price_history).
+  const sets =
+    require('./helpers/sources').setKernQuelle() +
+    fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisCache.ts'), 'utf8');
   assert.match(
     sets,
     /FROM price_history[\s\S]{0,200}ORDER BY \(condition = \$3\) DESC, recorded_at DESC/,
