@@ -3,7 +3,7 @@
  *
  * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
  *
- *   A  `stempleAssetsGecacht(...)` aus src/konto/indexHtml.ts entfernt
+ *   A  `stempleAssetsGecacht(...)` aus src/profil/indexHtml.ts entfernt
  *      → „der Renderer stempelt wirklich" rot
  *   B  im Stempel die Grösse weggelassen (nur mtime)
  *      → „eine geänderte Datei bekommt eine neue Adresse" rot — aber erst an
@@ -120,11 +120,11 @@ test('der Renderer stempelt wirklich', () => {
   // und die Fälle oben blieben dabei grün, weil sie die Funktion direkt
   // aufrufen. Dieselbe Lücke wie bei sitzung-beruehrung und
   // sitzung-leerlauf, dort mit derselben Begründung geschlossen.
-  const idx = fs.readFileSync(path.join(ROOT, 'src/konto/indexHtml.ts'), 'utf8');
+  const idx = fs.readFileSync(path.join(ROOT, 'src/profil/indexHtml.ts'), 'utf8');
   assert.match(
     idx,
     /return stempleAssetsGecacht\(out, PUBLIC_DIR\)/,
-    'src/konto/indexHtml.ts stempelt die Assets nicht mehr — dann gilt wieder die ' +
+    'src/profil/indexHtml.ts stempelt die Assets nicht mehr — dann gilt wieder die ' +
       'Zahl aus package.json, und die steht still, wenn niemand den Bumper läuft.',
   );
   // ZULETZT, nach dem Sprachtausch: Die Sprachdatei trägt selbst ein `?v=`.

@@ -210,9 +210,9 @@ kennen einander nicht. Von unten nach oben:
 | 7 | `src/mail` |
 | 8 | `src/auftraege` |
 | 9 | `src/fremdquellen` |
-| 10 | `src/haushalt` |
+| 10 | `src/haushalt`, `src/geraete` |
 | 11 | `src/konto` |
-| 12 | `src/bilder` |
+| 12 | `src/bilder`, `src/profil` |
 | 13 | `src/idempotenz`, `src/katalog` |
 | 14 | `src/finanzen` |
 | 15 | `src/bestand` |

@@ -36,18 +36,6 @@ export interface KatalogAbhaengigkeiten {
 
 /** Anleitungen, BrickLink-Zuordnung und CSV-Katalog. */
 const anleitungszugang = (db: Db) => ({
-  bildlage: {
-    setsMitFehlendenKatalogbildern: mit(db)(bildlage.setsMitFehlendenKatalogbildern),
-    manuelleTeileOhneBild: mit(db)(bildlage.manuelleTeileOhneBild),
-    figurenOhneBild: mit(db)(bildlage.figurenOhneBild),
-    setBilderOhneDatei: mit(db)(bildlage.setBilderOhneDatei),
-    merkeSetBildLokal: mit(db)(bildlage.merkeSetBildLokal),
-    lokaleKatalogbilder: mit(db)(bildlage.lokaleKatalogbilder),
-    teilbilder: mit(db)(bildlage.teilbilder),
-    figurenbilder: mit(db)(bildlage.figurenbilder),
-    fuelleSetLuecken: mit(db)(bildlage.fuelleSetLuecken),
-    setsOhneAnleitungsabruf: mit(db)(bildlage.setsOhneAnleitungsabruf),
-  },
   anleitungen: {
     zaehleAnleitungen: mit(db)(anleitungen.zaehleAnleitungen),
     anleitungenDesSets: mit(db)(anleitungen.anleitungenDesSets),
@@ -133,5 +121,20 @@ const stammzugang = (db: Db) => ({
   },
 });
 
-export const zugang = (db: Db) => ({ ...anleitungszugang(db), ...stammzugang(db) });
+const bildzugang = (db: Db) => ({
+  bildlage: {
+    setsMitFehlendenKatalogbildern: mit(db)(bildlage.setsMitFehlendenKatalogbildern),
+    manuelleTeileOhneBild: mit(db)(bildlage.manuelleTeileOhneBild),
+    figurenOhneBild: mit(db)(bildlage.figurenOhneBild),
+    setBilderOhneDatei: mit(db)(bildlage.setBilderOhneDatei),
+    merkeSetBildLokal: mit(db)(bildlage.merkeSetBildLokal),
+    lokaleKatalogbilder: mit(db)(bildlage.lokaleKatalogbilder),
+    teilbilder: mit(db)(bildlage.teilbilder),
+    figurenbilder: mit(db)(bildlage.figurenbilder),
+    fuelleSetLuecken: mit(db)(bildlage.fuelleSetLuecken),
+    setsOhneAnleitungsabruf: mit(db)(bildlage.setsOhneAnleitungsabruf),
+  },
+});
+
+export const zugang = (db: Db) => ({ ...anleitungszugang(db), ...stammzugang(db), ...bildzugang(db) });
 export type KatalogKontext = Kontext<KatalogAbhaengigkeiten, ReturnType<typeof zugang>>;

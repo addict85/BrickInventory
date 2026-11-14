@@ -4,7 +4,6 @@ import { Faecher } from '../infra/zwischenspeicher';
 import * as anmeldepruefung from './anmeldepruefung';
 import * as anmeldungAblauf from './anmeldungAblauf';
 import * as geheimnisAltbestand from './geheimnisAltbestand';
-import * as geraeteChallenge from './geraeteChallenge';
 import * as geraeteToken from './geraeteToken';
 import * as kontoEntfernen from './kontoEntfernen';
 import * as kontoHinweis from './kontoHinweis';
@@ -15,17 +14,16 @@ import * as tokenWunsch from './tokenWunsch';
 import * as verwalterAktionen from './verwalterAktionen';
 import * as verwalterProtokoll from './verwalterProtokoll';
 import * as zugangsende from './zugangsende';
-import * as einrichtungStand from './einrichtungStand';
 import * as zielDrossel from './zielDrossel';
 import * as passwortBestaetigung from './passwortBestaetigung';
 import * as sitzungsVersion from './sitzungsVersion';
-import * as indexHtml from './indexHtml';
 import * as zweiterFaktorDienst from './zweiterFaktor';
 import * as zugaengeDienst from './zugaenge';
 import * as startVerwalterDienst from './startVerwalter';
 import * as qrKopplungDienst from './qrKopplung';
 import * as passkeysDienst from './passkeys';
 import * as kontenDienst from './konten';
+import type { GeraeteDienste } from '../geraete';
 import { zugang, type KontoAbhaengigkeiten, type KontoKontext } from './kontext';
 
 export type { KontoAbhaengigkeiten, KontoKontext } from './kontext';
@@ -44,17 +42,13 @@ function anmeldungUndGeraete(k: KontoKontext) {
   return {
     verifiziereEmailToken: mit(k)(anmeldepruefung.verifiziereEmailToken),
     pruefeAnmeldedaten: mit(k)(anmeldepruefung.pruefeAnmeldedaten),
-    profilAendern: mit(k)(anmeldungAblauf.profilAendern),
     eigenesPasswortAendern: mit(k)(anmeldungAblauf.eigenesPasswortAendern),
     anmeldeAntwort: mit(k)(anmeldungAblauf.anmeldeAntwort),
     geraeteTokenAusstellen: mit(k)(anmeldungAblauf.geraeteTokenAusstellen),
     qrZugangErzeugen: mit(k)(anmeldungAblauf.qrZugangErzeugen),
     verschluesseleAltbestand: mit(k)(geheimnisAltbestand.verschluesseleAltbestand),
-    neueNonce: mit(k)(geraeteChallenge.neueNonce),
-    hinterlegeSchluessel: mit(k)(geraeteChallenge.hinterlegeSchluessel),
-    neueChallenge: mit(k)(geraeteChallenge.neueChallenge),
-    loeseEin: mit(k)(geraeteChallenge.loeseEin),
-    pruefeFreigabe: mit(k)(geraeteChallenge.pruefeFreigabe),
+    // Der Schrittschutz (http/schrittschutz.ts) fragt das Konto, ob die Anfrage darf; die Regel steht in geraete.
+    pruefeFreigabe: (...a: Parameters<GeraeteDienste['pruefeFreigabe']>) => k.geraete.pruefeFreigabe(...a),
     pruefeToken: mit(k)(geraeteToken.pruefeToken),
     rotiereToken: mit(k)(geraeteToken.rotiereToken),
     deleteToken: mit(k)(geraeteToken.deleteToken),
@@ -122,7 +116,6 @@ function konten(k: KontoKontext) {
     otpauthFuer: mit(k)(zweiterFaktorDienst.otpauthFuer),
     schalteAb: mit(k)(zweiterFaktorDienst.schalteAb),
     erneuereCodes: mit(k)(zweiterFaktorDienst.erneuereCodes),
-    einrichtungStand: mit(k)(einrichtungStand.einrichtungStand),
     zielGedrosselt: mit(k)(zielDrossel.zielGedrosselt),
     kontoGedrosselt: mit(k)(zielDrossel.kontoGedrosselt),
     bestaetigeEinrichtungGebremst: mit(k)(passwortBestaetigung.bestaetigeEinrichtungGebremst),
@@ -130,8 +123,6 @@ function konten(k: KontoKontext) {
     pruefeCodeBestaetigung: mit(k)(passwortBestaetigung.pruefeCodeBestaetigung),
     sitzungsVersionAusDb: mit(k)(sitzungsVersion.sitzungsVersionAusDb),
     aktuelleSitzungsVersion: mit(k)(sitzungsVersion.aktuelleSitzungsVersion),
-    renderIndexHtml: mit(k)(indexHtml.renderIndexHtml),
-    setzeGlobalesDesign: mit(k)(indexHtml.setzeGlobalesDesign),
   };
 }
 
@@ -151,15 +142,21 @@ function verwaltung(k: KontoKontext) {
   };
 }
 
-/** Was andere Schichten brauchen, ohne Repository oder Token-Hash zu sehen: die Wache
- * langer Ströme (http/zugangsWache.ts) ohne Zwischenspeicher, das Protokoll für die
- * Verwaltung, der Vergleich mit dem Zugang der Anfrage für die Routen. */
+/** Was andere Schichten brauchen, ohne Repository oder Token-Hash zu sehen: Zugangswache,
+ * Protokoll, Profil und Einrichtungsstand; users gehört dem Konto, geschrieben wird nur hier. */
 function ausDemZugang(k: KontoKontext) {
   return {
     gueltigerToken: k.zugaenge.gueltigerToken,
     protokolliere: k.protokoll.protokolliere,
     raeumeProtokollAuf: k.protokoll.raeumeProtokollAuf,
     eigenerZugang: geraeteToken.eigenerZugang,
+    nameVergeben: k.konten.nameVergeben,
+    aendereBenutzernamen: k.konten.aendereBenutzernamen,
+    aendereNamen: k.konten.aendereNamen,
+    merkeEmailNeu: k.konten.merkeEmailNeu,
+    kontoMitEmail: k.konten.kontoMitEmail,
+    kontenStand: k.einrichtung.kontenStand,
+    datenbankErreichbar: k.einrichtung.datenbankErreichbar,
   };
 }
 

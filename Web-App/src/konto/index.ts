@@ -1,12 +1,10 @@
 /** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
 export { assetlinks } from './androidApp';
-export { Angemeldet, TokenWunsch, emailWirdGeaendert } from './anmeldungAblauf';
+export { Angemeldet, TokenWunsch } from './anmeldungAblauf';
+export type { Konto as KontoZeile } from './repository/konten';
 export { UEBERLAPPUNG_MS, hashToken, rotationFaellig } from './geraeteToken';
 export { assertLoginAllowed } from './anmeldepruefung';
 export { USERNAME_RE, emailGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig, nameGueltig } from './namensRegeln';
-export { familieAus } from './geraeteChallenge';
-export { WIDERRUF_ZUSTAND, leseWiderrufsliste } from './attestation/widerrufsliste';
-export { invalidateTheme, startStilHash } from './indexHtml';
 export { LETZTER_VERWALTER, rechneWieRegistrierung } from './konten';
 export { loescheKontoDateien } from './kontoEntfernen';
 export { meldeAnmeldung } from './loginLimiter';

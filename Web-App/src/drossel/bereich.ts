@@ -4,8 +4,7 @@ import { zugang, type DrosselAbhaengigkeiten, type DrosselKontext } from './kont
 
 export type { DrosselAbhaengigkeiten, DrosselKontext } from './kontext';
 
-/** Die Zähler in rate_limit_attempts: Anmeldung, Guthabenabfrage und Quellenabruf zählen in
- * derselben Tabelle, also schreibt sie nur dieser Bereich. In einer Transaktion über `t.drossel`. */
+/** Anmeldung, Guthabenabfrage und Quellenabruf zählen in einer Tabelle; schreiben darf nur dieser Bereich. */
 export function erzeugeDrossel(a: DrosselAbhaengigkeiten, einblick?: Einblick<DrosselKontext>) {
   return baueBereich(a, zugang, (k: DrosselKontext) => ({ ...k.zaehler }), einblick);
 }

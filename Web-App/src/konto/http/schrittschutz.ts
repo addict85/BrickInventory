@@ -1,8 +1,8 @@
 /** Hier wird nur aus dem Request gelesen und geantwortet; die Regeln stehen in
- * src/konto/geraeteChallenge.ts. Browser-Sitzungen bleiben beim Passwort und
+ * src/geraete/geraeteChallenge.ts. Browser-Sitzungen bleiben beim Passwort und
  * zweiten Faktor: Sie haben keinen Keystore. */
 import type { Request, Response, NextFunction } from 'express';
-import { familieAus, type Schrittaktion } from '../geraeteChallenge';
+import { familieAus, type Schrittaktion } from '../../geraete';
 import { meldeFehler } from '../../infra/fehler';
 import { sendeFehler } from '../../http/httpAntwort';
 import { istVerwalter } from './anmeldung';

@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { familieLebt, familieDesTokens as familieDesTokensSql } from '../../../db/zugangSicht';
 
 /** Eine Token-Familie: Konto und created_at (auf Millisekunden, wie es über JavaScript reist). */
 export interface Familie {
@@ -6,16 +7,12 @@ export interface Familie {
   seit: string;
 }
 
-const FAMILIE_LEBT = `EXISTS (SELECT 1 FROM api_tokens t WHERE t.user_id = $1
-  AND date_trunc('milliseconds', t.created_at) = $2::timestamptz)`;
+const FAMILIE_LEBT = familieLebt('$1', '$2');
 
 /** Ein unbestätigter Schlüssel (vor der Attestation hinterlegt) gilt nur bis [altBis]. */
 /** Die Familie eines eben ausgestellten Tokens, auf Millisekunden wie FAMILIE_LEBT. */
 export async function familieDesTokens(db: DbSchnittstelle, hash: string): Promise<Familie | null> {
-  const z = await db.get<{ uid: number; seit: Date }>(
-    `SELECT user_id AS uid, date_trunc('milliseconds', created_at) AS seit FROM api_tokens WHERE token = $1`,
-    [hash],
-  );
+  const z = await db.get<{ uid: number; seit: Date }>(familieDesTokensSql('$1'), [hash]);
   return z ? { uid: z.uid, seit: new Date(z.seit).toISOString() } : null;
 }
 
@@ -50,8 +47,7 @@ export async function legeSchluesselAn(
   fristS: number,
 ): Promise<boolean> {
   await db.run(
-    `DELETE FROM geraete_schluessel g WHERE g.user_id = $1 AND NOT EXISTS (SELECT 1 FROM api_tokens t
-    WHERE t.user_id = g.user_id AND date_trunc('milliseconds', t.created_at) = g.familie)`,
+    `DELETE FROM geraete_schluessel g WHERE g.user_id = $1 AND NOT ${familieLebt('g.user_id', 'g.familie')}`,
     [f.uid],
   );
   return !!(await db.get(

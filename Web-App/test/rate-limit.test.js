@@ -119,7 +119,8 @@ test('das Eingabefeld zeigt denselben Standard an', () => {
 // ── Punkt 3: Zähler in der Datenbank ───────────────────────────────────────
 
 test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
-  const src = require('./helpers/sources').dienstQuelle('src/konto/loginLimiter.ts');
+  // Die Zähler schreibt src/drossel (Besitzer von rate_limit_attempts), die Anmeldung ruft k.drossel.
+  const src = fs.readFileSync(path.join(ROOT, 'src/drossel/repository.ts'), 'utf8');
   assert.match(src, /rate_limit_attempts/, 'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
   assert.match(
     src,

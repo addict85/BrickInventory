@@ -16,12 +16,12 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   const src = serverAll();
 
   // Den Catch-all an seiner AUFGABE finden, nicht an seinem Muster: Es ist
-  // die app.get-Registrierung, die renderIndexHtml() ausliefert. Haenge die
+  // die app.get-Registrierung, die startseiteHtml() ausliefert. Haenge die
   // Suche am Muster, muesste sie bei jeder Umbenennung mitgepflegt werden —
   // und dann prueft sie irgendwann die Schreibweise statt der Sache. …
   const kandidaten = [];
   for (const m of src.matchAll(/^\s*app\.get\('([^']+)'/gm)) {
-    if (/renderIndexHtml|sendeStartseite/.test(src.slice(m.index, m.index + 800))) kandidaten.push(m[1]);
+    if (/startseiteHtml|sendeStartseite/.test(src.slice(m.index, m.index + 800))) kandidaten.push(m[1]);
   }
   assert.ok(kandidaten.length, 'Keine Route rendert mehr index.html — Suche veraltet?');
   const muster = kandidaten.find(k => k.includes('*'));

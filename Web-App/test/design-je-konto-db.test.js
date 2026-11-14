@@ -42,7 +42,7 @@ test('Design je Konto', { concurrency: 1 }, async t => {
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
   await setGlobalSetting('app_theme', 'noppe');
-  _req('src/konto/indexHtml.js').invalidateTheme();
+  _req('src/profil/indexHtml.js').vergissDesign();
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     if (vorher === null) await db.run(`DELETE FROM global_settings WHERE key = 'app_theme'`);
@@ -100,11 +100,11 @@ test('Design je Konto', { concurrency: 1 }, async t => {
   });
 
   await t.test('index.html: Design des Kontos, ohne Konto die Vorgabe', async () => {
-    const { renderIndexHtml } = _req('src/konto/indexHtml.js');
+    const { startseiteHtml } = _req('src/profil/indexHtml.js');
     const designVon = html => /<html[^>]*\sdata-theme="([^"]+)"/.exec(html)?.[1];
-    assert.equal(designVon(await renderIndexHtml(ids[0])), 'werkbank');
-    assert.equal(designVon(await renderIndexHtml(ids[1])), 'noppe');
-    assert.equal(designVon(await renderIndexHtml()), 'noppe');
+    assert.equal(designVon(await startseiteHtml(ids[0])), 'werkbank');
+    assert.equal(designVon(await startseiteHtml(ids[1])), 'noppe');
+    assert.equal(designVon(await startseiteHtml()), 'noppe');
   });
 
   await t.test('leer heisst Vorgabe — auch nach einem Wechsel des Verwalters', async () => {

@@ -31,7 +31,12 @@ export function erzeugeKatalog(
   einblick?: Einblick<KatalogKontext>,
 ) {
   const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
-  return baueBereich({ ...a, cdnDrossel, faecher: new Faecher() }, zugang, katalogDienste, einblick);
+  return baueBereich(
+    { ...a, cdnDrossel, faecher: new Faecher() },
+    zugang,
+    (k: KatalogKontext) => ({ ...katalogDienste(k), ...bildDienste(k) }),
+    einblick,
+  );
 }
 
 type P<
@@ -42,6 +47,19 @@ type P<
     | 'setzeKontingentZurueck'
     | 'getLimitForApi',
 > = Parameters<FremdquellenDienste[N]>;
+
+function bildDienste(k: KatalogKontext) {
+  return {
+    fuelleAusBrickset: mit(k)(bildlageDienst.fuelleAusBrickset),
+    anleitungenNachtragen: mit(k)(bildlageDienst.anleitungenNachtragen),
+    setBilderNachladen: mit(k)(bildlageDienst.setBilderNachladen),
+    vorschaubilderNachtragen: mit(k)(bildlageDienst.vorschaubilderNachtragen),
+    setBildLokalEintragen: mit(k)(bildlageDienst.setBildLokalEintragen),
+    bilderFuerNachlauf: mit(k)(bildlageDienst.bilderFuerNachlauf),
+    bilderAusKatalog: <T extends bildlageDienst.Bildposten>(posten: T[], istFigur: (p: T) => boolean) =>
+      bildlageDienst.bilderAusKatalog(k, posten, istFigur),
+  };
+}
 
 function katalogDienste(k: KatalogKontext) {
   const fq = () => k.fremdquellen;
@@ -60,14 +78,6 @@ function katalogDienste(k: KatalogKontext) {
     get bilder() {
       return k.bilder;
     },
-    fuelleAusBrickset: mit(k)(bildlageDienst.fuelleAusBrickset),
-    anleitungenNachtragen: mit(k)(bildlageDienst.anleitungenNachtragen),
-    setBilderNachladen: mit(k)(bildlageDienst.setBilderNachladen),
-    vorschaubilderNachtragen: mit(k)(bildlageDienst.vorschaubilderNachtragen),
-    setBildLokalEintragen: mit(k)(bildlageDienst.setBildLokalEintragen),
-    bilderFuerNachlauf: mit(k)(bildlageDienst.bilderFuerNachlauf),
-    bilderAusKatalog: <T extends bildlageDienst.Bildposten>(posten: T[], istFigur: (p: T) => boolean) =>
-      bildlageDienst.bilderAusKatalog(k, posten, istFigur),
     merkeBlNummer: mit(k)(blZuordnungDienst.merkeBlNummer),
     merkeEigeneBlNummer: mit(k)(blZuordnungDienst.merkeEigeneBlNummer),
     blNummerVon: mit(k)(blZuordnungDienst.blNummerVon),

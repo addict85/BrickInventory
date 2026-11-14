@@ -6,7 +6,6 @@ import crypto from 'node:crypto';
 import { tokenAnlegen, hashToken, ipBereich } from './geraeteToken';
 import { APP_HOECHSTDAUER_TAGE, tokenLabel } from './tokenWunsch';
 import { fachfehler } from '../infra/fehlerTexte';
-import { neueNonce } from './geraeteChallenge';
 import type { KontoKontext } from './kontext';
 
 export type { QrStand } from './repository/qrKopplung';
@@ -79,8 +78,8 @@ export async function holeQrTokenAb(
     scope: 'app',
     ip,
   });
-  const familie = await k.geraeteSchluessel.familieDesTokens(hashToken(token));
-  const schluesselNonce = familie ? await neueNonce(k, familie, true) : null;
+  const familie = await k.geraete.familieDesTokens(hashToken(token));
+  const schluesselNonce = familie ? await k.geraete.neueNonce(familie, true) : null;
   return { stand: 'fertig', token, uid: z.user_id, schluesselNonce };
 }
 

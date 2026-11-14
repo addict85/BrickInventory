@@ -17,8 +17,8 @@ import {
   sitzungLeerlaufMs,
   sitzungLeerlaufSek,
   sitzungsHoechstdauer,
-  startStilHash,
 } from '../src/konto';
+import { startStilHash, type ProfilDienste } from '../src/profil';
 import { sitzungsVersionPruefen } from '../src/konto/http/sitzungsPruefung';
 import type { KontoDienste } from '../src/konto';
 import { merkeAnfrage } from '../src/http/kontoMerken';
@@ -27,7 +27,7 @@ import { proxyHinweis } from '../src/http/proxyHinweis';
 import { nurEigeneHerkunft, nurEigenerHost } from '../src/http/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from '../src/http/apiVersion';
 import { PUBLIC_DIR } from '../src/infra/appPaths';
-import { sendeStartseite } from '../src/konto/http/startseite';
+import { sendeStartseite } from '../src/profil/http/startseite';
 import { registerImgProxy } from '../routes/imgProxy';
 import { waechterFuer, rumpfLesen } from '../routes/api_v1/middleware';
 import { schrittschutzAmEingang } from '../src/konto/http/schrittschutz';
@@ -68,7 +68,7 @@ export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste, sitzungsSpei
   sitzung(app, sitzungsSpeicher ?? sitzungInPostgres(pool, sitzungsGeheimnis, konfig), dienste.konto, konfig);
   dateienUndBilder(app, dienste, konfig);
   apiRouten(app, dienste);
-  rueckfaelle(app, dienste.konto);
+  rueckfaelle(app, dienste.profil);
   return app;
 }
 
@@ -234,7 +234,7 @@ function dateienUndBilder(app: express.Express, d: Dienste, konfig: Konfig): voi
   app.use(baueSeitenRouter(d));
   app.use(
     express.static(PUBLIC_DIR, {
-      // `/` geht über den Renderer (src/konto/indexHtml.ts), nicht als Datei.
+      // `/` geht über den Renderer (src/profil/indexHtml.ts), nicht als Datei.
       index: false,
       // Gestempelte Assets (?v=) lange cachen; index.html no-cache, damit Deploys sofort gelten.
       maxAge: '7d',
@@ -273,7 +273,7 @@ function apiEingang(app: express.Express, d: Dienste): void {
   app.use('/api/v1', idempotenz(d.idempotenz));
 }
 
-function rueckfaelle(app: express.Express, konto: KontoDienste): void {
+function rueckfaelle(app: express.Express, profil: ProfilDienste): void {
   // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
   // index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
   app.use((req, res, next) => (/^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next()));
@@ -282,7 +282,7 @@ function rueckfaelle(app: express.Express, konto: KontoDienste): void {
   // naheliegende Form träfe die Startseite `/` nicht.
   app.get('/{*splat}', async (req, res) => {
     res.set('Cache-Control', 'no-cache');
-    await sendeStartseite(konto, res, req.session?.userId);
+    await sendeStartseite(profil, res, req.session?.userId);
   });
 
   // Für Fehler, die an den Route-Catches vorbeikommen: loggt voll, antwortet generisch.

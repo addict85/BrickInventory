@@ -51,7 +51,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
   });
 
   const einstellungen = _req('src/einstellungen/settings.js');
-  const stand = _req('src/konto/einrichtungStand.js');
+  const stand = _req('src/profil/einrichtungStand.js');
   // Am Pool statt am Repository: Importe sind gebunden, ein ersetzter Export käme nie an.
   const gelesen = [];
   // In den Pools der App (Laufzeit- und Systemrolle), nicht im Zugang der Testdaten.

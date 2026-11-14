@@ -571,7 +571,7 @@ test('Routen, Aufträge und Clients importieren keine Repositories', () => {
 /** Fachabläufe (Mail, Token-Hash, Design-Cache) stehen in Diensten, nicht in Routen. */
 function routenOhneFachablauf() {
   // Eine Route liest die Anfrage, ruft d und antwortet; wer src/mail, hashToken oder
-  // invalidateTheme importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
+  // vergissDesign importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
   // Gegenproben (14.11.2026): `import { hashToken } from '../../src/konto'` in
   // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
   // routes/api_v1/sets.ts → rot; `import { erzeugeMail } from '../../src/mail'` in
@@ -579,7 +579,7 @@ function routenOhneFachablauf() {
   /** @type {[RegExp, string][]} */
   const MUSTER = [
     [
-      /import\s*\{[^}]*\b(?:hashToken|invalidateTheme)\b[^}]*\}\s*from\s*'[./]+\/src\/konto'/g,
+      /import\s*\{[^}]*\b(?:hashToken|vergissDesign)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:konto|profil)'/g,
       'Werkzeug aus src/konto',
     ],
     [/import\s*\*\s*as\s*\w+\s*from\s*'[./]+\/src\/\w+'/g, 'Bereich als Namensraum'],
@@ -841,9 +841,9 @@ const STUFEN = [
   ['src/mail'],
   ['src/auftraege'],
   ['src/fremdquellen'],
-  ['src/haushalt'],
+  ['src/haushalt', 'src/geraete'],
   ['src/konto'],
-  ['src/bilder'],
+  ['src/bilder', 'src/profil'],
   ['src/idempotenz', 'src/katalog'],
   ['src/finanzen'],
   ['src/bestand'],

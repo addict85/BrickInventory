@@ -19,10 +19,12 @@ import { type Bildwerk, erzeugeBilder } from '../src/bilder';
 import { erzeugeFinanzen } from '../src/finanzen';
 import { mitVersion } from '../src/infra/setNummer';
 import { erzeugeKonto } from '../src/konto';
+import { erzeugeProfil } from '../src/profil';
 import { meldeFehler } from '../src/infra/fehler';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
 import { erzeugeDrossel } from '../src/drossel';
+import { erzeugeGeraete } from '../src/geraete';
 import { konfig, type Konfig } from '../src/infra/konfig';
 import type { Dienste } from '../src/dienste';
 
@@ -107,10 +109,12 @@ function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig }
   const mail = erzeugeMail({ einstellungen, konfig }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, einstellungen }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, einstellungen }, zeige('haushalt'));
+  const geraete = erzeugeGeraete({ db, konfig, auftraege }, zeige('geraete'));
   const konto = erzeugeKonto(
-    { db, konfig, einstellungen, auftraege, haushalt, nacharbeit, mail, drossel },
+    { db, konfig, einstellungen, auftraege, haushalt, nacharbeit, mail, drossel, geraete },
     zeige('konto'),
   );
+  const profil = erzeugeProfil({ db, konfig, einstellungen, konto, mail }, zeige('profil'));
   const idempotenz = erzeugeIdempotenz({ db }, zeige('idempotenz'));
   const fremdquellen = erzeugeFremdquellen({ db, einstellungen, auftraege, ersatz: quellen }, zeige('fremdquellen'));
   const bilder = erzeugeBilder(
@@ -121,7 +125,20 @@ function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig }
     { db, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bilder, drossel },
     zeige('katalog'),
   );
-  return { drossel, einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, bilder, katalog };
+  return {
+    drossel,
+    einstellungen,
+    mail,
+    auftraege,
+    haushalt,
+    geraete,
+    konto,
+    profil,
+    idempotenz,
+    fremdquellen,
+    bilder,
+    katalog,
+  };
 }
 
 function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienste {

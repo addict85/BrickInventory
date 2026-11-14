@@ -5,7 +5,6 @@ import type { Faecher } from '../infra/zwischenspeicher';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import * as altgeheimnisse from './repository/altgeheimnisse';
 import * as einrichtung from './repository/einrichtung';
-import * as geraeteSchluessel from './repository/geraeteSchluessel';
 import * as konten from './repository/konten';
 import * as passkeys from './repository/passkeys';
 import * as protokoll from './repository/protokoll';
@@ -19,6 +18,7 @@ import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 import type { MailDienste } from '../mail';
 import type { DrosselDienste } from '../drossel';
+import type { GeraeteDienste } from '../geraete';
 
 export interface KontoAbhaengigkeiten {
   konfig: Readonly<Konfig>;
@@ -31,6 +31,7 @@ export interface KontoAbhaengigkeiten {
   nacharbeit: Nacharbeit;
   mail: MailDienste;
   drossel: DrosselDienste;
+  geraete: GeraeteDienste;
 }
 
 /** Zugangsdaten liegen unter Zeilenschutz (0112): Den Systemrahmen bekommt nur, wer ohne Konto
@@ -59,19 +60,6 @@ const anmeldezugang = (db: Db) => ({
   einrichtung: {
     kontenStand: mit(db)(einrichtung.kontenStand),
     datenbankErreichbar: mit(db)(einrichtung.datenbankErreichbar),
-  },
-  geraeteSchluessel: {
-    familieDesTokens: imSystem(db, OHNE_KONTO, geraeteSchluessel.familieDesTokens),
-    schluesselDer: imSystem(db, OHNE_KONTO, geraeteSchluessel.schluesselDer),
-    eintragDer: imSystem(db, OHNE_KONTO, geraeteSchluessel.eintragDer),
-    legeSchluesselAn: imSystem(db, OHNE_KONTO, geraeteSchluessel.legeSchluesselAn),
-    legeNonceAn: imSystem(db, OHNE_KONTO, geraeteSchluessel.legeNonceAn),
-    qrNonceDer: imSystem(db, OHNE_KONTO, geraeteSchluessel.qrNonceDer),
-    nimmNonce: imSystem(db, OHNE_KONTO, geraeteSchluessel.nimmNonce),
-    legeChallengeAn: imSystem(db, OHNE_KONTO, geraeteSchluessel.legeChallengeAn),
-    nimmChallenge: imSystem(db, OHNE_KONTO, geraeteSchluessel.nimmChallenge),
-    oeffneFreigabe: imSystem(db, OHNE_KONTO, geraeteSchluessel.oeffneFreigabe),
-    nutzeFreigabe: imSystem(db, OHNE_KONTO, geraeteSchluessel.nutzeFreigabe),
   },
 });
 

@@ -33,8 +33,8 @@ import {
   meldeAnmeldung,
   type Angemeldet,
   type TokenWunsch,
-  emailWirdGeaendert,
 } from '../src/konto';
+import { emailWirdGeaendert } from '../src/profil';
 import type { Dienste } from '../src/dienste';
 type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
 /** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. Token
@@ -120,7 +120,7 @@ async function sitzungsNutzer(d: Pick<Dienste, 'konto'>, req: Request, uid: numb
   } as const;
 }
 
-export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto'>) {
+export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'profil'>) {
   const { requireLoginOrToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1/auth');
 
@@ -248,7 +248,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
     // es einen Namen oder eine Adresse schon gibt.
     if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, user.id, String(password_current)))) return;
-    const r = await d.konto.profilAendern(user, { username, email, first_name, last_name });
+    const r = await d.profil.profilAendern(user, { username, email, first_name, last_name });
     if (r.emailChanged) return { emailChanged: true, emailSent: r.emailSent ?? false };
     return {};
   });

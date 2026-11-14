@@ -11,7 +11,9 @@ import { emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'verwaltung'>) {
+export function baueSettingsGlobalRouter(
+  d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto' | 'profil' | 'verwaltung'>,
+) {
   const { requireApiAdmin: requireAdmin, requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -136,7 +138,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mai
 
   router.endpunkt('POST /api/v1/settings/admin/theme', requireAdmin, async req => {
     const theme = req.eingabe.theme;
-    await d.konto.setzeGlobalesDesign(theme);
+    await d.profil.setzeGlobalesDesign(theme);
     return { theme };
   });
 

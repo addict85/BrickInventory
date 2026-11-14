@@ -20,7 +20,7 @@ const cdnAdresse = (url: string) => {
   return roh ? decodeURIComponent(roh) : url;
 };
 
-/** Nur geprüfte Bildquellen aus dem Katalog (src/bilder/bildlage.ts). */
+/** Nur geprüfte Bildquellen aus dem Katalog (src/katalog/bildlage.ts). */
 export const bilderAusKatalog = (k: KatalogKontext, parts: PdfTeil[]) => bilderAusKatalogLesen(k, parts, istFigur);
 
 async function figurenOhneAdresse(k: KatalogKontext, parts: PdfTeil[]) {

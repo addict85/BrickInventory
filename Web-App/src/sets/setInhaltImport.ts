@@ -1,9 +1,7 @@
 import { fehlertext } from '../infra/fehler';
 import type { SetsKontext } from './kontext';
 
-/** Katalog und Bestand in einer Transaktion: Der Katalog merkt die Figuren, der Bestand
- * trägt sie ins Konto ein; vorhandene Zeilen behalten den Lagerort.
- * @returns die Zahl der Figuren; wirft bei Fehlern (der Auftrag wiederholt dann) */
+/** Katalog und Bestand in einer Transaktion; wirft bei Fehlern, der Auftrag wiederholt dann. */
 export async function importiereFiguren(k: SetsKontext, setNumber: string, userId: number): Promise<number> {
   const { figuren, ausQuelle } = await k.katalog.setFigurenLaden(setNumber);
   if (!figuren.length) return 0;
@@ -16,9 +14,7 @@ export async function importiereFiguren(k: SetsKontext, setNumber: string, userI
   return figuren.length;
 }
 
-/** In einer Transaktion, damit ein Fehler nie ein Set ohne Teile hinterlässt;
- * vorhandene Zeilen behalten Lagerort und Datum.
- * @returns die Zahl der Zeilen; wirft bei Fehlern (der Auftrag wiederholt dann) */
+/** In einer Transaktion, damit ein Fehler nie ein Set ohne Teile hinterlässt. */
 export async function importiereTeile(k: SetsKontext, setNumber: string, userId: number): Promise<number> {
   const geladen = await k.katalog.setTeileLaden(setNumber);
   if (!geladen) return 0;
