@@ -287,7 +287,10 @@ test('die Teileliste liefert, was sie meldet', () => {
 
   // Die Antwort meldet die TATSÄCHLICHE Seitengrösse, nicht die angefragte.
   const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/parts.ts'), 'utf8'));
-  const antwort = v1.slice(v1.indexOf("router.get('/parts'"), v1.indexOf("router.get('/parts/brick-colors'"));
+  const antwort = v1.slice(
+    v1.indexOf("router.endpunkt('GET /api/v1/parts'"),
+    v1.indexOf("router.endpunkt('GET /api/v1/parts/brick-colors'"),
+  );
   // Geprüft wird, WOHER die Zahl kommt, nicht wie die Zeile geschrieben ist.
   //
   // Vorher stand hier der Wortlaut `page_size: result.page_size`. Der war seit

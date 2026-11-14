@@ -112,7 +112,8 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   // sind. Jeder schreibende darf entweder eine Anmeldung verlangen (per
   // Middleware oder im Rumpf), oder er zählt Versuche je IP. qr-login hatte …
   const src = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
-  const stellen = [...src.matchAll(/router\.(post|put|delete)\(\s*'([^']+)'/g)];
+  // Alte Form router.post('/pfad' und Vertragsform router.endpunkt('POST /api/v1/auth/pfad'.
+  const stellen = [...src.matchAll(/router\.(?:(post|put|delete)\(\s*'|endpunkt\(\s*'(POST|PUT|DELETE) )([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 
   const offen = [];
@@ -124,7 +125,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
       /requireLogin|requireToken|requireAdmin|ipThrottle|anmeldungErlaubt|pruefeAnmeldedaten|anmelden\(|req\.session\??\.?\.?userId/.test(
         rumpf,
       );
-    if (!geschuetzt) offen.push(`${stellen[i][1].toUpperCase()} ${stellen[i][2]}`);
+    if (!geschuetzt) offen.push(`${(stellen[i][1] ?? stellen[i][2]).toUpperCase()} ${stellen[i][3]}`);
   }
   assert.deepEqual(offen, [], `weder Anmeldung noch Drossel: ${offen.join(', ')}`);
 });

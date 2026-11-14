@@ -40,7 +40,9 @@ Module.prototype.require = function (/** @type {string} */ name, /** @type {any[
   const m = _echtesRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
-      get: (t, k) => (k === 'setErfassen' && gestellteAddSet ? (_sk, ...a) => gestellteAddSet?.(...a) : t[k]),
+      // Die Fabrik bindet beim Bau (mit()): Der Ersatz prüft die Stellung erst beim Aufruf.
+      get: (t, k) =>
+        k === 'setErfassen' ? (sk, ...a) => (gestellteAddSet ? gestellteAddSet(...a) : t[k](sk, ...a)) : t[k],
     });
   return m;
 };

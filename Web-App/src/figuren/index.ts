@@ -1,4 +1,3 @@
-/** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
- * damit die Aufteilung der Dateien darunter frei bleibt. */
+/** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
 export { erzeugeFiguren } from './bereich';
 export type { FigurenDienste, FigurenKontext } from './bereich';

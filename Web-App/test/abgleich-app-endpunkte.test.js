@@ -43,7 +43,7 @@ function form(p) {
 function routenAus(datei, mount) {
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const out = [];
-  for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"]([^'"]+)['"]/g))
+  for (const m of require('./helpers/sources').routenAusQuelle(src, mount))
     out.push(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
   return out;
 }

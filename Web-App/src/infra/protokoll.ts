@@ -1,11 +1,11 @@
 /** Jede console-Zeile als JSON-Zeile für Docker und Log-Sammler, daneben nach
  * app_logs für die Verwaltung. Schreibfehler dorthin höchstens einmal je
  * Minute melden. */
-import { AsyncLocalStorage } from 'node:async_hooks';
 import * as logs from './repository/appLogs';
 import { prozessweit } from './prozessweit';
 
-export const anfrageKontext = new AsyncLocalStorage<{ rid: string }>();
+export { anfrageKontext } from './kontoKontext';
+import { anfrageKontext } from './kontoKontext';
 
 /** Kein Leerraum, keine Steuer- oder Anführungszeichen. */
 const KENNUNG_RE = /^[A-Za-z0-9._:-]{1,64}$/;

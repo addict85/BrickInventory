@@ -14,7 +14,6 @@ import { merkeCacheZuwachs, bildTyp } from '../imgCacheServe';
 import { liefereAusCache } from './bildCacheAuslieferung';
 import { imgProxyFailures, zaehleProxyFehler } from '../imgProxyStats';
 import { proxyAdresse, proxyCacheSchluessel } from '../images';
-import { konfig } from '../../infra/konfig';
 import type { Request, Response } from 'express';
 import type { Readable } from 'node:stream';
 import { AbrufFehler, type AbrufStrom } from '../../infra/abruf';
@@ -197,7 +196,7 @@ function inDenCache(
       }
       await fs.promises.writeFile(cacheFile + '.ct', contentType);
       await fs.promises.rename(tmpFile, cacheFile);
-      merkeCacheZuwachs(st.size);
+      merkeCacheZuwachs(st.size, d.bilder.bildGrenzen().cacheMaxBytes);
       if (o.setNummer)
         await setBildAusCache(d, url, o.setNummer, cacheFile).catch(e => zaehleProxyFehler('img-proxy:setbild', e));
       // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
@@ -354,7 +353,7 @@ export async function bildDurchreichen(d: BildDienste, req: Request, res: Respon
 
   // Nur Abrufe beim CDN zählen: Jeder füllt Platte und Bandbreite, Treffer nicht.
   const takt = await d.konto.zaehleAnfrage('bild-abruf', `konto:${proxyUserId}`, 60_000);
-  if (takt.count > konfig().bildAbrufeJeMinute) {
+  if (takt.count > d.bilder.bildGrenzen().abrufeJeMinute) {
     if (await ersatz()) return;
     res.setHeader('Retry-After', String(takt.waitMin * 60));
     res.setHeader('Cache-Control', 'no-store');

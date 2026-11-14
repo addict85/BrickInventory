@@ -154,7 +154,7 @@ test('der Bild-Auftrag holt mit der Browser-Kennung des Proxys', () => {
   const dist = path.join(ROOT, 'dist', 'src/bilder/setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/src/bilder/setImages.js fehlt — erst bauen');
   const { BILD_KOPFZEILEN } = require(path.join(ROOT, 'dist', 'clients/bildCdn.js'));
-  const ua = require(dist).bildUserAgent();
+  const ua = require(dist).bildUserAgent({ bildUserAgent: null });
   assert.equal(ua, BILD_KOPFZEILEN['User-Agent'], 'der Bild-Auftrag holt mit der Browser-Kennung des Proxys');
   assert.match(ua, /^Mozilla\/5\.0 /);
 });

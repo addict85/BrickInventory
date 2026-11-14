@@ -14,9 +14,9 @@
  *   C  (13.11.2026) die Prüfungen nochOffen() in database.ts gestrichen → rot: „ein
  *      Nachzügler verdirbt nicht …“ (25P02 in der fremden Transaktion); vorher war
  *      die Datei im Volllauf und einzeln etwa jedes fünfte Mal rot
- *   Seit eine innere Transaktion über den ungebundenen Zugang wirft (14.11.2026), öffnet
- *   der Test sie über `tx.gebunden`, wie es der Kontext `t` tut. Erneut gemessen: A → rot
- *   wie oben; B → rot wie oben.
+ *   Seit die Transaktion ausdrücklich gereicht wird (14.11.2026, w5-vertrag), öffnet der
+ *   Test die innere über den Zugang des Griffs (`tx.db`), wie es der Kontext `t` tut; welcher
+ *   Sicherungspunkt der innerste ist, sagt der Griff. Erneut gemessen: A, B, C → rot wie oben.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  *
@@ -50,8 +50,8 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
   });
   const schreibe = (tx, w) => tx.run(`INSERT INTO ${TABELLE} (wert) VALUES ($1)`, [w]);
   const werte = async () => (await db.all(`SELECT wert FROM ${TABELLE} ORDER BY wert`)).map(z => z.wert);
-  /** Eine innere Transaktion, für die äussere freigegeben (wie t.transaktion). */
-  const innen = (tx, fn) => tx.gebunden(() => db.transaction(fn));
+  /** Eine innere Transaktion über den Zugang der äusseren (wie t.transaktion). */
+  const innen = (tx, fn) => tx.db.transaction(fn);
   t.beforeEach(() => db.run(`DELETE FROM ${TABELLE}`));
 
   await t.test('zwei gleichzeitige innere Transaktionen: die zweite wird abgewiesen', async () => {
@@ -97,12 +97,10 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
       let nachzuegler;
       await assert.rejects(
         eng.transaction(async tx => {
-          nachzuegler = tx.gebunden(() =>
-            eng.transaction(async inner => {
-              await warte(80);
-              await schreibe(inner, 'nachzuegler');
-            }),
-          );
+          nachzuegler = tx.db.transaction(async inner => {
+            await warte(80);
+            await schreibe(inner, 'nachzuegler');
+          });
           nachzuegler.catch(() => {});
           throw new Error('aussen scheitert sofort');
         }),

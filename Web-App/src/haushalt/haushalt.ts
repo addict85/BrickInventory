@@ -7,7 +7,7 @@ import type { HaushaltKontext } from './kontext';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fachfehler } from '../infra/fehlerTexte';
-import { imSystemkontext } from '../infra/kontoKontext';
+import { imSystemkontext, pruefeAnfragender } from '../infra/kontoKontext';
 import {
   HAUSHALT_KANAL,
   HAUSHALT_MAX,
@@ -68,8 +68,10 @@ export function meldeHaushaltsaenderung(k: HaushaltKontext): void {
  * der Hauptaccount ist kein gemeinsamer Topf, sondern eine Sicht. */
 const kinder = (k: HaushaltKontext, id: number) => repo.unterkonten(k.db, id);
 
+/** Wer fragt, ist das Konto des Zeilenschutzes (pruefeAnfragender); fremde über den Systemrahmen. */
 export async function haushaltVon(k: HaushaltKontext, uid: number): Promise<Household> {
   const id = parseInt(String(uid), 10);
+  pruefeAnfragender(id);
   const speicher = gedaechtnis(k);
   const treffer = speicher.hole(id);
   // Kopien zurückgeben: Ein Aufrufer, der die Liste verändert, veränderte
@@ -87,6 +89,7 @@ export async function haushaltVon(k: HaushaltKontext, uid: number): Promise<Hous
 export async function darfSchreibenFuer(k: HaushaltKontext, actorId: number, ownerId: number): Promise<boolean> {
   const actor = parseInt(String(actorId), 10);
   const owner = parseInt(String(ownerId), 10);
+  pruefeAnfragender(actor);
   if (actor === owner) return true;
   return repo.istVerknuepft(k.db, actor, owner);
 }
@@ -94,6 +97,7 @@ export async function darfSchreibenFuer(k: HaushaltKontext, actorId: number, own
 /** Frisch, aus demselben Grund wie darfSchreibenFuer. */
 export async function schreibbereich(k: HaushaltKontext, uid: number): Promise<number[]> {
   const id = parseInt(String(uid), 10);
+  pruefeAnfragender(id);
   return [id, ...(await kinder(k, id))];
 }
 
@@ -281,6 +285,7 @@ export async function schreibbereichAus(k: HaushaltKontext, v: Schreiber | numbe
  * gefragt wie darfSchreibenFuer: Ein gelöstes Unterkonto soll nicht bis zum Ablauf
  * des Gedächtnisses lesbar bleiben, falls die Benachrichtigung ausbleibt. */
 export async function siehtKonto(k: HaushaltKontext, nutzer: number, besitzer: number): Promise<boolean> {
+  pruefeAnfragender(nutzer);
   return besitzer === nutzer || repo.istVerknuepft(k.db, nutzer, besitzer);
 }
 
@@ -326,7 +331,7 @@ export async function umzugsQuelle(
 }
 
 /** Beide Formen hier, damit die Namensauflösung nur einmal existiert. */
-// biome-ignore lint/suspicious/noExplicitAny: bindeZugang bildet die Funktion über einen Abbildungstyp ab; ein Typparameter fiele dort zu unknown, und die Aufrufer brauchen ihre Zeilenform zurück.
+// biome-ignore lint/suspicious/noExplicitAny: Die Aufrufer reichen Zeilen verschiedener Form und brauchen ihre Form zurück; owner_ids und user_id liest die Funktion ungeprüft.
 export async function besitzerAnhaengen(k: HaushaltKontext, uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
   const owners = await repo.benutzerNamen(k.db, uids);

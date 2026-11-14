@@ -36,7 +36,9 @@ function zaehlenderZugang(echt, sql) {
   const huelle = z => ({ all: merke(z.all), get: merke(z.get), run: merke(z.run), exec: merke(z.exec) });
   return new Proxy(echt, {
     get(ziel, name) {
-      if (name === 'transaction') return (fn, o) => ziel.transaction(tx => fn(huelle(tx)), o);
+      // Der Griff trägt seinen Zugang (tx.db), über den t entsteht: Auch er zählt mit.
+      if (name === 'transaction')
+        return (fn, o) => ziel.transaction(tx => fn({ ...huelle(tx), db: zaehlenderZugang(tx.db, sql) }), o);
       if (['all', 'get', 'run', 'exec'].includes(String(name))) return huelle(ziel)[name];
       return Reflect.get(ziel, name);
     },

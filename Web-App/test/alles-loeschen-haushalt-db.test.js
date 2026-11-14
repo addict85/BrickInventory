@@ -110,7 +110,7 @@ test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () =
   // einer Sicherung. Der Dienst schneidet deshalb gegen schreibbereich(); die
   // Route gibt nur die Sicht weiter (Verhalten: blickfeld-dienste-db.test.js).
   const src = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
-  const i = src.indexOf("router.delete('/sets/:setNumber'");
+  const i = src.indexOf("router.endpunkt('DELETE /api/v1/sets/:setNumber'");
   assert.ok(i > 0, 'Löschroute nicht gefunden');
   assert.match(src.slice(i, i + 900), /loescheSetFuer\(sichtVon\(req\)/, 'Die Route löscht nicht über den Dienst');
   const dienst = require('./helpers/sources').funktionsRumpf(

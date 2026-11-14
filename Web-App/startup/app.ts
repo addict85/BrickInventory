@@ -10,7 +10,15 @@ import type { Konfig } from '../src/infra/konfig';
 import { anfrageKontext, anfrageKennung } from '../src/infra/protokoll';
 import { fehlerAntwort, unbekannterApiPfad } from '../src/http/httpAntwort';
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
-import { drossleBeruehren, SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer, startStilHash } from '../src/konto';
+import {
+  beruehrenMs,
+  drossleBeruehren,
+  sitzungHoechstMs,
+  sitzungLeerlaufMs,
+  sitzungLeerlaufSek,
+  sitzungsHoechstdauer,
+  startStilHash,
+} from '../src/konto';
 import { sitzungsVersionPruefen } from '../src/konto/http/sitzungsPruefung';
 import type { KontoDienste } from '../src/konto';
 import { merkeAnfrage } from '../src/http/kontoMerken';
@@ -30,7 +38,7 @@ import { baueApiRouter } from '../routes/api_v1/index';
 import { baueAuthRouter } from '../routes/auth';
 import zertifikatRouter from '../routes/zertifikat';
 import cspBerichtRouter from '../src/http/cspBericht';
-import wellKnownRouter from '../routes/wellKnown';
+import { baueWellKnownRouter } from '../routes/wellKnown';
 import { baueGesundheitRouter } from '../routes/gesundheit';
 import { baueSeitenRouter } from '../routes/seiten';
 import { vertragPruefen } from '../src/http/vertragsRouter';
@@ -57,8 +65,8 @@ export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste, sitzungsSpei
   // Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
   app.set('case sensitive routing', true);
   grundschutz(app, konfig);
-  sitzung(app, sitzungsSpeicher ?? sitzungInPostgres(pool, sitzungsGeheimnis), dienste.konto);
-  dateienUndBilder(app, dienste);
+  sitzung(app, sitzungsSpeicher ?? sitzungInPostgres(pool, sitzungsGeheimnis, konfig), dienste.konto, konfig);
+  dateienUndBilder(app, dienste, konfig);
   apiRouten(app, dienste);
   rueckfaelle(app, dienste.konto);
   return app;
@@ -82,7 +90,7 @@ function grundschutz(app: express.Express, k: Konfig): void {
 
   // Handgerollt statt helmet: keine zusätzliche Abhängigkeit, und die CSP muss
   // ohnehin auf die App zugeschnitten sein.
-  app.use(sicherheitsKoepfe(k.hstsMaxAge));
+  app.use(sicherheitsKoepfe(k.hstsMaxAge, k.produktion));
 
   // Das Konto der Anfrage für Zähler tief unten (src/fremdquellen/apiKontingent.ts).
   app.use(merkeAnfrage);
@@ -132,7 +140,7 @@ function grundschutz(app: express.Express, k: Konfig): void {
 }
 
 const sicherheitsKoepfe =
-  (hstsAlter: number) =>
+  (hstsAlter: number, produktion: boolean) =>
   (req: Request, res: Response, next: NextFunction): void => {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -157,7 +165,7 @@ const sicherheitsKoepfe =
         // Ohne 'unsafe-inline': Alle Handler laufen über js/actions.js.
         "script-src 'self'",
         // Stile setzt js/stile.js per CSSOM; inline nur das Startgerüst, per Hash.
-        `style-src 'self'${startStilHash() ? ' ' + startStilHash() : ''}`,
+        `style-src 'self'${startStilHash(produktion) ? ' ' + startStilHash(produktion) : ''}`,
         "font-src 'self'",
         // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
         // <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.
@@ -181,7 +189,7 @@ const sicherheitsKoepfe =
     next();
   };
 
-function sitzungInPostgres(pool: Pool, geheimnis: string): RequestHandler {
+function sitzungInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHandler {
   // In PostgreSQL, damit Sitzungen einen Neustart überleben; die Tabelle legt das Schema an.
   const PgSession = connectPgSimple(session);
   const sitzungsSpeicher = new PgSession({
@@ -190,7 +198,7 @@ function sitzungInPostgres(pool: Pool, geheimnis: string): RequestHandler {
     createTableIfMissing: false,
     pruneSessionInterval: 60 * 15,
     // Nach Stunden Leerlauf endet eine Webapp-Sitzung.
-    ttl: SITZUNG_LEERLAUF_SEK,
+    ttl: sitzungLeerlaufSek(k),
     errorLog: err => {
       if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
         console.error('[session-store]', err.message);
@@ -199,7 +207,7 @@ function sitzungInPostgres(pool: Pool, geheimnis: string): RequestHandler {
   });
 
   // Gedrosselt geschrieben (src/konto/sitzungsBeruehrung.ts).
-  drossleBeruehren(sitzungsSpeicher);
+  drossleBeruehren(sitzungsSpeicher, beruehrenMs(sitzungLeerlaufMs(k)));
 
   return session({
     store: sitzungsSpeicher,
@@ -211,16 +219,16 @@ function sitzungInPostgres(pool: Pool, geheimnis: string): RequestHandler {
   });
 }
 
-function sitzung(app: express.Express, speicher: RequestHandler, konto: KontoDienste): void {
+function sitzung(app: express.Express, speicher: RequestHandler, konto: KontoDienste, k: Konfig): void {
   app.use(speicher);
   app.use(sitzungsVersionPruefen(konto));
-  app.use(sitzungsHoechstdauer());
+  app.use(sitzungsHoechstdauer(sitzungHoechstMs(k)));
 }
 
-function dateienUndBilder(app: express.Express, d: Dienste): void {
+function dateienUndBilder(app: express.Express, d: Dienste, konfig: Konfig): void {
   app.use(baueDatenDateienRouter(d));
   app.use(zertifikatRouter);
-  app.use(wellKnownRouter);
+  app.use(baueWellKnownRouter(konfig));
   registerImgProxy(app, d);
 
   app.use(baueSeitenRouter(d));

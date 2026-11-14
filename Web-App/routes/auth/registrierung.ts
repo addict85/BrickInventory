@@ -5,7 +5,7 @@ import { ipThrottle } from '../../src/konto/http/anmeldung';
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../../src/infra/basisUrl';
-import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
+import { vertragsRouter, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { USERNAME_RE, emailGueltig, nameGueltig, vertrauenspartei } from '../../src/konto';
 import type { Dienste } from '../../src/dienste';
 
@@ -21,10 +21,10 @@ function registrierungsMangel(e: OffeneAnfrage<'POST /api/v1/auth/register'>['ei
 }
 
 export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'konto'>) {
-  const router = vertragsRouter();
+  const router = vertragsRouter('/api/v1/auth');
 
   // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
-  router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
+  router.endpunkt('GET /api/v1/auth/registration-status', async (_req, res) => {
     const mail = await d.mail.mailBereit();
     res.json({
       enabled: mail && (await d.einstellungen.registrierungOffen()),
@@ -34,10 +34,10 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
     });
   });
 
-  router.post(
-    '/register',
+  router.endpunkt(
+    'POST /api/v1/auth/register',
     ipThrottle(d.konto, 'register', 5, 60 * 60 * 1000),
-    async (req: OffeneAnfrage<'POST /api/v1/auth/register'>, res: Antwort<'POST /api/v1/auth/register'>) => {
+    async (req, res) => {
       const { username, email, first_name, last_name, password, language } = req.eingabe;
       if (!(await d.einstellungen.registrierungOffen()) || !(await d.mail.mailBereit()))
         return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
@@ -55,24 +55,20 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
         passwort: password,
         lang: language === 'en' ? 'en' : 'de',
       });
-      res.json({
-        success: true,
+      return {
         message: gesendet
           ? 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.'
           : 'Konto erstellt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann das Konto freischalten.',
         email_sent: gesendet,
-      });
+      };
     },
   );
 
   // Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
-  router.post(
-    '/bestaetigung-erneut',
+  router.endpunkt(
+    'POST /api/v1/auth/bestaetigung-erneut',
     ipThrottle(d.konto, 'bestaetigung-erneut', 5, 60 * 60 * 1000),
-    async (
-      req: OffeneAnfrage<'POST /api/v1/auth/bestaetigung-erneut'>,
-      res: Antwort<'POST /api/v1/auth/bestaetigung-erneut'>,
-    ) => {
+    async (req, res) => {
       const { email } = req.eingabe;
       if (!emailGueltig(email)) return sendeFehler(req, res, 400, email ? 'email_ungueltig' : 'email_erforderlich');
       if (!basisUrl()) {
@@ -80,45 +76,36 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
         return sendeFehler(req, res, 503, 'bestaetigung_nicht_eingerichtet');
       }
       await d.konto.bestaetigungErneutAnfordern(String(email));
-      res.json({ success: true, message: fehlerText('bestaetigung_gesendet', antwortSprache(req)) });
+      return { message: fehlerText('bestaetigung_gesendet', antwortSprache(req)) };
     },
   );
 
-  router.post(
-    '/email-bestaetigen/vorschau',
+  router.endpunkt(
+    'POST /api/v1/auth/email-bestaetigen/vorschau',
     ipThrottle(d.konto, 'email-vorschau', 30, 60 * 60 * 1000),
-    async (
-      req: OffeneAnfrage<'POST /api/v1/auth/email-bestaetigen/vorschau'>,
-      res: Antwort<'POST /api/v1/auth/email-bestaetigen/vorschau'>,
-    ) => {
+    async (req, res) => {
       const token = req.eingabe.token;
       const username = token ? await d.konto.nameZuBestaetigung(String(token)) : null;
       if (!username) return sendeFehler(req, res, 400, 'bestaetigungslink_ungueltig');
-      res.json({ success: true, username });
+      return { username };
     },
   );
 
-  router.post(
-    '/email-bestaetigen',
+  router.endpunkt(
+    'POST /api/v1/auth/email-bestaetigen',
     ipThrottle(d.konto, 'email-bestaetigen', 30, 60 * 60 * 1000),
-    async (
-      req: OffeneAnfrage<'POST /api/v1/auth/email-bestaetigen'>,
-      res: Antwort<'POST /api/v1/auth/email-bestaetigen'>,
-    ) => {
+    async (req, res) => {
       const e = await d.konto.verifiziereEmailToken(req.eingabe.token);
       if (!e.ok)
         return sendeFehler(req, res, 400, e.grund === 'vergeben' ? 'email_vergeben' : 'bestaetigungslink_ungueltig');
-      res.json({ success: true });
+      return {};
     },
   );
 
-  router.post(
-    '/forgot-password',
+  router.endpunkt(
+    'POST /api/v1/auth/forgot-password',
     ipThrottle(d.konto, 'forgot-password', 5, 60 * 60 * 1000),
-    async (
-      req: OffeneAnfrage<'POST /api/v1/auth/forgot-password'>,
-      res: Antwort<'POST /api/v1/auth/forgot-password'>,
-    ) => {
+    async (req, res) => {
       const { email } = req.eingabe;
       if (!emailGueltig(email)) return sendeFehler(req, res, 400, email ? 'email_ungueltig' : 'email_erforderlich');
       // Vor der Nutzersuche, damit die Absage nichts über die Adresse verrät.
@@ -128,17 +115,14 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
       }
       // Immer dieselbe Antwort nach derselben Mindestdauer, ob es die Adresse gibt oder nicht.
       await d.konto.ruecksetzLinkAnfordern(String(email));
-      res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
+      return { message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' };
     },
   );
 
-  router.post(
-    '/reset-password',
+  router.endpunkt(
+    'POST /api/v1/auth/reset-password',
     ipThrottle(d.konto, 'reset-password', 10, 60 * 60 * 1000),
-    async (
-      req: OffeneAnfrage<'POST /api/v1/auth/reset-password'>,
-      res: Antwort<'POST /api/v1/auth/reset-password'>,
-    ) => {
+    async (req, res) => {
       const { token, password } = req.eingabe;
       if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
       const mangel = passwortMangel(password);
@@ -152,7 +136,7 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'einstellungen' | 'mail
       const uid = await d.konto.passwortPerLinkSetzen(token, password);
       if (!uid) return sendeFehler(req, res, 400, 'token_ungueltig');
       d.konto.hinweisNebenher(uid, 'passwort_zurueckgesetzt');
-      res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
+      return { message: 'Passwort erfolgreich geändert.' };
     },
   );
 

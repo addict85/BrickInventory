@@ -3,7 +3,6 @@
  * Einrichtung abgeschlossen ist, sind das nur Schalter — keine Namen, keine
  * Adressen, keine Schlüssel. Danach antwortet die Seite nur noch „erledigt"
  * und nennt das Zertifikat, das ohnehin unter /ca.crt öffentlich ist. */
-import { konfig } from '../infra/konfig';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { tlsStand } from '../infra/tlsWurzel';
 import type { KontoKontext } from './kontext';
@@ -60,7 +59,7 @@ export function einrichtungStand(k: KontoKontext, { verwalter = false } = {}): P
 
 async function berechne(kx: KontoKontext, verwalter: boolean): Promise<EinrichtungStandAntwort> {
   const ca = await tlsStand();
-  const k = konfig();
+  const k = kx.konfig;
   const grund = {
     ca: {
       vorhanden: !!ca,

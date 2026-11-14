@@ -1,3 +1,4 @@
+import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 import type { BestandDienste } from '../bestand';
@@ -11,6 +12,7 @@ import type { Kontext } from '../infra/bereich';
 /** Was der Bereich von aussen bekommt, damit ein Test ihm einen eigenen Zugang geben kann; dass
  * alle Bereiche denselben nutzen, sichert baueDienste (startup/verdrahtung.ts). */
 export interface SetsAbhaengigkeiten {
+  konfig: Readonly<Konfig>;
   db: Db;
   nacharbeit: Nacharbeit;
   katalog: KatalogDienste;

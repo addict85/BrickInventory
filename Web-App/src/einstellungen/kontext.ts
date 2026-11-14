@@ -1,7 +1,6 @@
-/** Was die Dienste des Bereichs bekommen: Zugang, Dienste tieferer Bereiche, Arbeitseinheit.
- * Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
+/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import { bindeZugang, type Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository';
 
@@ -11,5 +10,17 @@ export interface EinstellungenAbhaengigkeiten {
   faecher: Faecher;
 }
 
-export const zugang = (db: Db) => ({ repository: bindeZugang(db, repository) });
+export const zugang = (db: Db) => ({
+  repository: {
+    nutzerWert: mit(db)(repository.nutzerWert),
+    globalerWert: mit(db)(repository.globalerWert),
+    schreibeNutzerWert: mit(db)(repository.schreibeNutzerWert),
+    loescheNutzerWert: mit(db)(repository.loescheNutzerWert),
+    nutzerWerte: mit(db)(repository.nutzerWerte),
+    schreibeGlobalenWert: mit(db)(repository.schreibeGlobalenWert),
+    loescheGlobaleWerte: mit(db)(repository.loescheGlobaleWerte),
+    globaleWerte: mit(db)(repository.globaleWerte),
+    ersetzeGlobalenWert: mit(db)(repository.ersetzeGlobalenWert),
+  },
+});
 export type EinstellungenKontext = Kontext<EinstellungenAbhaengigkeiten, ReturnType<typeof zugang>>;

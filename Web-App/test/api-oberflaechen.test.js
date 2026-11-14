@@ -17,7 +17,7 @@ const { ohneKommentare } = require('./helpers/sources');
 function routenAus(datei, mount) {
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const out = [];
-  for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"]([^'"]+)['"]/g)) {
+  for (const m of require('./helpers/sources').routenAusQuelle(src, mount)) {
     const pfad = (mount + '/' + m[2].replace(/^\//, '')).replace(/\/+$/, '') || '/';
     out.push(`${m[1].toUpperCase()} ${pfad}`);
   }
@@ -226,8 +226,11 @@ test('der Gesundheitscheck aus compose.yaml zeigt auf eine echte Adresse', () =>
   const direkt = [...src.matchAll(/app\.get\(\s*'(\/api\/[^']*)'/g)].map(m => m[1]);
   // Und die GET-Routen der in server.ts eingehängten Router (routes/gesundheit.ts).
   for (const r of webRouter())
-    for (const m of ohneKommentare(fs.readFileSync(r.datei, 'utf8')).matchAll(/router\.get\(\s*'([^']*)'/g))
-      direkt.push(r.mount + m[1]);
+    for (const m of require('./helpers/sources').routenAusQuelle(
+      ohneKommentare(fs.readFileSync(r.datei, 'utf8')),
+      r.mount,
+    ))
+      if (m[1] === 'get') direkt.push(r.mount + m[2]);
   assert.ok(direkt.length >= 2, `Nur ${direkt.length} direkte GET-Routen gefunden — Muster veraltet?`);
   assert.ok(
     direkt.includes(adresse),

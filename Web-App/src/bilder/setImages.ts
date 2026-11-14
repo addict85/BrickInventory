@@ -1,4 +1,4 @@
-import { konfig } from '../infra/konfig';
+import type { Konfig } from '../infra/konfig';
 import path from 'node:path';
 import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
@@ -13,8 +13,8 @@ export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
 /** Dieselbe Browser-Kennung wie der Bild-Proxy: Eine eigene weist das CDN mit 403 ab,
  * und der Bild-Auftrag pausierte dann endlos. IMG_USER_AGENT bleibt als Ausweg. */
-export function bildUserAgent(): string {
-  return konfig().bildUserAgent || String(BILD_KOPFZEILEN['User-Agent']);
+export function bildUserAgent(k: Pick<Konfig, 'bildUserAgent'>): string {
+  return k.bildUserAgent || String(BILD_KOPFZEILEN['User-Agent']);
 }
 
 /** Nur Rebrickable-Bilder legt der Proxy samt Vorschau unter images/sets ab. */
@@ -33,7 +33,12 @@ export async function setBildVollstaendig(setNumber: string): Promise<boolean> {
   return (await da(`${safe}.jpg`)) && (await da(`${safe}_thumb.jpg`));
 }
 
-export async function setBildHerunterladen(url: string, setNumber: string, info?: { status?: number }) {
+export async function setBildHerunterladen(
+  url: string,
+  setNumber: string,
+  info?: { status?: number },
+  userAgent = String(BILD_KOPFZEILEN['User-Agent']),
+) {
   if (!url) return null;
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
   const localPath = path.join(SET_IMAGES_DIR, `${safe}.jpg`);
@@ -48,7 +53,7 @@ export async function setBildHerunterladen(url: string, setNumber: string, info?
   const buf = await holeBild(url, {
     maxBytes: SET_IMG_MAX_BYTES,
     zeitlimitMs: 30_000,
-    kopfzeilen: { ...BILD_KOPFZEILEN, 'User-Agent': bildUserAgent() },
+    kopfzeilen: { ...BILD_KOPFZEILEN, 'User-Agent': userAgent },
   }).then(
     r => {
       if (r.status === 200) return r.koerper;

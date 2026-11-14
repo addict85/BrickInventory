@@ -1,6 +1,6 @@
 /** Einstellungen für die Schlüssel, Aufträge für die Brickset-Wiedervorlage. Getrennt von
  * bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
-import { bindeZugang, type Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/bereich';
 import type { Db } from '../../db/database';
 import type { AuftraegeDienste } from '../auftraege';
 import type { EinstellungenDienste } from '../einstellungen';
@@ -17,7 +17,15 @@ export interface FremdquellenAbhaengigkeiten {
 }
 
 export const zugang = (db: Db) => ({
-  apiKontingent: bindeZugang(db, apiKontingent),
-  apiTakt: bindeZugang(db, apiTakt),
+  apiKontingent: {
+    zaehleApiAufruf: mit(db)(apiKontingent.zaehleApiAufruf),
+    aufrufeHeute: mit(db)(apiKontingent.aufrufeHeute),
+    aufrufeJeKonto: mit(db)(apiKontingent.aufrufeJeKonto),
+    setzeApiZaehlerZurueck: mit(db)(apiKontingent.setzeApiZaehlerZurueck),
+  },
+  apiTakt: {
+    belegeTakt: mit(db)(apiTakt.belegeTakt),
+    schiebeTakt: mit(db)(apiTakt.schiebeTakt),
+  },
 });
 export type FremdquellenKontext = Kontext<FremdquellenAbhaengigkeiten, ReturnType<typeof zugang>>;

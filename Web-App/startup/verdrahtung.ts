@@ -22,14 +22,17 @@ import { erzeugeKonto } from '../src/konto';
 import { meldeFehler } from '../src/infra/fehler';
 import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
 import { erzeugeEinstellungen } from '../src/einstellungen';
+import { konfig, type Konfig } from '../src/infra/konfig';
 import type { Dienste } from '../src/dienste';
 
 export type { Dienste } from '../src/dienste';
 
 /** Die Nacharbeit ruft höhere Bereiche, die beim Bau der unteren noch nicht stehen:
  * Sie greift erst beim Aufruf auf die fertigen Dienste zu (späte Bindung). */
-export function baueNacharbeit(d: () => Dienste): Nacharbeit {
+export function baueNacharbeit(d: () => Dienste): Nacharbeit & { ueber(db: Db): Nacharbeit } {
   return {
+    // In einer Transaktion läuft die Nacharbeit über deren Verbindung, wie jeder Dienst in `t`.
+    ueber: db => baueNacharbeit(() => ueberDb(d(), db)),
     preisJobAnstossen: () => {
       d()
         .auftraege.ziehePlanVor('preise')
@@ -48,6 +51,13 @@ export function baueNacharbeit(d: () => Dienste): Nacharbeit {
   };
 }
 
+/** Jeder Bereich über einer anderen Verbindung (src/infra/bereich.ts, Bereich.ueber). */
+function ueberDb(d: Dienste, db: Db): Dienste {
+  return Object.fromEntries(
+    Object.entries(d).map(([name, b]) => [name, (b as { ueber(db: Db): unknown }).ueber(db)]),
+  ) as unknown as Dienste;
+}
+
 /** Was ein Test statt des Echten gibt: eigene Nacharbeit, eigenes Bildwerk, eigene Fremdquellen. */
 export interface Bauteile {
   nacharbeit?: Nacharbeit;
@@ -56,7 +66,10 @@ export interface Bauteile {
   quellen?: Partial<Quellen>;
   /** Nur Testhilfen: Hier legt jede Fabrik ihren Kontext ab (Einblick). */
   kontexte?: Record<string, unknown>;
+  /** Die Konfiguration; ohne Angabe die des Prozesses (src/infra/konfig.ts). */
+  konfig?: Readonly<Konfig>;
 }
+type Gesetzt = Bauteile & { konfig: Readonly<Konfig> };
 
 /** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
  * der tieferen, die er braucht, als Teil seines Kontexts. */
@@ -66,7 +79,10 @@ export function baueDienste(db: Db, bauteile: Bauteile = {}): Dienste {
     if (!fertig.d) throw new Error('Nacharbeit vor dem Ende von baueDienste gerufen');
     return fertig.d;
   };
-  fertig.d = baueBereiche(db, bauteile.nacharbeit ?? baueNacharbeit(d), bauteile);
+  fertig.d = baueBereiche(db, bauteile.nacharbeit ?? baueNacharbeit(d), {
+    ...bauteile,
+    konfig: bauteile.konfig ?? konfig(),
+  });
   return fertig.d;
 }
 
@@ -83,15 +99,18 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
 }
 
 /** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
-function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen }: Bauteile, zeige: Zeige) {
+function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konfig }: Gesetzt, zeige: Zeige) {
   const einstellungen = erzeugeEinstellungen({ db }, zeige('einstellungen'));
-  const mail = erzeugeMail({ einstellungen }, zeige('mail'));
+  const mail = erzeugeMail({ einstellungen, konfig }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, einstellungen }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, einstellungen }, zeige('haushalt'));
-  const konto = erzeugeKonto({ db, einstellungen, auftraege, haushalt, nacharbeit, mail }, zeige('konto'));
+  const konto = erzeugeKonto({ db, konfig, einstellungen, auftraege, haushalt, nacharbeit, mail }, zeige('konto'));
   const idempotenz = erzeugeIdempotenz({ db }, zeige('idempotenz'));
   const fremdquellen = erzeugeFremdquellen({ db, einstellungen, auftraege, ersatz: quellen }, zeige('fremdquellen'));
-  const bilder = erzeugeBilder({ db, auftraege, haushalt, nacharbeit, fremdquellen, bildwerk }, zeige('bilder'));
+  const bilder = erzeugeBilder(
+    { db, konfig, auftraege, haushalt, nacharbeit, fremdquellen, bildwerk },
+    zeige('bilder'),
+  );
   const katalog = erzeugeKatalog(
     { db, einstellungen, auftraege, haushalt, nacharbeit, fremdquellen, bilder },
     zeige('katalog'),
@@ -99,17 +118,18 @@ function baueGrund(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen }: Bautei
   return { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, bilder, katalog };
 }
 
-function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Bauteile): Dienste {
+function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienste {
   const zeige = einblickIn(bauteile.kontexte);
   const grund = baueGrund(db, nacharbeit, bauteile, zeige);
   const { einstellungen, mail, auftraege, haushalt, konto, idempotenz, fremdquellen, katalog } = grund;
+  const { konfig } = bauteile;
   const finanzen = erzeugeFinanzen(
-    { db, einstellungen, auftraege, haushalt, katalog, nacharbeit, mail },
+    { db, konfig, einstellungen, auftraege, haushalt, katalog, nacharbeit, mail },
     zeige('finanzen'),
   );
   const bestand = erzeugeBestand({ db, einstellungen, haushalt, konto, katalog, finanzen }, zeige('bestand'));
   const sets = erzeugeSets(
-    { db, nacharbeit, katalog, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
+    { db, konfig, nacharbeit, katalog, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
     zeige('sets'),
   );
   const teile = erzeugeTeile({ db, einstellungen, haushalt, katalog, finanzen, bestand }, zeige('teile'));

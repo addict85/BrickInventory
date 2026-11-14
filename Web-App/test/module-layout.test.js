@@ -108,7 +108,7 @@ test('clients/ enthält keine Routen und wird trotzdem gebaut', () => {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients', f), 'utf8'));
     assert.doesNotMatch(
       src,
-      /^\s*router\.(get|post|put|delete|patch)\(/m,
+      /^\s*router\.(get|post|put|delete|patch|endpunkt)\(/m,
       `clients/${f} hat eine Route — dann ist es ein Router und gehört nach routes/`,
     );
   }

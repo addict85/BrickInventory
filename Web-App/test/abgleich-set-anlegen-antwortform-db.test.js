@@ -21,10 +21,13 @@ Module.prototype.require = function (name, ...rest) {
   // Gestellt wird das Anlegen; das Ergänzen im Strom ohne Netz.
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
+      // Die Fabrik bindet beim Bau (mit()): Der Ersatz prüft die Stellung erst beim Aufruf.
       get: (t, k) => {
-        if (k === 'setErgaenzen' && gestellteAddSet !== null) return async () => ({ name: 'Testset' });
-        if (k !== 'setErfassen' || gestellteAddSet === null) return t[k];
-        return async (_sk, ...args) => {
+        if (k === 'setErgaenzen')
+          return (sk, ...a) => (gestellteAddSet !== null ? Promise.resolve({ name: 'Testset' }) : t[k](sk, ...a));
+        if (k !== 'setErfassen') return t[k];
+        return async (sk, ...args) => {
+          if (gestellteAddSet === null) return t[k](sk, ...args);
           stellungGerufen++;
           return gestellteAddSet(...args);
         };

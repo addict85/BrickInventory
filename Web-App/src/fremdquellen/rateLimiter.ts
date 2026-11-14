@@ -57,8 +57,6 @@ export class RateLimiter {
 
 import { meldeFehler } from '../infra/fehler';
 import { checkAndIncrementRateLimit, getRateLimitStatus, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
-import type * as apiTaktRepo from './repository/apiTakt';
-import type { Gebunden } from '../infra/bereich';
 import { versuche } from '../infra/ergebnis';
 import type { FremdquellenKontext } from './kontext';
 
@@ -89,7 +87,7 @@ function taktAussetzen({ api, apiTakt, gestoertBis }: Takt, waitMs: number) {
 export interface Takt {
   api: string;
   abstandMs: number;
-  apiTakt: Gebunden<typeof apiTaktRepo>;
+  apiTakt: FremdquellenKontext['apiTakt'];
   /** Nach einem Datenbankfehler eine Minute ohne gemeinsamen Takt: Jeder Aufruf liefe
    * sonst erst in den Verbindungs-Timeout. Die eigene Drossel bleibt. */
   gestoertBis: number;

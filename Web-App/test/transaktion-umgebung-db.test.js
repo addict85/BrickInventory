@@ -1,7 +1,7 @@
 /**
- * Eine Transaktion gilt für den Aufrufpfad, der für sie freigegeben ist (tx.gebunden,
- * wie es der Kontext `t` tut): Dann lesen und schreiben auch Repositories ohne
- * tx-Parameter über ihre Verbindung; ohne Freigabe wirft die Abfrage
+ * Eine Transaktion wird ausdrücklich gereicht: Ein Satz Dienste über ihrem Zugang
+ * (`ueber(tx.db)`, wie ihn der Kontext `t` baut) liest und schreibt über ihre
+ * Verbindung; derselbe Dienst über dem ungebundenen Zugang wirft in ihr
  * (UngebundeneAbfrage). Eine innere Transaktion ist ein Sicherungspunkt, und wer
  * nach COMMIT noch fragt, bekommt den Pool.
  *
@@ -17,6 +17,11 @@
  *      fragt, bekommt den Pool“
  *   D  (14.11.2026) in txStand() die Freigabe nicht geprüft → rot: „ein Dienst ohne
  *      tx-Parameter … ohne Freigabe wirft er“
+ *   Seit der Kontext `t` über tx.db gebaut wird (14.11.2026, w5-vertrag), gemessen:
+ *   E  in database.ts wache() geleert → rot: „… über dem ungebundenen Zugang wirft er“
+ *   F  in umbau() (src/infra/bereich.ts) den Zugang nicht ersetzt (`aus.db = db` gestrichen)
+ *      → rot: dieselbe Prüfung und „eine gescheiterte innere Transaktion …“ (der Satz über
+ *      tx.db fragt über den ungebundenen Zugang)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -36,17 +41,20 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const { getGlobalSetting } = _req('src/einstellungen/settings.js');
+  const einstellungen = require('./helpers/sources').testDienste().einstellungen;
+  /** Die Einstellungen über dem Zugang einer Transaktion, wie sie in `t` stehen. */
+  const in_ = tx => einstellungen.ueber(tx.db);
   const schreibe = (tx, k, v) => tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [`${S}${k}`, v]);
 
   await t.test(
-    'ein Dienst ohne tx-Parameter sieht, was die Transaktion geschrieben hat; ohne Freigabe wirft er',
+    'ein Dienst über tx.db sieht, was die Transaktion geschrieben hat; über dem ungebundenen Zugang wirft er',
     async () => {
       let gesehen;
       await assert.rejects(
         db.transaction(async tx => {
           await schreibe(tx, 'a', 'eins');
           await assert.rejects(getGlobalSetting(`${S}a`), { name: 'Error', message: /ungebundenen Zugang/ });
-          gesehen = await tx.gebunden(() => getGlobalSetting(`${S}a`));
+          gesehen = await in_(tx).getGlobalSetting(`${S}a`);
           throw new Error('zurück');
         }),
         /zurück/,
@@ -60,17 +68,11 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
     await db.transaction(async tx => {
       await schreibe(tx, 'b', 'aussen');
       await assert.rejects(
-        tx.gebunden(() =>
-          db.transaction(async inner => {
-            assert.equal(
-              await inner.gebunden(() => getGlobalSetting(`${S}b`)),
-              'aussen',
-              'die innere sieht den Stand der äusseren',
-            );
-            await schreibe(inner, 'c', 'innen');
-            throw new Error('innen kaputt');
-          }),
-        ),
+        tx.db.transaction(async inner => {
+          assert.equal(await in_(inner).getGlobalSetting(`${S}b`), 'aussen', 'die innere sieht den Stand der äusseren');
+          await schreibe(inner, 'c', 'innen');
+          throw new Error('innen kaputt');
+        }),
         /innen kaputt/,
       );
       await schreibe(tx, 'd', 'danach');

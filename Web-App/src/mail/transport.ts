@@ -4,7 +4,6 @@
 import nodemailer from 'nodemailer';
 import tls from 'node:tls';
 import type { PeerCertificate } from 'node:tls';
-import { konfig } from '../infra/konfig';
 import type { MailKontext } from './kontext';
 import addressparser from 'nodemailer/lib/addressparser';
 import { emailGueltig } from '../infra/validate';
@@ -104,17 +103,14 @@ async function getFrom(k: MailKontext) {
  * app_logs, und ein Reset-Link ist ein Zugang zum Konto. NODE_ENV taugt dafür
  * nicht — „development" steht schnell auf einem echten Server. Der Link kommt
  * vom Absender, nicht aus dem Text: Dort kann eine Eingabe eine fremde URL vorschieben. */
-export function linkFuerKonsole(
-  link?: string,
-  schalter = konfig().mailKonsoleMitToken ? '1' : undefined,
-): string | null {
+export function linkFuerKonsole(link: string | undefined, schalter: string | undefined): string | null {
   const url = link && /^https?:\/\/\S+$/.test(link) ? link : null;
   if (!url) return null;
   return schalter === '1' ? url : url.replace(/([?&#]token=)[^&#\s]+/g, '$1…');
 }
 
 /** Die Konsole landet in app_logs, das jeder Verwalter liest; voll nur mit dem Entwicklerschalter wie die Links. */
-export function maskiereAdresse(adresse: string, voll = konfig().mailKonsoleMitToken): string {
+export function maskiereAdresse(adresse: string, voll: boolean): string {
   if (voll) return adresse;
   const at = adresse.lastIndexOf('@');
   return at < 1 ? '…' : `${adresse[0]}…${adresse.slice(at)}`;
@@ -146,7 +142,9 @@ export async function sendMail(
   },
 ) {
   if (!einzigerEmpfaenger(to)) {
-    console.warn(`📧 Empfänger abgelehnt (${maskiereAdresse(to)}): keine einzelne reine Adresse`);
+    console.warn(
+      `📧 Empfänger abgelehnt (${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}): keine einzelne reine Adresse`,
+    );
     return { success: false, error: 'empfaenger_ungueltig', mode: 'smtp' };
   }
   let transporter: Awaited<ReturnType<typeof getTransporter>>;
@@ -154,15 +152,15 @@ export async function sendMail(
     transporter = await getTransporter(k);
   } catch (e) {
     // Ausnahme: Die Antwort trägt den Fehlschlag (success: false); den Text ohne Zugangsdaten nennt smtpFehlertext.
-    console.error(`📧 SMTP Fehler (${maskiereAdresse(to)}):`, smtpFehlertext(e).text);
+    console.error(`📧 SMTP Fehler (${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}):`, smtpFehlertext(e).text);
     return { success: false, error: smtpFehlertext(e).text, mode: 'smtp' };
   }
   const from = await getFrom(k);
   if (!transporter) {
-    const link = linkFuerKonsole(echterLink);
+    const link = linkFuerKonsole(echterLink, k.konfig.mailKonsoleMitToken ? '1' : undefined);
     console.log('\n══════════════════════════════════════════════════');
     console.log('📧  E-Mail (SMTP nicht konfiguriert):');
-    console.log(`    An:      ${maskiereAdresse(to)}`);
+    console.log(`    An:      ${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}`);
     console.log(`    Betreff: ${subject}`);
     if (link) console.log(`    Link:    ${link}`);
     console.log('══════════════════════════════════════════════════\n');
@@ -178,11 +176,11 @@ export async function sendMail(
       html,
       ...(absender ? { envelope: { from: absender, to: [to] } } : {}),
     });
-    console.log(`📧 E-Mail gesendet an ${maskiereAdresse(to)}: ${info.messageId}`);
+    console.log(`📧 E-Mail gesendet an ${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
     const { text } = smtpFehlertext(e);
-    console.error(`📧 SMTP Fehler (${maskiereAdresse(to)}):`, text);
+    console.error(`📧 SMTP Fehler (${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}):`, text);
     return { success: false, error: text, mode: 'smtp' };
   }
 }

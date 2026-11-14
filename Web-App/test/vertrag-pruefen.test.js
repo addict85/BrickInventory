@@ -28,9 +28,11 @@ const { setzeKonfig } = _req('src/infra/konfig.js');
 
 /** Ein Router mit echten Schlüsseln des Vertrags, der antwortet, was der Test will. */
 function server(t, antworten) {
-  const router = vertragsRouter();
-  router.get('/registration-status', (_req, res) => res.status(antworten.status ?? 200).json(antworten.rumpf));
-  router.put('/users/:id/admin', (_req, res) => res.json({ success: true }));
+  const router = vertragsRouter('/api/v1/auth');
+  router.endpunkt('GET /api/v1/auth/registration-status', (_req, res) =>
+    res.status(antworten.status ?? 200).json(antworten.rumpf),
+  );
+  router.endpunkt('PUT /api/v1/auth/users/:id/admin', (_req, res) => res.json({ success: true }));
   const app = express();
   app.use(express.json());
   app.use('/api/v1/auth', router);

@@ -27,14 +27,14 @@ const { VERTRAG } = _req('src/vertrag/index.js');
 
 test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
   let aufrufe = 0;
-  const router = vertragsRouter();
+  const router = vertragsRouter('/api/v1');
   // An res.json vorbei: Die Prüfung der Antwort (Testmodus) gilt dem echten Rumpf.
   const zeige = (req, res) => {
     aufrufe++;
     res.type('json').send(JSON.stringify({ eingabe: req.eingabe, abfrage: req.abfrage }));
   };
-  router.post('/sets', zeige);
-  router.get('/catalog/sets', zeige);
+  router.endpunkt('POST /api/v1/sets', zeige);
+  router.endpunkt('GET /api/v1/catalog/sets', zeige);
   const app = express();
   app.use(express.json());
   app.use('/api/v1', router);

@@ -42,7 +42,7 @@ function aufraeumenTaeglich(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<
     [
       ['Preisverlauf', k.finanzen.purgeAltePreise],
       ['unbestätigte Registrierungen', k.konto.raeumeOffeneRegistrierungenAuf],
-      ['Bild-Cache', raeumeBildCacheAuf],
+      ['Bild-Cache', () => raeumeBildCacheAuf(k.katalog.bilder.bildGrenzen().cacheMaxBytes)],
       ['Verwaltungsprotokoll', () => k.konto.raeumeProtokollAuf()],
       ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(k.db)],
     ],

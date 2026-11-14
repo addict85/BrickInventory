@@ -5,7 +5,7 @@ import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { normalisiereLagerort } from '../../src/bestand';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
-import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
 export function bauePartsRouter(
@@ -15,220 +15,145 @@ export function bauePartsRouter(
   >,
 ) {
   const { requireToken } = waechterFuer(d.konto);
-  const router = vertragsRouter();
+  const router = vertragsRouter('/api/v1');
 
-  router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {
+  router.endpunkt('GET /api/v1/parts', requireToken, async req => {
     const result = await d.teile.getParts(sichtVon(req), req.abfrage);
     // page_size: der TATSÄCHLICH verwendete Wert, nicht der angefragte.
-    res.json({ success: true, page: req.abfrage.page ?? 1, ...result });
+    return { page: req.abfrage.page ?? 1, ...result };
   });
 
-  router.get(
-    '/parts/categories',
-    requireToken,
-    async (req: Anfrage<'GET /api/v1/parts/categories'>, res: Antwort<'GET /api/v1/parts/categories'>) => {
-      // Dasselbe Blickfeld wie die Farbliste, sonst filtern zwei Listen derselben
-      // Ansicht über verschiedene Konten.
-      const uids = sichtVon(req);
-      res.json({ success: true, categories: await d.teile.getPartsCategories(uids) });
-    },
-  );
+  router.endpunkt('GET /api/v1/parts/categories', requireToken, async req => {
+    // Dasselbe Blickfeld wie die Farbliste, sonst filtern zwei Listen derselben
+    // Ansicht über verschiedene Konten.
+    const uids = sichtVon(req);
+    return { categories: await d.teile.getPartsCategories(uids) };
+  });
 
-  router.post(
-    '/parts/import/csv',
+  router.endpunkt(
+    'POST /api/v1/parts/import/csv',
     requireToken,
     kontoSchranke('upload'),
     csvEmpfang.single('file'),
-    async (req: Anfrage<'POST /api/v1/parts/import/csv'>, res: Antwort<'POST /api/v1/parts/import/csv'>) => {
+    async (req, res) => {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-      res.json({
-        success: true,
+      return {
         ...(await d.auftraege.importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', {
           text: req.file.buffer.toString('utf-8'),
         })),
-      });
+      };
     },
   );
 
-  router.get(
-    '/parts/brick-colors',
-    requireToken,
-    async (_req: AuthedRequest, res: Antwort<'GET /api/v1/parts/brick-colors'>) => {
-      const colors = await d.katalog.farbliste();
-      res.json({ success: true, colors });
-    },
-  );
+  router.endpunkt('GET /api/v1/parts/brick-colors', requireToken, async _req => {
+    const colors = await d.katalog.farbliste();
+    return { colors };
+  });
 
-  router.post(
-    '/parts',
-    requireToken,
-    async (req: Anfrage<'POST /api/v1/parts'>, res: Antwort<'POST /api/v1/parts'>) => {
-      // schreibzielOderNull prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
-      // nicht bloss die Mitgliedschaft im Blickfeld.
-      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-      const result = await d.teile.addManualPart(owner, req.eingabe);
-      res.json({ success: true, ...result });
-    },
-  );
+  router.endpunkt('POST /api/v1/parts', requireToken, async req => {
+    // schreibzielOderNull prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
+    // nicht bloss die Mitgliedschaft im Blickfeld.
+    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const result = await d.teile.addManualPart(owner, req.eingabe);
+    return { ...result };
+  });
 
-  router.put(
-    '/parts/:partNumber/:colorId',
-    requireToken,
-    async (
-      req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId'>,
-      res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId'>,
-    ) => {
-      // Die Ansicht sagt, wessen Karte gemeint ist; ohne Parameter änderte das
-      // Hauptkonto auf der Karte des Kindes die eigene Zeile.
-      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-      // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
-      // weiss der Client sie sonst nicht).
-      const r = await d.teile.updateManualPart(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
-      res.json({ success: true, ...r });
-    },
-  );
+  router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId', requireToken, async req => {
+    // Die Ansicht sagt, wessen Karte gemeint ist; ohne Parameter änderte das
+    // Hauptkonto auf der Karte des Kindes die eigene Zeile.
+    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
+    // weiss der Client sie sonst nicht).
+    const r = await d.teile.updateManualPart(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
+    return { ...r };
+  });
 
   // Eigene Adresse: Die Farbe ist schon Teil der Adresse von PUT /parts/:nr/:farbe.
-  router.put(
-    '/parts/:partNumber/:colorId/color',
-    requireToken,
-    async (
-      req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/color'>,
-      res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/color'>,
-    ) => {
-      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-      // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
-      // ein stilles Leeren mit Erfolgsmeldung.
-      const roh = req.eingabe.color_id;
-      const neueFarbe = Number(roh);
-      if (roh === undefined || roh === null || neueFarbe < 0) return sendeFehler(req, res, 400, 'farbe_erforderlich');
-      const ergebnis = await d.teile.aendereTeilFarbe(besitzer, req.pfad.partNumber, req.pfad.colorId, neueFarbe, {
-        color_name: req.eingabe.color_name ?? null,
-        color_hex: req.eingabe.color_hex ?? null,
-      });
-      res.json({ success: true, ...ergebnis });
-    },
-  );
+  router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId/color', requireToken, async (req, res) => {
+    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
+    // ein stilles Leeren mit Erfolgsmeldung.
+    const roh = req.eingabe.color_id;
+    const neueFarbe = Number(roh);
+    if (roh === undefined || roh === null || neueFarbe < 0) return sendeFehler(req, res, 400, 'farbe_erforderlich');
+    const ergebnis = await d.teile.aendereTeilFarbe(besitzer, req.pfad.partNumber, req.pfad.colorId, neueFarbe, {
+      color_name: req.eingabe.color_name ?? null,
+      color_hex: req.eingabe.color_hex ?? null,
+    });
+    return { ...ergebnis };
+  });
 
-  router.delete(
-    '/parts/:partNumber/:colorId',
-    requireToken,
-    async (
-      req: Anfrage<'DELETE /api/v1/parts/:partNumber/:colorId'>,
-      res: Antwort<'DELETE /api/v1/parts/:partNumber/:colorId'>,
-    ) => {
-      // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
-      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-      const geloescht = await d.sammlung.loescheTeil(besitzer, req.pfad.partNumber, req.pfad.colorId);
-      if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
-      res.json({ success: true, papierkorb: [geloescht] });
-    },
-  );
+  router.endpunkt('DELETE /api/v1/parts/:partNumber/:colorId', requireToken, async (req, res) => {
+    // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
+    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const geloescht = await d.sammlung.loescheTeil(besitzer, req.pfad.partNumber, req.pfad.colorId);
+    if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
+    return { papierkorb: [geloescht] };
+  });
 
-  router.get(
-    '/parts/bl-color-map',
-    requireToken,
-    async (_req: AuthedRequest, res: Antwort<'GET /api/v1/parts/bl-color-map'>) => {
-      const result = await d.teile.getBlColorMap();
-      res.json({ success: true, ...result });
-    },
-  );
+  router.endpunkt('GET /api/v1/parts/bl-color-map', requireToken, async _req => {
+    const result = await d.teile.getBlColorMap();
+    return { ...result };
+  });
 
   /** Je Teil-Farb-Paar `gesamt` (Blickfeld) und `lose` (nicht in einem Set);
    * welche Zahl gilt, entscheidet der Mensch. */
-  router.post(
-    '/parts/owned',
-    requireToken,
-    async (req: Anfrage<'POST /api/v1/parts/owned'>, res: Antwort<'POST /api/v1/parts/owned'>) => {
-      const teile = req.eingabe.teile ?? [];
-      res.json({ success: true, bestand: await d.teile.getOwnedQuantities(sichtVon(req), teile) });
-    },
-  );
+  router.endpunkt('POST /api/v1/parts/owned', requireToken, async req => {
+    const teile = req.eingabe.teile ?? [];
+    return { bestand: await d.teile.getOwnedQuantities(sichtVon(req), teile) };
+  });
 
   /** Trifft ALLE Zeilen des Teil-Farb-Paares: Wer „Kiste 3" einträgt, meint das
    * Teil, nicht eine seiner Set-Zeilen. */
-  router.put(
-    '/parts/:partNumber/:colorId/storage',
-    requireToken,
-    async (
-      req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/storage'>,
-      res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/storage'>,
-    ) => {
-      const ort = normalisiereLagerort(req.eingabe.storage);
-      const n = await d.bestand.lagerortDienst.setzeLagerort(
-        'part',
-        { schreiber: req.apiUser.user_id },
-        [req.pfad.partNumber, String(req.pfad.colorId)],
-        ort,
-      );
-      res.json({ success: true, storage: ort, changed: n });
-    },
-  );
+  router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId/storage', requireToken, async req => {
+    const ort = normalisiereLagerort(req.eingabe.storage);
+    const n = await d.bestand.lagerortDienst.setzeLagerort(
+      'part',
+      { schreiber: req.apiUser.user_id },
+      [req.pfad.partNumber, String(req.pfad.colorId)],
+      ort,
+    );
+    return { storage: ort, changed: n };
+  });
 
-  router.get(
-    '/parts/manual',
-    requireToken,
-    async (req: Anfrage<'GET /api/v1/parts/manual'>, res: Antwort<'GET /api/v1/parts/manual'>) => {
-      const ab = new Abstriche();
-      const alle = await d.teile.getManualParts(
-        sichtVon(req),
-        req.apiUser.user_id,
-        { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' },
-        ab,
-      );
-      const { eintraege: parts, ...seite } = seiteAus(alle, req.abfrage);
-      res.json({ success: true, parts, ...seite, ...ab.angabe() });
-    },
-  );
+  router.endpunkt('GET /api/v1/parts/manual', requireToken, async req => {
+    const ab = new Abstriche();
+    const alle = await d.teile.getManualParts(
+      sichtVon(req),
+      req.apiUser.user_id,
+      { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' },
+      ab,
+    );
+    const { eintraege: parts, ...seite } = seiteAus(alle, req.abfrage);
+    return { parts, ...seite, ...ab.angabe() };
+  });
 
-  router.get(
-    '/parts/colors',
-    requireToken,
-    async (req: Anfrage<'GET /api/v1/parts/colors'>, res: Antwort<'GET /api/v1/parts/colors'>) => {
-      res.json({ success: true, colors: await d.teile.getPartsColors(sichtVon(req)) });
-    },
-  );
+  router.endpunkt('GET /api/v1/parts/colors', requireToken, async req => {
+    return { colors: await d.teile.getPartsColors(sichtVon(req)) };
+  });
 
-  router.get(
-    '/parts/stats',
-    requireToken,
-    async (req: Anfrage<'GET /api/v1/parts/stats'>, res: Antwort<'GET /api/v1/parts/stats'>) => {
-      const stats = await d.teile.getPartsStats(sichtVon(req));
-      res.json({ success: true, stats });
-    },
-  );
+  router.endpunkt('GET /api/v1/parts/stats', requireToken, async req => {
+    const stats = await d.teile.getPartsStats(sichtVon(req));
+    return { stats };
+  });
 
   // Dieselbe Umsetzung wie für die Webapp; steht unten, damit feste Pfade vorher greifen.
-  router.get(
-    '/parts/:partNumber/:colorId/price-history',
-    requireToken,
-    async (
-      req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/price-history'>,
-      res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/price-history'>,
-    ) => {
-      const uid = req.apiUser.user_id;
-      const currency = await d.einstellungen.getSetting(uid, 'currency', 'EUR');
-      const data = await d.finanzen.preisverlaufTeil(sichtVon(req), req.pfad.partNumber, req.pfad.colorId, currency);
-      res.json({ success: true, ...data });
-    },
-  );
+  router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/price-history', requireToken, async req => {
+    const uid = req.apiUser.user_id;
+    const currency = await d.einstellungen.getSetting(uid, 'currency', 'EUR');
+    const data = await d.finanzen.preisverlaufTeil(sichtVon(req), req.pfad.partNumber, req.pfad.colorId, currency);
+    return { ...data };
+  });
 
   // Im Blickfeld, damit die Liste zur Teileliste passt, aus der man kommt.
-  router.get(
-    '/parts/:partNumber/:colorId/sets',
-    requireToken,
-    async (
-      req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/sets'>,
-      res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/sets'>,
-    ) => {
-      const uids = sichtVon(req);
-      const { item, sets } = await d.bestand.verwendendeSets(uids, 'parts', {
-        part_number: req.pfad.partNumber,
-        color_id: req.pfad.colorId,
-      });
-      res.json({ success: true, item, sets });
-    },
-  );
+  router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/sets', requireToken, async req => {
+    const uids = sichtVon(req);
+    const { item, sets } = await d.bestand.verwendendeSets(uids, 'parts', {
+      part_number: req.pfad.partNumber,
+      color_id: req.pfad.colorId,
+    });
+    return { item, sets };
+  });
 
   router.use(fehlerAntwort);
   return router;

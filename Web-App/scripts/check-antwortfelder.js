@@ -125,7 +125,17 @@ for (const [rel, s] of texte) {
       }
       return oben;
     });
-  for (const k of [antwortSchluessel(s), ...rumpfe.map(r => antwortSchluessel(r, /§eturn\s*\{/g))].flatMap(m => [...m]))
+  // Eine Route unter routes/ gibt den Rumpf zurück; der Vertragsrouter setzt ihn in die Hülle.
+  // Hilfsfunktionen stehen vor dem ersten Endpunkt; gezählt wird ab dort.
+  const ab = s.indexOf('.endpunkt(');
+  const eigen =
+    rel.startsWith(`routes${path.sep}`) && ab >= 0
+      ? new Set([
+          ...antwortSchluessel(s.slice(0, ab)),
+          ...antwortSchluessel(s.slice(ab), /res\.json\(\s*\{|return\s*\{/g),
+        ])
+      : antwortSchluessel(s);
+  for (const k of [eigen, ...rumpfe.map(r => antwortSchluessel(r, /§eturn\s*\{/g))].flatMap(m => [...m]))
     woher.set(k, (woher.get(k) || []).concat(rel));
 }
 

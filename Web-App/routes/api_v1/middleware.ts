@@ -168,7 +168,7 @@ function rumpfFrist(req: Request, res: Response, next: NextFunction) {
 
 /** Hinter anmeldungAmEingang: Ohne Konto (Anmelden, Registrieren, Zurücksetzen)
  * reichen 16 KB, sonst 256 KB, nur der PDF-Auftrag trägt die ganze Teileliste.
- * Pfad-IDs prüft vertragsRouter(), die in Rumpf und Abfrage der letzte Schritt. */
+ * Pfad-IDs prüft vertragsRouter('/api/v1'), die in Rumpf und Abfrage der letzte Schritt. */
 export const rumpfLesen: RequestHandler[] = [
   nurWenn(unangemeldet, rumpfFrist),
   nurWenn(unangemeldet, express.json({ limit: '16kb' })),

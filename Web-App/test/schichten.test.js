@@ -405,7 +405,7 @@ test('in routes/ liegt nichts, was keine Route ist', () => {
 
   const ohneRoute = dateien.filter(d => {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
-    if (/\b(router|app)\.(get|post|put|delete|patch|use)\s*\(/.test(src)) return false;
+    if (/\b(router|app)\.(get|post|put|delete|patch|use|endpunkt|haengeEin)\s*\(/.test(src)) return false;
     return !erlaubtOhneRouter[d.replace(/^routes\//, '')];
   });
   assert.deepEqual(
@@ -611,9 +611,7 @@ function gebundeneDienste() {
     if (!fs.existsSync(f)) continue;
     const s = fs.readFileSync(f, 'utf8');
     const namen = new Set();
-    for (const m of s.matchAll(/binde(?:Zugang)?\((?:k|sk), \w+, \[([^\]]*)\]\)/g))
-      for (const n of m[1].match(/\w+/g) || []) namen.add(n);
-    for (const m of s.matchAll(/^ {4}(\w+): (?:bindeGenerisch|\(\(|\(<)/gm)) namen.add(m[1]);
+    for (const m of s.matchAll(/^ {4,8}(\w+): (?:mit\(|imSystem\(|\(\(|\(<)/gm)) namen.add(m[1]);
     raus.set(b, namen);
   }
   return raus;
@@ -824,7 +822,7 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
     if (n) ist.set(d, n);
   }
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTEN));
-  for (const d of tsUnter('routes').filter(d => /router\.(get|post|put|delete|patch)\(/.test(quelltext(d))))
+  for (const d of tsUnter('routes').filter(d => /router\.(get|post|put|delete|patch|endpunkt)\(/.test(quelltext(d))))
     assert.match(quelltext(d), /router\.use\(fehlerAntwort\)/, `${d} endet nicht mit dem Fehlerweg`);
 });
 

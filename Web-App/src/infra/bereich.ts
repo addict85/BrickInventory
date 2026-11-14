@@ -1,41 +1,16 @@
-import type { Db, DbSchnittstelle, TxGriff, TxOptionen } from '../../db/database';
+import type { Db, TxOptionen } from '../../db/database';
 import { imSystemkontext, zeilenKontext } from './kontoKontext';
 
-/** Nur Funktionen, deren erster Parameter den Zugang nimmt, und zwar ohne ihn. */
-export type Gebunden<M, Z = DbSchnittstelle> = {
-  [K in keyof M as M[K] extends (z: Z, ...a: never[]) => unknown ? K : never]: M[K] extends (
-    z: Z,
-    ...a: infer A
-  ) => infer R
-    ? (...a: A) => R
-    : never;
-};
-
-/** Bindet den Zugang an jede Funktion des Moduls, oder nur an die genannten,
- * wenn das Modul auch Funktionen ohne Zugang ausführt (die zur Laufzeit nicht
- * zu unterscheiden sind). Gesucht wird beim Aufruf, damit ein Test eine
- * Funktion des Moduls ersetzen kann. */
-export function bindeZugang<Z, M extends object>(zugang: Z, modul: M): Gebunden<M, Z>;
-export function bindeZugang<Z, M extends object, N extends keyof Gebunden<M, Z> & keyof M & string>(
-  zugang: Z,
-  modul: M,
-  namen: readonly N[],
-): Gebunden<Pick<M, N>, Z>;
-export function bindeZugang<Z, M extends object>(zugang: Z, modul: M, namen?: readonly string[]): unknown {
-  const gebunden: Record<string, unknown> = {};
-  for (const [name, f] of Object.entries(modul))
-    if (typeof f === 'function' && (!namen || namen.includes(name)))
-      gebunden[name] = (...a: unknown[]) =>
-        ((modul as Record<string, unknown>)[name] as (z: Z, ...x: unknown[]) => unknown)(zugang, ...a);
-  return gebunden;
-}
-
-/** Bindet eine generische Funktion; ihre Typparameter bleiben erhalten, was
- * Gebunden<> nicht kann. Überladungen brauchen eine eigene Signatur. */
-export function bindeGenerisch<Z>(zugang: Z) {
-  return <A extends unknown[], R>(f: (z: Z, ...a: A) => R): ((...a: A) => R) =>
-    (...a) =>
-      f(zugang, ...a);
+/** Bindet den Zugang (Datenbank oder Kontext) an eine Funktion; der Übersetzer prüft, dass
+ * sie ihn als ersten Parameter nimmt. `mit(k)(f)` behält die Typparameter einer generischen f. */
+export function mit<Z>(zugang: Z): <A extends unknown[], R>(f: (z: Z, ...a: A) => R) => (...a: A) => R;
+export function mit<Z, A extends unknown[], R>(zugang: Z, f: (z: Z, ...a: A) => R): (...a: A) => R;
+export function mit<Z>(zugang: Z, f?: (z: Z, ...a: unknown[]) => unknown): unknown {
+  const an =
+    <A extends unknown[], R>(g: (z: Z, ...a: A) => R) =>
+    (...a: A) =>
+      g(zugang, ...a);
+  return f ? an(f) : an;
 }
 
 /** In einer Transaktion gehört die Verbindung schon einer Rolle: Still ohne Systemrahmen liefe
@@ -52,54 +27,17 @@ export function imSystemrahmen<R>(zugang: { inTransaktion(): boolean }, grund: s
   throw new SystemrahmenInTransaktion(grund);
 }
 
-/** Bindet jede Funktion; im Systemrahmen nur die in `system` genannten, jede mit Begründung.
- * Die übrigen laufen unter dem Zeilenschutz des anfragenden Kontos. */
-export function bindeJeFunktion<
-  Z extends { inTransaktion(): boolean },
-  M extends object,
-  S extends keyof Gebunden<M, Z> & keyof M & string,
->(zugang: Z, modul: M, grund: string, system: Record<S, string>): Gebunden<M, Z> {
-  const gebunden = bindeZugang(zugang, modul) as Record<string, (...a: unknown[]) => unknown>;
-  const aus: Record<string, unknown> = { ...gebunden };
-  for (const name of Object.keys(system)) {
-    const f = gebunden[name];
-    if (!f) throw new Error(`bindeJeFunktion: ${name} fehlt im Modul`);
-    aus[name] = (...a: unknown[]) => imSystemrahmen(zugang, grund, () => f(...a));
-  }
-  return aus as Gebunden<M, Z>;
+/** Wie mit(), aber im Systemrahmen: Der Grund steht am Aufruf, auffindbar per `imSystem(`. */
+export function imSystem<Z extends { inTransaktion(): boolean }, A extends unknown[], R>(
+  zugang: Z,
+  grund: string,
+  f: (z: Z, ...a: A) => R,
+): (...a: A) => R {
+  return (...a) => imSystemrahmen(zugang, grund, () => f(zugang, ...a));
 }
 
-/** Wie bindeZugang, ganz im Systemrahmen; in einer Transaktion nur, wenn sie selbst darin läuft. */
-export function bindeImSystemrahmen<Z extends { inTransaktion(): boolean }, M extends object>(
-  zugang: Z,
-  modul: M,
-  grund: string,
-): Gebunden<M, Z>;
-export function bindeImSystemrahmen<
-  Z extends { inTransaktion(): boolean },
-  M extends object,
-  N extends keyof Gebunden<M, Z> & keyof M & string,
->(zugang: Z, modul: M, grund: string, namen: readonly N[]): Gebunden<Pick<M, N>, Z>;
-export function bindeImSystemrahmen<Z extends { inTransaktion(): boolean }, M extends object>(
-  zugang: Z,
-  modul: M,
-  grund: string,
-  namen?: readonly string[],
-): unknown {
-  const gebunden = (namen ? bindeZugang(zugang, modul, namen as never[]) : bindeZugang(zugang, modul)) as Record<
-    string,
-    (...a: unknown[]) => unknown
-  >;
-  const aus: Record<string, unknown> = {};
-  for (const [name, f] of Object.entries(gebunden))
-    aus[name] = (...a: unknown[]) => imSystemrahmen(zugang, grund, () => f(...a));
-  return aus;
-}
-
-/** Was ein Dienst eines Bereichs bekommt: die gebundenen Repositories (`zugang`),
- * die Dienste tieferer Bereiche und die Arbeitseinheit. `transaktion` reicht einen
- * Kontext `t` weiter, dessen Repositories und Dienste an die Transaktion gebunden
- * sind; `k` fragt in ihr nicht mehr (db/transaktion.ts: UngebundeneAbfrage). */
+/** Gebundene Repositories, Dienste tieferer Bereiche und die Arbeitseinheit. `transaktion` reicht
+ * `t`, ganz über der Verbindung der Transaktion gebaut: Alles darin fragt über sie, ohne Umweg. */
 export type Kontext<A extends { db: Db }, Z> = A &
   Z & {
     transaktion<T>(fn: (t: Kontext<A, Z>) => Promise<T>, o?: TxOptionen): Promise<T>;
@@ -109,47 +47,52 @@ export type Kontext<A extends { db: Db }, Z> = A &
  * Testhilfen sehen hinein (test/helpers/sources.js), über diesen Rückruf an der Fabrik. */
 export type Einblick<K> = (k: K) => void;
 
+/** Ein Satz Dienste, der sich über einer Transaktion neu baut; Zustand (Fächer, Drosseln) bleibt geteilt. */
+export type Bereich<D> = D & { ueber(db: Db): Bereich<D> };
+
+function istUmbaubar(w: unknown): w is { ueber(db: Db): unknown } {
+  return typeof w === 'object' && w !== null && typeof (w as { ueber?: unknown }).ueber === 'function';
+}
+
+/** Die Abhängigkeiten über `db`: der Zugang und jeder umbaubare Satz Dienste; alles andere bleibt. */
+function umbau<A extends { db: Db }>(a: A, db: Db): A {
+  const aus: Record<string, unknown> = {};
+  for (const [name, wert] of Object.entries(a)) aus[name] = istUmbaubar(wert) ? wert.ueber(db) : wert;
+  aus.db = db;
+  return aus as A;
+}
+
 export function baueKontext<A extends { db: Db }, Z extends object>(a: A, zugang: (db: Db) => Z): Kontext<A, Z> {
   return {
     ...a,
     ...zugang(a.db),
-    transaktion: (fn, o) =>
-      a.db.transaction(tx => fn(baueKontext({ ...gebundenAn(a, tx), db: anTransaktion(a.db, tx) }, zugang)), o),
+    transaktion: (fn, o) => a.db.transaction(tx => fn(baueKontext(umbau(a, tx.db), zugang)), o),
   };
 }
 
-/** Jeder Dienstaufruf über `t` (auch t.bestand.lagerortDienst.…) läuft in der Transaktion. */
-function gebundenAn<A extends { db: Db }>(a: A, tx: TxGriff): A {
-  const aus: Record<string, unknown> = {};
-  for (const [name, wert] of Object.entries(a)) aus[name] = name === 'db' ? wert : huelle(wert, tx);
-  return aus as A;
-}
-
-function huelle(wert: unknown, tx: TxGriff): unknown {
-  if (typeof wert === 'function')
-    return (...x: unknown[]) => tx.gebunden(() => (wert as (...y: unknown[]) => unknown)(...x));
-  if (wert === null || typeof wert !== 'object' || Array.isArray(wert)) return wert;
-  return new Proxy(wert, {
-    get(ziel, name) {
-      const v: unknown = Reflect.get(ziel, name, ziel);
-      if (typeof v === 'function')
-        return (...x: unknown[]) => tx.gebunden(() => (v as (...y: unknown[]) => unknown).apply(ziel, x));
-      const proto: unknown = v !== null && typeof v === 'object' ? Object.getPrototypeOf(v) : undefined;
-      return proto === Object.prototype || proto === null ? huelle(v, tx) : v;
-    },
-  });
-}
-
-/** Abfragen über die Verbindung der Transaktion; eine innere wird ein Sicherungspunkt. */
-function anTransaktion(db: Db, tx: TxGriff): Db {
-  return {
-    ...db,
-    all: tx.all,
-    get: tx.get,
-    run: tx.run,
-    exec: tx.exec,
-    transaction: (fn, o) => tx.gebunden(() => db.transaction(fn, o)),
-    benachrichtigung: huelle(db.benachrichtigung, tx) as Db['benachrichtigung'],
-    inTransaktion: () => true,
+/** Die Fabrik eines Bereichs: `dienste` schliesst über den Kontext `k`. Je Verbindung
+ * entsteht der Satz einmal; `ueber(tx.db)` baut ihn für eine Transaktion. */
+export function baueBereich<A extends { db: Db }, Z extends object, D extends object>(
+  a: A,
+  zugang: (db: Db) => Z,
+  dienste: (k: Kontext<A, Z>) => D,
+  einblick?: Einblick<Kontext<A, Z>>,
+): Bereich<D> {
+  const jeDb = new WeakMap<Db, Bereich<D>>();
+  const bau = (abh: A, zeige?: Einblick<Kontext<A, Z>>): Bereich<D> => {
+    const k = baueKontext(abh, zugang);
+    zeige?.(k);
+    const d: Bereich<D> = Object.assign(dienste(k), {
+      ueber: (db: Db): Bereich<D> => {
+        if (db === abh.db) return d;
+        const da = jeDb.get(db);
+        if (da) return da;
+        const neu = bau(umbau(abh, db));
+        jeDb.set(db, neu);
+        return neu;
+      },
+    });
+    return d;
   };
+  return bau(a, einblick);
 }

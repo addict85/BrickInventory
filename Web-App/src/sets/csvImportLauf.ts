@@ -1,5 +1,4 @@
 import type { z } from 'zod';
-import { konfig } from '../infra/konfig';
 import { type SetCsvNutzlast, type ImportErgebnis, AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
 import { setErfassen } from './erfassen';
 import { fehlertext } from '../infra/fehler';
@@ -11,8 +10,6 @@ import type { SetsKontext } from './kontext';
  * gebucht wurde — es wird nicht noch einmal gebucht, sondern gemeldet. */
 export type CsvNutzlast = z.output<typeof SetCsvNutzlast>;
 export type CsvZeile = CsvNutzlast['rows'][number];
-
-const zeilenFrist = () => konfig().csvZeileFristMs;
 
 async function importiereZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise<ImportErgebnis> {
   const wo = z.zeile ? { zeile: z.zeile } : {};
@@ -47,7 +44,7 @@ async function bucheZeile(sk: SetsKontext, z: CsvZeile, userId: number): Promise
         nacharbeit: 'csv',
       }),
       new Promise<never>((_, rej) => {
-        wecker = setTimeout(() => rej(new Error('Timeout')), zeilenFrist());
+        wecker = setTimeout(() => rej(new Error('Timeout')), sk.konfig.csvZeileFristMs);
       }),
     ]).finally(() => clearTimeout(wecker));
     return {

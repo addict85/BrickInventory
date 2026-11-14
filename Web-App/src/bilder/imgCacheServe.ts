@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import { queueThumb } from './proxyThumbs';
 import { vorDem, ohneFehlendeDatei, meldeFehler } from '../infra/fehler';
-import { konfig } from '../infra/konfig';
 import { prozessweit } from '../infra/prozessweit';
 import path from 'node:path';
 import { APP_ROOT } from '../infra/appPaths';
@@ -98,7 +97,7 @@ const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
 
 /** 30 Tage nicht angefasst → weg; danach, falls der Cache noch über der
  * Grenze liegt, die am längsten unbenutzten Bilder samt .ct und Vorschau. */
-export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 1024 * 1024): Promise<number> {
+export async function raeumeBildCacheAuf(maxBytes: number): Promise<number> {
   const cacheDir = CACHE_DIR();
   const files = await fs.promises.readdir(cacheDir).catch(ohneFehlendeDatei('bildcache:lesen', [] as string[]));
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -147,10 +146,9 @@ export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 10
 
 /** Zwischen zwei Tagesläufen kann der Cache schnell wachsen; nach je einem
  * Zehntel der Grenze an neuen Bytes wird deshalb sofort gedeckelt. */
-export function merkeCacheZuwachs(bytes: number): void {
+export function merkeCacheZuwachs(bytes: number, max: number): void {
   const z = prozessweit('bildCacheZuwachs', () => ({ bytes: 0, laeuft: false }));
   z.bytes += bytes;
-  const max = konfig().bildCacheMaxMb * 1024 * 1024;
   if (z.laeuft || z.bytes < max / 10) return;
   z.bytes = 0;
   z.laeuft = true;

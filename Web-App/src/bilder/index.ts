@@ -1,6 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
- * damit die Aufteilung der Dateien darunter frei bleibt. Was Zugang oder Zustand
- * braucht, gibt es nur über die Dienste (erzeugeBilder). */
+/** Die öffentliche Seite des Bereichs; was Zugang oder Zustand braucht, nur über die Dienste. */
 export { anfragenJeMinute } from './bildbedarf';
 export { dateiStamm } from './bildBlickfeld';
 export { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bildDatei';

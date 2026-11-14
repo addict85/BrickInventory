@@ -109,7 +109,12 @@ export type Rolle = 'web' | 'jobs' | 'beides';
 const ROLLEN: readonly Rolle[] = ['web', 'jobs', 'beides'];
 
 /** Auch andere Module nennen sie; Höchstdauer eine Woche wie der Browser-Token. */
-export const VORGABE = { sitzungLeerlaufMin: 240, sitzungHoechstStd: 168 } as const;
+export const VORGABE = {
+  sitzungLeerlaufMin: 240,
+  sitzungHoechstStd: 168,
+  auftragParallel: 4,
+  auftragFristSek: 300,
+} as const;
 
 /** Die Meldung nennt jede ungültige Variable. */
 export class KonfigFehler extends Error {
@@ -352,9 +357,9 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     bildCacheMaxMb: zahl(env, 'BILD_CACHE_MAX_MB', 2048, f),
     bildAbrufeJeMinute: ganzzahl(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
     csvZeileFristMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
-    auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', 4, 1, 64, f),
+    auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', VORGABE.auftragParallel, 1, 64, f),
     bcryptArbeiter: env.BCRYPT_ARBEITER?.trim() ? ganzzahl(env, 'BCRYPT_ARBEITER', 4, 1, 64, f) : null,
-    auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
+    auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', VORGABE.auftragFristSek, 1, 86_400, f),
     caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
     vertragPruefen: env.VERTRAG_PRUEFEN?.trim() === '1',

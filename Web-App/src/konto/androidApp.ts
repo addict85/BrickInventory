@@ -1,12 +1,10 @@
 /** Herkunft und Asset-Links-Dokument aus derselben Liste: Der Server weist
  * nie eine App aus, deren Passkey-Antworten er abwiese, oder umgekehrt. */
-import { konfig } from '../infra/konfig';
+import type { Konfig } from '../infra/konfig';
 
 /** So steht die App in `clientDataJSON.origin`: base64url des Zertifikat-Hashes. */
-export function androidHerkuenfte(): string[] {
-  return konfig().androidZertifikate.map(
-    hex => `android:apk-key-hash:${Buffer.from(hex, 'hex').toString('base64url')}`,
-  );
+export function androidHerkuenfte(k: Pick<Konfig, 'androidZertifikate'>): string[] {
+  return k.androidZertifikate.map(hex => `android:apk-key-hash:${Buffer.from(hex, 'hex').toString('base64url')}`);
 }
 
 export interface AssetStatement {
@@ -15,8 +13,7 @@ export interface AssetStatement {
 }
 
 /** Nur `get_login_creds`: Anmeldedaten ja, die Links der Domain nicht. */
-export function assetlinks(): AssetStatement[] | null {
-  const k = konfig();
+export function assetlinks(k: Pick<Konfig, 'androidZertifikate' | 'androidPaket'>): AssetStatement[] | null {
   if (!k.androidZertifikate.length) return null;
   return [
     {

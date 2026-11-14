@@ -236,6 +236,12 @@ function buildAndRequire() {
     'setBilderLaden',
   ])
     _nacharbeit[k] = (...a) => nacharbeit()[k](...a);
+  // In einer Transaktion (Kontext `t`) die Nacharbeit über deren Zugang; ersetzte Methoden bleiben.
+  const eigen = { ..._nacharbeit };
+  _nacharbeit.ueber = db => {
+    const t = nacharbeit().ueber(db);
+    return Object.fromEntries(Object.keys(eigen).map(k => [k, _nacharbeit[k] === eigen[k] ? t[k] : _nacharbeit[k]]));
+  };
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
   const erststart = () => testDienste().konto.legeStartVerwalterAn();
@@ -245,7 +251,19 @@ function buildAndRequire() {
   // Ein Test stellt Klienten über testQuellen(), auch nach diesem Aufruf.
   _dienstFabrik = () => {
     const kontexte = {};
-    const d = V().baueDienste(testDb(), { nacharbeit: _nacharbeit, bildwerk: _bildwerk, quellen: _quellen, kontexte });
+    // Die Konfiguration, die baueDienste reicht, liest beim Zugriff: Ein Test, der mit
+    // umgebung()/setzeKonfig() einen Wert ändert, sieht ihn auch in k.konfig.
+    const K = require(path.join(ROOT, 'dist', 'src/infra/konfig.js'));
+    const konfig = {};
+    for (const n of Object.keys(K.konfig()))
+      Object.defineProperty(konfig, n, { enumerable: true, get: () => K.konfig()[n] });
+    const d = V().baueDienste(testDb(), {
+      nacharbeit: _nacharbeit,
+      bildwerk: _bildwerk,
+      quellen: _quellen,
+      kontexte,
+      konfig,
+    });
     return { d, kontexte };
   };
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
@@ -844,6 +862,23 @@ function leseLiteral(src, i) {
 
 module.exports.leseLiteral = leseLiteral;
 
+/**
+ * Die Routen einer Router-Datei wie ein Treffer von `router.<verb>('<pfad>'`: [ganz, verb, pfad
+ * relativ zu `mount`]. Vertragsrouter nennen den vollen Pfad im Schlüssel (`endpunkt('GET /api/v1/…'`).
+ * @param {string} src @param {string} mount @returns {string[][]}
+ */
+function routenAusQuelle(src, mount) {
+  const raus = [];
+  for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]*)['"`]/g)) raus.push([...m]);
+  for (const m of src.matchAll(/\.endpunkt\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g)) {
+    const voll = m[2];
+    const rel = voll === mount ? '/' : voll.startsWith(`${mount}/`) ? voll.slice(mount.length) : null;
+    if (rel !== null) raus.push([m[0], m[1].toLowerCase(), rel]);
+  }
+  return raus;
+}
+module.exports.routenAusQuelle = routenAusQuelle;
+
 /** Die Dateiliste steht hier, damit test/api-eingang-db.test.js keinen
  *  variablen Pfad liest (test/eigenbruecken.test.js zählt sie). */
 function v1Routen() {
@@ -852,6 +887,9 @@ function v1Routen() {
     const s = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
       gefunden.push([m[1].toUpperCase(), vorne + m[2]]);
+    // Vertragsrouter: Der Schlüssel nennt Methode und vollen Pfad.
+    for (const m of s.matchAll(/\.endpunkt\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g))
+      gefunden.push([m[1], m[2]]);
   };
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
     lies(`routes/api_v1/${f}`, '/api/v1');

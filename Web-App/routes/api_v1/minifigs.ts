@@ -5,7 +5,7 @@ import { csvEmpfang } from '../../src/http/dateiEmpfang';
 import type { CsvImportBericht } from '../../src/infra/csvExport';
 import { seiteAus } from '../../src/infra/seite';
 import { Abstriche } from '../../src/infra/ergebnis';
-import { vertragsRouter, type Anfrage, type Antwort } from '../../src/http/vertragsRouter';
+import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
 export function baueMinifigsRouter(
@@ -15,153 +15,100 @@ export function baueMinifigsRouter(
   >,
 ) {
   const { requireToken } = waechterFuer(d.konto);
-  const router = vertragsRouter();
+  const router = vertragsRouter('/api/v1');
 
-  router.get(
-    '/minifigs',
-    requireToken,
-    async (req: Anfrage<'GET /api/v1/minifigs'>, res: Antwort<'GET /api/v1/minifigs'>) => {
-      // Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
-      const r = await d.figuren.getMinifigs(sichtVon(req), req.abfrage);
-      res.json({ success: true, figs: r.figs, total: r.total });
-    },
-  );
+  router.endpunkt('GET /api/v1/minifigs', requireToken, async req => {
+    // Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
+    const r = await d.figuren.getMinifigs(sichtVon(req), req.abfrage);
+    return { figs: r.figs, total: r.total };
+  });
 
-  router.post(
-    '/minifigs',
-    requireToken,
-    async (req: Anfrage<'POST /api/v1/minifigs'>, res: Antwort<'POST /api/v1/minifigs'>) => {
-      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-      const result = await d.figuren.addManualFig(owner, req.eingabe);
-      res.json({ success: true, ...result });
-    },
-  );
+  router.endpunkt('POST /api/v1/minifigs', requireToken, async req => {
+    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const result = await d.figuren.addManualFig(owner, req.eingabe);
+    return { ...result };
+  });
 
-  router.put(
-    '/minifigs/:figNumber',
-    requireToken,
-    async (req: Anfrage<'PUT /api/v1/minifigs/:figNumber'>, res: Antwort<'PUT /api/v1/minifigs/:figNumber'>) => {
-      // Ohne den Parameter das eigene Konto.
-      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-      const r = await d.figuren.updateManualFig(besitzer, req.pfad.figNumber, req.eingabe);
-      res.json({ success: true, ...r });
-    },
-  );
+  router.endpunkt('PUT /api/v1/minifigs/:figNumber', requireToken, async req => {
+    // Ohne den Parameter das eigene Konto.
+    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const r = await d.figuren.updateManualFig(besitzer, req.pfad.figNumber, req.eingabe);
+    return { ...r };
+  });
 
   // Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
-  router.put(
-    '/minifigs/:figNumber/storage',
-    requireToken,
-    async (
-      req: Anfrage<'PUT /api/v1/minifigs/:figNumber/storage'>,
-      res: Antwort<'PUT /api/v1/minifigs/:figNumber/storage'>,
-    ) => {
-      const ort = normalisiereLagerort(req.eingabe.storage);
-      const n = await d.bestand.lagerortDienst.setzeLagerort(
-        'fig',
-        { schreiber: req.apiUser.user_id },
-        [req.pfad.figNumber],
-        ort,
-      );
-      res.json({ success: true, storage: ort, changed: n });
-    },
-  );
+  router.endpunkt('PUT /api/v1/minifigs/:figNumber/storage', requireToken, async req => {
+    const ort = normalisiereLagerort(req.eingabe.storage);
+    const n = await d.bestand.lagerortDienst.setzeLagerort(
+      'fig',
+      { schreiber: req.apiUser.user_id },
+      [req.pfad.figNumber],
+      ort,
+    );
+    return { storage: ort, changed: n };
+  });
 
-  router.delete(
-    '/minifigs/:figNumber',
-    requireToken,
-    async (req: Anfrage<'DELETE /api/v1/minifigs/:figNumber'>, res: Antwort<'DELETE /api/v1/minifigs/:figNumber'>) => {
-      // Ohne den Parameter das eigene Konto.
-      const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-      const geloescht = await d.sammlung.loescheFigur(besitzer, req.pfad.figNumber);
-      if (geloescht === null) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
-      res.json({ success: true, papierkorb: [geloescht] });
-    },
-  );
+  router.endpunkt('DELETE /api/v1/minifigs/:figNumber', requireToken, async (req, res) => {
+    // Ohne den Parameter das eigene Konto.
+    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const geloescht = await d.sammlung.loescheFigur(besitzer, req.pfad.figNumber);
+    if (geloescht === null) return sendeFehler(req, res, 404, 'minifig_nicht_manuell');
+    return { papierkorb: [geloescht] };
+  });
 
-  router.get(
-    '/minifigs/manual',
-    requireToken,
-    async (req: Anfrage<'GET /api/v1/minifigs/manual'>, res: Antwort<'GET /api/v1/minifigs/manual'>) => {
-      const ab = new Abstriche();
-      const alle = await d.figuren.getManualMinifigs(
-        sichtVon(req),
-        req.apiUser.user_id,
-        { search: req.abfrage.search ?? '' },
-        ab,
-      );
-      const { eintraege: figs, ...seite } = seiteAus(alle, req.abfrage);
-      res.json({ success: true, figs, ...seite, ...ab.angabe() });
-    },
-  );
+  router.endpunkt('GET /api/v1/minifigs/manual', requireToken, async req => {
+    const ab = new Abstriche();
+    const alle = await d.figuren.getManualMinifigs(
+      sichtVon(req),
+      req.apiUser.user_id,
+      { search: req.abfrage.search ?? '' },
+      ab,
+    );
+    const { eintraege: figs, ...seite } = seiteAus(alle, req.abfrage);
+    return { figs, ...seite, ...ab.angabe() };
+  });
 
   /** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen. */
-  router.get(
-    '/minifigs/stats',
-    requireToken,
-    async (req: Anfrage<'GET /api/v1/minifigs/stats'>, res: Antwort<'GET /api/v1/minifigs/stats'>) => {
-      const stats = await d.figuren.getMinifigStats(sichtVon(req));
-      res.json({ success: true, stats });
-    },
-  );
+  router.endpunkt('GET /api/v1/minifigs/stats', requireToken, async req => {
+    const stats = await d.figuren.getMinifigStats(sichtVon(req));
+    return { stats };
+  });
 
-  router.get(
-    '/minifigs/:figNumber/price-history',
-    requireToken,
-    async (
-      req: Anfrage<'GET /api/v1/minifigs/:figNumber/price-history'>,
-      res: Antwort<'GET /api/v1/minifigs/:figNumber/price-history'>,
-    ) => {
-      const uid = req.apiUser.user_id;
-      const currency = await d.einstellungen.getSetting(uid, 'currency', 'EUR');
-      // Blickfeld: Ohne blickfeldIds() fände sich für eine Figur des Unterkontos keine Erfassung.
-      const data = await d.finanzen.preisverlaufFigur(sichtVon(req), req.pfad.figNumber, currency);
-      res.json({ success: true, ...data });
-    },
-  );
+  router.endpunkt('GET /api/v1/minifigs/:figNumber/price-history', requireToken, async req => {
+    const uid = req.apiUser.user_id;
+    const currency = await d.einstellungen.getSetting(uid, 'currency', 'EUR');
+    // Blickfeld: Ohne blickfeldIds() fände sich für eine Figur des Unterkontos keine Erfassung.
+    const data = await d.finanzen.preisverlaufFigur(sichtVon(req), req.pfad.figNumber, currency);
+    return { ...data };
+  });
 
-  router.get(
-    '/minifigs/:figNumber/parts',
-    requireToken,
-    async (
-      req: Anfrage<'GET /api/v1/minifigs/:figNumber/parts'>,
-      res: Antwort<'GET /api/v1/minifigs/:figNumber/parts'>,
-    ) => {
-      res.json({ success: true, ...(await d.figuren.teileDerFigur(req.pfad.figNumber)) });
-    },
-  );
+  router.endpunkt('GET /api/v1/minifigs/:figNumber/parts', requireToken, async req => {
+    return { ...(await d.figuren.teileDerFigur(req.pfad.figNumber)) };
+  });
 
-  router.post(
-    '/minifigs/import/csv',
+  router.endpunkt(
+    'POST /api/v1/minifigs/import/csv',
     requireToken,
     kontoSchranke('upload'),
     csvEmpfang.single('file'),
-    async (req: Anfrage<'POST /api/v1/minifigs/import/csv'>, res: Antwort<'POST /api/v1/minifigs/import/csv'>) => {
+    async (req, res) => {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-      res.json({
-        success: true,
+      return {
         ...(await d.auftraege.importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', {
           text: req.file.buffer.toString('utf-8'),
         })),
-      });
+      };
     },
   );
 
   // Dieselbe Abfrage wie bei Teilen (src/bestand/gemeinsam.ts), im Blickfeld des Haushalts.
-  router.get(
-    '/minifigs/:figNumber/sets',
-    requireToken,
-    async (
-      req: Anfrage<'GET /api/v1/minifigs/:figNumber/sets'>,
-      res: Antwort<'GET /api/v1/minifigs/:figNumber/sets'>,
-    ) => {
-      const uids = sichtVon(req);
-      const { item, sets } = await d.bestand.verwendendeSets(uids, 'minifigs', {
-        fig_number: req.pfad.figNumber,
-      });
-      res.json({ success: true, item, sets });
-    },
-  );
+  router.endpunkt('GET /api/v1/minifigs/:figNumber/sets', requireToken, async req => {
+    const uids = sichtVon(req);
+    const { item, sets } = await d.bestand.verwendendeSets(uids, 'minifigs', {
+      fig_number: req.pfad.figNumber,
+    });
+    return { item, sets };
+  });
 
   router.use(fehlerAntwort);
   return router;

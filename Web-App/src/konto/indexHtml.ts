@@ -1,7 +1,5 @@
 /** data-theme schon im ausgelieferten HTML, damit die Seite nicht erst im
  * Standarddesign aufblitzt. */
-import { konfig } from '../infra/konfig';
-
 import fs from 'node:fs';
 import { PUBLIC_DIR } from '../infra/appPaths';
 import path from 'node:path';
@@ -25,9 +23,9 @@ const Z = prozessweit('indexHtml', () => ({
 }));
 
 /** CSP-Quelle für den einen Inline-Block <style id="startstil"> (Startgerüst), sonst ''. */
-export function startStilHash(): string {
+export function startStilHash(produktion: boolean): string {
   const mtime =
-    konfig().produktion && Z.stil ? Z.stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
+    produktion && Z.stil ? Z.stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
   if (Z.stil && Z.stil.mtime === mtime) return Z.stil.hash;
   const m = /<style id="startstil">([\s\S]*?)<\/style>/.exec(
     fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf8') : '',
@@ -51,8 +49,8 @@ export function invalidateTheme() {
   Z.theme = null;
 }
 
-async function readIndex(): Promise<string> {
-  if (Z.html !== null && konfig().produktion) return Z.html;
+async function readIndex(produktion: boolean): Promise<string> {
+  if (Z.html !== null && produktion) return Z.html;
   // Ein Griff für Stand und Inhalt: Beides gehört so sicher zur selben Datei.
   const datei = await fs.promises.open(INDEX_PATH, 'r');
   try {
@@ -137,7 +135,7 @@ export async function setzeGlobalesDesign(k: KontoKontext, theme: string): Promi
 }
 
 export async function renderIndexHtml(k: KontoKontext, userId?: number): Promise<string> {
-  const html = await readIndex();
+  const html = await readIndex(k.konfig.produktion);
   try {
     const theme = await currentTheme(k, userId);
     let out = /<html[^>]*\sdata-theme=/i.test(html)

@@ -21,7 +21,8 @@ const { testServer } = require('./helpers/server');
 
 const _req = buildAndRequire();
 const { ladeKonfig, KonfigFehler } = _req('src/infra/konfig.js');
-const { androidHerkuenfte } = _req('src/konto/androidApp.js');
+const { androidHerkuenfte: herkuenfte } = _req('src/konto/androidApp.js');
+const androidHerkuenfte = () => herkuenfte(_req('src/infra/konfig.js').konfig());
 
 /** Ein Hash, dessen base64 ein „+“ und ein „/“ enthält: base64url muss sie ersetzen. */
 const HASH = Buffer.from('fbff' + '00'.repeat(28) + 'fbff', 'hex');
