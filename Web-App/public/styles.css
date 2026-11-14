@@ -1244,8 +1244,8 @@ a{color:var(--b600);text-underline-offset:2px}
   /* Der kurze Satz bleibt stehen (warum), Knopf und Schliessen folgen in derselben Zeile, wenn Platz ist. */
   .hinweis-band > .btn.bp{flex:0 1 auto;font-size:var(--fs-2);min-width:0;white-space:normal;overflow-wrap:break-word;hyphens:auto}
   /* Das Schliessen fest oben rechts: Im Fluss rutschte es bei 320 px allein in eine dritte Zeile. */
-  .hinweis-band{position:relative;padding-right:56px}
-  .hinweis-band > .hinweis-zu{position:absolute;top:4px;right:8px}
+  .hinweis-band{position:relative;padding-right:60px}
+  .hinweis-band > .hinweis-zu{position:absolute;top:4px;right:8px;width:44px;min-width:44px;padding:0}
 }
 /* Ohne Verbindung sagt das Offline-Band schon, dass nichts Neues kommt; zwei Bänder nahmen am Telefon 110 px. */
 html[data-offline] #rb-hinweis{display:none}
