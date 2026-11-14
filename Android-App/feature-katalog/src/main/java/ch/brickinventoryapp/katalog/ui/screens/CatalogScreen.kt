@@ -172,8 +172,8 @@ fun CatalogScreen(
                         state = gridState,
                         columns = LesbareSpalten(160.dp),
                         contentPadding = rasterRand,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                        verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                     ) {
                         // Ein Platz je Set im ganzen Ergebnis — auch für das,
                         // was noch nicht geladen ist. Der Schlüssel ist die

@@ -40,6 +40,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   erfassung-an-der-activity  ErfassungViewModel wieder per `by viewModels()` in MainActivity
  *                              → rot „die Activity haelt nicht mehr ViewModels …“
  *   padding-feste-zahl         DetailRow2 wieder `padding(vertical = 5.dp)` → rot „feste Zahlen in padding …“
+ *   abstand-zwischen-feste-zahl  Lagerorte wieder `Spacer(Modifier.width(8.dp))` → rot, derselbe Test
+ *   dialog-ohne-fenstername    UpdateDialog ohne paneTitle → rot „kein AlertDialog ohne Fenstername …“
  *   string-format-ohne-locale  MonitoringScreen wieder `String.format(fmt, sn)` → rot „kein String-format …“
  *   laden-im-bildschirm        SetDetailScreen lädt wieder per LaunchedEffect(setNumber)
  *                              → rot „Bildschirme stossen das Laden nicht …“
@@ -492,10 +494,16 @@ class QuelltextRatscheTest {
     fun `feste Zahlen in padding werden nicht mehr`() {
         // Abstände haben Namen (ui/theme/Abstaende); ein blankes `padding(… 14.dp)` hält sich
         // an keine Skala, und zwei Karten nebeneinander stehen verschieden weit ein.
-        val GRENZE = 57
+        val GRENZE = 50
+        // Ebenso die Abstände zwischen Geschwistern: spacedBy und Spacer.
+        val ZWISCHEN = 44
         val fest = Regex("""\bpadding\([^()]*?\b\d+(?:\.\d+)?\.dp""")
-        val zahl = hauptcode().sumOf { (_, text) -> fest.findAll(text).count() }
-        ratsche("padding mit fester dp-Zahl", GRENZE, zahl, "Einen Abstand aus Abstaende nehmen.")
+        val zwischen = Regex("""\bspacedBy\(\d+(?:\.\d+)?\.dp\)|\bSpacer\(Modifier\.(?:height|width)\(\d+(?:\.\d+)?\.dp\)\)""")
+        val code = hauptcode()
+        ratsche("padding mit fester dp-Zahl", GRENZE, code.sumOf { (_, text) -> fest.findAll(text).count() },
+            "Einen Abstand aus Abstaende nehmen.")
+        ratsche("spacedBy und Spacer mit fester dp-Zahl", ZWISCHEN, code.sumOf { (_, text) -> zwischen.findAll(text).count() },
+            "Einen Abstand aus Abstaende nehmen.")
     }
 
     @Test
@@ -567,7 +575,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 203
+        val HAUPT = 202
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->

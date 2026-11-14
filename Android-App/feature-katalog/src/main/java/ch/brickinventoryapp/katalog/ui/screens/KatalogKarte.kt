@@ -130,7 +130,7 @@ fun CatalogSetCard(
                 // Ein kurzer Name lässt keine Lücke; die Zeile fehlt am Fuss (KachelAusgleich).
                 var namensZeilen by remember { mutableIntStateOf(2) }
                 Box {
-                    Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein),
+                    Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                         Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
                             maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namensZeilen = it.lineCount })

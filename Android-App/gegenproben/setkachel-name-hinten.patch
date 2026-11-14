@@ -8,7 +8,7 @@ diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/kata
 +++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
 @@ -132,11 +132,11 @@
                  Box {
-                     Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein),
+                     Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
                          verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
 -                        Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
 -                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namensZeilen = it.lineCount })

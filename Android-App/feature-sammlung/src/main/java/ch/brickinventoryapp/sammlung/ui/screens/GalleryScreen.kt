@@ -338,8 +338,8 @@ private fun GalerieRaster(
         state = gridState,
         contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
             bottom = FabPlatz),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
     ) {
         if (stats != null) {
             item(key = "gallery-stats", span = { GridItemSpan(maxLineSpan) }) {

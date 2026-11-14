@@ -126,7 +126,7 @@ fun WahlChip(text: String, an: Boolean, onClick: () -> Unit, modifier: Modifier 
         modifier = modifier.heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.6f).fokusRahmen(Formen.chip)
             .semantics { role = Role.RadioButton },
     ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        Row(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (an) Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))

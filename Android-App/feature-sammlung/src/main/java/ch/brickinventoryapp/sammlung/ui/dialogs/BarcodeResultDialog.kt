@@ -170,7 +170,7 @@ ErfassenDialog(
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 if (barcodeState.theme != null)
                     Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
-                        Text(barcodeState.theme, Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        Text(barcodeState.theme, Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }

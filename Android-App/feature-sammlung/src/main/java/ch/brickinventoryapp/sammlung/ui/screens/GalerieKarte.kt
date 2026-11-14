@@ -264,7 +264,7 @@ private fun KachelTexte(
     // bleibt, steht die fehlende Zeile am Fuss der Kachel (KachelAusgleich).
     var namensZeilen by remember { mutableIntStateOf(2) }
     Box(modifier) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
                 maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
                 onTextLayout = { namensZeilen = it.lineCount })
