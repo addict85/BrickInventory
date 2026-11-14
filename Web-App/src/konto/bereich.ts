@@ -109,12 +109,7 @@ export function erzeugeKonto(a: Omit<KontoAbhaengigkeiten, 'faecher'>, einblick?
     ...bindeZugang(k, startVerwalterDienst, ['legeStartVerwalterAn']),
     ...bindeZugang(k, tokenCache, ['horcheAufTokenWiderruf', 'leereTokenCache']),
     ...bindeZugang(k, tokenWunsch, ['tokenAngaben']),
-    ...bindeZugang(k, verwalterAktionen, [
-      'registrierungFreischalten',
-      'zweitenFaktorEntfernen',
-      'aktivSetzen',
-      'verwalterRolleSetzen',
-    ]),
+    ...verwalterwege(k),
     ...bindeZugang(k, verwalterProtokoll, ['verwalterAktionMerken', 'verwaltungsProtokoll']),
     ...bindeZugang(k, zugaengeDienst, ['zugaengeListe', 'zugangBeenden', 'andereZugaengeBeenden']),
     ...bindeZugang(k, zugangsende, ['beendeAndereZugaenge', 'begrenzeSitzungen']),
@@ -131,6 +126,19 @@ export function erzeugeKonto(a: Omit<KontoAbhaengigkeiten, 'faecher'>, einblick?
     ...bindeZugang(k, indexHtml, ['renderIndexHtml', 'setzeGlobalesDesign']),
     ...ausDemZugang(k),
   };
+}
+
+function verwalterwege(k: KontoKontext) {
+  return bindeZugang(k, verwalterAktionen, [
+    'registrierungFreischalten',
+    'zweitenFaktorEntfernen',
+    'aktivSetzen',
+    'verwalterRolleSetzen',
+    'passwortDurchVerwalter',
+    'faktorDurchVerwalter',
+    'fuehreFaelligeUebernahmenAus',
+    'uebernahmenAbbrechen',
+  ]);
 }
 
 /** Was andere Schichten brauchen, ohne Repository oder Token-Hash zu sehen: die Wache

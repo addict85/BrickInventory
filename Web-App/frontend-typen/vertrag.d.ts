@@ -753,6 +753,7 @@ export type Fehlercode =
   | 'upload_ungueltig'
   | 'datei_inhalt_falsch'
   | 'upload_kontingent_voll'
+  | 'upload_gesamt_voll'
   | 'datei_nicht_verfuegbar'
   | 'json_ungueltig'
   | 'anfrage_json_ungueltig'
@@ -2137,6 +2138,11 @@ export type ProtokollZeile = {
   logged_at?: string | null;
   [feld: string]: unknown;
 };
+export type PUT_api_v1_auth_users_id_password = {
+  success: true;
+  wirksam_ab?: string;
+  [feld: string]: unknown;
+};
 export type PUT_api_v1_sets_setNumber_acquisitions_acqId = {
   new_quantity?: number | null;
   from_user_id?: number | null;
@@ -2785,8 +2791,8 @@ export type Route =
   | { m: 'PUT'; p: `/v1/auth/users/${string}/admin`; a: DELETE_api_v1_papierkorb_id }
   | { m: 'PUT'; p: `/v1/auth/users/${string}/aktiv`; a: KontoAktiv }
   | { m: 'PUT'; p: `/v1/auth/users/${string}/freischalten`; a: DELETE_api_v1_papierkorb_id }
-  | { m: 'PUT'; p: `/v1/auth/users/${string}/password`; a: DELETE_api_v1_papierkorb_id }
-  | { m: 'DELETE'; p: `/v1/auth/users/${string}/zweiter-faktor`; a: DELETE_api_v1_papierkorb_id }
+  | { m: 'PUT'; p: `/v1/auth/users/${string}/password`; a: PUT_api_v1_auth_users_id_password }
+  | { m: 'DELETE'; p: `/v1/auth/users/${string}/zweiter-faktor`; a: PUT_api_v1_auth_users_id_password }
   | { m: 'GET'; p: '/v1/auth/zweiter-faktor'; a: ZweiterFaktorStand }
   | { m: 'POST'; p: '/v1/auth/zweiter-faktor/abschalten'; a: PUT_api_v1_sets_setNumber_acquisitions_acqId }
   | { m: 'POST'; p: '/v1/auth/zweiter-faktor/bestaetigen'; a: ZweiterFaktorCodes }

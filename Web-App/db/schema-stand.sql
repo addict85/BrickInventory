@@ -1062,6 +1062,21 @@ CREATE TABLE users (
 CREATE UNIQUE INDEX users_email_lower ON users USING btree (lower(email));
 CREATE UNIQUE INDEX users_username_lower ON users USING btree (lower(username));
 
+CREATE TABLE verwalter_uebernahmen (
+  ziel_id integer NOT NULL,
+  art text NOT NULL,
+  durch_id integer NOT NULL,
+  passwort_hash text,
+  angelegt_am timestamp with time zone NOT NULL DEFAULT now(),
+  wirksam_ab timestamp with time zone NOT NULL,
+  CONSTRAINT verwalter_uebernahmen_art_check CHECK ((art = ANY (ARRAY['passwort'::text, 'zweiter_faktor'::text]))),
+  CONSTRAINT verwalter_uebernahmen_check CHECK (((art = 'passwort'::text) = (passwort_hash IS NOT NULL))),
+  CONSTRAINT verwalter_uebernahmen_durch_id_fkey FOREIGN KEY (durch_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT verwalter_uebernahmen_pkey PRIMARY KEY (ziel_id, art),
+  CONSTRAINT verwalter_uebernahmen_ziel_id_fkey FOREIGN KEY (ziel_id) REFERENCES users(id) ON DELETE CASCADE
+);
+ALTER TABLE verwalter_uebernahmen ENABLE ROW LEVEL SECURITY;
+
 CREATE TABLE verwaltungsprotokoll (
   id integer NOT NULL DEFAULT nextval('verwaltungsprotokoll_id_seq'::regclass),
   zeit timestamp with time zone NOT NULL DEFAULT now(),

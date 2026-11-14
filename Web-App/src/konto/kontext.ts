@@ -2,7 +2,7 @@
  * Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
 import type { Db } from '../../db/database';
 import type { Faecher } from '../infra/zwischenspeicher';
-import { bindeJeFunktion, bindeZugang, type Kontext } from '../infra/bereich';
+import { bindeImSystemrahmen, bindeJeFunktion, bindeZugang, type Kontext } from '../infra/bereich';
 import * as altgeheimnisse from './repository/altgeheimnisse';
 import * as anmeldezaehler from './repository/anmeldezaehler';
 import * as einrichtung from './repository/einrichtung';
@@ -12,6 +12,7 @@ import * as passkeys from './repository/passkeys';
 import * as protokoll from './repository/protokoll';
 import * as qrKopplung from './repository/qrKopplung';
 import * as startVerwalter from './repository/startVerwalter';
+import * as uebernahmen from './repository/uebernahmen';
 import * as zugaenge from './repository/zugaenge';
 import * as zweiterFaktor from './repository/zweiterFaktor';
 import type { EinstellungenDienste } from '../einstellungen';
@@ -91,6 +92,7 @@ export const zugang = (db: Db) => ({
     markiereAbgelehnt: 'Auch das Gerät ohne Konto lehnt ab',
   }),
   startVerwalter: bindeZugang(db, startVerwalter),
+  uebernahmen: bindeImSystemrahmen(db, uebernahmen, 'Verwalterübernahme: Verwalter und Ziel sind verschiedene Konten'),
   zugaenge: bindeJeFunktion(db, zugaenge, 'zugangsdaten', {
     beendeUeberlappung: OHNE_KONTO,
     beruehreToken: OHNE_KONTO,

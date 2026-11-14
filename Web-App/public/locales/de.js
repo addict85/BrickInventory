@@ -504,6 +504,10 @@ window.I18N_DE = {
   'users.aktion.gutschein_klartext': 'Gutscheinnummer und PIN angezeigt',
   'users.aktion.gutschein_pdf': 'Gutschein-PDF freigegeben',
   'users.aktion.gutschein_export': 'Gutscheine als PDF exportiert',
+  'users.aktion.uebernahme_angekuendigt': 'Änderung an einem Verwalterkonto angekündigt',
+  'users.aktion.uebernahme_abgebrochen': 'Angekündigte Änderung durch Anmeldung aufgehoben',
+  'users.uebernahme_spaeter':
+    'Das Konto ist ein Verwalterkonto: Die Änderung gilt ab {zeit}, wenn es sich bis dahin nicht anmeldet. Es wurde per Mail benachrichtigt.',
   'acq.geschaetzt': 'Kaufpreis geschätzt: Marktpreis, kein bezahlter Betrag',
   'acq.legende_geschaetzt': '≈ geschätzt: Marktpreis, kein bezahlter Betrag',
   'acq.exemplar_geschaetzt': 'Exemplar mit geschätztem Preis {preis} angelegt',

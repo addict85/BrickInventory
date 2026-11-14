@@ -77,7 +77,7 @@ export function passwortWechselFaellig(k: KontoKontext, id: number): Promise<boo
 
 const hashe = (passwort: string) => hashePasswort(passwort);
 
-async function zugaengeBeenden(k: KontoKontext, uid: number): Promise<void> {
+export async function zugaengeBeenden(k: KontoKontext, uid: number): Promise<void> {
   await revokeAllTokens(k, uid);
   await revokeAllSessions(k, uid);
 }

@@ -290,17 +290,51 @@ export type KontoHinweis =
   | 'bestaetigung_gebremst'
   | 'einstellungen_geaendert'
   | 'zugang_beendet'
-  | 'zugaenge_beendet';
+  | 'zugaenge_beendet'
+  | 'uebernahme_angekuendigt'
+  | 'verwaltung_uebernahme_angekuendigt'
+  | 'verwaltung_uebernahme_abgebrochen';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
 /** Der eine Satz, was am Konto geschah. */
-function hinweisSatz(
-  art: KontoHinweis,
-  o: { passkey?: string; konto?: string | undefined; durch?: string | undefined },
-  en: boolean,
-): string {
+type HinweisAngaben = {
+  passkey?: string;
+  konto?: string | undefined;
+  durch?: string | undefined;
+  was?: string | undefined;
+  bis?: string | undefined;
+};
+
+/** Was ein Verwalter an einem Verwalterkonto ändern will, und ab wann (UTC, ohne Sprache des Servers). */
+function uebernahme(o: HinweisAngaben, en: boolean): { was: string; bis: string } {
+  const arten = (o.was ?? '').split(', ');
+  const was = arten
+    .map(a =>
+      a === 'passwort'
+        ? en
+          ? 'set a new password'
+          : 'ein neues Passwort setzen'
+        : en
+          ? 'remove the second factor'
+          : 'den zweiten Faktor entfernen',
+    )
+    .join(en ? ' and ' : ' und ');
+  return { was, bis: o.bis ? `${o.bis.slice(0, 16).replace('T', ' ')} UTC` : '' };
+}
+
+function hinweisSatz(art: KontoHinweis, o: HinweisAngaben, en: boolean): string {
+  const u = uebernahme(o, en);
   return {
+    uebernahme_angekuendigt: en
+      ? `the administrator “${o.durch ?? ''}” wants to ${u.was} for your account. This takes effect on ${u.bis}. If you do not want this, sign in before then (signing out and in again is enough); the change is then dropped.`
+      : `der Verwalter „${o.durch ?? ''}“ will für dein Konto ${u.was}. Das gilt ab ${u.bis}. Willst du das nicht, melde dich vorher an (ab- und wieder anmelden genügt); dann entfällt die Änderung.`,
+    verwaltung_uebernahme_angekuendigt: en
+      ? `“${o.durch ?? ''}” wants to ${u.was} for the administrator account “${o.konto ?? ''}”, effective ${u.bis} unless “${o.konto ?? ''}” signs in before then.`
+      : `„${o.durch ?? ''}“ will für das Verwalterkonto „${o.konto ?? ''}“ ${u.was}, wirksam ab ${u.bis}, wenn sich „${o.konto ?? ''}“ bis dahin nicht anmeldet.`,
+    verwaltung_uebernahme_abgebrochen: en
+      ? `“${o.konto ?? ''}” signed in; the announced change (${u.was}) is dropped.`
+      : `„${o.konto ?? ''}“ hat sich angemeldet; die angekündigte Änderung (${u.was}) entfällt.`,
     passkey_neu: en
       ? `a new passkey (“${o.passkey ?? ''}”) was added to your account.`
       : `deinem Konto wurde ein neuer Passkey („${o.passkey ?? ''}“) hinzugefügt.`,
@@ -364,13 +398,7 @@ export async function sendKontoHinweisMail(
   to: string,
   username: string,
   art: KontoHinweis,
-  o: {
-    lang?: string;
-    passkey?: string;
-    haushalt?: string[];
-    konto?: string | undefined;
-    durch?: string | undefined;
-  } = {},
+  o: HinweisAngaben & { lang?: string; haushalt?: string[] } = {},
 ) {
   const theme = await getMailTheme(k);
   const en = o.lang === 'en';

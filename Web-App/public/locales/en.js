@@ -500,6 +500,10 @@ window.I18N_EN = {
   'users.aktion.gutschein_klartext': 'Voucher number and PIN shown',
   'users.aktion.gutschein_pdf': 'Voucher PDF released',
   'users.aktion.gutschein_export': 'Vouchers exported as PDF',
+  'users.aktion.uebernahme_angekuendigt': 'Change to an administrator account announced',
+  'users.aktion.uebernahme_abgebrochen': 'Announced change dropped by sign-in',
+  'users.uebernahme_spaeter':
+    'This is an administrator account: the change takes effect on {zeit} unless it signs in before then. It was notified by email.',
   'acq.geschaetzt': 'Purchase price estimated: market price, not the amount paid',
   'acq.legende_geschaetzt': '≈ estimated: market price, not the amount paid',
   'acq.exemplar_geschaetzt': 'Copy added with estimated price {preis}',

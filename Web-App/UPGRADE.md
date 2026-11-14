@@ -2099,6 +2099,14 @@ wird). Hinweise:
   Proxys eintragen (README.md, „Proxy vor Caddy“); wer das Netz wirklich braucht,
   setzt zusätzlich `PROXY_NETZ_BESTAETIGT=1` in `.env` (höchstens `/16` bzw.
   `/64` wie bisher). Wer nur Adressen oder `keiner` eingetragen hat: nichts zu tun.
+- **Verwalter setzt Passwort oder zweiten Faktor zurück (0115):** Danach enden
+  alle Anmeldungen und App-Tokens des Kontos, auch beim zweiten Faktor (bisher nur
+  beim Passwort). Ist das Konto selbst Verwalter (oder hat es die Rolle in den
+  letzten 24 Stunden verloren), gilt die Änderung **erst nach 24 Stunden**: Das
+  Konto und alle Verwalter bekommen eine Mail, die Oberfläche nennt den Zeitpunkt.
+  Meldet sich das Konto vorher an (Passwort oder Passkey), entfällt die Änderung;
+  ebenso, wenn der auslösende Verwalter bis dahin kein Verwalter mehr ist.
+  Ausgeführt wird sie im stündlichen Aufräumlauf (Dienst `jobs`). Nichts zu tun.
 - **Gesamtgrenze für Uploads:** Eigene Anleitungen und Gutschein-PDFs aller Konten
   zusammen dürfen höchstens `UPLOAD_GESAMT_MB` belegen (Vorgabe 20480 = 20 GB);
   darüber antwortet der Upload mit 507 und der Meldung, den Verwalter zu fragen.
