@@ -18,7 +18,7 @@ import {
   sitzungLeerlaufSek,
   sitzungsHoechstdauer,
 } from '../src/konto';
-import { startStilHash, type ProfilDienste } from '../src/profil';
+import { stilHashDerStartseite, type ProfilDienste } from '../src/profil';
 import { sitzungsVersionPruefen } from '../src/konto/http/sitzungsPruefung';
 import type { KontoDienste } from '../src/konto';
 import { merkeAnfrage } from '../src/http/kontoMerken';
@@ -165,7 +165,7 @@ const sicherheitsKoepfe =
         // Ohne 'unsafe-inline': Alle Handler laufen über js/actions.js.
         "script-src 'self'",
         // Stile setzt js/stile.js per CSSOM; inline nur das Startgerüst, per Hash.
-        `style-src 'self'${startStilHash(produktion) ? ' ' + startStilHash(produktion) : ''}`,
+        `style-src 'self'${stilHashDerStartseite(produktion) ? ' ' + stilHashDerStartseite(produktion) : ''}`,
         "font-src 'self'",
         // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
         // <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.

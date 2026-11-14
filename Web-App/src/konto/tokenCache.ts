@@ -84,7 +84,7 @@ export function vergissEintrag(k: KontoKontext, token: string): void {
 }
 
 /** Damit der Token sofort ungültig wird, nicht erst nach Ablauf des Caches. */
-export function invalidateToken(k: KontoKontext, token: string | null | undefined): void {
+export function tokenVergessen(k: KontoKontext, token: string | null | undefined): void {
   if (!token) return;
   const c = speicher(k);
   c.eintraege.delete(token);

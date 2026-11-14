@@ -339,7 +339,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     await giveSet(U.kindB, '75192-1', 2, 160);
     await giveSet(U.kindA, '10290-1', 1, 50);
 
-    const r = await handlers.getSets(await household.blickfeldIds(U.eltern, 'all'), {});
+    const r = await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'all'), {});
     const falcon = r.sets.filter(s => s.set_number === '75192-1');
     assert.equal(falcon.length, 1, 'Set erscheint mehrfach');
     assert.equal(falcon[0].quantity, 3, 'Mengen nicht addiert');
@@ -353,11 +353,11 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(Math.round(falcon[0].avg_purchase_price), 140);
 
     // Filter: eigene Sicht des Elternkontos ist leer, 'subs' zeigt beide Sets.
-    assert.equal((await handlers.getSets(await household.blickfeldIds(U.eltern, 'own'), {})).sets.length, 0);
-    assert.equal((await handlers.getSets(await household.blickfeldIds(U.eltern, 'subs'), {})).sets.length, 2);
+    assert.equal((await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'own'), {})).sets.length, 0);
+    assert.equal((await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'subs'), {})).sets.length, 2);
 
     // Und ein Kind sieht nur seine eigenen.
-    const kindB = await handlers.getSets(await household.blickfeldIds(U.kindB, 'all'), {});
+    const kindB = await handlers.setsLesen(await household.blickfeldIds(U.kindB, 'all'), {});
     assert.deepEqual(
       kindB.sets.map(s => s.set_number),
       ['75192-1'],
@@ -423,7 +423,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     );
 
     // Im Haushalt steht das Set weiterhin einmal, jetzt mit einem Besitzer.
-    const list = await handlers.getSets(await household.blickfeldIds(U.eltern, 'all'), {});
+    const list = await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'all'), {});
     const falcon = list.sets.find(s => s.set_number === '75192-1');
     assert.equal(falcon.quantity, 3);
     assert.deepEqual(
@@ -479,7 +479,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     await household.kontenTrennen(U.eltern, U.kindA);
     assert.deepEqual(await household.blickfeldIds(U.eltern, 'all'), [U.eltern, U.kindB]);
     // Das Kind behält seinen Bestand.
-    const kindA = await handlers.getSets(await household.blickfeldIds(U.kindA, 'all'), {});
+    const kindA = await handlers.setsLesen(await household.blickfeldIds(U.kindA, 'all'), {});
     assert.deepEqual(
       kindA.sets.map(s => s.set_number),
       ['10290-1'],

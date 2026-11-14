@@ -2,7 +2,6 @@
 import type { SetsAbhaengigkeiten, SetsKontext } from './kontext';
 import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import * as erfassen from './erfassen';
-import * as setService from './setService';
 import * as lesen from './lesen';
 import * as loeschen from './loeschen';
 import * as setMove from './setMove';
@@ -22,14 +21,14 @@ export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKont
     () => ({}),
     (sk: SetsKontext) => ({
       erfassungBuchen: mit(sk)(erfassen.erfassungBuchen),
-      findSetInScope: mit(sk)(erfassen.findSetInScope),
+      findeSetImBlickfeld: mit(sk)(erfassen.findeSetImBlickfeld),
       setsDesKontos: mit(sk.db, setsRepo.setsDesKontos),
       setErfassen: mit(sk)(erfassen.setErfassen),
       setErgaenzen: mit(sk)(erfassen.setErgaenzen),
-      updateSet: mit(sk)(setService.updateSet),
-      setsAlsCsv: mit(sk)(setService.setsAlsCsv),
-      getSets: mit(sk)(lesen.getSets),
-      getSet: mit(sk)(lesen.getSet),
+      setAendern: mit(sk)(dienst.setAendern),
+      setsAlsCsv: mit(sk)(dienst.setsAlsCsv),
+      setsLesen: mit(sk)(lesen.setsLesen),
+      setLesen: mit(sk)(lesen.setLesen),
       zustandsAggregat: mit(sk)(lesen.zustandsAggregat),
       mitSetAggregat: mit(sk)(lesen.mitSetAggregat),
       loescheSet: mit(sk)(loeschen.loescheSet),

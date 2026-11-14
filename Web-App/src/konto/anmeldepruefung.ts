@@ -22,9 +22,9 @@ import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
 import { doppeltAls, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import { hinweisNebenher } from './kontoHinweis';
-import { hashToken } from './geraeteToken';
+import { tokenAbdruck } from './geraeteToken';
 import { zugangsTransaktion } from './zugangsende';
-import { isValidLoginIdentifier } from './namensRegeln';
+import { anmeldenameGueltig } from './namensRegeln';
 import type { KontoKontext } from './kontext';
 
 const TAG_MS = 86_400_000;
@@ -47,7 +47,7 @@ export async function verifiziereEmailToken(
   if (token === undefined || token === null || String(token).trim() === '') {
     return { ok: false, grund: 'fehlt' };
   }
-  const hash = hashToken(String(token));
+  const hash = tokenAbdruck(String(token));
   const id = await k.konten.kontoZuEmailToken(hash);
   if (id === undefined) return { ok: false, grund: 'ungueltig' };
   const ok = await zugangsTransaktion(k, t => t.konten.uebernimmEmailNeu(id, hash)).catch(doppeltAls(false));
@@ -125,7 +125,7 @@ export async function pruefeAnmeldedaten(
   passkeyAntwort?: unknown,
 ): Promise<AnmeldeErgebnis> {
   if (!username || !password) return absage('ungueltig', 'benutzername_passwort');
-  if (!isValidLoginIdentifier(username)) return absage('ungueltig', 'name_oder_email_eingeben');
+  if (!anmeldenameGueltig(username)) return absage('ungueltig', 'name_oder_email_eingeben');
 
   const ip = herkunft.ip || '?';
   const name = String(username);

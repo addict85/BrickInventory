@@ -5,7 +5,7 @@
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in designFuer `eigenes` immer null → rot: „Konto mit eigenem Design“
  *      (noppe statt werkbank) und „index.html“
- *   B  GET /theme wieder ohne resolveUserId → rot: „App mit Token“
+ *   B  GET /theme wieder ohne nutzerIdDerAnfrage → rot: „App mit Token“
  *   C  setzeEigenesDesign schreibt ungeprüft, auch '' → rot: „leer heisst
  *      Vorgabe“ (/settings/raw: app_theme ''), „unbekanntes Design abgewiesen“
  *   D  in indexHtml wieder ALLOWED = ['classic', 'brick'] → rot: „index.html“

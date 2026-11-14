@@ -1,6 +1,6 @@
 /** POST /settings ohne HTTP. Hier statt in src/einstellungen, weil Mail, Protokoll
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
-import { SECRET_KEYS, isMaskedValue, globalerWertGueltig } from '../einstellungen';
+import { SECRET_KEYS, istMaskiert, globalerWertGueltig } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
 import { imSystemkontext } from '../infra/kontoKontext';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../vertrag/einstellungen';
@@ -31,7 +31,7 @@ async function heikleSchluessel(k: VerwaltungKontext, e: EinstellungsEingabe): P
   const einrichtung = !(await k.einstellungen.getGlobalSetting('einrichtung_erledigt'));
   for (const key of GLOBALE_EINSTELLUNGEN.filter(istHeikel)) {
     const neu = e[key];
-    if (neu === undefined || (SECRET_KEYS.has(key) && isMaskedValue(neu))) continue;
+    if (neu === undefined || (SECRET_KEYS.has(key) && istMaskiert(neu))) continue;
     const alt = String((await k.einstellungen.getGlobalSetting(key)) ?? '');
     if (
       String(neu) === alt ||
@@ -48,14 +48,14 @@ async function heikleSchluessel(k: VerwaltungKontext, e: EinstellungsEingabe): P
 async function schreibeGlobal(kx: VerwaltungKontext, uid: number, e: EinstellungsEingabe): Promise<void> {
   const geaendert: string[] = [];
   for (const key of GLOBALE_EINSTELLUNGEN) {
-    if (e[key] === undefined || (SECRET_KEYS.has(key) && isMaskedValue(e[key]))) continue;
+    if (e[key] === undefined || (SECRET_KEYS.has(key) && istMaskiert(e[key]))) continue;
     if (String(e[key]) !== String((await kx.einstellungen.getGlobalSetting(key)) ?? '')) geaendert.push(key);
     await kx.einstellungen.setGlobalSetting(key, e[key]);
   }
   if (geaendert.length) await kx.konto.protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
   // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
   if (GLOBALE_EINSTELLUNGEN.some(k => k.startsWith('smtp_') && e[k] !== undefined))
-    await kx.einstellungen.deleteGlobalSetting('smtp_insecure_tls');
+    await kx.einstellungen.globaleWerteLoeschen('smtp_insecure_tls');
 }
 
 /** Alle Schreibvorgänge samt Protokoll in einer Transaktion: Scheitert ein Wert,

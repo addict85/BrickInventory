@@ -71,7 +71,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
   );
 
   const { preisverlaufSet } = _req('src/finanzen/priceHistory.js');
-  const { getSets } = require('./helpers/sources').handlerModul(_req);
+  const { setsLesen } = require('./helpers/sources').handlerModul(_req);
 
   try {
     await t.test('das Diagramm zeigt nur die Zustände im Bestand', async () => {
@@ -117,7 +117,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
     });
 
     await t.test('ein Konto mit Menge 0 steht nicht mehr als Besitzer da', async () => {
-      const r = await getSets([hauptId, subId], {});
+      const r = await setsLesen([hauptId, subId], {});
       const zeile = r.sets.find(s => s.set_number === SN);
       assert.ok(zeile, 'das Set fehlt in der Galerie');
       assert.equal(zeile.quantity, 1, 'die Menge des Haushalts ist die Summe');
@@ -136,7 +136,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
       // „Wieder ein Exemplar halten" heisst seit Migration 0036: eine
       // Erfassung anlegen. Hier stand `UPDATE sets SET quantity=2` — die …
       await erfasse(db, hauptId, SN, 2);
-      const r = await getSets([hauptId, subId], {});
+      const r = await setsLesen([hauptId, subId], {});
       const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();
       assert.deepEqual(namen, [HAUPT, SUB].sort(), 'beide Konten halten jetzt Exemplare');
     });

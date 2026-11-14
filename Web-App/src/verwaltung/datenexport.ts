@@ -1,7 +1,7 @@
 /** Sicherung der Einstellungen (JSON) und der Bestandsdaten (ZIP mit CSVs), dazu
  * das Einspielen einer Einstellungsdatei. Die Routen reichen nur durch. */
 import type { Writable } from 'node:stream';
-import { SECRET_KEYS, isMaskedValue, globalerWertGueltig } from '../einstellungen';
+import { SECRET_KEYS, istMaskiert, globalerWertGueltig } from '../einstellungen';
 import { DAILY_JOBS } from '../auftraege';
 import { zeitplanNeuPlanen } from './dienst';
 import { jsonOderNull } from '../infra/validate';
@@ -95,7 +95,7 @@ export async function konfigImport(kx: VerwaltungKontext, uid: number, verwalter
     const geaendert: string[] = [];
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
       // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
-      if (SECRET_KEYS.has(key) && isMaskedValue(global[key])) continue;
+      if (SECRET_KEYS.has(key) && istMaskiert(global[key])) continue;
       if (String(global[key]) !== String((await kx.einstellungen.getGlobalSetting(key)) ?? '')) geaendert.push(key);
       await kx.einstellungen.setGlobalSetting(key, global[key]);
       imported++;

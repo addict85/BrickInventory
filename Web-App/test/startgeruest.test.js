@@ -25,7 +25,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { startStilHash, startseiteHtml, ohneKommentare } = _req('src/profil/indexHtml.js');
+const { stilHashDerStartseite, startseiteHtml, ohneKommentare } = _req('src/profil/indexHtml.js');
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 // startseiteHtml() fragt das Design aus der Datenbank; offen hielte der Pool den Lauf an.
 test.after(() =>
@@ -39,7 +39,7 @@ test('der Hash passt zum ausgelieferten Block', async () => {
   const block = /<style id="startstil">([\s\S]*?)<\/style>/.exec(html);
   assert.ok(block, 'kein Startgerüst-Stil im ausgelieferten HTML');
   const erwartet = `'sha256-${crypto.createHash('sha256').update(block[1]).digest('base64')}'`;
-  assert.equal(startStilHash(false), erwartet);
+  assert.equal(stilHashDerStartseite(false), erwartet);
 });
 
 test('vor dem ersten Stylesheet und vor jedem blockierenden Skript', () => {

@@ -4,7 +4,7 @@ import express from 'express';
 import { fehlerAntwort } from '../src/http/httpAntwort';
 import { versuche, wertOder } from '../src/infra/ergebnis';
 import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
-import { resolveUserId, istVerwalter } from '../src/konto/http/anmeldung';
+import { nutzerIdDerAnfrage, istVerwalter } from '../src/konto/http/anmeldung';
 import { oeffentlicherStartZustand } from '../src/auftraege';
 import type { Dienste } from '../src/dienste';
 
@@ -16,7 +16,7 @@ export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'v
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
-    const angemeldet = !!wertOder(await versuche('startup-status:anmeldung', resolveUserId(d.konto, req)), null);
+    const angemeldet = !!wertOder(await versuche('startup-status:anmeldung', nutzerIdDerAnfrage(d.konto, req)), null);
     res.json(oeffentlicherStartZustand(await d.auftraege.aktuellerStartZustand(), angemeldet));
   });
 
@@ -38,7 +38,7 @@ export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'v
   // Überwachung fragt mit einem Token ohne Geräteschlüssel.
   router.get('/health', async (req, res) => {
     const verwalter =
-      !!wertOder(await versuche('health:anmeldung', resolveUserId(d.konto, req)), null) && istVerwalter(req);
+      !!wertOder(await versuche('health:anmeldung', nutzerIdDerAnfrage(d.konto, req)), null) && istVerwalter(req);
     res.json(await d.verwaltung.gesundheitsBericht(verwalter));
   });
 

@@ -5,7 +5,7 @@ import { mailBasisUrl } from '../infra/basisUrl';
 import { fachfehler } from '../infra/fehlerTexte';
 import { versuche, wertOder } from '../infra/ergebnis';
 import { imSystemkontext } from '../infra/kontoKontext';
-import { hashToken, type KontoZeile } from '../konto';
+import { tokenAbdruck, type KontoZeile } from '../konto';
 import type { ProfilKontext } from './kontext';
 
 type Konto = KontoZeile;
@@ -49,7 +49,7 @@ export async function profilAendern(
   }
   const email = String(e.email);
   const token = crypto.randomBytes(32).toString('hex');
-  await k.konto.merkeEmailNeu(user.id, email, hashToken(token), new Date(Date.now() + 24 * 60 * 60 * 1000));
+  await k.konto.merkeEmailNeu(user.id, email, tokenAbdruck(token), new Date(Date.now() + 24 * 60 * 60 * 1000));
   await speichern();
   return { emailChanged: true, emailSent: await adressMails(k, user, email, token) };
 }

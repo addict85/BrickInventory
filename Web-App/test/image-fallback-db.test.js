@@ -49,8 +49,8 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog', { co
   await katalogSet(db, MIT, { name: 'Anderes', image_url: EIGEN });
 
   try {
-    const { getSets } = require('./helpers/sources').handlerModul(_req);
-    const r = await getSets([uid], {});
+    const { setsLesen } = require('./helpers/sources').handlerModul(_req);
+    const r = await setsLesen([uid], {});
     const ohne = r.sets.find(s => s.set_number === OHNE);
     const mit = r.sets.find(s => s.set_number === MIT);
 

@@ -34,7 +34,7 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };
-  const { getSets } = require('./helpers/sources').bereichsSeite('sets');
+  const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
   const { loescheSetFuer } = require('./helpers/sources').bereichsSeite('sets');
   const [HAUPT, SUB] = [`haupt_${process.pid}`, `sub_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, SUB]]);
@@ -44,7 +44,7 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
   H.leereHaushaltCache();
   await haeltSet(db, haupt, '10179-1');
   await haeltSet(db, sub, '75192-1');
-  const nummern = async sicht => (await getSets(sicht, {})).sets.map(s => s.set_number).sort();
+  const nummern = async sicht => (await setsLesen(sicht, {})).sets.map(s => s.set_number).sort();
 
   await t.test('eine Sicht wählt die Konten im Dienst', async () => {
     assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1', '75192-1']);

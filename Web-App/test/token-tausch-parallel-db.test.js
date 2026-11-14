@@ -79,11 +79,11 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
     const erster = await auth.rotiereToken(alt, '10.1.2.77');
     assert.ok(erster && typeof erster === 'object', 'Vorbedingung: der erste Tausch gelingt');
     await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
-      auth.hashToken(erster.token),
+      auth.tokenAbdruck(erster.token),
     ]);
     assert.equal(await auth.rotiereToken(alt, '192.0.2.5'), null);
     tokenCache.leereTokenCache();
-    assert.equal(await auth.validateToken(erster.token), null, 'der Nachfolger ist weg');
-    assert.equal(await auth.validateToken(alt), null, 'der alte ist weg');
+    assert.equal(await auth.nutzerZumToken(erster.token), null, 'der Nachfolger ist weg');
+    assert.equal(await auth.nutzerZumToken(alt), null, 'der alte ist weg');
   });
 });

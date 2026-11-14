@@ -103,7 +103,7 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
 
   await t.test('der Vorgänger ist als verbraucht vermerkt', async () => {
     assert.equal(await gilt(b), true, 'die erste Nutzung des Nachfolgers');
-    assert.deepEqual(await verbraucht(), [auth.hashToken(a)]);
+    assert.deepEqual(await verbraucht(), [auth.tokenAbdruck(a)]);
     assert.equal(await gilt(a), false, 'der Vorgänger gilt nach der Überlappung nicht mehr');
   });
 

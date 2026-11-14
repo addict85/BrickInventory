@@ -79,7 +79,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const kennung = token => auth.hashToken(token).slice(0, 16);
+  const kennung = token => auth.tokenAbdruck(token).slice(0, 16);
   const gilt = async token => {
     tokenCache.leereTokenCache();
     return (await ruf('GET', '/settings/tokens', token)).status === 200;

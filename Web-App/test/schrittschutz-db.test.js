@@ -221,7 +221,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     const z = await db.get(
       `SELECT user_id AS uid, date_trunc('milliseconds', created_at) AS seit FROM api_tokens
       WHERE token = $1`,
-      [auth.hashToken(alt)],
+      [auth.tokenAbdruck(alt)],
     );
     const f = { uid: z.uid, seit: z.seit.toISOString() };
     await db.run('INSERT INTO geraete_schluessel (user_id, familie, oeffentlich) VALUES ($1, $2, $3)', [
@@ -309,7 +309,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
   await t.test('ein alter Zugang kann keinen Schlüssel mehr hinterlegen', async () => {
     const alt = (await anmelden(NAME)).body.token;
     await db.run(`UPDATE api_tokens SET created_at = NOW() - INTERVAL '1 hour' WHERE token = $1`, [
-      auth.hashToken(alt),
+      auth.tokenAbdruck(alt),
     ]);
     const n = await ruf('/geraet/schluessel/nonce', { method: 'POST', token: alt, body: {} });
     assert.deepEqual([n.status, n.body.code], [403, 'geraeteschluessel_frist']);
@@ -318,7 +318,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     await db.run(
       `INSERT INTO geraete_nonces (nonce, user_id, familie, ablauf) SELECT $2, user_id,
        date_trunc('milliseconds', created_at), NOW() + INTERVAL '1 hour' FROM api_tokens WHERE token = $1`,
-      [auth.hashToken(alt), altNonce.toString('base64url')],
+      [auth.tokenAbdruck(alt), altNonce.toString('base64url')],
     );
     const r = await ruf('/geraet/schluessel', {
       method: 'POST',

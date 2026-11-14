@@ -22,7 +22,7 @@ const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /function zustandsAggregat/, 'Der gemeinsame Helfer fehlt');
-  // Weder getSets()/getSet() noch die manuellen Listen dürfen die Regel je
+  // Weder setsLesen()/setLesen() noch die manuellen Listen dürfen die Regel je
   // eigen ausformulieren — sie steht in conditionFromAcquisitions().
   // Zwei Parameter, nicht drei: Der dritte war der gespeicherte Zustand der
   // Stammzeile. Migration 0032 hat ihn den Sets genommen, 0035 den Teilen und
@@ -593,17 +593,17 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
 // Anmelden mit E-Mail (hardened-100)
 // ═══════════════════════════════════════════════════════════════════════════
 const authModul = buildAndRequire()('src/konto/namensRegeln.js');
-const { isValidLoginIdentifier, USERNAME_RE, EMAIL_RE } = authModul;
+const { anmeldenameGueltig, USERNAME_RE, EMAIL_RE } = authModul;
 
 test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
   // Über dem Feld steht „Benutzername oder E-Mail", und die Abfrage sucht in
   // beiden Spalten — davor stand aber ein Wächter, der nur das
   // Benutzernamen-Muster zuliess. Das @ fiel durch, und die Meldung sprach von
   // erlaubten Zeichen im Benutzernamen.
-  assert.ok(isValidLoginIdentifier('marco@example.com'));
-  assert.ok(isValidLoginIdentifier('marco.meier+lego@sub.example.co.uk'));
-  assert.ok(isValidLoginIdentifier('marco'), 'Benutzername muss weiterhin gehen');
-  assert.ok(isValidLoginIdentifier('mar_co.1-x'));
+  assert.ok(anmeldenameGueltig('marco@example.com'));
+  assert.ok(anmeldenameGueltig('marco.meier+lego@sub.example.co.uk'));
+  assert.ok(anmeldenameGueltig('marco'), 'Benutzername muss weiterhin gehen');
+  assert.ok(anmeldenameGueltig('mar_co.1-x'));
 });
 
 test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
@@ -618,7 +618,7 @@ test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
     'a'.repeat(300) + '@example.com',
     "' OR 1=1 --",
   ]) {
-    assert.equal(isValidLoginIdentifier(bad), false, `\`${bad}\` sollte abgelehnt werden`);
+    assert.equal(anmeldenameGueltig(bad), false, `\`${bad}\` sollte abgelehnt werden`);
   }
 });
 

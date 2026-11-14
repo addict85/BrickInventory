@@ -141,7 +141,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | 'kont
   router.endpunkt('POST /api/v1/auth/logout', async (req, res) => {
     const auth = String(req.headers.authorization || '');
     // Ein Fehler geht an den Client: Hiesse die Abmeldung gelungen, bliebe der Token gültig.
-    if (auth.startsWith('Bearer ')) await d.konto.deleteToken(auth.slice(7));
+    if (auth.startsWith('Bearer ')) await d.konto.tokenLoeschen(auth.slice(7));
     // destroy gibt es nur mit Sitzungs-Middleware; die App ruft ohne Cookie auf.
     if (req.session?.destroy) {
       req.session.destroy(() => {

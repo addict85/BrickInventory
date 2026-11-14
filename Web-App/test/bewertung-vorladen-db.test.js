@@ -150,8 +150,8 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
                     VALUES ($1, $2, 1, $3, 'N', $4)`,
         [uid, SN, preis, waehrung],
       );
-    const { getSets } = require('./helpers/sources').bereichsSeite('sets');
-    const r = await getSets([uid], {});
+    const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
+    const r = await setsLesen([uid], {});
     const zeile = (r.sets || r).find(z => z.set_number === SN);
     assert.ok(zeile, 'das Set fehlt in der Liste');
     assert.equal(Number(zeile.avg_purchase_price), 100);

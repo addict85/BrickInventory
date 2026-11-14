@@ -59,7 +59,7 @@ test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }
   await S.setGlobalSetting('rebrickable_api_key', 'geheim-123');
   t.after(async () => {
     if (vorher) await S.setGlobalSetting('rebrickable_api_key', vorher);
-    else await S.deleteGlobalSetting('rebrickable_api_key');
+    else await S.globaleWerteLoeschen('rebrickable_api_key');
   });
   const { holeSetTeile, httpsGetRobust } = require('./helpers/sources').testDienste().fremdquellen.quellen;
   const { rebrickableRoh } = _req('src/fremdquellen/index.js');

@@ -3,7 +3,7 @@
  * vorher als Muster im Quelltext suchte, hier an Ergebnissen.
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  zustandsAggregat ohne max_purchase_price → rot „getSet liefert
+ *   A  zustandsAggregat ohne max_purchase_price → rot „setLesen liefert
  *      dieselben Aggregatfelder …“
  *   B  erfassungAendern gibt die nackte Antwort ohne mitSetAggregat zurück →
  *      rot „beide Wege einer Erfassung …“ (und der folgende Fall, der auf
@@ -13,7 +13,7 @@
  *   D  getCurrentMarketPrice: `if (!condition)` → `if (true)` → rot „ein
  *      ausdrücklich angefragter Zustand …“ und „der Marktpreis als Kaufpreis …“
  *   E  conditionFromAcquisitions liefert bei Erfassungen immer 'N' → rot
- *      „getSet …“ und „manuelle Teile und Minifiguren …“
+ *      „setLesen …“ und „manuelle Teile und Minifiguren …“
  *   F  probeErfassungen sortiert nach `added_at` → rot „die Preis-Probe …“;
  *      ohne `price_cache: cacheRows` in der Antwort ebenso
  *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „computePnl
@@ -110,7 +110,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json() };
   };
-  const { getSets, getSet } = require('./helpers/sources').bereichsSeite('sets');
+  const { setsLesen, setLesen } = require('./helpers/sources').bereichsSeite('sets');
 
   await t.test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', async () => {
     const { getCurrentMarketPrice } = _req('src/finanzen/marketPrice.js');
@@ -143,16 +143,16 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     assert.deepEqual(neu, { condition: 'U', preis: 33 }, 'Gebraucht erfasst, aber der Neupreis eingetragen');
   });
 
-  await t.test('getSet liefert dieselben Aggregatfelder wie getSets', async () => {
-    const liste = (await getSets([uid], {})).sets.find((/** @type {any} */ s) => s.set_number === SN);
-    const einzeln = await getSet([uid], SN);
+  await t.test('setLesen liefert dieselben Aggregatfelder wie setsLesen', async () => {
+    const liste = (await setsLesen([uid], {})).sets.find((/** @type {any} */ s) => s.set_number === SN);
+    const einzeln = await setLesen([uid], SN);
     assert.ok(liste && einzeln, 'Das Set fehlt in einer der beiden Antworten');
     for (const feld of ['condition', 'acq_count', 'used_count', 'max_purchase_price']) {
-      assert.ok(einzeln[feld] !== undefined && einzeln[feld] !== null, `getSet() ohne ${feld}`);
+      assert.ok(einzeln[feld] !== undefined && einzeln[feld] !== null, `setLesen() ohne ${feld}`);
       assert.equal(
         String(einzeln[feld]),
         String(liste[feld]),
-        `${feld}: getSet ${einzeln[feld]}, getSets ${liste[feld]}`,
+        `${feld}: setLesen ${einzeln[feld]}, setsLesen ${liste[feld]}`,
       );
     }
     assert.equal(einzeln.condition, 'U', 'eine gebrauchte Erfassung macht das Set gebraucht');

@@ -2,7 +2,7 @@
 export { assetlinks } from './androidApp';
 export { Angemeldet, TokenWunsch } from './anmeldungAblauf';
 export type { Konto as KontoZeile } from './repository/konten';
-export { UEBERLAPPUNG_MS, hashToken, rotationFaellig } from './geraeteToken';
+export { UEBERLAPPUNG_MS, tokenAbdruck, rotationFaellig } from './geraeteToken';
 export { assertLoginAllowed } from './anmeldepruefung';
 export { USERNAME_RE, emailGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig, nameGueltig } from './namensRegeln';
 export { LETZTER_VERWALTER } from './konten';

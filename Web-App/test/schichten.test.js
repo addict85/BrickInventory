@@ -570,16 +570,16 @@ test('Routen, Aufträge und Clients importieren keine Repositories', () => {
 
 /** Fachabläufe (Mail, Token-Hash, Design-Cache) stehen in Diensten, nicht in Routen. */
 function routenOhneFachablauf() {
-  // Eine Route liest die Anfrage, ruft d und antwortet; wer src/mail, hashToken oder
+  // Eine Route liest die Anfrage, ruft d und antwortet; wer src/mail, tokenAbdruck oder
   // vergissDesign importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
-  // Gegenproben (14.11.2026): `import { hashToken } from '../../src/konto'` in
+  // Gegenproben (14.11.2026): `import { tokenAbdruck } from '../../src/konto'` in
   // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
   // routes/api_v1/sets.ts → rot; `import { erzeugeMail } from '../../src/mail'` in
   // routes/auth/registrierung.ts → rot.
   /** @type {[RegExp, string][]} */
   const MUSTER = [
     [
-      /import\s*\{[^}]*\b(?:hashToken|vergissDesign)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:konto|profil)'/g,
+      /import\s*\{[^}]*\b(?:tokenAbdruck|vergissDesign)\b[^}]*\}\s*from\s*'[./]+\/src\/(?:konto|profil)'/g,
       'Werkzeug aus src/konto',
     ],
     [/import\s*\*\s*as\s*\w+\s*from\s*'[./]+\/src\/\w+'/g, 'Bereich als Namensraum'],
@@ -589,7 +589,7 @@ function routenOhneFachablauf() {
     MUSTER.every(([re], i) =>
       new RegExp(re.source).test(
         [
-          "import { hashToken } from '../../src/konto';",
+          "import { tokenAbdruck } from '../../src/konto';",
           "import * as sets from '../../src/sets';",
           "import { sendMail } from '../../src/mail';",
         ][i],
@@ -766,9 +766,9 @@ function indexOhneZugang(indizes) {
   assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
   assert.ok(
     alle.some(x => x.name === 'src/haushalt.asIds' && !x.zugang) &&
-      deklaration('src/sets/lesen', 'getSets')?.zugang &&
+      deklaration('src/sets/lesen', 'setsLesen')?.zugang &&
       deklaration('src/bilder/thumbs', 'generateThumb')?.zugang,
-    'Selbstbeweis: asIds ist rein, getSets (Kontext) und generateThumb (asynchron) haben Zugang',
+    'Selbstbeweis: asIds ist rein, setsLesen (Kontext) und generateThumb (asynchron) haben Zugang',
   );
   assert.deepEqual(
     alle.filter(x => x.zugang).map(x => x.name),
@@ -813,7 +813,7 @@ const istHttp = rel => /^src\/[^/]+\/http\//.test(rel);
 
 test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen', () => {
   // Gegenproben (31.10.2026): `import type { Request } from 'express'` in
-  // src/sets/setService.ts → rot; dasselbe in src/konto/loginLimiter.ts → rot.
+  // src/sets/dienst.ts → rot; dasselbe in src/konto/loginLimiter.ts → rot.
   // (10.11.2026): dasselbe in src/infra/geld.ts, src/vertrag/grund.ts und
   // db/txLock.ts → rot.
   const nutztExpress = d =>
@@ -849,7 +849,7 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/ht
   // Dasselbe für src/http/: Die gemeinsamen Helfer hängen am Request, ein Dienst,
   // der sie holt, hinge es auch; umgekehrt kennt src/http nur src/infra.
   // Gegenproben (08.11.2026): `import { fehlerAntwort } from '../http/httpAntwort'`
-  // in src/konto/geraeteToken.ts → rot; `import { setKey } from '../sets/setService'` in
+  // in src/konto/geraeteToken.ts → rot; `import { setKey } from '../sets/dienst'` in
   // src/http/httpAntwort.ts → rot.
   const http = tsUnter('src').filter(d => bereichVon(d) === 'http');
   assert.ok(http.length >= 8, `nur ${http.length} Dateien unter src/http`);

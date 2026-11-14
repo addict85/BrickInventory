@@ -69,7 +69,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   const M = _req('src/figuren/abfragen.js');
 
   const listen = [
-    ['/v1/sets', async () => (await S.getSets(uids, { page_size: 60 })).sets],
+    ['/v1/sets', async () => (await S.setsLesen(uids, { page_size: 60 })).sets],
     // getManualParts/getManualMinifigs liefern ein NACKTES Array; die Route
     // verpackt es. Die drei anderen Listen liefern ein Objekt mit `total`.
     ['/v1/parts/manual', async () => await P.getManualParts(uids, {})],
@@ -141,7 +141,7 @@ test('im Einzelkonto steht keine Plakette', async t => {
   // „gehört mir" an jeder Kachel wäre nur Rauschen — und zusätzliche Felder in
   // jeder Antwort. Dieselbe Entscheidung wie bei den Sets seit jeher.
   for (const [name, zeilen] of [
-    ['/v1/sets', (await S.getSets(uids, { page_size: 60 })).sets],
+    ['/v1/sets', (await S.setsLesen(uids, { page_size: 60 })).sets],
     ['/v1/minifigs', (await M.getMinifigs(uids, { source: 'set' })).figs],
   ]) {
     assert.ok(zeilen?.length, `${name}: Vorlage liefert keine Zeile`);

@@ -3,7 +3,7 @@
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { bearerToken, waechterFuer } from './middleware';
 import { baueSettingsGlobalRouter } from './settingsGlobal';
-import { resolveUserId, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
+import { nutzerIdDerAnfrage, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
 import { tlsAuskunft } from '../../src/infra/tlsWurzel';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -21,7 +21,7 @@ export function baueSettingsRouter(
   // Vor router.use(requireLogin): Anmelde- und Startbildschirm brauchen das
   // Design, und es verrät nichts über Konten.
   router.endpunkt('GET /api/v1/settings/theme', async (req, res) => {
-    const uid = await resolveUserId(d.konto, req);
+    const uid = await nutzerIdDerAnfrage(d.konto, req);
     res.set('Cache-Control', 'no-cache');
     res.set('Vary', 'Cookie, Authorization');
     return { ...(await d.einstellungen.designFuer(uid)) };
@@ -96,9 +96,9 @@ export function baueSettingsRouter(
 
   router.endpunkt('GET /api/v1/settings', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    // readSettings(), weil price_cache_ttl und default_price_condition global
+    // einstellungenLesen(), weil price_cache_ttl und default_price_condition global
     // sind; eine eigene Abfrage las sie nicht.
-    const alle = await d.einstellungen.readSettings(uid, false);
+    const alle = await d.einstellungen.einstellungenLesen(uid, false);
     const gespeichert = Object.fromEntries(APP_FELDER.map(feld => [feld, alle[feld] ?? APP_VORGABEN[feld] ?? '']));
     return {
       settings: {
@@ -128,7 +128,7 @@ export function baueSettingsRouter(
 
   // Der GLOBALE Default; den effektiven liefert GET /settings (effective_condition).
   router.endpunkt('GET /api/v1/settings/default-condition', requireToken, async _req => {
-    return { condition: await d.einstellungen.globalDefaultCondition() };
+    return { condition: await d.einstellungen.globalerStandardZustand() };
   });
 
   // Der wirksame Wert, für Webapp und App aus einer Route.

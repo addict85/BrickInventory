@@ -3,7 +3,7 @@
  * Papierkorb.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  bestandsMenge() in updateSet durch `parseInt(body.quantity) || 0`
+ *   A  bestandsMenge() in setAendern durch `parseInt(body.quantity) || 0`
  *      ersetzt → rot: „eine kaputte Menge wird abgewiesen" (200, Set weg)
  *   B  legeInPapierkorb() im Zweig für Menge 0 entfernt → rot: „Menge 0
  *      legt das Set in den Papierkorb"

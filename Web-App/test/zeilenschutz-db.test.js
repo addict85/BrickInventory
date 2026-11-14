@@ -360,10 +360,10 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     const K = _req('src/konto/index.js');
     const token = `zeilen-token-${process.pid}`;
     await su.run(`INSERT INTO api_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
-      K.hashToken(token),
+      K.tokenAbdruck(token),
       C,
     ]);
-    assert.equal((await d.konto.validateToken(token))?.user_id, C);
+    assert.equal((await d.konto.nutzerZumToken(token))?.user_id, C);
     await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).alleTokensWiderrufen(kontexte.konto, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });

@@ -23,7 +23,7 @@ const Z = prozessweit('indexHtml', () => ({
 }));
 
 /** CSP-Quelle für den einen Inline-Block <style id="startstil"> (Startgerüst), sonst ''. */
-export function startStilHash(produktion: boolean): string {
+export function stilHashDerStartseite(produktion: boolean): string {
   const mtime =
     produktion && Z.stil ? Z.stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
   if (Z.stil && Z.stil.mtime === mtime) return Z.stil.hash;

@@ -28,7 +28,7 @@ test('ein Dienst fragt nur als das Konto des Zeilenschutzes', { concurrency: 1 }
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { imSystemkontext, FremdesKonto } = require(path.join(__dirname, '..', 'dist', 'src/infra/kontoKontext.js'));
-  const { getSets } = bereichsSeite('sets');
+  const { setsLesen } = bereichsSeite('sets');
   const [HAUPT, SUB] = [`fk_haupt_${process.pid}`, `fk_sub_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, SUB]]);
   const neu = async n =>
@@ -39,7 +39,7 @@ test('ein Dienst fragt nur als das Konto des Zeilenschutzes', { concurrency: 1 }
   require('./helpers/sources').testDienste().haushalt.leereHaushaltCache();
   await haeltSet(db, haupt, '10179-1');
   await haeltSet(db, sub, '75192-1');
-  const nummern = async nutzer => (await getSets({ nutzer }, {})).sets.map(s => s.set_number).sort();
+  const nummern = async nutzer => (await setsLesen({ nutzer }, {})).sets.map(s => s.set_number).sort();
 
   await t.test('das eigene Konto sieht seinen Haushalt', async () => {
     assert.deepEqual(await alsKonto(haupt, () => nummern(haupt)), ['10179-1', '75192-1']);

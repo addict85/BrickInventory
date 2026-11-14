@@ -16,7 +16,7 @@ const { haeltSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { getSet, getSets } = require('./helpers/sources').bereichsSeite('sets');
+const { setLesen, setsLesen } = require('./helpers/sources').bereichsSeite('sets');
 
 test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
@@ -47,7 +47,7 @@ test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrenc
 
   try {
     // ── 1. Detail: jede Zeile traegt ihre Herkunft ─────────────────────────
-    const detail = await getSet(uid, SN);
+    const detail = await setLesen(uid, SN);
     assert.ok(detail, 'Set nicht gefunden');
     assert.equal(
       detail.instructions.length,
@@ -83,7 +83,7 @@ test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrenc
     assert.notEqual(eigene.id, null, 'Die eigene Anleitung bringt ebenfalls eine id mit');
 
     // ── 3. Liste: dieselbe Markierung, damit die Kachel gleich zaehlt ──────
-    const { sets } = await getSets(uid, {});
+    const { sets } = await setsLesen(uid, {});
     const inListe = sets.find(s => s.set_number === SN);
     assert.ok(inListe, 'Set fehlt in der Galerie');
     assert.deepEqual(

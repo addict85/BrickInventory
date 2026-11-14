@@ -20,7 +20,7 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
   /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt). */
   router.endpunkt('GET /api/v1/sets/exists/:setNumber', requireToken, async req => {
     const sn = req.pfad.setNumber;
-    const treffer = await d.sets.findSetInScope(req.apiUser.user_id, sn);
+    const treffer = await d.sets.findeSetImBlickfeld(req.apiUser.user_id, sn);
     return { exists: !!treffer, ...(treffer || { set_number: normalisiereSetNummer(sn) }) };
   });
 
@@ -42,7 +42,7 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
   router.endpunkt('GET /api/v1/sets', requireToken, async req => {
     // Ohne page_size bleibt die Liste absichtlich unbegrenzt — für Skripte und
     // ältere App-Stände.
-    const r = await d.sets.getSets(sichtVon(req), req.abfrage);
+    const r = await d.sets.setsLesen(sichtVon(req), req.abfrage);
     return { count: r.sets.length, total: r.total, sets: r.sets, ...(r.themes ? { themes: r.themes } : {}) };
   });
 
@@ -68,7 +68,7 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
   });
 
   router.endpunkt('GET /api/v1/sets/:setNumber', requireToken, async (req, res) => {
-    const set = await d.sets.getSet(sichtVon(req), req.pfad.setNumber);
+    const set = await d.sets.setLesen(sichtVon(req), req.pfad.setNumber);
     if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
     return { set };
   });
@@ -104,7 +104,7 @@ export function baueSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) 
     }
     // Die Antwort trägt die Gesamtmenge NACH der Änderung: Eine bei 0 gedeckelte
     // Verringerung ergibt eine andere Zahl als die gesendete.
-    const r = await d.sets.updateSet(req.apiUser.user_id, req.pfad.setNumber, req.eingabe);
+    const r = await d.sets.setAendern(req.apiUser.user_id, req.pfad.setNumber, req.eingabe);
     return { ...(r || {}) };
   });
 

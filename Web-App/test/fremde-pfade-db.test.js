@@ -79,7 +79,7 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
   t.after(async () => {
     https.get = echt;
     if (vorher) await S.setGlobalSetting('rebrickable_api_key', vorher);
-    else await S.deleteGlobalSetting('rebrickable_api_key');
+    else await S.globaleWerteLoeschen('rebrickable_api_key');
     await db.pool.end().catch(() => {});
   });
 

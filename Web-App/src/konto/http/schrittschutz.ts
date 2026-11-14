@@ -17,7 +17,7 @@ const GESCHUETZT: ReadonlyArray<readonly [string, RegExp, Schrittaktion]> = [
   ['POST', /^\/auth\/zweiter-faktor\/(einrichten|codes)$/, 'zweiter_faktor'],
 ];
 
-/** Ein Bearer-Token ohne Sitzung: So fragt die App. Hat die Anfrage beides, gilt die Sitzung (resolveUserId). */
+/** Ein Bearer-Token ohne Sitzung: So fragt die App. Hat die Anfrage beides, gilt die Sitzung (nutzerIdDerAnfrage). */
 export function istAppToken(req: Request): boolean {
   return !req.session?.userId && (req.headers.authorization ?? '').startsWith('Bearer ');
 }

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from '../infra/appPaths';
 import { anleitungenZusammenlegen } from '../katalog';
-import { findSetInScope } from './erfassen';
+import { findeSetImBlickfeld } from './erfassen';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import { imSystemkontext } from '../infra/kontoKontext';
@@ -48,7 +48,7 @@ export async function anleitungenNeuLaden(sk: SetsKontext, uid: number, roh: str
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
   if (verwalter) await sk.katalog.loescheAnleitungen(sn);
   else {
-    if (!(await findSetInScope(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
+    if (!(await findeSetImBlickfeld(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
     if ((await sk.katalog.anzahlAnleitungen(sn)) > 0) fachfehler('verboten', 'nur_admins');
     if (!(await sk.katalog.anleitungNeuLadenErlaubt(sn)))
       fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });

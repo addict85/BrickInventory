@@ -60,11 +60,11 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
   // Tokens liegen GEHASHT in der Tabelle (src/konto/geraeteToken.ts) — der Klartextpfad
   // wurde bewusst entfernt. Der Test legt deshalb den Hash ab und schickt den
   // Klartext, genau wie ein echter Client.
-  const { hashToken } = _req('src/konto/geraeteToken.js');
+  const { tokenAbdruck } = _req('src/konto/geraeteToken.js');
   const tokenFuer = async (uid, label) => {
     const t = require('node:crypto').randomBytes(24).toString('hex');
     await db.run('INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL)', [
-      hashToken(t),
+      tokenAbdruck(t),
       uid,
       label,
     ]);

@@ -3,4 +3,4 @@ export { erzeugeProfil } from './bereich';
 export type { ProfilDienste, ProfilKontext } from './bereich';
 export { emailWirdGeaendert } from './profilAendern';
 export type { ProfilEingabe } from './profilAendern';
-export { vergissDesign, startStilHash } from './indexHtml';
+export { vergissDesign, stilHashDerStartseite } from './indexHtml';

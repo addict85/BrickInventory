@@ -4,7 +4,7 @@
  * Rebrickable wird kurz gemerkt, statt bei jedem Versuch erneut zu fragen.
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  findSetInScope() aus der Route entfernt (Import für das fragende
+ *   A  findeSetImBlickfeld() aus der Route entfernt (Import für das fragende
  *      Konto wie vorher) → rot: „ein fremdes Set wird nicht importiert“ und
  *      „das Set des Unterkontos … für dessen Besitzer“
  *   B  Drossel entfernt → rot: „je Konto höchstens 30 Importe je Stunde“

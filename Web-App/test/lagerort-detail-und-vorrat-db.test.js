@@ -83,7 +83,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
   );
 
   await t.test('Befund 1: der Detail-Aufruf liefert den Namen des Lagerorts', async () => {
-    const detail = await S.getSet(schreibbar, SN);
+    const detail = await S.setLesen(schreibbar, SN);
     assert.equal(
       detail.storage,
       'Estrich',
@@ -92,8 +92,8 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     );
 
     // Liste und Detail müssen dasselbe sagen. Genau zwischen diesen beiden ist
-    // schon die MENGE auseinandergelaufen (siehe getSet in src/sets/lesen.ts).
-    const liste = await S.getSets(schreibbar, { page: 1, page_size: 10 });
+    // schon die MENGE auseinandergelaufen (siehe setLesen in src/sets/lesen.ts).
+    const liste = await S.setsLesen(schreibbar, { page: 1, page_size: 10 });
     const zeile = (liste.sets || []).find(s => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Liste');
     assert.equal(
@@ -187,7 +187,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     }
     // Und das Detail fasst beide zusammen, statt einen zu verschweigen.
     await L.setzeLagerort('set', [HAUPT], [SN], 'Estrich');
-    const detail = await S.getSet(schreibbar, SN);
+    const detail = await S.setLesen(schreibbar, SN);
     assert.equal(
       detail.storage,
       'Estrich, Keller',
@@ -265,7 +265,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
       nummern,
       [SN],
       `Erwartet nur ${SN}, bekam ${JSON.stringify(nummern)}. Kommen BEIDE, hat die ` +
-        'Route den Parameter weggelassen — der Filter in getSets() ist in Ordnung, ' +
+        'Route den Parameter weggelassen — der Filter in setsLesen() ist in Ordnung, ' +
         'er bekommt ihn nur nie zu sehen.',
     );
     assert.equal(

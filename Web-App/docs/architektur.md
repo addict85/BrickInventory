@@ -50,6 +50,9 @@ Absicht, solange es nur von unten gebraucht wird:
 - Jeder Fachbereich hat eine `index.ts`; andere Bereiche, Routen, Jobs und
   `startup/` importieren nur darüber (ausser den HTTP-Seiten unter
   `src/<bereich>/http/`). So bleibt der Schnitt der Dateien Sache des Bereichs.
+  Sie gibt nur Typen, die Fabrik (`erzeugeX`) und reine Funktionen her; was
+  Datenbank, Netz oder Dateien braucht, ruft ein anderer Bereich über den Kontext
+  (`k.katalog.…`, in einer Transaktion `t.katalog.…`). Das prüft `test/schichten.test.js`.
 
 - SQL steht nur in `src/<bereich>/repository*` und `db/`, auch als Klausel
   (Sortierung, Bedingung, Upsert). Dienste nehmen aus `db/database` nur Typen
@@ -63,7 +66,7 @@ Absicht, solange es nur von unten gebraucht wird:
   Konfiguration (`k.konfig`) und die Arbeitseinheit. Ein Dienst nimmt den Kontext
   als ersten Parameter (`k`) und holt alles daraus, nichts vom Prozess. Die Fabrik
   ist eine Closure über `k` (`baueBereich`, `src/infra/bereich.ts`): Jeder Dienst
-  steht ausgeschrieben da (`getSets: mit(k)(lesen.getSets)`), typgeprüft, ohne
+  steht ausgeschrieben da (`setsLesen: mit(k)(lesen.setsLesen)`), typgeprüft, ohne
   Namenslisten und ohne Proxy. `startup/verdrahtung.ts` baut alle Bereiche in
   `baueDienste(db, bauteile)`; Server und Testhilfe rufen dieselbe Funktion.
 - Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/dienste.ts`) und
@@ -91,7 +94,7 @@ Absicht, solange es nur von unten gebraucht wird:
   beim Anmelden in `routes/auth.ts`: ohne Token ein eigener Fehlercode).
 - Express kennen nur die Routen, `server.ts`, `src/http` (Fehlerweg, Herkunft,
   Dateiauslieferung, Vertragsrouter) und die HTTP-Seiten der Bereiche unter
-  `src/<bereich>/http/` (Anmeldung und Sitzung in `konto`, Bild-Proxy in
+  `src/<bereich>/http/` (Anmeldung und Sitzung in `konto`, Startseite in `profil`, Bild-Proxy in
   `bilder`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
   eine HTTP-Seite; eine Absage ist eine `FehlerArt` (oder ein `Fachfehler`),
   den HTTP-Status wählt `src/http/fehlerArt.ts`.
@@ -303,7 +306,8 @@ Bestand der Abweichungen (Stand 11.11.2026):
 Innen (Funktionen, Typen) heissen die Dinge deutsch und wie im Bereich:
 `haushaltVon`, `schreibbereich`, `blickfeldIds`, `darfSchreibenFuer`,
 `preisverlaufSet`/`…Teil`/`…Figur`. Übrig sind englische Namen vor allem in
-Finanzen, Katalog und Konto (`fetchPrice`, `resolveSetCondition`, `getCurrentMarketPrice`);
+Finanzen, Katalog, Teile und Mail (`fetchPrice`, `resolveSetCondition`, `getCurrentMarketPrice`)
+sowie `getSetting`/`getGlobalSetting`/`setGlobalSetting` der Einstellungen;
 `test/ratschen.test.js` zählt die exportierten Funktionen in `src/` mit englischem Verb.
 Eine Regel hat einen Namen: Setnummern normalisiert nur `normalisiereSetNummer`
 (`src/infra/setNummer`), Sets verschiebt `setVerschieben` (Einstieg) über

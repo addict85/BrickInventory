@@ -540,7 +540,6 @@ function setKernQuelle() {
     ['src/sets/csvImport.ts'],
     ['src/sets/anleitungen.ts'],
     ['src/sets/preise.ts'],
-    ['src/sets/setService.ts'],
     ['src/sets/erfassen.ts'],
     ['src/katalog/partsImport.ts'],
     ['src/katalog/minifigsImport.ts'],

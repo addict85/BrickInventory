@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { mailBasisUrl } from '../infra/basisUrl';
 import { imSystemkontext } from '../infra/kontoKontext';
-import { hashToken } from './geraeteToken';
+import { tokenAbdruck } from './geraeteToken';
 import { rechneWieRegistrierung, registriere } from './konten';
 import { zielGedrosselt } from './zielDrossel';
 import { alsDoppelt } from '../infra/fehlerTexte';
@@ -70,7 +70,7 @@ async function neuesKonto(k: KontoKontext, r: Registrierung): Promise<boolean> {
     first_name: r.first_name,
     last_name: r.last_name,
     passwort: r.passwort,
-    tokenHash: hashToken(token),
+    tokenHash: tokenAbdruck(token),
     bis: new Date(Date.now() + 24 * STUNDE_MS),
   }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
   if (neuId)
@@ -88,7 +88,7 @@ export function bestaetigungErneutAnfordern(k: KontoKontext, email: string): Pro
     const token = crypto.randomBytes(32).toString('hex');
     const konto = gedrosselt
       ? null
-      : await k.konten.erneuereEmailTokenWennFrei(email, hashToken(token), 24, RUECKSETZ_PAUSE_MIN);
+      : await k.konten.erneuereEmailTokenWennFrei(email, tokenAbdruck(token), 24, RUECKSETZ_PAUSE_MIN);
     // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
     if (konto)
       mailSprache(k, konto.id)
@@ -106,7 +106,7 @@ export function ruecksetzLinkAnfordern(kx: KontoKontext, email: string): Promise
     const k = kx.konten;
     if (
       !user ||
-      !(await k.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN))
+      !(await k.setzeRuecksetzTokenWennFrei(user.id, tokenAbdruck(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN))
     )
       return;
     mailSprache(kx, user.id)
@@ -117,9 +117,9 @@ export function ruecksetzLinkAnfordern(kx: KontoKontext, email: string): Promise
 }
 
 export function nameZuBestaetigung(k: KontoKontext, token: string): Promise<string | null> {
-  return k.konten.nameZuEmailToken(hashToken(token));
+  return k.konten.nameZuEmailToken(tokenAbdruck(token));
 }
 
 export function kontoZumRuecksetzLink(k: KontoKontext, token: string) {
-  return k.konten.kontoNachRuecksetzToken(hashToken(token));
+  return k.konten.kontoNachRuecksetzToken(tokenAbdruck(token));
 }

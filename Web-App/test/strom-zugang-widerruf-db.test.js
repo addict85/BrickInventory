@@ -121,7 +121,7 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
 
   await t.test('alle Sitzungen beendet (neue Sitzungsversion): der Strom endet', async () => {
     const s = await oeffne(await sitzung());
-    await _req('src/konto/zugangsende.js').revokeAllSessions(uid);
+    await _req('src/konto/zugangsende.js').alleSitzungenBeenden(uid);
     await endet(s, 'alle Sitzungen beendet');
   });
 

@@ -1,8 +1,8 @@
 /**
- * Scheitert beim Ändern eines Sets das Schreiben des Zustands, meldet updateSet
+ * Scheitert beim Ändern eines Sets das Schreiben des Zustands, meldet setAendern
  * den Fehler, statt mit der alten Menge Erfolg zu melden.
  *
- * Gegenprobe (14.11.2026 gemessen): in updateSet() wieder
+ * Gegenprobe (14.11.2026 gemessen): in setAendern() wieder
  * `try { schreibeInLetzteErfassung(…condition…) } catch (e) { console.error(…) }`
  * → rot: „Missing expected rejection“.
  */
@@ -16,7 +16,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
 const db = testDaten();
-const { updateSet } = bereichsSeite('sets');
+const { setAendern } = bereichsSeite('sets');
 
 test('ein gescheiterter Zustandswechsel ist ein Fehler', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
@@ -43,7 +43,7 @@ test('ein gescheiterter Zustandswechsel ist ein Fehler', { concurrency: 1 }, asy
   });
 
   await assert.rejects(
-    alsKonto(uid, () => updateSet(uid, SET, { condition: 'U' })),
+    alsKonto(uid, () => setAendern(uid, SET, { condition: 'U' })),
     /Zustand gesperrt/,
   );
   const z = await db.get('SELECT condition FROM set_acquisitions WHERE user_id = $1 AND set_number = $2', [uid, SET]);

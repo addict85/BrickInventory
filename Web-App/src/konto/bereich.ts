@@ -51,9 +51,9 @@ function anmeldungUndGeraete(k: KontoKontext) {
     pruefeFreigabe: (...a: Parameters<GeraeteDienste['pruefeFreigabe']>) => k.geraete.pruefeFreigabe(...a),
     pruefeToken: mit(k)(geraeteToken.pruefeToken),
     rotiereToken: mit(k)(geraeteToken.rotiereToken),
-    deleteToken: mit(k)(geraeteToken.deleteToken),
+    tokenLoeschen: mit(k)(geraeteToken.tokenLoeschen),
     tokensAufraeumen: mit(k)(geraeteToken.tokensAufraeumen),
-    validateToken: mit(k)(geraeteToken.validateToken),
+    nutzerZumToken: mit(k)(geraeteToken.nutzerZumToken),
   };
 }
 

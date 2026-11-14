@@ -24,7 +24,7 @@ const { datenOderSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testDaten();
 const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
-const { hashToken } = _req('src/konto/geraeteToken.js');
+const { tokenAbdruck } = _req('src/konto/geraeteToken.js');
 
 test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
@@ -46,7 +46,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
       )
     ).id;
     const token = crypto.randomBytes(32).toString('hex');
-    assert.ok(await K.setzeRuecksetzTokenWennFrei(uid, hashToken(token), 60, 15));
+    assert.ok(await K.setzeRuecksetzTokenWennFrei(uid, tokenAbdruck(token), 60, 15));
     await wechsel(uid);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
     const r = await fetch(`${base}/api/v1/auth/reset-password`, {
@@ -68,7 +68,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
         await nachWechsel(`link_eigen_${p}`, uid => K.aendereEigenesPasswort(uid, 'Eigenes-Neu-2026')),
         await nachWechsel(`link_fremd_${p}`, uid => K.setzeFremdesPasswort(uid, 'Verwalter-Neu-2026')),
         await nachWechsel(`link_mail_${p}`, async uid => {
-          await K.merkeEmailNeu(uid, `neu_${p}@example.org`, hashToken(`mail${p}`), new Date(Date.now() + 60_000));
+          await K.merkeEmailNeu(uid, `neu_${p}@example.org`, tokenAbdruck(`mail${p}`), new Date(Date.now() + 60_000));
           assert.equal(
             (await require('./helpers/sources').testBereich('konto').verifiziereEmailToken(`mail${p}`)).ok,
             true,
@@ -95,7 +95,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
       )
     ).id;
     const token = crypto.randomBytes(32).toString('hex');
-    assert.ok(await K.setzeRuecksetzTokenWennFrei(uid, hashToken(token), 60, 15));
+    assert.ok(await K.setzeRuecksetzTokenWennFrei(uid, tokenAbdruck(token), 60, 15));
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
     const setze = password =>
       fetch(`${base}/api/v1/auth/reset-password`, {

@@ -3,7 +3,7 @@
  * Verwalter; wer das Set im Haushalt hat, holt nur fehlende. Sonst war eine
  * Anleitung für alle weg, wenn die Quellen beim Neuladen nichts lieferten.
  *
- * Gegenprobe (am 27.10. gemessen): die Prüfung auf findSetInScope entfernt →
+ * Gegenprobe (am 27.10. gemessen): die Prüfung auf findeSetImBlickfeld entfernt →
  * rot: „ein fremdes Konto" (200, die Anleitung war gelöscht).
  *
  * Dazu einmal je Set und Tag für alle Konten zusammen; der Verwalter

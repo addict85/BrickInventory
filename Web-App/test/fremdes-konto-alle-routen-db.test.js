@@ -262,7 +262,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
     await db.get(
       `INSERT INTO qr_login_tokens (token, user_id, expires_at, abholung, code_hash)
     VALUES ($1, $2, NOW() + INTERVAL '5 minutes', 'abh', 'x') RETURNING id`,
-      [auth.hashToken(nonce), opfer],
+      [auth.tokenAbdruck(nonce), opfer],
     )
   ).id;
 
@@ -307,7 +307,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
       id: idFuer(p),
       acqId: acqFuer(p),
       instrId: anleitung,
-      tokenId: auth.hashToken(token).slice(0, 16),
+      tokenId: auth.tokenAbdruck(token).slice(0, 16),
       jobId: '1700000000000-abcd',
       condition: 'N',
       art: 'anleitung',

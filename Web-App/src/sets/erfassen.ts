@@ -43,7 +43,7 @@ export interface VorhandenesSet {
 
 /** Im BLICKFELD, nicht nur im eigenen Konto: Webapp und App sollen dieselbe
  * Eingabe gleich behandeln. Ohne Fang: null hiesse sonst „nicht da“. */
-export async function findSetInScope(
+export async function findeSetImBlickfeld(
   sk: SetsKontext,
   viewerId: number,
   setNumber: string,
@@ -137,7 +137,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
       return { action: 'updated' as const, set_number: sn, besitzer };
     }
     if (e.wennVorhanden !== 'aufstocken') {
-      const vorhanden = await findSetInScope(t, e.anfragender, sn);
+      const vorhanden = await findeSetImBlickfeld(t, e.anfragender, sn);
       if (vorhanden) return { action: 'exists' as const, ...vorhanden };
     }
     const katalog = await t.katalog.merkeKatalogPlatzhalter(sn);

@@ -23,7 +23,7 @@ const { haeltSet } = require('./helpers/bestand');
 
 test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t => {
   // Ohne das Feld fielen beide Clients still auf ihre eigene Annahme zurück —
-  // der Rückfall ist absichtlich lautlos. Die Menge kommt aus updateSet(),
+  // der Rückfall ist absichtlich lautlos. Die Menge kommt aus setAendern(),
   // summiert über das Blickfeld.
   const db = testDaten();
   if (!(await datenOderSkip(t, _req))) return;

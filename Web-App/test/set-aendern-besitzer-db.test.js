@@ -50,7 +50,7 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
       [subId, SET],
     );
 
-    const { updateSet } = require('./helpers/sources').bereichsSeite('sets');
+    const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
     // Die sets-Zeile traegt seit Migration 0032 nur noch Menge und Besitzer —
     // Kaufpreis und Zustand stehen in der Erfassung.
     const stand = async () => ({
@@ -71,14 +71,14 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     });
 
     // 1. Der Preis — der Zweig, der schon vorher richtig lag.
-    await updateSet(hauptId, SET, { purchase_price: 99 });
+    await setAendern(hauptId, SET, { purchase_price: 99 });
     let s = await stand();
     assert.equal(s.erf.p, 99, 'Die Erfassung traegt den neuen Preis nicht');
 
     // 2. Der Zustand — genau hier verschwand die Aenderung.
     //    Gegenprobe: in schreibeInLetzteErfassung ownerId durch den Aufrufer
     //    ersetzt -> dieser Teilschritt rot (durchgefuehrt).
-    await updateSet(hauptId, SET, { condition: 'U' });
+    await setAendern(hauptId, SET, { condition: 'U' });
     s = await stand();
     assert.equal(
       s.erf.condition,
@@ -104,13 +104,13 @@ test('die Menge geht bewusst auf das eigene Konto', () => {
   // ich diese erhoehe, soll es fuer meinen Account einen neuen Kaufpreis-
   // Eintrag erstellen." Der Mengen-Zweig weicht deshalb ABSICHTLICH vom
   // Besitzer ab. Das steht hier, damit es niemand „mit vereinheitlicht".
-  const src = fs.readFileSync(path.join(ROOT, 'src/sets/setService.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/sets/dienst.ts'), 'utf8');
   const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
   // Seit UX-Prüfung 19 (H1) kann der Aufruf ein Konto im Schreibfeld nennen; ohne Angabe bleibt es das eigene.
   assert.match(code, /const ziel = body\.owner_user_id == null \? uid :/, 'ohne Angabe nicht das eigene Konto');
   assert.match(
     code,
-    /adjustAcquisitionsToQuantity\(t, ziel, sn/,
+    /erfassungenAnMengeAngleichen\(t, ziel, sn/,
     'Die Mengenanpassung laeuft nicht mehr auf das eigene Konto — dann erhoeht ' +
       'ein „+" den Bestand eines fremden Kontos',
   );

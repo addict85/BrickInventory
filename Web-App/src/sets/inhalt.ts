@@ -1,7 +1,7 @@
 /** Stammdaten, Teile- und Figurenliste eines Sets. */
 import { proxyImageUrl } from '../bilder';
 import { type RbSetTeil, ersteBlNummer } from '../fremdquellen';
-import { findSetInScope } from './erfassen';
+import { findeSetImBlickfeld } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -184,7 +184,7 @@ async function figurenMerken(
 
 /** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
 export async function teileDesSetsImportieren(sk: SetsKontext, uid: number, sn: string): Promise<number> {
-  const set = await findSetInScope(sk, uid, sn);
+  const set = await findeSetImBlickfeld(sk, uid, sn);
   if (!set) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
   const takt = await sk.konto.zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
   if (takt.count > 30) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: takt.waitMin });

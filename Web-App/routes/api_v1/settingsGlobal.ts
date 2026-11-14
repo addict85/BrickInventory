@@ -31,9 +31,11 @@ export function baueSettingsGlobalRouter(
     if (fertig) return {};
   });
 
-  // Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
+  // Über einstellungenLesen(), damit die Maskierung nicht an der Verpackung vorbeigeht.
   router.endpunkt('GET /api/v1/settings/raw', requireToken, async req => {
-    return { settings: await d.einstellungen.readSettings(req.apiUser.user_id, await alsVerwalter(d.konto, req)) };
+    return {
+      settings: await d.einstellungen.einstellungenLesen(req.apiUser.user_id, await alsVerwalter(d.konto, req)),
+    };
   });
 
   router.endpunkt('GET /api/v1/settings/export', requireToken, async (req, res) => {

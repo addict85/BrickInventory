@@ -9,7 +9,7 @@ const PARTS_CSV_SQL = `
          -- 0038 hat p.quantity geloescht, und dieser Export liefert eine
          -- Zeile JE ERFASSUNG (source='manual' unten). Ohne Erfassung gibt
          -- es keine Zeile und damit keine Menge — 0 statt leer, dieselbe
-         -- Lesart wie im Sets-Export (src/sets/setService.ts).
+         -- Lesart wie im Sets-Export (src/sets/dienst.ts).
          COALESCE(a.quantity, 0) AS quantity,
          p.color_id,
          COALESCE(${TEIL.farbname},'') AS color_name,

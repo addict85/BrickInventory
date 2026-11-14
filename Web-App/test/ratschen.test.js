@@ -133,7 +133,7 @@ function nurGemeldeteFaenge() {
   // `.catch(e => console.warn(…))`. Sie verschweigen den Fehler dem Aufrufer wie meldeUndLiefere,
   // nur ohne dessen Namen. Wer direkt in die Konsole schreibt statt meldeFehler, nennt sein
   // Warum als „Ausnahme:“ im Fang. Nur src/: Routen fangen nicht, Jobs und db/ haben eigene Regeln.
-  // Gegenproben (14.11.2026): in src/sets/setService.ts den Zustandswechsel wieder in
+  // Gegenproben (14.11.2026): in src/sets/dienst.ts den Zustandswechsel wieder in
   // `try { … } catch (e) { console.error(…) }` → rot (62 von 61); in src/mail/transport.ts die
   // „Ausnahme:“ am Fang gestrichen → rot „ohne Ausnahme: …“ (src/mail/transport.ts:155).
   const { faenge, nurGemeldet } = require('./helpers/faenge');
@@ -279,8 +279,8 @@ function wegeAnDenKontextenVorbei() {
   // einen Speicher der Dienste im Prozess (Holer xBereich(), Fassaden aus dienstePerAufruf)
   // gibt es nicht mehr.
   // Gegenproben (14.11.2026): `export const sets = prozessStelle<SetsDienste>('sets');` in
-  // src/sets/lesen.ts → rot (1 Holer-Stelle); `import { getSets } from '../sets'` in
-  // src/sammlung/loeschen.ts (mit `export const getSets = …` in src/sets/index.ts) → rot (1 Fassade).
+  // src/sets/lesen.ts → rot (1 Holer-Stelle); `import { setsLesen } from '../sets'` in
+  // src/sammlung/loeschen.ts (mit `export const setsLesen = …` in src/sets/index.ts) → rot (1 Fassade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
   const HOLER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
@@ -301,7 +301,7 @@ function wegeAnDenKontextenVorbei() {
       return [b, n];
     }),
   );
-  assert.ok(dienste.get('sets').has('getSets'), 'die Dienste der Bereiche werden nicht mehr gefunden');
+  assert.ok(dienste.get('sets').has('setsLesen'), 'die Dienste der Bereiche werden nicht mehr gefunden');
   const fassaden = [];
   for (const f of quellen()) {
     const s = ohneKommentare(fs.readFileSync(f, 'utf8'));
@@ -343,7 +343,7 @@ function bindungOhneNamenUndProxy() {
   // Ein Bereich ist eine Fabrik mit Closure über k (src/infra/bereich.ts, mit()); die Transaktion
   // reist über `t` (tx.db), nicht über einen Proxy oder eine Freigabe im Aufrufpfad.
   // Gegenproben (14.11.2026): `const _p = new Proxy({}, {});` in src/sets/lesen.ts → rot (Proxy);
-  // `getSets: binde(sk, lesen, ['getSets', 'x'])` in src/sets/bereich.ts → rot (Namensbindung);
+  // `setsLesen: binde(sk, lesen, ['setsLesen', 'x'])` in src/sets/bereich.ts → rot (Namensbindung);
   // `new AsyncLocalStorage()` in db/transaktion.ts → rot (zweiter Kanal).
   const ohne = require('./helpers/sources').ohneKommentare;
   const rel = f => path.relative(WEB, f).split(path.sep).join('/');
@@ -1239,9 +1239,9 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
 function englischeExportnamen() {
   // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“). Gezählt wird das Verb am
   // Anfang (test/helpers/namen.js). Routen und src/http benennt dieser Zähler nicht um, er zählt sie.
-  // Gegenprobe (14.11.2026): in src/sets/setService.ts `setsAlsCsv` wieder `buildSetsCsv` → rot (124 von 123).
+  // Gegenprobe (14.11.2026): in src/sets/dienst.ts `setAendern` wieder `updateSet` → rot (104 von 103).
   const { englischerName } = require('./helpers/namen');
-  const SCHRANKE = 123;
+  const SCHRANKE = 103;
   assert.deepEqual(
     ['fetchPrice', 'getSetInfo', 'isDecodable', 'setUserSetting', 'setErfassen', 'haushaltVon', 'setVerschieben'].map(
       englischerName,
