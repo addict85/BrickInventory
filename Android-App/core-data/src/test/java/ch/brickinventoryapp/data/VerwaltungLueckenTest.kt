@@ -8,7 +8,6 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.VerwaltungRepository
