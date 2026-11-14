@@ -10,7 +10,6 @@ import {
   fehlerText,
   antwortSprache,
   dateiFehler,
-  Meldung,
   type FehlerArt,
   type FehlerCode,
 } from '../infra/fehlerTexte';
@@ -77,7 +76,7 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
     return;
   }
   // Der Text einer Bibliothek nennt Parser, Pfade oder Bytes; er bleibt im Protokoll.
-  if (!isServerError && !(e instanceof Meldung)) {
+  if (!isServerError) {
     const ersatz: FehlerCode =
       code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
     res.status(code).json({ success: false, code: ersatz, error: fehlerText(ersatz, antwortSprache(req)) });

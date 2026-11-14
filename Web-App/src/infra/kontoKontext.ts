@@ -20,10 +20,6 @@ export function aktuellesKonto(): { id: number; verwalter: boolean } | null {
   return { id, verwalter };
 }
 
-export function imNamenVon<T>(quelle: KontoQuelle, f: () => T): T {
-  return kontext.run({ quelle }, f);
-}
-
 /** Arbeit über Kontogrenzen: Abfragen gehen dann über die Systemrolle (BYPASSRLS, Migration 0112).
  * Der Grund steht am Aufruf, auffindbar per `imSystemkontext(`. */
 const systemRahmen = new AsyncLocalStorage<string | null>();

@@ -68,11 +68,11 @@ const _req = q.buildAndRequire();
 const { zugangOderSkip, fehltVoraussetzung } = require('./helpers/db');
 const { testName, raeumeReste, id } = require('./helpers/testnamen');
 const { erzeugeDb, dbKonfigAusUmgebung } = require(path.join(q.DIST, 'db', 'database.js'));
-const { imNamenVon, imSystemkontext, alsAnfrage } = _req('src/infra/kontoKontext.js');
+const { imSystemkontext, alsAnfrage } = _req('src/infra/kontoKontext.js');
 
 const ROLLE = testName('zeilen');
 const SYSTEM = testName('zeilsys');
-const als = (uid, f) => imNamenVon({ apiUser: { user_id: uid } }, f);
+const als = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
 /** Alle Bereiche über einen Zugang, wie startup/verdrahtung.ts sie baut, samt ihren Kontexten. */

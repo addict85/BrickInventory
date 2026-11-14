@@ -32,8 +32,8 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 const { haeltSet, haeltTeil } = require('./helpers/bestand');
-const { imNamenVon } = _req('src/infra/kontoKontext.js');
-const als = (uid, f) => imNamenVon({ apiUser: { user_id: uid } }, f);
+const { alsAnfrage } = _req('src/infra/kontoKontext.js');
+const als = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
 
 test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, async t => {
   try {

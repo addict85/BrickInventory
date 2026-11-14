@@ -1,5 +1,6 @@
-/** Die Mount-Reihenfolge ist unkritisch: Die Module haben keine überlappenden
- * Pfad-Muster. Die Anmeldung hängt als eigener Router unter /api/v1/auth. */
+/** Die Reihenfolge der Router ist unkritisch: Kein Pfad-Muster eines Routers trifft
+ * einen Pfad eines anderen. Innerhalb eines Routers zählt sie (feste Pfade vor
+ * `:setNumber` in sets.ts, vor `:id` in vouchers.ts). Die Anmeldung hängt unter /api/v1/auth. */
 import { baueSetsRouter } from './sets';
 import { baueSetsLagerRouter } from './setsLager';
 import { baueSetsImportRouter } from './setsImport';

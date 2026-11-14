@@ -1,5 +1,4 @@
 /** Die Adresse kommt als Wert; welche eine Anfrage hat, entscheidet die HTTP-Schicht. */
-import { createHash } from 'node:crypto';
 import { isIPv4, isIPv6 } from 'node:net';
 import { einzelwert } from '../infra/validate';
 import { fehlertext, meldeUndLiefere } from '../infra/fehler';
@@ -71,12 +70,7 @@ const _nameKey = (name: string) => `login-name|${einzelwert(name).toLowerCase()}
 /** Die Bekannt-Zeile lebt 30 Tage und die Tabelle liest die Leserolle: Dort steht
  * nur der HMAC der Adresse; er bleibt für dieselbe Adresse gleich und zählt weiter. */
 function adressAbdruck(ip: string): string {
-  const a = drosselAdresse(ip);
-  try {
-    return suchwert('anmeldeadresse', a);
-  } catch {
-    return createHash('sha256').update(`brickinventory/anmeldeadresse/${a}`).digest('hex');
-  }
+  return suchwert('anmeldeadresse', drosselAdresse(ip));
 }
 const _bekanntKey = (ip: string, name: string) =>
   `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
@@ -211,12 +205,7 @@ async function kontoKennung(k: KontoKontext, username: string): Promise<string> 
 /** Ein unbekannter Name ist oft ein vertipptes Passwort, und die Tabelle liest die
  * Leserolle: nur der HMAC, der für denselben Namen gleich bleibt und weiter zählt. */
 function namensAbdruck(name: string): string {
-  try {
-    return suchwert('anmeldename', name);
-  } catch {
-    // Ohne Datenschlüssel (Werkzeuge, frühe Tests) wenigstens kein Klartext.
-    return createHash('sha256').update(`brickinventory/anmeldename/${name}`).digest('hex');
-  }
+  return suchwert('anmeldename', name);
 }
 
 export type Sperre = { code: FehlerCode; vars: { minuten: number } };
