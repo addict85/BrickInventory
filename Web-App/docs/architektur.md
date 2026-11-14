@@ -76,8 +76,9 @@ Absicht, solange es nur von unten gebraucht wird:
 - Mehrstufige Schreibvorgänge (Änderung und Protokoll, Zeile und Datei) sind ein
   Dienst mit `k.transaktion(async t => …)`: Der Rumpf schreibt über `t`, einen
   Kontext an der Verbindung der Transaktion. `t` ist ganz über deren Zugang gebaut
-  (`tx.db`): Jeder Satz Dienste tieferer Bereiche entsteht darüber neu
-  (`ueber(tx.db)`, je Transaktion einmal), Zustand im Speicher bleibt geteilt. So
+  (`tx.db`): Jeder Satz Dienste tieferer Bereiche entsteht darüber
+  (`ueber(tx.db)`), je Verbindung einmal; der Zugang fragt nur aus dem Aufrufpfad
+  der laufenden Transaktion. Zustand im Speicher bleibt geteilt. So
   steht am Aufrufort, was zusammen gilt, und nichts leitet eine Abfrage still um.
   Das ist die einzige Form: Repositories öffnen keine Transaktion, sie nehmen den
   `tx` des Aufrufers; `.transaction(` steht nur in `src/infra/bereich.ts` und `db/`.
@@ -102,10 +103,15 @@ Absicht, solange es nur von unten gebraucht wird:
   entsteht dort je Satz Dienste (`erzeugeRebrickable(z)` …) mit Schlüssel,
   Kontingent und Drossel seines Zugangs (`clients/zugang.ts`); einen Zugang des
   Prozesses gibt es nicht. Tests stellen Klienten mit `testQuellen()`.
+- Den Rumpf `k.transaktion(async t => …)` prüft vorher die Lint-Regel
+  `biome/transaktionsrumpf.grit`: kein `k`, `sk`, `kx` oder Empfänger darin.
 - Fragt mitten in einer Transaktion jemand über den ungebundenen Zugang (`k` statt
   `t`), wirft die Datenbankschicht `UngebundeneAbfrage`: Sie liefe sonst über eine
   zweite Verbindung neben der Transaktion. Erkannt wird das am Aufrufrahmen; ein Weg
   in die Transaktion ist er nicht.
+- Die Zeit kommt über `k.uhr` (`src/infra/uhr.ts`, `baueDienste(db, { uhr })`), nicht über
+  `Date.now()`: Tests stellen sie (`testUhr().vor(ms)`), statt eine Frist abzuwarten. Drosseln
+  mit echten Zeitgebern bleiben bei der Systemzeit; den Rest zählt `test/ratschen.test.js`.
 - `konfig()` liest nur der Start (`startup/`, `server.ts`); Fachbereiche, Routen und
   Jobs bekommen die Konfiguration gereicht (`baueDienste` → `k.konfig`, sonst als
   Parameter). Übrig sind Helfer des Prozesses in `src/infra`, `src/http`, `db/` und der
@@ -160,8 +166,9 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
   eigene Ratsche für Fänge ohne Meldung (`public/js`).
 - Ein Signal ist eine **Fehlerklasse** (`StromGeschlossen`, `AuftragVerloren` …),
   keine Zeichenkette, die der Fänger vergleicht.
-- Der Transaktionswächter (kein Ersatzwert in einer laufenden Transaktion) kommt
-  mit dem Zugang: `erzeugeDb()` setzt ihn, kein Import.
+- Der Transaktionswächter (kein Ersatzwert in einer laufenden Transaktion) ist die
+  Transaktion selbst: Ihr Stand (`neuerTxStand`, `db/transaktion.ts`) reist im
+  Aufrufrahmen, kein Zustand des Prozesses.
 
 ## Zeilenschutz: was er leistet und was nicht
 
@@ -232,15 +239,16 @@ kennen einander nicht. Von unten nach oben:
 
 ## Schema
 
-Die Wahrheit sind die Migrationen in `db/migrations/`. Daraus erzeugt
-`npm run schema:stand` zwei Dateien, beide geprüft:
+Die Wahrheit sind die Migrationen in `db/migrations/`. Daraus erzeugen
+`npm run schema:stand` und `npm run schema:zeilen` drei Dateien, alle geprüft:
 
 | Datei | Wozu | Prüfung |
 |---|---|---|
 | `db/basis.sql` | Erststart: eine leere Datenbank bekommt dieses Abbild der ersten N Migrationen, danach laufen nur die jüngeren | `test/schema-basis-db.test.js`: lückenlose Folge vorhandener Migrationen; mit gleichem pg_dump erzeugt das Abbild sich selbst |
 | `db/schema-stand.sql` | Lesefassung des Schemas nach allen Migrationen, für Reviews | `test/schema-frisch-db.test.js`: gleich dem Schema einer frisch gestarteten Datenbank |
+| `db/zeilen.ts` | Zeilentypen je Tabelle (`npm run schema:zeilen`): Repositories binden ihre Zeilen daran (`Spalten<'price_cache', 'avg_price'>`) | `test/zeilentypen-db.test.js`: Spalten und NULL wie in der Datenbank, jeder Typ kommt so an |
 
-Von Hand geändert wird keine der beiden; eine Schemaänderung ist immer eine
+Von Hand geändert wird keine davon; eine Schemaänderung ist immer eine
 neue Migration.
 
 ## API-Vertrag

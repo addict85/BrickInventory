@@ -95,7 +95,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
     // „lagerort_unbekannt" in der MELDUNG, und die lautet auf Deutsch …
     await assert.rejects(
       () => L.setzeVorgabe(U.ich, fremd.id),
-      e => String(e.code) === 'lagerort_unbekannt',
+      (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
       'Ein fremder Ort liess sich als eigene Vorgabe setzen',
     );
     assert.equal(

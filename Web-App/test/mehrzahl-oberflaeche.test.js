@@ -3,7 +3,7 @@
  * echten Bündel in jsdom.
  *
  *   - Teile, nach Farbe gruppiert: „1 Sorte“ und „2 Sorten“ (en: „1 kind“,
- *     „2 kinds“). Vorher stand fest „{n} Typen“, also „1 Typen“.
+ *     „2 kinds“), nie „1 Typen“.
  *   - Finanzen ohne Marktpreis: „Marktpreis fehlt für 1 Position“.
  *
  * Gegenproben (am 28.10.2026 gemessen):

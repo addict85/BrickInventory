@@ -2,7 +2,7 @@
  * Marktwert eines Sets je Zustand (src/finanzen/setValue.ts).
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   cacheUsable ohne die kurze Frist für 0-Einträge → rot „ein gecachter
+ *   cacheVerwendbar ohne die kurze Frist für 0-Einträge → rot „ein gecachter
  *   Null-Preis …“; effectiveCondition bei Erfassungen immer 'N' → rot
  *   „Bewertung und Anzeige …“; buildChart() mit firstRealIndex immer 0 oder
  *   ohne Auffüllen mit 0 → rot „die Verlaufs-Endpunkte …“. Gestrichen, weil set-zustand-aggregat-db.test.js
@@ -151,19 +151,29 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   // Ein 0-Eintrag galt für das volle TTL-Fenster als endgültige Antwort; die
   // Logik wich dann auf den ANDEREN Zustand aus. Ein Eintrag mit Preis gilt
   // das ganze Fenster, einer ohne nur kurz.
-  const { cacheUsable } = _req('src/finanzen/rechnung/preise.js');
-  const vor = (/** @type {number} */ h) => new Date(Date.now() - h * 3600000).toISOString();
-  assert.equal(cacheUsable({ avg_price: '0', fetched_at: vor(1) }, 24), true, 'ein frischer 0-Eintrag antwortet');
+  const { cacheVerwendbar } = _req('src/finanzen/rechnung/preise.js');
+  // Die Zeit ist ein Parameter: ein fester Augenblick statt der Uhr des Rechners.
+  const JETZT = Date.UTC(2026, 0, 10, 12);
+  const vor = (/** @type {number} */ h) => new Date(JETZT - h * 3600000).toISOString();
   assert.equal(
-    cacheUsable({ avg_price: '0', fetched_at: vor(7) }, 24),
+    cacheVerwendbar({ avg_price: '0', fetched_at: vor(1) }, 24, JETZT),
+    true,
+    'ein frischer 0-Eintrag antwortet',
+  );
+  assert.equal(
+    cacheVerwendbar({ avg_price: '0', fetched_at: vor(7) }, 24, JETZT),
     false,
     'ein alter 0-Eintrag muss durchfallen und einen Neuabruf auslösen',
   );
-  assert.equal(cacheUsable({ avg_price: '0' }, 24), false, 'ohne fetched_at ist das Alter unbekannt');
-  assert.equal(cacheUsable({ avg_price: '0', fetched_at: vor(3) }, 2), false, 'die kürzere Frist gewinnt');
-  assert.equal(cacheUsable({ avg_price: '12.5', fetched_at: vor(20) }, 24), true, 'ein Preis gilt das volle Fenster');
+  assert.equal(cacheVerwendbar({ avg_price: '0' }, 24, JETZT), false, 'ohne fetched_at ist das Alter unbekannt');
+  assert.equal(cacheVerwendbar({ avg_price: '0', fetched_at: vor(3) }, 2, JETZT), false, 'die kürzere Frist gewinnt');
   assert.equal(
-    cacheUsable({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24),
+    cacheVerwendbar({ avg_price: '12.5', fetched_at: vor(20) }, 24, JETZT),
+    true,
+    'ein Preis gilt das volle Fenster',
+  );
+  assert.equal(
+    cacheVerwendbar({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24, JETZT),
     true,
     'ein Mengenschnitt allein ist ein Preis (marktpreisAus) und gilt das volle Fenster',
   );
@@ -224,10 +234,8 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   );
   assert.match(sv, /r\.purchase_price != null/, 'Erfassungen ohne Kaufpreis dürfen den Nenner nicht aufblähen');
 
-  // Hier stand eine Regel auf den Rueckfall `set.purchase_price != null ?
-  // parseFloat(set.purchase_price) : null` in der Bewertung. Mit Migration 0032
-  // gibt es die Spalte nicht mehr; die Bewertung nimmt ausschliesslich den
-  // gewichteten Kaufpreis aus den Erfassungen. Das ist die Nachfolgeregel.
+  // Die Bewertung nimmt ausschliesslich den gewichteten Kaufpreis aus den
+  // Erfassungen, keinen Rueckfall auf eine Spalte der Bestandszeile.
   const fc = require('./helpers/sources').finanzQuelle();
   assert.match(
     fc,

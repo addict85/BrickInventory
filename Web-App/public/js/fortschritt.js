@@ -510,7 +510,7 @@ function cancelImport() {
   _csvPollActive = false;
   _activeAbort?.abort();
   _activeAbort = null;
-  api('POST', '/v1/sets/import/csv/cancel').catch(() => {});
+  api('POST', '/v1/sets/import/csv/cancel');
   G('btn-cancel-import').style.display = 'none';
   hideProgress();
   toast(tRaw('csv.cancelled'), 'info');

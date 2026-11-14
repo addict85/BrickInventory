@@ -37,7 +37,7 @@ const pause = () => new Promise(r => setTimeout(r, 10));
 /** Eigene Bilder bekommen ihre Vorschau neu, im Proxy-Cache wird die alte nur gelöscht; gedrosselt.
  * @returns wie viele Vorschauen ersetzt wurden, oder null, wenn es schon einmal lief */
 export async function zugeschnitteneVorschauenEinpassen(
-  k: Pick<BilderKontext, 'auftraege'>,
+  k: Pick<BilderKontext, 'auftraege' | 'uhr'>,
   lokale: { web: string; datei: string }[],
   proxyOrdner = path.join(APP_ROOT, 'data', 'img_proxy_cache'),
 ): Promise<number | null> {
@@ -61,7 +61,7 @@ export async function zugeschnitteneVorschauenEinpassen(
     await fs.promises.rm(vorschau, { force: true });
     ersetzt++;
   }
-  await k.auftraege.setzeZustand(EINGEPASST_MERKER, new Date().toISOString());
+  await k.auftraege.setzeZustand(EINGEPASST_MERKER, k.uhr.datum().toISOString());
   if (ersetzt) console.log(`  🖼️  ${ersetzt} zugeschnittene Vorschauen neu eingepasst`);
   return ersetzt;
 }

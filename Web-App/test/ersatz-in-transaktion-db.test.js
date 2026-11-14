@@ -6,16 +6,16 @@
  *
  * Gegenproben (10.11.2026 gemessen):
  * - erfassungen.ts: mengeDesBestands wieder mit `.catch(meldeUndLiefere(…, null))`
- *   UND in db/database.ts `verdirbt: () => false` → rot: „die Ursache kommt an“
+ *   UND in db/transaktion.ts (neuerTxStand) `verdirbt: () => false` → rot: „die Ursache kommt an“
  *   (25P02 statt 22003, das Aufräumen lief in die tote Transaktion).
  *   Nur der alte Fang, Wächter aktiv → grün: Der Wächter allein trägt.
  * - fehler.ts: in pruefeErsatzInTransaktion die erste Zeile durch `return;`
  *   ersetzt → rot: „ein Datenbankfehler geht weiter“ und „ausserhalb der
  *   Datenbank wirft er in Tests“.
- * - database.ts: `vomSicherungspunktAufgefangen.add(e)` entfernt → rot:
+ * - db/transaktion.ts: `vomSicherungspunktAufgefangen.add(e)` entfernt → rot:
  *   „hinter einem Sicherungspunkt gilt der Ersatz“.
- * - (14.11.2026) database.ts: setzeTransaktionsWaechter() in erzeugeDb gestrichen → rot:
- *   „ein Datenbankfehler geht weiter“, „ausserhalb der Datenbank wirft er in Tests“.
+ * - db/database.ts: in einmaligeTransaktion `streng: false` statt `streng: r.streng` → rot:
+ *   „ausserhalb der Datenbank wirft er in Tests“.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */

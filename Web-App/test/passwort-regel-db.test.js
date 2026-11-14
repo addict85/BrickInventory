@@ -95,6 +95,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     routen: { '/api/v1/auth': 'routes/auth.js' },
     t,
   });
+  /** @param {string} pw @returns {[string, string, object][]} */
   const wege = pw => [
     [
       'POST',

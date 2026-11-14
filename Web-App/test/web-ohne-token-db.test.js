@@ -70,6 +70,8 @@ test('Browser ohne Token', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
+  /** @param {string} weg @param {{ method?: string, body?: unknown, cookie?: string }} [o] */
+
   const ruf = async (weg, { method = 'GET', body, cookie } = {}) => {
     const r = await fetch(basis + weg, {
       method,

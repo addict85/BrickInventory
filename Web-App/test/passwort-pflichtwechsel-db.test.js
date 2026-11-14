@@ -71,6 +71,7 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%konto:${uid}%`]);
     await db.pool.end().catch(() => {});
   });
+  /** @param {string} weg @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
   const ruf = async (weg, { body, cookie, token } = {}) => {
     const r = await fetch(basis + weg, {
       method: body ? 'POST' : 'GET',

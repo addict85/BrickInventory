@@ -30,6 +30,7 @@ const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const { haeltSet, erfasse, haeltTeil, katalogSet } = require('./helpers/bestand');
 const { ZipArchive } = require(path.join(__dirname, '..', 'node_modules', 'archiver'));
+const { portVon } = require('./helpers/server');
 
 const NAME = `kurse_${process.pid}`;
 const SET = `7${process.pid}1-1`,
@@ -71,7 +72,7 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
   t.after(() => srv.close());
   const zip = await zipMit('eurofxref-hist.csv', HISTORIE);
   const lokal = url =>
-    fetch(`http://127.0.0.1:${srv.address().port}${new URL(url).pathname}`).then(async r =>
+    fetch(`http://127.0.0.1:${portVon(srv)}${new URL(url).pathname}`).then(async r =>
       Buffer.from(await r.arrayBuffer()),
     );
 

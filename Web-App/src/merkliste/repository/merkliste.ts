@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 import { marktpreisSql } from '../../../db/geldSql';
 import { LIKE_ESCAPE, enthaeltMuster } from '../../../db/likeSuche';
 import { ausTabelle } from '../../infra/validate';
@@ -19,7 +19,7 @@ export function streicheVormerkung(db: DbSchnittstelle, userId: number, setNumbe
 }
 
 export function istVorgemerkt(db: DbSchnittstelle, zuId: number, sn: string, c: string) {
-  return db.get('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
+  return db.get<Treffer>('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
 }
 
 export function uebertrageVormerkung(db: DbSchnittstelle, zuId: number, vonId: number, sn: string, c: string) {

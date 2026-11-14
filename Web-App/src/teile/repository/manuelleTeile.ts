@@ -1,5 +1,6 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import type { ErfassungsZeile } from '../../../db/bestandsmenge';
+import type { Spalten } from '../../../db/zeilen';
 
 /** Preis und Zustand stehen in der NEUESTEN Erfassung, die Stückzahl ist die
  * Summe der Erfassungen — die Bestandszeile trägt nur den Schlüssel. */
@@ -10,11 +11,10 @@ export function teilZeileManuell(
   partNumber: string,
   colorId: number,
 ): Promise<{ id: number } | undefined> {
-  return db.get("SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'", [
-    uid,
-    partNumber,
-    colorId,
-  ]);
+  return db.get<Spalten<'parts', 'id'>>(
+    "SELECT id FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'",
+    [uid, partNumber, colorId],
+  );
 }
 
 export function teilZeileMitZustand(db: DbSchnittstelle, uid: number, partNumber: string, colorId: number) {

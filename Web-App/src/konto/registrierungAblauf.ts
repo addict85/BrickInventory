@@ -72,7 +72,7 @@ async function neuesKonto(k: KontoKontext, r: Registrierung): Promise<boolean> {
     last_name: r.last_name,
     passwort: r.passwort,
     tokenHash: hashToken(token),
-    bis: new Date(Date.now() + 24 * STUNDE_MS),
+    bis: new Date(k.uhr.jetzt() + 24 * STUNDE_MS),
   }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
   if (neuId)
     await imSystemkontext('registrierung', () => setUserSetting(k, neuId, 'language', r.lang)).catch(

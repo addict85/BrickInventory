@@ -12,8 +12,10 @@ import type { SetsDienste } from '../sets';
 import type { TeileDienste } from '../teile';
 import type { FigurenDienste } from '../figuren';
 import type { MerklisteDienste } from '../merkliste';
+import type { Uhr } from '../infra/uhr';
 
 export interface SammlungAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   haushalt: HaushaltDienste;
   auftraege: AuftraegeDienste;

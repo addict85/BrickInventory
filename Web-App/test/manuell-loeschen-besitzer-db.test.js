@@ -101,10 +101,9 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async t => {
   assert.deepEqual(await figuren(), [haupt], 'Die Figur des Unterkontos muss weg sein');
 
   // ── Dasselbe beim ÄNDERN ────────────────────────────────────────────────
-  // NACHGEMESSEN: Das Hauptkonto setzte auf der Karte des Kindes die Menge auf
-  // 99 — geändert wurde die EIGENE Zeile (vorher 5|9, nachher 99|9), und die
-  // Antwort sagte „success". Lesen und Löschen zu prüfen und das Schreiben
-  // auszulassen hiesse, denselben Fehler an der dritten Stelle stehen zu lassen.
+  // Ändert das Hauptkonto auf der Karte des Kindes die Menge, darf nicht die EIGENE
+  // Zeile still mitgehen. Lesen und Löschen zu prüfen und das Schreiben auszulassen
+  // hiesse, denselben Fehler an der dritten Stelle stehen zu lassen.
   await haeltTeil(db, haupt, '3020', { menge: 5, colorId: 0 });
   await haeltTeil(db, kind, '3020', { menge: 9, colorId: 0 });
   // Wie teile() oben: Die Stueckzahl steht seit Migration 0038 in den

@@ -10,6 +10,7 @@ const os = require('node:os');
 const net = require('node:net');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { portVon } = require('./server');
 
 const ROOT = path.join(__dirname, '..', '..');
 const warte = ms => new Promise(r => setTimeout(r, ms));
@@ -39,7 +40,7 @@ function chrome() {
 const freierPort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = s.address().port;
+      const p = portVon(s);
       s.close(() => r(p));
     });
   });

@@ -8,10 +8,12 @@ import type { KatalogDienste } from '../katalog';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { KontoDienste } from '../konto';
 import type { Kontext } from '../infra/bereich';
+import type { Uhr } from '../infra/uhr';
 
 /** Was der Bereich von aussen bekommt, damit ein Test ihm einen eigenen Zugang geben kann; dass
  * alle Bereiche denselben nutzen, sichert baueDienste (startup/verdrahtung.ts). */
 export interface SetsAbhaengigkeiten {
+  uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
   nacharbeit: Nacharbeit;

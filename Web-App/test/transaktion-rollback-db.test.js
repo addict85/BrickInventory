@@ -39,7 +39,7 @@ test('transaction() bei kaputter Verbindung', async t => {
         await tx.get('SELECT pg_terminate_backend(pg_backend_pid())').catch(() => {});
         throw new Error('Ursprung');
       }),
-      e => e.message === 'Ursprung',
+      (/** @type {any} */ e) => e.message === 'Ursprung',
     );
   });
 

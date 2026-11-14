@@ -32,7 +32,7 @@ process.env.DATA_KEY = Buffer.alloc(32, 11).toString('base64');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { testServer, portVon } = require('./helpers/server');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
 const db = testDaten();
 const mailer = _req('src/mail/mailer.js');
@@ -88,7 +88,7 @@ function smtpServer(tlsOpt) {
     };
     bediene(roh, 'klar');
   });
-  return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, mitschnitt, post, port: srv.address().port })));
+  return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, mitschnitt, post, port: portVon(srv) })));
 }
 
 test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }, async t => {

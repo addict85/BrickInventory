@@ -35,7 +35,7 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
   await t.test('eine falsche Nutzlast wird beim Einstellen abgewiesen', async () => {
     await assert.rejects(
       A.stelleAuftragEin('brickset', { set_numbr: '10179-1' }),
-      e => e instanceof NutzlastUngueltig && /brickset.*set_number/.test(e.message),
+      (/** @type {any} */ e) => e instanceof NutzlastUngueltig && /brickset.*set_number/.test(e.message),
     );
     await assert.rejects(A.stelleAuftragEin('gibt-es-nicht', {}), NutzlastUngueltig);
     const n = await db.get(`SELECT COUNT(*)::int AS n FROM auftraege WHERE art = 'brickset'`);

@@ -62,8 +62,8 @@ async function runWorker(
     await k.fremdquellen.quellen.ladeKatalogCsv(filename, tmpFile, {
       ...(lauf.signal ? { signal: lauf.signal } : {}),
       beiFortschritt: (bytes, gesamt) => {
-        if (Date.now() - letzter < 700) return;
-        letzter = Date.now();
+        if (k.uhr.jetzt() - letzter < 700) return;
+        letzter = k.uhr.jetzt();
         const pct = gesamt > 0 ? Math.round((bytes / gesamt) * 100) : 0;
         melde(
           `${stepLabel} (Download...)`,
@@ -223,7 +223,7 @@ async function ladeBlFarben(k: KatalogKontext): Promise<void> {
 
 async function run(k: KatalogKontext, lauf: CsvLauf = {}, prozess: ImportProzess = null) {
   await fs.promises.mkdir(DATA_DIR, { recursive: true });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = k.uhr.datum().toISOString().slice(0, 10);
   if ((await k.auftraege.liesZustand(SYNC_KEY)) === today) {
     log(`Already synced today (${today}) — skipping CSV download`);
     await syncPartCategoriesDaily(k, lauf, prozess, today);

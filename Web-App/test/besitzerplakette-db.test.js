@@ -68,6 +68,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   const P = _req('src/teile/abfragen.js');
   const M = _req('src/figuren/abfragen.js');
 
+  /** @type {[string, () => Promise<any[]>][]} */
   const listen = [
     ['/v1/sets', async () => (await S.getSets(uids, { page_size: 60 })).sets],
     // getManualParts/getManualMinifigs liefern ein NACKTES Array; die Route

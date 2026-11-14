@@ -46,7 +46,7 @@ export async function importAlsAuftrag<T = Record<string, unknown>, Q extends Im
   const nutzlast = { user_id: uid, quelle, eingabe } as NutzlastEingabe<'csv_import'>;
   const id = await stelleAuftragEin(k, 'csv_import', nutzlast, { userId: uid, maxVersuche: 1 });
   if (!id) fachfehler('intern', 'interner_fehler');
-  const bis = Date.now() + (o.wartenMs ?? IMPORT_WARTEN_MS);
+  const bis = k.uhr.jetzt() + (o.wartenMs ?? IMPORT_WARTEN_MS);
   let zuletzt = '';
   for (;;) {
     const s = await k.auftraege.auftragsStand(id, uid);
@@ -67,7 +67,7 @@ export async function importAlsAuftrag<T = Record<string, unknown>, Q extends Im
     }
     if (!s || s.status === 'abgebrochen') fachfehler('konflikt', 'import_abgebrochen');
     if (s.status === 'fehler') fachfehler('intern', 'import_fehlgeschlagen');
-    if (Date.now() > bis) fachfehler('zeitueberschreitung', 'import_laeuft_noch');
+    if (k.uhr.jetzt() > bis) fachfehler('zeitueberschreitung', 'import_laeuft_noch');
     await new Promise(r => setTimeout(r, TAKT_MS));
   }
 }

@@ -3,23 +3,28 @@
  * ihren Griff (`tx`, `tx.db`) ausdrücklich gereicht. */
 import type { Pool, PoolClient } from 'pg';
 import type { DbSchnittstelle } from './typen';
-import type { TransaktionsWaechter } from '../src/infra/fehler';
-import { begleiterDesPfads, mitBegleiter, transaktionDesPfads, zeilenKontext } from '../src/infra/kontoKontext';
+import {
+  begleiterDesPfads,
+  mitBegleiter,
+  transaktionDesPfads,
+  zeilenKontext,
+  type PfadTransaktion,
+} from '../src/infra/kontoKontext';
 
 /** `offen` schützt vor Nachzüglern nach COMMIT; `db` ist der Zugang, der sie öffnete. */
-export type TxStand = {
+export type TxStand = PfadTransaktion & {
   client: PoolClient;
   offen: boolean;
   db: object;
   pool: Pool;
   innerster: string | null;
   kontext: string;
-  streng: boolean;
 };
 
 /** Die offene Transaktion dieses Aufrufpfads, für die Wachen (UngebundeneAbfrage, Ersatzwert). */
 export function laufendeTx(): TxStand | null {
-  return (transaktionDesPfads() as TxStand | null) ?? null;
+  const t = transaktionDesPfads();
+  return t && 'client' in t ? (t as TxStand) : null;
 }
 
 /** Für den Zeilenschutz (Migration 0111): wer gerade fragt, nur bis zum Ende
@@ -160,8 +165,15 @@ export function innereTransaktion<T>(
 /** Nach ROLLBACK TO SAVEPOINT ist die Transaktion wieder benutzbar: Wer diesen
  * Fehler auffängt und einen Ersatz liefert, verdeckt nichts. */
 const vomSicherungspunktAufgefangen = new WeakSet<object>();
-export const TRANSAKTIONS_WAECHTER: TransaktionsWaechter = {
-  verdirbt: e =>
-    laufendeTx()?.offen === true && !(e !== null && typeof e === 'object' && vomSicherungspunktAufgefangen.has(e)),
-  streng: () => laufendeTx()?.streng === true,
-};
+
+/** Der Stand einer neuen Transaktion; er ist zugleich ihr Wächter gegen Ersatzwerte. */
+export function neuerTxStand(t: Omit<TxStand, 'verdirbt' | 'offen' | 'innerster' | 'kontext'>): TxStand {
+  const stand: TxStand = {
+    ...t,
+    offen: true,
+    innerster: null,
+    kontext: '',
+    verdirbt: e => stand.offen && !(e !== null && typeof e === 'object' && vomSicherungspunktAufgefangen.has(e)),
+  };
+  return stand;
+}

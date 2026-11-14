@@ -7,8 +7,10 @@ import type { EinstellungenDienste } from '../einstellungen';
 import type { KontoDienste } from '../konto';
 import type { FremdquellenDienste } from '../fremdquellen';
 import type { Faecher } from '../infra/zwischenspeicher';
+import type { Uhr } from '../infra/uhr';
 
 export interface GutscheineAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   einstellungen: EinstellungenDienste;
   konto: KontoDienste;

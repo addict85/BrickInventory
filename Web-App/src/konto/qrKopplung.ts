@@ -23,7 +23,7 @@ export async function erzeuge(
 ): Promise<{ token: string; kopplung: number }> {
   await k.qrKopplung.raeumeQrKopplungenAuf();
   const nonce = crypto.randomBytes(32).toString('base64url');
-  const bis = new Date(Date.now() + QR_TTL_MS);
+  const bis = new Date(k.uhr.jetzt() + QR_TTL_MS);
   const kopplung = await k.qrKopplung.legeQrKopplungAn(hashToken(nonce), uid, bis, tage, OFFENE_KOPPLUNGEN_HOECHSTENS);
   if (kopplung === null) fachfehler('nicht_verfuegbar', 'server_ausgelastet');
   return { token: `bim:${nonce}`, kopplung };

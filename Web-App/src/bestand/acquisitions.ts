@@ -153,7 +153,7 @@ export async function setzeGeschaetztenPreis(
     async t => {
       const z = await repo.erfassungSperren(t.db, kind, id);
       if (!z || z[preisSpalte(kind)] != null) return false;
-      const keys = schluesselSpalten(kind).map(k => z[k]);
+      const keys = schluesselSpalten(kind).map(s => z[s]);
       const ziel = await findSameDayAcquisition(t, kind, z.user_id, keys, z.tag, id, z.condition, {
         preis,
         geschaetzt: true,

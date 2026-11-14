@@ -46,7 +46,7 @@ export function istBekanntFehlend(k: BilderKontext, key: string): boolean {
   const _vorne = stand(k).vorne;
   const vorne = _vorne.get(key);
   if (vorne === undefined) return false;
-  if (Date.now() - vorne < ERNEUT_PRUEFEN_MS) return true;
+  if (k.uhr.jetzt() - vorne < ERNEUT_PRUEFEN_MS) return true;
   _vorne.delete(key);
   return false;
 }
@@ -68,7 +68,7 @@ async function auffrischen(k: BilderKontext): Promise<void> {
 /** Sofort im Speicher, in die Tabelle gepuffert (stand().zuSchreiben). */
 export function merkeFehlend(k: BilderKontext, key: string, grund = ''): void {
   const { vorne: _vorne, gruende: _gruende, zuSchreiben: _zuSchreiben } = stand(k);
-  _vorne.set(key, Date.now());
+  _vorne.set(key, k.uhr.jetzt());
   if (grund) _gruende.set(key, grund);
   _zuSchreiben.set(key, grund);
 }

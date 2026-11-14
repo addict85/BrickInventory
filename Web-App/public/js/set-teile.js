@@ -61,7 +61,7 @@ export async function openSetItemDetail(type, id, colorId) {
     (type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
       : `/v1/parts/${encodeURIComponent(id)}/${farbe}/sets`) + scopeQuery(type === 'fig' ? 'minifigs' : 'parts');
-  const d = await api('GET', url).catch(() => null);
+  const d = await api('GET', url);
   // Zwischenzeitlich geschlossen? Dann nichts mehr hineinschreiben.
   if (!modal.classList.contains('open')) return;
 

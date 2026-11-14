@@ -28,7 +28,7 @@ Module.prototype.require = function (name, ...rest) {
     return {
       ...m,
       get: () => {
-        const req = new EventEmitter();
+        const req = /** @type {any} */ (new EventEmitter());
         req.setTimeout = () => req;
         setImmediate(() => req.emit('error', new Error('getaddrinfo ENOTFOUND cdn.rebrickable.com')));
         return req;

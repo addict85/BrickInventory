@@ -25,7 +25,7 @@ async function preiseNachladen(
   for (const [i, p] of n.posten.entries()) {
     pruefeAbbruch(k);
     if (!(await kx.katalog.kontingentFrei('bricklink')).allowed)
-      throw new AuftragVerschieben(new Date(Date.now() + 6 * 3600_000), 'BrickLink-Tageskontingent erschöpft');
+      throw new AuftragVerschieben(new Date(kx.uhr.jetzt() + 6 * 3600_000), 'BrickLink-Tageskontingent erschöpft');
     await holeEinen(kx, p, n.user_id, n.waehrung, ttl).catch((e: unknown) =>
       meldeFehler(`preise-nachladen:${p.art} ${p.nummer}`, e),
     );

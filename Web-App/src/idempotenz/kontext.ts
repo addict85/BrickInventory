@@ -2,8 +2,10 @@
 import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
 import * as repository from './repository';
+import type { Uhr } from '../infra/uhr';
 
 export interface IdempotenzAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
 }
 

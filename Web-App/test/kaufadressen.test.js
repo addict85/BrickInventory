@@ -47,7 +47,9 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle', () => {
   // Adresse aus der Antwort (preisvergleich_url).
   const wurzel = path.join(__dirname, '..', '..');
   const treffer = [];
-  for (const [basis, filter] of [[path.join(wurzel, 'Web-App'), f => /\.(ts|js)$/.test(f)]]) {
+  /** @type {[string, (f: string) => boolean][]} */
+  const wurzeln = [[path.join(wurzel, 'Web-App'), f => /\.(ts|js)$/.test(f)]];
+  for (const [basis, filter] of wurzeln) {
     const stapel = [basis];
     while (stapel.length) {
       const d = stapel.pop();

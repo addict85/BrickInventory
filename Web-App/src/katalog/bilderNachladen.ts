@@ -37,7 +37,7 @@ function _fsPathFromLocal(imageLocal: string) {
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
 async function _redlSetStatus(k: KatalogKontext, obj: Record<string, unknown>) {
   await k.auftraege
-    .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: Date.now() }))
+    .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: k.uhr.jetzt() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 
@@ -170,7 +170,7 @@ async function fehlendeNachladen(k: KatalogKontext, missing: FehlendesBild[], la
     cleared = 0,
     _lastFlush = 0;
   const flush = async (force?: boolean) => {
-    const now = Date.now();
+    const now = k.uhr.jetzt();
     if (!force && now - _lastFlush < 1000) return;
     _lastFlush = now;
     await _redlSetStatus(k, { running: true, phase: 'downloading', total, done, redownloaded, cleared });

@@ -17,7 +17,7 @@ export const istHeikel = (k: string) =>
  * SMTP-Daten gehen ein Unterkonto nichts an. */
 export async function konfigExport(k: VerwaltungKontext, uid: number, verwalter: boolean, name: string | null) {
   return {
-    exported_at: new Date().toISOString(),
+    exported_at: k.uhr.datum().toISOString(),
     exported_by: name,
     version: '3.0',
     global: verwalter ? await k.einstellungen.globaleWerteOhneGeheimnisse() : {},

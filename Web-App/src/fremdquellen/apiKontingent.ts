@@ -17,7 +17,7 @@ export const ANTEIL_JE_KONTO = 0.25;
 export const ANTEIL_ALLE_KONTEN = 0.5;
 const ALLE_KONTEN = -1;
 
-const heute = () => new Date().toISOString().slice(0, 10);
+const heute = (k: FremdquellenKontext) => k.uhr.datum().toISOString().slice(0, 10);
 
 export async function getLimitForApi(k: FremdquellenKontext, apiName: ApiName): Promise<number> {
   return parseInt(await k.einstellungen.getGlobalSetting(`api_limit_${apiName}`, ''), 10) || VORGABEN[apiName] || 4000;
@@ -30,7 +30,7 @@ const grenzeAlleKonten = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL
  * Kontos, fällt auch die Gesamtzählung zurück. */
 export async function checkAndIncrementRateLimit(k: FremdquellenKontext, apiName: ApiName, _vorgabe?: number) {
   const limit = await getLimitForApi(k, apiName);
-  const tag = heute();
+  const tag = heute(k);
   const konto = aktuellesKonto();
   const zaehle = async (tx: DbSchnittstelle, id: number, grenze: number): Promise<number | null> => {
     const z = await repo.zaehleApiAufruf(tx, tag, apiName, id, grenze);
@@ -55,7 +55,7 @@ export async function checkAndIncrementRateLimit(k: FremdquellenKontext, apiName
 }
 
 export async function getRateLimitStatus(k: FremdquellenKontext, apiName: ApiName) {
-  const tag = heute();
+  const tag = heute(k);
   const [z, limit] = await Promise.all([k.apiKontingent.aufrufeHeute(tag, apiName), getLimitForApi(k, apiName)]);
   const count = Number(z?.anzahl || 0);
   return { count, limit, remaining: Math.max(0, limit - count), date: tag };
@@ -76,5 +76,5 @@ export async function kontingentFrei(kx: FremdquellenKontext, apiName: ApiName) 
 }
 
 export async function setzeKontingentZurueck(k: FremdquellenKontext, apiName: ApiName): Promise<void> {
-  await k.apiKontingent.setzeApiZaehlerZurueck(heute(), apiName);
+  await k.apiKontingent.setzeApiZaehlerZurueck(heute(k), apiName);
 }

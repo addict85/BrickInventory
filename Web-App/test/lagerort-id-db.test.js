@@ -113,7 +113,7 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
     // danach einen Namen, den die Auswahlliste nicht mehr kannte.
     await assert.rejects(
       () => L.loescheOrt(UID, estrich.id),
-      e => String(e.code) === 'lagerort_in_benutzung',
+      (/** @type {any} */ e) => String(e.code) === 'lagerort_in_benutzung',
       'Ein belegter Ort liess sich loeschen',
     );
     assert.deepEqual(

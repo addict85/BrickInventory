@@ -2,8 +2,7 @@
  * Prozente und Beträge in derselben Schreibweise — am echten Bündel in jsdom.
  *
  *   - Auf der Set-Kachel steht die G&V in der Form der Oberflächensprache:
- *     de-DE „+51,1 %“ neben „411,90 €“, en-GB „+51.1%“ neben „€411.90“.
- *     Vorher stand dort von Hand „+51.1%“ neben „411,90 €“.
+ *     de-DE „+51,1 %“ neben „411,90 €“, en-GB „+51.1%“ neben „€411.90“, nie gemischt.
  *
  * Gegenprobe (am 28.10.2026 gemessen):
  *   A  pnlBadge() wieder `${v>0?'+':''}${v.toFixed(1)}%` → rot: „de-DE: G&V

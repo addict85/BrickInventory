@@ -3,8 +3,10 @@ import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository';
+import type { Uhr } from '../infra/uhr';
 
 export interface EinstellungenAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   /** Wer auf Änderungen globaler Werte horcht; erzeugeEinstellungen legt es an. */
   faecher: Faecher;

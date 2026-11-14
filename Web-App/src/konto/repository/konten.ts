@@ -1,6 +1,7 @@
-import type { Db, DbSchnittstelle } from '../../../db/database';
+import type { Db, DbSchnittstelle, Treffer } from '../../../db/database';
 import { entferneKontoAusSicherungen } from '../../../db/migrate';
 import { LOCKS } from '../../infra/lockNamespaces';
+import type { Spalten } from '../../../db/zeilen';
 
 export type KontoKurz = { id: number; username: string; is_admin: boolean; must_change_password: boolean };
 
@@ -26,7 +27,10 @@ export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_acti
 };
 
 export function kontoKurz(db: DbSchnittstelle, id: number): Promise<KontoKurz | undefined> {
-  return db.get('SELECT id, username, is_admin, must_change_password FROM users WHERE id = $1', [id]);
+  return db.get<Spalten<'users', 'id' | 'username' | 'is_admin' | 'must_change_password'>>(
+    'SELECT id, username, is_admin, must_change_password FROM users WHERE id = $1',
+    [id],
+  );
 }
 
 /** Alles ausser dem Passwort-Hash: Den liest die Laufzeitrolle nicht (Migration 0115). */
@@ -46,7 +50,7 @@ export function profilZeile(db: DbSchnittstelle, id: number): Promise<Profil | u
 
 /** Der Login sucht Name ODER E-Mail ohne Gross/klein — beides muss deshalb über beide Spalten eindeutig sein. */
 export async function nameVergeben(db: DbSchnittstelle, name: string, ausser: number): Promise<boolean> {
-  return !!(await db.get(
+  return !!(await db.get<Spalten<'users', 'id'>>(
     'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2',
     [name, ausser],
   ));
@@ -169,10 +173,10 @@ export async function schalteRegistrierungFrei(
   if (!k) return 'nicht_wartend';
   if (
     k.email_neu &&
-    (await tx.get('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))', [
-      k.email_neu,
-      id,
-    ]))
+    (await tx.get<Treffer>(
+      'SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
+      [k.email_neu, id],
+    ))
   )
     return 'vergeben';
   await tx.run(
@@ -300,7 +304,7 @@ export async function setzeEigenesPasswort(db: DbSchnittstelle, id: number, hash
 }
 
 export async function kontoExistiert(db: DbSchnittstelle, id: number): Promise<boolean> {
-  return !!(await db.get('SELECT 1 FROM users WHERE id = $1', [id]));
+  return !!(await db.get<Treffer>('SELECT 1 FROM users WHERE id = $1', [id]));
 }
 
 /** Auch aus den Kopien vor Migrationen; den Namen im Protokoll nimmt raeumeProtokollAuf(). */
@@ -368,7 +372,11 @@ export function kontoMitEmail(
   db: DbSchnittstelle,
   email: string,
 ): Promise<(Omit<KontoKurz, 'must_change_password'> & { email: string }) | undefined> {
-  return db.get('SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+  // Die Bedingung auf email schliesst NULL aus.
+  return db.get<Spalten<'users', 'id' | 'username' | 'is_admin'> & { email: string }>(
+    'SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)',
+    [email],
+  );
 }
 
 /** Ohne RETURNING: Die Kompatschicht hängt an ein INSERT ohne ON CONFLICT
@@ -445,7 +453,10 @@ export function kontoNachRuecksetzToken(
   db: DbSchnittstelle,
   hash: string,
 ): Promise<{ id: number; username: string } | undefined> {
-  return db.get('SELECT id, username FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()', [hash]);
+  return db.get<Spalten<'users', 'id' | 'username'>>(
+    'SELECT id, username FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()',
+    [hash],
+  );
 }
 
 /** Prüfen und Verbrauchen in einer Anweisung: Zwei gleichzeitige Anfragen mit

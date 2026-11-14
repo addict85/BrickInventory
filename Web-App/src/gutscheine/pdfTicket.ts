@@ -10,7 +10,7 @@ const ticketsVon = (k: GutscheineKontext) =>
 
 export function stelleTicketAus(k: GutscheineKontext, uid: number, ziel: string): string {
   const tickets = ticketsVon(k);
-  const jetzt = Date.now();
+  const jetzt = k.uhr.jetzt();
   for (const [k, v] of tickets) if (v.bis < jetzt) tickets.delete(k);
   const ticket = crypto.randomBytes(32).toString('base64url');
   tickets.set(hash(ticket), { uid, ziel, bis: jetzt + TICKET_SEK * 1000 });
@@ -24,5 +24,5 @@ export function loeseTicketEin(k: GutscheineKontext, roh: unknown, uid: number, 
     t = tickets.get(h);
   if (!t) return false;
   tickets.delete(h);
-  return t.uid === uid && t.ziel === ziel && t.bis >= Date.now();
+  return t.uid === uid && t.ziel === ziel && t.bis >= k.uhr.jetzt();
 }

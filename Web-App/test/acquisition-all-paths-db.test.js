@@ -82,6 +82,7 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
   const acqId = async (tabelle, spalte, wert) =>
     (await db.get(`SELECT id FROM ${tabelle} WHERE user_id=$1 AND ${spalte}=$2`, [subId, wert])).id;
 
+  /** @type {[string, string, () => Promise<string>, unknown][]} */
   const faelle = [
     [
       'Set-Erfassung ändern',

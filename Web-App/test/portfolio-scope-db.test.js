@@ -59,10 +59,10 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
 
   // Deutlich verschiedene Preise — bei einer Verwechslung fällt es auf.
   await db.run(`DELETE FROM price_history WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);
-  for (const [sn, basis] of [
+  for (const [sn, basis] of /** @type {[string, number][]} */ ([
     [SN_H, 1000],
     [SN_S, 5000],
-  ]) {
+  ])) {
     for (let tag = 3; tag >= 0; tag--) {
       await db.run(
         `INSERT INTO price_history (set_number,currency_code,condition,qty_avg_price,avg_price,recorded_at)

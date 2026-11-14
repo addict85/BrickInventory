@@ -23,7 +23,7 @@ test('kein Ausschnitt mit nur verneinenden Zusicherungen ist ungesichert', () =>
   for (const datei of dateien) {
     const src = fs.readFileSync(path.join(__dirname, datei), 'utf8');
     for (const m of src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*(\w+)\.slice\(\s*\2\.indexOf\(/g)) {
-      const ziel = m.group ? m.group(1) : m[1];
+      const ziel = m[1];
       geprueft++;
 
       // Der umgebende Testblock, grob: bis zum naechsten "\n});"

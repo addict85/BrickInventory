@@ -25,7 +25,7 @@ export async function getSetInfo(k: KatalogKontext, setNumber: string) {
   // "Set <Nummer>" ist ein Platzhalter, kein Name; als Treffer überschrieb er
   // beim nächsten Erfassen den echten Namen. Nachgefragt wird höchstens täglich.
   if (cached?.name && cached.name !== `Set ${n}`) return cached;
-  if (cached?.fetched_at && Date.now() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
+  if (cached?.fetched_at && k.uhr.jetzt() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
   const data = await k.fremdquellen.quellen.holeSet(n);
   if (!data) {
     await k.rebrickableCache.merkeUnbekanntesSet(n, !!(await k.fremdquellen.quellen.getRbKey()));

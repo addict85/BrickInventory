@@ -21,7 +21,7 @@ const TREFFER_MS = 60_000,
 
 async function lade(k: BilderKontext, uid: number): Promise<Stand> {
   const zeilen = await k.bildBlickfeld.setsImBlickfeld(await k.haushalt.blickfeldIds(uid));
-  const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: Date.now() };
+  const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: k.uhr.jetzt() };
   for (const z of zeilen) {
     s.nummern.add(dateiStamm(z.set_number));
     if (z.besitz) s.anleitungen.add(dateiStamm(z.set_number));
@@ -39,7 +39,7 @@ async function imBlickfeld(
   art: 'nummern' | 'anleitungen',
 ): Promise<boolean> {
   const s = merker(k).get(uid);
-  const alter = s ? Date.now() - s.am : Infinity;
+  const alter = s ? k.uhr.jetzt() - s.am : Infinity;
   const drin = !!s?.[art].has(stamm);
   if (drin && alter < TREFFER_MS) return true;
   if (s && !drin && alter < ABSAGE_MS) return false;

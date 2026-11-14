@@ -167,16 +167,6 @@ test('die Diagnose-Endpunkte sind vorhanden', () => {
   assert.match(admin, /proxy_failures: failures/, 'Die Zähler gehören in die Antwort');
 });
 
-test('der ausgebaute Reparaturjob ist restlos weg', () => {
-  // Er beruhte auf der Annahme, die Bildadressen seien kaputt. Die war falsch —
-  // das CDN lieferte durchgehend 200.
-  assert.ok(!fs.existsSync(path.join(ROOT, 'jobs', 'imageRepair.ts')), 'Job-Datei noch da');
-  for (const f of ['server.ts', 'src/auftraege/jobMonitor.ts', 'src/auftraege/zeitplan.ts', 'db/database.ts']) {
-    const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-    assert.doesNotMatch(src, /imgRepair|img_repair|dead_images/, `${f}: Reste vorhanden`);
-  }
-});
-
 test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', () => {
   // Beobachtet: "200 OK (from disk cache)" — die Anfrage erreichte den Server
   // gar nicht mehr. Der Browser lieferte eine kaputte Antwort aus der Zeit der

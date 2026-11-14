@@ -52,6 +52,7 @@ const express = require('express');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { warte: pause, bis } = require('./helpers/zeit');
+const { portVon } = require('./helpers/server');
 const bildDurchreichen = (...a) =>
   _req('routes/imgProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
 const { raeumeBildCacheAuf } = _req('src/bilder/imgCacheServe.js');
@@ -65,7 +66,7 @@ let cdnRumpf = Buffer.alloc(300, 7);
 let cdnKopf = {};
 let cdnNetzfehler = false;
 const echt = https.get;
-https.get = (url, o, cb) => {
+/** @type {any} */ (https).get = (url, o, cb) => {
   geholt.push(String(url));
   kopfzeilen.push(o?.headers ?? {});
   const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
@@ -88,12 +89,12 @@ https.get = (url, o, cb) => {
 const app = express();
 let konto = 0;
 app.use((req, _res, next) => {
-  req.session = { userId: konto };
+  /** @type {any} */ (req).session = { userId: konto };
   next();
 });
 app.get('/p', bildDurchreichen);
 const srv = app.listen(0);
-const basis = `http://127.0.0.1:${srv.address().port}/p?url=`;
+const basis = `http://127.0.0.1:${portVon(srv)}/p?url=`;
 const hole = adresse =>
   fetch(basis + encodeURIComponent(adresse)).then(async r => ({
     status: r.status,
@@ -257,8 +258,8 @@ test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
   lege('a'.repeat(40), 20);
   lege('b'.repeat(40), 10);
   lege('c'.repeat(40), 1);
-  assert.equal(await raeumeBildCacheAuf(4000), 0, 'unter der Grenze wird nichts gelöscht');
-  assert.equal(await raeumeBildCacheAuf(3000), 3);
+  assert.equal(await raeumeBildCacheAuf(4000, jetzt * 1000), 0, 'unter der Grenze wird nichts gelöscht');
+  assert.equal(await raeumeBildCacheAuf(3000, jetzt * 1000), 3);
   assert.deepEqual(
     fs
       .readdirSync(cacheDir)
@@ -276,11 +277,11 @@ test('Fehler werden gezählt und protokolliert', async () => {
   const echtError = console.error;
   console.error = (...a) => fehler.push(a.join(' '));
   try {
-    for (const [status, netz, adresse] of [
+    for (const [status, netz, adresse] of /** @type {[number, boolean, string][]} */ ([
       [404, false, 'https://cdn.rebrickable.com/media/sets/zaehl-404.jpg'],
       [403, false, 'https://cdn.rebrickable.com/media/sets/zaehl-403.jpg'],
       [200, true, 'https://cdn.rebrickable.com/media/sets/zaehl-netz.jpg'],
-    ]) {
+    ])) {
       // Je Abruf ein eigenes Konto: Die Drossel (drei je Minute) soll hier nicht greifen.
       konto = 400000 + status * 1000 + (process.pid % 1000);
       cdnStatus = status;

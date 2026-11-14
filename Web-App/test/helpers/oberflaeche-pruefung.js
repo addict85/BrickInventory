@@ -77,6 +77,7 @@ const PDF =
   '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +
   '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
 const reiter = r => klick(`.ntab[data-tab="${r}"]`);
+/** @type {[string, string[]][]} */
 const ANSICHTEN = [
   ['Sammlung', [reiter('gallery')]],
   ['Teile', [reiter('parts')]],
@@ -94,10 +95,9 @@ const ANSICHTEN = [
       `document.querySelectorAll('#global-settings-grid > .ssec').forEach(a => a.classList.add('einst-aktiv')); true`,
     ],
   ],
-  ...['profil', 'gutscheine', 'alarme', 'lagerorte', 'haushalt', 'daten', 'app'].map(s => [
-    `Sicht ${s}`,
-    [klick(`.umenu-item[data-arg="${s}"]`)],
-  ]),
+  ...['profil', 'gutscheine', 'alarme', 'lagerorte', 'haushalt', 'daten', 'app'].map(
+    s => /** @type {[string, string[]]} */ ([`Sicht ${s}`, [klick(`.umenu-item[data-arg="${s}"]`)]]),
+  ),
   ['Benutzermenü', [reiter('gallery'), klick('#btn-umenu')]],
   ['Import-Menü', [reiter('gallery'), `document.querySelector('#tab-gallery details.import-menue').open = true; true`]],
   ['Set hinzufügen', [reiter('gallery'), klick('button[data-click="oeffneErfassen"][data-arg="set"]')]],

@@ -44,14 +44,14 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 test('RFC 6238: die Testvektoren für SHA-1', () => {
   // Anhang B der RFC: Schlüssel "12345678901234567890", acht Stellen.
   const schluessel = Buffer.from('12345678901234567890');
-  for (const [sekunden, erwartet] of [
+  for (const [sekunden, erwartet] of /** @type {[number, string][]} */ ([
     [59, '94287082'],
     [1111111109, '07081804'],
     [1111111111, '14050471'],
     [1234567890, '89005924'],
     [2000000000, '69279037'],
     [20000000000, '65353130'],
-  ]) {
+  ])) {
     assert.equal(zf.hotp(schluessel, Math.floor(sekunden / 30), 8), erwartet, `T=${sekunden}`);
   }
   // Und Base32 hin und zurück, wie es eine Authenticator-App liest.

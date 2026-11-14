@@ -89,14 +89,14 @@ async function currentTheme(k: KontoKontext, userId?: number): Promise<string> {
     const { eigenes } = await k.einstellungen.designFuer(userId);
     if (eigenes) return eigenes;
   }
-  if (Z.theme !== null && Date.now() - Z.themeAt < THEME_TTL_MS) return Z.theme;
+  if (Z.theme !== null && k.uhr.jetzt() - Z.themeAt < THEME_TTL_MS) return Z.theme;
   // Die Startseite kommt auch bei gestörter Datenbank, dann klassisch und ohne Zwischenspeicher.
   const gelesen = await versuche('index-html:design', k.einstellungen.getGlobalSetting('app_theme'));
   if (!gelesen.ok) return 'classic';
   const gespeichert = gelesen.wert;
   const gewaehlt: string = gespeichert && DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
   Z.theme = gewaehlt;
-  Z.themeAt = Date.now();
+  Z.themeAt = k.uhr.jetzt();
   return gewaehlt;
 }
 

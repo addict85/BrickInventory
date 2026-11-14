@@ -10,12 +10,21 @@ export interface KontoQuelle {
   tokenUserId?: number | undefined;
 }
 
+/** Was die Wachen über die offene Transaktion wissen (db/transaktion.ts füllt es): Der Wächter
+ * gegen Ersatzwerte reist mit ihr im Rahmen, nicht als Zustand des Prozesses. */
+export interface PfadTransaktion {
+  /** Lässt dieser Fehler sie verdorben zurück? Ein Sicherungspunkt, der ihn auffing, nicht. */
+  verdirbt(e: unknown): boolean;
+  /** In Tests wirft auch ein Fehler ausserhalb der Datenbank, damit die Regel greift. */
+  readonly streng: boolean;
+}
+
 interface Rahmen {
   /** Gelesen erst beim Fragen: Die Anmeldung setzt das Konto später auf demselben Objekt. */
   quelle: KontoQuelle | null;
   system: string | null;
   /** Die offene Transaktion dieses Aufrufpfads: nur für Wachen, nie ein Weg zu ihr. */
-  transaktion: object | null;
+  transaktion: PfadTransaktion | null;
   begleiter: unknown;
   rid: string | null;
 }
@@ -63,10 +72,10 @@ export function pruefeAnfragender(uid: number): void {
 }
 
 /** Für die Wachen der Datenbank (db/transaktion.ts), den Commit-Begleiter der Idempotenz und das Protokoll. */
-export function inTransaktionsPfad<T>(transaktion: object, f: () => T): T {
+export function inTransaktionsPfad<T>(transaktion: PfadTransaktion, f: () => T): T {
   return mitRahmen({ transaktion }, f);
 }
-export function transaktionDesPfads(): object | null {
+export function transaktionDesPfads(): PfadTransaktion | null {
   return jetzt().transaktion;
 }
 

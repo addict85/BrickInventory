@@ -103,7 +103,7 @@ export async function makeProxyThumb(k: BilderKontext, srcFile: string, thumbFil
         return false;
       }
       // ATOMAR schreiben: erst daneben, dann umbenennen.
-      const tmpThumb = `${thumbFile}.${process.pid}.${Date.now()}.tmp.jpg`;
+      const tmpThumb = `${thumbFile}.${process.pid}.${k.uhr.jetzt()}.tmp.jpg`;
       await jimpVorschau(srcFile, tmpThumb, PROXY_THUMB_SIZE);
       await fs.promises.rename(tmpThumb, thumbFile);
       return true;

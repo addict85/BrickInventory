@@ -19,7 +19,7 @@ const TAKT_NACH_ABRUF_MS = 15_000;
 const CF_PAUSEN_MS = [5, 10, 15, 20].map(min => min * 60 * 1000);
 
 /** 00:05: Dann ist das Tageskontingent wieder frei. */
-function naechsterTag(jetzt = new Date()): Date {
+function naechsterTag(jetzt: Date): Date {
   const z = new Date(jetzt);
   z.setHours(0, 5, 0, 0);
   if (z <= jetzt) z.setDate(z.getDate() + 1);
@@ -31,7 +31,7 @@ function naechsterTag(jetzt = new Date()): Date {
 function mitSperre<T>(k: KatalogKontext, lauf: () => Promise<T>): Promise<T> {
   return mitSitzungsSperre(k.db, LOCKS.ANLEITUNGS_QUEUE, lauf, () => {
     throw new AuftragVerschieben(
-      new Date(Date.now() + TAKT_NACH_ABRUF_MS),
+      new Date(k.uhr.jetzt() + TAKT_NACH_ABRUF_MS),
       'Anleitungen laufen in einem anderen Prozess',
     );
   });
@@ -65,7 +65,7 @@ async function anleitungLaden(k: KatalogKontext, n: Nutzlast<'anleitung'>, lauf?
       if (letzterAbrufWarExtern(k))
         await k.auftraege.pausiereArt(
           'anleitung',
-          new Date(Date.now() + TAKT_NACH_ABRUF_MS),
+          new Date(k.uhr.jetzt() + TAKT_NACH_ABRUF_MS),
           'Abstand zwischen zwei Abrufen',
         );
       await meldeAnleitungen(k, sn, lauf);
@@ -74,7 +74,8 @@ async function anleitungLaden(k: KatalogKontext, n: Nutzlast<'anleitung'>, lauf?
       const msg = fehlertext(e) || '';
       if (f.isCloudflare || msg.includes('1015')) {
         const stufe = (await k.auftraege.liesPause('anleitung'))?.stufe ?? 0;
-        const bis = stufe < CF_PAUSEN_MS.length ? new Date(Date.now() + CF_PAUSEN_MS[stufe]!) : naechsterTag();
+        const bis =
+          stufe < CF_PAUSEN_MS.length ? new Date(k.uhr.jetzt() + CF_PAUSEN_MS[stufe]!) : naechsterTag(k.uhr.datum());
         const grund =
           stufe < CF_PAUSEN_MS.length
             ? `Cloudflare-Sperre: ${Math.round(CF_PAUSEN_MS[stufe]! / 60000)} min warten (Versuch ${stufe + 1})`
@@ -85,7 +86,7 @@ async function anleitungLaden(k: KatalogKontext, n: Nutzlast<'anleitung'>, lauf?
         throw new AuftragVerschieben(bis, grund);
       }
       if (msg.includes('Tageslimit') || msg.includes('rate limit') || msg.includes('429')) {
-        const bis = naechsterTag();
+        const bis = naechsterTag(k.uhr.datum());
         await k.auftraege.pausiereArt('anleitung', bis, 'Tageskontingent erschöpft');
         throw new AuftragVerschieben(bis, 'Tageskontingent erschöpft');
       }

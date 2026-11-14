@@ -1,9 +1,12 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 
 export type Inhalt = 'parts' | 'minifigs' | 'instructions';
 
 export async function hatInhalt(tx: DbSchnittstelle, tabelle: Inhalt, uid: number, sn: string): Promise<boolean> {
-  return !!(await tx.get(`SELECT 1 AS ok FROM ${tabelle} WHERE user_id=$1 AND set_number=$2 LIMIT 1`, [uid, sn]));
+  return !!(await tx.get<Treffer>(`SELECT 1 AS ok FROM ${tabelle} WHERE user_id=$1 AND set_number=$2 LIMIT 1`, [
+    uid,
+    sn,
+  ]));
 }
 
 /** Teile und Figuren kopiert der Bestand (src/bestand/gemeinsam.ts). */

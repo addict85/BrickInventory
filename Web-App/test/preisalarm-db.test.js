@@ -106,7 +106,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
       // Umformulierung, ohne dass sich das Verhalten ändert.
       await assert.rejects(
         () => A.setzeAlarm(U.ich, SN, 'EUR', eingabe),
-        e => String(e.code || '').startsWith('alarm_'),
+        (/** @type {any} */ e) => String(e.code || '').startsWith('alarm_'),
         `${feld}=${wert} wurde angenommen`,
       );
     }

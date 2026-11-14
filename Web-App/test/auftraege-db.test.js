@@ -234,10 +234,10 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       let laeuft = () => {},
         abgebrochen = () => {};
       const gestartet = new Promise(r => {
-        laeuft = r;
+        laeuft = () => r(null);
       });
       const nachAbbruch = new Promise(r => {
-        abgebrochen = r;
+        abgebrochen = () => r(null);
       });
       const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, {
         [ART]: {
@@ -301,7 +301,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await db.run('DELETE FROM users WHERE username=$1', [NAME]);
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
       const pdfA = _req('src/auftraege/pdfAuftraege.js');
-      const jobId = _req('src/auftraege/pdfAuftraege.js').neueJobId();
+      const jobId = _req('src/auftraege/pdfAuftraege.js').neueJobId(Date.now());
       const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
         arten: ['pdf'],
         taktMs: 50,

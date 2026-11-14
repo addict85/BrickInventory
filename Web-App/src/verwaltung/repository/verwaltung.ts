@@ -1,6 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { LIKE_ESCAPE, likeWoertlich } from '../../../db/likeSuche';
 import { mengeSkalar } from '../../../db/bestandsmenge';
+import type { Spalten } from '../../../db/zeilen';
 
 /** Die Route spricht db/ nicht selbst an. */
 
@@ -30,31 +31,42 @@ export async function bildZeilenDerKonten(db: DbSchnittstelle, sn: string): Prom
 }
 
 export function katalogBild(db: DbSchnittstelle, sn: string): Promise<Bildzeile | undefined> {
-  return db.get(`SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`, [sn]);
+  return db.get<Spalten<'set_catalog', 'image_url' | 'image_local'>>(
+    `SELECT image_url, image_local FROM set_catalog WHERE set_number = $1`,
+    [sn],
+  );
 }
 
 export function fehlanzeigeDesSets(db: DbSchnittstelle, sn: string): Promise<Fehlanzeige | undefined> {
-  return db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
+  return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
+    `SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`,
+    ['set:' + sn],
+  );
 }
 
 /** @param datei der Dateiname ohne Endung, wie ihn die Bildablage bildet */
 export function fehlanzeigeDerVorschau(db: DbSchnittstelle, datei: string): Promise<Fehlanzeige | undefined> {
-  return db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`, [
-    'thumb:%' + likeWoertlich(datei + '_thumb.jpg'),
-  ]);
+  return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
+    `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`,
+    ['thumb:%' + likeWoertlich(datei + '_thumb.jpg')],
+  );
 }
 
 export function setFehlanzeigen(db: DbSchnittstelle): Promise<Schluessel[]> {
-  return db.all(`SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`);
+  return db.all<Spalten<'image_misses', 'cache_key'>>(
+    `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'set:%'`,
+  );
 }
 
 export function vorschauFehlanzeigen(db: DbSchnittstelle): Promise<Schluessel[]> {
-  return db.all(`SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`);
+  return db.all<Spalten<'image_misses', 'cache_key'>>(
+    `SELECT cache_key FROM image_misses WHERE cache_key LIKE 'thumb:%'`,
+  );
 }
 
 /** Ein 404 vom CDN bleibt vermerkt: Ein neuer Versuch ändert daran nichts. */
 export function setFehlanzeigenOhne404(db: DbSchnittstelle): Promise<Schluessel[]> {
-  return db.all(
+  return db.all<Spalten<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses
             WHERE cache_key LIKE 'set:%'
               AND (reason IS NULL OR reason NOT LIKE '%404%')`,
@@ -164,7 +176,7 @@ export function probeErfassungen(
   uid: number,
   setNumber: string,
 ): Promise<{ quantity: number; condition: string; purchase_price: number | null; created_at: Date }[]> {
-  return db.all(
+  return db.all<Spalten<'set_acquisitions', 'quantity' | 'condition' | 'purchase_price' | 'created_at'>>(
     'SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at',
     [uid, setNumber],
   );
@@ -188,7 +200,10 @@ export function probePreisVerlauf(db: DbSchnittstelle, setNumber: string) {
 }
 
 export function probeWaehrung(db: DbSchnittstelle, uid: number): Promise<{ value: string } | undefined> {
-  return db.get("SELECT value FROM user_settings WHERE user_id=$1 AND key='currency'", [uid]);
+  return db.get<Spalten<'user_settings', 'value'>>(
+    "SELECT value FROM user_settings WHERE user_id=$1 AND key='currency'",
+    [uid],
+  );
 }
 
 export function letzterLaufDerArt(db: DbSchnittstelle) {

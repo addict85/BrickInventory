@@ -52,6 +52,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `sperre_${process.pid}`,
   PASS = 'richtigesPasswort1';
 const { warte } = require('./helpers/zeit');
+const { portVon } = require('./helpers/server');
 
 let UID = null;
 /** Schlüssel des Zählers je Konto (Name und E-Mail zählen gemeinsam). */
@@ -241,7 +242,7 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
     );
   const port = await new Promise(auf => {
     const s = net.createServer().listen(0, '127.0.0.1', () => {
-      const p = s.address().port;
+      const p = portVon(s);
       s.close(() => auf(p));
     });
   });

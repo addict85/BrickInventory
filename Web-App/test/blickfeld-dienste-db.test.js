@@ -76,6 +76,9 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
   await t.test('ein Unterkonto schreibt nicht für sein Hauptkonto', async () => {
     assert.equal(await H.schreibziel(haupt, sub), sub);
     assert.equal(await H.schreibziel(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
-    await assert.rejects(H.schreibziel(sub, haupt), e => e.code === 'kein_schreibrecht' && e.art === 'verboten');
+    await assert.rejects(
+      H.schreibziel(sub, haupt),
+      (/** @type {any} */ e) => e.code === 'kein_schreibrecht' && e.art === 'verboten',
+    );
   });
 });

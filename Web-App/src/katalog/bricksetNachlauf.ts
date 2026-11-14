@@ -29,7 +29,7 @@ async function bricksetNachlauf(k: KatalogKontext, n: Nutzlast<'brickset'>, lauf
   if ((await anzahlAnleitungen(k, sn)) === 0) {
     await downloadSetInstructions(k, sn).catch(logAndContinue('brickset-retry:downloadSetInstructions'));
   }
-  await k.auftraege.pausiereArt('brickset', new Date(Date.now() + 1000), 'Abstand zwischen zwei Abrufen');
+  await k.auftraege.pausiereArt('brickset', new Date(k.uhr.jetzt() + 1000), 'Abstand zwischen zwei Abrufen');
 }
 
 export { bricksetNachlauf };
