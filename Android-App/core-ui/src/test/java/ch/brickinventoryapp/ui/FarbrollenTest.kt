@@ -145,4 +145,19 @@ class FarbrollenTest {
             assertTrue("$d: Helligkeit der Stufen $stufen", richtig)
         }
     }
+
+    /**
+     * Werkbank ist ein eigenes Design, nicht „Klassisch dunkel“ unter anderem Namen: warmes
+     * Graphit und Messing gegen kühles Anthrazit und Blau, wie themes/werkbank.css.
+     * Gegenprobe werkbank-wie-klassisch-dunkel: Werkbank wieder mit den kühlen Flächen und
+     * Hellblau als Zweitfarbe → rot.
+     */
+    @Test
+    fun `Werkbank und Klassisch dunkel unterscheiden sich in Flaeche und Akzent`() {
+        val werkbank = farbschema(Design.WERKBANK)
+        val klassisch = farbschema(Design.CLASSIC, dunkel = true)
+        assertTrue("Werkbank-Fläche nicht warm: ${werkbank.surface}", werkbank.surface.red > werkbank.surface.blue)
+        assertTrue("Klassisch dunkel nicht kühl: ${klassisch.surface}", klassisch.surface.blue > klassisch.surface.red)
+        assertTrue("Werkbank-Zweitfarbe nicht warm: ${werkbank.secondary}", werkbank.secondary.red > werkbank.secondary.blue)
+    }
 }

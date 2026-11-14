@@ -49,7 +49,9 @@ import ch.brickinventoryapp.zustand.ui.fehlerTextArgument
 import ch.brickinventoryapp.zustand.ui.fehlerTextId
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import android.content.Context
-import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
+import ch.brickinventoryapp.finanzen.ui.screens.GutscheineSeite
 import java.util.Locale
 
 /**
@@ -237,18 +239,21 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     }
 }
 
-/** Zwei Gutscheine, einer mit PIN und Guthabenstand, einer ohne — die beiden Zeilenformen. */
+/**
+ * Zwei Gutscheine, einer mit PIN und Guthabenstand, einer ohne — die beiden Zeilenformen —
+ * auf ihrer Seite mit Menü in der Leiste und dem schwebenden Knopf zum Anlegen.
+ */
 @Composable
 internal fun Gutscheine() {
     val gutscheine = GutscheinUiState(gutscheine = listOf(
         Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = Waehrung("CHF")).alsAnsicht(),
         Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = Waehrung("CHF")).alsAnsicht()))
-    Column {
+    GutscheineSeite(gutscheine, remember { SnackbarHostState() }, onZurueck = {}, onGuthabenAlle = {}, onExportieren = {}) { neu, onNeu ->
         GutscheineCard(
             zustand = gutscheine, onFeld = { _, _, _, _ -> }, onPinSchalten = {}, onBearbeiten = {},
             onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {}, onKopieren = { _, _ -> },
-            onGuthaben = {}, onExportieren = {}, onGuthabenAlle = {}, onGuthabenAbbrechen = {}, onErneut = {},
-            onBestaetigen = { _, _ -> }, onBestaetigungAbbrechen = {},
+            onGuthaben = {}, onGuthabenAbbrechen = {}, onErneut = {},
+            onBestaetigen = { _, _ -> }, onBestaetigungAbbrechen = {}, neu = neu, onNeu = onNeu,
         )
     }
 }

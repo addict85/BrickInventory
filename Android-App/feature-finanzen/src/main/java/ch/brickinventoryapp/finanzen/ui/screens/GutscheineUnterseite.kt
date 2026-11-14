@@ -13,6 +13,8 @@ import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.ui.components.Unterseite
+import androidx.compose.runtime.saveable.rememberSaveable
+import ch.brickinventoryapp.finanzen.ui.GutscheinUiState
 
 /**
  * Gutscheine — der erste Eintrag der Liste, weil sie im Laden gebraucht werden:
@@ -45,7 +47,8 @@ fun GutscheineRoute(
         gvm.meldeGutscheinKopiert(auftrag.istNummer)
         gvm.kopierenQuittieren()
     }
-    Unterseite(stringResource(R.string.vouchers_title), snackbarHostState, onZurueck) {
+    GutscheineSeite(gutscheinZustand, snackbarHostState, onZurueck,
+        onGuthabenAlle = { gvm.frageAlleGuthabenAb() }, onExportieren = { gvm.oeffneGutscheinExport() }) { neu, onNeu ->
         GutscheineCard(
             zustand = gutscheinZustand,
             onFeld = { n, p, b, w -> gvm.setzeGutscheinFeld(n, p, b, w) },
@@ -57,12 +60,34 @@ fun GutscheineRoute(
             onPdfOeffnen = { gvm.oeffneGutscheinPdf(it) },
             onKopieren = { id, istNummer -> gvm.kopiereGutschein(id, istNummer) },
             onGuthaben = { gvm.frageGuthabenAb(it) },
-            onExportieren = { gvm.oeffneGutscheinExport() },
-            onGuthabenAlle = { gvm.frageAlleGuthabenAb() },
             onGuthabenAbbrechen = { gvm.guthabenLaufAbbrechen() },
             onErneut = { gvm.ladeGutscheine() },
             onBestaetigen = { passwort, code -> gvm.bestaetige(passwort, code) },
             onBestaetigungAbbrechen = { gvm.bestaetigungAbbrechen() },
+            neu = neu,
+            onNeu = onNeu,
         )
     }
+}
+
+/**
+ * Die Seite der Gutscheine: „Hinzufügen“ schwebt als Hauptaktion, Guthaben aller Karten
+ * und PDF stehen im Menü der Leiste. Drei breite Knöpfe über der Liste schoben die
+ * Karten aus dem Bild. [karte] bekommt, ob das Formular zum Anlegen offen ist.
+ */
+@Composable
+fun GutscheineSeite(
+    zustand: GutscheinUiState,
+    snackbarHostState: SnackbarHostState,
+    onZurueck: () -> Unit,
+    onGuthabenAlle: () -> Unit,
+    onExportieren: () -> Unit,
+    karte: @Composable (neu: Boolean, onNeu: (Boolean) -> Unit) -> Unit,
+) {
+    var neu by rememberSaveable { mutableStateOf(false) }
+    Unterseite(
+        stringResource(R.string.vouchers_title), snackbarHostState, onZurueck,
+        aktionen = { GutscheinMenue(zustand, onGuthabenAlle, onExportieren) },
+        hauptaktion = { GutscheinHinzufuegen { neu = true } },
+    ) { karte(neu) { neu = it } }
 }

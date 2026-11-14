@@ -90,6 +90,7 @@ import ch.brickinventoryapp.testing.TeileRepository
  *   konto-ohne-wiederholung      Passwort ändern ohne passende Wiederholung frei → rot „Konto wechselt …“
  *   bauliste-zweistufig          Erstellen erst nach „+“ → rot „Bauliste entsteht …“
  *   bauliste-plus-ohne-wirkung   „+“ im Feld nimmt das Set nicht auf → rot „Bauliste nimmt Sets …“
+ *   bauliste-leert-sofort        „Zurücksetzen“ leert ohne Rückfrage → rot „Bauliste nimmt Sets …“
  *   konto-profil-ohne-rueckfrage Speichern ohne Passwortdialog → rot „Konto fragt beim Speichern …“
  *   konto-email-ohne-ausstehend  die beantragte Adresse nicht unter dem Feld → rot „Konto nennt …“
  *   abmelden-mitten-im-konto     Abmelden wieder als letzter Eintrag von „Konto und App“, vor der
@@ -375,8 +376,9 @@ class UnterseitenTest {
         Shadows.shadowOf(Looper.getMainLooper()).idle()
     }
 
+    /** Zurücksetzen wirft Sets und Liste weg und fragt darum erst nach. */
     @Test
-    fun `Bauliste nimmt Sets ueber das Plus im Feld und setzt bei ihnen zurueck`() {
+    fun `Bauliste nimmt Sets ueber das Plus im Feld und setzt bei ihnen erst nach Rueckfrage zurueck`() {
         val vm = welt.bauliste()
         zeige { bauliste(vm) }
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number)))
@@ -388,6 +390,10 @@ class UnterseitenTest {
         compose.onNode(chip).fetchSemanticsNode("Das Set steht nicht in der Liste")
         compose.onNode(hasText(ctx.getString(R.string.partslist_generate)) and hasClickAction()).assertIsEnabled()
         compose.onNode(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        compose.onNode(chip).fetchSemanticsNode("Zurückgesetzt ohne Rückfrage")
+        compose.onNode(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction() and
+            hasAnyAncestor(isDialog())).performClick()
         compose.waitForIdle()
         compose.onAllNodes(chip).assertCountEquals(0)
         compose.onAllNodes(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).assertCountEquals(0)

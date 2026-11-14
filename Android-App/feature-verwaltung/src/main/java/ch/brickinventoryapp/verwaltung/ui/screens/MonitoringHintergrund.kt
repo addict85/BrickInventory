@@ -25,6 +25,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.model.AuftragAnsicht
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
+import ch.brickinventoryapp.ui.components.Abschnittstitel
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.HintergrundUiState
 import ch.brickinventoryapp.ui.util.fmtTag
 
@@ -44,9 +45,9 @@ internal fun HintergrundSection(
     val ansicht = zustand.ansicht
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+            // „Aufträge“, nicht noch einmal der Name der Seite: Er steht schon darüber.
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text(stringResource(R.string.hintergrund_titel),
-                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Abschnittstitel(stringResource(R.string.hintergrund_auftraege))
                 if (zustand.laedt) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
             zustand.fehler?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }

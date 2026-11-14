@@ -88,6 +88,7 @@ internal fun AddPartDialog(
         FarbWahl(colors, selectedColor) { farbId = it?.id }
         ErfassungsFelder(
             anzahl = quantity, onAnzahl = { quantity = it },
+            anzahlHinweis = stringResource(R.string.parts_quantity_hint),
             preis = unitPrice, onPreis = { unitPrice = it },
             zustand = condition, onZustand = { condition = it },
             lagerort = lagerort, onLagerort = { lagerort = it },
@@ -132,11 +133,9 @@ private fun FarbWahl(colors: List<FarbeAnsicht>, gewaehlt: FarbeAnsicht?, onWahl
             onValueChange = {},
             readOnly = true,
             label = { Text(stringResource(R.string.parts_color_label)) },
-            leadingIcon = {
-                val swatch = farbeAusHex(gewaehlt?.hex)
-                if (swatch != null) {
-                    Box(Modifier.padding(start = Abstaende.mittel).size(14.dp).clip(CircleShape).background(swatch))
-                }
+            // Ohne Farbe kein Symbolplatz: Ein leerer Platz rückte „Keine Farbe“ grundlos ein.
+            leadingIcon = farbeAusHex(gewaehlt?.hex)?.let { swatch ->
+                { Box(Modifier.padding(start = Abstaende.mittel).size(14.dp).clip(CircleShape).background(swatch)) }
             },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen) },
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),

@@ -1,0 +1,18 @@
+Gegenprobe: Barcode-Dialog wieder ohne Hilfezeile unter der Anzahl
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: M3 Barcode
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
+index 88c576a..6f3266b 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
+@@ -212,7 +212,7 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
+                         blick.householdMembers, barcodeOwner, { barcodeOwner = it }
+                     )
+                     // Dieselben Felder wie „Set hinzufügen“: Beschriftung, Hilfezeile, Prüfung.
+-                    AnzahlFeld(barcodeQuantity, { barcodeQuantity = it }, stringResource(R.string.gallery_quantity_hint))
++                    AnzahlFeld(barcodeQuantity, { barcodeQuantity = it }, "")
+                     KaufpreisFeld(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price))
+                     Zustandszeile(
+                         zustand = barcodeCondition,

@@ -4,11 +4,12 @@ Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
 Rot: N2 die Rueckfrage nennt ihren Titel als Ueberschrift
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
+index 148a98a..df2bc8a 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
-@@ -68,7 +68,7 @@ fun Rueckfrage(
-         onDismissRequest = onAbbrechen,
-         modifier = Modifier.semantics { paneTitle = titel },
+@@ -69,7 +69,7 @@ fun Rueckfrage(
+         properties = DialogProperties(usePlatformDefaultWidth = false),
+         modifier = Modifier.fensterRand().semantics { paneTitle = titel },
          icon = symbol?.let { s -> { Icon(s, null, tint = MaterialTheme.colorScheme.error) } },
 -        title = { Text(titel, Modifier.semantics { heading() }) },
 +        title = { Text(titel) },

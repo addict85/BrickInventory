@@ -1,0 +1,19 @@
+Gegenprobe: das Schwellenfeld eines Alarms heisst wieder wie die Richtung
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: N2
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+index 324df06..db6e97f 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+@@ -162,7 +162,8 @@ internal fun PreisalarmeCard(
+                         aktionen.setzeAlarmSchwelle(a.setNumber, a.condition, a.richtung, wert)
+                     },
+                     singleLine = true,
+-                    label = { Text(stringResource(R.string.alerts_schwelle)) },
++                    label = { Text(stringResource(if (a.richtung == Alarmrichtung.UNTER) R.string.detail_alert_chip_below
++                                                  else R.string.detail_alert_chip_above)) },
+                     // Vorangestellt wie jeder Betrag der App („CHF 750.00“).
+                     prefix = { Text(a.currencyCode.code + "\u00A0") },
+                     // Nur „Gespeichert“: Richtung, Betrag und Zustand stehen schon in Feld und

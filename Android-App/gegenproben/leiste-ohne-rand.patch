@@ -1,0 +1,18 @@
+Gegenprobe: die Leiste unten wieder ohne Rand
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: N4 die Leiste
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+index 1f2b49e..2b7bdf8 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
+@@ -314,7 +314,7 @@ private fun ReiterLeiste(
+     Surface(color = farben.leiste) {
+         // Ein Rand links und rechts: Bei 200 % stiess „Mehr“ samt Punkt an den Bildschirmrand.
+         BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
+-            .padding(horizontal = LEISTE_RAND)) {
++) {
+             val satz = with(dichte) {
+                 reiterSatz(ziele.map { messer.measure(it.beschriftung, stil).size.width.toFloat() },
+                     ziele.indexOfFirst { gewaehlt(it.ziel) }, maxWidth.toPx(), (Abstaende.winzig * 2).toPx(),

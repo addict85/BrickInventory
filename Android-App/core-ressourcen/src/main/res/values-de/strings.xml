@@ -18,7 +18,7 @@
     <string name="settings_logout">Abmelden</string>
     <string name="settings_language">Sprache</string>
     <string name="settings_language_system">System-Sprache</string>
-    <string name="settings_language_en">Englisch</string>
+    <string name="settings_language_en">English</string>
     <string name="settings_language_de">Deutsch</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
@@ -62,10 +62,10 @@
     <string name="csv_import_done">Import abgeschlossen</string>
 
     <!-- ══════════════ Portfolio chart ══════════════ -->
-    <string name="chart_portfolio_value">Wertentwicklung Portfolio</string>
+    <string name="chart_portfolio_value">Wertentwicklung der Sammlung</string>
     <string name="chart_no_history">Noch keine Verlaufsdaten</string>
-    <string name="chart_summary">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s, Veränderung %5$s</string>
-    <string name="chart_summary_no_change">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s</string>
+    <string name="chart_summary">Sammlungswert, %1$s bis %2$s: von %3$s auf %4$s, Veränderung %5$s</string>
+    <string name="chart_summary_no_change">Sammlungswert, %1$s bis %2$s: von %3$s auf %4$s</string>
     <string name="price_chart_summary">Preisverlauf %1$s, %2$s bis %3$s: von %4$s auf %5$s, tiefster Wert %6$s, höchster %7$s</string>
     <string name="chart_period_week">Woche</string>
     <string name="chart_period_month">Monat</string>
@@ -226,8 +226,7 @@
     <string name="detail_price_none_yet">noch kein Preis</string>
     <string name="detail_purchase_none">nicht erfasst</string>
     <string name="detail_storage_none">Kein Lagerort</string>
-    <string name="detail_storage_ph">z. B. Kiste 3</string>
-    <string name="detail_storage_choose">Aus der Liste wählen oder neu eintippen</string>
+    <string name="detail_storage_ph">Wählen oder neu eintippen, z. B. Kiste 3</string>
     <string name="filter_condition_all">Alle</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
     <plurals name="filter_lagerort_sets">
@@ -445,7 +444,7 @@
     <string name="parts_filter_no_spare">Ohne Ersatzteile</string>
     <string name="parts_filter_spare">Nur Ersatzteile</string>
     <string name="common_quantity">Anzahl</string>
-    <string name="common_unit_price">Kaufpreis/Stk (optional)</string>
+    <string name="common_unit_price">Kaufpreis je Stück (optional)</string>
     <string name="common_unit_price_placeholder">Leer = aktueller Marktpreis</string>
     <string name="common_cancel">Abbrechen</string>
     <string name="common_loading">Lädt…</string>
@@ -891,7 +890,6 @@
     <string name="vouchers_edit">Gutschein ändern</string>
     <string name="vouchers_number">Gutscheinnummer</string>
     <string name="vouchers_pin">PIN</string>
-    <string name="vouchers_copy_hint">Nummer oder PIN antippen, um sie zu kopieren</string>
     <string name="vouchers_copied_number">Gutscheinnummer kopiert</string>
     <string name="vouchers_copied_pin">PIN kopiert</string>
     <string name="vouchers_amount">Betrag</string>
@@ -1074,7 +1072,6 @@
     <string name="art_bild_nachlauf">Bild-Download (CDN)</string>
     <string name="art_aufraeumen">Aufräumen (stündlich)</string>
     <string name="art_aufraeumen_taeglich">Aufräumen (täglich)</string>
-    <string name="hintergrund_titel">Hintergrundarbeiten</string>
     <string name="hintergrund_kein_prozess">Kein Job-Prozess meldet sich — läuft der Dienst „jobs“?</string>
     <string name="hintergrund_pause">%1$s pausiert bis %2$s: %3$s</string>
     <string name="hintergrund_leer">Keine offenen oder gescheiterten Aufträge</string>
@@ -1235,4 +1232,13 @@
     <string name="household_invite_gueltig_bis">Gültig bis %1$s</string>
     <string name="household_redeem_sperrgrund">Code und Passwort eingeben, dann verknüpfen.</string>
     <string name="household_redeem_sperrgrund_faktor">Code, Passwort und Code des zweiten Faktors eingeben, dann verknüpfen.</string>
+    <string name="parts_quantity_hint">Anzahl gleicher Teile</string>
+    <string name="minifigs_quantity_hint">Anzahl gleicher Minifiguren</string>
+    <string name="hintergrund_auftraege">Aufträge</string>
+    <string name="monitoring_darstellung_vorgabe">Darstellung (Vorgabe für alle)</string>
+    <string name="vouchers_menu_cd">Weitere Aktionen für alle Gutscheine</string>
+    <string name="gallery_detail_leer">Ein Set antippen, um es hier zu sehen</string>
+    <string name="partslist_reset_titel">Bauliste zurücksetzen?</string>
+    <string name="partslist_reset_text">Alle Sets und die erstellte Liste werden entfernt.</string>
+    <string name="alerts_schwelle">Schwelle</string>
 </resources>

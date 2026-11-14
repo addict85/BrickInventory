@@ -1,0 +1,17 @@
+Gegenprobe: neben einem offenen Set nur das Detail, ohne Galerie
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: M6 auf dem Tablet stehen Galerie und Set-Detail
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieUndDetail.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieUndDetail.kt
+index f3db60a..78baf13 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieUndDetail.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieUndDetail.kt
+@@ -33,6 +33,7 @@ fun GalerieUndDetail(
+     gridState: LazyGridState = rememberLazyGridState(),
+     detail: @Composable () -> Unit,
+ ) {
++    if (offen != null) { detail(); return }
+     ListeUndDetail(
+         liste = {
+             CompositionLocalProvider(LocalOffenesDetail provides offen) {

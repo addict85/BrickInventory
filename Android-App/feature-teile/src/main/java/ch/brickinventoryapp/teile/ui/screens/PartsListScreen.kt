@@ -16,6 +16,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material.icons.filled.Inventory2
@@ -150,8 +153,10 @@ fun PartsListScreen(
     manuelleErfassungAnfordern: Boolean = false,
     onManuelleErfassungQuittiert: () -> Unit = {},
 ) {
-    // Nur das Eingabefeld ist Zustand des Bildschirms; alles andere hält das ViewModel.
+    // Nur das Eingabefeld und die offene Rückfrage sind Zustand des Bildschirms; alles
+    // andere hält das ViewModel.
     var setInput  by rememberSaveable { mutableStateOf("") }
+    var leerenFragen by rememberSaveable { mutableStateOf(false) }
     val setFeldFokus = remember { FocusRequester() }
     val sets = zustand.sets
     val parts = zustand.parts
@@ -170,6 +175,16 @@ fun PartsListScreen(
     fun erstellen() {
         onErstelle(setInput)
         setInput = ""
+    }
+
+    if (leerenFragen) {
+        Rueckfrage(
+            titel = stringResource(R.string.partslist_reset_titel),
+            text = stringResource(R.string.partslist_reset_text),
+            bestaetigen = stringResource(R.string.partslist_reset),
+            onBestaetigen = { leerenFragen = false; onLeere() },
+            onAbbrechen = { leerenFragen = false },
+        )
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -223,8 +238,9 @@ fun PartsListScreen(
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f))
+                        // Mit Rückfrage: Zurücksetzen wirft Sets und erstellte Liste weg.
                         TextButton(
-                            onClick = onLeere,
+                            onClick = { leerenFragen = true },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) { Text(stringResource(R.string.partslist_reset)) }
                     }
@@ -259,9 +275,15 @@ fun PartsListScreen(
                     else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(Abstaende.winzig))
                     Text(stringResource(R.string.partslist_generate))
+                    // Die Zahl als Plakette: „(2 Sets)“ brach bei 200 % in eine zweite Zeile.
                     if (anzahl > 0) {
-                        Spacer(Modifier.width(Abstaende.winzig))
-                        Text(pluralStringResource(R.plurals.partslist_generate_anzahl, anzahl, anzahl))
+                        val vorgelesen = pluralStringResource(R.plurals.partslist_generate_anzahl, anzahl, anzahl)
+                        Spacer(Modifier.width(Abstaende.klein))
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.onPrimary,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clearAndSetSemantics { contentDescription = vorgelesen },
+                        ) { Text("$anzahl", style = MaterialTheme.typography.labelMedium) }
                     }
                 }
                 if (generated && parts.isNotEmpty()) {
@@ -279,17 +301,18 @@ fun PartsListScreen(
                     // Untereinander: Die Beschriftung der Wahl ist lang und passt auf einem
                     // 360-dp-Telefon nicht neben den Knopf.
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                        Button(
+                        // Umrandet: Ein zweiter gefüllter Knopf stritt mit „Bauliste erstellen“
+                        // um die Hauptsache.
+                        OutlinedButton(
                             onClick = onLadeBestand,
                             enabled = !bestandLaeuft,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary)
+                            colors = nebenKnopfFarben(),
+                            border = nebenKnopfRand(!bestandLaeuft),
                         ) {
                             // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
                             // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
                             // beide 16 dp breit.
-                            if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.onSecondary, strokeWidth = 2.dp)
+                            if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                             else Icon(Icons.Default.Inventory2, null, Modifier.size(mitSchrift(16.dp)))
                             Spacer(Modifier.width(Abstaende.winzig))
                             Text(stringResource(R.string.partslist_fill_owned))

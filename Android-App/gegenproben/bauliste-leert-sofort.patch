@@ -1,0 +1,18 @@
+Gegenprobe: „Zurücksetzen“ leert die Bauliste ohne Rückfrage
+Modul: app
+Test: ch.brickinventoryapp.app.UnterseitenTest
+Rot: Bauliste nimmt Sets ueber das Plus im Feld
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
+index 491d500..6434e7f 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
+@@ -240,7 +240,7 @@ fun PartsListScreen(
+                             modifier = Modifier.weight(1f))
+                         // Mit Rückfrage: Zurücksetzen wirft Sets und erstellte Liste weg.
+                         TextButton(
+-                            onClick = { leerenFragen = true },
++                            onClick = onLeere,
+                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                         ) { Text(stringResource(R.string.partslist_reset)) }
+                     }

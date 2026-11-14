@@ -1,0 +1,18 @@
+Gegenprobe: Rückfrage und Erfassen ohne eigenen Rand zum Fenster
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: N6
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
+index 148a98a..121078c 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
+@@ -143,7 +143,7 @@ fun erfassenSchliessbar(geaendert: Boolean) =
+  * der Plattform: Die hing vom Gerät ab, und ohne sie stand der Dialog randlos über der
+  * ganzen Breite. Mittig steht er von selbst; breiter als 560 dp wird er nicht.
+  */
+-fun Modifier.fensterRand(): Modifier = padding(horizontal = FENSTER_RAND)
++fun Modifier.fensterRand(): Modifier = padding(horizontal = FENSTER_RAND * 0)
+ 
+ private val FENSTER_RAND = 24.dp
+ 

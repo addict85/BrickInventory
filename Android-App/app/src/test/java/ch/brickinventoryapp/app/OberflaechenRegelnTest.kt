@@ -119,9 +119,9 @@ import ch.brickinventoryapp.teile.ui.TeileZiel
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
  *   merkliste-zustand-als-segmente  Zustandsfilter der Merkliste wieder als Segmente → rot „Merkliste filtert …“
  *   umschalter-chips-bei-200        Sets | Teile | Minifiguren wieder über SegmentWahl (Chips ab 130 %)
- *                                   → rot „der Sammlungs-Umschalter bleibt bei 200 Prozent …“
- *   umschalter-ohne-rollen          Segmente teilen sich bei 200 % die Bildschirmbreite (kein seitliches
- *                                   Rollen) → rot „der Sammlungs-Umschalter …“ („Minifiguren … abgeschnitten“)
+ *                                   → rot „der Sammlungs-Umschalter zeigt bei 200 Prozent …“ (Abstand)
+ *   umschalter-zeile-bei-200        Segmente auch bei 200 % in einer Zeile → rot „der Sammlungs-Umschalter
+ *                                   zeigt bei 200 Prozent …“ („Minifiguren … abgeschnitten“)
  *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
  *   detail-mit-zurueckpfeil         Detail neben der Liste mit Zurück-Pfeil statt X → rot „Tablet zeigt Merkliste und Detail …“
  *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
@@ -194,12 +194,12 @@ class OberflaechenRegelnTest {
     }
 
     /**
-     * Sets | Teile | Minifiguren wechselt die Ansicht und bleibt darum auch bei 200 % eine
-     * Segmentzeile: aneinanderstossende Segmente, keine Beschriftung abgeschnitten (die
-     * Zeile rollt seitlich, wenn sie nicht passt).
+     * Sets | Teile | Minifiguren wechselt die Ansicht und bleibt darum auch bei 200 % aus
+     * Segmenten: aneinanderstossend (neben- oder untereinander), keine Beschriftung
+     * abgeschnitten, alle drei ganz im Bild.
      */
     @Test
-    fun `der Sammlungs-Umschalter bleibt bei 200 Prozent eine Segmentzeile`() {
+    fun `der Sammlungs-Umschalter zeigt bei 200 Prozent alle drei Ansichten als Segmente`() {
         zeige(schrift = 2f) {
             val nav = rememberNavController()
             val reiter = remember { listOf(Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung")) }
@@ -222,9 +222,15 @@ class OberflaechenRegelnTest {
             assertTrue("$text bei 200 % abgeschnitten", layouts.none { l -> l.hasVisualOverflow })
             compose.onNode(hasText(text) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         }
+        val breite = ctx.resources.displayMetrics.widthPixels
+        segmente.forEach { s ->
+            assertTrue("Segment ausserhalb des Bilds (${s.left / dichte} – ${s.right / dichte} dp)",
+                s.left >= 0f && s.right <= breite + 1f)
+        }
         segmente.zipWithNext().forEach { (a, b) ->
-            assertTrue("Segmente stossen aneinander (${a.right / dichte} / ${b.left / dichte} dp)",
-                kotlin.math.abs(b.left - a.right) <= 2 * dichte && kotlin.math.abs(a.top - b.top) < 1f)
+            val nebeneinander = kotlin.math.abs(b.left - a.right) <= 2 * dichte && kotlin.math.abs(a.top - b.top) < 1f
+            val untereinander = kotlin.math.abs(b.top - a.bottom) <= 2 * dichte && kotlin.math.abs(a.left - b.left) < 1f
+            assertTrue("Segmente stossen aneinander ($a / $b)", nebeneinander || untereinander)
         }
     }
 

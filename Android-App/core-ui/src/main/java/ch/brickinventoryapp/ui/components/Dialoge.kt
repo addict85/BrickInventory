@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -65,7 +66,8 @@ fun Rueckfrage(
     // Titel als Überschrift und Name des Fensters: TalkBack nennt beim Öffnen, worum es geht.
     AlertDialog(
         onDismissRequest = onAbbrechen,
-        modifier = Modifier.semantics { paneTitle = titel },
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fensterRand().semantics { paneTitle = titel },
         icon = symbol?.let { s -> { Icon(s, null, tint = MaterialTheme.colorScheme.error) } },
         title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Bei 200 % Schrift reicht ein langer Satz sonst unter die Knöpfe.
@@ -113,7 +115,7 @@ fun ErfassenDialog(
     AlertDialog(
         onDismissRequest = schliessen,
         properties = erfassenSchliessbar(geaendert),
-        modifier = Modifier.semantics { paneTitle = titel },
+        modifier = Modifier.fensterRand().semantics { paneTitle = titel },
         title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Ist die Schrift gross, sind die Felder höher als das Fenster; die
         // Knöpfe bleiben dabei stehen, nur die Felder rollen.
@@ -133,8 +135,17 @@ fun ErfassenDialog(
  * verwarf bisher Set, Merkposten oder Lagerort samt allem Getippten. Zurück bleibt an,
  * fragt dann aber erst nach (ErfassenDialog).
  */
-fun erfassenSchliessbar(geaendert: Boolean, vollbild: Boolean = false) =
-    DialogProperties(dismissOnClickOutside = !geaendert, usePlatformDefaultWidth = !vollbild)
+fun erfassenSchliessbar(geaendert: Boolean) =
+    DialogProperties(dismissOnClickOutside = !geaendert, usePlatformDefaultWidth = false)
+
+/**
+ * Der Rand eines schwebenden Dialogs zum Fenster, selbst gesetzt statt der Fensterbreite
+ * der Plattform: Die hing vom Gerät ab, und ohne sie stand der Dialog randlos über der
+ * ganzen Breite. Mittig steht er von selbst; breiter als 560 dp wird er nicht.
+ */
+fun Modifier.fensterRand(): Modifier = padding(horizontal = FENSTER_RAND)
+
+private val FENSTER_RAND = 24.dp
 
 /**
  * Vollbild statt schwebendem Dialog: auf schmalem Fenster ab grosser Schrift. Dort
@@ -162,7 +173,7 @@ private fun VollbildErfassen(
     geaendert: Boolean,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(onDismissRequest = onSchliessen, properties = erfassenSchliessbar(geaendert, vollbild = true)) {
+    Dialog(onDismissRequest = onSchliessen, properties = erfassenSchliessbar(geaendert)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxSize().imePadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig, vertical = Abstaende.klein),

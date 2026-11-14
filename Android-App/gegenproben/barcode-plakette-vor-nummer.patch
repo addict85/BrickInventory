@@ -1,0 +1,28 @@
+Gegenprobe: „Schon in deiner Sammlung“ wieder zwischen Name und Nummer
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: M3 Barcode
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
+index 88c576a..794a239 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
+@@ -165,6 +165,8 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
+                     if (barcodeState.setName != null)
+                         Text(barcodeState.setName, fontWeight = FontWeight.Bold,
+                             style = MaterialTheme.typography.titleMedium)
++                    if (barcodeState.besitzMenge > 0 && !fuerTeileliste)
++                        InfoPlakette(stringResource(R.string.barcode_schon_besessen, barcodeState.besitzMenge), icon = Icons.Default.Check)
+                     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), verticalAlignment = Alignment.CenterVertically) {
+                         Text(barcodeState.result, style = MaterialTheme.typography.bodySmall,
+                             color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+@@ -176,9 +178,6 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
+                             }
+                     }
+                 }
+-                // Wie im Katalog: Wer ein Set schon hat, soll es sehen, bevor er es ein zweites Mal erfasst.
+-                if (barcodeState.besitzMenge > 0 && !fuerTeileliste)
+-                    InfoPlakette(stringResource(R.string.barcode_schon_besessen, barcodeState.besitzMenge), icon = Icons.Default.Check)
+                 HorizontalDivider()
+                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                     if (barcodeState.year != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {

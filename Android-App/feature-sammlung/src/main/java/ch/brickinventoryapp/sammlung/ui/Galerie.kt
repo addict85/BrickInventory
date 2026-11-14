@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import ch.brickinventoryapp.zustand.ui.fehlerklasse
+import ch.brickinventoryapp.zustand.ui.fehlerMeldung
 
 /**
  * Der Zustand der Galerie und wie er sich ändert — an EINER Stelle.
@@ -37,8 +38,6 @@ internal class Galerie(
     private val aktualisiere: suspend (GalleryUiState) -> Ergebnis<Unit>,
     private val holeKennzahlen: suspend () -> Ergebnis<StatsResponse>,
     private val meldeFehler: (Ergebnis.Error) -> Unit,
-    /** Der Satz zum Fehler, der in der leeren Galerie stehen bleibt. */
-    private val beschreibeFehler: (Ergebnis.Error) -> String = { it.message },
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
@@ -80,7 +79,7 @@ internal class Galerie(
                 r is Ergebnis.Error && r.transient && stand != null ->
                     _state.update { it.copy(galleryLoading = false, offlineStand = stand) }
                 r is Ergebnis.Error -> {
-                    _state.update { it.copy(galleryLoading = false, galleryFehler = beschreibeFehler(r),
+                    _state.update { it.copy(galleryLoading = false, galleryFehler = fehlerMeldung(r),
                         galleryFehlerKlasse = fehlerklasse(r)) }
                     meldeFehler(r)
                 }
@@ -142,4 +141,4 @@ internal typealias GalerieAnzeige = Ladeanzeige
  * ein gescheitertes Neuladen lässt die alte Liste stehen.
  */
 internal fun galerieAnzeige(g: GalleryUiState, gefiltert: Boolean): GalerieAnzeige =
-    ladeanzeige(g.sets.isNotEmpty(), g.galleryLoading, g.galleryFehler, gefiltert)
+    ladeanzeige(g.sets.isNotEmpty(), g.galleryLoading, g.galleryFehler != null, gefiltert)

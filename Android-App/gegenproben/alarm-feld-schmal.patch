@@ -1,0 +1,18 @@
+Gegenprobe: Felder und Wahlen eines Alarms wieder höchstens 320 dp breit
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: N2
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+index 324df06..eb7e669 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+@@ -248,7 +248,7 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
+  * Höchstbreite der Felder und Wahlen eines Alarms: Auf dem Telefon füllen sie die Karte
+  * und enden am selben Rand wie Kopf und Trennlinie; erst auf dem Tablet bleiben sie schmal.
+  */
+-private val BETRAG_BREITE = 420.dp
++private val BETRAG_BREITE = 320.dp
+ 
+ /**
+  * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen

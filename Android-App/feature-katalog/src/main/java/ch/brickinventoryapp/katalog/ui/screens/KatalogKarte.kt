@@ -48,6 +48,7 @@ import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.theme.LocalSteinDekor
 import ch.brickinventoryapp.ui.theme.lichtStreifen
 
@@ -147,7 +148,7 @@ fun CatalogSetCard(
                                     ImageVector.vectorResource(R.drawable.ic_parts_bricks),
                                     contentDescription = null,
                                     tint = Color.Unspecified,
-                                    modifier = Modifier.size(13.dp)
+                                    modifier = Modifier.size(mitSchrift(13.dp))
                                 )
                                 val teile = set.numParts ?: 0
                                 Text(fmtInt(teile), Modifier.vorgelesenAls(

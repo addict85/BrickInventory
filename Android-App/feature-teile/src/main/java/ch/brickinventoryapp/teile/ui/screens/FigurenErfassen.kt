@@ -81,6 +81,7 @@ internal fun AddMinifigDialog(
         )
         ErfassungsFelder(
             anzahl = quantity, onAnzahl = { quantity = it },
+            anzahlHinweis = stringResource(R.string.minifigs_quantity_hint),
             preis = unitPrice, onPreis = { unitPrice = it },
             zustand = condition, onZustand = { condition = it },
             lagerort = lagerort, onLagerort = { lagerort = it },

@@ -90,7 +90,6 @@ class GalerieViewModel @Inject constructor(
         aktualisiere = { g -> kontoAbfrage(g)?.let { kontosicht.galerie.aktualisiere(it) } ?: sets.aktualisiereSets() },
         holeKennzahlen = { finanzen.getStats(filter.kontoFuer(ScopeFilter.View.GALLERY)) },
         meldeFehler = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
-        beschreibeFehler = { meldungen.meldung(it) },
         vergissScroll = { scrollMemory.vergiss("gallery") },
     )
     /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */

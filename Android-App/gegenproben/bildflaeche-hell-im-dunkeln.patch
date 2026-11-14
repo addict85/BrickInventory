@@ -1,0 +1,18 @@
+Gegenprobe: die Bildfläche bleibt auch im Dunkeln weiss
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: N3
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
+index f464318..a02e065 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
+@@ -65,7 +65,7 @@ fun ProduktBild(
+     // Fläche über die ganze Kachel blendete und sah in jedem dunklen Design gleich aus.
+     val grund = when {
+         !bildgrund || !geladen -> Modifier
+-        dunkel -> Modifier.background(MaterialTheme.colorScheme.surfaceContainerHighest)
++        dunkel -> Modifier.background(BILDGRUND)
+         else -> Modifier.background(BILDGRUND)
+     }
+     Box(modifier.then(grund), contentAlignment = Alignment.Center) {

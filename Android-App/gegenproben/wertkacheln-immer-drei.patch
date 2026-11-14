@@ -4,10 +4,11 @@ Test: ch.brickinventoryapp.gemeinsam.WertKachelnTest
 Rot: Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+index 5b45eb7..bdb1cca 100644
 --- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
 +++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
-@@ -421,7 +421,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier =
-         val bedarf = with(dichte) { breitester.toDp() } + Abstaende.mittel * 2 + 2.dp
+@@ -431,7 +431,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier =
+         val pnlText = if (breite(pnlEinzeilig) > maxWidth) pnlTeile.joinToString("\n") else pnlEinzeilig
          val abstand = Abstaende.klein
          val gleichHoch = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
 -        when (kachelAnordnung(maxWidth, bedarf, abstand)) {

@@ -229,7 +229,7 @@ class AblaufTest {
                     zustand = zustand, onFeld = { _, _, _, _ -> },
                     onPinSchalten = { id -> zustand = zustand.copy(pinSichtbar = zustand.pinSichtbar + id) },
                     onBearbeiten = {}, onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {},
-                    onKopieren = { id, _ -> kopiert += id.toString() }, onGuthaben = {}, onExportieren = {}, onGuthabenAlle = {},
+                    onKopieren = { id, _ -> kopiert += id.toString() }, onGuthaben = {},
                     onGuthabenAbbrechen = {}, onErneut = {}, onBestaetigen = { _, _ -> }, onBestaetigungAbbrechen = {},
                 )
             }

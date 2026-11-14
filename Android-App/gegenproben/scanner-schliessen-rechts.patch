@@ -1,0 +1,18 @@
+Gegenprobe: der Scanner schliesst wieder oben rechts
+Modul: app
+Test: ch.brickinventoryapp.app.UxPruefungZweiTest
+Rot: N4 der Scanner
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/BarcodeScannerScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/BarcodeScannerScreen.kt
+index ab99f57..66fd260 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/BarcodeScannerScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/BarcodeScannerScreen.kt
+@@ -159,7 +159,7 @@ fun BarcodeScannerScreen(
+             }
+         }
+         // Oben links wie jedes Schliessen einer Vollbildseite (ZurueckKnopf).
+-        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopStart)) {
++        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+             IconButton(onClick = onDismiss, modifier = Modifier.padding(Abstaende.gross)) {
+                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+             }

@@ -34,8 +34,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.Badge
@@ -87,9 +88,9 @@ fun <T> SegmentWahl(
 }
 
 /**
- * Ein Wechsel zwischen Ansichten (Sets | Teile | Minifiguren) ist immer eine Segmentzeile,
- * auch bei grosser Schrift: Dann rollt sie seitlich, statt Beschriftungen abzuschneiden
- * oder zu Chips zu werden, die wie Filter aussähen.
+ * Ein Wechsel zwischen Ansichten (Sets | Teile | Minifiguren) sind immer Segmente, nie
+ * Chips, die wie Filter aussähen. Bei grosser Schrift stehen sie untereinander: Seitlich
+ * rollend lag „Minifiguren“ ausserhalb des Bilds, ohne dass etwas darauf hinwies.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,24 +100,72 @@ fun <T> AnsichtUmschalter(
     onWahl: (T) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val gross = LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB
-    Box(if (gross) modifier.fillMaxWidth().horizontalScroll(rememberScrollState()) else modifier.fillMaxWidth()) {
-        SingleChoiceSegmentedButtonRow(if (gross) Modifier else Modifier.fillMaxWidth()) {
-            optionen.forEachIndexed { i, (wert, text) ->
-                SegmentedButton(
-                    selected = wert == gewaehlt,
-                    onClick = { onWahl(wert) },
-                    shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
-                ) {
-                    // Genau so breit wie das Wort: Dann heisst ein Überlauf im Textlayout wirklich
-                    // abgeschnitten, nicht bloss „Platz neben dem Wort“ (das Segment reserviert
-                    // daneben immer Raum fürs Häkchen).
-                    Text(text, Modifier.width(IntrinsicSize.Max), maxLines = 1, softWrap = false)
+    if (LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB) {
+        SegmentSpalte(optionen, gewaehlt, onWahl, modifier)
+        return
+    }
+    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
+        optionen.forEachIndexed { i, (wert, text) ->
+            SegmentedButton(
+                selected = wert == gewaehlt,
+                onClick = { onWahl(wert) },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
+            ) {
+                // Genau so breit wie das Wort: Dann heisst ein Überlauf im Textlayout wirklich
+                // abgeschnitten, nicht bloss „Platz neben dem Wort“ (das Segment reserviert
+                // daneben immer Raum fürs Häkchen).
+                Text(text, Modifier.width(IntrinsicSize.Max), maxLines = 1, softWrap = false)
+            }
+        }
+    }
+}
+
+/**
+ * Segmente untereinander, je über die volle Breite: oben und unten gerundet, dazwischen
+ * gerade, die Ränder übereinander. Material kennt nur die Zeile; so bleibt es dieselbe
+ * Bauform (Rand, Häkchen, Fläche der Wahl) und wird nicht zur Chipgruppe.
+ */
+@Composable
+private fun <T> SegmentSpalte(
+    optionen: List<Pair<T, String>>,
+    gewaehlt: T,
+    onWahl: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val farben = MaterialTheme.colorScheme
+    Column(modifier.fillMaxWidth().selectableGroup()) {
+        optionen.forEachIndexed { i, (wert, text) ->
+            val an = wert == gewaehlt
+            val form = RoundedCornerShape(
+                topStart = if (i == 0) SPALTE_RUNDUNG else 0.dp, topEnd = if (i == 0) SPALTE_RUNDUNG else 0.dp,
+                bottomStart = if (i == optionen.lastIndex) SPALTE_RUNDUNG else 0.dp,
+                bottomEnd = if (i == optionen.lastIndex) SPALTE_RUNDUNG else 0.dp,
+            )
+            Surface(
+                selected = an,
+                onClick = { onWahl(wert) },
+                shape = form,
+                color = if (an) farben.secondaryContainer else farben.surface,
+                contentColor = if (an) farben.onSecondaryContainer else farben.onSurface,
+                border = BorderStroke(1.dp, farben.outline),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).offset(y = -(i.dp))
+                    .fokusRahmen(form).semantics { role = Role.RadioButton },
+            ) {
+                Row(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
+                    horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    if (an) {
+                        Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))
+                        Spacer(Modifier.width(Abstaende.klein))
+                    }
+                    Text(text, style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
     }
 }
+
+/** Wie die Enden einer Segmentzeile: halbrund bei 48 dp Höhe. */
+private val SPALTE_RUNDUNG = 24.dp
 
 /**
  * Eine Wahl aus wenigen Möglichkeiten als Chips: Vorgelesen als Radiogruppe

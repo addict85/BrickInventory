@@ -4,14 +4,15 @@ Test: ch.brickinventoryapp.teile.ErfassenDialogTest
 Rot: daneben tippen
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
+index 148a98a..f66848a 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
-@@ -133,7 +133,7 @@
+@@ -136,7 +136,7 @@ fun ErfassenDialog(
   * fragt dann aber erst nach (ErfassenDialog).
   */
- fun erfassenSchliessbar(geaendert: Boolean, vollbild: Boolean = false) =
--    DialogProperties(dismissOnClickOutside = !geaendert, usePlatformDefaultWidth = !vollbild)
-+    DialogProperties(dismissOnClickOutside = true, usePlatformDefaultWidth = !vollbild)
+ fun erfassenSchliessbar(geaendert: Boolean) =
+-    DialogProperties(dismissOnClickOutside = !geaendert, usePlatformDefaultWidth = false)
++    DialogProperties(dismissOnClickOutside = true, usePlatformDefaultWidth = false)
  
  /**
-  * Vollbild statt schwebendem Dialog: auf schmalem Fenster ab grosser Schrift. Dort
+  * Der Rand eines schwebenden Dialogs zum Fenster, selbst gesetzt statt der Fensterbreite
