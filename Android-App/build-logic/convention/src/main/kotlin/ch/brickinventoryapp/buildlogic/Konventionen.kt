@@ -2,6 +2,8 @@ package ch.brickinventoryapp.buildlogic
 
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
+import ch.brickinventoryapp.buildlogic.kanten.Modulkanten
+import org.gradle.api.GradleException
 import org.gradle.api.JavaVersion
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -95,6 +97,7 @@ internal fun testprotokoll(test: Test) {
 /** Compose-Übersetzer, buildFeatures.compose und die Compose-Gruppe samt BOM. */
 class AndroidComposeKonvention : Plugin<Project> {
     override fun apply(target: Project) {
+        Modulkanten.oberflaecheVerstoss(target.name, listOf("brickinventory.android.compose"))?.let { throw GradleException(it) }
         target.beiAndroid { android ->
             target.pluginAusKatalog("kotlin.compose")
             android.buildFeatures.compose = true

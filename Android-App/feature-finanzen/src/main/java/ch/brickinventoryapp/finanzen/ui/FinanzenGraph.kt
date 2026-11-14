@@ -20,7 +20,7 @@ import ch.brickinventoryapp.finanzen.ui.viewmodel.gutscheinPdfAdresse
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
-import ch.brickinventoryapp.zustand.ui.Bereichsumgebung
+import ch.brickinventoryapp.navigation.Bereichsumgebung
 
 /** Was die Finanzen von der App brauchen: Set und Einzelstück gehören anderen Bereichen. */
 interface FinanzenNavigation : Bereichsumgebung {
@@ -35,7 +35,6 @@ interface FinanzenNavigation : Bereichsumgebung {
 fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
     val navController = navigation.navController
     composable<FinanzZiel.Finance> {
-        val vm = navigation.app
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
         val financeListState = remember { LazyListState() }
         val finanzen: FinanzViewModel = hiltViewModel()
@@ -48,7 +47,7 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
             }
             ScrollPositionKeeper(
                 FinanzZiel.Finance.rollSchluessel, financeListState,
-                financeState.valuation != null, vm.scrollMemory)
+                financeState.valuation != null, navigation.rollgedaechtnis)
             FinanceRoute(
                 vm = finanzen,
                 imageLoader = navigation.bilder,
@@ -64,11 +63,10 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
         }
     }
     composable<FinanzZiel.Gutscheine> {
-        val vm = navigation.app
         // Am Ziel: Klartext und PIN enden mit der Seite. Der PDF-Betrachter liegt
         // darüber, die Seite bleibt also bestehen, solange er offen ist.
         val gutscheinVm: GutscheinViewModel = hiltViewModel()
-        val state by vm.state.collectAsStateWithLifecycle()
+        val state by navigation.sitzung.collectAsStateWithLifecycle()
         val gutscheine by gutscheinVm.state.collectAsStateWithLifecycle()
         // Ein freigegebenes Gutschein-PDF (eines oder alle): Das Ziel mit Ticket
         // steht im Zustand, die Navigation macht der Graph. Der Titel wird AUSSERHALB
@@ -92,7 +90,7 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
             return@composable
         }
         GutscheinPdfSchutz(pdf.url)
-        val state by navigation.app.state.collectAsStateWithLifecycle()
+        val state by navigation.sitzung.collectAsStateWithLifecycle()
         PdfViewerRoute(
             pdfUrl = pdf.url,
             title  = pdf.titel,

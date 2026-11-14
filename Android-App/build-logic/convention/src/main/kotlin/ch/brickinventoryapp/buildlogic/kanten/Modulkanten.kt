@@ -30,6 +30,8 @@ object Modulkanten {
         "core-sitzung" to setOf("core-model", "core-ressourcen", "core-netz", "core-data"),
         // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
         "core-zustand" to setOf("core-model", "core-ressourcen", "core-netz", "core-data", "core-sicherheit", "core-sitzung"),
+        // Die Umgebung der Bereiche (NavController, Bilder, Snackbar) über dem Zustand.
+        "core-navigation" to setOf("core-model", "core-sitzung", "core-zustand"),
         "core-testing" to setOf("core-zustand", "core-sitzung", "core-data", "core-sicherheit", "core-offline"),
     )
 
@@ -42,6 +44,22 @@ object Modulkanten {
         "core-sicherheit" to setOf("feature-anmeldung"),
         "core-offline" to emptySet(),
     )
+
+    /**
+     * Kernmodule ohne Compose: Zustand, Daten und alles darunter. Ein Compose-Typ dort zöge
+     * Oberfläche unter den Zustand, und über ihn erreichte ein Bereich, was er nicht kennen soll.
+     */
+    val ohneOberflaeche: Set<String> = setOf(
+        "core-model", "core-netz", "core-sicherheit", "core-offline", "core-data", "core-update", "core-dienste",
+        "core-sitzung", "core-zustand",
+    )
+
+    private val oberflaechenPlugins = setOf("brickinventory.android.compose", "brickinventory.android.feature", "kotlin.compose")
+
+    /** Der Verstoss, wenn [modul] mit [plugins] (Katalognamen wie im Modulskript) Compose einschaltet. */
+    fun oberflaecheVerstoss(modul: String, plugins: Collection<String>): String? =
+        (plugins.toSet() intersect oberflaechenPlugins).takeIf { modul in ohneOberflaeche && it.isNotEmpty() }
+            ?.let { "$modul liegt unter der Oberfläche und schaltet Compose ein: ${it.sorted()}" }
 
     /** Die Verstösse unter [kanten], je einer als Satz; leer, wenn alle erlaubt sind. */
     fun verstoesse(kanten: Collection<Modulkante>): List<String> = kanten.mapNotNull { k ->

@@ -71,6 +71,9 @@ import ch.brickinventoryapp.testing.Quellen
  *      rot „Schichtung der Kernmodule: core-sitzung hängt an core-ui“
  *   Z  gegenproben/konto-haengt-an-tresor.patch: feature-konto bindet core-sicherheit wieder ein →
  *      rot „feature-konto hängt an core-sicherheit, das unter dem Zustand liegt“ (kein Bereich hängt …)
+ *   AA core-zustand schaltet wieder brickinventory.android.compose ein → rot „core-zustand liegt unter
+ *      der Oberfläche und schaltet Compose ein“ (Schichtung …; mit kotlinc gemessen, in Gradle bricht
+ *      schon AndroidComposeKonvention ab); gegenproben/zustand-darf-oberflaeche.patch → rot „die Kantenregel …“
  *   W  gegenproben/route-im-kern.patch: eine Route in core-model, die Verwaltung öffnet sie →
  *      rot „feature-verwaltung nennt fremde Routentypen: [Zentralziel]“ (kein Bereich hängt …);
  *      lokal mit kotlinc gegen den Baum gemessen, in der CI über Gradle
@@ -114,6 +117,7 @@ class ModulgrenzenTest {
             "app" to "app", "core-model" to "model", "core-netz" to "netz", "core-data" to "data",
             "core-sicherheit" to "sicherheit", "core-offline" to "offline",
             "core-update" to "update", "core-dienste" to "dienste", "core-ui" to "ui", "core-zustand" to "zustand",
+            "core-navigation" to "navigation",
             "core-sitzung" to "sitzung",
             "core-testing" to "testing", "feature-anmeldung" to "anmeldung", "feature-katalog" to "katalog",
             "feature-sammlung" to "sammlung", "feature-teile" to "teile", "feature-finanzen" to "finanzen",
@@ -173,6 +177,9 @@ class ModulgrenzenTest {
         assertTrue("Nur ${alle.size} Modulkanten — Muster veraltet?", alle.size >= 60)
         val verstoesse = Modulkanten.verstoesse(alle)
         assertTrue(verstoesse.joinToString("\n"), verstoesse.isEmpty())
+        val plugin = Regex("""alias\(libs\.plugins\.([\w.]+)\)""")
+        val oberflaeche = module().mapNotNull { (name, bau) -> Modulkanten.oberflaecheVerstoss(name, plugin.findAll(bau).map { it.groupValues[1] }.toList()) }
+        assertTrue(oberflaeche.joinToString("\n"), oberflaeche.isEmpty())
         // core-netz ist die untere Netz-Schicht: Ablage, Repositories und Hilt bleiben in core-data.
         val netz = kerne.getValue("core-netz")
         val bibliotheken = Regex("""\(libs\.([\w.]+)\)""").findAll(netz).map { it.groupValues[1] }.toList()
@@ -211,6 +218,9 @@ class ModulgrenzenTest {
      *   die api-Zeile gestrichen → rot hier, „Modulkanten per api …“ fehlt
      *   core-ui in kerne["core-zustand"] eingetragen → rot hier
      *   gegenproben/tiefe-kerne-offen.patch: die Regel zu tiefeKerne gestrichen → rot hier
+     *
+     *   in oberflaecheVerstoss `modul in ohneOberflaeche &&` gestrichen → rot hier (core-navigation)
+     *   gegenproben/zustand-darf-oberflaeche.patch: core-zustand fehlt in ohneOberflaeche → rot hier
      */
     @Test
     fun `die Kantenregel verbietet Bereich an Bereich, falsche Schichtung, api und core-testing im Hauptcode`() {
@@ -232,6 +242,9 @@ class ModulgrenzenTest {
         assertEquals(emptyList<String>(), pruefe("app", "implementation", "feature-teile"))
         assertEquals(emptyList<String>(), pruefe("core-data", "api", "core-model"))
         assertEquals(emptyList<String>(), pruefe("core-zustand", "implementation", "core-data"))
+        assertEquals("core-zustand liegt unter der Oberfläche und schaltet Compose ein: [brickinventory.android.compose]",
+            Modulkanten.oberflaecheVerstoss("core-zustand", listOf("brickinventory.android.library", "brickinventory.android.compose")))
+        assertEquals(null, Modulkanten.oberflaecheVerstoss("core-navigation", listOf("brickinventory.android.compose")))
     }
 
     @Test
