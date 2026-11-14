@@ -1377,7 +1377,7 @@ test('in Testkommentaren genannte Pfade gibt es', () => {
   // Kommentarzeile in test/ und test/helpers/; ein .js-Pfad gilt auch, wenn die .ts-Quelle dazu existiert.
   // Gegenprobe (10.11.2026): in acquisition-scope-db.test.js den Pfad bei schreibbereich auf den früheren der
   // Set-Routen zurückgesetzt → rot mit dieser Zeile als Fundstelle. Gegenprobe (14.11.2026): ohne gebautes
-  // Bündel und ohne ERZEUGNISSE → rot (buendel-gebaut.test.js); `public/js/app.bundle2.js` → rot.
+  // Bündel und ohne ERZEUGNISSE → rot (buendel-gebaut.test.js); derselbe Pfad mit `app.bundle2.js` → rot.
   const REPO = path.join(WEB, '..');
   const ordner = [WEB, REPO]
     .flatMap(w =>
