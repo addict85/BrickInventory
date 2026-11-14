@@ -122,7 +122,9 @@ Der Zeilenschutz (Migrationen 0111, 0112) fängt einen **vergessenen Filter** au
 `user_id`: In 34 Tabellen mit Kontodaten (Bestand, Käufe, Merkliste, Einstellungen
 je Konto, Zugangsdaten wie `api_tokens`, `passkeys`, `zweiter_faktor`, Aufträge)
 sieht und ändert die Laufzeitrolle nur Zeilen von `app.konto` und dessen direkten
-Unterkonten, ohne Konto keine. Die Datenbankschicht setzt `app.konto` je
+Unterkonten, ohne Konto keine. Zugangsdaten (Passkeys, zweiter Faktor, Tokens,
+Geräteschlüssel, Schrittfreigaben) sieht nur das Konto selbst, kein Hauptkonto
+(Migration 0113). Die Datenbankschicht setzt `app.konto` je
 Transaktion (`set_config(…, true)`) aus dem Konto der Anfrage. Den Systemrahmen
 trägt die Systemrolle (`BYPASSRLS`), keine Einstellung.
 
