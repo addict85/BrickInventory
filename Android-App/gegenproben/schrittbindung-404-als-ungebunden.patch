@@ -1,0 +1,19 @@
+Gegenprobe: Ein 404 auf die Challenge gilt wieder als „Server ohne Schrittschutz“; die App prüft dann nur im Gerät
+Modul: core-data
+Test: ch.brickinventoryapp.data.SchrittbindungTest
+Rot: ein 404 auf die Challenge haelt an
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
+index 1262215..3a4085f 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SchrittbindungImpl.kt
+@@ -27,7 +27,8 @@ internal class SchrittbindungImpl @Inject constructor(
+         val kennung = aktion.kennung ?: return Schrittantwort.NichtGebunden
+         return when (val r = sicherAufrufen { api.schrittChallenge(SchrittChallengeAnfrage(kennung)) }) {
+             is Ergebnis.Success -> Schrittantwort.Challenge(r.data.challenge, r.data.nachricht)
+-            is Ergebnis.Error -> Schrittantwort.Abgelehnt(r.message.ifBlank { null })
++            is Ergebnis.Error -> if (r is Ergebnis.Error.Server && r.status == 404) Schrittantwort.NichtGebunden
++                else Schrittantwort.Abgelehnt(r.message.ifBlank { null })
+         }
+     }
+ 

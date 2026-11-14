@@ -13,7 +13,7 @@ enum class Schrittaktion(val kennung: String?) {
 sealed interface Schrittantwort {
     data class Challenge(val challenge: String, val nachricht: String) : Schrittantwort
     data object Frei : Schrittantwort
-    /** Der Server kennt keinen Schrittschutz (ältere Fassung): Er verlangt dann auch keinen. */
+    /** Ein Schritt ohne Aktion am Server ([Schrittaktion.LOKAL]): Die Prüfung bleibt im Gerät. */
     data object NichtGebunden : Schrittantwort
     data class Abgelehnt(val meldung: String?) : Schrittantwort
 }
@@ -21,8 +21,6 @@ sealed interface Schrittantwort {
 /** Die Nonce, die der Keystore-Schlüssel als Attestation-Challenge trägt ([Nonce.wert]: Base64url). */
 sealed interface Schluesselnonce {
     data class Nonce(val wert: String) : Schluesselnonce
-    /** Der Server verlangt keine Attestation (ältere Fassung): Er nimmt den blossen Schlüssel. */
-    data object NichtGebunden : Schluesselnonce
     data class Abgelehnt(val meldung: String?) : Schluesselnonce
 }
 
@@ -32,11 +30,11 @@ interface Schrittbindung {
     suspend fun challenge(aktion: Schrittaktion): Schrittantwort
     /** [Schrittantwort.Frei] oder [Schrittantwort.Abgelehnt]. */
     suspend fun freigeben(challenge: String, signatur: ByteArray): Schrittantwort
-    /** Der öffentliche Schlüssel als X.509 (PublicKey.getEncoded()); nur ein Server ohne Attestation nimmt ihn. */
-    suspend fun hinterlege(oeffentlich: ByteArray): Boolean
-
-    /** Nur gleich nach der Anmeldung; ohne Vorgabe: ein Server ohne Attestation. */
-    suspend fun schluesselNonce(): Schluesselnonce = Schluesselnonce.NichtGebunden
+    /**
+     * Nur gleich nach der Anmeldung. Es gibt keinen Weg ohne Nonce: Der Server nimmt
+     * keinen blossen Schlüssel an, ein Rückfall darauf liesse sich nur erzwingen.
+     */
+    suspend fun schluesselNonce(): Schluesselnonce = Schluesselnonce.Abgelehnt(null)
 
     /** Die Attestierungskette (DER je Zertifikat, Blatt zuerst): [Schrittantwort.Frei] oder [Schrittantwort.Abgelehnt]. */
     suspend fun hinterlegeKette(kette: List<ByteArray>): Schrittantwort = Schrittantwort.Abgelehnt(null)
@@ -46,7 +44,6 @@ interface Schrittbindung {
         val OHNE: Schrittbindung = object : Schrittbindung {
             override suspend fun challenge(aktion: Schrittaktion) = Schrittantwort.NichtGebunden
             override suspend fun freigeben(challenge: String, signatur: ByteArray) = Schrittantwort.Frei
-            override suspend fun hinterlege(oeffentlich: ByteArray) = false
         }
     }
 }
