@@ -540,6 +540,7 @@ function routenOhneFachablauf() {
   // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
   // routes/api_v1/sets.ts → rot; `import { erzeugeMail } from '../../src/mail'` in
   // routes/auth/registrierung.ts → rot.
+  /** @type {[RegExp, string][]} */
   const MUSTER = [
     [
       /import\s*\{[^}]*\b(?:hashToken|invalidateTheme)\b[^}]*\}\s*from\s*'[./]+\/src\/konto'/g,
