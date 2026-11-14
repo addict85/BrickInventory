@@ -97,7 +97,7 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
 
   await t.test('ein Dienst eines anderen Bereichs über t läuft in der Transaktion', async () => {
     const r = await k.transaktion(async tt => {
-      await tt.db.run(`UPDATE users SET username = username WHERE id = $1`, [uid]);
+      await tt.db.run(`UPDATE users SET first_name = first_name WHERE id = $1`, [uid]);
       // blickfeldIds fragt den Haushalt über seinen eigenen Zugang; über t gerufen gehört er dazu.
       const ids = await tt.haushalt.blickfeldIds(uid);
       await assert.rejects(k.haushalt.schreibbereich(uid), dbModul.UngebundeneAbfrage);

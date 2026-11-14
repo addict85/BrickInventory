@@ -274,7 +274,7 @@ CREATE TABLE idempotenz (
 );
 CREATE INDEX idx_idempotenz_angelegt ON idempotenz USING btree (angelegt);
 ALTER TABLE idempotenz ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON idempotenz USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON idempotenz USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE image_misses (
   cache_key text NOT NULL,
@@ -1113,7 +1113,7 @@ CREATE TABLE vouchers (
 );
 CREATE TRIGGER vouchers_waehrung BEFORE INSERT OR UPDATE ON vouchers FOR EACH ROW EXECUTE FUNCTION erfassung_waehrung();
 ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
-CREATE POLICY zeilenschutz ON vouchers USING ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[]))) WITH CHECK ((user_id = ANY (( SELECT zeilenschutz_konten() AS zeilenschutz_konten)::integer[])));
+CREATE POLICY zeilenschutz ON vouchers USING ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE wanted (
   id integer NOT NULL DEFAULT nextval('wanted_id_seq'::regclass),
@@ -1390,6 +1390,24 @@ AS $function$
 BEGIN
   NEW.set_number := set_nummer_mit_version(NEW.set_number);
   RETURN NEW;
+END $function$;
+
+CREATE OR REPLACE FUNCTION verwaltungsprotokoll_aufraeumen()
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'pg_catalog', 'pg_temp'
+AS $function$
+DECLARE
+  alt integer;
+  namen integer;
+BEGIN
+  DELETE FROM verwaltungsprotokoll WHERE zeit < now() - interval '365 days';
+  GET DIAGNOSTICS alt = ROW_COUNT;
+  UPDATE verwaltungsprotokoll p SET ziel_name = NULL
+   WHERE ziel_name IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = p.ziel_id);
+  GET DIAGNOSTICS namen = ROW_COUNT;
+  RETURN alt + namen;
 END $function$;
 
 CREATE OR REPLACE FUNCTION zeilenschutz_konten()

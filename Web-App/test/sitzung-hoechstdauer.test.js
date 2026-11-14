@@ -8,6 +8,13 @@
  *      „trotz Betrieb endet die Sitzung nach der Höchstdauer"
  *   C  `angemeldetAm` in establishSession nicht gesetzt → rot: „die Anmeldung
  *      setzt den Zeitpunkt" (die Frist begänne erst beim nächsten Aufruf)
+ *   Verwalter (14.11.2026 gemessen, je einzeln):
+ *   D  in sitzungsHoechstdauer die Leerlaufprüfung für Verwalter gestrichen → rot:
+ *      „eine Verwaltersitzung endet nach kurzem Leerlauf …“ (nach dem Leerlauf noch angemeldet)
+ *   E  das Nachführen von zuletztAm gestrichen → rot: dieselbe Prüfung („solange sie
+ *      arbeitet“: trotz Anfragen abgemeldet)
+ *   F  verwalterHoechstMs durch hoechstMs ersetzt → rot: „… und nach ihrer kürzeren Höchstdauer“
+ *   G  in sitzungsfristen() das Math.min für den Leerlauf gestrichen → rot: „Verwalter nie länger …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,12 +30,21 @@ const establishSession = (...a) =>
 
 const { warte } = require('./helpers/zeit');
 
-function testApp(hoechstMs) {
+const LANG = 3_600_000;
+
+function testApp(hoechstMs, verwalter = {}) {
   const app = express();
   app.use(session({ secret: 'test-geheimnis', resave: false, saveUninitialized: false }));
-  app.use(sitzungsHoechstdauer(hoechstMs));
+  app.use(
+    sitzungsHoechstdauer({
+      hoechstMs,
+      verwalterHoechstMs: verwalter.hoechstMs ?? hoechstMs,
+      verwalterLeerlaufMs: verwalter.leerlaufMs ?? LANG,
+    }),
+  );
   app.post('/anmelden', async (req, res) => {
-    await establishSession(req, { userId: 7, username: 'x', isAdmin: false });
+    const admin = req.query.verwalter === '1';
+    await establishSession(req, { userId: admin ? 8 : 7, username: 'x', isAdmin: admin });
     res.json({ am: req.session.angemeldetAm });
   });
   app.get('/wer', (req, res) => res.json({ userId: req.session?.userId ?? null }));
@@ -60,5 +76,62 @@ test('Höchstdauer der Webapp-Sitzung', async t => {
     await bis(FRIST + 200);
     assert.equal(await wer(), null, 'nach der Frist ist niemand mehr angemeldet');
     assert.equal(await wer(), null, 'und die Sitzung ist gelöscht, nicht nur übersprungen');
+  });
+});
+
+/** Anmelden und einen Abrufer für „wer ist angemeldet“ zurückgeben. */
+async function anmelden(base, verwalter) {
+  const r = await fetch(`${base}/anmelden${verwalter ? '?verwalter=1' : ''}`, { method: 'POST' });
+  const { am } = await r.json();
+  const keks = r.headers.get('set-cookie').split(';')[0];
+  return { am, wer: async () => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).userId };
+}
+
+test('Verwaltersitzungen haben kürzere Fristen', async t => {
+  await t.test('eine Verwaltersitzung endet nach kurzem Leerlauf, solange sie arbeitet aber nicht', async () => {
+    const LEER = 3_000;
+    const { srv, base } = testApp(LANG, { leerlaufMs: LEER });
+    t.after(() => new Promise(r => srv.close(r)));
+    const chef = await anmelden(base, true);
+    const nutzer = await anmelden(base, false);
+    // Arbeiten über länger als den Leerlauf: Jede Anfrage schiebt die Frist.
+    const bis = Date.now() + LEER * 1.5;
+    while (Date.now() < bis) {
+      assert.equal(await chef.wer(), 8, 'trotz Anfragen abgemeldet');
+      await warte(400);
+    }
+    await warte(LEER + 800);
+    assert.equal(await chef.wer(), null, 'nach dem Leerlauf noch angemeldet');
+    assert.equal(await nutzer.wer(), 7, 'die allgemeine Frist gilt für andere weiter');
+  });
+
+  await t.test('… und nach ihrer kürzeren Höchstdauer', async () => {
+    const HOECHST = 2_000;
+    const { srv, base } = testApp(LANG, { hoechstMs: HOECHST });
+    t.after(() => new Promise(r => srv.close(r)));
+    const chef = await anmelden(base, true);
+    const nutzer = await anmelden(base, false);
+    assert.equal(await chef.wer(), 8);
+    await warte(Math.max(0, chef.am + HOECHST + 300 - Date.now()));
+    assert.equal(await chef.wer(), null);
+    assert.equal(await nutzer.wer(), 7);
+  });
+
+  await t.test('Verwalter nie länger als alle anderen', () => {
+    const { sitzungsfristen } = _req('src/konto/sitzungsFrist.js');
+    const f = sitzungsfristen({
+      sitzungHoechstStd: 2,
+      sitzungLeerlaufMin: 10,
+      sitzungVerwalterHoechstStd: 12,
+      sitzungVerwalterLeerlaufMin: 30,
+    });
+    assert.deepEqual(f, {
+      hoechstMs: 2 * 3_600_000,
+      verwalterHoechstMs: 2 * 3_600_000,
+      verwalterLeerlaufMs: 10 * 60_000,
+    });
+    const vorgabe = sitzungsfristen(_req('src/infra/konfig.js').ladeKonfig({}));
+    assert.equal(vorgabe.verwalterLeerlaufMs, 30 * 60_000, 'Vorgabe 30 Minuten');
+    assert.equal(vorgabe.verwalterHoechstMs, 12 * 3_600_000, 'Vorgabe 12 Stunden');
   });
 });

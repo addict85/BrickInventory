@@ -593,7 +593,8 @@ esac
       assert.equal(
         (
           await c.query(
-            `SELECT has_table_privilege($1, 'public.users', 'INSERT') AND NOT has_table_privilege($1, 'public.users', 'TRUNCATE')
+            `SELECT has_table_privilege($1, 'public.sets', 'INSERT') AND NOT has_table_privilege($1, 'public.sets', 'TRUNCATE')
+        AND NOT has_table_privilege($1, 'public.users', 'INSERT')
         AND NOT has_schema_privilege($1, 'public', 'CREATE') AS ok`,
             [APP],
           )

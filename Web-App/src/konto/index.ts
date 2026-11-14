@@ -13,7 +13,13 @@ export { meldeAnmeldung } from './loginLimiter';
 export { vertrauenspartei } from './passkeys';
 export { QR_TTL_MS } from './qrKopplung';
 export { beruehrenMs, drossleBeruehren } from './sitzungsBeruehrung';
-export { sitzungLeerlaufMs, sitzungLeerlaufSek, sitzungHoechstMs, sitzungsHoechstdauer } from './sitzungsFrist';
+export {
+  sitzungLeerlaufMs,
+  sitzungLeerlaufSek,
+  sitzungHoechstMs,
+  sitzungsfristen,
+  sitzungsHoechstdauer,
+} from './sitzungsFrist';
 export { otpauthAdresse } from './zweiterFaktor';
 export type { VerwalterAktion } from './verwalterProtokoll';
 export { erzeugeKonto } from './bereich';

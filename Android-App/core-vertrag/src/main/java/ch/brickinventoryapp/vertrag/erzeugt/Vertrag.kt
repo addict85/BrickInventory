@@ -766,6 +766,7 @@ enum class Fehlercode {
     @SerialName("email_nicht_bestaetigt") EMAIL_NICHT_BESTAETIGT,
     @SerialName("zu_viele_anfragen") ZU_VIELE_ANFRAGEN,
     @SerialName("zu_viele_fehlversuche") ZU_VIELE_FEHLVERSUCHE,
+    @SerialName("konto_tagesgrenze") KONTO_TAGESGRENZE,
     @SerialName("anmeldedaten_ungueltig") ANMELDEDATEN_UNGUELTIG,
     @SerialName("name_oder_email_eingeben") NAME_ODER_EMAIL_EINGEBEN,
     @SerialName("registrierung_deaktiviert") REGISTRIERUNG_DEAKTIVIERT,

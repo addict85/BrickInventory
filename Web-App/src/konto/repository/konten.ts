@@ -52,17 +52,34 @@ export async function nameVergeben(db: DbSchnittstelle, name: string, ausser: nu
   ));
 }
 
-/** Die Namen gehen in die Anweisung, nicht als Parameter — deshalb eine feste Liste. */
-const PROFILSPALTEN = new Set(['username', 'first_name', 'last_name']);
+/** Die Namen gehen in die Anweisung, nicht als Parameter — deshalb eine feste Liste. Nur
+ * diese Spalten darf die Laufzeitrolle schreiben (Migration 0117). */
+const NAMENSSPALTEN = new Set(['first_name', 'last_name']);
 
-export async function aendereProfil(db: DbSchnittstelle, id: number, felder: Record<string, unknown>): Promise<void> {
+export async function aendereNamen(db: DbSchnittstelle, id: number, felder: Record<string, unknown>): Promise<void> {
   const spalten = Object.keys(felder);
   if (!spalten.length) return;
-  for (const s of spalten) if (!PROFILSPALTEN.has(s)) throw new Error(`Profilspalte nicht erlaubt: ${s}`);
+  for (const s of spalten) if (!NAMENSSPALTEN.has(s)) throw new Error(`Namensspalte nicht erlaubt: ${s}`);
   await db.run(
     `UPDATE users SET ${spalten.map((s, i) => `${s}=$${i + 1}`).join(',')} WHERE id=$${spalten.length + 1}`,
     [...spalten.map(s => felder[s]), id],
   );
+}
+
+/** Mit dem Namen meldet man sich an: Den schreibt nur die Systemrolle. */
+export async function aendereBenutzernamen(db: DbSchnittstelle, id: number, name: string): Promise<void> {
+  await db.run('UPDATE users SET username = $2 WHERE id = $1', [id, name]);
+}
+
+/** Ein Eindringling kann ihn angestossen haben. @returns die verworfene Adresse oder null */
+export async function verwirfAusstehendeAdresse(db: DbSchnittstelle, id: number): Promise<string | null> {
+  const r = await db.get<{ adresse: string }>(
+    `UPDATE users u SET ${OHNE_EMAIL_NEU} FROM users alt
+      WHERE u.id = $1 AND alt.id = u.id AND alt.email_neu IS NOT NULL AND NOT alt.registrierung_offen
+      RETURNING alt.email_neu AS adresse`,
+    [id],
+  );
+  return r?.adresse ?? null;
 }
 
 export async function merkeEmailNeu(

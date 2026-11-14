@@ -2,6 +2,7 @@
  * und Brickset-Warteschlange höhere Stufen sind (test/schichten.test.js). */
 import { SECRET_KEYS, isMaskedValue, globalerWertGueltig } from '../einstellungen';
 import { fachfehler } from '../infra/fehlerTexte';
+import { imSystemkontext } from '../infra/kontoKontext';
 import { GLOBALE_EINSTELLUNGEN, KONTO_EINSTELLUNGEN } from '../vertrag/einstellungen';
 import type { Eingabe } from '../vertrag';
 import { istHeikel } from './datenexport';
@@ -83,16 +84,20 @@ export async function einstellungenSpeichern(
   // sich in einer Transaktion nicht betreten lässt: vorher und für sich. Scheitert sie,
   // ist noch nichts geschrieben; der Preis-Job folgt nur einer echten Änderung.
   if (e.currency !== undefined) await kx.konto.setUserSetting(o.uid, 'currency', e.currency);
-  const bricksetAlt = await kx.transaktion(async t => {
-    const alt =
-      global && e.api_limit_brickset !== undefined
-        ? parseInt((await t.einstellungen.getGlobalSetting('api_limit_brickset')) || '100', 10)
-        : null;
-    if (global) await schreibeGlobal(t, o.uid, e);
-    for (const key of KONTO_EINSTELLUNGEN)
-      if (key !== 'currency' && e[key] !== undefined) await t.konto.setUserSetting(o.uid, key, e[key]);
-    return alt;
-  });
+  // Globale Werte schreibt nur die Systemrolle (0117): dann die ganze Transaktion in ihrem Rahmen.
+  const rahmen = <T>(f: () => Promise<T>) => (global ? imSystemkontext('globale Einstellungen', f) : f());
+  const bricksetAlt = await rahmen(() =>
+    kx.transaktion(async t => {
+      const alt =
+        global && e.api_limit_brickset !== undefined
+          ? parseInt((await t.einstellungen.getGlobalSetting('api_limit_brickset')) || '100', 10)
+          : null;
+      if (global) await schreibeGlobal(t, o.uid, e);
+      for (const key of KONTO_EINSTELLUNGEN)
+        if (key !== 'currency' && e[key] !== undefined) await t.konto.setUserSetting(o.uid, key, e[key]);
+      return alt;
+    }),
+  );
   if (!global) return true;
   // Erst nach dem COMMIT: Ein Zwischenspeicher läse vorher noch den alten Wert ein.
   kx.einstellungen.meldeGlobaleAenderung();

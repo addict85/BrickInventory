@@ -34,6 +34,8 @@
  * Gegenprobe Zugangsdaten nur des eigenen Kontos (Migration 0114, 14.11.2026 gemessen):
  *   T  in 0114 wieder `user_id = ANY (zeilenschutz_konten())` statt `= zeilenschutz_konto()`
  *      → rot: „Zugangsdaten des Unterkontos bleiben …“ (A sah den Passkey von B)
+ *   U  (Migration 0118) in 0118 `vouchers` aus der Liste gestrichen → rot: „Gutscheine und
+ *      Idempotenzeinträge des Unterkontos …“ (A sah den Gutschein von B); ebenso mit `idempotenz`
  *
  * Gegenproben Zeilenschutz (13.11.2026, vor der Systemrolle):
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
@@ -441,6 +443,28 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     // Das Unterkonto selbst sieht und ändert seine Zugangsdaten weiter.
     assert.deepEqual(ids(await als(B, () => app.all('SELECT user_id FROM passkeys'))), [B]);
     await als(B, () => app.run(`INSERT INTO api_tokens (token, user_id) VALUES ($1, $2)`, [`zt-b2-${pid}`, B]));
+  });
+
+  await t.test('Gutscheine und Idempotenzeinträge des Unterkontos sieht das Hauptkonto nicht', async st => {
+    const pid = process.pid;
+    await su.run(
+      `INSERT INTO vouchers (user_id, number, nummer_suche, amount, currency) VALUES ($1, 'v2:x', $2, 10, 'EUR')`,
+      [B, `zs-gs-${pid}`],
+    );
+    await su.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage) VALUES ($1, $2, 'POST /x')`, [B, `zs-${pid}`]);
+    st.after(async () => {
+      for (const tab of ['vouchers', 'idempotenz'])
+        await su.run(`DELETE FROM ${tab} WHERE user_id = ANY($1)`, [[A, B]]);
+    });
+    for (const tab of ['vouchers', 'idempotenz']) {
+      assert.deepEqual(await als(A, () => app.all(`SELECT user_id FROM ${tab} WHERE user_id = $1`, [B])), [], tab);
+      assert.equal((await als(A, () => app.run(`DELETE FROM ${tab} WHERE user_id = $1`, [B]))).changes, 0, tab);
+      assert.deepEqual(ids(await als(B, () => app.all(`SELECT user_id FROM ${tab}`))), [B], `${tab}: das Konto selbst`);
+    }
+    await assert.rejects(
+      als(A, () => app.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage) VALUES ($1, 'fremd', 'x')`, [B])),
+      /row-level security/,
+    );
   });
 
   await t.test('ein PDF-Auftrag eines fremden Kontos ist für die Anfrage keiner', async st => {

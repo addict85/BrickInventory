@@ -134,17 +134,20 @@ export async function profilAendern(
       fachfehler('ungueltig', 'benutzername_vergeben');
   }
   const felder: Record<string, unknown> = {};
-  if (e.username) felder.username = e.username;
   if (e.first_name !== undefined) felder.first_name = e.first_name || null;
   if (e.last_name !== undefined) felder.last_name = e.last_name || null;
+  const speichern = async () => {
+    if (e.username) await k.konten.aendereBenutzernamen(user.id, e.username);
+    await k.konten.aendereNamen(user.id, felder);
+  };
   if (!emailNeu) {
-    await k.konten.aendereProfil(user.id, felder);
+    await speichern();
     return { emailChanged: false };
   }
   const email = String(e.email);
   const token = crypto.randomBytes(32).toString('hex');
   await k.konten.merkeEmailNeu(user.id, email, hashToken(token), new Date(Date.now() + 24 * 60 * 60 * 1000));
-  await k.konten.aendereProfil(user.id, felder);
+  await speichern();
   return { emailChanged: true, emailSent: await adressMails(k, user, email, token) };
 }
 

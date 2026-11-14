@@ -242,18 +242,37 @@ export async function gibAnmeldeplatzFrei(k: KontoKontext, ip: string, username:
   await _freigeben(k, _adressKey(ip));
 }
 
-/** @returns die Fehlversuche des Kontos im Fenster */
-export async function anmeldungGescheitert(k: KontoKontext, ip: string, username: string): Promise<number> {
+/** @returns die Fehlversuche des Kontos im Fenster und ob die Tagesgrenze gerade erreicht ist */
+export async function anmeldungGescheitert(
+  k: KontoKontext,
+  ip: string,
+  username: string,
+): Promise<{ n: number; tagesgrenze: boolean }> {
   const kennung = await kontoKennung(k, username);
   await _bump(k, _key(ip, kennung), WINDOW_MIN);
   const n = await _bump(k, _nameKey(kennung), WINDOW_MIN);
   await _bump(k, _adressKey(ip), WINDOW_MIN);
-  return n;
+  const tag = await _bump(k, _tagKey(kennung), KONTO_FENSTER_MIN);
+  return { n, tagesgrenze: tag === MAX_JE_KONTO_TAG };
+}
+
+/** Eine bekannte Adresse umgeht die Bremse je Konto; wer dort sitzt, riete sonst 480 Mal am Tag.
+ * Darüber (alle Adressen) gilt das Passwort nur mit zweitem Faktor; Passkey und „Passwort
+ * vergessen“ bleiben offen, das Zurücksetzen leert den Zähler. */
+export const MAX_JE_KONTO_TAG = 50;
+const _tagKey = (kennung: string) => `login-tag|${kennung}`;
+export async function tagesgrenzeErreicht(k: KontoKontext, username: string): Promise<boolean> {
+  const kennung = await kontoKennung(k, username);
+  return ((await _read(k, _tagKey(kennung), KONTO_FENSTER_MIN))?.count ?? 0) >= MAX_JE_KONTO_TAG;
+}
+export async function loescheTagesgrenze(k: KontoKontext, uid: number): Promise<void> {
+  await _clear(k, _tagKey(`konto:${uid}`));
 }
 
 export type Anmeldeereignis =
   | 'anmeldung_fehlgeschlagen'
   | 'anmeldung_gesperrt'
+  | 'anmeldung_tagesgrenze'
   | 'zweiter_faktor_falsch'
   | 'bestaetigung_fehlgeschlagen'
   | 'bestaetigung_gesperrt'
