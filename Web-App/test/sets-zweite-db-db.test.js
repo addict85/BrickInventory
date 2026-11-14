@@ -26,7 +26,8 @@
  *      „Teileliste … Bilderauftrag dort“ (kein Auftrag in der zweiten) und „der
  *      Prozesszugang …“
  *   H  src/haushalt/haushalt.ts wieder mit einem Gedächtnis für alle Zugänge →
- *      rot: „Haushaltsgedächtnis je Zugang“
+ *      rot: „Haushaltsgedächtnis je Zugang“ (14.11.2026 erneut, das Gedächtnis jetzt im
+ *      Fach des Bereichs: gedaechtnis() mit einem Fach für alle → rot, derselbe Test)
  *
  * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
@@ -43,7 +44,7 @@ const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { erzeugeDb } = _req('db/database.js');
-const H = _req('src/haushalt/haushalt.js');
+const H = _req('src/haushalt/regeln.js');
 const N = _req('src/auftraege/nacharbeit.js');
 
 const NAME = testName('sets_zweite');
@@ -187,8 +188,8 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     await zweite.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'unter_in_zwei', 'x')", [UNTER]);
     await zweite.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, UNTER]);
     H.leereHaushaltCache();
-    assert.deepEqual((await H.haushaltVon(zweite, uid)).memberIds, [uid, UNTER]);
-    const imProzess = await H.haushaltVon(quellen.testZugang(), uid);
+    assert.deepEqual((await alle.haushalt.haushaltVon(uid)).memberIds, [uid, UNTER]);
+    const imProzess = await quellen.testDienste().haushalt.haushaltVon(uid);
     assert.ok(
       !imProzess.memberIds.includes(UNTER),
       `Gedächtnis der zweiten Datenbank geliehen: ${imProzess.memberIds}`,

@@ -22,34 +22,34 @@ function parameter(art: Art, userId: number, nummer: string, farbeId: number | n
  * wird auch nicht gelöscht.
  * @returns die id des Eintrags, oder null, wenn es keine Stammzeile gab */
 export async function legeInPapierkorb(
-  tx: DbSchnittstelle,
+  k: BestandKontext,
   art: Art,
   userId: number,
   nummer: string,
   farbeId: number | null = null,
 ): Promise<number | null> {
   const p = parameter(art, userId, nummer, farbeId);
-  const zeilen = await repo.bestandsZeilen(tx, art, p);
+  const zeilen = await repo.bestandsZeilen(k.db, art, p);
   const stamm = repo.tabellenDerArt(art)[0] ?? '';
   if (!zeilen[stamm]?.length) return null;
 
-  const name = await repo.bezeichnung(tx, art, userId, nummer, farbeId);
-  return repo.legeEintragAn(tx, userId, art, nummer, art === 'teil' ? farbeId : null, name, zeilen);
+  const name = await repo.bezeichnung(k.db, art, userId, nummer, farbeId);
+  return repo.legeEintragAn(k.db, userId, art, nummer, art === 'teil' ? farbeId : null, name, zeilen);
 }
 
 /** Einzelne Käufe eines Sets, die eine Mengenverringerung wegnahm: Die Bestandszeile bleibt, darum ein
  * Eintrag ohne `sets`-Zeile. Wiederherstellen legt die Mengen zurück (stelleKaeufeWiederHer).
  * @param zeilen je Kauf die ganze Zeile, `quantity` = die weggenommene Menge */
 export async function legeKaeufeInPapierkorb(
-  tx: DbSchnittstelle,
+  k: BestandKontext,
   userId: number,
   nummer: string,
   zeilen: Record<string, unknown>[],
 ): Promise<number | null> {
   if (!zeilen.length) return null;
-  const name = await repo.bezeichnung(tx, 'set', userId, nummer, null);
+  const name = await repo.bezeichnung(k.db, 'set', userId, nummer, null);
   const leer = Object.fromEntries(repo.tabellenDerArt('set').map(t => [t, [] as unknown[]]));
-  return repo.legeEintragAn(tx, userId, 'set', nummer, null, name, { ...leer, set_acquisitions: zeilen });
+  return repo.legeEintragAn(k.db, userId, 'set', nummer, null, name, { ...leer, set_acquisitions: zeilen });
 }
 
 /** Zurück in die Zeile, aus der die Menge kam; gibt es sie nicht mehr, in eine gleiche Zeile desselben Tages

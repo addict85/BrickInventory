@@ -75,6 +75,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
   await seed();
   const { getOwnedQuantities, BESTAND_MAX_TEILE } = _req('src/teile/abfragen.js');
   const household = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };

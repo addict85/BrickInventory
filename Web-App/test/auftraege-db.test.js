@@ -33,7 +33,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testZugang, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
@@ -319,7 +319,8 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
         );
         let stand;
         for (let i = 0; i < 200; i++) {
-          stand = await pdfA.liesAuftrag(jobId);
+          // Wie die Route: im Konto der Anfrage, unter Zeilenschutz.
+          stand = await alsKonto(uid, () => pdfA.liesAuftrag(jobId, uid));
           if (stand?.status !== 'running') break;
           await warte(25);
         }

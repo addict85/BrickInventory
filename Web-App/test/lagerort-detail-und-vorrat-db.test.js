@@ -64,6 +64,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
   };
   const S = require('./helpers/sources').bereichsSeite('sets');
   const household = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };

@@ -3,10 +3,13 @@
 import type { Db } from '../../db/database';
 import { bindeZugang, type Kontext } from '../infra/bereich';
 import type { EinstellungenDienste } from '../einstellungen';
+import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository';
 
 export interface HaushaltAbhaengigkeiten {
   db: Db;
+  /** Das Gedächtnis der Haushalte je Zugang; erzeugeHaushalt legt es an. */
+  faecher: Faecher;
   einstellungen: EinstellungenDienste;
 }
 

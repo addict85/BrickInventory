@@ -1,6 +1,4 @@
 import * as repo from './repository/gemeinsam';
-export { entferneSetInhalt, kopiereSetInhalt, legeManuellAn } from './repository/gemeinsam';
-import type { DbSchnittstelle } from '../../db/database';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
 import { asIds, type Sicht } from '../haushalt';
 import type { BestandKontext } from './kontext';
@@ -155,17 +153,11 @@ export async function verwendendeSets(
   return { item, sets };
 }
 
-/** Eine Stelle für Löschroute und Aufräumen der Erfassungen.
- * @param dbh Transaktionsgriff, wo einer gebraucht wird */
-export async function loescheManuellesTeil(
-  dbh: Pick<DbSchnittstelle, 'run'>,
-  ownerId: number,
-  partNumber: string,
-  colorId: number,
-) {
-  return repo.loescheTeilZeile(dbh, ownerId, partNumber, colorId);
+/** Eine Stelle für Löschroute und Aufräumen der Erfassungen; in einer Transaktion über `t`. */
+export async function loescheManuellesTeil(k: BestandKontext, ownerId: number, partNumber: string, colorId: number) {
+  return repo.loescheTeilZeile(k.db, ownerId, partNumber, colorId);
 }
 
-export async function loescheManuelleFigur(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, figNumber: string) {
-  return repo.loescheFigurZeile(dbh, ownerId, figNumber);
+export async function loescheManuelleFigur(k: BestandKontext, ownerId: number, figNumber: string) {
+  return repo.loescheFigurZeile(k.db, ownerId, figNumber);
 }

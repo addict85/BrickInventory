@@ -32,7 +32,7 @@ export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKont
     ]),
     ...bindeZugang(sk, setService, ['updateSet', 'buildSetsCsv']),
     ...bindeZugang(sk, lesen, ['getSets', 'getSet', 'getSetConditionAggregate', 'withSetAggregate']),
-    ...bindeZugang(sk, loeschen, ['loescheSet', 'loescheSetFuer']),
+    ...bindeZugang(sk, loeschen, ['loescheSet', 'loescheSetFuer', 'deleteSetRows']),
     ...bindeZugang(sk, setMove, ['verschiebeSet', 'moveSetBetweenAccounts', 'moveManualAcquisition']),
     ...bindeZugang(sk, inhalt, [
       'setInfo',

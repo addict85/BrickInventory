@@ -3,6 +3,7 @@ import { erhoeheSitzungsVersion, vergissSitzungsVersion } from './sitzungsVersio
 import { hashToken, ZUGAENGE_HOECHSTENS } from './geraeteToken';
 import { leereTokenCache } from './tokenCache';
 import { imSystemkontext } from '../infra/kontoKontext';
+import { imSystemrahmen } from '../infra/bereich';
 import type { KontoKontext } from './kontext';
 
 export function begrenzeSitzungen(k: KontoKontext, userId: number, eigene: string): Promise<number> {
@@ -15,11 +16,10 @@ export async function revokeAllSessions(k: KontoKontext, userId: number): Promis
   await k.zugaenge.loescheSitzungenDesKontos(userId);
 }
 
-/** Eine Transaktion über Zugangsdaten im Systemrahmen, wie bindeImSystemrahmen ihn
- * vergibt (die Anmeldung sucht sie, bevor es ein Konto gibt). In einer laufenden
- * gilt deren Rahmen: Ein Wechsel liefe dort neben ihr (NebenDerTransaktion). */
+/** Eine Transaktion über Zugangsdaten im Systemrahmen (die Anmeldung sucht sie, bevor es
+ * ein Konto gibt). In einer laufenden nur, wenn sie selbst im Systemrahmen läuft. */
 export function zugangsTransaktion<T>(k: KontoKontext, fn: (t: KontoKontext) => Promise<T>): Promise<T> {
-  return k.db.inTransaktion() ? k.transaktion(fn) : imSystemkontext('zugangsdaten', () => k.transaktion(fn));
+  return imSystemrahmen(k.db, 'zugangsdaten', () => k.transaktion(fn));
 }
 
 /** Passwort, Zugänge und Passkeys zusammen, im Systemrahmen (auch ohne Anmeldung: Passwort

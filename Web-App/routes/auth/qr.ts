@@ -1,5 +1,4 @@
-/** Anmelden per QR-Code: Die Web-Sitzung erzeugt den Code, die App meldet sich
- * damit und holt ihren Token ab, wenn die Sitzung bestätigt (src/konto/qrKopplung.ts). */
+/** Anmelden per QR-Code; die App holt ihren Token, wenn die Web-Sitzung bestätigt (src/konto/qrKopplung.ts). */
 import { waechterFuer } from '../api_v1/middleware';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';

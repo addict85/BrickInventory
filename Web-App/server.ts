@@ -177,8 +177,8 @@ async function starte(): Promise<void> {
   process.on('SIGINT', () => {
     void herunterfahren('SIGINT', httpServer, jobs, zugang, dienste, webSperreFrei);
   });
-  // Aufträge arbeiten über Kontogrenzen; HTTP-Anfragen erben diesen Rahmen nicht.
-  if (jobs) await imSystemkontext('auftraege', () => starteJobs(dienste, web));
+  // Ohne Rahmen: Warteschlange und Aufträge betreten ihn selbst (src/auftraege/kontext.ts, dienst.ts).
+  if (jobs) await starteJobs(dienste, web);
 }
 
 // Ohne Worker weiterzulaufen täuschte einen Dienst vor.

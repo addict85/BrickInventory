@@ -1,5 +1,4 @@
-/** Anmeldung (Passwort und Passkey), Token und Profil; setzt die Teilrouter aus
- * routes/auth/ zusammen (QR, Passkeys verwalten, zweiter Faktor …). Alles hängt unter /api/v1/auth. */
+/** Anmeldung, Token und Profil unter /api/v1/auth; die Teilrouter aus routes/auth/ hängen dahinter. */
 import { waechterFuer } from './api_v1/middleware';
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
 import { meldeFehler } from '../src/infra/fehler';

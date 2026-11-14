@@ -1,5 +1,4 @@
-/** Einstellungen über das eigene Konto hinaus: globale Werte und Design, Ein- und
- * Ausfuhr, Einrichtungsassistent, Quellen- und SMTP-Test. Hängt in settings.ts hinter requireLogin. */
+/** Globale Einstellungen, Ein- und Ausfuhr, Einrichtung, Quellen- und SMTP-Test; in settings.ts hinter requireLogin. */
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';

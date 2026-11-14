@@ -20,7 +20,6 @@ export async function teileDerFigur(kx: FigurenKontext, figNumber: string) {
   let kat = await katalogTeile(kx, figNumber);
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
     const elternSet = await kx.figurTeile.setMitFigur(figNumber);
-    // Gelingt das Anreichern nicht, antwortet der Katalog mit dem, was er schon hat (source).
     const anreichern = elternSet
       ? kx.nacharbeit.figurenAnreichern(elternSet.set_number)
       : kx.nacharbeit.setTeileAnreichern(figNumber);

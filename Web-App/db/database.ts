@@ -19,17 +19,24 @@ import {
   innereTransaktion,
   NebenDerTransaktion,
   TRANSAKTIONS_WAECHTER,
+  UngebundeneAbfrage,
+  freigabe,
+  ohneFreigabe,
+  type TxGriff,
   type TxStand,
 } from './transaktion';
 import { initSchema, initSchemaOnce, DARF_SCHEMA_AENDERN, type Erststart } from './schemaStart';
+import { sperreBestaende, type Bestandssperre } from './txLock';
 
 export { queryWithRetry, istLesend } from './wiederholung';
 export {
   mitCommitBegleiter,
   TransaktionBeendet,
   NebenDerTransaktion,
+  UngebundeneAbfrage,
   GleichzeitigerSicherungspunkt,
 } from './transaktion';
+export type { TxGriff } from './transaktion';
 export type { Erststart } from './schemaStart';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
@@ -82,6 +89,9 @@ export interface TxOptionen {
    * Dateien, Mails): Sie laufen dann mehrfach. In einer äusseren Transaktion
    * ohne Wirkung; dort entscheidet deren Option. */
   wiederholeBeiKonflikt?: boolean;
+  /** Bestandssperren, vor dem Rumpf genommen (sperreBestaende, txLock.ts); sie halten bis
+   * zum Ende der äussersten Transaktion. */
+  sperren?: readonly Bestandssperre[];
 }
 const TX_KONFLIKT = new Set(['40P01', '40001']);
 const TX_NEUVERSUCHE = 2;
@@ -94,7 +104,7 @@ export interface Db extends DbSchnittstelle {
   systemrahmenWirkt(): Promise<boolean>;
   /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). */
   readonly benachrichtigung: Benachrichtigung;
-  transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen): Promise<T>;
+  transaction<T>(fn: (tx: TxGriff) => Promise<T>, o?: TxOptionen): Promise<T>;
   inTransaktion(): boolean;
   getPoolStats(): { total: number; idle: number; waiting: number; active: number };
   datenbankAntwortet(): Promise<boolean>;
@@ -146,7 +156,9 @@ function offeneTx(r: Rahmen): TxStand | null {
 }
 function txStand(r: Rahmen): TxStand | null {
   const t = offeneTx(r);
-  if (t && t.pool !== poolDesRahmens(r)) throw new NebenDerTransaktion(t.pool === r.systemPool);
+  if (!t) return null;
+  if (t.pool !== poolDesRahmens(r)) throw new NebenDerTransaktion(t.pool === r.systemPool);
+  if (freigabe.getStore() !== t) throw new UngebundeneAbfrage();
   return t;
 }
 
@@ -185,7 +197,7 @@ async function abfrage(r: Rahmen, sql: string, params?: unknown[]): Promise<Quer
   }
 }
 
-async function einmaligeTransaktion<T>(r: Rahmen, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+async function einmaligeTransaktion<T>(r: Rahmen, fn: (tx: TxGriff) => Promise<T>): Promise<T> {
   const p = poolDesRahmens(r);
   const client = await p.connect();
   const stand: TxStand = { client, offen: true, db: r.ich, pool: p, innerster: null, kontext: '' };
@@ -200,7 +212,7 @@ async function einmaligeTransaktion<T>(r: Rahmen, fn: (tx: DbSchnittstelle) => P
     // Der Kontext im selben Roundtrip wie BEGIN; kontextAbgleich() folgt danach Wechseln.
     stand.kontext = kontextSql();
     await client.query(stand.kontext ? `BEGIN; ${stand.kontext}` : 'BEGIN');
-    const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(stand)));
+    const result = await laufendeTx.run(stand, () => ohneFreigabe(() => fn(txSchnittstelle(stand))));
     await commitBegleiter.getStore()?.(txSchnittstelle(stand));
     stand.offen = false;
     await client.query('COMMIT');
@@ -219,6 +231,15 @@ async function einmaligeTransaktion<T>(r: Rahmen, fn: (tx: DbSchnittstelle) => P
     client.off('error', abriss);
     client.release(kaputt);
   }
+}
+
+/** Die Sperren vor dem Rumpf, in derselben Transaktion. */
+function mitSperren<T>(rumpf: (tx: TxGriff) => Promise<T>, sperren?: readonly Bestandssperre[]) {
+  if (!sperren?.length) return rumpf;
+  return async (tx: TxGriff) => {
+    await sperreBestaende(tx, sperren);
+    return rumpf(tx);
+  };
 }
 
 async function mitWiederholung<T>(einmal: () => Promise<T>, o: TxOptionen): Promise<T> {
@@ -256,7 +277,8 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     if (txStand(r)) return { changes: (await abfrage(r, sql, params)).rowCount || 0 };
     return queryWithRetry(async () => ({ changes: (await abfrage(r, sql, params)).rowCount || 0 }), false);
   }
-  async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, opt: TxOptionen = {}): Promise<T> {
+  async function transaction<T>(rumpf: (tx: TxGriff) => Promise<T>, opt: TxOptionen = {}): Promise<T> {
+    const fn = mitSperren(rumpf, opt.sperren);
     const aussen = txStand(r);
     if (aussen) return innereTransaktion(aussen, ++sicherungspunkte, fn);
     return mitWiederholung(() => einmaligeTransaktion(r, fn), opt);
