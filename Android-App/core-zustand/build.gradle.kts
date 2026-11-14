@@ -1,10 +1,9 @@
 // Was die Bereiche teilen, ohne einander zu kennen: Blickfeld, Texte, die Grundlage
-// der Bereichs-ViewModels und der AppViewModel. Die Sitzung selbst liegt darunter
-// (core-sitzung). Was nur die App kennt (Widget), kommt als Schnittstelle herein.
+// der Bereichs-ViewModels und der AppViewModel — ohne Compose; die Umgebung der Ziele
+// liegt in core-navigation. Was nur die App kennt (Widget), kommt als Schnittstelle herein.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
-    alias(libs.plugins.brickinventory.android.compose)
     alias(libs.plugins.brickinventory.android.hilt)
 }
 

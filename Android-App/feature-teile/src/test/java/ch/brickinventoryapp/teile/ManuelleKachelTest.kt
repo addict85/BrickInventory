@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.teile
 
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.data.model.FigValuationItem
 import ch.brickinventoryapp.model.data.model.PartValuationItem
 import org.junit.Assert.assertEquals
@@ -27,9 +27,9 @@ class ManuelleKachelTest {
         // Einzelpreis. Wer einmal fuer 2.- und einmal fuer 8.- gekauft hat,
         // saehe dort 8.- statt 5.-. Der Server rechnet es richtig
         // (utils/handlers/shared.ts) — die App las das Feld nur nicht ein.
-        val teil = ApiJson.decodeFromString(PartValuationItem.serializer(),
+        val teil = BrickJson.decodeFromString(PartValuationItem.serializer(),
             """{"part_number":"3001","unit_price":8.0,"avg_purchase_price":5.0}""")
-        val figur = ApiJson.decodeFromString(FigValuationItem.serializer(),
+        val figur = BrickJson.decodeFromString(FigValuationItem.serializer(),
             """{"fig_number":"sw0001","unit_price":8.0,"avg_purchase_price":5.0}""")
         assertEquals(5.0, teil.avgPurchasePrice ?: 0.0, 0.0)
         assertEquals(5.0, figur.avgPurchasePrice ?: 0.0, 0.0)

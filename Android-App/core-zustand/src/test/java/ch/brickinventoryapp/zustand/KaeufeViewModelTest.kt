@@ -136,7 +136,7 @@ class KaeufeViewModelTest {
         return pfade.koerper[i]
     }
 
-    /** ApiJson schreibt null mit; „gesetzt“ heisst: das Feld trägt eine Zahl. */
+    /** BrickJson schreibt null mit; „gesetzt“ heisst: das Feld trägt eine Zahl. */
     private fun gesetzt(feld: String, json: String) = Regex("\"$feld\":[0-9]").containsMatchIn(json)
 
     @Test

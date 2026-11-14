@@ -26,7 +26,7 @@ import kotlinx.coroutines.cancel
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import java.io.IOException
@@ -124,7 +124,7 @@ class TokenRotationTest {
 
     init {
         konto = KontoRepository(Retrofit.Builder().baseUrl(PLATZHALTER_BASIS).client(client)
-            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java), ResponseCache { dir })
     }
 
@@ -158,7 +158,7 @@ class TokenRotationTest {
             .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = t))
             .readTimeout(2, TimeUnit.SECONDS).build()
         k = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
-            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
+            .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java), ResponseCache { dir })
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
         repeat(2) {

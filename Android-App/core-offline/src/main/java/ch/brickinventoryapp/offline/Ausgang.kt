@@ -26,13 +26,24 @@ data class Ausgangsposten(
  * sie einen Neustart der App überleben.
  */
 interface Ausgang {
-    /** Eine Bearbeitung, die der Server ablehnte; [ziel] benennt sie für den Hinweis („10001-1“). */
-    data class VerworfenerPosten(val id: String, val ziel: String, val meldung: String, val httpCode: Int?)
+    /**
+     * Eine Bearbeitung, die der Server ablehnte; [ziel] benennt sie für den Hinweis („10001-1“).
+     * [unlesbar]: Der Posten liess sich nach einem Update nicht mehr lesen und ging nie hinaus.
+     */
+    data class VerworfenerPosten(val id: String, val ziel: String, val meldung: String, val httpCode: Int?,
+                                 val unlesbar: Boolean = false)
 
     fun anzahl(bereich: String): Flow<Int>
     suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long, schluessel: String): Long
+    /** Nur lesbare Posten; Lesen ändert nichts, Unlesbares räumt erst [raeumeUnlesbare]. */
     suspend fun alle(bereich: String): List<Ausgangsposten>
     suspend fun erster(bereich: String): Ausgangsposten?
+
+    /**
+     * Unlesbare Posten als verworfen melden und dann entfernen — nie still: Sie tragen
+     * Änderungen, die es nur auf diesem Gerät gibt. Gibt ihre Zahl zurück.
+     */
+    suspend fun raeumeUnlesbare(bereich: String): Int
     suspend fun entferne(id: Long)
     suspend fun versuchGescheitert(id: Long)
     suspend fun leere()
@@ -61,6 +72,9 @@ class SpeicherAusgang : Ausgang {
     override suspend fun alle(bereich: String) = posten.value.filter { it.first == bereich }.map { it.second }
 
     override suspend fun erster(bereich: String) = alle(bereich).minByOrNull { it.id }
+
+    /** Im Speicher liegt nichts in Textform, also nichts Unlesbares. */
+    override suspend fun raeumeUnlesbare(bereich: String) = 0
 
     override suspend fun entferne(id: Long) = posten.update { l -> l.filterNot { it.second.id == id } }
 

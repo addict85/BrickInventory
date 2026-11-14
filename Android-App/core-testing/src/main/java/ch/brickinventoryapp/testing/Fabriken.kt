@@ -120,7 +120,7 @@ fun ResponseCache(
     chiffre: AblageChiffre? = null,
     io: CoroutineDispatcher = Dispatchers.IO,
     ordnerQuelle: () -> File,
-) = ResponseCache(bereichQuelle, altlast, chiffre, io, ordnerQuelle)
+) = ResponseCache(bereichQuelle, altlast, chiffre, io, ordnerQuelle = ordnerQuelle)
 
 /** Die Vertrauenschiffre der Geräteablage mit festem Schlüssel: Robolectric hat keinen Keystore. */
 fun testVertrauenschiffre(schluessel: Byte = 7): Vertrauenschiffre = Vertrauenschiffre { ByteArray(32) { schluessel } }

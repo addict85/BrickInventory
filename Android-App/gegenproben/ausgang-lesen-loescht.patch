@@ -1,0 +1,18 @@
+Gegenprobe: Lesen des Ausgangs löscht einen unlesbaren Posten wieder still
+Modul: core-offline
+Test: ch.brickinventoryapp.offline.BestandDatenbankTest
+Rot: ein unlesbarer Posten wird gemeldet
+
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
+index 81d8c96..10a4df7 100644
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
+@@ -86,7 +86,7 @@ internal class RoomAusgang @Inject constructor(
+         dao.fuegeEin(AusgangZeile(bereich = bereich, bearbeitung = Ausgangsform.kodiere(json, bearbeitung),
+             erstellt = jetzt, schluessel = schluessel))
+ 
+-    override suspend fun alle(bereich: String) = dao.alle(bereich).mapNotNull { lies(it) }
++    override suspend fun alle(bereich: String) = dao.alle(bereich).mapNotNull { z -> lies(z) ?: run { dao.entferne(z.id); null } }
+ 
+     override suspend fun erster(bereich: String): Ausgangsposten? = dao.alle(bereich).firstNotNullOfOrNull { lies(it) }
+ 

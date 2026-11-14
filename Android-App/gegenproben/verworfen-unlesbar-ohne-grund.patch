@@ -1,0 +1,18 @@
+Gegenprobe: Ein unlesbarer Posten wird wie eine Ablehnung ohne Grund gemeldet
+Modul: core-zustand
+Test: ch.brickinventoryapp.zustand.AusgangsmelderTest
+Rot: ein nach dem Update unlesbarer Posten
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+index d0af378..7019986 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Ausgangsmelder.kt
+@@ -73,7 +73,7 @@ class AusgangsBeobachter @Inject constructor(
+ 
+     /** Quittiert erst, wenn der Hinweis an der Reihe war und weggeräumt ist; bis dahin hält ihn die Ablage. */
+     private suspend fun meldeVerworfen(v: VerworfeneAenderung) {
+-        val grund = if (v.unlesbar) Meldung.Ressource(R.string.offline_verworfen_unlesbar)
++        val grund = if (false) Meldung.Ressource(R.string.offline_verworfen_unlesbar)
+             else v.meldung.ifBlank { null } ?: Meldung.Ressource(R.string.offline_verworfen_ohne_grund)
+         val hinweis = Meldung.Ressource(R.string.offline_verworfen, listOf(v.ziel, grund))
+         meldungen.zeige(hinweis)

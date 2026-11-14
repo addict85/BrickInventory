@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
 import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.sicherheit.Ablageschluessel
+import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.json.Json
 import java.io.File
 import javax.inject.Inject
@@ -41,6 +42,7 @@ class ResponseCache(
     private val chiffre: AblageChiffre?,
     /** Für Platte und Verschlüsselung. */
     private val io: CoroutineDispatcher,
+    private val json: Json = BrickJson,
     /**
      * Woher der Ablageordner kommt. Eine Funktion, damit `context` erst beim
      * ersten Zugriff gefragt wird und der Test ein Wegwerf-Verzeichnis geben kann.
@@ -57,15 +59,16 @@ class ResponseCache(
         besitzer: CacheBesitzer,
         ablage: Ablageschluessel,
         @Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher,
+        json: Json,
     ) : this(
         bereichQuelle = { besitzer.cacheBereich() },
         altlast = { File(context.cacheDir, "api-1") },
         chiffre = AblageChiffre { ablage.fuer("antworten") },
         io = io,
+        json = json,
         ordnerQuelle = { context.noBackupFilesDir },
     )
 
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val mutex = Mutex()
 
     private val basis: File by lazy {

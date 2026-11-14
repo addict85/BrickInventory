@@ -29,7 +29,7 @@ import org.junit.Test
 import kotlinx.coroutines.flow.first
 import java.io.File
 import java.util.Collections
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.BrickApiService
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -114,7 +114,7 @@ class OfflineBearbeitungTest {
             }
             antwort
         }.build())
-        .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
+        .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
         .build().create(BrickApiService::class.java)
     private val repo = SetsRepository(api, ResponseCache { cacheDir }, ablage)
     private val merkliste = MerklisteRepository(api, ResponseCache { cacheDir }, ablage)

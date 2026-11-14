@@ -94,7 +94,7 @@ class Abgleich @Inject constructor(
     override fun offene(): Flow<Int> = ablage.offene()
 
     override fun verworfene(): Flow<List<VerworfeneAenderung>> = ablage.verworfene().map { l ->
-        l.map { VerworfeneAenderung(it.id, it.ziel, it.meldung, it.httpCode) }
+        l.map { VerworfeneAenderung(it.id, it.ziel, it.meldung, it.httpCode, it.unlesbar) }
     }
 
     override suspend fun quittiere(v: VerworfeneAenderung) = ablage.quittiereVerworfen(v.id)
@@ -106,6 +106,8 @@ class Abgleich @Inject constructor(
     suspend fun sende(): Abgleichsergebnis = sperre.withLock {
         val bereich = ablage.bereich() ?: return@withLock Abgleichsergebnis.NICHT_ANGEMELDET
         val betroffen = mutableSetOf<Bestandsart>()
+        // Vor dem Senden: Was sich nicht mehr lesen lässt, wird gemeldet statt übersprungen.
+        ausgang.raeumeUnlesbare(bereich)
         try {
             lauf(bereich, betroffen)
         } finally {

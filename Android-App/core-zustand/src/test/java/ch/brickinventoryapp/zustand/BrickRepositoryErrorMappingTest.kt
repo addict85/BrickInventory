@@ -18,7 +18,7 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.netz.di.ServerWaechter
 import ch.brickinventoryapp.netz.di.Zugangslage
 import ch.brickinventoryapp.testing.KontoRepository
@@ -60,7 +60,7 @@ class BrickRepositoryErrorMappingTest {
             .build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
-        val json = ApiJson
+        val json = BrickJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)

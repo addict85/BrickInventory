@@ -19,6 +19,8 @@ on:
       - 'shared/**'
       # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
       - 'Web-App/public/i18n.js'
+      - 'Web-App/src/vertrag/**'
+      - 'Web-App/scripts/kotlin-vertrag.js'
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
   pull_request:
@@ -27,6 +29,8 @@ on:
       - 'shared/**'
       # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
       - 'Web-App/public/i18n.js'
+      - 'Web-App/src/vertrag/**'
+      - 'Web-App/scripts/kotlin-vertrag.js'
       # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf.
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
@@ -428,6 +432,31 @@ jobs:
       commit: ${{ github.sha }}
       sha256_apk: ${{ needs.build.outputs.sha256_apk }}
       sha256_aab: ${{ needs.build.outputs.sha256_aab }}
+
+  # Die Modelle aus core-model gegen den Vertrag des Servers, auch hier: Ein Android-Lauf
+  # soll selbst rot sein, wenn ein Modell den Vertrag nicht mehr lesen kann.
+  vertrag:
+    if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Web-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: Web-App/package-lock.json
+      - name: Abhängigkeiten installieren
+        run: npm ci --ignore-scripts && npm rebuild esbuild
+      - name: Kotlin-Modelle gegen den Vertrag
+        run: node --test test/vertrag-kotlin.test.js
 
   # ── Gegenproben ────────────────────────────────────────────────────────────
   # Jeder Patch unter gegenproben/ macht etwas kaputt; die Testklasse aus seinem Kopf

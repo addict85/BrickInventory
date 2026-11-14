@@ -2,7 +2,7 @@ package ch.brickinventoryapp.finanzen
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.data.model.FigsValuationResponse
 import ch.brickinventoryapp.model.data.model.Gutschein
 import ch.brickinventoryapp.model.data.model.PartsValuationResponse
@@ -52,7 +52,7 @@ import ch.brickinventoryapp.finanzen.ui.finanzKopf
  */
 class FinanzZahlenTest {
 
-    private val bewertung = ApiJson.decodeFromString(ValuationResponse.serializer(), """{
+    private val bewertung = BrickJson.decodeFromString(ValuationResponse.serializer(), """{
         "success": true, "currency": "CHF", "ttl_stunden": 12, "kaufpreise_fremde_waehrung": 1,
         "totals": {"min": "0.10", "avg": "0.10", "max": "0.10", "qty_avg": "0.10"},
         "sets": [
@@ -80,11 +80,11 @@ class FinanzZahlenTest {
 
     @Test
     fun `Teile und Figuren lesen dieselben Zahlenfelder`() {
-        val teile = ApiJson.decodeFromString(PartsValuationResponse.serializer(), """{
+        val teile = BrickJson.decodeFromString(PartsValuationResponse.serializer(), """{
             "success": true, "total_value": "0.20", "kaufpreise_fremde_waehrung": 2,
             "parts": [{"id": 3, "part_number": "3001", "quantity": 4, "display_value": "999.99",
                        "wert_gesamt": 1.2, "purchase_price": 0.25, "pnl_pct": "-50.0", "pnl_prozent": 20.0}]}""").alsAnsicht()
-        val figuren = ApiJson.decodeFromString(FigsValuationResponse.serializer(), """{
+        val figuren = BrickJson.decodeFromString(FigsValuationResponse.serializer(), """{
             "success": true, "total_value": "0.00", "kaufpreise_fremde_waehrung": 1,
             "figs": [{"id": 5, "fig_number": "sw0001", "display_value": "999.99", "wert_gesamt": 30.0,
                       "acquisitions": [{"id": 9, "condition": "U", "quantity": 1, "purchase_price": 20.0,
@@ -107,14 +107,14 @@ class FinanzZahlenTest {
         val ohne = finanzSummen(bewertung, teile, null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00")).alsAnsicht())
         assertEquals(0, BigDecimal("0.30").compareTo(ohne.gesamt))
         assertEquals(0, BigDecimal("0.20").compareTo(ohne.teileUndFiguren))
-        val mit = finanzSummen(bewertung, teile, null, ApiJson.decodeFromString(PnlResponse.serializer(),
+        val mit = finanzSummen(bewertung, teile, null, BrickJson.decodeFromString(PnlResponse.serializer(),
             """{"success": true, "totals": {"purchase": "4000.00", "current": "4894.77", "grand_total": "4894.77"}}""").alsAnsicht())
         assertEquals(0, BigDecimal("4894.77").compareTo(mit.gesamt))
     }
 
     @Test
     fun `fremde Kaufpreise zaehlt pnl ueber alle drei Arten`() {
-        val pnl = ApiJson.decodeFromString(PnlResponse.serializer(), """{"success": true,
+        val pnl = BrickJson.decodeFromString(PnlResponse.serializer(), """{"success": true,
             "totals": {"purchase": "100.00", "current": "112.50", "pnl_pct": "-50.0", "pnl_prozent": 12.5, "kaufpreise_fremde_waehrung": 4},
             "sets": [{"set_number": "1-1", "pnl_abs": "9.00", "pnl_betrag": 9.0, "pnl_prozent": 3.4,
                       "baseline_pnl_prozent": 3.4}]}""").alsAnsicht()
@@ -126,7 +126,7 @@ class FinanzZahlenTest {
 
     @Test
     fun `der Preisverlauf liefert die G&V als Zahl`() {
-        val h = ApiJson.decodeFromString(PriceHistoryResponse.serializer(),
+        val h = BrickJson.decodeFromString(PriceHistoryResponse.serializer(),
             """{"success": true, "pnl_pct": "-50.0", "pnl_prozent": 16.1}""")
         assertEquals(16.1, h.pnlProzent!!, 0.0)
     }
@@ -159,7 +159,7 @@ class FinanzZahlenTest {
     }
 
     private fun pnl(totals: String) =
-        ApiJson.decodeFromString(PnlResponse.serializer(), """{"success": true, "totals": $totals}""").alsAnsicht()
+        BrickJson.decodeFromString(PnlResponse.serializer(), """{"success": true, "totals": $totals}""").alsAnsicht()
 
     /**
      * Einstand, Marktwert und G/V der Kopfkarte aus der Basis des Servers: Aus allen

@@ -11,6 +11,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
+import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -32,8 +33,8 @@ import javax.inject.Singleton
 internal class SetAnlegenSseClient @Inject constructor(
     @SseClient private val client: OkHttpClient,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    private val json: Json = BrickJson,
 ) : SetAnleger {
-    private val json = Json { ignoreUnknownKeys = true }
 
     // Die Schritte stehen als SetAnlegenSchritt in SetAnleger.kt.
 

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
-import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.model.data.model.LoginResponse
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.testing.KontoRepository
@@ -63,10 +63,10 @@ class ZweiterFaktorUebernahmeTest {
 
     @Test
     fun `Anmeldung und auth me lesen das Feld zweiterFaktorPflicht`() = runBlocking {
-        val anmeldung = ApiJson.decodeFromString(LoginResponse.serializer(),
+        val anmeldung = BrickJson.decodeFromString(LoginResponse.serializer(),
             """{"success":true,"token":"t","user":{"id":1,"username":"marco","is_admin":true,"zweiterFaktorPflicht":true}}""")
         assertTrue("aus der Anmeldung", anmeldung.user?.zweiterFaktorPflicht == true)
-        val ohne = ApiJson.decodeFromString(LoginResponse.serializer(),
+        val ohne = BrickJson.decodeFromString(LoginResponse.serializer(),
             """{"success":true,"token":"t","user":{"id":1,"username":"marco"}}""")
         assertFalse("ein älterer Server nennt es nicht", ohne.user?.zweiterFaktorPflicht == true)
 

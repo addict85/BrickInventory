@@ -2,7 +2,7 @@ package ch.brickinventoryapp.update.util
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import ch.brickinventoryapp.model.json.BrickJson
 import java.io.File
 import java.security.KeyFactory
 import java.security.MessageDigest
@@ -29,12 +29,12 @@ internal data class SignierteBeschreibung(
  * Beschreibung mehr ausstellen. Erst prüfen, dann lesen: Ein ungeprüftes Feld darf nichts entscheiden.
  */
 fun gepruefteBeschreibung(roh: String, schluessel: List<ByteArray>): UpdateBeschreibung? {
-    val huelle = runCatching { beschreibungsJson.decodeFromString<SignierteBeschreibung>(roh) }.getOrNull() ?: return null
+    val huelle = runCatching { BrickJson.decodeFromString<SignierteBeschreibung>(roh) }.getOrNull() ?: return null
     val daten = runCatching { Base64.getDecoder().decode(huelle.daten) }.getOrNull() ?: return null
     val signatur = runCatching { Base64.getDecoder().decode(huelle.beschreibungssignatur) }.getOrNull() ?: return null
     val echt = schluessel.any { beschreibungsSignaturGilt(daten, signatur, it) }
     if (!echt) return null
-    return runCatching { beschreibungsJson.decodeFromString<UpdateBeschreibung>(daten.decodeToString()) }.getOrNull()
+    return runCatching { BrickJson.decodeFromString<UpdateBeschreibung>(daten.decodeToString()) }.getOrNull()
 }
 
 /**
@@ -71,5 +71,3 @@ fun pruefsummePasst(datei: File, erwartet: String): Boolean {
     }
     return md.digest().joinToString("") { "%02x".format(it) } == erwartet.trim().lowercase()
 }
-
-private val beschreibungsJson = Json { ignoreUnknownKeys = true }
