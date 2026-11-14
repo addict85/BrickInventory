@@ -34,7 +34,7 @@ export async function lagerSchreibkonto(
 
 /** Der Vorrat der gewünschten Konten, soweit das Konto sie sehen darf. */
 export async function orteFuer(k: BestandKontext, nutzer: number, wunsch: string | undefined): Promise<Lagerort[]> {
-  return orteVon(k.db, await lagerKonten(k, nutzer, wunsch, false));
+  return orteVon(k, await lagerKonten(k, nutzer, wunsch, false));
 }
 
 /** `null` löscht sie. Ein fremder Ort wird abgelehnt, nicht ignoriert: Der

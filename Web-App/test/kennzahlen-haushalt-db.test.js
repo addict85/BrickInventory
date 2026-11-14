@@ -56,6 +56,7 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
   await haeltSet(db, kind, '21318-1', 1);
 
   const { blickfeldIds } = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };

@@ -393,7 +393,7 @@ test('Android-API: Marktpreis benutzt den Zustand des Sets, nicht den globalen S
   // seit einer früheren Runde mit Blickfeld (uids aus blickfeldIds) — sonst 404 im Haushalt
   assert.match(
     priceRoute,
-    /sk\.finanzen\.fetchPrice\(\s*sn,\s*await sk\.finanzen\.resolveSetCondition\(blickfeld, sn, undefined\),/,
+    /sk\.finanzen\.fetchPrice\(\s*sn,\s*await sk\.finanzen\.resolveSetCondition\(blickfeld, sn\),/,
     'Der Zustand muss über den gemeinsamen Helfer aufgelöst werden',
   );
 
@@ -453,7 +453,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
-  const uses = (apiV1.match(/sk\.finanzen\.resolveSetCondition\(blickfeld, sn, undefined\)/g) || []).length;
+  const uses = (apiV1.match(/sk\.finanzen\.resolveSetCondition\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 

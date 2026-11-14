@@ -5,6 +5,7 @@ import { baueKontext, bindeGenerisch, bindeZugang, type Einblick } from '../infr
 import * as acquisitions from './acquisitions';
 import * as bestandExportDienst from './bestandExport';
 import * as gemeinsamDienst from './gemeinsam';
+import * as gemeinsamRepo from './repository/gemeinsam';
 import * as kennzahlenDienst from './kennzahlen';
 import * as manuelleMenge from './manuelleMenge';
 import * as papierkorbDienst from './papierkorb';
@@ -23,11 +24,15 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
     ...bindeZugang(k, acquisitions, ['recordAcquisitionForDay', 'findSameDayAcquisition', 'setzeGeschaetztenPreis']),
     erfassungenInKontowaehrung: bindeGenerisch(k)(acquisitions.erfassungenInKontowaehrung),
     ...bindeZugang(k, bestandExportDienst, ['buildPartsCsv', 'buildFigsCsv']),
-    ...bindeZugang(k, gemeinsamDienst, ['verwendendeSets']),
+    ...bindeZugang(k, gemeinsamDienst, ['verwendendeSets', 'loescheManuellesTeil', 'loescheManuelleFigur']),
+    // Bausteine fremder Löschungen und Umzüge; in deren Transaktion über t.bestand gerufen.
+    ...bindeZugang(k.db, gemeinsamRepo, ['entferneSetInhalt', 'kopiereSetInhalt', 'legeManuellAn']),
     applyManualCondition: bindeGenerisch(k)(gemeinsamDienst.applyManualCondition),
     ...bindeZugang(k, kennzahlenDienst, ['getStats']),
     ...bindeZugang(k, manuelleMenge, ['passeManuelleMengeAn']),
     ...bindeZugang(k, papierkorbDienst, [
+      'legeInPapierkorb',
+      'legeKaeufeInPapierkorb',
       'listePapierkorb',
       'stelleWiederHer',
       'loescheEndgueltig',
@@ -35,10 +40,8 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
       'raeumePapierkorbAuf',
     ]),
     ...bindeZugang(k, kaufpreisNachtrag, ['run']),
-    // Nimmt den Zugang statt des Kontexts: Erfassungen rufen ihn mit dem Griff ihrer Transaktion.
-    // setzeLagerort nimmt den Kontext: Ein neuer Ort braucht k.transaktion.
     lagerortDienst: {
-      ...bindeZugang(k.db, lagerortDienst, [
+      ...bindeZugang(k, lagerortDienst, [
         'benenneOrtUm',
         'lagerorte',
         'legeOrtAn',

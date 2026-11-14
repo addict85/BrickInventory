@@ -31,6 +31,19 @@ export async function stelleAuftragEin<A extends AuftragsArt>(
   return id;
 }
 
+/** Ein Auftrag des anfragenden Kontos (oder seines Unterkontos), auch in dessen Transaktion:
+ * ohne Systemrahmen, der Zeilenschutz prüft, dass user_id zum Haushalt gehört. */
+export async function stelleEigenenAuftragEin<A extends AuftragsArt>(
+  k: AuftraegeKontext,
+  art: A,
+  nutzlast: NutzlastEingabe<A>,
+  o: Einstellen & { userId: number },
+): Promise<string | null> {
+  const id = await k.auftraege.fuegeEigenenAuftragEin(art, pruefeNutzlast(art, nutzlast), o);
+  await k.db.benachrichtigung.notify(repo.AUFTRAG_KANAL, art);
+  return id;
+}
+
 /** Fehlende Preise eines Kontos in einer Währung: höchstens ein wartender Auftrag,
  * der jede neue Meldung aufnimmt (repository: ergaenzePreisAuftrag). */
 export async function merkePreiseVor(

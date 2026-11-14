@@ -7,7 +7,6 @@ export type { SetsDienste } from './bereich';
 export type { SetsKontext } from './kontext';
 export { normalizeSetNumber, nacharbeitEinstellen } from './erfassen';
 export { sanitizeSetNumber } from './setService';
-export { deleteSetRows } from './loeschen';
 export { QUELLE_GESTOERT } from './inhalt';
 export { setCsvZeilen } from './csvImport';
 export { ANLEITUNGS_WURZEL } from './anleitungen';

@@ -20,14 +20,8 @@ export interface Preiszeile {
   fetched_at: Date | null;
 }
 
-/** `dbh` erlaubt das Lesen in einer offenen Transaktion. */
-export function setZustandsZaehler(
-  db: DbSchnittstelle,
-  uids: number[],
-  setNumber: string,
-  dbh: Pick<DbSchnittstelle, 'get'> = db,
-) {
-  return dbh.get<{ acq_count: string; used_count: string }>(
+export function setZustandsZaehler(db: DbSchnittstelle, uids: number[], setNumber: string) {
+  return db.get<{ acq_count: string; used_count: string }>(
     `SELECT COUNT(a.id)                                 AS acq_count,
             COUNT(a.id) FILTER (WHERE a.condition='U')  AS used_count
        FROM sets s LEFT JOIN set_acquisitions a

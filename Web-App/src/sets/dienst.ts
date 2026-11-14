@@ -1,6 +1,5 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen nur Anfrage und Antwort kennen. */
-import { schreibziel } from '../haushalt';
-import { normalisiereLagerort, vorgabeVon } from '../bestand';
+import { normalisiereLagerort } from '../bestand';
 import { normalizeSetNumber } from './erfassen';
 import { mitVersion } from '../infra/setNummer';
 import { verschiebeSet } from './setMove';
@@ -35,7 +34,10 @@ export async function lagerortDesSetsSetzen(
 /** Die Liste kann über mehrere Konten spannen, die Vorgabe ist immer die des
  * Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung. */
 export async function lagerorteMitVorgabe(sk: SetsKontext, uid: number, owner: string | undefined) {
-  const [orte, vorgabe] = await Promise.all([sk.bestand.orteFuer(uid, owner), vorgabeVon(sk.db, uid)]);
+  const [orte, vorgabe] = await Promise.all([
+    sk.bestand.orteFuer(uid, owner),
+    sk.bestand.lagerortDienst.vorgabeVon(uid),
+  ]);
   return { orte, vorgabe };
 }
 
@@ -54,8 +56,8 @@ export async function setVerschieben(
 ) {
   if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
   const sn = mitVersion(roh);
-  const fromId = await schreibziel(sk.db, uid, von ?? uid);
-  const toId = await schreibziel(sk.db, uid, nach);
+  const fromId = await sk.haushalt.schreibziel(uid, von ?? uid);
+  const toId = await sk.haushalt.schreibziel(uid, nach);
   if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
   return {
     set_number: sn,

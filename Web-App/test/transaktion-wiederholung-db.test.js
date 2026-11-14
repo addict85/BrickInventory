@@ -14,9 +14,12 @@
  *      wiederholt bei Konflikt“; aus setzeGeschaetztenPreis() → rot:
  *      „setzeGeschaetztenPreis wiederholt bei Konflikt“
  *      (Der Verschiebeweg in erfassungAendern() braucht ein Haushaltskonto und
- *      ist hier nicht abgedeckt; er teilt mitInventarSperre mit verschiebeSet.)
+ *      ist hier nicht abgedeckt; er teilt k.transaktion mit Sperren mit verschiebeSet.)
  *   D  mitInventarSperre() reicht die Option nicht an transaction() → rot:
  *      „mitInventarSperre reicht die Option weiter“, „verschiebeSet …“
+ *      (14.11.2026, jetzt k.transaktion mit `sperren`: in baueKontext() die Optionen
+ *      nicht an transaction() gereicht → rot: „k.transaktion mit Sperren …“,
+ *      „verschiebeSet …“, „setzeGeschaetztenPreis …“)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -26,7 +29,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testKontext } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
@@ -182,26 +185,27 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     await db.run('DELETE FROM users WHERE id = ANY($1)', [konten]).catch(() => {});
   });
 
-  await t.test('mitInventarSperre reicht die Option weiter', async () => {
-    const { mitInventarSperre } = _req('db/txLock.js');
+  await t.test('k.transaktion mit Sperren reicht die Option weiter', async () => {
+    const k = testKontext('bestand');
+    const sperren = [{ konto: 1, schluessel: 'x' }];
     let n = 0;
-    const r = await mitInventarSperre(
-      testZugang(),
-      1,
-      'x',
+    const r = await k.transaktion(
       async () => {
         if (++n < 2) throw pgFehler('40P01');
         return 'fertig';
       },
-      MIT,
+      { ...MIT, sperren },
     );
     assert.deepEqual([r, n], ['fertig', 2]);
     let m = 0;
     await assert.rejects(
-      mitInventarSperre(testZugang(), 1, 'x', async () => {
-        m++;
-        throw pgFehler('40P01');
-      }),
+      k.transaktion(
+        async () => {
+          m++;
+          throw pgFehler('40P01');
+        },
+        { sperren },
+      ),
       { code: '40P01' },
     );
     assert.equal(m, 1);
