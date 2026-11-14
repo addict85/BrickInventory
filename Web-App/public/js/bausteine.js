@@ -178,15 +178,15 @@ export function zeilenKnopf(ziel, sichtbar, name) {
 }
 
 let _kachelNr = 0;
-/**
- * Name einer Kachel (role=button) nur aus Name und Nummer; der übrige Inhalt hängt per aria-describedby als
- * Beschreibung an. Ohne Namen las der Vorleser den ganzen Kachelinhalt als Namen, rund 190 Zeichen je Karte.
- * @param {string} name @param {string} nummer @param {number} [teile] Anzahl beschreibender Elemente
- */
-export function kachelName(name, nummer, teile = 1) {
+/** Name einer Kachel nur aus Nummer und Name, der Rest als Beschreibung: ein aria-label verfehlte „Label in
+ * Name“. @param {number} [teile] beschreibende Elemente; `k.teil(i)` gibt id und aria-hidden */
+export function kachelName(teile = 1) {
   const id = `kachel-${++_kachelNr}`;
   const ids = Array.from({ length: teile }, (_, i) => `${id}-${i + 1}`);
-  return { attr: html` aria-label="${nummer ? `${name}, ${nummer}` : name}" aria-describedby="${ids.join(' ')}"`, ids };
+  return {
+    attr: html` aria-describedby="${ids.join(' ')}"`,
+    teil: (/** @type {number} */ i) => html` id="${ids[i]}" aria-hidden="true"`,
+  };
 }
 
 /** „≈“ vor einem Kaufpreis, der ein eingesetzter Marktpreis ist; sonst läse er sich wie bezahlt.

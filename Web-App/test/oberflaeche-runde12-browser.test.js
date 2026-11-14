@@ -121,8 +121,8 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async t
       [],
       'das Logo wird nicht vorgelesen',
     );
-    // Seit UI-Prüfung 22 heisst die Kachel „Name, Nummer“; der Rest ist Beschreibung.
-    const karte = namen.find(n => n.startsWith('button: Titanic, 10294-1'));
+    // Seit UI-Prüfung 22 nur Nummer und Name; der Rest ist Beschreibung.
+    const karte = namen.find(n => n === 'button: 10294-1 Titanic');
     assert.ok(karte, 'Kachel Titanic als Knopf');
     assert.equal(karte.match(/Titanic/g).length, 1, `Name einmal: ${karte}`);
   });

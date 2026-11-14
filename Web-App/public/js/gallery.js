@@ -408,14 +408,14 @@ function gridCard(s) {
   const condBadge = condBadges(s);
   // Ohne Jahr, Thema und echten Namen kennt der Katalog die Nummer (noch) nicht.
   const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
-  const k = kachelName(s.name || tRaw('common.unknown'), s.set_number, 3);
+  const k = kachelName(3);
   return html`<div class="sc"${faecherTon(s)} tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openModal" data-arg="${s.set_number}">
     <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${s.set_number}" title="${t('detail.delete')}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${s.set_number}</div>
       <div class="sname">${s.name || tRaw('common.unknown')}</div>
-      <div class="smeta" id="${k.ids[0]}">
+      <div class="smeta"${k.teil(0)}>
         <span class="smeta-text"${s.theme ? html` title="${s.theme}"` : ''}>${s.year || '—'}${s.theme ? html`${' · '}${s.theme}` : ''}</span>
         <div class="splaketten">
           ${s.instructions?.length ? html`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>` : ''}
@@ -426,8 +426,8 @@ function gridCard(s) {
           ${ownerBadges(s)}
         </div>
       </div>
-      <div class="price-badge" id="${k.ids[1]}" data-price-for="${s.set_number}"${preis ? '' : ' hidden'}>${preis}</div>
-      ${kaufFmt ? html`<div class="kachel-datum" id="${k.ids[2]}" title="${t('gallery.card.bought')}">${ico('kalender')} ${kaufText}</div>` : html`<div class="kachel-datum" id="${k.ids[2]}" aria-hidden="true"></div>`}
+      <div class="price-badge"${k.teil(1)} data-price-for="${s.set_number}"${preis ? '' : ' hidden'}>${preis}</div>
+      ${kaufFmt ? html`<div class="kachel-datum"${k.teil(2)} title="${t('gallery.card.bought')}">${ico('kalender')} ${kaufText}</div>` : html`<div class="kachel-datum" ${k.teil(2)}></div>`}
     </div>
   </div>`;
 }

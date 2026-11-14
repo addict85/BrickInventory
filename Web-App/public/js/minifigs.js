@@ -295,13 +295,13 @@ export function renderFigs(list, target) {
           // den neuen ohne Preis und ohne Mengenaenderung. Die Kachel entscheidet nach der Quelle, damit
           // BEIDE Faelle richtig sind — auch wenn diese Liste heute nur
           // `source=set` laedt.
-          const k = kachelName(f.fig_name || '—', f.fig_number);
+          const k = kachelName();
           return html`<div class="part-card" tabindex="0" role="button"${k.attr}${f.source === 'manual' ? html` aria-keyshortcuts="Delete"` : ''} data-stil="position:relative;cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
             ${ungeprueft(delBtn)}
             ${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' }) : html`<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}
             <div class="part-num">${f.fig_number}</div>
             <div class="part-name">${f.fig_name || '—'}</div>
-            <div class="kachel-mehr" id="${k.ids[0]}">
+            <div class="kachel-mehr"${k.teil(0)}>
             <div class="part-qty">×${f.total_quantity || f.quantity}</div>
             ${ungeprueft(condBadge)}
             ${ungeprueft(besitzer)}
@@ -423,13 +423,13 @@ export function renderManualFigsTable() {
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
       const priceStr = figPrice != null ? fmtN(figPrice, CURRENCY) : '—';
       const condBadge = condBadges(f);
-      const k = kachelName(f.fig_name || '—', f.fig_number);
+      const k = kachelName();
       return html`<div class="man-tile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="openManDetail" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0" data-stil="cursor:pointer">
         <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${f.fig_number}" data-arg2="${f.user_id || ''}" title="${t('figs.delete')}">${TRASH_ICON_SVG}</span></div>
         ${ungeprueft(img)}
         <div class="man-tile-num">${f.fig_number}</div>
         <div class="man-tile-name">${f.fig_name || '—'}</div>
-        <div class="kachel-mehr" id="${k.ids[0]}">
+        <div class="kachel-mehr"${k.teil(0)}>
         <div data-stil="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:2px">
           <span class="qbadge">×${f.quantity}</span>${ungeprueft(condBadge)}${ownerBadges(f)}
         </div>

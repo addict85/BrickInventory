@@ -98,7 +98,7 @@ function zeile(w) {
       : html`<span class="mk-preis text-mut mk-preis-offen" title="${tRaw('wanted.preis_offen_hint')}">${tRaw('wanted.preis_offen')}</span>`;
 
   const arg = `${w.set_number}|${w.condition}|${w.user_id}`;
-  const k = kachelName(w.name || w.set_number, w.name ? w.set_number : '', 2);
+  const k = kachelName(2);
   return html`
     <!-- Die GANZE Zeile oeffnet das Detail — wie die Karte in der App.
          Der Papierkorb sitzt oben rechts und haelt seinen Klick an
@@ -121,9 +121,9 @@ function zeile(w) {
       ${bild}
       <div class="mk-text">
         <div class="mk-titel">${ungeprueft(titel)}</div>
-        <div class="mk-unter" id="${k.ids[0]}">${ungeprueft(unter)}</div>
+        <div class="mk-unter"${k.teil(0)}>${ungeprueft(unter)}</div>
       </div>
-      <div class="mk-rechts" id="${k.ids[1]}">
+      <div class="mk-rechts"${k.teil(1)}>
         ${alarm}${schon}${preis}
       </div>
     </div>`;
