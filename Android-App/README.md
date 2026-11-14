@@ -299,7 +299,16 @@ Regel ihr Besitzer. Solche Prüfungen lassen sich mit Frida oder Magisk umgehen
 und sperren Nutzer eigener ROMs aus, ohne die Daten zu schützen. Was sie
 schützen soll, liegt an anderer Stelle: Der Server prüft jeden Zugriff,
 lokale Ablagen sind verschlüsselt, Updates sind signiert und werden vor der
-Installation geprüft.
+Installation geprüft. MASVS-R wird nicht angestrebt; die Geräteintegrität, die
+für heikle Schritte zählt (gesperrter Bootloader, verifizierter Start, echte
+App), prüft der Server über die Key Attestation des Geräteschlüssels
+(`docs/SICHERHEIT.md`, „Android: Resilienz“).
+
+**App-Sperre:** ein Sichtschutz der Oberfläche, keine Verschlüsselung. Sie
+verdeckt die App nach der gewählten Zeit im Hintergrund; Hintergrundarbeit läuft
+weiter, die Daten schützt der Keystore (siehe „Daten auf dem Gerät“). Das
+Widget verdeckt seine Beträge, sobald die Sperre greifen kann
+(`AppSperre.verdecktWidget`).
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
