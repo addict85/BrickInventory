@@ -19,8 +19,10 @@ import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import type { KatalogDienste } from '../katalog';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
+import type { Uhr } from '../infra/uhr';
 
 export interface FinanzenAbhaengigkeiten {
+  uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
   einstellungen: EinstellungenDienste;

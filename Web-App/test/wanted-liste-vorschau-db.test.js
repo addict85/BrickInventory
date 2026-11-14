@@ -45,12 +45,10 @@
  * durch das feste `'N'` ersetzt → `pass 7 / fail 2`, rot ist 2b mit
  * „'N' statt 'U' — die Einstellung des Kontos gewinnt".
  *
- * Ebenfalls am 20.10. ist Fall 5b dazugekommen (Marcos Frage nach dem zweiten
- * Lauf). Ausgangslage damit `# pass 10 / # fail 0` — neun Unterfälle plus der
- * Rahmen; die Zahlen von A bis G verschieben sich entsprechend um eins.
+ * Mit Fall 5b (zweiter Lauf) ist die Ausgangslage `# pass 10 / # fail 0` — neun
+ * Unterfälle plus der Rahmen.
  *
  *   H  `|| a.sicherheit === 'rebrickable'` aus der Merk-Bedingung entfernt
- *      (also der Stand von Marcos Frage)
  *      → `pass 8 / fail 2`. Rot ist 5b: „Gemerkt wurde []".
  *   I  dieselbe Bedingung auf JEDE Stufe geweitet (`if (a.sicherheit …)`)
  *      → `pass 8 / fail 2`. Rot ist 5: Ein Katalogtreffer — eine Vermutung —

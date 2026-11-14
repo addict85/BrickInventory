@@ -36,7 +36,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { testServer, portVon } = require('./helpers/server');
 const { verwalterMitFaktor } = require('./helpers/verwalter');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 const { bis } = require('./helpers/zeit');
@@ -176,7 +176,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
   await t.test('offene Ereignis-Ströme halten das Herunterfahren nicht auf', async () => {
     const port = await new Promise(r => {
       const s = net.createServer().listen(0, () => {
-        const p = s.address().port;
+        const p = portVon(s);
         s.close(() => r(p));
       });
     });

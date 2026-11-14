@@ -115,7 +115,7 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
   );
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  for (const [art, pfad, erwartet] of [
+  for (const [art, pfad, erwartet] of /** @type {[string, string, object][]} */ ([
     ['sets', `sets/${SN}/acquisitions`, { quantity: 3, amount: 24.3, priced_rows: 2, currency: 'CHF', ohne_kurs: 0 }],
     [
       'parts',
@@ -123,7 +123,7 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
       { quantity: 3, amount: 1.8, priced_rows: 1, currency: 'CHF', ohne_kurs: 0 },
     ],
     ['minifigs', `minifigs/${FN}/acquisitions`, { quantity: 2, priced_rows: 0, currency: 'CHF', ohne_kurs: 0 }],
-  ]) {
+  ])) {
     const r = await (await fetch(`${base}/api/v1/${pfad}`)).json();
     assert.equal(r.acquisitions?.length > 0, true, `${art}: keine Erfassungen in der Antwort`);
     assert.deepEqual(r.totals, erwartet, art);

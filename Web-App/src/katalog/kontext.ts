@@ -18,8 +18,10 @@ import * as katalogSuche from './repository/katalogSuche';
 import * as rebrickableCache from './repository/rebrickableCache';
 import * as setInhalt from './repository/setInhalt';
 import * as teileAnreicherung from './repository/teileAnreicherung';
+import type { Uhr } from '../infra/uhr';
 
 export interface KatalogAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   faecher: Faecher;
   /** Klienten, Kontingent und Drosseln dieses Satzes Dienste (src/fremdquellen). */

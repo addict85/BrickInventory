@@ -68,13 +68,15 @@ function authenticator() {
   const id = crypto.randomBytes(16);
   let zaehler = 0;
   const cose = isoCBOR.encode(
-    new Map([
-      [1, 2],
-      [3, -7],
-      [-1, 1],
-      [-2, Buffer.from(jwk.x, 'base64url')],
-      [-3, Buffer.from(jwk.y, 'base64url')],
-    ]),
+    new Map(
+      /** @type {[number, unknown][]} */ ([
+        [1, 2],
+        [3, -7],
+        [-1, 1],
+        [-2, Buffer.from(jwk.x, 'base64url')],
+        [-3, Buffer.from(jwk.y, 'base64url')],
+      ]),
+    ),
   );
   const zahl = n => {
     const b = Buffer.alloc(4);
@@ -97,11 +99,13 @@ function authenticator() {
         Buffer.from(cose),
       ]);
       const att = isoCBOR.encode(
-        new Map([
-          ['fmt', 'none'],
-          ['attStmt', new Map()],
-          ['authData', authData],
-        ]),
+        new Map(
+          /** @type {[string, unknown][]} */ ([
+            ['fmt', 'none'],
+            ['attStmt', new Map()],
+            ['authData', authData],
+          ]),
+        ),
       );
       return {
         id: b64u(id),
@@ -111,7 +115,8 @@ function authenticator() {
         response: { clientDataJSON: b64u(client), attestationObject: b64u(att), transports: ['internal'] },
       };
     },
-    /** @param challenge @param {object} [o] @param [o.uv] User Verification gesetzt @param [o.zaehler] fester Zählerstand */
+    /** @param challenge @param {object} [o] @param [o.uv] User Verification gesetzt @param [o.zaehler] fester Zählerstand
+     *  @param {string} [o.origin] Herkunft der Anmeldung */
     anmelden(challenge, o = {}) {
       const origin = o.origin ?? ORIGIN;
       const stand = o.zaehler ?? ++zaehler;

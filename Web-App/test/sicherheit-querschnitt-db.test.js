@@ -46,7 +46,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { testServer } = require('./helpers/server');
+const { testServer, portVon } = require('./helpers/server');
 const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
 const gesendet = mailAttrappe();
 const db = testDaten();
@@ -55,7 +55,7 @@ const { warte } = require('./helpers/zeit');
 const freierPort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = s.address().port;
+      const p = portVon(s);
       s.close(() => r(p));
     });
   });

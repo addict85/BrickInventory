@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 
 export function schreibeKurse(db: DbSchnittstelle, tage: string[], waehrungen: string[], jeEur: string[]) {
   return db.run(
@@ -10,5 +10,5 @@ export function schreibeKurse(db: DbSchnittstelle, tage: string[], waehrungen: s
 }
 
 export function gibtEsKurse(db: DbSchnittstelle) {
-  return db.get('SELECT 1 AS da FROM wechselkurse LIMIT 1');
+  return db.get<Treffer>('SELECT 1 AS da FROM wechselkurse LIMIT 1');
 }

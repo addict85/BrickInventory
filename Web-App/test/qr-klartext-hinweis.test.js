@@ -58,10 +58,10 @@ test('ohne HTTPS nennt die TLS-Fläche, dass die App sich nur über HTTPS verbin
 });
 
 test('der Countdown zählt von der Dauer des Servers, der Hinweis nennt dieselbe', async () => {
-  for (const [sprache, minuten] of [
+  for (const [sprache, minuten] of /** @type {[string, RegExp][]} */ ([
     ['de', /5 Minuten gültig/],
     ['en', /valid for 5 minutes/],
-  ]) {
+  ])) {
     const { w, d } = await oeffneOberflaeche(
       {
         '/v1/auth/qr-token': {

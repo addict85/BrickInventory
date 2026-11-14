@@ -55,6 +55,6 @@ test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein ungültiger Schritt wird abgewiesen', async () => {
-    await assert.rejects(setAendern(uid, SN, { quantity_delta: 1.5 }), e => e.art === 'ungueltig');
+    await assert.rejects(setAendern(uid, SN, { quantity_delta: 1.5 }), (/** @type {any} */ e) => e.art === 'ungueltig');
   });
 });

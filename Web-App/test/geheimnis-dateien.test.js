@@ -50,11 +50,12 @@ test('das Datenbankpasswort kommt aus der Datei', () => {
 test('beide gesetzt ist ein Fehler, eine fehlende Datei auch', () => {
   assert.throws(
     () => ladeKonfig({ SESSION_SECRET: 'x'.repeat(40), SESSION_SECRET_FILE: datei('s2', 'y'.repeat(40)) }),
-    e => e instanceof KonfigFehler && e.fehler.some(f => /SESSION_SECRET und SESSION_SECRET_FILE/.test(f)),
+    (/** @type {any} */ e) =>
+      e instanceof KonfigFehler && e.fehler.some(f => /SESSION_SECRET und SESSION_SECRET_FILE/.test(f)),
   );
   assert.throws(
     () => ladeKonfig({ PGPASSWORD_FILE: path.join(ordner, 'gibt-es-nicht') }),
-    e => e instanceof KonfigFehler && e.fehler.some(f => /PGPASSWORD_FILE=.*ENOENT/.test(f)),
+    (/** @type {any} */ e) => e instanceof KonfigFehler && e.fehler.some(f => /PGPASSWORD_FILE=.*ENOENT/.test(f)),
   );
 });
 

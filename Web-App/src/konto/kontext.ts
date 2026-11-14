@@ -19,8 +19,10 @@ import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 import type { MailDienste } from '../mail';
 import type { DrosselDienste } from '../drossel';
 import type { GeraeteDienste } from '../geraete';
+import type { Uhr } from '../infra/uhr';
 
 export interface KontoAbhaengigkeiten {
+  uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
   /** Zustand je Zugang (Token-Cache, Sitzungsversionen); erzeugeKonto legt sie an. */

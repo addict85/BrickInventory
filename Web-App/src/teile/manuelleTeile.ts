@@ -287,7 +287,7 @@ export async function importiereTeileCsv(k: TeileKontext, uid: number, text: str
         price: erfassungsPreis,
         geschaetzt,
         condition: effectiveCondition || 'N',
-        createdAt: acquiredAt || new Date().toISOString().slice(0, 10),
+        createdAt: acquiredAt || k.uhr.datum().toISOString().slice(0, 10),
       };
 
       if (await manuellesTeil(k, uid, partNumber, colorId)) {

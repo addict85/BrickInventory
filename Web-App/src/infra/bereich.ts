@@ -62,11 +62,21 @@ function umbau<A extends { db: Db }>(a: A, db: Db): A {
   return aus as A;
 }
 
+/** `t` entsteht je Verbindung einmal: Der Zugang der äussersten Ebene ist je Verbindung derselbe
+ * (db/database.ts, verbindungsZugang), nur Sicherungspunkte bringen einen neuen. */
 export function baueKontext<A extends { db: Db }, Z extends object>(a: A, zugang: (db: Db) => Z): Kontext<A, Z> {
+  const jeDb = new WeakMap<Db, Kontext<A, Z>>();
+  const ueber = (db: Db): Kontext<A, Z> => {
+    const da = jeDb.get(db);
+    if (da) return da;
+    const t = baueKontext(umbau(a, db), zugang);
+    jeDb.set(db, t);
+    return t;
+  };
   return {
     ...a,
     ...zugang(a.db),
-    transaktion: (fn, o) => a.db.transaction(tx => fn(baueKontext(umbau(a, tx.db), zugang)), o),
+    transaktion: (fn, o) => a.db.transaction(tx => fn(ueber(tx.db)), o),
   };
 }
 

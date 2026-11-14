@@ -63,7 +63,7 @@ async function merkeChallenge(
       hash(challenge),
       zweck,
       uid,
-      new Date(Date.now() + CHALLENGE_MS),
+      new Date(k.uhr.jetzt() + CHALLENGE_MS),
       OFFENE_CHALLENGES_HOECHSTENS,
     ))
   )

@@ -1,7 +1,10 @@
 /**
- * Kaufpreis und Zustand landen im selben Konto.
+ * Kaufpreis und Zustand landen im Konto des Besitzers, die Menge bewusst im eigenen.
+ * Konten, Haushalt und Erfassung legen die Dienste an (helpers/fabrik.js).
  *
- * Gegenproben: siehe am jeweiligen Teilschritt.
+ * Gegenproben: siehe am jeweiligen Teilschritt. Für „die Menge geht bewusst auf das
+ * eigene Konto“ (14.11.2026): in setService.ts `const ziel = … ? uid :` durch
+ * `ownerId` ersetzt → rot (die neue Erfassung landete beim Unterkonto).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen fuer account_links).
  */
@@ -17,7 +20,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
+const fabrik = require('./helpers/fabrik');
 const db = testDaten();
 
 test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, async t => {
@@ -34,28 +37,15 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
   await aufraeumen();
 
   try {
-    await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-    const hauptId = (await db.get('SELECT id FROM users WHERE username=$1', [HAUPT])).id;
-    const subId = (await db.get('SELECT id FROM users WHERE username=$1', [SUB])).id;
-    await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-      hauptId,
-      subId,
-    ]);
-
-    // Set UND Erfassung gehoeren dem UNTERKONTO — wie im gemeldeten Fall.
-    await haeltSet(db, subId, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
-    await db.run(
-      `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
-                  VALUES ($1,$2,1,10,'N')`,
-      [subId, SET],
-    );
+    const hauptId = await fabrik.konto(HAUPT);
+    const subId = await fabrik.konto(SUB);
+    await fabrik.unterkonto(hauptId, subId);
+    // Set UND Erfassung gehoeren dem UNTERKONTO.
+    await fabrik.setErfasst(subId, SET, { preis: 10, zustand: 'N' });
 
     const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
-    // Die sets-Zeile traegt seit Migration 0032 nur noch Menge und Besitzer —
-    // Kaufpreis und Zustand stehen in der Erfassung.
+    // Kaufpreis und Zustand stehen in der Erfassung, die Menge ist ihre Summe.
     const stand = async () => ({
-      // Die Menge aus den Erfassungen (Migration 0036) — hier stand
-      // s.quantity.
       set: await db.get(
         `SELECT s.user_id,
                 COALESCE((SELECT SUM(a.quantity) FROM set_acquisitions a
@@ -93,33 +83,26 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     assert.equal(s.erf.user_id, subId);
     const fremde = await db.get('SELECT COUNT(*)::int n FROM sets WHERE set_number=$1 AND user_id=$2', [SET, hauptId]);
     assert.equal(fremde.n, 0, 'Eine Preis- oder Zustandsaenderung hat eine eigene Zeile erzeugt');
+
+    // 4. Die Menge dagegen geht bewusst auf das EIGENE Konto: Wer erhöht, bekommt
+    //    einen eigenen Kaufpreis-Eintrag, statt den Bestand eines anderen Kontos zu ändern.
+    await setAendern(hauptId, SET, { quantity: 2 });
+    const je = await db.all(
+      'SELECT user_id, SUM(quantity)::int AS n FROM set_acquisitions WHERE set_number=$1 GROUP BY user_id ORDER BY user_id',
+      [SET],
+    );
+    assert.deepEqual(
+      je.map((/** @type {any} */ z) => [z.user_id, z.n]),
+      [
+        [hauptId, 1],
+        [subId, 1],
+      ].sort((a, b) => a[0] - b[0]),
+      'ohne Angabe eines Kontos landet die neue Menge beim Aufrufer',
+    );
   } finally {
     await aufraeumen();
     await db.pool.end();
   }
-});
-
-test('die Menge geht bewusst auf das eigene Konto', () => {
-  // Marcos Vorgabe: „Die Anzahl soll immer von allen angezeigt werden. Wenn
-  // ich diese erhoehe, soll es fuer meinen Account einen neuen Kaufpreis-
-  // Eintrag erstellen." Der Mengen-Zweig weicht deshalb ABSICHTLICH vom
-  // Besitzer ab. Das steht hier, damit es niemand „mit vereinheitlicht".
-  const src = fs.readFileSync(path.join(ROOT, 'src/sets/dienst.ts'), 'utf8');
-  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
-  // Seit UX-Prüfung 19 (H1) kann der Aufruf ein Konto im Schreibfeld nennen; ohne Angabe bleibt es das eigene.
-  assert.match(code, /const ziel = body\.owner_user_id == null \? uid :/, 'ohne Angabe nicht das eigene Konto');
-  assert.match(
-    code,
-    /erfassungenAnMengeAngleichen\(t, ziel, sn/,
-    'Die Mengenanpassung laeuft nicht mehr auf das eigene Konto — dann erhoeht ' +
-      'ein „+" den Bestand eines fremden Kontos',
-  );
-  // Und Preis/Zustand gehen NICHT ueber den Aufrufer.
-  assert.doesNotMatch(
-    code,
-    /UPDATE sets SET (?:purchase_price|condition)[^;]*\[\s*\w+,\s*uid,/,
-    'Preis oder Zustand werden wieder mit der Aufrufer-ID geschrieben',
-  );
 });
 
 // Der Name lautete „die Spiegelung auf Set und letzte Erfassung steht an einer

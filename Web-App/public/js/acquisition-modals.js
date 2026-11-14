@@ -86,7 +86,7 @@ async function loadAcqModal(sn) {
   }
   const acqs = ad.acquisitions || [];
   if (!erfassung.mitglieder.length) {
-    const hm = await api('GET', '/v1/sets/household-members').catch(() => null);
+    const hm = await api('GET', '/v1/sets/household-members');
     erfassung.mitglieder = hm?.members || [];
   }
   erfassung.besitzer = ad?.owner_user_id ?? ME?.id ?? null;

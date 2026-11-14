@@ -16,9 +16,9 @@ export function sitzungsVersionAusDb(k: KontoKontext, uid: number): Promise<numb
 
 export async function aktuelleSitzungsVersion(k: KontoKontext, uid: number): Promise<number | null> {
   const g = gemerkt(k).get(uid);
-  if (g && g.bis > Date.now()) return g.version;
+  if (g && g.bis > k.uhr.jetzt()) return g.version;
   const version = await k.zugaenge.sitzungsVersion(uid);
-  gemerkt(k).set(uid, { version, bis: Date.now() + ZWISCHENSPEICHER_MS });
+  gemerkt(k).set(uid, { version, bis: k.uhr.jetzt() + ZWISCHENSPEICHER_MS });
   return version;
 }
 

@@ -28,7 +28,7 @@ async function preisFuerNeueErfassung(sk: SetsKontext, userId: number, setNumber
     await versuche('set-service:cached', sk.finanzen.marktpreisAusCache(setNumber, currency, cond)),
     null,
   );
-  let pp = Number(cached?.marktpreis ?? 0) || null;
+  let pp = cached?.marktpreis || null;
   if (!pp)
     pp = wertOder(
       await versuche('set-service:getCurrentMarketPrice', sk.finanzen.getCurrentMarketPrice(setNumber, userId, cond)),
@@ -41,7 +41,7 @@ async function preisFuerNeueErfassung(sk: SetsKontext, userId: number, setNumber
       await versuche('set-service:hist', sk.finanzen.marktpreisAusVerlauf(setNumber, currency, cond)),
       null,
     );
-    pp = Number(hist?.marktpreis ?? 0) || null;
+    pp = hist?.marktpreis || null;
   }
   return { price: pp, condition: cond, geschaetzt: pp != null, currency };
 }

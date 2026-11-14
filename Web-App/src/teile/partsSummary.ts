@@ -24,8 +24,8 @@ export async function rebuild(k: TeileKontext, userId: number, version?: { v: nu
   // Ohne frische Statistik wählt der Planer nach dem Masseneinfügen den falschen
   // Index. Höchstens alle zehn Minuten, weil ANALYZE die Tabelle aller Konten vermisst.
   const z = zustand(k);
-  if (gebaut && Date.now() - z.letzteAnalyse > 10 * 60_000) {
-    z.letzteAnalyse = Date.now();
+  if (gebaut && k.uhr.jetzt() - z.letzteAnalyse > 10 * 60_000) {
+    z.letzteAnalyse = k.uhr.jetzt();
     await k.teileZusammenfassung.analysiere().catch((e: unknown) => meldeFehler('teile-zusammenfassung:analyse', e));
   }
 }

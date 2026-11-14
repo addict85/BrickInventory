@@ -51,10 +51,10 @@ async function pauseVorArbeit(k: BilderKontext): Promise<void> {
   const takt = k.faecher.fach('bildbedarf:letzteArbeit', () => ({ am: 0 }));
   const soll = pause();
   if (takt.am) {
-    const seit = Date.now() - takt.am;
+    const seit = k.uhr.jetzt() - takt.am;
     if (seit < soll) await warte(soll - seit);
   }
-  takt.am = Date.now();
+  takt.am = k.uhr.jetzt();
 }
 
 /** Ein Fehlschlag wird gemerkt, sonst kostet jede nicht lesbare Datei bei
@@ -119,8 +119,8 @@ export function meldung(e: StapelErgebnis): string {
 /** Auch in der Datenbank, weil die Kachel in einem anderen Prozess liest. */
 export const letzterLauf: { zeit: number | null; ergebnis: StapelErgebnis | null } = { zeit: null, ergebnis: null };
 
-function merkeLauf(erg: StapelErgebnis): void {
-  letzterLauf.zeit = Date.now();
+function merkeLauf(k: BilderKontext, erg: StapelErgebnis): void {
+  letzterLauf.zeit = k.uhr.jetzt();
   letzterLauf.ergebnis = erg;
 }
 
@@ -129,7 +129,7 @@ async function speichereLauf(k: BilderKontext, erg: StapelErgebnis): Promise<voi
   // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne await meldete die Kachel „noch
   // nicht gelaufen".
   await k.auftraege
-    .setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: Date.now(), ergebnis: erg }))
+    .setzeZustand(LAUF_SCHLUESSEL, JSON.stringify({ zeit: k.uhr.jetzt(), ergebnis: erg }))
     .catch(e => meldeFehler('bild-job:setzeZustand', e));
 }
 
@@ -169,7 +169,7 @@ async function nachFehlschlag(
   const status = info.status;
   // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures Weiterfragen verlängert die Sperre.
   if (status === 403 || status === 429) {
-    const bis = new Date(Date.now() + DROSSEL_PAUSE_MS);
+    const bis = new Date(k.uhr.jetzt() + DROSSEL_PAUSE_MS);
     await k.auftraege.pausiereArt('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
     console.error(`[image-queue] CDN drosselt (HTTP ${status}) — Pause bis ${bis.toLocaleTimeString()}`);
     return true;
@@ -191,10 +191,10 @@ async function nachFehlschlag(
 async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
   const erg = leeresErgebnis();
   const pause = await k.auftraege.liesPause('bildbedarf');
-  if (pause && new Date(pause.bis).getTime() > Date.now()) return erg; // CDN hat gedrosselt, siehe unten
+  if (pause && new Date(pause.bis).getTime() > k.uhr.jetzt()) return erg; // CDN hat gedrosselt, siehe unten
   const rows = await nimmBildwuensche(k, NOTIZ_GILT_MS, STAPEL);
   if (!rows.length) {
-    merkeLauf(erg);
+    merkeLauf(k, erg);
     return erg;
   }
 
@@ -272,7 +272,7 @@ async function arbeiteStapel(k: BilderKontext): Promise<StapelErgebnis> {
   }
   // Hier festhalten: Wer den Stapel ausführt, hat gearbeitet, gleich von wo gerufen. In die Datenbank
   // schreibt erst der Takt.
-  merkeLauf(erg);
+  merkeLauf(k, erg);
   return erg;
 }
 
@@ -307,7 +307,7 @@ export async function bildbedarfAbarbeiten(kx: BilderKontext, k: AuftragsKontext
     const e = await taktDurchgang(kx);
     if (e.gesamt || e.zurueckgelegt) console.log(`[image-queue] ${meldung(e)}`);
     const pause = await kx.auftraege.liesPause('bildbedarf');
-    if (pause && new Date(pause.bis).getTime() > Date.now())
+    if (pause && new Date(pause.bis).getTime() > kx.uhr.jetzt())
       throw new AuftragVerschieben(new Date(pause.bis), pause.grund ?? 'CDN drosselt');
     if (!e.gesamt) return;
     if (!(await k.fortschritt({ text: meldung(e) }))) return; // abgebrochen

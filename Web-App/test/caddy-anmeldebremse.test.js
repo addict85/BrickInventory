@@ -29,6 +29,7 @@ const net = require('node:net');
 const https = require('node:https');
 const tls = require('node:tls');
 const { spawn, spawnSync } = require('node:child_process');
+const { portVon } = require('./helpers/server');
 
 const ROOT = path.join(__dirname, '..');
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
@@ -56,7 +57,7 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
       }, halten),
     );
   });
-  await new Promise(r => app.listen(0, '127.0.0.1', r));
+  await new Promise(r => app.listen(0, '127.0.0.1', () => r(null)));
   let caddy = null;
   const offen = [];
   t.after(() => {
@@ -107,7 +108,7 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
       .readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
       .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`)
       .replace('http:// {', `http://:${umleitung} {`)
-      .replaceAll('app:3000', `127.0.0.1:${app.address().port}`);
+      .replaceAll('app:3000', `127.0.0.1:${portVon(app)}`);
     assert.ok(datei.includes('import anmeldung'), 'der Block (anmeldung) ist nicht eingebunden');
     fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
     fehler = '';

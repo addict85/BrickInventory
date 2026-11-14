@@ -52,7 +52,7 @@ async function importiereWantedXml(
       fortschritt: stand => {
         // Der Stand reist über den Auftrag zur wartenden Anfrage (und deren Strom);
         // höchstens fünfmal je Sekunde, der letzte jeder Phase immer.
-        const jetzt = Date.now();
+        const jetzt = kx.uhr.jetzt();
         if (jetzt - zuletzt >= 200 || stand.fertig === stand.gesamt || stand.phase !== letztePhase) {
           zuletzt = jetzt;
           letztePhase = stand.phase;

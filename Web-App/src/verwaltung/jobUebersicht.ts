@@ -131,7 +131,7 @@ async function bildKachel(k: VerwaltungKontext, ab: Abstriche): Promise<Kachel> 
   const { reDl, laeuft: reDlLaeuft, sub: reDlSub } = await neuLadenStand(k, ab);
   // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
   const letzterLauf = await liesStand<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
-  const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
+  const seitLauf = letzterLauf?.zeit ? k.uhr.jetzt() - letzterLauf.zeit : null;
   const jobLaeuft = frisch(letzterLauf?.zeit);
   const katalogSub =
     katalogOffen > 0

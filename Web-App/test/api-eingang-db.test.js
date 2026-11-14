@@ -28,6 +28,7 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
 const { warte } = require('./helpers/zeit');
+const { portVon } = require('./helpers/server');
 
 /** Absichtlich ohne Anmeldung erreichbar — mit Grund. Wächst die Liste, muss jemand sie begründen. */
 const ERWARTET_OFFEN = new Map([
@@ -54,7 +55,7 @@ const ERWARTET_OFFEN = new Map([
 const freierPort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = s.address().port;
+      const p = portVon(s);
       s.close(() => r(p));
     });
   });

@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import type { Spalten } from '../../../db/zeilen';
 
 export async function katalogBildstand(
   db: DbSchnittstelle,
@@ -70,7 +71,7 @@ export async function setsOhneTeilekatalog(db: DbSchnittstelle, grenze = 50): Pr
 export async function manuelleFarbteile(
   db: DbSchnittstelle,
 ): Promise<{ id: number; part_number: string; color_id: number }[]> {
-  return db.all(
+  return db.all<Spalten<'parts', 'id' | 'part_number' | 'color_id'>>(
     "SELECT id, part_number, color_id FROM parts WHERE source='manual' AND color_id IS NOT NULL AND color_id != 0 ORDER BY id ASC",
   );
 }

@@ -278,7 +278,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
     /getCurrentMarketPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?row\.set_number, row\.user_id, row\.condition \|\| null\)/,
     'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis',
   );
-  // Hier stand eine Regel auf die Spiegelung
+  // Keine Spiegelung in die sets-Zeile
   assert.doesNotMatch(
     job.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
     /UPDATE sets SET/,
@@ -548,8 +548,7 @@ test('nur ein Zustand ergibt eine Plakette', () => {
 });
 
 test('ohne Erfassungen gilt „Neu"', () => {
-  // Hier stand „ohne Erfassungen zählt der gespeicherte Wert" mit einem
-  // dritten Parameter. Den gibt es seit Migration 0035 nicht mehr: Fuer
+  // Ohne Erfassungen gibt es keinen gespeicherten Wert, der zählte: Fuer
   // manuelle Positionen traegt sie eine Erfassung nach und prueft danach
   // nach, dass keine ohne geblieben ist; fuer Teile und Figuren aus einem Set …
   assert.deepEqual(conditionsFromAcquisitions(0, 0), ['N']);
@@ -567,8 +566,7 @@ test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'bausteine.js'), 'utf8');
   assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
-  // Vorher stand dieselbe Plakette viermal im Code, dreimal mit fest
-  // eingetragenen Farben statt der CSS-Klassen. Geprüft wird genau das:
+  // Eine Plakette, keine Kopien mit fest eingetragenen Farben statt der CSS-Klassen:
   // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
   for (const f of ['public/js/parts.js', 'public/js/minifigs.js', 'public/js/finance.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');

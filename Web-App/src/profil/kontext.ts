@@ -6,10 +6,12 @@ import type { Faecher } from '../infra/zwischenspeicher';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { KontoDienste } from '../konto';
 import type { MailDienste } from '../mail';
+import type { Uhr } from '../infra/uhr';
 
 export interface ProfilAbhaengigkeiten {
   konfig: Readonly<Konfig>;
   db: Db;
+  uhr: Uhr;
   faecher: Faecher;
   einstellungen: EinstellungenDienste;
   konto: KontoDienste;

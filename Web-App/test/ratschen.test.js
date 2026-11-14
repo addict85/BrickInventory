@@ -181,7 +181,7 @@ function stilleFaengeDerOberflaeche() {
   // Gegenprobe (14.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
   // `.catch(() => null)` → rot (128 von 127).
   const { faenge, stillImBrowser } = require('./helpers/faenge');
-  const SCHRANKE = 127;
+  const SCHRANKE = 91;
   const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
   assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
   assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { zeigeFehler(e); }'), 0);
@@ -249,8 +249,9 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
   // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60. (14.11.2026) Schranke 2 (Transaktionswächter,
   // Sicherungspunkte in db/); `const sitzungen = new Map<string, Sitzung>();` zurück in
-  // src/gutscheine/gutscheinGuthaben.ts → rot (3 von 2).
-  const ZUSTAND_SCHRANKE = 2;
+  // src/gutscheine/gutscheinGuthaben.ts → rot (3 von 2). Schranke 1: Der Transaktionswächter
+  // reist mit der Transaktion im Aufrufrahmen; übrig sind die Sicherungspunkte in db/.
+  const ZUSTAND_SCHRANKE = 1;
   const ZUSTAND =
     /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
   const zaehleZustand = s => (s.match(ZUSTAND) || []).length;
@@ -440,6 +441,21 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
     console.log(`  ℹ unknown-Parameter: ${unbekannt} (Schranke ${SCHRANKE_UNKNOWN}) — Schranke nachziehen`);
 });
 
+test('direkte Uhr-Aufrufe in Fachbereichen werden weniger, nie mehr', () => {
+  // Die Zeit kommt über k.uhr (src/infra/uhr.ts): Ein Test stellt sie, statt zu warten.
+  // Übrig sind Drosseln mit echten Zeitgebern, die Sitzungsmiddleware (Fristen des Kekses) und
+  // Zeitstempel ohne Kontext.
+  // Gegenprobe (14.11.2026): `const x = Date.now();` in src/sets/dienst.ts → rot.
+  const SCHRANKE = 34;
+  const UHR = /\bDate\.now\(\)|\bnew Date\(\)/g;
+  assert.equal('Date.now(); new Date(); new Date(x); k.uhr.jetzt()'.match(UHR)?.length, 2, 'Selbstbeweis');
+  const fach = (/** @type {string} */ f) =>
+    /^(src[\\/](?!infra|http|vertrag)\w+|jobs)[\\/]/.test(path.relative(WEB, f));
+  const ist = zaehle([UHR], fach);
+  assert.ok(ist <= SCHRANKE, `${ist} direkte Uhr-Aufrufe in Fachbereichen und Jobs, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ Uhr-Aufrufe: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('keine Testdatei prüft REQUIRE_DB selbst', () => {
   // Die Regel steht in test/helpers/db.js (dbOderSkip, keineDb,
   // fehltVoraussetzung); eine eigene Fassung war 115-mal kopiert.
@@ -470,8 +486,8 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
   // Übersetzer ohnehin ein Typargument.
-  // Gegenprobe (05.11.2026): Schranke auf 68 → rot.
-  const SCHRANKE = 62;
+  // Gegenprobe (05.11.2026): Schranke auf 68 → rot. Zeilentypen bindet db/zeilen.ts ans Schema.
+  const SCHRANKE = 23;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
@@ -717,7 +733,7 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
-  const SCHRANKE = 386;
+  const SCHRANKE = 385;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
@@ -1326,8 +1342,8 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
   // den typischen Erzählmarken, auch „Gemessen … am <Datum>“.
   // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  // Gegenprobe (14.11.2026): eine Zeile `// Gemessen 7 am` samt Datum an diesen Kopf gehängt → rot (38 von 37).
-  const SCHRANKE = 32;
+  // Gegenprobe (14.11.2026): eine Zeile `// Gemessen 7 am` samt Datum an diesen Kopf gehängt → rot (4 von 3).
+  const SCHRANKE = 3;
 
   const MARKE =
     /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Gemessen\b[^.]*\bam [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;

@@ -32,14 +32,16 @@ const abrufe = [];
 // @ts-expect-error — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
 https.get = (url, opts, cb) => {
   const u = new URL(url);
-  abrufe.push({ pfad: u.pathname, schluessel: opts?.headers?.Authorization });
+  abrufe.push({ pfad: u.pathname, schluessel: /** @type {any} */ (opts)?.headers?.Authorization });
   const req = new EventEmitter();
   setImmediate(() =>
     cb(
-      Object.assign(Readable.from([JSON.stringify({ set_num: '10001-1', name: 'Attrappe' })]), {
-        statusCode: 200,
-        headers: {},
-      }),
+      /** @type {any} */ (
+        Object.assign(Readable.from([JSON.stringify({ set_num: '10001-1', name: 'Attrappe' })]), {
+          statusCode: 200,
+          headers: {},
+        })
+      ),
     ),
   );
   return req;

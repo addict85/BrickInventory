@@ -88,10 +88,10 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
 
   try {
     const ergebnisse = {};
-    for (const [name, pfad] of [
+    for (const [name, pfad] of /** @type {[string, (id: number) => string][]} */ ([
       ['Webapp', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
       ['Android', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
-    ]) {
+    ])) {
       const id = await aufbauen();
       const r = await fetch(`${base}${pfad(id)}`, {
         method: 'PUT',

@@ -50,7 +50,7 @@ function leere(k: KontoKontext): void {
 function _pruneCache(k: KontoKontext) {
   const { eintraege } = speicher(k);
   if (eintraege.size <= 200) return;
-  const cutoff = Date.now() - TOKEN_TTL_MS;
+  const cutoff = k.uhr.jetzt() - TOKEN_TTL_MS;
   for (const [t, v] of eintraege) {
     if (v.cachedAt < cutoff) eintraege.delete(t);
   }

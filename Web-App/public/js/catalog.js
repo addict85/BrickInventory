@@ -620,7 +620,7 @@ async function _ladeJahrVerteilung() {
   _jahrVerteilungFuer = p.toString();
   _catJahrVerteilung = [];
   const gen = _catGen;
-  const d = await api('GET', `/v1/catalog/year-verteilung?${p.toString()}`).catch(() => null);
+  const d = await api('GET', `/v1/catalog/year-verteilung?${p.toString()}`);
   if (gen !== _catGen) return; // Filter hat inzwischen gewechselt
   if (d?.success) _catJahrVerteilung = (d.years || []).filter(y => y.year);
   else _jahrVerteilungFuer = '';

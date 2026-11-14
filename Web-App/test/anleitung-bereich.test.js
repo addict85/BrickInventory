@@ -12,6 +12,7 @@ const path = require('node:path');
 const express = require('express');
 
 const { liefereDatei } = require('./helpers/sources').buildAndRequire()('src/http/dateiAusliefern.js');
+const { portVon } = require('./helpers/server');
 
 const DATEI = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'BI-3004.pdf');
 fs.writeFileSync(DATEI, Buffer.alloc(5000, 7));
@@ -23,7 +24,7 @@ function starte() {
   app.get('/data/instructions/*pfad', (_req, res) => liefereDatei(res, DATEI));
   app.get('/fehlt', (_req, res) => liefereDatei(res, DATEI + '.gibtesnicht'));
   const srv = app.listen(0);
-  const basis = `http://127.0.0.1:${srv.address().port}`;
+  const basis = `http://127.0.0.1:${portVon(srv)}`;
   return { srv, basis };
 }
 

@@ -20,7 +20,7 @@ const { ANMELDUNG, ABGEMELDET, pruefeAntwort, oeffneOberflaeche } = require('./h
 const { baueDist } = require('./helpers/sources');
 
 baueDist();
-const { routeFuerAnfrage } = require('../dist/src/vertrag/index.js');
+const { routeFuerAnfrage } = /** @type {any} */ (require('../dist/src/vertrag/index.js'));
 
 test('Standardantworten erfüllen den Vertrag ohne Ergänzung', () => {
   const abweichungen = [];

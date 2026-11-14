@@ -101,7 +101,7 @@ async function holeBildSperre(
     lockClient = null;
   }
   if (!lockClient) return { lockClient, haveXlock };
-  const deadline = Date.now() + 180000; // max. 3 Min auf anderen Worker warten
+  const deadline = k.uhr.jetzt() + 180000; // max. 3 Min auf anderen Worker warten
   while (true) {
     try {
       haveXlock = await repo.versucheBildSperre(lockClient, n);
@@ -114,7 +114,7 @@ async function holeBildSperre(
       lockClient.release();
       return 'belegt';
     }
-    if (Date.now() > deadline) {
+    if (k.uhr.jetzt() > deadline) {
       console.warn(`[img-dl] ${n}: Wartezeit auf anderen Worker überschritten — fahre ohne Lock fort`);
       break; // best effort ohne Lock weitermachen
     }
@@ -151,7 +151,7 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
 
   let _pendingAdded = 0; // Anteil dieses Batches am globalen imgDl-Zähler
   let _flushed = 0; // davon bereits an den Zähler gemeldet (Rest im finally)
-  let _lastFlush = Date.now();
+  let _lastFlush = k.uhr.jetzt();
   try {
     const needsImg = await k.teileAnreicherung.bilderOhneDatei(n);
     if (!needsImg.length) return;
@@ -168,9 +168,9 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
     const flushProgress = async (force?: boolean) => {
       const delta = done - _flushed;
       if (delta <= 0) return;
-      if (!force && Date.now() - _lastFlush < 1000) return;
+      if (!force && k.uhr.jetzt() - _lastFlush < 1000) return;
       _flushed += delta;
-      _lastFlush = Date.now();
+      _lastFlush = k.uhr.jetzt();
       await k.auftraege.imgDlAdd(-delta).catch(logAndContinue('teile-enrich:imgDlAdd'));
     };
     await Promise.all(

@@ -39,5 +39,5 @@ test('eine unbekannte Quelle gilt als Vermutung', () => {
 // Die Kandidaten-Regel selbst (Jahre, Mengenangaben, Rauten, Stellenzahlen,
 // dreistellige Altsets) steht nicht mehr hier: Sie muss in BEIDEN Apps gleich
 // ausfallen und wird deshalb gegen den gemeinsamen Korpus geprüft —
-// test/setnummer-korpus.test.js und shared/setnummer-korpus.json. Hier stand
-// dieselbe Aufzählung ein zweites Mal, und nur die Web-Seite war damit gedeckt.
+// test/setnummer-korpus.test.js und shared/setnummer-korpus.json; eine zweite Aufzählung
+// hier deckte nur die Web-Seite.

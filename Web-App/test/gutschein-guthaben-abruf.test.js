@@ -22,6 +22,7 @@ const https = require('node:https');
 const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { portVon } = require('./helpers/server');
 const G = _req('src/gutscheine/gutscheinGuthaben.js');
 /** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
 const vorrat = new Map();
@@ -103,8 +104,8 @@ class Umlenker extends https.Agent {
 
 const vorher = https.globalAgent;
 test.before(async () => {
-  await new Promise(r => server.listen(0, '127.0.0.1', r));
-  port = server.address().port;
+  await new Promise(r => server.listen(0, '127.0.0.1', () => r(null)));
+  port = portVon(server);
   https.globalAgent = new Umlenker();
 });
 test.after(() => {
@@ -140,7 +141,7 @@ test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
   modus = 'umleitung';
   await assert.rejects(
     G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH' }),
-    e => e instanceof AbrufFehler && e.grund === 'umleitung',
+    (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'umleitung',
   );
   assert.ok(gesehen.length >= 1, 'der Testserver wurde nicht gefragt');
   assert.deepEqual(
@@ -153,6 +154,6 @@ test('eine übergrosse Antwort wird abgebrochen', async () => {
   modus = 'gross';
   await assert.rejects(
     G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH' }),
-    e => e instanceof AbrufFehler && e.grund === 'zu-gross',
+    (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'zu-gross',
   );
 });

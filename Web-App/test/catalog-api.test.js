@@ -31,7 +31,7 @@ const { keineDb } = require('./helpers/db');
 // ersetzt sie wirksam.
 const { DIST, testDaten } = require('./helpers/sources');
 const mwPath = require.resolve(path.join(DIST, 'routes/api_v1', 'middleware.js'));
-require.cache[mwPath] = {
+require.cache[mwPath] = /** @type {any} */ ({
   id: mwPath,
   filename: mwPath,
   loaded: true,
@@ -43,7 +43,7 @@ require.cache[mwPath] = {
       },
     }),
   },
-};
+});
 
 const db = testDaten();
 const express = require(path.join(ROOT, 'node_modules', 'express'));

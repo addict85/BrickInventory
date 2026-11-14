@@ -245,7 +245,7 @@ export async function importiereFigurenCsv(k: FigurenKontext, uid: number, text:
         price: erfassungsPreis,
         geschaetzt,
         condition: effectiveCondition || 'N',
-        createdAt: acquiredAt || new Date().toISOString().slice(0, 10),
+        createdAt: acquiredAt || k.uhr.datum().toISOString().slice(0, 10),
       };
 
       if (await manuelleFigur(k, uid, figNumber)) {

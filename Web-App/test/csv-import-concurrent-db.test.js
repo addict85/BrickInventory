@@ -77,7 +77,7 @@ test('zwei gleichzeitige Importe derselben Tabelle kollidieren nicht', { concurr
     );
 
     for (const r of ergebnisse) {
-      assert.equal(r.value, ZEILEN, 'jeder Lauf muss alle Zeilen gelesen haben');
+      assert.equal(r.status === 'fulfilled' && r.value, ZEILEN, 'jeder Lauf muss alle Zeilen gelesen haben');
     }
 
     // Der Endbestand entspricht genau EINEM Lauf — keine Mischung, nichts fehlt.

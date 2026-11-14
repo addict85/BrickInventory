@@ -191,7 +191,7 @@ async function warte(bedingung, ms = 3000) {
 
 /**
  * @param {object} [antworten]  Pfad → Antwort (Objekt oder Funktion(url))
- * @param {object} [opt]        { angemeldet = true, sprache = 'de', browserSprache, vorher(w) }
+ * @param {{ angemeldet?: boolean, sprache?: string, browserSprache?: string, vorher?: (w: any) => void }} [opt]
  */
 async function oeffneOberflaeche(antworten = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));

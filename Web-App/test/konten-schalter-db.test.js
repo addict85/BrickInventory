@@ -41,16 +41,19 @@ test('Kontoschalter und eindeutige Adresse', { concurrency: 1 }, async t => {
       assert.deepEqual([u.is_admin, u.is_active, u.email_verified], [false, true, false]);
     });
     await t.test('ein Schalter ist nie leer', async () => {
-      await assert.rejects(lege('b', 'is_admin', [null]), e => e.code === '23502');
-      await assert.rejects(lege('c', 'is_active', [null]), e => e.code === '23502');
+      await assert.rejects(lege('b', 'is_admin', [null]), (/** @type {any} */ e) => e.code === '23502');
+      await assert.rejects(lege('c', 'is_active', [null]), (/** @type {any} */ e) => e.code === '23502');
     });
     await t.test('ein Schalter ist ein Wahrheitswert', async () => {
-      await assert.rejects(lege('d', 'is_admin', [2]), e => e.code === '22P02');
-      await assert.rejects(lege('e', 'email_verified', [-1]), e => e.code === '22P02');
+      await assert.rejects(lege('d', 'is_admin', [2]), (/** @type {any} */ e) => e.code === '22P02');
+      await assert.rejects(lege('e', 'email_verified', [-1]), (/** @type {any} */ e) => e.code === '22P02');
     });
     await t.test('eine Adresse gibt es nur einmal, gleich in welcher Schreibweise', async () => {
       await lege('f', 'email', [`${K}@Beispiel.ch`]);
-      await assert.rejects(lege('g', 'email', [`${K.toUpperCase()}@beispiel.CH`]), e => e.code === '23505');
+      await assert.rejects(
+        lege('g', 'email', [`${K.toUpperCase()}@beispiel.CH`]),
+        (/** @type {any} */ e) => e.code === '23505',
+      );
       assert.ok(await lege('h', 'email', [null]));
       assert.ok(await lege('i', 'email', [null]), 'ohne Adresse dürfen es mehrere sein');
     });

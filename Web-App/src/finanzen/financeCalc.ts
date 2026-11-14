@@ -2,7 +2,7 @@
 export {
   DEFAULT_PRICE_CONDITION,
   speicherePreis,
-  cacheUsable,
+  cacheVerwendbar,
   preisAusCache,
   leerePreisCache,
   fetchPrice,

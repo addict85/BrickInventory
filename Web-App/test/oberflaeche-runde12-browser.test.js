@@ -93,11 +93,11 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async t
       'Benutzerliste',
       100,
     );
-    for (const [aktion, titel] of [
+    for (const [aktion, titel] of /** @type {[string, RegExp][]} */ ([
       ['delUser', /^Konto „r12x_\d+“ löschen\?$/],
       ['toggleAdmin', /^„r12x_\d+“ zum Verwalter machen\?$/],
       ['toggleAktiv', /^Konto „r12x_\d+“ deaktivieren\?$/],
-    ]) {
+    ])) {
       await b.auswerten(`(() => { const z = [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(ANDERE)});
         z.querySelector('[data-click="${aktion}"]').click(); return true; })()`);
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, `Dialog ${aktion}`);

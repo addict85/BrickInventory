@@ -35,7 +35,7 @@ test('Abschalten während einer Belegung', async t => {
   const sperre = await db.pool.connect();
   let loslassen = () => {};
   const haengt = new Promise(r => {
-    loslassen = r;
+    loslassen = () => r(null);
   });
   t.after(async () => {
     loslassen();

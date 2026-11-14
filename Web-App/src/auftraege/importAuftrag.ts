@@ -137,7 +137,7 @@ export async function starteAuftrag(
     current: angaben.current ?? null,
     results: JSON.stringify([]),
     error: null,
-    started_at: new Date().toISOString(),
+    started_at: k.uhr.datum().toISOString(),
   });
   await emitJobStatus(k, userId);
   return true;
@@ -152,7 +152,7 @@ export async function meldeAuftrag(
   angaben: { done: number; total?: number; current?: string | null },
   unbedingt = false,
 ): Promise<void> {
-  const jetzt = Date.now();
+  const jetzt = k.uhr.jetzt();
   const _zuletzt = gemeldet(k);
   if (!unbedingt && jetzt - (_zuletzt.get(userId) ?? 0) < MELDE_ABSTAND_MS) return;
   _zuletzt.set(userId, jetzt);

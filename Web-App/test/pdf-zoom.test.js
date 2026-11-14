@@ -294,7 +294,7 @@ test('Zoom im PDF-Betrachter', async t => {
    *
    * @param {boolean} mitWaechter false = Gegenprobe, der Generationszaehler
    *        wird herausgenommen.
-   * @returns {number[]} Breiten der Leinwaende, die am Ende haengen.
+   * @returns {Promise<{ haengen: number[], alteBreiten: number[], soll: number }>} Breiten der Leinwaende, die am Ende haengen.
    */
   async function veralteterRender(mitWaechter) {
     const b = await werkbank(

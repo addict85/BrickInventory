@@ -1,5 +1,11 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "plugins": [
+    {
+      "path": "./biome/transaktionsrumpf.grit",
+      "includes": ["server.ts", "src/**", "jobs/**", "routes/**", "db/**", "startup/**", "clients/**"]
+    }
+  ],
   "files": {
     "includes": [
       "server.ts",

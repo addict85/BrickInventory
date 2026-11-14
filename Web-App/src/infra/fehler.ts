@@ -1,6 +1,7 @@
 // Fachfrei und ohne Express: db/, clients/ und jeder Dienst melden hierüber.
 // Wie ein Fehler zur HTTP-Antwort wird, steht in httpAntwort.ts.
 import { FEHLER, fehlerText, antwortSprache, type FehlerCode } from './fehlerTexte';
+import { transaktionDesPfads } from './kontoKontext';
 
 /** Ersatz für `.catch(() => {})`: Der Schritt soll die Anfrage nicht scheitern
  * lassen, aber eine Spur hinterlassen.
@@ -27,28 +28,15 @@ export function meldeUndLiefere<T>(kontext: string, ersatz: T) {
   };
 }
 
-/** Was db/ über die laufende Transaktion weiss; fachfrei, damit infra/ nicht von db/ abhängt. */
-export interface TransaktionsWaechter {
-  /** Läuft eine Transaktion, und lässt dieser Fehler sie verdorben zurück? Ein
-   * Sicherungspunkt, der ihn aufgefangen hat, macht sie wieder benutzbar. */
-  verdirbt(e: unknown): boolean;
-  /** In Tests wirft auch ein Fehler ausserhalb der Datenbank, damit die Regel greift. */
-  streng(): boolean;
-}
-let _waechter: TransaktionsWaechter | null = null;
-export function setzeTransaktionsWaechter(w: TransaktionsWaechter | null): void {
-  _waechter = w;
-}
-
 /** PostgreSQL nimmt nach einem Fehler in der Transaktion keinen Befehl mehr an
  * (25P02); ein Ersatzwert verdeckte die Ursache hinter diesem Folgefehler. Ein
  * Datenbankfehler geht deshalb immer weiter, ein anderer nur in Tests; im
  * Betrieb wird er laut gemeldet, weil der Rumpf mit dem Ersatz weiterrechnet. */
 export function pruefeErsatzInTransaktion(kontext: string, e: unknown): void {
-  if (!_waechter?.verdirbt(e)) return;
+  const tx = transaktionDesPfads();
+  if (!tx?.verdirbt(e)) return;
   if (istDatenbankFehler(e)) throw e;
-  if (_waechter.streng())
-    throw new Error(`Ersatzwert in einer Transaktion (${kontext}): ${fehlertext(e)}`, { cause: e });
+  if (tx.streng) throw new Error(`Ersatzwert in einer Transaktion (${kontext}): ${fehlertext(e)}`, { cause: e });
   console.error(`[ersatz-in-transaktion] ${kontext}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 

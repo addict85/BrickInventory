@@ -32,8 +32,7 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
   assert.equal(passwortZuKurz(123), true, 'Eine Zahl hat kein .length — sie darf nicht durchrutschen');
   // Die Gegenrichtung, damit die Zeile darueber nicht bloss „alles ist zu
   // kurz" beweist: Aus der Zahl wird ihre Ziffernfolge, und die ist lang
-  // genug. (Hier stand zuerst `true` — ein Irrtum beim Schreiben dieses
-  // Tests, nicht im Code: `String(123456789)` hat neun Zeichen.)
+  // genug (`String(123456789012)` hat zwölf Zeichen).
   assert.equal(passwortZuKurz(123456789012), false);
 });
 

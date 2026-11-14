@@ -222,6 +222,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
   const erst = async (sql, werte) => await db.get(sql, werte);
 
   /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, kopf?: () => object, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
+  /** @type {any[]} */
   const SCHRITTE = [
     // ── Anmeldung und Konto ───────────────────────────────────────────────
     {

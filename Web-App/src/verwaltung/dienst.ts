@@ -181,7 +181,7 @@ export async function jobZeitplanSetzen(k: VerwaltungKontext, name: unknown, tim
 export async function zeitplanNeuPlanen(k: VerwaltungKontext) {
   await k.auftraege.zeitplanGeaendert('csv_sync');
   await k.auftraege.zeitplanGeaendert('preise');
-  const bis = naechsteUhrzeit(await k.auftraege.taeglicheUhrzeit('brickset_retry'));
+  const bis = naechsteUhrzeit(await k.auftraege.taeglicheUhrzeit('brickset_retry'), k.uhr.datum());
   await k.auftraege.bricksetTermineVorziehen(bis);
 }
 

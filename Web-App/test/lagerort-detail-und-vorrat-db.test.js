@@ -39,10 +39,7 @@ async function seed() {
   HAUPT = (await db.get("SELECT id FROM users WHERE username='haupt'")).id;
   KIND = (await db.get("SELECT id FROM users WHERE username='kind'")).id;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [HAUPT, KIND]);
-  // Der Setname steht seit Migration 0033 im Katalog, nicht an der
-  // Bestandszeile; die Stueckzahl seit 0036 in der Erfassung. Hier stand
-  // `INSERT INTO sets (user_id, set_number, name, quantity)` — beide Spalten
-  // gibt es nicht mehr.
+  // Der Setname steht im Katalog, die Stueckzahl in der Erfassung, nicht an der Bestandszeile.
   await katalogSet(db, SN, { name: 'Falcon' });
   // Das Set gehört dem HAUPTKONTO. Das Unterkonto hat gar keine Zeile — genau
   // die Lage, in der ein Eintrag in seinem Vorrat nichts beschreibt.

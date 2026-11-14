@@ -22,6 +22,7 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { portVon } = require('./helpers/server');
 const { vertragsRouter } = _req('src/http/vertragsRouter.js');
 const { VERTRAG } = _req('src/vertrag/index.js');
 
@@ -40,7 +41,7 @@ test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
   app.use('/api/v1', router);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const basis = `http://localhost:${srv.address().port}/api/v1`;
+  const basis = `http://localhost:${portVon(srv)}/api/v1`;
   const sende = async (pfad, rumpf) => {
     const r = await fetch(
       basis + pfad,

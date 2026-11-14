@@ -16,10 +16,7 @@ import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './rueckf
  * steht nur einer der Kästen da — ein Knopf, den der Server immer ablehnt, ist schlimmer als keiner.
  */
 export async function loadHousehold() {
-  const [d, zf] = await Promise.all([
-    api('GET', '/v1/settings/household').catch(() => null),
-    api('GET', '/v1/auth/zweiter-faktor').catch(() => null),
-  ]);
+  const [d, zf] = await Promise.all([api('GET', '/v1/settings/household'), api('GET', '/v1/auth/zweiter-faktor')]);
   if (!d?.success) return;
   renderHousehold(d);
   // Mit zweitem Faktor verlangt der Server beim Einlösen auch den Code.

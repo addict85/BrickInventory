@@ -4,7 +4,7 @@
  * sind null. Der Betrag (pnl_betrag/pnl_abs) bleibt der Marktwert. Gilt für
  * Sets, manuelle Teile und Figuren, die Kachel und den Preisverlauf.
  *
- * Vorher stand gegen eine Untergrenze von 0,01 gerechnet „+327.600 %“ da.
+ * Gegen eine Untergrenze von 0,01 gerechnet stünde dort „+327.600 %“.
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in entwicklungProzent() (src/finanzen/setValue.ts) die Bedingung `!(kauf > 0)`

@@ -62,7 +62,7 @@ export function zeitschritt(jetztMs = Date.now()): number {
 }
 
 /** Vergleich in konstanter Zeit. */
-export function passenderSchritt(geheimnis: string, code: string, jetztMs = Date.now()): number | null {
+export function passenderSchritt(geheimnis: string, code: string, jetztMs: number): number | null {
   if (!/^\d{6}$/.test(code)) return null;
   const schluessel = ausBase32(geheimnis);
   const jetzt = zeitschritt(jetztMs);
@@ -136,7 +136,11 @@ export async function bestaetigeEinrichtung(k: KontoKontext, uid: number, code: 
   return k.transaktion(async t => {
     const z = await repo.unbestaetigtesGeheimnisSperren(t.db, uid);
     if (!z) return null;
-    const schritt = passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', String(code ?? '').trim());
+    const schritt = passenderSchritt(
+      entschluessele(z.geheimnis, faktorKontext(uid)) ?? '',
+      String(code ?? '').trim(),
+      t.uhr.jetzt(),
+    );
     if (schritt === null) return null;
     await repo.aktiviere(t.db, uid, schritt);
     return codesErsetzen(t.db, uid);
@@ -156,7 +160,9 @@ export async function pruefeCode(
   if (/^\d{6}$/.test(eingabe)) {
     if (!mitEinmalcode) return null;
     const z = await k.zweiterFaktor.aktivesGeheimnis(uid);
-    const schritt = z ? passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', eingabe) : null;
+    const schritt = z
+      ? passenderSchritt(entschluessele(z.geheimnis, faktorKontext(uid)) ?? '', eingabe, k.uhr.jetzt())
+      : null;
     if (schritt === null) return null;
     return (await k.zweiterFaktor.verbraucheSchritt(uid, schritt)) ? 'totp' : null;
   }

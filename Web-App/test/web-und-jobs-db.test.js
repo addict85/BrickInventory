@@ -41,13 +41,14 @@ function freierPort() {
     const s = net
       .createServer()
       .listen(0, '127.0.0.1', () => {
-        const { port } = s.address();
+        const { port } = /** @type {import('node:net').AddressInfo} */ (s.address());
         s.close(() => auf(port));
       })
       .on('error', ab);
   });
 }
 
+/** @param {number} port @param {string} weg @param {{ methode?: string, token?: string, kopf?: Record<string, string>, body?: unknown }} [o] */
 function hole(port, weg, { methode = 'GET', token, kopf = {}, body } = {}) {
   return new Promise((auf, ab) => {
     const daten = body ? JSON.stringify(body) : null;
@@ -100,14 +101,15 @@ function starte(rolle, port) {
       APP_BASE_URL_FEHLT_OK: '1',
     },
   });
-  p.log = '';
+  const mitLog = /** @type {typeof p & { log: string }} */ (p);
+  mitLog.log = '';
   p.stdout.on('data', d => {
-    p.log += d;
+    mitLog.log += d;
   });
   p.stderr.on('data', d => {
-    p.log += d;
+    mitLog.log += d;
   });
-  return p;
+  return mitLog;
 }
 
 async function beende(p) {
@@ -142,6 +144,8 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
     jobsPort = await freierPort();
   const web = starte('web', port);
   let jobs = null;
+  /** Der Auftrag, den der Web-Prozess liegen liess; der Job-Prozess soll ihn erledigen. */
+  let erster = 0;
   const auftrag = id => db.get('SELECT status, versuche FROM auftraege WHERE id = $1', [id]);
 
   try {
@@ -157,7 +161,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
       await db.run(`SELECT pg_notify('auftraege', 'bilder')`);
       await warte(1500);
       assert.equal((await auftrag(id)).status, 'offen', 'Der Web-Prozess hat einen Auftrag belegt');
-      t.erster = id;
+      erster = id;
     });
 
     await t.test('der Web-Prozess sieht den Startzustand des Job-Prozesses', async () => {
@@ -176,7 +180,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
     await t.test('der Job-Prozess erledigt den Auftrag und nimmt keine Anfragen an', async () => {
       let z;
       for (let i = 0; i < 80; i++) {
-        z = await auftrag(t.erster);
+        z = await auftrag(erster);
         if (z.status !== 'offen' && z.status !== 'laeuft') break;
         await warte(250);
       }

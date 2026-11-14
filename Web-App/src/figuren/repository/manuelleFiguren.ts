@@ -1,6 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { ErfassungsZeile } from '../../../db/bestandsmenge';
+import type { Spalten } from '../../../db/zeilen';
 
 /** Die BrickLink-Nummer hängt an der Figur (bl_zuordnung), nicht am Exemplar. */
 
@@ -9,7 +10,10 @@ export function figurZeileManuell(
   uid: number,
   figNumber: string,
 ): Promise<{ id: number } | undefined> {
-  return db.get("SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'", [uid, figNumber]);
+  return db.get<Spalten<'minifigs', 'id'>>(
+    "SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
+    [uid, figNumber],
+  );
 }
 
 export function figurZeileMitZustand(db: DbSchnittstelle, uid: number, figNumber: string) {

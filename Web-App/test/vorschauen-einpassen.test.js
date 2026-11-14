@@ -59,6 +59,7 @@ test('zugeschnittene Vorschauen werden einmal neu eingepasst', async t => {
         zustand.set(s, String(w));
       },
     },
+    uhr: _req('src/infra/uhr.js').systemUhr,
   };
   const lokale = [quer, quadrat].map(n => ({ web: `/images/sets/${n}.jpg`, datei: datei(n) }));
 

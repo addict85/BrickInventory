@@ -1,9 +1,8 @@
 /**
  * Schriftgrössen kommen aus der Skala (--fs-0 … --fs-8 in styles.css).
  *
- * Vorher standen 45 verschiedene rem-Werte an gut 400 Stellen (.72, .73,
- * .75, .76, .77, .78 …) — Unterschiede, die niemand sieht, aber jeder
- * neu erfindet. Geprüft werden Stile, Markup und die Vorlagen in public/js;
+ * Freie rem-Werte (.72, .73, .75 …) sind Unterschiede, die niemand sieht, aber
+ * jeder neu erfindet. Geprüft werden Stile, Markup und die Vorlagen in public/js;
  * die Designs in public/themes bringen eigene Typografie mit.
  *
  * Gegenproben (am 25.10. gemessen):

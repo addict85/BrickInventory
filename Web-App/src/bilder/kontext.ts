@@ -11,6 +11,7 @@ import * as bildBlickfeld from './repository/bildBlickfeld';
 import * as bildFehlschlaege from './repository/bildFehlschlaege';
 import * as bildStammCdn from './repository/bildStammCdn';
 import * as bildbedarf from './repository/bildbedarf';
+import type { Uhr } from '../infra/uhr';
 
 /** Set-Bild holen und verkleinern über den Kontext statt über den Import: So ersetzt ein
  * Test Netz und sharp an der Verdrahtung (baueDienste), statt Module umzubiegen. */
@@ -22,6 +23,7 @@ export interface Bildwerk {
 }
 
 export interface BilderAbhaengigkeiten {
+  uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
   faecher: Faecher;

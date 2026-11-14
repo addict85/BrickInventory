@@ -49,7 +49,7 @@ export async function profilAendern(
   }
   const email = String(e.email);
   const token = crypto.randomBytes(32).toString('hex');
-  await k.konto.merkeEmailNeu(user.id, email, tokenAbdruck(token), new Date(Date.now() + 24 * 60 * 60 * 1000));
+  await k.konto.merkeEmailNeu(user.id, email, tokenAbdruck(token), new Date(k.uhr.jetzt() + 24 * 60 * 60 * 1000));
   await speichern();
   return { emailChanged: true, emailSent: await adressMails(k, user, email, token) };
 }

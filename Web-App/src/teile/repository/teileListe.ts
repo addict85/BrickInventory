@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
@@ -260,7 +260,7 @@ export function gebrauchteManuelle(db: DbSchnittstelle, uids: number[]) {
 }
 
 export async function hatUngeseheneBlNummer(db: DbSchnittstelle, uids: number[]): Promise<boolean> {
-  return !!(await db.get(
+  return !!(await db.get<Treffer>(
     `SELECT 1 FROM parts p
      LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
      WHERE p.user_id = ANY($1) AND m.rb_id IS NULL LIMIT 1`,

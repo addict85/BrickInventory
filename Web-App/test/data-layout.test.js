@@ -57,7 +57,7 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async t => {
   const { Readable } = require('node:stream');
   const { EventEmitter } = require('node:events');
   const echt = https.get;
-  https.get = (_a, _o, cb) => {
+  /** @type {any} */ (https).get = (_a, _o, cb) => {
     const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
     setImmediate(() =>
       cb(

@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import type { Spalten } from '../../../db/zeilen';
 
 export async function setsMitFehlendenKatalogbildern(db: DbSchnittstelle): Promise<string[]> {
   const rows = await db.all<{ set_number: string }>(
@@ -92,7 +93,7 @@ export async function teilbilder(
   db: DbSchnittstelle,
   teile: string[],
 ): Promise<(Bildstand & { part_number: string; color_id: number })[]> {
-  return db.all(
+  return db.all<Spalten<'part_color_catalog', 'part_number' | 'color_id' | 'image_local' | 'image_url'>>(
     `SELECT part_number, color_id, image_local, image_url
        FROM part_color_catalog WHERE part_number = ANY($1)`,
     [teile],
@@ -103,7 +104,7 @@ export async function figurenbilder(
   db: DbSchnittstelle,
   figuren: string[],
 ): Promise<(Bildstand & { fig_number: string })[]> {
-  return db.all(
+  return db.all<Spalten<'minifigs_catalog', 'fig_number' | 'image_local' | 'image_url'>>(
     `SELECT fig_number, image_local, image_url
        FROM minifigs_catalog WHERE fig_number = ANY($1)`,
     [figuren],

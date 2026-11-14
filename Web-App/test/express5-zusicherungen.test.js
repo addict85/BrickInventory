@@ -11,6 +11,7 @@ const express = require('express');
 const fs = require('node:fs');
 const path = require('node:path');
 const { serverAll, ohneKommentare } = require('./helpers/sources');
+const { portVon } = require('./helpers/server');
 
 test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   const src = serverAll();
@@ -37,7 +38,7 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   app.get(muster, (_req, res) => res.status(200).send('ok'));
   const srv = app.listen(0);
   await new Promise(r => srv.once('listening', r));
-  const basis = `http://localhost:${srv.address().port}`;
+  const basis = `http://localhost:${portVon(srv)}`;
   try {
     const wurzel = await fetch(`${basis}/`);
     assert.equal(
@@ -70,7 +71,7 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
   await new Promise(r => s1.once('listening', r));
   let ohneZusicherung;
   try {
-    ohneZusicherung = (await (await fetch(`http://localhost:${s1.address().port}/a`, { method: 'POST' })).json()).fehlt;
+    ohneZusicherung = (await (await fetch(`http://localhost:${portVon(s1)}/a`, { method: 'POST' })).json()).fehlt;
   } finally {
     await new Promise(r => s1.close(r));
   }

@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 
 export interface AnleitungsZeile {
   id: number;
@@ -22,7 +22,7 @@ export function loescheAnleitungenDesSets(db: DbSchnittstelle, setNumber: string
 }
 
 export function hatBrickinstructions(db: DbSchnittstelle, setNumber: string) {
-  return db.get("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [
+  return db.get<Treffer>("SELECT 1 FROM shared_instructions WHERE set_number = $1 AND url LIKE '%brickinstructions%'", [
     setNumber,
   ]);
 }

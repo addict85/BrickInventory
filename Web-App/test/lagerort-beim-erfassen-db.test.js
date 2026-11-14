@@ -163,7 +163,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
     // den Text zu prüfen hiesse, die Regel an eine Übersetzung zu hängen.
     await assert.rejects(
       () => L.loescheOrt(U.ich, parseInt(ort.id, 10)),
-      e => e?.code === 'lagerort_in_benutzung',
+      (/** @type {any} */ e) => e?.code === 'lagerort_in_benutzung',
       'Der Ort liess sich löschen, obwohl eine Figur darin liegt.',
     );
   });

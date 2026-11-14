@@ -9,8 +9,10 @@ import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
 import type { SetsDienste } from '../sets';
 import type { Nacharbeit } from '../auftraege';
+import type { Uhr } from '../infra/uhr';
 
 export interface MerklisteAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   einstellungen: EinstellungenDienste;
   haushalt: HaushaltDienste;

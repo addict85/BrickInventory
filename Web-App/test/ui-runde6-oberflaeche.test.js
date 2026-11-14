@@ -85,12 +85,12 @@ test('Rebrickable-Band nur in Sammlung und Katalog', async () => {
     const band = o.d.getElementById('rb-hinweis');
     await warte(() => !band.hidden, 2000);
     assert.equal(zu(o.w, band), false, 'Sammlung');
-    for (const [tab, versteckt] of [
+    for (const [tab, versteckt] of /** @type {[string, boolean][]} */ ([
       ['finance', true],
       ['wanted', true],
       ['catalog', false],
       ['parts', false],
-    ]) {
+    ])) {
       await reiter(o.w, tab);
       assert.equal(zu(o.w, band), versteckt, tab);
     }

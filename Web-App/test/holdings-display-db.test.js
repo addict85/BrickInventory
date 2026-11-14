@@ -133,8 +133,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
     await t.test('hält wieder jemand ein Exemplar, kommt das Label zurück', async () => {
       // Ohne diese Gegenrichtung wäre der Test auch grün, wenn das Label ganz
       // verschwände.
-      // „Wieder ein Exemplar halten" heisst seit Migration 0036: eine
-      // Erfassung anlegen. Hier stand `UPDATE sets SET quantity=2` — die …
+      // „Wieder ein Exemplar halten" heisst: eine Erfassung anlegen.
       await erfasse(db, hauptId, SN, 2);
       const r = await setsLesen([hauptId, subId], {});
       const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();

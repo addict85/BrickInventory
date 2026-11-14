@@ -157,12 +157,12 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
     const rel = path.relative(ROOT, datei);
     const txt = fs.readFileSync(datei, 'utf8');
     for (const z of codeZeilen(txt)) {
-      for (const [was, muster] of [
+      for (const [was, muster] of /** @type {[string, RegExp][]} */ ([
         ['setzt', setzt],
         ['schreibt fort', fortschreiben],
         ['bei Konflikt', beiKonflikt],
         ['legt an', legtAn],
-      ]) {
+      ])) {
         if (muster.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 90)}`);
       }
     }
@@ -194,7 +194,7 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
     ],
     ['ALTER TABLE sets ADD COLUMN IF NOT EXISTS quantity INTEGER', legtAn],
   ];
-  for (const [zeile, muster] of proben) {
+  for (const [zeile, muster] of /** @type {[string, RegExp][]} */ (proben)) {
     assert.ok(muster.test(zeile), `Das Muster greift nicht mehr auf seine eigene Probe: ${zeile.slice(0, 60)}`);
   }
   // Und die Gegenrichtung: Was erlaubt ist, darf NICHT greifen.
@@ -202,12 +202,12 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
     'UPDATE set_acquisitions SET quantity = quantity - $1 WHERE id=$2',
     'UPDATE parts SET quantity = COALESCE((SELECT SUM(a.quantity) FROM part_acquisitions a), 0)',
   ]) {
-    for (const [was, muster] of [
+    for (const [was, muster] of /** @type {[string, RegExp][]} */ ([
       ['setzt', setzt],
       ['schreibt fort', fortschreiben],
       ['bei Konflikt', beiKonflikt],
       ['legt an', legtAn],
-    ]) {
+    ])) {
       assert.ok(!muster.test(zeile), `Das Muster „${was}" meldet eine erlaubte Zeile: ${zeile.slice(0, 70)}`);
     }
   }

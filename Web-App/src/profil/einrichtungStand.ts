@@ -45,7 +45,7 @@ export function einrichtungStandVergessen(k: ProfilKontext): void {
  * Seite nur erreicht, soll nicht erfahren, dass ein Konto noch das Startpasswort trägt.
  * Beide Antworten werden getrennt gemerkt, sonst sähe die öffentliche Seite die des Verwalters. */
 export function einrichtungStand(k: ProfilKontext, { verwalter = false } = {}): Promise<EinrichtungStandAntwort> {
-  const jetzt = Date.now();
+  const jetzt = k.uhr.jetzt();
   const _gemerkt = gemerkt(k);
   const alt = _gemerkt.get(verwalter);
   if (alt && alt.bis > jetzt) return alt.antwort;

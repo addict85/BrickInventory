@@ -95,6 +95,7 @@ async function haltZeile(db, userId, setNumber) {
  * @param [opt.am]         Aufnahmedatum der Erfassung; idx_part_acq_tag_zustand erlaubt je
  *                       Konto, Teil, Farbe, Tag und Zustand nur eine Erfassung.
  * @param [opt.storageId]  Lagerort
+ * @param [opt.egalWennDa]  ohne Wirkung für Teile; nur der Gleichheit mit haeltSet halber
  */
 async function haeltTeil(db, userId, partNumber, opt = {}) {
   const { setNumber = null, menge = 1, colorId = 0 } = opt;
@@ -257,7 +258,16 @@ async function musterSammlung(db, uid) {
     ['10300-1', 'Back to the Future Time Machine', 'Icons', 2022, 1872, 0, 'N', 163.8],
     ['21318-1', 'Tree House', 'Ideas', 2019, 3036, 199.99, 'N', 186.2],
   ];
-  for (const [nr, name, thema, jahr, teile, preis, zustand, markt] of sets) {
+  for (const [
+    nr,
+    name,
+    thema,
+    jahr,
+    teile,
+    preis,
+    zustand,
+    markt,
+  ] of /** @type {[string, string, string, number, number, number, string, number][]} */ (sets)) {
     await katalogSet(db, nr, { name, year: jahr, theme: thema, pieces: teile, minifigs: 4 });
     await haeltSet(db, uid, nr, 1, { preis, zustand, am: '2026-06-01T10:00:00Z' });
     await db.run(

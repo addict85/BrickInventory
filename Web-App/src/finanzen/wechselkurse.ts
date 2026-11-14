@@ -43,7 +43,11 @@ export async function kurseNachladen(
 
 /** 15:30 UTC liegt nach der Veröffentlichung der EZB. Je Tag ein eigener
  * Schlüssel: Ein gescheiterter Versuch darf den nächsten Tag nicht sperren. */
-export async function planeKursabruf(k: FinanzenKontext, jetzt = new Date(), morgen = false): Promise<string | null> {
+export async function planeKursabruf(
+  k: FinanzenKontext,
+  jetzt = k.uhr.datum(),
+  morgen = false,
+): Promise<string | null> {
   const ziel = new Date(
     Date.UTC(jetzt.getUTCFullYear(), jetzt.getUTCMonth(), jetzt.getUTCDate() + (morgen ? 1 : 0), 15, 30),
   );
@@ -65,7 +69,7 @@ export async function kursauftrag(
   abruf: Abruf = k.katalog.quellen.ezbAbruf,
   lauf?: AuftragsLauf,
 ): Promise<void> {
-  await planeKursabruf(k, new Date(), true);
+  await planeKursabruf(k, k.uhr.datum(), true);
   const r = await kurseNachladen(k, abruf, lauf?.signal);
   console.log(`[wechselkurse] ${r.kurse} Kurse aus der EZB-${r.quelle === 'historie' ? 'Historie' : 'Tagesdatei'}`);
 }

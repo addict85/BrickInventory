@@ -4,8 +4,10 @@ import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository/werte';
 import type { DrosselDienste } from '../drossel';
+import type { Uhr } from '../infra/uhr';
 
 export interface EinstellungenAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   /** Wer auf Änderungen globaler Werte horcht; erzeugeEinstellungen legt es an. */
   faecher: Faecher;

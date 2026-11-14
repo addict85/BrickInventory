@@ -45,7 +45,7 @@ export function leseUhrzeit(s: string | null | undefined, vorgabe: string): { h:
 }
 
 /** In der Zeitzone des Prozesses. */
-export function naechsteUhrzeit(zeit: { h: number; min: number }, jetzt = new Date()): Date {
+export function naechsteUhrzeit(zeit: { h: number; min: number }, jetzt: Date): Date {
   const z = new Date(jetzt);
   z.setHours(zeit.h, zeit.min, 0, 0);
   if (z <= jetzt) z.setDate(z.getDate() + 1);
@@ -60,7 +60,7 @@ export async function taeglicheUhrzeit(
   return leseUhrzeit(await k.einstellungen.getGlobalSetting(`job_time_${name}`), meta.default);
 }
 
-export async function naechsterLauf(k: AuftraegeKontext, art: GeplanteArt, jetzt = new Date()): Promise<Date> {
+export async function naechsterLauf(k: AuftraegeKontext, art: GeplanteArt, jetzt = k.uhr.datum()): Promise<Date> {
   const plan = ZEITPLAENE[art];
   if ('taeglich' in plan) {
     return naechsteUhrzeit(

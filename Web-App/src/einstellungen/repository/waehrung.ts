@@ -1,5 +1,5 @@
 /** Die Währung gilt je Haushalt; geschrieben wird sie für alle Konten darin. */
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 import { auchFremdGeteilt, haushaltAbwaerts, istUnterkonto } from '../../../db/haushaltSicht';
 
 export async function waehrungIn(tx: DbSchnittstelle, userId: number): Promise<string | null> {
@@ -24,7 +24,7 @@ export async function fremdGeteilt(tx: DbSchnittstelle, ids: number[], waehrung:
 }
 
 export async function hatHauptkonto(tx: DbSchnittstelle, userId: number): Promise<boolean> {
-  return !!(await tx.get(istUnterkonto('$1'), [userId]));
+  return !!(await tx.get<Treffer>(istUnterkonto('$1'), [userId]));
 }
 
 export async function setzeWaehrungFuer(tx: DbSchnittstelle, ids: number[], waehrung: string): Promise<void> {

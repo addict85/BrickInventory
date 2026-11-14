@@ -70,7 +70,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
       const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
       await assert.rejects(
         setErfassen({ anfragender: uid, setNumber: 'abc', menge: 1, zustand: 'N', wennVorhanden: 'aufstocken' }),
-        e => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',
+        (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',
       );
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);
       const { moeglicheSetNummer } = _req('src/infra/setNummer.js');

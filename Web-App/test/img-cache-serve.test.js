@@ -39,7 +39,7 @@ function attrappeRes() {
       return this;
     },
   };
-  r.status = function (c) {
+  /** @type {any} */ (r).status = function (/** @type {number} */ c) {
     this._code = c;
     return this;
   };

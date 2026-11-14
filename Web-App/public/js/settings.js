@@ -344,7 +344,7 @@ async function speichereWaehrung() {
 
 async function speichereZustand() {
   const condVal = G('s-default-condition')?.value || 'N';
-  const d = await api('POST', '/v1/settings/user/default-condition', { condition: condVal }).catch(() => null);
+  const d = await api('POST', '/v1/settings/user/default-condition', { condition: condVal });
   if (!d?.success) {
     toast(d?.error || t('settings.error'), 'error');
     return;

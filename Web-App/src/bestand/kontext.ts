@@ -14,8 +14,10 @@ import type { HaushaltDienste } from '../haushalt';
 import type { KontoDienste } from '../konto';
 import type { KatalogDienste } from '../katalog';
 import type { FinanzenDienste } from '../finanzen';
+import type { Uhr } from '../infra/uhr';
 
 export interface BestandAbhaengigkeiten {
+  uhr: Uhr;
   db: Db;
   einstellungen: EinstellungenDienste;
   haushalt: HaushaltDienste;

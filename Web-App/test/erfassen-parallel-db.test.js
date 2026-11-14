@@ -293,10 +293,8 @@ test('die Teileliste liefert, was sie meldet', () => {
   );
   // Geprüft wird, WOHER die Zahl kommt, nicht wie die Zeile geschrieben ist.
   //
-  // Vorher stand hier der Wortlaut `page_size: result.page_size`. Der war seit
-  // jeher wirkungslos — er stand VOR `...result`, das ihn mit demselben Wert
-  // überschrieb — und wurde beim Aufräumen entfernt. Der Test wurde dadurch
-  // rot, obwohl die Antwort sich um kein Byte geändert hat.
+  // Ein Wortlaut wie `page_size: result.page_size` wäre die falsche Probe: Er kann
+  // wirkungslos dastehen oder fehlen, ohne dass die Antwort sich ändert.
   assert.match(
     antwort,
     /\.\.\.result/,
