@@ -1,4 +1,3 @@
-import { fehlertext } from '../infra/fehler';
 import { einstellungMitZugang } from '../einstellungen';
 import { deleteSetRows } from './loeschen';
 import { toCsv } from '../infra/csvExport';
@@ -216,13 +215,8 @@ export async function updateSet(
   }
   // null heisst „nicht gesetzt", nicht 'N'.
   if (body.condition !== undefined && body.condition !== null && !hasQuantity) {
-    const cond = zustand(body.condition);
-    try {
-      // ownerId: Mit dem Aufrufer träfe das UPDATE beim Unterkonto keine Zeile.
-      await schreibeInLetzteErfassung(sk, 'condition', cond, ownerId, sn);
-    } catch (e) {
-      console.error('[updateSet] condition update skipped (migration pending?):', fehlertext(e));
-    }
+    // ownerId: Mit dem Aufrufer träfe das UPDATE beim Unterkonto keine Zeile.
+    await schreibeInLetzteErfassung(sk, 'condition', zustand(body.condition), ownerId, sn);
   }
   // Geschrieben ist schon; scheitert nur das Nachlesen, sagt die Antwort „unbekannt“ statt 0.
   const nachher = await ab.oder(

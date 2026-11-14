@@ -67,7 +67,7 @@ test('die Suche findet die Quellen ueberhaupt', () => {
   assert.ok(n >= 80, `Nur ${n} TypeScript-Quellen gefunden — greift die Suche noch?`);
 });
 
-test('stille Faenge werden weniger, nie mehr', () => {
+test('stille Fänge (Server, nur gemeldete, Oberfläche) werden weniger, nie mehr', () => {
   // Die Rebrickable-Teilezuordnung fängt nur 404, das rbGet() selbst als null liefert.
   const SCHRANKE = 0;
   // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
@@ -89,6 +89,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
   if (ist < SCHRANKE) {
     console.log(`  ℹ stille Faenge: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }
+  nurGemeldeteFaenge();
+  stilleFaengeDerOberflaeche();
 });
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
@@ -124,6 +126,71 @@ test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', 
     [],
   );
 });
+
+/** Fänge, die nur melden und weiterlaufen, werden weniger, nie mehr. */
+function nurGemeldeteFaenge() {
+  // Jede Form ohne throw: `catch (e) { meldeFehler(…) }`, mit `return x`/`continue` danach, und
+  // `.catch(e => console.warn(…))`. Sie verschweigen den Fehler dem Aufrufer wie meldeUndLiefere,
+  // nur ohne dessen Namen. Wer direkt in die Konsole schreibt statt meldeFehler, nennt sein
+  // Warum als „Ausnahme:“ im Fang. Nur src/: Routen fangen nicht, Jobs und db/ haben eigene Regeln.
+  // Gegenproben (14.11.2026): in src/sets/setService.ts den Zustandswechsel wieder in
+  // `try { … } catch (e) { console.error(…) }` → rot (62 von 61); in src/mail/transport.ts die
+  // „Ausnahme:“ am Fang gestrichen → rot „ohne Ausnahme: …“ (src/mail/transport.ts:155).
+  const { faenge, nurGemeldet } = require('./helpers/faenge');
+  const SCHRANKE = 61;
+  const probe = (/** @type {string} */ q) => faenge(q).filter(nurGemeldet).length;
+  assert.equal(
+    probe('try { a(); } catch (e) { meldeFehler("x", e); }') +
+      probe('try { a(); } catch { console.error("x"); return null; }') +
+      probe('x.catch(e => console.warn(e.message));') +
+      probe('for (;;) { try { a(); } catch (e) { log(`${e}`); continue; } }'),
+    4,
+  );
+  assert.equal(
+    probe('try { a(); } catch (e) { meldeFehler("x", e); throw e; }') +
+      probe('try { a(); } catch (e) { meldeFehler("x", e); await nochmal(); }') +
+      probe('x.catch(logAndContinue("x"));') +
+      probe('// catch (e) { console.error(e) }'),
+    0,
+  );
+  const src = quellen().filter(f => /^src[\\/]/.test(path.relative(WEB, f)));
+  const treffer = src.flatMap(f =>
+    faenge(fs.readFileSync(f, 'utf8'))
+      .filter(nurGemeldet)
+      .map(x => ({ ...x, wo: `${path.relative(WEB, f)}:${x.zeile}` })),
+  );
+  assert.ok(treffer.length > 20, `nur ${treffer.length} gemeldete Fänge gefunden — greift die Suche noch?`);
+  assert.ok(
+    treffer.length <= SCHRANKE,
+    `${treffer.length} Fänge melden nur und laufen weiter, erlaubt sind ${SCHRANKE}`,
+  );
+  if (treffer.length < SCHRANKE)
+    console.log(`  ℹ nur gemeldete Fänge: ${treffer.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  assert.deepEqual(
+    treffer.filter(x => /\bconsole\./.test(x.rumpf) && !/Ausnahme:/.test(x.roh)).map(x => x.wo),
+    [],
+    'ohne Ausnahme: direkt in die Konsole statt meldeFehler',
+  );
+}
+
+/** Stille Fänge der Oberfläche werden weniger, nie mehr. */
+function stilleFaengeDerOberflaeche() {
+  // Ein Fang in public/js ohne throw, Meldung (toast, zeige…, melde…, console) oder sichtbaren Text
+  // verschluckt den Fehler: Die Ansicht zeigt dann „leer“ statt „gescheitert“. Viele sind Absicht
+  // (localStorage, abgebrochene Ströme); neue braucht es nicht.
+  // Gegenprobe (14.11.2026): in public/js/merkliste.js am Alarm beim Merken wieder
+  // `.catch(() => null)` → rot (128 von 127).
+  const { faenge, stillImBrowser } = require('./helpers/faenge');
+  const SCHRANKE = 127;
+  const probe = (/** @type {string} */ q) => faenge(q).filter(stillImBrowser).length;
+  assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
+  assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { zeigeFehler(e); }'), 0);
+  const ist = oberflaeche().reduce((n, f) => n + faenge(fs.readFileSync(f, 'utf8')).filter(stillImBrowser).length, 0);
+  assert.ok(ist > 30, `nur ${ist} stille Fänge in public/js — greift die Suche noch?`);
+  assert.ok(ist <= SCHRANKE, `${ist} stille Fänge in public/js, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE)
+    console.log(`  ℹ stille Fänge der Oberfläche: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+}
 
 /** Die Fabrik (erzeugeDb, dbKonfigAusUmgebung) und Typen sind kein Prozesszugang. */
 const PROZESSZUGANG = new Set([

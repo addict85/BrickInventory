@@ -110,7 +110,11 @@ Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
 - **`logAndContinue`** nur für Nebenwirkungen ohne Folgen für das Ergebnis: Mail
   und Signal nebenher, Fortschritt und Stand, Aufräumen nach dem eigentlichen
   Fehler, Herunterfahren. Einen Ersatzwert liefert `meldeUndLiefere` und nennt
-  sein Warum im Code. `test/ratschen.test.js` zählt beide.
+  sein Warum im Code. `test/ratschen.test.js` zählt beide, dazu jeden Fang in
+  `src/`, der nur meldet und weiterläuft (`catch (e) { meldeFehler(…) }`, auch mit
+  `return x` danach): Er ist ein Ersatzwert ohne Namen. Wer dort direkt in die
+  Konsole schreibt, nennt sein Warum als „Ausnahme:“. Die Oberfläche hat eine
+  eigene Ratsche für Fänge ohne Meldung (`public/js`).
 - Ein Signal ist eine **Fehlerklasse** (`StromGeschlossen`, `AuftragVerloren` …),
   keine Zeichenkette, die der Fänger vergleicht.
 - Der Transaktionswächter (kein Ersatzwert in einer laufenden Transaktion) kommt

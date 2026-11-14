@@ -78,8 +78,13 @@ async function aktualisiereSumme(sn) {
  * @param {string} sn
  */
 async function loadAcqModal(sn) {
-  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`).catch(() => null);
-  const acqs = ad?.acquisitions || [];
+  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
+  // Ein Lesefehler ist keine leere Liste: Sonst stünde „—“ da, als gäbe es keine Erfassung.
+  if (!ad.success) {
+    toast(ad.error || tRaw('settings.error'), 'error');
+    return;
+  }
+  const acqs = ad.acquisitions || [];
   if (!erfassung.mitglieder.length) {
     const hm = await api('GET', '/v1/sets/household-members').catch(() => null);
     erfassung.mitglieder = hm?.members || [];
@@ -303,8 +308,13 @@ async function acqDelete(sn, id) {
     if (qEl) qEl.value = String(d.new_quantity);
   }
   // Erfassungsdialog neu laden
-  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`).catch(() => null);
-  if (!ad?.acquisitions?.length) {
+  const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
+  // Nur eine leere Liste schliesst den Dialog, nicht ein Fehler beim Nachladen.
+  if (!ad.success) {
+    toast(ad.error || tRaw('settings.error'), 'error');
+    return;
+  }
+  if (!ad.acquisitions?.length) {
     closeAcqModal();
     return;
   }

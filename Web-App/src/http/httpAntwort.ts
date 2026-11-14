@@ -5,14 +5,7 @@ import fs from 'node:fs';
 import type { Request, Response, NextFunction } from 'express';
 import type { ServerResponse } from 'node:http';
 import { konfig } from '../infra/konfig';
-import {
-  FEHLER,
-  fehlerText,
-  antwortSprache,
-  dateiFehler,
-  type FehlerArt,
-  type FehlerCode,
-} from '../infra/fehlerTexte';
+import { FEHLER, fehlerText, antwortSprache, dateiFehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
 import { statusVon } from './fehlerArt';
 

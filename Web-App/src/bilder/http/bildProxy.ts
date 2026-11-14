@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { prozessweit } from '../../infra/prozessweit';
 import type { KontoDienste } from '../../konto';
 import { resolveUserId } from '../../konto/http/anmeldung';
-import { vorDem, ohneFehlendeDatei, fehlertext } from '../../infra/fehler';
+import { vorDem, ohneFehlendeDatei, fehlertext, meldeFehler } from '../../infra/fehler';
 import { streamFileToResponse } from '../../http/httpAntwort';
 import { merkeCacheZuwachs, bildTyp } from '../imgCacheServe';
 import { liefereAusCache } from './bildCacheAuslieferung';
@@ -44,9 +44,8 @@ function sendePlatzhalter(res: Response) {
     try {
       return fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg'));
     } catch (e) {
-      console.error(
-        `[img-proxy] Platzhalter nicht lesbar: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-      );
+      // Ausnahme: Ohne lesbaren Platzhalter antwortet der Proxy 404; das Bild fehlt ja wirklich.
+      meldeFehler('bild-proxy:platzhalter', e);
       return Buffer.alloc(0);
     }
   });

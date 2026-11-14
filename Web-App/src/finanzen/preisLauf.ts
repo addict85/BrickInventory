@@ -24,8 +24,7 @@ async function acquireRunLock(k: FinanzenKontext): Promise<(() => Promise<void>)
   try {
     freigabe = await belegeSitzungsSperre(k.db, PRICE_JOB_LOCK);
   } catch (e) {
-    // Ohne Verbindung keine Sperre — dann lieber laufen als gar nicht aktualisieren; im eigenen Prozess
-    // schützt die Exklusivität der Art.
+    // Ausnahme: Lieber ohne Sperre laufen als gar nicht; im Prozess schützt die Exklusivität der Art.
     log(`Sperre nicht verfügbar (${fehlertext(e)}) — Lauf ohne prozessübergreifenden Schutz`);
     return async () => {};
   }
@@ -178,22 +177,19 @@ async function aktualisiereKonto(
   await parallelLimit(tasks, 5);
 }
 
-/** Tagespunkt und Preisalarme einmal je Lauf: Je Abruf liefe die Prüfung tausendfach und meldete doppelt. */
-async function nachDemLauf(k: FinanzenKontext) {
+/** Einmal je Lauf, nicht je Abruf; ein Fehlschlag steht im Stand, ihn zu werfen wiederholte den ganzen Lauf. */
+async function nachDemLauf(k: FinanzenKontext, auftrag?: AuftragsKontext) {
   log('Writing daily price_history snapshot from price_cache...');
-  try {
-    log(`Daily snapshot: ${await k.preisLauf.schreibeTagesstand()} price history entries inserted`);
-  } catch (e) {
-    log(`Daily snapshot error: ${fehlertext(e)}`);
-  }
-  try {
+  const stand = await versuche('preis-job:tagesstand', k.preisLauf.schreibeTagesstand());
+  if (stand.ok) log(`Daily snapshot: ${stand.wert} price history entries inserted`);
+  const alarme = await versuche('preis-job:preisalarme', async () => {
     const wartende = await k.preisLauf.setsMitAlarm();
     let gemeldet = 0;
     for (const sn of wartende) gemeldet += await pruefeSet(k, sn, k.mail);
     if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
-  } catch (e) {
-    log(`Preisalarm error: ${fehlertext(e)}`);
-  }
+  });
+  const ohne = [stand.ok ? null : 'tagesstand', alarme.ok ? null : 'preisalarme'].filter(x => x !== null);
+  if (ohne.length) await auftrag?.fortschritt({ text: `ohne ${ohne.join(', ')}`, ohne });
 }
 
 async function meldeErgebnis(kx: FinanzenKontext, st: Laufstand, dur: number, k?: AuftragsKontext) {
@@ -239,7 +235,7 @@ async function runPriceRefresh(kx: FinanzenKontext, k?: AuftragsKontext) {
     await k?.fortschritt({ erledigt: 0, gesamt: st.total, text: `0/${st.total} Sets` });
     for (const [userId, setNumbers] of jeKonto) await aktualisiereKonto(kx, userId, setNumbers, st, k);
     await meldeErgebnis(kx, st, Date.now() - t0, k);
-    await nachDemLauf(kx);
+    await nachDemLauf(kx, k);
   } catch (e) {
     log(`Fatal: ${fehlertext(e)}`);
     await merkeStand(kx, {});

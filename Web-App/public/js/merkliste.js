@@ -232,18 +232,24 @@ export async function katalogAufMerkliste() {
   const frei = knopfBesetzt(G('cat-m-wish'));
   try {
     const d = await api('POST', '/v1/wanted', { set_number: sn, condition: zustand, owner_user_id: owner });
-    if (!d?.success) return;
+    if (!d.success) {
+      toast(d.error || tRaw('settings.error'), 'error');
+      return;
+    }
 
     // Der Alarm ist ein eigener Aufruf: Er lebt in price_alerts, derselbe wie im Set-Detail – keine zweite Wahrheit.
     const schwelle = leseBetrag(G('cat-m-alert-val')?.value);
-    if (schwelle != null && schwelle > 0) {
-      await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
-        richtung: G('cat-m-alert-dir')?.value || 'unter',
-        schwelle,
-        condition: zustand,
-      }).catch(() => null);
-    }
+    const alarm =
+      schwelle != null && schwelle > 0
+        ? await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
+            richtung: G('cat-m-alert-dir')?.value || 'unter',
+            schwelle,
+            condition: zustand,
+          })
+        : null;
     await merkMeldung(d.war_neu, sn);
+    // Gemerkt ist das Set; fehlt der Alarm, soll man das sehen (nach der Meldung, die sonst darüber stünde).
+    if (alarm && !alarm.success) toast(alarm.error || tRaw('settings.error'), 'error');
   } finally {
     frei();
   }

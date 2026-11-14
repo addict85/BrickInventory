@@ -87,7 +87,7 @@ export function erzeugeKatalog(
       'katalogFigur',
     ]),
     ...bindeZugang(k, minifigsImport, ['figurenAusKatalog', 'importiereFiguren']),
-    ...bindeZugang(k, partsImport, ['importiereTeile', 'fetchMissingBlIds', 'importPartsForSet']),
+    ...bindeZugang(k, partsImport, ['importiereTeile', 'fetchMissingBlIds']),
     ...bindeZugang(k, rbInventar, ['inventarFuerKandidaten', 'neuestesInventar']),
     ...bindeZugang(k, rebrickableKatalog, ['getSetInfo', 'getAllSetParts', 'getMinifigParts']),
     ...bindeZugang(k, teileAnreicherungDienst, [

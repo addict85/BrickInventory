@@ -18,6 +18,8 @@ import {
   type TokenBenutzer,
 } from './tokenCache';
 import type { KontoKontext } from './kontext';
+import { meldeFehler } from '../infra/fehler';
+import { versuche } from '../infra/ergebnis';
 
 export type { TokenScope, TokenBenutzer };
 
@@ -172,7 +174,7 @@ function _touchLastUsed(k: KontoKontext, entry: CacheEintrag, ip?: string | null
       u.last_used = new Date(jetzt);
       if (fristHinkt || (u.sliding === true && u.expires_at)) u.expires_at = new Date(ziel);
     })
-    .catch(e => console.warn('[auth] last_used konnte nicht geschrieben werden:', e?.message || e))
+    .catch((e: unknown) => meldeFehler('token:last_used schreiben', e))
     .finally(() => {
       entry.schreibt = false;
     });
@@ -317,18 +319,21 @@ export async function revokeAllTokens(k: KontoKontext, userId: number): Promise<
   leereTokenCache(k);
 }
 
-/** Altzeilen ohne Ablaufdatum bekommen vorher ihre Gleitfrist, damit sie nach
- * derselben Regel fallen wie neue. */
+/** Altzeilen bekommen zuerst ihre Gleitfrist, damit sie fallen wie neue. Jeder Schritt
+ * läuft; scheitert einer, wirft der Lauf danach, und das Aufräumen wiederholt ihn. */
 export async function purgeExpiredTokens(k: KontoKontext) {
-  const warn = (was: string) => (e: Error) => {
-    console.warn(`[tokens] ${was}:`, e?.message || e);
-    return 0;
+  const ohne: string[] = [];
+  const schritt = async (was: string, arbeit: () => Promise<number>) => {
+    const r = await versuche(`tokens:${was}`, arbeit);
+    if (!r.ok) ohne.push(was);
+    return r.ok ? r.wert : 0;
   };
-  const m = await k.zugaenge.ziehAltzeilenNach(TOKEN_IDLE_DAYS).catch(warn('Altzeilen nachziehen'));
+  const m = await schritt('Altzeilen nachziehen', () => k.zugaenge.ziehAltzeilenNach(TOKEN_IDLE_DAYS));
   if (m) console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${TOKEN_IDLE_DAYS} Tagen gesetzt`);
-  const abgelaufen = await k.zugaenge.loescheAbgelaufene().catch(warn('Aufräumen abgelaufener Tokens'));
-  const n = await k.zugaenge.loescheUngenutzte(TOKEN_IDLE_DAYS).catch(warn('Aufräumen ungenutzter Tokens'));
-  await k.zugaenge.loescheVerwaisteVerbrauchte().catch(warn('Aufräumen verbrauchter Tokens'));
+  const abgelaufen = await schritt('abgelaufene', () => k.zugaenge.loescheAbgelaufene());
+  const n = await schritt('ungenutzte', () => k.zugaenge.loescheUngenutzte(TOKEN_IDLE_DAYS));
+  await schritt('verbrauchte', () => k.zugaenge.loescheVerwaisteVerbrauchte());
   if (n) console.log(`[tokens] ${n} Token seit über ${TOKEN_IDLE_DAYS} Tagen ungenutzt — entfernt`);
+  if (ohne.length) throw new Error(`Token-Aufräumen ohne: ${ohne.join(', ')}`);
   return abgelaufen + n;
 }

@@ -10,6 +10,9 @@
  *   B  Drossel entfernt → rot: „je Konto höchstens 30 Importe je Stunde“
  *   C  der Merker `_leer` in getAllSetParts() nicht gelesen → rot: „eine
  *      leere Antwort wird gemerkt“ (zwei Abrufe statt einem)
+ *   D  (14.11.2026) in teileDesSetsImportieren() wieder ein Fang, der meldet
+ *      und 0 liefert (früher importPartsForSet) → rot: „ein gescheiterter
+ *      Import ist ein Fehler“ (200 mit count 0)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -40,7 +43,8 @@ quellen.testQuellen(null, {
   },
 });
 ersetze('src/katalog/partsImport.js', {
-  importPartsForSet: async (_k, sn, uid) => {
+  importiereTeile: async (_k, sn, uid) => {
+    if (sn.startsWith('TIK')) throw new Error('Rebrickable antwortet nicht');
     importe.push([sn, uid]);
     return 3;
   },
@@ -68,8 +72,15 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
   const [H, U, F] = ids;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [H, U]);
   const UNTER = `TIU${P}-1`,
-    FREMD = `TIF${P}-1`;
-  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [U, UNTER, F, FREMD]);
+    FREMD = `TIF${P}-1`,
+    KAPUTT = `TIK${P}-1`;
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4), ($1, $5)', [
+    U,
+    UNTER,
+    F,
+    FREMD,
+    KAPUTT,
+  ]);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'teile-import|%'");
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
@@ -97,6 +108,14 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(r.body, { success: true, count: 3 });
     assert.deepEqual(importe, [[UNTER, U]]);
+  });
+
+  await t.test('ein gescheiterter Import ist ein Fehler, keine leere Liste', async () => {
+    const r = await importiere(H, KAPUTT);
+    assert.equal(r.status, 500, JSON.stringify(r.body));
+    assert.equal(r.body.success, false);
+    assert.equal(r.body.count, undefined);
+    await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'teile-import|%'");
   });
 
   await t.test('je Konto höchstens 30 Importe je Stunde', async () => {

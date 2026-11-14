@@ -89,80 +89,65 @@ export async function importiereTeile(k: KatalogKontext, setNumber: string, user
   return zeilen.length;
 }
 
-/** Ohne zu werfen — für die Route, die nur die Zahl zeigt. */
-export async function importPartsForSet(k: KatalogKontext, setNumber: string, userId: number): Promise<number> {
-  try {
-    return await importiereTeile(k, setNumber, userId);
-  } catch (e) {
-    console.error(`[parts] Import fehlgeschlagen für ${mitVersion(setNumber)}:`, fehlertext(e));
-    return 0;
-  }
-}
-
 function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: string }> {
   return rebrickableRoh(url, rbKey);
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
 export async function fetchMissingBlIds(k: KatalogKontext, lauf: AuftragsLauf = {}) {
-  try {
-    const rbKey = await k.einstellungen.getGlobalSetting('rebrickable_api_key');
-    if (!rbKey) return;
-    const missing = await k.setInhalt.teileOhneBlZuordnung();
-    if (!missing.length) return;
+  const rbKey = await k.einstellungen.getGlobalSetting('rebrickable_api_key');
+  if (!rbKey) return;
+  const missing = await k.setInhalt.teileOhneBlZuordnung();
+  if (!missing.length) return;
 
-    const stand = (n: number) =>
-      lauf.fortschritt?.({
-        erledigt: n,
-        gesamt: missing.length,
-        schritt: 'BrickLink IDs nachladen',
-        text: `${Math.min(n, missing.length)} / ${missing.length}`,
-      });
-    await stand(0);
-    const BATCH = 500;
-    let serverErrors = 0;
-    for (let i = 0; i < missing.length; i += BATCH) {
-      if (lauf.signal?.aborted || !(await k.fremdquellen.consumeRebrickableDaily())) break;
-      await k.fremdquellen.drossel.hintergrund.waitForSlot();
-      const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
-      const result = await holeSeite(
-        `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`,
-        rbKey,
-      );
-      if (result.status === 429) {
-        await new Promise(r => setTimeout(r, parseThrottleWait(result.body)));
+  const stand = (n: number) =>
+    lauf.fortschritt?.({
+      erledigt: n,
+      gesamt: missing.length,
+      schritt: 'BrickLink IDs nachladen',
+      text: `${Math.min(n, missing.length)} / ${missing.length}`,
+    });
+  await stand(0);
+  const BATCH = 500;
+  let serverErrors = 0;
+  for (let i = 0; i < missing.length; i += BATCH) {
+    if (lauf.signal?.aborted || !(await k.fremdquellen.consumeRebrickableDaily())) break;
+    await k.fremdquellen.drossel.hintergrund.waitForSlot();
+    const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
+    const result = await holeSeite(
+      `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`,
+      rbKey,
+    );
+    if (result.status === 429) {
+      await new Promise(r => setTimeout(r, parseThrottleWait(result.body)));
+      i -= BATCH;
+      continue;
+    }
+    if (result.status >= 500 || result.status === 0) {
+      if (serverErrors++ === 0) {
+        await new Promise(r => setTimeout(r, 10000));
         i -= BATCH;
         continue;
-      }
-      if (result.status >= 500 || result.status === 0) {
-        if (serverErrors++ === 0) {
-          await new Promise(r => setTimeout(r, 10000));
-          i -= BATCH;
-          continue;
-        } else break;
-      }
-      if (result.status !== 200) continue;
-      let data: { results?: { part_num: string; external_ids?: { BrickLink?: string[] } }[] };
-      try {
-        data = JSON.parse(result.body);
-      } catch (e) {
-        meldeFehler('bl-nummern:antwort', e);
-        continue;
-      }
-      const batchDone = i + BATCH;
-      await stand(batchDone);
-      for (const part of data?.results || []) {
-        const blIds = part.external_ids?.BrickLink;
-        const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0]! : part.part_num;
-        await merkeBlNummer(k, 'part', part.part_num, blNum).catch(logAndContinue('bl-nummern:merken'));
-      }
-      const returned = new Set((data?.results || []).map(p => p.part_num));
-      for (const pn of batch) {
-        if (!returned.has(pn))
-          await merkeBlNummerUnveraendert(k, 'part', pn).catch(logAndContinue('bl-nummern:merken'));
-      }
+      } else break;
     }
-  } catch (e) {
-    console.error('[bl-fetch] error:', fehlertext(e));
+    if (result.status !== 200) continue;
+    let data: { results?: { part_num: string; external_ids?: { BrickLink?: string[] } }[] };
+    try {
+      data = JSON.parse(result.body);
+    } catch (e) {
+      meldeFehler('bl-nummern:antwort', e);
+      continue;
+    }
+    const batchDone = i + BATCH;
+    await stand(batchDone);
+    for (const part of data?.results || []) {
+      const blIds = part.external_ids?.BrickLink;
+      const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0]! : part.part_num;
+      await merkeBlNummer(k, 'part', part.part_num, blNum).catch(logAndContinue('bl-nummern:merken'));
+    }
+    const returned = new Set((data?.results || []).map(p => p.part_num));
+    for (const pn of batch) {
+      if (!returned.has(pn)) await merkeBlNummerUnveraendert(k, 'part', pn).catch(logAndContinue('bl-nummern:merken'));
+    }
   }
 }
