@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
 import { setTimeout as warte } from 'node:timers/promises';
-import { downloadFile, scrapeInstructions, httpsGetRobust, brickset } from './quellen';
+import { downloadFile } from '../fremdquellen';
 import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
@@ -49,13 +49,13 @@ export async function loescheAnleitungen(k: KatalogKontext, setNumber: string) {
 }
 
 // Ein Fund für Anlegen und Suchen.
-async function brickinstructionsFund(n: string) {
+async function brickinstructionsFund(k: KatalogKontext, n: string) {
   const baseNum = pfadSegment(ohneVersion(n));
   const folder = String(Math.floor(parseInt(baseNum, 10) / 1000) * 1000).padStart(5, '0');
   const baseUrl = `https://lego.brickinstructions.com/instructions/${folder}/${baseNum}`;
   const pageUrl = `https://lego.brickinstructions.com/lego_instructions/set/${baseNum}/`;
   const hdrs = { 'User-Agent': 'Mozilla/5.0 (compatible; BrickManager/3.0)', Referer: pageUrl };
-  const probe = await httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
+  const probe = await k.fremdquellen.quellen.httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
   if (probe.status !== 200 || !probe.buffer || probe.buffer.length <= 500) return null;
   return { baseUrl, pageUrl, hdrs, erstesBild: probe.buffer };
 }
@@ -67,7 +67,7 @@ export async function scrapeInstructionsFromFallback(k: KatalogKontext, setNumbe
   const biAlreadyTried = await k.anleitungen.hatBrickinstructions(n);
   if (biAlreadyTried) return 0;
   try {
-    const fund = await brickinstructionsFund(n);
+    const fund = await brickinstructionsFund(k, n);
     if (fund) {
       const { baseUrl, pageUrl, hdrs } = fund;
       const instrDir = INSTRUCTIONS_DIR;
@@ -117,13 +117,13 @@ export async function downloadSetInstructions(k: KatalogKontext, setNumber: stri
   }
 
   _letzterAbrufWarExtern = true; // ab hier wird wirklich gefragt
-  const { instrList, bricksetSucceededEmpty } = await anleitungsQuellen(n);
+  const { instrList, bricksetSucceededEmpty } = await anleitungsQuellen(k, n);
 
   if (!instrList.length && bricksetSucceededEmpty && (await bdpRueckfall(k, n, eigenerTakt))) return 1;
 
   const biAlreadyTried = await k.anleitungen.hatBrickinstructions(n);
   if (!instrList.length && bricksetSucceededEmpty && !biAlreadyTried) {
-    const bi = await brickinstructionsQuelle(n);
+    const bi = await brickinstructionsQuelle(k, n);
     if (bi) instrList.push(bi);
   }
 
@@ -135,16 +135,16 @@ export async function downloadSetInstructions(k: KatalogKontext, setNumber: stri
 
 /** Erst die Rebrickable-Seite, dann Brickset. `bricksetSucceededEmpty`: Brickset hat
  * geantwortet, ohne Anleitung — nur dann lohnen die weiteren Rückfälle. */
-async function anleitungsQuellen(n: string) {
+async function anleitungsQuellen(k: KatalogKontext, n: string) {
   let instrList: AnleitungsQuelle[] = [];
   let bricksetSucceededEmpty = false;
   try {
-    instrList = await scrapeInstructions(n);
+    instrList = await k.fremdquellen.quellen.scrapeInstructions(n);
   } catch (e) {
     meldeFehler('anleitungen:auslesen', e);
   }
   if (!instrList.length) {
-    const bs = await versuche('anleitungen:brickset', brickset.getInstructions(n));
+    const bs = await versuche('anleitungen:brickset', k.fremdquellen.quellen.brickset.getInstructions(n));
     instrList = bs.ok ? bs.wert.instructions || [] : [];
     // usesFallback false heisst Kontingent erschöpft. Ein Fehler ist keine Antwort —
     // beides bleibt in der Warteschlange.
@@ -180,9 +180,9 @@ async function bdpRueckfall(k: KatalogKontext, n: string, eigenerTakt: boolean):
   return false;
 }
 
-async function brickinstructionsQuelle(n: string): Promise<AnleitungsQuelle | null> {
+async function brickinstructionsQuelle(k: KatalogKontext, n: string): Promise<AnleitungsQuelle | null> {
   try {
-    const fund = await brickinstructionsFund(n);
+    const fund = await brickinstructionsFund(k, n);
     if (!fund) return null;
     const { baseUrl, pageUrl, hdrs } = fund;
     return {
@@ -255,7 +255,11 @@ async function collectAndBuildPDF(
     for (let p = 2; p <= 99; p++) {
       await warte(500);
       try {
-        const r = await httpsGetRobust(`${baseUrl}/${String(p).padStart(3, '0')}.jpg`, hdrs, 8000);
+        const r = await k.fremdquellen.quellen.httpsGetRobust(
+          `${baseUrl}/${String(p).padStart(3, '0')}.jpg`,
+          hdrs,
+          8000,
+        );
         if (r.status !== 200 || !r.buffer || r.buffer.length < 500) break;
         imageBuffers.push(r.buffer);
       } catch (_) {

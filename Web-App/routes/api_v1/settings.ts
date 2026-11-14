@@ -4,7 +4,7 @@ import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { bearerToken, kontoSchranke, waechterFuer } from './middleware';
-import { quellePruefen, hatGlobaleWerte } from '../../src/verwaltung';
+import { hatGlobaleWerte } from '../../src/verwaltung';
 import {
   resolveUserId,
   istVerwalter,
@@ -452,7 +452,7 @@ export function baueSettingsRouter(d: Pick<Dienste, 'einstellungen' | 'mail' | '
       req: Anfrage<'POST /api/v1/settings/quelle-testen'>,
       res: Antwort<'POST /api/v1/settings/quelle-testen'>,
     ) => {
-      const absage = await quellePruefen(String(req.eingabe.quelle ?? ''));
+      const absage = await d.verwaltung.quellePruefen(String(req.eingabe.quelle ?? ''));
       if (!absage) return res.json({ success: true });
       res.status(400).json({
         success: false,

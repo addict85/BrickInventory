@@ -825,6 +825,7 @@ const STUFEN = [
   ['src/einstellungen'],
   ['src/mail'],
   ['src/auftraege'],
+  ['src/fremdquellen'],
   ['src/haushalt'],
   ['src/konto'],
   ['src/idempotenz', 'src/katalog'],
@@ -872,21 +873,19 @@ test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
   assert.deepEqual(falsch, []);
 });
 
-test('Klienten erreicht man nur über src/katalog/quellen.ts', () => {
-  // Dort bekommen sie Schlüssel, Kontingent und Drossel; ein Weg daran vorbei
-  // fände keinen Schlüssel. `import type` ist erlaubt.
-  // Gegenprobe (05.11.2026): `import { lookupPart } from '../../clients/rebrickable'`
-  // in src/teile/manuelleTeile.ts → rot.
+test('Klienten erreicht man nur über src/fremdquellen/quellen.ts', () => {
+  // Dort bekommen sie Schlüssel, Kontingent und Drossel ihres Zugangs; ein Weg daran
+  // vorbei fände keinen Schlüssel. `import type` ist erlaubt, Ausnahmen gibt es keine.
+  // Gegenproben: `import { lookupPart } from '../../clients/rebrickable'` in
+  // src/teile/manuelleTeile.ts → rot (05.11.2026); `import { erzeugeBrickset } from
+  // '../clients/brickset'` in startup/verdrahtung.ts → rot (14.11.2026).
   const kanten = bereichsKanten();
-  // Einzige Ausnahme: startup/verdrahtung.ts setzt beim Start den Zugang der Klienten.
-  // Gegenprobe (11.11.2026): derselbe Import in src/sets/dienst.ts → rot.
-  const verdrahtung = k => k.d === 'startup/verdrahtung.ts' && /clients\/zugang(\.ts)?$/.test(k.ziel);
   const treffer = kanten
-    .filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/katalog/quellen.ts' && !verdrahtung(k))
+    .filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/fremdquellen/quellen.ts')
     .map(k => `${k.d} -> ${k.ziel}`);
   assert.deepEqual(treffer, []);
   assert.ok(
-    kanten.some(k => k.d === 'src/katalog/quellen.ts' && k.nach === 'clients'),
+    kanten.some(k => k.d === 'src/fremdquellen/quellen.ts' && k.nach === 'clients'),
     'quellen.ts holt keinen Klienten mehr?',
   );
 });

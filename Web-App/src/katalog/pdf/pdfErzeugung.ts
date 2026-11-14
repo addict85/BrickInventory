@@ -2,7 +2,6 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { bilderAusKatalog as katalogbilder } from '../bildlage';
 import { MINIFIG_IMAGES_DIR } from '../../infra/appPaths';
-import { getMinifigInfo } from '../quellen';
 import { logAndContinue, meldeFehler } from '../../infra/fehler';
 import { pdfDateiPfad, type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../../auftraege';
 import { downloadImage, downloadSetImages } from '../teileAnreicherung';
@@ -29,7 +28,7 @@ async function figurenOhneAdresse(k: KatalogKontext, parts: PdfTeil[]) {
     p => istFigur(p) && !p.image_url && !p.image_local && /^fig-\d{1,8}$/.test(p.part_number),
   )) {
     try {
-      const info = await getMinifigInfo(p.part_number);
+      const info = await k.fremdquellen.quellen.getMinifigInfo(p.part_number);
       if (!info?.image_url) continue;
       p.image_url = info.image_url;
       await merkeFigurBildAdresse(k, p.part_number, info.image_url).catch(logAndContinue('pdf:figurbild merken'));

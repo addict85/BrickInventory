@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { AbrufFehler } from '../../infra/abruf';
-import { oeffneBild } from '../quellen';
+import { oeffneBild } from '../../fremdquellen';
 
 /** Bewusst ohne SVG. */
 const ENDUNG_ZU_TYP: Record<string, string> = {

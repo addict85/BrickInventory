@@ -53,7 +53,7 @@ async function loeseVollstaendigAuf(kx: MerklisteKontext, posten: WantedPosten[]
   let auf = await loeseLokalAuf(kx, posten, uid);
   let rebrickable: WantedBericht['rebrickable'];
   if (opt.ueberRebrickable) {
-    const r = await loeseUeberRebrickableAuf(auf, 250, opt.fortschritt);
+    const r = await loeseUeberRebrickableAuf(kx, auf, 250, opt.fortschritt);
     auf = r.auf;
     rebrickable = {
       gefragt: r.gefragt,

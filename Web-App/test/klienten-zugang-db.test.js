@@ -1,13 +1,16 @@
 /**
- * Klienten kennen keinen Fachbereich: Schlüssel, Kontingent und Drossel kommen
- * über clients/zugang.ts, eingesetzt von startup/verdrahtung.ts.
+ * Klienten kennen keinen Fachbereich und keinen Prozess-Speicher: Schlüssel,
+ * Kontingent und Drossel bekommt jeder Klient bei seiner Erzeugung
+ * (erzeugeRebrickable(z) …), src/fremdquellen gibt sie ihm aus seinem Zugang.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  in clients/zugang.ts liefert zugang() ohne Verdrahtung wieder einen
- *      Zugang mit leerem Schlüssel → rot: „ohne Verdrahtung wirft jeder Abruf …“
- *   B  in baueKlientenZugang() `schluessel: async () => ''` → rot: „über
- *      die Verdrahtung tragen Abrufe den eingetragenen Schlüssel und zählen“
- *   C  in baueKlientenZugang() `zaehle: async () => ({ allowed: true, count: 0,
+ * Gegenproben (am 14.11.2026 gemessen):
+ *   A  in clients/rebrickable.ts ein modulweites `let _z` gesetzt von jedem
+ *      erzeugeRebrickable(z) und in getRbKey() statt `z` gelesen (der frühere
+ *      verdrahteKlienten(): der letzte gewinnt) → rot: „zwei Klienten …“
+ *      (beide Abrufe trugen „key zweiter“)
+ *   B  in erzeugeFremdquellen() `schluessel: async () => ''` → rot: „über die
+ *      Dienste tragen Abrufe …“ (kein Abruf, Ergebnis null)
+ *   C  in erzeugeFremdquellen() `zaehle: async () => ({ allowed: true, count: 0,
  *      limit: 0 })` → rot: derselbe Test (der Zähler bleibt stehen)
  *
  * Rebrickable selbst wird nicht gefragt: https.get ist eine Attrappe.
@@ -20,9 +23,8 @@ const { EventEmitter } = require('node:events');
 const { Readable } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const path = require('node:path');
-const _req = require('./helpers/sources').buildAndRequire();
-const DIST = path.join(__dirname, '..', 'dist');
+const S = require('./helpers/sources');
+const _req = S.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 
 /** @type {{ pfad: string, schluessel: string | undefined }[]} */
@@ -43,25 +45,35 @@ https.get = (url, opts, cb) => {
   return req;
 };
 
-test('ohne Verdrahtung wirft jeder Abruf, statt ohne Schlüssel zu laufen', async () => {
-  // Frische Module: buildAndRequire() hat die geladenen schon verdrahtet.
-  const pfade = ['clients/zugang.js', 'clients/rebrickable.js'].map(p => path.join(DIST, p));
-  const alt = pfade.map(p => require.cache[p]);
-  for (const p of pfade) delete require.cache[p];
-  try {
-    const rb = require(pfade[1]);
-    await assert.rejects(rb.rebrickableJson('/lego/sets/10001-1/'), /nicht verdrahtet/);
-    assert.deepEqual(abrufe, []);
-  } finally {
-    pfade.forEach((p, i) => {
-      if (alt[i]) require.cache[p] = alt[i];
-      else delete require.cache[p];
-    });
-  }
+/** Ein Zugang ohne Datenbank: fester Schlüssel, freies Kontingent, Drossel ohne Warten. */
+const zugangMit = schluessel => {
+  const frei = { waitForSlot: async () => {}, throttle: () => {} };
+  return {
+    schluessel: async () => schluessel,
+    zaehle: async () => ({ allowed: true, count: 1, limit: 10 }),
+    kontingentStand: async () => ({ count: 1, limit: 10, remaining: 9 }),
+    drossel: { vordergrund: frei, hintergrund: frei },
+    bricksetVormerken: async () => ({ versuch: 1, vorgemerkt: true, hoechstens: 3 }),
+    bricksetVergessen: async () => {},
+  };
+};
+
+test('zwei Klienten in einem Prozess fragen jeder mit dem Schlüssel ihres Zugangs', async () => {
+  const { erzeugeRebrickable } = _req('clients/rebrickable.js');
+  const { RbSet } = _req('clients/antworten.js');
+  const erster = erzeugeRebrickable(zugangMit('erster'));
+  const zweiter = erzeugeRebrickable(zugangMit('zweiter'));
+  abrufe.length = 0;
+  await erster.rebrickableJson('/lego/sets/10001-1/', RbSet);
+  await zweiter.rebrickableJson('/lego/sets/10001-1/', RbSet);
+  assert.deepEqual(
+    abrufe.map(a => a.schluessel),
+    ['key erster', 'key zweiter'],
+  );
 });
 
-test('über die Verdrahtung tragen Abrufe den eingetragenen Schlüssel und zählen', { concurrency: 1 }, async t => {
-  const db = require('./helpers/sources').testDaten();
+test('über die Dienste tragen Abrufe den eingetragenen Schlüssel und zählen', { concurrency: 1 }, async t => {
+  const db = S.testDaten();
   if (!(await datenOderSkip(t, _req))) return;
   const { setGlobalSetting, deleteGlobalSetting } = _req('src/einstellungen/settings.js');
   await setGlobalSetting('rebrickable_api_key', 'schluessel-zugang-1');
@@ -77,8 +89,10 @@ test('über die Verdrahtung tragen Abrufe den eingetragenen Schlüssel und zähl
     );
   const vorher = await zaehler();
 
-  const { rebrickableJson, RbSet } = _req('src/katalog/quellen.js');
-  assert.deepEqual(await rebrickableJson('/lego/sets/10001-1/', RbSet), { set_num: '10001-1', name: 'Attrappe' });
+  const { RbSet } = _req('src/fremdquellen/index.js');
+  abrufe.length = 0;
+  const antwort = await S.testDienste().fremdquellen.quellen.rebrickableJson('/lego/sets/10001-1/', RbSet);
+  assert.deepEqual(antwort, { set_num: '10001-1', name: 'Attrappe' });
   assert.deepEqual(abrufe, [{ pfad: '/api/v3/lego/sets/10001-1/', schluessel: 'key schluessel-zugang-1' }]);
   assert.equal(await zaehler(), vorher + 1);
 });

@@ -172,10 +172,10 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // Modulweiter Zustand (let und leer angelegte Map/Set/WeakMap/WeakSet): Ihn teilen alle
   // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/zwischenspeicher.ts),
   // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
-  // Gemessen 13.11.2026: 44 let + 28 Sammlungen = 72 vorher, 39 + 20 = 59 danach.
+  // Gemessen 13.11.2026: 44 let + 28 Sammlungen = 72 vorher, 39 + 20 = 59 danach; 14.11.2026: 54.
   // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
   // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60.
-  const ZUSTAND_SCHRANKE = 59;
+  const ZUSTAND_SCHRANKE = 54;
   const ZUSTAND =
     /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
   const zaehleZustand = s => (s.match(ZUSTAND) || []).length;

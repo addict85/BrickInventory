@@ -6,6 +6,7 @@ import type { BestandDienste } from './bestand';
 import type { EinstellungenDienste } from './einstellungen';
 import type { FigurenDienste } from './figuren';
 import type { FinanzenDienste } from './finanzen';
+import type { FremdquellenDienste } from './fremdquellen';
 import type { GutscheineDienste } from './gutscheine';
 import type { HaushaltDienste } from './haushalt';
 import type { IdempotenzDienste } from './idempotenz';
@@ -25,6 +26,7 @@ export interface Dienste {
   haushalt: HaushaltDienste;
   konto: KontoDienste;
   idempotenz: IdempotenzDienste;
+  fremdquellen: FremdquellenDienste;
   katalog: KatalogDienste;
   finanzen: FinanzenDienste;
   bestand: BestandDienste;

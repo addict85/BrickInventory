@@ -84,20 +84,13 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const path = require('node:path');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 
-// Rebrickable vorgeben, BEVOR wantedListe die Funktionen herauszieht. esbuild
-// exportiert ueber Getter, ein `rb.blTeilZuRb = …` liefe ins Leere — deshalb
-// der Eintrag im require-Zwischenspeicher (dasselbe Vorgehen wie in
-// test/preis-schreibweg-db.test.js). Erst laden, dann ersetzen: Vor dem
-// require gibt es den Eintrag nicht.
-const rbPfad = require.resolve(path.join(__dirname, '..', 'dist', 'clients/rebrickable.js'));
-const echtRb = require(rbPfad);
-require.cache[rbPfad].exports = Object.assign({}, echtRb, {
+// Rebrickable an der Verdrahtung gestellt (testQuellen).
+testQuellen(null, {
   // 98765 heisst bei Rebrickable 12345 — eine ABWEICHENDE Nummer, wie sie nur
   // dort steht. Alles andere kennt dieses Doppel nicht.
   blTeilZuRb: async blId => (blId === '98765' ? '12345' : null),

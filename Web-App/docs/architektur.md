@@ -90,8 +90,10 @@ Absicht, solange es nur von unten gebraucht wird:
   `katalog`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
   eine HTTP-Seite; eine Absage ist eine `FehlerArt` (oder ein `Fachfehler`),
   den HTTP-Status wählt `src/http/fehlerArt.ts`.
-- Clients erreicht man nur über `src/katalog/quellen.ts`; Schlüssel und
-  Kontingent bekommen sie dort übergeben (`clients/zugang.ts`).
+- Clients erreicht man nur über `src/fremdquellen/quellen.ts`. Jeder Klient
+  entsteht dort je Satz Dienste (`erzeugeRebrickable(z)` …) mit Schlüssel,
+  Kontingent und Drossel seines Zugangs (`clients/zugang.ts`); einen Zugang des
+  Prozesses gibt es nicht. Tests stellen Klienten mit `testQuellen()`.
 - Eine Transaktion gilt zusätzlich für den ganzen Aufrufpfad (AsyncLocalStorage),
   auch für Repositories ohne `tx`-Parameter: Sicherung gegen eine zweite
   Verbindung mitten in der Arbeitseinheit, nicht der Weg, sie zu erkennen.
@@ -136,17 +138,18 @@ kennen einander nicht. Von unten nach oben:
 | 5 | `src/einstellungen` |
 | 6 | `src/mail` |
 | 7 | `src/auftraege` |
-| 8 | `src/haushalt` |
-| 9 | `src/konto` |
-| 10 | `src/idempotenz`, `src/katalog` |
-| 11 | `src/finanzen` |
-| 12 | `src/bestand` |
-| 13 | `src/sets` |
-| 14 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
-| 15 | `src/sammlung`, `src/verwaltung` |
-| 16 | `jobs`, `routes` |
-| 17 | `startup` |
-| 18 | `server.ts` |
+| 8 | `src/fremdquellen` |
+| 9 | `src/haushalt` |
+| 10 | `src/konto` |
+| 11 | `src/idempotenz`, `src/katalog` |
+| 12 | `src/finanzen` |
+| 13 | `src/bestand` |
+| 14 | `src/sets` |
+| 15 | `src/teile`, `src/figuren`, `src/merkliste`, `src/gutscheine` |
+| 16 | `src/sammlung`, `src/verwaltung` |
+| 17 | `jobs`, `routes` |
+| 18 | `startup` |
+| 19 | `server.ts` |
 
 ## Schema
 

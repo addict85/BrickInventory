@@ -4,7 +4,6 @@
 import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as anleitungLaden from './anleitungLaden';
-import * as apiKontingentDienst from './apiKontingent';
 import * as bildlageDienst from './bildlage';
 import * as blZuordnungDienst from './blZuordnung';
 import * as bricklinkLink from './bricklinkLink';
@@ -24,8 +23,7 @@ import * as teileAnreicherungDienst from './teileAnreicherung';
 import * as bildbedarfDienst from './bilder/bildbedarf';
 import * as bildbedarfLauf from './bilder/bildbedarfLauf';
 import * as imageMisses from './bilder/imageMisses';
-import * as rateLimiter from './rateLimiter';
-import * as apiTaktRepo from './repository/apiTakt';
+import { ConcurrentRateLimiter } from '../fremdquellen';
 import * as bildNachlauf from './bildNachlauf';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
 import * as bildBlickfeldDienst from './bilder/bildBlickfeld';
@@ -40,22 +38,24 @@ export type { Bildwerk, KatalogAbhaengigkeiten, KatalogKontext } from './kontext
 
 /** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/verdrahtung.ts baueDienste). */
 export function erzeugeKatalog(
-  a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'bildwerk' | 'drossel'> & { bildwerk?: Bildwerk | undefined },
+  a: Omit<KatalogAbhaengigkeiten, 'faecher' | 'bildwerk' | 'cdnDrossel'> & { bildwerk?: Bildwerk | undefined },
   einblick?: Einblick<KatalogKontext>,
 ) {
   const bildwerk = a.bildwerk ?? { setBildLaden: downloadSetImage, vorschauErzeugen: generateThumb };
-  const drossel = rateLimiter.rebrickableDrosseln(bindeZugang(a.db, apiTaktRepo));
-  const k: KatalogKontext = baueKontext({ ...a, bildwerk, drossel, faecher: new Faecher() }, zugang);
+  const cdnDrossel = new ConcurrentRateLimiter(2, 1000);
+  const k: KatalogKontext = baueKontext({ ...a, bildwerk, cdnDrossel, faecher: new Faecher() }, zugang);
+  const fq = a.fremdquellen;
   einblick?.(k);
   return {
     ...bindeZugang(k, anleitungLaden, ['anleitungLaden']),
-    ...bindeZugang(k, apiKontingentDienst, [
-      'checkAndIncrementRateLimit',
-      'getRateLimitStatus',
-      'kontingentFrei',
-      'setzeKontingentZurueck',
-      'getLimitForApi',
-    ]),
+    // Kontingent und Klienten der Fremdquellen, weitergereicht für die Bereiche darüber.
+    checkAndIncrementRateLimit: fq.checkAndIncrementRateLimit,
+    getRateLimitStatus: fq.getRateLimitStatus,
+    kontingentFrei: fq.kontingentFrei,
+    setzeKontingentZurueck: fq.setzeKontingentZurueck,
+    getLimitForApi: fq.getLimitForApi,
+    rebrickableDailyStatus: fq.rebrickableDailyStatus,
+    quellen: fq.quellen,
     ...bindeZugang(k, bildlageDienst, [
       'fuelleAusBrickset',
       'anleitungenNachtragen',
@@ -124,10 +124,7 @@ export function erzeugeKatalog(
     // Beim Aufruf nachgeschlagen: Ein Test ersetzt Teile des Bildwerks nach dem Bau.
     setBildLaden: (...a: Parameters<Bildwerk['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
     vorschauErzeugen: (relPfad: string) => k.bildwerk.vorschauErzeugen(relPfad),
-    /** Dieselben Drosseln wie im Katalog: Klienten und Abgleich teilen den Takt. */
-    drossel: k.drossel,
     ...bindeZugang(k, imageMisses, ['vergissFehlend', 'initImageMisses', 'stoppeFehlanzeige']),
-    ...bindeZugang(k, rateLimiter, ['rebrickableDailyStatus']),
     ...bindeZugang(k, bildNachlauf, ['bildNachlauf']),
     ...bindeZugang(k, pdfErzeugung, ['erzeugePdf']),
     ...bindeZugang(k, bildBlickfeldDienst, ['anleitungFreigegeben', 'setNummerImBlickfeld']),

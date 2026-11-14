@@ -6,21 +6,14 @@ import { naechsteUhrzeit, DAILY_JOBS } from '../auftraege';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeFehler, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
-import {
-  anfragenJeMinute,
-  alsAbrufFehler,
-  pruefeBricklinkZugang,
-  ausRetryWarteschlange,
-  pruefeBricksetZugang,
-  pruefeRebrickableZugang,
-} from '../katalog';
+import { anfragenJeMinute, alsAbrufFehler } from '../katalog';
 import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import type { VerwaltungKontext } from './kontext';
 
-const QUELLEN: Record<string, () => Promise<void>> = {
-  rebrickable: pruefeRebrickableZugang,
-  brickset: pruefeBricksetZugang,
-  bricklink: pruefeBricklinkZugang,
+const QUELLEN: Record<string, (q: VerwaltungKontext['katalog']['quellen']) => Promise<void>> = {
+  rebrickable: q => q.pruefeRebrickableZugang(),
+  brickset: q => q.pruefeBricksetZugang(),
+  bricklink: q => q.pruefeBricklinkZugang(),
 };
 
 const QUELLEN_NAME: Record<string, string> = {
@@ -46,12 +39,13 @@ function quellenAbsage(e: unknown): FehlerCode {
 
 /** null, wenn der Zugang antwortet; sonst Code, Name und roher Grund. Wirft nur bei unbekannter Quelle. */
 export async function quellePruefen(
+  k: VerwaltungKontext,
   quelle: string,
 ): Promise<{ code: FehlerCode; quelle: string; grund: string } | null> {
   const pruefe = Object.hasOwn(QUELLEN, quelle) ? QUELLEN[quelle] : undefined;
   if (!pruefe) fachfehler('ungueltig', 'quelle_unbekannt');
   try {
-    await pruefe();
+    await pruefe(k.katalog.quellen);
     return null;
   } catch (e) {
     return { code: quellenAbsage(e), quelle: QUELLEN_NAME[quelle] ?? quelle, grund: fehlertext(e).slice(0, 200) };
@@ -159,7 +153,7 @@ export async function bricksetWiederholen(k: VerwaltungKontext, sn: string) {
 }
 
 export async function bricksetEntfernen(k: VerwaltungKontext, sn: string) {
-  await ausRetryWarteschlange(sn).catch(logAndContinue('verwaltung:ausRetryWarteschlange'));
+  await k.katalog.quellen.ausRetryWarteschlange(sn).catch(logAndContinue('verwaltung:ausRetryWarteschlange'));
   await k.auftraege.anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 

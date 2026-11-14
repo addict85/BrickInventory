@@ -1,5 +1,5 @@
 /** Stammdaten, Teile- und Figurenliste eines Sets. */
-import { proxyImageUrl, getMinifigInfo, getSetMinifigs, type RbSetTeil, ersteBlNummer } from '../katalog';
+import { proxyImageUrl, type RbSetTeil, ersteBlNummer } from '../katalog';
 import { findSetInScope } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
@@ -151,8 +151,9 @@ export async function figurenlisteDesSets(sk: SetsKontext, setNum: string) {
     figs = await repo.inventarFigurenDesSets(sk.db, invId);
   }
   if (!figs.length) {
-    const mit = await versuche('sets:getSetMinifigs', getSetMinifigs(n));
-    const rb = mit.ok && mit.wert ? mit : await versuche('sets:getSetMinifigs', getSetMinifigs(bare));
+    const mit = await versuche('sets:getSetMinifigs', sk.katalog.quellen.getSetMinifigs(n));
+    const rb =
+      mit.ok && mit.wert ? mit : await versuche('sets:getSetMinifigs', sk.katalog.quellen.getSetMinifigs(bare));
     if (!rb.ok) return { figs: [], source: QUELLE_GESTOERT, error: rb.fehler.grund };
     figs = rb.wert || [];
   }
@@ -171,7 +172,9 @@ async function figurenMerken(
   for (const f of figs) {
     let bild = f.image_url || null;
     if (!bild)
-      bild = wertOder(await versuche('sets:minifigur-info', getMinifigInfo(f.fig_number)), null)?.image_url || null;
+      bild =
+        wertOder(await versuche('sets:minifigur-info', k.katalog.quellen.getMinifigInfo(f.fig_number)), null)
+          ?.image_url || null;
     await k.katalog.merkeFigur(f.fig_number, f.fig_name, bild);
     await k.katalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
   }

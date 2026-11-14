@@ -17,7 +17,7 @@ import { konfig } from '../../infra/konfig';
 import type { Request, Response } from 'express';
 import type { Readable } from 'node:stream';
 import { AbrufFehler, type AbrufStrom } from '../../infra/abruf';
-import { oeffneBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../quellen';
+import { oeffneBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../fremdquellen';
 import zlib from 'node:zlib';
 import { setBildVollstaendig } from '../bilder/setImages';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';

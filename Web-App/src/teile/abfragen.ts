@@ -1,12 +1,5 @@
 import * as repo from './repository/teileListe';
-import {
-  resolveImageLocal,
-  type RbSetTeil,
-  ersteBlNummer,
-  getRbKey,
-  httpsGetRobust,
-  blFarbnummerAus,
-} from '../katalog';
+import { resolveImageLocal, type RbSetTeil, ersteBlNummer, blFarbnummerAus } from '../katalog';
 import { asIds, type Sicht, type BlickfeldEingabe, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
@@ -227,7 +220,7 @@ export async function getBlColorMap(k: TeileKontext) {
     for (const [id, blId] of karte) map[id] = blId;
     return { map, source: 'db' };
   }
-  const key = await getRbKey();
+  const key = await k.katalog.quellen.getRbKey();
   if (!key) return { map: {}, source: 'empty' };
   // Bricht der Abruf ab, ist die Tabelle unvollständig; das sagt `degradiert`.
   const ab = new Abstriche();
@@ -238,7 +231,7 @@ export async function getBlColorMap(k: TeileKontext) {
   while (hasNext) {
     const { status, body } = await ab.oder(
       'rebrickable_farben',
-      httpsGetRobust(
+      k.katalog.quellen.httpsGetRobust(
         `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
         { Authorization: `key ${key}` },
         15000,

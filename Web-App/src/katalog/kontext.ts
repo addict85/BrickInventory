@@ -3,13 +3,11 @@
 import { bindeZugang, type Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { Db } from '../../db/database';
-import type { Quellen } from './fremdquellen';
+import type { ConcurrentRateLimiter, FremdquellenDienste } from '../fremdquellen';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 import type { EinstellungenDienste } from '../einstellungen';
 import type { HaushaltDienste } from '../haushalt';
 import * as anleitungen from './repository/anleitungen';
-import * as apiKontingent from './repository/apiKontingent';
-import * as apiTakt from './repository/apiTakt';
 import * as bildBlickfeld from './repository/bildBlickfeld';
 import * as bildFehlschlaege from './repository/bildFehlschlaege';
 import * as bildStammCdn from './repository/bildStammCdn';
@@ -33,20 +31,14 @@ export interface Bildwerk {
   vorschauErzeugen(relPfad: string): Promise<string | null>;
 }
 
-/** Nur die Form einer Drossel: kontext.ts lädt nichts aus rateLimiter.ts, das ihn selbst braucht. */
-interface Drossel {
-  waitForSlot(): Promise<void>;
-  throttle(waitMs: number): void;
-}
-
 export interface KatalogAbhaengigkeiten {
   db: Db;
   faecher: Faecher;
-  /** Rebrickable-Drosseln des Satzes Dienste (rateLimiter.ts); die Klienten bekommen dieselben. */
-  drossel: { vordergrund: Drossel; hintergrund: Drossel };
+  /** Klienten, Kontingent und Drosseln dieses Satzes Dienste (src/fremdquellen). */
+  fremdquellen: FremdquellenDienste;
+  /** Höchstens zwei Bildabrufe beim CDN zugleich, je Satz Dienste einer. */
+  cdnDrossel: ConcurrentRateLimiter;
   bildwerk: Bildwerk;
-  /** Ersetzte Fremdquellen (fremdquellen.ts); ohne sie die echten. */
-  quellen?: Partial<Quellen> | undefined;
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
@@ -55,8 +47,6 @@ export interface KatalogAbhaengigkeiten {
 
 export const zugang = (db: Db) => ({
   anleitungen: bindeZugang(db, anleitungen),
-  apiKontingent: bindeZugang(db, apiKontingent),
-  apiTakt: bindeZugang(db, apiTakt),
   bildBlickfeld: bindeZugang(db, bildBlickfeld),
   bildFehlschlaege: bindeZugang(db, bildFehlschlaege),
   bildStammCdn: bindeZugang(db, bildStammCdn),

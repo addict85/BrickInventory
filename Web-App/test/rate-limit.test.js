@@ -10,7 +10,7 @@ const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { ohneKommentare } = require('./helpers/sources');
-const { REBRICKABLE_DEFAULT_DAILY } = _req('src/katalog/rateLimiter.js');
+const { REBRICKABLE_DEFAULT_DAILY } = _req('src/fremdquellen/rateLimiter.js');
 
 const EXPECTED = 25000;
 
@@ -20,7 +20,7 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   // Rebrickable seinen eigenen Zähler hatte, sah es diese Tabelle nie — seit
   // beide über checkAndIncrementRateLimit laufen, wäre es eine stille Kürzung
   // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften …
-  const fc = fs.readFileSync(path.join(ROOT, 'src/katalog/apiKontingent.ts'), 'utf8');
+  const fc = fs.readFileSync(path.join(ROOT, 'src/fremdquellen/apiKontingent.ts'), 'utf8');
   assert.match(
     fc,
     /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
@@ -31,7 +31,7 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
 
 test('das Tageskontingent zählt für die Installation, nicht je Worker', () => {
   // Woher dieser Test kommt
-  const rl = fs.readFileSync(path.join(ROOT, 'src/katalog/rateLimiter.ts'), 'utf8');
+  const rl = fs.readFileSync(path.join(ROOT, 'src/fremdquellen/rateLimiter.ts'), 'utf8');
   assert.match(rl, /async function consumeRebrickableDaily/, 'Der Verbrauch muss über den gemeinsamen Zähler laufen');
   assert.match(
     rl,
@@ -72,7 +72,7 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   // Kommentare raus, bevor die Spanne gemessen wird: Der Erklärblock in
   // getLimitForApi ist länger als jedes vernünftige Zeichenfenster, und ein
   // Test, der an einem wachsenden Kommentar scheitert, prüft die falsche Sache.
-  const fc = fs.readFileSync(path.join(ROOT, 'src/katalog/apiKontingent.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
+  const fc = fs.readFileSync(path.join(ROOT, 'src/fremdquellen/apiKontingent.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
   const fn = fc.slice(fc.indexOf('async function getLimitForApi'), fc.indexOf('const grenzeJeKonto'));
   assert.match(
     fn,

@@ -9,7 +9,7 @@ import {
   scrapeInstructionsFromFallback,
 } from './instructions';
 import { fehlertext } from '../infra/fehler';
-import { alsAbrufFehler } from './quellen';
+import { alsAbrufFehler } from '../fremdquellen';
 import { type Nutzlast, type AuftragsLauf, AuftragVerschieben } from '../auftraege';
 import { LOCKS } from '../infra/lockNamespaces';
 import type { KatalogKontext } from './kontext';

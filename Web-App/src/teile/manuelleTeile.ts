@@ -5,7 +5,7 @@ import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
-import { lookupPart, KEINE_FARBE } from '../katalog';
+import { KEINE_FARBE, type Quellen } from '../katalog';
 import * as V0 from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -122,7 +122,7 @@ async function teilBeschreibung(
 ) {
   let part_name = eingabe.name;
   let image_url = eingabe.bild;
-  let gefunden: Awaited<ReturnType<typeof lookupPart>> | null = null;
+  let gefunden: Awaited<ReturnType<Quellen['lookupPart']>> | null = null;
   if (part_name) return { part_name, gefunden };
 
   const hasColor = color_id !== KEINE_FARBE;
@@ -136,7 +136,10 @@ async function teilBeschreibung(
   // durch, beweist aber, dass der Abruf nichts mehr zu holen hat.
   if (!part_name || !(image_url || lokal?.hatBild)) {
     // Ohne Rebrickable wird das Teil mit dem erfasst, was der Katalog schon weiss.
-    const abruf = await versuche('teile:lookupPart', lookupPart(part_number, hasColor ? color_id : null));
+    const abruf = await versuche(
+      'teile:lookupPart',
+      k.katalog.quellen.lookupPart(part_number, hasColor ? color_id : null),
+    );
     gefunden = abruf.ok ? abruf.wert : null;
     // `||`: Was der Katalog schon wusste, bleibt stehen.
     if (gefunden) part_name = part_name || gefunden.part_name;
@@ -263,7 +266,7 @@ export async function importiereTeileCsv(k: TeileKontext, uid: number, text: str
       if (!partName) {
         const abruf = await versuche(
           'teile:import-lookupPart',
-          lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
+          k.katalog.quellen.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
         );
         const info = abruf.ok ? abruf.wert : null;
         if (info) {

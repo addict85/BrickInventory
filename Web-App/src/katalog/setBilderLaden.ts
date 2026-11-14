@@ -1,10 +1,9 @@
 /** Bilder eines Sets laden: Teile und Figuren aus dem CDN in den eigenen Ordner,
  * unter einer Sperre je Set, die auch andere Prozesse sehen. */
-import { cdnImageLimiter } from './rateLimiter';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { mitVersion } from '../infra/setNummer';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
-import { BILD_KOPFZEILEN } from './quellen';
+import { BILD_KOPFZEILEN } from '../fremdquellen';
 
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.
@@ -70,11 +69,11 @@ async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void
   const rel = `/images/parts/${file}`;
 
   if (!fs.existsSync(dest)) {
-    await cdnImageLimiter.acquire();
+    await k.cdnDrossel.acquire();
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN, text =>
       console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
-    ).finally(() => cdnImageLimiter.release());
+    ).finally(() => k.cdnDrossel.release());
     if (!ok) return;
   }
 

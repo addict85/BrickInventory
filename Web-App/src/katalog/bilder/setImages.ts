@@ -3,7 +3,7 @@ import { konfig } from '../../infra/konfig';
 import path from 'node:path';
 import fs from 'node:fs';
 import { AbrufFehler } from '../../infra/abruf';
-import { holeBild, BILD_KOPFZEILEN } from '../quellen';
+import { holeBild, BILD_KOPFZEILEN } from '../../fremdquellen';
 import { SET_IMAGES_DIR } from '../../infra/appPaths';
 import { mitVersion } from '../../infra/setNummer';
 

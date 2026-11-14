@@ -212,7 +212,7 @@ const _bildwerk = {
   vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/katalog/bilder/thumbs.js')).generateThumb(...a),
 };
 
-/** Die ersetzten Fremdquellen der Dienste (src/katalog/fremdquellen.ts): leer heisst echt. */
+/** Die ersetzten Klienten der Dienste (src/fremdquellen/quellen.ts): leer heisst echt. */
 const _quellen = {};
 
 function buildAndRequire() {
@@ -242,21 +242,12 @@ function buildAndRequire() {
   const testDb = () => (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart }));
   _zugangFabrik = testDb;
   // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch:
-  // Viele Tests stellen Klienten nach diesem Aufruf über require.cache.
+  // Ein Test stellt Klienten über testQuellen(), auch nach diesem Aufruf.
   _dienstFabrik = () => {
     const kontexte = {};
     const d = V().baueDienste(testDb(), { nacharbeit: _nacharbeit, bildwerk: _bildwerk, quellen: _quellen, kontexte });
     return { d, kontexte };
   };
-  // Wie verdrahte(): Ohne Zugang wirft jeder Abruf eines Klienten.
-  let klienten = null;
-  const klientenEcht = () => {
-    klienten ??= V().baueKlientenZugang(testDienste);
-    return klienten;
-  };
-  require(path.join(ROOT, 'dist', 'clients/zugang.js')).verdrahteKlienten(
-    new Proxy({}, { get: (_z, k) => klientenEcht()[k] }),
-  );
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
   // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
   const eigenDb = () => (_eigenDb ??= eigentuemerZugang(dbModul, testDb, erststart));
@@ -380,7 +371,7 @@ function alsKonto(uid, f, o = {}) {
   return alsAnfrage({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
 }
 
-/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in src/katalog/quellen.ts)
+/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in baueQuellen(), src/fremdquellen/quellen.ts)
  *  an der Verdrahtung, statt Module beim Laden umzubiegen. Mit `t` bis zum Ende des Tests.
  *  @param {{ after: (f: () => void) => void } | null} t @param {Record<string, unknown>} ersatz */
 function testQuellen(t, ersatz) {

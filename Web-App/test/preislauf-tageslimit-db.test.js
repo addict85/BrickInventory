@@ -25,7 +25,7 @@ test('Preislauf am Tageslimit', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { setGlobalSetting } = _req('src/einstellungen/settings.js');
-  const { checkAndIncrementRateLimit } = _req('src/katalog/apiKontingent.js');
+  const { checkAndIncrementRateLimit } = _req('src/fremdquellen/apiKontingent.js');
   const { runPriceRefresh } = _req('src/finanzen/preisLauf.js');
 
   const uid = (

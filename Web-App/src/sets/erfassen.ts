@@ -5,7 +5,7 @@ import type { DbSchnittstelle } from '../../db/database';
 import { blickfeldIds, schreibziel } from '../haushalt';
 import { ortFuerNeuerfassung } from '../bestand';
 import { mitInventarSperre } from '../../db/txLock';
-import { rebrickableSetBild, brickset, katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
+import { rebrickableSetBild, katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/sets';
@@ -180,7 +180,7 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     themeId = ('theme_id' in rb ? rb.theme_id : null) ?? null;
   }
   if (mitBrickset) {
-    const bs = wertOder(await versuche('set-anlegen:brickset-info', brickset.getSetInfo(sn)), null);
+    const bs = wertOder(await versuche('set-anlegen:brickset-info', sk.katalog.quellen.brickset.getSetInfo(sn)), null);
     if (bs) {
       name ??= bs.name;
       year ??= bs.year;

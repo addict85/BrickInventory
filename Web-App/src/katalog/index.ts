@@ -20,42 +20,27 @@ export { KEINE_FARBE } from './farben';
 export { anleitungenZusammenlegen } from './instructions';
 export { fuerSet } from './preisvergleich';
 export { setnummerKandidaten } from './produkttitel';
+// Was ohne Schlüssel auskommt, weitergereicht; Klienten mit Schlüssel und Kontingent
+// kommen über die Dienste (`katalog.quellen`).
 export {
   BricklinkNichtErreichbar,
   ERLAUBTE_GUTHABEN_HOSTS,
   EZB_HISTORIE,
   EZB_TAGESKURSE,
   alsAbrufFehler,
-  ausRetryWarteschlange,
-  blFilterWirkungslos,
-  blTeilZuRb,
-  bricklinkRequest,
-  brickset,
   ersteZipDatei,
   ezbAbruf,
-  getMinifigInfo,
-  getRbKey,
-  getSetByBarcode,
-  getSetByEan,
-  getSetMinifigs,
   historieLesen,
-  httpsGetRobust,
   legoAbruf,
-  lookupPart,
   oeffneBild,
-  produktTitel,
-  pruefeBricklinkZugang,
-  pruefeBricksetZugang,
-  pruefeRebrickableZugang,
-  rebrickableJson,
   tageskurseLesen,
   RebrickableGesperrt,
   ersteBlNummer,
   RbSet,
   RbSetFigur,
   rbSeite,
-} from './quellen';
-export type { Abruf, Kurs, LegoAbruf, RbSetTeil } from './quellen';
+} from '../fremdquellen';
+export type { Abruf, Kurs, LegoAbruf, Quellen, RbSetTeil } from '../fremdquellen';
 export { katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from './setStamm';
 export { erzeugeKatalog } from './bereich';
 export type { KatalogDienste, Bildwerk } from './bereich';

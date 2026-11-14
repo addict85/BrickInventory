@@ -14,7 +14,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire } = require('./helpers/sources');
+const { buildAndRequire, testQuellen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 
@@ -30,7 +30,7 @@ const stoerung = async () => {
   return null;
 };
 ersetze('src/katalog/rebrickableKatalog.js', { getAllSetParts: stoerung });
-ersetze('src/katalog/quellen.js', { getSetMinifigs: stoerung });
+testQuellen(null, { getSetMinifigs: stoerung });
 // Die Nacharbeit: Teile und Figuren gelingen, zwei Anreicherungen scheitern.
 const still = async () => {};
 ersetze('src/katalog/partsImport.js', { importiereTeile: still, fetchMissingBlIds: still });

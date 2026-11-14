@@ -1,6 +1,5 @@
 // Gear und Bücher führt BrickLink anders als Rebrickable; der Link muss das wissen.
 import { logAndContinue } from '../infra/fehler';
-import { bricklinkRequest } from './quellen';
 import { mitVersion, ohneVersion } from '../infra/setNummer';
 import type { KatalogKontext } from './kontext';
 
@@ -94,7 +93,7 @@ export async function resolveViaApi(k: KatalogKontext, setNumber: string): Promi
 
   const probe = async (type: Exclude<BlType, 'NONE'>, no: string) => {
     try {
-      await bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`);
+      await k.fremdquellen.quellen.bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`);
       return true;
     } catch (e) {
       if (notFound(e)) return false;

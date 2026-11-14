@@ -43,7 +43,7 @@ async function mitKoerper(koerper, lauf) {
 test('Fremdantworten gegen ihr Schema', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
   const S = _req('src/einstellungen/settings.js');
-  const k = _req('src/katalog/apiKontingent.js');
+  const k = _req('src/fremdquellen/apiKontingent.js');
   t.after(async () => {
     await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'brickset_api_key')");
     await db.pool.end().catch(() => {});
@@ -52,8 +52,8 @@ test('Fremdantworten gegen ihr Schema', { concurrency: 1 }, async t => {
   await S.setGlobalSetting('brickset_api_key', 'bs-test');
   await k.setzeKontingentZurueck('rebrickable');
   await k.setzeKontingentZurueck('brickset');
-  const rb = _req('clients/rebrickable.js');
-  const bs = _req('clients/brickset.js');
+  const rb = require('./helpers/sources').testDienste().fremdquellen.quellen;
+  const bs = rb.brickset;
 
   await t.test('Rebrickable: eine passende Antwort kommt typisiert an', async () => {
     const set = await mitKoerper(

@@ -1,7 +1,6 @@
 /** Erst der eigene Bestand (CSV-Tabellen, Zwischenspeicher), dann der Client:
  * Das Kontingent ist knapp. Der Client fragt nur ab, ablegen tut dieser Dienst. */
-import type { holeSetTeile, holeFigurTeile } from './quellen';
-import { quellen } from './fremdquellen';
+import type { Quellen } from '../fremdquellen';
 import { istErsatzteil } from '../infra/validate';
 import { mitVersion } from '../infra/setNummer';
 import { neuestesInventar } from './rbInventar';
@@ -26,13 +25,13 @@ export async function getSetInfo(k: KatalogKontext, setNumber: string) {
   // beim nächsten Erfassen den echten Namen. Nachgefragt wird höchstens täglich.
   if (cached?.name && cached.name !== `Set ${n}`) return cached;
   if (cached?.fetched_at && Date.now() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
-  const data = await quellen(k).holeSet(n);
+  const data = await k.fremdquellen.quellen.holeSet(n);
   if (!data) {
-    await k.rebrickableCache.merkeUnbekanntesSet(n, !!(await quellen(k).getRbKey()));
+    await k.rebrickableCache.merkeUnbekanntesSet(n, !!(await k.fremdquellen.quellen.getRbKey()));
     return null;
   }
   // Das Thema ist Beiwerk: Ohne es wird das Set trotzdem gemerkt, die Zeile nennt keins.
-  const thema = await versuche('rebrickable:thema', quellen(k).getThemeName(data.theme_id ?? 0));
+  const thema = await versuche('rebrickable:thema', k.fremdquellen.quellen.getThemeName(data.theme_id ?? 0));
   const theme = thema.ok ? thema.wert : null;
   const row = {
     set_number: n,
@@ -75,12 +74,12 @@ export async function getAllSetParts(k: KatalogKontext, setNumber: string) {
   const csvParts = await setTeileAusCsv(k, setNumber);
   if (csvParts) return csvParts;
   const n = mitVersion(setNumber);
-  const gemerkt = ausCache<Awaited<ReturnType<typeof holeSetTeile>>['teile']>(
+  const gemerkt = ausCache<Awaited<ReturnType<Quellen['holeSetTeile']>>['teile']>(
     await k.rebrickableCache.teilelisteAusCache(n),
   );
   if (gemerkt) return gemerkt;
   if (Date.now() - (_leer.get(n) ?? 0) < LEER_MS) return [];
-  const { teile, verweigert } = await quellen(k).holeSetTeile(n);
+  const { teile, verweigert } = await k.fremdquellen.quellen.holeSetTeile(n);
   // Eine Absage (403) wird als leere Liste gemerkt, damit nicht jeder Import erneut fragt.
   if (teile.length > 0 || verweigert) await k.rebrickableCache.merkeTeileliste(n, JSON.stringify(teile));
   else {
@@ -92,11 +91,11 @@ export async function getAllSetParts(k: KatalogKontext, setNumber: string) {
 
 /** Geteilter Zwischenspeicher: Die Daten ändern sich selten, das Kontingent ist knapp. */
 export async function getMinifigParts(k: KatalogKontext, figNumber: string) {
-  const gemerkt = ausCache<NonNullable<Awaited<ReturnType<typeof holeFigurTeile>>>>(
+  const gemerkt = ausCache<NonNullable<Awaited<ReturnType<Quellen['holeFigurTeile']>>>>(
     await k.rebrickableCache.figurenteileAusCache(figNumber),
   );
   if (gemerkt) return gemerkt;
-  const parts = await quellen(k).holeFigurTeile(figNumber);
+  const parts = await k.fremdquellen.quellen.holeFigurTeile(figNumber);
   if (!parts) return [];
   // Der Zwischenspeicher spart nur den nächsten Abruf; die Teile gelten auch ohne ihn.
   await versuche(
