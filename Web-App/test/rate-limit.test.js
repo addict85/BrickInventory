@@ -144,7 +144,7 @@ test('bei DB-Ausfall greift die Rückfallebene', () => {
       `${fn}: ohne Rückfall wäre der Login bei DB-Problemen komplett blockiert`,
     );
   }
-  assert.match(src, /const _attempts = new Map/, 'In-Memory-Rückfall fehlt');
+  assert.match(src, /eintraege: new Map/, 'In-Memory-Rückfall fehlt');
 });
 
 test('die Aufrufstellen warten auf das Ergebnis', () => {

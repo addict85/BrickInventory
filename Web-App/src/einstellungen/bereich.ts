@@ -35,7 +35,6 @@ export function erzeugeEinstellungen(a: EinstellungenAbhaengigkeiten, einblick?:
       (key: string): Promise<string | null>;
       <T>(key: string, fallback: T): Promise<string | T>;
     },
-    einstellungenAlsEinheit: <T>(arbeit: () => Promise<T>) => settings.einstellungenAlsEinheit(k, arbeit),
   };
 }
 

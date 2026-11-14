@@ -9,7 +9,7 @@ const ROOT = path.join(__dirname, '..');
 
 /** Dauerhaft erlaubt, mit Grund. */
 const ERLAUBT = new Map([
-  ['db/database.ts', 'legt die Tabelle an und migriert sie'],
+  ['db/schemaStart.ts', 'legt die Tabelle an und migriert sie'],
   ['jobs/csvImportWorker.ts', 'eigener Prozess mit eigenem Pool, ohne den Datenbankzugang des Servers'],
   ['src/einstellungen/settings.ts', 'DIE zentrale Stelle'],
   ['src/einstellungen/repository.ts', 'das SQL hinter settings.ts — nur dort aufgerufen'],

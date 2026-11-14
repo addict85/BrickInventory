@@ -2,6 +2,7 @@
  * Parameter; erzeugeKonto bindet ihn einmal für alle. So greift kein Dienst auf den
  * Prozess zu, und ein Test gibt einen eigenen Zugang. */
 import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
+import { Faecher } from '../infra/zwischenspeicher';
 import * as anmeldepruefung from './anmeldepruefung';
 import * as anmeldungAblauf from './anmeldungAblauf';
 import * as geheimnisAltbestand from './geheimnisAltbestand';
@@ -32,8 +33,8 @@ import { zugang, type KontoAbhaengigkeiten, type KontoKontext } from './kontext'
 
 export type { KontoAbhaengigkeiten, KontoKontext } from './kontext';
 
-export function erzeugeKonto(a: KontoAbhaengigkeiten, einblick?: Einblick<KontoKontext>) {
-  const k: KontoKontext = baueKontext(a, zugang);
+export function erzeugeKonto(a: Omit<KontoAbhaengigkeiten, 'faecher'>, einblick?: Einblick<KontoKontext>) {
+  const k: KontoKontext = baueKontext({ ...a, faecher: new Faecher() }, zugang);
   einblick?.(k);
   return {
     ...bindeZugang(k, anmeldepruefung, ['verifiziereEmailToken', 'pruefeAnmeldedaten']),

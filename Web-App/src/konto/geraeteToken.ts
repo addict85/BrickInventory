@@ -100,11 +100,11 @@ export async function pruefeToken(
       : { nutzer: u };
 
   const stand = cacheStand(k);
-  const hit = tokenAusCache(token, stand, now);
+  const hit = tokenAusCache(k, token, stand, now);
   if (hit) {
     // Beide Fristen auch hier: Dieser Zweig fragt die Datenbank nicht.
     if (fristErreicht(hit.user.expires_at, now) || fristErreicht(hit.user.hard_expires_at, now)) {
-      vergissEintrag(token);
+      vergissEintrag(k, token);
       return { nutzer: null };
     }
     _touchLastUsed(k, hit, o.ip);
@@ -116,7 +116,7 @@ export async function pruefeToken(
   const hashed = hashToken(token);
   const row: TokenBenutzer | undefined = await k.zugaenge.gueltigerToken(hashed);
   if (!row) {
-    vergissEintrag(token);
+    vergissEintrag(k, token);
     if (!(await meldeWiederverwendung(k, hashed))) await zaehleFehlversuch(k, o.ip);
     return { nutzer: null };
   }
@@ -130,7 +130,7 @@ export async function pruefeToken(
   }
 
   const entry: CacheEintrag = { user: row, cachedAt: now, dbKey: hashed };
-  merkeEintrag(token, entry, stand);
+  merkeEintrag(k, token, entry, stand);
   _touchLastUsed(k, entry, o.ip);
   return ergebnis(row);
 }

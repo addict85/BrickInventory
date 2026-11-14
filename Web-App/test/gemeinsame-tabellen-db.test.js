@@ -250,7 +250,7 @@ const BESITZER = {
 /** Wer heute noch in eine fremde Tabelle schreibt — eine Ratsche: nur streichen, nie ergänzen. */
 const FREMDSCHREIBER = [
   // Der Schemastart schreibt die Zeitzone, bevor es Dienste gibt.
-  'db/database.ts → global_settings',
+  'db/schemaStart.ts → global_settings',
   // Teile und Figuren eines Sets: Der Katalog liegt unter dem Bestand und kann ihn nicht rufen.
   'src/katalog/repository/setInhalt.ts → minifigs',
   'src/katalog/repository/setInhalt.ts → parts',

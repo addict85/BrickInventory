@@ -1,4 +1,4 @@
-import type { DbSchnittstelle, Db } from '../../../db/database';
+import type { DbSchnittstelle } from '../../../db/database';
 
 /** Das Geheimnis liegt verschlüsselt. */
 
@@ -71,9 +71,8 @@ export async function verbraucheCode(db: DbSchnittstelle, uid: number, hash: str
   return (r.changes ?? 0) > 0;
 }
 
-export async function entferne(db: Db, uid: number): Promise<void> {
-  await db.transaction(async tx => {
-    await tx.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1', [uid]);
-    await tx.run('DELETE FROM zweiter_faktor WHERE user_id = $1', [uid]);
-  });
+/** Codes und Faktor zusammen: in der Transaktion des Aufrufers (src/konto/zweiterFaktor.ts, schalteAb). */
+export async function entferne(tx: DbSchnittstelle, uid: number): Promise<void> {
+  await tx.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1', [uid]);
+  await tx.run('DELETE FROM zweiter_faktor WHERE user_id = $1', [uid]);
 }

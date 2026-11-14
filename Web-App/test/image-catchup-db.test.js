@@ -72,7 +72,7 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { conc
 
 test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
   const src = fs
-    .readFileSync(path.join(ROOT, 'src/katalog/teileAnreicherung.ts'), 'utf8')
+    .readFileSync(path.join(ROOT, 'src/katalog/bilderNachladen.ts'), 'utf8')
     .split('\n')
     .filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
     .join('\n');

@@ -14,7 +14,7 @@ export {
   loescheManuelleFigur,
   loescheManuellesTeil,
 } from './gemeinsam';
-export { normalisiereLagerort, ortFuerNeuerfassung, setzeLagerort, vorgabeVon } from './lagerort';
+export { normalisiereLagerort, ortFuerNeuerfassung, vorgabeVon } from './lagerort';
 export { mengenwunsch } from './manuelleMenge';
 export { legeInPapierkorb, legeKaeufeInPapierkorb } from './papierkorb';
 export { acquisitionTotals } from './acquisitions';

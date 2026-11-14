@@ -35,49 +35,60 @@ export interface CacheEintrag {
 /** Obergrenze für einen Eintrag; ein Widerruf leert ihn sofort (NOTIFY). */
 export const TOKEN_TTL_MS = 5 * 1000;
 
-const _tokenCache = new Map<string, CacheEintrag>();
-/** Zählt jedes Leeren: Eine Zeile, die vor einem Widerruf gelesen wurde, kommt danach nicht mehr hinein. */
-let _stand = 0;
-function leere(): void {
-  _tokenCache.clear();
-  _stand++;
+/** Je Zugang: Ein Token gilt nur in der Datenbank, aus der er stammt. `stand` zählt
+ * jedes Leeren: Eine Zeile, die vor einem Widerruf gelesen wurde, kommt danach nicht mehr hinein. */
+const speicher = (k: KontoKontext) =>
+  k.faecher.fach('tokenCache', () => ({ eintraege: new Map<string, CacheEintrag>(), stand: 0, verteilt: false }));
+
+function leere(k: KontoKontext): void {
+  const c = speicher(k);
+  c.eintraege.clear();
+  c.stand++;
   meldeZugangsAenderung();
 }
 
-function _pruneCache() {
-  if (_tokenCache.size <= 200) return;
+function _pruneCache(k: KontoKontext) {
+  const { eintraege } = speicher(k);
+  if (eintraege.size <= 200) return;
   const cutoff = Date.now() - TOKEN_TTL_MS;
-  for (const [k, v] of _tokenCache) {
-    if (v.cachedAt < cutoff) _tokenCache.delete(k);
+  for (const [t, v] of eintraege) {
+    if (v.cachedAt < cutoff) eintraege.delete(t);
   }
 }
 
 /** Der Stand vor dem Lesen, oder null, wenn der Cache gerade nicht gelten darf. */
 export function cacheStand(k: KontoKontext): number | null {
-  return cacheNutzbar(k) ? _stand : null;
+  return cacheNutzbar(k) ? speicher(k).stand : null;
 }
 
-export function tokenAusCache(token: string, stand: number | null, jetzt: number): CacheEintrag | undefined {
+export function tokenAusCache(
+  k: KontoKontext,
+  token: string,
+  stand: number | null,
+  jetzt: number,
+): CacheEintrag | undefined {
   if (stand === null) return undefined;
-  const hit = _tokenCache.get(token);
+  const hit = speicher(k).eintraege.get(token);
   return hit && jetzt - hit.cachedAt < TOKEN_TTL_MS ? hit : undefined;
 }
 
 /** Nur, wenn seit dem Lesen kein Widerruf kam. */
-export function merkeEintrag(token: string, eintrag: CacheEintrag, stand: number | null): void {
-  if (stand !== null && stand === _stand) _tokenCache.set(token, eintrag);
-  _pruneCache();
+export function merkeEintrag(k: KontoKontext, token: string, eintrag: CacheEintrag, stand: number | null): void {
+  const c = speicher(k);
+  if (stand !== null && stand === c.stand) c.eintraege.set(token, eintrag);
+  _pruneCache(k);
 }
 
-export function vergissEintrag(token: string): void {
-  _tokenCache.delete(token);
+export function vergissEintrag(k: KontoKontext, token: string): void {
+  speicher(k).eintraege.delete(token);
 }
 
 /** Damit der Token sofort ungültig wird, nicht erst nach Ablauf des Caches. */
 export function invalidateToken(k: KontoKontext, token: string | null | undefined): void {
   if (!token) return;
-  _tokenCache.delete(token);
-  _stand++;
+  const c = speicher(k);
+  c.eintraege.delete(token);
+  c.stand++;
   meldeZugangsAenderung();
   meldeWiderruf(k);
 }
@@ -86,23 +97,22 @@ export function invalidateToken(k: KontoKontext, token: string | null | undefine
  * Ohne stehende Horch-Verbindung käme ein fremder Widerruf nicht an: Dann gilt
  * nur die Datenbank (fail closed). */
 const WIDERRUF_KANAL = 'token_widerrufen';
-let _verteilt = false;
 export function horcheAufTokenWiderruf(k: KontoKontext): void {
-  _verteilt = true;
-  k.db.benachrichtigung.listen(WIDERRUF_KANAL, leere);
+  speicher(k).verteilt = true;
+  k.db.benachrichtigung.listen(WIDERRUF_KANAL, () => leere(k));
 }
 function cacheNutzbar(k: KontoKontext): boolean {
-  if (_verteilt && k.db.benachrichtigung.hoertZu(WIDERRUF_KANAL)) return true;
-  leere();
+  if (speicher(k).verteilt && k.db.benachrichtigung.hoertZu(WIDERRUF_KANAL)) return true;
+  leere(k);
   return false;
 }
 function meldeWiderruf(k: KontoKontext): void {
-  if (_verteilt) void k.db.benachrichtigung.notify(WIDERRUF_KANAL);
+  if (speicher(k).verteilt) void k.db.benachrichtigung.notify(WIDERRUF_KANAL);
 }
 
 /** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den
  * Hash-Anfang). Den Cache hält nur der Web-Prozess. */
 export function leereTokenCache(k: KontoKontext): void {
-  leere();
+  leere(k);
   meldeWiderruf(k);
 }

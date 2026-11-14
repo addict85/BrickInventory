@@ -11,6 +11,7 @@ import * as papierkorbDienst from './papierkorb';
 import * as kaufpreisNachtrag from './kaufpreisNachtrag';
 import * as lagerortRechte from './lagerortRechte';
 import * as lagerortDienst from './lagerort';
+import * as lagerortSetzen from './lagerortSetzen';
 import { zugang, type BestandAbhaengigkeiten, type BestandKontext } from './kontext';
 
 export type { BestandAbhaengigkeiten, BestandKontext } from './kontext';
@@ -35,16 +36,19 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
     ]),
     ...bindeZugang(k, kaufpreisNachtrag, ['run']),
     // Nimmt den Zugang statt des Kontexts: Erfassungen rufen ihn mit dem Griff ihrer Transaktion.
-    lagerortDienst: bindeZugang(k.db, lagerortDienst, [
-      'benenneOrtUm',
-      'lagerorte',
-      'legeOrtAn',
-      'loescheOrt',
-      'ortFuerNeuerfassung',
-      'orteVon',
-      'setzeLagerort',
-      'vorgabeVon',
-    ]),
+    // setzeLagerort nimmt den Kontext: Ein neuer Ort braucht k.transaktion.
+    lagerortDienst: {
+      ...bindeZugang(k.db, lagerortDienst, [
+        'benenneOrtUm',
+        'lagerorte',
+        'legeOrtAn',
+        'loescheOrt',
+        'ortFuerNeuerfassung',
+        'orteVon',
+        'vorgabeVon',
+      ]),
+      ...bindeZugang(k, lagerortSetzen),
+    },
 
     ...bindeZugang(k, lagerortRechte, ['setzeVorgabe', 'lagerSchreibkonto', 'orteFuer']),
   };

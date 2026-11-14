@@ -606,22 +606,23 @@ function routenNurUeberFabrik() {
 
 /** Eine Arbeitseinheit steht am Aufrufort: k.transaktion(t => …). */
 function arbeitseinheitAmAufrufort() {
-  // Der Rumpf bekommt den Kontext der Transaktion (t) und schreibt über ihn; bei
-  // db.transaction(async () => …) sah man nur am Aufrufpfad, was zusammen gilt.
-  // Ausgenommen die Module, deren Kontext der Zugang selbst ist (tx als Parameter).
-  // Gegenprobe (13.11.2026): in src/sammlung/loeschen.ts wieder
-  // `k.db.transaction(async tx =>` → rot „src/sammlung/loeschen.ts: .transaction(“.
-  const ZUGANG_ALS_KONTEXT = new Set(['src/bestand/lagerort.ts', 'src/infra/bereich.ts']);
+  // Eine Transaktionsform: Dienste öffnen sie mit k.transaktion, der Rumpf bekommt den
+  // Kontext der Transaktion (t); Repositories nehmen den tx des Aufrufers. `.transaction(`
+  // steht nur in src/infra/bereich.ts und db/.
+  // Gegenproben: (13.11.2026) in src/sammlung/loeschen.ts wieder `k.db.transaction(async tx =>`
+  // → rot; (13.11.2026) ebenso in src/bestand/lagerortSetzen.ts und in
+  // src/konto/repository/zweiterFaktor.ts → rot „…: .transaction(“.
   const treffer = [];
-  for (const d of tsUnter('src')) {
-    if (/\/repository/.test(d) || ZUGANG_ALS_KONTEXT.has(d)) continue;
+  const alle = [...tsUnter('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts'];
+  for (const d of alle) {
     const s = quelltext(d);
-    if (/\.transaction\(/.test(s)) treffer.push(`${d}: .transaction(`);
+    if (d !== 'src/infra/bereich.ts' && /\.transaction\s*(?:<[^>]*>)?\(/.test(s)) treffer.push(`${d}: .transaction(`);
     if (/transaktion\(\s*(?:async\s*)?\(\)/.test(s)) treffer.push(`${d}: transaktion ohne Kontext`);
   }
   assert.ok(
-    tsUnter('src').some(d => /\.transaktion\(async t\b/.test(quelltext(d))),
-    'Selbstbeweis: es gibt Arbeitseinheiten',
+    tsUnter('src').some(d => /\.transaktion\(async t\b/.test(quelltext(d))) &&
+      /\.transaction\(/.test(quelltext('src/infra/bereich.ts')),
+    'Selbstbeweis: es gibt Arbeitseinheiten, und die Suche findet die eine Stelle',
   );
   assert.deepEqual(treffer, []);
 }

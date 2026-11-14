@@ -14,6 +14,9 @@
  *      rot: zweiter Lauf 'updated' statt 'skipped'.
  *   c) Einen zweiten INSERT INTO price_cache in src/finanzen/preisLauf.ts gesetzt
  *      → Teilschritt 2 rot.
+ *   d) (13.11.2026) in speicherePreis() der Verlauf wieder mit logAndContinue
+ *      und ohne Transaktion → Teilschritt 3 rot (keine Absage); nur die
+ *      Transaktion weggelassen → rot (die Cache-Zeile stand ohne Verlaufspunkt da).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -64,9 +67,10 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
 
   const JOB = `schreibweg-${process.pid}-job`;
   const WEG = `schreibweg-${process.pid}-weg`;
+  const FEHL = `schreibweg-${process.pid}-fehl`;
   const aufraeumen = async () => {
-    await db.run('DELETE FROM price_cache   WHERE set_number = ANY($1)', [[JOB, WEG]]).catch(() => {});
-    await db.run('DELETE FROM price_history WHERE set_number = ANY($1)', [[JOB, WEG]]).catch(() => {});
+    await db.run('DELETE FROM price_cache   WHERE set_number = ANY($1)', [[JOB, WEG, FEHL]]).catch(() => {});
+    await db.run('DELETE FROM price_history WHERE set_number = ANY($1)', [[JOB, WEG, FEHL]]).catch(() => {});
   };
   await aufraeumen();
 
@@ -113,6 +117,28 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
       { condition: 'U', avg: 10 },
     ]);
     assert.deepEqual(j.hist, [{ condition: 'U', avg: 10 }]);
+
+    // 3. Scheitert der Verlaufspunkt, gilt auch der Cache nicht: Sonst hielte er den
+    //    nächsten Abruf zurück, und die Lücke im Verlauf füllte niemand mehr.
+    const fk = require('./helpers/sources').testKontext('finanzen');
+    /** Derselbe Kontext, dessen Verlauf nicht schreibbar ist — ausserhalb und in der Transaktion. */
+    const kaputt = z => ({
+      ...z,
+      preisCache: {
+        ...z.preisCache,
+        merkeSetVerlauf: async () => {
+          throw new Error('Verlauf nicht schreibbar (Probe)');
+        },
+      },
+      transaktion: fn => z.transaktion(t => fn(kaputt(t))),
+    });
+    const k = kaputt(fk);
+    const guide = { min_price: '8', avg_price: '10', max_price: '12', qty_avg_price: '9', total_quantity: '4' };
+    await assert.rejects(
+      require(path.join(ROOT, 'dist', 'src/finanzen/rechnung/preise.js')).speicherePreis(k, FEHL, 'U', 'EUR', guide),
+      /Verlauf nicht schreibbar/,
+    );
+    assert.deepEqual(await spuren(FEHL), { cache: [], hist: [] });
   } finally {
     await aufraeumen();
     await db.pool.end();

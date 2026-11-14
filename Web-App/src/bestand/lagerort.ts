@@ -1,9 +1,9 @@
-/** Der Lagerort hängt an Sets, Teilen und Figuren; setzen, auflisten und
- * räumen stehen deshalb einmal hier statt je Route. */
-import type { Db, DbSchnittstelle } from '../../db/database';
+/** Der Lagerort hängt an Sets, Teilen und Figuren; auflisten und räumen stehen
+ * deshalb einmal hier statt je Route (setzen: lagerortSetzen.ts). */
+import type { DbSchnittstelle } from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
-import { asIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber, type BlickfeldEingabe } from '../haushalt';
+import { asIds, blickfeldAus, type Sicht, type BlickfeldEingabe } from '../haushalt';
 import { fachfehler } from '../infra/fehlerTexte';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
@@ -19,27 +19,6 @@ export function normalisiereLagerort(v: unknown): string | null {
   if (!s) return null;
   if (s.length > LAGERORT_MAX_ZEICHEN) fachfehler('ungueltig', 'lagerort_zu_lang');
   return s;
-}
-
-/** Wer schreiben darf, entscheidet src/haushalt/haushalt.ts; diese Funktion
- * bekommt die fertige Menge und fragt nicht nach.
- * @returns wie viele Zeilen betroffen waren (0 = es gibt nichts zu setzen) */
-export async function setzeLagerort(
-  db: Db,
-  art: LagerArt,
-  besitzerIdsWahl: Schreiber | number[],
-  schluessel: string[],
-  ort: string | null,
-): Promise<number> {
-  const besitzerIds = await schreibbereichAus(db, besitzerIdsWahl);
-  if (ort === null) return orte.ordneOrtZu(db, art, besitzerIds, null, schluessel);
-  // Ein neuer Name kommt in den Vorrat — vor der Zuordnung, die ihn über die ID findet.
-  return await db.transaction(async tx => {
-    const ids = await orte.besitzerMitZeile(tx, art, besitzerIds, schluessel);
-    if (!ids.length) return 0;
-    await orte.nimmOrtAuf(tx, ids, ort);
-    return orte.ordneOrtZu(tx, art, ids, ort, schluessel);
-  });
 }
 
 /** `user_id`, weil eine Liste über mehrere Konten spannen kann und die

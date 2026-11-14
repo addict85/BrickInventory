@@ -94,11 +94,12 @@ test('stille Faenge werden weniger, nie mehr', () => {
 
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
   // logAndContinue liefert nichts; meldeUndLiefere einen Ersatzwert, der wie „leer“
-  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter;
+  // aussieht. Lesepfade nehmen versuche()/Abstriche oder lassen den Fehler weiter; Schreibwege
+  // (Preis samt Verlauf, Bildverweis) lassen ihn durch (139 am 13.11.2026, vorher 144);
   // die übrigen Ersatzwerte begründen sich als „Ausnahme:“ im Code. Gemessen 7 am 11.11.2026.
   // Gegenprobe (11.11.2026): in src/katalog/farben.ts wieder
   // `.catch(meldeUndLiefere('x', []))` → rot (8 Ersatzwerte, Schranke 7).
-  const SCHRANKEN = { logAndContinue: 145, meldeUndLiefere: 7 };
+  const SCHRANKEN = { logAndContinue: 139, meldeUndLiefere: 7 };
   const MINDESTENS = { logAndContinue: 20, meldeUndLiefere: 3 };
   for (const [name, schranke] of Object.entries(SCHRANKEN)) {
     const ist = zaehle([new RegExp(`\\b${name}\\(`, 'g')]);
@@ -150,7 +151,7 @@ function nimmtProzesszugang(f) {
   );
 }
 
-test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, nie mehr', () => {
+test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden weniger, nie mehr', () => {
   // db/database.ts hat eine Fabrik (erzeugeDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
   // Gemessen 0 am 11.11.2026 (server.ts und startup/ ohne Prozesszugang).
@@ -168,16 +169,30 @@ test('der Kompatibilitätsweg zur Datenbank und modulweite let werden weniger, n
   if (ist < SCHRANKE)
     console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 
-  // Modulweite let: Zustand, den alle Aufrufer eines Prozesses teilen; ein Bereich
-  // bekommt seinen über die Fabrik. Gemessen 44 am 13.11.2026 (Fächer je Bereich, src/infra/zwischenspeicher.ts).
-  // Gegenprobe (10.11.2026): `let _probe = 0;` in src/katalog/kontext.ts → rot mit 59.
-  const LET_SCHRANKE = 44;
-  const lets = quellen().reduce(
-    (n, f) => n + (fs.readFileSync(f, 'utf8').match(/^(?:export )?let /gm) || []).length,
-    0,
+  // Modulweiter Zustand (let und leer angelegte Map/Set/WeakMap/WeakSet): Ihn teilen alle
+  // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/zwischenspeicher.ts),
+  // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
+  // Gemessen 13.11.2026: 44 let + 28 Sammlungen = 72 vorher, 39 + 20 = 59 danach.
+  // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
+  // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60.
+  const ZUSTAND_SCHRANKE = 59;
+  const ZUSTAND =
+    /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
+  const zaehleZustand = s => (s.match(ZUSTAND) || []).length;
+  // Selbstbeweis: Leer angelegte Sammlungen und let zählen, Konstanten mit Inhalt nicht.
+  assert.equal(
+    zaehleZustand(
+      'let a = 0;\nconst b = new Map<string, number>();\nconst c: X = new WeakMap();\nconst d = new Set([1]);',
+    ),
+    3,
   );
-  assert.ok(lets > 20 && lets <= LET_SCHRANKE, `${lets} modulweite let, erlaubt sind ${LET_SCHRANKE}`);
-  if (lets < LET_SCHRANKE) console.log(`  ℹ modulweite let: ${lets} (Schranke ${LET_SCHRANKE}) — Schranke nachziehen`);
+  const zustand = quellen().reduce((n, f) => n + zaehleZustand(fs.readFileSync(f, 'utf8')), 0);
+  assert.ok(
+    zustand > 20 && zustand <= ZUSTAND_SCHRANKE,
+    `${zustand}-mal modulweiter Zustand, erlaubt sind ${ZUSTAND_SCHRANKE}`,
+  );
+  if (zustand < ZUSTAND_SCHRANKE)
+    console.log(`  ℹ modulweiter Zustand: ${zustand} (Schranke ${ZUSTAND_SCHRANKE}) — Schranke nachziehen`);
   wegeAnDenKontextenVorbei();
 });
 
@@ -305,7 +320,9 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
   // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
   // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
   // Gegenprobe (05.11.2026): `get<T = any>` in DbSchnittstelle → rot.
-  const quelle = ['database.ts', 'typen.ts'].map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8')).join('\n');
+  const quelle = ['database.ts', 'transaktion.ts', 'typen.ts']
+    .map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8'))
+    .join('\n');
   assert.equal(
     (quelle.match(/\b(?:all|get)\s*(?::\s*)?<T = unknown>/g) || []).length,
     6,
@@ -1093,7 +1110,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
   // src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026).
   const SCHRANKE_80 = 22,
     SCHRANKE_150 = 1,
-    BEKANNT_100 = ['db/database.ts erzeugeDb', 'src/finanzen/preisLauf.ts runPriceRefresh'];
+    BEKANNT_100 = ['db/database.ts erzeugeDb'];
   const dateien = quellen().filter(
     f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f),
   );

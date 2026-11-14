@@ -9,6 +9,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from './nutzerId';
 import { sendeFehler } from './httpAntwort';
+import { prozessweit } from '../infra/prozessweit';
 
 export const FENSTER_MS = 5 * 60 * 1000;
 /** Einheiten je Konto und Fenster; ein Leseaufruf zählt 1. */
@@ -70,16 +71,18 @@ export function einordnung(methode: string, pfad: string): { kosten: number; auf
 }
 
 type Stand = { beginn: number; einheiten: number; auftraege: number };
-const _staende = new Map<number, Stand>();
+/** Je Prozess, nicht je Zugang: Die Drossel schützt diesen Prozess (src/infra/prozessweit.ts). */
+const staende = () => prozessweit('apiDrossel', () => new Map<number, Stand>());
 
 /** Nur für Tests: ein Zustand, der nicht vom vorigen Lauf abhängt. */
 export function drosselLeeren(): void {
-  _staende.clear();
+  staende().clear();
 }
 
 /** Ein abgelaufenes Fenster beginnt neu; abgewiesene Anfragen zählen nicht mit,
  * sonst verlängerte ein Angriff seine eigene Sperre endlos. */
 function standFuer(uid: number, jetzt: number): Stand {
+  const _staende = staende();
   let s = _staende.get(uid);
   if (!s || jetzt - s.beginn >= FENSTER_MS) {
     s = { beginn: jetzt, einheiten: 0, auftraege: 0 };

@@ -7,6 +7,7 @@ import { suchwert } from '../infra/geheimnis';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/anmeldezaehler';
 import type { KontoKontext } from './kontext';
+import { prozessweit } from '../infra/prozessweit';
 
 /** Typisiert: Ein vertippter Feldname ergäbe `undefined >= MAX_ATTEMPTS`, also keine Sperre. */
 interface Zaehlerstand {
@@ -33,14 +34,14 @@ const WINDOW_MIN = WINDOW_MS / 60000;
 const LAUFEND_VERFALL_S = 60;
 
 type Eintrag = { count: number; firstAt: number; lastAt: number | null; laufend: number };
-/** Rückfall, falls die Datenbank klemmt: Die Bremse soll dann nicht offen stehen. */
-const _attempts = new Map<string, Eintrag>();
-
-/** Der Rückfall zählt nur je Prozess: melden, aber höchstens einmal je Minute. */
-let _gemeldetAm = 0;
+/** Rückfall, falls die Datenbank klemmt: Die Bremse soll dann nicht offen stehen.
+ * Er zählt nur je Prozess; gemeldet wird höchstens einmal je Minute. */
+const rueckfall = () =>
+  prozessweit('anmeldeRueckfall', () => ({ eintraege: new Map<string, Eintrag>(), gemeldetAm: 0 }));
 function imSpeicher(wo: string, e: unknown): void {
-  if (Date.now() - _gemeldetAm < 60_000) return;
-  _gemeldetAm = Date.now();
+  const r = rueckfall();
+  if (Date.now() - r.gemeldetAm < 60_000) return;
+  r.gemeldetAm = Date.now();
   console.warn(`[anmeldung] Zähler im Prozessspeicher statt in der Datenbank (${wo}): ${fehlertext(e)}`);
 }
 
@@ -82,9 +83,9 @@ const _bekanntKey = (ip: string, name: string) =>
 const _erfolgKey = (ip: string, kennung: string) => `login-erfolg|${adressAbdruck(ip)}|${kennung}`;
 
 function _prune() {
-  if (_attempts.size <= 5000) return;
+  if (rueckfall().eintraege.size <= 5000) return;
   const cutoff = Date.now() - WINDOW_MS;
-  for (const [k, v] of _attempts) if (v.firstAt < cutoff) _attempts.delete(k);
+  for (const [k, v] of rueckfall().eintraege) if (v.firstAt < cutoff) rueckfall().eintraege.delete(k);
 }
 
 const _restMin = (firstAt: number, windowMin: number, now = Date.now()) =>
@@ -101,7 +102,7 @@ async function _read(k: KontoKontext, key: string, windowMin: number): Promise<Z
     };
   } catch (fehler) {
     imSpeicher('lesen', fehler);
-    const e = _attempts.get(key);
+    const e = rueckfall().eintraege.get(key);
     if (!e || Date.now() - e.firstAt > windowMin * 60000) return null;
     return {
       count: e.count,
@@ -117,16 +118,16 @@ async function _bump(k: KontoKontext, key: string, windowMin: number): Promise<n
   } catch (fehler) {
     imSpeicher('zählen', fehler);
     const now = Date.now();
-    const e = _attempts.get(key);
+    const e = rueckfall().eintraege.get(key);
     if (!e || now - e.firstAt > windowMin * 60000)
-      _attempts.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
+      rueckfall().eintraege.set(key, { count: 1, firstAt: now, lastAt: now, laufend: 0 });
     else {
       e.count++;
       e.lastAt = now;
       e.laufend = Math.max(0, (e.laufend || 0) - 1);
     }
     _prune();
-    return _attempts.get(key)?.count ?? 1;
+    return rueckfall().eintraege.get(key)?.count ?? 1;
   }
 }
 
@@ -157,10 +158,10 @@ async function _reserviere(
     imSpeicher('reservieren', fehler);
     // Im Prozessspeicher ist dieser Block ohne await atomar.
     const now = Date.now();
-    let e = _attempts.get(key);
+    let e = rueckfall().eintraege.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) {
       e = { count: 0, firstAt: now, lastAt: null, laufend: 0 };
-      _attempts.set(key, e);
+      rueckfall().eintraege.set(key, e);
     }
     const stand: Stand = {
       count: e.count,
@@ -180,7 +181,7 @@ async function _freigeben(k: KontoKontext, key: string): Promise<void> {
     await k.anmeldezaehler.gibLaufplatzFrei(key);
   } catch (fehler) {
     imSpeicher('freigeben', fehler);
-    const e = _attempts.get(key);
+    const e = rueckfall().eintraege.get(key);
     if (e) e.laufend = Math.max(0, (e.laufend || 0) - 1);
   }
 }
@@ -190,7 +191,7 @@ async function _clear(k: KontoKontext, key: string): Promise<void> {
     await k.anmeldezaehler.loescheZaehler(key);
   } catch (e) {
     imSpeicher('löschen', e);
-    _attempts.delete(key);
+    rueckfall().eintraege.delete(key);
   }
 }
 
@@ -339,10 +340,10 @@ export async function zaehleAnfrage(
   } catch (fehler) {
     imSpeicher('anfrage', fehler);
     const now = Date.now();
-    let e = _attempts.get(key);
+    let e = rueckfall().eintraege.get(key);
     if (!e || now - e.firstAt > windowMin * 60000) {
       e = { count: 0, firstAt: now, lastAt: now, laufend: 0 };
-      _attempts.set(key, e);
+      rueckfall().eintraege.set(key, e);
     }
     e.count++;
     e.lastAt = now;

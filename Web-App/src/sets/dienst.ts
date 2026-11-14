@@ -1,6 +1,6 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen nur Anfrage und Antwort kennen. */
 import { schreibziel } from '../haushalt';
-import { normalisiereLagerort, setzeLagerort, vorgabeVon } from '../bestand';
+import { normalisiereLagerort, vorgabeVon } from '../bestand';
 import { normalizeSetNumber } from './erfassen';
 import { mitVersion } from '../infra/setNummer';
 import { verschiebeSet } from './setMove';
@@ -28,7 +28,7 @@ export async function lagerortDesSetsSetzen(
   storage: string | null | undefined,
 ) {
   const ort = normalisiereLagerort(storage);
-  const n = await setzeLagerort(sk.db, 'set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
+  const n = await sk.bestand.lagerortDienst.setzeLagerort('set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
   return { ort, n };
 }
 

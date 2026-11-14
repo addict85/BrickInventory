@@ -6,6 +6,7 @@ import { konfig } from '../infra/konfig';
 import type { DbSchnittstelle } from '../../db/database';
 import * as repo from './repository/zweiterFaktor';
 import type { KontoKontext } from './kontext';
+import { zugangsTransaktion } from './zugangsende';
 
 const SCHRITT_S = 30;
 /** Ein Schritt vor und zurück: Uhren von Telefon und Server gehen nie gleich. */
@@ -165,7 +166,7 @@ export async function pruefeCode(
 }
 
 export function schalteAb(k: KontoKontext, uid: number): Promise<void> {
-  return k.zweiterFaktor.entferne(uid);
+  return zugangsTransaktion(k, t => t.zweiterFaktor.entferne(uid));
 }
 
 export async function erneuereCodes(k: KontoKontext, uid: number): Promise<string[]> {

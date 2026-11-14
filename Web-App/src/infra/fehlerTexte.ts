@@ -675,6 +675,15 @@ export function alsDoppelt(code: FehlerCode): (e: unknown) => never {
   };
 }
 
+/** Wie alsDoppelt, aber mit einem Ergebnis statt einer Absage: Ein gleichzeitiger
+ * Gewinner ist dort ein Ausgang des Ablaufs, kein Fehler. */
+export function doppeltAls<T>(wert: T): (e: unknown) => T {
+  return (e: unknown) => {
+    if ((e as { code?: unknown } | null)?.code === '23505') return wert;
+    throw e;
+  };
+}
+
 /** Bricht den Dienst mit einem Grund ab, den die Route dem Anfragenden nennt. */
 export function fachfehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): never {
   throw new Fachfehler(art, code, vars);
