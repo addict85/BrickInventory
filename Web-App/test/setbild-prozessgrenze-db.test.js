@@ -245,6 +245,7 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
       `Dateien: ${fs.existsSync(sets) ? fs.readdirSync(sets).join(', ') : '(kein Ordner)'}\n${jobs.log.slice(-2000)}`,
     );
     const vorschau = await sharp(path.join(sets, `${NUR_VORSCHAU}_thumb.jpg`)).metadata();
-    assert.deepEqual([vorschau.format, vorschau.width, vorschau.height], ['jpeg', 200, 200]);
+    // 400 × 300 eingepasst, nicht zugeschnitten (UX-Prüfung 25, B1).
+    assert.deepEqual([vorschau.format, vorschau.width, vorschau.height], ['jpeg', 200, 150]);
   });
 });
