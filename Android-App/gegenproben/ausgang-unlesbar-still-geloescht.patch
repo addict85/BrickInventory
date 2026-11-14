@@ -4,13 +4,13 @@ Test: ch.brickinventoryapp.offline.BestandDatenbankTest
 Rot: ein unlesbarer Posten wird gemeldet
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
-index 460fbe7..4a04da9 100644
+index 81d8c96..809ed92 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
-@@ -91,7 +91,6 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
+@@ -95,7 +95,6 @@ internal class RoomAusgang @Inject constructor(
          for (z in unlesbar) {
              // Erst den Hinweis festhalten, dann entfernen: Stirbt der Prozess dazwischen, bleibt der Hinweis.
-             val ziel = Ausgangsform.zielAus(AblageJson, z.bearbeitung) ?: "?"
+             val ziel = Ausgangsform.zielAus(json, z.bearbeitung) ?: "?"
 -            merkeVerworfen(bereich, VerworfenerPosten(z.schluessel.ifBlank { "posten-${z.id}" }, ziel, "", null, unlesbar = true))
              dao.entferne(z.id)
          }

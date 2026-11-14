@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.offline.BestandDatenbankTest
 Rot: ein unlesbarer Posten wird gemeldet
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
-index 460fbe7..207a820 100644
+index 81d8c96..10a4df7 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
-@@ -82,7 +82,7 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
-         dao.fuegeEin(AusgangZeile(bereich = bereich, bearbeitung = Ausgangsform.kodiere(AblageJson, bearbeitung),
+@@ -86,7 +86,7 @@ internal class RoomAusgang @Inject constructor(
+         dao.fuegeEin(AusgangZeile(bereich = bereich, bearbeitung = Ausgangsform.kodiere(json, bearbeitung),
              erstellt = jetzt, schluessel = schluessel))
  
 -    override suspend fun alle(bereich: String) = dao.alle(bereich).mapNotNull { lies(it) }

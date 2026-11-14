@@ -4,10 +4,10 @@ Test: ch.brickinventoryapp.offline.BestandDatenbankTest
 Rot: ein verworfener Posten bleibt in der Datenbank
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
-index 460fbe7..5d1aa7b 100644
+index 81d8c96..005af5a 100644
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/RoomAblagen.kt
-@@ -120,7 +120,7 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
+@@ -124,7 +124,7 @@ internal class RoomAusgang @Inject constructor(
              }
          }
  
@@ -15,4 +15,4 @@ index 460fbe7..5d1aa7b 100644
 +    override suspend fun quittiereVerworfen(bereich: String, id: String) = Unit
  
      private fun lies(z: AusgangZeile): Ausgangsposten? =
-         runCatching { Ausgangsform.dekodiere(AblageJson, z.bearbeitung) }.getOrNull()
+         runCatching { Ausgangsform.dekodiere(json, z.bearbeitung) }.getOrNull()
