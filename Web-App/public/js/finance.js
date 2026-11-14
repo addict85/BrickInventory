@@ -19,6 +19,8 @@ import { fmtDatum, fmtGeld, fmtN } from './format.js';
 import { scopeQuery } from './scope.js';
 import { _pnlCache } from './zustand.js';
 import { kurveDa, loadPortfolioChart, setzeEinstand } from './wertkurve.js';
+import { basisAus, zeigeKennzahlen } from './finanz-kennzahlen.js';
+/** @typedef {import('./finanz-kennzahlen.js').Basis} Basis */
 
 /**
  * Plakette „Marktpreis da oder nicht“ mit nur zwei Zuständen: Ob der Preis aus dem Cache oder frisch kam,
@@ -66,15 +68,19 @@ function besitzer(it, mehrereKonten) {
 }
 
 const condBadge = (/** @type {string} */ c) => condBadges({ conditions: [c] });
-/** Bei einem Stück stünde der Stückpreis wie der Marktwert daneben: Die Zelle bleibt leer, Vorleser hören den Bezug. */
-const wieWert = () => html`<span class="vh">${tRaw('finance.wie_marktwert')}</span>`;
+/** Marktwert der Zeile, bei mehreren Stück mit dem Stückpreis darunter, wie beim Kaufpreis: eine eigene Spalte
+ * dafür stand bei Sets fast immer leer. @param {number} gesamt @param {number} stueck @param {unknown} menge @param {string} cur */
+const wertMitStueck = (gesamt, stueck, menge, cur) =>
+  (parseInt(String(menge), 10) || 1) > 1 && stueck > 0
+    ? html`${fmtN(gesamt, cur)}<span class="fin-je">${tRaw('finance.je', { preis: fmtN(stueck, cur) })}</span>`
+    : fmtN(gesamt, cur);
 /** Ein fehlender Marktwert sieht in Zeile, Summe und Kachel gleich aus: Strich, für Vorleser „Preis fehlt“. */
 const ohneWert = () =>
   html`<span class="text-mut" title="${tRaw('finance.price_missing_short')}"><span aria-hidden="true">—</span><span class="vh">${tRaw('finance.price_missing_short')}</span></span>`;
 // Feste Spaltenbreiten (colgroup, table-layout:fixed): Die Preisspalten der Teile- und Figurentabellen
 // beginnen so genau unter denen der Sets, und man kann die Zahlen untereinander vergleichen.
 const PM_COLGROUP = html`<colgroup>
-    <col class="sp-60"><col class="sp-325 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110 fin-k-markt"><col class="sp-110"><col class="sp-90"><col class="sp-55">
+    <col class="sp-60"><col class="sp-325 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55">
   </colgroup>`;
 /**
  * Teile- und Figurenzeilen öffnen ihr Detail wie die Kachel im Reiter: Eine Tabelle, in der nur die
@@ -104,7 +110,7 @@ function unterGeschaetzt(acq) {
   return acq?.price_estimated ? html` · ${geschaetztKauf(tRaw('finance.kauf_geschaetzt'))}` : '';
 }
 
-/** Am Telefon fehlen die Spalten Kaufpreis und Marktpreis; der Kaufpreis der Zeile steht dann unter dem Namen.
+/** Am Telefon fehlt die Spalte Kaufpreis; der Kaufpreis der Zeile steht dann unter dem Namen.
  * @param {unknown} stueck @param {unknown} menge @param {string} cur */
 function unterKauf(stueck, menge, cur) {
   const p = stueck == null || String(stueck).trim() === '' ? NaN : Number(stueck);
@@ -151,10 +157,9 @@ function pmRow(it, label, acq, lage, text) {
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${acq?.created_at ? fmtDatum(acq.created_at) : ''}</td>
     <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
-    <td class="fin-detail price-cell zahl">${current > 0 ? (qty > 1 ? ungeprueft(geschaetztMarke(/** @type {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} */ (it), fmtN(current, cur))) : wieWert()) : ohneWert()}</td>
-    <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total, cur) : ohneMarkt()}</td>
+    <td class="fin-wert price-total zahl">${total > 0 ? ungeprueft(geschaetztMarke(/** @type {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} */ (it), String(wertMitStueck(total, current, qty, cur)))) : ohneMarkt()}</td>
     <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || ohneGuv()}</td>
-    <td class="fin-status"></td>
+    <td class="fin-status">${priceStatusBadge({ no_price: !(current > 0) })}</td>
   </tr>`;
 }
 
@@ -180,7 +185,7 @@ function pmTableHead() {
  * @param {{ art: string, titel: string, symbol: string, zeilen: string, anzahl: number, kauf: number, wert: number, cur: string }} o */
 function manuellerAbschnitt(o) {
   if (!o.anzahl) return '';
-  const fuss = html`<tfoot><tr><td colspan="4" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(o.kauf, o.wert, o.cur, 1)}<td colspan="2"></td></tr></tfoot>`;
+  const fuss = html`<tfoot><tr><td colspan="4" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(o.kauf, o.wert, o.cur)}<td colspan="2"></td></tr></tfoot>`;
   return html`
     <div class="tw abstand-o-125" data-fin-art="${o.art}" tabindex="0" role="region" aria-label="${o.titel}">
       <h2 class="ctitle fin-abschnitt">${ico(o.symbol)} ${ungeprueft(o.titel)}</h2>
@@ -212,8 +217,7 @@ function setRow(s, acq, lage) {
   <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
   <td class="fin-detail fin-datum">${dateSrc ? fmtDatum(dateSrc) : '—'}</td>
   <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
-    <td class="fin-detail zahl price-cell">${mitPreis && Number(market) > 0 ? (qty > 1 ? fmtN(market, cur) : wieWert()) : ohneWert()}</td>
-  <td class="fin-wert zahl price-total">${mitPreis && Number(total) > 0 ? fmtN(total, cur) : ohneMarkt()}</td>
+  <td class="fin-wert zahl price-total">${mitPreis && Number(total) > 0 ? wertMitStueck(Number(total), Number(market), qty, cur) : ohneMarkt()}</td>
   <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || ohneGuv()}</td>
     <td class="fin-status">${priceStatusBadge(s, fehlerNeutral)}</td>
 </tr>`;
@@ -221,7 +225,7 @@ function setRow(s, acq, lage) {
 
 /** @param {string} rows @param {{ sets: number }} einstand @param {number} setsQtyAvg @param {string} cur */
 function setsTabelle(rows, einstand, setsQtyAvg, cur) {
-  return html`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${t('finance.filter.sets')}"><h2 class="ctitle fin-abschnitt">${ico('set')} ${tRaw('finance.filter.sets')}</h2><table class="dt dt-fin" aria-label="${tRaw('finance.filter.sets')}"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110 fin-k-markt"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${tRaw('col.image')}</span></th><th>${tRaw('col.nr')}</th><th${sortStand('name', true)}>${sortKnopf('name', true, tRaw('col.name'))}</th><th class="zahl">${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>${preisKoepfe(true)}<th title="${t('finance.price_status')}"><span aria-hidden="true">${tRaw('finance.price_status_kurz')}</span><span class="vh">${t('finance.price_status')}</span></th></tr></thead><tbody>${ungeprueft(rows)}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
+  return html`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${t('finance.filter.sets')}"><h2 class="ctitle fin-abschnitt">${ico('set')} ${tRaw('finance.filter.sets')}</h2><table class="dt dt-fin" aria-label="${tRaw('finance.filter.sets')}"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${tRaw('col.image')}</span></th><th>${tRaw('col.nr')}</th><th${sortStand('name', true)}>${sortKnopf('name', true, tRaw('col.name'))}</th><th class="zahl">${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>${preisKoepfe(true)}<th title="${t('finance.price_status')}"><span aria-hidden="true">${tRaw('finance.price_status_kurz')}</span><span class="vh">${t('finance.price_status')}</span></th></tr></thead><tbody>${ungeprueft(rows)}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur)}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
 }
 
 /** Gesamtübersicht: Einstand und Wert je Bereich und zusammen.
@@ -230,7 +234,7 @@ function setsTabelle(rows, einstand, setsQtyAvg, cur) {
  * @param {{ ohneMarkt: number }} basis */
 function summenTabelle(einstand, wert, cur, basis) {
   const zeile = (/** @type {string} */ name, /** @type {number} */ kauf, /** @type {number} */ w, zusatz = '') =>
-    html`<tr><td class="fin-fuss-name">${ungeprueft(name)}</td>${summenZellen(kauf, w, cur, 0, zusatz)}</tr>`;
+    html`<tr><td class="fin-fuss-name">${ungeprueft(name)}</td>${summenZellen(kauf, w, cur, zusatz)}</tr>`;
   return html`
     <div class="tw abstand-o-125">
       <table class="dt dt-summe" aria-label="${tRaw('finance.sum')}">
@@ -412,7 +416,7 @@ function einstandBetrag(stueck, menge, cur, acq) {
 function preisKoepfe(sortierbar = false) {
   const kurz = (/** @type {string} */ lang, /** @type {string} */ kurzTxt) =>
     html`<th class="zahl" title="${tRaw(lang)}"${sortStand('guv', sortierbar)}>${sortKnopf('guv', sortierbar, html`<span aria-hidden="true">${ungeprueft(kurzTxt)}</span><span class="vh">${tRaw(lang)}</span>`)}</th>`;
-  return html`${html`<th class="zahl"${sortStand('kauf', sortierbar)}>${sortKnopf('kauf', sortierbar, tRaw('finance.col.purchase'))}</th>`}${html`<th class="zahl" title="${tRaw('finance.market_price_stueck')}">${tRaw('finance.col.stueckpreis')}</th>`}${html`<th class="zahl"${sortStand('wert', sortierbar)}>${sortKnopf('wert', sortierbar, tRaw('finance.grand.value'))}</th>`}${kurz('finance.total_pnl', tRaw('finance.pnl_kurz'))}`;
+  return html`${html`<th class="zahl"${sortStand('kauf', sortierbar)}>${sortKnopf('kauf', sortierbar, tRaw('finance.col.purchase'))}</th>`}${html`<th class="zahl"${sortStand('wert', sortierbar)}>${sortKnopf('wert', sortierbar, tRaw('finance.grand.value'))}</th>`}${kurz('finance.total_pnl', tRaw('finance.pnl_kurz'))}`;
 }
 
 // ── Viele Positionen: Suche, Sortierung, blockweise ──────────────────────────
@@ -613,117 +617,17 @@ function einstandAus(liste) {
 }
 
 /**
- * Die Zellen einer Summenzeile: Einstand und Marktwert. `luecke` Zellen dazwischen halten die Spalten der
- * Tabelle darüber (Kaufpreis | Marktpreis | Total). Am Telefon tragen beide ihre Beschriftung selbst
- * (data-kurz).
+ * Die Zellen einer Summenzeile: Einstand und Marktwert, unter den gleichnamigen Spalten. Am Telefon tragen
+ * beide ihre Beschriftung selbst (data-kurz).
  * @param {number} kauf
  * @param {number} wert
  * @param {string} cur
- * @param {number} luecke
  */
-function summenZellen(kauf, wert, cur, luecke, zusatz = '') {
+function summenZellen(kauf, wert, cur, zusatz = '') {
   const k = html`<td class="price-total fin-fuss-wert" data-kurz="${t('finance.col.purchase')}">${kauf > 0 ? fmtN(kauf, cur) : html`<span class="text-mut">—</span>`}</td>`;
   const w = html`<td class="price-total fin-fuss-wert" data-kurz="${t('finance.grand.value')}">${wert > 0 ? html`${fmtN(wert, cur)}${zusatz ? html`<span class="fin-je">${zusatz}</span>` : ''}` : ohneWert()}</td>`;
-  return html`${k}${Array.from({ length: luecke }, () => html`<td></td>`)}${w}`;
+  return html`${k}${w}`;
 }
-/**
- * Die gemeinsame Basis der Karten vom Server; ohne sie (pnl gescheitert) keine G/V.
- * @typedef {{ bewertet: number, ohneMarkt: number, ohneKauf: number, einstand: number, wert: number, betrag: number,
- *   gesamt?: number, ohneMarktEinstand?: number, ohneKaufWert?: number }} Basis
- * @param {Partial<import('../../frontend-typen/vertrag').PnlTotals>} pt @param {number} ohnePreis
- * @returns {Basis}
- */
-function basisAus(pt, ohnePreis) {
-  const z = (/** @type {unknown} */ v) => parseFloat(String(v)) || 0;
-  if (pt.basis_einstand == null)
-    return { bewertet: 0, ohneMarkt: ohnePreis, ohneKauf: 0, einstand: 0, wert: 0, betrag: 0 };
-  return {
-    gesamt: pt.positionen || 0,
-    bewertet: pt.positionen_bewertet || 0,
-    ohneMarkt: pt.positionen_ohne_marktpreis || 0,
-    ohneKauf: pt.positionen_ohne_kaufpreis || 0,
-    einstand: z(pt.basis_einstand),
-    wert: z(pt.basis_marktwert),
-    betrag: z(pt.basis_guv_betrag),
-    ohneMarktEinstand: z(pt.ohne_marktpreis_einstand),
-    ohneKaufWert: z(pt.ohne_kaufpreis_marktwert),
-  };
-}
-
-/**
- * Die Kacheln über der Tabelle. Der Einstand ist immer bekannt; Gesamtwert und G&V nur, wenn es Marktpreise
- * gibt — sonst sagt die Kachel, für wie viele Positionen der Preis fehlt, statt „—“ zu zeigen.
- */
-/** @param {{ basis: Basis, einstandAlle: number, wertAlle: number, guv: number | null | undefined, cur: string, fremdeWaehrung?: number, geschaetzt?: number, zeilen?: number }} p */
-function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehrung = 0, geschaetzt = 0, zeilen = 0 }) {
-  G('fin-sum').dataset.geladen = '1';
-  G('fin-sum').removeAttribute('aria-busy');
-  const mitBasis = basis.bewertet > 0;
-  const einstand = mitBasis ? basis.einstand : einstandAlle;
-  const wert = mitBasis ? basis.wert : wertAlle;
-  const teilweise = mitBasis && Math.abs(einstandAlle - basis.einstand) >= 0.005;
-  G('fin-einstand-titel').textContent = tRaw(teilweise ? 'finance.stat.purchase_basis' : 'finance.stat.purchase');
-  G('fin-einstand').textContent = einstand > 0 || mitBasis ? fmtN(einstand, cur) : '—';
-  // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse); ihre Zahl steht darunter.
-  G('fin-einstand-sub').textContent =
-    fremdeWaehrung > 0
-      ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung })
-      : teilweise
-        ? tRaw('finance.stat.purchase_von', { betrag: fmtN(einstandAlle, cur) })
-        : tRaw('finance.stat.purchase_hint');
-  const fehlt = basis.ohneMarkt > 0 ? tRaw('finance.price_missing_n', { n: basis.ohneMarkt }) : '';
-  // Rechnet die Kachel nur über bewertete Posten, sagt sie es; sonst stünden zwei „Marktwerte“ verschieden da.
-  const wertTeilweise = mitBasis && Math.abs(wertAlle - basis.wert) >= 0.005;
-  G('fin-wert-titel').textContent = tRaw(wertTeilweise ? 'finance.stat.value_basis' : 'finance.stat.value');
-  if (wert > 0) {
-    G('fin-wert').textContent = fmtN(wert, cur);
-    G('fin-wert-sub').textContent = wertTeilweise
-      ? tRaw('finance.stat.value_von', { betrag: fmtN(wertAlle, cur) })
-      : tRaw('finance.stat.value_hint');
-  } else {
-    // Ohne Positionen fehlt kein Preis — dann einfach „—“.
-    if (fehlt) setzeHtml(G('fin-wert'), html`<span class="fval-hinweis">${fehlt}</span>`);
-    else G('fin-wert').textContent = '—';
-    G('fin-wert-sub').textContent = '';
-  }
-  // Die Kachel bleibt stehen, damit die Reihe nicht springt; ohne Preise mit Hinweis.
-  if (mitBasis && guv != null) {
-    setzeHtml(G('fin-total-pnl'), pnlBadge(guv));
-    // Betrag und Prozent aus denselben Posten (mit Kauf- UND Marktpreis). „gegenüber dem Einstand“: Das
-    // Prozent im Diagramm rechnet gegen den Anfang des Zeitraums.
-    const b = basis.betrag;
-    G('fin-pnl-sub').textContent = tRaw('finance.pnl_vs_purchase', {
-      betrag: `${b >= 0 ? '+' : '−'}${fmtN(Math.abs(b), cur)}`,
-    });
-  } else {
-    G('fin-total-pnl').textContent = '—';
-    G('fin-pnl-sub').textContent = tRaw('finance.pnl_needs_prices');
-  }
-  const zeile = G('fin-basis');
-  if (!zeile) return;
-  const teile = [];
-  if (basis.ohneMarkt > 0)
-    teile.push(
-      tRaw('finance.basis.ohne_markt', { n: basis.ohneMarkt, betrag: fmtN(basis.ohneMarktEinstand || 0, cur) }),
-    );
-  if (basis.ohneKauf > 0)
-    teile.push(tRaw('finance.basis.ohne_kauf', { n: basis.ohneKauf, betrag: fmtN(basis.ohneKaufWert || 0, cur) }));
-  // Geschätzte Kaufpreise rechnen mit, sind aber nicht bezahlt: Die Zahl gehört neben das Ergebnis.
-  if (geschaetzt > 0) teile.push(tRaw('finance.basis.geschaetzt', { n: geschaetzt }));
-  if (!mitBasis || !teile.length) {
-    zeile.hidden = true;
-    zeile.textContent = '';
-    return;
-  }
-  zeile.hidden = false;
-  setzeHtml(
-    zeile,
-    // Der Server zählt je Position, die Tabelle zeigt je Kauf und Konto eine Zeile; weichen die Zahlen ab,
-    // sagt der Satz, warum.
-    html`${ico('info')}<span><strong>${tRaw(zeilen > (basis.gesamt ?? 0) ? 'finance.basis.gerechnet_zeilen' : 'finance.basis.gerechnet', { n: basis.bewertet, von: basis.gesamt })}</strong> ${teile.join(' · ')}</span>`,
-  );
-}
-
 // Kategoriefilter wie in der Android-App; leere Auswahl heisst alle. Gefiltert wird durch Ausblenden, nicht
 // Neuzeichnen: Die Summen beschreiben den Bestand, nicht die Auswahl, und sollen stehen bleiben.
 const finKategorien = new Set();

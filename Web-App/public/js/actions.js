@@ -10,6 +10,7 @@ import { delSet } from './gallery.js';
 import { alleFiguren, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './minifigs.js';
 import { merkpostenLoeschen } from './merkliste.js';
 import { autosaveSet, closeImageLightbox, openImageLightbox } from './set-detail.js';
+import { setzeMengenfeld } from './detailfelder.js';
 import { hideProgress } from './fortschritt.js';
 import { deleteManualPart } from './parts.js';
 
@@ -509,14 +510,14 @@ export function openPdfViewerLink(href, desc, ev) {
 }
 
 export function mQtyDec() {
-  const q = G('m-qty');
-  q.value = String(Math.max(1, parseInt(q.value || '1', 10) - 1));
+  const n = parseInt(G('m-qty').value || '1', 10);
+  if (n <= 1) return;
+  setzeMengenfeld(n - 1);
   autosaveSet();
 }
 
 export function mQtyInc() {
-  const q = G('m-qty');
-  q.value = String(parseInt(q.value || '1', 10) + 1);
+  setzeMengenfeld(parseInt(G('m-qty').value || '1', 10) + 1);
   autosaveSet();
 }
 

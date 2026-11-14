@@ -296,8 +296,35 @@ function zeigeSeitenname(flaeche, imKopf) {
   beobachteTitel(flaeche);
 }
 
+/** @type {MutationObserver | null} */
+let _setDetailBeobachter = null;
+/**
+ * Offenes Set-Detail: Der Fenstertitel nennt das Set, nach dem Schliessen wieder die Seite. Beobachtet
+ * statt an jedem Schliessweg gesetzt: Knopf, Esc, Hintergrund und der Kaufpreis-Dialog schliessen ihn.
+ */
+function beobachteSetDetail() {
+  const dialog = G('set-modal'),
+    titel = G('m-tit');
+  if (_setDetailBeobachter || !dialog || !titel || typeof MutationObserver !== 'function') return;
+  let offen = false;
+  const richte = () => {
+    const name = (titel.textContent || '').trim();
+    if (dialog.classList.contains('open') && name) {
+      offen = true;
+      document.title = `${name} – BrickInventory`;
+    } else if (offen) {
+      offen = false;
+      seitennameAktualisieren();
+    }
+  };
+  _setDetailBeobachter = new MutationObserver(richte);
+  _setDetailBeobachter.observe(dialog, { attributes: true, attributeFilter: ['class'] });
+  _setDetailBeobachter.observe(titel, { childList: true, characterData: true, subtree: true });
+}
+
 /** Beim Start ist die Sammlung schon offen, ohne dass ein Reiter geklickt wurde: Titel trotzdem setzen. */
 export function seitennameAktualisieren() {
+  beobachteSetDetail();
   const flaeche = document.querySelector('.tab.active');
   const reiter = flaeche && document.querySelector(`.ntab[data-tab="${flaeche.id.replace(/^tab-/, '')}"]`);
   zeigeSeitenname(flaeche, !reiter || reiter.classList.contains('ntab-unter'));

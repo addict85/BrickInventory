@@ -848,7 +848,7 @@
     .pst{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;font-size:var(--fs-1);font-weight:700;cursor:help}
     .pst-ok{background:var(--g100);color:var(--g700)}
     .pst-err{background:var(--r100);color:var(--r700)}
-    .pst-leer{background:var(--s100);color:var(--mut)}
+    .pst-leer{background:none;box-shadow:inset 0 0 0 1px var(--bdr);color:var(--mut)}
     /* Nur für Vorleseprogramme: Spaltenköpfe, die sichtbar leer bleiben sollen.
        Kein display:none — das nähme der Ausgabe auch den Text. */
     .vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -1133,7 +1133,9 @@ input.suchfeld{width:220px}
 .mehr-liste{display:flex;gap:8px;flex-wrap:wrap}
 .merk-kasten{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
 .merk-kasten-titel{margin:0;font-size:var(--fs-4);font-weight:700}
-.merk-kasten-kopf{list-style:none;cursor:pointer;border-radius:6px}
+/* Mittig: Am Telefon ist die Zeile 44 px hoch (Tippziel); oben angeschlagen blieb zugeklappt darunter Leerraum. */
+.merk-kasten-kopf{list-style:none;cursor:pointer;border-radius:6px;display:flex;align-items:center}
+.merk-kasten-kopf > .stit{flex:1 1 auto}
 .merk-kasten-kopf::-webkit-details-marker{display:none}
 .merk-kasten:not([open]) .merk-kasten-kopf .stit{margin-bottom:0;padding-bottom:0;border-bottom:0}
 /* Zugeklappt ist die Box nur noch ihr Titel: Der volle Innenabstand machte sie am Telefon fast doppelt so hoch. */
@@ -1194,7 +1196,9 @@ input.suchfeld{width:220px}
 .zoombar{cursor:zoom-in}
 .zoombar[aria-hidden="true"]{cursor:default}
 .ohne-unterstrich{text-decoration:none}
-.ladepunkt{height:1px}
+/* Mindesthöhe statt Höhe: Die Abschlusszeile darin lag sonst ausserhalb des Flusses, im Abstand für den
+   schwebenden Knopf, und unter ihm. */
+.ladepunkt{min-height:1px}
 .hinweis-absatz{font-size:var(--fs-2);color:var(--mut);margin:0 0 .5rem 0}
 .etikett-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:.35rem}
 .trenner-oben{border-top:1px solid var(--bdr);padding-top:1.1rem}
@@ -1263,7 +1267,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 .fin-abschnitt{margin:0 0 6px;display:flex;align-items:center;gap:6px}
 .fin-name-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px}
 .fin-datum{font-size:var(--fs-1);color:var(--mut)}
-.dt-fin{table-layout:fixed;width:100%;min-width:1030px}
+.dt-fin{table-layout:fixed;width:100%;min-width:920px}
 /* Datum, Beträge und G/V brechen nie mitten im Wort um; Spalten sind breit genug. */
 .dt-fin td{padding-left:8px;padding-right:8px}
 .dt-fin :is(.fin-datum,.zahl,.fin-guv,.pnl-geschenk){white-space:nowrap}
@@ -1278,8 +1282,8 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
 /* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
 .dt-fin .zahl,.dt-fin th.zahl,.dt-fin .fin-fuss-wert{text-align:right}
 .dt-fin .zahl .qbadge{margin-left:auto}
-/* Tablet und 200 % Zoom: Nummer, Menge und Datum rücken unter den Namen, darunter auch der
-   Stückpreis. Die Kernzahlen (Kaufpreis, Wert, G/V, Stand) bleiben ohne seitliches Rollen sichtbar. */
+/* Tablet und 200 % Zoom: Nummer, Menge und Datum rücken unter den Namen. Die Kernzahlen (Kaufpreis,
+   Wert, G/V, Stand) bleiben ohne seitliches Rollen sichtbar. */
 @media (min-width:641px) and (max-width:1100px){
   .dt-fin{min-width:0}
   .dt-fin col.fin-k-zusatz{visibility:collapse}
@@ -1288,7 +1292,6 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-partslist,#tab-cata
   .dt-fin .fin-jahr{display:none}
 }
 @media (min-width:641px) and (max-width:800px){
-  .dt-fin col.fin-k-markt{visibility:collapse}
   .dt-fin col.fin-k-name{width:170px}
 }
 
@@ -1454,6 +1457,8 @@ p.mon-leise{margin:0 0 .35rem}
 .mon-aktionen .btn{flex:0 1 auto}
 .mon-tabelle td{vertical-align:top}
 .mon-tabelle .zahl{text-align:right;font-variant-numeric:tabular-nums}
+/* Die Zahl bleibt rechtsbündig über der Spalte, der Zusatz steht darunter. */
+.mon-tabelle .mon-zusatz{display:block;flex-basis:100%;font-size:var(--fs-1);white-space:nowrap}
 .mon-name{display:inline-flex;align-items:center;gap:.5rem;font-weight:600}
 .mon-sinnbild{flex:none;width:1.1em;height:1.1em;color:var(--b600)}
 .mon-zustand{display:inline-flex;align-items:center;gap:.35rem;font-weight:600}
@@ -1565,10 +1570,11 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 #pl-sets > .empty{flex:1 1 100%}
 #btn-pl-reset:disabled,#btn-pl-gen[hidden]{display:none}
 /* Bauliste in drei Schritten: Sets wählen, erstellen, exportieren. */
-.pl-leiste{display:flex;flex-direction:column;gap:.75rem;align-items:flex-start}
-.pl-feld{display:flex;flex-direction:column;gap:.3rem;max-width:100%}
+.pl-leiste{display:flex;flex-direction:column;gap:.75rem;align-items:flex-start;align-self:stretch}
+/* Mehrere Nummern mit Komma brauchen Platz: Das Feld nimmt die Breite bis 40rem, am Telefon die ganze Zeile. */
+.pl-feld{display:flex;flex-direction:column;gap:.3rem;width:min(100%,40rem)}
 .pl-feld label,.pl-zustand label{font-size:var(--fs-2);font-weight:600}
-.pl-setnr{width:14em;max-width:100%;flex:0 1 auto}
+.pl-setnr{width:auto;min-width:0;flex:1 1 12em}
 /* Bauliste: Set-Chips (Name in Textfarbe: --mut auf --b50 kam nur auf 4,4:1) und Optionen. */
 .pl-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px}
 .pl-chip{display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3);max-width:100%}
@@ -1696,7 +1702,9 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 /* Als Flex verliert summary sein Dreieck; ohne Zeichen sah „Einzelne Aufträge“ wie eine Überschrift aus. */
 .mon-einzeln > summary::before{content:"";flex:none;width:.45em;height:.45em;margin:0 .2em;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg)}
 .mon-einzeln[open] > summary::before{transform:rotate(45deg)}
-.btn[aria-disabled="true"]{opacity:.6}
+.btn[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+#gallery .dt :is(th,td).zahl{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+#gallery .dt .tab-pnl{display:block;font-size:var(--fs-1)}
 /* Klappen öffnen mit kurzem Einblenden statt zu springen; bei reduzierter
    Bewegung schaltet die Regel oben jede Animation ab. */
 @keyframes aufklappen{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}

@@ -44,7 +44,7 @@ import { CURRENCY, ME, set_lastImportAt, setAllSets, allSets, curSet, _pnlCache,
 import { confirmDelete, loeschenMitWahl } from './rueckfrage.js';
 import { springe } from './ziele.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
-import { SPALTEN_SORT, setsTabelle, tableRow } from './sets-tabelle.js';
+import { SPALTEN_SORT, setsTabelle, tableRow, wertZelle } from './sets-tabelle.js';
 /** @typedef {import('./zustand.js').Kachel} Kachel */
 
 /**
@@ -350,6 +350,10 @@ export function updateGalleryPrices() {
     const inhalt = preisZeile(s);
     setzeHtml(el, inhalt);
     el.hidden = !inhalt;
+  });
+  alle('[data-tabwert-for]').forEach(el => {
+    const s = bySet.get(el.dataset.tabwertFor ?? '');
+    if (s) setzeHtml(el, wertZelle(s));
   });
 }
 
