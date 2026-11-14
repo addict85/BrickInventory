@@ -91,7 +91,7 @@
   .filterleiste > select { display: none; }
   /* max-width und min-width 0: Sonst nimmt das Feld die Breite seiner längsten Option an (60 Zeichen). */
   .filterleiste.offen > select { display: block; flex: 1 1 100%; width: 100%; max-width: 100%; min-width: 0; }
-  /* Filterknopf und Ansicht teilen sich die erste Zeile, die Suche hat die zweite ganz. */
+  /* Am Telefon nur Karten (js/dom.js telefonBreite): Eine Tabellenzeile wäre eine Bildschirmhöhe hoch. */
   .filterleiste > .filter-knopf { order: -2; }
   :is(.filterleiste, .filterzeile) > .vtgl { display: none; }
 
