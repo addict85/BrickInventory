@@ -36,7 +36,7 @@ class SetsRepositoryImpl @Inject constructor(
     override suspend fun addSet(setNumber: String, quantity: Int, purchasePrice: Double?,
                        condition: Zustand?, ownerUserId: Int?,
                        storage: String?): Ergebnis<AddSetResponse> {
-        val anfrage = AddSetRequest(setNumber, quantity, purchasePrice, condition, ownerUserId, storage)
+        val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice, condition = condition, ownerUserId = ownerUserId, storage = storage)
         return ablage.schreibe(Bearbeitung.SetErfassen(anfrage),
             { AddSetResponse(success = true, action = "gepuffert", setNumber = setNumber) }) { schluessel ->
             sicherAufrufen { api.addSet(anfrage, schluessel) }
@@ -46,7 +46,7 @@ class SetsRepositoryImpl @Inject constructor(
     override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<GenericResponse> =
         // Der Server kann deckeln (fremde Exemplare bleiben): Es gilt seine Zahl.
         ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
-            sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity, null, purchasePrice, condition)) }
+            sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity = quantity, quantityDelta = null, purchasePrice = purchasePrice, condition = condition)) }
         }
 
     /** Menge um [schritt] ändern; der Server rechnet unter Bestandssperre. */
@@ -72,7 +72,7 @@ class SetsRepositoryImpl @Inject constructor(
     override suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>?): Ergebnis<MoveSetResponse> =
         ablage.nachgezogen({ r -> Nachzug.SetVerschoben(setNumber, fromUserId, toUserId, acquisitionIds == null).takeIf { r.success } }) {
-            sicherAufrufen { api.moveSet(setNumber, MoveSetRequest(fromUserId, toUserId, acquisitionIds)) }
+            sicherAufrufen { api.moveSet(setNumber, MoveSetRequest(fromUserId = fromUserId, toUserId = toUserId, acquisitionIds = acquisitionIds)) }
         }
 
     override suspend fun uebernimmZusammenfassung(agg: SetAggregate) {
@@ -81,6 +81,6 @@ class SetsRepositoryImpl @Inject constructor(
 
     override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse> =
         ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage).takeIf { r.success } }) {
-            sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(ort)) }
+            sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(storage = ort)) }
         }
 }

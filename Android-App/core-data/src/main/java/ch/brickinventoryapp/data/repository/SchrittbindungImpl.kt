@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.GeraetApi
-import ch.brickinventoryapp.vertrag.GeraeteKettenAnfrage
+import ch.brickinventoryapp.vertrag.GeraeteSchluesselAnfrage
 import ch.brickinventoryapp.model.schritt.Schluesselnonce
 import ch.brickinventoryapp.model.schritt.Schrittaktion
 import ch.brickinventoryapp.model.schritt.Schrittantwort
@@ -46,7 +46,7 @@ internal class SchrittbindungImpl @Inject constructor(
 
     /** Den Satz des Servers nur bei seiner Absage: Ein Netzfehler nach der Anmeldung ist keine Meldung wert. */
     override suspend fun hinterlegeKette(kette: List<ByteArray>): Schrittantwort {
-        val anfrage = GeraeteKettenAnfrage(kette.map { Base64.getEncoder().encodeToString(it) })
+        val anfrage = GeraeteSchluesselAnfrage(kette = kette.map { Base64.getEncoder().encodeToString(it) })
         return when (val r = sicherAufrufen { api.hinterlegeKette(anfrage) }) {
             is Ergebnis.Success -> Schrittantwort.Frei
             is Ergebnis.Error -> Schrittantwort.Abgelehnt(if (r is Ergebnis.Error.Server) r.message.ifBlank { null } else null)

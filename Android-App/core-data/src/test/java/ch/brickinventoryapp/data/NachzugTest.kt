@@ -64,10 +64,10 @@ class NachzugTest {
 
     @Before
     fun auf() = runBlocking {
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1, storage = "Kiste 1",
-            owners = listOf(KontoName(1, "anna"), KontoName(2, "ben")))))
-        ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten("20001-1", Zustand.NEU, userId = 1),
-            Merkposten("20002-1", Zustand.NEU, userId = 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1, storage = "Kiste 1",
+            owners = listOf(KontoName(id = 1, username = "anna"), KontoName(id = 2, username = "ben")))))
+        ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = Zustand.NEU, userId = 1),
+            Merkposten(setNumber = "20002-1", condition = Zustand.NEU, userId = 1)))
         ablage.uebernimm(Faecher.MANUELLE_TEILE, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 2, storage = "Kiste 1"),
             PartValuationItem(partNumber = "3001", colorId = 7, quantity = 4)))
         ablage.uebernimm(Faecher.MANUELLE_FIGUREN, listOf(FigValuationItem(figNumber = "sw0001", storage = "Kiste 1")))
@@ -123,7 +123,7 @@ class NachzugTest {
         // Das Gerät hält nur ein Konto; das neue lädt sein Set, während die alte Antwort unterwegs ist.
         pfade.vorrang = { _, _ ->
             bereich = "b"
-            runBlocking { ablage.uebernimm(Faecher.SETS, listOf(SetItem("10001-1", quantity = 1))) }
+            runBlocking { ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1))) }
             null
         }
         sets.updateQuantity("10001-1", 5)

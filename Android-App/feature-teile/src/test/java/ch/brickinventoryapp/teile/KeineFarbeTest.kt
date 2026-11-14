@@ -101,8 +101,8 @@ class KeineFarbeTest {
 
     @Test
     fun `9999 heisst keine Farbe, 0 bleibt Schwarz`() {
-        val liste = listOf(BrickColor(KEINE_FARBE, "[No Color/Any Color]"), BrickColor(0, "Black", "05131D"),
-                           BrickColor(4, "Red", "C91A09")).map { it.alsAnsicht() }
+        val liste = listOf(BrickColor(id = KEINE_FARBE, name = "[No Color/Any Color]"), BrickColor(id = 0, name = "Black", hex = "05131D"),
+                           BrickColor(id = 4, name = "Red", hex = "C91A09")).map { it.alsAnsicht() }
         assertEquals(listOf(0, 4), ohneKeineFarbe(liste).map { it.id })
         assertEquals("keine", farbName(liste, KEINE_FARBE, "[No Color/Any Color]", "keine"))
         assertEquals("Black", farbName(liste, 0, null, "keine"))

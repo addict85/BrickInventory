@@ -45,7 +45,7 @@ class MerklisteRepositoryImpl @Inject constructor(
 
     override suspend fun legeMerkpostenAn(setNumber: String, condition: Zustand,
                                           ownerUserId: Int?): Ergebnis<MerkpostenAntwort> {
-        val anfrage = MerkpostenRequest(setNumber, condition, ownerUserId)
+        val anfrage = MerkpostenRequest(setNumber = setNumber, condition = condition, ownerUserId = ownerUserId)
         return ablage.schreibe(Bearbeitung.MerkpostenAnlegen(anfrage), {
             MerkpostenAntwort(success = true, warNeu = true,
                 merkposten = Merkposten(setNumber = setNumber, condition = condition, userId = ownerUserId ?: 0))
@@ -55,7 +55,7 @@ class MerklisteRepositoryImpl @Inject constructor(
     override suspend fun verschiebeMerkposten(setNumber: String, condition: Zustand,
                                               vonId: Int, zuId: Int): Ergebnis<MerkpostenInhaberAntwort> =
         ablage.nachgezogen({ r -> Nachzug.MerkpostenVerschoben(setNumber, condition, vonId, zuId).takeIf { r.success } }) {
-            sicherAufrufen { api.verschiebeMerkposten(setNumber, condition.kennung, MerkpostenInhaberRequest(vonId, zuId)) }
+            sicherAufrufen { api.verschiebeMerkposten(setNumber, condition.kennung, MerkpostenInhaberRequest(ownerUserId = vonId, neuerInhaber = zuId)) }
         }
 
     override suspend fun loescheMerkposten(setNumber: String, condition: Zustand,
@@ -71,10 +71,10 @@ class MerklisteRepositoryImpl @Inject constructor(
                                              purchasePrice: Double?, erfasstAls: Zustand?,
                                              ownerUserId: Int?,
                                              storage: String?): Ergebnis<MerkpostenUebernahmeResponse> {
-        val anfrage = AddSetRequest(setNumber, quantity, purchasePrice, erfasstAls ?: condition, ownerUserId, storage)
+        val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice, condition = erfasstAls ?: condition, ownerUserId = ownerUserId, storage = storage)
         return ablage.nachgezogen({ r -> Nachzug.MerkpostenUebernommen(setNumber, condition, ownerUserId, anfrage).takeIf { r.success } }) {
             sicherAufrufen { api.uebernimmMerkposten(setNumber, condition.kennung,
-                MerkpostenUebernahmeRequest(quantity, purchasePrice, erfasstAls, ownerUserId, storage)) }
+                MerkpostenUebernahmeRequest(quantity = quantity, purchasePrice = purchasePrice, condition = erfasstAls, ownerUserId = ownerUserId, storage = storage)) }
         }
     }
 }

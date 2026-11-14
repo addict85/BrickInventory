@@ -22,6 +22,7 @@ on:
       - 'Web-App/src/vertrag/**'
       - 'Web-App/scripts/kotlin-vertrag.js'
       - 'Web-App/scripts/vertrag-kotlin-dtos.js'
+      - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'
       - 'Web-App/docs/openapi.json'
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
@@ -34,6 +35,7 @@ on:
       - 'Web-App/src/vertrag/**'
       - 'Web-App/scripts/kotlin-vertrag.js'
       - 'Web-App/scripts/vertrag-kotlin-dtos.js'
+      - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'
       - 'Web-App/docs/openapi.json'
       # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf.
       - '.github/workflows/android.yml'
@@ -437,8 +439,8 @@ jobs:
       sha256_apk: ${{ needs.build.outputs.sha256_apk }}
       sha256_aab: ${{ needs.build.outputs.sha256_aab }}
 
-  # Die Modelle aus core-vertrag gegen den Vertrag des Servers, auch hier: Ein Android-Lauf
-  # soll selbst rot sein, wenn ein Modell den Vertrag nicht mehr lesen kann.
+  # Die Typen in core-vertrag sind aus dem Vertrag erzeugt; ein Android-Lauf soll selbst rot
+  # sein, wenn die Datei veraltet ist oder eine Route nicht den erzeugten Typ nimmt.
   vertrag:
     if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
     runs-on: ubuntu-24.04
@@ -459,11 +461,10 @@ jobs:
           cache-dependency-path: Web-App/package-lock.json
       - name: Abhängigkeiten installieren
         run: npm ci --ignore-scripts && npm rebuild esbuild
-      - name: Kotlin-Modelle gegen den Vertrag
-        run: node --test test/vertrag-kotlin.test.js
-      # Die erzeugten Antworttypen (core-vertrag, vertrag.erzeugt) passen zu docs/openapi.json.
       - name: Erzeugte Kotlin-Typen aktuell
         run: node --test test/vertrag-kotlin-dtos.test.js
+      - name: Routen nehmen die erzeugten Typen
+        run: node --test test/vertrag-kotlin.test.js
 
   # Gerätetests (app/src/androidTest) auf einem Emulator, den Gradle anlegt (Managed
   # Device pixel6Api34, ATD-Abbild): Hilt, Room mit SQLCipher und Keystore laufen nur

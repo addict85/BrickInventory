@@ -177,7 +177,7 @@ internal object LokaleAnwendung {
     /** Der Vorrat folgt Anlegen, Umbenennen, Löschen und dem Stern; höchstens ein Ort trägt ihn. */
     fun lagerorte(liste: List<VorratsOrt>, b: Wirkung): List<VorratsOrt> = when (b) {
         is Nachzug.LagerortAngelegt ->
-            if (liste.any { it.ort.id == b.ort.id }) liste else liste + VorratsOrt(b.ort, vorgabe = false)
+            if (liste.any { it.ort.id == b.ort.id }) liste else liste + VorratsOrt(ort = b.ort, vorgabe = false)
         is Nachzug.LagerortUmbenannt -> liste.map { if (it.ort.id == b.neu.id) it.copy(ort = b.neu) else it }
         is Nachzug.LagerortGeloescht -> liste.filterNot { it.ort.id == b.id }
         is Nachzug.LagerortVorgabe -> liste.map { it.copy(vorgabe = it.ort.id == b.id) }

@@ -50,6 +50,6 @@ class TeileGesamtzahlTest {
         assertEquals(144, reiter.teileGesamt)
         assertNull(reiter.teileEinzeln)
         assertNull(sammlung.teileAusSets)
-        assertEquals(394, DashboardStats(3, 4, 394, 0, 394, 0).alsAnsicht().totalParts)
+        assertEquals(394, DashboardStats(totalSets = 3, totalQuantity = 4, totalPieces = 394, totalInstructions = 0, totalParts = 394, totalMinifigs = 0).alsAnsicht().totalParts)
     }
 }

@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.vertrag
 
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
@@ -32,6 +35,8 @@ object Beispielfueller {
             .sortedBy { it.parameterTypes[0].name }
     }
 
+    private val ergaenzungen = Class.forName("ch.brickinventoryapp.vertrag.ErgaenzungenKt").methods.toList()
+
     /** Ein Wert vom Typ [typ]; Datenklassen über ihren vollständigen Konstruktor, jedes Feld anders. */
     fun fuelle(typ: Type): Any? {
         val k = when (typ) {
@@ -49,6 +54,7 @@ object Beispielfueller {
             k == Boolean::class.javaPrimitiveType || k == Boolean::class.javaObjectType -> zaehler % 2 == 0
             k == String::class.java -> "w$zaehler"
             k.isEnum -> k.enumConstants.last()
+            JsonElement::class.java.isAssignableFrom(k) -> JsonObject(mapOf("k$zaehler" to JsonPrimitive(zaehler)))
             List::class.java.isAssignableFrom(k) -> {
                 val t = (typ as ParameterizedType).actualTypeArguments[0]
                 listOf(fuelle(t), fuelle(t))
@@ -81,8 +87,14 @@ object Beispielfueller {
         }
         for (g in getter) {
             val gegen = dto.javaClass.methods.firstOrNull { it.name == g.name && it.parameterCount == 0 }
-            if (gegen == null) { ohne += "${dto.javaClass.simpleName}.${g.name}"; continue }
-            n += vergleicheWert(gegen.invoke(dto), g.invoke(ansicht), "$pfad.${g.name}", ohne)
+            // Abgeleitete Werte der erzeugten Typen stehen als Erweiterung in Ergaenzungen.kt.
+            val erweitert = ergaenzungen.firstOrNull { it.name == g.name && it.parameterTypes.singleOrNull() == dto.javaClass }
+            val wert = when {
+                gegen != null -> gegen.invoke(dto)
+                erweitert != null -> erweitert.invoke(null, dto)
+                else -> { ohne += "${dto.javaClass.simpleName}.${g.name}"; continue }
+            }
+            n += vergleicheWert(wert, g.invoke(ansicht), "$pfad.${g.name}", ohne)
         }
         return n
     }

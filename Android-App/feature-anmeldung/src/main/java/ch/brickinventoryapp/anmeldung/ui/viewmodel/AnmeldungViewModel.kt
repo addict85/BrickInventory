@@ -21,6 +21,7 @@ import ch.brickinventoryapp.sicherheit.hostVon
 import ch.brickinventoryapp.sicherheit.pruefeRpId
 import kotlinx.serialization.json.Json
 import ch.brickinventoryapp.vertrag.LoginResponse
+import ch.brickinventoryapp.vertrag.verwalter
 import ch.brickinventoryapp.vertrag.PASSKEY_ANMELDEN
 import ch.brickinventoryapp.vertrag.PASSKEY_ZWEITER_FAKTOR
 import ch.brickinventoryapp.anmeldung.ui.PasskeyAbfrage
@@ -164,7 +165,7 @@ class AnmeldungViewModel @Inject constructor(
         _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
         val adresse = ablage.serverUrlJetzt()
         val optionen = when (val o = konto.passkeyOptionen(zweck)) {
-            is Ergebnis.Success -> o.data.optionen ?: return passkeyGescheitert(o.data.error ?: meldungen.text(R.string.login_passkey_fehler))
+            is Ergebnis.Success -> o.data.optionen.takeIf { it.isNotEmpty() } ?: return passkeyGescheitert(meldungen.text(R.string.login_passkey_fehler))
             is Ergebnis.Error -> return passkeyGescheitert(meldungen.meldung(o))
         }
         if (ablage.serverUrlJetzt() != adresse) return passkeyGescheitert(meldungen.text(R.string.login_passkey_fehler))
@@ -267,8 +268,8 @@ class AnmeldungViewModel @Inject constructor(
     private suspend fun koppleQr(antwort: QrMeldung, ziel: QrZiel) {
         val abholung = antwort.abholung
         val code = antwort.code
-        if (!antwort.success || abholung == null || code == null) {
-            qrGescheitert(antwort.error ?: meldungen.text(R.string.err_qr_login_failed))
+        if (!antwort.success || abholung.isEmpty() || code.isEmpty()) {
+            qrGescheitert(meldungen.text(R.string.err_qr_login_failed))
             return
         }
         _anmeldeState.update { it.copy(qrBestaetigung = code) }

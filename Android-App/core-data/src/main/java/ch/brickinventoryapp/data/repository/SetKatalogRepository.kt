@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.vertrag.BarcodeResponse
 import ch.brickinventoryapp.vertrag.MinifigsResponse
 import ch.brickinventoryapp.vertrag.PartsResponse
-import ch.brickinventoryapp.vertrag.SetDetailResponse
+import ch.brickinventoryapp.vertrag.SetResponse
 import ch.brickinventoryapp.vertrag.SetExistsResponse
 import ch.brickinventoryapp.vertrag.SetInfoResponse
 import javax.inject.Inject
@@ -19,7 +19,7 @@ interface SetKatalogRepository {
     /** Steht das Set schon im Blickfeld? Die Regel (Normalisierung, Haushalt) liegt beim Server. */
     suspend fun getSetExists(setNumber: String): Ergebnis<SetExistsResponse>
 
-    suspend fun getSetDetail(setNumber: String): Ergebnis<SetDetailResponse>
+    suspend fun getSetDetail(setNumber: String): Ergebnis<SetResponse>
 
     /** Setname aus dem gemeinsamen Katalog, auch für fremde Sets. */
     suspend fun getSetInfo(setNumber: String): Ergebnis<SetInfoResponse>

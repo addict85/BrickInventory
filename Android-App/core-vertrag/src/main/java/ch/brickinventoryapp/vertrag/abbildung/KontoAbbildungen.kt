@@ -6,6 +6,8 @@ import ch.brickinventoryapp.vertrag.GetrenntesKonto
 import ch.brickinventoryapp.vertrag.HouseholdStatusResponse
 import ch.brickinventoryapp.vertrag.Profil
 import ch.brickinventoryapp.vertrag.ProtokollZeile
+import ch.brickinventoryapp.vertrag.elternkonten
+import ch.brickinventoryapp.vertrag.neuAngelegt
 import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
 import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
 import ch.brickinventoryapp.model.ui.model.GetrenntesKontoAnsicht

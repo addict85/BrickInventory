@@ -163,7 +163,7 @@ test('Anleitungen: beide Oberflaechen haengen den Papierkorb an is_manual', () =
         'ch',
         'brickinventoryapp',
         'vertrag',
-        'SetModels.kt',
+        'Vertrag.kt',
       ),
       'utf8',
     ),
