@@ -99,22 +99,9 @@ function zeile(w) {
 
   const arg = `${w.set_number}|${w.condition}|${w.user_id}`;
   const k = kachelName(2);
+  // Die ganze Zeile öffnet das Detail; der Papierkorb oben rechts hält seinen Klick an, wie auf der Set-Kachel.
+  // Kein HTML-Kommentar im Template: Er landete in jedem DOM.
   return html`
-    <!-- Die GANZE Zeile oeffnet das Detail — wie die Karte in der App.
-         Der Papierkorb sitzt oben rechts und haelt seinen Klick an
-         (merkpostenLoeschenStop), genau wie auf der Set-Kachel. Marcos
-         Vorgabe vom 24.09., zweiter Teil: „soll auf den Kacheln […] sowie bei
-         den Merkliste Eintraegen der Papierkorb oben rechts angezeigt werden
-         analog den Kacheln bei den Sets. Dies aber nur in der webapp."
-
-         position:relative ist noetig, weil .ca absolut liegt; die Klasse
-         mk-zeile traegt die Einblendung beim Ueberfahren (styles.css).
-         Uebernommen wird weiterhin im Detail.
-
-         KEINE Backticks in diesem Kommentar: Er steht INNERHALB eines
-         Template-Literals und wuerde es sonst beenden. Genau daran ist der
-         erste Entwurf gescheitert — dieselbe Falle wie in
-         src/teile/abfragen.ts, wo derselbe Hinweis steht. -->
     <div class="mk-zeile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
       <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
            title="${tRaw('wanted.remove')}">${TRASH_ICON_SVG}</span></div>

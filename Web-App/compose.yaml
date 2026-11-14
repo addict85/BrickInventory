@@ -497,12 +497,15 @@ services:
             echo "[caddy]   Ohne sie teilen sich hinter Nginx Proxy Manager o. ä. alle Clients eine Adresse (README.md, „Proxy vor Caddy“)." >&2
             exit 1 ;;
         esac
-        # Ein Präfix bis /7 (0.0.0.0/0, ::/0) glaubte jedem Client seine Adresse: Die Drosseln je Adresse wären wirkungslos.
+        # Ein weites Netz (10.0.0.0/8, ::/0) glaubte jedem Gerät darin seine Adresse, die Drosseln je Adresse liefen leer.
+        # Dieselbe Grenze wie TRUST_PROXY in der App (src/infra/proxyVertrauen.ts): IPv4 ab /16, IPv6 ab /64.
         for a in $${VORGELAGERTER_PROXY}; do
-          case "$$a" in */[0-7])
-            echo "[caddy] FEHLER: VORGELAGERTER_PROXY $$a umfasst fast alle Adressen; nur den Proxy davor eintragen (z. B. 172.18.0.5 oder 172.18.0.0/16)." >&2
-            exit 1 ;;
-          esac
+          p=$${a##*/}; min=16
+          case "$$a" in *:*) min=64 ;; esac
+          if [ "$$p" != "$$a" ] && { case "$$p" in "" | *[!0-9]*) true ;; *) [ "$$p" -lt "$$min" ] ;; esac; }; then
+            echo "[caddy] FEHLER: VORGELAGERTER_PROXY $$a ist zu weit (IPv4 ab /16, IPv6 ab /64); nur den Proxy davor eintragen (z. B. 172.18.0.5 oder 172.18.0.0/16)." >&2
+            exit 1
+          fi
         done
         q=
         if [ -s /ca-eigen/zwischen.key ]; then
