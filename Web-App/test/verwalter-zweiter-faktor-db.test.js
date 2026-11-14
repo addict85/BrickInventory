@@ -49,6 +49,8 @@ function server(t, sitzung, token) {
   );
   app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
   app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  // Wie startup/app.ts: ein Fehlerweg hinter allem, auch hinter dem Eingang.
+  app.use(_req('src/http/httpAntwort.js').fehlerAntwort);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const base = `http://localhost:${srv.address().port}/api/v1`;

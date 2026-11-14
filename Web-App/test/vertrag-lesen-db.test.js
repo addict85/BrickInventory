@@ -283,7 +283,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
       status.push(`${r.pfad}: kein Wert für einen Platzhalter`);
       continue;
     }
-    const anfrage = [...r.anfrage.filter(q => q.pflicht).map(q => `${q.name}=60`), ZUSATZ.get(r.pfad)]
+    const anfrage = [...r.abfrage.filter(q => q.pflicht).map(q => `${q.name}=60`), ZUSATZ.get(r.pfad)]
       .filter(Boolean)
       .join('&');
     const antwort = await fetch(basis + pfad + (anfrage ? '?' + anfrage : ''));
