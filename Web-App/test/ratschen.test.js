@@ -733,7 +733,7 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
     ["test('liest nur', async () => {", "test('liest über Helfer', () => {"],
     'Selbstbeweis: ein blosses await führt nichts aus, eine Funktion der Datei und ein gebautes Modul schon',
   );
-  const SCHRANKE = 428;
+  const SCHRANKE = 427;
   const { n, alle } = quelltextFaelle();
   assert.ok(alle > 1500, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
   assert.ok(
