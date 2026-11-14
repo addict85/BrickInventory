@@ -6,6 +6,5 @@ export {
   isMaskedValue,
   nutzerWertGueltig,
 } from './settings';
-export { einstellungMitZugang } from './settings';
 export { erzeugeEinstellungen } from './bereich';
 export type { EinstellungenDienste, EinstellungenKontext } from './bereich';

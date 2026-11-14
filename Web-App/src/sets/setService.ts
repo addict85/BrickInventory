@@ -1,4 +1,3 @@
-import { einstellungMitZugang } from '../einstellungen';
 import { setZeilenLoeschen } from './loeschen';
 import { toCsv } from '../infra/csvExport';
 import { erfassungBuchen } from './erfassen';
@@ -19,7 +18,7 @@ async function priceForNewAcquisition(sk: SetsKontext, userId: number, setNumber
   const blickfeld = wertOder(await versuche('sets:kaufpreis-blickfeld', sk.haushalt.blickfeldIds(userId)), [userId]);
   const cond = await sk.finanzen.resolveSetCondition(blickfeld, setNumber);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
-  const currency = String(await einstellungMitZugang(sk.db, userId, 'currency', 'EUR'));
+  const currency = String(await sk.einstellungen.getSetting(userId, 'currency', 'EUR'));
   const cached = wertOder(
     await versuche('set-service:cached', sk.finanzen.marktpreisAusCache(setNumber, currency, cond)),
     null,

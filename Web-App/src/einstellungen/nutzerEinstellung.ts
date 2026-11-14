@@ -19,11 +19,9 @@ export async function nutzerEinstellungLoeschen(k: EinstellungenKontext, userId:
   await k.repository.loescheNutzerWert(userId, key);
 }
 
-/** Für den ganzen Haushalt: Zwei Währungen ergäben eine Summe, der man den
- * Fehler nicht ansieht. einladungEinloesen() prüft unter derselben Sperre. */
+/** Für den ganzen Haushalt, sonst ergäben zwei Währungen eine falsche Summe; einladungEinloesen() sperrt ebenso. */
 async function setzeHaushaltswaehrung(k: EinstellungenKontext, userId: number, waehrung: string) {
-  // Der Haushalt reicht hier über Enkel und fremde Hauptkonten (fremdGeteilt):
-  // weiter als der Zeilenschutz, der nur direkte Unterkonten freigibt.
+  // Über Enkel und fremde Hauptkonten (fremdGeteilt): weiter, als der Zeilenschutz reicht.
   const vorher = await imSystemkontext('haushaltswaehrung', () =>
     k.transaktion(async t => {
       await sperreHaushaltswaehrung(t.db);

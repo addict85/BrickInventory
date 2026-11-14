@@ -1,6 +1,5 @@
 /** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
 import { logAndContinue, meldeFehler } from '../infra/fehler';
-import { generateThumb } from '../bilder';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
 import { KEINE_FARBE } from '../infra/validate';
 import * as enrich from './teileAnreicherung';
@@ -40,7 +39,7 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
     // Ein Fehler lässt das Teil ohne Bild; der nächste Nachlauf versucht es wieder.
     const r = await versuche(
       'bild-nachlauf:downloadImage',
-      enrich.downloadImage(p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part'),
+      enrich.downloadImage(kx, p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part'),
     );
     const local = r.ok ? r.wert : null;
     if (local) {
@@ -49,21 +48,21 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
       await setzeTeilBildLokal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local);
       // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
       // bei der Originalgrösse.
-      generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
+      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
     }
     await tick();
   }
   for (const f of figsToFetch) {
     const r = await versuche(
       'bild-nachlauf:downloadImage',
-      enrich.downloadImage(f.image_url, f.fig_number, 0, 'minifig'),
+      enrich.downloadImage(kx, f.image_url, f.fig_number, 0, 'minifig'),
     );
     const local = r.ok ? r.wert : null;
     if (local) {
       // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal. Ein
       // Schreibfehler bricht den Lauf ab; der nächste findet die Datei und schreibt nach.
       await setzeFigurBildLokal(kx, f.fig_number, local);
-      generateThumb(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
+      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:generateThumb'));
     }
     await tick();
   }

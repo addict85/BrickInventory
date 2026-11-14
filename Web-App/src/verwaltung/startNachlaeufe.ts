@@ -1,11 +1,10 @@
 /** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in der Verwaltung zu sehen ist. */
-import { verschluesseleGutscheinAltbestand } from '../gutscheine';
 import { type Nutzlast, pruefeAbbruch, type AuftragsLauf } from '../auftraege';
 import type { VerwaltungKontext } from './kontext';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */
 async function geheimnisseVerschluesseln(k: VerwaltungKontext): Promise<void> {
-  const n = (await k.konto.verschluesseleAltbestand()) + (await verschluesseleGutscheinAltbestand());
+  const n = (await k.konto.verschluesseleAltbestand()) + (await k.gutscheine.verschluesseleAltbestand());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
 }
 

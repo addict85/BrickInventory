@@ -79,6 +79,7 @@ function konten(k: KontoKontext) {
     setzeAktiv: mit(k)(kontenDienst.setzeAktiv),
     setzeVerwalterRolle: mit(k)(kontenDienst.setzeVerwalterRolle),
     kontoEntfernen: mit(k)(kontoEntfernen.kontoEntfernen),
+    loescheKontoDateien: kontoEntfernen.loescheKontoDateien,
     verwalterHinweisNebenher: mit(k)(kontoHinweis.verwalterHinweisNebenher),
     hinweisNebenher: mit(k)(kontoHinweis.hinweisNebenher),
     haushaltBeitreten: mit(k)(kontoHinweis.haushaltBeitreten),

@@ -1,6 +1,5 @@
 /** Proben für Verwalter: Bild- und Preisabruf und die Fragen zu einer leeren Kachel. */
 import { proxyCacheSchluessel, proxyCachePathFor, imgProxyFailures } from '../bilder';
-import { oeffneBild } from '../fremdquellen';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
 import { urlOderNull } from '../infra/validate';
 import type { KontoBildzeile } from './repository/verwaltung';
@@ -26,7 +25,7 @@ const VARIANTEN = [
 ];
 
 /** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
-export async function bildProbe(url: string) {
+export async function bildProbe(k: VerwaltungKontext, url: string) {
   if (!/^https:\/\//.test(url)) fachfehler('ungueltig', 'url_fehlt_https');
   const adresse = urlOderNull(url);
   if (!adresse) fachfehler('ungueltig', 'url_ungueltig');
@@ -35,7 +34,7 @@ export async function bildProbe(url: string) {
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: adresse.hostname });
 
   const results: Awaited<ReturnType<typeof probeVariante>>[] = [];
-  for (const v of VARIANTEN) results.push(await probeVariante(url, v));
+  for (const v of VARIANTEN) results.push(await probeVariante(k, url, v));
 
   const key = proxyCacheSchluessel(url);
   const dir = path.join(DATA_DIR, 'img_proxy_cache');
@@ -44,13 +43,13 @@ export async function bildProbe(url: string) {
 
   // Zeigt auf einen Blick, woran Abrufe scheitern, ohne im Log zu suchen.
   const failures = imgProxyFailures;
-  const head = await ersteBytes(url);
+  const head = await ersteBytes(k, url);
   return { url, cache: { original: cached, thumb }, probes: results, proxy_failures: failures, body_check: head };
 }
 
 /** Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen. */
-const offenOhneUmleitung = (url: string, kopfzeilen: Record<string, string>) =>
-  oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
+const offenOhneUmleitung = (k: VerwaltungKontext, url: string, kopfzeilen: Record<string, string>) =>
+  k.katalog.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
 
 function liesStrom(a: AbrufStrom, genug = Infinity) {
   return new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {
@@ -70,10 +69,10 @@ function liesStrom(a: AbrufStrom, genug = Infinity) {
   });
 }
 
-async function probeVariante(url: string, v: { name: string; headers: Record<string, string> }) {
+async function probeVariante(kx: VerwaltungKontext, url: string, v: { name: string; headers: Record<string, string> }) {
   const t0 = Date.now();
   try {
-    const a = await offenOhneUmleitung(url, v.headers);
+    const a = await offenOhneUmleitung(kx, url, v.headers);
     const { bytes, truncated } = await liesStrom(a);
     const k = a.kopf;
     return {
@@ -108,8 +107,12 @@ const dateiGroesse = (datei: string) =>
     .catch(ohneFehlendeDatei('verwaltung:stat', null));
 
 /** Durch dieselbe Kette wie der Proxy, aber die ersten Bytes kommen als Hex hierher. */
-function ersteBytes(url: string) {
-  return offenOhneUmleitung(url, { 'User-Agent': UA, Accept: 'image/*,*/*;q=0.8', 'Accept-Encoding': 'identity' }).then(
+function ersteBytes(k: VerwaltungKontext, url: string) {
+  return offenOhneUmleitung(k, url, {
+    'User-Agent': UA,
+    Accept: 'image/*,*/*;q=0.8',
+    'Accept-Encoding': 'identity',
+  }).then(
     async a => {
       const b = Buffer.concat((await liesStrom(a, 32)).teile);
       return {

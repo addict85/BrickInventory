@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { AbrufFehler } from '../infra/abruf';
-import { oeffneBild } from '../fremdquellen';
+import type { BilderKontext } from './kontext';
 
 /** Bewusst ohne SVG. */
 const ENDUNG_ZU_TYP: Record<string, string> = {
@@ -56,15 +56,21 @@ export function zielImOrdner(ordner: string, datei: string): string | null {
  * als „schon vorhanden" gilt.
  * @returns ob das Bild jetzt unter `ziel` liegt */
 export async function ladeBild(
+  k: BilderKontext,
   adresse: string,
   ziel: string,
   erlaubteHosts: readonly string[],
   kopfzeilen: Record<string, string> = {},
   warnen: (text: string) => void = () => {},
 ): Promise<boolean> {
-  let a: Awaited<ReturnType<typeof oeffneBild>>;
+  let a: Awaited<ReturnType<BilderKontext['fremdquellen']['quellen']['oeffneBild']>>;
   try {
-    a = await oeffneBild(adresse, { hosts: erlaubteHosts, maxBytes: BILD_MAX_BYTES, zeitlimitMs: 30_000, kopfzeilen });
+    a = await k.fremdquellen.quellen.oeffneBild(adresse, {
+      hosts: erlaubteHosts,
+      maxBytes: BILD_MAX_BYTES,
+      zeitlimitMs: 30_000,
+      kopfzeilen,
+    });
   } catch (e) {
     warnen(e instanceof Error ? e.message : String(e));
     return false;

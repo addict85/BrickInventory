@@ -6,7 +6,7 @@ import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { merkeBlNummer } from './blZuordnung';
 import { merkeTeil, merkeTeilFarbe, merkeSetTeil, merkeFiguren, merkeSetFiguren } from './katalogPflege';
-import { parseThrottleWait as ptw, rebrickableRoh } from '../fremdquellen';
+import { parseThrottleWait as ptw } from '../fremdquellen';
 
 /** Ohne Typparameter leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
@@ -21,7 +21,7 @@ async function apiGet(k: KatalogKontext, url: string, rbKey: string) {
   while (true) {
     if (!(await k.fremdquellen.consumeRebrickableDaily())) return null;
     await k.fremdquellen.drossel.hintergrund.waitForSlot();
-    const result: JobHttpResult = await rebrickableRoh(url, rbKey);
+    const result: JobHttpResult = await k.fremdquellen.quellen.rebrickableRoh(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
       k.fremdquellen.drossel.hintergrund.throttle(wait);

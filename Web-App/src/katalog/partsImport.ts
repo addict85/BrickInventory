@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { AuftragsLauf } from '../auftraege';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
-import { type RbSetTeil, ersteBlNummer, parseThrottleWait, rebrickableRoh } from '../fremdquellen';
+import { type RbSetTeil, ersteBlNummer, parseThrottleWait } from '../fremdquellen';
 import { getAllSetParts } from './rebrickableKatalog';
 import { logAndContinue, meldeFehler } from '../infra/fehler';
 import { mitVersion } from '../infra/setNummer';
@@ -77,8 +77,8 @@ export async function setTeilBilderEinreihen(k: KatalogKontext, n: string, zeile
     await k.auftraege.stelleAuftragEin('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxVersuche: 3 });
 }
 
-function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: string }> {
-  return rebrickableRoh(url, rbKey);
+function holeSeite(k: KatalogKontext, url: string, rbKey: string): Promise<{ status: number; body: string }> {
+  return k.fremdquellen.quellen.rebrickableRoh(url, rbKey);
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
@@ -103,6 +103,7 @@ export async function blNummernNachladen(k: KatalogKontext, lauf: AuftragsLauf =
     await k.fremdquellen.drossel.hintergrund.waitForSlot();
     const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
     const result = await holeSeite(
+      k,
       `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`,
       rbKey,
     );

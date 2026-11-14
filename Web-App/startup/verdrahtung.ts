@@ -170,7 +170,7 @@ function baueBereiche(db: Db, nacharbeit: Nacharbeit, bauteile: Gesetzt): Dienst
     zeige('sammlung'),
   );
   const verwaltung = erzeugeVerwaltung(
-    { db, einstellungen, auftraege, konto, idempotenz, katalog, finanzen, bestand, sets, merkliste, mail },
+    { db, einstellungen, auftraege, konto, idempotenz, katalog, finanzen, bestand, sets, merkliste, gutscheine, mail },
     zeige('verwaltung'),
   );
   return { ...grund, finanzen, bestand, sets, teile, figuren, merkliste, gutscheine, sammlung, verwaltung };

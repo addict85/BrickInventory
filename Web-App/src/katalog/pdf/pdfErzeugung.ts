@@ -78,6 +78,7 @@ async function erzeugePdf(k: KatalogKontext, n: PdfNutzlast, lauf?: AuftragsLauf
     pruefeAbbruch(lauf);
     const figur = istFigur(p);
     const lokal = await downloadImage(
+      k,
       cdnAdresse(p.image_url!),
       p.part_number,
       figur ? 0 : (p.color_id ?? KEINE_FARBE),

@@ -1,7 +1,6 @@
 /** Jeder Schritt meldet seinen Fehler und lässt die übrigen laufen; scheitert
  * einer, wiederholt der Worker den ganzen Lauf — alle Schritte vertragen das. */
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
-import { raeumeBildCacheAuf } from '../bilder';
 import { fehlertext } from '../infra/fehler';
 import { raeumeAlteSicherungenAuf } from '../../db/migrate';
 import type { VerwaltungKontext } from './kontext';
@@ -43,7 +42,7 @@ function aufraeumenTaeglich(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<
     [
       ['Preisverlauf', k.finanzen.purgeAltePreise],
       ['unbestätigte Registrierungen', k.konto.raeumeOffeneRegistrierungenAuf],
-      ['Bild-Cache', () => raeumeBildCacheAuf(k.katalog.bilder.bildGrenzen().cacheMaxBytes)],
+      ['Bild-Cache', () => k.katalog.bilder.raeumeBildCacheAuf(k.katalog.bilder.bildGrenzen().cacheMaxBytes)],
       ['Verwaltungsprotokoll', () => k.konto.raeumeProtokollAuf()],
       ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(k.db)],
     ],

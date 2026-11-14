@@ -7,7 +7,7 @@ import { BILD_KOPFZEILEN } from '../fremdquellen';
 
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.
-import { bildEndung, dateiTeil, generateThumb, zielImOrdner, ladeBild } from '../bilder';
+import { bildEndung, dateiTeil, zielImOrdner } from '../bilder';
 import { ERLAUBTE_BILD_HOSTS } from '../infra/fremdeAdressen';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'node:fs';
@@ -16,6 +16,7 @@ import type { KatalogKontext } from './kontext';
 
 /** @param kind Bestimmt Zielverzeichnis und Web-Pfad. */
 async function downloadImage(
+  k: KatalogKontext,
   imgUrl: string | null | undefined,
   partNum: string,
   colorId: number,
@@ -35,9 +36,9 @@ async function downloadImage(
   const rel = `${webBase}${file}`;
   if (fs.existsSync(dest)) return rel;
   fs.mkdirSync(IMG_DIR, { recursive: true });
-  if (!(await ladeBild(imgUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN))) return null;
+  if (!(await k.bilder.ladeBild(imgUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN))) return null;
   try {
-    await generateThumb(rel).catch(logAndContinue('teile-enrich:generateThumb'));
+    await k.bilder.vorschauErzeugen(rel).catch(logAndContinue('teile-enrich:generateThumb'));
   } catch (e) {
     meldeFehler('teile-enrich:vorschau', e);
   }
@@ -70,9 +71,11 @@ async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void
   if (!fs.existsSync(dest)) {
     await k.cdnDrossel.acquire();
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
-    const ok = await ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN, text =>
-      console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
-    ).finally(() => k.cdnDrossel.release());
+    const ok = await k.bilder
+      .ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN, text =>
+        console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
+      )
+      .finally(() => k.cdnDrossel.release());
     if (!ok) return;
   }
 

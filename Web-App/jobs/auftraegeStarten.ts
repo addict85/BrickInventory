@@ -1,8 +1,6 @@
 import path from 'node:path';
 import { erzeugeWorker, type Bearbeitertabelle, type WorkerOptionen } from './auftragsWorker';
-import { pdfAufgegeben } from '../src/katalog';
 import type { AuftragsArt } from '../src/auftraege';
-import { loescheKontoDateien } from '../src/konto';
 import type { Dienste } from '../src/dienste';
 
 // Der Katalog-Import läuft in einem eigenen Prozess, dessen Einstieg neben dieser Datei liegt.
@@ -10,7 +8,7 @@ const IMPORT_PROZESS = path.join(__dirname, 'csvImportWorker.js');
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
 const bearbeiter = (
-  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
+  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'konto' | 'sets' | 'sammlung' | 'verwaltung'>,
 ): Bearbeitertabelle => ({
   nacharbeit: { ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k) },
   bilder: {
@@ -21,7 +19,7 @@ const bearbeiter = (
   },
   pdf: {
     ausfuehren: (n, k) => d.katalog.erzeugePdf(n, k),
-    aufgegeben: (n, fehler) => pdfAufgegeben(n, fehler),
+    aufgegeben: (n, fehler) => d.katalog.pdfAufgegeben(n, fehler),
   },
   // Mit `quelle` ein Import, auf den eine Anfrage wartet; ohne das Set-CSV.
   csv_import: {
@@ -47,14 +45,14 @@ const bearbeiter = (
   aufraeumen: { ausfuehren: (_n, k) => d.verwaltung.aufraeumen(k), exklusiv: true },
   aufraeumen_taeglich: { ausfuehren: (_n, k) => d.verwaltung.aufraeumenTaeglich(k), exklusiv: true },
   preise_nachladen: { ausfuehren: (n, k) => d.finanzen.preiseNachladen(n, k), exklusiv: true },
-  konto_dateien: { ausfuehren: n => loescheKontoDateien(n.user_id) },
+  konto_dateien: { ausfuehren: n => d.konto.loescheKontoDateien(n.user_id) },
   widerrufsliste: { ausfuehren: (_n, k) => d.katalog.ladeWiderrufsliste(k) },
 });
 
 /** Der Worker gehört dem, der ihn startet (startup/jobsProzess.ts, Testhilfen): Er hält ihn
  * und beendet ihn mit stoppe(); ein Speicher im Modul liesse zwei Starts einander sehen. */
 function starteAuftragsWorker(
-  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
+  d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'konto' | 'sets' | 'sammlung' | 'verwaltung'>,
   o: WorkerOptionen & { arten?: AuftragsArt[] } = {},
 ) {
   const alle = bearbeiter(d);

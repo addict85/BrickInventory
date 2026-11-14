@@ -2,7 +2,11 @@ import type { Konfig } from '../infra/konfig';
 import path from 'node:path';
 import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
-import { holeBild, BILD_KOPFZEILEN } from '../fremdquellen';
+import { BILD_KOPFZEILEN } from '../fremdquellen';
+import type { BilderKontext } from './kontext';
+
+/** Was das Bildwerk braucht; es entsteht vor dem Kontext des Bereichs (bereich.ts). */
+export type BildwerkKontext = Pick<BilderKontext, 'konfig' | 'fremdquellen'>;
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { mitVersion } from '../infra/setNummer';
 
@@ -34,11 +38,12 @@ export async function setBildVollstaendig(setNumber: string): Promise<boolean> {
 }
 
 export async function setBildHerunterladen(
+  k: BildwerkKontext,
   url: string,
   setNumber: string,
   info?: { status?: number },
-  userAgent = String(BILD_KOPFZEILEN['User-Agent']),
 ) {
+  const userAgent = bildUserAgent(k.konfig);
   if (!url) return null;
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
   const localPath = path.join(SET_IMAGES_DIR, `${safe}.jpg`);
@@ -50,36 +55,38 @@ export async function setBildHerunterladen(
     )
   )
     return relPath;
-  const buf = await holeBild(url, {
-    maxBytes: SET_IMG_MAX_BYTES,
-    zeitlimitMs: 30_000,
-    kopfzeilen: { ...BILD_KOPFZEILEN, 'User-Agent': userAgent },
-  }).then(
-    r => {
-      if (r.status === 200) return r.koerper;
-      // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
-      // echten Code gilt es in src/bilder/bildbedarfLauf.ts als vorübergehend.
-      const nichtVorhanden = r.status === 404 || r.status === 410;
-      (nichtVorhanden ? console.warn : console.error)(
-        `[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`,
-      );
-      if (info && r.status) info.status = r.status;
-      return null;
-    },
-    (e: unknown) => {
-      if (e instanceof AbrufFehler && e.grund === 'zu-gross')
-        console.error(
-          `[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`,
+  const buf = await k.fremdquellen.quellen
+    .holeBild(url, {
+      maxBytes: SET_IMG_MAX_BYTES,
+      zeitlimitMs: 30_000,
+      kopfzeilen: { ...BILD_KOPFZEILEN, 'User-Agent': userAgent },
+    })
+    .then(
+      r => {
+        if (r.status === 200) return r.koerper;
+        // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
+        // echten Code gilt es in src/bilder/bildbedarfLauf.ts als vorübergehend.
+        const nichtVorhanden = r.status === 404 || r.status === 410;
+        (nichtVorhanden ? console.warn : console.error)(
+          `[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`,
         );
-      else
-        console.error(
-          `[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`
-            .replace(/\r?\n/g, ' ⏎ ')
-            .replace(/\n|\r/g, ''),
-        );
-      return null;
-    },
-  );
+        if (info && r.status) info.status = r.status;
+        return null;
+      },
+      (e: unknown) => {
+        if (e instanceof AbrufFehler && e.grund === 'zu-gross')
+          console.error(
+            `[set-img] ${setNumber}: Bild grösser als ${Math.round(SET_IMG_MAX_BYTES / 1024 / 1024)} MB — nicht lokal gespeichert: ${url}`,
+          );
+        else
+          console.error(
+            `[set-img] ${setNumber}: Abruf fehlgeschlagen (${e instanceof Error ? e.message : e}): ${url}`
+              .replace(/\r?\n/g, ' ⏎ ')
+              .replace(/\n|\r/g, ''),
+          );
+        return null;
+      },
+    );
   if (!buf) return null; // Grund wurde oben bereits genannt
   if (buf.length < 100) {
     // Zu klein für ein Bild — fast immer eine Fehlerseite.

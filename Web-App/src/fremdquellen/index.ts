@@ -11,17 +11,11 @@ export {
   RbSetFigur,
   RebrickableGesperrt,
   alsAbrufFehler,
-  downloadFile,
   ersteBlNummer,
   ersteZipDatei,
-  ezbAbruf,
   historieLesen,
-  holeBild,
-  legoAbruf,
-  oeffneBild,
   parseThrottleWait,
   rbSeite,
-  rebrickableRoh,
   tageskurseLesen,
 } from './quellen';
 export type { Abruf, Kurs, KlientenZugang, LegoAbruf, Quellen, RbSetTeil } from './quellen';

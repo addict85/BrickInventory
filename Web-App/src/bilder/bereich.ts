@@ -9,7 +9,8 @@ import * as bildBlickfeldDienst from './bildBlickfeld';
 import * as bildNachschlagen from './bildNachschlagen';
 import * as proxyThumbs from './proxyThumbs';
 import * as imgCacheServe from './imgCacheServe';
-import { bildUserAgent, setBildHerunterladen } from './setImages';
+import * as bildDatei from './bildDatei';
+import { setBildHerunterladen } from './setImages';
 import { generateThumb } from './thumbs';
 import { zugang, type Bildwerk, type BilderAbhaengigkeiten, type BilderKontext } from './kontext';
 
@@ -21,8 +22,7 @@ export function erzeugeBilder(
   einblick?: Einblick<BilderKontext>,
 ) {
   const bildwerk = a.bildwerk ?? {
-    setBildLaden: (url: string, sn: string, info?: { status?: number }) =>
-      setBildHerunterladen(url, sn, info, bildUserAgent(a.konfig)),
+    setBildLaden: (url: string, sn: string, info?: { status?: number }) => setBildHerunterladen(a, url, sn, info),
     vorschauErzeugen: generateThumb,
   };
   return baueBereich(
@@ -61,6 +61,10 @@ export function erzeugeBilder(
       cdnFuerFehlendesBild: mit(k)(bildNachschlagen.cdnFuerFehlendesBild),
       queueThumb: mit(k)(proxyThumbs.queueThumb),
       cacheTreffer: mit(k)(imgCacheServe.cacheTreffer),
+      raeumeBildCacheAuf: imgCacheServe.raeumeBildCacheAuf,
+      ladeBild: mit(k)(bildDatei.ladeBild),
+      bildOeffnen: (...x: Parameters<BilderKontext['fremdquellen']['quellen']['oeffneBild']>) =>
+        k.fremdquellen.quellen.oeffneBild(...x),
     }),
     einblick,
   );

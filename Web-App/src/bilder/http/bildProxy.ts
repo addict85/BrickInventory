@@ -17,7 +17,7 @@ import { proxyAdresse, proxyCacheSchluessel } from '../images';
 import type { Request, Response } from 'express';
 import type { Readable } from 'node:stream';
 import { AbrufFehler, type AbrufStrom } from '../../infra/abruf';
-import { oeffneBild, BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../fremdquellen';
+import { BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../fremdquellen';
 import zlib from 'node:zlib';
 import { setBildVollstaendig } from '../setImages';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
@@ -74,7 +74,7 @@ async function vomCdn(
   ] as const;
 
   const holen = (kopfzeilen: Record<string, string>) =>
-    oeffneBild(url, { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
+    d.bilder.bildOeffnen(url, { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
   let r: AbrufStrom;
   try {
     r = await holen(HEADER_SETS[0]);

@@ -3,6 +3,7 @@ import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as dienst from './dienst';
 import * as pdfTicket from './pdfTicket';
+import { verschluesseleGutscheinAltbestand } from './gutscheinDateien';
 import * as gutscheinGuthabenSchranke from './gutscheinGuthabenSchranke';
 import { zugang, type GutscheineAbhaengigkeiten, type GutscheineKontext } from './kontext';
 
@@ -31,6 +32,7 @@ export function erzeugeGutscheine(
       gutscheinPdf: mit(k)(dienst.gutscheinPdf),
       frageGuthabenAb: mit(k)(gutscheinGuthabenSchranke.frageGuthabenAb),
       loeseTicketEin: mit(k)(pdfTicket.loeseTicketEin),
+      verschluesseleAltbestand: verschluesseleGutscheinAltbestand,
       // Umschlüsseln beim Start (startup/datenbank.ts): über alle Konten, ohne Anfrage.
       nummernNachverschluesseln: k.gutscheine.nummernNachverschluesseln,
       kopienVerschluesseln: k.gutscheine.kopienVerschluesseln,

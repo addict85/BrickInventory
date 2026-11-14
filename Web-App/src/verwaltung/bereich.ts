@@ -24,6 +24,7 @@ export function erzeugeVerwaltung(a: VerwaltungAbhaengigkeiten, einblick?: Einbl
       konfigImport: mit(k)(datenexport.konfigImport),
       konfigExport: mit(k)(datenexport.konfigExport),
       preisProbe: mit(k)(diagnose.preisProbe),
+      bildProbe: mit(k)(diagnose.bildProbe),
       bildDiagnose: mit(k)(diagnose.bildDiagnose),
       cacheStatistik: mit(k)(dienst.cacheStatistik),
       anleitungenNeuEinreihen: mit(k)(dienst.anleitungenNeuEinreihen),

@@ -1,5 +1,5 @@
 /** Set zum Barcode: eigener Katalog, Rebrickable, Brickset und EAN-Quellen. */
-import { istVermutung, setnummerKandidaten, merkeSetKatalog } from '../katalog';
+import { istVermutung, setnummerKandidaten } from '../katalog';
 import { resolveImageLocal } from '../bilder';
 import { RbSet, RbSetFigur, rbSeite } from '../fremdquellen';
 import { mitVersion, normalisiereSetNummer } from '../infra/setNummer';
@@ -61,8 +61,7 @@ async function barcodeErgebnis(
     // In den Katalog wie jeder Abruf; der Treffer gilt auch, wenn das Ablegen scheitert.
     await versuche(
       'sets:katalog schreiben',
-      merkeSetKatalog(
-        sk.db,
+      sk.katalog.merkeSetKatalog(
         setNumber,
         rbData.name ?? null,
         rbData.year ?? null,

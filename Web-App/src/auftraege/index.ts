@@ -11,7 +11,6 @@ export { pdfDateiPfad } from './pdfAuftraege';
 export { DAILY_JOBS, naechsteUhrzeit } from './zeitplan';
 export { AuftragVerloren } from './auftraege';
 export type { AuftragsArt, Fortschritt } from './auftraege';
-export { imAuftragsrahmen } from './dienst';
 export { belegKennung } from './prozess';
 export { NutzlastUngueltig, PREISPOSTEN_HOECHSTENS, WantedKorrekturen, pruefeNutzlast } from './nutzlasten';
 export { gueltigeAuftragsKennung, pdfSchluessel } from './pdfAuftraege';
