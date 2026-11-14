@@ -1,0 +1,16 @@
+Gegenprobe: „Nach Menge“ sortiert aufsteigend
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.TeileOrdnungTest
+Rot: jede Reihenfolge
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileOrdnung.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileOrdnung.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileOrdnung.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileOrdnung.kt
+@@ -16,6 +16,6 @@
+     return teile.sortedWith(when (ordnung) {
+         PartsUiState.Ordnung.FARBE -> farbe.then(name).then(nummer)
+         PartsUiState.Ordnung.NAME -> name.then(farbe).then(nummer)
+-        PartsUiState.Ordnung.MENGE -> compareByDescending<TeilAnsicht> { it.totalQuantity }.then(name).then(nummer)
++        PartsUiState.Ordnung.MENGE -> compareBy<TeilAnsicht> { it.totalQuantity }.then(name).then(nummer)
+     })
+ }

@@ -333,6 +333,9 @@
     <string name="parts_color_label">Farbe (optional)</string>
     <string name="parts_color_unknown">Farbe %1$d</string>
     <string name="parts_add_button">Hinzufügen</string>
+    <string name="parts_ordnung_farbe">Nach Farbe</string>
+    <string name="parts_ordnung_name">Nach Name</string>
+    <string name="parts_ordnung_menge">Nach Menge</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_title">Hintergrundarbeiten</string>

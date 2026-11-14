@@ -49,6 +49,8 @@ data class PartsUiState(
      * wird nur für die Tabelle geholt.
      */
     val partsView: Listenansicht = Listenansicht.KARTEN,
+    /** Reihenfolge wie parts-ordnung der Webapp; sortiert wird in der Ansicht, die Liste liegt ganz vor. */
+    val partsOrdnung: Ordnung = Ordnung.FARBE,
     /**
      * Die beiden Filterlisten des Reiters — Farbe und Kategorie, mit Anzahl
      * (/parts/colors und /parts/categories, wie in der Webapp).
@@ -91,7 +93,10 @@ data class PartsUiState(
     val minifigsView: Listenansicht = Listenansicht.KARTEN,
     val partsStats: TeileKennzahlenAnsicht? = null,
     val partsColors: List<FarbeAnsicht> = emptyList(),
-)
+) {
+    /** Die drei Reihenfolgen der Webapp; die Regeln stehen in sortiert() (TeileOrdnung.kt). */
+    enum class Ordnung { FARBE, NAME, MENGE }
+}
 
 /**
  * Der Detail-Dialog für ein Teil oder eine Figur aus einem Set: Zoom, Menge nur

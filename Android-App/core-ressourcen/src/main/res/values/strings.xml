@@ -348,6 +348,9 @@
     <string name="parts_color_label">Color (optional)</string>
     <string name="parts_color_unknown">Color %1$d</string>
     <string name="parts_add_button">Add</string>
+    <string name="parts_ordnung_farbe">By colour</string>
+    <string name="parts_ordnung_name">By name</string>
+    <string name="parts_ordnung_menge">By quantity</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
     <string name="monitoring_title">Background jobs</string>

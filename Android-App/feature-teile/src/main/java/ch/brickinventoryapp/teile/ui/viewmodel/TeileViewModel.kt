@@ -161,6 +161,7 @@ class TeileViewModel @Inject constructor(
                 partsQuery = gemerkt[F_SUCHE] ?: st.partsQuery,
                 partsSpare = gemerkt[F_ERSATZ] ?: st.partsSpare,
                 partsView = gemerkt[F_ANSICHT] ?: st.partsView,
+                partsOrdnung = gemerkt[F_ORDNUNG] ?: st.partsOrdnung,
                 partsColorFilter = gemerkt[F_FARBE] ?: st.partsColorFilter,
                 partsCategoryFilter = gemerkt[F_KATEGORIE] ?: st.partsCategoryFilter,
                 minifigsQuery = gemerkt[F_FIGUR_SUCHE] ?: st.minifigsQuery,
@@ -179,6 +180,7 @@ class TeileViewModel @Inject constructor(
     override fun setPartsQuery(q: String) { gemerkt[F_SUCHE] = q; teile.setzeSuche(q) }
     override fun setPartsSpare(wert: Ersatzteilwahl) { gemerkt[F_ERSATZ] = wert; teile.setzeErsatzteile(wert) }
     override fun setPartsView(wert: Listenansicht) { gemerkt[F_ANSICHT] = wert; teile.setzeAnsicht(wert) }
+    override fun setPartsOrdnung(wert: PartsUiState.Ordnung) { gemerkt[F_ORDNUNG] = wert; teile.setzeOrdnung(wert) }
     override fun setPartsColorFilter(wert: String) { gemerkt[F_FARBE] = wert; teile.setzeFarbe(wert) }
     override fun setPartsCategoryFilter(wert: String) { gemerkt[F_KATEGORIE] = wert; teile.setzeKategorie(wert) }
     override fun setMinifigsQuery(q: String) { gemerkt[F_FIGUR_SUCHE] = q; teile.setzeFigurSuche(q) }
@@ -348,7 +350,7 @@ class TeileViewModel @Inject constructor(
         lagerJob?.cancel()
         teile.zuruecksetzen()
         _setItemState.value = SetItemUiState()
-        listOf(F_SUCHE, F_ERSATZ, F_ANSICHT, F_FARBE, F_KATEGORIE, F_FIGUR_SUCHE, F_FIGUR_ANSICHT)
+        listOf(F_SUCHE, F_ERSATZ, F_ANSICHT, F_ORDNUNG, F_FARBE, F_KATEGORIE, F_FIGUR_SUCHE, F_FIGUR_ANSICHT)
             .forEach { gemerkt.remove<String>(it) }
     }
 
@@ -356,6 +358,7 @@ class TeileViewModel @Inject constructor(
         const val F_SUCHE = "teile_suche"
         const val F_ERSATZ = "teile_ersatz"
         const val F_ANSICHT = "teile_ansicht"
+        const val F_ORDNUNG = "teile_ordnung"
         const val F_FARBE = "teile_farbe"
         const val F_KATEGORIE = "teile_kategorie"
         const val F_FIGUR_SUCHE = "figuren_suche"
