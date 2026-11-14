@@ -4,6 +4,7 @@ import {
   listeLadefehler,
   condBadges,
   ownerBadges,
+  kontoAnzeige,
   pnlBadge,
   geschaetztKauf,
   zeilenKnopf,
@@ -59,7 +60,7 @@ function besitzer(it, mehrereKonten) {
   return mehrereKonten && it.owners?.length
     ? it.owners.map(
         o =>
-          html`<span class="cond-badge besitzer-badge"><span class="vh">${tRaw('finance.konto')}: </span>${o.username}</span>`,
+          html`<span class="cond-badge besitzer-badge"><span class="vh">${tRaw('finance.konto')}: </span>${kontoAnzeige(o)}</span>`,
       )
     : ownerBadges(it);
 }

@@ -5,6 +5,7 @@
  *
  *   a) Das Raster von der Liste zurück auf die Zeile → Fall 2 und 3 rot.
  *   b) margin-top am Verknüpfen-Knopf entfernt → Fall 1 rot.
+ *   c) (14.11.2026) .konto-fuss ohne margin-top → Fall 1 rot.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -59,12 +60,13 @@ test('Abstand zwischen Einladungscode und Verknüpfen-Knopf', () => {
   const d = new JSDOM(HTML).window.document;
   const knopf = d.querySelector('[data-click="redeemHouseholdInvite"]');
   assert.ok(knopf, 'Der Verknüpfen-Knopf ist nicht mehr zu finden');
-  const stil = knopf.getAttribute('data-stil') || '';
+  // Seit UI-Prüfung 22 steht er in der Fusszeile der Menüseiten (.konto-fuss, margin-top:.75rem).
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
+  assert.ok(knopf.parentElement?.classList.contains('konto-fuss'), 'Der Knopf steht nicht in .konto-fuss');
   assert.match(
-    stil,
-    /margin-top\s*:\s*\.?\d/,
-    `Der Knopf trägt keinen oberen Abstand (data-stil="${stil}"). Er klebt dann am ` +
-      'Eingabefeld darüber — Marcos Bild.',
+    css,
+    /\.konto-fuss\{[^}]*margin-top:\.?\d/,
+    'Die Fusszeile trägt keinen oberen Abstand; der Knopf klebte dann am Eingabefeld darüber — Marcos Bild.',
   );
 });
 

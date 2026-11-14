@@ -84,6 +84,9 @@
   /* Filter hinter einem Knopf: Suche und Ansicht bleiben, die Auswahlfelder
      klappen auf. Vorher belegten fünf Felder den halben Bildschirm. */
   .filter-knopf { display: inline-flex; align-items: center; gap: 6px; }
+  /* Aufgeklappt sieht der Knopf gedrückt aus, wie die gewählte Ansicht daneben: aria-expanded allein sah
+     man nicht. */
+  .filter-knopf[aria-expanded="true"] { background: var(--b50); color: var(--b700); border-color: var(--b600); box-shadow: inset 0 0 0 1px var(--b600); }
   .filterleiste > input.si, .filterleiste > input.suchfeld { flex: 1 1 140px; width: auto !important; min-width: 0; }
   .filterleiste > select { display: none; }
   /* max-width und min-width 0: Sonst nimmt das Feld die Breite seiner längsten Option an (60 Zeichen). */
@@ -145,8 +148,9 @@
 
   /* Zwei Spalten ab etwa 360 px, darunter und bei grosser Schrift eine. */
   .sgrid       { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: .7rem; }
-  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.75rem), 1fr)); gap: .6rem; }
-  .man-grid    { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.75rem), 1fr)); gap: .6rem; }
+  /* Teile und Figuren in zwei Spalten wie die Sets: Drei schmale Spalten (113 px) liessen bei ein, zwei
+     Figuren die halbe Zeile leer und sahen anders aus als die Sammlung daneben. Bei 320 px bleiben es zwei. */
+  .parts-grid, .parts-list, .man-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr)); gap: .7rem; }
   /* minmax(0, …) statt 1fr: Eine Spalte darf schmaler werden als ihre längste
      Zahl, die dann umbricht — sonst schob „Gesamtwert“ die Kachel über den Rand. */
   .fgrid       { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
@@ -464,7 +468,7 @@
   /* Lagerorte: das Feld über die ganze Zeile, Belegung und Knöpfe darunter. */
   #storage-list .lager-raster { grid-template-columns: minmax(0, 1fr) max-content max-content !important; }
   #storage-list .lager-feld { grid-column: 1 / -1; border-bottom: 0 !important; padding-bottom: 0 !important; }
-  #storage-list .lager-belegt { justify-content: flex-start !important; white-space: normal !important; }
+  #storage-list .lager-belegt { justify-content: flex-start !important; white-space: normal !important; padding-left: 0 !important; }
   .erfassen-leiste .import-menue { flex: 1 1 100%; min-width: 0; }
   .erfassen-leiste .import-menue > summary { width: 100%; white-space: normal; }
   main :is(p, li, h1, h2, h3, label, .ibox, .stit, .hinweis-absatz) { hyphens: auto; }
@@ -492,7 +496,6 @@
 
 @media (max-width: 380px) {
   .sgrid      { gap: .5rem; }
-  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6rem), 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
   .ntab       { font-size: var(--fs-0); }
   /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
@@ -525,6 +528,8 @@
      sonst mit einem verwaisten „·“. order:-2 setzt ihn in der umgekehrten Reihe ans Ende (die vierte
      Kennzahl ist am Telefon verborgen, also hat die dritte keinen). */
   .bstat:not(:last-child):not(:nth-child(3))::after { content: "·"; margin: 0 0 0 .5em; color: var(--mut); order: -2; }
+  /* Der Punkt erhöht die Zeile nicht: Mit seiner vollen Zeilenhöhe stand die Kennzahl ohne Punkt 2 px höher. */
+  .bstat::after { line-height: 1; }
   .bstat.bstat-erklaert::after { order: 0; }
   .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-4); margin: 0; line-height: 1.3; }
   .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { text-transform: none; letter-spacing: 0; font-size: var(--fs-2); }
@@ -708,10 +713,9 @@
    Gewinn daneben, die übrigen Angaben darunter. Sonst füllte das Bild den ersten Bildschirm. */
 @media (max-width: 640px), (max-height: 600px) and (max-width: 899px) {
   #set-modal .m-kopfteil { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .5rem .75rem; align-items: start; }
-  #set-modal .m-kopfteil > #m-det { display: contents; }
-  #set-modal .m-kopfteil > #m-det > * { grid-column: 1 / -1; }
-  #set-modal .m-kopfteil > .mimg { grid-column: 1; grid-row: 1; max-height: none; margin: 0; }
-  #set-modal .m-kopfteil > #m-det > .m-wertkopf { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
+  #set-modal .m-kopfteil :is(#m-det, #m-det-links) > * { grid-column: 1 / -1; }
+  #set-modal .m-kopfteil .mimg { grid-column: 1; grid-row: 1; max-height: none; margin: 0; }
+  #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
   #set-modal .wk-wert { font-size: var(--fs-4); }
 }
 /* Grosse Schrift: neben dem Bild bliebe kein Platz für den Betrag. Gemessen
@@ -720,8 +724,8 @@
 @media (max-width: 640px) { #set-modal > .modal { container: setdialog / inline-size; } }
 @container setdialog (max-width: 19rem) {
   #set-modal .m-kopfteil { grid-template-columns: minmax(0, 1fr); }
-  #set-modal .m-kopfteil > #m-det > .m-wertkopf { grid-column: 1; grid-row: auto; }
-  #set-modal .m-kopfteil > .mimg { width: 7.5rem; }
+  #set-modal .m-kopfteil #m-det-links > .m-wertkopf { grid-column: 1; grid-row: auto; }
+  #set-modal .m-kopfteil .mimg { width: 7.5rem; }
 }
 
 /* Die Erklärung zu „0 Teile“ bleibt auch am Telefon stehen. */

@@ -23,6 +23,8 @@
  *   O  portfolioChartSVG() ohne Legende (unterDemBild = false) → rot: „Bezugslinie bei 320 px“
  *   R  monitor.js ohne Rolle am Auftragsnamen → rot: „Hintergrundarbeiten“
  *   S  styles.css ohne `.period-btn:disabled` → rot: „Finanzen ohne Verbindung“
+ *   U  (13.11.2026) sitzungUngeklaert() ohne eigenen Zweig für 429 → rot: „Sitzung ungeklärt“ (Titel
+ *      „Anmeldung konnte nicht geprüft werden“, Text mit Minuten und Sekunden)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -390,8 +392,9 @@ async function sitzungUngeklaert(_t, a) {
       text: ${text('#start-offline-text')}, knopf: document.getElementById('start-erneut').checkVisibility() })`);
     assert.equal(z.maske, 'none', 'Anmeldemaske trotz gültiger Sitzung');
     assert.equal(z.app, 'none');
-    assert.equal(z.titel, 'Anmeldung konnte nicht geprüft werden');
-    assert.match(z.text, /^Zu viele Anfragen — bitte in 1 Min\. erneut versuchen\. Neuer Versuch in (40|39|38) s\.$/);
+    // Gedrosselt: ein eigener Titel und nur eine Zeitangabe (UI-Prüfung 22, N4).
+    assert.equal(z.titel, 'Zu viele Anfragen');
+    assert.match(z.text, /^Der Server nimmt gerade keine weiteren Anfragen an\. Neuer Versuch in (40|39|38) s\.$/);
     assert.equal(z.knopf, true, '„Erneut versuchen“ fehlt');
     art = 'netz';
     await b.auswerten(`document.getElementById('start-erneut').click(); true`);
