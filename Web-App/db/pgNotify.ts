@@ -24,8 +24,29 @@ function holeNach(handler: Handler) {
   Promise.resolve(handler()).catch(logAndContinue('notify:nachholen'));
 }
 
+/** Was ein Zugang an LISTEN/NOTIFY anbietet. */
+export interface Signale {
+  listen(channel: string, handler: Handler): void;
+  hoertZu(channel: string): boolean;
+  notify(channel: string, payload?: string): Promise<void>;
+  unlisten(channel: string, handler: Handler): void;
+  close(): Promise<void>;
+  /** Dieselben Signale, gesendet über `senden` (die Verbindung einer Transaktion). */
+  ueber(senden: (sql: string, p: unknown[]) => Promise<unknown>): Signale;
+}
+
+/** Fehler werden geschluckt: Der Datenbankeintrag ist die belastbare Quelle,
+ * das Signal nur die Beschleunigung. */
+async function notifyUeber(senden: (sql: string, p: unknown[]) => Promise<unknown>, channel: string, payload: string) {
+  try {
+    await senden(`SELECT pg_notify($1, $2)`, [channel, payload]);
+  } catch (e) {
+    console.error(`[notify:${channel}]`, (e as Error).message);
+  }
+}
+
 /** Gesendet wird über den Zugang (senden), gehorcht auf einer eigenen Verbindung. */
-export class Benachrichtigung {
+export class Benachrichtigung implements Signale {
   private readonly _handlers = new Map<string, Eintrag[]>();
   private _client: Client | null = null;
   private _connecting = false;
@@ -133,11 +154,18 @@ export class Benachrichtigung {
   /** Fehler werden geschluckt: Der Datenbankeintrag ist die belastbare Quelle,
    * das Signal nur die Beschleunigung. */
   async notify(channel: string, payload = '') {
-    try {
-      await this.senden(`SELECT pg_notify($1, $2)`, [channel, payload]);
-    } catch (e) {
-      console.error(`[notify:${channel}]`, (e as Error).message);
-    }
+    await notifyUeber(this.senden, channel, payload);
+  }
+
+  ueber(senden: (sql: string, p: unknown[]) => Promise<unknown>): Signale {
+    return {
+      listen: (c, h) => this.listen(c, h),
+      hoertZu: c => this.hoertZu(c),
+      notify: (c, p = '') => notifyUeber(senden, c, p),
+      unlisten: (c, h) => this.unlisten(c, h),
+      close: () => this.close(),
+      ueber: s => this.ueber(s),
+    };
   }
 
   unlisten(channel: string, handler: Handler) {

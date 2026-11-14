@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { logAndContinue, meldeFehler } from '../src/infra/fehler';
+import { konfig } from '../src/infra/konfig';
 import { starteAuftragsWorker } from '../jobs/auftraegeStarten';
 import { NACHLAEUFE, type Nachlauf } from '../src/verwaltung';
 import type { Dienste } from './verdrahtung';
@@ -59,7 +60,7 @@ export async function starteJobs(d: Dienste, beides: boolean): Promise<JobsLauf>
     );
   if (await d.bilder.offenerBildbedarf()) await d.bilder.bildbedarfAnstossen();
   await d.finanzen.planeKursabruf();
-  const worker = starteAuftragsWorker(d);
+  const worker = starteAuftragsWorker(d, { parallel: konfig().auftragParallel, fristSek: konfig().auftragFristSek });
   void erneuereLebenszeichen(d, worker);
   const lebenszeichen = setInterval(() => erneuereLebenszeichen(d, worker), LEBENSZEICHEN_MS);
   lebenszeichen.unref();

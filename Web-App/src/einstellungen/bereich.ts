@@ -1,41 +1,40 @@
-/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext als ersten Parameter;
- * erzeugeEinstellungen bindet ihn einmal für alle. So greift kein Modul selbst auf
- * den Zugang des Prozesses zu, und ein Test gibt einen eigenen. */
-import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
+import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import * as settings from './settings';
 import { zugang, type EinstellungenAbhaengigkeiten, type EinstellungenKontext } from './kontext';
 
 export type { EinstellungenAbhaengigkeiten, EinstellungenKontext } from './kontext';
 
 export function erzeugeEinstellungen(a: EinstellungenAbhaengigkeiten, einblick?: Einblick<EinstellungenKontext>) {
-  const k: EinstellungenKontext = baueKontext(a, zugang);
-  einblick?.(k);
-  return {
-    ...bindeZugang(k, settings, [
-      'schreibeNutzerEinstellung',
-      'nutzerStandardZustand',
-      'globalDefaultCondition',
-      'setGlobalSetting',
-      'verschluesseleGlobaleAltwerte',
-      'deleteGlobalSetting',
-      'deleteUserSetting',
-      'nutzerEinstellungen',
-      'readSettings',
-      'globaleWerteOhneGeheimnisse',
-      'designFuer',
-      'registrierungOffen',
-      'zustandFuerPreis',
-    ]),
-    // Überladen oder generisch: Gebunden<> sähe nur die letzte Signatur.
-    getSetting: (<T>(uid: number, key: string, fallback?: T) => settings.getSetting(k, uid, key, fallback)) as {
-      (uid: number, key: string): Promise<string | null | undefined>;
-      <T>(uid: number, key: string, fallback: T): Promise<string | T>;
-    },
-    getGlobalSetting: (<T>(key: string, fallback?: T) => settings.getGlobalSetting(k, key, fallback)) as {
-      (key: string): Promise<string | null>;
-      <T>(key: string, fallback: T): Promise<string | T>;
-    },
-  };
+  return baueBereich(
+    a,
+    zugang,
+    (k: EinstellungenKontext) => ({
+      schreibeNutzerEinstellung: mit(k)(settings.schreibeNutzerEinstellung),
+      nutzerStandardZustand: mit(k)(settings.nutzerStandardZustand),
+      globalDefaultCondition: mit(k)(settings.globalDefaultCondition),
+      setGlobalSetting: mit(k)(settings.setGlobalSetting),
+      verschluesseleGlobaleAltwerte: mit(k)(settings.verschluesseleGlobaleAltwerte),
+      deleteGlobalSetting: mit(k)(settings.deleteGlobalSetting),
+      deleteUserSetting: mit(k)(settings.deleteUserSetting),
+      nutzerEinstellungen: mit(k)(settings.nutzerEinstellungen),
+      readSettings: mit(k)(settings.readSettings),
+      globaleWerteOhneGeheimnisse: mit(k)(settings.globaleWerteOhneGeheimnisse),
+      designFuer: mit(k)(settings.designFuer),
+      registrierungOffen: mit(k)(settings.registrierungOffen),
+      zustandFuerPreis: mit(k)(settings.zustandFuerPreis),
+      // Überladen: mit() sähe nur die letzte Signatur.
+      getSetting: (<T>(uid: number, key: string, fallback?: T) => settings.getSetting(k, uid, key, fallback)) as {
+        (uid: number, key: string): Promise<string | null | undefined>;
+        <T>(uid: number, key: string, fallback: T): Promise<string | T>;
+      },
+      getGlobalSetting: (<T>(key: string, fallback?: T) => settings.getGlobalSetting(k, key, fallback)) as {
+        (key: string): Promise<string | null>;
+        <T>(key: string, fallback: T): Promise<string | T>;
+      },
+    }),
+    einblick,
+  );
 }
 
 export type EinstellungenDienste = ReturnType<typeof erzeugeEinstellungen>;

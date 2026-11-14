@@ -1,5 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
- * damit die Aufteilung der Dateien darunter frei bleibt. */
+/** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
 export { verschluesseleGutscheinAltbestand } from './gutscheinDateien';
 export type { AusPdf, GutscheinAenderung, GutscheinZeile, GuthabenErgebnis } from './dienst';
 export { PIN_MASKE, maskiert, pruefeWerte } from './dienst';

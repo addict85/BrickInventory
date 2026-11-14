@@ -44,9 +44,8 @@ Absicht, solange es nur von unten gebraucht wird:
   `fehlerTexte`, `httpAntwort`), Vertrag (`vertrag/`), Datei-Ein- und -Ausgang,
   Budget und Schranken je Konto, Sitzungskeks, Proxy-Vertrauen. Express
   importieren nur Dateien daraus; welche, hält der Test in
-  `test/schichten.test.js` fest. Dienste kennen Express nicht, mit einer
-  Ausnahme: `kontoKontext` trägt die laufende Anfrage über
-  `AsyncLocalStorage` zu Zählern, die keinen Request sehen.
+  `test/schichten.test.js` fest. Dienste kennen Express nicht; was sie von der
+  Anfrage brauchen, trägt der Aufrufrahmen (`kontoKontext`, siehe unten).
 
 - Jeder Fachbereich hat eine `index.ts`; andere Bereiche, Routen, Jobs und
   `startup/` importieren nur darüber (ausser den HTTP-Seiten unter
@@ -60,17 +59,23 @@ Absicht, solange es nur von unten gebraucht wird:
   `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `bilder` …); die
   Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/auftraege`.
 - Jeder Bereich hat eine Fabrik (`erzeugeX` in `bereich.ts`) und einen Kontext
-  (`kontext.ts`): gebundene Repositories, die Dienste tieferer Bereiche und die
-  Arbeitseinheit. Ein Dienst nimmt den Kontext als ersten Parameter (`k`) und holt
-  alles daraus, nichts vom Prozess. `startup/verdrahtung.ts` baut alle Bereiche in
-  `baueDienste(db, nacharbeit)`; Server und Testhilfe rufen dieselbe Funktion.
+  (`kontext.ts`): gebundene Repositories, die Dienste tieferer Bereiche, die
+  Konfiguration (`k.konfig`) und die Arbeitseinheit. Ein Dienst nimmt den Kontext
+  als ersten Parameter (`k`) und holt alles daraus, nichts vom Prozess. Die Fabrik
+  ist eine Closure über `k` (`baueBereich`, `src/infra/bereich.ts`): Jeder Dienst
+  steht ausgeschrieben da (`getSets: mit(k)(lesen.getSets)`), typgeprüft, ohne
+  Namenslisten und ohne Proxy. `startup/verdrahtung.ts` baut alle Bereiche in
+  `baueDienste(db, bauteile)`; Server und Testhilfe rufen dieselbe Funktion.
 - Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/dienste.ts`) und
   rufen Dienste nur über `d`; von `startup/` importieren sie nichts. Die
   Fassaden der `index.ts` und `xBereich()` holen die Dienste des Prozesses; sie
   bleiben für HTTP-Seiten, Jobs, den Start und Tests (gezählt in `test/ratschen.test.js`).
 - Mehrstufige Schreibvorgänge (Änderung und Protokoll, Zeile und Datei) sind ein
   Dienst mit `k.transaktion(async t => …)`: Der Rumpf schreibt über `t`, einen
-  Kontext an der Verbindung der Transaktion. So steht am Aufrufort, was zusammen gilt.
+  Kontext an der Verbindung der Transaktion. `t` ist ganz über deren Zugang gebaut
+  (`tx.db`): Jeder Satz Dienste tieferer Bereiche entsteht darüber neu
+  (`ueber(tx.db)`, je Transaktion einmal), Zustand im Speicher bleibt geteilt. So
+  steht am Aufrufort, was zusammen gilt, und nichts leitet eine Abfrage still um.
   Das ist die einzige Form: Repositories öffnen keine Transaktion, sie nehmen den
   `tx` des Aufrufers; `.transaction(` steht nur in `src/infra/bereich.ts` und `db/`.
 - Den Rahmen (Konto oder Systemrahmen, `imSystemkontext`) wählt man vor der
@@ -94,9 +99,39 @@ Absicht, solange es nur von unten gebraucht wird:
   entsteht dort je Satz Dienste (`erzeugeRebrickable(z)` …) mit Schlüssel,
   Kontingent und Drossel seines Zugangs (`clients/zugang.ts`); einen Zugang des
   Prozesses gibt es nicht. Tests stellen Klienten mit `testQuellen()`.
-- Eine Transaktion gilt zusätzlich für den ganzen Aufrufpfad (AsyncLocalStorage),
-  auch für Repositories ohne `tx`-Parameter: Sicherung gegen eine zweite
-  Verbindung mitten in der Arbeitseinheit, nicht der Weg, sie zu erkennen.
+- Fragt mitten in einer Transaktion jemand über den ungebundenen Zugang (`k` statt
+  `t`), wirft die Datenbankschicht `UngebundeneAbfrage`: Sie liefe sonst über eine
+  zweite Verbindung neben der Transaktion. Erkannt wird das am Aufrufrahmen; ein Weg
+  in die Transaktion ist er nicht.
+- `konfig()` liest nur der Start (`startup/`, `server.ts`); Fachbereiche, Routen und
+  Jobs bekommen die Konfiguration gereicht (`baueDienste` → `k.konfig`, sonst als
+  Parameter). Übrig sind Helfer des Prozesses in `src/infra`, `src/http`, `db/` und der
+  beim Laden gebaute bcrypt-Pool; ihre Zahl hält `test/ratschen.test.js`.
+
+## Aufrufrahmen: wer fragt
+
+„Wer fragt“ steht an einer Stelle: im Aufrufrahmen (`src/infra/kontoKontext.ts`),
+dem einzigen Kanal über `AsyncLocalStorage` (`test/ratschen.test.js` verbietet
+weitere). Die Anfrage setzt ihn einmal (`merkeAnfrage`, aus Sitzung oder Token), ein
+Auftrag ebenso (`imNamenDesAuftrags`), Arbeit über Konten betritt ausdrücklich den
+Systemrahmen (`imSystemkontext`). Die Datenbankschicht setzt daraus je Transaktion
+`app.konto` für den Zeilenschutz.
+
+Warum dieser eine Kanal bleibt: Das Konto des Zeilenschutzes gehört zur Verbindung,
+nicht zu einem Dienst. Es ausdrücklich durch jeden Dienst bis zu jeder Abfrage zu
+reichen, hiesse jede Signatur und jedes Repository zu ändern, ohne dass eine Abfrage
+dadurch richtiger würde. Er trägt daneben nur, was ebenso den Aufrufpfad betrifft und
+nichts übergibt: den Merker der offenen Transaktion für die Wachen (`UngebundeneAbfrage`,
+`NebenDerTransaktion`, kein Ersatzwert in einer Transaktion), den Commit-Begleiter der
+Idempotenz und die Kennung der Anfrage fürs Protokoll. Die Transaktion selbst reist über `t`.
+
+Dienste bekommen den Anfragenden weiter als `uid` (oder in einer `Sicht`). Damit es
+trotzdem nur eine Quelle gibt, prüft der Haushalt, der „wer fragt“ auslegt
+(`haushaltVon`, `schreibbereich`, `darfSchreibenFuer`, `siehtKonto`), dass dieses Konto
+das des Rahmens ist (`pruefeAnfragender`). Ein anderes wirft `FremdesKonto`, statt
+still nur zu sehen, was der Zeilenschutz des Anfragenden zeigt; im Systemrahmen gilt
+jedes Konto. Wer für ein anderes Konto arbeitet, sagt es am Aufruf (`imNamenVon`,
+`imSystemkontext`).
 
 ## Fehler
 
@@ -189,6 +224,15 @@ neue Migration.
 schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
 `docs/openapi.json` (`npm run vertrag:openapi`) und der Abgleich mit dem
 Android-Client (`test/vertrag-kotlin.test.js`).
+
+Eine Route registriert sich über ihren Schlüssel:
+`router.endpunkt('GET /api/v1/sets/:setNumber', requireToken, async req => …)`.
+Methode, Pfad und die Typen von `req`/`res` kommen aus ihm; der Router kennt sein
+Präfix (`vertragsRouter('/api/v1')`), ein Schlüssel ausserhalb kompiliert nicht, und
+unter fremdem Präfix eingehängt antwortet er 500. Die Route gibt ihr Ergebnis zurück,
+der Router setzt `{ success: true, … }` davor (die App liest `success`); eine Route,
+deren Vertrag kein `success` nennt, antwortet selbst. Die Typprobe steht in
+`test/typen/vertragsRouter.typprobe.ts`.
 
 ### Namen
 

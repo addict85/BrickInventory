@@ -14,7 +14,7 @@ import {
   type Nutzlast,
 } from '../src/auftraege';
 import { fehlertext, logAndContinue, meldeFehler } from '../src/infra/fehler';
-import { konfig } from '../src/infra/konfig';
+import { VORGABE } from '../src/infra/konfig';
 
 /** Die Nutzlast kommt geprüft an (src/auftraege/nutzlasten.ts). */
 export interface Bearbeiter<A extends AuftragsArt = AuftragsArt> {
@@ -178,8 +178,9 @@ async function unterbrichLaufende(d: AuftraegeDienste, laufend: Map<string, Lauf
 function erzeugeWorker(d: AuftraegeDienste, bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const arten = Object.keys(bearbeiter);
   const exklusiv = arten.filter(a => bearbeiter[a as AuftragsArt]?.exklusiv);
-  const parallel = Math.max(1, o.parallel ?? konfig().auftragParallel);
-  const fristSek = o.fristSek ?? konfig().auftragFristSek;
+  // Die Werte reicht der Start (startup/jobsProzess.ts); ohne sie gilt die Vorgabe.
+  const parallel = Math.max(1, o.parallel ?? VORGABE.auftragParallel);
+  const fristSek = o.fristSek ?? VORGABE.auftragFristSek;
   const laufend = new Map<string, Lauf>();
   let beendet = false,
     gestartet = false,

@@ -172,7 +172,7 @@ export async function anmeldungPruefen(
     // Registriert wird nur im Browser; anmelden darf auch die eingetragene App.
     response: antwort,
     expectedChallenge: challenge,
-    expectedOrigin: [rp.origin, ...androidHerkuenfte()],
+    expectedOrigin: [rp.origin, ...androidHerkuenfte(kx.konfig)],
     expectedRPID: rp.rpID,
     credential: {
       id: antwort.id,

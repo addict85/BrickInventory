@@ -236,6 +236,12 @@ function buildAndRequire() {
     'setBilderLaden',
   ])
     _nacharbeit[k] = (...a) => nacharbeit()[k](...a);
+  // In einer Transaktion (Kontext `t`) die Nacharbeit über deren Zugang; ersetzte Methoden bleiben.
+  const eigen = { ..._nacharbeit };
+  _nacharbeit.ueber = db => {
+    const t = nacharbeit().ueber(db);
+    return Object.fromEntries(Object.keys(eigen).map(k => [k, _nacharbeit[k] === eigen[k] ? t[k] : _nacharbeit[k]]));
+  };
   const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
   const erststart = () => testDienste().konto.legeStartVerwalterAn();

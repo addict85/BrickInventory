@@ -8,7 +8,6 @@
  * rot: „mit Basis-URL steht das Logo im Link“.
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -16,23 +15,17 @@ const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
 
 test('otpauth-Link mit Logo', async t => {
-  const vorher = process.env.APP_BASE_URL;
-  t.after(() => {
-    if (vorher === undefined) umgebung({ APP_BASE_URL: undefined });
-    else umgebung({ APP_BASE_URL: vorher });
-  });
+  // Die Basis-URL kommt gereicht (k.konfig.appBaseUrl), nicht aus der Umgebung.
   const { otpauthAdresse } = _req('src/konto/zweiterFaktor.js');
 
   await t.test('mit Basis-URL steht das Logo im Link', () => {
-    umgebung({ APP_BASE_URL: 'https://lego.example.org/' });
-    const url = new URL(otpauthAdresse('JBSWY3DPEHPK3PXP', 'marco'));
+    const url = new URL(otpauthAdresse('JBSWY3DPEHPK3PXP', 'marco', 'https://lego.example.org'));
     assert.equal(url.searchParams.get('image'), 'https://lego.example.org/assets/logo-256.png');
     assert.equal(url.searchParams.get('issuer'), 'BrickInventory');
   });
 
   await t.test('ohne Basis-URL kein image', () => {
-    umgebung({ APP_BASE_URL: undefined });
-    const url = new URL(otpauthAdresse('JBSWY3DPEHPK3PXP', 'marco'));
+    const url = new URL(otpauthAdresse('JBSWY3DPEHPK3PXP', 'marco', null));
     assert.equal(url.searchParams.get('image'), null);
   });
 

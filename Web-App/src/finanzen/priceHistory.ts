@@ -5,7 +5,6 @@ import { asIds, type Sicht } from '../haushalt';
 import { buildChart } from './chartData';
 import { marktpreisAus } from '../katalog';
 import { entwicklungProzent } from './setValue';
-import { konfig } from '../infra/konfig';
 import type { FinanzenKontext } from './kontext';
 
 /** Nur Zustände mit Erfassung: Sonst stünde eine Kurve ohne Bezugsgrösse da.
@@ -261,7 +260,7 @@ async function preisNummernFuerFigur(k: FinanzenKontext, uid: number | number[],
 
 /** @returns Anzahl entfernter Zeilen */
 export async function purgeAltePreise(k: FinanzenKontext): Promise<number> {
-  const tage = konfig().preisverlaufTage;
+  const tage = k.konfig.preisverlaufTage;
   if (tage <= 0) return 0;
   const r = await k.preisverlauf.loescheAltenVerlauf(String(tage));
   return r?.changes || 0;

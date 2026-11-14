@@ -3,7 +3,6 @@
  * ersetzt, das beim ersten Login zu ändern ist. */
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import { konfig } from '../infra/konfig';
 import { passwortMangel } from '../infra/passwortRegel';
 import { entferneStartpasswort, schreibeStartpasswort } from '../infra/startpasswort';
 import { BCRYPT_ROUNDS } from './anmeldepruefung';
@@ -14,7 +13,7 @@ export async function legeStartVerwalterAn(k: KontoKontext): Promise<void> {
     if (!(await k.startVerwalter.startpasswortOffen())) entferneStartpasswort();
     return;
   }
-  const envPasswort = konfig().adminPasswort;
+  const envPasswort = k.konfig.adminPasswort;
   const mangel = envPasswort !== '' ? passwortMangel(envPasswort, 'admin') : null;
   if (mangel)
     console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${mangel}); es gilt ein zufälliges Startpasswort.`);

@@ -1,5 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
- * damit die Aufteilung frei bleibt; was die Datenbank braucht, ist ein Dienst. */
+/** Die öffentliche Seite des Bereichs; was die Datenbank braucht, ist ein Dienst. */
 
 export {
   HAUSHALT_KANAL,

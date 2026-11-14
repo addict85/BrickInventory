@@ -1,7 +1,6 @@
-/** Was die Dienste des Bereichs bekommen: Zugang, Dienste tieferer Bereiche, Arbeitseinheit.
- * Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
+/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import { bindeZugang, type Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/bereich';
 import * as bestandExport from './repository/bestandExport';
 import * as gemeinsam from './repository/gemeinsam';
 import * as kaufErfassungen from './repository/kaufErfassungen';
@@ -26,25 +25,52 @@ export interface BestandAbhaengigkeiten {
 }
 
 export const zugang = (db: Db) => ({
-  bestandExport: bindeZugang(db, bestandExport),
-  gemeinsam: bindeZugang(db, gemeinsam, ['erfassungsKennzahlen', 'setsMitBestandteil']),
-  kaufErfassungen: bindeZugang(db, kaufErfassungen, ['inWaehrungDesKontos']),
-  kennzahlen: bindeZugang(db, kennzahlen),
-  lagerort: bindeZugang(db, lagerort, [
-    'andererOrtGleichenNamens',
-    'entferneOrt',
-    'fuegeOrtEin',
-    'ortBelegung',
-    'ortDesKontos',
-    'ortNachName',
-    'ortName',
-    'orteDerKonten',
-    'orteMitBestand',
-    'schreibeOrtNamen',
-    'vorgabeOrt',
-  ]),
-  manuelleMengen: bindeZugang(db, manuelleMengen, ['summeDerErfassungen']),
-  nachtrag: bindeZugang(db, nachtrag),
-  papierkorb: bindeZugang(db, papierkorb, ['eintraege', 'entferneAeltere', 'entferneAlle', 'entferneEintragDesKontos']),
+  bestandExport: {
+    teileFuerCsv: mit(db)(bestandExport.teileFuerCsv),
+    figurenFuerCsv: mit(db)(bestandExport.figurenFuerCsv),
+  },
+  gemeinsam: {
+    erfassungsKennzahlen: mit(db)(gemeinsam.erfassungsKennzahlen),
+    setsMitBestandteil: mit(db)(gemeinsam.setsMitBestandteil),
+  },
+  kaufErfassungen: {
+    inWaehrungDesKontos: mit(db)(kaufErfassungen.inWaehrungDesKontos),
+  },
+  kennzahlen: {
+    setZahlen: mit(db)(kennzahlen.setZahlen),
+    anleitungsZahlen: mit(db)(kennzahlen.anleitungsZahlen),
+    teileImBestand: mit(db)(kennzahlen.teileImBestand),
+    teileEinzeln: mit(db)(kennzahlen.teileEinzeln),
+    figurenImBestand: mit(db)(kennzahlen.figurenImBestand),
+    waehrungImBlickfeld: mit(db)(kennzahlen.waehrungImBlickfeld),
+    vorgabeZustandImBlickfeld: mit(db)(kennzahlen.vorgabeZustandImBlickfeld),
+  },
+  lagerort: {
+    andererOrtGleichenNamens: mit(db)(lagerort.andererOrtGleichenNamens),
+    entferneOrt: mit(db)(lagerort.entferneOrt),
+    fuegeOrtEin: mit(db)(lagerort.fuegeOrtEin),
+    ortBelegung: mit(db)(lagerort.ortBelegung),
+    ortDesKontos: mit(db)(lagerort.ortDesKontos),
+    ortNachName: mit(db)(lagerort.ortNachName),
+    ortName: mit(db)(lagerort.ortName),
+    orteDerKonten: mit(db)(lagerort.orteDerKonten),
+    orteMitBestand: mit(db)(lagerort.orteMitBestand),
+    schreibeOrtNamen: mit(db)(lagerort.schreibeOrtNamen),
+    vorgabeOrt: mit(db)(lagerort.vorgabeOrt),
+  },
+  manuelleMengen: {
+    summeDerErfassungen: mit(db)(manuelleMengen.summeDerErfassungen),
+  },
+  nachtrag: {
+    setErfassungenOhnePreis: mit(db)(nachtrag.setErfassungenOhnePreis),
+    teilErfassungenOhnePreis: mit(db)(nachtrag.teilErfassungenOhnePreis),
+    figurErfassungenOhnePreis: mit(db)(nachtrag.figurErfassungenOhnePreis),
+  },
+  papierkorb: {
+    eintraege: mit(db)(papierkorb.eintraege),
+    entferneAeltere: mit(db)(papierkorb.entferneAeltere),
+    entferneAlle: mit(db)(papierkorb.entferneAlle),
+    entferneEintragDesKontos: mit(db)(papierkorb.entferneEintragDesKontos),
+  },
 });
 export type BestandKontext = Kontext<BestandAbhaengigkeiten, ReturnType<typeof zugang>>;

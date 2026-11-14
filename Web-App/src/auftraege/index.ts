@@ -1,5 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
- * damit die Aufteilung der Dateien darunter frei bleibt. */
+/** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
 export { AuftragUnterbrochen, AuftragVerschieben, pruefeAbbruch } from './auftraege';
 export type { AuftragsKontext, AuftragsLauf, AuftragsZeile } from './auftraege';
 export { BRICKSET_HOECHSTENS } from './bricksetAuftrag';

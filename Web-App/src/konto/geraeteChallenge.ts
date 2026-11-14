@@ -5,7 +5,6 @@
 import { createPublicKey, randomBytes, verify, X509Certificate, type KeyObject } from 'node:crypto';
 import type { Familie } from './repository/geraeteSchluessel';
 import type { AKTIONEN } from '../vertrag/geraet';
-import { konfig } from '../infra/konfig';
 import { GOOGLE_WURZELN } from './attestation/googleWurzeln';
 import { pruefeKette } from './attestation/schluesselAttestation';
 import type { KontoKontext } from './kontext';
@@ -66,9 +65,8 @@ export async function neueNonce(k: KontoKontext, f: Familie, ausQr = false): Pro
 }
 
 /** Je PEM einmal gelesen; der Schlüssel '' steht für die Google-Wurzeln. */
-function wurzeln(): X509Certificate[] {
+function wurzeln(pem: string): X509Certificate[] {
   const wurzelCache = prozessweit('attestationWurzeln', () => new Map<string, X509Certificate[]>());
-  const pem = konfig().attestationWurzeln ?? '';
   let liste = wurzelCache.get(pem);
   if (!liste) {
     const teile = pem
@@ -88,8 +86,12 @@ export async function hinterlegeSchluessel(
   f: Familie,
   kette: readonly string[],
 ): Promise<Registrierung> {
-  const k = konfig();
-  const p = pruefeKette(kette, { wurzeln: wurzeln(), paket: k.androidPaket, digests: k.androidZertifikate });
+  const k = kx.konfig;
+  const p = pruefeKette(kette, {
+    wurzeln: wurzeln(k.attestationWurzeln ?? ''),
+    paket: k.androidPaket,
+    digests: k.androidZertifikate,
+  });
   if (!p.ok) return { abgewiesen: p.grund };
   const kanonisch = (p.oeffentlich.export({ format: 'der', type: 'spki' }) as Buffer).toString('base64');
   if (!leseSchluessel(kanonisch)) return 'ungueltig';
@@ -103,7 +105,7 @@ export async function hinterlegeSchluessel(
 export type Challenge = { challenge: string; nachricht: string; gueltig_bis: Date } | 'kein_schluessel';
 
 export async function neueChallenge(k: KontoKontext, f: Familie, aktion: Schrittaktion): Promise<Challenge> {
-  if (!(await k.geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis))) return 'kein_schluessel';
+  if (!(await k.geraeteSchluessel.schluesselDer(f, k.konfig.geraeteschluesselAltBis))) return 'kein_schluessel';
   const challenge = randomBytes(32).toString('base64url');
   const bis = await k.geraeteSchluessel.legeChallengeAn(f, challenge, aktion, CHALLENGE_FRIST_S, CHALLENGES_OFFEN);
   return { challenge, nachricht: nachricht(aktion, challenge), gueltig_bis: bis };
@@ -118,7 +120,7 @@ export async function loeseEin(
 ): Promise<{ aktion: Schrittaktion; bis: Date } | null> {
   const aktion = (await kx.geraeteSchluessel.nimmChallenge(f, challenge)) as Schrittaktion | null;
   if (!aktion) return null;
-  const k = leseSchluessel((await kx.geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis)) ?? '');
+  const k = leseSchluessel((await kx.geraeteSchluessel.schluesselDer(f, kx.konfig.geraeteschluesselAltBis)) ?? '');
   let passt = false;
   try {
     passt =
@@ -143,7 +145,7 @@ export type Pruefung = 'frei' | 'kein_schluessel' | 'freigabe_noetig';
 
 export async function pruefeFreigabe(k: KontoKontext, f: Familie, aktion: Schrittaktion): Promise<Pruefung> {
   if (await k.geraeteSchluessel.nutzeFreigabe(f, aktion, FREIGABE_LEERLAUF_S)) return 'frei';
-  return (await k.geraeteSchluessel.schluesselDer(f, konfig().geraeteschluesselAltBis))
+  return (await k.geraeteSchluessel.schluesselDer(f, k.konfig.geraeteschluesselAltBis))
     ? 'freigabe_noetig'
     : 'kein_schluessel';
 }

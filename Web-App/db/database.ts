@@ -3,26 +3,23 @@
 
 import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolConfig, QueryResult } from 'pg';
-import { Benachrichtigung } from './pgNotify';
+import { Benachrichtigung, type Signale } from './pgNotify';
 import type { DbSchnittstelle } from './typen';
 import { fehlerCode, meldeFehler, setzeTransaktionsWaechter } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung, systemVerbindung } from '../src/infra/konfig';
-import { zeilenKontext } from '../src/infra/kontoKontext';
 import { queryWithRetry, istLesend } from './wiederholung';
+import { inTransaktionsPfad, zeilenKontext } from '../src/infra/kontoKontext';
 import {
   laufendeTx,
   kontextSql,
-  kontextAbgleich,
-  txSchnittstelle,
+  txAbfragen,
   commitBegleiter,
   mitCommitBegleiter,
   innereTransaktion,
   NebenDerTransaktion,
   TRANSAKTIONS_WAECHTER,
   UngebundeneAbfrage,
-  freigabe,
-  ohneFreigabe,
-  type TxGriff,
+  type TxGriffVon,
   type TxStand,
 } from './transaktion';
 import { initSchema, initSchemaOnce, DARF_SCHEMA_AENDERN, type Erststart } from './schemaStart';
@@ -36,7 +33,6 @@ export {
   UngebundeneAbfrage,
   GleichzeitigerSicherungspunkt,
 } from './transaktion';
-export type { TxGriff } from './transaktion';
 export type { Erststart } from './schemaStart';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
@@ -56,13 +52,23 @@ export interface DbKonfig {
   pool: PoolConfig;
   /** Die Systemrolle für den Systemrahmen; ohne sie läuft er über `verbindung`. */
   system?: PoolConfig | null;
+  /** In Tests wirft ein Ersatzwert in einer Transaktion auch ausserhalb der Datenbank (src/infra/fehler.ts). */
+  streng?: boolean;
+  /** Die Zeitzone des Erfassungstags, beim Start in die Datenbank geschrieben (schemaStart.ts). */
+  erfassungZeitzone?: string;
 }
+
+/** Was der Rumpf einer Transaktion bekommt: ihre Abfragen und einen Zugang `db` über ihrer
+ * Verbindung, aus dem der Kontext `t` entsteht. */
+export interface TxGriff extends TxGriffVon<Db> {}
 
 export function dbKonfigAusUmgebung(): DbKonfig {
   const K = konfig();
   return {
     verbindung: datenbankVerbindung(),
     system: systemVerbindung(),
+    streng: K.nodeEnv === 'test',
+    erfassungZeitzone: K.erfassungZeitzone,
     pool: {
       max: K.pgPoolMax ?? VORGABE_POOL,
       min: K.pgPoolMin,
@@ -102,9 +108,11 @@ export interface Db extends DbSchnittstelle {
   readonly systemPool: Pool;
   /** Ob der Systemrahmen den Zeilenschutz wirklich aufhebt (BYPASSRLS, Eigentum oder Superuser). */
   systemrahmenWirkt(): Promise<boolean>;
-  /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). */
-  readonly benachrichtigung: Benachrichtigung;
+  /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). In einer
+   * Transaktion sendet sie über deren Verbindung: Das Signal gilt mit dem COMMIT. */
+  readonly benachrichtigung: Signale;
   transaction<T>(fn: (tx: TxGriff) => Promise<T>, o?: TxOptionen): Promise<T>;
+  /** Ob dieser Zugang an einer Transaktion hängt oder dieser Aufrufpfad eine offen hält. */
   inTransaktion(): boolean;
   getPoolStats(): { total: number; idle: number; waiting: number; active: number };
   datenbankAntwortet(): Promise<boolean>;
@@ -143,6 +151,7 @@ interface Rahmen {
   ich: object;
   pool: Pool;
   systemPool: Pool;
+  streng: boolean;
 }
 
 const poolDesRahmens = (r: Rahmen): Pool => (zeilenKontext().system ? r.systemPool : r.pool);
@@ -151,15 +160,18 @@ const poolDesRahmens = (r: Rahmen): Pool => (zeilenKontext().system ? r.systemPo
  * ihr den Rahmen wechselt, fragte über eine zweite Verbindung neben ihr (ohne ihren
  * Stand, womöglich gegen ihre Sperren). Das ist ein Fehler: Rahmen vor der Transaktion wählen. */
 function offeneTx(r: Rahmen): TxStand | null {
-  const t = laufendeTx.getStore();
+  const t = laufendeTx();
   return t?.offen && t.db === r.ich ? t : null;
 }
-function txStand(r: Rahmen): TxStand | null {
-  const t = offeneTx(r);
-  if (!t) return null;
+function pruefeRahmen(r: Rahmen, t: TxStand): void {
   if (t.pool !== poolDesRahmens(r)) throw new NebenDerTransaktion(t.pool === r.systemPool);
-  if (freigabe.getStore() !== t) throw new UngebundeneAbfrage();
-  return t;
+}
+/** Der ungebundene Zugang fragt nie in eine offene Transaktion dieses Pfads hinein. */
+function wache(r: Rahmen): void {
+  const t = offeneTx(r);
+  if (!t) return;
+  pruefeRahmen(r, t);
+  throw new UngebundeneAbfrage();
 }
 
 /** Ausserhalb einer Transaktion: ohne Konto und Systemrahmen direkt über den
@@ -168,11 +180,7 @@ function txStand(r: Rahmen): TxStand | null {
  * COMMIT die abgebrochene Transaktion als ROLLBACK. Zurück in den Pool geht die
  * Verbindung nur im Leerlauf, also ohne Kontext. */
 async function abfrage(r: Rahmen, sql: string, params?: unknown[]): Promise<QueryResult> {
-  const stand = txStand(r);
-  if (stand) {
-    await kontextAbgleich(stand);
-    return stand.client.query(sql, params);
-  }
+  wache(r);
   const kontext = kontextSql();
   const p = poolDesRahmens(r);
   if (!kontext) return p.query(sql, params);
@@ -197,10 +205,14 @@ async function abfrage(r: Rahmen, sql: string, params?: unknown[]): Promise<Quer
   }
 }
 
-async function einmaligeTransaktion<T>(r: Rahmen, fn: (tx: TxGriff) => Promise<T>): Promise<T> {
+async function einmaligeTransaktion<T>(
+  r: Rahmen,
+  griff: (stand: TxStand) => TxGriff,
+  fn: (tx: TxGriff) => Promise<T>,
+): Promise<T> {
   const p = poolDesRahmens(r);
   const client = await p.connect();
-  const stand: TxStand = { client, offen: true, db: r.ich, pool: p, innerster: null, kontext: '' };
+  const stand: TxStand = { client, offen: true, db: r.ich, pool: p, innerster: null, kontext: '', streng: r.streng };
   let kaputt: Error | undefined;
   // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
   // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
@@ -212,8 +224,8 @@ async function einmaligeTransaktion<T>(r: Rahmen, fn: (tx: TxGriff) => Promise<T
     // Der Kontext im selben Roundtrip wie BEGIN; kontextAbgleich() folgt danach Wechseln.
     stand.kontext = kontextSql();
     await client.query(stand.kontext ? `BEGIN; ${stand.kontext}` : 'BEGIN');
-    const result = await laufendeTx.run(stand, () => ohneFreigabe(() => fn(txSchnittstelle(stand))));
-    await commitBegleiter.getStore()?.(txSchnittstelle(stand));
+    const result = await inTransaktionsPfad(stand, () => fn(griff(stand)));
+    await commitBegleiter()?.(griff(stand));
     stand.offen = false;
     await client.query('COMMIT');
     return result;
@@ -254,19 +266,42 @@ async function mitWiederholung<T>(einmal: () => Promise<T>, o: TxOptionen): Prom
   }
 }
 
+/** Der Griff einer Transaktion oder eines ihrer Sicherungspunkte (`punkt`): Abfragen über
+ * ihre Verbindung und ein Zugang darüber; eine Transaktion in ihm wird ein Sicherungspunkt. */
+function griff(
+  r: Rahmen,
+  zugang: Db,
+  zaehler: { sicherungspunkte: number },
+  stand: TxStand,
+  punkt: string | null,
+): TxGriff {
+  const q = txAbfragen(stand, () => pruefeRahmen(r, stand));
+  const tdb: Db = {
+    ...zugang,
+    ...q,
+    transaction: (fn, o = {}) =>
+      innereTransaktion(stand, punkt, ++zaehler.sicherungspunkte, name =>
+        mitSperren(fn, o.sperren)(griff(r, zugang, zaehler, stand, name)),
+      ),
+    benachrichtigung: zugang.benachrichtigung.ueber(q.run),
+    inTransaktion: () => true,
+  };
+  return { ...q, db: tdb };
+}
+
 /** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
  * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
 export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   // Erst mit einem Zugang gibt es Transaktionen; ein Import allein ändert infra/ nicht.
   setzeTransaktionsWaechter(TRANSAKTIONS_WAECHTER);
   const { pool, systemPool } = erzeugePools(k);
-  const r: Rahmen = { ich: {}, pool, systemPool };
-  let sicherungspunkte = 0;
+  const r: Rahmen = { ich: {}, pool, systemPool, streng: k.streng === true };
+  const zaehler = { sicherungspunkte: 0 };
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
    * Spalten sein SQL liefert; ohne Angabe bleibt es `unknown`. */
   async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
-    if (txStand(r)) return (await abfrage(r, sql, params)).rows as T[];
+    wache(r);
     return queryWithRetry(async () => (await abfrage(r, sql, params)).rows, istLesend(sql));
   }
   async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
@@ -274,15 +309,17 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   }
   /** Wer die neue id braucht, schreibt RETURNING und liest mit get(). */
   async function run(sql: string, params: unknown[] = []): Promise<{ changes: number }> {
-    if (txStand(r)) return { changes: (await abfrage(r, sql, params)).rowCount || 0 };
+    wache(r);
     return queryWithRetry(async () => ({ changes: (await abfrage(r, sql, params)).rowCount || 0 }), false);
   }
   async function transaction<T>(rumpf: (tx: TxGriff) => Promise<T>, opt: TxOptionen = {}): Promise<T> {
-    const fn = mitSperren(rumpf, opt.sperren);
-    const aussen = txStand(r);
-    if (aussen) return innereTransaktion(aussen, ++sicherungspunkte, fn);
-    return mitWiederholung(() => einmaligeTransaktion(r, fn), opt);
+    wache(r);
+    return mitWiederholung(
+      () => einmaligeTransaktion(r, stand => griff(r, zugang, zaehler, stand, null), mitSperren(rumpf, opt.sperren)),
+      opt,
+    );
   }
+
   /** Eine EIGENE Verbindung, die NICHT aus dem Pool kommt. */
   async function eigeneVerbindung() {
     const c = new Client({ ...k.verbindung });
@@ -291,7 +328,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   }
   const dieBasis = () => initSchema(eigeneVerbindung, o.erststart);
 
-  return {
+  const zugang: Db = {
     pool,
     systemPool,
     systemrahmenWirkt: async () =>
@@ -309,7 +346,12 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     },
     transaction,
     initSchema: dieBasis,
-    initSchemaOnce: () => initSchemaOnce(pool, dieBasis),
+    initSchemaOnce: () =>
+      initSchemaOnce(
+        pool,
+        dieBasis,
+        k.erfassungZeitzone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
+      ),
     eigeneVerbindung,
     mitCommitBegleiter,
     benachrichtigung: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
@@ -334,4 +376,5 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
       !!(await pool.query<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user')).rows[0]
         ?.s,
   };
+  return zugang;
 }

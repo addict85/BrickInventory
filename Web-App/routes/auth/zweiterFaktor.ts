@@ -13,7 +13,6 @@ import {
 } from '../../src/konto/http/anmeldung';
 import { STATUS_DER_ART } from '../../src/http/fehlerArt';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
-import { otpauthAdresse } from '../../src/konto';
 import type { Dienste } from '../../src/dienste';
 
 export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
@@ -37,7 +36,7 @@ export function baueZweiterFaktorRouter(d: Pick<Dienste, 'konto'>) {
     const geheimnis = await d.konto.beginneEinrichtung(uid);
     if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
     const u = await d.konto.kontoKurzVon(uid);
-    return { geheimnis, otpauth: otpauthAdresse(geheimnis, u?.username ?? String(uid)) };
+    return { geheimnis, otpauth: d.konto.otpauthFuer(geheimnis, u?.username ?? String(uid)) };
   });
 
   // Auch mit App-Token (die Android-App richtet so ein): Wer Token und Passwort

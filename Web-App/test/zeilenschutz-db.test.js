@@ -267,18 +267,14 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
             () => 'lief neben der Transaktion',
             e => e.constructor.name,
           );
-          // Über den Zugang nur mit Freigabe der Transaktion (tx.gebunden), sonst UngebundeneAbfrage.
-          await tx
-            .gebunden(() =>
-              als(A, () =>
-                app.transaction(async inner => {
-                  await n(inner);
-                  throw new Error('zurück');
-                }),
-              ),
-            )
-            .catch(() => {});
-          return [vorher, neben, await tx.gebunden(() => als(A, () => n(app))), await n(tx)];
+          // Über den Zugang der Transaktion (tx.db), sonst UngebundeneAbfrage.
+          await als(A, () =>
+            tx.db.transaction(async inner => {
+              await n(inner);
+              throw new Error('zurück');
+            }),
+          ).catch(() => {});
+          return [vorher, neben, await als(A, () => n(tx.db)), await n(tx)];
         }),
       );
       assert.deepEqual(stand, [1, 'NebenDerTransaktion', 2, 1]);

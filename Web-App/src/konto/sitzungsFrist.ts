@@ -1,21 +1,21 @@
 // Abmelden nach Stunden Leerlauf.
-import { konfig, VORGABE } from '../infra/konfig';
+import { type Konfig, VORGABE } from '../infra/konfig';
 
 export const LEERLAUF_VORGABE_MIN = VORGABE.sitzungLeerlaufMin;
 
-export const SITZUNG_LEERLAUF_MS = konfig().sitzungLeerlaufMin * 60_000;
+export const sitzungLeerlaufMs = (k: Pick<Konfig, 'sitzungLeerlaufMin'>) => k.sitzungLeerlaufMin * 60_000;
 
 /** In Sekunden für connect-pg-simple; einmal gerechnet statt an zwei Stellen. */
-export const SITZUNG_LEERLAUF_SEK = Math.round(SITZUNG_LEERLAUF_MS / 1000);
+export const sitzungLeerlaufSek = (k: Pick<Konfig, 'sitzungLeerlaufMin'>) => Math.round(sitzungLeerlaufMs(k) / 1000);
 
 // Die Leerlauf-Frist gleitet: Wer täglich arbeitet, bliebe sonst für immer
 // angemeldet. Die Höchstdauer zählt ab der Anmeldung.
-export const SITZUNG_HOECHST_MS = konfig().sitzungHoechstStd * 3_600_000;
+export const sitzungHoechstMs = (k: Pick<Konfig, 'sitzungHoechstStd'>) => k.sitzungHoechstStd * 3_600_000;
 
 type SitzungMitFrist = { userId?: number; angemeldetAm?: number; destroy(f: (e?: unknown) => void): void };
 
 /** Ältere Sitzungen ohne Anmeldezeitpunkt beginnen ihre Frist beim ersten Treffer. */
-export function sitzungsHoechstdauer(hoechstMs = SITZUNG_HOECHST_MS) {
+export function sitzungsHoechstdauer(hoechstMs: number) {
   return (req: { session?: SitzungMitFrist }, _res: unknown, next: (e?: unknown) => void) => {
     const s = req.session;
     if (!s?.userId) return next();

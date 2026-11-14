@@ -1,3 +1,4 @@
+import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
 import type { AuftraegeDienste, Nacharbeit } from '../auftraege';
 import type { BestandDienste } from '../bestand';
@@ -14,6 +15,7 @@ import type { Kontext } from '../infra/bereich';
  * denselben Zugang laufen, sichert baueDienste (startup/verdrahtung.ts): Es baut
  * jeden Bereich aus dem einen db. */
 export interface SetsAbhaengigkeiten {
+  konfig: Readonly<Konfig>;
   db: Db;
   nacharbeit: Nacharbeit;
   katalog: KatalogDienste;

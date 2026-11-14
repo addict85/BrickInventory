@@ -1,16 +1,12 @@
-/** Der Stand einer Transaktion je Aufrufpfad: Kontext des Zeilenschutzes,
- * Sicherungspunkte, Nachzügler und Rahmenwechsel. erzeugeDb() (database.ts) öffnet sie. */
-import { AsyncLocalStorage } from 'node:async_hooks';
+/** Der Stand einer Transaktion: Kontext des Zeilenschutzes, Sicherungspunkte, Nachzügler
+ * und Rahmenwechsel. erzeugeDb() (database.ts) öffnet sie; wer in ihr fragt, bekommt
+ * ihren Griff (`tx`, `tx.db`) ausdrücklich gereicht. */
 import type { Pool, PoolClient } from 'pg';
 import type { DbSchnittstelle } from './typen';
 import type { TransaktionsWaechter } from '../src/infra/fehler';
-import { konfig } from '../src/infra/konfig';
-import { zeilenKontext } from '../src/infra/kontoKontext';
+import { begleiterDesPfads, mitBegleiter, transaktionDesPfads, zeilenKontext } from '../src/infra/kontoKontext';
 
-/** Die laufende Transaktion dieses Aufrufpfads. Sie leitet nichts still um:
- * Fragt in ihr jemand über den ungebundenen Zugang, wirft der (UngebundeneAbfrage);
- * nur ein Aufruf über den Kontext der Transaktion (`t`) gibt ihn frei (`freigabe`).
- * `offen` schützt vor Nachzüglern nach COMMIT. */
+/** `offen` schützt vor Nachzüglern nach COMMIT; `db` ist der Zugang, der sie öffnete. */
 export type TxStand = {
   client: PoolClient;
   offen: boolean;
@@ -18,14 +14,13 @@ export type TxStand = {
   pool: Pool;
   innerster: string | null;
   kontext: string;
+  streng: boolean;
 };
-export const laufendeTx = new AsyncLocalStorage<TxStand>();
-/** Gesetzt, solange ein Dienst läuft, den der Kontext einer Transaktion gerufen hat
- * (t.haushalt.…): Dessen Abfragen gehören zu ihr. Der Rumpf einer Transaktion
- * läuft ohne, sonst gälte ein gefangenes `k` darin wieder als gebunden. */
-export const freigabe = new AsyncLocalStorage<TxStand>();
-/** Der Sicherungspunkt, in dem dieser Aufrufpfad gerade läuft. */
-const laufenderPunkt = new AsyncLocalStorage<{ stand: TxStand; name: string }>();
+
+/** Die offene Transaktion dieses Aufrufpfads, für die Wachen (UngebundeneAbfrage, Ersatzwert). */
+export function laufendeTx(): TxStand | null {
+  return (transaktionDesPfads() as TxStand | null) ?? null;
+}
 
 /** Für den Zeilenschutz (Migration 0111): wer gerade fragt, nur bis zum Ende
  * der Transaktion. Ein Wert auf Sitzungsebene bliebe an der Pool-Verbindung
@@ -47,15 +42,17 @@ export async function kontextAbgleich(stand: TxStand): Promise<void> {
   stand.kontext = soll;
 }
 
-/** Was der Rumpf einer Transaktion bekommt: ihre Abfragen und `gebunden`, das einen
- * Aufruf (etwa einen Dienst eines anderen Bereichs) ihr zuordnet. */
-export interface TxGriff extends DbSchnittstelle {
-  gebunden<T>(f: () => T): T;
+/** Was der Rumpf einer Transaktion bekommt: ihre Abfragen und `db`, einen ganzen Zugang
+ * über ihrer Verbindung, aus dem der Kontext `t` gebaut wird (src/infra/bereich.ts). */
+export interface TxGriffVon<D> extends DbSchnittstelle {
+  readonly db: D;
 }
 
-export function txSchnittstelle(stand: TxStand): TxGriff {
+/** Die Abfragen über die Verbindung der Transaktion; `pruefe` wacht über den Rahmen. */
+export function txAbfragen(stand: TxStand, pruefe: () => void): DbSchnittstelle {
   const q = async (sql: string, p?: unknown[]) => {
     nochOffen(stand);
+    pruefe();
     await kontextAbgleich(stand);
     return stand.client.query(sql, p);
   };
@@ -64,24 +61,17 @@ export function txSchnittstelle(stand: TxStand): TxGriff {
     get: <T = unknown>(sql: string, p?: unknown[]) => q(sql, p).then(r => r.rows[0] as T | undefined),
     run: (sql: string, p?: unknown[]) => q(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
     exec: (sql: string) => q(sql).then(() => undefined),
-    gebunden: <T>(f: () => T): T => {
-      nochOffen(stand);
-      return freigabe.run(stand, f);
-    },
   };
-}
-
-/** Der Rumpf einer Transaktion läuft ohne Freigabe: Was er fragt, geht über `t`/`tx`. */
-export function ohneFreigabe<T>(f: () => T): T {
-  return freigabe.exit(f);
 }
 
 /** Läuft vor dem COMMIT jeder äussersten Transaktion dieses Aufrufpfads mit,
  * in ihr: Was er schreibt, gilt genau dann, wenn ihre Wirkung gilt. */
 type CommitBegleiter = (tx: DbSchnittstelle) => Promise<void>;
-export const commitBegleiter = new AsyncLocalStorage<CommitBegleiter>();
+export function commitBegleiter(): CommitBegleiter | null {
+  return (begleiterDesPfads() as CommitBegleiter | null) ?? null;
+}
 export function mitCommitBegleiter<T>(begleiter: CommitBegleiter, arbeit: () => T): T {
-  return commitBegleiter.run(begleiter, arbeit);
+  return mitBegleiter(begleiter, arbeit);
 }
 
 /** Die Verbindung einer beendeten Transaktion ist schon zurück im Pool: Ein Nachzügler
@@ -131,14 +121,18 @@ export class GleichzeitigerSicherungspunkt extends Error {
 /** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
  * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. Zwei
  * gleichzeitige teilten sich eine Verbindung; das ROLLBACK TO des einen nähme
- * die Arbeit des anderen mit. Deshalb muss jeder im innersten offenen beginnen. */
-export function innereTransaktion<T>(stand: TxStand, nummer: number, fn: (tx: TxGriff) => Promise<T>): Promise<T> {
-  const p = laufenderPunkt.getStore();
-  const rahmen = p?.stand === stand ? p.name : null;
+ * die Arbeit des anderen mit. Deshalb beginnt jeder im innersten offenen, und
+ * welcher das ist, sagt der Griff, über den er gerufen wird (`rahmen`). */
+export function innereTransaktion<T>(
+  stand: TxStand,
+  rahmen: string | null,
+  nummer: number,
+  fn: (name: string) => Promise<T>,
+): Promise<T> {
   if (stand.innerster !== rahmen) return Promise.reject(new GleichzeitigerSicherungspunkt(stand.innerster ?? ''));
   const name = `sp_${nummer}`;
   stand.innerster = name;
-  return laufenderPunkt.run({ stand, name }, async () => {
+  return (async () => {
     const { client } = stand;
     // ROLLBACK TO nimmt auch ein set_config() aus dem Sicherungspunkt zurück.
     const kontextVorher = stand.kontext;
@@ -146,7 +140,7 @@ export function innereTransaktion<T>(stand: TxStand, nummer: number, fn: (tx: Tx
       nochOffen(stand);
       await client.query(`SAVEPOINT ${name}`);
       try {
-        const r = await ohneFreigabe(() => fn(txSchnittstelle(stand)));
+        const r = await fn(name);
         nochOffen(stand);
         await client.query(`RELEASE SAVEPOINT ${name}`);
         return r;
@@ -160,7 +154,7 @@ export function innereTransaktion<T>(stand: TxStand, nummer: number, fn: (tx: Tx
     } finally {
       stand.innerster = rahmen;
     }
-  });
+  })();
 }
 
 /** Nach ROLLBACK TO SAVEPOINT ist die Transaktion wieder benutzbar: Wer diesen
@@ -168,7 +162,6 @@ export function innereTransaktion<T>(stand: TxStand, nummer: number, fn: (tx: Tx
 const vomSicherungspunktAufgefangen = new WeakSet<object>();
 export const TRANSAKTIONS_WAECHTER: TransaktionsWaechter = {
   verdirbt: e =>
-    laufendeTx.getStore()?.offen === true &&
-    !(e !== null && typeof e === 'object' && vomSicherungspunktAufgefangen.has(e)),
-  streng: () => konfig().nodeEnv === 'test',
+    laufendeTx()?.offen === true && !(e !== null && typeof e === 'object' && vomSicherungspunktAufgefangen.has(e)),
+  streng: () => laufendeTx()?.streng === true,
 };

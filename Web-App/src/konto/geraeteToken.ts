@@ -1,5 +1,4 @@
 /** Geräte-Tokens: ausstellen, prüfen, tauschen, widerrufen, aufräumen. */
-import { konfig } from '../infra/konfig';
 import crypto from 'node:crypto';
 import * as V from '../infra/validate';
 import * as repo from './repository/zugaenge';
@@ -34,7 +33,6 @@ const TAG_MS = 86_400_000;
 
 /** Gerätezugänge haben kein festes Ende; diese Frist begrenzt, wie lange ein
  * vergessenes Gerät gilt. */
-export const TOKEN_IDLE_DAYS = konfig().tokenLeerlaufTage;
 
 /** Ab 30 Tagen meldet jede Antwort die Rotation; ein unbegrenzter Token gilt
  * nach 60 Tagen nur noch für den Tausch — so stirbt eine gestohlene Kopie,
@@ -160,12 +158,12 @@ function _touchLastUsed(k: KontoKontext, entry: CacheEintrag, ip?: string | null
   const jetzt = Date.now();
   const u = entry.user;
   const zuletzt = u.last_used ? new Date(u.last_used).getTime() : 0;
-  const ziel = jetzt + TOKEN_IDLE_DAYS * TAG_MS;
+  const ziel = jetzt + k.konfig.tokenLeerlaufTage * TAG_MS;
   const fristHinkt = u.sliding === true && !!u.expires_at && new Date(u.expires_at).getTime() < ziel - TAG_MS;
   if ((jetzt - zuletzt < TAG_MS && !fristHinkt) || entry.schreibt) return;
   entry.schreibt = true;
   void k.zugaenge
-    .beruehreToken(entry.dbKey, TOKEN_IDLE_DAYS, ipBereich(ip))
+    .beruehreToken(entry.dbKey, k.konfig.tokenLeerlaufTage, ipBereich(ip))
     .then(() => {
       // Den Cache mitziehen, sonst wiese der Treffer-Zweig einen gerade
       // erneuerten Token am alten Fristende einmal ab.
@@ -237,7 +235,7 @@ export async function createToken(
     scope: o.scope === 'voll' ? 'voll' : 'app',
     bereich: ipBereich(o.ip),
     art: !dauerhaft ? 'kurz' : festeTage === UNBEGRENZT ? 'unbegrenzt' : 'gleitend',
-    leerlaufTage: TOKEN_IDLE_DAYS,
+    leerlaufTage: k.konfig.tokenLeerlaufTage,
     festeTage: festeTage && festeTage > 0 ? festeTage : null,
   });
   if (await k.zugaenge.kappeTokens(userId, hash, ZUGAENGE_HOECHSTENS - 1)) leereTokenCache(k);
@@ -282,7 +280,7 @@ export async function rotiereToken(
       }
       if (offen && offen.alter_s < TAUSCH_SPERRE_S) return 'laeuft' as const;
       if (z.ersetzt_durch) await repo.loescheUnbenutztenNachfolger(t.db, z.ersetzt_durch, altHash);
-      const zeile = await repo.legeNachfolgerAn(t.db, neuHash, altHash, z, TOKEN_IDLE_DAYS, ipBereich(ip));
+      const zeile = await repo.legeNachfolgerAn(t.db, neuHash, altHash, z, kx.konfig.tokenLeerlaufTage, ipBereich(ip));
       const vorher = await repo.befristeVorgaenger(t.db, altHash, neuHash, UEBERLAPPUNG_MS / 1000);
       return {
         token: neu,
@@ -324,11 +322,14 @@ export async function purgeExpiredTokens(k: KontoKontext) {
     console.warn(`[tokens] ${was}:`, e?.message || e);
     return 0;
   };
-  const m = await k.zugaenge.ziehAltzeilenNach(TOKEN_IDLE_DAYS).catch(warn('Altzeilen nachziehen'));
-  if (m) console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${TOKEN_IDLE_DAYS} Tagen gesetzt`);
+  const m = await k.zugaenge.ziehAltzeilenNach(k.konfig.tokenLeerlaufTage).catch(warn('Altzeilen nachziehen'));
+  if (m)
+    console.log(
+      `[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.konfig.tokenLeerlaufTage} Tagen gesetzt`,
+    );
   const abgelaufen = await k.zugaenge.loescheAbgelaufene().catch(warn('Aufräumen abgelaufener Tokens'));
-  const n = await k.zugaenge.loescheUngenutzte(TOKEN_IDLE_DAYS).catch(warn('Aufräumen ungenutzter Tokens'));
+  const n = await k.zugaenge.loescheUngenutzte(k.konfig.tokenLeerlaufTage).catch(warn('Aufräumen ungenutzter Tokens'));
   await k.zugaenge.loescheVerwaisteVerbrauchte().catch(warn('Aufräumen verbrauchter Tokens'));
-  if (n) console.log(`[tokens] ${n} Token seit über ${TOKEN_IDLE_DAYS} Tagen ungenutzt — entfernt`);
+  if (n) console.log(`[tokens] ${n} Token seit über ${k.konfig.tokenLeerlaufTage} Tagen ungenutzt — entfernt`);
   return abgelaufen + n;
 }

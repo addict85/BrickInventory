@@ -1,7 +1,5 @@
-/** Die Fabrik des Bereichs: Jeder Dienst nimmt den Kontext (kontext.ts) als ersten
- * Parameter; erzeugeBestand bindet ihn einmal für alle. So greift kein Dienst auf den
- * Prozess zu, und ein Test gibt einen eigenen Zugang. */
-import { baueKontext, bindeGenerisch, bindeZugang, type Einblick } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
+import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import * as acquisitions from './acquisitions';
 import * as bestandExportDienst from './bestandExport';
 import * as gemeinsamDienst from './gemeinsam';
@@ -18,43 +16,51 @@ import { zugang, type BestandAbhaengigkeiten, type BestandKontext } from './kont
 export type { BestandAbhaengigkeiten, BestandKontext } from './kontext';
 
 export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<BestandKontext>) {
-  const k: BestandKontext = baueKontext(a, zugang);
-  einblick?.(k);
-  return {
-    ...bindeZugang(k, acquisitions, ['recordAcquisitionForDay', 'findSameDayAcquisition', 'setzeGeschaetztenPreis']),
-    erfassungenInKontowaehrung: bindeGenerisch(k)(acquisitions.erfassungenInKontowaehrung),
-    ...bindeZugang(k, bestandExportDienst, ['buildPartsCsv', 'buildFigsCsv']),
-    ...bindeZugang(k, gemeinsamDienst, ['verwendendeSets', 'loescheManuellesTeil', 'loescheManuelleFigur']),
-    // Bausteine fremder Löschungen und Umzüge; in deren Transaktion über t.bestand gerufen.
-    ...bindeZugang(k.db, gemeinsamRepo, ['entferneSetInhalt', 'kopiereSetInhalt', 'legeManuellAn']),
-    applyManualCondition: bindeGenerisch(k)(gemeinsamDienst.applyManualCondition),
-    ...bindeZugang(k, kennzahlenDienst, ['getStats']),
-    ...bindeZugang(k, manuelleMenge, ['passeManuelleMengeAn']),
-    ...bindeZugang(k, papierkorbDienst, [
-      'legeInPapierkorb',
-      'legeKaeufeInPapierkorb',
-      'listePapierkorb',
-      'stelleWiederHer',
-      'loescheEndgueltig',
-      'leerePapierkorb',
-      'raeumePapierkorbAuf',
-    ]),
-    ...bindeZugang(k, kaufpreisNachtrag, ['run']),
-    lagerortDienst: {
-      ...bindeZugang(k, lagerortDienst, [
-        'benenneOrtUm',
-        'lagerorte',
-        'legeOrtAn',
-        'loescheOrt',
-        'ortFuerNeuerfassung',
-        'orteVon',
-        'vorgabeVon',
-      ]),
-      ...bindeZugang(k, lagerortSetzen),
-    },
+  return baueBereich(
+    a,
+    zugang,
+    (k: BestandKontext) => ({
+      recordAcquisitionForDay: mit(k)(acquisitions.recordAcquisitionForDay),
+      findSameDayAcquisition: mit(k)(acquisitions.findSameDayAcquisition),
+      setzeGeschaetztenPreis: mit(k)(acquisitions.setzeGeschaetztenPreis),
+      erfassungenInKontowaehrung: mit(k)(acquisitions.erfassungenInKontowaehrung),
+      buildPartsCsv: mit(k)(bestandExportDienst.buildPartsCsv),
+      buildFigsCsv: mit(k)(bestandExportDienst.buildFigsCsv),
+      verwendendeSets: mit(k)(gemeinsamDienst.verwendendeSets),
+      loescheManuellesTeil: mit(k)(gemeinsamDienst.loescheManuellesTeil),
+      loescheManuelleFigur: mit(k)(gemeinsamDienst.loescheManuelleFigur),
+      // Bausteine fremder Löschungen und Umzüge; in deren Transaktion über t.bestand gerufen.
+      entferneSetInhalt: mit(k.db, gemeinsamRepo.entferneSetInhalt),
+      kopiereSetInhalt: mit(k.db, gemeinsamRepo.kopiereSetInhalt),
+      legeManuellAn: mit(k.db, gemeinsamRepo.legeManuellAn),
+      applyManualCondition: mit(k)(gemeinsamDienst.applyManualCondition),
+      getStats: mit(k)(kennzahlenDienst.getStats),
+      passeManuelleMengeAn: mit(k)(manuelleMenge.passeManuelleMengeAn),
+      legeInPapierkorb: mit(k)(papierkorbDienst.legeInPapierkorb),
+      legeKaeufeInPapierkorb: mit(k)(papierkorbDienst.legeKaeufeInPapierkorb),
+      listePapierkorb: mit(k)(papierkorbDienst.listePapierkorb),
+      stelleWiederHer: mit(k)(papierkorbDienst.stelleWiederHer),
+      loescheEndgueltig: mit(k)(papierkorbDienst.loescheEndgueltig),
+      leerePapierkorb: mit(k)(papierkorbDienst.leerePapierkorb),
+      raeumePapierkorbAuf: mit(k)(papierkorbDienst.raeumePapierkorbAuf),
+      run: mit(k)(kaufpreisNachtrag.run),
+      lagerortDienst: {
+        benenneOrtUm: mit(k)(lagerortDienst.benenneOrtUm),
+        lagerorte: mit(k)(lagerortDienst.lagerorte),
+        legeOrtAn: mit(k)(lagerortDienst.legeOrtAn),
+        loescheOrt: mit(k)(lagerortDienst.loescheOrt),
+        ortFuerNeuerfassung: mit(k)(lagerortDienst.ortFuerNeuerfassung),
+        orteVon: mit(k)(lagerortDienst.orteVon),
+        vorgabeVon: mit(k)(lagerortDienst.vorgabeVon),
+        setzeLagerort: mit(k)(lagerortSetzen.setzeLagerort),
+      },
 
-    ...bindeZugang(k, lagerortRechte, ['setzeVorgabe', 'lagerSchreibkonto', 'orteFuer']),
-  };
+      setzeVorgabe: mit(k)(lagerortRechte.setzeVorgabe),
+      lagerSchreibkonto: mit(k)(lagerortRechte.lagerSchreibkonto),
+      orteFuer: mit(k)(lagerortRechte.orteFuer),
+    }),
+    einblick,
+  );
 }
 
 export type BestandDienste = ReturnType<typeof erzeugeBestand>;

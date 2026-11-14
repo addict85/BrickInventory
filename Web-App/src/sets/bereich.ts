@@ -1,9 +1,6 @@
-/** Die Fabrik des Bereichs: Wer Datenbank oder Nacharbeit braucht, bekommt sie als
- * ersten Parameter (SetsKontext); erzeugeSets bindet ihn einmal für alle. So
- * greift kein Dienst auf den Zugang des Prozesses zu. Gesucht wird beim Aufruf,
- * damit ein Test eine Funktion des Moduls ersetzen kann. */
+/** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
 import type { SetsAbhaengigkeiten, SetsKontext } from './kontext';
-import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
+import { mit, baueBereich, type Einblick } from '../infra/bereich';
 import * as erfassen from './erfassen';
 import * as setService from './setService';
 import * as lesen from './lesen';
@@ -19,57 +16,62 @@ import * as nachErfassung from './nachErfassung';
 import * as csvImportLauf from './csvImportLauf';
 
 export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKontext>) {
-  const sk: SetsKontext = baueKontext(a, () => ({}));
-  einblick?.(sk);
-  return {
-    ...bindeZugang(sk, erfassen, [
-      'recordAcquisition',
-      'findSetInScope',
-      'setErfassen',
-      'setErgaenzen',
-      'addSet',
-      'addSetWithDate',
-    ]),
-    ...bindeZugang(sk, setService, ['updateSet', 'buildSetsCsv']),
-    ...bindeZugang(sk, lesen, ['getSets', 'getSet', 'getSetConditionAggregate', 'withSetAggregate']),
-    ...bindeZugang(sk, loeschen, ['loescheSet', 'loescheSetFuer', 'deleteSetRows']),
-    ...bindeZugang(sk, setMove, ['verschiebeSet', 'moveSetBetweenAccounts', 'moveManualAcquisition']),
-    ...bindeZugang(sk, inhalt, [
-      'setInfo',
-      'setInfoFuerKonto',
-      'teilelisteDesSets',
-      'figurenlisteDesSets',
-      'teileDesSetsImportieren',
-      'teilelisteMitNacharbeit',
-    ]),
-    ...bindeZugang(sk, barcode, ['setZumBarcode']),
-    ...bindeZugang(sk, preise, [
-      'setPreis',
-      'waehrungVon',
-      'setAlarmeLesen',
-      'alarmDesSetsSetzen',
-      'alarmDesSetsLoeschen',
-      'alarmCsvImportStarten',
-      'setPreisVerlauf',
-    ]),
-    ...bindeZugang(sk, anleitungen, ['anleitungMerken', 'anleitungLoeschen', 'anleitungenNeuLaden']),
-    ...bindeZugang(sk, csvImport, [
-      'setCsvImportStarten',
-      'setCsvImportAbbrechen',
-      'csvImportStand',
-      'csvImportStandFuerStrom',
-      'csvImportStandAbonnieren',
-    ]),
-    ...bindeZugang(sk, dienst, [
-      'rebrickableListe',
-      'setGehoertKonto',
-      'setVerschieben',
-      'lagerortDesSetsSetzen',
-      'lagerorteMitVorgabe',
-    ]),
-    ...bindeZugang(sk, nachErfassung, ['zieheNach', 'ladeSetBilder']),
-    ...bindeZugang(sk, csvImportLauf, ['fuehreCsvImportAus', 'csvImportAufgegeben']),
-  };
+  return baueBereich(
+    a,
+    () => ({}),
+    (sk: SetsKontext) => ({
+      recordAcquisition: mit(sk)(erfassen.recordAcquisition),
+      findSetInScope: mit(sk)(erfassen.findSetInScope),
+      setErfassen: mit(sk)(erfassen.setErfassen),
+      setErgaenzen: mit(sk)(erfassen.setErgaenzen),
+      addSet: mit(sk)(erfassen.addSet),
+      addSetWithDate: mit(sk)(erfassen.addSetWithDate),
+      updateSet: mit(sk)(setService.updateSet),
+      buildSetsCsv: mit(sk)(setService.buildSetsCsv),
+      getSets: mit(sk)(lesen.getSets),
+      getSet: mit(sk)(lesen.getSet),
+      getSetConditionAggregate: mit(sk)(lesen.getSetConditionAggregate),
+      withSetAggregate: mit(sk)(lesen.withSetAggregate),
+      loescheSet: mit(sk)(loeschen.loescheSet),
+      loescheSetFuer: mit(sk)(loeschen.loescheSetFuer),
+      deleteSetRows: mit(sk)(loeschen.deleteSetRows),
+      verschiebeSet: mit(sk)(setMove.verschiebeSet),
+      moveSetBetweenAccounts: mit(sk)(setMove.moveSetBetweenAccounts),
+      moveManualAcquisition: mit(sk)(setMove.moveManualAcquisition),
+      setInfo: mit(sk)(inhalt.setInfo),
+      setInfoFuerKonto: mit(sk)(inhalt.setInfoFuerKonto),
+      teilelisteDesSets: mit(sk)(inhalt.teilelisteDesSets),
+      figurenlisteDesSets: mit(sk)(inhalt.figurenlisteDesSets),
+      teileDesSetsImportieren: mit(sk)(inhalt.teileDesSetsImportieren),
+      teilelisteMitNacharbeit: mit(sk)(inhalt.teilelisteMitNacharbeit),
+      setZumBarcode: mit(sk)(barcode.setZumBarcode),
+      setPreis: mit(sk)(preise.setPreis),
+      waehrungVon: mit(sk)(preise.waehrungVon),
+      setAlarmeLesen: mit(sk)(preise.setAlarmeLesen),
+      alarmDesSetsSetzen: mit(sk)(preise.alarmDesSetsSetzen),
+      alarmDesSetsLoeschen: mit(sk)(preise.alarmDesSetsLoeschen),
+      alarmCsvImportStarten: mit(sk)(preise.alarmCsvImportStarten),
+      setPreisVerlauf: mit(sk)(preise.setPreisVerlauf),
+      anleitungMerken: mit(sk)(anleitungen.anleitungMerken),
+      anleitungLoeschen: mit(sk)(anleitungen.anleitungLoeschen),
+      anleitungenNeuLaden: mit(sk)(anleitungen.anleitungenNeuLaden),
+      setCsvImportStarten: mit(sk)(csvImport.setCsvImportStarten),
+      setCsvImportAbbrechen: mit(sk)(csvImport.setCsvImportAbbrechen),
+      csvImportStand: mit(sk)(csvImport.csvImportStand),
+      csvImportStandFuerStrom: mit(sk)(csvImport.csvImportStandFuerStrom),
+      csvImportStandAbonnieren: mit(sk)(csvImport.csvImportStandAbonnieren),
+      rebrickableListe: mit(sk)(dienst.rebrickableListe),
+      setGehoertKonto: mit(sk)(dienst.setGehoertKonto),
+      setVerschieben: mit(sk)(dienst.setVerschieben),
+      lagerortDesSetsSetzen: mit(sk)(dienst.lagerortDesSetsSetzen),
+      lagerorteMitVorgabe: mit(sk)(dienst.lagerorteMitVorgabe),
+      zieheNach: mit(sk)(nachErfassung.zieheNach),
+      ladeSetBilder: mit(sk)(nachErfassung.ladeSetBilder),
+      fuehreCsvImportAus: mit(sk)(csvImportLauf.fuehreCsvImportAus),
+      csvImportAufgegeben: mit(sk)(csvImportLauf.csvImportAufgegeben),
+    }),
+    einblick,
+  );
 }
 
 export type SetsDienste = ReturnType<typeof erzeugeSets>;

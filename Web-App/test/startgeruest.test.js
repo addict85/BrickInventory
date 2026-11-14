@@ -39,7 +39,7 @@ test('der Hash passt zum ausgelieferten Block', async () => {
   const block = /<style id="startstil">([\s\S]*?)<\/style>/.exec(html);
   assert.ok(block, 'kein Startgerüst-Stil im ausgelieferten HTML');
   const erwartet = `'sha256-${crypto.createHash('sha256').update(block[1]).digest('base64')}'`;
-  assert.equal(startStilHash(), erwartet);
+  assert.equal(startStilHash(false), erwartet);
 });
 
 test('vor dem ersten Stylesheet und vor jedem blockierenden Skript', () => {

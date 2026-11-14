@@ -1,8 +1,7 @@
-/** Was die Dienste des Bereichs bekommen: Zugang, Dienste tieferer Bereiche, Arbeitseinheit.
- * Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
+/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
 import type { Faecher } from '../infra/zwischenspeicher';
-import { bindeZugang, type Kontext } from '../infra/bereich';
+import { mit, type Kontext } from '../infra/bereich';
 import * as manuelleTeile from './repository/manuelleTeile';
 import * as teileListe from './repository/teileListe';
 import * as teileZusammenfassung from './repository/teileZusammenfassung';
@@ -25,21 +24,35 @@ export interface TeileAbhaengigkeiten {
 }
 
 export const zugang = (db: Db) => ({
-  manuelleTeile: bindeZugang(db, manuelleTeile),
-  teileListe: bindeZugang(db, teileListe, [
-    'besitzteFiguren',
-    'besitzteTeile',
-    'farbenDesBestands',
-    'gebrauchteManuelle',
-    'hatUngeseheneBlNummer',
-    'inventarAlsTeile',
-    'kategorien',
-    'kennzahlen',
-    'manuelleTeile',
-    'seiteAusZusammenfassung',
-    'seiteLive',
-  ]),
-  teileZusammenfassung: bindeZugang(db, teileZusammenfassung, ['analysiere', 'gebauterStand', 'rohstand']),
-  teilFarbe: bindeZugang(db, teilFarbe, ['rbFarbe']),
+  manuelleTeile: {
+    teilZeileManuell: mit(db)(manuelleTeile.teilZeileManuell),
+    teilZeileMitZustand: mit(db)(manuelleTeile.teilZeileMitZustand),
+    legeTeilManuellAn: mit(db)(manuelleTeile.legeTeilManuellAn),
+    rbFarbcode: mit(db)(manuelleTeile.rbFarbcode),
+    setzeTeilpreisNeueste: mit(db)(manuelleTeile.setzeTeilpreisNeueste),
+    setzeTeilzustandNeueste: mit(db)(manuelleTeile.setzeTeilzustandNeueste),
+    teilErfassungen: mit(db)(manuelleTeile.teilErfassungen),
+  },
+  teileListe: {
+    besitzteFiguren: mit(db)(teileListe.besitzteFiguren),
+    besitzteTeile: mit(db)(teileListe.besitzteTeile),
+    farbenDesBestands: mit(db)(teileListe.farbenDesBestands),
+    gebrauchteManuelle: mit(db)(teileListe.gebrauchteManuelle),
+    hatUngeseheneBlNummer: mit(db)(teileListe.hatUngeseheneBlNummer),
+    inventarAlsTeile: mit(db)(teileListe.inventarAlsTeile),
+    kategorien: mit(db)(teileListe.kategorien),
+    kennzahlen: mit(db)(teileListe.kennzahlen),
+    manuelleTeile: mit(db)(teileListe.manuelleTeile),
+    seiteAusZusammenfassung: mit(db)(teileListe.seiteAusZusammenfassung),
+    seiteLive: mit(db)(teileListe.seiteLive),
+  },
+  teileZusammenfassung: {
+    analysiere: mit(db)(teileZusammenfassung.analysiere),
+    gebauterStand: mit(db)(teileZusammenfassung.gebauterStand),
+    rohstand: mit(db)(teileZusammenfassung.rohstand),
+  },
+  teilFarbe: {
+    rbFarbe: mit(db)(teilFarbe.rbFarbe),
+  },
 });
 export type TeileKontext = Kontext<TeileAbhaengigkeiten, ReturnType<typeof zugang>>;

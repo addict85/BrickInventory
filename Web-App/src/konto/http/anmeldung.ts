@@ -5,7 +5,6 @@ import { rotationFaellig, type TokenPruefung } from '../geraeteToken';
 import type { AnmeldeErgebnis } from '../anmeldepruefung';
 import type { BestaetigungsAbsage, Faktor } from '../passwortBestaetigung';
 import { createHash } from 'node:crypto';
-import { konfig } from '../../infra/konfig';
 import { routeZu } from '../../vertrag';
 import { fehlerText, antwortSprache } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/fehler';
@@ -210,8 +209,10 @@ export async function bestaetigeMitFaktor(
   passwort: string | null | undefined,
   codeFeld = 'code',
 ): Promise<boolean> {
-  const schluessel = req.route ? `${req.method} ${req.baseUrl}${req.route.path}` : '';
-  if (konfig().vertragPruefen && routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
+  // Der Schlüssel, unter dem der Vertragsrouter die Route registriert hat; ein Fehler der
+  // Verdrahtung, kein Fall der Anfrage, darum auch im Betrieb laut.
+  const schluessel = String(res.locals.vertragsSchluessel ?? '');
+  if (routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
     throw new Error(`${schluessel} bestätigt, ohne \`bestaetigung\` im Vertrag`);
   // Der geprüfte Rumpf (eingabePruefen): Felder der Bestätigung stehen im Vertrag (bestaetigt()).
   const eingabe = (req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {};

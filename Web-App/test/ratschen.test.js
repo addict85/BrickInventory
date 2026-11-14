@@ -200,6 +200,8 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   if (zustand < ZUSTAND_SCHRANKE)
     console.log(`  ℹ modulweiter Zustand: ${zustand} (Schranke ${ZUSTAND_SCHRANKE}) — Schranke nachziehen`);
   wegeAnDenKontextenVorbei();
+  bindungOhneNamenUndProxy();
+  konfigNurAmStart();
 });
 
 /** Wege an den Kontexten vorbei sind verboten (früher eine Ratsche). */
@@ -226,9 +228,7 @@ function wegeAnDenKontextenVorbei() {
     bereiche.map(b => {
       const s = fs.readFileSync(path.join(src, b, 'bereich.ts'), 'utf8');
       const n = new Set();
-      for (const m of s.matchAll(/binde(?:Zugang)?\((?:k|sk), \w+, \[([^\]]*)\]\)/g))
-        for (const x of m[1].match(/\w+/g) || []) n.add(x);
-      for (const m of s.matchAll(/^ {4}(\w+): /gm)) n.add(m[1]);
+      for (const m of s.matchAll(/^ {4,8}(\w+): /gm)) n.add(m[1]);
       return [b, n];
     }),
   );
@@ -245,6 +245,59 @@ function wegeAnDenKontextenVorbei() {
     }
   }
   assert.deepEqual(fassaden, [], 'Dienste eines anderen Bereichs kommen über d oder den Kontext, nicht als Import');
+}
+
+/** konfig() liest der Start; Fachbereiche, Routen und Jobs bekommen die Konfiguration gereicht. */
+function konfigNurAmStart() {
+  // baueDienste reicht sie als k.konfig, der Start als Parameter. Übrig sind Helfer des Prozesses
+  // (src/infra, src/http, db/) und der beim Laden gebaute bcrypt-Pool; ihre Zahl sinkt nur.
+  // Gegenproben (14.11.2026): `const _k = konfig();` in src/sets/lesen.ts → rot (Fachbereich);
+  // dasselbe in src/http/csvAntwort.ts → rot (14 von 13).
+  const SCHRANKE = 13;
+  const AUSNAHME = ['src/konto/bcryptSchranke.ts'];
+  const ohne = require('./helpers/sources').ohneKommentare;
+  const rel = f => path.relative(WEB, f).split(path.sep).join('/');
+  const lesend = quellen()
+    .map(rel)
+    .filter(r => !/^(startup\/|server\.ts$|src\/infra\/konfig\.ts$)/.test(r))
+    .filter(r => /\bkonfig\(\)/.test(ohne(fs.readFileSync(path.join(WEB, r), 'utf8'))));
+  assert.ok(lesend.length > 0, 'keine Leser von konfig() gefunden — greift die Suche noch?');
+  const fach = lesend.filter(r => !/^(src\/infra|src\/http|db)\//.test(r) && !AUSNAHME.includes(r));
+  assert.deepEqual(fach, [], 'Fachbereiche, Routen und Jobs nehmen k.konfig oder einen Parameter');
+  assert.ok(lesend.length <= SCHRANKE, `${lesend.length} Dateien lesen konfig(), erlaubt sind ${SCHRANKE}`);
+  if (lesend.length < SCHRANKE)
+    console.log(`  ℹ konfig()-Leser: ${lesend.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+}
+
+/** Bereiche binden ohne Namen und Proxy; AsyncLocalStorage nur im Aufrufrahmen. */
+function bindungOhneNamenUndProxy() {
+  // Ein Bereich ist eine Fabrik mit Closure über k (src/infra/bereich.ts, mit()); die Transaktion
+  // reist über `t` (tx.db), nicht über einen Proxy oder eine Freigabe im Aufrufpfad.
+  // Gegenproben (14.11.2026): `const _p = new Proxy({}, {});` in src/sets/lesen.ts → rot (Proxy);
+  // `getSets: binde(sk, lesen, ['getSets', 'x'])` in src/sets/bereich.ts → rot (Namensbindung);
+  // `new AsyncLocalStorage()` in db/transaktion.ts → rot (zweiter Kanal).
+  const ohne = require('./helpers/sources').ohneKommentare;
+  const rel = f => path.relative(WEB, f).split(path.sep).join('/');
+  const text = f => ohne(fs.readFileSync(f, 'utf8'));
+  assert.deepEqual(
+    quellen()
+      .filter(f => /\bnew Proxy\b/.test(text(f)))
+      .map(rel),
+    [],
+    'kein Proxy im Server',
+  );
+  const NAMEN = /\bbinde\w*\(|\[\s*'\w+'(?:\s*,\s*'\w+')+\s*,?\s*\]/;
+  assert.ok(NAMEN.test("bindeZugang(k, m, ['a', 'b'])") && NAMEN.test("x(k, ['a', 'b'])"), 'Selbstbeweis Namensliste');
+  const fabriken = quellen().filter(f => /[\\/]src[\\/]\w+[\\/](bereich|kontext)\.ts$/.test(f));
+  assert.ok(fabriken.length >= 30, `nur ${fabriken.length} Fabriken und Kontexte gefunden — greift die Suche noch?`);
+  assert.deepEqual(fabriken.filter(f => NAMEN.test(text(f))).map(rel), [], 'Bindung über Namen statt mit()');
+  assert.deepEqual(
+    quellen()
+      .filter(f => /\bAsyncLocalStorage\b/.test(text(f)))
+      .map(rel),
+    ['src/infra/kontoKontext.ts'],
+    'Ein Kanal über den Aufrufpfad: der Aufrufrahmen (docs/architektur.md)',
+  );
 }
 
 test('any wird weniger, nie mehr', () => {

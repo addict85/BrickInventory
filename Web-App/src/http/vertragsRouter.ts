@@ -1,5 +1,4 @@
-/** Die HTTP-Seite des API-Vertrags: Router, Eingabe- und Antwortprüfung und
- * die Typen von req/res einer Route. src/vertrag selbst kennt Express nicht. */
+/** Die HTTP-Seite des API-Vertrags: Router, Prüfung, Typen von req/res; src/vertrag kennt Express nicht. */
 import express from 'express';
 import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
@@ -27,9 +26,8 @@ export type OffeneAnfrage<K extends Schluessel> = Anfrage<K, Request>;
  * `.trim()` oder eine Regex darauf verwechselte den Typ. */
 const ABFRAGE_HOECHSTENS = 4000;
 
-/** Im Betrieb, unmittelbar vor der Route: Abfrage und Rumpf gegen den Vertrag.
- * Die Route bekommt das Ergebnis (req.abfrage, req.eingabe), nicht den rohen
- * Rumpf: Was das Schema umwandelt oder abweist, sieht sie nie anders. */
+/** Unmittelbar vor der Route: Sie bekommt Abfrage und Rumpf so, wie das Schema sie umwandelt
+ * (req.abfrage, req.eingabe), nie roh. */
 const KENNUNGEN = new Set(['id', 'acqId', 'instrId']);
 
 function eingabePruefen(route: Route, req: Request, res: Response, next: NextFunction): void {
@@ -95,11 +93,8 @@ function meldeAbweichung(req: Request, res: Response, fehler: z.ZodError): void 
   sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: (erste?.path ?? []).join('.').slice(0, 40) || '$' });
 }
 
-/** Nur in Tests (VERTRAG_PRUEFEN=1, gesetzt von test/helpers/sources.js):
- * Jede 2xx-Antwort einer Route mit Vertrag läuft durch ihr Schema, und eine
- * Abweichung wird zur 500, die der Test sieht. In Produktion kostete das je
- * Antwort einen Durchlauf über ganze Listen, ohne dass ein Nutzer etwas davon
- * hätte: Gehalten wird der Vertrag beim Übersetzen (tsc) und in den Tests. */
+/** Nur in Tests (VERTRAG_PRUEFEN=1): Eine 2xx-Antwort ausserhalb ihres Schemas wird zur 500. Im
+ * Betrieb kostete das je Antwort einen Durchlauf über ganze Listen; dort hält tsc den Vertrag. */
 function antwortGegenVertrag(req: Request, res: Response, next: NextFunction): void {
   if (res.locals.vertragGeprueft) {
     next();
@@ -146,9 +141,8 @@ export function vertragPruefen(): ((req: Request, res: Response, next: NextFunct
   return konfig().vertragPruefen ? antwortGegenVertrag : null;
 }
 
-/** Middleware, die dem Rest der Kette einen engeren Request zusichert (z. B.
- * AuthedRequest hinter requireToken). Die Marke `sichert` hat nur, was mit
- * waechter() gebaut ist: Eine beliebige Funktion an erster Stelle sichert nichts zu. */
+/** Middleware, die dem Rest der Kette einen engeren Request zusichert (AuthedRequest hinter requireToken);
+ * die Marke `sichert` hat nur, was waechter() baut, keine beliebige Funktion an erster Stelle. */
 export type Waechter<R extends Request> = ((req: Request, res: Response, next: NextFunction) => void) & {
   readonly sichert: (r: R) => R;
 };
@@ -215,15 +209,13 @@ export class FalschEingehaengt extends Error {
   }
 }
 
-/** Ein Router, der Eingaben im Betrieb und seine Antworten in Tests gegen den Vertrag
- * prüft — auch dort, wo ein Test ihn ohne routes/api_v1/index.ts einhängt. */
+/** Prüft Eingaben im Betrieb und Antworten in Tests, auch ohne routes/api_v1/index.ts eingehängt. */
 export function vertragsRouter<P extends string>(praefix: P, o: { grosseIds?: boolean } = {}): VertragsRouter<P> {
   // Wie der Vertrag: Eine andere Schreibung ist eine andere Route (404), nicht dieselbe ohne Eintrag.
   const router = express.Router({ caseSensitive: true });
   const pruefung = vertragPruefen();
   if (pruefung) router.use(pruefung);
-  // Jede Pfad-ID an einer Stelle: Eine zu grosse lief sonst bis in PostgreSQL
-  // und kam als 500 zurück. Aufträge zählen bigint (grosseIds).
+  // Eine zu grosse Pfad-ID käme sonst als 500 aus PostgreSQL; Aufträge zählen bigint (grosseIds).
   const hoechstens = o.grosseIds ? Number.MAX_SAFE_INTEGER : GROESSTE_ID;
   for (const name of ['id', 'acqId', 'instrId']) {
     router.param(name, (req, res, next, wert) =>
@@ -243,8 +235,7 @@ export function vertragsRouter<P extends string>(praefix: P, o: { grosseIds?: bo
       if (!route || !(pfad === praefix || pfad.startsWith(`${praefix}/`)))
         throw new Error(`${schluessel} steht nicht im Vertrag unter ${praefix}`);
       const handler = schritte.pop() as (req: Request, res: Response) => unknown;
-      // Die Prüfung als letzter Schritt vor der Route, nach Anmeldung und Drossel:
-      // Deren Antworten (401, 429) bleiben, wie sie sind.
+      // Als letzter Schritt vor der Route: Antworten von Anmeldung und Drossel (401, 429) bleiben.
       anmelden(methode, pfad.slice(praefix.length) || '/', [
         ...schritte,
         (req: Request, res: Response, next: NextFunction) => {
