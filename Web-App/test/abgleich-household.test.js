@@ -101,7 +101,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   // Ausweise). Vorher stand diese Prüfung über ZWEI Dateien und verlangte,
   // dass beide alles anbieten — die schwächere Fassung derselben Aussage.
   const src = read('routes/api_v1/settings.ts');
-  for (const fn of ['haushaltsStand', 'einladungAnlegen', 'einladungEinloesen', 'kontenTrennen']) {
+  for (const fn of ['haushaltsStand', 'einladungAnlegen', 'haushaltBeitreten', 'kontenTrennen']) {
     assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
   }
   // Und die Zweitfassung darf nicht zurückkehren: jede Haushalts-Route genau einmal.

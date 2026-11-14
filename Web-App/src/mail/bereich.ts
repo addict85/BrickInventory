@@ -22,6 +22,7 @@ export function erzeugeMail(a: MailAbhaengigkeiten, einblick?: Einblick<MailKont
     'sendPasswordResetMail',
     'sendRegistrierungsVersuchMail',
     'sendVerificationMail',
+    'sendeSmtpTest',
     'testSmtp',
   ]);
 }

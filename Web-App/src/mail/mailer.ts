@@ -3,7 +3,7 @@
 import type { MailKontext } from './kontext';
 import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
 import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, getMailTheme } from './vorlage';
-import { sendMail } from './transport';
+import { sendMail, testSmtp } from './transport';
 const einstellung = (k: MailKontext, key: string) => k.einstellungen.getGlobalSetting(key, '');
 
 // Mitexportiert, damit Aufrufer und Tests bei einer Adresse bleiben.
@@ -545,4 +545,16 @@ export async function baueAlarmMail(
       theme,
     ),
   };
+}
+
+/** Erst die Verbindung, dann eine Probe an `to`; Betreff und Text gehören zum Versand, nicht zur Route. */
+export async function sendeSmtpTest(k: MailKontext, to: string) {
+  const verify = await testSmtp(k);
+  if (!verify.success) return verify;
+  return sendMail(k, {
+    to,
+    subject: 'BrickInventory Manager — SMTP Test',
+    text: 'Diese E-Mail bestätigt, dass deine SMTP-Konfiguration korrekt funktioniert.',
+    html: '<div style="font-family:Arial,sans-serif;padding:20px"><h2>✅ SMTP-Test erfolgreich</h2><p>Deine SMTP-Konfiguration funktioniert korrekt.</p></div>',
+  });
 }

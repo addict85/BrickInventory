@@ -2,10 +2,8 @@
  * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
-import { logAndContinue, meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
 import { bearerToken, kontoSchranke, waechterFuer } from './middleware';
-import { hashToken, invalidateTheme } from '../../src/konto';
 import { quellePruefen, hatGlobaleWerte } from '../../src/verwaltung';
 import {
   resolveUserId,
@@ -48,7 +46,6 @@ export function baueSettingsRouter(d: Dienste) {
     requireToken,
     async (req: Anfrage<'GET /api/v1/settings/tokens'>, res: Antwort<'GET /api/v1/settings/tokens'>) => {
       const eigener = bearerToken(req);
-      const eigenerHash = eigener ? hashToken(eigener) : null;
       // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
       // Gerät ausgesperrt wird.
       const tokens = await d.konto.zugaengeListe(req.apiUser.user_id);
@@ -66,7 +63,7 @@ export function baueSettingsRouter(d: Dienste) {
           scope: t.scope,
           ip_bereich: t.ip_bereich,
           rotiert_am: t.rotiert_am,
-          aktuell: t.token === eigenerHash,
+          aktuell: d.konto.eigenerZugang(eigener, t.token),
         })),
       });
     },
@@ -84,7 +81,7 @@ export function baueSettingsRouter(d: Dienste) {
     ) => {
       const uid = req.apiUser.user_id;
       const eigener = bearerToken(req);
-      const eigenesGeraet = !!eigener && hashToken(eigener).startsWith(req.pfad.tokenId);
+      const eigenesGeraet = d.konto.eigenerZugang(eigener, req.pfad.tokenId);
       if (!eigenesGeraet && !(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
       res.json({ success: true, deleted: await d.konto.zugangBeenden(uid, req.pfad.tokenId, eigenesGeraet) });
     },
@@ -261,18 +258,8 @@ export function baueSettingsRouter(d: Dienste) {
       const uid = req.apiUser.user_id;
       // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
       if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password, 'faktor_code'))) return;
-      const r = await d.haushalt.einladungEinloesen(uid, String(req.eingabe.code || ''));
+      const r = await d.konto.haushaltBeitreten(uid, String(req.eingabe.code || ''));
       if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler, 'vars' in r ? r.vars : undefined);
-      const ich = await d.konto.profil(uid);
-      if (ich?.email) {
-        const sprache = await d.einstellungen
-          .getSetting(uid, 'language', 'de')
-          .catch(meldeUndLiefere('einstellungen:sprache', 'de'));
-        const hauptkonto = 'linked_to' in r ? r.linked_to.username : '';
-        void d.mail
-          .sendHaushaltVerknuepftMail(ich.email, ich.username, hauptkonto, String(sprache ?? 'de'))
-          .catch(logAndContinue('haushalt:hinweismail'));
-      }
       res.json({ success: true, ...r });
     },
   );
@@ -413,14 +400,8 @@ export function baueSettingsRouter(d: Dienste) {
       )
         return;
 
-      const verify = await d.mail.testSmtp();
-      if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
-      const result = await d.mail.sendMail({
-        to,
-        subject: 'BrickInventory Manager — SMTP Test',
-        text: 'Diese E-Mail bestätigt, dass deine SMTP-Konfiguration korrekt funktioniert.',
-        html: '<div style="font-family:Arial,sans-serif;padding:20px"><h2>✅ SMTP-Test erfolgreich</h2><p>Deine SMTP-Konfiguration funktioniert korrekt.</p></div>',
-      });
+      const result = await d.mail.sendeSmtpTest(to);
+      if ('code' in result) return sendeFehler(req, res, 400, result.code, 'vars' in result ? result.vars : undefined);
       res.json(result);
     },
   );
@@ -498,10 +479,7 @@ export function baueSettingsRouter(d: Dienste) {
     requireAdmin,
     async (req: Anfrage<'POST /api/v1/settings/admin/theme'>, res: Antwort<'POST /api/v1/settings/admin/theme'>) => {
       const theme = req.eingabe.theme;
-      await d.einstellungen.setGlobalSetting('app_theme', theme);
-      // Das Design steckt im serverseitig gerenderten <html data-theme>; ohne
-      // Verwerfen käme bis zum Neustart das alte.
-      invalidateTheme();
+      await d.konto.setzeGlobalesDesign(theme);
       res.json({ success: true, theme });
     },
   );

@@ -16,7 +16,7 @@ import {
 import { uebersprungenHinweis } from '../../src/infra/csvExport';
 import { sendeCsv } from '../../src/http/csvAntwort';
 import { antwortSprache } from '../../src/infra/fehlerTexte';
-import * as sets from '../../src/sets';
+import { ANLEITUNGS_WURZEL, normalizeSetNumber } from '../../src/sets';
 import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
 import { freigegeben } from '../../src/konto/http/schrittschutz';
@@ -65,7 +65,7 @@ const vorDemUpload =
       return sendeFehler(req, res, 404, 'nicht_gefunden');
     if (
       !(await kontingentReichtFuer(
-        path.join(sets.ANLEITUNGS_WURZEL, String(uid)),
+        path.join(ANLEITUNGS_WURZEL, String(uid)),
         Number(req.headers['content-length']) || 0,
       ))
     )
@@ -95,7 +95,7 @@ export function baueSetsRouter(d: Dienste) {
     async (req: Anfrage<'GET /api/v1/sets/exists/:setNumber'>, res: Antwort<'GET /api/v1/sets/exists/:setNumber'>) => {
       const sn = req.pfad.setNumber;
       const treffer = await d.sets.findSetInScope(req.apiUser.user_id, sn);
-      res.json({ success: true, exists: !!treffer, ...(treffer || { set_number: sets.normalizeSetNumber(sn) }) });
+      res.json({ success: true, exists: !!treffer, ...(treffer || { set_number: normalizeSetNumber(sn) }) });
     },
   );
 
@@ -555,7 +555,7 @@ export function baueSetsRouter(d: Dienste) {
   );
 
   const uploadInstr = privaterEmpfang({
-    ordner: req => privaterOrdner(sets.ANLEITUNGS_WURZEL, String(angemeldeteNutzerId(req))),
+    ordner: req => privaterOrdner(ANLEITUNGS_WURZEL, String(angemeldeteNutzerId(req))),
     praefix: req => pfadParam(req, 'setNumber'),
     typen: { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' },
     maxBytes: 50 * 1024 * 1024,
@@ -572,7 +572,7 @@ export function baueSetsRouter(d: Dienste) {
       res: Antwort<'POST /api/v1/sets/:setNumber/instructions/upload'>,
     ) => {
       if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-      const grund = await pruefeEmpfangeneDatei(sets.ANLEITUNGS_WURZEL, req.file.path, req.file.mimetype);
+      const grund = await pruefeEmpfangeneDatei(ANLEITUNGS_WURZEL, req.file.path, req.file.mimetype);
       if (grund === 'upload_kontingent_voll') return sendeFehler(req, res, 413, grund, { mb: uploadKontingentMb() });
       if (grund) return sendeFehler(req, res, 400, grund);
       const uid = angemeldeteNutzerId(req),

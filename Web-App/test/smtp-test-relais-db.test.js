@@ -21,9 +21,8 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const gesendet = [];
 require('./helpers/sources').ersetzeDienste('mail', {
-  testSmtp: async () => ({ success: true }),
-  sendMail: async m => {
-    gesendet.push(m.to);
+  sendeSmtpTest: async to => {
+    gesendet.push(to);
     return { success: true, mode: 'console' };
   },
 });

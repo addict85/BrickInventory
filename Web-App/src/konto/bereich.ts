@@ -72,6 +72,7 @@ export function erzeugeKonto(a: KontoAbhaengigkeiten, einblick?: Einblick<KontoK
       'passwortWechselFaellig',
       'setzeFremdesPasswort',
       'setzePasswortZurueck',
+      'passwortPerLinkSetzen',
       'raeumeOffeneRegistrierungenAuf',
       'legeKontoAn',
       'registriere',
@@ -79,7 +80,7 @@ export function erzeugeKonto(a: KontoAbhaengigkeiten, einblick?: Einblick<KontoK
       'setzeVerwalterRolle',
     ]),
     ...bindeZugang(k, kontoEntfernen, ['kontoEntfernen']),
-    ...bindeZugang(k, kontoHinweis, ['verwalterHinweisNebenher', 'hinweisNebenher']),
+    ...bindeZugang(k, kontoHinweis, ['verwalterHinweisNebenher', 'hinweisNebenher', 'haushaltBeitreten']),
     ...bindeZugang(k, loginLimiter, ['raeumeAnmeldezaehlerAuf', 'zaehleAnfrage']),
     ...bindeZugang(k, passkeysDienst, [
       'registrierungsOptionen',
@@ -126,18 +127,20 @@ export function erzeugeKonto(a: KontoAbhaengigkeiten, einblick?: Einblick<KontoK
       'pruefeCodeBestaetigung',
     ]),
     ...bindeZugang(k, sitzungsVersion, ['sitzungsVersionAusDb', 'aktuelleSitzungsVersion']),
-    ...bindeZugang(k, indexHtml, ['renderIndexHtml']),
+    ...bindeZugang(k, indexHtml, ['renderIndexHtml', 'setzeGlobalesDesign']),
     ...ausDemZugang(k),
   };
 }
 
-/** Was andere Schichten vom Zugang brauchen, ohne das Repository zu sehen: die Wache
- * langer Ströme (http/zugangsWache.ts) ohne Zwischenspeicher, das Protokoll für die Verwaltung. */
+/** Was andere Schichten brauchen, ohne Repository oder Token-Hash zu sehen: die Wache
+ * langer Ströme (http/zugangsWache.ts) ohne Zwischenspeicher, das Protokoll für die
+ * Verwaltung, der Vergleich mit dem Zugang der Anfrage für die Routen. */
 function ausDemZugang(k: KontoKontext) {
   return {
     gueltigerToken: k.zugaenge.gueltigerToken,
     protokolliere: k.protokoll.protokolliere,
     raeumeProtokollAuf: k.protokoll.raeumeProtokollAuf,
+    eigenerZugang: geraeteToken.eigenerZugang,
   };
 }
 

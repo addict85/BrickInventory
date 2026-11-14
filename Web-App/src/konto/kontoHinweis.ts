@@ -1,7 +1,7 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
 import type { KontoHinweis } from '../mail';
-import { logAndContinue } from '../infra/fehler';
+import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { imSystemkontext } from '../infra/kontoKontext';
 import type { KontoKontext } from './kontext';
 
@@ -58,4 +58,21 @@ export function verwalterHinweisNebenher(k: KontoKontext, art: KontoHinweis, ang
     .aktiveVerwalter()
     .then(ids => Promise.all(ids.map(id => meldeKontoaenderung(k, id, art, angaben))))
     .catch(logAndContinue(`konto:verwalterhinweis ${art}`));
+}
+
+/** Nach dem Beitritt erfährt der Inhaber per Mail, wem er sich angeschlossen hat; nebenher,
+ * damit die Antwort nicht auf den Mailserver wartet. */
+export async function haushaltBeitreten(k: KontoKontext, uid: number, code: string) {
+  const r = await k.haushalt.einladungEinloesen(uid, code);
+  if ('fehler' in r) return r;
+  const ich = await k.konten.profilZeile(uid);
+  if (ich?.email) {
+    const sprache = await k.einstellungen
+      .getSetting(uid, 'language', 'de')
+      .catch(meldeUndLiefere('einstellungen:sprache', 'de'));
+    void k.mail
+      .sendHaushaltVerknuepftMail(ich.email, ich.username, r.linked_to.username, String(sprache ?? 'de'))
+      .catch(logAndContinue('haushalt:hinweismail'));
+  }
+  return r;
 }

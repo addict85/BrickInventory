@@ -6,7 +6,7 @@ import { passwortMangel } from '../../src/infra/passwortRegel';
 import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../../src/infra/basisUrl';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
-import { USERNAME_RE, emailGueltig, nameGueltig, vertrauenspartei, hashToken } from '../../src/konto';
+import { USERNAME_RE, emailGueltig, nameGueltig, vertrauenspartei } from '../../src/konto';
 import type { Dienste } from '../../startup/verdrahtung';
 
 /** Der Grund der ersten Absage, oder null, wenn die Eingabe genügt. */
@@ -149,7 +149,7 @@ export function baueRegistrierungRouter(d: Dienste) {
       const nameMangel = passwortMangel(password, user.username);
       if (nameMangel) return sendeFehler(req, res, 400, nameMangel);
       // Nur die Anfrage, die den Link verbraucht, setzt ihr Passwort.
-      const uid = await d.konto.setzePasswortZurueck(hashToken(token), password);
+      const uid = await d.konto.passwortPerLinkSetzen(token, password);
       if (!uid) return sendeFehler(req, res, 400, 'token_ungueltig');
       d.konto.hinweisNebenher(uid, 'passwort_zurueckgesetzt');
       res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
