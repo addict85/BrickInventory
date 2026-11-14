@@ -4,13 +4,14 @@ Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
 Rot: ein Code mit System-Wurzel muss genau diese Wurzel treffen
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+index 6ec1f8a..16d1c6c 100644
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -194,7 +194,6 @@
+@@ -207,7 +207,6 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
       */
      override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
          val f = _offen.value ?: return false
 -        if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
-         val freiwillig = f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && eingabe.isNullOrBlank() ||
-             f.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
-         if (!freiwillig && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
+         val pruefen = f.abschriftNoetig || f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && !eingabe.isNullOrBlank()
+         if (pruefen && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
+         pins.merkePin(f.ablageSchluessel, f.fingerabdruck)

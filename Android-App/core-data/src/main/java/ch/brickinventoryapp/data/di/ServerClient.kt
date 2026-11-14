@@ -91,8 +91,12 @@ private fun serverVertrauen(prefs: Netzablagen, frage: ZertifikatsFrage): PinVer
         eigenerServer = { pinSchluessel(prefs.token.kopplungszielState.value ?: prefs.token.serverUrlState.value.orEmpty()) },
         frage = frage,
         fremdeHosts = system,
+        ctErzwungen = android.os.Build.VERSION.SDK_INT >= ANDROID_16,
     ).also { gemeinsamesVertrauen = it }
 }
+
+/** Ab hier verlangt network_security_config Certificate Transparency für öffentliche CAs. */
+private const val ANDROID_16 = 36
 
 /** Token und Vertrauen zusammen: Die Server-Clients brauchen beides, sonst nichts aus den Ablagen. */
 class Netzablagen @Inject constructor(val token: Tokenspiegel, val vertrauen: Netzvertrauen)

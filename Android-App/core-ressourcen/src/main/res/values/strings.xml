@@ -1021,6 +1021,7 @@
     <string name="zert_erstkontakt_abtippen">Type the fingerprint instead</string>
     <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
     <string name="zert_geaendert_eingabe">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
+    <string name="zert_schluessel_neu_eingabe">Last 12 pairs of the new fingerprint (e.g. 3F:A2:…), copied from your computer\'s browser certificate details (Fingerprints → Public key, SHA-256)</string>
     <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
     <string name="zert_unbekannt_eingabe">Last 12 pairs of the fingerprint (e.g. 3F:A2:…), copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_eingabe_falsch">That does not match this server\'s fingerprint.</string>

@@ -128,6 +128,12 @@ import javax.net.ssl.SSLEngine
  *      gegenproben/erstkontakt-abschrift-ungeprueft.patch
  *   AE in pruefeBlatt() `|| ausCode` gestrichen → rot „ein Code vom angemeldeten Bildschirm
  *      tauscht den Serverschluessel …“; gegenproben/blattpin-code-fragt.patch
+ * Gegenproben zum neuen Serverschlüssel ohne CT-Pflicht (Prüfung 476e4a4, M1; CI):
+ *   AF abschriftNoetig für SCHLUESSEL_NEU wieder `false` → rot „ein neuer Serverschluessel
+ *      unter derselben oeffentlichen Wurzel …“ („Ohne CT-Pflicht genügt ein Tipp nicht“);
+ *      gegenproben/schluessel-neu-ein-tipp.patch
+ *   AG pruefeBlatt() reicht ctErzwungen nicht weiter → rot „mit CT-Pflicht genuegt …“;
+ *      gegenproben/schluessel-neu-ohne-ct-wissen.patch
  */
 class ZertifikatPinTest {
 
@@ -173,8 +179,10 @@ class ZertifikatPinTest {
         eigen: String = eigener(),
         fremd: X509ExtendedTrustManager = kette,
         familien: Map<String, String> = PROBE_FAMILIE,
+        ct: Boolean = false,
     ): Boolean {
-        val tm = PinVertrauen(kette, pins, eigenerServer = { eigen }, frage = frage, fremdeHosts = fremd, familien = familien)
+        val tm = PinVertrauen(kette, pins, eigenerServer = { eigen }, frage = frage, fremdeHosts = fremd, familien = familien,
+            ctErzwungen = ct)
         val ctx = SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
         val c = OkHttpClient.Builder().sslSocketFactory(ctx.socketFactory, tm)
             .connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build()
@@ -687,9 +695,26 @@ class ZertifikatPinTest {
         assertEquals(spkiFingerabdruck(zert(OEFF_BLATT_A)), f.erwartet)
         assertEquals(spkiFingerabdruck(zert(OEFF_BLATT_B)), f.fingerabdruck)
         assertEquals("Der Wurzel-Pin bleibt", spkiFingerabdruck(zert(OEFF_WURZEL)), pins.pin(eigener()))
-        assertTrue("Bewusst bestätigt gilt der neue Schlüssel", frage.bestaetige(pins))
+        assertTrue(f.abschriftNoetig)
+        assertFalse("Ohne CT-Pflicht genügt ein Tipp nicht", frage.bestaetige(pins))
+        assertFalse("Falsch abgetippt", frage.bestaetige(pins, "00:11:22:33:44:55:66:77:88:99:AA:BB"))
+        assertEquals(spkiFingerabdruck(zert(OEFF_BLATT_A)), pins.pin(blattPinSchluessel(eigener())))
+        assertTrue("Abgetippt gilt der neue Schlüssel", frage.bestaetige(pins, abgeschrieben()))
         assertEquals(spkiFingerabdruck(zert(OEFF_BLATT_B)), pins.pin(blattPinSchluessel(eigener())))
         assertTrue(hole(system(OEFF_WURZEL)))
+    }
+
+    @Test
+    fun `mit CT-Pflicht genuegt fuer einen neuen Serverschluessel ein Tipp`() {
+        starte(OEFF_BLATT_B_KEY, listOf(OEFF_BLATT_B, OEFF_ZW_B))
+        pins.merkePin(eigener(), spkiFingerabdruck(zert(OEFF_WURZEL)))
+        pins.merkePin(blattPinSchluessel(eigener()), spkiFingerabdruck(zert(OEFF_BLATT_A)))
+        assertFalse(hole(system(OEFF_WURZEL), ct = true))
+        val f = frage.offen.value!!
+        assertEquals(ZertifikatUngeklaert.Art.SCHLUESSEL_NEU, f.art)
+        assertFalse("Das System hat CT geprüft", f.abschriftNoetig)
+        assertTrue(frage.bestaetige(pins))
+        assertTrue(hole(system(OEFF_WURZEL), ct = true))
     }
 
     @Test

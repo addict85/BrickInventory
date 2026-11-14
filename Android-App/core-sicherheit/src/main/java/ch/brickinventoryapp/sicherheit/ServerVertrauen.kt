@@ -129,9 +129,22 @@ class ZertifikatUngeklaert(
     val erwartet: String? = null,
     /** Der Schlüssel des Blatts; mit dem Ja zum Wurzel-Pin wird er zum zweiten Pin. */
     val blatt: String? = null,
+    /** Prüft das System selbst Certificate Transparency (ab Android 16, network_security_config)? */
+    val ctErzwungen: Boolean = false,
 ) : CertificateException("Zertifikat von $schluessel nicht bestätigt ($art)") {
     /** Wo das Ja den [fingerabdruck] ablegt. */
     val ablageSchluessel: String get() = if (art == Art.SCHLUESSEL_NEU) blattPinSchluessel(schluessel) else schluessel
+
+    /**
+     * Gilt ein Ja nur mit einer Abschrift aus zweiter Quelle? Ein neuer Serverschlüssel
+     * ohne CT-Pflicht ja: Dann genügte eine fehlausgestellte Kette derselben CA und ein Tipp.
+     * Beim Erstkontakt ist sie freiwillig, eine Abweichung vom Code ist gar nicht zu bestätigen.
+     */
+    val abschriftNoetig: Boolean get() = when (art) {
+        Art.ERSTKONTAKT, Art.CODE_ABWEICHUNG -> false
+        Art.SCHLUESSEL_NEU -> !ctErzwungen
+        Art.UNBEKANNTE_CA, Art.NUTZER_CA, Art.GEAENDERT -> true
+    }
 
     enum class Art {
         /** Erster Kontakt, die Kette ist gültig: Fingerabdruck zeigen und bestätigen lassen. */
@@ -153,7 +166,7 @@ class ZertifikatUngeklaert(
         /**
          * Gleiche öffentliche Wurzel, aber ein anderer Serverschlüssel als der gemerkte
          * (Erneuerung mit neuem Schlüssel oder eine fehlausgestellte Kette derselben CA).
-         * Bewusst zu bestätigen; abgetippt wird nicht, die Kette hat das System geprüft.
+         * Abzutippen, solange das System kein CT verlangt ([abschriftNoetig]).
          */
         SCHLUESSEL_NEU,
     }
@@ -186,18 +199,17 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
     }
 
     /**
-     * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Ohne bekannte CA
-     * oder bei geändertem Schlüssel nur mit [eingabe] aus einer zweiten Quelle
-     * ([Abschrift.bestaetigt]): Dort prüft sonst niemand die Kette, und ein Tipp
-     * allein wäre genau das, was ein Angreifer dazwischen braucht. Beim Erstkontakt
-     * ist das Abtippen freiwillig; wer es tut, muss richtig tippen.
+     * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Wo
+     * [ZertifikatUngeklaert.abschriftNoetig] gilt, nur mit [eingabe] aus einer zweiten
+     * Quelle ([Abschrift.bestaetigt]): Ein Tipp allein wäre genau das, was ein Angreifer
+     * dazwischen braucht. Beim Erstkontakt ist das Abtippen freiwillig; wer es tut, muss
+     * richtig tippen.
      */
     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
         val f = _offen.value ?: return false
         if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
-        val freiwillig = f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && eingabe.isNullOrBlank() ||
-            f.art == ZertifikatUngeklaert.Art.SCHLUESSEL_NEU
-        if (!freiwillig && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
+        val pruefen = f.abschriftNoetig || f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && !eingabe.isNullOrBlank()
+        if (pruefen && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
         pins.merkePin(f.ablageSchluessel, f.fingerabdruck)
         f.blatt?.let { pins.merkePin(blattPinSchluessel(f.schluessel), it) }
         _offen.value = null
@@ -232,6 +244,8 @@ class PinVertrauen(
     private val fremdeHosts: X509ExtendedTrustManager,
     /** Wurzeln, zwischen denen ein öffentlicher Pin still wechseln darf ([CA_FAMILIEN]). */
     private val familien: Map<String, String> = CA_FAMILIEN,
+    /** Ab Android 16 prüft das System CT; dann genügt für einen neuen Serverschlüssel ein Tipp. */
+    private val ctErzwungen: Boolean = false,
 ) : X509ExtendedTrustManager() {
 
     private fun schluessel(sitzung: SSLSession?): String? =
@@ -287,7 +301,8 @@ class PinVertrauen(
         val gemerkt = pins.pin(blattPinSchluessel(schluessel))
         if (gemerkt == neu) return
         if (gemerkt == null || ausCode) return pins.merkePin(blattPinSchluessel(schluessel), neu)
-        throw gemeldet(ZertifikatUngeklaert(schluessel, neu, ZertifikatUngeklaert.Art.SCHLUESSEL_NEU, erwartet = gemerkt))
+        throw gemeldet(ZertifikatUngeklaert(schluessel, neu, ZertifikatUngeklaert.Art.SCHLUESSEL_NEU,
+            erwartet = gemerkt, ctErzwungen = ctErzwungen))
     }
 
     /** Beide sind System-Wurzeln derselben bekannten Familie; das O= im Subjekt wählt jede CA selbst. */
