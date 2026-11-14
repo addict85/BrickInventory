@@ -65,9 +65,7 @@ function zeile(w) {
     ? bildTag({ src: imgUrl(thumbUrl(roh) || roh, 'nur'), alt: '', klasse: 'bild-56', ph: 'set' })
     : html`<span class="bild-ph bild-56" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
 
-  // Kein Name heisst: rb_sets kennt das Set nicht. Der benannte Preis dafür, dass hier keine zweite Kopie der
-  // Stammdaten liegt (siehe 0021) — sichtbar und harmlos, statt eines Namens aus einer Quelle, die niemand
-  // nachführt.
+  // Kein Name heisst: rb_sets kennt das Set nicht – der Preis dafür, dass hier keine zweite Kopie der Stammdaten liegt.
   const titel = w.name ? esc(w.name) : esc(w.set_number);
   // Ohne Namen steht die Nummer schon als Titel — nicht noch einmal darunter.
   const unter = [
@@ -99,8 +97,6 @@ function zeile(w) {
 
   const arg = `${w.set_number}|${w.condition}|${w.user_id}`;
   const k = kachelName(2);
-  // Die ganze Zeile öffnet das Detail; der Papierkorb oben rechts hält seinen Klick an, wie auf der Set-Kachel.
-  // Kein HTML-Kommentar im Template: Er landete in jedem DOM.
   return html`
     <div class="mk-zeile" tabindex="0" role="button"${k.attr} aria-keyshortcuts="Delete" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
       <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
@@ -144,9 +140,7 @@ export function merklisteZuruecksetzen() {
 export async function ladeMerkliste() {
   const ziel = G('mk-list');
   if (!ziel) return;
-  // Das Fragezeichen steht HIER und nicht in merklisteParams(): Dieselbe Schreibweise wie bei der Galerie,
-  // und test/frontend-api-paths.test.js liest den Pfad aus genau dieser Zeile — mit dem Fragezeichen im
-  // Rueckgabe-wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
+  // Das Fragezeichen steht hier, nicht in merklisteParams(): frontend-api-paths liest den Pfad aus dieser Zeile.
   // Ein Fehlerzustand trägt auch .leer; er weicht dem Gerüst, sonst sähe der neue Versuch wie der alte Fehler aus.
   if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer:not(.fehler-zustand)'))
     setzeHtml(ziel, skelettZeilen(4, tRaw('common.loading')));
@@ -240,9 +234,7 @@ export async function katalogAufMerkliste() {
     const d = await api('POST', '/v1/wanted', { set_number: sn, condition: zustand, owner_user_id: owner });
     if (!d?.success) return;
 
-    // Der Alarm ist ein EIGENER Aufruf und nicht Teil des Merkpostens: Er lebt in price_alerts, gehört
-    // demselben Schlüssel und ist genau derselbe Alarm, den das Set-Detail setzt. Ein zweiter Weg, eine
-    // Schwelle zu speichern, wäre eine zweite Wahrheit.
+    // Der Alarm ist ein eigener Aufruf: Er lebt in price_alerts, derselbe wie im Set-Detail – keine zweite Wahrheit.
     const schwelle = leseBetrag(G('cat-m-alert-val')?.value);
     if (schwelle != null && schwelle > 0) {
       await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
@@ -391,9 +383,7 @@ export async function oeffneMerkpostenDetail(arg) {
   G('mk-m-market-rows').replaceChildren();
   setzeHtml(G('mk-m-det'), ungeprueft(zeilen(w)));
   G('mk-m-bricklink').style.display = 'none';
-  // Der Preisvergleich ist SOFORT da: Er hängt am Merkposten, nicht am Katalog (src/merkliste/merkliste.ts).
-  // Ein Set, das rb_sets nicht kennt, beantwortet /catalog/sets/:nr mit 404 — dann blieb dieser Knopf aus,
-  // obwohl die Adresse aus der Setnummer allein zu bilden ist.
+  // Der Preisvergleich hängt am Merkposten, nicht am Katalog: Ein dort unbekanntes Set hat trotzdem seine Adresse.
   zeigeAdresse('mk-m-vergleich', w.preisvergleich_url);
   document.querySelector('#mk-detail-modal .mehr-menue')?.removeAttribute('open');
   G('mk-detail-modal').classList.add('open');
