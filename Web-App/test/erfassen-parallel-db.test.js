@@ -178,27 +178,14 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
 
   // Und der Erfassen-Pfad schreibt gesperrt.
   const sets = ohneKommentare(require('./helpers/sources').setKernQuelle());
-  // Nur der Rumpf von addSet(): bis zur NÄCHSTEN Funktion auf oberster Ebene.
-  // Ein Schnitt bis addSetWithDate() umfasste 1200 Zeilen samt fremder Routen
-  // und zählte deren Sperren mit.
-  const beginn = sets.indexOf('async function addSetIntern(');
+  // Nur der Rumpf von setErfassen(), des einen Wegs zum Erfassen: bis zur nächsten Funktion.
+  const beginn = sets.indexOf('async function setErfassen(');
   const naechste = sets.slice(beginn + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
-  const addSet = sets.slice(beginn, beginn + 10 + naechste);
-  // Und die Huelle selbst schreibt keine Erfassung an der Sperre vorbei.
-  const huelleAb = sets.indexOf('async function addSet(');
-  const huelle = sets.slice(huelleAb, sets.indexOf('async function addSetIntern('));
-  assert.equal(
-    (huelle.match(/recordAcquisition\(/g) || []).length,
-    0,
-    'Die Huelle von addSet() schreibt selbst eine Erfassung — die laeuft dann ohne Sperre.',
-  );
-  const schreibt = (addSet.match(/recordAcquisition\(/g) || []).length;
-  assert.ok(schreibt >= 2, `nur ${schreibt} Erfassungs-Schreibstellen gefunden`);
-  assert.equal(
-    (addSet.match(/sperren: \[\{ konto: userId, schluessel: normalized \}\]/g) || []).length,
-    schreibt,
-    'nicht jede Schreibstelle in addSet() läuft unter der Bestandssperre',
-  );
+  const kern = sets.slice(beginn, beginn + 10 + naechste);
+  const sperre = kern.indexOf('repo.sperreSetErfassen(');
+  const stellen = [...kern.matchAll(/erfassungBuchen\(/g)].map(m => m.index);
+  assert.ok(stellen.length >= 2, `nur ${stellen.length} Erfassungs-Schreibstellen gefunden`);
+  assert.ok(sperre > 0 && stellen.every(i => i > sperre), 'nicht jede Schreibstelle läuft unter der Sperre');
 });
 
 test('ein kaputter CSV-Eintrag kippt nicht die ganze Datei', () => {

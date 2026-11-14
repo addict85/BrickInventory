@@ -1,7 +1,7 @@
 /** Marktpreis, Preisverlauf und Preisalarm eines Sets. */
 import type { Sicht } from '../haushalt';
 import { einstellungMitZugang } from '../einstellungen';
-import { normalizeSetNumber } from './erfassen';
+import { normalisiereSetNummer } from '../infra/setNummer';
 import type { Zustand } from '../infra/validate';
 import type { CsvImportBericht } from '../infra/csvExport';
 import * as repo from './repository/setDetail';
@@ -59,7 +59,7 @@ export async function waehrungVon(sk: SetsKontext, uid: number): Promise<string>
 }
 
 export function setAlarmeLesen(sk: SetsKontext, uid: number, sn: string) {
-  return sk.finanzen.preisalarm.alarmeFuer(uid, normalizeSetNumber(sn));
+  return sk.finanzen.preisalarm.alarmeFuer(uid, normalisiereSetNummer(sn));
 }
 
 export async function alarmDesSetsSetzen(
@@ -68,11 +68,11 @@ export async function alarmDesSetsSetzen(
   sn: string,
   eingabe: Parameters<SetsKontext['finanzen']['preisalarm']['setzeAlarm']>[3],
 ) {
-  return sk.finanzen.preisalarm.setzeAlarm(uid, normalizeSetNumber(sn), await waehrungVon(sk, uid), eingabe);
+  return sk.finanzen.preisalarm.setzeAlarm(uid, normalisiereSetNummer(sn), await waehrungVon(sk, uid), eingabe);
 }
 
 export function alarmDesSetsLoeschen(sk: SetsKontext, uid: number, sn: string, condition: Zustand | undefined) {
-  return sk.finanzen.preisalarm.loescheAlarm(uid, normalizeSetNumber(sn), condition ?? 'N');
+  return sk.finanzen.preisalarm.loescheAlarm(uid, normalisiereSetNummer(sn), condition ?? 'N');
 }
 
 export async function alarmCsvImportStarten(sk: SetsKontext, uid: number, text: string) {

@@ -86,10 +86,8 @@ export async function loescheAlarm(k: FinanzenKontext, userId: number, setNumber
 }
 
 export async function alarmeFuer(k: FinanzenKontext, userId: number, setNumber: string): Promise<Preisalarm[]> {
-  const rows = await repo.alarmeDesSets(k.db, userId, setNumber, await k.haushalt.blickfeldIds(userId)).catch(e => {
-    meldeFehler('preisalarm:lesen', e);
-    return [];
-  });
+  // Ohne Fang: Eine leere Liste hiesse „kein Alarm“, und setzeAlarm() lieferte nichts.
+  const rows = await repo.alarmeDesSets(k.db, userId, setNumber, await k.haushalt.blickfeldIds(userId));
   type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> & {
     schwelle: string | number;
     zuletzt_preis: string | number | null;
@@ -118,10 +116,7 @@ export async function alleAlarme(k: FinanzenKontext, userId: number): Promise<Al
   // Das Blickfeld fragt nur, ob das Set sichtbar ist; der Alarm bleibt beim
   // eigenen Konto.
   const blickfeld = await k.haushalt.blickfeldIds(userId);
-  const rows = await repo.alarmeImBlickfeld(k.db, userId, blickfeld).catch(e => {
-    meldeFehler('preisalarm:alle', e);
-    return [];
-  });
+  const rows = await repo.alarmeImBlickfeld(k.db, userId, blickfeld);
   type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> & {
     schwelle: string | number;
     zuletzt_preis: string | number | null;
@@ -152,10 +147,8 @@ export async function ausgeloesteSeit(k: FinanzenKontext, userId: number, seit: 
   // Unlesbar wie fehlend, NICHT „seit Anbeginn": Ein Tippfehler darf keine Flut auslösen.
   if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
 
-  const rows = await repo.alarmeDesKontos(k.db, userId, marke, await k.haushalt.blickfeldIds(userId)).catch(e => {
-    meldeFehler('preisalarm:abholen', e);
-    return [];
-  });
+  // Ohne Fang: Die App rückte sonst ihre Marke vor und verlöre die Meldungen dazwischen.
+  const rows = await repo.alarmeDesKontos(k.db, userId, marke, await k.haushalt.blickfeldIds(userId));
 
   type Zeile = {
     set_number: string;
@@ -189,14 +182,7 @@ export function reisst(richtung: Richtung, preis: number, schwelle: number): boo
 export type AlarmPost = Pick<MailDienste, 'baueAlarmMail' | 'sendMail'>;
 
 export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: AlarmPost): Promise<number> {
-  const alarme = await repo
-    .alleAktivenAlarme(k.db, setNumber)
-    // Gemeldet, nicht verschluckt: Sonst sähe man nur, dass keine Mails kommen,
-    // und suchte den Fehler beim SMTP-Server.
-    .catch(e => {
-      meldeFehler('preisalarm:alarme-lesen', e);
-      return [];
-    });
+  const alarme = await repo.alleAktivenAlarme(k.db, setNumber);
   if (!alarme?.length) return 0;
   let verschickt = 0;
   for (const a of alarme as AlarmZeile[]) {
@@ -261,7 +247,7 @@ async function verschicke(k: FinanzenKontext, post: AlarmPost, a: AlarmZeile, pr
 }
 
 /** Eigene Datei statt Spalten an sets.csv: Ein Alarm braucht das Set nicht zu besitzen. */
-export async function buildPreisalarmeCsv(k: FinanzenKontext, uid: number): Promise<string> {
+export async function preisalarmeAlsCsv(k: FinanzenKontext, uid: number): Promise<string> {
   const rows = await repo.alarmeFuerExport(k.db, uid);
 
   return toCsv(

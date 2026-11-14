@@ -165,6 +165,8 @@ async function starte(): Promise<void> {
   ];
   if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));
   if (web) dienste.konto.horcheAufTokenWiderruf();
+  // Web und Jobs (auch getrennte Prozesse) leeren ihr Haushaltsgedächtnis auf jede Änderung.
+  dienste.haushalt.horcheAufAenderungen();
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
   const httpServer = web
@@ -185,7 +187,7 @@ async function starte(): Promise<void> {
     void herunterfahren(lauf, 'SIGINT', httpServer, jobs, zugang, dienste, webSperreFrei);
   });
   // Ohne Rahmen: Warteschlange und Aufträge betreten ihn selbst (src/auftraege/kontext.ts, dienst.ts).
-  if (jobs) lauf.jobs = await starteJobs(dienste, web);
+  if (jobs) lauf.jobs = await starteJobs(dienste);
 }
 
 // Ohne Worker weiterzulaufen täuschte einen Dienst vor.

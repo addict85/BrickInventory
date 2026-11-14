@@ -1,5 +1,4 @@
 /** Die Adresse kommt als Wert; welche eine Anfrage hat, entscheidet die HTTP-Schicht. */
-import { createHash } from 'node:crypto';
 import { isIPv4, isIPv6 } from 'node:net';
 import { einzelwert } from '../infra/validate';
 import { fehlertext, meldeUndLiefere } from '../infra/fehler';
@@ -19,9 +18,8 @@ interface Zaehlerstand {
 export const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
-/** Je KONTO über alle Adressen, verdoppelnd: Wer viele Adressen hat, rät nur
- * noch rund 15 Mal je Viertelstunde; der Inhaber wartet bei einem Vertipper
- * Sekunden statt einer festen Sperre. */
+/** Je Konto über alle Adressen, verdoppelnd: Ein Angreifer rät rund 15 Mal je Viertelstunde,
+ * der Inhaber wartet nach einem Vertipper Sekunden statt einer festen Sperre. */
 export function wartezeitSekunden(fehlversuche: number): number {
   if (fehlversuche < MAX_ATTEMPTS) return 0;
   return Math.min(2 ** (fehlversuche - MAX_ATTEMPTS), WINDOW_MS / 1000);
@@ -45,9 +43,8 @@ function imSpeicher(wo: string, e: unknown): void {
   console.warn(`[anmeldung] Zähler im Prozessspeicher statt in der Datenbank (${wo}): ${fehlertext(e)}`);
 }
 
-/** Ein IPv6-Anschluss bekommt ein ganzes /64; je Adresse gezählt, wäre jede
- * Bremse mit einer neuen Adresse aus dem eigenen Netz umgangen. IPv4 in IPv6
- * (::ffff:a.b.c.d) zählt als IPv4. Alles andere (`konto:7`) bleibt, wie es ist. */
+/** IPv6 je /64: Je Adresse gezählt, umginge eine neue Adresse aus dem eigenen Netz jede
+ * Bremse. IPv4 in IPv6 zählt als IPv4; alles andere (`konto:7`) bleibt, wie es ist. */
 export function drosselAdresse(ip: string): string {
   const v4 = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
   if (v4 && isIPv4(v4[1]!)) return v4[1]!;
@@ -71,12 +68,7 @@ const _nameKey = (name: string) => `login-name|${einzelwert(name).toLowerCase()}
 /** Die Bekannt-Zeile lebt 30 Tage und die Tabelle liest die Leserolle: Dort steht
  * nur der HMAC der Adresse; er bleibt für dieselbe Adresse gleich und zählt weiter. */
 function adressAbdruck(ip: string): string {
-  const a = drosselAdresse(ip);
-  try {
-    return suchwert('anmeldeadresse', a);
-  } catch {
-    return createHash('sha256').update(`brickinventory/anmeldeadresse/${a}`).digest('hex');
-  }
+  return suchwert('anmeldeadresse', drosselAdresse(ip));
 }
 const _bekanntKey = (ip: string, name: string) =>
   `login-bekannt|${adressAbdruck(ip)}|${einzelwert(name).toLowerCase()}`;
@@ -195,9 +187,8 @@ async function _clear(k: KontoKontext, key: string): Promise<void> {
   }
 }
 
-/** Name und E-Mail desselben Kontos zählen gemeinsam, sonst gälte jede Grenze
- * doppelt. Kleinschreibung in PostgreSQL wie beim Login: JS macht aus „İ"
- * zwei Zeichen. */
+/** Name und E-Mail eines Kontos zählen gemeinsam, sonst gälte jede Grenze doppelt.
+ * Klein schreibt PostgreSQL wie beim Login: JS macht aus „İ" zwei Zeichen. */
 async function kontoKennung(k: KontoKontext, username: string): Promise<string> {
   // Ausnahme: Bei gestörter Datenbank zählt die Drossel im Speicher weiter
   // (imSpeicher); ohne Konto dann nach dem Namen, statt die Anmeldung zu sperren.
@@ -211,18 +202,13 @@ async function kontoKennung(k: KontoKontext, username: string): Promise<string> 
 /** Ein unbekannter Name ist oft ein vertipptes Passwort, und die Tabelle liest die
  * Leserolle: nur der HMAC, der für denselben Namen gleich bleibt und weiter zählt. */
 function namensAbdruck(name: string): string {
-  try {
-    return suchwert('anmeldename', name);
-  } catch {
-    // Ohne Datenschlüssel (Werkzeuge, frühe Tests) wenigstens kein Klartext.
-    return createHash('sha256').update(`brickinventory/anmeldename/${name}`).digest('hex');
-  }
+  return suchwert('anmeldename', name);
 }
 
 export type Sperre = { code: FehlerCode; vars: { minuten: number } };
 
-/** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder gibAnmeldeplatzFrei geben ihn frei. */
-export async function checkLoginAllowed(k: KontoKontext, ip: string, username: string): Promise<Sperre | null> {
+/** Belegt den Versuch; anmeldungGescheitert, anmeldungGelungen oder gibAnmeldeplatzFrei geben ihn frei. */
+export async function anmeldungErlaubt(k: KontoKontext, ip: string, username: string): Promise<Sperre | null> {
   const kennung = await kontoKennung(k, username);
   // Bekannt: nur die Sperre je Adresse und Konto. Gesamtsperre und Wartezeit liessen sich sonst
   // gegen den Inhaber richten, hinter einem Proxy teilen sich alle eine Adresse.
@@ -257,7 +243,7 @@ export async function gibAnmeldeplatzFrei(k: KontoKontext, ip: string, username:
 }
 
 /** @returns die Fehlversuche des Kontos im Fenster */
-export async function recordLoginFailure(k: KontoKontext, ip: string, username: string): Promise<number> {
+export async function anmeldungGescheitert(k: KontoKontext, ip: string, username: string): Promise<number> {
   const kennung = await kontoKennung(k, username);
   await _bump(k, _key(ip, kennung), WINDOW_MIN);
   const n = await _bump(k, _nameKey(kennung), WINDOW_MIN);
@@ -299,7 +285,7 @@ export function meldeAnmeldung(angaben: { ip?: string | undefined; konto: number
   });
 }
 
-export async function recordLoginSuccess(k: KontoKontext, ip: string, username: string): Promise<void> {
+export async function anmeldungGelungen(k: KontoKontext, ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(k, username);
   await _clear(k, _key(ip, kennung));
   await _clear(k, _nameKey(kennung));
@@ -352,8 +338,7 @@ export async function zaehleAnfrage(
   }
 }
 
-/** Je Konto UND Zugang (Sitzung oder Token-Familie): Fehlversuche aus einem
- * erbeuteten Zugang sperren nicht die Notbremsen des Inhabers in seinem eigenen.
+/** Je Konto und Zugang: Ein erbeuteter Zugang sperrt nicht die Notbremsen des Inhabers.
  * Codes zählen getrennt und länger; nur ein richtiger Code setzt sie zurück. */
 export type Bremse = 'passwort' | 'faktor';
 const FAKTOR_FENSTER_MIN = 60;

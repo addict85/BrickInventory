@@ -5,15 +5,7 @@ import fs from 'node:fs';
 import type { Request, Response, NextFunction } from 'express';
 import type { ServerResponse } from 'node:http';
 import { konfig } from '../infra/konfig';
-import {
-  FEHLER,
-  fehlerText,
-  antwortSprache,
-  dateiFehler,
-  Meldung,
-  type FehlerArt,
-  type FehlerCode,
-} from '../infra/fehlerTexte';
+import { FEHLER, fehlerText, antwortSprache, dateiFehler, type FehlerArt, type FehlerCode } from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
 import { statusVon } from './fehlerArt';
 
@@ -77,7 +69,7 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
     return;
   }
   // Der Text einer Bibliothek nennt Parser, Pfade oder Bytes; er bleibt im Protokoll.
-  if (!isServerError && !(e instanceof Meldung)) {
+  if (!isServerError) {
     const ersatz: FehlerCode =
       code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
     res.status(code).json({ success: false, code: ersatz, error: fehlerText(ersatz, antwortSprache(req)) });

@@ -354,7 +354,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       m: 'DELETE',
       p: '/api/v1/settings/tokens/{tokenId}',
       davor: async () => {
-        await _req('src/konto/geraeteToken.js').createToken(uid, 'Zum Entwerten');
+        await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Zum Entwerten');
         w.tokenId = (
           await erst(
             `SELECT substring(token, 1, 16) AS t FROM api_tokens WHERE user_id = $1 AND label = 'Zum Entwerten'`,
@@ -369,7 +369,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       p: '/api/v1/settings/sessions/andere-beenden',
       body: { password: PASS, zugaenge: true },
       davor: async () => {
-        await _req('src/konto/geraeteToken.js').createToken(uid, 'Anderes Gerät');
+        await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Anderes Gerät');
       },
       danach: j => {
         assert.equal(j.zugaenge, 1);

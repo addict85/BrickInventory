@@ -1,10 +1,11 @@
 /** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus
  * beim Lesen, hier wird keine Menge geschrieben. */
 import { fachfehler } from '../infra/fehlerTexte';
+import { mitVersion } from '../infra/setNummer';
 import * as repo from './repository/verschieben';
 import type { SetsKontext } from './kontext';
 
-export interface MoveResult {
+export interface Verschiebung {
   quantity: number;
   acquisitions: number;
   merged: boolean;
@@ -29,13 +30,13 @@ async function copyContents(t: SetsKontext, sn: string, fromId: number, toId: nu
 
 /** In der Transaktion des Aufrufers (`t`), unter der Sperre des Quellbestands.
  * @param acquisitionIds leer = das ganze Set; sonst nur diese Kaufpreis-Zeilen */
-export async function moveSetBetweenAccounts(
+export async function setErfassungenUmhaengen(
   t: SetsKontext,
   sn: string,
   fromId: number,
   toId: number,
   acquisitionIds?: number[],
-): Promise<MoveResult> {
+): Promise<Verschiebung> {
   const src = await repo.setZeile(t.db, fromId, sn);
   if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
 
@@ -76,7 +77,7 @@ export async function moveSetBetweenAccounts(
 
 /** Über den KAUFPREIS, nicht über den Eintrag; was beim Absender bleibt, folgt
  * aus seinen Erfassungen. */
-export async function moveManualAcquisition(
+export async function manuelleErfassungUmhaengen(
   t: SetsKontext,
   kind: 'part' | 'fig',
   keyValues: (string | number)[],
@@ -111,17 +112,28 @@ export async function moveManualAcquisition(
   return { quantity: movingQty, merged: !!dst, source_emptied: true };
 }
 
-/** Unter der Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
-export function verschiebeSet(
+/** Konto als Kennung aus der Eingabe; schreibziel() prüft es. */
+type KontoWunsch = string | number | null | undefined;
+
+/** Der Einstieg: Drei Erfassungen sind drei Käufe, wer alles will, wählt alle Zeilen. Unter der
+ * Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
+export async function setVerschieben(
   sk: SetsKontext,
-  sn: string,
-  fromId: number,
-  toId: number,
+  uid: number,
+  roh: string,
+  von: KontoWunsch,
+  nach: KontoWunsch,
   erfassungen: number[],
-): Promise<MoveResult> {
+) {
+  if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
+  const sn = mitVersion(roh);
+  const fromId = await sk.haushalt.schreibziel(uid, von ?? uid);
+  const toId = await sk.haushalt.schreibziel(uid, nach);
+  if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
   // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
-  return sk.transaktion(t => moveSetBetweenAccounts(t, sn, fromId, toId, erfassungen), {
+  const r = await sk.transaktion(t => setErfassungenUmhaengen(t, sn, fromId, toId, erfassungen), {
     sperren: [{ konto: fromId, schluessel: sn }],
     wiederholeBeiKonflikt: true,
   });
+  return { set_number: sn, from_user_id: fromId, to_user_id: toId, ...r };
 }

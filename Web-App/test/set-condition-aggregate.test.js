@@ -21,7 +21,7 @@ const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
 
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   const h = require('./helpers/sources').handlerQuelle();
-  assert.match(h, /function getSetConditionAggregate/, 'Der gemeinsame Helfer fehlt');
+  assert.match(h, /function zustandsAggregat/, 'Der gemeinsame Helfer fehlt');
   // Weder getSets()/getSet() noch die manuellen Listen dürfen die Regel je
   // eigen ausformulieren — sie steht in conditionFromAcquisitions().
   // Zwei Parameter, nicht drei: Der dritte war der gespeicherte Zustand der
@@ -285,11 +285,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
     'Der Nachtrag schreibt wieder in die sets-Zeile — dort gibt es seit ' +
       'Migration 0032 weder Kaufpreis noch Zustand',
   );
-  assert.match(
-    job,
-    /await backfillAcquisitions\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?\)/,
-    'Der Durchlauf ist nicht eingehängt',
-  );
+  assert.match(job, /\(\) => backfillAcquisitions\(k\)/, 'Der Durchlauf ist nicht eingehängt');
 
   // Und der Import selbst soll seltener ohne Preis enden
   const sets = require('./helpers/sources').setKernQuelle();

@@ -3,7 +3,7 @@
  * Erst dann holt die App ihren Token ab: Ein abfotografierter QR-Code allein
  * öffnet kein Konto, der Inhaber sieht jedes Gerät, bevor es Zugang bekommt. */
 import crypto from 'node:crypto';
-import { createToken, hashToken, ipBereich } from './geraeteToken';
+import { tokenAnlegen, hashToken, ipBereich } from './geraeteToken';
 import { APP_HOECHSTDAUER_TAGE, tokenLabel } from './tokenWunsch';
 import { fachfehler } from '../infra/fehlerTexte';
 import { neueNonce } from './geraeteChallenge';
@@ -75,7 +75,7 @@ export async function holeQrTokenAb(
   if (z?.stand !== 'bestaetigt' || !(await darf(z.user_id))) return { stand: 'ungueltig' };
   if (vorschau) return { stand: 'bereit', uid: z.user_id };
   if (!(await k.qrKopplung.markiereAbgeholt(z.id))) return { stand: 'ungueltig' };
-  const token = await createToken(k, z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_HOECHSTDAUER_TAGE, {
+  const token = await tokenAnlegen(k, z.user_id, z.geraet ?? 'qr-login', true, z.token_days ?? APP_HOECHSTDAUER_TAGE, {
     scope: 'app',
     ip,
   });

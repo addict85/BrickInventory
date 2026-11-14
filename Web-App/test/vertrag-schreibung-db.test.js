@@ -57,7 +57,7 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
       [name],
     )
   ).id;
-  const token = await _req('src/konto/geraeteToken.js').createToken(uid, 'Schreibung');
+  const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Schreibung');
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});

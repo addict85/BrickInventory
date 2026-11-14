@@ -7,12 +7,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDaten, testQuellen, testKontext } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testDaten();
 const { testServer } = require('./helpers/server');
-const G = _req('src/gutscheine/gutscheinGuthaben.js');
 const S = _req('src/gutscheine/gutscheinGuthabenSchranke.js');
 
 test.after(async () => {
@@ -69,15 +68,15 @@ function guthaben(cent, waehrung = 'CHF', text = null) {
   });
 }
 
-G._ersetzeAbruf(async url => {
-  const s = String(url);
-  protokoll.push(s);
-  if (s.includes('/gift-cards/balance')) return antwort({ text: '<html></html>' });
-  if (s.includes('/Login')) return antwort({ kekse: [`gqauth=${jwt(3600)}; Path=/`] });
-  return naechsteAntwort ?? guthaben(25000);
-});
-test.after(() => {
-  G._ersetzeAbruf(null);
+// Der Abruf an LEGO, gestellt an der Verdrahtung: Die Route reicht keinen durch.
+testQuellen(null, {
+  legoAbruf: async url => {
+    const s = String(url);
+    protokoll.push(s);
+    if (s.includes('/gift-cards/balance')) return antwort({ text: '<html></html>' });
+    if (s.includes('/Login')) return antwort({ kekse: [`gqauth=${jwt(3600)}; Path=/`] });
+    return naechsteAntwort ?? guthaben(25000);
+  },
 });
 
 /** Die Zahl der Abfragen an den Guthaben-Endpunkt (nicht Seite/Login). */
@@ -108,7 +107,9 @@ async function aufbau() {
 /** Die Schranke zurücksetzen — sonst steht jeder Fall im Schatten des vorigen. */
 async function schrankeFrei() {
   await S.vergesseSchranke();
-  G.vergesseSitzungen();
+  testKontext('gutscheine')
+    .faecher.fach('guthabenSitzungen', () => new Map())
+    .clear();
 }
 
 /**

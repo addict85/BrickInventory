@@ -1,5 +1,5 @@
 /** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
-import { logAndContinue } from '../infra/fehler';
+import { logAndContinue, meldeFehler } from '../infra/fehler';
 import { generateThumb } from '../bilder';
 import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
 import { KEINE_FARBE } from '../infra/validate';
@@ -32,7 +32,7 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
     if (k.beendet) throw new AuftragUnterbrochen();
   };
   for (const set_number of sets) {
-    await enrich.downloadSetImages(kx, set_number).catch(e => console.warn(`[img-dl-bg] ${set_number}: ${e.message}`));
+    await enrich.downloadSetImages(kx, set_number).catch((e: unknown) => meldeFehler(`bild-nachlauf:${set_number}`, e));
     await tick();
   }
   for (const p of manualParts) {

@@ -37,7 +37,7 @@ test('Idempotenz: Verwalter-Antworten nur für die Verwalterrolle', { concurrenc
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
   await verwalterMitFaktor(_req, uid);
-  const appToken = await _req('src/konto/geraeteToken.js').createToken(uid, 'Rollen-Probe', false, null, {
+  const appToken = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Rollen-Probe', false, null, {
     scope: 'app',
   });
 

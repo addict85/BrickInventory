@@ -15,7 +15,7 @@ export {
 } from './images';
 export { raeumeBildCacheAuf } from './imgCacheServe';
 export { imgProxyFailures } from './imgProxyStats';
-export { downloadSetImage, rebrickableSetBild } from './setImages';
+export { setBildHerunterladen, rebrickableSetBild } from './setImages';
 export { generateThumb } from './thumbs';
 export type { Bildposten } from './bildlage';
 export { erzeugeBilder } from './bereich';

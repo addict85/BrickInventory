@@ -44,7 +44,7 @@ test('keine neue Spalten-Änderung in db/database.ts', () => {
 });
 
 test('api_tokens.sliding gibt es auf einer frischen und einer migrierten Datenbank', async t => {
-  // Ohne die Spalte scheitert createToken() und damit Login und QR-Login.
+  // Ohne die Spalte scheitert tokenAnlegen() und damit Login und QR-Login.
   const db = await datenOderSkip(t, _req);
   if (!db) return;
   const spalte = await db.get(`SELECT data_type FROM information_schema.columns

@@ -74,7 +74,14 @@ async function importiereWantedXml(
         figur: (u, body) => kx.figuren.addManualFig(u, body),
         // Kaufpreis ist MAXPRICE aus der Datei.
         set: (u, sn, menge, zustand, kaufpreis) =>
-          kx.sets.addSet({ setNumber: sn, menge, konto: u, kaufpreis, zustand }),
+          kx.sets.setErfassen({
+            anfragender: u,
+            setNumber: sn,
+            menge,
+            kaufpreis,
+            zustand,
+            wennVorhanden: 'aufstocken',
+          }),
       },
     });
     await schliesseBalken(

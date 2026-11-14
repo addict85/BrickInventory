@@ -153,6 +153,7 @@ export async function sendMail(
   try {
     transporter = await getTransporter(k);
   } catch (e) {
+    // Ausnahme: Die Antwort trägt den Fehlschlag (success: false); den Text ohne Zugangsdaten nennt smtpFehlertext.
     console.error(`📧 SMTP Fehler (${maskiereAdresse(to)}):`, smtpFehlertext(e).text);
     return { success: false, error: smtpFehlertext(e).text, mode: 'smtp' };
   }

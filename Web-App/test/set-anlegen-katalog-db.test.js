@@ -9,9 +9,9 @@
  * Gegenproben (A am 11.11.2026, B und C am 28.10.2026 gemessen):
  *   A  in katalogSetZu() `rs.name` durch `NULL::text AS name` ersetzt → rot:
  *      „getSetInfo nennt den Katalognamen, keinen Platzhalter“
- *   B  in addSetIntern wieder `name = EXCLUDED.name` → rot: „erneutes
+ *   B  beim Anlegen (damals addSetIntern) wieder `name = EXCLUDED.name` → rot: „erneutes
  *      Erfassen ohne Quellen lässt den Katalognamen stehen"
- *   C  die Prüfung moeglicheSetNummer() in addSetIntern entfernt → rot:
+ *   C  die Prüfung moeglicheSetNummer() beim Anlegen entfernt → rot:
  *      „eine Eingabe ohne Ziffer wird nicht als Set angelegt" ("abc-1" im Bestand)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne API-Schlüssel, damit
@@ -53,10 +53,10 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
     });
 
     await t.test('erneutes Erfassen ohne Quellen lässt den Katalognamen stehen', async () => {
-      const r = await require('./helpers/sources').bereichsSeite('sets').addSet({
+      const r = await require('./helpers/sources').bereichsSeite('sets').setErfassen({
+        anfragender: uid,
         setNumber: SN,
         menge: 1,
-        konto: uid,
         kaufpreis: 10,
         zustand: 'N',
       });
@@ -67,9 +67,9 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
     });
 
     await t.test('eine Eingabe ohne Ziffer wird nicht als Set angelegt', async () => {
-      const { addSet } = require('./helpers/sources').bereichsSeite('sets');
+      const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
       await assert.rejects(
-        addSet({ setNumber: 'abc', menge: 1, konto: uid, zustand: 'N' }),
+        setErfassen({ anfragender: uid, setNumber: 'abc', menge: 1, zustand: 'N', wennVorhanden: 'aufstocken' }),
         e => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',
       );
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);

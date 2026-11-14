@@ -1,5 +1,6 @@
 import { setzeGeschaetztenPreis } from './acquisitions';
-import { fehlertext, meldeFehler } from '../infra/fehler';
+import { meldeFehler } from '../infra/fehler';
+import { versuche } from '../infra/ergebnis';
 import { setTimeout as warte } from 'node:timers/promises';
 import type { BestandKontext } from './kontext';
 
@@ -25,7 +26,7 @@ async function backfillAcquisitions(k: BestandKontext) {
       }
     } catch (e) {
       // Eine Zeile bricht den Nachtrag nicht ab, wird aber gemeldet.
-      log(`übersprungen (${row.set_number}): ${fehlertext(e)}`);
+      meldeFehler(`kaufpreis-nachtrag:set-erfassung ${row.set_number}`, e);
     }
     await warte(1500); // Tageskontingent von BrickLink schonen
   }
@@ -82,12 +83,19 @@ async function backfillFigurenErfassungen(k: BestandKontext) {
   log(`Figuren-Erfassungen nachgetragen: ${done}/${rows.length}`);
 }
 
+/** Jeder Schritt läuft; danach wirft der Lauf, damit der Auftrag ihn wiederholt und zeigt. */
 async function run(k: BestandKontext) {
   log('Starte Migration bestehender Elemente ohne Kaufpreis…');
-  await backfillAcquisitions(k).catch(e => log(`Erfassungen Fehler: ${e.message}`));
-  await backfillFigurenErfassungen(k).catch(e => log(`Figuren-Erfassungen Fehler: ${e.message}`));
-  await backfillTeileErfassungen(k).catch(e => log(`Teile-Erfassungen Fehler: ${e.message}`));
-  await k.katalog.teilfarbenbilderNachtragen().catch(e => log(`Teile-Bilder Fehler: ${e.message}`));
+  const schritte: [string, () => Promise<unknown>][] = [
+    ['set-erfassungen', () => backfillAcquisitions(k)],
+    ['figuren-erfassungen', () => backfillFigurenErfassungen(k)],
+    ['teile-erfassungen', () => backfillTeileErfassungen(k)],
+    ['teilfarbenbilder', () => k.katalog.teilfarbenbilderNachtragen()],
+  ];
+  const ohne: string[] = [];
+  for (const [name, schritt] of schritte)
+    if (!(await versuche(`kaufpreis-nachtrag:${name}`, schritt)).ok) ohne.push(name);
+  if (ohne.length) throw new Error(`Kaufpreis-Nachtrag gescheitert: ${ohne.join(', ')}`);
   log('Migration abgeschlossen.');
 }
 

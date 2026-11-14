@@ -35,11 +35,11 @@ export async function datenZip(
   // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
   const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiv };
   const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
-    k.sets.buildSetsCsv(uid),
+    k.sets.setsAlsCsv(uid),
     k.bestand.buildPartsCsv(uid),
     k.bestand.buildFigsCsv(uid),
     k.merkliste.buildMerklisteCsv(uid),
-    k.finanzen.preisalarm.buildPreisalarmeCsv(uid),
+    k.finanzen.preisalarm.preisalarmeAlsCsv(uid),
   ]);
   const archiv = new ZipArchive({ zlib: { level: 9 } });
   archiv.on('error', beiFehler);

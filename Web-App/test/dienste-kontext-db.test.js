@@ -39,7 +39,7 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
   const { OHNE_NACHARBEIT } = _req('src/auftraege/nacharbeit.js');
   // Testdaten als Eigentümerin (am Zeilenschutz vorbei), der Dienst fragt als Laufzeitrolle.
   const eigen = quellen.testDaten();
-  const { imNamenVon } = _req('src/infra/kontoKontext.js');
+  const { alsAnfrage } = _req('src/infra/kontoKontext.js');
   const db = testZugang();
   const name = `kontext_${process.pid}`;
   await eigen.run('DELETE FROM users WHERE username = $1', [name]);
@@ -53,7 +53,7 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
 
   const { zaehler, zugang } = zaehlend(db);
   const d = baueDienste(zugang, { nacharbeit: OHNE_NACHARBEIT });
-  const stats = await imNamenVon({ session: { userId: uid } }, () => d.teile.getPartsStats(uid));
+  const stats = await alsAnfrage({ session: { userId: uid } }, () => d.teile.getPartsStats(uid));
   assert.equal(Number(stats.unique_parts), 1, 'das angelegte Teil kommt an');
   assert.ok(zaehler.n > 0, 'getPartsStats fragt über den übergebenen Zugang');
 });

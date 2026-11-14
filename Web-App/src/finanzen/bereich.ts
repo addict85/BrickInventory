@@ -29,7 +29,7 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
       'alarmeFuer',
       'alleAlarme',
       'ausgeloesteSeit',
-      'buildPreisalarmeCsv',
+      'preisalarmeAlsCsv',
       'loescheAlarm',
       'pruefeSet',
       'setzeAlarm',

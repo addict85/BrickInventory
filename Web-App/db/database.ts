@@ -42,9 +42,16 @@ export type { Erststart } from './schemaStart';
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
 // und liefert `any`.
 
-// NUMERIC als Zahl: NUMERIC(12,4) bleibt weit unter 2^53, gerechnet wird in
-// src/infra/geld.ts in Zehntausendsteln.
-pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, (v: string | null) => (v === null ? null : parseFloat(v)));
+/** NUMERIC als Zahl: Gerechnet wird in Zehntausendsteln (src/infra/geld.ts). Bis 2^53/10^4 trifft
+ * Math.round(n × 10^4) den Wert genau (NUMERIC(12,4) reicht bis 10^8); darüber wirft er, statt still zu runden. */
+export function numericAlsZahl(v: string | null): number | null {
+  if (v === null) return null;
+  const n = Number(v);
+  if (Math.abs(n) >= GENAU_BIS) throw new RangeError(`NUMERIC ${v} ist in Zehntausendsteln nicht mehr genau`);
+  return n;
+}
+const GENAU_BIS = Number.MAX_SAFE_INTEGER / 10_000;
+pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, numericAlsZahl);
 
 // Höchstens zwei Prozesse (web und jobs) mit je 15 Verbindungen: weit unter
 // max_connections, mit Luft für Werkzeuge und den CSV-Importprozess.

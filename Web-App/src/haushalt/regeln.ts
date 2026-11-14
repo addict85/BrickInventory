@@ -1,6 +1,5 @@
 /** Was der Haushalt ohne Datenbank weiss; die Dienste (haushalt.ts) nehmen den Kontext. */
 import crypto from 'node:crypto';
-import { prozessweit } from '../infra/prozessweit';
 
 /** Lang genug für „später am Abend", kurz genug, dass ein liegen gebliebener
  * Code nicht dauerhaft öffnet. */
@@ -18,22 +17,6 @@ export interface Household {
 export const HAUSHALT_KANAL = 'haushalt_geaendert';
 export const HAUSHALT_TTL_MS = 5 * 60 * 1000;
 export const HAUSHALT_MAX = 500;
-
-/** Der Stand macht leereHaushaltCache() für alle Zugänge wirksam; das Gedächtnis selbst
- * liegt je Zugang im Fach des Bereichs (gedaechtnis in haushalt.ts). */
-export const haushaltStand = () =>
-  prozessweit('haushaltGedaechtnis', () => ({ stand: 0, abhaengige: [] as Array<() => void> }));
-
-/** Rückruf statt Import: Module, die den Haushalt brauchen, würden sonst einen Zyklus bilden. */
-export function beiHaushaltsaenderung(leere: () => void): void {
-  haushaltStand().abhaengige.push(leere);
-}
-
-export function leereHaushaltCache(): void {
-  const alle = haushaltStand();
-  alle.stand++;
-  for (const leere of alle.abhaengige) leere();
-}
 
 /** Ohne 0/O, 1/I/L: Der Code wird oft abgetippt. 16 Zeichen tragen rund 79 Bit. */
 const CODE_ZEICHEN = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';

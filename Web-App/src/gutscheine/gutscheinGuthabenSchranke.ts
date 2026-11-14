@@ -1,6 +1,14 @@
 /** Ein Aufruf je 30 Sekunden über alle Konten, und Ruhe, wenn der Bot-Schutz
  * anspricht — sonst sperrt LEGO die Adresse. */
-import { holeGuthaben, BotSchutz, LAND_STANDARD, verdecke, type Abruf, type Guthaben } from './gutscheinGuthaben';
+import {
+  holeGuthaben,
+  BotSchutz,
+  LAND_STANDARD,
+  verdecke,
+  type Abruf,
+  type Guthaben,
+  type Sitzungsvorrat,
+} from './gutscheinGuthaben';
 import { Fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/guthabenSchranke';
 import type { GutscheineKontext } from './kontext';
@@ -84,9 +92,9 @@ export async function frageGuthabenAb(
   try {
     // Einzeln setzen: exactOptionalPropertyTypes unterscheidet „nicht gesetzt" von
     // „undefined", und nur bei „nicht gesetzt" nimmt holeGuthaben den echten fetch.
-    const durch: { locale: string; abruf?: Abruf } = { locale: opt.locale || LAND_STANDARD };
-    if (opt.abruf) durch.abruf = opt.abruf;
-    const guthaben = await holeGuthaben(nummer, pin, durch);
+    const durch = { locale: opt.locale || LAND_STANDARD, abruf: opt.abruf ?? k.fremdquellen.quellen.legoAbruf };
+    const vorrat = k.faecher.fach<Sitzungsvorrat>('guthabenSitzungen', () => new Map());
+    const guthaben = await holeGuthaben(vorrat, nummer, pin, durch);
     return { art: 'guthaben', guthaben };
   } catch (e) {
     if (e instanceof BotSchutz) {

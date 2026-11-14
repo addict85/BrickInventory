@@ -6,7 +6,7 @@
  *   A  in priceForNewAcquisition wieder die globale Währung (`'EUR'` fest)
  *      → rot: „die Mengenerhöhung nimmt den Preis in der Kontowährung“
  *      (500 statt 800)
- *   B  addSetWithDate wieder mit dem nachträglichen UPDATE auf die höchste id
+ *   B  das CSV-Erfassen (damals addSetWithDate) wieder mit nachträglichem UPDATE auf die höchste id
  *      → rot: „das CSV-Datum trifft nur die neue Erfassung“ (der Kauf vom
  *      1.10. stand danach auf dem 5.5.2020)
  *
@@ -42,7 +42,7 @@ test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async t => 
                   VALUES ($1,'N',$2,$3,$3,3)`,
       [SN, w, p],
     );
-  const { updateSet, addSetWithDate } = require('./helpers/sources').bereichsSeite('sets');
+  const { updateSet, setErfassen } = require('./helpers/sources').bereichsSeite('sets');
 
   try {
     await t.test('die Mengenerhöhung nimmt den Preis in der Kontowährung', async () => {
@@ -65,7 +65,15 @@ test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async t => 
                     VALUES ($1,$2,1,100,'N',NOW()), ($1,$2,1,50,'N','2026-10-01T12:00:00Z')`,
         [uid, SN],
       );
-      await addSetWithDate(SN, 1, uid, 100, 'N', '2020-05-05');
+      await setErfassen({
+        anfragender: uid,
+        setNumber: SN,
+        menge: 1,
+        kaufpreis: 100,
+        zustand: 'N',
+        erfasstAm: '2020-05-05',
+        wennVorhanden: 'aufstocken',
+      });
       const zeilen = await db.all(
         `SELECT quantity, purchase_price::float AS preis, (created_at AT TIME ZONE 'UTC')::date::text AS tag
            FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY tag`,

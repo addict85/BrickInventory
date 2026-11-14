@@ -1,5 +1,5 @@
 /**
- * downloadSetImage legt data/images/sets selbst an: Auf einer frischen
+ * setBildHerunterladen legt data/images/sets selbst an: Auf einer frischen
  * Installation (und im ZAP-Lauf der CI) gibt es den Ordner noch nicht, und jedes
  * Bild endete mit ENOENT auf der .teil-Datei.
  *
@@ -18,7 +18,7 @@ const tls = require('node:tls');
 const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'setbild-ordner-'));
 process.env.APP_ROOT = wurzel;
 const _req = require('./helpers/sources').buildAndRequire();
-const { downloadSetImage } = _req('src/bilder/setImages.js');
+const { setBildHerunterladen } = _req('src/bilder/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 const FIX = path.join(__dirname, 'fixtures');
@@ -59,7 +59,7 @@ test('das Bild landet, auch wenn der Ordner fehlt', async t => {
   assert.ok(SET_IMAGES_DIR.startsWith(wurzel), 'der Ordner liegt im Testverzeichnis');
   assert.equal(fs.existsSync(SET_IMAGES_DIR), false, 'der Ordner fehlt vor dem Abruf');
   assert.equal(
-    await downloadSetImage('https://cdn.rebrickable.com/media/sets/10001-1.jpg', '10001-1'),
+    await setBildHerunterladen('https://cdn.rebrickable.com/media/sets/10001-1.jpg', '10001-1'),
     '/images/sets/10001-1.jpg',
   );
   assert.equal(fs.readFileSync(path.join(SET_IMAGES_DIR, '10001-1.jpg')).length, BILD.length);

@@ -23,6 +23,8 @@ const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const G = _req('src/gutscheine/gutscheinGuthaben.js');
+/** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
+const vorrat = new Map();
 const { AbrufFehler } = _req('src/infra/abruf.js');
 
 const FIX = path.join(__dirname, 'fixtures');
@@ -112,12 +114,12 @@ test.after(() => {
 });
 test.beforeEach(() => {
   gesehen.length = 0;
-  G.vergesseSitzungen();
+  vorrat.clear();
 });
 
 test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
   modus = 'gut';
-  const g = await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH' });
+  const g = await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH' });
   assert.deepEqual(g, { betrag: 12.5, waehrung: 'CHF', angezeigt: 'CHF 12.50' });
   assert.deepEqual(
     gesehen.map(a => `${a.methode} ${a.pfad}`),
@@ -137,7 +139,7 @@ test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
 test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
   modus = 'umleitung';
   await assert.rejects(
-    G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH' }),
+    G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH' }),
     e => e instanceof AbrufFehler && e.grund === 'umleitung',
   );
   assert.ok(gesehen.length >= 1, 'der Testserver wurde nicht gefragt');
@@ -150,7 +152,7 @@ test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
 test('eine übergrosse Antwort wird abgebrochen', async () => {
   modus = 'gross';
   await assert.rejects(
-    G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH' }),
+    G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH' }),
     e => e instanceof AbrufFehler && e.grund === 'zu-gross',
   );
 });

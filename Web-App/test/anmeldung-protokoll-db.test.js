@@ -7,7 +7,7 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  meldeAnmeldeereignis() in fehlversuch() entfernt → rot: „ein unbekannter
  *      Name …“, „falsches Passwort …“, „ein falscher Code …“
- *   B  die Zeile bei checkLoginAllowed() entfernt → rot: „die Sperre steht im Protokoll“
+ *   B  die Zeile bei anmeldungErlaubt() entfernt → rot: „die Sperre steht im Protokoll“
  *   C  meldeAnmeldeereignis() in gebremst() (passwortBestaetigung) entfernt →
  *      rot: „eine falsche Bestätigung …“, „die Zeile landet in app_logs“
  *   D  in fehlversuch() die Mail entfernt → rot: „falsches Passwort …“ (keine

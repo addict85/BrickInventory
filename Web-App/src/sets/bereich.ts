@@ -1,7 +1,5 @@
-/** Die Fabrik des Bereichs: Wer Datenbank oder Nacharbeit braucht, bekommt sie als
- * ersten Parameter (SetsKontext); erzeugeSets bindet ihn einmal für alle. So
- * greift kein Dienst auf den Zugang des Prozesses zu. Gesucht wird beim Aufruf,
- * damit ein Test eine Funktion des Moduls ersetzen kann. */
+/** Die Fabrik: erzeugeSets bindet den Kontext einmal für alle Dienste, kein Dienst greift auf den
+ * Zugang des Prozesses zu. Gesucht wird beim Aufruf, damit ein Test eine Funktion ersetzen kann. */
 import type { SetsAbhaengigkeiten, SetsKontext } from './kontext';
 import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import * as erfassen from './erfassen';
@@ -22,18 +20,11 @@ export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKont
   const sk: SetsKontext = baueKontext(a, () => ({}));
   einblick?.(sk);
   return {
-    ...bindeZugang(sk, erfassen, [
-      'recordAcquisition',
-      'findSetInScope',
-      'setErfassen',
-      'setErgaenzen',
-      'addSet',
-      'addSetWithDate',
-    ]),
-    ...bindeZugang(sk, setService, ['updateSet', 'buildSetsCsv']),
-    ...bindeZugang(sk, lesen, ['getSets', 'getSet', 'getSetConditionAggregate', 'withSetAggregate']),
-    ...bindeZugang(sk, loeschen, ['loescheSet', 'loescheSetFuer', 'deleteSetRows']),
-    ...bindeZugang(sk, setMove, ['verschiebeSet', 'moveSetBetweenAccounts', 'moveManualAcquisition']),
+    ...bindeZugang(sk, erfassen, ['erfassungBuchen', 'findSetInScope', 'setErfassen', 'setErgaenzen']),
+    ...bindeZugang(sk, setService, ['updateSet', 'setsAlsCsv']),
+    ...bindeZugang(sk, lesen, ['getSets', 'getSet', 'zustandsAggregat', 'mitSetAggregat']),
+    ...bindeZugang(sk, loeschen, ['loescheSet', 'loescheSetFuer', 'setZeilenLoeschen']),
+    ...bindeZugang(sk, setMove, ['setVerschieben', 'setErfassungenUmhaengen', 'manuelleErfassungUmhaengen']),
     ...bindeZugang(sk, inhalt, [
       'setInfo',
       'setInfoFuerKonto',
@@ -60,13 +51,7 @@ export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKont
       'csvImportStandFuerStrom',
       'csvImportStandAbonnieren',
     ]),
-    ...bindeZugang(sk, dienst, [
-      'rebrickableListe',
-      'setGehoertKonto',
-      'setVerschieben',
-      'lagerortDesSetsSetzen',
-      'lagerorteMitVorgabe',
-    ]),
+    ...bindeZugang(sk, dienst, ['rebrickableListe', 'setGehoertKonto', 'lagerortDesSetsSetzen', 'lagerorteMitVorgabe']),
     ...bindeZugang(sk, nachErfassung, ['zieheNach', 'ladeSetBilder']),
     ...bindeZugang(sk, csvImportLauf, ['fuehreCsvImportAus', 'csvImportAufgegeben']),
   };

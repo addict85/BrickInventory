@@ -8,7 +8,7 @@ import {
   resolveBlPartNumber,
   resolveBlColorId,
 } from './rechnung/preise';
-import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
+import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { marktpreisAus } from '../katalog';
 import { KEINE_FARBE, zustand } from '../infra/validate';
 import type { FinanzenKontext } from './kontext';
@@ -283,9 +283,8 @@ export async function schaetzeFigurenpreis(
 
     return { preis: total, abdeckung };
   } catch (e) {
-    console.warn(
-      `[minifig-price-estimate] ${figNumber}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
-    );
+    // Ausnahme: Die Schätzung ist ein Zusatz zum Marktpreis; ohne sie steht „kein Preis“ da.
+    meldeFehler(`figurenpreis-schaetzung:${figNumber}`, e);
     return null;
   }
 }

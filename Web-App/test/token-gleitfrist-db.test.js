@@ -144,7 +144,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
        VALUES ($1,$2,'Altzeile',NULL, NOW() - INTERVAL '40 days', NOW() - INTERVAL '10 days')`,
       [alt, uid],
     );
-    await auth.purgeExpiredTokens();
+    await auth.tokensAufraeumen();
     const nachgezogen = await db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [alt]);
     assert.ok(nachgezogen, 'Die Altzeile darf nicht geloescht werden — sie ist noch gueltig');
     assert.equal(nachgezogen.sliding, true, 'Eine Altzeile ohne Datum war ein App-/QR-Token und gleitet');
@@ -155,7 +155,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
     );
 
     // 5. Eine Altzeile, die nie benutzt wurde, zählt ab ihrer Anlage und fällt.
-    // Gegenprobe (11.11.2026 gemessen): in purgeExpiredTokens() die Summe durch 0
+    // Gegenprobe (11.11.2026 gemessen): in tokensAufraeumen() die Summe durch 0
     // ersetzt → rot „das Aufräumen zählt …“.
     const nie = 'b'.repeat(64);
     await db.run('DELETE FROM api_tokens WHERE token = $1', [nie]);
@@ -164,7 +164,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
        VALUES ($1,$2,'Nie benutzt',NULL, NOW() - INTERVAL '40 days', NULL)`,
       [nie, uid],
     );
-    assert.ok((await auth.purgeExpiredTokens()) >= 1, 'das Aufräumen zählt, was es entfernt');
+    assert.ok((await auth.tokensAufraeumen()) >= 1, 'das Aufräumen zählt, was es entfernt');
     assert.equal(
       await db.get('SELECT 1 FROM api_tokens WHERE token = $1', [nie]),
       undefined,

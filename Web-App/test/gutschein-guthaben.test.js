@@ -12,6 +12,8 @@ const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const G = _req('src/gutscheine/gutscheinGuthaben.js');
+/** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
+const vorrat = new Map();
 
 const NUMMER = '5045076374450011166';
 const PIN = '5225';
@@ -83,9 +85,9 @@ function doppel(antworten = {}) {
 
 test('Guthaben-Abfrage', async t => {
   await t.test('1. der Weg: Seite, Login, Abfrage — und das Ergebnis in Franken', async () => {
-    G.vergesseSitzungen();
+    vorrat.clear();
     const { abruf, protokoll } = doppel();
-    const g = await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf });
+    const g = await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf });
     assert.deepEqual(
       g,
       { betrag: 250, waehrung: 'CHF', angezeigt: 'CHF 250.00' },
@@ -108,10 +110,10 @@ test('Guthaben-Abfrage', async t => {
   });
 
   await t.test('2. die Sitzung wird wiederverwendet, nicht je Karte neu aufgebaut', async () => {
-    G.vergesseSitzungen();
+    vorrat.clear();
     const { abruf, protokoll } = doppel();
-    await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf });
-    await G.holeGuthaben('5045076374450022277', '1234', { locale: 'de-CH', abruf });
+    await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf });
+    await G.holeGuthaben(vorrat, '5045076374450022277', '1234', { locale: 'de-CH', abruf });
     const logins = protokoll.filter(p => p.url.includes('/Login')).length;
     assert.equal(
       logins,
@@ -124,15 +126,15 @@ test('Guthaben-Abfrage', async t => {
   });
 
   await t.test('3. ein 401 mit Token AUS DEM VORRAT fuehrt zu genau einem Neuversuch', async () => {
-    G.vergesseSitzungen();
+    vorrat.clear();
     // Erst eine Abfrage, damit eine Sitzung im Vorrat liegt.
     const vorlauf = doppel();
-    await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf: vorlauf.abruf });
+    await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: vorlauf.abruf });
 
     const { abruf, protokoll } = doppel({
       giftCardBalanceQuery: [antwort({ status: 401 }), antwort({ json: GUTHABEN_ANTWORT })],
     });
-    const g = await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf });
+    const g = await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf });
     assert.equal(g.betrag, 250, 'Der zweite Versuch mit frischer Sitzung muss gelingen');
     const abfragen = protokoll.filter(p => p.url.includes('giftCardBalanceQuery')).length;
     assert.equal(abfragen, 2, `${abfragen} Abfragen — erwartet genau zwei (eine Wiederholung)`);
@@ -144,12 +146,12 @@ test('Guthaben-Abfrage', async t => {
   });
 
   await t.test('4. ein 401 mit FRISCHER Sitzung wird nicht wiederholt', async () => {
-    G.vergesseSitzungen();
+    vorrat.clear();
     const { abruf, protokoll } = doppel({
       giftCardBalanceQuery: [antwort({ status: 401 }), antwort({ status: 401 })],
     });
     await assert.rejects(
-      () => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf }),
+      () => G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf }),
       e => e instanceof G.NichtAngemeldet,
       'Erwartet NichtAngemeldet',
     );
@@ -162,22 +164,22 @@ test('Guthaben-Abfrage', async t => {
   });
 
   await t.test('5. HTTP 403 ist BOT-SCHUTZ und wird nicht wiederholt', async () => {
-    G.vergesseSitzungen();
+    vorrat.clear();
     const { abruf, protokoll } = doppel({
       giftCardBalanceQuery: antwort({ status: 403, text: 'Attention Required! Cloudflare' }),
     });
     await assert.rejects(
-      () => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf }),
+      () => G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf }),
       e => e instanceof G.BotSchutz,
       'Erwartet BotSchutz — daran haengt die Pause in der Schranke',
     );
     assert.equal(protokoll.filter(p => p.url.includes('giftCardBalanceQuery')).length, 1);
 
     // Und schon die SEITE kann 403 geben — dann ist es derselbe Fall.
-    G.vergesseSitzungen();
+    vorrat.clear();
     const b = doppel({ 'gift-cards/balance': antwort({ status: 403, text: 'blocked' }) });
     await assert.rejects(
-      () => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf: b.abruf }),
+      () => G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: b.abruf }),
       e => e instanceof G.BotSchutz,
       'Ein 403 auf der Guthabenseite ist dieselbe Wand wie eines auf dem Endpunkt',
     );
@@ -186,11 +188,11 @@ test('Guthaben-Abfrage', async t => {
 
   await t.test('5b. nach Bot-Schutz beginnt der nächste Versuch mit frischer Sitzung', async () => {
     // Woher dieser Fall kommt
-    G.vergesseSitzungen();
+    vorrat.clear();
 
     // 1. Eine Sitzung aufbauen und benutzen.
     const a = doppel();
-    await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf: a.abruf });
+    await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: a.abruf });
     assert.equal(
       a.protokoll.filter(p => p.url.includes('/Login')).length,
       1,
@@ -200,7 +202,7 @@ test('Guthaben-Abfrage', async t => {
     // 2. Der Bot-Schutz schlägt zu.
     const b = doppel({ giftCardBalanceQuery: antwort({ status: 403, text: 'blocked' }) });
     await assert.rejects(
-      () => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf: b.abruf }),
+      () => G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: b.abruf }),
       e => e instanceof G.BotSchutz,
     );
     assert.equal(
@@ -212,7 +214,7 @@ test('Guthaben-Abfrage', async t => {
     // 3. Der nächste Versuch (nach der Pause, die hier nicht nachgestellt
     //    wird — sie steht in der Schranke) muss die Seite neu laden.
     const c = doppel();
-    await G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf: c.abruf });
+    await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: c.abruf });
     assert.equal(
       c.protokoll.filter(p => p.url.includes('/gift-cards/balance')).length,
       1,
@@ -228,7 +230,7 @@ test('Guthaben-Abfrage', async t => {
   });
 
   await t.test('6. die PIN steht in KEINEM Text, der hinausgeht', async () => {
-    G.vergesseSitzungen();
+    vorrat.clear();
     // Der boeseste Fall: Die Gegenseite wirft die Eingabe in ihrer
     // Fehlermeldung zurueck. Ohne verdecke() landete die PIN damit im
     // Serverprotokoll und in der Antwort an den Browser.
@@ -237,7 +239,7 @@ test('Guthaben-Abfrage', async t => {
       giftCardBalanceQuery: antwort({ status: 400, text: echo }),
     });
     await assert.rejects(
-      () => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf }),
+      () => G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf }),
       e => {
         assert.ok(!e.message.includes(PIN), `Die PIN steht in der Meldung: ${e.message}`);
         assert.ok(!e.message.includes(NUMMER), `Die ganze Nummer steht in der Meldung: ${e.message}`);
@@ -250,12 +252,12 @@ test('Guthaben-Abfrage', async t => {
     );
 
     // Und derselbe Weg fuer einen GraphQL-Fehler im Rumpf (HTTP 200).
-    G.vergesseSitzungen();
+    vorrat.clear();
     const b = doppel({
       giftCardBalanceQuery: antwort({ json: { errors: [{ message: echo }] } }),
     });
     await assert.rejects(
-      () => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf: b.abruf }),
+      () => G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: b.abruf }),
       e => !e.message.includes(PIN) && !e.message.includes(NUMMER),
     );
   });
@@ -275,9 +277,9 @@ test('Guthaben-Abfrage', async t => {
 
   await t.test('8. das Land kann die Adresse nicht umlenken', async () => {
     // Was ich hier erwartet hatte, und was gemessen herauskam
-    G.vergesseSitzungen();
+    vorrat.clear();
     const { abruf, protokoll } = doppel();
-    await G.holeGuthaben(NUMMER, PIN, { locale: '../../boese.example.com/x', abruf }).catch(() => null);
+    await G.holeGuthaben(vorrat, NUMMER, PIN, { locale: '../../boese.example.com/x', abruf }).catch(() => null);
     assert.ok(protokoll.length > 0, 'Selbstnachweis: es wurde ueberhaupt abgerufen');
     for (const p of protokoll) {
       assert.equal(
@@ -299,10 +301,10 @@ test('Guthaben-Abfrage', async t => {
 
   await t.test('5c. eine Anmeldung mit Fehlern im Rumpf geht als LoginAbgelehnt weiter', async () => {
     // Gegenprobe (14.11.2026): im Fang von baueSitzung `throw e` gestrichen → rot (Gast-Token-Fehler).
-    G.vergesseSitzungen();
+    vorrat.clear();
     const { abruf } = doppel({ Login: antwort({ json: { errors: [{ message: 'gesperrt' }] } }) });
     await assert.rejects(
-      () => G.holeGuthaben(NUMMER, PIN, { locale: 'de-CH', abruf }),
+      () => G.holeGuthaben(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf }),
       e => e instanceof G.LoginAbgelehnt && String(Object(e).message) === 'Login: gesperrt',
     );
   });

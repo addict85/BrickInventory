@@ -1,7 +1,7 @@
 /** Jeder Schritt meldet seinen Fehler und lässt die übrigen laufen; scheitert
  * einer, wiederholt der Worker den ganzen Lauf — alle Schritte vertragen das. */
 import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
-import { raeumeBildCacheAuf } from '../katalog';
+import { raeumeBildCacheAuf } from '../bilder';
 import { fehlertext } from '../infra/fehler';
 import { raeumeAlteSicherungenAuf } from '../../db/migrate';
 import type { VerwaltungKontext } from './kontext';
@@ -25,7 +25,7 @@ async function fuehreAus(schritte: Schritt[], auftrag?: AuftragsLauf): Promise<v
 function aufraeumen(k: VerwaltungKontext, lauf?: AuftragsLauf): Promise<void> {
   return fuehreAus(
     [
-      ['abgelaufene Tokens', k.konto.purgeExpiredTokens],
+      ['abgelaufene Tokens', k.konto.tokensAufraeumen],
       ['Anmeldezähler', k.konto.raeumeAnmeldezaehlerAuf],
       ['Papierkorb', k.bestand.raeumePapierkorbAuf],
       ['PDF-Aufträge', k.auftraege.cleanOldPdfJobs],

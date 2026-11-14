@@ -11,18 +11,14 @@ export interface StartZustand {
   sub?: string | null;
 }
 
-let _stand: StartZustand = { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 };
-
-export function startZustand(): StartZustand {
-  return _stand;
-}
-
-export function setzeStartZustand(s: StartZustand): void {
-  _stand = s;
-}
+/** Je Satz Dienste: Der Job-Prozess schreibt, der Web-Prozess liest nach, bis bereit. */
+const gemerkt = (k: AuftraegeKontext) =>
+  k.faecher.fach<{ stand: StartZustand }>('startZustand', () => ({
+    stand: { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 },
+  }));
 
 export async function meldeStartZustand(k: AuftraegeKontext, s: StartZustand): Promise<void> {
-  _stand = s;
+  gemerkt(k).stand = s;
   await k.laufzustand
     .setzeZustand('startup_status', JSON.stringify(s))
     .catch(logAndContinue('start:zustand schreiben'));
@@ -44,12 +40,14 @@ export function oeffentlicherStartZustand(
 
 /** Bereit bleibt bereit — darum endet das Nachlesen danach. */
 export async function aktuellerStartZustand(k: AuftraegeKontext): Promise<StartZustand> {
-  if (_stand.ready) return _stand;
+  const g = gemerkt(k);
+  if (g.stand.ready) return g.stand;
   try {
     const roh = await k.laufzustand.liesZustand('startup_status');
-    if (roh) _stand = JSON.parse(roh) as StartZustand;
+    if (roh) g.stand = JSON.parse(roh) as StartZustand;
   } catch (e) {
+    // Ausnahme: Der Gesundheitsweg zeigt dann den letzten bekannten Stand statt eines Fehlers.
     meldeFehler('start:zustand lesen', e);
   }
-  return _stand;
+  return g.stand;
 }

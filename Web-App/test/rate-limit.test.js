@@ -148,7 +148,7 @@ test('bei DB-Ausfall greift die Rückfallebene', () => {
 });
 
 test('die Aufrufstellen warten auf das Ergebnis', () => {
-  // checkLoginAllowed ist seit der Umstellung asynchron — ein vergessenes
+  // anmeldungErlaubt ist seit der Umstellung asynchron — ein vergessenes
   // await liefert ein Promise, das immer truthy ist und JEDEN Login sperrt.
   const dateien = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -165,7 +165,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
   let gefunden = 0;
   for (const datei of alle) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of src.matchAll(/\b(checkLoginAllowed|recordLoginFailure|recordLoginSuccess)\s*\(/g)) {
+    for (const m of src.matchAll(/\b(anmeldungErlaubt|anmeldungGescheitert|anmeldungGelungen)\s*\(/g)) {
       // Die Zeile selbst ansehen — ein `await` davor genügt. Import und
       // Definition sind keine Aufrufe und zählen nicht mit.
       const zeilenAnfang = src.lastIndexOf('\n', m.index) + 1;
@@ -184,7 +184,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
     [],
     'Diese Aufrufe warten nicht auf den Anmelde-Zähler:\n  ' +
       ohneAwait.join('\n  ') +
-      '\nEin Promise ist immer truthy — ohne await sperrt checkLoginAllowed JEDEN Login.',
+      '\nEin Promise ist immer truthy — ohne await sperrt anmeldungErlaubt JEDEN Login.',
   );
 });
 

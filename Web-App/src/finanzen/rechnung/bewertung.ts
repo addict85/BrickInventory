@@ -5,7 +5,8 @@
 import { logAndContinue } from '../../infra/fehler';
 import type * as repo from '../repository/bewertung';
 import { asIds, type Sicht } from '../../haushalt';
-import { resolveImageLocal, proxyImageUrl, hatPreis, marktpreisAus } from '../../katalog';
+import { hatPreis, marktpreisAus } from '../../katalog';
+import { resolveImageLocal, proxyImageUrl } from '../../bilder';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
 import { mitVersion } from '../../infra/setNummer';
 import {

@@ -70,10 +70,10 @@ test('Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse', async t =
   for (let i = 0; i < L.MAX_JE_ADRESSE; i++) {
     const ip = `2001:db8:5:0:${(i + 1).toString(16)}::1`;
     const name = `v6_spray_${i}`;
-    assert.equal(await L.checkLoginAllowed(ip, name), null, `Versuch ${i + 1} darf noch`);
-    await L.recordLoginFailure(ip, name);
+    assert.equal(await L.anmeldungErlaubt(ip, name), null, `Versuch ${i + 1} darf noch`);
+    await L.anmeldungGescheitert(ip, name);
   }
-  const sperre = await L.checkLoginAllowed('2001:db8:5:0:ffff::9', 'v6_spray_neu');
+  const sperre = await L.anmeldungErlaubt('2001:db8:5:0:ffff::9', 'v6_spray_neu');
   assert.ok(sperre, 'Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse');
   assert.equal(sperre.code, 'zu_viele_fehlversuche');
 });

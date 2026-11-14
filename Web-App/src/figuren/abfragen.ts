@@ -1,4 +1,4 @@
-import { resolveImageLocal } from '../katalog';
+import { resolveImageLocal } from '../bilder';
 import { asIds, type Sicht } from '../haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 import { mitVersion } from '../infra/setNummer';

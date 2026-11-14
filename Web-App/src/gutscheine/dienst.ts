@@ -219,14 +219,14 @@ export async function pdfFreigeben(k: GutscheineKontext, uid: number, id: number
   const z = await vorhanden(k, uid, id);
   if (!z.pdf_path) fachfehler('nicht_gefunden', 'nicht_gefunden');
   await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_pdf', maskiert(z).number);
-  return stelleTicketAus(uid, String(id));
+  return stelleTicketAus(k, uid, String(id));
 }
 
 export async function exportFreigeben(k: GutscheineKontext, uid: number): Promise<string> {
   const n = (await gutscheinListe(k, uid)).length;
   if (!n) fachfehler('nicht_gefunden', 'keine_gutscheine');
   await k.konto.verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);
-  return stelleTicketAus(uid, 'export');
+  return stelleTicketAus(k, uid, 'export');
 }
 
 export async function gutscheinPdf(k: GutscheineKontext, uid: number, id: number): Promise<Buffer> {

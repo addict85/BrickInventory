@@ -1,4 +1,3 @@
-import { beiHaushaltsaenderung } from '../haushalt';
 import type { BilderKontext } from './kontext';
 
 /** Anleitungen liegen unter der Setnummer: Ihr Vorhandensein verrät, was jemand
@@ -11,7 +10,7 @@ type Stand = { nummern: Set<string>; anleitungen: Set<string>; am: number };
 const merker = (k: BilderKontext) =>
   k.faecher.fach('blickfeld', () => {
     const m = new Map<number, Stand>();
-    beiHaushaltsaenderung(() => m.clear());
+    k.haushalt.beiHaushaltsaenderung(() => m.clear());
     return m;
   });
 // Ein Treffer gilt eine Minute; eine Absage wird nach zwei Sekunden neu

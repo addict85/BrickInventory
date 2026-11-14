@@ -24,9 +24,9 @@ const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
 const { zugangOderSkip, fehltVoraussetzung } = require('./helpers/db');
 const { erzeugeDb, dbKonfigAusUmgebung } = require(path.join(q.DIST, 'db', 'database.js'));
-const { imNamenVon } = _req('src/infra/kontoKontext.js');
+const { alsAnfrage } = _req('src/infra/kontoKontext.js');
 
-const als = (uid, f) => imNamenVon({ apiUser: { user_id: uid } }, f);
+const als = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
 /** Zählt Richtungswechsel: Schickt der Client nach einer Antwort wieder, beginnt ein neuer Roundtrip. */

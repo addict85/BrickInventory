@@ -1,7 +1,7 @@
 // Guthaben einer LEGO-Geschenkkarte; greift der Bot-Schutz, folgt kein weiterer Aufruf.
 import { meldeUndLiefere } from '../infra/fehler';
 import { hostErlaubt } from '../infra/fremdeAdressen';
-import { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../katalog';
+import { legoAbruf, ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../fremdquellen';
 
 /** Aus dem Prototyp übernommen, nicht geraten — der Teil, den niemand herleiten kann. */
 const ENDPUNKT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';
@@ -83,8 +83,9 @@ interface Sitzung {
   ablauf: number;
 }
 
-/** Im Gedächtnis, nicht in der Datenbank: Der Gast-Token gehört keinem Konto. */
-const sitzungen = new Map<string, Sitzung>();
+/** Im Gedächtnis, nicht in der Datenbank: Der Gast-Token gehört keinem Konto. Je Land eine
+ * Sitzung; der Vorrat liegt im Fach der Gutschein-Dienste (gutscheinGuthabenSchranke.ts). */
+export type Sitzungsvorrat = Map<string, Sitzung>;
 
 /** 0, wenn er sich nicht lesen lässt. */
 function jwtAblauf(token: string): number {
@@ -192,23 +193,13 @@ async function baueSitzung(abruf: Abruf, locale: string): Promise<Sitzung> {
   return { token, kekse: topf, ablauf: jwtAblauf(token) };
 }
 
-async function sitzung(abruf: Abruf, locale: string, frisch = false): Promise<Sitzung> {
-  const da = sitzungen.get(locale);
+async function sitzung(vorrat: Sitzungsvorrat, abruf: Abruf, locale: string, frisch = false): Promise<Sitzung> {
+  const da = vorrat.get(locale);
   // Fünf Minuten Puffer vor dem Ablauf.
   if (!frisch && da && da.ablauf - Date.now() > 5 * 60_000) return da;
   const neu = await baueSitzung(abruf, locale);
-  sitzungen.set(locale, neu);
+  vorrat.set(locale, neu);
   return neu;
-}
-
-export function vergesseSitzungen(): void {
-  sitzungen.clear();
-}
-
-/** Für Tests der Route, die keinen Abruf durchreichen kann. */
-let ersatz: Abruf | null = null;
-export function _ersetzeAbruf(a: Abruf | null): void {
-  ersatz = a;
 }
 
 async function frageAb(abruf: Abruf, nummer: string, pin: string, locale: string, s: Sitzung): Promise<Guthaben> {
@@ -275,28 +266,29 @@ async function frageAb(abruf: Abruf, nummer: string, pin: string, locale: string
 
 /** Ein Neuversuch nur bei 401 mit Token aus dem Vorrat — der kann abgelaufen sein. */
 export async function holeGuthaben(
+  vorrat: Sitzungsvorrat,
   nummer: string,
   pin: string,
   opt: { locale?: string; abruf?: Abruf } = {},
 ): Promise<Guthaben> {
   const locale = opt.locale || LAND_STANDARD;
-  const abruf = opt.abruf ?? ersatz ?? legoAbruf;
+  const abruf = opt.abruf ?? legoAbruf;
 
-  const warImVorrat = sitzungen.has(locale);
+  const warImVorrat = vorrat.has(locale);
   try {
-    const s = await sitzung(abruf, locale);
+    const s = await sitzung(vorrat, abruf, locale);
     try {
       return await frageAb(abruf, nummer, pin, locale, s);
     } catch (e) {
       if (!(e instanceof NichtAngemeldet) || !warImVorrat) throw e;
       console.warn(`[guthaben] Token abgelaufen, neue Sitzung für ${kurz(nummer)}`);
-      const frisch = await sitzung(abruf, locale, true);
+      const frisch = await sitzung(vorrat, abruf, locale, true);
       return await frageAb(abruf, nummer, pin, locale, frisch);
     }
   } catch (e) {
     // Zwei Ebenen: Auch der Aufbau der Sitzung kann 403 vom Bot-Schutz geben.
     if (e instanceof BotSchutz) {
-      sitzungen.delete(locale);
+      vorrat.delete(locale);
       console.warn(
         `[guthaben] Bot-Schutz — Sitzung für ${locale} verworfen, ` +
           'der nächste Versuch beginnt mit frischem Seitenaufruf',
