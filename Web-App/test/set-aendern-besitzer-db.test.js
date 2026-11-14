@@ -110,7 +110,7 @@ test('die Menge geht bewusst auf das eigene Konto', () => {
   assert.match(code, /const ziel = body\.owner_user_id == null \? uid :/, 'ohne Angabe nicht das eigene Konto');
   assert.match(
     code,
-    /adjustAcquisitionsToQuantity\(sk, ziel, sn/,
+    /adjustAcquisitionsToQuantity\(t, ziel, sn/,
     'Die Mengenanpassung laeuft nicht mehr auf das eigene Konto — dann erhoeht ' +
       'ein „+" den Bestand eines fremden Kontos',
   );

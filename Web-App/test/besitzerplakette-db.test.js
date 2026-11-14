@@ -59,6 +59,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   await haeltFigur(db, kind, 'sw0002', { menge: 2 });
 
   const { blickfeldIds } = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };
@@ -129,6 +130,7 @@ test('im Einzelkonto steht keine Plakette', async t => {
   await haeltFigur(db, allein, 'sw0003', { setNumber: '21318-1', menge: 1 });
 
   const { blickfeldIds } = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };

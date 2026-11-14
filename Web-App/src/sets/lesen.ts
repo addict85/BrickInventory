@@ -1,7 +1,7 @@
 import { fuerSet, resolveImageLocal, anleitungenZusammenlegen } from '../katalog';
 import { meldeFehler } from '../infra/fehler';
 import * as repo from './repository/sets';
-import { asIds, besitzerAnhaengen, blickfeldAus, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
+import { asIds, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 
 // Leseabfragen; Zustand aus den Erfassungen.
@@ -13,7 +13,7 @@ import type { SetsKontext } from './kontext';
 /** Filtern und Sortieren auf dem Server, damit sie mit seitenweisem Laden
  * zusammengehen. Ohne page_size alles — so ruft die Android-App. */
 export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, query: Abfrage<'GET /api/v1/sets'> = {}) {
-  const userId = await blickfeldAus(sk.db, userIdWahl);
+  const userId = await sk.haushalt.blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Die Spaltenliste steht im Repository; die Antwort trägt nur, was die
@@ -62,7 +62,7 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
   }));
 
   // Eine Abfrage für die ganze Seite statt einer je Zeile.
-  const mitBesitzern = await besitzerAnhaengen(sk.db, uids, mapped);
+  const mitBesitzern = await sk.haushalt.besitzerAnhaengen(uids, mapped);
 
   // Mit Gesamtzahl für den Endlos-Scroll; ohne Paginierung ist total die Länge.
   return {
@@ -103,7 +103,7 @@ export async function withSetAggregate<T extends object>(
 }
 
 export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, setNumber: string) {
-  const userId = await blickfeldAus(sk.db, userIdWahl);
+  const userId = await sk.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
@@ -125,7 +125,9 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
     Promise.resolve(fuerSet(setNumber, set.name)),
   ]);
   const { owner_ids, ...ohneIds } = set;
-  const [mitBesitzern] = await besitzerAnhaengen(sk.db, uids, [uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds]);
+  const [mitBesitzern] = await sk.haushalt.besitzerAnhaengen(uids, [
+    uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds,
+  ]);
   return {
     ...mitBesitzern,
     ...agg,

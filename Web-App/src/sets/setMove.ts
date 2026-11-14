@@ -1,8 +1,5 @@
 /** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus
  * beim Lesen, hier wird keine Menge geschrieben. */
-import type { DbSchnittstelle } from '../../db/database';
-import { mitInventarSperre } from '../../db/txLock';
-import { kopiereSetInhalt, legeManuellAn } from '../bestand';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/verschieben';
 import type { SetsKontext } from './kontext';
@@ -19,30 +16,30 @@ export interface MoveResult {
 
 /** Nacheinander statt Promise.all: alle Abfragen laufen auf derselben
  * Transaktionsverbindung. */
-async function copyContents(tx: DbSchnittstelle, sn: string, fromId: number, toId: number) {
+async function copyContents(t: SetsKontext, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
-  for (const t of ['parts', 'minifigs', 'instructions'] as const)
-    if (!(await repo.hatInhalt(tx, t, toId, sn)))
-      n[t] =
-        t === 'instructions'
-          ? await repo.kopiereAnleitungen(tx, sn, fromId, toId)
-          : await kopiereSetInhalt(tx, t, sn, fromId, toId);
+  for (const tab of ['parts', 'minifigs', 'instructions'] as const)
+    if (!(await repo.hatInhalt(t.db, tab, toId, sn)))
+      n[tab] =
+        tab === 'instructions'
+          ? await repo.kopiereAnleitungen(t.db, sn, fromId, toId)
+          : await t.bestand.kopiereSetInhalt(tab, sn, fromId, toId);
   return n;
 }
 
-/** @param acquisitionIds leer = das ganze Set; sonst nur diese Kaufpreis-Zeilen */
+/** In der Transaktion des Aufrufers (`t`), unter der Sperre des Quellbestands.
+ * @param acquisitionIds leer = das ganze Set; sonst nur diese Kaufpreis-Zeilen */
 export async function moveSetBetweenAccounts(
-  k: SetsKontext,
-  tx: DbSchnittstelle,
+  t: SetsKontext,
   sn: string,
   fromId: number,
   toId: number,
   acquisitionIds?: number[],
 ): Promise<MoveResult> {
-  const src = await repo.setZeile(tx, fromId, sn);
+  const src = await repo.setZeile(t.db, fromId, sn);
   if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
 
-  const all = await repo.erfassungenZumVerschieben(tx, fromId, sn);
+  const all = await repo.erfassungenZumVerschieben(t.db, fromId, sn);
   const wanted = acquisitionIds?.length ? all.filter(a => acquisitionIds.includes(parseInt(String(a.id), 10))) : all;
   if (!wanted.length) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
 
@@ -52,78 +49,65 @@ export async function moveSetBetweenAccounts(
 
   // Stammdaten beschreiben das Set, nicht das Exemplar: Liegt es beim Ziel
   // schon, genügt das Umhängen der Erfassungen.
-  const dst = await repo.setZeile(tx, toId, sn);
-  if (!dst) await repo.legeSetAn(tx, toId, sn, src.added_at);
+  const dst = await repo.setZeile(t.db, toId, sn);
+  if (!dst) await repo.legeSetAn(t.db, toId, sn, src.added_at);
 
   for (const a of wanted) {
-    await k.bestand.recordAcquisitionForDay(
-      'set',
-      toId,
-      [sn],
-      {
-        quantity: a.quantity,
-        price: a.purchase_price,
-        condition: a.condition,
-        createdAt: a.created_at,
-        geschaetzt: a.price_estimated,
-        currency: a.currency,
-      },
-      tx,
-    );
-    await repo.loescheSetErfassung(tx, a.id, [fromId]);
+    await t.bestand.recordAcquisitionForDay('set', toId, [sn], {
+      quantity: a.quantity,
+      price: a.purchase_price,
+      condition: a.condition,
+      createdAt: a.created_at,
+      geschaetzt: a.price_estimated,
+      currency: a.currency,
+    });
+    await repo.loescheSetErfassung(t.db, a.id, [fromId]);
   }
 
-  const counts = await copyContents(tx, sn, fromId, toId);
+  const counts = await copyContents(t, sn, fromId, toId);
 
   // Teilverschiebung: Der Absender behält Exemplare und damit Set und Inhalt.
   if (remaining > 0) {
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: false };
   }
-  await repo.entferneSet(tx, fromId, sn);
+  await repo.entferneSet(t.db, fromId, sn);
   return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: true };
 }
 
 /** Über den KAUFPREIS, nicht über den Eintrag; was beim Absender bleibt, folgt
  * aus seinen Erfassungen. */
 export async function moveManualAcquisition(
-  k: SetsKontext,
-  tx: DbSchnittstelle,
+  t: SetsKontext,
   kind: 'part' | 'fig',
   keyValues: (string | number)[],
   acquisitionId: number,
   fromId: number,
   toId: number,
 ): Promise<{ quantity: number; merged: boolean; source_emptied: boolean }> {
-  const acq = await repo.manuelleErfassung(tx, kind, acquisitionId, fromId, keyValues);
+  const acq = await repo.manuelleErfassung(t.db, kind, acquisitionId, fromId, keyValues);
   if (!acq) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
 
-  const src = await repo.manuelleZeile(tx, kind, fromId, keyValues);
+  const src = await repo.manuelleZeile(t.db, kind, fromId, keyValues);
   if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
 
   const movingQty = Math.max(1, parseInt(String(acq.quantity), 10) || 1);
-  const remaining = Math.max(0, (await repo.erfassteMenge(tx, kind, fromId, keyValues)) - movingQty);
+  const remaining = Math.max(0, (await repo.erfassteMenge(t.db, kind, fromId, keyValues)) - movingQty);
 
-  const dst = await repo.manuelleZeile(tx, kind, toId, keyValues);
-  if (!dst) await legeManuellAn(tx, kind, toId, keyValues);
+  const dst = await repo.manuelleZeile(t.db, kind, toId, keyValues);
+  if (!dst) await t.bestand.legeManuellAn(kind, toId, keyValues);
 
-  await k.bestand.recordAcquisitionForDay(
-    kind,
-    toId,
-    keyValues,
-    {
-      quantity: movingQty,
-      price: acq.unit_price,
-      condition: acq.condition,
-      createdAt: acq.created_at,
-      geschaetzt: acq.price_estimated,
-      currency: acq.currency,
-    },
-    tx,
-  );
-  await repo.loescheManuelleErfassung(tx, kind, acq.id, [fromId]);
+  await t.bestand.recordAcquisitionForDay(kind, toId, keyValues, {
+    quantity: movingQty,
+    price: acq.unit_price,
+    condition: acq.condition,
+    createdAt: acq.created_at,
+    geschaetzt: acq.price_estimated,
+    currency: acq.currency,
+  });
+  await repo.loescheManuelleErfassung(t.db, kind, acq.id, [fromId]);
 
   if (remaining > 0) return { quantity: movingQty, merged: !!dst, source_emptied: false };
-  await repo.entferneManuell(tx, kind, fromId, keyValues, src.id);
+  await repo.entferneManuell(t.db, kind, fromId, keyValues, src.id);
   return { quantity: movingQty, merged: !!dst, source_emptied: true };
 }
 
@@ -136,7 +120,8 @@ export function verschiebeSet(
   erfassungen: number[],
 ): Promise<MoveResult> {
   // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
-  return mitInventarSperre(sk.db, fromId, sn, tx => moveSetBetweenAccounts(sk, tx, sn, fromId, toId, erfassungen), {
+  return sk.transaktion(t => moveSetBetweenAccounts(t, sn, fromId, toId, erfassungen), {
+    sperren: [{ konto: fromId, schluessel: sn }],
     wiederholeBeiKonflikt: true,
   });
 }

@@ -11,7 +11,6 @@ const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
 const db = testDaten();
-const { moveSetBetweenAccounts } = require('./helpers/sources').bereichsSeite('sets');
 
 test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
@@ -56,25 +55,12 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
     await haeltTeil(db, vonId, PN, { setNumber: SN, menge: 2, colorId: 4 });
     await haeltFigur(db, vonId, FN, { setNumber: SN, menge: 1 });
 
-    const c = await db.pool.connect();
-    try {
-      await c.query('BEGIN');
-      const tx = {
-        get: async (sql, params) => (await c.query(sql, params)).rows[0],
-        all: async (sql, params) => (await c.query(sql, params)).rows,
-        run: async (sql, params) => {
-          const r = await c.query(sql, params);
-          return { changes: r.rowCount };
-        },
-      };
-      await moveSetBetweenAccounts(tx, SN, vonId, nachId);
-      await c.query('COMMIT');
-    } catch (e) {
-      await c.query('ROLLBACK');
-      throw e;
-    } finally {
-      c.release();
-    }
+    // Wie die Sammlung: in einer Transaktion über deren Kontext; zwei fremde Konten nur im Systemrahmen.
+    const { imSystemkontext } = _req('src/infra/kontoKontext.js');
+    const sammlung = require('./helpers/sources').testKontext('sammlung');
+    await imSystemkontext('Testdaten', () =>
+      sammlung.transaktion(tt => tt.sets.moveSetBetweenAccounts(SN, vonId, nachId)),
+    );
 
     // Gelesen wird über denselben JOIN, den die Oberflächen benutzen — also
     // über die Wirkung. Eine Abfrage auf parts.image_local gibt es nicht mehr,

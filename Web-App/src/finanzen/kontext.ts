@@ -9,7 +9,6 @@ import * as erfassungen from './repository/erfassungen';
 import * as gewinnVerlust from './repository/gewinnVerlust';
 import * as marktpreise from './repository/marktpreise';
 import * as portfolioKurve from './repository/portfolioKurve';
-import * as preisalarm from './preisalarm';
 import * as preisalarme from './repository/preisalarme';
 import * as preisCache from './repository/preisCache';
 import * as preisLauf from './repository/preisLauf';
@@ -38,17 +37,6 @@ export const zugang = (db: Db) => ({
   gewinnVerlust: bindeZugang(db, gewinnVerlust),
   marktpreise: bindeZugang(db, marktpreise),
   portfolioKurve: bindeZugang(db, portfolioKurve),
-  preisalarm: bindeZugang(db, preisalarm, [
-    'alarmUebertragen',
-    'alarmeAusCsv',
-    'alarmeFuer',
-    'alleAlarme',
-    'ausgeloesteSeit',
-    'buildPreisalarmeCsv',
-    'loescheAlarm',
-    'pruefeSet',
-    'setzeAlarm',
-  ]),
   preisalarme: bindeZugang(db, preisalarme),
   preisCache: bindeZugang(db, preisCache),
   preisLauf: bindeZugang(db, preisLauf),

@@ -1,7 +1,6 @@
 /** requireApiAdmin bündelt Anmeldung und is_admin, damit kein Admin-Endpunkt
  * die Prüfung versehentlich weglässt. */
 import { meldeFehler } from '../../src/infra/fehler';
-import { imSystemkontext } from '../../src/infra/kontoKontext';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { zuGrosseId } from '../../src/infra/validate';
@@ -133,28 +132,16 @@ function tokenWaechterFuer(konto: KontoDienste) {
       });
   });
 
-  function verwalterPruefung(ueberKonten: boolean) {
-    return waechter<AuthedRequest>((req, res, next) => {
+  return {
+    requireToken,
+    /** Ohne Systemrahmen: Wer über Konten geht, betritt ihn im Dienst (src/konto/kontext.ts). */
+    requireApiAdmin: waechter<AuthedRequest>((req, res, next) => {
       requireToken(req, res, () => {
         if (!req.apiUser?.is_admin) return sendeFehler(req, res, 403, 'nur_admins');
         // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
-        verlangeFreigabe(
-          konto,
-          req,
-          res,
-          ueberKonten ? () => imSystemkontext('kontenverwaltung', next) : next,
-          'verwaltung',
-        );
+        verlangeFreigabe(konto, req, res, next, 'verwaltung');
       });
-    });
-  }
-
-  return {
-    requireToken,
-    /** Ohne Systemrahmen: Was über Konten geht, fragen Verwaltung und Warteschlange selbst darin. */
-    requireApiAdmin: verwalterPruefung(false),
-    /** Für Routen, die ein anderes Konto ändern (Kontenverwaltung): ganz im Systemrahmen. */
-    requireApiAdminUeberKonten: verwalterPruefung(true),
+    }),
   };
 }
 

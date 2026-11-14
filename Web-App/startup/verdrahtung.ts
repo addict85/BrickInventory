@@ -118,7 +118,7 @@ function baueBereiche(db: Db, nacharbeit: Nacharbeit, { bildwerk, quellen, konte
   );
   const bestand = erzeugeBestand({ db, einstellungen, haushalt, konto, katalog, finanzen }, zeige('bestand'));
   const sets = erzeugeSets(
-    { db, nacharbeit, katalog, finanzen, auftraege, bestand, einstellungen, konto },
+    { db, nacharbeit, katalog, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
     zeige('sets'),
   );
   const teile = erzeugeTeile({ db, einstellungen, haushalt, katalog, finanzen, bestand }, zeige('teile'));

@@ -7,10 +7,10 @@ import { setzeTransaktionsWaechter } from '../src/infra/fehler';
 import { konfig } from '../src/infra/konfig';
 import { zeilenKontext } from '../src/infra/kontoKontext';
 
-/** Die laufende Transaktion dieses Aufrufpfads: all/get/run/exec gehen dann
- * über ihre Verbindung, auch aus Repositories ohne tx-Parameter. Sonst läse
- * ein Dienst mitten in der Transaktion über eine zweite Verbindung ausserhalb
- * ihres Stands. `offen` schützt vor Nachzüglern nach COMMIT. */
+/** Die laufende Transaktion dieses Aufrufpfads. Sie leitet nichts still um:
+ * Fragt in ihr jemand über den ungebundenen Zugang, wirft der (UngebundeneAbfrage);
+ * nur ein Aufruf über den Kontext der Transaktion (`t`) gibt ihn frei (`freigabe`).
+ * `offen` schützt vor Nachzüglern nach COMMIT. */
 export type TxStand = {
   client: PoolClient;
   offen: boolean;
@@ -20,6 +20,10 @@ export type TxStand = {
   kontext: string;
 };
 export const laufendeTx = new AsyncLocalStorage<TxStand>();
+/** Gesetzt, solange ein Dienst läuft, den der Kontext einer Transaktion gerufen hat
+ * (t.haushalt.…): Dessen Abfragen gehören zu ihr. Der Rumpf einer Transaktion
+ * läuft ohne, sonst gälte ein gefangenes `k` darin wieder als gebunden. */
+export const freigabe = new AsyncLocalStorage<TxStand>();
 /** Der Sicherungspunkt, in dem dieser Aufrufpfad gerade läuft. */
 const laufenderPunkt = new AsyncLocalStorage<{ stand: TxStand; name: string }>();
 
@@ -43,7 +47,13 @@ export async function kontextAbgleich(stand: TxStand): Promise<void> {
   stand.kontext = soll;
 }
 
-export function txSchnittstelle(stand: TxStand): DbSchnittstelle {
+/** Was der Rumpf einer Transaktion bekommt: ihre Abfragen und `gebunden`, das einen
+ * Aufruf (etwa einen Dienst eines anderen Bereichs) ihr zuordnet. */
+export interface TxGriff extends DbSchnittstelle {
+  gebunden<T>(f: () => T): T;
+}
+
+export function txSchnittstelle(stand: TxStand): TxGriff {
   const q = async (sql: string, p?: unknown[]) => {
     nochOffen(stand);
     await kontextAbgleich(stand);
@@ -54,7 +64,16 @@ export function txSchnittstelle(stand: TxStand): DbSchnittstelle {
     get: <T = unknown>(sql: string, p?: unknown[]) => q(sql, p).then(r => r.rows[0] as T | undefined),
     run: (sql: string, p?: unknown[]) => q(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
     exec: (sql: string) => q(sql).then(() => undefined),
+    gebunden: <T>(f: () => T): T => {
+      nochOffen(stand);
+      return freigabe.run(stand, f);
+    },
   };
+}
+
+/** Der Rumpf einer Transaktion läuft ohne Freigabe: Was er fragt, geht über `t`/`tx`. */
+export function ohneFreigabe<T>(f: () => T): T {
+  return freigabe.exit(f);
 }
 
 /** Läuft vor dem COMMIT jeder äussersten Transaktion dieses Aufrufpfads mit,
@@ -88,6 +107,18 @@ export class NebenDerTransaktion extends Error {
   }
 }
 
+/** Eine Abfrage über den ungebundenen Zugang, während in diesem Aufrufpfad eine
+ * Transaktion offen ist: Sie gehört entweder in die Transaktion (über `t`) oder
+ * vor bzw. hinter sie. Still umgeleitet hiesse, dass der Aufrufort nicht sagt, was gilt. */
+export class UngebundeneAbfrage extends Error {
+  constructor() {
+    super(
+      'Abfrage über den ungebundenen Zugang (k/db) mitten in einer Transaktion: über den Kontext ' +
+        'der Transaktion (t) fragen oder ausserhalb von ihr.',
+    );
+  }
+}
+
 export class GleichzeitigerSicherungspunkt extends Error {
   constructor(offen: string) {
     super(
@@ -101,11 +132,7 @@ export class GleichzeitigerSicherungspunkt extends Error {
  * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. Zwei
  * gleichzeitige teilten sich eine Verbindung; das ROLLBACK TO des einen nähme
  * die Arbeit des anderen mit. Deshalb muss jeder im innersten offenen beginnen. */
-export function innereTransaktion<T>(
-  stand: TxStand,
-  nummer: number,
-  fn: (tx: DbSchnittstelle) => Promise<T>,
-): Promise<T> {
+export function innereTransaktion<T>(stand: TxStand, nummer: number, fn: (tx: TxGriff) => Promise<T>): Promise<T> {
   const p = laufenderPunkt.getStore();
   const rahmen = p?.stand === stand ? p.name : null;
   if (stand.innerster !== rahmen) return Promise.reject(new GleichzeitigerSicherungspunkt(stand.innerster ?? ''));
@@ -119,7 +146,7 @@ export function innereTransaktion<T>(
       nochOffen(stand);
       await client.query(`SAVEPOINT ${name}`);
       try {
-        const r = await fn(txSchnittstelle(stand));
+        const r = await ohneFreigabe(() => fn(txSchnittstelle(stand)));
         nochOffen(stand);
         await client.query(`RELEASE SAVEPOINT ${name}`);
         return r;

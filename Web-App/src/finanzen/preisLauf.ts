@@ -8,6 +8,7 @@ import { LOCKS } from '../infra/lockNamespaces';
 import { versuche } from '../infra/ergebnis';
 import { zustand } from '../infra/validate';
 import type { FinanzenKontext } from './kontext';
+import { pruefeSet } from './preisalarm';
 
 /** Der Job läuft im Job-Prozess, gelesen wird im Web-Prozess — darum in laufzustand. */
 export const PREIS_STAND = 'preis_job_stand';
@@ -188,7 +189,7 @@ async function nachDemLauf(k: FinanzenKontext) {
   try {
     const wartende = await k.preisLauf.setsMitAlarm();
     let gemeldet = 0;
-    for (const sn of wartende) gemeldet += await k.preisalarm.pruefeSet(sn, k.mail);
+    for (const sn of wartende) gemeldet += await pruefeSet(k, sn, k.mail);
     if (wartende?.length) log(`Preisalarm: ${wartende.length} Sets geprueft, ${gemeldet} gemeldet`);
   } catch (e) {
     log(`Preisalarm error: ${fehlertext(e)}`);

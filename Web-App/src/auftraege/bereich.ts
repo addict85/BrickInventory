@@ -44,6 +44,7 @@ export function erzeugeAuftraege(a: Omit<AuftraegeAbhaengigkeiten, 'faecher'>, e
       'pruefeZugehoerigkeit',
     ]),
     stelleAuftragEin: bindeGenerisch(k)(dienst.stelleAuftragEin),
+    stelleEigenenAuftragEin: bindeGenerisch(k)(dienst.stelleEigenenAuftragEin),
     imNamenDesAuftrags: bindeGenerisch(k)(dienst.imNamenDesAuftrags),
     ...bindeZugang(k, hintergrund, [
       'auftraegeImUeberblick',
