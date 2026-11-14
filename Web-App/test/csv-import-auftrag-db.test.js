@@ -52,18 +52,20 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   });
   const { sperreBisZumEnde } = _req('db/txLock.js');
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
-  /** Hält die Sperre, die setErfassen() je Setnummer nimmt, bis loslassen(). */
-  const halteSperre = sn =>
-    new Promise(gehalten => {
-      const fertig = db.transaction(async tx => {
-        await sperreBisZumEnde(tx, LOCKS.SET_ERFASSEN, sn);
-        await new Promise(r => {
-          loslassen = r;
-          gehalten();
+  /** Die Sperre, die setErfassen() je Setnummer nimmt; gehalten bis loslassen(). */
+  const sperre = { fertig: Promise.resolve() };
+  const halteSperre = (/** @type {string} */ sn) =>
+    /** @type {Promise<void>} */ (
+      new Promise(gehalten => {
+        sperre.fertig = db.transaction(async (/** @type {any} */ tx) => {
+          await sperreBisZumEnde(tx, LOCKS.SET_ERFASSEN, sn);
+          await new Promise(r => {
+            loslassen = () => r(undefined);
+            gehalten(undefined);
+          });
         });
-      });
-      halteSperre.fertig = fertig;
-    });
+      })
+    );
   testBildwerk(t, { setBildLaden: async () => null });
 
   const schluessel = ['rebrickable_api_key', 'brickset_api_key', 'bricklink_consumer_key'];
@@ -137,7 +139,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
       assert.deepEqual(await nacharbeit(b), [{ sn: SN, art: 'ergaenzen' }]);
 
       loslassen();
-      await halteSperre.fertig;
+      await sperre.fertig;
       assert.equal((await bisFertig()).status, 'done');
       assert.deepEqual(
         await nacharbeit(a),

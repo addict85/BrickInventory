@@ -356,7 +356,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
   // (src/vertrag, src/infra, src/http) und Fehlerparameter.
   // Gegenprobe (11.11.2026): `condition: unknown` zurück in alarmDesSetsLoeschen → rot (75).
-  const SCHRANKE_UNKNOWN = 74;
+  const SCHRANKE_UNKNOWN = 73;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(
     ('f(a: unknown, b?: unknown = 1)'.match(MUSTER) || []).length + ('catch (e: unknown)'.match(MUSTER) || []).length,

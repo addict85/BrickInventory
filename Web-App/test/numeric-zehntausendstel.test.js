@@ -15,13 +15,14 @@ const { numericAlsZahl } = require(path.join(ROOT, 'dist/db/database.js'));
 const { inZehntel4 } = require(path.join(ROOT, 'dist/src/infra/geld.js'));
 
 test('NUMERIC(12,4) bleibt in Zehntausendsteln genau', () => {
-  for (const [roh, z] of [
+  /** @type {[string, number][]} */
+  const faelle = [
     ['99999999.9999', 999999999999],
     ['-12345678.0001', -123456780001],
     ['0.0001', 1],
     ['1.005', 10050],
-  ])
-    assert.equal(inZehntel4(numericAlsZahl(roh)), z, roh);
+  ];
+  for (const [roh, z] of faelle) assert.equal(inZehntel4(numericAlsZahl(roh)), z, roh);
   assert.equal(numericAlsZahl(null), null);
 });
 
