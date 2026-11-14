@@ -82,8 +82,13 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [sid]).catch(() => {}));
 
   await t.test('das Startpasswort reist mit', async () => {
-    await b.auswerten(`document.getElementById('btn-logout').click(); true`);
-    await bis(offen('login-screen'), 'Anmeldemaske');
+    // Abmelden lädt die Seite neu; die Maske spricht dann die Sprache des Browsers.
+    await b.tab('Network.setUserAgentOverride', {
+      userAgent: await b.auswerten('navigator.userAgent'),
+      acceptLanguage: 'de-DE',
+    });
+    await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
+    await bis(`!window.__alt && ${offen('login-screen')}`, 'Anmeldemaske');
     await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
       document.getElementById('lp').value = ${JSON.stringify(START)};
       document.getElementById('btn-login').click(); true`);

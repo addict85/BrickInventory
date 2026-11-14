@@ -185,8 +185,11 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
   });
 
   await t.test('leere Anmeldung: Fokus ins erste Feld', async () => {
-    await b.auswerten(`document.getElementById('btn-logout').click(); true`);
-    await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Anmeldemaske');
+    await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
+    await bis(
+      `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none'`,
+      'Anmeldemaske',
+    );
     await b.auswerten(`document.getElementById('btn-login').click(); true`);
     await bis(`(document.getElementById('lerr').textContent || '') !== ''`, 'Fehler der Anmeldung', 100);
     assert.equal(await b.auswerten(`document.activeElement?.id`), 'lu', 'leere Anmeldung: Fokus ins erste Feld');
