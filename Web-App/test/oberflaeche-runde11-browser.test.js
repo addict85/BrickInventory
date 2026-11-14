@@ -55,11 +55,8 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
       'Kaufpreis der Positionen mit Marktpreis',
       'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“',
     );
-    assert.match(
-      z.unter,
-      /^Verglichen wird nur, was einen Marktpreis hat\./,
-      'der Bezug ist erklärt (UX-Prüfung 19 N4)',
-    );
+    // Die Erklärung steht einmal, in der Zeile unter den Karten (UX-Prüfung 23 N9); hier nur die Summe aller Käufe.
+    assert.match(z.unter, /^Alle Käufe zusammen: /, 'die Summe aller Käufe ist benannt (UX-Prüfung 19 N4)');
     assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
   });
 
