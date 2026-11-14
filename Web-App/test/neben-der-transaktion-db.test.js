@@ -13,6 +13,7 @@
  *      nur um die beiden getSetting() innerhalb von k.transaktion → rot in
  *      test/zeilenschutz-db.test.js „wer einem Haushalt beitritt …“ (NebenDerTransaktion)
  *   D  in txStand() die Prüfung des Pools ganz gestrichen → rot: die beiden ersten
+ *      (14.11.2026 erneut: jetzt UngebundeneAbfrage statt NebenDerTransaktion)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -54,7 +55,7 @@ test('Abfragen neben einer Transaktion', { concurrency: 1 }, async t => {
           imSystemkontext('probe', () => db.transaction(inner => inner.get(PID))),
           modul.NebenDerTransaktion,
         );
-        assert.equal((await db.get(PID)).p, eigene, 'ohne Wechsel geht es über die Transaktion');
+        assert.equal((await tx.get(PID)).p, eigene, 'die Transaktion bleibt benutzbar');
       }),
     );
   });
@@ -70,12 +71,12 @@ test('Abfragen neben einer Transaktion', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('Rahmen vor der Transaktion gewählt: alles geht über sie', async () => {
+  await t.test('Rahmen vor der Transaktion gewählt: alles geht über tx, der ungebundene Zugang wirft', async () => {
     await imSystemkontext('probe', () =>
       db.transaction(async tx => {
         const eigene = (await tx.get(PID)).p;
-        assert.equal((await db.get(PID)).p, eigene);
-        assert.equal(await db.transaction(async inner => (await inner.get(PID)).p), eigene);
+        await assert.rejects(db.get(PID), modul.UngebundeneAbfrage);
+        assert.equal((await tx.get(PID)).p, eigene);
       }),
     );
   });

@@ -10,7 +10,6 @@ import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { fuerSet, resolveIfExists } from '../katalog';
 import { toCsv, csvZeilenAusAnfrage, parseCsvDate } from '../infra/csvExport';
-import { mitInventarSperren } from '../../db/txLock';
 import { moeglicheSetNummer, mitVersion } from '../infra/setNummer';
 import type { MerklisteKontext } from './kontext';
 
@@ -111,9 +110,10 @@ function mitMerkpostenSperre<T>(
   konten: number[],
   sn: string,
   c: string,
-  fn: () => Promise<T>,
+  fn: (t: MerklisteKontext) => Promise<T>,
 ): Promise<T> {
-  return mitInventarSperren(k.db, konten, `merk:${sn}:${c}`, () => fn(), {
+  return k.transaktion(fn, {
+    sperren: konten.map(konto => ({ konto, schluessel: `merk:${sn}:${c}` })),
     wiederholeBeiKonflikt: true,
   });
 }
@@ -129,16 +129,16 @@ export async function verschiebeMerkposten(
   const sn = sanitizeSetNumber(setNumber);
   if (vonId === zuId) return { verschoben: false, zusammengefuehrt: false };
 
-  return mitMerkpostenSperre(k, [vonId, zuId], sn, c, async () => {
-    if (await k.merkliste.istVorgemerkt(zuId, sn, c)) {
-      const weg = await loescheMerkposten(k, vonId, sn, c);
-      await k.finanzen.preisalarm.loescheAlarm(vonId, sn, c);
+  return mitMerkpostenSperre(k, [vonId, zuId], sn, c, async t => {
+    if (await t.merkliste.istVorgemerkt(zuId, sn, c)) {
+      const weg = await loescheMerkposten(t, vonId, sn, c);
+      await t.finanzen.preisalarm.loescheAlarm(vonId, sn, c);
       return { verschoben: weg > 0, zusammengefuehrt: true };
     }
-    const r = await k.merkliste.uebertrageVormerkung(zuId, vonId, sn, c);
+    const r = await t.merkliste.uebertrageVormerkung(zuId, vonId, sn, c);
     const verschoben = (r.changes ?? 0) > 0;
     // Den Alarm NUR mitnehmen, wenn der Merkposten wirklich gewandert ist.
-    if (verschoben) await k.finanzen.preisalarm.alarmUebertragen(zuId, vonId, sn, c);
+    if (verschoben) await t.finanzen.preisalarm.alarmUebertragen(zuId, vonId, sn, c);
     return { verschoben, zusammengefuehrt: false };
   });
 }
@@ -245,12 +245,12 @@ export async function uebernimm(
 
   // Erfassen und Streichen zusammen: Sonst stünde das Set im Bestand und
   // zugleich noch auf der Merkliste.
-  return mitMerkpostenSperre(k, [besitzerId], sn, merkpostenZustand, async () => {
+  return mitMerkpostenSperre(k, [besitzerId], sn, merkpostenZustand, async t => {
     // Übernommen wird ein Merkposten; ohne ihn wäre das ein zweiter Weg zum Erfassen.
-    if (!(await k.merkliste.istVorgemerkt(besitzerId, sn, merkpostenZustand)))
+    if (!(await t.merkliste.istVorgemerkt(besitzerId, sn, merkpostenZustand)))
       fachfehler('nicht_gefunden', 'nicht_gefunden');
     // Schon im Blickfeld heisst „exists“, nicht aufstocken; der Merkposten ist trotzdem erledigt.
-    const r = await k.sets.setErfassen({
+    const r = await t.sets.setErfassen({
       anfragender: leserId,
       besitzerWunsch: besitzerId,
       setNumber: sn,
@@ -260,8 +260,8 @@ export async function uebernimm(
       lagerort: eingabe.storage == null ? null : String(eingabe.storage),
     });
     // Nach dem MERKPOSTEN-Zustand: Es geht um die Zeile, die man erfüllt hat.
-    await loescheMerkposten(k, besitzerId, sn, merkpostenZustand);
-    await k.finanzen.preisalarm.loescheAlarm(besitzerId, sn, merkpostenZustand);
+    await loescheMerkposten(t, besitzerId, sn, merkpostenZustand);
+    await t.finanzen.preisalarm.loescheAlarm(besitzerId, sn, merkpostenZustand);
     return r.action === 'added'
       ? { action: 'added', set_number: r.set_number, name: r.name, katalog_offen: r.katalog_offen }
       : { action: 'exists', set_number: r.set_number };

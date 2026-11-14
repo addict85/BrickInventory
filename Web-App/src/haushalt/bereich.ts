@@ -1,37 +1,19 @@
-/** Die Fabrik des Bereichs. Die Blickfeld-Helfer nehmen nur den Zugang, weil andere
- * Bereiche sie auch mit dem Griff ihrer Transaktion rufen; wer Einstellungen braucht,
- * nimmt den Kontext. */
+/** Jeder Dienst nimmt den Kontext; Regeln ohne Datenbank stehen in regeln.ts. */
 import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
+import { Faecher } from '../infra/zwischenspeicher';
 import * as haushalt from './haushalt';
+import { HAUSHALT_KANAL, leereHaushaltCache } from './regeln';
 import { zugang, type HaushaltAbhaengigkeiten, type HaushaltKontext } from './kontext';
 
 export type { HaushaltAbhaengigkeiten, HaushaltKontext } from './kontext';
 
-export function erzeugeHaushalt(a: HaushaltAbhaengigkeiten, einblick?: Einblick<HaushaltKontext>) {
-  const k: HaushaltKontext = baueKontext(a, zugang);
+export function erzeugeHaushalt(a: Omit<HaushaltAbhaengigkeiten, 'faecher'>, einblick?: Einblick<HaushaltKontext>) {
+  const k: HaushaltKontext = baueKontext({ ...a, faecher: new Faecher() }, zugang);
   einblick?.(k);
   return {
-    ...bindeZugang(k.db, haushalt, [
-      'umzugsQuelle',
-      'blickfeldAus',
-      'darfSchreibenFuer',
-      'einladungAnlegen',
-      'haushaltsMitglieder',
-      'pruefeEinladung',
-      'haushaltVon',
-      'schreibzielOderNull',
-      'schreibbereichAus',
-      'schreibziel',
-      'blickfeldIds',
-      'siehtKonto',
-      'kontenTrennen',
-      'verwerfeGetrennt',
-      'besitzerAnhaengen',
-      'schreibbereich',
-    ]),
-    ...bindeZugang(k, haushalt, ['einladungEinloesen', 'haushaltsStand']),
+    ...bindeZugang(k, haushalt),
     /** Nur ein getrennter Job-Prozess: Er hält eigene Caches, die der Web-Prozess ändert. */
-    horcheAufAenderungen: () => k.db.benachrichtigung.listen(haushalt.HAUSHALT_KANAL, haushalt.leereHaushaltCache),
+    horcheAufAenderungen: () => k.db.benachrichtigung.listen(HAUSHALT_KANAL, leereHaushaltCache),
   };
 }
 

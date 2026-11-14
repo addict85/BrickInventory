@@ -14,6 +14,9 @@
  *   C  (13.11.2026) die Prüfungen nochOffen() in database.ts gestrichen → rot: „ein
  *      Nachzügler verdirbt nicht …“ (25P02 in der fremden Transaktion); vorher war
  *      die Datei im Volllauf und einzeln etwa jedes fünfte Mal rot
+ *   Seit eine innere Transaktion über den ungebundenen Zugang wirft (14.11.2026), öffnet
+ *   der Test sie über `tx.gebunden`, wie es der Kontext `t` tut. Erneut gemessen: A → rot
+ *   wie oben; B → rot wie oben.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  *
@@ -47,6 +50,8 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
   });
   const schreibe = (tx, w) => tx.run(`INSERT INTO ${TABELLE} (wert) VALUES ($1)`, [w]);
   const werte = async () => (await db.all(`SELECT wert FROM ${TABELLE} ORDER BY wert`)).map(z => z.wert);
+  /** Eine innere Transaktion, für die äussere freigegeben (wie t.transaktion). */
+  const innen = (tx, fn) => tx.gebunden(() => db.transaction(fn));
   t.beforeEach(() => db.run(`DELETE FROM ${TABELLE}`));
 
   await t.test('zwei gleichzeitige innere Transaktionen: die zweite wird abgewiesen', async () => {
@@ -54,12 +59,12 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
     await db.transaction(async tx => {
       await schreibe(tx, 'aussen');
       ergebnisse = await Promise.allSettled([
-        db.transaction(async inner => {
+        innen(tx, async inner => {
           await schreibe(inner, 'a');
           await warte(50);
           throw new Error('a scheitert');
         }),
-        db.transaction(async inner => {
+        innen(tx, async inner => {
           await schreibe(inner, 'b');
         }),
       ]);
@@ -73,10 +78,10 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
 
   await t.test('… auch in einem Sicherungspunkt', async () => {
     await assert.rejects(
-      db.transaction(async () =>
-        db.transaction(async inner => {
+      db.transaction(async tx =>
+        innen(tx, async inner => {
           await schreibe(inner, 'x');
-          await Promise.all([db.transaction(async () => warte(20)), db.transaction(async () => warte(20))]);
+          await Promise.all([innen(inner, async () => warte(20)), innen(inner, async () => warte(20))]);
         }),
       ),
       modul.GleichzeitigerSicherungspunkt,
@@ -91,11 +96,13 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
     try {
       let nachzuegler;
       await assert.rejects(
-        eng.transaction(async () => {
-          nachzuegler = eng.transaction(async inner => {
-            await warte(80);
-            await schreibe(inner, 'nachzuegler');
-          });
+        eng.transaction(async tx => {
+          nachzuegler = tx.gebunden(() =>
+            eng.transaction(async inner => {
+              await warte(80);
+              await schreibe(inner, 'nachzuegler');
+            }),
+          );
           nachzuegler.catch(() => {});
           throw new Error('aussen scheitert sofort');
         }),
@@ -116,18 +123,18 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
   await t.test('nacheinander und verschachtelt bleibt erlaubt', async () => {
     await db.transaction(async tx => {
       await schreibe(tx, '1-aussen');
-      await db.transaction(async eins => {
+      await innen(tx, async eins => {
         await schreibe(eins, '2-eins');
         await assert.rejects(
-          db.transaction(async tief => {
+          innen(eins, async tief => {
             await schreibe(tief, '3-tief');
             throw new Error('tief scheitert');
           }),
           /tief scheitert/,
         );
-        await db.transaction(async tief => schreibe(tief, '4-tief-danach'));
+        await innen(eins, async tief => schreibe(tief, '4-tief-danach'));
       });
-      await db.transaction(async zwei => schreibe(zwei, '5-zwei'));
+      await innen(tx, async zwei => schreibe(zwei, '5-zwei'));
     });
     assert.deepEqual(await werte(), ['1-aussen', '2-eins', '4-tief-danach', '5-zwei']);
   });

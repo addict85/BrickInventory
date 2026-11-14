@@ -82,6 +82,7 @@ test('Lagerort gegen echte Datenbank', async t => {
     ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
   };
   const household = {
+    ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
     ...require('./helpers/sources').testBereich('haushalt'),
   };

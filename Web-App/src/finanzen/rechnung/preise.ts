@@ -2,7 +2,6 @@
  * und BL-Nummern. Eigene Datei, weil Bewertung und Gewinnrechnung auf ihr
  * stehen, nicht umgekehrt. */
 
-import type { DbSchnittstelle } from '../../../db/database';
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
 import { type KatalogEintrag, hatPreis, marktpreisAus } from '../../katalog';
 import { asIds } from '../../haushalt';
@@ -29,11 +28,9 @@ export async function resolveSetCondition(
   k: FinanzenKontext,
   uid: number | number[],
   setNumber: string,
-  dbh?: Pick<DbSchnittstelle, 'get'>,
 ): Promise<'N' | 'U'> {
-  // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto. `dbh`:
-  // Wer in einer Transaktion fragt, liest auch darin (priceForNewAcquisition).
-  const row = await k.preisCache.setZustandsZaehler(asIds(uid), setNumber, dbh);
+  // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto.
+  const row = await k.preisCache.setZustandsZaehler(asIds(uid), setNumber);
   return effectiveCondition(row);
 }
 

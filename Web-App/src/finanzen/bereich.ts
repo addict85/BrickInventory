@@ -13,6 +13,7 @@ import * as preisLaufDienst from './preisLauf';
 import * as preisRegel from './preisRegel';
 import * as preiseNachladen from './preiseNachladen';
 import * as wechselkurseDienst from './wechselkurse';
+import * as preisalarm from './preisalarm';
 import { zugang, type FinanzenAbhaengigkeiten, type FinanzenKontext } from './kontext';
 
 export type { FinanzenAbhaengigkeiten, FinanzenKontext } from './kontext';
@@ -22,7 +23,17 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
   einblick?.(k);
   return {
     // Die Preisalarme sind Dienste; der Preislauf ruft sie über den Kontext.
-    preisalarm: k.preisalarm,
+    preisalarm: bindeZugang(k, preisalarm, [
+      'alarmUebertragen',
+      'alarmeAusCsv',
+      'alarmeFuer',
+      'alleAlarme',
+      'ausgeloesteSeit',
+      'buildPreisalarmeCsv',
+      'loescheAlarm',
+      'pruefeSet',
+      'setzeAlarm',
+    ]),
     ...bindeZugang(k, marketPrice, [
       'getCurrentMarketPrice',
       'resolvePartCondition',

@@ -9,9 +9,8 @@ import { USERNAME_RE, LETZTER_VERWALTER } from '../../src/konto';
 import type { Dienste } from '../../src/dienste';
 
 export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
-  const { requireApiAdminUeberKonten } = waechterFuer(d.konto);
+  const { requireApiAdmin: requireAdmin } = waechterFuer(d.konto);
   const router = vertragsRouter();
-  const requireAdmin = requireApiAdminUeberKonten;
 
   router.get('/users', requireAdmin, async (_req, res: Antwort<'GET /api/v1/auth/users'>) => {
     const users = await d.konto.kontenListe();

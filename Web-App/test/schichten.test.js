@@ -498,6 +498,7 @@ const DB_AUSSERHALB = new Set([
   'erzeugeDb',
   'dbKonfigAusUmgebung',
   'TxOptionen',
+  'TxGriff',
 ]);
 
 test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
@@ -637,6 +638,10 @@ function routenNurUeberFabrik() {
   assert.deepEqual(treffer, []);
 }
 
+/** Dienste, die noch einen rohen Griff nehmen; die Liste darf nur schrumpfen. Der Katalog
+ * wird gerade geteilt (eigener Zweig): dort folgt die Umstellung auf `t`. */
+const ROHER_GRIFF_NOCH = new Set(['src/katalog/katalogPflege.ts']);
+
 /** Eine Arbeitseinheit steht am Aufrufort: k.transaktion(t => …). */
 function arbeitseinheitAmAufrufort() {
   // Eine Transaktionsform: Dienste öffnen sie mit k.transaktion, der Rumpf bekommt den
@@ -645,12 +650,21 @@ function arbeitseinheitAmAufrufort() {
   // Gegenproben: (13.11.2026) in src/sammlung/loeschen.ts wieder `k.db.transaction(async tx =>`
   // → rot; (13.11.2026) ebenso in src/bestand/lagerortSetzen.ts und in
   // src/konto/repository/zweiterFaktor.ts → rot „…: .transaction(“.
+  // Ebenso db/txLock.ts: Bestandssperren sind eine Option von k.transaktion, kein eigener
+  // Weg mit rohem tx; und kein Dienst nimmt einen rohen Griff (tx/dbh), er nimmt `t`.
+  // Gegenproben (14.11.2026): eine Funktion mit `z.transaction(` in db/txLock.ts → rot
+  // „db/txLock.ts: .transaction(“; `export async function probe(tx: DbSchnittstelle, …)` in
+  // src/bestand/papierkorb.ts → rot „…: Dienst mit rohem Griff probe“.
   const treffer = [];
-  const alle = [...tsUnter('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts'];
+  const alle = [...tsUnter('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts', 'db/txLock.ts'];
   for (const d of alle) {
     const s = quelltext(d);
     if (d !== 'src/infra/bereich.ts' && /\.transaction\s*(?:<[^>]*>)?\(/.test(s)) treffer.push(`${d}: .transaction(`);
     if (/transaktion\(\s*(?:async\s*)?\(\)/.test(s)) treffer.push(`${d}: transaktion ohne Kontext`);
+    if (d.startsWith('src/') && !istRepository(d) && !ROHER_GRIFF_NOCH.has(d))
+      for (const m of s.matchAll(/export\s+(?:async\s+)?function\s+(\w+)[^(]*\(([^)]*)\)/g))
+        if (/\b(?:tx|dbh)\??\s*:\s*(?:Pick<\s*)?(?:DbSchnittstelle|Db|Schreiber)\b/.test(m[2]))
+          treffer.push(`${d}: Dienst mit rohem Griff ${m[1]}`);
   }
   assert.ok(
     tsUnter('src').some(d => /\.transaktion\(async t\b/.test(quelltext(d))) &&

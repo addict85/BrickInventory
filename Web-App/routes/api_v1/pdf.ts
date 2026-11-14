@@ -19,18 +19,9 @@ type PdfJobStatus = {
   missingImages?: number | null;
 };
 
-async function pdfJobRead(d: Pick<Dienste, 'auftraege' | 'konto'>, id: string) {
-  // Ein Lesefehler ist kein unbekannter Auftrag (404): Er geht weiter.
-  return d.auftraege.liesAuftrag(id);
-}
-
-/** Der einzige Weg, auf dem die drei Abrufrouten an einen Auftrag kommen —
- * damit keine die Zugehörigkeit vergisst. */
-async function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'konto'>, id: string, userId: number) {
-  const job = await pdfJobRead(d, id);
-  if (!job) return null;
-  if (job.user_id !== userId) return null;
-  return job;
+/** Der einzige Weg der drei Abrufrouten an einen Auftrag: nur der eigene; ein Lesefehler geht weiter. */
+function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'konto'>, id: string, userId: number) {
+  return d.auftraege.liesAuftrag(id, userId);
 }
 /** Die Beugung steht als Platzhalter in der Tabelle, nicht hier. */
 function laufendeBeugung(anzahl: number, sprache: string) {
@@ -70,13 +61,14 @@ function liefereUndRaeumeAuf(
   req: Request,
   res: Response,
   jobId: string,
+  uid: number,
   pdfPath: string,
 ) {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
   const aufraeumen = () => {
     _pdfFs.unlink(pdfPath).catch(ohneFehlendeDatei('pdf:datei loeschen'));
-    d.auftraege.loescheAuftrag(jobId).catch((e: unknown) => meldeFehler('pdf:auftrag-loeschen', e));
+    d.auftraege.loescheAuftrag(jobId, uid).catch((e: unknown) => meldeFehler('pdf:auftrag-loeschen', e));
   };
   streamFileToResponse(res, pdfPath, aufraeumen, req);
 }
@@ -165,7 +157,7 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'konto'>) {
       }
       const pdfPath = pdfDateiPfad(jobId);
       if (!pdfPath || !_fsSync.existsSync(pdfPath)) return sendeFehler(req, res, 410, 'pdf_nicht_verfuegbar');
-      liefereUndRaeumeAuf(d, req, res, jobId, pdfPath);
+      liefereUndRaeumeAuf(d, req, res, jobId, req.apiUser.user_id, pdfPath);
     },
   );
 

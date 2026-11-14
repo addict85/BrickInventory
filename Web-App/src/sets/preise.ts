@@ -1,7 +1,6 @@
 /** Marktpreis, Preisverlauf und Preisalarm eines Sets. */
-import { blickfeldAus, type Sicht } from '../haushalt';
+import type { Sicht } from '../haushalt';
 import { einstellungMitZugang } from '../einstellungen';
-import { alarmeFuer, loescheAlarm, setzeAlarm } from '../finanzen';
 import { normalizeSetNumber } from './erfassen';
 import type { Zustand } from '../infra/validate';
 import type { CsvImportBericht } from '../infra/csvExport';
@@ -11,7 +10,7 @@ import type { SetsKontext } from './kontext';
 
 /** Im Zustand des Bestands. null: kein Set im Blickfeld. */
 export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sicht | number[], sn: string) {
-  const blickfeld = await blickfeldAus(sk.db, blickfeldWahl);
+  const blickfeld = await sk.haushalt.blickfeldAus(blickfeldWahl);
   const set = await repo.setImFeld(sk.db, sn, blickfeld);
   if (!set) return null;
   // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung
@@ -22,7 +21,7 @@ export async function setPreis(sk: SetsKontext, uid: number, blickfeldWahl: Sich
   const preis = await versuche('sets:preis', async () =>
     sk.finanzen.fetchPrice(
       sn,
-      await sk.finanzen.resolveSetCondition(blickfeld, sn, undefined),
+      await sk.finanzen.resolveSetCondition(blickfeld, sn),
       guideType,
       currency,
       ttlHours,
@@ -60,20 +59,20 @@ export async function waehrungVon(sk: SetsKontext, uid: number): Promise<string>
 }
 
 export function setAlarmeLesen(sk: SetsKontext, uid: number, sn: string) {
-  return alarmeFuer(sk.db, uid, normalizeSetNumber(sn));
+  return sk.finanzen.preisalarm.alarmeFuer(uid, normalizeSetNumber(sn));
 }
 
 export async function alarmDesSetsSetzen(
   sk: SetsKontext,
   uid: number,
   sn: string,
-  eingabe: Parameters<typeof setzeAlarm>[4],
+  eingabe: Parameters<SetsKontext['finanzen']['preisalarm']['setzeAlarm']>[3],
 ) {
-  return setzeAlarm(sk.db, uid, normalizeSetNumber(sn), await waehrungVon(sk, uid), eingabe);
+  return sk.finanzen.preisalarm.setzeAlarm(uid, normalizeSetNumber(sn), await waehrungVon(sk, uid), eingabe);
 }
 
 export function alarmDesSetsLoeschen(sk: SetsKontext, uid: number, sn: string, condition: Zustand | undefined) {
-  return loescheAlarm(sk.db, uid, normalizeSetNumber(sn), condition ?? 'N');
+  return sk.finanzen.preisalarm.loescheAlarm(uid, normalizeSetNumber(sn), condition ?? 'N');
 }
 
 export async function alarmCsvImportStarten(sk: SetsKontext, uid: number, text: string) {

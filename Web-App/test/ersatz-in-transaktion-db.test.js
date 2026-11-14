@@ -42,17 +42,17 @@ test('kein Ersatzwert in einer Transaktion', { concurrency: 1 }, async t => {
 
   await t.test('ein Datenbankfehler geht weiter', async () => {
     await assert.rejects(
-      db.transaction(async () => db.get('SELECT 1/0 AS x').catch(meldeUndLiefere('probe', null))),
+      db.transaction(async tx => tx.get('SELECT 1/0 AS x').catch(meldeUndLiefere('probe', null))),
       mitCode('22012'),
     );
     await assert.rejects(
-      db.transaction(async () => {
-        await db.get('SELECT 1/0 AS x').catch(logAndContinue('probe'));
+      db.transaction(async tx => {
+        await tx.get('SELECT 1/0 AS x').catch(logAndContinue('probe'));
       }),
       mitCode('22012'),
     );
     await assert.rejects(
-      db.transaction(async () => versuche('probe', db.get('SELECT 1/0 AS x'))),
+      db.transaction(async tx => versuche('probe', tx.get('SELECT 1/0 AS x'))),
       mitCode('22012'),
     );
   });
@@ -70,8 +70,9 @@ test('kein Ersatzwert in einer Transaktion', { concurrency: 1 }, async t => {
 
   await t.test('hinter einem Sicherungspunkt gilt der Ersatz', async () => {
     const r = await db.transaction(async tx => {
-      const ersatz = await db
-        .transaction(inner => inner.get('SELECT 1/0 AS x'))
+      // Der Sicherungspunkt über den Zugang, freigegeben für diese Transaktion.
+      const ersatz = await tx
+        .gebunden(() => db.transaction(inner => inner.get('SELECT 1/0 AS x')))
         .catch(meldeUndLiefere('probe', 'ersatz'));
       // Die äussere Transaktion nimmt danach noch Befehle an.
       return [ersatz, (await tx.get('SELECT 2 AS z')).z];

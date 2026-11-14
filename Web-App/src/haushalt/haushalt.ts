@@ -2,84 +2,68 @@
 import { logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
-import type { DbSchnittstelle } from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import type { HaushaltKontext } from './kontext';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fachfehler } from '../infra/fehlerTexte';
-import crypto from 'node:crypto';
 import { imSystemkontext } from '../infra/kontoKontext';
-import { prozessweit } from '../infra/prozessweit';
+import {
+  HAUSHALT_KANAL,
+  HAUSHALT_MAX,
+  HAUSHALT_TTL_MS,
+  INVITE_TTL_MS,
+  OFFENE_EINLADUNGEN_MAX,
+  asIds,
+  einladungsHash,
+  haushaltStand,
+  leereHaushaltCache,
+  neuerCode,
+  parseScopeMode,
+  type Blickfeld,
+  type BlickfeldEingabe,
+  type Household,
+  type ScopeMode,
+  type Schreiber,
+  type Sicht,
+} from './regeln';
 
-/** Lang genug für „später am Abend", kurz genug, dass ein liegen gebliebener
- * Code nicht dauerhaft öffnet. */
-export const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
-export const OFFENE_EINLADUNGEN_MAX = 5;
-
-export interface Household {
-  /** Eigene zuerst, dann die direkten Unterkonten. */
-  memberIds: number[];
-  isMain: boolean;
-  /** Ein Konto kann mehreren Haushalten angehören. */
-  elternIds: number[];
-}
-
-export const HAUSHALT_KANAL = 'haushalt_geaendert';
-const HAUSHALT_TTL_MS = 5 * 60 * 1000;
-const HAUSHALT_MAX = 500;
-
-/** Je Zugang ein Gedächtnis: Zwei Datenbanken vergeben dieselbe Konto-ID an
- * verschiedene Konten. WeakMap, damit ein Transaktionsgriff samt Gedächtnis
- * verschwindet; der Stand macht leereHaushaltCache() für alle Zugänge wirksam. */
-const gedaechtnisse = () =>
-  prozessweit('haushaltGedaechtnis', () => ({
-    stand: 0,
-    jeZugang: new WeakMap<object, { stand: number; speicher: Zwischenspeicher<number, Household> }>(),
-    abhaengige: [] as Array<() => void>,
+/** Je Zugang (zwei Datenbanken, gleiche Konto-IDs); in einer Transaktion keins, sonst bliebe nach ROLLBACK ein nie gültiger Stand. */
+function gedaechtnis(k: HaushaltKontext): Zwischenspeicher<number, Household> {
+  if (k.db.inTransaktion()) return new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS);
+  const stand = haushaltStand().stand;
+  const g = k.faecher.fach('haushalt', () => ({
+    stand,
+    speicher: new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS),
   }));
-function gedaechtnis(db: DbSchnittstelle): Zwischenspeicher<number, Household> {
-  const alle = gedaechtnisse();
-  let g = alle.jeZugang.get(db);
-  if (!g || g.stand !== alle.stand) {
-    g = { stand: alle.stand, speicher: new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS) };
-    alle.jeZugang.set(db, g);
+  if (g.stand !== stand) {
+    g.stand = stand;
+    g.speicher = new Zwischenspeicher<number, Household>(HAUSHALT_MAX, HAUSHALT_TTL_MS);
   }
   return g.speicher;
 }
 
-/** Rückruf statt Import: Module, die den Haushalt brauchen, würden sonst einen Zyklus bilden. */
-export function beiHaushaltsaenderung(leere: () => void): void {
-  gedaechtnisse().abhaengige.push(leere);
-}
-
-export function leereHaushaltCache(): void {
-  const alle = gedaechtnisse();
-  alle.stand++;
-  for (const leere of alle.abhaengige) leere();
-}
-
 /** Fehler werden verschluckt: Das Signal ist die Beschleunigung, die Frist
  * die Zusicherung. */
-export function meldeHaushaltsaenderung(db: DbSchnittstelle): void {
+export function meldeHaushaltsaenderung(k: HaushaltKontext): void {
   leereHaushaltCache();
-  repo.sendeSignal(db, HAUSHALT_KANAL).catch(logAndContinue('haushalt:notify'));
+  repo.sendeSignal(k.db, HAUSHALT_KANAL).catch(logAndContinue('haushalt:notify'));
 }
 
 /** Nur die direkten Unterkonten: Jedes Konto im Blickfeld hat selbst einer
  * Einladung DIESES Kontos zugestimmt. Ein Unterkonto sieht nur sich selbst —
  * der Hauptaccount ist kein gemeinsamer Topf, sondern eine Sicht. */
-const kinder = (db: DbSchnittstelle, id: number) => repo.unterkonten(db, id);
+const kinder = (k: HaushaltKontext, id: number) => repo.unterkonten(k.db, id);
 
-export async function haushaltVon(db: DbSchnittstelle, uid: number): Promise<Household> {
+export async function haushaltVon(k: HaushaltKontext, uid: number): Promise<Household> {
   const id = parseInt(String(uid), 10);
-  const speicher = gedaechtnis(db);
+  const speicher = gedaechtnis(k);
   const treffer = speicher.hole(id);
   // Kopien zurückgeben: Ein Aufrufer, der die Liste verändert, veränderte
   // sonst den gemerkten Stand aller folgenden Anfragen.
   if (treffer) return { ...treffer, memberIds: [...treffer.memberIds], elternIds: [...treffer.elternIds] };
 
-  const [unten, eltern] = await Promise.all([kinder(db, id), repo.elternkonten(db, id)]);
+  const [unten, eltern] = await Promise.all([kinder(k, id), repo.elternkonten(k.db, id)]);
   const haushalt: Household = { memberIds: [id, ...unten], isMain: unten.length > 0, elternIds: eltern };
   speicher.setze(id, haushalt);
   return { ...haushalt, memberIds: [...haushalt.memberIds], elternIds: [...haushalt.elternIds] };
@@ -87,76 +71,57 @@ export async function haushaltVon(db: DbSchnittstelle, uid: number): Promise<Hou
 
 /** Frisch abgefragt, nicht aus dem Gedächtnis: Nach dem Lösen darf kein
  * früheres Elternkonto noch minutenlang schreiben. */
-export async function darfSchreibenFuer(db: DbSchnittstelle, actorId: number, ownerId: number): Promise<boolean> {
+export async function darfSchreibenFuer(k: HaushaltKontext, actorId: number, ownerId: number): Promise<boolean> {
   const actor = parseInt(String(actorId), 10);
   const owner = parseInt(String(ownerId), 10);
   if (actor === owner) return true;
-  return repo.istVerknuepft(db, actor, owner);
+  return repo.istVerknuepft(k.db, actor, owner);
 }
 
 /** Frisch, aus demselben Grund wie darfSchreibenFuer. */
-export async function schreibbereich(db: DbSchnittstelle, uid: number): Promise<number[]> {
+export async function schreibbereich(k: HaushaltKontext, uid: number): Promise<number[]> {
   const id = parseInt(String(uid), 10);
-  return [id, ...(await kinder(db, id))];
+  return [id, ...(await kinder(k, id))];
 }
 
 /** `tiefe` bleibt für ältere App-Fassungen im Feld (0 = eigenes, 1 = Unterkonto). */
-export async function haushaltsMitglieder(db: DbSchnittstelle, uid: number) {
-  const h = await haushaltVon(db, uid);
+export async function haushaltsMitglieder(k: HaushaltKontext, uid: number) {
+  const h = await haushaltVon(k, uid);
   const self = parseInt(String(uid), 10);
-  const rows = await repo.kontoNamen(db, h.memberIds);
+  const rows = await repo.kontoNamen(k.db, h.memberIds);
   return h.memberIds
     .map(id => rows.find(r => r.id === id))
     .filter((r): r is repo.KontoName => !!r)
     .map(r => ({ id: r.id, username: r.username, is_self: r.id === self, tiefe: r.id === self ? 0 : 1 }));
 }
 
-/** Ohne 0/O, 1/I/L: Der Code wird oft abgetippt. 16 Zeichen tragen rund 79 Bit. */
-const CODE_ZEICHEN = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
-
-function neuerCode(): string {
-  const z = Array.from({ length: 16 }, () => CODE_ZEICHEN[crypto.randomInt(CODE_ZEICHEN.length)]).join('');
-  return z.match(/.{4}/g)!.join('-');
-}
-
-/** Neue Codes ohne Striche und Gross/Klein; ältere (base64url) bleiben wörtlich gültig. */
-function einladungsSchluessel(code: string): string {
-  const kurz = code.trim().replace(/[\s-]/g, '').toUpperCase();
-  return new RegExp(`^[${CODE_ZEICHEN}]{16}$`).test(kurz) ? kurz : code.trim();
-}
-
-/** Im Klartext steht der Code nirgends. */
-function hash(token: string) {
-  return crypto.createHash('sha256').update(einladungsSchluessel(token)).digest('hex');
-}
-
 /** Abgelaufene und verbrauchte Codes werden dabei entsorgt; die Tabelle bleibt
  * so von selbst klein. */
-export async function einladungAnlegen(db: DbSchnittstelle, uid: number) {
+export async function einladungAnlegen(k: HaushaltKontext, uid: number) {
   // Absagen als CODE: Erst die Route weiss, welche Sprache der Anfragende sieht.
   const id = parseInt(String(uid), 10);
   // Jedes Konto darf einladen, auch ein Unterkonto: Ein Zwischenkonto ist Vater
   // UND Kind.
-  await repo.raeumeEinladungenAuf(db).catch(logAndContinue('haushalt:id'));
+  await repo.raeumeEinladungenAuf(k.db).catch(logAndContinue('haushalt:id'));
   // Jede offene Einladung ist ein Zugang zum Haushalt; beliebig viele braucht niemand.
-  if ((await repo.offeneEinladungen(db, id)) >= OFFENE_EINLADUNGEN_MAX)
+  if ((await repo.offeneEinladungen(k.db, id)) >= OFFENE_EINLADUNGEN_MAX)
     return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };
 
   const code = neuerCode();
-  await repo.legeEinladungAn(db, hash(code), id, new Date(Date.now() + INVITE_TTL_MS));
+  await repo.legeEinladungAn(k.db, einladungsHash(code), id, new Date(Date.now() + INVITE_TTL_MS));
   return { code, expires_in: INVITE_TTL_MS / 1000 };
 }
 
 /** Wer einlädt, bevor jemand mit dem Passwort zustimmt; nur wer den Code hat, erfährt den Namen. */
-export async function pruefeEinladung(db: DbSchnittstelle, uid: number, code: string) {
+export async function pruefeEinladung(k: HaushaltKontext, uid: number, code: string) {
   if (typeof code !== 'string' || code.trim().length < 8) return { fehler: 'einladungscode_ungueltig' as const };
   const subId = parseInt(String(uid), 10);
-  const mainId = await repo.einladenderZuCode(db, hash(code));
+  const mainId = await repo.einladenderZuCode(k.db, einladungsHash(code));
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
   if (mainId === subId) return { fehler: 'konto_mit_sich_selbst' as const };
-  if (await repo.istVerknuepft(db, mainId, subId)) return { fehler: 'konto_bereits_verknuepft' as const };
-  if (await repo.istVerknuepft(db, subId, mainId)) return { fehler: 'verknuepfung_erzeugt_kreis' as const };
-  return { inviter: { id: mainId, username: (await repo.kontoName(db, mainId)) || String(mainId) } };
+  if (await repo.istVerknuepft(k.db, mainId, subId)) return { fehler: 'konto_bereits_verknuepft' as const };
+  if (await repo.istVerknuepft(k.db, subId, mainId)) return { fehler: 'verknuepfung_erzeugt_kreis' as const };
+  return { inviter: { id: mainId, username: (await repo.kontoName(k.db, mainId)) || String(mainId) } };
 }
 
 // Atomar entwertet, bei Fehlschlag frei.
@@ -165,7 +130,7 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
   if (typeof code !== 'string' || code.length < 8) {
     return { fehler: 'einladungscode_ungueltig' as const };
   }
-  const th = hash(code);
+  const th = einladungsHash(code);
 
   // Ein Lesefehler ist kein abgelaufener Code: Er geht weiter.
   const mainId = await k.repository.belegeEinladung(th, subId);
@@ -204,8 +169,8 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
     k.transaktion(async t => {
       await sperreHaushaltswaehrung(t.db);
       const [curMain, curSub] = await Promise.all([
-        k.einstellungen.getSetting(mainId, 'currency', 'EUR'),
-        k.einstellungen.getSetting(subId, 'currency', 'EUR'),
+        t.einstellungen.getSetting(mainId, 'currency', 'EUR'),
+        t.einstellungen.getSetting(subId, 'currency', 'EUR'),
       ]);
       if (String(curMain) !== String(curSub)) return { haupt: String(curMain), unter: String(curSub) };
       await t.repository.verknuepfe(mainId, subId);
@@ -216,7 +181,7 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
     await release();
     return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
   }
-  meldeHaushaltsaenderung(k.db);
+  meldeHaushaltsaenderung(k);
   // Die Verknüpfung steht schon; fehlt nur der Name, trägt die Antwort die ID und sagt es.
   const ab = new Abstriche();
   const name = await ab.oder('kontoname', k.repository.kontoName(mainId), null);
@@ -226,7 +191,7 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
 /** Von BEIDEN Seiten erlaubt. Ohne `subUserId` und `mainUserId` löst sich das
  * Konto von allen — so verhält sich eine ältere App mit nur einem Elternkonto. */
 export async function kontenTrennen(
-  db: DbSchnittstelle,
+  k: HaushaltKontext,
   uid: number,
   subUserId?: number | null,
   mainUserId?: number | null,
@@ -234,22 +199,24 @@ export async function kontenTrennen(
   const id = parseInt(String(uid), 10);
   const gesetzt = (v: unknown) => v != null && String(v) !== '';
   const removed = gesetzt(subUserId)
-    ? await repo.trenne(db, id, parseInt(String(subUserId), 10))
+    ? await repo.trenne(k.db, id, parseInt(String(subUserId), 10))
     : gesetzt(mainUserId)
-      ? await repo.trenne(db, parseInt(String(mainUserId), 10), id)
-      : await repo.trenne(db, null, id);
-  meldeHaushaltsaenderung(db);
+      ? await repo.trenne(k.db, parseInt(String(mainUserId), 10), id)
+      : await repo.trenne(k.db, null, id);
+  meldeHaushaltsaenderung(k);
   return { removed };
 }
 
-export async function verwerfeGetrennt(db: DbSchnittstelle, uid: number, subUserId: number) {
-  return { removed: await repo.loescheGetrenntHinweis(db, parseInt(String(uid), 10), parseInt(String(subUserId), 10)) };
+export async function verwerfeGetrennt(k: HaushaltKontext, uid: number, subUserId: number) {
+  return {
+    removed: await repo.loescheGetrenntHinweis(k.db, parseInt(String(uid), 10), parseInt(String(subUserId), 10)),
+  };
 }
 
 export async function haushaltsStand(k: HaushaltKontext, uid: number) {
   const id = parseInt(String(uid), 10);
-  const h = await haushaltVon(k.db, id);
-  const members = await haushaltsMitglieder(k.db, id);
+  const h = await haushaltVon(k, id);
+  const members = await haushaltsMitglieder(k, id);
   const ab = new Abstriche();
   const [eltern, openInvites, currency, getrennt] = await Promise.all([
     k.repository.kontoNamen(h.elternIds, 'username'),
@@ -273,19 +240,8 @@ export async function haushaltsStand(k: HaushaltKontext, uid: number) {
   };
 }
 
-// Der Kontofilter wird hier zu IDs, damit Liste und Summen dieselben Konten zählen.
-export type ScopeMode = 'all' | 'own' | 'subs' | number;
-
-/** Unbekanntes ergibt 'all'. Eine Zahl wird NICHT hier geprüft: Ob sie zum
- * Haushalt gehört, weiss erst blickfeldIds(). */
-export function parseScopeMode(v: unknown): ScopeMode {
-  if (v === 'own' || v === 'subs') return v;
-  const n = parseInt(String(v), 10);
-  return Number.isFinite(n) && n > 0 ? n : 'all';
-}
-
-export async function blickfeldIds(db: DbSchnittstelle, uid: number, mode: ScopeMode = 'all'): Promise<number[]> {
-  const h = await haushaltVon(db, uid);
+export async function blickfeldIds(k: HaushaltKontext, uid: number, mode: ScopeMode = 'all'): Promise<number[]> {
+  const h = await haushaltVon(k, uid);
   const id = parseInt(String(uid), 10);
   // Ohne Unterkonten wäre 'subs' eine leere Ansicht ohne erkennbaren Grund.
   if (!h.isMain) return h.memberIds;
@@ -299,51 +255,30 @@ export async function blickfeldIds(db: DbSchnittstelle, uid: number, mode: Scope
   return h.memberIds;
 }
 
-/** Vor `asIds()` ID oder Liste, danach `Blickfeld` (immer Liste): zwei Namen,
- * damit eine Signatur sagt, in welchem Moment sie steht. */
-export type BlickfeldEingabe = number | number[];
-
-export type Blickfeld = number[];
-
-export function asIds(v: BlickfeldEingabe): Blickfeld {
-  return Array.isArray(v) ? v.map(x => parseInt(String(x), 10)) : [parseInt(String(v), 10)];
-}
-
-/** Wer fragt und welche Konten seines Haushalts er sehen will (`accounts`). Den
- * Bereich löst der Dienst auf, nicht die Route: Jeder Aufrufer bekommt dieselbe Regel. */
-export interface Sicht {
-  readonly nutzer: number;
-  readonly konten?: string | undefined;
-}
-/** Wer schreibt; sein Schreibbereich sind er selbst und seine Unterkonten. */
-export interface Schreiber {
-  readonly schreiber: number;
-}
-
 /** IDs kommen nur von innen (Jobs, andere Dienste); von aussen kommt eine Sicht. */
-export async function blickfeldAus(db: DbSchnittstelle, v: Sicht | BlickfeldEingabe): Promise<Blickfeld> {
-  return typeof v === 'object' && !Array.isArray(v) ? blickfeldIds(db, v.nutzer, parseScopeMode(v.konten)) : asIds(v);
+export async function blickfeldAus(k: HaushaltKontext, v: Sicht | BlickfeldEingabe): Promise<Blickfeld> {
+  return typeof v === 'object' && !Array.isArray(v) ? blickfeldIds(k, v.nutzer, parseScopeMode(v.konten)) : asIds(v);
 }
 
-export async function schreibbereichAus(db: DbSchnittstelle, v: Schreiber | number[]): Promise<number[]> {
-  return Array.isArray(v) ? v : schreibbereich(db, v.schreiber);
+export async function schreibbereichAus(k: HaushaltKontext, v: Schreiber | number[]): Promise<number[]> {
+  return Array.isArray(v) ? v : schreibbereich(k, v.schreiber);
 }
 
 /** Hauptkonten sehen die Dateien ihrer Unterkonten, nicht umgekehrt. Frisch
  * gefragt wie darfSchreibenFuer: Ein gelöstes Unterkonto soll nicht bis zum Ablauf
  * des Gedächtnisses lesbar bleiben, falls die Benachrichtigung ausbleibt. */
-export async function siehtKonto(db: DbSchnittstelle, nutzer: number, besitzer: number): Promise<boolean> {
-  return besitzer === nutzer || repo.istVerknuepft(db, nutzer, besitzer);
+export async function siehtKonto(k: HaushaltKontext, nutzer: number, besitzer: number): Promise<boolean> {
+  return besitzer === nutzer || repo.istVerknuepft(k.db, nutzer, besitzer);
 }
 
 /** Für wen geschrieben wird; ohne Recht 403 mit dem Code der Route. */
 export async function schreibziel(
-  db: DbSchnittstelle,
+  k: HaushaltKontext,
   nutzer: number,
   wunsch: unknown,
   absage: 'kein_schreibrecht' | 'kein_zugriff_konto' = 'kein_schreibrecht',
 ): Promise<number> {
-  const ziel = await schreibzielOderNull(db, nutzer, wunsch);
+  const ziel = await schreibzielOderNull(k, nutzer, wunsch);
   if (ziel === null) fachfehler('verboten', absage);
   return ziel;
 }
@@ -351,14 +286,14 @@ export async function schreibziel(
 /** Prüft die RICHTUNG (Haupt- für Unterkonto), nicht nur die Mitgliedschaft.
  * @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403) */
 export async function schreibzielOderNull(
-  db: DbSchnittstelle,
+  k: HaushaltKontext,
   actorId: number,
   requested: unknown,
 ): Promise<number | null> {
   if (requested === undefined || requested === null || requested === '') return actorId;
   const target = parseInt(String(requested), 10);
   if (!Number.isFinite(target)) return null;
-  return (await darfSchreibenFuer(db, actorId, target)) ? target : null;
+  return (await darfSchreibenFuer(k, actorId, target)) ? target : null;
 }
 
 /** Aus der Erfassungszeile, nicht aus der Anfrage: Die Datenbank weiss besser
@@ -366,22 +301,22 @@ export async function schreibzielOderNull(
  * fehlende, sonst verriete 403 neben 404, welche IDs vergeben sind.
  * @throws 404 kaufpreis_nicht_gefunden, wenn die Zeile fehlt oder nicht beschreibbar ist */
 export async function umzugsQuelle(
-  db: DbSchnittstelle,
+  k: HaushaltKontext,
   actorId: number,
   kind: ErfassungsArt,
   acqId: number,
 ): Promise<number> {
-  const owner = await repo.besitzerDerErfassung(db, kind, acqId);
-  if (owner === null || !(await darfSchreibenFuer(db, actorId, owner)))
+  const owner = await repo.besitzerDerErfassung(k.db, kind, acqId);
+  if (owner === null || !(await darfSchreibenFuer(k, actorId, owner)))
     fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
   return owner;
 }
 
 /** Beide Formen hier, damit die Namensauflösung nur einmal existiert. */
 // biome-ignore lint/suspicious/noExplicitAny: bindeZugang bildet die Funktion über einen Abbildungstyp ab; ein Typparameter fiele dort zu unknown, und die Aufrufer brauchen ihre Zeilenform zurück.
-export async function besitzerAnhaengen(db: DbSchnittstelle, uids: number[], rows: any[]) {
+export async function besitzerAnhaengen(k: HaushaltKontext, uids: number[], rows: any[]) {
   if (uids.length < 2 || !rows?.length) return rows;
-  const owners = await repo.benutzerNamen(db, uids);
+  const owners = await repo.benutzerNamen(k.db, uids);
   const nameById = new Map<number, string>(owners.map(u => [parseInt(String(u.id), 10), u.username]));
   const platte = (id: number) => ({ id, username: nameById.get(id) || String(id) });
   return rows.map(r => {

@@ -18,17 +18,24 @@ import {
   mitCommitBegleiter,
   innereTransaktion,
   NebenDerTransaktion,
+  UngebundeneAbfrage,
+  freigabe,
+  ohneFreigabe,
+  type TxGriff,
   type TxStand,
 } from './transaktion';
 import { initSchema, initSchemaOnce, DARF_SCHEMA_AENDERN, type Erststart } from './schemaStart';
+import { sperreBestaende, type Bestandssperre } from './txLock';
 
 export { queryWithRetry, istLesend } from './wiederholung';
 export {
   mitCommitBegleiter,
   TransaktionBeendet,
   NebenDerTransaktion,
+  UngebundeneAbfrage,
   GleichzeitigerSicherungspunkt,
 } from './transaktion';
+export type { TxGriff } from './transaktion';
 export type { Erststart } from './schemaStart';
 
 // Alle Abhängigkeiten stehen hier oben: Ein require() im Rumpf versteckt sie
@@ -81,6 +88,9 @@ export interface TxOptionen {
    * Dateien, Mails): Sie laufen dann mehrfach. In einer äusseren Transaktion
    * ohne Wirkung; dort entscheidet deren Option. */
   wiederholeBeiKonflikt?: boolean;
+  /** Bestandssperren, vor dem Rumpf genommen (sperreBestaende, txLock.ts); sie halten bis
+   * zum Ende der äussersten Transaktion. */
+  sperren?: readonly Bestandssperre[];
 }
 const TX_KONFLIKT = new Set(['40P01', '40001']);
 const TX_NEUVERSUCHE = 2;
@@ -93,7 +103,7 @@ export interface Db extends DbSchnittstelle {
   systemrahmenWirkt(): Promise<boolean>;
   /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). */
   readonly benachrichtigung: Benachrichtigung;
-  transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o?: TxOptionen): Promise<T>;
+  transaction<T>(fn: (tx: TxGriff) => Promise<T>, o?: TxOptionen): Promise<T>;
   inTransaktion(): boolean;
   getPoolStats(): { total: number; idle: number; waiting: number; active: number };
   datenbankAntwortet(): Promise<boolean>;
@@ -137,7 +147,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
   };
   const txStand = (): TxStand | null => {
     const t = offeneTx();
-    if (t && t.pool !== poolDesRahmens()) throw new NebenDerTransaktion(t.pool === systemPool);
+    if (!t) return null;
+    if (t.pool !== poolDesRahmens()) throw new NebenDerTransaktion(t.pool === systemPool);
+    if (freigabe.getStore() !== t) throw new UngebundeneAbfrage();
     return t;
   };
 
@@ -194,7 +206,13 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     await abfrage(sql);
   }
 
-  async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
+  async function transaction<T>(rumpf: (tx: TxGriff) => Promise<T>, o: TxOptionen = {}): Promise<T> {
+    const fn = o.sperren?.length
+      ? async (tx: TxGriff) => {
+          await sperreBestaende(tx, o.sperren ?? []);
+          return rumpf(tx);
+        }
+      : rumpf;
     const aussen = txStand();
     if (aussen) return innereTransaktion(aussen, ++sicherungspunkte, fn);
     for (let versuch = 0; ; versuch++) {
@@ -208,7 +226,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     }
   }
 
-  async function einmaligeTransaktion<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+  async function einmaligeTransaktion<T>(fn: (tx: TxGriff) => Promise<T>): Promise<T> {
     const p = poolDesRahmens();
     const client = await p.connect();
     const stand: TxStand = { client, offen: true, db: ich, pool: p, innerster: null, kontext: '' };
@@ -223,7 +241,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
       // Der Kontext im selben Roundtrip wie BEGIN; kontextAbgleich() folgt danach Wechseln.
       stand.kontext = kontextSql();
       await client.query(stand.kontext ? `BEGIN; ${stand.kontext}` : 'BEGIN');
-      const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(stand)));
+      const result = await laufendeTx.run(stand, () => ohneFreigabe(() => fn(txSchnittstelle(stand))));
       await commitBegleiter.getStore()?.(txSchnittstelle(stand));
       stand.offen = false;
       await client.query('COMMIT');

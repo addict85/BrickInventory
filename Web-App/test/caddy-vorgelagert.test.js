@@ -10,8 +10,9 @@
  *   F  den Zweig `keiner)` gestrichen → rot: „keiner ergibt die leere Liste“
  *   G  `:?` bei VORGELAGERTER_PROXY in compose.yaml wieder `:-` → rot:
  *      „compose verlangt die Angabe“
- *   H  (13.11.2026) die Schleife über die Präfixe bis /7 gestrichen → rot: „ein
- *      Netz über fast alle Adressen startet nicht“ (0.0.0.0/0: Caddy startet)
+ *   H  (14.11.2026) die Prüfung der Präfixe gestrichen → rot: „ein zu weites
+ *      Netz startet nicht …“ (0.0.0.0/0: Caddy startet)
+ *   I  (14.11.2026) min=8 statt 16 → rot: dieselbe (192.168.0.0/15 startet)
  *
  * Gegenproben (13.11.2026 gemessen mit Caddy v2.11.8, je einzeln):
  *   A  `trusted_proxies static {$VORGELAGERTER_PROXY}` gestrichen → rot:
@@ -79,18 +80,18 @@ test('VORGELAGERTER_PROXY ist Pflicht: keiner oder Adressen', async t => {
       assert.match(r.stderr, /VORGELAGERTER_PROXY in \.env setzen: keiner/);
     }
   });
-  await t.test('ein Netz über fast alle Adressen startet nicht', () => {
-    for (const wert of ['0.0.0.0/0', '::/0', '172.28.73.20 10.0.0.0/7']) {
+  await t.test('ein zu weites Netz startet nicht (wie TRUST_PROXY: IPv4 ab /16, IPv6 ab /64)', () => {
+    for (const wert of ['0.0.0.0/0', '::/0', '172.28.73.20 10.0.0.0/8', '192.168.0.0/15', 'fd00::/48', '10.0.0.1/']) {
       const r = startskript(wert);
       assert.notEqual(r.status, 0, `${wert}: Caddy startet`);
       assert.equal(r.stdout, '', wert);
-      assert.match(r.stderr, /umfasst fast alle Adressen/, wert);
+      assert.match(r.stderr, /ist zu weit/, wert);
     }
   });
   await t.test('keiner ergibt die leere Liste, Adressen bleiben', () => {
     assert.deepEqual([startskript('keiner').status, startskript('keiner').stdout], [0, '']);
-    const r = startskript('172.28.73.20 fd00::/64 172.18.0.0/16');
-    assert.deepEqual([r.status, r.stdout], [0, '172.28.73.20 fd00::/64 172.18.0.0/16'], r.stderr);
+    const r = startskript('172.28.73.20 fd00::/64 172.18.0.0/16 fd00::1');
+    assert.deepEqual([r.status, r.stdout], [0, '172.28.73.20 fd00::/64 172.18.0.0/16 fd00::1'], r.stderr);
   });
 });
 

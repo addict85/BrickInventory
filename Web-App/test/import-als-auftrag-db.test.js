@@ -11,6 +11,9 @@
  *      → rot: „ohne Worker bleibt der Auftrag offen“ (und der zweite Fall)
  *   D  fuehreImportAus() fängt den Fachfehler nicht ab → rot: „ein Fachfehler
  *      kommt mit Code an“ (500 import_fehlgeschlagen)
+ *   E  (14.11.2026) die Aufrufe hier ohne alsKonto (ohne Konto der Anfrage) → rot: alle
+ *      drei (import_abgebrochen: auftragsStand läuft unter Zeilenschutz und sieht den
+ *      eigenen Auftrag nur im Konto der Anfrage).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -18,7 +21,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire } = require('./helpers/sources');
+const { buildAndRequire, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
@@ -46,7 +49,9 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const { importAlsAuftrag } = _req('src/auftraege/importAlsAuftrag.js');
+  // Wie die Route: im Konto der Anfrage; den eigenen Auftrag liest sie unter Zeilenschutz.
+  const { importAlsAuftrag: alsAuftrag } = _req('src/auftraege/importAlsAuftrag.js');
+  const importAlsAuftrag = (...a) => alsKonto(uid, () => alsAuftrag(...a));
   const csv = teil => `part_number,color_id,quantity\n${teil},0,2\n`;
 
   await t.test('ohne Worker bleibt der Auftrag offen', async () => {

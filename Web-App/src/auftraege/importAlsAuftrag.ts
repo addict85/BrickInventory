@@ -49,7 +49,7 @@ export async function importAlsAuftrag<T = Record<string, unknown>, Q extends Im
   const bis = Date.now() + (o.wartenMs ?? IMPORT_WARTEN_MS);
   let zuletzt = '';
   for (;;) {
-    const s = await k.auftraege.auftragsStand(id);
+    const s = await k.auftraege.auftragsStand(id, uid);
     if (s?.fortschritt && o.fortschritt) {
       const j = JSON.stringify(s.fortschritt);
       if (j !== zuletzt) {

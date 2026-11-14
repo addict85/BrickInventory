@@ -24,6 +24,13 @@
  *   Q  nur imNamenDesAuftrags() mit imNamenVon statt alsAnfrage → rot: dasselbe
  *      (Konto [A,B,C]: der Systemrahmen des Aufrufers bleibt)
  *
+ * Gegenproben Systemrahmen je Funktion (14.11.2026 gemessen, je einzeln):
+ *   R  in src/konto/kontext.ts passkeys.desKontos und konten.zugaengeDesKontos wieder
+ *      in die Liste des Systemrahmens → rot: „ein Konto liest seine Passkeys und
+ *      Tokens …“ (Konto A sah den Passkey und den Token von C)
+ *   S  pdfAuftraege wieder ganz mit bindeImSystemrahmen und ohne `AND user_id = $2`
+ *      in pdfAuftragZeile → rot: „ein PDF-Auftrag eines fremden Kontos …“
+ *
  * Gegenproben Zeilenschutz (13.11.2026, vor der Systemrolle):
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
  *   A  vor den Tests `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` → rot:
@@ -260,13 +267,18 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
             () => 'lief neben der Transaktion',
             e => e.constructor.name,
           );
-          await als(A, () =>
-            app.transaction(async inner => {
-              await n(inner);
-              throw new Error('zurück');
-            }),
-          ).catch(() => {});
-          return [vorher, neben, await als(A, () => n(app)), await n(tx)];
+          // Über den Zugang nur mit Freigabe der Transaktion (tx.gebunden), sonst UngebundeneAbfrage.
+          await tx
+            .gebunden(() =>
+              als(A, () =>
+                app.transaction(async inner => {
+                  await n(inner);
+                  throw new Error('zurück');
+                }),
+              ),
+            )
+            .catch(() => {});
+          return [vorher, neben, await tx.gebunden(() => als(A, () => n(app))), await n(tx)];
         }),
       );
       assert.deepEqual(stand, [1, 'NebenDerTransaktion', 2, 1]);
@@ -352,5 +364,53 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.equal((await d.konto.validateToken(token))?.user_id, C);
     await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).revokeAllTokens(kontexte.konto, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
+  });
+
+  await t.test('ein Konto liest seine Passkeys und Tokens unter Zeilenschutz, fremde nicht', async st => {
+    const d = dienstMit(app);
+    await su.run(
+      `INSERT INTO passkeys (user_id, credential_id, public_key, name) VALUES ($1, $2, '\\x00', 'eigen'), ($3, $4, '\\x00', 'fremd')`,
+      [A, `pk-a-${process.pid}`, C, `pk-c-${process.pid}`],
+    );
+    await su.run(
+      `INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1, $2, 'eigen', NOW() + INTERVAL '1 day'),
+              ($3, $4, 'fremd', NOW() + INTERVAL '1 day')`,
+      [`zt-a-${process.pid}`, A, `zt-c-${process.pid}`, C],
+    );
+    st.after(() => su.run('DELETE FROM passkeys WHERE user_id = ANY($1)', [[A, C]]));
+    st.after(() => su.run('DELETE FROM api_tokens WHERE user_id = ANY($1)', [[A, C]]));
+    const anfrage = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
+    // Das eigene Konto: sichtbar, ohne Systemrahmen.
+    assert.deepEqual(
+      (await anfrage(A, () => d.konto.passkeysDesKontos(A))).map(p => p.name),
+      ['eigen'],
+    );
+    assert.deepEqual(
+      (await anfrage(A, () => d.konto.zugaengeListe(A))).map(z => z.label),
+      ['eigen'],
+    );
+    // Ein fremdes Konto, auch mit dessen ID gefragt: nichts, und nichts zu löschen.
+    assert.deepEqual(await anfrage(A, () => d.konto.passkeysDesKontos(C)), []);
+    assert.deepEqual(await anfrage(A, () => d.konto.zugaengeListe(C)), []);
+    const pkC = await su.get('SELECT id FROM passkeys WHERE user_id = $1', [C]);
+    assert.equal(await anfrage(A, () => d.konto.loeschePasskey(C, pkC.id)), false);
+    assert.equal((await su.all('SELECT 1 FROM passkeys WHERE user_id = $1', [C])).length, 1);
+  });
+
+  await t.test('ein PDF-Auftrag eines fremden Kontos ist für die Anfrage keiner', async st => {
+    const d = dienstMit(app);
+    const kennung = `zs${process.pid}`;
+    await su.run(
+      `INSERT INTO auftraege (art, nutzlast, user_id, schluessel, status) VALUES ('pdf', '{}', $1, $2, 'offen')`,
+      [C, `pdf:${kennung}`],
+    );
+    st.after(() => su.run('DELETE FROM auftraege WHERE schluessel = $1', [`pdf:${kennung}`]));
+    const anfrage = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
+    assert.equal((await anfrage(C, () => d.auftraege.liesAuftrag(kennung, C)))?.user_id, C);
+    // Mit der eigenen ID gefragt (wie die Route): keiner; mit der fremden: der Zeilenschutz verbirgt ihn.
+    assert.equal(await anfrage(A, () => d.auftraege.liesAuftrag(kennung, A)), null);
+    assert.equal(await anfrage(A, () => d.auftraege.liesAuftrag(kennung, C)), null);
+    await anfrage(A, () => d.auftraege.loescheAuftrag(kennung, C));
+    assert.equal((await su.all('SELECT 1 FROM auftraege WHERE schluessel = $1', [`pdf:${kennung}`])).length, 1);
   });
 });

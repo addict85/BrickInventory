@@ -1,48 +1,31 @@
 /**
  * Serialisierung nebenläufiger Mutationen an derselben Bestandszeile.
  */
-import type { Db, DbSchnittstelle, TxOptionen } from './database';
+import type { Pool } from 'pg';
+import type { DbSchnittstelle } from './typen';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { meldeFehler } from '../src/infra/fehler';
 
-/** Eine Transaktionssperre auf (Klasse, hashtext(schluessel)); sie endet mit COMMIT oder ROLLBACK. */
+/** Eine Transaktionssperre auf (Klasse, hashtext(schluessel)); sie endet mit COMMIT oder ROLLBACK.
+ * Bestandssperren nimmt k.transaktion(…, { sperren }) (src/infra/bereich.ts). Die Klasse
+ * LOCKS.INVENTAR statt der Konto-ID als erstem Wert: Sonst sperrte Konto 42 den
+ * Bild-Download (LOCKS.BILD_DOWNLOAD = 42) desselben Sets. */
 async function sperreBisZumEnde(tx: DbSchnittstelle, klasse: number, schluessel: string): Promise<void> {
   await tx.run('SELECT pg_advisory_xact_lock($1, hashtext($2))', [klasse, schluessel]);
 }
 
-/** Dasselbe für mehrere Konten (etwas wandert zwischen ihnen); aufsteigend
- * gesperrt, damit zwei Gegenrichtungen nicht verklemmen. */
-async function mitInventarSperren<T>(
-  zugang: Pick<Db, 'transaction'>,
-  userIds: number[],
-  scopeKey: string,
-  fn: (tx: DbSchnittstelle) => Promise<T>,
-  o: TxOptionen = {},
-): Promise<T> {
-  return zugang.transaction(async tx => {
-    for (const u of [...new Set(userIds)].sort((a, b) => a - b))
-      await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${u}|${scopeKey}`);
-    return fn(tx);
-  }, o);
+/** Eine Bestandssperre: Konto (immer der Besitzer) und Schlüssel (bestandsSchluessel). */
+export interface Bestandssperre {
+  konto: number;
+  schluessel: string | number;
 }
 
-/** Führt fn in einer Transaktion des Zugangs aus, die exklusiven Zugriff auf den
- * Bestandsschlüssel (z. B. Set- oder Teilenummer) hat. */
-async function mitInventarSperre<T>(
-  zugang: Pick<Db, 'transaction'>,
-  userId: number,
-  scopeKey: string | number,
-  fn: (tx: DbSchnittstelle) => Promise<T>,
-  o: TxOptionen = {},
-): Promise<T> {
-  return zugang.transaction(async tx => {
-    // Eine eigene Klasse statt der user_id als erstem Wert: Sonst sperrte
-    // Konto 42 beim Verschieben eines Sets den Bild-Download desselben Sets
-    // (LOCKS.BILD_DOWNLOAD = 42, hashtext(Setnummer)). Gleiche Streuwerte
-    // verschiedener Schlüssel serialisieren nur, was es nicht müsste.
-    await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${userId}|${scopeKey}`);
-    return fn(tx);
-  }, o);
+/** Aufsteigend nach Konto, damit zwei Gegenrichtungen (etwas wandert zwischen Konten) nicht verklemmen. */
+async function sperreBestaende(tx: DbSchnittstelle, sperren: readonly Bestandssperre[]): Promise<void> {
+  const schluessel = [...new Set(sperren.map(s => `${s.konto}|${s.schluessel}`))];
+  const konto = (x: string) => Number(x.slice(0, x.indexOf('|')));
+  schluessel.sort((x, y) => konto(x) - konto(y) || (x < y ? -1 : x > y ? 1 : 0));
+  for (const s of schluessel) await sperreBisZumEnde(tx, LOCKS.INVENTAR, s);
 }
 
 /**
@@ -64,7 +47,7 @@ async function sperreHaushaltswaehrung(tx: DbSchnittstelle): Promise<void> {
  * Sitzung); ist sie belegt, entscheidet `belegt`, was geschieht.
  */
 async function mitSitzungsSperre<T>(
-  zugang: Pick<Db, 'pool'>,
+  zugang: { pool: Pool },
   schluessel: number,
   lauf: () => Promise<T>,
   belegt: () => never,
@@ -93,10 +76,7 @@ async function mitSitzungsSperre<T>(
  * Eine Sitzungssperre für eine ganze Laufzeit belegen.
  * @returns Freigabe, oder null wenn ein anderer Prozess sie hält
  */
-async function belegeSitzungsSperre(
-  zugang: Pick<Db, 'pool'>,
-  schluessel: number,
-): Promise<(() => Promise<void>) | null> {
+async function belegeSitzungsSperre(zugang: { pool: Pool }, schluessel: number): Promise<(() => Promise<void>) | null> {
   const client = await zugang.pool.connect();
   try {
     const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [schluessel]);
@@ -134,8 +114,7 @@ async function gibSchluesselSperreFrei(c: Abfrager, namensraum: number, schluess
 }
 
 export {
-  mitInventarSperren,
-  mitInventarSperre,
+  sperreBestaende,
   bestandsSchluessel,
   sperreHaushaltswaehrung,
   mitSitzungsSperre,
