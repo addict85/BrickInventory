@@ -72,9 +72,11 @@ QR-Code.
 ### Das Wurzelzertifikat auf Geräte bringen
 
 Caddy legt es unter `./caddy/data/caddy/pki/authorities/local/root.crt` ab.
-Die Web-App bietet es unter `https://<BRICK_HOST>/ca.crt` an — auch über
-`http://<BRICK_HOST>/ca.crt`, weil ein Gerät es braucht, bevor es HTTPS
-vertraut. Vor dem Installieren den Fingerabdruck vergleichen; auf dem Server:
+Die Web-App bietet es nur unter `https://<BRICK_HOST>/ca.crt` an (seit
+Abschnitt 63; `http://` leitet dorthin um). Ein Gerät ohne die Wurzel zeigt dort
+einmal eine Zertifikatswarnung; sie bestätigen („Weiter“, „Risiko akzeptieren“),
+dann kommt die Datei. Diese Verbindung ist so wenig vertrauenswürdig wie HTTP:
+Vor dem Installieren den Fingerabdruck vergleichen; auf dem Server:
 
 ```
 openssl x509 -in caddy/data/caddy/pki/authorities/local/root.crt -pubkey -noout \
@@ -2187,3 +2189,65 @@ wird). Hinweise:
   auf 5 Minuten und wird in der Einrichtung angeboten. Ein Update stellt nichts um.
 - **Zu tun:** Caddy neu starten (`docker compose up -d caddy`), damit das
   Caddyfile gilt. Sonst nichts.
+
+<a id="runde-25"></a>
+
+## 63. Runde 25 – Rechte der Laufzeitrolle, Passwort vergessen, Verwaltersitzungen, Dependabot (Migrationen 0117, 0118)
+
+- **Was die Laufzeitrolle schreiben darf (0117):** `brickinventory_app` ändert in
+  `users` nur noch Vor- und Nachname; Passwort, Verwalterrecht, aktiv, Adresse,
+  Links und Sitzungsversion schreibt nur `brickinventory_system`.
+  `global_settings` liest die Laufzeitrolle nur. `verwaltungsprotokoll` ist für
+  **beide** Rollen nur noch anfügbar; Einträge über ein Jahr räumt die Funktion
+  `verwaltungsprotokoll_aufraeumen()` der Migrationsrolle auf, die nur die
+  Systemrolle aufrufen darf (stündlicher Aufräumlauf wie bisher). Die Migration
+  setzt die Rechte selbst, `db-rolle` bei jedem `docker compose up -d` erneut.
+  **Ohne Docker mit getrennten Rollen:** nach dem Update einmal
+  `postgres/app-rolle.sh` ausführen. Wer eigene Werkzeuge mit der Laufzeitrolle in
+  `users`, `global_settings` oder `verwaltungsprotokoll` schreiben lässt, nimmt
+  dafür die Systemrolle; das Protokoll von Hand bereinigen geht nur noch als
+  Migrationsrolle.
+- **Gutscheine und Idempotenz nur fürs eigene Konto (0118):** Ein Hauptkonto
+  sieht die Gutscheinzeilen seiner Unterkonten auch in der Datenbank nicht mehr
+  (die App zeigte sie nie). Nichts zu tun.
+- **„Passwort vergessen“ räumt auf:** Wer sein Passwort per Mail-Link
+  zurücksetzt, verliert zusätzlich alle Verknüpfungen, in denen sein Konto
+  **Unterkonto** ist (das Hauptkonto sah und änderte seine Sammlung), seine
+  offenen Haushaltseinladungen und einen ausstehenden Wechsel der E-Mail-Adresse.
+  Die Mail an das Konto nennt, was gelöst wurde. Eigene Unterkonten bleiben. Ein
+  so getrennter Haushalt verbindet sich mit einer neuen Einladung wieder. Der
+  normale Passwortwechsel im angemeldeten Zustand ändert daran nichts.
+- **Kürzere Sitzungen für Verwalter:** Eine Browsersitzung eines Verwalters endet
+  nach 30 Minuten ohne Anfrage und spätestens 12 Stunden nach der Anmeldung
+  (alle anderen wie bisher 4 Stunden bzw. 7 Tage). Einstellbar in `.env` mit
+  `SESSION_ADMIN_IDLE_MINUTES` und `SESSION_ADMIN_MAX_HOURS` (nie länger als
+  `SESSION_IDLE_MINUTES`/`SESSION_MAX_HOURS`). Eine offene Seite, die regelmässig
+  fragt (etwa **Hintergrundarbeiten**), zählt als Betrieb. Sitzungen von vor dem
+  Update beginnen ihre Frist beim ersten Aufruf danach. Die App (Token) ist nicht
+  betroffen.
+- **Tagesgrenze der Anmeldung:** Nach 50 falschen Passwörtern für ein Konto
+  innerhalb von 24 Stunden, gezählt über alle Adressen, geht die Anmeldung mit
+  Passwort nur noch zusammen mit dem Code des zweiten Faktors; mit Passkey und
+  über „Passwort vergessen“ wie bisher (das Zurücksetzen hebt die Grenze auf).
+  Der Inhaber bekommt eine Mail. Bisher konnte jemand von einer Adresse, von der
+  sich das Konto schon angemeldet hatte (gemeinsames Netz, Proxy), unbegrenzt
+  langsam raten. Nichts zu tun.
+- **`/ca.crt` nur noch über HTTPS:** Port 80 leitet jetzt alles um, auch
+  `/ca.crt`. Ein Gerät ohne die Wurzel öffnet `https://<BRICK_HOST>/ca.crt`,
+  bestätigt die Zertifikatswarnung einmal und lädt die Datei; den Fingerabdruck
+  vor dem Installieren vergleichen wie bisher (Abschnitt 14). Die Android-App
+  braucht die Datei nicht. **Zu tun:** Caddy neu starten
+  (`docker compose up -d caddy`); Anleitungen oder Lesezeichen mit
+  `http://…/ca.crt` auf `https://` ändern.
+- **Dependabot statt Renovate:** Die Renovate-App war für das Repository nie
+  eingeschaltet (seit dem 2. November kein PR, kein Dependency-Dashboard).
+  `renovate.json` ist entfernt; `.github/dependabot.yml` pflegt npm (Web-App),
+  Gradle (Android-App), die Images in `Dockerfile`, `Dockerfile.caddy` und
+  `compose.yaml` sowie die Actions, montags früh, neue npm- und Gradle-Fassungen
+  frühestens nach drei Tagen; eine neue PostgreSQL-Hauptversion schlägt es nicht
+  vor. **Zu tun (GitHub):** unter *Settings → Code security* „Dependabot version
+  updates“ zulassen, falls ausgeschaltet; ist die Renovate-App doch installiert,
+  sie für dieses Repository abschalten (sonst kämen PRs doppelt).
+- **Bedrohungsmodell:** `docs/SICHERHEIT.md` hält fest, dass Web- und
+  Jobs-Prozess beide Rollen halten: Zeilenschutz und Rollenrechte fangen
+  Logikfehler, keine Codeausführung im Prozess.
