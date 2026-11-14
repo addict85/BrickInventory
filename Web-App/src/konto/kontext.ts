@@ -35,6 +35,8 @@ export interface KontoAbhaengigkeiten {
 const OHNE_KONTO = 'Anmeldung oder Token-Prüfung: Es gibt noch kein Konto, für das der Zeilenschutz gälte';
 const ALLE_KONTEN = 'Aufräumen über alle Konten';
 const FREMDES_KONTO = 'Verwaltung oder Passwort vergessen: ändert ein Konto, das die Anfrage nicht trägt';
+/** Migration 0114: Passwort-Hashes und Sitzungen liest die Laufzeitrolle nicht. */
+const NUR_SYSTEMROLLE = 'Passwort-Hash oder Sitzungsspeicher: nur die Systemrolle darf sie lesen';
 
 export const zugang = (db: Db) => ({
   altgeheimnisse: bindeJeFunktion(db, altgeheimnisse, 'zugangsdaten', {
@@ -67,6 +69,7 @@ export const zugang = (db: Db) => ({
   }),
   konten: bindeJeFunktion(db, konten, 'zugangsdaten', {
     alleKonten: 'Verwaltung: liest den zweiten Faktor aller Konten',
+    loescheAndereSitzungen: NUR_SYSTEMROLLE,
     tokenStand: 'Token-Prüfung: sucht über den Hash, ohne Konto',
   }),
   passkeys: bindeJeFunktion(db, passkeys, 'zugangsdaten', {
@@ -93,7 +96,11 @@ export const zugang = (db: Db) => ({
     beendeUeberlappung: OHNE_KONTO,
     beruehreToken: OHNE_KONTO,
     gueltigerToken: OHNE_KONTO,
+    kappeSitzungen: NUR_SYSTEMROLLE,
     kappeTokens: 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto',
+    kontoZurAnmeldung: NUR_SYSTEMROLLE,
+    loescheSitzungenDesKontos: NUR_SYSTEMROLLE,
+    passwortHash: NUR_SYSTEMROLLE,
     legeTokenAn: 'Anmeldung: Die Sitzung des neuen Tokens trägt noch kein Konto',
     loescheAbgelaufene: ALLE_KONTEN,
     loescheToken: 'Abmelden mit einem Token, dessen Konto die Anfrage nicht mehr trägt',

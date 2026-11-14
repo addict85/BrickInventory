@@ -76,6 +76,16 @@
  *   AC die Rechte nur noch für die Laufzeitrolle vergeben → rot: „Laufzeit-
  *      und Systemrolle dürfen …“ und „der Zeilenschutz gilt …“ (permission denied)
  *
+ *   Kontotabellen (14.11.2026, je einzeln):
+ *   AD in 0114 die Schleife über die Rollen gestrichen → rot: „… schon nach der
+ *      Migration“ (SELECT password_hash gelingt der Laufzeitrolle)
+ *   AE in app-rolle.sh den Block für users/user_sessions gestrichen → rot: „… und
+ *      nach jedem Lauf von app-rolle.sh …“ (GRANT ON ALL TABLES gibt beides zurück)
+ *   AF die Policy `lesen` auf account_links für alle Befehle (ohne `FOR SELECT`) →
+ *      rot: beide (das INSERT in den fremden Haushalt gelingt)
+ *   AG in app-rolle.sh die Schleife über vor_migration_* für RLS gestrichen → rot:
+ *      „… Kopien vor Migrationen …“ (die Laufzeitrolle liest den Hash der Kopie)
+ *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
  */
@@ -335,6 +345,88 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       await c.end();
     }
     assert.equal((await rechteDerRolle(admin)).rolsuper, false);
+  });
+
+  /** Was die Laufzeitrolle an Kontotabellen darf; die Systemrolle liest alles. */
+  const kontotabellenPruefen = async db => {
+    await als(db, null, null, async c => {
+      await c.query(`DELETE FROM user_sessions WHERE sid = 'kt-sid'; DELETE FROM users WHERE username LIKE 'kt\\_%'`);
+      const ids = [];
+      for (const n of ['kt_a', 'kt_b', 'kt_c'])
+        ids.push(
+          (await c.query(`INSERT INTO users (username, password_hash) VALUES ($1, '$2b$10$geheim') RETURNING id`, [n]))
+            .rows[0].id,
+        );
+      await c.query('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', ids.slice(0, 2));
+      await c.query(
+        `INSERT INTO account_link_invites (token_hash, main_user_id, expires_at) VALUES ('kt-einl', $1, NOW() + INTERVAL '1 day')`,
+        [ids[2]],
+      );
+      await c.query(`INSERT INTO user_sessions (sid, sess, expire) VALUES ('kt-sid', '{}', NOW() + INTERVAL '1 day')`);
+    });
+    const [A, B, C] = (
+      await als(db, null, null, c => c.query(`SELECT id FROM users WHERE username LIKE 'kt\\_%' ORDER BY username`))
+    ).rows.map(z => z.id);
+    await als(db, ROLLE, PASSWORT, async app => {
+      for (const sql of ['SELECT password_hash FROM users', 'SELECT * FROM users', 'SELECT sid FROM user_sessions'])
+        await assert.rejects(app.query(sql), /permission denied/, `Laufzeitrolle: ${sql}`);
+      await assert.rejects(app.query(`DELETE FROM user_sessions`), /permission denied/);
+      assert.equal((await app.query('SELECT username FROM users WHERE id = $1', [A])).rows[0].username, 'kt_a');
+      await app.query('BEGIN');
+      try {
+        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
+        // Sich selbst in einen fremden Haushalt eintragen hiesse dessen Zeilen sehen.
+        await assert.rejects(
+          app.query('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [C, A]),
+          /row-level security/,
+        );
+      } finally {
+        await app.query('ROLLBACK');
+      }
+      await app.query('BEGIN');
+      try {
+        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
+        assert.equal((await app.query('DELETE FROM account_links WHERE main_user_id = $1', [A])).rowCount, 0);
+        assert.equal((await app.query('SELECT 1 FROM account_links WHERE main_user_id = $1', [A])).rowCount, 1);
+        assert.equal((await app.query('SELECT 1 FROM account_link_invites')).rowCount, 1, 'eigene Einladung');
+        await app.query(`SELECT set_config('app.konto', $1, true)`, [String(A)]);
+        assert.equal((await app.query('SELECT 1 FROM account_link_invites')).rowCount, 0, 'fremde Einladung');
+        assert.equal((await app.query('DELETE FROM account_links WHERE sub_user_id = $1', [B])).rowCount, 1);
+      } finally {
+        await app.query('ROLLBACK');
+      }
+    });
+    await als(db, SYS, SYS_PW, async sys => {
+      assert.equal(
+        (await sys.query(`SELECT password_hash FROM users WHERE id = $1`, [A])).rows[0].password_hash,
+        '$2b$10$geheim',
+      );
+      assert.equal((await sys.query(`SELECT 1 FROM user_sessions WHERE sid = 'kt-sid'`)).rowCount, 1);
+    });
+    await als(db, null, null, c =>
+      c.query(`DELETE FROM user_sessions WHERE sid = 'kt-sid'; DELETE FROM users WHERE username LIKE 'kt\\_%'`),
+    );
+  };
+
+  await t.test('Passwort-Hashes und Sitzungen liest nur die Systemrolle, schon nach der Migration', async () => {
+    // „neue Installation“ hat migriert, ohne app-rolle.sh danach: Das leistet Migration 0114 allein.
+    await kontotabellenPruefen(neu);
+  });
+
+  await t.test('… und nach jedem Lauf von app-rolle.sh; Kopien vor Migrationen nur für die Systemrolle', async () => {
+    await als(neu, MIG, MIG_PW, mig =>
+      mig.query(`CREATE SCHEMA vor_migration_20261114000000000;
+        CREATE TABLE vor_migration_20261114000000000.users AS SELECT 7 AS id, 'x' AS password_hash`),
+    );
+    try {
+      assert.equal(rolleEinrichten(neu).status, 0);
+      await kontotabellenPruefen(neu);
+      const kopie = 'SELECT password_hash FROM vor_migration_20261114000000000.users';
+      assert.equal((await als(neu, ROLLE, PASSWORT, app => app.query(kopie))).rowCount, 0);
+      assert.equal((await als(neu, SYS, SYS_PW, sys => sys.query(kopie))).rowCount, 1);
+    } finally {
+      await als(neu, MIG, MIG_PW, mig => mig.query('DROP SCHEMA vor_migration_20261114000000000 CASCADE'));
+    }
   });
 
   await t.test('die Migrationsrolle schiebt dem Superuser nichts unter', async () => {

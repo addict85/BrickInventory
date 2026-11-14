@@ -18,6 +18,8 @@ CREATE TABLE account_link_invites (
 );
 CREATE INDEX idx_account_link_invites_main ON account_link_invites USING btree (main_user_id, expires_at);
 CREATE INDEX idx_invite_used_by ON account_link_invites USING btree (used_by);
+ALTER TABLE account_link_invites ENABLE ROW LEVEL SECURITY;
+CREATE POLICY zeilenschutz ON account_link_invites USING ((main_user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto))) WITH CHECK ((main_user_id = ( SELECT zeilenschutz_konto() AS zeilenschutz_konto)));
 
 CREATE TABLE account_links (
   main_user_id integer NOT NULL,
@@ -29,6 +31,9 @@ CREATE TABLE account_links (
   CONSTRAINT account_links_sub_user_id_fkey FOREIGN KEY (sub_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_account_links_sub ON account_links USING btree (sub_user_id);
+ALTER TABLE account_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY lesen ON account_links FOR SELECT USING (true);
+CREATE POLICY loesen ON account_links FOR DELETE USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 
 CREATE TABLE api_aufrufe (
   tag date NOT NULL,
@@ -251,6 +256,9 @@ CREATE TABLE household_former_links (
 );
 CREATE INDEX idx_household_former_sub ON household_former_links USING btree (sub_user_id);
 CREATE INDEX idx_household_former_via ON household_former_links USING btree (via_user_id);
+ALTER TABLE household_former_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY loesen ON household_former_links FOR DELETE USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
+CREATE POLICY zeilenschutz ON household_former_links FOR SELECT USING (((( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = main_user_id) OR (( SELECT zeilenschutz_konto() AS zeilenschutz_konto) = sub_user_id)));
 
 CREATE TABLE idempotenz (
   user_id integer NOT NULL,

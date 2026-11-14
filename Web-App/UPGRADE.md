@@ -2072,3 +2072,22 @@ wird). Hinweise:
 - Zweiter Faktor: Nach 20 falschen Codes in 24 Stunden geht die Anmeldung für
   dieses Konto nur noch mit Wiederherstellungscode oder Passkey; der Inhaber
   bekommt sofort eine Mail. Nichts zu tun.
+
+<a id="runde-24"></a>
+
+## 60. Runde 24 – Zugangsdaten, Kontotabellen, Proxy, Passwörter (Migrationen 0113–0115)
+
+- **Zugangsdaten nur für das eigene Konto (0113):** Passkeys, zweiter Faktor,
+  Tokens, Geräteschlüssel und Schrittfreigaben sieht die Laufzeitrolle nur noch für
+  das Konto der Anfrage, nicht mehr für dessen Unterkonten. Nichts zu tun.
+- **Passwort-Hashes und Sitzungen nur über die Systemrolle (0114):** Die
+  Laufzeitrolle `brickinventory_app` liest `users.password_hash` nicht mehr und
+  `user_sessions` gar nicht; Anmeldung und Sitzungsspeicher laufen über
+  `brickinventory_system`. Die Migration setzt die Rechte selbst, `db-rolle`
+  (`postgres/app-rolle.sh`) bei jedem `docker compose up -d` erneut. Wer eigene
+  Werkzeuge mit der Laufzeitrolle auf diese Spalte oder die Sitzungstabelle
+  zugreifen lässt, nimmt dafür die Systemrolle. Ohne Docker mit getrennten Rollen:
+  nach dem Update einmal `postgres/app-rolle.sh` ausführen.
+- **Haushalt (0114):** `account_links`, `account_link_invites` und
+  `household_former_links` stehen unter Zeilenschutz. Kopien vor Migrationen
+  (`vor_migration_*`) liest die Laufzeitrolle nicht mehr. Nichts zu tun.

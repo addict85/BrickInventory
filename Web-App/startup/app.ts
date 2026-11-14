@@ -37,7 +37,7 @@ import { vertragPruefen } from '../src/http/vertragsRouter';
 import type { Dienste } from './verdrahtung';
 
 export interface AppZutaten {
-  /** Für den Sitzungsspeicher (user_sessions). */
+  /** Für den Sitzungsspeicher (user_sessions): der Pool der Systemrolle, die Laufzeitrolle liest sie nicht. */
   pool: Pool;
   konfig: Konfig;
   /** Geprüft in server.ts: Ein Platzhalter beendet dort den Start. */

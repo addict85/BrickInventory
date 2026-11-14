@@ -41,7 +41,7 @@ test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
 
   const { baueApp } = _req('startup/app.js');
   const app = baueApp({
-    pool: db.pool,
+    pool: db.systemPool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 'p'.repeat(48),
     dienste: require('./helpers/sources').testDienste(),

@@ -282,6 +282,25 @@ BEGIN
     EXECUTE pg_catalog.format('ALTER DEFAULT PRIVILEGES FOR ROLE %I GRANT USAGE ON SCHEMAS TO %I', migration, schreiber);
   END LOOP;
 
+  -- Passwort-Hashes und Sitzungen liest nur die Systemrolle (Anmeldung, Sitzungsspeicher);
+  -- eine eingeschleuste Abfrage der Laufzeitrolle kommt an beides nicht (Migration 0114).
+  -- Kopien vor Migrationen ohne Policy: sichtbar nur für Systemrolle und Eigentümerin.
+  IF pg_catalog.to_regclass('public.users') IS NOT NULL THEN
+    EXECUTE pg_catalog.format('REVOKE SELECT ON public.users FROM %I', rolle);
+    EXECUTE (SELECT pg_catalog.format('GRANT SELECT (%s) ON public.users TO %I',
+                    pg_catalog.string_agg(pg_catalog.quote_ident(a.attname::text), ', ' ORDER BY a.attnum), rolle)
+               FROM pg_catalog.pg_attribute a WHERE a.attrelid = 'public.users'::pg_catalog.regclass
+                AND a.attnum > 0 AND NOT a.attisdropped AND a.attname OPERATOR(pg_catalog.<>) 'password_hash');
+  END IF;
+  IF pg_catalog.to_regclass('public.user_sessions') IS NOT NULL THEN
+    EXECUTE pg_catalog.format('REVOKE ALL ON public.user_sessions FROM %I', rolle);
+  END IF;
+  FOR r IN SELECT c.oid::pg_catalog.regclass AS name FROM pg_catalog.pg_class c
+             JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname OPERATOR(pg_catalog.~) '^vor_migration_[0-9]+$' AND c.relkind = 'r' LOOP
+    EXECUTE pg_catalog.format('ALTER TABLE %s ENABLE ROW LEVEL SECURITY', r.name);
+  END LOOP;
+
   -- Leserolle für pgweb: nur SELECT auf die Allowlist oben. BYPASSRLS, weil
   -- pgweb keinen Kontext setzt und der Zeilenschutz (Migration 0111) ihr sonst
   -- jede Zeile der Kontotabellen verbärge; was sie liest, begrenzt die Allowlist.
