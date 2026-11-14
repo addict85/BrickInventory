@@ -60,6 +60,7 @@
     <string name="nutzer_ca_frage_ja">Turn on anyway</string>
     <string name="setup_qr_titel">Use this server?</string>
     <string name="setup_qr_ziel">The QR code points to this server:</string>
+    <string name="setup_qr_ziel_bestaetigen">Yes, %1$s is my server</string>
     <string name="setup_qr_hinweis">The app will only send your login there. Continue only if this is your server.</string>
     <string name="setup_qr_international" tools:ignore="TypographyDashes">The server name contains characters from other alphabets and is shown in its technical form (xn--…). Such letters can look exactly like familiar ones: compare the name character by character with your server.</string>
     <string name="setup_qr_anderer_server">This code leads to a different server than the current one (%1$s). If you continue, you will be signed out there and everything you enter from now on goes to the new server.</string>

@@ -44,6 +44,7 @@
     <string name="nutzer_ca_frage_ja">Trotzdem einschalten</string>
     <string name="setup_qr_titel">Diesen Server übernehmen?</string>
     <string name="setup_qr_ziel">Der QR-Code führt zu diesem Server:</string>
+    <string name="setup_qr_ziel_bestaetigen">Ja, %1$s ist mein Server</string>
     <string name="setup_qr_hinweis">Die App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
     <string name="setup_qr_international" tools:ignore="TypographyDashes">Der Servername enthält Zeichen aus anderen Schriften und steht hier in seiner technischen Form (xn--…). Solche Buchstaben sehen bekannten zum Verwechseln ähnlich: Vergleiche den Namen Zeichen für Zeichen mit deinem Server.</string>
     <string name="setup_qr_anderer_server">Dieser Code führt zu einem anderen Server als dem bisherigen (%1$s). Fährst du fort, wirst du dort abgemeldet, und alles, was du ab jetzt erfasst, geht an den neuen Server.</string>
