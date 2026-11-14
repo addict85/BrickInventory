@@ -140,9 +140,14 @@ jedes Konto. Wer für ein anderes Konto arbeitet, sagt es am Aufruf (`alsAnfrage
 
 Eine Regel je Weg, damit ein Fehler nie wie ein Ergebnis aussieht:
 
-- **Schreibpfade werfen.** Eine Absage ist ein `Fachfehler` mit `FehlerArt`; den
-  Status wählt `src/http/fehlerArt.ts`. Alles andere fliegt weiter bis zum
-  Fehlerweg des Routers oder des Auftrags.
+- **Ein Fehlerweg.** Eine Absage ist ein `Fachfehler` mit `FehlerArt`
+  (`fachfehler()`, für einen Lesepfad ohne Treffer `nichtGefunden()`); den Status
+  wählt nur `src/http/fehlerArt.ts`, die Antwort schreibt nur `fehlerAntwort`.
+  Felder neben `code` und `error` (etwa `wartenSek`) trägt der Fehler als `zusatz`.
+  Dienste geben keine Absage als Ergebnis zurück (`{ fehler }`, `{ ok: false }`),
+  Routen rufen kein `sendeFehler` (`test/schichten.test.js`; die eine Ausnahme ist die
+  Uhr in `rumpfFrist`, die nach `next()` läuft). Alles andere fliegt weiter bis zum
+  Fehlerweg der App oder des Auftrags.
 - **Lesepfade** mit Teilen, die ausfallen dürfen, nehmen `versuche()` oder
   `Abstriche` (`src/infra/ergebnis.ts`): Die Antwort nennt sie in `degradiert`.
 - **`logAndContinue`** nur für Nebenwirkungen ohne Folgen für das Ergebnis: Mail
@@ -235,8 +240,17 @@ neue Migration.
 
 `src/vertrag/` beschreibt jede Route mit zod: Antwort und, für jede
 schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
-`docs/openapi.json` (`npm run vertrag:openapi`) und der Abgleich mit dem
-Android-Client (`test/vertrag-kotlin.test.js`).
+`docs/openapi.json` (`npm run vertrag:openapi`), die Typen der Oberfläche und die
+Kotlin-Antworttypen der App (`vertrag.erzeugt`). Der Vertrag ist die einzige
+Eingabeprüfung und liefert das Fachformat: Was eine Route liest, hat der Vertrag schon
+umgeformt (`z.transform`, z. B. `ZUSTAND` 'n' → 'N', `KENNUNG` → Zahl); eine Route wandelt
+`req.eingabe`, `req.abfrage` und `req.pfad` nicht nach (`test/schichten.test.js`).
+
+Was die App vom Server braucht (Routen, Abfrage, Rumpffelder, die Felder ihrer
+Modelle), steht in `shared/app-schnittstelle.json`. Der Android-Lauf erzeugt und prüft
+die Datei aus dem Kotlin-Quelltext (`Android-App/tools/vertrag/`), die Web-Suite prüft den
+Server gegen sie (`test/app-schnittstelle.test.js`, `vertrag-lesen-db`,
+`vertrag-schreiben-db`). Kotlin-Quelltext liest die Web-Suite nicht (`test/ratschen.test.js`).
 
 Eine Route registriert sich über ihren Schlüssel:
 `router.endpunkt('GET /api/v1/sets/:setNumber', requireToken, async req => …)`.

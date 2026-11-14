@@ -59,19 +59,6 @@ test('das Bündel lässt sich auswerten, ohne zu werfen', async () => {
   dom.window.close();
 });
 
-// HINWEIS: Hier stand der Versuch eines Wächters gegen vergessene Importe —
-// erst als Klick-Test durch alle Reiter, dann als statische Prüfung "jeder
-// modulfremde Aufruf muss importiert sein".
-//
-// Beide sind wieder entfernt, weil sie nicht funktionierten:
-//   • Der Klick-Test scheiterte an abgewiesenen Zusagen aus den Datenabrufen.
-//     Der Node-Test-Runner rechnet die dem Test an, unabhängig von einem
-//     eigenen unhandledRejection-Abfang.
-//   • Die statische Prüfung meldete NICHTS, als der fehlende Import von
-//     initCatalog zur Gegenprobe wieder entfernt wurde. Ein Test, der grün
-//     bleibt, während der Fehler vorhanden ist, ist schlechter als kein Test:
-//     Er erzeugt Sicherheit, die es nicht gibt.
-
 test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () => {
   // Woher dieser Test kommt
   const http = require('node:http');

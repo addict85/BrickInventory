@@ -256,6 +256,13 @@ if (require.main === module) {
       console.log(`[design-tokens] übersprungen, Ordner fehlt: ${path.relative(WURZEL, path.dirname(datei))}`);
       continue;
     }
+    // --pruefen: nur vergleichen; der Android-Lauf prüft so die Kotlin-Dateien (android.yml).
+    if (process.argv.includes('--pruefen')) {
+      if (fs.readFileSync(datei, 'utf8') === inhalt) continue;
+      console.error(`[design-tokens] veraltet: ${path.relative(WURZEL, datei)} (npm run design:tokens)`);
+      process.exitCode = 1;
+      continue;
+    }
     fs.writeFileSync(datei, inhalt);
     console.log(`[design-tokens] ${path.relative(WURZEL, datei)}`);
   }

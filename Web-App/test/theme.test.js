@@ -15,7 +15,6 @@
  *   design-je-konto-db.test.js; Route hinter requireLogin gelegt → dort rot
  *   „ohne Anmeldung: die Vorgabe“.
  */
-// Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -176,33 +175,14 @@ test('fuenf Listen nennen dieselben Designs', () => {
     /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/,
     'src/vertrag/globaleRegeln.ts',
   );
-  const app = liste(
-    fs.readFileSync(
-      path.join(
-        __dirname,
-        '..',
-        '..',
-        'Android-App',
-        'core-model',
-        'src',
-        'main',
-        'java',
-        'ch',
-        'brickinventoryapp',
-        'model',
-        'ui',
-        'theme',
-        'Design.kt',
-      ),
-      'utf8',
-    ),
-    /enum class Design\(val kennung: String\) \{([^;]*);/,
-    'Design.kt',
-  );
+  // Die gemeinsame Quelle, aus der auch die App ihre Design-Tokens erzeugt.
+  const geteilt = Object.keys(
+    JSON.parse(fs.readFileSync(path.join(ROOT, '..', 'shared', 'design-tokens.json'), 'utf8')).designs,
+  ).sort();
 
   assert.deepEqual(boot, erwartet, 'ALLOWED im Boot-Skript weicht von den Dateien ab');
   assert.deepEqual(server, erwartet, 'Die Whitelist des Servers weicht von den Dateien ab');
-  assert.deepEqual(app, erwartet, 'Design (App) weicht von den Dateien ab');
+  assert.deepEqual(geteilt, erwartet, 'shared/design-tokens.json weicht von den Dateien ab');
 });
 
 test('jedes Theme unter public/themes/ deckt die Screens vor dem Login ab', () => {

@@ -92,14 +92,8 @@ async function haltZeile(db, userId, setNumber) {
  * @param [opt.colorId]    Farbe (Standard 0)
  * @param [opt.preis]      Kaufpreis der Erfassung — nur fuer manuelle Teile
  * @param [opt.zustand]    'N' oder 'U' (Standard 'N'), nur fuer manuelle Teile
- * @param [opt.am]         Aufnahmedatum der Erfassung. idx_part_acq_tag_zustand
- *                       (Migration 0008, erweitert in 0040) erlaubt je Konto,
- *                       Teil, Farbe, TAG und ZUSTAND nur eine Erfassung —
- *                       genau wie bei den Sets.
- *                       Hier stand das Gegenteil, und es war falsch:
- *                       GEMESSEN brachen fuenf Testdateien mit „duplicate
- *                       key value violates unique constraint
- *                       idx_part_acq_tag_zustand" ab.
+ * @param [opt.am]         Aufnahmedatum der Erfassung; idx_part_acq_tag_zustand erlaubt je
+ *                       Konto, Teil, Farbe, Tag und Zustand nur eine Erfassung.
  * @param [opt.storageId]  Lagerort
  */
 async function haeltTeil(db, userId, partNumber, opt = {}) {

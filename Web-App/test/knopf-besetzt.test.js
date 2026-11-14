@@ -97,9 +97,7 @@ test('knopfBesetzt(): zweites Argument ist eine Beschriftung, kein Rückruf', ()
 });
 
 /**
- * Der arbeitende Knopf behält seine Beschriftung — und seine Breite.
- *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
+ * Der arbeitende Knopf behält seine Beschriftung — und seine Breite. Gegenproben:
  *   a) Beschriftung wieder gegen „…" getauscht → Schritt 1 rot.
  *   b) Die Klasse `besetzt` nicht mehr gesetzt → Schritt 1 rot.
  *   c) Das Einfrieren der Breite entfernt → Schritt 5 rot.

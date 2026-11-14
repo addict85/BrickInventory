@@ -36,10 +36,7 @@ const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 
 // ── Härtung aller Dienste ─────────────────────────────────────────────────
 //
-// Docker ist hier nicht verfügbar; was der App-Entrypoint mit genau diesen
-// Rechten tut, ist am 29.10.2026 mit setpriv nachgespielt worden (siehe
-// Commit). Diese Prüfung hält fest, dass Liste und Entrypoint zusammenpassen.
-//
+// Diese Prüfung hält fest, dass Liste und Entrypoint zusammenpassen.
 // Gegenproben (am 29.10.2026 gemessen):
 //   A  cap_drop beim Dienst app entfernt → rot: „app: cap_drop: [ALL] fehlt“
 //   B  im Entrypoint ein Ziel /app/cache beim mkdir ergänzt → rot: „Der

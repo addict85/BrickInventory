@@ -1,0 +1,4554 @@
+{
+  "hinweis": "Erzeugt von Android-App/tools/vertrag/app-schnittstelle.js aus dem Quelltext der App; nicht von Hand ändern.",
+  "routen": [
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/admin/api-limits",
+      "typ": "ApiLimitsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/admin/api-limits",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/admin/auftraege",
+      "typ": "AuftraegeResponse",
+      "abfrage": [
+        {
+          "name": "status",
+          "pflicht": false
+        },
+        {
+          "name": "art",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/auftraege/{id}/abbrechen",
+      "typ": "AuftragAenderung",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/auftraege/{id}/wiederholen",
+      "typ": "AuftragAenderung",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/admin/auftraege/art/{art}",
+      "typ": "AuftragsArtLeerung",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/auftraege/art/{art}/jetzt",
+      "typ": "AuftragsArtStart",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/admin/brickset-queue",
+      "typ": "BricksetQueueResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/admin/brickset-queue/{setNumber}",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/brickset-queue/{setNumber}/retry",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/cache-clear",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/admin/cache-stats",
+      "typ": "CacheStatsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/admin/cache-ttl",
+      "typ": "CacheTtlResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/cache-ttl",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/catalog-images",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/default-condition",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/job-schedule",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": "JsonObject",
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/admin/jobs",
+      "typ": "JobsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/admin/logs",
+      "typ": "ProtokollResponse",
+      "abfrage": [
+        {
+          "name": "minutes",
+          "pflicht": true
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/redownload-missing-images",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/reimport-instructions",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/trigger-csv-sync",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/admin/trigger-price-job",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/alerts",
+      "typ": "PreisalarmeResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/alerts/import/csv",
+      "typ": "CsvImportErgebnis",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/alerts/pending",
+      "typ": "PendingAlertsResponse",
+      "abfrage": [
+        {
+          "name": "since",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/change-password",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": "PasswortAenderung",
+      "rumpffelder": [
+        "current",
+        "newPassword",
+        "code"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/forgot-password",
+      "typ": "ForgotPasswordResponse",
+      "abfrage": [],
+      "rumpf": "ForgotPasswordRequest",
+      "rumpffelder": [
+        "email"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/login",
+      "typ": "LoginResponse",
+      "abfrage": [],
+      "rumpf": "LoginRequest",
+      "rumpffelder": [
+        "username",
+        "password",
+        "label",
+        "never_expires",
+        "code",
+        "scope"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/login",
+      "typ": "LoginResponse",
+      "abfrage": [],
+      "rumpf": "PasskeyLoginRequest",
+      "rumpffelder": [
+        "username",
+        "password",
+        "passkey",
+        "label",
+        "never_expires",
+        "scope"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/logout",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/auth/me",
+      "typ": "MeResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/passkey/anmelden",
+      "typ": "LoginResponse",
+      "abfrage": [],
+      "rumpf": "PasskeyAnmeldung",
+      "rumpffelder": [
+        "antwort",
+        "label",
+        "never_expires",
+        "scope",
+        "mit_token"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/passkey/anmelden/optionen",
+      "typ": "PasskeyOptionen",
+      "abfrage": [],
+      "rumpf": "PasskeyOptionenAnfrage",
+      "rumpffelder": [
+        "zweck"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/auth/profile",
+      "typ": "ProfilResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/auth/profile",
+      "typ": "ProfilGespeichert",
+      "abfrage": [],
+      "rumpf": "ProfilAenderung",
+      "rumpffelder": [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "password_current",
+        "code"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/qr-login",
+      "typ": "QrMeldung",
+      "abfrage": [],
+      "rumpf": "QrLoginRequest",
+      "rumpffelder": [
+        "token",
+        "label"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/qr-login/abholen",
+      "typ": "QrAbholung",
+      "abfrage": [],
+      "rumpf": "QrAbholRequest",
+      "rumpffelder": [
+        "abholung",
+        "vorschau"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/qr-login/verwerfen",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": "QrVerwerfen",
+      "rumpffelder": [
+        "abholung"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/register",
+      "typ": "RegisterResponse",
+      "abfrage": [],
+      "rumpf": "RegisterRequest",
+      "rumpffelder": [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "password",
+        "language"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/auth/registration-status",
+      "typ": "RegistrationStatusResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/token-rotieren",
+      "typ": "AppThemeResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/auth/zweiter-faktor",
+      "typ": "ZweiterFaktorStand",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/zweiter-faktor/abschalten",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": "ZweiterFaktorAnfrage",
+      "rumpffelder": [
+        "password",
+        "code"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/zweiter-faktor/bestaetigen",
+      "typ": "ZweiterFaktorCodes",
+      "abfrage": [],
+      "rumpf": "ZweiterFaktorAnfrage",
+      "rumpffelder": [
+        "password",
+        "code"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/zweiter-faktor/codes",
+      "typ": "ZweiterFaktorCodes",
+      "abfrage": [],
+      "rumpf": "ZweiterFaktorAnfrage",
+      "rumpffelder": [
+        "password",
+        "code"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/auth/zweiter-faktor/einrichten",
+      "typ": "ZweiterFaktorEinrichtung",
+      "abfrage": [],
+      "rumpf": "ZweiterFaktorAnfrage",
+      "rumpffelder": [
+        "password",
+        "code"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/catalog/meta",
+      "typ": "CatalogMetaResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/catalog/sets",
+      "typ": "CatalogSetsResponse",
+      "abfrage": [
+        {
+          "name": "q",
+          "pflicht": false
+        },
+        {
+          "name": "theme_id",
+          "pflicht": false
+        },
+        {
+          "name": "year_from",
+          "pflicht": false
+        },
+        {
+          "name": "year_to",
+          "pflicht": false
+        },
+        {
+          "name": "sort",
+          "pflicht": false
+        },
+        {
+          "name": "page",
+          "pflicht": false
+        },
+        {
+          "name": "page_size",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/catalog/sets/{setNumber}",
+      "typ": "CatalogSetDetailResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/catalog/year-verteilung",
+      "typ": "CatalogYearVerteilungResponse",
+      "abfrage": [
+        {
+          "name": "q",
+          "pflicht": false
+        },
+        {
+          "name": "theme_id",
+          "pflicht": false
+        },
+        {
+          "name": "sort",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/finance/minifigs-valuation",
+      "typ": "FigsValuationResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/finance/parts-valuation",
+      "typ": "PartsValuationResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/finance/pnl",
+      "typ": "PnlResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/finance/portfolio-history",
+      "typ": "PortfolioHistoryResponse",
+      "abfrage": [
+        {
+          "name": "period",
+          "pflicht": false
+        },
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/finance/valuation",
+      "typ": "ValuationResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/geraet/schluessel",
+      "typ": "GeraeteSchluesselAntwort",
+      "abfrage": [],
+      "rumpf": "GeraeteKettenAnfrage",
+      "rumpffelder": [
+        "kette"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/geraet/schluessel/nonce",
+      "typ": "SchluesselNonce",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/geraet/schritt/challenge",
+      "typ": "SchrittChallenge",
+      "abfrage": [],
+      "rumpf": "SchrittChallengeAnfrage",
+      "rumpffelder": [
+        "aktion"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/geraet/schritt/freigabe",
+      "typ": "SchrittFreigabe",
+      "abfrage": [],
+      "rumpf": "SchrittFreigabeAnfrage",
+      "rumpffelder": [
+        "challenge",
+        "signatur"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/minifigs",
+      "typ": "MinifigsResponse",
+      "abfrage": [
+        {
+          "name": "source",
+          "pflicht": false
+        },
+        {
+          "name": "set_number",
+          "pflicht": false
+        },
+        {
+          "name": "accounts",
+          "pflicht": false
+        },
+        {
+          "name": "search",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/minifigs",
+      "typ": "AddMinifigResponse",
+      "abfrage": [],
+      "rumpf": "AddMinifigRequest",
+      "rumpffelder": [
+        "fig_number",
+        "bl_fig_number",
+        "quantity",
+        "unit_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ]
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/minifigs/{figNumber}",
+      "typ": "GenericResponse",
+      "abfrage": [
+        {
+          "name": "owner",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/minifigs/{figNumber}",
+      "typ": "GenericResponse",
+      "abfrage": [
+        {
+          "name": "owner",
+          "pflicht": false
+        }
+      ],
+      "rumpf": "UpdateManualItemRequest",
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/minifigs/{figNumber}/acquisitions",
+      "typ": "AcquisitionsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/minifigs/{figNumber}/acquisitions/{id}",
+      "typ": "DeleteWithQuantityResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/minifigs/{figNumber}/acquisitions/{id}",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": "UpdateAcquisitionRequest",
+      "rumpffelder": [
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "quantity",
+        "date",
+        "owner_user_id"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/minifigs/{figNumber}/price-history",
+      "typ": "PriceHistoryResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/minifigs/{figNumber}/sets",
+      "typ": "VerwendendeSetsResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/minifigs/{figNumber}/storage",
+      "typ": "LagerortResponse",
+      "abfrage": [],
+      "rumpf": "LagerortRequest",
+      "rumpffelder": [
+        "storage"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/minifigs/import/csv",
+      "typ": "CsvImportErgebnis",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/minifigs/manual",
+      "typ": "ManualFigsResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        },
+        {
+          "name": "search",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/minifigs/stats",
+      "typ": "MinifigStatsResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/parts",
+      "typ": "PartsResponse",
+      "abfrage": [
+        {
+          "name": "search",
+          "pflicht": false
+        },
+        {
+          "name": "color",
+          "pflicht": false
+        },
+        {
+          "name": "category",
+          "pflicht": false
+        },
+        {
+          "name": "page",
+          "pflicht": false
+        },
+        {
+          "name": "page_size",
+          "pflicht": false
+        },
+        {
+          "name": "set_number",
+          "pflicht": false
+        },
+        {
+          "name": "exclude_manual",
+          "pflicht": false
+        },
+        {
+          "name": "accounts",
+          "pflicht": false
+        },
+        {
+          "name": "spare",
+          "pflicht": false
+        },
+        {
+          "name": "with_sets",
+          "pflicht": false
+        },
+        {
+          "name": "storage",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/parts",
+      "typ": "AddPartResponse",
+      "abfrage": [],
+      "rumpf": "AddPartRequest",
+      "rumpffelder": [
+        "part_number",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "quantity",
+        "unit_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ]
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/parts/{partNumber}/{colorId}",
+      "typ": "GenericResponse",
+      "abfrage": [
+        {
+          "name": "owner",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/parts/{partNumber}/{colorId}",
+      "typ": "GenericResponse",
+      "abfrage": [
+        {
+          "name": "owner",
+          "pflicht": false
+        }
+      ],
+      "rumpf": "UpdateManualItemRequest",
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/parts/{partNumber}/{colorId}/acquisitions",
+      "typ": "AcquisitionsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}",
+      "typ": "DeleteWithQuantityResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/parts/{partNumber}/{colorId}/acquisitions/{id}",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": "UpdateAcquisitionRequest",
+      "rumpffelder": [
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "quantity",
+        "date",
+        "owner_user_id"
+      ]
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/parts/{partNumber}/{colorId}/color",
+      "typ": "TeilFarbeResponse",
+      "abfrage": [
+        {
+          "name": "owner",
+          "pflicht": false
+        }
+      ],
+      "rumpf": "TeilFarbeRequest",
+      "rumpffelder": [
+        "color_id",
+        "color_name",
+        "color_hex"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/parts/{partNumber}/{colorId}/price-history",
+      "typ": "PriceHistoryResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/parts/{partNumber}/{colorId}/sets",
+      "typ": "VerwendendeSetsResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/parts/{partNumber}/{colorId}/storage",
+      "typ": "LagerortResponse",
+      "abfrage": [],
+      "rumpf": "LagerortRequest",
+      "rumpffelder": [
+        "storage"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/parts/brick-colors",
+      "typ": "BrickColorsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/parts/categories",
+      "typ": "PartsCategoriesResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/parts/colors",
+      "typ": "PartsFilterColorsResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/parts/import/csv",
+      "typ": "CsvImportErgebnis",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/parts/manual",
+      "typ": "ManualPartsResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        },
+        {
+          "name": "search",
+          "pflicht": false
+        },
+        {
+          "name": "storage",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/parts/owned",
+      "typ": "BestandResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": "BestandRequest",
+      "rumpffelder": [
+        "teile"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/parts/stats",
+      "typ": "PartsStatsResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets",
+      "typ": "SetsResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        },
+        {
+          "name": "search",
+          "pflicht": false
+        },
+        {
+          "name": "theme",
+          "pflicht": false
+        },
+        {
+          "name": "sort",
+          "pflicht": false
+        },
+        {
+          "name": "page",
+          "pflicht": false
+        },
+        {
+          "name": "page_size",
+          "pflicht": false
+        },
+        {
+          "name": "storage",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/sets",
+      "typ": "AddSetResponse",
+      "abfrage": [],
+      "rumpf": "AddSetRequest",
+      "rumpffelder": [
+        "set_number",
+        "quantity",
+        "purchase_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ]
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/sets/{setNumber}",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/{setNumber}",
+      "typ": "SetDetailResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/{setNumber}",
+      "typ": "SetResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/sets/{setNumber}",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": "UpdateQuantityRequest",
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/{setNumber}/acquisitions",
+      "typ": "AcquisitionsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/sets/{setNumber}/acquisitions/{acqId}",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/sets/{setNumber}/acquisitions/{acqId}",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": "UpdateAcquisitionRequest",
+      "rumpffelder": [
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "quantity",
+        "date",
+        "owner_user_id"
+      ]
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/sets/{setNumber}/alert",
+      "typ": "PreisalarmResponse",
+      "abfrage": [
+        {
+          "name": "condition",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/{setNumber}/alert",
+      "typ": "PreisalarmeResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/sets/{setNumber}/alert",
+      "typ": "PreisalarmResponse",
+      "abfrage": [],
+      "rumpf": "PreisalarmRequest",
+      "rumpffelder": [
+        "richtung",
+        "schwelle",
+        "condition"
+      ]
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/sets/{setNumber}/instructions/{instrId}",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/sets/{setNumber}/instructions/upload",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/{setNumber}/minifigs-list",
+      "typ": "MinifigsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/sets/{setNumber}/move",
+      "typ": "MoveSetResponse",
+      "abfrage": [],
+      "rumpf": "MoveSetRequest",
+      "rumpffelder": [
+        "from_user_id",
+        "to_user_id",
+        "acquisition_ids"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/{setNumber}/parts-list",
+      "typ": "PartsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/{setNumber}/price",
+      "typ": "SetPriceResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/{setNumber}/price-history",
+      "typ": "PriceHistoryResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/sets/{setNumber}/storage",
+      "typ": "LagerortResponse",
+      "abfrage": [],
+      "rumpf": "LagerortRequest",
+      "rumpffelder": [
+        "storage"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/barcode/{barcode}",
+      "typ": "BarcodeResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/exists/{setNumber}",
+      "typ": "SetExistsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/household-members",
+      "typ": "HouseholdMembersResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/sets/import/csv",
+      "typ": "CsvImportErgebnis",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/sets/import/csv/cancel",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/import/csv/status",
+      "typ": "CsvImportStatus",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/info/{setNumber}",
+      "typ": "SetInfoResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/sets/partslist-pdf",
+      "typ": "PdfAuftragAntwort",
+      "abfrage": [],
+      "rumpf": "PdfAuftragAnfrage",
+      "rumpffelder": [
+        "sets",
+        "parts"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/partslist-pdf/download/{jobId}",
+      "typ": null,
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/sets/partslist-pdf/status/{jobId}",
+      "typ": "PdfAuftragStand",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/settings",
+      "typ": "SettingsResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/settings",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/settings/admin/theme",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/settings/default-condition",
+      "typ": "DefaultConditionResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/settings/household",
+      "typ": "HouseholdStatusResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/settings/household/former/dismiss",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/settings/household/invite",
+      "typ": "HouseholdInviteResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/settings/household/redeem",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/settings/household/unlink",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/settings/sessions/andere-beenden",
+      "typ": "AndereBeendet",
+      "abfrage": [],
+      "rumpf": "AndereBeendenAnfrage",
+      "rumpffelder": [
+        "password",
+        "code",
+        "zugaenge"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/settings/theme",
+      "typ": "AppThemeResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/settings/tokens",
+      "typ": "TokensResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/settings/tokens/{tokenId}",
+      "typ": "TokenWiderruf",
+      "abfrage": [],
+      "rumpf": "ZweiterFaktorAnfrage",
+      "rumpffelder": [
+        "password",
+        "code"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/settings/user/default-condition",
+      "typ": "GenericAdminResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/settings/user/theme",
+      "typ": "AppThemeResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/startup-status",
+      "typ": "StartupStatus",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/stats",
+      "typ": "StatsResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/storage",
+      "typ": "LagerorteResponse",
+      "abfrage": [
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/storage/default",
+      "typ": "LagerortVorgabeResponse",
+      "abfrage": [],
+      "rumpf": "LagerortVorgabeRequest",
+      "rumpffelder": [
+        "id"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/storage/locations",
+      "typ": "LagerortVorratResponse",
+      "abfrage": [
+        {
+          "name": "owner",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/storage/locations",
+      "typ": "LagerortEintragResponse",
+      "abfrage": [],
+      "rumpf": "LagerortNameRequest",
+      "rumpffelder": [
+        "name"
+      ]
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/storage/locations/{id}",
+      "typ": "LagerortResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/storage/locations/{id}",
+      "typ": "LagerortEintragResponse",
+      "abfrage": [],
+      "rumpf": "LagerortNameRequest",
+      "rumpffelder": [
+        "name"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/vouchers",
+      "typ": "GutscheinListe",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/vouchers",
+      "typ": "GutscheinAntwort",
+      "abfrage": [],
+      "rumpf": "GutscheinRequest",
+      "rumpffelder": [
+        "number",
+        "pin",
+        "amount",
+        "currency"
+      ]
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/vouchers/{id}",
+      "typ": "GenericResponse",
+      "abfrage": [],
+      "rumpf": "ZweiterFaktorAnfrage",
+      "rumpffelder": [
+        "password",
+        "code"
+      ]
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/vouchers/{id}",
+      "typ": "GutscheinAntwort",
+      "abfrage": [],
+      "rumpf": "GutscheinRequest",
+      "rumpffelder": [
+        "number",
+        "pin",
+        "amount",
+        "currency"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/vouchers/{id}/guthaben",
+      "typ": "GuthabenAntwort",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/vouchers/{id}/klartext",
+      "typ": "GutscheinKlartext",
+      "abfrage": [],
+      "rumpf": "ZweiterFaktorAnfrage",
+      "rumpffelder": [
+        "password",
+        "code"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/vouchers/{id}/pdf-freigabe",
+      "typ": "GutscheinPdfFreigabe",
+      "abfrage": [],
+      "rumpf": "ZweiterFaktorAnfrage",
+      "rumpffelder": [
+        "password",
+        "code"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/vouchers/export/pdf-freigabe",
+      "typ": "GutscheinPdfFreigabe",
+      "abfrage": [],
+      "rumpf": "ZweiterFaktorAnfrage",
+      "rumpffelder": [
+        "password",
+        "code"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/vouchers/pdf",
+      "typ": "GutscheinAntwort",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/wanted",
+      "typ": "MerklisteResponse",
+      "abfrage": [
+        {
+          "name": "search",
+          "pflicht": false
+        },
+        {
+          "name": "condition",
+          "pflicht": false
+        },
+        {
+          "name": "sort",
+          "pflicht": false
+        },
+        {
+          "name": "accounts",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/wanted",
+      "typ": "MerkpostenAntwort",
+      "abfrage": [],
+      "rumpf": "MerkpostenRequest",
+      "rumpffelder": [
+        "set_number",
+        "condition",
+        "owner_user_id"
+      ]
+    },
+    {
+      "methode": "DELETE",
+      "pfad": "/api/v1/wanted/{setNumber}/{condition}",
+      "typ": "GenericResponse",
+      "abfrage": [
+        {
+          "name": "owner_user_id",
+          "pflicht": false
+        }
+      ],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "PUT",
+      "pfad": "/api/v1/wanted/{setNumber}/{condition}/inhaber",
+      "typ": "MerkpostenInhaberAntwort",
+      "abfrage": [],
+      "rumpf": "MerkpostenInhaberRequest",
+      "rumpffelder": [
+        "owner_user_id",
+        "neuer_inhaber"
+      ]
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/wanted/{setNumber}/{condition}/uebernehmen",
+      "typ": "MerkpostenUebernahmeResponse",
+      "abfrage": [],
+      "rumpf": "MerkpostenUebernahmeRequest",
+      "rumpffelder": [
+        "quantity",
+        "purchase_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ]
+    },
+    {
+      "methode": "GET",
+      "pfad": "/api/v1/wanted/{setNumber}/preise",
+      "typ": "MerkpostenPreiseResponse",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    },
+    {
+      "methode": "POST",
+      "pfad": "/api/v1/wanted/import/csv",
+      "typ": "CsvImportErgebnis",
+      "abfrage": [],
+      "rumpf": null,
+      "rumpffelder": []
+    }
+  ],
+  "adressen": [
+    "/api/v1/auth/logout",
+    "/api/v1/auth/token-rotieren",
+    "/api/v1/img-proxy",
+    "/api/v1/sets/add-stream",
+    "/api/v1/sets/import/csv/stream",
+    "/api/v1/sets/partslist-pdf/stream/",
+    "/api/v1/vouchers/",
+    "/api/v1/vouchers/export/pdf"
+  ],
+  "antwortfelder": [
+    "N",
+    "U",
+    "abholung",
+    "acq_count",
+    "acquisition_ids",
+    "acquisitions",
+    "action",
+    "added",
+    "added_at",
+    "aktion",
+    "aktiv",
+    "aktualisiert",
+    "aktuell",
+    "alarm",
+    "alert",
+    "alerts",
+    "alt_gueltig_bis",
+    "alter_sekunden",
+    "amount",
+    "angezeigt",
+    "antwort",
+    "anzahl",
+    "apkSha256",
+    "apkSize",
+    "apkUrl",
+    "app_theme",
+    "art",
+    "attempts",
+    "auftraege",
+    "ausgeloest",
+    "ausgestellt",
+    "avg",
+    "avg_price",
+    "avg_purchase_price",
+    "baseline_pnl_pct",
+    "baseline_pnl_prozent",
+    "baseline_price",
+    "basis_einstand",
+    "basis_guv_betrag",
+    "basis_marktwert",
+    "besitzt",
+    "bestand",
+    "bildbedarf",
+    "bis",
+    "bl_color_id",
+    "bl_fig_number",
+    "bl_part_number",
+    "bricklink",
+    "brickset",
+    "by_condition",
+    "catalog",
+    "categories",
+    "category_name",
+    "challenge",
+    "changed",
+    "chart",
+    "code",
+    "codes",
+    "codes_uebrig",
+    "colorId",
+    "color_hex",
+    "color_id",
+    "color_name",
+    "colors",
+    "commit",
+    "condition",
+    "condition_used",
+    "conditions",
+    "console_mode",
+    "count",
+    "created_at",
+    "currency",
+    "currency_code",
+    "current",
+    "current_price",
+    "date",
+    "default_price_condition",
+    "deleted",
+    "description",
+    "display_value",
+    "done",
+    "effective_condition",
+    "eigenes",
+    "email",
+    "emailChanged",
+    "emailSent",
+    "email_neu",
+    "email_sent",
+    "email_verified",
+    "enabled",
+    "enqueued",
+    "entfernt",
+    "entries",
+    "ergaenzung",
+    "erledigt",
+    "err",
+    "error",
+    "errors",
+    "erstellt",
+    "etaSeconds",
+    "exact",
+    "exists",
+    "expires_at",
+    "expires_in",
+    "faellig_ab",
+    "fehler",
+    "fetched_at",
+    "fig_name",
+    "fig_number",
+    "figs",
+    "figs_purchase",
+    "firstRealIndex",
+    "first_name",
+    "former_links",
+    "fortschritt",
+    "frac",
+    "frist_bis",
+    "from_cache",
+    "from_user_id",
+    "geheimnis",
+    "gelesen",
+    "geplant",
+    "gesamt",
+    "gesamtProzent",
+    "gestartet",
+    "grand_total",
+    "grund",
+    "gueltigBis",
+    "gueltig_bis",
+    "gueltig_sek",
+    "guthaben_geprueft_am",
+    "hard_expires_at",
+    "hat_pdf",
+    "herkunft",
+    "heute",
+    "heuteProzent",
+    "hex",
+    "history_new",
+    "history_used",
+    "id",
+    "image_local",
+    "image_url",
+    "imported",
+    "in_sets",
+    "instructions",
+    "ip_bereich",
+    "is_admin",
+    "is_fallback",
+    "is_fig",
+    "is_main",
+    "is_manual",
+    "is_self",
+    "is_spare",
+    "is_sub",
+    "item",
+    "jobId",
+    "job_prozess",
+    "jobs",
+    "kachel_pnl_pct",
+    "kachel_preis",
+    "kachel_quelle",
+    "katalog_offen",
+    "kaufpreise_fremde_waehrung",
+    "kette",
+    "label",
+    "laeuft",
+    "language",
+    "last_error",
+    "last_name",
+    "last_used",
+    "lebenszeichen",
+    "level",
+    "limit",
+    "limits",
+    "linked_to",
+    "local_path",
+    "logged_at",
+    "logs",
+    "lose",
+    "manual",
+    "manual_parts",
+    "market_price",
+    "marktpreis",
+    "max",
+    "max_price",
+    "max_purchase_price",
+    "max_versuche",
+    "mehrere",
+    "members",
+    "merged",
+    "merkposten",
+    "message",
+    "min",
+    "min_price",
+    "minifigs",
+    "minutes",
+    "mit_token",
+    "mixed",
+    "n",
+    "nachricht",
+    "name",
+    "neuer_inhaber",
+    "never_expires",
+    "newPassword",
+    "new_quantity",
+    "no_price",
+    "nonce",
+    "now",
+    "num_parts",
+    "number",
+    "nummer",
+    "ohne_kaufpreis_marktwert",
+    "ohne_marktpreis_einstand",
+    "ok",
+    "open_invites",
+    "optionen",
+    "ort",
+    "orte",
+    "otpauth",
+    "owned",
+    "owned_quantity",
+    "owner_ids",
+    "owner_user_id",
+    "owners",
+    "page",
+    "page_size",
+    "pages",
+    "parents",
+    "part_name",
+    "part_number",
+    "parts",
+    "parts_purchase",
+    "passkey",
+    "password",
+    "password_current",
+    "pausen",
+    "period",
+    "period_change_pct",
+    "pieces",
+    "pin",
+    "pnl_betrag",
+    "pnl_pct",
+    "pnl_prozent",
+    "points",
+    "positionen",
+    "positionen_bewertet",
+    "positionen_ohne_kaufpreis",
+    "positionen_ohne_marktpreis",
+    "preisvergleich_url",
+    "price_cache_ttl",
+    "price_condition",
+    "price_estimated",
+    "price_from_condition",
+    "price_stale",
+    "priced_rows",
+    "prices",
+    "progress",
+    "purchase",
+    "purchase_price",
+    "purchase_total",
+    "qty_avg",
+    "qty_avg_price",
+    "quantity",
+    "rate_limits",
+    "ready",
+    "rebrickable",
+    "recorded_at",
+    "remaining",
+    "removed",
+    "resolved",
+    "retry_after",
+    "richtung",
+    "rotation_faellig",
+    "rotiert_am",
+    "schedules",
+    "schluessel",
+    "schluessel_nonce",
+    "schwelle",
+    "scope",
+    "set",
+    "setNumber",
+    "set_added_at",
+    "set_count",
+    "set_img_url",
+    "set_name",
+    "set_number",
+    "set_parts",
+    "sets",
+    "sets_purchase",
+    "settings",
+    "signatur",
+    "source",
+    "source_emptied",
+    "stand",
+    "stats",
+    "status",
+    "step",
+    "storage",
+    "sub",
+    "sub_accounts",
+    "subsets",
+    "success",
+    "teile",
+    "text",
+    "theme",
+    "theme_id",
+    "theme_name",
+    "themes",
+    "ticket",
+    "time",
+    "title",
+    "to_user_id",
+    "token",
+    "token_expires",
+    "token_id",
+    "token_info",
+    "token_last_used",
+    "token_prefix",
+    "tokens",
+    "total",
+    "total_avg",
+    "total_instructions",
+    "total_minifigs",
+    "total_parts",
+    "total_pieces",
+    "total_qty_avg",
+    "total_quantity",
+    "total_sets",
+    "total_value",
+    "totals",
+    "ttl",
+    "ttl_stunden",
+    "type",
+    "types",
+    "ueberlappung_sek",
+    "unique_colors",
+    "unique_parts",
+    "unit_price",
+    "unsicher",
+    "updated",
+    "updated_at",
+    "url",
+    "used_count",
+    "user",
+    "user_default_condition",
+    "user_id",
+    "username",
+    "value",
+    "values",
+    "vereint",
+    "verschoben",
+    "versionCode",
+    "versionName",
+    "versuche",
+    "via",
+    "vorgabe",
+    "vorschau",
+    "voucher",
+    "vouchers",
+    "waehrung",
+    "waehrung_geaendert",
+    "war_neu",
+    "warn",
+    "wartenSek",
+    "wartet",
+    "wert",
+    "wert_gesamt",
+    "x",
+    "x_label",
+    "y",
+    "y_axis",
+    "y_frac",
+    "year",
+    "year_counts",
+    "year_max",
+    "year_min",
+    "years",
+    "zugaenge",
+    "zuletzt_am",
+    "zuletzt_preis",
+    "zusammenfassung",
+    "zusammengefuehrt",
+    "zusammengelegt",
+    "zweck",
+    "zweiterFaktorPflicht",
+    "zweiter_faktor"
+  ],
+  "modelle": {
+    "Acquisition": {
+      "felder": [
+        "id",
+        "quantity",
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "created_at",
+        "owner_user_id",
+        "price_estimated",
+        "currency"
+      ],
+      "pflicht": [
+        "id",
+        "quantity"
+      ]
+    },
+    "AcquisitionManagement": {
+      "felder": [
+        "art",
+        "id",
+        "colorId",
+        "title"
+      ],
+      "pflicht": [
+        "art",
+        "id",
+        "title"
+      ]
+    },
+    "AcquisitionsResponse": {
+      "felder": [
+        "success",
+        "acquisitions",
+        "totals"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "AcquisitionTotals": {
+      "felder": [
+        "quantity",
+        "amount",
+        "priced_rows"
+      ],
+      "pflicht": []
+    },
+    "AddMinifigRequest": {
+      "felder": [
+        "fig_number",
+        "bl_fig_number",
+        "quantity",
+        "unit_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ],
+      "pflicht": [
+        "fig_number"
+      ]
+    },
+    "AddMinifigResponse": {
+      "felder": [
+        "success",
+        "action",
+        "fig_number",
+        "fig_name",
+        "price_from_condition",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "AddPartRequest": {
+      "felder": [
+        "part_number",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "quantity",
+        "unit_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ],
+      "pflicht": [
+        "part_number"
+      ]
+    },
+    "AddPartResponse": {
+      "felder": [
+        "success",
+        "action",
+        "part_number",
+        "part_name",
+        "price_from_condition",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "AddSetRequest": {
+      "felder": [
+        "set_number",
+        "quantity",
+        "purchase_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "AddSetResponse": {
+      "felder": [
+        "success",
+        "action",
+        "set_number",
+        "name",
+        "katalog_offen",
+        "ergaenzung",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "AndereBeendenAnfrage": {
+      "felder": [
+        "password",
+        "code",
+        "zugaenge"
+      ],
+      "pflicht": []
+    },
+    "AndereBeendet": {
+      "felder": [
+        "success",
+        "deleted",
+        "zugaenge"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "ApiLimits": {
+      "felder": [
+        "rebrickable",
+        "bricklink",
+        "brickset"
+      ],
+      "pflicht": []
+    },
+    "ApiLimitsResponse": {
+      "felder": [
+        "success",
+        "limits"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "AppThemeResponse": {
+      "felder": [
+        "success",
+        "theme",
+        "vorgabe",
+        "eigenes",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "AppToken": {
+      "felder": [
+        "token_id",
+        "label",
+        "created_at",
+        "last_used",
+        "expires_at",
+        "never_expires",
+        "aktuell",
+        "token_prefix",
+        "hard_expires_at",
+        "scope",
+        "ip_bereich",
+        "rotiert_am"
+      ],
+      "pflicht": [
+        "token_id"
+      ]
+    },
+    "AuftraegeResponse": {
+      "felder": [
+        "success",
+        "auftraege",
+        "zusammenfassung",
+        "pausen",
+        "bildbedarf",
+        "job_prozess"
+      ],
+      "pflicht": [
+        "success",
+        "auftraege",
+        "zusammenfassung",
+        "pausen",
+        "bildbedarf",
+        "job_prozess"
+      ]
+    },
+    "Auftrag": {
+      "felder": [
+        "id",
+        "art",
+        "status",
+        "versuche",
+        "max_versuche",
+        "faellig_ab",
+        "frist_bis",
+        "gestartet",
+        "erstellt",
+        "aktualisiert",
+        "fortschritt",
+        "fehler",
+        "geplant",
+        "set_number"
+      ],
+      "pflicht": [
+        "id",
+        "art",
+        "status",
+        "versuche",
+        "max_versuche",
+        "faellig_ab",
+        "frist_bis",
+        "gestartet",
+        "erstellt",
+        "aktualisiert",
+        "fortschritt",
+        "fehler",
+        "geplant",
+        "set_number"
+      ]
+    },
+    "AuftragAenderung": {
+      "felder": [
+        "success",
+        "id",
+        "status"
+      ],
+      "pflicht": [
+        "success",
+        "id",
+        "status"
+      ]
+    },
+    "AuftragFortschritt": {
+      "felder": [
+        "erledigt",
+        "gesamt",
+        "text"
+      ],
+      "pflicht": []
+    },
+    "AuftragPause": {
+      "felder": [
+        "art",
+        "bis",
+        "grund"
+      ],
+      "pflicht": [
+        "art",
+        "bis",
+        "grund"
+      ]
+    },
+    "AuftragsArtLeerung": {
+      "felder": [
+        "success",
+        "art",
+        "entfernt"
+      ],
+      "pflicht": [
+        "success",
+        "art",
+        "entfernt"
+      ]
+    },
+    "AuftragsArtStart": {
+      "felder": [
+        "success",
+        "art",
+        "gestartet"
+      ],
+      "pflicht": [
+        "success",
+        "art",
+        "gestartet"
+      ]
+    },
+    "AuftragZaehler": {
+      "felder": [
+        "art",
+        "status",
+        "anzahl"
+      ],
+      "pflicht": [
+        "art",
+        "status",
+        "anzahl"
+      ]
+    },
+    "BarcodeResponse": {
+      "felder": [
+        "success",
+        "set_number",
+        "name",
+        "year",
+        "pieces",
+        "theme",
+        "minifigs",
+        "image_url",
+        "image_local",
+        "source",
+        "unsicher",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "BarcodeScanner": {
+      "felder": [
+        "herkunft"
+      ],
+      "pflicht": [
+        "herkunft"
+      ]
+    },
+    "BestandEintrag": {
+      "felder": [
+        "gesamt",
+        "lose"
+      ],
+      "pflicht": []
+    },
+    "BestandRequest": {
+      "felder": [
+        "teile"
+      ],
+      "pflicht": [
+        "teile"
+      ]
+    },
+    "BestandResponse": {
+      "felder": [
+        "success",
+        "bestand",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "BestandTeil": {
+      "felder": [
+        "part_number",
+        "color_id"
+      ],
+      "pflicht": [
+        "part_number",
+        "color_id"
+      ]
+    },
+    "BestandteilKopf": {
+      "felder": [
+        "nummer",
+        "name",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "category_name",
+        "image_local",
+        "image_url",
+        "is_spare",
+        "storage",
+        "owner_ids",
+        "total_quantity"
+      ],
+      "pflicht": [
+        "nummer"
+      ]
+    },
+    "BrickColor": {
+      "felder": [
+        "id",
+        "name",
+        "hex"
+      ],
+      "pflicht": [
+        "id",
+        "name"
+      ]
+    },
+    "BrickColorsResponse": {
+      "felder": [
+        "success",
+        "colors",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "BrickLinkRef": {
+      "felder": [
+        "type",
+        "number",
+        "url",
+        "exact",
+        "resolved"
+      ],
+      "pflicht": []
+    },
+    "BricksetQueueEntry": {
+      "felder": [
+        "set_number",
+        "name",
+        "attempts",
+        "retry_after",
+        "last_error"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "BricksetQueueResponse": {
+      "felder": [
+        "success",
+        "count",
+        "entries"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "CacheStatsResponse": {
+      "felder": [
+        "success",
+        "prices",
+        "subsets",
+        "catalog",
+        "price_stale",
+        "rate_limits"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "CacheTtlResponse": {
+      "felder": [
+        "success",
+        "ttl"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "CatalogDetail": {
+      "felder": [
+        "setNumber"
+      ],
+      "pflicht": [
+        "setNumber"
+      ]
+    },
+    "CatalogMetaResponse": {
+      "felder": [
+        "success",
+        "themes",
+        "year_min",
+        "year_max",
+        "year_counts",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "CatalogSetDetail": {
+      "felder": [
+        "set_number",
+        "name",
+        "year",
+        "theme_id",
+        "theme_name",
+        "num_parts",
+        "image_url",
+        "image_local",
+        "minifigs",
+        "owned",
+        "owned_quantity",
+        "bricklink",
+        "preisvergleich_url"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "CatalogSetDetailResponse": {
+      "felder": [
+        "success",
+        "set",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "CatalogSetItem": {
+      "felder": [
+        "set_number",
+        "name",
+        "year",
+        "theme_id",
+        "theme_name",
+        "num_parts",
+        "image_url",
+        "image_local",
+        "owned",
+        "owned_quantity"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "CatalogSetsResponse": {
+      "felder": [
+        "success",
+        "total",
+        "page",
+        "pages",
+        "sets",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "CatalogTheme": {
+      "felder": [
+        "id",
+        "name",
+        "set_count"
+      ],
+      "pflicht": [
+        "id",
+        "name"
+      ]
+    },
+    "CatalogYearCount": {
+      "felder": [
+        "year",
+        "n"
+      ],
+      "pflicht": [
+        "year"
+      ]
+    },
+    "CatalogYearVerteilungResponse": {
+      "felder": [
+        "success",
+        "years"
+      ],
+      "pflicht": []
+    },
+    "ChartPoint": {
+      "felder": [
+        "x_label",
+        "value",
+        "y_frac"
+      ],
+      "pflicht": []
+    },
+    "ChartYAxis": {
+      "felder": [
+        "label",
+        "value",
+        "frac"
+      ],
+      "pflicht": []
+    },
+    "ConditionValuation": {
+      "felder": [
+        "market_price",
+        "purchase_price",
+        "pnl_prozent"
+      ],
+      "pflicht": []
+    },
+    "CsvImportErgebnis": {
+      "felder": [
+        "success",
+        "total",
+        "added",
+        "imported",
+        "updated",
+        "errors",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "CsvImportStatus": {
+      "felder": [
+        "success",
+        "status",
+        "total",
+        "done",
+        "current",
+        "ok",
+        "warn",
+        "err",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "CurrentByCondition": {
+      "felder": [
+        "N",
+        "U"
+      ],
+      "pflicht": []
+    },
+    "CurrentPrice": {
+      "felder": [
+        "condition",
+        "avg_price",
+        "min_price",
+        "max_price",
+        "fetched_at"
+      ],
+      "pflicht": []
+    },
+    "DashboardStats": {
+      "felder": [
+        "total_sets",
+        "total_quantity",
+        "total_pieces",
+        "total_instructions",
+        "total_parts",
+        "total_minifigs",
+        "set_parts",
+        "manual_parts"
+      ],
+      "pflicht": [
+        "total_sets",
+        "total_quantity",
+        "total_pieces",
+        "total_instructions",
+        "total_parts",
+        "total_minifigs"
+      ]
+    },
+    "DefaultConditionResponse": {
+      "felder": [
+        "success",
+        "condition"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "DeleteWithQuantityResponse": {
+      "felder": [
+        "success",
+        "new_quantity"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "FigsValuationResponse": {
+      "felder": [
+        "success",
+        "currency",
+        "figs",
+        "total_value",
+        "kaufpreise_fremde_waehrung",
+        "error"
+      ],
+      "pflicht": [
+        "success",
+        "total_value"
+      ]
+    },
+    "FigValuationItem": {
+      "felder": [
+        "id",
+        "fig_number",
+        "bl_fig_number",
+        "fig_name",
+        "quantity",
+        "image_url",
+        "image_local",
+        "unit_price",
+        "purchase_price",
+        "avg_purchase_price",
+        "qty_avg_price",
+        "avg_price",
+        "pnl_pct",
+        "pnl_prozent",
+        "display_value",
+        "wert_gesamt",
+        "condition",
+        "conditions",
+        "user_id",
+        "owners",
+        "acquisitions",
+        "storage"
+      ],
+      "pflicht": []
+    },
+    "ForgotPasswordRequest": {
+      "felder": [
+        "email"
+      ],
+      "pflicht": [
+        "email"
+      ]
+    },
+    "ForgotPasswordResponse": {
+      "felder": [
+        "success",
+        "message",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "GelesenerGutschein": {
+      "felder": [
+        "number",
+        "pin",
+        "amount",
+        "currency"
+      ],
+      "pflicht": []
+    },
+    "GenericAdminResponse": {
+      "felder": [
+        "success",
+        "error",
+        "enqueued"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "GenericResponse": {
+      "felder": [
+        "success",
+        "error",
+        "set",
+        "parts",
+        "minifigs",
+        "source_emptied",
+        "quantity"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "GeraeteKettenAnfrage": {
+      "felder": [
+        "kette"
+      ],
+      "pflicht": [
+        "kette"
+      ]
+    },
+    "GeraeteSchluesselAntwort": {
+      "felder": [
+        "success"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "GetrenntesKonto": {
+      "felder": [
+        "id",
+        "username",
+        "via"
+      ],
+      "pflicht": [
+        "id"
+      ]
+    },
+    "GuthabenAntwort": {
+      "felder": [
+        "success",
+        "voucher",
+        "angezeigt",
+        "waehrung_geaendert",
+        "grund",
+        "wartenSek",
+        "error",
+        "code"
+      ],
+      "pflicht": []
+    },
+    "Gutschein": {
+      "felder": [
+        "id",
+        "number",
+        "pin",
+        "amount",
+        "currency",
+        "hat_pdf",
+        "created_at",
+        "updated_at",
+        "guthaben_geprueft_am"
+      ],
+      "pflicht": []
+    },
+    "GutscheinAntwort": {
+      "felder": [
+        "success",
+        "voucher",
+        "mehrere",
+        "gelesen",
+        "error",
+        "code"
+      ],
+      "pflicht": []
+    },
+    "GutscheinKlartext": {
+      "felder": [
+        "success",
+        "id",
+        "number",
+        "pin"
+      ],
+      "pflicht": []
+    },
+    "GutscheinListe": {
+      "felder": [
+        "success",
+        "vouchers"
+      ],
+      "pflicht": []
+    },
+    "GutscheinPdfFreigabe": {
+      "felder": [
+        "success",
+        "ticket",
+        "gueltig_sek"
+      ],
+      "pflicht": []
+    },
+    "GutscheinRequest": {
+      "felder": [
+        "number",
+        "pin",
+        "amount",
+        "currency"
+      ],
+      "pflicht": [
+        "number",
+        "amount"
+      ]
+    },
+    "GutscheinStapel": {
+      "felder": [
+        "added",
+        "updated",
+        "errors",
+        "total"
+      ],
+      "pflicht": []
+    },
+    "HouseholdInviteResponse": {
+      "felder": [
+        "success",
+        "code",
+        "expires_in",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "HouseholdMember": {
+      "felder": [
+        "id",
+        "username",
+        "is_self"
+      ],
+      "pflicht": []
+    },
+    "HouseholdMembersResponse": {
+      "felder": [
+        "success",
+        "members"
+      ],
+      "pflicht": []
+    },
+    "HouseholdStatusResponse": {
+      "felder": [
+        "success",
+        "is_main",
+        "is_sub",
+        "currency",
+        "linked_to",
+        "parents",
+        "sub_accounts",
+        "open_invites",
+        "former_links",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "Instruction": {
+      "felder": [
+        "id",
+        "url",
+        "description",
+        "local_path",
+        "is_manual"
+      ],
+      "pflicht": [
+        "url"
+      ]
+    },
+    "JahrAnzahl": {
+      "felder": [
+        "year",
+        "n"
+      ],
+      "pflicht": []
+    },
+    "JobProzess": {
+      "felder": [
+        "lebenszeichen",
+        "alter_sekunden",
+        "laeuft"
+      ],
+      "pflicht": [
+        "lebenszeichen",
+        "alter_sekunden",
+        "laeuft"
+      ]
+    },
+    "JobSchedule": {
+      "felder": [
+        "type",
+        "time",
+        "minutes"
+      ],
+      "pflicht": []
+    },
+    "JobsResponse": {
+      "felder": [
+        "success",
+        "jobs",
+        "schedules"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "JobStatus": {
+      "felder": [
+        "label",
+        "status",
+        "progress",
+        "total",
+        "sub"
+      ],
+      "pflicht": []
+    },
+    "KontoName": {
+      "felder": [
+        "id",
+        "username"
+      ],
+      "pflicht": []
+    },
+    "Lagerort": {
+      "felder": [
+        "ort",
+        "sets",
+        "teile"
+      ],
+      "pflicht": [
+        "ort"
+      ]
+    },
+    "LagerortEintrag": {
+      "felder": [
+        "id",
+        "user_id",
+        "name"
+      ],
+      "pflicht": []
+    },
+    "LagerortEintragResponse": {
+      "felder": [
+        "success",
+        "ort",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "LagerorteResponse": {
+      "felder": [
+        "success",
+        "orte",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "LagerortNameRequest": {
+      "felder": [
+        "name"
+      ],
+      "pflicht": [
+        "name"
+      ]
+    },
+    "LagerortRequest": {
+      "felder": [
+        "storage"
+      ],
+      "pflicht": [
+        "storage"
+      ]
+    },
+    "LagerortResponse": {
+      "felder": [
+        "success",
+        "storage",
+        "changed",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "LagerortVorgabeRequest": {
+      "felder": [
+        "id"
+      ],
+      "pflicht": []
+    },
+    "LagerortVorgabeResponse": {
+      "felder": [
+        "success",
+        "vorgabe",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "LagerortVorratResponse": {
+      "felder": [
+        "success",
+        "orte",
+        "vorgabe",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "LoginRequest": {
+      "felder": [
+        "username",
+        "password",
+        "label",
+        "never_expires",
+        "code",
+        "scope"
+      ],
+      "pflicht": [
+        "username",
+        "password"
+      ]
+    },
+    "LoginResponse": {
+      "felder": [
+        "success",
+        "token",
+        "user",
+        "error",
+        "zweiter_faktor",
+        "token_info"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "ManualFigsResponse": {
+      "felder": [
+        "success",
+        "figs",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "ManualItemDetail": {
+      "felder": [
+        "art",
+        "id",
+        "colorId",
+        "title"
+      ],
+      "pflicht": [
+        "art",
+        "id",
+        "title"
+      ]
+    },
+    "ManualPartsResponse": {
+      "felder": [
+        "success",
+        "parts",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "MeResponse": {
+      "felder": [
+        "success",
+        "user",
+        "token_expires",
+        "token_last_used",
+        "token_info"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "MerklisteResponse": {
+      "felder": [
+        "success",
+        "merkposten",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "Merkposten": {
+      "felder": [
+        "set_number",
+        "condition",
+        "created_at",
+        "user_id",
+        "name",
+        "year",
+        "num_parts",
+        "image_url",
+        "image_local",
+        "marktpreis",
+        "waehrung",
+        "owned",
+        "alarm",
+        "preisvergleich_url"
+      ],
+      "pflicht": []
+    },
+    "MerkpostenAlarm": {
+      "felder": [
+        "richtung",
+        "schwelle",
+        "ausgeloest"
+      ],
+      "pflicht": []
+    },
+    "MerkpostenAntwort": {
+      "felder": [
+        "success",
+        "war_neu",
+        "merkposten",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "MerkpostenDetail": {
+      "felder": [
+        "setNumber",
+        "condition"
+      ],
+      "pflicht": [
+        "setNumber",
+        "condition"
+      ]
+    },
+    "MerkpostenInhaberAntwort": {
+      "felder": [
+        "success",
+        "verschoben",
+        "zusammengefuehrt",
+        "owner_user_id",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "MerkpostenInhaberRequest": {
+      "felder": [
+        "owner_user_id",
+        "neuer_inhaber"
+      ],
+      "pflicht": [
+        "owner_user_id",
+        "neuer_inhaber"
+      ]
+    },
+    "MerkpostenPreiseResponse": {
+      "felder": [
+        "success",
+        "currency",
+        "current",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "MerkpostenRequest": {
+      "felder": [
+        "set_number",
+        "condition",
+        "owner_user_id"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "MerkpostenUebernahmeRequest": {
+      "felder": [
+        "quantity",
+        "purchase_price",
+        "condition",
+        "owner_user_id",
+        "storage"
+      ],
+      "pflicht": []
+    },
+    "MerkpostenUebernahmeResponse": {
+      "felder": [
+        "success",
+        "action",
+        "set_number",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "Minifig": {
+      "felder": [
+        "fig_number",
+        "condition",
+        "conditions",
+        "owners",
+        "avg_purchase_price",
+        "fig_name",
+        "quantity",
+        "total_quantity",
+        "image_url",
+        "image_local",
+        "source",
+        "set_added_at"
+      ],
+      "pflicht": [
+        "fig_number"
+      ]
+    },
+    "MinifigsResponse": {
+      "felder": [
+        "success",
+        "figs",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "MinifigStats": {
+      "felder": [
+        "types",
+        "total_quantity",
+        "manual"
+      ],
+      "pflicht": []
+    },
+    "MinifigStatsResponse": {
+      "felder": [
+        "success",
+        "stats"
+      ],
+      "pflicht": []
+    },
+    "MoveSetRequest": {
+      "felder": [
+        "from_user_id",
+        "to_user_id",
+        "acquisition_ids"
+      ],
+      "pflicht": [
+        "to_user_id"
+      ]
+    },
+    "MoveSetResponse": {
+      "felder": [
+        "success",
+        "set_number",
+        "quantity",
+        "acquisitions",
+        "merged",
+        "parts",
+        "minifigs",
+        "instructions",
+        "source_emptied",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "Part": {
+      "felder": [
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_id",
+        "bl_color_id",
+        "color_name",
+        "color_hex",
+        "category_name",
+        "image_url",
+        "image_local",
+        "total_quantity",
+        "in_sets",
+        "is_spare"
+      ],
+      "pflicht": [
+        "part_number"
+      ]
+    },
+    "PartsCategoriesResponse": {
+      "felder": [
+        "success",
+        "categories"
+      ],
+      "pflicht": []
+    },
+    "PartsCategory": {
+      "felder": [
+        "category_name",
+        "label",
+        "unique_parts",
+        "total_quantity"
+      ],
+      "pflicht": []
+    },
+    "PartsFilterColor": {
+      "felder": [
+        "color_name",
+        "color_hex",
+        "unique_parts",
+        "total_quantity"
+      ],
+      "pflicht": []
+    },
+    "PartsFilterColorsResponse": {
+      "felder": [
+        "success",
+        "colors"
+      ],
+      "pflicht": []
+    },
+    "PartsResponse": {
+      "felder": [
+        "success",
+        "total",
+        "page",
+        "page_size",
+        "parts",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "PartsStats": {
+      "felder": [
+        "unique_parts",
+        "unique_colors",
+        "total_parts",
+        "manual_parts"
+      ],
+      "pflicht": []
+    },
+    "PartsStatsResponse": {
+      "felder": [
+        "success",
+        "stats"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "PartsValuationResponse": {
+      "felder": [
+        "success",
+        "currency",
+        "parts",
+        "total_value",
+        "kaufpreise_fremde_waehrung",
+        "error"
+      ],
+      "pflicht": [
+        "success",
+        "total_value"
+      ]
+    },
+    "PartValuationItem": {
+      "felder": [
+        "id",
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_id",
+        "color_name",
+        "color_hex",
+        "quantity",
+        "image_url",
+        "image_local",
+        "unit_price",
+        "purchase_price",
+        "avg_purchase_price",
+        "qty_avg_price",
+        "avg_price",
+        "pnl_pct",
+        "pnl_prozent",
+        "display_value",
+        "wert_gesamt",
+        "condition",
+        "conditions",
+        "user_id",
+        "owners",
+        "acquisitions",
+        "storage"
+      ],
+      "pflicht": []
+    },
+    "PasskeyAnmeldung": {
+      "felder": [
+        "antwort",
+        "label",
+        "never_expires",
+        "scope",
+        "mit_token"
+      ],
+      "pflicht": [
+        "antwort"
+      ]
+    },
+    "PasskeyLoginRequest": {
+      "felder": [
+        "username",
+        "password",
+        "passkey",
+        "label",
+        "never_expires",
+        "scope"
+      ],
+      "pflicht": [
+        "username",
+        "password",
+        "passkey"
+      ]
+    },
+    "PasskeyOptionen": {
+      "felder": [
+        "success",
+        "optionen",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "PasskeyOptionenAnfrage": {
+      "felder": [
+        "zweck"
+      ],
+      "pflicht": [
+        "zweck"
+      ]
+    },
+    "PasswortAenderung": {
+      "felder": [
+        "current",
+        "newPassword",
+        "code"
+      ],
+      "pflicht": [
+        "current",
+        "newPassword"
+      ]
+    },
+    "PdfAuftragAnfrage": {
+      "felder": [
+        "sets",
+        "parts"
+      ],
+      "pflicht": []
+    },
+    "PdfAuftragAntwort": {
+      "felder": [
+        "success",
+        "jobId"
+      ],
+      "pflicht": []
+    },
+    "PdfAuftragSet": {
+      "felder": [
+        "set_number",
+        "name"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "PdfAuftragStand": {
+      "felder": [
+        "success",
+        "status",
+        "etaSeconds",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "PdfAuftragTeil": {
+      "felder": [
+        "part_number",
+        "bl_part_number",
+        "part_name",
+        "color_name",
+        "color_hex",
+        "color_id",
+        "quantity",
+        "image_local",
+        "image_url",
+        "is_fig"
+      ],
+      "pflicht": [
+        "part_number",
+        "quantity"
+      ]
+    },
+    "PdfViewer": {
+      "felder": [
+        "schluessel"
+      ],
+      "pflicht": [
+        "schluessel"
+      ]
+    },
+    "PendingAlertsResponse": {
+      "felder": [
+        "success",
+        "alerts",
+        "now",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "PnlResponse": {
+      "felder": [
+        "success",
+        "currency",
+        "totals",
+        "sets",
+        "error"
+      ],
+      "pflicht": [
+        "success",
+        "totals"
+      ]
+    },
+    "PnlSetZeile": {
+      "felder": [
+        "set_number",
+        "quantity",
+        "current_price",
+        "baseline_price",
+        "pnl_pct",
+        "baseline_pnl_pct",
+        "pnl_betrag",
+        "pnl_prozent",
+        "baseline_pnl_prozent",
+        "kachel_preis",
+        "kachel_pnl_pct",
+        "kachel_quelle"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "PnlTotals": {
+      "felder": [
+        "purchase",
+        "current",
+        "pnl_pct",
+        "pnl_prozent",
+        "kaufpreise_fremde_waehrung",
+        "sets_purchase",
+        "parts_purchase",
+        "figs_purchase",
+        "grand_total",
+        "positionen",
+        "positionen_bewertet",
+        "positionen_ohne_marktpreis",
+        "positionen_ohne_kaufpreis",
+        "basis_einstand",
+        "basis_marktwert",
+        "basis_guv_betrag",
+        "ohne_marktpreis_einstand",
+        "ohne_kaufpreis_marktwert"
+      ],
+      "pflicht": [
+        "purchase",
+        "current"
+      ]
+    },
+    "PortfolioHistoryResponse": {
+      "felder": [
+        "success",
+        "currency",
+        "period",
+        "points",
+        "y_axis",
+        "period_change_pct",
+        "purchase_total",
+        "chart"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "Preisalarm": {
+      "felder": [
+        "set_number",
+        "condition",
+        "richtung",
+        "schwelle",
+        "currency_code",
+        "ausgeloest",
+        "zuletzt_am",
+        "zuletzt_preis",
+        "name",
+        "image_local",
+        "image_url",
+        "set_img_url",
+        "besitzt"
+      ],
+      "pflicht": []
+    },
+    "PreisalarmeResponse": {
+      "felder": [
+        "success",
+        "alerts",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "PreisalarmRequest": {
+      "felder": [
+        "richtung",
+        "schwelle",
+        "condition"
+      ],
+      "pflicht": [
+        "richtung",
+        "schwelle"
+      ]
+    },
+    "PreisalarmResponse": {
+      "felder": [
+        "success",
+        "alert",
+        "removed",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "PriceByCondition": {
+      "felder": [
+        "N",
+        "U"
+      ],
+      "pflicht": []
+    },
+    "PriceChartData": {
+      "felder": [
+        "values",
+        "x"
+      ],
+      "pflicht": []
+    },
+    "PriceChartPoint": {
+      "felder": [
+        "x",
+        "y"
+      ],
+      "pflicht": []
+    },
+    "PriceChartSeries": {
+      "felder": [
+        "name",
+        "values",
+        "firstRealIndex"
+      ],
+      "pflicht": []
+    },
+    "PriceHistoryPoint": {
+      "felder": [
+        "recorded_at",
+        "qty_avg_price",
+        "avg_price",
+        "min_price",
+        "max_price"
+      ],
+      "pflicht": []
+    },
+    "PriceHistoryResponse": {
+      "felder": [
+        "success",
+        "currency",
+        "history_new",
+        "history_used",
+        "by_condition",
+        "chart",
+        "pnl_pct",
+        "pnl_prozent",
+        "purchase_price"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "Profil": {
+      "felder": [
+        "id",
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "email_verified",
+        "email_neu"
+      ],
+      "pflicht": [
+        "id",
+        "username"
+      ]
+    },
+    "ProfilAenderung": {
+      "felder": [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "password_current",
+        "code"
+      ],
+      "pflicht": [
+        "username",
+        "email"
+      ]
+    },
+    "ProfilGespeichert": {
+      "felder": [
+        "success",
+        "error",
+        "emailChanged",
+        "emailSent"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "ProfilResponse": {
+      "felder": [
+        "success",
+        "user",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "ProtokollResponse": {
+      "felder": [
+        "success",
+        "minutes",
+        "count",
+        "logs",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "ProtokollZeile": {
+      "felder": [
+        "id",
+        "level",
+        "message",
+        "logged_at"
+      ],
+      "pflicht": []
+    },
+    "QrAbholRequest": {
+      "felder": [
+        "abholung",
+        "vorschau"
+      ],
+      "pflicht": [
+        "abholung"
+      ]
+    },
+    "QrAbholung": {
+      "felder": [
+        "success",
+        "wartet",
+        "vorschau",
+        "username",
+        "token",
+        "user",
+        "error",
+        "token_info",
+        "schluessel_nonce"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "QrLoginRequest": {
+      "felder": [
+        "token",
+        "label"
+      ],
+      "pflicht": [
+        "token"
+      ]
+    },
+    "QrMeldung": {
+      "felder": [
+        "success",
+        "wartet",
+        "abholung",
+        "code",
+        "expires_in",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "QrVerwerfen": {
+      "felder": [
+        "abholung"
+      ],
+      "pflicht": [
+        "abholung"
+      ]
+    },
+    "RateLimit": {
+      "felder": [
+        "count",
+        "limit",
+        "remaining"
+      ],
+      "pflicht": []
+    },
+    "RateLimits": {
+      "felder": [
+        "bricklink",
+        "rebrickable",
+        "brickset"
+      ],
+      "pflicht": []
+    },
+    "RegisterRequest": {
+      "felder": [
+        "username",
+        "email",
+        "first_name",
+        "last_name",
+        "password",
+        "language"
+      ],
+      "pflicht": [
+        "username",
+        "email",
+        "password"
+      ]
+    },
+    "RegisterResponse": {
+      "felder": [
+        "success",
+        "message",
+        "email_sent",
+        "console_mode",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "RegistrationStatusResponse": {
+      "felder": [
+        "enabled"
+      ],
+      "pflicht": []
+    },
+    "SchluesselNonce": {
+      "felder": [
+        "success",
+        "nonce"
+      ],
+      "pflicht": [
+        "success",
+        "nonce"
+      ]
+    },
+    "SchrittChallenge": {
+      "felder": [
+        "success",
+        "challenge",
+        "nachricht",
+        "gueltig_bis"
+      ],
+      "pflicht": [
+        "success",
+        "challenge",
+        "nachricht",
+        "gueltig_bis"
+      ]
+    },
+    "SchrittChallengeAnfrage": {
+      "felder": [
+        "aktion"
+      ],
+      "pflicht": [
+        "aktion"
+      ]
+    },
+    "SchrittFreigabe": {
+      "felder": [
+        "success",
+        "aktion",
+        "gueltig_bis"
+      ],
+      "pflicht": [
+        "success",
+        "aktion",
+        "gueltig_bis"
+      ]
+    },
+    "SchrittFreigabeAnfrage": {
+      "felder": [
+        "challenge",
+        "signatur"
+      ],
+      "pflicht": [
+        "challenge",
+        "signatur"
+      ]
+    },
+    "SetAggregate": {
+      "felder": [
+        "set_number",
+        "condition",
+        "acq_count",
+        "used_count",
+        "conditions",
+        "max_purchase_price",
+        "avg_purchase_price"
+      ],
+      "pflicht": []
+    },
+    "SetDetail": {
+      "felder": [
+        "setNumber"
+      ],
+      "pflicht": [
+        "setNumber"
+      ]
+    },
+    "SetDetailResponse": {
+      "felder": [
+        "success",
+        "set"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "SetExistsResponse": {
+      "felder": [
+        "success",
+        "exists",
+        "set_number",
+        "owner_user_id",
+        "is_self"
+      ],
+      "pflicht": []
+    },
+    "SetInfoResponse": {
+      "felder": [
+        "success",
+        "name"
+      ],
+      "pflicht": []
+    },
+    "SetItem": {
+      "felder": [
+        "set_number",
+        "name",
+        "year",
+        "theme",
+        "pieces",
+        "minifigs",
+        "quantity",
+        "image_url",
+        "image_local",
+        "added_at",
+        "condition",
+        "storage",
+        "conditions",
+        "owners",
+        "max_purchase_price",
+        "avg_purchase_price",
+        "used_count",
+        "instructions",
+        "bricklink",
+        "preisvergleich_url"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "SetPriceResponse": {
+      "felder": [
+        "success",
+        "set_number",
+        "currency",
+        "avg_price",
+        "min_price",
+        "max_price",
+        "qty_avg_price",
+        "no_price"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "SetResponse": {
+      "felder": [
+        "success",
+        "set",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "SetsResponse": {
+      "felder": [
+        "success",
+        "count",
+        "sets",
+        "total",
+        "themes",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "SettingsResponse": {
+      "felder": [
+        "success",
+        "settings",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "StartupStatus": {
+      "felder": [
+        "ready",
+        "step",
+        "progress",
+        "total",
+        "sub"
+      ],
+      "pflicht": []
+    },
+    "StatsResponse": {
+      "felder": [
+        "success",
+        "stats"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "TeilFarbeRequest": {
+      "felder": [
+        "color_id",
+        "color_name",
+        "color_hex"
+      ],
+      "pflicht": [
+        "color_id"
+      ]
+    },
+    "TeilFarbeResponse": {
+      "felder": [
+        "success",
+        "zusammengelegt",
+        "verschoben",
+        "vereint",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "TokenInfo": {
+      "felder": [
+        "scope",
+        "expires_at",
+        "hard_expires_at",
+        "never_expires",
+        "rotiert_am",
+        "rotation_faellig"
+      ],
+      "pflicht": [
+        "scope",
+        "never_expires"
+      ]
+    },
+    "TokenRotation": {
+      "felder": [
+        "success",
+        "token",
+        "token_info",
+        "alt_gueltig_bis",
+        "ueberlappung_sek"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "TokensResponse": {
+      "felder": [
+        "success",
+        "tokens",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "TokenWiderruf": {
+      "felder": [
+        "success",
+        "deleted"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "Totals": {
+      "felder": [
+        "min",
+        "avg",
+        "max",
+        "qty_avg"
+      ],
+      "pflicht": []
+    },
+    "UpdateAcquisitionRequest": {
+      "felder": [
+        "purchase_price",
+        "unit_price",
+        "condition",
+        "quantity",
+        "date",
+        "owner_user_id"
+      ],
+      "pflicht": []
+    },
+    "UpdateBeschreibung": {
+      "felder": [
+        "versionCode",
+        "versionName",
+        "apkUrl",
+        "commit",
+        "apkSize",
+        "apkSha256",
+        "ausgestellt",
+        "gueltigBis"
+      ],
+      "pflicht": [
+        "versionCode",
+        "versionName",
+        "apkUrl"
+      ]
+    },
+    "User": {
+      "felder": [
+        "id",
+        "username",
+        "is_admin",
+        "zweiterFaktorPflicht"
+      ],
+      "pflicht": [
+        "id",
+        "username"
+      ]
+    },
+    "UserSettings": {
+      "felder": [
+        "currency",
+        "price_condition",
+        "price_cache_ttl",
+        "default_price_condition",
+        "user_default_condition",
+        "effective_condition",
+        "app_theme"
+      ],
+      "pflicht": []
+    },
+    "ValuationAcquisition": {
+      "felder": [
+        "id",
+        "condition",
+        "quantity",
+        "purchase_price",
+        "avg_price",
+        "total_avg",
+        "wert_gesamt",
+        "pnl_pct",
+        "pnl_prozent",
+        "created_at",
+        "owner_user_id"
+      ],
+      "pflicht": []
+    },
+    "ValuationResponse": {
+      "felder": [
+        "success",
+        "currency",
+        "condition",
+        "ttl_stunden",
+        "kaufpreise_fremde_waehrung",
+        "sets",
+        "totals",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "ValuationSet": {
+      "felder": [
+        "set_number",
+        "added_at",
+        "name",
+        "year",
+        "quantity",
+        "image_local",
+        "image_url",
+        "min_price",
+        "avg_price",
+        "max_price",
+        "qty_avg_price",
+        "total_qty_avg",
+        "total_avg",
+        "wert_gesamt",
+        "pnl_prozent",
+        "purchase_price",
+        "from_cache",
+        "is_fallback",
+        "condition_used",
+        "no_price",
+        "acquisitions",
+        "mixed",
+        "error"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "VerwendendeSetsResponse": {
+      "felder": [
+        "success",
+        "item",
+        "sets",
+        "error"
+      ],
+      "pflicht": []
+    },
+    "VerwendendesSet": {
+      "felder": [
+        "set_number",
+        "set_name",
+        "quantity",
+        "image_local",
+        "image_url",
+        "owner_user_id"
+      ],
+      "pflicht": [
+        "set_number"
+      ]
+    },
+    "WidgetZahlen": {
+      "felder": [
+        "waehrung",
+        "wert",
+        "gesamt",
+        "gesamtProzent",
+        "heute",
+        "heuteProzent",
+        "stand"
+      ],
+      "pflicht": [
+        "waehrung"
+      ]
+    },
+    "ZweiterFaktorAnfrage": {
+      "felder": [
+        "password",
+        "code"
+      ],
+      "pflicht": []
+    },
+    "ZweiterFaktorCodes": {
+      "felder": [
+        "success",
+        "codes",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "ZweiterFaktorEinrichtung": {
+      "felder": [
+        "success",
+        "geheimnis",
+        "otpauth",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "ZweiterFaktorStand": {
+      "felder": [
+        "success",
+        "aktiv",
+        "codes_uebrig",
+        "error"
+      ],
+      "pflicht": [
+        "success"
+      ]
+    },
+    "ZweiterFaktorWege": {
+      "felder": [
+        "passkey"
+      ],
+      "pflicht": []
+    }
+  }
+}
