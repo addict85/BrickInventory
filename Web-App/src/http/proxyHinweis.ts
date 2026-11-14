@@ -21,10 +21,11 @@ export function proxyHinweis(
   trustProxy: string | undefined,
   warne: (text: string) => void = console.warn,
   uhr: () => number = Date.now,
+  netzBestaetigt = false,
 ) {
   let vertrauen: ReturnType<typeof proxyVertrauen>;
   try {
-    vertrauen = proxyVertrauen(trustProxy);
+    vertrauen = proxyVertrauen(trustProxy, netzBestaetigt);
   } catch {
     vertrauen = false;
   }

@@ -123,7 +123,9 @@ Am sichersten hängt der Proxy mit fester Adresse im Netz `brickinventory-net`
 (`ipv4_address`, wie Caddy) und leitet an `https://caddy:443` weiter. Läuft er
 auf einem anderen Rechner, dessen feste LAN-Adresse. **Nie** das
 Docker-Gateway (`172.x.0.1`) oder ein ganzes Netz eintragen: Über das Gateway
-kommen auch Clients selbst herein und könnten sich jede Adresse geben. Der
+kommen auch Clients selbst herein und könnten sich jede Adresse geben. Netze
+über 8 Adressen (weiter als `/29`, IPv6 `/120`) nimmt Caddy nur mit
+`PROXY_NETZ_BESTAETIGT=1` in `.env`. Der
 Proxy muss `X-Forwarded-For` setzen (bei Nginx Proxy Manager die Vorgabe).
 
 Kommen über eine Stunde und mindestens 300 Anfragen alle mit derselben
@@ -396,7 +398,7 @@ der Zeit von pgweb). Was die Leserolle sieht, steht als Allowlist je Tabelle in
 |---|---|
 | `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie gehen **keine Links per Mail** hinaus (die Adresse wird nie aus dem Host-Header abgeleitet — ein gefälschter bekäme sonst den Reset-Link), Passwort-vergessen antwortet 503; der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. Ist sie gesetzt, antwortet die App nur unter diesem Namen (sonst 421; frei bleiben `localhost`, App-Token, `/ca.crt` und die Gesundheitspfade). |
 | `APP_BASE_URL_FEHLT_OK` | Nur `1`: Im Betrieb (`NODE_ENV=production`) startet der Web-Prozess ohne `APP_BASE_URL` sonst nicht, weil der Host-Filter fehlte. `compose.yaml` setzt `APP_BASE_URL` immer. |
-| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur klein (IPv4 ab `/16`, IPv6 ab `/64`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
+| `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur bis 8 Adressen (IPv4 ab `/29`, IPv6 ab `/120`), weitere bis `/16` bzw. `/64` nur mit `PROXY_NETZ_BESTAETIGT=1` (gilt auch für `VORGELAGERTER_PROXY`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `VORGELAGERTER_PROXY` | Pflicht mit `compose.yaml`, nur für Caddy: `keiner` (Caddy direkt erreichbar, glaubt keinem `X-Forwarded-For`) oder die Adresse(n) eines Proxys **vor** Caddy (z. B. Nginx Proxy Manager), durch Leerzeichen getrennt. Siehe „Proxy vor Caddy“. |
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank: `openssl rand -base64 32`. Geht `DATA_KEY_FILE` vor. |

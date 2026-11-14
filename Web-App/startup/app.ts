@@ -89,10 +89,10 @@ function grundschutz(app: express.Express, k: Konfig): void {
 
   // Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyVertrauen.ts).
   if (k.betrieb) {
-    app.set('trust proxy', proxyVertrauen(k.trustProxy));
+    app.set('trust proxy', proxyVertrauen(k.trustProxy, k.proxyNetzBestaetigt));
   }
   // Auch ausserhalb der Produktion: Er meldet ein verworfenes X-Forwarded-For.
-  app.locals.proxyHinweis = proxyHinweis(k.trustProxy);
+  app.locals.proxyHinweis = proxyHinweis(k.trustProxy, console.warn, Date.now, k.proxyNetzBestaetigt);
   app.use(app.locals.proxyHinweis);
 
   // `//api/…` fiele sonst bis zum SPA-Catch-all durch und bekäme index.html mit 200.

@@ -281,6 +281,8 @@ services:
       # (feste Adresse unten). Erst damit weiss der Server, dass die Anfrage
       # über TLS kam (Cookie mit Secure, HSTS).
       TRUST_PROXY: ${TRUST_PROXY:-172.28.73.10}
+      # Ein Netz über acht Adressen in TRUST_PROXY nur mit 1 (UPGRADE.md, Abschnitt 60).
+      PROXY_NETZ_BESTAETIGT: ${PROXY_NETZ_BESTAETIGT:-0}
       # Das Wurzelzertifikat der CA für /ca.crt und den Fingerabdruck im QR-Code.
       CA_ZERTIFIKAT: /caddy-ca/root.crt
       # Legt der erste Start an. Ältere Installationen mit data/.datenschluessel
@@ -497,13 +499,14 @@ services:
             echo "[caddy]   Ohne sie teilen sich hinter Nginx Proxy Manager o. ä. alle Clients eine Adresse (README.md, „Proxy vor Caddy“)." >&2
             exit 1 ;;
         esac
-        # Ein weites Netz (10.0.0.0/8, ::/0) glaubte jedem Gerät darin seine Adresse, die Drosseln je Adresse liefen leer.
-        # Dieselbe Grenze wie TRUST_PROXY in der App (src/infra/proxyVertrauen.ts): IPv4 ab /16, IPv6 ab /64.
+        # Ein weites Netz glaubte jedem Gerät darin seine Adresse, die Drosseln je Adresse liefen leer. Dieselbe
+        # Grenze wie TRUST_PROXY (src/infra/proxyVertrauen.ts): über 8 Adressen nur mit PROXY_NETZ_BESTAETIGT=1.
         for a in $${VORGELAGERTER_PROXY}; do
-          p=$${a##*/}; min=16
-          case "$$a" in *:*) min=64 ;; esac
+          p=$${a##*/}; eng=29; weit=16
+          case "$$a" in *:*) eng=120; weit=64 ;; esac
+          min=$$eng; [ "$${PROXY_NETZ_BESTAETIGT:-0}" = 1 ] && min=$$weit
           if [ "$$p" != "$$a" ] && { case "$$p" in "" | *[!0-9]*) true ;; *) [ "$$p" -lt "$$min" ] ;; esac; }; then
-            echo "[caddy] FEHLER: VORGELAGERTER_PROXY $$a ist zu weit (IPv4 ab /16, IPv6 ab /64); nur den Proxy davor eintragen (z. B. 172.18.0.5 oder 172.18.0.0/16)." >&2
+            echo "[caddy] FEHLER: VORGELAGERTER_PROXY $$a ist zu weit (über 8 Adressen nur mit PROXY_NETZ_BESTAETIGT=1, höchstens /$$weit); am besten nur die Adresse des Proxys davor (z. B. 172.18.0.5)." >&2
             exit 1
           fi
         done
@@ -552,6 +555,7 @@ services:
       BRICK_TLS: ${BRICK_TLS:-intern}
       ACME_EMAIL: ${ACME_EMAIL:-}
       CA_OHNE_NAMENSBESCHRAENKUNG: ${CA_OHNE_NAMENSBESCHRAENKUNG:-nein}
+      PROXY_NETZ_BESTAETIGT: ${PROXY_NETZ_BESTAETIGT:-0}
       VORGELAGERTER_PROXY: ${VORGELAGERTER_PROXY:?VORGELAGERTER_PROXY in .env setzen - keiner (Caddy direkt erreichbar) oder die Adresse des Proxys davor - siehe UPGRADE.md#vorgelagerter-proxy}
     ports:
       - "${HTTPS_BIND:-0.0.0.0}:443:443"

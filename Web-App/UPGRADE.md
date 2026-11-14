@@ -2091,3 +2091,11 @@ wird). Hinweise:
 - **Haushalt (0114):** `account_links`, `account_link_invites` und
   `household_former_links` stehen unter Zeilenschutz. Kopien vor Migrationen
   (`vor_migration_*`) liest die Laufzeitrolle nicht mehr. Nichts zu tun.
+- **Proxy-Netze nur noch klein oder bestätigt — vor dem Update prüfen:**
+  `TRUST_PROXY` und `VORGELAGERTER_PROXY` nehmen ohne weiteres nur noch einzelne
+  Adressen oder Netze bis 8 Adressen (IPv4 `/29`, IPv6 `/120`). Steht in `.env`
+  ein weiteres Netz (etwa `172.18.0.0/16`), startet die App nicht („TRUST_PROXY
+  enthält …“) bzw. Caddy nicht („… ist zu weit“). Am besten die feste Adresse des
+  Proxys eintragen (README.md, „Proxy vor Caddy“); wer das Netz wirklich braucht,
+  setzt zusätzlich `PROXY_NETZ_BESTAETIGT=1` in `.env` (höchstens `/16` bzw.
+  `/64` wie bisher). Wer nur Adressen oder `keiner` eingetragen hat: nichts zu tun.
