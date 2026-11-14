@@ -120,6 +120,8 @@ import ch.brickinventoryapp.teile.ui.TeileZiel
  *   merkliste-zustand-als-segmente  Zustandsfilter der Merkliste wieder als Segmente → rot „Merkliste filtert …“
  *   umschalter-chips-bei-200        Sets | Teile | Minifiguren wieder über SegmentWahl (Chips ab 130 %)
  *                                   → rot „der Sammlungs-Umschalter bleibt bei 200 Prozent …“
+ *   umschalter-ohne-rollen          Segmente teilen sich bei 200 % die Bildschirmbreite (kein seitliches
+ *                                   Rollen) → rot „der Sammlungs-Umschalter …“ („Minifiguren … abgeschnitten“)
  *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
  *   detail-mit-zurueckpfeil         Detail neben der Liste mit Zurück-Pfeil statt X → rot „Tablet zeigt Merkliste und Detail …“
  *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“

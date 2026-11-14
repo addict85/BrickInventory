@@ -31,6 +31,9 @@ class AblageEntsperrtTest {
     private val ordner = File(System.getProperty("java.io.tmpdir"), "bim-entsperrt-${System.nanoTime()}").apply { mkdirs() }
     private val datei = File(ordner, "ablage.schluessel")
 
+    /** Was der Ablageschlüssel geschrieben hat: ein Ergebnis des Laufs, kein Quelltext. */
+    private fun abgelegt() = datei.readBytes().decodeToString()
+
     @After
     fun zu() {
         ordner.deleteRecursively()
@@ -72,7 +75,7 @@ class AblageEntsperrtTest {
         val (schluessel, geheim) = altbestand()
         val k = neu()
         assertArrayEquals("Derselbe Schlüssel, nur anders umhüllt", schluessel, k.hole())
-        assertTrue("Jetzt unter dem Schlüssel mit Entsperr-Bedingung", datei.readText().startsWith(ENTSPERRT_PRAEFIX + "n:"))
+        assertTrue("Jetzt unter dem Schlüssel mit Entsperr-Bedingung", abgelegt().startsWith(ENTSPERRT_PRAEFIX + "n:"))
         assertFalse(k.neuAngelegt)
         assertEquals("Kaufpreis 499.99", String(AblageChiffre { neu().fuer("bestand") }.entschluessle(geheim, "b")!!))
     }
@@ -81,7 +84,7 @@ class AblageEntsperrtTest {
     fun `gesperrt entsteht kein neuer Schluessel, die Ablage meldet gesperrt statt unlesbar`() {
         val (_, geheim) = altbestand()
         neu().hole()
-        val vorher = datei.readText()
+        val vorher = abgelegt()
         entsperrt.gesperrt = true
         try {
             neu().hole()
@@ -89,7 +92,7 @@ class AblageEntsperrtTest {
         } catch (_: IOException) {
             // erwartet: Keystore gerade nicht bereit
         }
-        assertEquals("Nichts neu angelegt", vorher, datei.readText())
+        assertEquals("Nichts neu angelegt", vorher, abgelegt())
         try {
             AblageChiffre { neu().fuer("bestand") }.entschluessle(geheim, "b")
             fail("Gesperrt hiesse sonst unlesbar, und die Ablage würde gelöscht")
@@ -103,12 +106,12 @@ class AblageEntsperrtTest {
     @Test
     fun `kann der entsperrte Tresor nicht verschluesseln, bleibt der alte und gilt weiter`() {
         val (schluessel, _) = altbestand()
-        val vorher = datei.readText()
+        val vorher = abgelegt()
         entsperrt.kaputt = true
         assertArrayEquals(schluessel, neu().hole())
-        assertEquals("Ohne Not nicht neu geschrieben", vorher, datei.readText())
+        assertEquals("Ohne Not nicht neu geschrieben", vorher, abgelegt())
         entsperrt.kaputt = false
         neu().hole()
-        assertTrue("Beim nächsten Start umgeschlüsselt", datei.readText().startsWith(ENTSPERRT_PRAEFIX))
+        assertTrue("Beim nächsten Start umgeschlüsselt", abgelegt().startsWith(ENTSPERRT_PRAEFIX))
     }
 }
