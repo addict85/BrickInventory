@@ -6,7 +6,7 @@ import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.model.fach.KEINE_FARBE
-import ch.brickinventoryapp.vertrag.aenderungFuerStueck
+import ch.brickinventoryapp.model.fach.Kaufkorrektur
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
@@ -87,7 +86,7 @@ class KaeufeViewModel @Inject constructor(
             }
             when (r) {
                 is Ergebnis.Success -> _manDetailState.update {
-                    it.copy(acquisitions = r.data.acquisitions.map { a -> a.alsAnsicht() }, acquisitionTotals = r.data.totals.alsAnsicht(), isLoading = false)
+                    it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.summen, isLoading = false)
                 }
                 is Ergebnis.Error -> _manDetailState.update { it.copy(isLoading = false) }
             }
@@ -118,7 +117,7 @@ class KaeufeViewModel @Inject constructor(
                           quantity: Int?, date: String?) {
         viewModelScope.launch {
             when (val r = haushalt.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
-                is Ergebnis.Success -> if (r.data.success) setGeaendert(r.data.set)
+                is Ergebnis.Success -> setGeaendert(r.data.zusammenfassung)
                 is Ergebnis.Error -> {
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r))
                     // Eine abgelehnte Datumsänderung steht sonst weiter im Feld.
@@ -131,19 +130,15 @@ class KaeufeViewModel @Inject constructor(
     override fun deleteAcquisition(setNumber: String, acqId: Int) {
         viewModelScope.launch {
             when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
-                is Ergebnis.Success -> if (r.data.success) setGeaendert(r.data.set)
+                is Ergebnis.Success -> setGeaendert(r.data.zusammenfassung)
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
 
-    /**
-     * Der Server schickt die neue Zusammenfassung des Sets mit; sie geht in die
-     * Ablage, die Kachel folgt ohne neue Liste. Ohne sie holt die Ablage den Stand.
-     */
-    private suspend fun setGeaendert(agg: SetAggregate?) {
-        if (agg != null && agg.setNumber.isNotBlank()) sets.uebernimmZusammenfassung(agg)
-        else { neuLaden(); sets.aktualisiereSets() }
+    /** Hat die Ablage die neue Summe des Sets schon übernommen, folgt die Kachel; sonst wird der Stand geholt. */
+    private suspend fun setGeaendert(uebernommen: Boolean) {
+        if (!uebernommen) { neuLaden(); sets.aktualisiereSets() }
     }
 
     /** Für manuelle Einträge schickt der Server keine Zusammenfassung; die Ablage holt den Stand. */
@@ -156,11 +151,10 @@ class KaeufeViewModel @Inject constructor(
         unitPrice: Double?, condition: Zustand?, quantity: Int?, date: String?,
     ) {
         viewModelScope.launch {
-            val req = aenderungFuerStueck(preis = unitPrice, condition = condition,
-                                                          quantity = quantity, date = date)
+            val req = Kaufkorrektur(preis = unitPrice, zustand = condition, menge = quantity, datum = date)
             val r = if (type == Postenart.FIG) haushalt.updateFigAcquisition(id, acqId, req)
                     else haushalt.updatePartAcquisition(id, colorId, acqId, req)
-            if (r is Ergebnis.Success && r.data.success) {
+            if (r is Ergebnis.Success) {
                 manuelleNeu(type)
             } else if (r is Ergebnis.Error) {
                 meldungen.zeige(meldungen.meldungFuerSnackbar(r))
@@ -190,19 +184,18 @@ class KaeufeViewModel @Inject constructor(
         toUserId: Int, onDone: (String?, Int, Int) -> Unit,
     ) {
         viewModelScope.launch {
-            val req = aenderungFuerStueck(ownerUserId = toUserId)
+            val req = Kaufkorrektur(besitzer = toUserId)
             val r = when (type) {
                 Postenart.SET -> haushalt.updateAcquisition(id, acqId, ownerUserId = toUserId)
                 Postenart.FIG -> haushalt.updateFigAcquisition(id, acqId, req)
                 else  -> haushalt.updatePartAcquisition(id, colorId, acqId, req)
             }
             when (r) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        onDone(null, r.data.parts ?: 0, r.data.minifigs ?: 0)
-                        // Mitgewanderte Teile und Figuren: Den Stand aller drei Listen kennt nur der Server.
-                        sets.aktualisiereSets(); teile.aktualisiereTeile(); figuren.aktualisiereFiguren()
-                    } else onDone(r.data.error ?: "", 0, 0)
+                is Ergebnis.Success -> {
+                    onDone(null, r.data.teile, r.data.figuren)
+                    // Mitgewanderte Teile und Figuren: Den Stand aller drei Listen kennt nur der Server.
+                    sets.aktualisiereSets(); teile.aktualisiereTeile(); figuren.aktualisiereFiguren()
+                }
                 is Ergebnis.Error -> onDone(meldungen.meldung(r), 0, 0)
             }
         }

@@ -169,7 +169,7 @@ class SetDetailViewModel @Inject constructor(
         _setDetailState.update { it.copy(acquisitionsLoading = true) }
         when (val r = haushalt.getAcquisitions(setNumber)) {
             is Ergebnis.Success -> _setDetailState.update {
-                it.copy(acquisitions = r.data.acquisitions.map { a -> a.alsAnsicht() }, acquisitionTotals = r.data.totals.alsAnsicht(),
+                it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.summen,
                         acquisitionsLoading = false)
             }
             is Ergebnis.Error -> _setDetailState.update { it.copy(acquisitionsLoading = false) }

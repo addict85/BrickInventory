@@ -90,8 +90,8 @@ fun testKontoRepository(
 
 fun testFinanzenRepository(api: FinanzenApi, ablage: Offlineablage = Testablage()): FinanzenRepository = FinanzenRepositoryImpl(api, ablage)
 
-fun testHaushaltRepository(api: HaushaltApi): HaushaltRepository =
-    HaushaltRepositoryImpl(api)
+fun testHaushaltRepository(api: HaushaltApi, ablage: Offlineablage = Testablage()): HaushaltRepository =
+    HaushaltRepositoryImpl(api, ablage)
 
 fun testVerwaltungRepository(api: VerwaltungApi): VerwaltungRepository =
     VerwaltungRepositoryImpl(api)

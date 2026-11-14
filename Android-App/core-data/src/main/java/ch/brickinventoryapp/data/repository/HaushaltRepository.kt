@@ -1,48 +1,48 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.fach.Kaufaenderung
+import ch.brickinventoryapp.model.fach.Kaufkorrektur
+import ch.brickinventoryapp.model.ui.model.EinladungAnsicht
+import ch.brickinventoryapp.model.ui.model.HaushaltStatusAnsicht
+import ch.brickinventoryapp.model.ui.model.KaeufeAnsicht
+import ch.brickinventoryapp.model.ui.model.MitgliedAnsicht
+
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.vertrag.AcquisitionsResponse
-import ch.brickinventoryapp.vertrag.DeleteWithQuantityResponse
-import ch.brickinventoryapp.vertrag.GenericResponse
-import ch.brickinventoryapp.vertrag.HouseholdInviteResponse
-import ch.brickinventoryapp.vertrag.HouseholdMembersResponse
-import ch.brickinventoryapp.vertrag.HouseholdStatusResponse
-import ch.brickinventoryapp.vertrag.UpdateAcquisitionRequest
 /**
  * Der Haushalt: Mitglieder, Einladungen, Konten.
  * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
  * Retrofit und Ablage hängen (HaushaltRepositoryImpl).
  */
 interface HaushaltRepository {
-    suspend fun getHousehold(): Ergebnis<HouseholdStatusResponse>
+    suspend fun getHousehold(): Ergebnis<HaushaltStatusAnsicht>
 
-    suspend fun getHouseholdMembers(): Ergebnis<HouseholdMembersResponse>
+    suspend fun getHouseholdMembers(): Ergebnis<List<MitgliedAnsicht>>
 
-    suspend fun createHouseholdInvite(): Ergebnis<HouseholdInviteResponse>
+    suspend fun createHouseholdInvite(): Ergebnis<EinladungAnsicht>
 
-    suspend fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null): Ergebnis<GenericResponse>
+    suspend fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null): Ergebnis<Unit>
 
-    suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Ergebnis<GenericResponse>
+    suspend fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null): Ergebnis<Unit>
 
-    suspend fun verwerfeGetrenntesKonto(subUserId: Int): Ergebnis<GenericResponse>
+    suspend fun verwerfeGetrenntesKonto(subUserId: Int): Ergebnis<Unit>
 
-    suspend fun getAcquisitions(setNumber: String): Ergebnis<AcquisitionsResponse>
+    suspend fun getAcquisitions(setNumber: String): Ergebnis<KaeufeAnsicht>
 
     suspend fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null,
                                   condition: Zustand? = null, quantity: Int? = null, date: String? = null,
-                                  ownerUserId: Int? = null): Ergebnis<GenericResponse>
+                                  ownerUserId: Int? = null): Ergebnis<Kaufaenderung>
 
-    suspend fun deleteAcquisition(setNumber: String, acqId: Int): Ergebnis<GenericResponse>
+    suspend fun deleteAcquisition(setNumber: String, acqId: Int): Ergebnis<Kaufaenderung>
 
-    suspend fun getPartAcquisitions(partNumber: String, colorId: Int): Ergebnis<AcquisitionsResponse>
+    suspend fun getPartAcquisitions(partNumber: String, colorId: Int): Ergebnis<KaeufeAnsicht>
 
-    suspend fun updatePartAcquisition(partNumber: String, colorId: Int, id: Int, req: UpdateAcquisitionRequest): Ergebnis<GenericResponse>
+    suspend fun updatePartAcquisition(partNumber: String, colorId: Int, id: Int, korrektur: Kaufkorrektur): Ergebnis<Kaufaenderung>
 
-    suspend fun deletePartAcquisition(partNumber: String, colorId: Int, id: Int): Ergebnis<DeleteWithQuantityResponse>
+    suspend fun deletePartAcquisition(partNumber: String, colorId: Int, id: Int): Ergebnis<Unit>
 
-    suspend fun getFigAcquisitions(figNumber: String): Ergebnis<AcquisitionsResponse>
+    suspend fun getFigAcquisitions(figNumber: String): Ergebnis<KaeufeAnsicht>
 
-    suspend fun updateFigAcquisition(figNumber: String, id: Int, req: UpdateAcquisitionRequest): Ergebnis<GenericResponse>
+    suspend fun updateFigAcquisition(figNumber: String, id: Int, korrektur: Kaufkorrektur): Ergebnis<Kaufaenderung>
 
-    suspend fun deleteFigAcquisition(figNumber: String, id: Int): Ergebnis<DeleteWithQuantityResponse>
+    suspend fun deleteFigAcquisition(figNumber: String, id: Int): Ergebnis<Unit>
 }

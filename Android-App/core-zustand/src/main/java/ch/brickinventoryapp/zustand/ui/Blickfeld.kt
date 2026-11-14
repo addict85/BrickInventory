@@ -107,7 +107,7 @@ class BlickfeldDienst @Inject constructor(
      */
     override suspend fun ladeMitglieder() {
         val r = haushalt.getHouseholdMembers() as? Ergebnis.Success ?: return
-        val mitglieder = r.data.members.map { it.alsAnsicht() }
+        val mitglieder = r.data
         val erlaubt = kontoOptionen(mitglieder, "", "").map { it.first }
         _konten.update { st ->
             st.copy(

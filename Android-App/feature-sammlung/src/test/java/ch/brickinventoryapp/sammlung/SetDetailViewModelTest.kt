@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Fehlerklasse
@@ -140,11 +141,11 @@ class SetDetailViewModelTest {
         geladen(vm)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size
 
-        // So schreibt KaeufeViewModel die Zusammenfassung des Servers in die Ablage.
-        runBlocking { t.sets().uebernimmZusammenfassung(SetAggregate(setNumber = "10294-1", usedCount = 1)) }
+        // So schreibt HaushaltRepository die Zusammenfassung des Servers in die Ablage.
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "10294-1", usedCount = 1))) }
         assertEquals(vorher, pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size)
 
-        runBlocking { t.sets().uebernimmZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1)) }
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1))) }
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher)
     }
 
