@@ -2,7 +2,7 @@
  * damit und holt ihren Token ab, wenn die Sitzung bestätigt (src/konto/qrKopplung.ts). */
 import { waechterFuer } from '../api_v1/middleware';
 import { fehlerAntwort, sendeFehler } from '../../src/http/httpAntwort';
-import { angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
+import { angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
 import { vertragsRouter, type Antwort, type OffeneAnfrage } from '../../src/http/vertragsRouter';
 import { assertLoginAllowed, geraeteNameInhaltGueltig, meldeAnmeldung, QR_TTL_MS } from '../../src/konto';
 import type { Dienste } from '../../startup/verdrahtung';
@@ -41,7 +41,7 @@ export function baueQrRouter(d: Dienste) {
     async (req: OffeneAnfrage<'POST /api/v1/auth/qr-token'>, res: Antwort<'POST /api/v1/auth/qr-token'>) => {
       // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
       // zugang; nur aus der Sitzung, mit Passwort und zweitem Faktor.
-      if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+      if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
       if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.password))) return;
       // Die Laufzeit wählt die angemeldete Sitzung, nicht das unangemeldete /qr-login.
       res.json({
@@ -112,7 +112,7 @@ export function baueQrRouter(d: Dienste) {
       req: OffeneAnfrage<'GET /api/v1/auth/qr-kopplung/:id'>,
       res: Antwort<'GET /api/v1/auth/qr-kopplung/:id'>,
     ) => {
-      if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+      if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
       const s = await d.konto.kopplungsStand(req.pfad.id, angemeldeteNutzerId(req));
       if (!s) return sendeFehler(req, res, 404, 'nicht_gefunden');
       res.json({ success: true, ...s });
@@ -133,7 +133,7 @@ export function baueQrRouter(d: Dienste) {
       req: OffeneAnfrage<'POST /api/v1/auth/qr-kopplung/:id/bestaetigen'>,
       res: Antwort<'POST /api/v1/auth/qr-kopplung/:id/bestaetigen'>,
     ) => {
-      if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+      if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
       const uid = angemeldeteNutzerId(req);
       const ergebnis = await d.konto.bestaetigeKopplung(req.pfad.id, uid, req.eingabe.code);
       if (ergebnis !== 'ok') {
@@ -153,7 +153,7 @@ export function baueQrRouter(d: Dienste) {
       req: OffeneAnfrage<'POST /api/v1/auth/qr-kopplung/:id/ablehnen'>,
       res: Antwort<'POST /api/v1/auth/qr-kopplung/:id/ablehnen'>,
     ) => {
-      if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
+      if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
       if (!(await d.konto.lehneKopplungAb(req.pfad.id, angemeldeteNutzerId(req))))
         return sendeFehler(req, res, 404, 'nicht_gefunden');
       res.json({ success: true });
