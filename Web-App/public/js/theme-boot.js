@@ -61,6 +61,13 @@
       }, 1500);
   }
 
+  // Stand das Rebrickable-Band beim letzten Start da, hält ihm das Startgerüst den Platz frei (js/konto.js).
+  try {
+    if (localStorage.getItem('bim_rb_band')) document.documentElement.setAttribute('data-rb-band', '');
+  } catch (_) {
+    /* ohne Speicher kein Platzhalter */
+  }
+
   // ── Dunkel nach System, je Gerät (Profil-Einstellungen) ────────────────────
   // Ob ein GERÄT dunkel will, weiss nur das Gerät. Vorgabe ist „system“: Bei dunklem System die dunkle
   // Variante DESSELBEN Designs (data-dunkel, Farben aus tokens.css). Wer „server“ wählt, behält das Design

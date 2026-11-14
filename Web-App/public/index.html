@@ -15,25 +15,34 @@
   <title>BrickInventory Manager</title>
   <!-- Startgerüst: Kopf, Leiste und Kacheln als Platzhalter, bis Stile, Sprache … -->
   <style id="startstil">
-#startgeruest{--sg-bg:#f6f7f9;--sg-sur:#fff;--sg-bdr:#e3e6ea;--sg-ph:#eceff3;--sg-txt:#1e293b;position:fixed;inset:0;z-index:2;overflow:hidden;background:var(--sg-bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+#startgeruest{--sg-bg:#f6f7f9;--sg-sur:#fff;--sg-bdr:#e3e6ea;--sg-ph:#eceff3;--sg-txt:#1e293b;--sg-akzent:#2563eb;--sg-band:#eff6ff;position:fixed;inset:0;z-index:2;overflow:hidden;background:var(--sg-bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 [data-theme=brick] #startgeruest{--sg-bg:#c9d5e2;--sg-sur:#e6ecf2;--sg-bdr:#b7c6d8;--sg-ph:#d3deea}
-[data-dunkel] #startgeruest,[data-theme=werkbank] #startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee}
+[data-dunkel] #startgeruest,[data-theme=werkbank] #startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee;--sg-akzent:#93c5fd;--sg-band:#1a2433}
 .sg-kopf{display:flex;align-items:center;gap:9px;height:58px;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr);color:var(--sg-txt);font-weight:800;font-size:17px}
 [data-theme=brick] .sg-kopf{background:#3d5a80;color:#fff}
 [data-theme=brick][data-dunkel] .sg-kopf{background:#273849}
 [data-theme=brick] .sg-kopf{border:0;border-radius:16px;margin:14px 16px 0}
 [data-abgemeldet] #startgeruest>*{display:none}
-.sg-leiste{display:flex;gap:28px;height:46px;align-items:center;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr)}
-.sg-leiste i,.sg-titel,.sg-karten i,.sg-kacheln i{display:block;background:var(--sg-ph);border-radius:8px}
+#startgeruest .sg-zusatz{color:var(--sg-akzent);margin-left:-4px}
+[data-theme=brick] #startgeruest .sg-zusatz{color:inherit}
+.sg-leiste{display:flex;gap:28px;height:44px;align-items:center;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr)}
+.sg-band{display:none;height:45px;background:var(--sg-band);border-bottom:1px solid var(--sg-bdr)}
+[data-rb-band] .sg-band{display:block}
+.sg-leiste i,.sg-inhalt i{display:block;background:var(--sg-ph);border-radius:8px}
 .sg-leiste i{width:84px;height:12px}
-.sg-inhalt{max-width:1720px;margin:0 auto;padding:2rem 1.5rem}
-.sg-titel{width:min(260px,60%);height:28px;margin-bottom:1.5rem}
-.sg-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.75rem}
-.sg-karten i{height:84px;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
+.sg-inhalt{max-width:1720px;margin:0 auto;padding:2rem}
+.sg-ph{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1.5rem}
+.sg-ph div{display:grid;gap:13px;flex:1}
+.sg-pfad{width:120px;height:12px}.sg-titel{width:160px;height:32px}.sg-unter{width:min(360px,80%);height:14px}
+.sg-inhalt .sg-wahl{width:304px;height:45px;flex:none}
+.sg-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.5rem}
+.sg-inhalt .sg-karten i,.sg-inhalt .sg-kacheln i{height:95px;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
+.sg-knoepfe{display:flex;gap:8px;margin-bottom:1.5rem}.sg-knoepfe i{width:155px;height:39px}
+.sg-inhalt .sg-suche{height:40px;margin-bottom:1.5rem}
 .sg-kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(11.5rem,1fr));gap:1rem}
-.sg-kacheln i{aspect-ratio:3/4;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
-@media (max-width:640px){.sg-leiste{display:none}.sg-inhalt{padding:1rem}.sg-karten{grid-template-columns:repeat(2,1fr)}.sg-kacheln{grid-template-columns:1fr}.sg-kacheln i{aspect-ratio:auto;height:120px}}
-@media (prefers-reduced-motion:no-preference){.sg-inhalt i,.sg-titel{animation:sg-puls 1.4s ease-in-out infinite alternate}}
+.sg-inhalt .sg-kacheln i{height:28rem}
+@media (max-width:640px){#startgeruest .sg-kopf{height:53px;padding:0 .75rem}.sg-zusatz{display:none}.sg-leiste{position:fixed;bottom:0;left:0;right:0;height:56px;justify-content:space-around;border:0;border-top:1px solid var(--sg-bdr);padding:0}.sg-leiste i{width:44px}.sg-band{height:53px}.sg-inhalt{padding:12px 1rem}.sg-ph div,.sg-knoepfe{display:none}.sg-inhalt .sg-wahl{width:100%;height:52px}.sg-karten{display:block;margin-bottom:12px}.sg-inhalt .sg-karten i{width:60%;height:20px;border:0;background:var(--sg-ph)}.sg-karten i+i{display:none}.sg-inhalt .sg-suche{height:44px}.sg-kacheln{grid-template-columns:repeat(2,1fr);gap:12px}.sg-inhalt .sg-kacheln i{height:25rem}}
+@media (prefers-reduced-motion:no-preference){.sg-inhalt i{animation:sg-puls 1.4s ease-in-out infinite alternate}}
 @keyframes sg-puls{from{opacity:1}to{opacity:.55}}
 #start-offline{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);z-index:3;width:min(26rem,calc(100% - 2rem));padding:1.25rem 1.5rem;border-radius:12px;background:#fff;color:#1e293b;border:1px solid #e3e6ea;box-shadow:0 8px 28px rgba(0,0,0,.18);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center}
 #start-offline[hidden]{display:none}
@@ -44,9 +53,10 @@
 <body>
 <a class="sprunglink" href="#inhalt" data-i18n="a11y.skip_to_content">Zum Inhalt</a>
 <div id="startgeruest" aria-hidden="true">
-  <div class="sg-kopf"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/></svg>BrickInventory</div>
+  <div class="sg-kopf"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/></svg>BrickInventory <span class="sg-zusatz">Manager</span></div>
   <div class="sg-leiste"><i></i><i></i><i></i><i></i><i></i></div>
-  <div class="sg-inhalt"><i class="sg-titel"></i><div class="sg-karten"><i></i><i></i><i></i><i></i></div><div class="sg-kacheln"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="sg-band"></div>
+  <div class="sg-inhalt"><div class="sg-ph"><div><i class="sg-pfad"></i><i class="sg-titel"></i><i class="sg-unter"></i></div><i class="sg-wahl"></i></div><div class="sg-karten"><i></i><i></i><i></i><i></i></div><div class="sg-knoepfe"><i></i><i></i></div><i class="sg-suche"></i><div class="sg-kacheln"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
 </div>
 <div id="start-offline" role="alert" hidden>
   <p><strong id="start-offline-titel" data-i18n="startup.offline_titel">Server nicht erreichbar</strong></p>
@@ -593,7 +603,7 @@
 
       <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im … -->
       <div class="filterleiste filterzeile">
-          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="filter">Filter</button>
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span></button>
           <input class="suchfeld" type="text" id="parts-search" placeholder="Teile suchen…" data-i18n="parts.search" data-i18n-attr="placeholder" data-i18n-aria="parts.search_aria" aria-label="Teile suchen">
           <select class="w-auto" id="parts-spare" aria-label="Ersatzteile" data-i18n="parts.spare_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="parts.filter.all">Alle Teile</option>
@@ -770,7 +780,7 @@
             <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" aria-describedby="pl-gen-hinweis" data-i18n="pl.generate" data-ico="aktualisieren">Neu berechnen</button>
             <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
           </div>
-          <p class="pl-hinweis" id="pl-gen-hinweis" data-i18n="pl.erst_set">Setnummer eintragen und hinzufügen — die Bauliste entsteht sofort.</p>
+          <p class="pl-hinweis" id="pl-gen-hinweis" data-i18n="pl.erst_set">Noch kein Set in der Liste — Setnummer eintragen und hinzufügen, die Bauliste entsteht sofort.</p>
         </div>
       </div>
       <!-- Added sets -->
@@ -823,7 +833,7 @@
           <a class="einst-link" href="#einst-bs" data-click="einstAbschnitt" data-arg="einst-bs">Brickset</a>
           <a class="einst-link" href="#usermgmt" data-click="einstAbschnitt" data-arg="usermgmt" data-i18n="settings.users_title">Benutzerverwaltung</a>
           <a class="einst-link" href="#einst-smtp" data-click="einstAbschnitt" data-arg="einst-smtp">E-Mail</a>
-          <a class="einst-link" href="#einst-hintergrund" data-click="einstAbschnitt" data-arg="einst-hintergrund" data-i18n="settings.hintergrund_titel">Hintergrundarbeiten</a>
+          <a class="einst-link" href="#einst-hintergrund" data-click="einstAbschnitt" data-arg="einst-hintergrund" data-i18n="settings.hintergrund_titel">Zeitpläne und Preise</a>
           <a class="einst-link" href="#einst-konfig" data-click="einstAbschnitt" data-arg="einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
         </nav>
         <div class="ssec" id="einst-design">
@@ -947,7 +957,7 @@
 
 
         <div class="ssec full" id="einst-hintergrund">
-          <h2 class="stit" data-i18n="settings.hintergrund_titel" data-ico="monitoring">Hintergrundarbeiten</h2>
+          <h2 class="stit" data-i18n="settings.hintergrund_titel" data-ico="uhr">Zeitpläne und Preise</h2>
           <p class="hinweis-absatz abstand-u-075" data-i18n="settings.hintergrund_hint">Wie lange Preise gelten und wann die Dienste laufen. Jede Änderung gilt sofort; beobachten lässt sich alles unter „Hintergrundarbeiten“.</p>
           <div class="sform">
             <div class="fg"><label for="mon-cache-ttl" data-i18n="monitor.cache_duration">Preise aufbewahren</label>
@@ -1536,6 +1546,7 @@
     <h2 class="dialog-titel-mitte" id="cd-title" data-i18n="common.delete_title">Löschen?</h2>
     <p class="dialog-text-mitte" id="cd-msg"></p>
     <form class="ohne-rand" data-submit="cd-confirm">
+    <fieldset id="cd-wahl" class="cd-wahl" aria-labelledby="cd-title" hidden></fieldset>
     <div id="cd-pw-wrap" class="bestaetigung-passwort" hidden>
       <label for="cd-pw" id="cd-pw-label" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
       <input type="password" id="cd-pw" autocomplete="current-password">
@@ -1823,7 +1834,7 @@
         <!-- Zoom: Minus, Faktor, Plus, und der Faktor selbst ist der … -->
         <div class="pdf-zoom">
           <button id="pdf-viewer-zoom-out" class="btn bs btn-sm" data-click="pdfZoomOut" aria-label="Verkleinern (Taste −, oder Strg + Mausrad)" data-i18n="pdf.zoom_out" data-i18n-attr="aria-label">−</button>
-          <button id="pdf-viewer-zoom" class="btn bs btn-sm min-34rem" data-click="pdfZoomReset" aria-label="100% – Zoom zurücksetzen (Taste 0)">100%</button>
+          <button id="pdf-viewer-zoom" class="btn bs btn-sm min-34rem" data-click="pdfZoomReset" aria-label="100% – Zoom zurücksetzen (Taste 0)" data-i18n-aria="pdf.zoom_reset">100%</button>
           <button id="pdf-viewer-zoom-in" class="btn bs btn-sm" data-click="pdfZoomIn" aria-label="Vergrössern (Taste +, oder Strg + Mausrad)" data-i18n="pdf.zoom_in" data-i18n-attr="aria-label">+</button>
         </div>
         <button id="pdf-viewer-print" class="btn bs btn-sm" data-click="printPdfViewer" aria-label="Drucken" data-i18n-aria="pdf.print"><svg class="ico" aria-hidden="true"><use href="#i-drucker"/></svg> <span data-i18n="pdf.print">Drucken</span></button>

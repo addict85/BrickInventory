@@ -39,6 +39,8 @@ export function startApp() {
 abonniere('passwortWechselNoetig', () => zeigePflichtwechsel());
 abonniere('zweiterFaktorPflicht', () => zeigeZweitpflicht());
 
+/** Konto der abgelaufenen Sitzung: Meldet sich ein anderes an, lädt die Seite neu statt dessen Stand zu zeigen. */
+let _abgelaufenesKonto = /** @type {number | null} */ (null);
 /**
  * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten geht es
  * zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
@@ -46,6 +48,7 @@ abonniere('zweiterFaktorPflicht', () => zeigeZweitpflicht());
 abonniere('sitzungBeendet', path => {
   if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
   if (!ME) return; // war nie angemeldet — nichts zu beenden
+  _abgelaufenesKonto = ME.id;
   set_ME(null);
   showLogin({ abgelaufen: true });
 });
@@ -68,6 +71,10 @@ function showPanel(name) {
     const el = G('panel-' + p);
     if (el) el.style.display = p === name ? 'block' : 'none';
   });
+  const titel = G('panel-' + name)
+    ?.querySelector('h1')
+    ?.textContent?.trim();
+  if (titel) document.title = `${titel} – BrickInventory`;
 }
 
 // Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig); die Anwendung käme
@@ -604,6 +611,10 @@ async function doLogin() {
   G('lc-zeile').style.display = 'none';
   G('lc').value = '';
   if (d.success) {
+    if (_abgelaufenesKonto !== null && _abgelaufenesKonto !== d.user?.id) {
+      location.reload();
+      return;
+    }
     set_ME(
       /** @type {import('./zustand.js').Konto} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
     );
@@ -629,46 +640,18 @@ async function doLogin() {
 G('btn-logout').onclick = async () => {
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
   const _wt = sessionStorage.getItem('webToken');
-  // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein „Sitzung abgelaufen“ und
-  // öffnen die Anmeldemaske kein zweites Mal.
+  // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein „Sitzung abgelaufen“.
   set_ME(null);
   await apiRoh('POST', '/v1/auth/logout', {
     headers: _wt ? { Authorization: 'Bearer ' + _wt } : {},
   }).catch(() => {});
-  setAllSets([]);
-  // Reset all admin-only elements before showing login
-  const nm = G('ntab-monitor');
-  if (nm) nm.style.display = 'none';
-  const ns = G('ntab-settings');
-  if (ns) ns.style.display = 'none';
-  // Auch die Verwaltereinträge im Menü: Meldet sich danach ein anderes Konto an, stünden sie sonst noch da.
-  alle('.admin-only').forEach(el => {
-    el.style.display = 'none';
-  });
-  G('usermgmt').style.display = 'none';
-
-  ['bl-ao', 'rb-ao', 'bs-ao'].forEach(id => {
-    const el = G(id);
-    if (el) el.style.display = '';
-  });
-  const gg = G('global-settings-grid');
-  if (gg) gg.style.display = 'none';
-  const gl = G('global-settings-label');
-  if (gl) gl.style.display = 'none';
-  // Switch back to gallery tab manually
-  document.querySelectorAll('.ntab').forEach(x => {
-    x.classList.remove('active');
-  });
-  document.querySelectorAll('.tab').forEach(x => {
-    x.classList.remove('active');
-  });
-  const gt = document.querySelector('.ntab[data-tab="gallery"]');
-  if (gt) {
-    gt.classList.add('active');
-    const gp = document.getElementById('tab-gallery');
-    if (gp) gp.classList.add('active');
-  }
+  sessionStorage.removeItem('webToken');
+  // Neu laden statt aufräumen: Listen, Dialoge, Titel und Sprache des vorigen Kontos blieben sonst im Dokument
+  // stehen. Die Anmeldemaske spricht dann wieder die Sprache des Browsers.
+  localStorage.removeItem('bim_lang');
   showLogin();
+  if (navigator.onLine !== false) location.replace('/');
+  else addEventListener('online', () => location.replace('/'), { once: true });
 };
 
 // Ohne Auskunft über das Konto: Der Server antwortet für jede Adresse gleich.

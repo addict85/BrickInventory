@@ -66,6 +66,8 @@ function besitzer(it, mehrereKonten) {
 }
 
 const condBadge = (/** @type {string} */ c) => condBadges({ conditions: [c] });
+/** Bei einem Stück stünde der Stückpreis wie der Marktwert daneben: Die Zelle bleibt leer, Vorleser hören den Bezug. */
+const wieWert = () => html`<span class="vh">${tRaw('finance.wie_marktwert')}</span>`;
 /** Ein fehlender Marktwert sieht in Zeile, Summe und Kachel gleich aus: Strich, für Vorleser „Preis fehlt“. */
 const ohneWert = () =>
   html`<span class="text-mut" title="${tRaw('finance.price_missing_short')}"><span aria-hidden="true">—</span><span class="vh">${tRaw('finance.price_missing_short')}</span></span>`;
@@ -149,7 +151,7 @@ function pmRow(it, label, acq, lage, text) {
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${acq?.created_at ? fmtDatum(acq.created_at) : ''}</td>
     <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
-    <td class="fin-detail price-cell zahl">${current > 0 ? ungeprueft(geschaetztMarke(/** @type {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} */ (it), fmtN(current, cur))) : ohneWert()}</td>
+    <td class="fin-detail price-cell zahl">${current > 0 ? (qty > 1 ? ungeprueft(geschaetztMarke(/** @type {{ estimated_from_parts?: boolean | null, abdeckung?: number | null }} */ (it), fmtN(current, cur))) : wieWert()) : ohneWert()}</td>
     <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total, cur) : ohneMarkt()}</td>
     <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || ohneGuv()}</td>
     <td class="fin-status"></td>
@@ -210,7 +212,7 @@ function setRow(s, acq, lage) {
   <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
   <td class="fin-detail fin-datum">${dateSrc ? fmtDatum(dateSrc) : '—'}</td>
   <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
-    <td class="fin-detail zahl price-cell">${mitPreis && Number(market) > 0 ? fmtN(market, cur) : ohneWert()}</td>
+    <td class="fin-detail zahl price-cell">${mitPreis && Number(market) > 0 ? (qty > 1 ? fmtN(market, cur) : wieWert()) : ohneWert()}</td>
   <td class="fin-wert zahl price-total">${mitPreis && Number(total) > 0 ? fmtN(total, cur) : ohneMarkt()}</td>
   <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || ohneGuv()}</td>
     <td class="fin-status">${priceStatusBadge(s, fehlerNeutral)}</td>
@@ -340,7 +342,7 @@ export async function loadFinance() {
   setzeEinstand(
     basis.bewertet > 0 ? basis.einstand : einstand.alle,
     cur,
-    basis.bewertet > 0 && Math.abs(basis.einstand - einstand.alle) >= 0.005 ? tRaw('finance.chart.einstand_basis') : '',
+    basis.bewertet > 0 && Math.abs(basis.einstand - einstand.alle) >= 0.005 ? tRaw('finance.chart.kaufpreis') : '',
   );
   const leer = !d.sets.length && !partsItems.length && !figsItems.length;
   G('tab-finance')?.classList.toggle('finanzen-leer', leer);
@@ -411,7 +413,7 @@ function einstandBetrag(stueck, menge, cur, acq) {
 function preisKoepfe(sortierbar = false) {
   const kurz = (/** @type {string} */ lang, /** @type {string} */ kurzTxt) =>
     html`<th class="zahl" title="${tRaw(lang)}"${sortStand('guv', sortierbar)}>${sortKnopf('guv', sortierbar, html`<span aria-hidden="true">${ungeprueft(kurzTxt)}</span><span class="vh">${tRaw(lang)}</span>`)}</th>`;
-  return html`${html`<th class="zahl"${sortStand('kauf', sortierbar)}>${sortKnopf('kauf', sortierbar, tRaw('finance.col.purchase'))}</th>`}${html`<th class="zahl" title="${tRaw('finance.market_price_stueck')}">${tRaw('detail.market_price')}</th>`}${html`<th class="zahl"${sortStand('wert', sortierbar)}>${sortKnopf('wert', sortierbar, tRaw('finance.grand.value'))}</th>`}${kurz('finance.total_pnl', tRaw('finance.pnl_kurz'))}`;
+  return html`${html`<th class="zahl"${sortStand('kauf', sortierbar)}>${sortKnopf('kauf', sortierbar, tRaw('finance.col.purchase'))}</th>`}${html`<th class="zahl" title="${tRaw('finance.market_price_stueck')}">${tRaw('finance.col.stueckpreis')}</th>`}${html`<th class="zahl"${sortStand('wert', sortierbar)}>${sortKnopf('wert', sortierbar, tRaw('finance.grand.value'))}</th>`}${kurz('finance.total_pnl', tRaw('finance.pnl_kurz'))}`;
 }
 
 // ── Viele Positionen: Suche, Sortierung, blockweise ──────────────────────────

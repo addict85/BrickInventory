@@ -137,10 +137,7 @@ test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1,
       return tr.querySelector('td.price-cell').textContent.replace(/\\s+/g, ' ').trim(); })()`);
     assert.match(zelle, /99,99\sARS.*nicht umgerechnet/);
     assert.equal(await b.auswerten(text('#fin-wert-titel')), 'Marktwert der Positionen mit Kaufpreis');
-    assert.match(
-      await b.auswerten(text('#fin-wert-sub')),
-      /^Verglichen wird nur, was einen Kaufpreis hat\. Alles zusammen: .+ €$/,
-    );
+    assert.match(await b.auswerten(text('#fin-wert-sub')), /^Alles zusammen: .+ €$/);
     // Fehlende Werte sehen gleich aus: Strich mit Vorlesetext, nirgends „Preis fehlt“ als sichtbarer Text.
     const sichtbar = await b.auswerten(`[...document.querySelectorAll('#fin-tbl td')].filter(td => {
       const k = td.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove()); return /Preis fehlt/.test(k.textContent); }).length`);

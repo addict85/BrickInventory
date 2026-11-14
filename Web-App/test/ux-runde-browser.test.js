@@ -144,8 +144,16 @@ test('UX-Prüfung 12.11.: Menü, PDF.js, Designs, Leerzustände, Anmeldung', { t
   });
 
   await t.test('Anmeldung: eine h1, nicht das Logo', async () => {
-    await b.auswerten(`document.getElementById('btn-logout').click(); true`);
-    await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Anmeldemaske');
+    // Abmelden lädt die Seite neu; die Maske spricht dann die Sprache des Browsers.
+    await b.tab('Network.setUserAgentOverride', {
+      userAgent: await b.auswerten('navigator.userAgent'),
+      acceptLanguage: 'de-DE',
+    });
+    await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
+    await bis(
+      `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none'`,
+      'Anmeldemaske',
+    );
     const h1 = await b.auswerten(
       `[...document.querySelectorAll('h1')].filter(h => h.getClientRects().length).map(h => h.textContent.trim())`,
     );

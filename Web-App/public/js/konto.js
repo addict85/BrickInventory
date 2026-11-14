@@ -18,13 +18,15 @@ const rbHinweisSchluessel = () => `bim_rb_hinweis_weg:${ME?.id ?? ''}`;
 export function rbHinweisZeigen() {
   const band = G('rb-hinweis');
   if (!band || !ME?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
-  if (String(_settingsCache?.rebrickable_api_key || '').trim()) return;
+  let zeigen = !String(_settingsCache?.rebrickable_api_key || '').trim();
   try {
-    if (localStorage.getItem(rbHinweisSchluessel())) return;
+    zeigen &&= !localStorage.getItem(rbHinweisSchluessel());
+    if (zeigen) localStorage.setItem('bim_rb_band', '1');
+    else localStorage.removeItem('bim_rb_band');
   } catch (_) {
     /* ohne Speicher: zeigen */
   }
-  band.hidden = false;
+  if (zeigen) band.hidden = false;
 }
 
 export function rbHinweisVerbergen() {
@@ -44,6 +46,7 @@ function rbHinweisWeg() {
   rbHinweisVerbergen();
   try {
     localStorage.setItem(rbHinweisSchluessel(), '1');
+    localStorage.removeItem('bim_rb_band');
   } catch (_) {
     /* dann eben bis zum Neuladen */
   }

@@ -456,9 +456,10 @@ let _naechsteKennung = 0;
  *   Antwort von /v1/sets/:nummer/price-history
  * @param {string} [uid]  Kürzel für die Verlaufs-IDs im SVG
  * @param {number} [breite]
+ * @param {Set<string>} [mittel] Zustände, deren Kaufpreis das Mittel mehrerer Käufe ist („Ø Kaufpreis“)
  * @returns {import('./escapen.js').SicheresHtml} SVG-Markup oder ein Hinweistext
  */
-export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700) {
+export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700, mittel = new Set()) {
   const axis = data?.chart?.x || [];
   const series = preisReihen(data);
 
@@ -484,8 +485,8 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
   const W = breite;
   const lage = achsenLage(teilung, CURRENCY, fs, W, 14 * f);
   const PAD = { l: lage.links, r: lage.innen ? 6 * f : 14 * f, t: lage.innen ? 22 * f : 12 * f, b: 46 * f };
-  const kaufText = (/** @type {{ name: string, kauf: number }} */ sd) =>
-    `${tRaw('detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, CURRENCY)}`;
+  const kaufText = (/** @type {{ key: string, name: string, kauf: number }} */ sd) =>
+    `${tRaw(mittel.has(sd.key) ? 'detail.purchase_price_avg' : 'detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, CURRENCY)}`;
   const legende = bezugsLegende(
     kaeufe
       .filter(sd => !imBild(kaufText(sd), PAD.l, W - PAD.r, f))

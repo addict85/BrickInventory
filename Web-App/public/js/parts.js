@@ -25,6 +25,7 @@ import {
   aktiverReiter,
   setzeHtml,
   fuegeHtmlEin,
+  beiTelefonWechsel,
 } from './dom.js';
 import { fmtBig, fmtN } from './format.js';
 import { toast } from './meldungen.js';
@@ -249,7 +250,7 @@ function partsParams(page) {
   p.set('exclude_manual', '1');
   // in_sets ist serverseitig Opt-in (kostet bei 380 Sets rund 155 ms und 2 MB). Nur die Tabellenansicht hat
   // eine Spalte dafür, die Kachel nicht.
-  if (G('parts-view').value === 'table') p.set('with_sets', '1');
+  if (tabellenAnsicht('parts-view')) p.set('with_sets', '1');
   p.set('page', String(page));
   p.set('page_size', String(PARTS_PAGE_SIZE));
   addScopeParam(p, 'parts');
@@ -331,7 +332,7 @@ async function loadPartsPage(isFirst) {
 /** Grundgerüst je nach Ansichtsmodus anlegen (einmal pro Neuaufbau). */
 function preparePartsShell() {
   const main = G('parts-main');
-  if (G('parts-view').value === 'table') {
+  if (tabellenAnsicht('parts-view')) {
     setzeHtml(
       main,
       html`${html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.parts')}"><thead><tr>`}${html`<th>${tRaw('col.image_th')}</th><th>${tRaw('col.part_nr')}</th><th>${tRaw('col.name')}</th>`}${html`<th>${tRaw('col.color')}</th><th>${tRaw('col.category')}</th><th>${tRaw('detail.qty')}</th>`}${html`<th>${tRaw('col.sets')}</th>`}${html`</tr></thead><tbody class="parts-body"></tbody></table></div>`}`,
@@ -350,7 +351,7 @@ function preparePartsShell() {
  * @param {TeilZeile[]} parts
  */
 function appendParts(parts) {
-  if (G('parts-view').value === 'table') {
+  if (tabellenAnsicht('parts-view')) {
     const tb = G('parts-main').querySelector('tbody.parts-body');
     if (!tb) return;
     fuegeHtmlEin(tb, 'beforeend', parts.map(partsTableRow));
@@ -568,6 +569,9 @@ function teileAnsichtGeaendert() {
   renderManualParts();
 }
 G('parts-view').addEventListener('change', teileAnsichtGeaendert);
+beiTelefonWechsel(() => {
+  if (G('parts-view').value === 'table') teileAnsichtGeaendert();
+});
 
 // ── MANUAL PARTS ─────────────────────────────────────────────────────────────
 /** @type {ManuellesTeil[]} */

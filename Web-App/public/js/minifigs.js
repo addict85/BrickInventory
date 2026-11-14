@@ -25,6 +25,7 @@ import {
   aktiverReiter,
   ico,
   setzeHtml,
+  telefonBreite,
 } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
 import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
@@ -214,9 +215,7 @@ export function renderFigs(list, target) {
   }
   if (!target) figurenLeerAbgleichen();
 
-  const viewMode = G('figs-view')?.value || 'grid';
-
-  if (viewMode === 'table') {
+  if (tabellenAnsicht('figs-view')) {
     // Ohne „Quelle“ und Papierkorb: Diese Liste lädt nur source=set, beide Spalten wären in jeder Zeile
     // gleich bzw. leer. Manuelle Figuren haben ihren eigenen Bereich mit editierbaren Karten.
     setzeHtml(
@@ -645,7 +644,7 @@ export function manuelleTabelle(posten, art) {
  * @param {string} id
  */
 export function tabellenAnsicht(id) {
-  return G(id)?.value === 'table';
+  return G(id)?.value === 'table' && !telefonBreite();
 }
 
 abonniere('bestandGeaendert', () => {

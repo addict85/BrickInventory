@@ -1021,7 +1021,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
   // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
   // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
   // Gegenprobe (13.11.2026, Schranke 87): in gutscheine.js ein `${ungeprueft(KOPIE_ICON_SVG)}` zurück → rot.
-  const SCHRANKE = 86;
+  const SCHRANKE = 85;
   assert.deepEqual(
     ungeprueftArgumente(
       "function ungeprueft(t) {}\na(ungeprueft(`<i>${b(c)}</i>`), ungeprueft(d.map(e).join('')), x.ungeprueft(f))",
@@ -1059,7 +1059,7 @@ test('ungeprueft() wird weniger, nie mehr; kein Template mit ${…} und kein .jo
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
   // Gegenprobe (09.11.2026): an finance.js Leerzeilen gehängt → rot.
-  const SCHRANKE_GROESSTE = 792,
+  const SCHRANKE_GROESSTE = 778,
     SCHRANKE_UEBER_600 = 12;
   const laengen = oberflaeche().map(f => ({
     f: path.relative(WEB, f),

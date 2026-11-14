@@ -12,6 +12,7 @@ import {
   geschaetztKauf,
   zeilenKnopf,
   kachelName,
+  kontoAnzeige,
 } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
@@ -29,6 +30,8 @@ import {
   alle,
   fuegeHtmlEin,
   setzeHtml,
+  telefonBreite,
+  beiTelefonWechsel,
 } from './dom.js';
 import { fmtDatum, fmtBig, fmtGeld, fmtN, istGeschenk } from './format.js';
 import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
@@ -38,8 +41,8 @@ import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './scope.js
 import { loadParts, loadManualParts } from './parts.js';
 import { loadMinifigs } from './minifigs.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
-import { CURRENCY, set_lastImportAt, setAllSets, allSets, curSet, _pnlCache, set_pnlCache } from './zustand.js';
-import { confirmDelete } from './rueckfrage.js';
+import { CURRENCY, ME, set_lastImportAt, setAllSets, allSets, curSet, _pnlCache, set_pnlCache } from './zustand.js';
+import { confirmDelete, loeschenMitWahl } from './rueckfrage.js';
 import { springe } from './ziele.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
 /** @typedef {import('./zustand.js').Kachel} Kachel */
@@ -87,6 +90,7 @@ export async function loadStats() {
 
 // ── GALLERY ───────────────────────────────────────────
 let curView = 'grid';
+const alsKarten = () => curView === 'grid' || telefonBreite();
 
 /**
  * Übernimmt das Zustands-Aggregat vom Server: Die eigene Nachrechnung nahm die zuletzt erfasste Position und
@@ -161,7 +165,7 @@ function appendGallery(batch) {
   const c = G('gallery');
   const grid = c.querySelector('.sgrid');
   const tbody = c.querySelector('.dt tbody');
-  if (curView === 'grid' && grid) {
+  if (alsKarten() && grid) {
     fuegeHtmlEin(grid, 'beforeend', batch.map(gridCard));
     observeLazyImages(grid);
   } else if (tbody) {
@@ -246,7 +250,8 @@ export async function loadGallery(opts = {}) {
   }
   _galGen++;
   _galPage = 1;
-  _galDone = false;
+  // Bis die erste Seite da ist, lädt der Sentinel nichts nach: Er fragte sonst Seite 2 einer alten Liste ab.
+  _galDone = true;
   _galLoadingMore = false;
   const gen = _galGen;
   const hatteListe = allSets.length > 0;
@@ -261,7 +266,7 @@ export async function loadGallery(opts = {}) {
   // Seitenzähler an die tatsächlich geholte Menge angleichen, damit die nächste Folgeseite am richtigen
   // Versatz ansetzt.
   _galPage = Math.max(1, Math.ceil(allSets.length / GAL_PAGE_SIZE));
-  if (allSets.length >= _galTotal) _galDone = true;
+  _galDone = allSets.length >= _galTotal;
   bindGallerySentinel();
   // Füllt die erste Seite den Bildschirm nicht, gäbe es nie ein Scroll-Ereignis.
   requestAnimationFrame(maybeLoadMoreGallery);
@@ -319,15 +324,13 @@ export function renderGallery() {
         : leerZustand({
             ico: 'set',
             titel: tRaw('gallery.empty'),
-            text: tRaw(
-              window.matchMedia?.('(max-width: 640px)').matches ? 'gallery.empty_hint_telefon' : 'gallery.empty_hint',
-            ),
+            text: tRaw(telefonBreite() ? 'gallery.empty_hint_telefon' : 'gallery.empty_hint'),
             knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' },
           }),
     );
     return;
   }
-  if (curView === 'grid') {
+  if (alsKarten()) {
     setzeHtml(c, html`<div class="sgrid">${list.map(gridCard)}</div>`);
     observeLazyImages(c);
   } else {
@@ -621,6 +624,9 @@ async function doAddSet() {
   }
 }
 
+beiTelefonWechsel(() => {
+  if (G('gallery')?.querySelector('.sgrid, .tw, .empty.leer:not(.fehler-zustand)')) renderGallery();
+});
 G('vg').onclick = () => {
   curView = 'grid';
   G('vg').classList.add('active');
@@ -646,8 +652,32 @@ G('gs').addEventListener('input', () => {
 G('gsort').addEventListener('change', () => loadGallery());
 
 /**
- * Ein Set löschen, mit genau EINER Rückfrage hier an der einen Stelle, die löscht: Der Detail-Dialog fragte
- * vorher selbst und dann noch einmal.
+ * Die eine Rückfrage vor dem Löschen. Gehört das Set mehreren Konten, nennt sie Konten und Stückzahlen und lässt
+ * wählen: Gelöscht wurde sonst still auch das Exemplar des anderen Kontos.
+ * @param {string} sn @param {string} name @param {Kachel | null | undefined} set
+ * @returns {Promise<string | null>} '' für alle Konten, eine Kontonummer, oder null bei Abbruch
+ */
+async function loeschWahl(sn, name, set) {
+  const titel = tRaw('gallery.delete.title');
+  const fremd = (set?.owners || []).some(o => o.id !== ME?.id);
+  if (!fremd) return (await confirmDelete(titel, tRaw('gallery.delete.name_parts', { name }))) ? '' : null;
+  const ad = await api('GET', `/v1/sets/${encodeURIComponent(sn)}/acquisitions`);
+  const konten = (set?.owners || []).map(o => ({
+    ...o,
+    n: (ad?.acquisitions || [])
+      .filter(a => (a.owner_user_id ?? ME?.id) === o.id)
+      .reduce((s, a) => s + (a.quantity || 0), 0),
+  }));
+  const liste = konten.map(k => `${kontoAnzeige(k)} ×${k.n}`).join(', ');
+  const gesamt = konten.reduce((s, k) => s + k.n, 0);
+  return loeschenMitWahl(titel, tRaw('gallery.delete.konten', { name, konten: liste }), [
+    { wert: '', text: tRaw('gallery.delete.alle', { n: gesamt }) },
+    ...konten.map(k => ({ wert: String(k.id), text: tRaw('gallery.delete.nur', { konto: kontoAnzeige(k), n: k.n }) })),
+  ]);
+}
+
+/**
+ * Ein Set löschen, mit genau EINER Rückfrage hier an der einen Stelle, die löscht.
  * @returns {Promise<boolean>} true, wenn wirklich gelöscht wurde
  * @param {string} sn
  */
@@ -655,19 +685,17 @@ export async function delSet(sn) {
   const bekannt =
     (curSet && curSet.set_number === sn ? curSet : null) || (allSets || []).find(x => x.set_number === sn);
   const name = bekannt?.name || sn;
-  if (!(await confirmDelete(tRaw('gallery.delete.title'), tRaw('gallery.delete.name_parts', { name })))) return false;
-  const d = await api('DELETE', `/v1/sets/${sn}`);
+  const konto = await loeschWahl(sn, name, bekannt);
+  if (konto === null) return false;
+  const d = await api('DELETE', `/v1/sets/${sn}${konto ? `?accounts=${konto}` : ''}`);
   if (!d.success) {
     toast(d.error, 'error');
     return false;
   }
-  geloeschtMitRueckgaengig(tRaw('users.deleted', { name }), d);
-  // Alles nachladen, was mitgelöscht wurde. loadStats() fehlte: Die Kennzahlen im Kopf (Sets, Einheiten,
-  // Teile, Minifiguren) blieben nach dem Löschen auf dem alten Stand, obwohl die Teile und Minifiguren des
-  // Sets mit weg sind.
+  const wem = (bekannt?.owners || []).find(o => String(o.id) === konto);
+  geloeschtMitRueckgaengig(`${tRaw('users.deleted', { name })}${wem ? ` · ${kontoAnzeige(wem)}` : ''}`, d);
   loadGallery();
   loadParts();
-  loadStats();
   return true;
 }
 /** @param {string} sn */
