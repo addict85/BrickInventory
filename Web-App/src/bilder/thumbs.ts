@@ -16,7 +16,7 @@ async function verkleinern(quelle: string, ziel: string): Promise<void> {
     sharp = require('sharp');
   } catch (e) {
     // Ausnahme: Ohne native Bibliothek rechnet Jimp; das Bild entsteht trotzdem.
-    meldeFehler('vorschau:sharp fehlt, nutze Jimp', e);
+    meldeFehler('vorschau:sharp nicht verfügbar, nutze Jimp', e);
   }
 
   if (sharp) {

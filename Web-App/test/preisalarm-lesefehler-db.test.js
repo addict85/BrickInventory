@@ -16,7 +16,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDienste, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testDienste, testDaten, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 
@@ -54,7 +54,7 @@ test('Preisalarme: ein Lesefehler ist keine leere Liste', { concurrency: 1 }, as
   );
   await t.test('setzeAlarm liest nach dem Schreiben', () =>
     assert.rejects(
-      p.setzeAlarm(uid, SN, 'EUR', { richtung: 'unter', schwelle: 10, condition: 'N' }),
+      alsKonto(uid, () => p.setzeAlarm(uid, SN, 'EUR', { richtung: 'unter', schwelle: 10, condition: 'N' })),
       /Tabelle gestört/,
     ),
   );

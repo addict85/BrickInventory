@@ -6,13 +6,12 @@
  * `try { schreibeInLetzteErfassung(…condition…) } catch (e) { console.error(…) }`
  * → rot: „Missing expected rejection“.
  */
-require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, bereichsSeite } = require('./helpers/sources');
+const { buildAndRequire, testDaten, bereichsSeite, alsKonto } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const { haeltSet } = require('./helpers/bestand');
@@ -43,7 +42,10 @@ test('ein gescheiterter Zustandswechsel ist ein Fehler', { concurrency: 1 }, asy
     await db.pool.end().catch(() => {});
   });
 
-  await assert.rejects(updateSet(uid, SET, { condition: 'U' }), /Zustand gesperrt/);
+  await assert.rejects(
+    alsKonto(uid, () => updateSet(uid, SET, { condition: 'U' })),
+    /Zustand gesperrt/,
+  );
   const z = await db.get('SELECT condition FROM set_acquisitions WHERE user_id = $1 AND set_number = $2', [uid, SET]);
   assert.equal(z.condition, 'N');
 });

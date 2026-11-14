@@ -16,6 +16,8 @@
  *
  * Das Erfassen läuft echt; gestellt sind Rebrickable (testQuellen) und der Bildabruf.
  *   A, B am 13.11.2026 mit echtem Erfassen wiederholt: beide wieder rot.
+ *   B' (14.11.2026) seit das Erfassen kein Netz fragt, hält der Test die Sperre je
+ *      Setnummer statt des Netzes; B wiederholt → rot (die Datei endet nicht in ihrer Frist).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -24,10 +26,6 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.CSV_ZEILE_FRIST_MS = '150';
-
-// Rebrickable gestellt: Jede Katalogfrage wird gezählt und dauert `dauer` ms.
-const aufrufe = [];
-let dauer = 0;
 
 const { buildAndRequire, testDaten, testZugang, testQuellen, testBildwerk } = require('./helpers/sources');
 const _req = buildAndRequire();
@@ -38,13 +36,40 @@ const { warte, bis } = require('./helpers/zeit');
 
 test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
+  // Erfassen fragt kein Netz; langsam macht eine Zeile die gehaltene Sperre je Setnummer.
   testQuellen(t, {
-    holeSet: async sn => {
-      aufrufe.push(sn);
-      await warte(dauer);
-      return null;
+    holeSet: async () => {
+      throw new Error('Netz beim Erfassen');
     },
   });
+  const { sperreBisZumEnde } = _req('db/txLock.js');
+  const { LOCKS } = _req('src/infra/lockNamespaces.js');
+  /** @type {() => void} */
+  let loslassen = () => {};
+  /** Hält die Sperre von setErfassen() für `sn`, bis loslassen(); liefert das Ende der Transaktion. */
+  const halte = async (/** @type {string} */ sn) => {
+    /** @type {Promise<unknown>} */
+    let ende = Promise.resolve();
+    await /** @type {Promise<void>} */ (
+      new Promise(gehalten => {
+        ende = db.transaction(async (/** @type {any} */ tx) => {
+          await sperreBisZumEnde(tx, LOCKS.SET_ERFASSEN, sn);
+          await new Promise(r => {
+            loslassen = () => r(undefined);
+            gehalten(undefined);
+          });
+        });
+      })
+    );
+    return { ende };
+  };
+  const gebucht = async (/** @type {string} */ praefix) =>
+    (
+      await db.all(`SELECT set_number FROM set_acquisitions WHERE user_id = $1 AND set_number LIKE $2`, [
+        uid,
+        `${praefix}%`,
+      ])
+    ).map((/** @type {any} */ z) => z.set_number);
   testBildwerk(t, { setBildLaden: async () => null });
   const NAME = `csvlauf-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
@@ -73,24 +98,26 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
 
   try {
     await t.test('nach einer Zeitüberschreitung kein zweiter Versuch', async () => {
-      aufrufe.length = 0;
-      dauer = 400;
+      const { ende } = await halte('70001-1');
       await importiere(['70001-1']);
       const a = await bisFertig();
-      await warte(800);
-      assert.deepEqual(aufrufe, ['70001-1']);
+      loslassen();
+      await ende;
+      await warte(300);
+      assert.deepEqual(await gebucht('70001'), ['70001-1'], 'genau eine Buchung, kein zweiter Versuch');
       assert.equal(a.results[0].isWarning, true, 'die Zeile endet als Warnung');
     });
 
     await t.test('ein abgelöster Lauf hört auf', async () => {
-      aufrufe.length = 0;
-      dauer = 100;
+      const { ende: sperreEnde } = await halte('71002-1');
       await importiere(['71001-1', '71002-1', '71003-1', '71004-1', '71005-1']);
-      assert.ok(await bis(() => aufrufe.length > 0), 'der erste Lauf bucht schon');
+      assert.ok(await bis(async () => (await gebucht('71')).length > 0), 'der erste Lauf bucht schon');
       await importiere(['72001-1']);
       const a = await bisFertig();
+      loslassen();
+      await sperreEnde;
       await warte(700);
-      const alte = aufrufe.filter(s => s.startsWith('71'));
+      const alte = await gebucht('71');
       assert.ok(alte.length <= 2, `der alte Lauf buchte weiter: ${alte.join(', ')}`);
       const ende = await auftrag();
       assert.equal(ende.status, 'done');
