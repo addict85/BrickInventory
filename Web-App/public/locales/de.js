@@ -1543,9 +1543,9 @@ window.I18N_DE = {
   'alerts.new_preis_fehlt': 'Bitte einen Preis über 0 eintragen.',
   'alerts.new_ok': 'Preisalarm für {set} angelegt.',
   'alerts.new_preis': 'Grenzpreis',
-  'gallery.card.unbekannt': 'nicht im Katalog',
   'wanted.unbekannt_kurz': 'Set noch nicht im Katalog',
   'wanted.unbekannt': 'Set noch nicht im Katalog — Name, Jahr und Thema kommen nach, sobald Rebrickable es kennt.',
+  'gallery.card.unbekannt': 'nicht im Katalog',
   'gallery.card.unbekannt_hint':
     'Der Katalog kennt diese Nummer noch nicht. Name und Bild kommen nach, sobald sie bekannt ist.',
   'gallery.add.unbekannt':
@@ -1680,10 +1680,10 @@ window.I18N_DE = {
   'startup.offline_text': 'Ein neuer Versuch läuft von selbst.',
   'startup.offline_knopf': 'Erneut versuchen',
   'startup.sitzung_offen': 'Anmeldung konnte nicht geprüft werden',
-  'startup.naechster_versuch': 'Neuer Versuch in {sek} s.',
-  'settings.zugang_entfernt': 'Zugang entfernt – die Felder sind leer.',
   'startup.gedrosselt_titel': 'Zu viele Anfragen',
   'startup.gedrosselt_text': 'Der Server nimmt gerade keine weiteren Anfragen an. Neuer Versuch in {sek} s.',
+  'startup.naechster_versuch': 'Neuer Versuch in {sek} s.',
+  'settings.zugang_entfernt': 'Zugang entfernt – die Felder sind leer.',
   'settings.bl.ck': 'Anwendungsschlüssel (Consumer Key)',
   'settings.bl.cs': 'Anwendungsgeheimnis (Consumer Secret)',
   'settings.bl.tv': 'Zugangsschlüssel (Token Value)',

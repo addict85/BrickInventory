@@ -1,10 +1,8 @@
 /**
- * Ein Kopf für Sets, Teile und Minifiguren: Pfad, Titel, Untertitel und
- * Umschalter stehen in allen drei Ansichten an derselben Stelle, und vom
- * ersten sichtbaren Bild an bis nach dem Laden springt im Kopf nichts mehr
- * (Hinweisband, Kontoauswahl, Kennzahlen, Filterfelder). Im Haushalt, mit
- * Lagerort und ohne Rebrickable-Schlüssel, damit alle nachgeladenen Teile
- * vorkommen; Haushalt und Einstellungen antworten verzögert.
+ * Ein Kopf für Sets, Teile und Minifiguren, an derselben Stelle, und vom
+ * ersten sichtbaren Bild an springt darin nichts mehr (Band, Kontoauswahl,
+ * Kennzahlen, Filterfelder). Im Haushalt, mit Lagerort, ohne Schlüssel und
+ * mit verzögerten Antworten, damit alles Nachgeladene vorkommt.
  *
  * Gegenproben (am 13.11.2026 gemessen):
  *   A  in showApp() startgeruestWeg() wieder sofort statt nach Band und
@@ -88,7 +86,6 @@ test('Kopf der Sammlung: gleich und ohne Sprung', { concurrency: 1, timeout: 300
       await b.tab('Page.reload');
       await bis(`!!window.__kopf && ${fertig}`, `${name} geladen`, 300);
       await ruhig(4000);
-      await new Promise(r => setTimeout(r, 1500));
       const bilder = await b.auswerten('window.__kopf');
       assert.ok(bilder.length >= 1, 'kein Bild aufgezeichnet');
       assert.deepEqual(bilder, [bilder.at(-1)], 'der Kopf veränderte sich nach dem ersten Bild');
