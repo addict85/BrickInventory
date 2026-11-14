@@ -1359,7 +1359,7 @@ test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
   // werden beim Anfassen nachgetragen.
   // Gegenprobe (05.11.2026): in lint-ratsche.test.js „Gegenproben“ umbenannt → rot (112).
-  const SCHRANKE = 71;
+  const SCHRANKE = 70;
   const ohne = fs
     .readdirSync(__dirname)
     .filter(n => n.endsWith('.test.js'))
