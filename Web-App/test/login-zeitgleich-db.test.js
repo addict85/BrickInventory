@@ -1,9 +1,13 @@
 /**
- * Ein Anmeldeversuch darf nicht verraten, ob es das Konto gibt.
+ * Ein Anmeldeversuch darf nicht verraten, ob es das Konto gibt: Auch ein unbekannter
+ * Name rechnet genau einen Hash mit den Kosten eines echten Kontos (DUMMY_HASH).
+ * Gezählt statt gestoppt: argon2id kostet kaum mehr als die schwankende Datenbankarbeit.
  *
- * Gegenprobe (01.11.2026 gemessen, Median aus drei Paaren): in
- * pruefeAnmeldedaten() ohne Treffer kein Vergleich gegen DUMMY_HASH → rot
- * (bekannt 344,7 ms, unbekannt 11,5 ms).
+ * Gegenproben (14.11.2026 gemessen, je einzeln):
+ *   A  in pruefeAnmeldedaten() ohne Treffer kein Vergleich gegen DUMMY_HASH → rot:
+ *      „unbekannt: genau ein Hash“ (0 statt 1)
+ *   B  DUMMY_HASH mit geringeren Kosten (memoryCost 4096) → rot: „unbekannt: dieselben
+ *      Kosten wie ein echtes Konto“
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  * Ohne DB: skip. Ausführen: REQUIRE_DB=1 npm test
@@ -17,79 +21,51 @@ const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
+const argon2 = require('@node-rs/argon2');
 const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
 const { hashePasswort } = _req('src/konto/passwortHash.js');
 
 /** Minimaler Request: pruefeAnmeldedaten braucht davon nur die IP (Zähler). */
 const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
-const median = xs => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+/** Kosten eines argon2-Hashes: alles vor dem Salz. */
+const kosten = (/** @type {string} */ hash) => hash.split('$').slice(0, 4).join('$');
 
-async function dauer(fn) {
-  const t0 = process.hrtime.bigint();
-  const wert = await fn();
-  return { ms: Number(process.hrtime.bigint() - t0) / 1e6, wert };
-}
-
-test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort', { concurrency: 1 }, async t => {
+test('unbekannter Anmeldename rechnet denselben Hash wie ein falsches Passwort', async t => {
   if (!(await datenOderSkip(t, _req))) return;
 
-  // Die Kosten müssen denen echter Passwörter entsprechen — mit geringeren wäre
-  // der BEKANNTE Fall der schnellere und der Vergleich stünde auf dem Kopf.
-  // Deshalb hashePasswort(), dieselben Kosten, mit denen der Dummy-Hash entsteht.
-  // Drei Paare, abwechselnd gemessen, je mit eigenem Namen und eigener IP: …
-  const namen = [0, 1, 2].map(i => `zeit_bekannt_${i}`);
+  const name = 'zeit_bekannt';
   const hash = await hashePasswort('richtigesPasswort1');
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
-  for (const name of namen)
-    await db.run(
-      'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
-      [name, hash],
-    );
+  await db.run('DELETE FROM users WHERE username = $1', [name]);
+  await db.run(
+    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
+    [name, hash],
+  );
 
   try {
-    // Je ein Versuch pro Name: Der Brute-Force-Zähler läuft über IP UND Name,
-    // ein zweiter Versuch mit demselben Namen käme irgendwann als 429 zurück
-    // und würde die Messung ersetzen statt sie zu wiederholen.
-    const messungen = { bekannt: [], unbekannt: [] };
-    for (let i = 0; i < namen.length; i++) {
-      const paar = [
-        ['bekannt', () => pruefeAnmeldedaten(anfrage(10 + i), namen[i], 'falschesPasswort1')],
-        ['unbekannt', () => pruefeAnmeldedaten(anfrage(20 + i), `zeit_gibtsnicht_${i}`, 'falschesPasswort1')],
-      ];
-      if (i % 2) paar.reverse();
-      for (const [was, fn] of paar) {
-        const r = await dauer(fn);
-        // Vorbedingung: wirklich abgelehnt, mit 401 — nicht 429 (Sperre) oder
-        // 400 (Formfehler). Sonst misst der Test etwas anderes als gedacht.
-        assert.equal(r.wert.ok, false, `${was}: hätte abgelehnt werden müssen`);
-        assert.equal(
-          r.wert.absage.art,
-          'nicht_angemeldet',
-          `${was}: erwartet nicht_angemeldet, bekommen ${r.wert.absage.art} (${r.wert.absage.error})`,
-        );
-        messungen[was].push(r.ms);
-      }
-    }
-    const bekannt = { ms: median(messungen.bekannt) };
-    const unbekannt = { ms: median(messungen.unbekannt) };
-    // Und die Messung selbst muss überhaupt etwas gekostet haben — ohne das
-    // wäre „0 ms ≥ 0 ms" grün, ganz ohne Passwortprüfung.
-    assert.ok(
-      bekannt.ms > 5,
-      `Der bekannte Fall dauerte nur ${bekannt.ms.toFixed(1)} ms — hier wurde kein Hash gerechnet`,
-    );
+    /** @type {string[]} */
+    let gerechnet = [];
+    const echt = argon2.verify;
+    t.mock.method(argon2, 'verify', (/** @type {string} */ h, /** @type {any[]} */ ...rest) => {
+      gerechnet.push(h);
+      return /** @type {any} */ (echt)(h, ...rest);
+    });
 
-    assert.ok(
-      unbekannt.ms >= bekannt.ms * 0.5,
-      `Ein unbekannter Name ist messbar schneller: bekannt ${bekannt.ms.toFixed(1)} ms, ` +
-        `unbekannt ${unbekannt.ms.toFixed(1)} ms. Damit lässt sich von aussen abfragen, ` +
-        `welche Konten es gibt. Der Vergleich muss auch ohne Treffer gegen den ` +
-        `Dummy-Hash laufen (siehe pruefeAnmeldedaten in src/konto/anmeldepruefung.ts).`,
-    );
+    // Je ein Versuch mit eigenem Namen und eigener IP: Ein zweiter liefe irgendwann in die Bremse.
+    for (const [was, wer, ip] of /** @type {const} */ ([
+      ['bekannt', name, 10],
+      ['unbekannt', 'zeit_gibtsnicht', 20],
+    ])) {
+      gerechnet = [];
+      const r = await pruefeAnmeldedaten(anfrage(ip), wer, 'falschesPasswort1');
+      // Vorbedingung: wirklich abgelehnt, mit 401 — nicht 429 (Sperre) oder 400 (Formfehler).
+      assert.equal(r.ok, false, `${was}: hätte abgelehnt werden müssen`);
+      assert.equal(r.absage.art, 'nicht_angemeldet', `${was}: erwartet nicht_angemeldet (${r.absage.error})`);
+      assert.equal(gerechnet.length, 1, `${was}: genau ein Hash`);
+      assert.equal(kosten(gerechnet[0]), kosten(hash), `${was}: dieselben Kosten wie ein echtes Konto`);
+    }
   } finally {
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
-    // Ohne das bleibt der Pool offen und der Testprozess endet nie — der Lauf
-    // wirkt dann wie ein Hänger, obwohl der Test längst durch ist.
+    await db.run('DELETE FROM users WHERE username = $1', [name]).catch(() => {});
+    // Ohne das bleibt der Pool offen und der Testprozess endet nie.
     await db.pool.end().catch(() => {});
   }
 });
