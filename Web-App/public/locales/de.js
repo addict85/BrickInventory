@@ -190,6 +190,8 @@ window.I18N_DE = {
   'liste.fehler_titel': 'Die Liste konnte nicht geladen werden',
   'liste.server_fehler':
     'Der Server konnte die Daten gerade nicht liefern. Meist klappt es beim nächsten Versuch; sonst hilft der Verwalter weiter.',
+  'liste.server_fehler_verwalter':
+    'Der Server konnte die Daten gerade nicht liefern. Meist klappt es beim nächsten Versuch; sonst steht die Ursache unter Hintergrundarbeiten → „Protokoll anzeigen“.',
   'liste.details': 'Technische Details',
   'liste.erneut': 'Erneut versuchen',
   'liste.gedrosselt': 'Zu viele Anfragen – in {minuten} Min. wieder möglich.',
@@ -686,6 +688,7 @@ window.I18N_DE = {
   'detail.alert_price': 'Preisalarm: Grenzpreis',
   'detail.qty_less': 'Anzahl verringern',
   'detail.qty_more': 'Anzahl erhöhen',
+  'detail.qty_letztes': 'Zum Entfernen: „Set löschen“ unter „Weitere Aktionen“',
   'detail.alert_below': 'fällt unter',
   'detail.alert_above': 'steigt über',
   'detail.alert_armed': 'aktiv',
@@ -1033,17 +1036,19 @@ window.I18N_DE = {
   'finance.stat.purchase': 'Kaufpreis gesamt',
   'finance.col.purchase': 'Kaufpreis',
   'finance.stat.purchase_hint': 'Summe der Kaufpreise',
-  'finance.stat.purchase_basis': 'Kaufpreis der Positionen mit Marktpreis',
-  'finance.stat.purchase_von': 'Alle Käufe zusammen: {betrag}',
+  'finance.stat.purchase_basis': 'Kaufpreis (bewertete Positionen)',
+  'finance.stat.purchase_von': 'Insgesamt bezahlt: {betrag}',
+  'finance.stat.bewertet_hilfe':
+    'Bewertet sind Positionen mit Kauf- und Marktpreis: Nur so vergleicht Gewinn/Verlust Gleiches mit Gleichem.',
   'finance.chart.kaufpreis': 'Kaufpreis',
   'finance.stat.value': 'Marktwert',
   'finance.stat.value_hint': 'Zum mittleren BrickLink-Preis',
-  'finance.stat.value_basis': 'Marktwert der Positionen mit Kaufpreis',
-  'finance.stat.value_von': 'Alles zusammen: {betrag}',
+  'finance.stat.value_basis': 'Marktwert (bewertete Positionen)',
+  'finance.stat.value_von': 'Gesamter Marktwert: {betrag}',
   'finance.nicht_umgerechnet': 'nicht umgerechnet',
-  'finance.basis.gerechnet': 'Gerechnet über {n} von {von} Positionen mit Kauf- und Marktpreis.',
-  'finance.basis.gerechnet_zeilen':
-    'Gerechnet über {n} von {von} Positionen mit Kauf- und Marktpreis. Jede Position zählt einmal, auch wenn die Tabelle sie in mehreren Zeilen zeigt (je Kauf und Konto).',
+  'finance.basis.gerechnet': 'Bewertet: {n} von {von} Positionen (mit Kauf- und Marktpreis).',
+  'finance.basis.zeilen_hilfe':
+    'Jede Position zählt einmal, auch wenn die Tabelle sie in mehreren Zeilen zeigt (je Kauf und Konto).',
   'finance.basis.ohne_markt': '{n} Positionen ohne Marktpreis nicht gerechnet (Kaufpreis {betrag})',
   'finance.basis.ohne_markt_one': '{n} Position ohne Marktpreis nicht gerechnet (Kaufpreis {betrag})',
   'finance.basis.ohne_kauf': '{n} Positionen ohne Kaufpreis nicht gerechnet (Marktwert {betrag})',
@@ -1362,6 +1367,8 @@ window.I18N_DE = {
   'zf.code_oder_passkey':
     'Diese Änderung braucht zusätzlich den Code aus der Authenticator-App, einen Wiederherstellungscode oder einen Passkey.',
   'zf.mit_passkey': 'Stattdessen Passkey verwenden',
+  'zf.code_fuer_codes':
+    'Code aus der Authenticator-App oder ein Wiederherstellungscode. Die bisherigen Wiederherstellungscodes gelten danach nicht mehr.',
   'zf.hint':
     'Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password). Schützt, falls jemand dein Passwort kennt.',
   'zf.setup': 'Einrichten',
@@ -1580,9 +1587,6 @@ window.I18N_DE = {
   'finance.price_status_kurz': 'Stand',
   'finance.je': 'je {preis}',
   'finance.pnl_kurz': 'G/V',
-  'finance.wie_marktwert': 'wie Marktwert',
-  'finance.col.stueckpreis': 'Stückpreis',
-  'finance.market_price_stueck': 'Marktpreis je Stück',
   'wanted.preis_offen': 'Kein Preis',
   'wanted.preis_offen_hint':
     'Für diesen Zustand ist kein Marktpreis bekannt. Der tägliche Preislauf fragt erneut nach, sofern BrickLink erreichbar ist.',
@@ -1642,8 +1646,8 @@ window.I18N_DE = {
   'parts.num_ph': 'z. B. 3001',
   'figs.num_hint': '(Rebrickable-Nummer)',
   'figs.blnum_ph': 'z. B. sw0001',
-  'finance.basis.geschaetzt': '{n} geschätzte Kaufpreise (Marktpreis statt bezahltem Betrag)',
-  'finance.basis.geschaetzt_one': '1 geschätzter Kaufpreis (Marktpreis statt bezahltem Betrag)',
+  'finance.basis.geschaetzt': '{n} geschätzte Kaufpreise',
+  'finance.basis.geschaetzt_one': '1 geschätzter Kaufpreis',
   'finance.kauf_geschaetzt': 'Kaufpreis geschätzt',
   'monitor.sub.teil_gemappt': '{n} / {gesamt} zugeordnet',
   'monitor.sub.ausstehend': '{n} ausstehend',

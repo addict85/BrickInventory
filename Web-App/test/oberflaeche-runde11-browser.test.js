@@ -50,13 +50,9 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
       gesamt: document.querySelector('#fin-tbl .dt-summe tfoot td.fin-fuss-wert').textContent.trim(),
       basis: document.getElementById('fin-basis').hidden })`);
     assert.equal(z.basis, false, 'Testdaten: Positionen ohne Marktpreis');
-    assert.equal(
-      z.titel,
-      'Kaufpreis der Positionen mit Marktpreis',
-      'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“',
-    );
-    // Die Erklärung steht einmal, in der Zeile unter den Karten (UX-Prüfung 23 N9); hier nur die Summe aller Käufe.
-    assert.match(z.unter, /^Alle Käufe zusammen: /, 'die Summe aller Käufe ist benannt (UX-Prüfung 19 N4)');
+    // Kurz benannt seit UX-Prüfung 25 (B2); was „bewertet“ heisst, steht im Tooltip und unter den Karten.
+    assert.equal(z.titel, 'Kaufpreis (bewertete Positionen)', 'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“');
+    assert.match(z.unter, /^Insgesamt bezahlt: /, 'die Summe aller Käufe ist benannt (UX-Prüfung 19 N4)');
     assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
   });
 

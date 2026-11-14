@@ -407,6 +407,24 @@ export async function ladeLagerorte(konten) {
   if (belegt?.success) initStorageSelects(belegt.orte || []);
 }
 
+/**
+ * Das Mengenfeld im Set-Detail samt „−“: Bei einem Exemplar wäre „−“ Löschen; der Knopf bleibt erreichbar
+ * und sagt, wo das geht. Hier, weil auch der Kaufpreis-Dialog die Menge nachführt.
+ * @param {number} [menge] neuer Wert; ohne ihn nur den Knopf nach dem Feld richten
+ */
+export function setzeMengenfeld(menge) {
+  const feld = G('m-qty'),
+    minus = G('m-qty-dec');
+  if (!feld) return;
+  if (menge !== undefined) feld.value = String(menge);
+  if (!minus) return;
+  const letztes = (parseInt(feld.value, 10) || 1) <= 1;
+  minus.setAttribute('aria-disabled', String(letztes));
+  minus.title = letztes ? tRaw('detail.qty_letztes') : '';
+  if (letztes) minus.setAttribute('aria-describedby', 'm-qty-letztes');
+  else minus.removeAttribute('aria-describedby');
+}
+
 // Hier und nicht im Set-Detail: Auch der Kaufpreis-Dialog schliesst ihn, und der liegt im Importgraphen
 // darunter.
 export function closeModal() {

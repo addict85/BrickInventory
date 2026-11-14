@@ -21,7 +21,8 @@
  *   K  „Ø Kaufpreis“ nie gewählt → rot: „Set-Detail“
  *   L  .btn.bp im Kontrastmodus ohne Rand → rot: „Kontrastmodus“ (0px)
  *   M  theme-boot.js setzt data-rb-band nicht → rot: „Startgerüst“
- *   N  Stückpreis wieder auch bei Menge 1 → rot: „Finanzen“
+ *   N  (14.11.2026, seit UX-Prüfung 25 ohne Spalte „Stückpreis“) wertMitStueck() auch bei Menge 1 mit
+ *      „je …“ → rot: „Finanzen“
  *   O  Zoom-Knopf ohne data-i18n-aria → rot: „Abmelden …“ (aria-label deutsch)
  *   P  „davon N nach Fehler“ nie gezeigt → rot: „Hintergrundarbeiten“
  *   Q  pl.erst_set wieder ohne Grund → rot: „Bauliste“ (Sperre ohne Begründung); seit Runde 24 ohne
@@ -161,18 +162,15 @@ async function hintergrund(_t, a) {
 async function finanzen(_t, a) {
   const { b } = a;
   await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-art="sets"] tbody tr')`, 'Finanzen');
+  // Der Stückpreis steht seit UX-Prüfung 25 unter dem Marktwert („je …“), nur bei mehr als einem Stück.
   const f = await b.auswerten(`(() => {
-    const kopf = [...document.querySelectorAll('[data-fin-art="sets"] thead th')].map(t => t.textContent.trim());
-    const i = kopf.indexOf('Stückpreis');
     const zeilen = [...document.querySelectorAll('[data-fin-art="sets"] tbody tr')].map(z => ({
-      menge: z.querySelector('.qbadge')?.textContent, stueck: (() => { const k = z.children[i]?.cloneNode(true);
-        k?.querySelectorAll('.vh').forEach(v => v.remove()); return k?.textContent.trim(); })() }));
-    return { i, zeilen, karte: document.getElementById('fin-einstand-sub').textContent, linie: ${text('#portfolio-chart')} }; })()`);
-  assert.ok(f.i > 0, 'Spalte „Stückpreis“ fehlt');
+      menge: z.querySelector('.qbadge')?.textContent, je: z.querySelector('.fin-wert .fin-je')?.textContent || '' }));
+    return { zeilen, karte: document.getElementById('fin-einstand-sub').textContent, linie: ${text('#portfolio-chart')} }; })()`);
   const einzeln = f.zeilen.filter(z => z.menge === '×1');
   assert.ok(einzeln.length >= 2, 'Testdaten: Zeilen mit Menge 1');
   assert.deepEqual(
-    einzeln.filter(z => z.stueck),
+    einzeln.filter(z => z.je),
     [],
     'bei Menge 1 steht der Stückpreis noch neben dem Marktwert',
   );
