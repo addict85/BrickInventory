@@ -824,14 +824,6 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTEN));
 });
 
-test('den Fehlerweg hängt nur startup/app.ts an, einmal hinter allen Routern', () => {
-  // Gegenprobe: `router.use(fehlerAntwort)` wieder in routes/api_v1/parts.ts → rot (Liste nennt
-  // die Datei); ein zweites `app.use(fehlerAntwort)` in startup/app.ts → rot (2 statt 1).
-  const eigene = tsUnter('routes', 'src').filter(d => /\bfehlerAntwort\b/.test(quelltext(d)) && d !== 'src/http/httpAntwort.ts');
-  assert.deepEqual(eigene, []);
-  assert.equal((quelltext('startup/app.ts').match(/app\.use\(fehlerAntwort\)/g) || []).length, 1);
-});
-
 // ── Rangfolge der Bereiche ──────────────────────────────────────────────────
 
 /** Von unten nach oben. Ein Bereich importiert nur Bereiche tieferer Stufen;

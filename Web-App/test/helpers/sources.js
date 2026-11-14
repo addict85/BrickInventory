@@ -350,7 +350,8 @@ function mitKontoDerAnfrage(m) {
   const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
   const { fehlerAntwort } = require(path.join(ROOT, 'dist', 'src/http/httpAntwort.js'));
   // Wie startup/app.ts: Den Fehlerweg hängt die App an, nicht der Router.
-  const weiter = (req, res, next) => e => (e && e !== 'route' && e !== 'router' ? fehlerAntwort(e, req, res, next) : next());
+  const weiter = (req, res, next) => e =>
+    e && e !== 'route' && e !== 'router' ? fehlerAntwort(e, req, res, next) : next();
   return new Proxy(m, {
     apply: (ziel, ich, [req, res, next]) => alsAnfrage(req, () => ziel.call(ich, req, res, weiter(req, res, next))),
   });

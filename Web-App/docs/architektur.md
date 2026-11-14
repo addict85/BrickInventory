@@ -67,9 +67,12 @@ Absicht, solange es nur von unten gebraucht wird:
   Namenslisten und ohne Proxy. `startup/verdrahtung.ts` baut alle Bereiche in
   `baueDienste(db, bauteile)`; Server und Testhilfe rufen dieselbe Funktion.
 - Routen sind Fabriken (`baueXRouter(d: Pick<Dienste, …>)`, Typ aus `src/dienste.ts`) und
-  rufen Dienste nur über `d`; von `startup/` importieren sie nichts. Die
-  Fassaden der `index.ts` und `xBereich()` holen die Dienste des Prozesses; sie
-  bleiben für HTTP-Seiten, Jobs, den Start und Tests (gezählt in `test/ratschen.test.js`).
+  rufen Dienste nur über `d`; von `startup/` importieren sie nichts. Einen Speicher
+  der Dienste im Prozess gibt es nicht: HTTP-Seiten, Jobs und Tests bekommen ihre
+  Dienste ebenso gereicht (`baueDienste`, `testDienste()`); `test/ratschen.test.js`
+  verbietet Holer und Fassaden.
+- Den Fehlerweg (`fehlerAntwort`) hängt nur `startup/app.ts` an, einmal hinter allen
+  Routern; ein Router hängt keinen eigenen an.
 - Mehrstufige Schreibvorgänge (Änderung und Protokoll, Zeile und Datei) sind ein
   Dienst mit `k.transaktion(async t => …)`: Der Rumpf schreibt über `t`, einen
   Kontext an der Verbindung der Transaktion. `t` ist ganz über deren Zugang gebaut
