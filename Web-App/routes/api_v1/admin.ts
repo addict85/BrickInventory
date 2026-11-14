@@ -1,12 +1,12 @@
 /** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
  * Prüfung vergessen kann. */
 import { waechterFuer } from './middleware';
-import { sendeFehler } from '../../src/http/httpAntwort';
 import { proxyHinweisStand } from '../../src/http/proxyHinweis';
 import { bildProbe } from '../../src/verwaltung';
 import { seiteAus } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
+import { fachfehler } from '../../src/infra/fehlerTexte';
 
 export function baueAdminRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' | 'konto' | 'katalog' | 'verwaltung'>) {
   const { requireApiAdmin } = waechterFuer(d.konto);
@@ -17,11 +17,11 @@ export function baueAdminRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' |
   });
 
   router.endpunkt('POST /api/v1/admin/auftraege/:id/abbrechen', requireApiAdmin, async req => {
-    return { ...(await d.auftraege.auftragAbbrechen(String(req.pfad.id))) };
+    return { ...(await d.auftraege.auftragAbbrechen(req.pfad.id)) };
   });
 
   router.endpunkt('POST /api/v1/admin/auftraege/:id/wiederholen', requireApiAdmin, async req => {
-    return { ...(await d.auftraege.auftragWiederholen(String(req.pfad.id))) };
+    return { ...(await d.auftraege.auftragWiederholen(req.pfad.id)) };
   });
 
   router.endpunkt('POST /api/v1/admin/auftraege/art/:art/jetzt', requireApiAdmin, async req => {
@@ -176,9 +176,9 @@ export function baueAdminRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' |
   });
   /** Alles, was in die Marktpreis-Anzeige eines Sets einfliesst, auf Wunsch mit
    * der aktuellen BrickLink-Antwort; POST aus demselben Grund wie oben. */
-  router.endpunkt('POST /api/v1/admin/price-probe', requireApiAdmin, async (req, res) => {
+  router.endpunkt('POST /api/v1/admin/price-probe', requireApiAdmin, async req => {
     const setNumber = (req.eingabe.set ?? '').trim();
-    if (!setNumber) return sendeFehler(req, res, 400, 'parameter_set_fehlt');
+    if (!setNumber) fachfehler('ungueltig', 'parameter_set_fehlt');
     return { ...(await d.verwaltung.preisProbe(req.apiUser.user_id, setNumber, req.eingabe.live ?? false)) };
   });
   return router;

@@ -91,7 +91,7 @@ export const Fehler = z.looseObject({
 });
 
 /** Die Codes aus fehlerTexte.ts als eigene Komponente: Die App verzweigt nach ihnen
- * (Fehlercode.kt), und vertrag-kotlin.test.js hält beide Listen zusammen. Die
+ * (Fehlercode.kt), und Android-App/tools/vertrag/vertrag-kotlin.test.js hält beide Listen zusammen. Die
  * Laufzeitprüfung oben bleibt beim Muster, weil auch Codes ausserhalb der Tabelle
  * gesendet werden (vertrag_verletzt). */
 export const Fehlercode = z.enum(Object.keys(FEHLER) as [FehlerCode, ...FehlerCode[]]);
@@ -168,12 +168,27 @@ export const Q = {
 export const SEITE = { page: Q.zahl(), page_size: Q.zahl() };
 /** Was eine Seite über die ganze Liste sagt (src/infra/seite.ts). */
 export const SEITEN_ANGABE = { total: ganz, page: ganz, page_size: ganz };
-export const KENNUNG = z.union([ganz, z.string().regex(/^-?\d{1,12}$/)]);
+/** Eine Kennung im Rumpf; App und Oberfläche schicken Zahl oder Ziffern, die Route liest eine Zahl. */
+export const KENNUNG = z.union([ganz, z.string().regex(/^-?\d{1,12}$/)]).transform(Number);
 export const TEXT = (max = 200) => z.string().max(max);
-export const ZUSTAND = z.union([z.enum(['N', 'U', 'n', 'u']), z.literal('')]);
+/** Klein geschrieben gilt wie gross; die Route liest nur 'N', 'U' oder ''. */
+export const ZUSTAND = z
+  .union([z.enum(['N', 'U', 'n', 'u']), z.literal('')])
+  .transform(v => v.toUpperCase() as 'N' | 'U' | '');
+/** Ein Text, der fehlen darf; die Route liest dann ''. */
+export const TEXT_ODER_LEER = (max = 200) =>
+  z
+    .string()
+    .max(max)
+    .nullable()
+    .optional()
+    .transform(v => v ?? '');
 export const JA_NEIN = z.union([z.boolean(), z.literal(0), z.literal(1), z.enum(['0', '1', 'true', 'false'])]);
 /** Einstellungen als Schlüssel und einfacher Wert; welche gelten, prüft die Route. */
-export const EINSTELLUNGEN = z.record(z.string().max(64), EINFACH);
+export const EINSTELLUNGEN = z.record(
+  z.string().max(64),
+  EINFACH.transform(v => String(v)),
+);
 
 /** Ein Konto in Besitzerlisten. */
 export const KontoName = z.looseObject({ id: ganz, username: z.string() });

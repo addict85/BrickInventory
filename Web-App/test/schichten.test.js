@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..');
  */
 const AUSNAHMEN = new Set([]);
 
-/** Quelltext ohne Kommentare — zeilenweise, siehe test/abgleich-baumbruecken.test.js. */
+/** Quelltext ohne Kommentare, zeilenweise: Ein Regex hielte das /* in '/data/x/*' für einen Kommentar. */
 function ohneKommentare(s) {
   const zeilen = [];
   let imBlock = false;
@@ -812,16 +812,36 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/ht
 
 /** Routen fangen nichts: Ströme reichen ihren Fehler mit .then(…, …) als letztes Ereignis weiter. */
 const TRY_IN_ROUTEN = new Map([]);
+/** Wo eine Route doch selbst antwortet, mit Grund. Sonst wirft sie (`fachfehler`, `nichtGefunden`). */
+const SENDEFEHLER_IN_ROUTEN = new Map([
+  // rumpfFrist: Die Uhr läuft nach next(); ein Wurf erreichte keinen Fehlerweg mehr.
+  ['routes/api_v1/middleware.ts', 1],
+]);
 
 test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () => {
-  // Gegenprobe (31.10.2026): eine Route in routes/api_v1/minifigs.ts wieder in
-  // `try { … } catch (e) { handleRouteError(res, e, undefined, req); }` gehüllt → rot.
+  // Gegenproben: eine Route in routes/api_v1/minifigs.ts wieder in `try { … } catch (e) {
+  // handleRouteError(res, e, undefined, req); }` gehüllt → rot (31.10.2026). In parts.ts
+  // `return sendeFehler(req, res, 404, 'teil_nicht_manuell')` statt nichtGefunden → rot
+  // „sendeFehler in Routen“; in settings.ts wieder `String(req.eingabe.condition ?? '')` → rot
+  // „Umwandlungen geprüfter Eingaben“ (14.11.2026).
   const ist = new Map();
+  const senden = new Map();
+  const umwandlungen = [];
   for (const d of tsUnter('routes')) {
-    const n = (quelltext(d).match(/\btry\s*\{/g) || []).length;
+    const q = quelltext(d);
+    const n = (q.match(/\btry\s*\{/g) || []).length;
     if (n) ist.set(d, n);
+    const s = (q.match(/\bsendeFehler\(/g) || []).length;
+    if (s) senden.set(d, s);
+    for (const m of q.matchAll(
+      /\b(?:String|Number|parseInt|parseFloat|Boolean)\(\s*(?:String\()?req\.(?:eingabe|abfrage|pfad)\b/g,
+    ))
+      umwandlungen.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTEN));
+  assert.deepEqual(Object.fromEntries(senden), Object.fromEntries(SENDEFEHLER_IN_ROUTEN), 'sendeFehler in Routen');
+  // Der Vertrag liefert das Fachformat (z.transform); eine Route wandelt nicht nach.
+  assert.deepEqual(umwandlungen, [], 'Umwandlungen geprüfter Eingaben in Routen');
 });
 
 // ── Rangfolge der Bereiche ──────────────────────────────────────────────────

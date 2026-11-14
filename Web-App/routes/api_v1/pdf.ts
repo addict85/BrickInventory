@@ -1,13 +1,13 @@
 /** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt. */
 import { meldeFehler, ohneFehlendeDatei } from '../../src/infra/fehler';
-import { streamFileToResponse, sendeFehler } from '../../src/http/httpAntwort';
+import { streamFileToResponse } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
 import _pdfFs from 'node:fs/promises';
 import _fsSync from 'node:fs';
-import { pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad } from '../../src/auftraege';
-import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
+import { pdfSchluessel, pdfDateiPfad } from '../../src/auftraege';
+import { antwortSprache, fachfehler, nichtGefunden, Fachfehler } from '../../src/infra/fehlerTexte';
 import type { Request, Response } from 'express';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -77,25 +77,22 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'konto'>) {
   const { requireToken } = waechterFuer(d.konto);
   const router = vertragsRouter('/api/v1');
 
-  const validJobId = gueltigeAuftragsKennung;
-
-  router.endpunkt('POST /api/v1/sets/partslist-pdf', requireToken, async (req, res) => {
+  router.endpunkt('POST /api/v1/sets/partslist-pdf', requireToken, async req => {
     const uid = req.apiUser.user_id;
     const { sets = [], parts = [] } = req.eingabe;
-    if (!parts.length) return sendeFehler(req, res, 400, 'keine_teile');
+    if (!parts.length) fachfehler('ungueltig', 'keine_teile');
 
     const r = await d.auftraege.pdfAuftragStarten(uid, sets, parts);
     if ('laufend' in r) {
-      return sendeFehler(req, res, 429, 'pdf_auftrag_laeuft', laufendeBeugung(r.laufend, antwortSprache(req)));
+      fachfehler('zu_viele', 'pdf_auftrag_laeuft', laufendeBeugung(r.laufend, antwortSprache(req)));
     }
 
     return { jobId: r.jobId };
   });
 
-  router.endpunkt('GET /api/v1/sets/partslist-pdf/status/:jobId', requireToken, async (req, res) => {
-    if (!validJobId(req.pfad.jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
+  router.endpunkt('GET /api/v1/sets/partslist-pdf/status/:jobId', requireToken, async req => {
     const job = await pdfJobReadFor(d, req.pfad.jobId, req.apiUser.user_id);
-    if (!job) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
+    if (!job) nichtGefunden('job_nicht_gefunden');
     return {
       status: job.status,
       error: job.error || null,
@@ -111,9 +108,8 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'konto'>) {
     kontoSchranke('strom'),
     async (req, res) => {
       const jobId = req.pfad.jobId;
-      if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
       const initial = await pdfJobReadFor(d, jobId, req.apiUser.user_id);
-      if (!initial) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
+      if (!initial) nichtGefunden('job_nicht_gefunden');
       const strom = oeffneStrom(d.konto, req, res, { nurAenderungen: true });
       strom.sende({
         status: initial.status,
@@ -128,20 +124,12 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'konto'>) {
 
   router.endpunkt('GET /api/v1/sets/partslist-pdf/download/:jobId', requireToken, async (req, res) => {
     const jobId = req.pfad.jobId;
-    if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
     const job = await pdfJobReadFor(d, jobId, req.apiUser.user_id);
-    if (!job) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
-    if (job.status !== 'done') {
-      // `status` zeigt der Oberfläche, wie weit der Auftrag ist; sendeFehler kennt das Feld nicht.
-      return res.status(409).json({
-        success: false,
-        code: 'pdf_nicht_fertig',
-        error: fehlerText('pdf_nicht_fertig', antwortSprache(req)),
-        status: job.status,
-      });
-    }
+    if (!job) nichtGefunden('job_nicht_gefunden');
+    // `status` zeigt der Oberfläche, wie weit der Auftrag ist.
+    if (job.status !== 'done') throw new Fachfehler('konflikt', 'pdf_nicht_fertig', undefined, { status: job.status });
     const pdfPath = pdfDateiPfad(jobId);
-    if (!pdfPath || !_fsSync.existsSync(pdfPath)) return sendeFehler(req, res, 410, 'pdf_nicht_verfuegbar');
+    if (!pdfPath || !_fsSync.existsSync(pdfPath)) fachfehler('nicht_mehr_da', 'pdf_nicht_verfuegbar');
     liefereUndRaeumeAuf(d, req, res, jobId, req.apiUser.user_id, pdfPath);
   });
   return router;

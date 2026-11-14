@@ -1,12 +1,11 @@
 /** Globale Einstellungen, Ein- und Ausfuhr, Einrichtung, Quellen- und SMTP-Test; in settings.ts hinter requireLogin. */
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
-import { sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { hatGlobaleWerte } from '../../src/verwaltung';
 import { istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { freigegeben, alsVerwalter } from '../../src/konto/http/schrittschutz';
-import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
+import { fachfehler, Fachfehler } from '../../src/infra/fehlerTexte';
 import { emailGueltig } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
@@ -66,7 +65,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mai
     kontoSchranke('upload'),
     importUpload.single('file'),
     async (req, res) => {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+      if (!req.file) fachfehler('ungueltig', 'keine_datei');
       // Als Verwalter schreibt der Import globale Werte und plant die Aufträge neu.
       const verwalter = istVerwalter(req);
       if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
@@ -78,12 +77,12 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mai
     const uid = req.apiUser.user_id;
     // Sonst wäre der Mailserver für eine erbeutete Verwaltersitzung ein Relais an jede Adresse.
     const zuOft = await d.konto.kontoGedrosselt('smtp-test', uid, 10, 60 * 60 * 1000);
-    if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
+    if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
 
     const eigene = (await d.konto.profil(uid))?.email || '';
     const to = (req.eingabe.to || '').trim() || eigene;
     if (!emailGueltig(to)) {
-      return sendeFehler(req, res, 400, 'keine_ziel_email');
+      fachfehler('ungueltig', 'keine_ziel_email');
     }
     // Wie das Ändern der Mail-Einstellungen: an eine fremde Adresse nur mit Passwort.
     if (
@@ -92,9 +91,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mai
     )
       return;
 
-    const result = await d.mail.sendeSmtpTest(to);
-    if ('code' in result) return sendeFehler(req, res, 400, result.code, 'vars' in result ? result.vars : undefined);
-    res.json(result);
+    res.json(await d.mail.sendeSmtpTest(to));
   });
 
   // Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas
@@ -123,15 +120,15 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'einstellungen' | 'mai
   });
 
   // Prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
-  router.endpunkt('POST /api/v1/settings/quelle-testen', requireAdmin, async (req, res) => {
-    const absage = await d.verwaltung.quellePruefen(String(req.eingabe.quelle ?? ''));
+  router.endpunkt('POST /api/v1/settings/quelle-testen', requireAdmin, async req => {
+    const absage = await d.verwaltung.quellePruefen(req.eingabe.quelle);
     if (!absage) return {};
-    res.status(400).json({
-      success: false,
-      code: absage.code,
-      details: absage.grund,
-      error: fehlerText(absage.code, antwortSprache(req), { quelle: absage.quelle, grund: absage.grund }),
-    });
+    throw new Fachfehler(
+      'ungueltig',
+      absage.code,
+      { quelle: absage.quelle, grund: absage.grund },
+      { details: absage.grund },
+    );
   });
 
   router.endpunkt('POST /api/v1/settings/admin/theme', requireAdmin, async req => {

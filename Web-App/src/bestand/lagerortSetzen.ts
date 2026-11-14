@@ -12,9 +12,10 @@ export async function setzeLagerort(
   k: BestandKontext,
   art: LagerArt,
   besitzerIdsWahl: Schreiber | number[],
-  schluessel: string[],
+  schluesselRoh: (string | number)[],
   ort: string | null,
 ): Promise<number> {
+  const schluessel = schluesselRoh.map(String);
   const besitzerIds = await k.haushalt.schreibbereichAus(besitzerIdsWahl);
   if (ort === null) return orte.ordneOrtZu(k.db, art, besitzerIds, null, schluessel);
   // Ein neuer Name kommt in den Vorrat — vor der Zuordnung, die ihn über die ID findet.

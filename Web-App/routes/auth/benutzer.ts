@@ -1,12 +1,12 @@
 /** Benutzerverwaltung für Verwalter: Jede Änderung verlangt Passwort und
  * zweiten Faktor des Verwalters und steht im Protokoll. */
 import { waechterFuer } from '../api_v1/middleware';
-import { sendeFehler } from '../../src/http/httpAntwort';
 import { nutzerId, angemeldeteNutzerId, bestaetigeMitFaktor, nutzerName } from '../../src/konto/http/anmeldung';
 import { passwortMangel } from '../../src/infra/passwortRegel';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import { USERNAME_RE, LETZTER_VERWALTER } from '../../src/konto';
 import type { Dienste } from '../../src/dienste';
+import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 
 export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
   const { requireApiAdmin: requireAdmin } = waechterFuer(d.konto);
@@ -19,10 +19,10 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
 
   router.endpunkt('POST /api/v1/auth/users', requireAdmin, async (req, res) => {
     const { username, password } = req.eingabe;
-    if (!username || !password) return sendeFehler(req, res, 400, 'benutzername_passwort');
-    if (!USERNAME_RE.test(String(username))) return sendeFehler(req, res, 400, 'benutzername_ungueltig');
+    if (!username || !password) fachfehler('ungueltig', 'benutzername_passwort');
+    if (!USERNAME_RE.test(String(username))) fachfehler('ungueltig', 'benutzername_ungueltig');
     const mangel = passwortMangel(password, username);
-    if (mangel) return sendeFehler(req, res, 400, mangel);
+    if (mangel) fachfehler('ungueltig', mangel);
     // Streng: Die Zeichenkette "false" ist in JavaScript wahr und legte einen
     // Verwalter an.
     const alsVerwalter = req.eingabe.is_admin ?? req.eingabe.isAdmin ?? false;
@@ -31,7 +31,7 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     const verwalter = angemeldeteNutzerId(req);
     if (!(await bestaetigeMitFaktor(d.konto, req, res, verwalter, req.eingabe.admin_password))) return;
     if ((await d.konto.legeKontoAn(verwalter, username, password, alsVerwalter)) === null)
-      return sendeFehler(req, res, 409, 'benutzername_vergeben');
+      fachfehler('konflikt', 'benutzername_vergeben');
     if (alsVerwalter)
       d.konto.verwalterHinweisNebenher('verwalter_ernannt', {
         konto: String(username),
@@ -44,12 +44,12 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
     const targetId = req.pfad.id;
     // Streng: "false" ist in JavaScript wahr und entzöge sonst keine Rechte.
     const soll = req.eingabe.is_admin;
-    if (targetId === nutzerId(req) && !soll) return sendeFehler(req, res, 400, 'eigene_adminrolle');
-    if (!(await d.konto.gibtKonto(targetId))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (targetId === nutzerId(req) && !soll) fachfehler('ungueltig', 'eigene_adminrolle');
+    if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.verwalterRolleSetzen(angemeldeteNutzerId(req), targetId, soll);
-    if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-    if (r === LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
+    if (!r) nichtGefunden('benutzer_nicht_gefunden');
+    if (r === LETZTER_VERWALTER) fachfehler('konflikt', 'verwalter_muss_bleiben');
     if (r.geaendert && soll)
       d.konto.verwalterHinweisNebenher('verwalter_ernannt', {
         konto: await d.konto.kontoAnzeigeName(targetId),
@@ -64,24 +64,22 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
   router.endpunkt('PUT /api/v1/auth/users/:id/aktiv', requireAdmin, async (req, res) => {
     const targetId = req.pfad.id;
     const soll = req.eingabe.is_active;
-    if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
-    if (!(await d.konto.gibtKonto(targetId))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (targetId === nutzerId(req)) fachfehler('ungueltig', 'eigenes_konto_deaktivieren');
+    if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.aktivSetzen(angemeldeteNutzerId(req), targetId, soll);
-    if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-    if (r === LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
+    if (!r) nichtGefunden('benutzer_nicht_gefunden');
+    if (r === LETZTER_VERWALTER) fachfehler('konflikt', 'verwalter_muss_bleiben');
     return { is_active: soll };
   });
 
   // Für Registrierungen, deren Bestätigungsmail nie ankam: Der Verwalter bürgt für die Adresse.
   router.endpunkt('PUT /api/v1/auth/users/:id/freischalten', requireAdmin, async (req, res) => {
     const targetId = req.pfad.id;
-    if (!Number.isInteger(targetId) || !(await d.konto.gibtKonto(targetId)))
-      return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (!(await d.konto.gibtKonto(targetId))) nichtGefunden('benutzer_nicht_gefunden');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.registrierungFreischalten(angemeldeteNutzerId(req), targetId);
-    if (r !== 'ok') return sendeFehler(req, res, 409, r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
+    if (r !== 'ok') fachfehler('konflikt', r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
     return {};
   });
 
@@ -89,31 +87,30 @@ export function baueBenutzerRouter(d: Pick<Dienste, 'konto'>) {
   router.endpunkt('PUT /api/v1/auth/users/:id/password', requireAdmin, async (req, res) => {
     const { password } = req.eingabe || {};
     const targetId = req.pfad.id;
-    if (!targetId || targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
+    if (targetId === nutzerId(req)) fachfehler('ungueltig', 'eigenes_konto_passwort');
     const mangel = passwortMangel(password, (await d.konto.kontoKurzVon(targetId))?.username);
-    if (mangel) return sendeFehler(req, res, 400, mangel);
+    if (mangel) fachfehler('ungueltig', mangel);
 
     // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
     // eine offene Verwaltersitzung allein genügt dafür nicht.
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.passwortDurchVerwalter(angemeldeteNutzerId(req), targetId, password ?? '');
-    if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+    if (!r) nichtGefunden('benutzer_nicht_gefunden');
     return r.wirksamAb ? { wirksam_ab: r.wirksamAb.toISOString() } : {};
   });
 
   router.endpunkt('DELETE /api/v1/auth/users/:id', requireAdmin, async (req, res) => {
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.kontoEntfernen(req.pfad.id, angemeldeteNutzerId(req));
-    if (r === LETZTER_VERWALTER) return sendeFehler(req, res, 409, 'verwalter_muss_bleiben');
-    if (r !== 'entfernt') return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
+    if (r === LETZTER_VERWALTER) fachfehler('konflikt', 'verwalter_muss_bleiben');
+    if (r !== 'entfernt') nichtGefunden('benutzer_nicht_gefunden_oder_eigenes');
     return {};
   });
 
   // Notausgang, wenn Telefon UND Wiederherstellungscodes weg sind.
   router.endpunkt('DELETE /api/v1/auth/users/:id/zweiter-faktor', requireAdmin, async (req, res) => {
     const id = req.pfad.id;
-    if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-    if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
+    if (id === nutzerId(req)) fachfehler('ungueltig', 'eigener_zweiter_faktor');
     if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.admin_password))) return;
     const r = await d.konto.faktorDurchVerwalter(angemeldeteNutzerId(req), id);
     return r.wirksamAb ? { wirksam_ab: r.wirksamAb.toISOString() } : {};

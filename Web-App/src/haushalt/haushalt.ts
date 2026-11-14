@@ -6,7 +6,7 @@ import { sperreHaushaltswaehrung } from '../../db/txLock';
 import type { HaushaltKontext } from './kontext';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
-import { fachfehler } from '../infra/fehlerTexte';
+import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
 import { imSystemkontext, pruefeAnfragender } from '../infra/kontoKontext';
 import {
   HAUSHALT_KANAL,
@@ -115,14 +115,13 @@ export async function haushaltsMitglieder(k: HaushaltKontext, uid: number) {
 /** Abgelaufene und verbrauchte Codes werden dabei entsorgt; die Tabelle bleibt
  * so von selbst klein. */
 export async function einladungAnlegen(k: HaushaltKontext, uid: number) {
-  // Absagen als CODE: Erst die Route weiss, welche Sprache der Anfragende sieht.
   const id = parseInt(String(uid), 10);
   // Jedes Konto darf einladen, auch ein Unterkonto: Ein Zwischenkonto ist Vater
   // UND Kind.
   await k.repository.raeumeEinladungenAuf();
   // Jede offene Einladung ist ein Zugang zum Haushalt; beliebig viele braucht niemand.
   if ((await repo.offeneEinladungen(k.db, id)) >= OFFENE_EINLADUNGEN_MAX)
-    return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };
+    fachfehler('konflikt', 'einladungen_zu_viele', { n: OFFENE_EINLADUNGEN_MAX });
 
   const code = neuerCode();
   await repo.legeEinladungAn(k.db, einladungsHash(code), id, new Date(Date.now() + INVITE_TTL_MS));
@@ -131,36 +130,33 @@ export async function einladungAnlegen(k: HaushaltKontext, uid: number) {
 
 /** Wer einlädt, bevor jemand mit dem Passwort zustimmt; nur wer den Code hat, erfährt den Namen. */
 export async function pruefeEinladung(k: HaushaltKontext, uid: number, code: string) {
-  if (typeof code !== 'string' || code.trim().length < 8) return { fehler: 'einladungscode_ungueltig' as const };
+  if (typeof code !== 'string' || code.trim().length < 8) fachfehler('konflikt', 'einladungscode_ungueltig');
   const subId = parseInt(String(uid), 10);
   const mainId = await k.repository.einladenderZuCode(einladungsHash(code));
-  if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
-  if (mainId === subId) return { fehler: 'konto_mit_sich_selbst' as const };
-  if (await repo.istVerknuepft(k.db, mainId, subId)) return { fehler: 'konto_bereits_verknuepft' as const };
-  if (await repo.istVerknuepft(k.db, subId, mainId)) return { fehler: 'verknuepfung_erzeugt_kreis' as const };
+  if (mainId === null) fachfehler('konflikt', 'einladungscode_abgelaufen');
+  if (mainId === subId) fachfehler('konflikt', 'konto_mit_sich_selbst');
+  if (await repo.istVerknuepft(k.db, mainId, subId)) fachfehler('konflikt', 'konto_bereits_verknuepft');
+  if (await repo.istVerknuepft(k.db, subId, mainId)) fachfehler('konflikt', 'verknuepfung_erzeugt_kreis');
   return { inviter: { id: mainId, username: (await repo.kontoName(k.db, mainId)) || String(mainId) } };
 }
 
 // Atomar entwertet, bei Fehlschlag frei.
 export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: string) {
   const subId = parseInt(String(uid), 10);
-  if (typeof code !== 'string' || code.length < 8) {
-    return { fehler: 'einladungscode_ungueltig' as const };
-  }
+  if (typeof code !== 'string' || code.length < 8) fachfehler('konflikt', 'einladungscode_ungueltig');
   const th = einladungsHash(code);
 
   // Ein Lesefehler ist kein abgelaufener Code: Er geht weiter.
   const mainId = await k.repository.belegeEinladung(th, subId);
-  if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
+  if (mainId === null) fachfehler('konflikt', 'einladungscode_abgelaufen');
 
-  const release = async () => {
+  /** Eine Absage gibt den Code wieder frei. */
+  const absage = async (code: FehlerCode, vars?: Record<string, string>): Promise<never> => {
     await k.repository.gibEinladungFrei(th).catch(logAndContinue('haushalt:release'));
+    return fachfehler('konflikt', code, vars);
   };
 
-  if (mainId === subId) {
-    await release();
-    return { fehler: 'konto_mit_sich_selbst' as const };
-  }
+  if (mainId === subId) await absage('konto_mit_sich_selbst');
 
   // Frisch: Ein fünf Minuten alter Stand könnte einen Kreis durchlassen, den
   // eine gleichzeitige Einlösung gerade erst möglich gemacht hat.
@@ -168,16 +164,10 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
     k.repository.istVerknuepft(mainId, subId),
     k.repository.istVerknuepft(subId, mainId),
   ]);
-  if (schonDa) {
-    await release();
-    return { fehler: 'konto_bereits_verknuepft' as const };
-  }
+  if (schonDa) await absage('konto_bereits_verknuepft');
   // Gegenseitig verknüpft gäbe es kein Unterkonto mehr, nur zwei Hauptkonten,
   // die einander schreiben dürfen.
-  if (umgekehrt) {
-    await release();
-    return { fehler: 'verknuepfung_erzeugt_kreis' as const };
-  }
+  if (umgekehrt) await absage('verknuepfung_erzeugt_kreis');
 
   // Zwei Währungen ergäben eine Summe, der man den Fehler nicht ansieht. Unter
   // derselben Sperre wie ein Währungswechsel, damit keiner dazwischenrutscht. Im
@@ -194,10 +184,7 @@ export async function einladungEinloesen(k: HaushaltKontext, uid: number, code: 
       return null;
     }),
   );
-  if (ungleich) {
-    await release();
-    return { fehler: 'waehrung_ungleich' as const, vars: ungleich };
-  }
+  if (ungleich) await absage('waehrung_ungleich', ungleich);
   meldeHaushaltsaenderung(k);
   // Die Verknüpfung steht schon; fehlt nur der Name, trägt die Antwort die ID und sagt es.
   const ab = new Abstriche();

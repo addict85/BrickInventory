@@ -3,8 +3,7 @@ import type express from 'express';
 import multer from 'multer';
 import { FORMULAR_GRENZEN, gesamtReichtFuer, uploadGesamtMb } from '../../src/http/dateiEmpfang';
 import { FREMDE_DATEI_CSP } from '../../src/http/dateiAusliefern';
-import { sendeFehler } from '../../src/http/httpAntwort';
-import { fehlerText, antwortSprache, dateiFehler, type FehlerCode } from '../../src/infra/fehlerTexte';
+import { Fachfehler, dateiFehler, type FehlerCode, fachfehler } from '../../src/infra/fehlerTexte';
 import { ABSTAND_SEK, TICKET_SEK, maskiert, type GutscheinWerte, type GutscheinZeile } from '../../src/gutscheine';
 import { kontoSchranke, waechterFuer } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
@@ -34,15 +33,8 @@ const alsGelesen = (g: GutscheinWerte) => ({
   ...(g.betrag == null ? {} : { amount: g.betrag }),
 });
 
-/** Die ID aus dem Pfad; eine Absage, wenn sie keine ganze Zahl ist. */
-function idOderAbsage(req: express.Request & { pfad: { id: number } }, res: express.Response): number | null {
-  if (Number.isInteger(req.pfad.id)) return req.pfad.id;
-  sendeFehler(req, res, 400, 'id_ungueltig');
-  return null;
-}
-
-/** Eigenes json(): `wartenSek` muss mit, danach taktet sich die Oberfläche. */
-function gesperrtAntwort(req: express.Request, res: express.Response, grund: string, wartenSek: number) {
+/** `wartenSek` geht mit, danach taktet sich die Oberfläche. */
+function gesperrt(grund: string, wartenSek: number): never {
   const min = Math.ceil(wartenSek / 60);
   const [code, vars]: [FehlerCode, Record<string, number>] =
     grund === 'konto'
@@ -50,7 +42,7 @@ function gesperrtAntwort(req: express.Request, res: express.Response, grund: str
       : grund === 'botschutz'
         ? ['guthaben_botschutz', { min }]
         : ['guthaben_abstand', { sek: ABSTAND_SEK, warten: wartenSek }];
-  res.status(429).json({ success: false, code, error: fehlerText(code, antwortSprache(req), vars), grund, wartenSek });
+  throw new Fachfehler('zu_viele', code, vars, { grund, wartenSek });
 }
 
 export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
@@ -63,8 +55,7 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
     // 2 MB lassen Platz für ein Sammel-PDF; mehr hielte nur pdf-lib länger im Speicher.
     limits: { ...FORMULAR_GRENZEN, fileSize: 2 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-      // Wörtlicher Vergleich: Bei einem erlaubten Typ gibt es keinen geerbten
-      // Tabellenwert, an dem man vorbeilaufen könnte.
+      // Wörtlicher Vergleich: kein geerbter Tabellenwert, an dem man vorbeiliefe.
       if (file.mimetype === 'application/pdf') cb(null, true);
       else cb(dateiFehler('falscher_typ', 'nur_pdf'));
     },
@@ -83,25 +74,21 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
     'POST /api/v1/vouchers/pdf',
     requireToken,
     kontoSchranke('gutscheinPdf'),
-    async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-      if (await gesamtReichtFuer(Number(req.headers['content-length']) || 0)) return next();
-      sendeFehler(req, res, 507, 'upload_gesamt_voll', { mb: uploadGesamtMb() });
+    async (req: express.Request, _res: express.Response, next: express.NextFunction) => {
+      if (!(await gesamtReichtFuer(Number(req.headers['content-length']) || 0)))
+        fachfehler('speicher_voll', 'upload_gesamt_voll', { mb: uploadGesamtMb() });
+      next();
     },
     upload.single('file'),
-    async (req, res) => {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    async req => {
+      if (!req.file) fachfehler('ungueltig', 'keine_datei');
       const r = await d.gutscheine.gutscheinAusPdf(req.apiUser.user_id, req.file.buffer, req.eingabe);
       // Eigener Block, damit die Oberfläche an einem Feld erkennt, welcher Fall eintrat.
       if (r.art === 'stapel') return { mehrere: r.bericht };
-      if (r.art === 'abgelehnt') return sendeFehler(req, res, 422, r.code, r.vars);
+      if (r.art === 'abgelehnt') fachfehler('nicht_verarbeitbar', r.code, r.vars);
       // 422: Die Anfrage war in Ordnung, nur das PDF gab nicht alles her; `gelesen` belegt die Felder vor.
       if (r.art === 'unvollstaendig')
-        return res.status(422).json({
-          success: false,
-          code: r.code,
-          error: fehlerText(r.code, antwortSprache(req)),
-          gelesen: alsGelesen(r.gelesen),
-        });
+        throw new Fachfehler('nicht_verarbeitbar', r.code, undefined, { gelesen: alsGelesen(r.gelesen) });
       return { voucher: fuerAussen(r.zeile), gelesen: alsGelesen(r.gelesen) };
     },
   );
@@ -115,8 +102,7 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
 
   router.endpunkt('GET /api/v1/vouchers/export/pdf', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
-    if (!d.gutscheine.loeseTicketEin(req.abfrage.ticket, uid, 'export'))
-      return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
+    if (!d.gutscheine.loeseTicketEin(req.abfrage.ticket, uid, 'export')) fachfehler('verboten', 'pdf_freigabe_noetig');
     const { daten, befunde } = await d.gutscheine.gutscheineExportieren(uid);
     const tag = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/pdf');
@@ -127,41 +113,36 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
     res.end(daten);
   });
 
-  router.endpunkt('PUT /api/v1/vouchers/:id', requireToken, async (req, res) => {
-    const id = idOderAbsage(req, res);
-    if (id === null) return;
+  router.endpunkt('PUT /api/v1/vouchers/:id', requireToken, async req => {
+    const id = req.pfad.id;
     return { voucher: fuerAussen(await d.gutscheine.gutscheinBearbeiten(req.apiUser.user_id, id, req.eingabe)) };
   });
 
   // Endgültig und Bargeld: mit Bestätigung wie das Leeren des Papierkorbs.
   router.endpunkt('DELETE /api/v1/vouchers/:id', requireToken, async (req, res) => {
-    const id = idOderAbsage(req, res);
-    if (id === null || !(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password)))
-      return;
+    const id = req.pfad.id;
+    if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     await d.gutscheine.gutscheinEntfernen(req.apiUser.user_id, id);
     return {};
   });
 
   router.endpunkt('POST /api/v1/vouchers/:id/klartext', requireToken, async (req, res) => {
-    const id = idOderAbsage(req, res);
-    if (id === null || !(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password)))
-      return;
+    const id = req.pfad.id;
+    if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     const z = await d.gutscheine.gutscheinKlartext(req.apiUser.user_id, id);
     return { id: z.id, number: z.number, pin: z.pin };
   });
 
   router.endpunkt('POST /api/v1/vouchers/:id/pdf-freigabe', requireToken, async (req, res) => {
-    const id = idOderAbsage(req, res);
-    if (id === null || !(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password)))
-      return;
+    const id = req.pfad.id;
+    if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     return { ticket: await d.gutscheine.pdfFreigeben(req.apiUser.user_id, id), gueltig_sek: TICKET_SEK };
   });
 
   router.endpunkt('GET /api/v1/vouchers/:id/pdf', requireToken, async (req, res) => {
-    const id = idOderAbsage(req, res);
-    if (id === null) return;
+    const id = req.pfad.id;
     if (!d.gutscheine.loeseTicketEin(req.abfrage.ticket, req.apiUser.user_id, String(id)))
-      return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
+      fachfehler('verboten', 'pdf_freigabe_noetig');
     const pdf = await d.gutscheine.gutscheinPdf(req.apiUser.user_id, id);
     res.type('application/pdf');
     // Ohne Kartennummer: Dateinamen landen in Download-Listen und Protokollen.
@@ -173,13 +154,11 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'gutscheine'>) {
     res.end(pdf);
   });
 
-  // Keine Sammelroute: höchstens ein Abruf je 30 Sekunden über ALLE Benutzer,
-  // eine Sammelroute müsste diese Wartezeit verstecken.
-  router.endpunkt('POST /api/v1/vouchers/:id/guthaben', requireToken, async (req, res) => {
-    const id = idOderAbsage(req, res);
-    if (id === null) return;
+  // Keine Sammelroute: höchstens ein Abruf je 30 s über ALLE Benutzer, das verbärge sie.
+  router.endpunkt('POST /api/v1/vouchers/:id/guthaben', requireToken, async req => {
+    const id = req.pfad.id;
     const r = await d.gutscheine.guthabenAbfragen(req.apiUser.user_id, id);
-    if (r.art === 'gesperrt') return gesperrtAntwort(req, res, r.grund, r.wartenSek);
+    if (r.art === 'gesperrt') gesperrt(r.grund, r.wartenSek);
     return {
       voucher: fuerAussen(r.zeile),
       angezeigt: r.angezeigt,

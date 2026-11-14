@@ -162,25 +162,18 @@ test('Haushalt gegen echte Datenbank', async t => {
 
     // Andere Währung → Ablehnung, und der Code bleibt benutzbar.
     await db.run(`UPDATE user_settings SET value='EUR' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
-    const bad = await household.einladungEinloesen(U.kindA, inv.code);
-    // Auf den CODE statt auf den deutschen Satz: Der Server
-    // antwortet jetzt in der Sprache des Anfragenden, und ein Test, der die
-    // Formulierung festhält, verbietet jede Übersetzung.
-    assert.equal(bad.fehler, 'waehrung_ungleich', 'Währungsprüfung greift nicht');
+    // Auf den CODE statt auf den deutschen Satz: Den Satz baut erst die Antwort.
+    await assert.rejects(household.einladungEinloesen(U.kindA, inv.code), { code: 'waehrung_ungleich' });
 
     await db.run(`UPDATE user_settings SET value='CHF' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
     const ok = await household.einladungEinloesen(U.kindA, inv.code);
-    assert.equal(ok.fehler, undefined, `Einlösen scheiterte: ${ok.fehler}`);
     assert.equal(ok.linked_to.id, U.eltern);
 
     // Zweite Einlösung desselben Codes muss scheitern.
-    const again = await household.einladungEinloesen(U.kindB, inv.code);
-    // Auf den CODE: einladungEinloesen liefert den Grund als
-    // Schlüssel, den Satz baut erst die Route in der Sprache des Anfragenden.
-    assert.match(again.fehler || '', /einladungscode/, 'Code war mehrfach einlösbar');
+    await assert.rejects(household.einladungEinloesen(U.kindB, inv.code), { code: /einladungscode/ });
 
     const inv2 = await household.einladungAnlegen(U.eltern);
-    assert.equal((await household.einladungEinloesen(U.kindB, inv2.code)).fehler, undefined);
+    assert.ok((await household.einladungEinloesen(U.kindB, inv2.code)).linked_to);
   });
 
   await t.test('Blickfeld und Kontofilter', async () => {
@@ -212,8 +205,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     // Nach diesem Block steht: eltern → kindA → enkel.
     const inv = await household.einladungAnlegen(U.kindA);
     assert.ok(inv.code, 'Ein Unterkonto muss selbst einladen dürfen');
-    const r = await household.einladungEinloesen(U.enkel, inv.code);
-    assert.equal(r.fehler, undefined, `Einlösen abgelehnt: ${r.fehler}`);
+    await household.einladungEinloesen(U.enkel, inv.code);
 
     assert.deepEqual(await household.blickfeldIds(U.kindA, 'all'), [U.kindA, U.enkel]);
     assert.ok(
@@ -259,8 +251,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     // enkel nimmt zusätzlich die Einladung von eltern an: Jetzt sieht eltern
     // es direkt, mit eigener Zustimmung.
     const inv = await household.einladungAnlegen(U.eltern);
-    const r = await household.einladungEinloesen(U.enkel, inv.code);
-    assert.equal(r.fehler, undefined, `Zweites Elternkonto abgelehnt: ${r.fehler}`);
+    await household.einladungEinloesen(U.enkel, inv.code);
     assert.ok((await household.blickfeldIds(U.eltern, 'all')).includes(U.enkel));
     assert.equal(await household.darfSchreibenFuer(U.eltern, U.enkel), true);
 
@@ -270,8 +261,8 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.ok(st.linked_to, 'Ältere Apps brauchen weiterhin linked_to');
 
     // Dieselbe Verknüpfung ein zweites Mal ergibt eine verständliche Absage.
-    const nochmal = await household.einladungEinloesen(U.enkel, (await household.einladungAnlegen(U.eltern)).code);
-    assert.equal(nochmal.fehler, 'konto_bereits_verknuepft');
+    const nochmal = (await household.einladungAnlegen(U.eltern)).code;
+    await assert.rejects(household.einladungEinloesen(U.enkel, nochmal), { code: 'konto_bereits_verknuepft' });
 
     // Lösen von EINEM Elternkonto lässt das andere stehen.
     await household.kontenTrennen(U.enkel, null, U.eltern);
@@ -291,11 +282,10 @@ test('Haushalt gegen echte Datenbank', async t => {
     // kindA ist Unterkonto von eltern. Nähme eltern eine Einladung von kindA
     // an, dürften beide beim jeweils anderen schreiben.
     const inv = await household.einladungAnlegen(U.kindA);
-    const r = await household.einladungEinloesen(U.eltern, inv.code);
-    assert.equal(r.fehler, 'verknuepfung_erzeugt_kreis');
+    await assert.rejects(household.einladungEinloesen(U.eltern, inv.code), { code: 'verknuepfung_erzeugt_kreis' });
     // Der Code ist nach der Absage wieder frei.
-    const zweit = await household.einladungEinloesen(U.fremd, inv.code);
-    assert.equal(zweit.fehler, undefined, `Der Code wurde von der Absage verbraucht: ${zweit.fehler}`);
+    // Die Absage hat den Code nicht verbraucht.
+    await household.einladungEinloesen(U.fremd, inv.code);
     await household.kontenTrennen(U.fremd);
   });
 
@@ -322,8 +312,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     );
 
     // Nimmt enkel die Einladung an, verschwindet der Hinweis von selbst.
-    const r = await household.einladungEinloesen(U.enkel, (await household.einladungAnlegen(U.eltern)).code);
-    assert.equal(r.fehler, undefined);
+    await household.einladungEinloesen(U.enkel, (await household.einladungAnlegen(U.eltern)).code);
     assert.deepEqual((await household.haushaltsStand(U.eltern)).former_links, []);
     await household.kontenTrennen(U.enkel, null, U.eltern);
 
@@ -486,7 +475,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     );
     // Und darf sich danach wieder verknüpfen lassen.
     const inv = await household.einladungAnlegen(U.eltern);
-    assert.equal((await household.einladungEinloesen(U.kindA, inv.code)).fehler, undefined);
+    await household.einladungEinloesen(U.kindA, inv.code);
   });
 
   await t.test('einzelner Kaufpreis wechselt den Eigentümer', async () => {

@@ -1,7 +1,8 @@
 /** Anleitungen eines Sets: neu laden, hochladen, löschen. */
 import type express from 'express';
 import path from 'node:path';
-import { pfadParam, sendeFehler } from '../../src/http/httpAntwort';
+import { pfadParam } from '../../src/http/httpAntwort';
+import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
 import { kontoSchranke, waechterFuer } from './middleware';
 import {
   uploadKontingentBytes,
@@ -23,15 +24,13 @@ const uploadKontingentMb = () => Math.round(uploadKontingentBytes() / 1024 / 102
 /** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der Platte. */
 const vorDemUpload =
   (d: Pick<Dienste, 'konto' | 'sets'>) =>
-  async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  async (req: express.Request, _res: express.Response, next: express.NextFunction) => {
     const uid = angemeldeteNutzerId(req);
-    if (!(await d.sets.setGehoertKonto(uid, pfadParam(req, 'setNumber'))))
-      return sendeFehler(req, res, 404, 'nicht_gefunden');
+    if (!(await d.sets.setGehoertKonto(uid, pfadParam(req, 'setNumber')))) nichtGefunden();
     const laenge = Number(req.headers['content-length']) || 0;
     if (!(await kontingentReichtFuer(path.join(ANLEITUNGS_WURZEL, String(uid)), laenge)))
-      return sendeFehler(req, res, 413, 'upload_kontingent_voll', { mb: uploadKontingentMb() });
-    if (!(await gesamtReichtFuer(laenge)))
-      return sendeFehler(req, res, 507, 'upload_gesamt_voll', { mb: uploadGesamtMb() });
+      fachfehler('zu_gross', 'upload_kontingent_voll', { mb: uploadKontingentMb() });
+    if (!(await gesamtReichtFuer(laenge))) fachfehler('speicher_voll', 'upload_gesamt_voll', { mb: uploadGesamtMb() });
     next();
   };
 
@@ -65,12 +64,9 @@ export function baueSetsAnleitungenRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
     kontoSchranke('upload'),
     vorDemUpload(d),
     uploadInstr.single('file'),
-    async (req, res) => {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-      const grund = await pruefeEmpfangeneDatei(ANLEITUNGS_WURZEL, req.file.path, req.file.mimetype);
-      if (grund === 'upload_kontingent_voll') return sendeFehler(req, res, 413, grund, { mb: uploadKontingentMb() });
-      if (grund === 'upload_gesamt_voll') return sendeFehler(req, res, 507, grund, { mb: uploadGesamtMb() });
-      if (grund) return sendeFehler(req, res, 400, grund);
+    async req => {
+      if (!req.file) fachfehler('ungueltig', 'keine_datei');
+      await pruefeEmpfangeneDatei(ANLEITUNGS_WURZEL, req.file.path, req.file.mimetype);
       const uid = angemeldeteNutzerId(req),
         sn = req.pfad.setNumber;
       const desc = (req.eingabe.description || req.file.originalname).substring(0, 200);
@@ -80,9 +76,8 @@ export function baueSetsAnleitungenRouter(d: Pick<Dienste, 'konto' | 'sets'>) {
     },
   );
 
-  router.endpunkt('DELETE /api/v1/sets/:setNumber/instructions/:instrId', requireToken, async (req, res) => {
-    if (!(await d.sets.anleitungLoeschen(angemeldeteNutzerId(req), String(req.pfad.instrId))))
-      return sendeFehler(req, res, 404, 'nicht_gefunden');
+  router.endpunkt('DELETE /api/v1/sets/:setNumber/instructions/:instrId', requireToken, async req => {
+    await d.sets.anleitungLoeschen(angemeldeteNutzerId(req), req.pfad.instrId);
     return {};
   });
   return router;

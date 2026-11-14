@@ -138,20 +138,17 @@ export function unterWurzel(wurzel: string, datei: string): string {
 
 /** Nach dem Schreiben: nur für den Dienst lesbar, Inhalt passt zum Typ, und das
  * Kontingent hält auch ohne Content-Length (chunked). Sonst ist die Datei wieder weg. */
-export async function pruefeEmpfangeneDatei(
-  wurzel: string,
-  empfangen: string,
-  mime: string,
-): Promise<null | 'datei_inhalt_falsch' | 'upload_kontingent_voll' | 'upload_gesamt_voll'> {
+export async function pruefeEmpfangeneDatei(wurzel: string, empfangen: string, mime: string): Promise<void> {
   const datei = unterWurzel(wurzel, empfangen);
   await fs.promises.chmod(datei, 0o600);
-  const grund = !(await inhaltPasstZuTyp(datei, mime))
-    ? ('datei_inhalt_falsch' as const)
+  const absage = !(await inhaltPasstZuTyp(datei, mime))
+    ? dateiFehler('ungueltig', 'datei_inhalt_falsch')
     : (await belegterPlatz(path.dirname(datei))) > uploadKontingentBytes()
-      ? ('upload_kontingent_voll' as const)
+      ? dateiFehler('zu_gross', 'upload_kontingent_voll', { mb: Math.round(uploadKontingentBytes() / 1024 / 1024) })
       : !(await gesamtReichtFuer(0))
-        ? ('upload_gesamt_voll' as const)
+        ? dateiFehler('speicher_voll', 'upload_gesamt_voll', { mb: uploadGesamtMb() })
         : null;
-  if (grund) await fs.promises.rm(datei, { force: true });
-  return grund;
+  if (!absage) return;
+  await fs.promises.rm(datei, { force: true });
+  throw absage;
 }

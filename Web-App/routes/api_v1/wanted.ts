@@ -2,10 +2,9 @@
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
 import type express from 'express';
 import { oeffentlicherFehler } from '../../src/infra/fehler';
-import { sendeFehler } from '../../src/http/httpAntwort';
 import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
 import { wacheUeberZugang } from '../../src/konto/http/zugangsWache';
-import { fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
+import { fehlerText, antwortSprache, fachfehler } from '../../src/infra/fehlerTexte';
 import type { Korrektur } from '../../src/merkliste';
 import { csvEmpfang, xmlEmpfang } from '../../src/http/dateiEmpfang';
 import { WantedKorrekturen, type ImportEingabe } from '../../src/auftraege';
@@ -83,9 +82,9 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
 
   /** Alle drei Wege (Katalog, Setnummer, Barcode) landen hier, damit die Regeln
    * nicht vom Weg abhängen. */
-  router.endpunkt('POST /api/v1/wanted', requireToken, async (req, res) => {
+  router.endpunkt('POST /api/v1/wanted', requireToken, async req => {
     const { set_number, condition, owner_user_id } = req.eingabe;
-    if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
+    if (!set_number) fachfehler('ungueltig', 'set_number_erforderlich');
     const owner = await d.haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
     const { merkposten, war_neu } = await d.merkliste.legeMerkpostenAn(owner, set_number, condition);
     return { war_neu, merkposten };
@@ -133,8 +132,8 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
     requireToken,
     kontoSchranke('upload'),
     csvEmpfang.single('file'),
-    async (req, res) => {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+    async req => {
+      if (!req.file) fachfehler('ungueltig', 'keine_datei');
       const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
       return {
@@ -156,12 +155,12 @@ export function baueWantedRouter(d: Pick<Dienste, 'einstellungen' | 'auftraege' 
     kontoSchranke('upload'),
     xmlEmpfang.single('file'),
     async (req, res) => {
-      if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+      if (!req.file) fachfehler('ungueltig', 'keine_datei');
       const xml = req.file.buffer.toString('utf-8');
       // Ohne <INVENTORY> keine Wanted-Liste — eine bessere Auskunft als „0 Posten".
-      if (!/<INVENTORY[\s>]/i.test(xml)) return sendeFehler(req, res, 422, 'keine_wanted_liste');
+      if (!/<INVENTORY[\s>]/i.test(xml)) fachfehler('nicht_verarbeitbar', 'keine_wanted_liste');
       const korrekturen = korrekturenAus(req.eingabe.korrekturen);
-      if (korrekturen === null) return sendeFehler(req, res, 400, 'korrekturen_ungueltig');
+      if (korrekturen === null) fachfehler('ungueltig', 'korrekturen_ungueltig');
       const eingabe = {
         xml,
         dateiName: String(req.file.originalname || 'wanted.xml').slice(0, 120),

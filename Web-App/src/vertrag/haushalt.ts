@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { KontoName, type Route, bestaetigt, OHNE_RUMPF, KENNUNG } from './grund';
+import { KontoName, type Route, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT_ODER_LEER } from './grund';
 import { DEGRADIERT, GenericResponse } from './gemeinsam';
 
 export const GetrenntesKonto = z.looseObject({
@@ -53,11 +53,11 @@ export const routen = {
   'POST /api/v1/settings/household/invite': { eingabe: OHNE_RUMPF, antwort: HouseholdInviteResponse, geheim: true },
   'POST /api/v1/settings/household/redeem/pruefen': {
     antwort: HouseholdInviteCheckResponse,
-    eingabe: z.strictObject({ code: z.string().max(64).nullable().optional() }),
+    eingabe: z.strictObject({ code: TEXT_ODER_LEER(64) }),
   },
   'POST /api/v1/settings/household/redeem': {
     antwort: GenericResponse,
-    ...bestaetigt({ code: z.string().max(64).nullable().optional() }, 'password', 'faktor_code'),
+    ...bestaetigt({ code: TEXT_ODER_LEER(64) }, 'password', 'faktor_code'),
   },
   'POST /api/v1/settings/household/unlink': {
     eingabe: z.strictObject({
