@@ -486,8 +486,8 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
 test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
   // Übersetzer ohnehin ein Typargument.
-  // Gegenprobe (05.11.2026): Schranke auf 68 → rot.
-  const SCHRANKE = 62;
+  // Gegenprobe (05.11.2026): Schranke auf 68 → rot. Zeilentypen bindet db/zeilen.ts ans Schema.
+  const SCHRANKE = 31;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
   if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);

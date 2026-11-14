@@ -1,5 +1,12 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { marktpreisSql } from '../../../db/geldSql';
+import type { Spalten, Tabellen } from '../../../db/zeilen';
+
+/** Ein Alarm, wie Übersicht und Detail ihn lesen; `besitzt` aus BESITZT. */
+export type AlarmZeile = Spalten<
+  'price_alerts',
+  'set_number' | 'condition' | 'richtung' | 'schwelle' | 'currency_code' | 'ausgeloest' | 'zuletzt_am' | 'zuletzt_preis'
+> & { besitzt: boolean };
 
 /** Die App macht daran die Zeile anklickbar; $3 ist das Blickfeld. */
 /** Hat das Ziel schon einen Alarm (etwa an einem besessenen Set), gilt seiner;
@@ -39,7 +46,7 @@ export function entferneAlarm(db: DbSchnittstelle, userId: number, setNumber: st
 }
 
 export function alarmeDesSets(db: DbSchnittstelle, userId: number, setNumber: string, blickfeld: number[]) {
-  return db.all(
+  return db.all<AlarmZeile>(
     `SELECT set_number, condition, richtung, schwelle, currency_code,
             ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT}
        FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
@@ -48,7 +55,9 @@ export function alarmeDesSets(db: DbSchnittstelle, userId: number, setNumber: st
 }
 
 export function alarmeImBlickfeld(db: DbSchnittstelle, userId: number, blickfeld: number[]) {
-  return db.all(
+  return db.all<
+    AlarmZeile & Spalten<'rb_sets', 'name' | 'set_img_url'> & Spalten<'set_catalog', 'image_local' | 'image_url'>
+  >(
     `SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
@@ -71,7 +80,7 @@ export function datenbankJetzt(db: DbSchnittstelle) {
 }
 
 export function alarmeDesKontos(db: DbSchnittstelle, userId: number, marke: Date, blickfeld: number[]) {
-  return db.all(
+  return db.all<AlarmZeile>(
     `SELECT set_number, condition, richtung, schwelle, currency_code,
             ausgeloest, zuletzt_am, zuletzt_preis, ${BESITZT}
        FROM price_alerts a
@@ -85,7 +94,13 @@ export function alarmeDesKontos(db: DbSchnittstelle, userId: number, marke: Date
 }
 
 export function alleAktivenAlarme(db: DbSchnittstelle, setNumber: string) {
-  return db.all(
+  return db.all<
+    Spalten<
+      'price_alerts',
+      'user_id' | 'set_number' | 'condition' | 'richtung' | 'schwelle' | 'currency_code' | 'ausgeloest'
+    > &
+      Spalten<'users', 'email' | 'username'> & { sprache: NonNullable<Tabellen['user_settings']['value']> }
+  >(
     `SELECT a.user_id, a.set_number, a.condition, a.richtung, a.schwelle,
             a.currency_code, a.ausgeloest, u.email, u.username,
             COALESCE(us.value, 'de') AS sprache

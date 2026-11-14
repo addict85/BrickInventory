@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 import { randomUUID } from 'node:crypto';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { versucheSchluesselSperre, gibSchluesselSperreFrei } from '../../../db/txLock';
@@ -11,6 +11,7 @@ import type {
   Pause,
   AuftragsStatus,
 } from '../auftraege';
+import type { Spalten } from '../../../db/zeilen';
 
 /** Hier nur das SQL; Wecken, Wartezeiten und das Arbeiten im Namen eines Kontos
  * stehen im Dienst. */
@@ -279,7 +280,12 @@ export async function raeumeErledigteAuf(db: DbSchnittstelle): Promise<number> {
   return r?.changes ?? 0;
 }
 export async function liesPause(db: DbSchnittstelle, art: AuftragsArt): Promise<Pause | null> {
-  return (await db.get('SELECT art, bis, grund, stufe FROM auftrag_pausen WHERE art = $1', [art])) ?? null;
+  return (
+    (await db.get<Spalten<'auftrag_pausen', 'art' | 'bis' | 'grund' | 'stufe'>>(
+      'SELECT art, bis, grund, stufe FROM auftrag_pausen WHERE art = $1',
+      [art],
+    )) ?? null
+  );
 }
 /** `stufe` zählt wiederholte Drosselungen (Cloudflare). */
 export async function pausiereArt(
@@ -375,7 +381,7 @@ export async function zieheTerminVor(
 }
 
 export async function laeuftArt(db: DbSchnittstelle, art: string): Promise<boolean> {
-  return !!(await db.get(`SELECT 1 FROM auftraege WHERE art = $1 AND status = 'laeuft'`, [art]));
+  return !!(await db.get<Treffer>(`SELECT 1 FROM auftraege WHERE art = $1 AND status = 'laeuft'`, [art]));
 }
 
 export async function hoechsterBricksetVersuch(db: DbSchnittstelle, schluessel: string): Promise<number> {

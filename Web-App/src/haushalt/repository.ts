@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../db/database';
 
 const zahl = (v: number | string) => parseInt(String(v), 10);
 
@@ -24,7 +24,10 @@ export async function istVerknuepft(
   sub: number,
   d: DbSchnittstelle = db,
 ): Promise<boolean> {
-  return !!(await d.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [main, sub]));
+  return !!(await d.get<Treffer>('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [
+    main,
+    sub,
+  ]));
 }
 
 export interface KontoName {

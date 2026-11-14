@@ -96,6 +96,7 @@ export type Zeile<T extends object = object> = T & Record<string, unknown>;
 
 // Benannt, damit tx-Rückrufe geprüft werden.
 export type { DbSchnittstelle };
+export type { Treffer } from './typen';
 
 export interface TxOptionen {
   /** Bei Deadlock (40P01) oder Serialisierungsfehler (40001) die ganze Transaktion

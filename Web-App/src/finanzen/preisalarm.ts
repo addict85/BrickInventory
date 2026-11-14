@@ -9,21 +9,6 @@ import * as repo from './repository/preisalarme';
 import { versuche } from '../infra/ergebnis';
 import type { FinanzenKontext } from './kontext';
 
-/** Ausgeschrieben statt `any`: Betrag, Richtung und Mailadresse stehen
- * nebeneinander, ein Vertauschen wäre sonst nirgends sichtbar. */
-interface AlarmZeile {
-  user_id: number;
-  set_number: string;
-  condition: string;
-  richtung: Richtung;
-  schwelle: string | number;
-  currency_code: string;
-  ausgeloest: boolean;
-  email: string | null;
-  username: string;
-  sprache: string;
-}
-
 export type Richtung = 'unter' | 'ueber';
 
 export interface Preisalarm {
@@ -40,6 +25,12 @@ export interface Preisalarm {
 }
 
 const ZUSTAENDE = new Set(['N', 'U']);
+
+/** Die Zeile wie gelesen (db/zeilen.ts); `richtung` hält ein CHECK auf zwei Werte, der Zeitpunkt
+ * geht als ISO-Text hinaus wie in JSON. */
+function alsAlarm<Z extends repo.AlarmZeile>(z: Z): Omit<Z, 'richtung' | 'zuletzt_am'> & Preisalarm {
+  return { ...z, richtung: z.richtung as Richtung, zuletzt_am: z.zuletzt_am?.toISOString() ?? null };
+}
 
 function pruefeEingabe(richtung: unknown, schwelle: unknown, condition: unknown) {
   const r = String(richtung ?? '');
@@ -88,16 +79,7 @@ export async function loescheAlarm(k: FinanzenKontext, userId: number, setNumber
 export async function alarmeFuer(k: FinanzenKontext, userId: number, setNumber: string): Promise<Preisalarm[]> {
   // Ohne Fang: Eine leere Liste hiesse „kein Alarm“, und setzeAlarm() lieferte nichts.
   const rows = await repo.alarmeDesSets(k.db, userId, setNumber, await k.haushalt.blickfeldIds(userId));
-  type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> & {
-    schwelle: string | number;
-    zuletzt_preis: string | number | null;
-  };
-  return ((rows as Zeile[]) || []).map(r => ({
-    ...r,
-    // numeric kommt als Zeichenkette aus dem Treiber.
-    schwelle: parseFloat(String(r.schwelle)),
-    zuletzt_preis: r.zuletzt_preis == null ? null : parseFloat(String(r.zuletzt_preis)),
-  }));
+  return rows.map(alsAlarm);
 }
 
 /** Damit man Alarme findet, ohne das Set zu kennen. */
@@ -116,17 +98,7 @@ export async function alleAlarme(k: FinanzenKontext, userId: number): Promise<Al
   // Das Blickfeld fragt nur, ob das Set sichtbar ist; der Alarm bleibt beim
   // eigenen Konto.
   const blickfeld = await k.haushalt.blickfeldIds(userId);
-  const rows = await repo.alarmeImBlickfeld(k.db, userId, blickfeld);
-  type Zeile = Omit<AlarmMitName, 'schwelle' | 'zuletzt_preis'> & {
-    schwelle: string | number;
-    zuletzt_preis: string | number | null;
-  };
-  return ((rows as Zeile[]) || []).map(r => ({
-    ...r,
-    // numeric kommt als Zeichenkette aus dem Treiber.
-    schwelle: parseFloat(String(r.schwelle)),
-    zuletzt_preis: r.zuletzt_preis == null ? null : parseFloat(String(r.zuletzt_preis)),
-  }));
+  return (await repo.alarmeImBlickfeld(k.db, userId, blickfeld)).map(alsAlarm);
 }
 
 /** Die App fragt, statt dass der Server schiebt: Push liefe über fremde Server. */
@@ -149,26 +121,7 @@ export async function ausgeloesteSeit(k: FinanzenKontext, userId: number, seit: 
 
   // Ohne Fang: Die App rückte sonst ihre Marke vor und verlöre die Meldungen dazwischen.
   const rows = await repo.alarmeDesKontos(k.db, userId, marke, await k.haushalt.blickfeldIds(userId));
-
-  type Zeile = {
-    set_number: string;
-    condition: string;
-    richtung: Richtung;
-    schwelle: string | number;
-    currency_code: string;
-    ausgeloest: boolean;
-    besitzt: boolean;
-    zuletzt_am: string;
-    zuletzt_preis: string | number | null;
-  };
-  return {
-    alerts: ((rows as Zeile[]) || []).map(r => ({
-      ...r,
-      schwelle: parseFloat(String(r.schwelle)),
-      zuletzt_preis: r.zuletzt_preis == null ? null : parseFloat(String(r.zuletzt_preis)),
-    })),
-    now: jetzt,
-  };
+  return { alerts: rows.map(alsAlarm), now: jetzt };
 }
 
 /** Eigene Funktion: die einzige Stelle, an der „unter" und „über" etwas
@@ -185,17 +138,16 @@ export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: Ala
   const alarme = await repo.alleAktivenAlarme(k.db, setNumber);
   if (!alarme?.length) return 0;
   let verschickt = 0;
-  for (const a of alarme as AlarmZeile[]) {
+  for (const a of alarme) {
     const preisZeile = await repo.cachePreisFuerAlarm(k.db, a.set_number, a.condition, a.currency_code).catch(e => {
       meldeFehler('preisalarm:preis-lesen', e);
       return null;
     });
-    const preis = preisZeile?.marktpreis == null ? null : parseFloat(String(preisZeile.marktpreis));
+    const preis = preisZeile?.marktpreis ?? null;
     // Kein Preis in DIESER Währung: Der Alarm bleibt, der Merker auch.
     if (preis == null || !(preis > 0)) continue;
 
-    const schwelle = parseFloat(String(a.schwelle));
-    const jetzt = reisst(a.richtung, preis, schwelle);
+    const jetzt = reisst(a.richtung as Richtung, preis, a.schwelle);
 
     if (!jetzt) {
       // Zurück auf die andere Seite — der nächste Übergang meldet wieder.
@@ -210,7 +162,7 @@ export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: Ala
 
     if (a.email) {
       try {
-        await verschicke(k, post, a, preis, schwelle);
+        await verschicke(k, post, a, preis, a.schwelle);
         verschickt++;
       } catch (e) {
         // Merker NICHT setzen — beim nächsten Lauf erneut versuchen.
@@ -228,17 +180,18 @@ export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: Ala
 }
 
 /** Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über das WIE. */
-async function verschicke(k: FinanzenKontext, post: AlarmPost, a: AlarmZeile, preis: number, schwelle: number) {
+type AktiverAlarm = Awaited<ReturnType<typeof repo.alleAktivenAlarme>>[number];
+async function verschicke(k: FinanzenKontext, post: AlarmPost, a: AktiverAlarm, preis: number, schwelle: number) {
   // Der Alarm geht auch ohne Namen hinaus; die Mail nennt dann nur die Setnummer.
   const gelesen = await versuche('preisalarm:name', repo.setNameAusStamm(k.db, a.set_number));
   const name = gelesen.ok ? gelesen.wert : null;
   const mail = await post.baueAlarmMail({
     username: a.username,
-    lang: String(a.sprache),
+    lang: a.sprache,
     setNumber: a.set_number,
     setName: name?.name ?? null,
     condition: a.condition,
-    richtung: a.richtung,
+    richtung: a.richtung as Richtung,
     schwelle,
     preis,
     waehrung: a.currency_code,

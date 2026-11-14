@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Treffer } from '../../../db/database';
 import { mengeSkalar } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import type { KatalogTeil, ListenTeil, SetStamm } from '../zeilen';
@@ -82,7 +82,10 @@ export function inventarFigurenDesSets(db: DbSchnittstelle, invId: number) {
 }
 
 export function setImFeld(db: DbSchnittstelle, setNumber: string, blickfeld: number[]) {
-  return db.get('SELECT 1 AS da FROM sets WHERE set_number = $1 AND user_id = ANY($2) LIMIT 1', [setNumber, blickfeld]);
+  return db.get<Treffer>('SELECT 1 AS da FROM sets WHERE set_number = $1 AND user_id = ANY($2) LIMIT 1', [
+    setNumber,
+    blickfeld,
+  ]);
 }
 
 export function setsMitMenge(db: DbSchnittstelle, uid: number) {
@@ -93,7 +96,7 @@ export function setsMitMenge(db: DbSchnittstelle, uid: number) {
 }
 
 export function setDesKontos(db: DbSchnittstelle, uid: number, setNumber: string) {
-  return db.get('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, setNumber]);
+  return db.get<Treffer>('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, setNumber]);
 }
 
 export function fuegeAnleitungEin(
@@ -122,5 +125,5 @@ export function loescheAnleitung(db: DbSchnittstelle, id: string, uid: number) {
 }
 
 export function anleitungsdateiBenutzt(db: DbSchnittstelle, pfad: string) {
-  return db.get('SELECT 1 AS ok FROM instructions WHERE local_path = $1 LIMIT 1', [pfad]);
+  return db.get<Treffer>('SELECT 1 AS ok FROM instructions WHERE local_path = $1 LIMIT 1', [pfad]);
 }
