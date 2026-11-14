@@ -13,7 +13,7 @@ import { geloeschtMitRueckgaengig } from './papierkorb.js';
 import { alarmBlock, closeModal, ladeAlarm, ladeOrtAuswahl, lagerortBlock, setzeAlarmFeld } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { delSet, loadGallery, loadStats, reimportParts } from './gallery.js';
-import { detailZeile, oderStrich, skelettZeilen, oeffneErfassen } from './bausteine.js';
+import { detailZeile, kontoAnzeige, oderStrich, skelettZeilen, oeffneErfassen } from './bausteine.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
 import { loadFinance } from './finance.js';
 import { locale, t, tRaw } from '../i18n.js';
@@ -33,7 +33,7 @@ let _schreibbar = null;
 const imHaushalt = set => (set?.owners || []).some(o => !ME || o.id !== ME.id);
 
 /** Ein Name für die Oberfläche: das eigene Konto heisst „ich“. @param {{ id: number, username: string }} o */
-const kontoName = o => (ME && o.id === ME.id ? tRaw('detail.ich') : o.username);
+const kontoName = kontoAnzeige;
 
 /**
  * Menge je Konto aus den Erfassungen; das eigene Konto zuerst. Im Haushalt hat jedes Konto seinen Regler: Eine
@@ -85,14 +85,12 @@ function untertitel(set) {
   const konten = imHaushalt(set)
     ? (set.owners || []).slice().sort((a, b) => Number(b.id === ME?.id) - Number(a.id === ME?.id))
     : [];
-  return [
-    set.name ? set.set_number : '',
-    konten.length
-      ? tRaw(konten.length > 1 ? 'detail.konten_von' : 'detail.konto_von', { namen: konten.map(kontoName).join(', ') })
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  // Nur die Setnummer in Festbreite; die Konten sind Fliesstext wie überall.
+  const nr = set.name ? html`<span class="setnr">${set.set_number}</span>` : '';
+  const wem = konten.length
+    ? tRaw(konten.length > 1 ? 'detail.konten_von' : 'detail.konto_von', { namen: konten.map(kontoName).join(', ') })
+    : '';
+  return html`${nr}${nr && wem ? ' · ' : ''}${wem}`;
 }
 
 /** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
@@ -235,7 +233,7 @@ export async function openModal(sn) {
   set_curSet(set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent = set.name || set.set_number;
-  G('m-untertit').textContent = untertitel(set);
+  setzeHtml(G('m-untertit'), untertitel(set));
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
   const img = G('m-img');
   setzeDialogbild(img, fullUrl(set.image_local || set.image_url) || PLATZHALTER_SET, PLATZHALTER_SET);
@@ -461,7 +459,7 @@ async function frischeDetailAuf(sn, feld) {
   const sumEl = G('m-acq-summary');
   if (sumEl) setzeHtml(sumEl, kurzfassung(acqs, sn));
   if (G('acq-modal').classList.contains('open')) renderAcqModalBody(sn, acqs, ad?.totals);
-  G('m-untertit').textContent = untertitel(d.set);
+  setzeHtml(G('m-untertit'), untertitel(d.set));
   // Der gedrückte Knopf ist ersetzt; der Fokus geht an seinen Nachfolger, ist der gesperrt (letztes „−“), an „+“.
   const konto = feld instanceof HTMLElement ? feld.dataset.arg : undefined;
   const knoepfe = konto ? [...(menge?.querySelectorAll(`[data-arg="${konto}"]`) || [])] : [];

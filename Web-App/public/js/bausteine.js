@@ -211,6 +211,15 @@ export function pnlBadge(pct, kauf) {
 }
 
 /**
+ * Ein Konto, überall gleich benannt: der Name, beim eigenen mit „(ich)“. Set-Detail, Kacheln, Finanzen und
+ * Merkliste nannten dasselbe Konto sonst „ich“, „ux22“ und „ux22 (ich)“.
+ * @param {{ id: number, username: string }} o
+ */
+export function kontoAnzeige(o) {
+  return ME && o.id === ME.id ? `${o.username} ${tRaw('household.ich')}` : o.username;
+}
+
+/**
  * Besitzer-Plaketten nur, wenn ein ANDERES Konto mit drinsteckt: Im Haushalt verhindern sie, dass man das
  * falsche Exemplar verschiebt; der eigene Name auf jeder Kachel wäre nur Rauschen.
  * @param {{ owners?: { id: number, username: string }[] } | null | undefined} item
@@ -218,7 +227,7 @@ export function pnlBadge(pct, kauf) {
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
   if (item.owners.every(o => ME && o.id === ME.id)) return '';
-  return html`${item.owners.map(o => html`<span class="cond-badge besitzer-badge" title="${o.username}">${o.username}</span>`)}`;
+  return html`${item.owners.map(o => html`<span class="cond-badge besitzer-badge" title="${kontoAnzeige(o)}">${kontoAnzeige(o)}</span>`)}`;
 }
 
 /**

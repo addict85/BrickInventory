@@ -529,7 +529,6 @@ window.I18N_EN = {
   'detail.nicht_in_sammlung': 'Set {nr} is not in your collection.',
   'detail.konto_von': 'Account: {namen}',
   'detail.konten_von': 'Accounts: {namen}',
-  'detail.ich': 'me',
   'detail.qty_zusammen': 'Together: {n}',
   'detail.kauf_entfernt': 'Purchase of {datum}{preis} removed',
   'detail.kaeufe_entfernt': '{n} purchases removed',

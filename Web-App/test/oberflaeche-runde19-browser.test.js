@@ -8,7 +8,7 @@
  *   A  in mengenBlock() `if (!imHaushalt(set))` zu `if (true)` → rot:
  *      „Set-Detail im Haushalt“ (keine Zeile je Konto)
  *   B  in untertitel() wieder nur die fremden Konten → rot: ebenda
- *      („Konto: …_kind“ statt „Konten: ich, …_kind“)
+ *      („Konto: …_kind“ statt „Konten: r19_… (ich), …_kind“)
  *   C  in frischeDetailAuf() ladeSetNachtraege(sn) entfernt → rot: ebenda
  *      (Diagramm nennt weiter 205,00 €)
  *   D  in mengeJeKonto() owner_user_id weggelassen → rot: ebenda (Toast
@@ -52,9 +52,9 @@ async function setDetailImHaushalt(_t, a) {
     document.querySelector('#gallery [data-click="openModal"][data-arg="21318-1"]').click(); true`);
   await bis(`document.querySelectorAll('#m-menge .menge-konto').length === 2`, 'Regler je Konto');
   await bis(`/205,00/.test(${text('#m-sparkline-content')})`, 'Diagramm mit dem Mischpreis');
-  assert.equal(await b.auswerten(text('#m-untertit')), `21318-1 · Konten: ich, ${kind}`);
+  assert.equal(await b.auswerten(text('#m-untertit')), `21318-1 · Konten: r19_${process.pid} (ich), ${kind}`);
   const zeilen = `[...document.querySelectorAll('#m-menge .menge-konto')].map(z => z.querySelector('.menge-name').textContent + ' ' + z.querySelector('.menge-zahl').textContent)`;
-  assert.deepEqual(await b.auswerten(zeilen), ['ich 1', `${kind} 1`]);
+  assert.deepEqual(await b.auswerten(zeilen), [`r19_${process.pid} (ich) 1`, `${kind} 1`]);
 
   await b.auswerten(`document.querySelector('#m-menge .menge-konto:nth-child(2) [data-arg2="-1"]').click(); true`);
   await bis(`/Kauf vom 02\\.06\\.2026/.test(document.getElementById('toasts').textContent)`, 'Toast nennt den Kauf');
@@ -74,7 +74,7 @@ async function setDetailImHaushalt(_t, a) {
 
   await b.auswerten(`[...document.querySelectorAll('#toasts .toast-aktion')].at(-1).click(); true`);
   await bis(
-    `JSON.stringify(${zeilen}) === ${JSON.stringify(JSON.stringify(['ich 1', `${kind} 1`]))}`,
+    `JSON.stringify(${zeilen}) === ${JSON.stringify(JSON.stringify([`r19_${process.pid} (ich) 1`, `${kind} 1`]))}`,
     'Rückgängig bringt den Kauf zurück',
   );
   await bis(`/205,00/.test(${text('#m-sparkline-content')})`, 'Diagramm wieder mit dem Mischpreis', 50);

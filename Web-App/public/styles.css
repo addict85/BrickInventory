@@ -764,7 +764,8 @@
     /* Nach der Grundregel .modal: Pruefungen lesen deren ersten Fund. */
     .ovl.open > .modal{animation:hochgleiten .2s ease-out}
     svg.diagramm{display:block;max-width:100%}
-    .muntertit{font-family:var(--mono);font-size:var(--fs-1);color:var(--mut);margin-top:2px}
+    .muntertit{font-size:var(--fs-1);color:var(--mut);margin-top:2px}
+    .muntertit .setnr{font-family:var(--mono)}
     /* Breite Fenster: Bild links, Angaben rechts — sonst steht das Bild allein
        im ersten Bildschirm und alles Wichtige darunter. */
     @media (min-width:900px){
