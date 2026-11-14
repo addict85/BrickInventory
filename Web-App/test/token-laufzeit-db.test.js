@@ -96,7 +96,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
       body: { gueltigkeit: '6m', password: 'falsch-falsch' },
     });
     assert.equal(falsch.status, 400);
-    const geraet = await auth.createToken(uid, 'Probe', true);
+    const geraet = await auth.tokenAnlegen(uid, 'Probe', true);
     const perToken = await ruf('/qr-token', {
       method: 'POST',
       headers: { authorization: `Bearer ${geraet}` },
@@ -170,7 +170,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
         WHERE token = $1`,
       [auth.hashToken(rohEwig)],
     );
-    await auth.purgeExpiredTokens();
+    await auth.tokensAufraeumen();
     const nachher = await zeile(rohEwig);
     assert.ok(nachher, 'Der unbegrenzte Zugang darf vom Aufraeumjob nicht geloescht werden');
     assert.equal(

@@ -1,15 +1,8 @@
 /** Set zum Barcode: eigener Katalog, Rebrickable, Brickset und EAN-Quellen. */
-import {
-  resolveImageLocal,
-  istVermutung,
-  setnummerKandidaten,
-  merkeSetKatalog,
-  RbSet,
-  RbSetFigur,
-  rbSeite,
-} from '../katalog';
-import { normalizeSetNumber } from './erfassen';
-import { mitVersion } from '../infra/setNummer';
+import { istVermutung, setnummerKandidaten, merkeSetKatalog } from '../katalog';
+import { resolveImageLocal } from '../bilder';
+import { RbSet, RbSetFigur, rbSeite } from '../fremdquellen';
+import { mitVersion, normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/setDetail';
 import { versuche } from '../infra/ergebnis';
 import type { SetsKontext } from './kontext';
@@ -139,10 +132,10 @@ export async function setZumBarcode(sk: SetsKontext, rohBarcode: string): Promis
     if (titel) {
       const kandidaten = setnummerKandidaten(titel);
       for (const k of kandidaten) {
-        const bekannt = await imKatalog(sk, k, normalizeSetNumber(k));
+        const bekannt = await imKatalog(sk, k, normalisiereSetNummer(k));
         if (bekannt) return barcodeErgebnis(sk, bekannt.set_number, titel, 'upcitemdb');
       }
-      if (kandidaten[0]) return barcodeErgebnis(sk, normalizeSetNumber(kandidaten[0]), titel, 'upcitemdb');
+      if (kandidaten[0]) return barcodeErgebnis(sk, normalisiereSetNummer(kandidaten[0]), titel, 'upcitemdb');
     }
   }
 

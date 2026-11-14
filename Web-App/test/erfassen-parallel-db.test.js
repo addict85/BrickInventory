@@ -183,7 +183,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   const naechste = sets.slice(beginn + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
   const kern = sets.slice(beginn, beginn + 10 + naechste);
   const sperre = kern.indexOf('repo.sperreSetErfassen(');
-  const stellen = [...kern.matchAll(/recordAcquisition\(/g)].map(m => m.index);
+  const stellen = [...kern.matchAll(/erfassungBuchen\(/g)].map(m => m.index);
   assert.ok(stellen.length >= 2, `nur ${stellen.length} Erfassungs-Schreibstellen gefunden`);
   assert.ok(sperre > 0 && stellen.every(i => i > sperre), 'nicht jede Schreibstelle läuft unter der Sperre');
 });

@@ -152,9 +152,9 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
     // Gegenprobe (11.11.2026 gemessen): in setzePasswortZurueck (src/konto/konten.ts)
     // `await zugaengeBeenden(uid)` gestrichen → rot hier (Sitzung und Token bleiben).
     await t.test('das Zurücksetzen per Link beendet Sitzungen und Token', async () => {
-      const { hashToken, createToken, validateToken } = _req('src/konto/geraeteToken.js');
+      const { hashToken, tokenAnlegen, validateToken } = _req('src/konto/geraeteToken.js');
       const fenster = await anmelden('pw_opfer', 'wiederNeu123');
-      const tok = await createToken(opferId, 'Fremdgerät', true);
+      const tok = await tokenAnlegen(opferId, 'Fremdgerät', true);
       const roh = 'd'.repeat(64);
       await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
         opferId,

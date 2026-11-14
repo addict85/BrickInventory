@@ -92,7 +92,7 @@ test.after(() => db.pool.end().catch(() => {}));
 
 test('Bilddownloads sind nach oben begrenzt', () => {
   const src = quelle('src/bilder/setImages.ts');
-  const fn = src.slice(src.indexOf('async function downloadSetImage'));
+  const fn = src.slice(src.indexOf('async function setBildHerunterladen'));
   const ende = fn.indexOf('\n}\n');
   const körper = fn.slice(0, ende);
 
@@ -121,7 +121,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
     const bis = i + 1 < stellen.length ? stellen[i + 1].index : src.length;
     const rumpf = src.slice(von, bis);
     const geschuetzt =
-      /requireLogin|requireToken|requireAdmin|ipThrottle|checkLoginAllowed|pruefeAnmeldedaten|anmelden\(|req\.session\??\.?\.?userId/.test(
+      /requireLogin|requireToken|requireAdmin|ipThrottle|anmeldungErlaubt|pruefeAnmeldedaten|anmelden\(|req\.session\??\.?\.?userId/.test(
         rumpf,
       );
     if (!geschuetzt) offen.push(`${stellen[i][1].toUpperCase()} ${stellen[i][2]}`);

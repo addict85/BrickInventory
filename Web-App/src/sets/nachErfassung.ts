@@ -29,7 +29,7 @@ async function zieheNach(
   await sk.katalog.importiereTeile(setNumber, userId);
   pruefeAbbruch(lauf);
 
-  if (art === 'zweit') await schritt('bl-nummern', () => sk.katalog.fetchMissingBlIds(lauf));
+  if (art === 'zweit') await schritt('bl-nummern', () => sk.katalog.blNummernNachladen(lauf));
   if (art === 'neu') {
     await schritt('preis', () => sk.finanzen.refreshPriceForSet(setNumber, userId));
     await schritt('anleitung', () => sk.katalog.downloadSetInstructions(setNumber));

@@ -97,7 +97,7 @@ export async function setBilderNachladen(k: BilderKontext): Promise<void> {
   for (const { set_number, image_url } of missing) {
     // Nur 404/410 heisst „gibt es nicht“; Drosselung beendet den Lauf, alles andere versucht der nächste.
     const info: { status?: number } = {};
-    const r = await versuche('nachlauf:downloadSetImage', k.bildwerk.setBildLaden(image_url, set_number, info));
+    const r = await versuche('nachlauf:setBildHerunterladen', k.bildwerk.setBildLaden(image_url, set_number, info));
     const local = r.ok ? r.wert : null;
     if (!local && (info.status === 404 || info.status === 410))
       merkeFehlend(k, 'set:' + set_number, `HTTP ${info.status} vom CDN`);

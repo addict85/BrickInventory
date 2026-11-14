@@ -5,7 +5,7 @@
  * Gegenproben (25.10., gemessen):
  *   A  istAktiv-Prüfung in pruefeAnmeldedaten() entfernt → rot: „ohne Code angemeldet"
  *   B  `letzter_schritt < $2` in pruefeCode() entfernt   → rot: „derselbe Code zweimal"
- *   C  recordLoginFailure beim falschen Code entfernt    → rot: „keine Sperre"
+ *   C  anmeldungGescheitert beim falschen Code entfernt    → rot: „keine Sperre"
  *   D  hotp(): Offset aus dem ersten statt letzten Byte  → rot: RFC-Vektoren
  *   E  change-password wieder mit 401                    → rot: „die Clients melden dann ab"
  *   F  (28.10.) beendeAndereZugaenge() beim Bestätigen entfernt → rot: „Ein

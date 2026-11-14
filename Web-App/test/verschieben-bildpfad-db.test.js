@@ -59,7 +59,7 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
     const { imSystemkontext } = _req('src/infra/kontoKontext.js');
     const sammlung = require('./helpers/sources').testKontext('sammlung');
     await imSystemkontext('Testdaten', () =>
-      sammlung.transaktion(tt => tt.sets.moveSetBetweenAccounts(SN, vonId, nachId)),
+      sammlung.transaktion(tt => tt.sets.setErfassungenUmhaengen(SN, vonId, nachId)),
     );
 
     // Gelesen wird über denselben JOIN, den die Oberflächen benutzen — also

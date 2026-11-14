@@ -5,7 +5,7 @@ import { oeffentlicherFehler } from '../infra/fehler';
 import { Abstriche, versuche } from '../infra/ergebnis';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
-import type { Quellen } from '../katalog';
+import type { Quellen } from '../fremdquellen';
 import * as V from '../infra/validate';
 import { geldEingabe } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';

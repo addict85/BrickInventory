@@ -10,7 +10,7 @@ import * as bildBlickfeldDienst from './bildBlickfeld';
 import * as bildNachschlagen from './bildNachschlagen';
 import * as proxyThumbs from './proxyThumbs';
 import * as imgCacheServe from './imgCacheServe';
-import { downloadSetImage } from './setImages';
+import { setBildHerunterladen } from './setImages';
 import { generateThumb } from './thumbs';
 import { zugang, type Bildwerk, type BilderAbhaengigkeiten, type BilderKontext } from './kontext';
 
@@ -21,7 +21,7 @@ export function erzeugeBilder(
   a: Omit<BilderAbhaengigkeiten, 'faecher' | 'bildwerk'> & { bildwerk?: Bildwerk | undefined },
   einblick?: Einblick<BilderKontext>,
 ) {
-  const bildwerk = a.bildwerk ?? { setBildLaden: downloadSetImage, vorschauErzeugen: generateThumb };
+  const bildwerk = a.bildwerk ?? { setBildLaden: setBildHerunterladen, vorschauErzeugen: generateThumb };
   const k: BilderKontext = baueKontext({ ...a, bildwerk, faecher: new Faecher() }, zugang);
   einblick?.(k);
   return {

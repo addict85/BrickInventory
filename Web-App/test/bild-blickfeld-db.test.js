@@ -97,7 +97,7 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     ['unter', ids[1]],
     ['fremd', ids[2]],
   ])
-    token[k] = await auth.createToken(id, 'Prüfung', true);
+    token[k] = await auth.tokenAnlegen(id, 'Prüfung', true);
   t.after(async () => {
     for (const f of DATEIEN) fs.rmSync(f, { force: true });
     await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[SN.unter, SN.fremd]]).catch(() => {});

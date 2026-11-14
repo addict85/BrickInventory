@@ -3,7 +3,7 @@
  * dann aus X-Forwarded-For, wenn ein vertrauter Proxy davorsteht.
  *
  * Gegenproben (am 25.10. gemessen):
- *   A  Zähler je Name in checkLoginAllowed entfernt → rot: „mit wechselnden
+ *   A  Zähler je Name in anmeldungErlaubt entfernt → rot: „mit wechselnden
  *      Adressen unbegrenzt raten" (seit 28.10. je Konto mit wachsender Wartezeit)
  *   B  server.ts wieder mit `trust proxy` 1 statt proxyVertrauen() → rot:
  *      „TRUST_PROXY=false wird nicht beachtet"

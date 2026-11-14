@@ -1,6 +1,6 @@
 /** BL-Nummern der Wanted-Liste auf Rebrickable-Nummern abbilden: zuerst lokal
  * (Zuordnungen, Katalog), dann über Rebrickable, zuletzt die Korrekturen von Hand. */
-import { RebrickableGesperrt } from '../katalog';
+import { RebrickableGesperrt } from '../fremdquellen';
 import { meldeFehler } from '../infra/fehler';
 import type { WantedArt, WantedPosten } from './wantedParser';
 import type { MerklisteKontext } from './kontext';

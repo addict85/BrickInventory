@@ -3,7 +3,7 @@ import { asIds, type Sicht, type BlickfeldEingabe as Blickfeld } from '../hausha
 import type { SetsKontext } from './kontext';
 
 // Für Löschen und Wegfall; sonst verwaisen Teile. In der Transaktion des Aufrufers (`t`).
-export async function deleteSetRows(t: SetsKontext, uids: number[], setNumber: string) {
+export async function setZeilenLoeschen(t: SetsKontext, uids: number[], setNumber: string) {
   await repo.entferneSetZeilen(t.db, uids, setNumber);
   await t.bestand.entferneSetInhalt(uids, setNumber);
 }
@@ -33,7 +33,7 @@ export async function loescheSet(sk: SetsKontext, userId: Blickfeld, setNumber: 
       const id = await t.bestand.legeInPapierkorb('set', b.user_id, setNumber);
       if (id !== null) papierkorb.push(id);
     }
-    await deleteSetRows(t, uids, setNumber);
+    await setZeilenLoeschen(t, uids, setNumber);
     return papierkorb;
   });
 }

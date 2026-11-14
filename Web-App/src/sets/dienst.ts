@@ -1,9 +1,6 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen nur Anfrage und Antwort kennen. */
 import { normalisiereLagerort } from '../bestand';
-import { normalizeSetNumber } from './erfassen';
-import { mitVersion } from '../infra/setNummer';
-import { verschiebeSet } from './setMove';
-import { fachfehler } from '../infra/fehlerTexte';
+import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/setDetail';
 import type { SetsKontext } from './kontext';
 export type { KatalogTeil, ListenTeil, SetStamm } from './zeilen';
@@ -27,7 +24,7 @@ export async function lagerortDesSetsSetzen(
   storage: string | null | undefined,
 ) {
   const ort = normalisiereLagerort(storage);
-  const n = await sk.bestand.lagerortDienst.setzeLagerort('set', { schreiber: uid }, [normalizeSetNumber(sn)], ort);
+  const n = await sk.bestand.lagerortDienst.setzeLagerort('set', { schreiber: uid }, [normalisiereSetNummer(sn)], ort);
   return { ort, n };
 }
 
@@ -39,30 +36,4 @@ export async function lagerorteMitVorgabe(sk: SetsKontext, uid: number, owner: s
     sk.bestand.lagerortDienst.vorgabeVon(uid),
   ]);
   return { orte, vorgabe };
-}
-
-/** Konto als Kennung aus der Eingabe; schreibziel() prüft es. */
-type KontoWunsch = string | number | null | undefined;
-
-/** Drei Erfassungen sind drei Käufe und können im Haushalt verschiedenen Kindern
- * gehören; wer alles will, wählt alle Zeilen. */
-export async function setVerschieben(
-  sk: SetsKontext,
-  uid: number,
-  roh: string,
-  von: KontoWunsch,
-  nach: KontoWunsch,
-  erfassungen: number[],
-) {
-  if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
-  const sn = mitVersion(roh);
-  const fromId = await sk.haushalt.schreibziel(uid, von ?? uid);
-  const toId = await sk.haushalt.schreibziel(uid, nach);
-  if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
-  return {
-    set_number: sn,
-    from_user_id: fromId,
-    to_user_id: toId,
-    ...(await verschiebeSet(sk, sn, fromId, toId, erfassungen)),
-  };
 }

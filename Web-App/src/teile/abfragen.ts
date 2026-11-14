@@ -1,8 +1,10 @@
 import * as repo from './repository/teileListe';
-import { resolveImageLocal, type RbSetTeil, ersteBlNummer, blFarbnummerAus } from '../katalog';
+import { blFarbnummerAus } from '../katalog';
+import { resolveImageLocal } from '../bilder';
+import { type RbSetTeil, ersteBlNummer } from '../fremdquellen';
 import { asIds, type Sicht, type BlickfeldEingabe, type BlickfeldEingabe as Blickfeld } from '../haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
-import { ensureFresh } from './partsSummary';
+import { zusammenfassungFrisch } from './partsSummary';
 import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand';
 import { meldeFehler, logAndContinue } from '../infra/fehler';
 import { Abstriche } from '../infra/ergebnis';
@@ -20,7 +22,7 @@ export async function getPartsColors(k: TeileKontext, userIdWahl: Sicht | Blickf
   const uids = asIds(userId);
   // Aus der Zusammenfassung (die Mengen sind dort schon mit der Set-Anzahl
   // multipliziert); strict, damit Webapp und App dieselben Zahlen zeigen.
-  return k.teileListe.farbenDesBestands(uids, await ensureFresh(k, uids, { strict: true }));
+  return k.teileListe.farbenDesBestands(uids, await zusammenfassungFrisch(k, uids, { strict: true }));
 }
 
 function teileFilter(query: Record<string, unknown>): repo.TeileFilter {
@@ -115,7 +117,7 @@ function teilAlsAntwort(r: repo.TeilZeile) {
 export async function tryPartsSummary(k: TeileKontext, userId: Blickfeld, o: Record<string, unknown>) {
   const uids = asIds(userId);
   // null heisst: Die Live-Abfrage übernimmt. Frisch nur, wenn alle Konten es sind.
-  if (!(await ensureFresh(k, uids))) return null;
+  if (!(await zusammenfassungFrisch(k, uids))) return null;
   const size = seitengroesse(o.page_size, !!o.set_number);
   const pg = Math.max(1, parseInt(String(o.page), 10) || 1);
   try {
@@ -169,7 +171,7 @@ export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, q
   // Im Hintergrund fehlende BrickLink-Nummern nachladen; eine leere bl_id heisst „nachgesehen".
   setImmediate(async () => {
     try {
-      if (await k.teileListe.hatUngeseheneBlNummer(uids)) await k.katalog.fetchMissingBlIds();
+      if (await k.teileListe.hatUngeseheneBlNummer(uids)) await k.katalog.blNummernNachladen();
     } catch (e) {
       meldeFehler('teile:bl-nummern-nachladen', e);
     }
@@ -189,7 +191,7 @@ export async function getParts(k: TeileKontext, userIdWahl: Sicht | Blickfeld, q
 export async function getPartsCategories(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
   const userId = await k.haushalt.blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  return k.teileListe.kategorien(uids, await ensureFresh(k, uids, { strict: true }));
+  return k.teileListe.kategorien(uids, await zusammenfassungFrisch(k, uids, { strict: true }));
 }
 
 export async function getPartsStats(k: TeileKontext, userIdWahl: Sicht | Blickfeld) {
@@ -197,7 +199,7 @@ export async function getPartsStats(k: TeileKontext, userIdWahl: Sicht | Blickfe
   const uids = asIds(userId);
   // Aus der Zusammenfassung nur, wenn sie frisch ist: Webapp und App zeigen
   // dieselben Zahlen.
-  if (await ensureFresh(k, uids, { strict: true })) {
+  if (await zusammenfassungFrisch(k, uids, { strict: true })) {
     const r = await k.teileListe.kennzahlen(uids, true);
     if (r) return r;
   }

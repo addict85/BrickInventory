@@ -1,7 +1,7 @@
 /** CSV-Import der Sets: Zeilen lesen, Auftrag starten, Stand melden. */
 import { vorDem, fehlertext, oeffentlicherFehler } from '../infra/fehler';
 import { buildJobStatus, csvImportBus } from '../auftraege';
-import { normalizeSetNumber } from './erfassen';
+import { normalisiereSetNummer } from '../infra/setNummer';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, zeilenListe } from '../infra/csvExport';
 import { fachfehler, type Sprache } from '../infra/fehlerTexte';
 import { randomUUID } from 'node:crypto';
@@ -86,7 +86,7 @@ async function schonVorhanden(sk: SetsKontext, userId: number, rows: ImportZeile
   const da = new Set((await repo.setsMitMenge(sk.db, userId)).map(s => s.set_number));
   const treffer = rows
     .filter(r => !r.fehler)
-    .map(r => normalizeSetNumber(r.sn))
+    .map(r => normalisiereSetNummer(r.sn))
     .filter(sn => da.has(sn));
   return [...new Set(treffer)];
 }

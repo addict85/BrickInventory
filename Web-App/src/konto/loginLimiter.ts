@@ -207,8 +207,8 @@ function namensAbdruck(name: string): string {
 
 export type Sperre = { code: FehlerCode; vars: { minuten: number } };
 
-/** Belegt den Versuch; recordLoginFailure, recordLoginSuccess oder gibAnmeldeplatzFrei geben ihn frei. */
-export async function checkLoginAllowed(k: KontoKontext, ip: string, username: string): Promise<Sperre | null> {
+/** Belegt den Versuch; anmeldungGescheitert, anmeldungGelungen oder gibAnmeldeplatzFrei geben ihn frei. */
+export async function anmeldungErlaubt(k: KontoKontext, ip: string, username: string): Promise<Sperre | null> {
   const kennung = await kontoKennung(k, username);
   // Bekannt: nur die Sperre je Adresse und Konto. Gesamtsperre und Wartezeit liessen sich sonst
   // gegen den Inhaber richten, hinter einem Proxy teilen sich alle eine Adresse.
@@ -243,7 +243,7 @@ export async function gibAnmeldeplatzFrei(k: KontoKontext, ip: string, username:
 }
 
 /** @returns die Fehlversuche des Kontos im Fenster */
-export async function recordLoginFailure(k: KontoKontext, ip: string, username: string): Promise<number> {
+export async function anmeldungGescheitert(k: KontoKontext, ip: string, username: string): Promise<number> {
   const kennung = await kontoKennung(k, username);
   await _bump(k, _key(ip, kennung), WINDOW_MIN);
   const n = await _bump(k, _nameKey(kennung), WINDOW_MIN);
@@ -285,7 +285,7 @@ export function meldeAnmeldung(angaben: { ip?: string | undefined; konto: number
   });
 }
 
-export async function recordLoginSuccess(k: KontoKontext, ip: string, username: string): Promise<void> {
+export async function anmeldungGelungen(k: KontoKontext, ip: string, username: string): Promise<void> {
   const kennung = await kontoKennung(k, username);
   await _clear(k, _key(ip, kennung));
   await _clear(k, _nameKey(kennung));

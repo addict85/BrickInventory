@@ -33,7 +33,7 @@ ersetze('src/katalog/rebrickableKatalog.js', { getAllSetParts: stoerung });
 testQuellen(null, { getSetMinifigs: stoerung });
 // Die Nacharbeit: Teile und Figuren gelingen, zwei Anreicherungen scheitern.
 const still = async () => {};
-ersetze('src/katalog/partsImport.js', { importiereTeile: still, fetchMissingBlIds: still });
+ersetze('src/katalog/partsImport.js', { importiereTeile: still, blNummernNachladen: still });
 ersetze('src/katalog/minifigsImport.js', { importiereFiguren: still });
 ersetze('src/auftraege/anleitungsAuftrag.js', { anleitungEinreihen: still });
 ersetze('src/katalog/teileAnreicherung.js', {

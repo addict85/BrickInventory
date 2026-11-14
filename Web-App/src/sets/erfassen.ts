@@ -1,6 +1,7 @@
 /** Sets erfassen: Web, App, CSV, Wanted-XML und Merkliste unter denselben Regeln. Was das
  * Netz braucht (Katalog, Bild, Marktpreis), hält die Anfrage nicht auf, es läuft als Auftrag. */
-import { rebrickableSetBild, katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
+import { katalogStand, merkeKatalogPlatzhalter, merkeSetKatalog } from '../katalog';
+import { rebrickableSetBild } from '../bilder';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/sets';
@@ -21,7 +22,7 @@ export interface Erfassung {
 }
 
 /** In einer Transaktion mit deren Kontext (`t`) rufen. */
-export async function recordAcquisition(sk: SetsKontext, e: Erfassung) {
+export async function erfassungBuchen(sk: SetsKontext, e: Erfassung) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
   await sk.bestand.recordAcquisitionForDay('set', e.konto, [e.setNumber], {
@@ -32,11 +33,6 @@ export async function recordAcquisition(sk: SetsKontext, e: Erfassung) {
     currency: e.waehrung ?? null,
     createdAt: e.erfasstAm ?? null,
   });
-}
-
-// Dieselbe Regel wie beim Schreiben, sonst prüfte die Suche eine andere Nummer.
-export function normalizeSetNumber(input: string): string {
-  return normalisiereSetNummer(input);
 }
 
 export interface VorhandenesSet {
@@ -53,7 +49,7 @@ export async function findSetInScope(
   viewerId: number,
   setNumber: string,
 ): Promise<VorhandenesSet | null> {
-  const sn = normalizeSetNumber(setNumber);
+  const sn = normalisiereSetNummer(setNumber);
   const row = await repo.setImBlickfeld(sk.db, await sk.haushalt.blickfeldIds(viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
@@ -104,7 +100,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
   const roh = String(e.setNumber ?? '').trim();
   if (!roh) fachfehler('ungueltig', 'set_number_erforderlich');
   if (e.streng && !GETIPPTE_NUMMER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  const sn = normalizeSetNumber(roh);
+  const sn = normalisiereSetNummer(roh);
   if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const besitzer = await sk.haushalt.schreibziel(e.anfragender, e.besitzerWunsch);
   const zustand = await sk.einstellungen.zustandFuerPreis(e.zustand ?? null, null, besitzer);
@@ -135,7 +131,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
         },
       );
     if (e.wennVorhanden === 'aufstocken' && (await repo.setZeileDesKontos(t.db, besitzer, sn))) {
-      await recordAcquisition(t, erfassung);
+      await erfassungBuchen(t, erfassung);
       // Nur ein genannter Ort: Die Vorgabe des Kontos verschöbe sonst ein einsortiertes Set.
       if (ort && e.lagerort) await t.bestand.lagerortDienst.setzeLagerort('set', [besitzer], [sn], ort);
       await nacharbeit('zweit');
@@ -147,7 +143,7 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
     }
     const katalog = await merkeKatalogPlatzhalter(t.db, sn);
     await repo.legeSetZeileAn(t.db, besitzer, sn);
-    await recordAcquisition(t, erfassung);
+    await erfassungBuchen(t, erfassung);
     if (ort) await t.bestand.lagerortDienst.setzeLagerort('set', [besitzer], [sn], ort);
     await nacharbeit('ergaenzen');
     return {

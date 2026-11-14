@@ -9,7 +9,7 @@ import {
   tageskurseLesen,
   type Abruf,
   type Kurs,
-} from '../katalog';
+} from '../fremdquellen';
 import type { FinanzenKontext } from './kontext';
 
 const BLOCK = 5000;

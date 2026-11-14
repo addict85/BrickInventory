@@ -3,9 +3,9 @@
  * vorher als Muster im Quelltext suchte, hier an Ergebnissen.
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  getSetConditionAggregate ohne max_purchase_price → rot „getSet liefert
+ *   A  zustandsAggregat ohne max_purchase_price → rot „getSet liefert
  *      dieselben Aggregatfelder …“
- *   B  erfassungAendern gibt die nackte Antwort ohne withSetAggregate zurück →
+ *   B  erfassungAendern gibt die nackte Antwort ohne mitSetAggregat zurück →
  *      rot „beide Wege einer Erfassung …“ (und der folgende Fall, der auf
  *      dessen Teil aufbaut)
  *   C  POST /api/v1/sets reicht `null` statt des Zustands an setErfassen → rot

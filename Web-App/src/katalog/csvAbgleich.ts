@@ -1,7 +1,7 @@
 /** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
  * API-Abruf und das Tageskontingent. */
 import type { Nutzlast, AuftragsLauf as CsvLauf } from '../auftraege';
-import { fetchMissingBlIds } from './partsImport';
+import { blNummernNachladen } from './partsImport';
 import { fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
 import { merkeBlFarbnummer, blFarbnummerAus } from './blZuordnung';
 import fs from 'node:fs';
@@ -232,7 +232,7 @@ async function run(k: KatalogKontext, lauf: CsvLauf = {}) {
   } else {
     await ladeAlles(k, lauf, today);
   }
-  await fetchMissingBlIds(k, lauf).catch(logAndContinue('rb-csv:bl-nummern'));
+  await blNummernNachladen(k, lauf).catch(logAndContinue('rb-csv:bl-nummern'));
   await k.auftraege.meldeStartZustand({ ready: true, step: 'Bereit', progress: TOTAL_STEPS, total: TOTAL_STEPS });
   log('Startup complete — server ready');
   await ladeBlFarben(k).catch(logAndContinue('rb-csv:bl-farben'));

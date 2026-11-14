@@ -222,7 +222,7 @@ export const ZUGAENGE_HOECHSTENS = 50;
 /** @param dauerhaft  true = Gerätezugang mit Gleitfrist; false = sieben feste
  *                   Tage — Benutzung durch einen Angreifer soll ihn nicht verlängern.
  * @param festeTage  `UNBEGRENZT` (0) = ohne Ablauf, nur über HTTPS und mit Rotationspflicht. */
-export async function createToken(
+export async function tokenAnlegen(
   k: KontoKontext,
   userId: number,
   label = 'Android App',
@@ -314,14 +314,14 @@ export async function deleteToken(k: KontoKontext, token: string): Promise<void>
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer
  * Erfolg, während die alten Tokens weitergelten. */
-export async function revokeAllTokens(k: KontoKontext, userId: number): Promise<void> {
+export async function alleTokensWiderrufen(k: KontoKontext, userId: number): Promise<void> {
   await k.zugaenge.loescheTokensDesKontos(userId);
   leereTokenCache(k);
 }
 
 /** Altzeilen bekommen zuerst ihre Gleitfrist, damit sie fallen wie neue. Jeder Schritt
  * läuft; scheitert einer, wirft der Lauf danach, und das Aufräumen wiederholt ihn. */
-export async function purgeExpiredTokens(k: KontoKontext) {
+export async function tokensAufraeumen(k: KontoKontext) {
   const ohne: string[] = [];
   const schritt = async (was: string, arbeit: () => Promise<number>) => {
     const r = await versuche(`tokens:${was}`, arbeit);

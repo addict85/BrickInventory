@@ -120,10 +120,10 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
       (await server(t, { userId: nutzer, username: NAMEN[1], isAdmin: false })('GET', '/settings')).status,
       200,
     );
-    const { createToken } = _req('src/konto/geraeteToken.js');
-    const app = server(t, {}, await createToken(chef, 'app', false, null, { scope: 'app' }));
+    const { tokenAnlegen } = _req('src/konto/geraeteToken.js');
+    const app = server(t, {}, await tokenAnlegen(chef, 'app', false, null, { scope: 'app' }));
     assert.equal((await app('GET', '/settings')).status, 200);
-    const voll = server(t, {}, await createToken(chef, 'voll', false, null, { scope: 'voll' }));
+    const voll = server(t, {}, await tokenAnlegen(chef, 'voll', false, null, { scope: 'voll' }));
     assert.equal((await voll('GET', '/settings')).status, 403);
   });
 

@@ -50,7 +50,7 @@ function rebuildInBackground(k: TeileKontext, userId: number, v: { v: number }) 
 }
 
 // Baut nicht im Request auf: Der Neuaufbau kostete den Teile-Reiter Sekunden.
-export async function ensureFresh(
+export async function zusammenfassungFrisch(
   k: TeileKontext,
   userId: number | number[],
   opts?: { strict?: boolean },
@@ -58,7 +58,7 @@ export async function ensureFresh(
   // Frisch ist die Haushaltssicht nur, wenn sie es für JEDES beteiligte Konto ist.
   const ids = Array.isArray(userId) ? userId : [userId];
   if (ids.length > 1) {
-    const results = await Promise.all(ids.map(id => ensureFresh(k, id, opts)));
+    const results = await Promise.all(ids.map(id => zusammenfassungFrisch(k, id, opts)));
     return results.every(Boolean);
   }
   userId = ids[0] ?? 0;

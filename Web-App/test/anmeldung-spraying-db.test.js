@@ -3,7 +3,7 @@
  * fünf Versuche je Konto. Und abgelaufene Zähler verschwinden wieder.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  in checkLoginAllowed die Reservierung des Adressschlüssels entfernt →
+ *   A  in anmeldungErlaubt die Reservierung des Adressschlüssels entfernt →
  *      rot: „nach 30 Fehlversuchen gegen verschiedene Namen …“
  *   B  raeumeAnmeldezaehlerAuf() löscht nichts (`AND FALSE`) → rot:
  *      „abgelaufene Zähler werden gelöscht …“
@@ -11,7 +11,7 @@
  * Eine Flut fremder Fehlversuche sperrt den Inhaber auf seinem bekannten Gerät
  * nicht aus (hinter einem Proxy teilen sich alle eine Adresse).
  * Gegenprobe (13.11.2026 gemessen):
- *   C  in checkLoginAllowed `bekannt ||` vor der Gesamtsperre gestrichen →
+ *   C  in anmeldungErlaubt `bekannt ||` vor der Gesamtsperre gestrichen →
  *      rot: „bekannt: trotz gesperrter Adresse angemeldet“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -67,7 +67,7 @@ test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async t => {
 
   await t.test('wer sich von hier schon angemeldet hat, kommt trotz gesperrter Adresse hinein', async () => {
     const anfrage = { ip: IP, socket: {}, headers: {} };
-    await lim.recordLoginSuccess(IP, NAME);
+    await lim.anmeldungGelungen(IP, NAME);
     const r = await pruefeAnmeldedaten(anfrage, NAME, 'richtig-geheim');
     assert.equal(r.ok, true, `bekannt: trotz gesperrter Adresse angemeldet (${JSON.stringify(r.absage)})`);
     assert.equal(

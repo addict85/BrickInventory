@@ -42,8 +42,8 @@ test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1
     await db.pool.end().catch(() => {});
   });
 
-  await limiter.recordLoginSuccess(IP, name);
-  await limiter.recordLoginSuccess(IP6, name);
+  await limiter.anmeldungGelungen(IP, name);
+  await limiter.anmeldungGelungen(IP6, name);
 
   await t.test('keine Klartext-Adresse', async () => {
     const zeilen = await db.all(

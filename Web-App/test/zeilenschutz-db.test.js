@@ -362,7 +362,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
       C,
     ]);
     assert.equal((await d.konto.validateToken(token))?.user_id, C);
-    await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).revokeAllTokens(kontexte.konto, C);
+    await require(path.join(q.DIST, 'src/konto/geraeteToken.js')).alleTokensWiderrufen(kontexte.konto, C);
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });
 

@@ -33,7 +33,7 @@ export async function setBildVollstaendig(setNumber: string): Promise<boolean> {
   return (await da(`${safe}.jpg`)) && (await da(`${safe}_thumb.jpg`));
 }
 
-export async function downloadSetImage(url: string, setNumber: string, info?: { status?: number }) {
+export async function setBildHerunterladen(url: string, setNumber: string, info?: { status?: number }) {
   if (!url) return null;
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
   const localPath = path.join(SET_IMAGES_DIR, `${safe}.jpg`);

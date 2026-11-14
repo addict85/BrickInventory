@@ -3,11 +3,11 @@ import * as passwortRegel from '../infra/passwortRegel';
 import bcrypt from 'bcryptjs';
 import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
 import {
-  checkLoginAllowed,
+  anmeldungErlaubt,
   bekannteAnmeldung,
   gibAnmeldeplatzFrei,
-  recordLoginFailure,
-  recordLoginSuccess,
+  anmeldungGescheitert,
+  anmeldungGelungen,
   meldeAnmeldeereignis,
   meldeAnmeldung,
   faktorCodeGesperrt,
@@ -130,7 +130,7 @@ export async function pruefeAnmeldedaten(
 
   const ip = herkunft.ip || '?';
   const name = String(username);
-  const gesperrt = await checkLoginAllowed(k, ip, name);
+  const gesperrt = await anmeldungErlaubt(k, ip, name);
   if (gesperrt) {
     meldeAnmeldeereignis('anmeldung_gesperrt', {
       ip,
@@ -185,7 +185,7 @@ export async function pruefeAnmeldedaten(
       return ergaenzt(absage('nicht_angemeldet', grund, undefined, false, true));
     }
   }
-  await recordLoginSuccess(k, ip, name);
+  await anmeldungGelungen(k, ip, name);
   meldeAnmeldung({ ip, konto: Number(user.id), zugang });
   return { ok: true, user };
 }
@@ -200,6 +200,6 @@ async function fehlversuch(
   konto?: number,
 ): Promise<void> {
   meldeAnmeldeereignis(ereignis, { ip, konto: konto ?? null });
-  if ((await recordLoginFailure(k, ip, name)) !== MAX_ATTEMPTS || konto === undefined) return;
+  if ((await anmeldungGescheitert(k, ip, name)) !== MAX_ATTEMPTS || konto === undefined) return;
   if (!(await kontoGedrosselt(k, 'sperr-hinweis', konto, 1, TAG_MS))) hinweisNebenher(k, konto, 'anmeldung_gebremst');
 }

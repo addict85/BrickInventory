@@ -3,7 +3,7 @@
  * Sitzung und Keks bleiben dort, weil sie an der Anfrage hängen. */
 import crypto from 'node:crypto';
 import * as K from './konten';
-import { createToken, hashToken, laufzeitTage, UNBEGRENZT } from './geraeteToken';
+import { tokenAnlegen, hashToken, laufzeitTage, UNBEGRENZT } from './geraeteToken';
 import { APP_HOECHSTDAUER_TAGE, tokenAngaben, tokenLabel, tokenScope } from './tokenWunsch';
 import { hinweisNebenher } from './kontoHinweis';
 import { kontoGedrosselt } from './zielDrossel';
@@ -38,7 +38,7 @@ export async function anmeldeAntwort(
     // Ein Token, den die Datenbank nie sah, liefe im SSE-Kanal in ein 401.
     const neu = await versuche(
       'login:token',
-      createToken(
+      tokenAnlegen(
         k,
         uid,
         tokenLabel(wunsch.label, 'webapp-session'),
@@ -76,7 +76,7 @@ export async function geraeteTokenAusstellen(
   ip: string | undefined,
 ) {
   const name = tokenLabel(label, 'Android App');
-  const token = await createToken(k, uid, name, true, null, { scope: tokenScope(scope), ip });
+  const token = await tokenAnlegen(k, uid, name, true, null, { scope: tokenScope(scope), ip });
   hinweisNebenher(k, uid, 'token_neu', name);
   return { token, label: name, token_info: await tokenAngaben(k, token) };
 }

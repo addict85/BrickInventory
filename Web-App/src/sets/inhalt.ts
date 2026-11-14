@@ -1,5 +1,6 @@
 /** Stammdaten, Teile- und Figurenliste eines Sets. */
-import { proxyImageUrl, type RbSetTeil, ersteBlNummer } from '../katalog';
+import { proxyImageUrl } from '../bilder';
+import { type RbSetTeil, ersteBlNummer } from '../fremdquellen';
 import { findSetInScope } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
 import { mitVersion, ohneVersion } from '../infra/setNummer';

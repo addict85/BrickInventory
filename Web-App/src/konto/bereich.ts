@@ -57,7 +57,7 @@ export function erzeugeKonto(a: Omit<KontoAbhaengigkeiten, 'faecher'>, einblick?
       'pruefeToken',
       'rotiereToken',
       'deleteToken',
-      'purgeExpiredTokens',
+      'tokensAufraeumen',
       'validateToken',
     ]),
     ...bindeZugang(k, kontenDienst, [

@@ -247,7 +247,7 @@ async function verschicke(k: FinanzenKontext, post: AlarmPost, a: AlarmZeile, pr
 }
 
 /** Eigene Datei statt Spalten an sets.csv: Ein Alarm braucht das Set nicht zu besitzen. */
-export async function buildPreisalarmeCsv(k: FinanzenKontext, uid: number): Promise<string> {
+export async function preisalarmeAlsCsv(k: FinanzenKontext, uid: number): Promise<string> {
   const rows = await repo.alarmeFuerExport(k.db, uid);
 
   return toCsv(

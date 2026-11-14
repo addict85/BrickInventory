@@ -2,7 +2,8 @@ import { speicherePreis, cacheUsable, preisAusCache, parallelLimit } from './fin
 import { meldeFehler, fehlertext, logAndContinue } from '../infra/fehler';
 import { AuftragVerschieben, type AuftragsKontext } from '../auftraege';
 import { ohneBricklinkPreis } from '../infra/setNummer';
-import { BricklinkNichtErreichbar, hatPreis } from '../katalog';
+import { hatPreis } from '../katalog';
+import { BricklinkNichtErreichbar } from '../fremdquellen';
 import { belegeSitzungsSperre } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
 import { versuche } from '../infra/ergebnis';

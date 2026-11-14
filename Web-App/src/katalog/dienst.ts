@@ -156,7 +156,7 @@ export async function katalogSet(k: KatalogKontext, userId: number, roh: string)
   // Jetzt dauerhaft ablegen; die Vorschau und den Eintrag in set_catalog macht der Bild-Job.
   if (!image_local && set.image_url) {
     // Ohne Datei zeigt die Seite image_url; der Bild-Job holt sie nach.
-    const r = await versuche('katalog:downloadSetImage', k.bilder.setBildLaden(set.image_url, set.set_number));
+    const r = await versuche('katalog:setBildHerunterladen', k.bilder.setBildLaden(set.image_url, set.set_number));
     image_local = r.ok ? r.wert : null;
     if (image_local) k.nacharbeit.bildVormerken(String(set.image_url || ''), set.set_number);
   }

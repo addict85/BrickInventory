@@ -1169,7 +1169,29 @@ function topLevelLaengen(/** @type {string[]} */ dateien) {
   return raus;
 }
 
-test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie mehr', () => {
+/** Englische Namen exportierter Funktionen in src/ werden weniger, nie mehr. */
+function englischeExportnamen() {
+  // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“). Gezählt wird das Verb am
+  // Anfang (test/helpers/namen.js). Routen und src/http benennt dieser Zähler nicht um, er zählt sie.
+  // Gegenprobe (14.11.2026): in src/sets/setService.ts `setsAlsCsv` wieder `buildSetsCsv` → rot (125 von 124).
+  const { englischerName } = require('./helpers/namen');
+  const SCHRANKE = 124;
+  assert.deepEqual(
+    ['fetchPrice', 'getSetInfo', 'isDecodable', 'setUserSetting', 'setErfassen', 'haushaltVon', 'setVerschieben'].map(
+      englischerName,
+    ),
+    [true, true, true, true, false, false, false],
+  );
+  const namen = quellen()
+    .filter(f => /^src[\\/]/.test(path.relative(WEB, f)))
+    .flatMap(f => [...fs.readFileSync(f, 'utf8').matchAll(/^export (?:async )?function (\w+)/gm)].map(m => m[1]));
+  assert.ok(namen.length > 1000, `nur ${namen.length} exportierte Funktionen in src/ — greift die Suche noch?`);
+  const ist = namen.filter(englischerName).length;
+  assert.ok(ist <= SCHRANKE, `${ist} englische Exportnamen in src/, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ englische Exportnamen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+}
+
+test('Funktionen im Server (über 80/150 Zeilen, englische Exportnamen) werden weniger, nie mehr', () => {
   // Ab 100 Zeilen zählen Top-Level-Funktionen samt Pfeilfunktionen; keine ist bekannt.
   // Gegenproben: buildPdf in src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026);
   // erzeugeDb in db/database.ts wieder als eine Closure → rot „ab 100“ und „über 150“ (14.11.2026).
@@ -1203,6 +1225,7 @@ test('Funktionen im Server über 80 und über 150 Zeilen werden weniger, nie meh
   assert.ok(ueber(80).length <= SCHRANKE_80, `${ueber(80).length} über 80 Zeilen, erlaubt sind ${SCHRANKE_80}`);
   if (ueber(80).length < SCHRANKE_80)
     console.log(`  ℹ Server-Funktionen über 80 Zeilen: ${ueber(80).length} — Schranke nachziehen`);
+  englischeExportnamen();
 });
 
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {

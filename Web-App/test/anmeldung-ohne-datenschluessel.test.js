@@ -24,7 +24,7 @@ const _req = buildAndRequire();
 const limiter = _req('src/konto/loginLimiter.js');
 
 test('ohne Datenschlüssel sagt die Anmeldebremse ab, statt ungeschlüsselt zu hashen', async () => {
-  await assert.rejects(limiter.checkLoginAllowed('203.0.113.5', `ohne_schluessel_${process.pid}`), e => {
+  await assert.rejects(limiter.anmeldungErlaubt('203.0.113.5', `ohne_schluessel_${process.pid}`), e => {
     assert.match(String(e?.message), /unter[\\/]datenschluessel|ENOTDIR/);
     return true;
   });

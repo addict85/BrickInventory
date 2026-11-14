@@ -1,4 +1,5 @@
-import { fuerSet, resolveImageLocal, anleitungenZusammenlegen } from '../katalog';
+import { fuerSet, anleitungenZusammenlegen } from '../katalog';
+import { resolveImageLocal } from '../bilder';
 import { meldeFehler } from '../infra/fehler';
 import * as repo from './repository/sets';
 import { asIds, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
@@ -73,7 +74,7 @@ export async function getSets(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, qu
 }
 
 // Eine gebrauchte Erfassung macht das Set gebraucht; die Regel steht nur hier.
-export async function getSetConditionAggregate(sk: SetsKontext, userId: Blickfeld, setNumber: string) {
+export async function zustandsAggregat(sk: SetsKontext, userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setErfassungsKennzahlen(sk.db, uids, setNumber);
   const acqCount = Number(acq?.acq_count) || 0;
@@ -91,14 +92,14 @@ export async function getSetConditionAggregate(sk: SetsKontext, userId: Blickfel
 }
 
 /** Damit die Schreib-Endpunkte die Kachel ohne Neuladen aktualisieren. */
-export async function withSetAggregate<T extends object>(
+export async function mitSetAggregat<T extends object>(
   sk: SetsKontext,
   userId: Blickfeld,
   setNumber: string,
   payload: T,
 ) {
   const uids = asIds(userId);
-  const agg = await versuche('sets-handler:getSetConditionAggregate', getSetConditionAggregate(sk, uids, setNumber));
+  const agg = await versuche('sets-handler:zustandsAggregat', zustandsAggregat(sk, uids, setNumber));
   return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
 }
 
@@ -115,7 +116,7 @@ export async function getSet(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, set
   if (!set) return null;
   // Dieselben Felder wie getSets(sk), damit ein Client die Kachel mit dem Detail
   // überschreiben kann.
-  const agg = await getSetConditionAggregate(sk, uids, setNumber);
+  const agg = await zustandsAggregat(sk, uids, setNumber);
   // Die Kaufadressen vom Server: Eine Adresse an vier Stellen wären vier Wahrheiten.
   const [bricklink, preisvergleich] = await Promise.all([
     sk.katalog.resolveOne(setNumber).catch((e: unknown) => {

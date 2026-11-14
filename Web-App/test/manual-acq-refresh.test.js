@@ -385,7 +385,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   );
   assert.match(
     fn,
-    /await recordAcquisition\(sk, \{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
+    /await erfassungBuchen\(sk, \{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
   // Der Preis kommt aus priceForNewAcquisition() — ausgelagert, weil der

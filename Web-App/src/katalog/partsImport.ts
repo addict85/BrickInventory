@@ -94,7 +94,7 @@ function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: 
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
-export async function fetchMissingBlIds(k: KatalogKontext, lauf: AuftragsLauf = {}) {
+export async function blNummernNachladen(k: KatalogKontext, lauf: AuftragsLauf = {}) {
   const rbKey = await k.einstellungen.getGlobalSetting('rebrickable_api_key');
   if (!rbKey) return;
   const missing = await k.setInhalt.teileOhneBlZuordnung();

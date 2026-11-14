@@ -65,7 +65,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
   );
 
   const { buildPartsCsv, buildFigsCsv } = _req('src/bestand/bestandExport.js');
-  const { buildSetsCsv } = require('./helpers/sources').bereichsSeite('sets');
+  const { setsAlsCsv } = require('./helpers/sources').bereichsSeite('sets');
   const { importiereTeileCsv } = _req('src/teile/manuelleTeile.js');
   const { importiereFigurenCsv } = _req('src/figuren/manuelleFiguren.js');
   const { setCsvZeilen } = require('./helpers/sources').bereichsSeite('sets');
@@ -97,7 +97,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
   });
 
   await t.test('Sets: der Zeilenleser des Imports liest jede Spalte des Exports', async () => {
-    const { rows } = setCsvZeilen(await buildSetsCsv(A));
+    const { rows } = setCsvZeilen(await setsAlsCsv(A));
     assert.deepEqual(rows, [
       { sn: 'RL10001-1', qty: 2, zeile: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' },
     ]);
