@@ -496,7 +496,8 @@ L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
   Lücke im Gerät selbst, die RootOfTrust nicht verrät.
 - **App-Sperre ist ein Sichtschutz der Oberfläche** (N3): Sie verdeckt die App
   nach der gewählten Zeit im Hintergrund und verlangt zum Weitermachen
-  Gerätesperre oder Biometrie. Sie verschlüsselt nichts zusätzlich und hält
+  Gerätesperre oder Biometrie. Neu installiert mit Displaysperre steht sie auf
+  5 Minuten, und die Einrichtung bietet sie an; ein Update stellt nichts um. Sie verschlüsselt nichts zusätzlich und hält
   Hintergrundarbeit (Ausgang, Preisalarm, Widget-Abruf) nicht auf. Die Daten
   schützen der Keystore (Token und Ablagen nur bei entsperrtem Gerät) und der
   Schrittschutz am Server; das Widget verdeckt Beträge, solange die Sperre
@@ -505,9 +506,68 @@ L2-Massnahmen dort, wo Daten des Kontos liegen (sec17 B-N11):
   GitHub-Environment `release` (`.github/workflows/android-signieren.yml`); dass
   der Inhaber seine eigene Freigabe erteilen darf (`prevent_self_review` aus),
   meldet der Workflow nur als Warnung. Bewusste Entscheidung des
-  Ein-Personen-Projekts: Es gibt keinen zweiten Prüfer, und ein Schlüssel in
-  HSM oder Cloud-KMS wäre Infrastruktur, über die der Inhaber entscheidet. Das
-  Restrisiko steht unten („Update der Android-App per Sideload“).
+  Ein-Personen-Projekts: Heute gibt eine Person frei. Wie sich das ohne zweiten
+  Menschen stärken lässt, steht im nächsten Abschnitt; umgesetzt ist davon nichts,
+  der Inhaber entscheidet. Das Restrisiko steht unten („Update der Android-App per
+  Sideload“).
+- **Neuer Serverschlüssel unter öffentlicher CA** (Prüfung 476e4a4, M1): Auf
+  Android 11–15 nur mit abgetipptem Fingerabdruck aus dem Browser am Rechner,
+  ab Android 16 (CT im System) mit einem bewussten Tipp. Caddy behält seinen
+  Schlüssel beim Erneuern (`reuse_private_keys`, UPGRADE.md Abschnitt 61), damit
+  die Frage selten und auffällig bleibt.
+- **Daten auf dem Gerät** (N1, N3): Adresse, Benutzername, Herkunft des Tokens,
+  Widget-Zahlen und Abmeldeaufträge liegen unter einem Keystore-Schlüssel, der
+  nur entsperrt arbeitet; ein Schlüssel ohne diese Bedingung bleibt nur für Pins
+  und den Nutzer-CA-Schalter, weil jede TLS-Verbindung sie braucht. Einzelheiten
+  und Begründung: `Android-App/INVARIANTEN.md`, „Daten auf dem Gerät“.
+
+### Release-Freigabe stärken (Anleitung für den Inhaber)
+
+Heute genügt eine Person mit Zugang zum GitHub-Konto, um ein Update zu
+veröffentlichen, das jede installierte App annimmt: Sie gibt `release` und
+`release-beschreibung` frei, beide Schlüssel liegen als Secret bei GitHub. Drei
+Wege machen daraus mehr als eine Hürde; jeder lässt sich einzeln einführen.
+Workflow-Änderungen dafür bespricht der Inhaber vorher, sie stehen hier nur als
+Vorschlag.
+
+1. **Beschreibungsschlüssel offline (Hardware).** Die App nimmt eine Fassung
+   nur mit einer Beschreibung an, die einer der Schlüssel aus
+   `Android-App/core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem` signiert hat
+   (ECDSA P-256, SHA-256). Liegt dieser Schlüssel nicht bei GitHub, genügt ein
+   erbeutetes Konto nicht mehr.
+   - Schlüssel auf einem Token erzeugen, etwa YubiKey (PIV, Slot 9c):
+     `ykman piv keys generate --algorithm ECCP256 9c beschreibung.pub.pem`, dann
+     `ykman piv certificates generate --subject "CN=BrickInventory Beschreibung" 9c beschreibung.pub.pem`.
+     Ohne Token: auf einem Rechner ohne Netz mit
+     `openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -aes256 -out beschreibung.pem`.
+   - Den öffentlichen Teil **zusätzlich** in `beschreibungs_schluessel.pem`
+     eintragen und eine Fassung mit dem bisherigen Schlüssel veröffentlichen. Erst
+     wenn die Geräte sie haben, mit dem neuen signieren; danach den alten Block
+     und die Secrets `BESCHREIBUNG_SCHLUESSEL`/`BESCHREIBUNG_PASS` entfernen.
+   - Signieren je Fassung: Der Job `beschreibung` legt dann statt zu signieren
+     `version-daten.json` als Artefakt ab (Workflow-Änderung). Der Inhaber prüft
+     Prüfsumme und Inhalt (versionCode, apkSha256 gegen den Lauf), signiert lokal
+     — mit Token z. B. `openssl dgst -sha256 -sign "pkcs11:object=Private key for Digital Signature" -provider pkcs11 version-daten.json > beschreibung.sig`,
+     offline mit `openssl dgst -sha256 -sign beschreibung.pem` — und lädt
+     `version-signiert.json` (Format wie im Workflow: `daten` und
+     `beschreibungssignatur` in Base64) an die Release.
+2. **Zweiter Prüfer.** Eine zweite Person (eigenes Konto mit Zwei-Faktor) unter
+   *Settings → Environments → release* und *release-beschreibung* als
+   *Required reviewer* eintragen und *Prevent self-review* einschalten; der
+   Workflow meldet das dann nicht mehr als Warnung. Der zweite Prüfer gibt nur
+   frei, wenn Etikett, Commit und Änderungen zu einer angekündigten Fassung passen.
+   *Allow administrators to bypass* bleibt aus (der Workflow prüft es).
+3. **Haltefenster vor „Latest“.** Die App liest nur die als „Latest“ markierte
+   Release. Veröffentlicht der Workflow zunächst ohne diese Marke
+   (`gh release create … --latest=false`) und setzt sie erst nach 48–72 Stunden
+   von Hand (`gh release edit <etikett> --latest`), bleibt Zeit, eine unerwartete
+   Release zu bemerken (GitHub-Benachrichtigung „Releases“ für das Repository
+   abonnieren) und sie zu löschen, bevor ein Gerät sie lädt. Nachteil: Ein
+   dringender Fix braucht ebenso lang oder einen bewussten Handgriff.
+
+Reihenfolge nach Wirkung: 1 nimmt GitHub den Schlüssel, 2 verlangt einen
+zweiten Menschen, 3 gibt Zeit zum Bemerken. Ein Schlüssel in HSM oder Cloud-KMS
+für die APK-Signatur bleibt eine Entscheidung über Infrastruktur.
 
 Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 „Daten auf dem Gerät“. Eine Änderung dieser Entscheidung gehört hierher.
@@ -583,9 +643,10 @@ Einzelheiten: `Android-App/README.md`, Abschnitte „Manipulationsschutz“ und
 - **Update der Android-App per Sideload**: Die App darf Pakete installieren
   (`REQUEST_INSTALL_PACKAGES`). Abgesichert ist das durch die Signatur des
   APK, seine SHA-256-Prüfsumme, die signierte Fassungsbeschreibung und ein
-  Frischefenster gegen alte Fassungen. Restrisiko: Der Signierschlüssel liegt
-  als Secret in einem GitHub-Environment; wer ihn dort erbeutet, kann Updates
-  signieren.
+  Frischefenster gegen alte Fassungen. Restrisiko: Signier- und
+  Beschreibungsschlüssel liegen als Secret in GitHub-Environments, und eine
+  Person gibt frei; wer das Konto erbeutet, kann Updates veröffentlichen. Wie
+  sich das stärken lässt: „Release-Freigabe stärken“ oben.
 - **Beschreibungsschlüssel**: Die App nimmt eine Fassungsbeschreibung nur mit der
   Signatur des eigenen Beschreibungsschlüssels an; der frühere Übergangsweg über
   das Zertifikat der installierten App ist entfernt (12.11.2026). Die Beschreibung
