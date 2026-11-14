@@ -21,6 +21,7 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenAktionen
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * Die eigenen Lagerorte verwalten, je Benutzer.
@@ -59,7 +60,7 @@ internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
     // Der schwebende Knopf gehört dem Hauptobjekt eines Reiters (Sets, Merkposten).
     Button(onClick = { neu = true }, modifier = Modifier.fillMaxWidth()) {
         Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Abstaende.klein))
         Text(stringResource(R.string.storage_add_button))
     }
 
@@ -159,6 +160,7 @@ private fun LagerortNameDialog(
         onBestaetigen = { onFertig(name.trim()) },
         onAbbrechen = onAbbrechen,
         bestaetigenAn = name.isNotBlank(),
+        geaendert = name != start,
     ) {
         OutlinedTextField(
             shape = Formen.feld,

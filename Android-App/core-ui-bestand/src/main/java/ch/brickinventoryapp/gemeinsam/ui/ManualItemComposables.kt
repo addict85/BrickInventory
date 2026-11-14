@@ -200,8 +200,8 @@ fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
 fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
     Surface(shape = Formen.chip, color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             if (icon != null) Icon(icon, null, Modifier.size(mitSchrift(16.dp)))
             Text(text, style = MaterialTheme.typography.labelMedium)
         }

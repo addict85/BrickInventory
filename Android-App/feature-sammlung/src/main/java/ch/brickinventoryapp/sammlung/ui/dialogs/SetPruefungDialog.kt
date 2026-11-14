@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,12 +36,14 @@ internal fun SetPruefungRoute(vm: ErfassungViewModel) {
 internal fun SetPruefungDialog(erfassung: ErfassungUiState, aktionen: ErfassungAktionen) {
     val schritt = erfassung.pruefung ?: return
 
+    val titel = stringResource(R.string.pruef_titel)
     AlertDialog(
+        modifier = Modifier.semantics { paneTitle = titel },
         // Nicht per Tipp daneben schliessbar: Das Anhalten IST der Zweck. Wer
         // wirklich weiter will, nimmt den Knopf — dann ist es eine Entscheidung
         // und kein verrutschter Finger.
         onDismissRequest = { },
-        title = { Text(stringResource(R.string.pruef_titel), fontWeight = FontWeight.Bold) },
+        title = { Text(titel, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold) },
         icon = { CircularProgressIndicator(Modifier.size(24.dp)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {

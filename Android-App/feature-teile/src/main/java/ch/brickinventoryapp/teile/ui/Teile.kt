@@ -113,7 +113,7 @@ internal class Teile(
         val st = _state.value
         teileFolgen = listOf(
             folge(ablage.teile(st)) { s, l ->
-                s.copy(parts = l.map { it.alsAnsicht() }, partsTotal = l.size, partsPage = 1)
+                s.copy(parts = sortiert(l.map { it.alsAnsicht() }, s.partsOrdnung), partsTotal = l.size, partsPage = 1)
             },
             folge(ablage.manuelleTeile(st)) { s, l -> s.copy(manualParts = l.map { it.alsAnsicht() }) },
         )
@@ -147,6 +147,13 @@ internal class Teile(
         vergissScroll()
         _state.update { it.copy(partsSpare = wert) }
         laden()
+    }
+
+    /** Nur umsortieren: Die ganze Liste liegt schon vor, ein Abruf brächte nichts Neues. */
+    fun setzeOrdnung(wert: PartsUiState.Ordnung) {
+        if (_state.value.partsOrdnung == wert) return
+        vergissScroll()
+        _state.update { it.copy(partsOrdnung = wert, parts = sortiert(it.parts, wert)) }
     }
 
     /** Karten oder Tabelle; neu laden, weil die Tabelle „In Sets" mitbestellt. */

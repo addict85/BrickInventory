@@ -131,6 +131,7 @@ import ch.brickinventoryapp.sammlung.ui.SammlungZiel
  *   detailzeile-volle-breite    Detailzeile ohne Lesebreite → rot „Detailkarten stehen auf dem Tablet …“
  *   bewegung-ohne-beobachter    Einstellung nur einmal gelesen → rot „reduzierte Bewegung folgt einer Aenderung …“
  *   startpasswort-ohne-grund    gesperrter Knopf ohne Grund → rot „Startpasswort-Maske sagt …“
+ *   offline-ohne-handlung       Banner ohne „Erneut versuchen“ → rot „Offline-Hinweis bietet an …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -221,6 +222,15 @@ class GeruestUndFormularTest {
         assertEquals("Stand und wartende Änderungen auf derselben Fläche", stand.parent?.id, zeile.parent?.id)
         assertTrue("Das Banner wird angesagt",
             stand.parent?.config?.contains(SemanticsProperties.LiveRegion) == true)
+    }
+
+    @Test
+    fun `Offline-Hinweis bietet an, die Liste erneut zu holen`() {
+        var geholt = 0
+        zeige { Column { OfflineHinweis(1_793_000_000_000L, onErneut = { geholt++ }) } }
+        compose.onNode(hasText(ctx.getString(R.string.common_retry)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        assertEquals("Erneut versuchen holt die Liste", 1, geholt)
     }
 
     @Test

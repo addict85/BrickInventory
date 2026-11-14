@@ -49,6 +49,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.ui.theme.Abstaende
 /**
  * Die zuletzt geholten Zahlen. Das Widget liest nur hier und zeigt so auch ohne
  * Netz den letzten Stand; holen tut allein [WidgetArbeiter]. Verschlüsselt wie die
@@ -158,7 +159,7 @@ class SammlungsWidget : GlanceAppWidget() {
     private fun Inhalt(titel: String, zeilen: List<Pair<String, String>>?, leer: String) {
         Column(
             GlanceModifier.fillMaxSize().background(GlanceTheme.colors.widgetBackground)
-                .cornerRadius(16.dp).padding(12.dp).clickable(actionStartActivity<MainActivity>()),
+                .cornerRadius(16.dp).padding(Abstaende.mittel).clickable(actionStartActivity<MainActivity>()),
         ) {
             Text(titel, style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GlanceTheme.colors.onSurface))
             Spacer(GlanceModifier.height(6.dp))

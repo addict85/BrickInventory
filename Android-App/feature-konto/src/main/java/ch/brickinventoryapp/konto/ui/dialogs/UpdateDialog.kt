@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,37 +43,15 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
     val laedt = zustand.fortschritt != null
     val schliessen = { selbstUpdate.updateHinweisSchliessen() }
 
+    val titel = stringResource(R.string.update_dialog_title)
     AlertDialog(
+        modifier = Modifier.semantics { paneTitle = titel },
         // Waehrend des Ladens nicht wegtippbar — siehe der Kopf dieser Datei.
         onDismissRequest = { if (!laedt) schliessen() },
-        title = { Text(stringResource(R.string.update_dialog_title)) },
+        title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
             Ueberdeckungsschutz()
-            Column {
-                Text(stringResource(R.string.update_dialog_text,
-                    neuere.versionName, LocalAppFassung.current.name))
-                zustand.fortschritt?.let { p ->
-                    Spacer(Modifier.height(Abstaende.mittel))
-                    Text(stringResource(R.string.update_downloading, p),
-                        style = MaterialTheme.typography.bodySmall)
-                    Spacer(Modifier.height(Abstaende.winzig))
-                    LinearProgressIndicator(
-                        progress = { p / 100f },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                if (zustand.erlaubnisFehlt) {
-                    Spacer(Modifier.height(Abstaende.mittel))
-                    Text(stringResource(R.string.update_permission_needed),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                zustand.fehler?.let { f ->
-                    Spacer(Modifier.height(Abstaende.mittel))
-                    Text(f.satz(), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error)
-                }
-            }
+            UpdateInhalt(zustand, neuere.versionName)
         },
         confirmButton = {
             when {
@@ -99,4 +80,33 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
             }
         },
     )
+}
+
+/** Fassung, Fortschritt und was fehlt — der Text des Dialogs, getrennt vom Rahmen und den Knöpfen. */
+@Composable
+private fun UpdateInhalt(zustand: UpdateUiState, versionName: String) {
+    Column {
+        Text(stringResource(R.string.update_dialog_text, versionName, LocalAppFassung.current.name))
+        zustand.fortschritt?.let { p ->
+            Spacer(Modifier.height(Abstaende.mittel))
+            Text(stringResource(R.string.update_downloading, p),
+                style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(Abstaende.winzig))
+            LinearProgressIndicator(
+                progress = { p / 100f },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (zustand.erlaubnisFehlt) {
+            Spacer(Modifier.height(Abstaende.mittel))
+            Text(stringResource(R.string.update_permission_needed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        zustand.fehler?.let { f ->
+            Spacer(Modifier.height(Abstaende.mittel))
+            Text(f.satz(), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+        }
+    }
 }

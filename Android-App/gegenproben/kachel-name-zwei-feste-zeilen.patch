@@ -1,0 +1,17 @@
+Gegenprobe: Der Name der Setkachel hält wieder zwei feste Zeilen (Leerzeile unter kurzem Namen)
+Modul: feature-sammlung
+Test: ch.brickinventoryapp.sammlung.SetKachelTest
+Rot: ein kurzer Name
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+@@ -266,7 +266,7 @@
+     Box(modifier) {
+         Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+             Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
+-                maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
++                maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                 onTextLayout = { namensZeilen = it.lineCount })
+             Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
+                 color = MaterialTheme.colorScheme.onSurfaceVariant)

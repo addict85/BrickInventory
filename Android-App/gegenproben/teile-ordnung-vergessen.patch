@@ -1,0 +1,17 @@
+Gegenprobe: Die Reihenfolge der Teile wird nicht gemerkt
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.TeileOrdnungTest
+Rot: die Reihenfolge sortiert die geladene Liste
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+@@ -180,7 +180,7 @@
+     override fun setPartsQuery(q: String) { gemerkt[F_SUCHE] = q; teile.setzeSuche(q) }
+     override fun setPartsSpare(wert: Ersatzteilwahl) { gemerkt[F_ERSATZ] = wert; teile.setzeErsatzteile(wert) }
+     override fun setPartsView(wert: Listenansicht) { gemerkt[F_ANSICHT] = wert; teile.setzeAnsicht(wert) }
+-    override fun setPartsOrdnung(wert: PartsUiState.Ordnung) { gemerkt[F_ORDNUNG] = wert; teile.setzeOrdnung(wert) }
++    override fun setPartsOrdnung(wert: PartsUiState.Ordnung) { teile.setzeOrdnung(wert) }
+     override fun setPartsColorFilter(wert: String) { gemerkt[F_FARBE] = wert; teile.setzeFarbe(wert) }
+     override fun setPartsCategoryFilter(wert: String) { gemerkt[F_KATEGORIE] = wert; teile.setzeKategorie(wert) }
+     override fun setMinifigsQuery(q: String) { gemerkt[F_FIGUR_SUCHE] = q; teile.setzeFigurSuche(q) }

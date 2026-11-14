@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -61,10 +62,12 @@ private fun ZertifikatFrageDialog(
     val (titel, text) = titelUndText(frage.art)
     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
     val abschreiben = frage.art != ZertifikatUngeklaert.Art.ERSTKONTAKT
+    val fenster = stringResource(titel)
     AlertDialog(
         onDismissRequest = onAbbrechen,
         properties = schliessbar(eingabe),
-        title = { Text(stringResource(titel), modifier = Modifier.semantics { heading() }) },
+        modifier = Modifier.semantics { paneTitle = fenster },
+        title = { Text(fenster, modifier = Modifier.semantics { heading() }) },
         text = {
             Ueberdeckungsschutz()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
@@ -129,9 +132,11 @@ private fun FingerabdruckAnzeige(frage: ZertifikatUngeklaert, abschreiben: Boole
  */
 @Composable
 private fun CodeAbweichungDialog(frage: ZertifikatUngeklaert, onSchliessen: () -> Unit) {
+    val titel = stringResource(R.string.zert_titel_code_abweichung)
     AlertDialog(
         onDismissRequest = onSchliessen,
-        title = { Text(stringResource(R.string.zert_titel_code_abweichung), modifier = Modifier.semantics { heading() }) },
+        modifier = Modifier.semantics { paneTitle = titel },
+        title = { Text(titel, modifier = Modifier.semantics { heading() }) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(R.string.zert_text_code_abweichung, frage.schluessel.substringBeforeLast(':')))

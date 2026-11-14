@@ -1,0 +1,17 @@
+Gegenprobe: „Nach Name“ ohne die Farbe als zweiten Schlüssel
+Modul: feature-teile
+Test: ch.brickinventoryapp.teile.TeileOrdnungTest
+Rot: jede Reihenfolge
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileOrdnung.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileOrdnung.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileOrdnung.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileOrdnung.kt
+@@ -15,7 +15,7 @@
+     val nummer = compareBy<TeilAnsicht> { it.partNumber }.thenBy { it.colorId }
+     return teile.sortedWith(when (ordnung) {
+         PartsUiState.Ordnung.FARBE -> farbe.then(name).then(nummer)
+-        PartsUiState.Ordnung.NAME -> name.then(farbe).then(nummer)
++        PartsUiState.Ordnung.NAME -> name.then(nummer)
+         PartsUiState.Ordnung.MENGE -> compareByDescending<TeilAnsicht> { it.totalQuantity }.then(name).then(nummer)
+     })
+ }

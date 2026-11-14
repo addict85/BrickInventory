@@ -20,6 +20,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
@@ -175,9 +178,11 @@ class OhneSperre {
 @Composable
 fun OhneSperreWarnung(ohneSperre: OhneSperre) {
     val w = ohneSperre.wartet ?: return
+    val titel = stringResource(R.string.schritt_ohne_sperre_titel)
     AlertDialog(
         onDismissRequest = ohneSperre::abbrechen,
-        title = { Text(stringResource(R.string.schritt_ohne_sperre_titel)) },
+        modifier = Modifier.semantics { paneTitle = titel },
+        title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
             Ueberdeckungsschutz()
             Text(stringResource(R.string.schritt_ohne_sperre_text, w.grund))

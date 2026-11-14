@@ -13,6 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -39,10 +42,12 @@ import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 @Composable
 internal fun PdfKnopf(isExporting: Boolean, pdfError: String?, onExport: () -> Unit, onFehlerGesehen: () -> Unit) {
     if (pdfError != null) {
+        val titel = stringResource(R.string.partslist_pdf_error_title)
         androidx.compose.material3.AlertDialog(
             onDismissRequest = onFehlerGesehen,
+            modifier = Modifier.semantics { paneTitle = titel },
             confirmButton = { TextButton(onClick = onFehlerGesehen) { Text(stringResource(R.string.common_ok)) } },
-            title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
+            title = { Text(titel, Modifier.semantics { heading() }) },
             text = { Text(pdfError) }
         )
     }
