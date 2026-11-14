@@ -266,9 +266,8 @@ class MerklisteViewModel @Inject constructor(
             val preise = (merkliste.getMerkpostenPreise(setNumber) as? Ergebnis.Success)
                 ?.data?.takeIf { it.success }
             _merkpostenDetailState.update { it.copy(preise = preise?.alsAnsicht()) }
-            val historie = (finanzen.getSetPriceHistory(setNumber) as? Ergebnis.Success)
-                ?.data?.takeIf { it.success }
-            _merkpostenDetailState.update { it.copy(historie = historie?.alsAnsicht(), laedt = false) }
+            val historie = (finanzen.getSetPriceHistory(setNumber) as? Ergebnis.Success)?.data
+            _merkpostenDetailState.update { it.copy(historie = historie, laedt = false) }
         }
     }
 

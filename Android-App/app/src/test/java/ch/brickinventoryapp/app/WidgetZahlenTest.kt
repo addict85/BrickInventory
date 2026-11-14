@@ -4,6 +4,7 @@ import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.vertrag.PnlResponse
 import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.app.widget.OhneToken
 import ch.brickinventoryapp.app.widget.WIDGET_VERDECKT
 import ch.brickinventoryapp.app.widget.ohneToken
@@ -40,9 +41,9 @@ import org.junit.Test
 class WidgetZahlenTest {
 
     private val pnl = BrickJson.decodeFromString(PnlResponse.serializer(),
-        """{"success":true,"currency":"CHF","totals":{"purchase":"1000.00","current":"1250.50","pnl_prozent":25.05}}""")
+        """{"success":true,"currency":"CHF","totals":{"purchase":"1000.00","current":"1250.50","pnl_prozent":25.05}}""").alsAnsicht()
     private val verlauf = BrickJson.decodeFromString(PortfolioHistoryResponse.serializer(),
-        """{"success":true,"currency":"CHF","period":"week","points":[{"value":1200.0},{"value":1240.0},{"value":1250.5}]}""")
+        """{"success":true,"currency":"CHF","period":"week","points":[{"value":1200.0},{"value":1240.0},{"value":1250.5}]}""").alsAnsicht()
 
     @Test
     fun `abgemeldet zeigt das Widget keine Zahlen`() {
@@ -107,7 +108,7 @@ class WidgetZahlenTest {
             "purchase":"1680.00","current":"1712.40","pnl_prozent":14.2,"positionen":3,"positionen_bewertet":2,
             "positionen_ohne_marktpreis":1,"positionen_ohne_kaufpreis":0,"basis_einstand":"1500.00",
             "basis_marktwert":"1712.40","basis_guv_betrag":"212.40","ohne_marktpreis_einstand":"180.00",
-            "ohne_kaufpreis_marktwert":"0.00"}}""")
+            "ohne_kaufpreis_marktwert":"0.00"}}""").alsAnsicht()
         val z = widgetZahlen(basis, verlauf, jetzt = 7)!!
         assertEquals(1712.4, z.wert!!, 1e-9)
         assertEquals(212.4, z.gesamt!!, 1e-9)

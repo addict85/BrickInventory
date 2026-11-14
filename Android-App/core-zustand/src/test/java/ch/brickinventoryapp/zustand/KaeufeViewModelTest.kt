@@ -3,7 +3,6 @@ package ch.brickinventoryapp.zustand
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
-import ch.brickinventoryapp.testing.testHaushaltRepository
 import ch.brickinventoryapp.testing.testTeileRepository
 import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.offline.Faecher

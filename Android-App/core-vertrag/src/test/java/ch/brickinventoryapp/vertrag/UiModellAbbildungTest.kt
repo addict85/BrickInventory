@@ -46,6 +46,19 @@ class UiModellAbbildungTest {
     }
 
     @Test
+    fun `der Wertverlauf traegt Punkte, Achse, Tage und Veraenderung`() {
+        val v = PortfolioHistoryResponse(success = true, currency = Waehrung("CHF"), periodChangePct = 2.5,
+            points = listOf(ChartPoint(xLabel = "Mo", value = 1200.0, yFrac = 0.4)),
+            yAxis = listOf(ChartYAxis(label = "1200", value = 1200.0, frac = 0.4)),
+            chart = PriceChartData(x = listOf("2026-11-09"))).alsAnsicht()
+        assertEquals(Waehrung("CHF"), v.waehrung)
+        assertEquals(2.5, v.veraenderungProzent!!, 0.0)
+        assertEquals(1200.0, v.punkte.single().value, 0.0)
+        assertEquals("1200", v.yAchse.single().label)
+        assertEquals(listOf("2026-11-09"), v.tage)
+    }
+
+    @Test
     fun `jede CSV-Art kommt unverändert an`() {
         for (a in CsvImportArt.entries) assertEquals(a.name, a.alsDaten().name)
         for (a in CsvArt.entries) assertEquals(a, a.alsAnsicht().alsDaten())
@@ -115,6 +128,8 @@ class UiModellAbbildungTest {
             "PartsStats.getTeileAusSets", "PartsStats.getTeileEinzeln", "PartsStats.getTeileGesamt",
             "Preisalarm.getUnter", "Profil.getEmailBestaetigt", "StartupStatus.getAnteil", "StartupStatus.getBereit", "StartupStatus.getFortschritt",
             "StartupStatus.getGesamt", "StartupStatus.getSchritt", "StartupStatus.getUnterschritt",
+            "PortfolioHistoryResponse.getPunkte", "PortfolioHistoryResponse.getTage", "PortfolioHistoryResponse.getVeraenderungProzent",
+            "PortfolioHistoryResponse.getWaehrung-lSQNSqI", "PortfolioHistoryResponse.getYAchse",
         )
     }
 }

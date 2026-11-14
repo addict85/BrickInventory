@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
-import ch.brickinventoryapp.vertrag.PnlSetZeile
+import ch.brickinventoryapp.model.ui.model.GewinnZeileAnsicht
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -18,7 +18,7 @@ internal enum class KachelQuelle { MARKT, KAUF }
  * Je Set eine Angabe aus /finance/pnl. Betrag und G&V rechnet der Server
  * (kachel_preis, kachel_pnl_pct) — dieselbe Zahl wie im Web, auch im Haushalt.
  */
-internal fun kachelPreise(zeilen: List<PnlSetZeile>): Map<String, KachelPreis> =
+internal fun kachelPreise(zeilen: List<GewinnZeileAnsicht>): Map<String, KachelPreis> =
     zeilen.groupBy { it.setNumber }.mapValues { (_, z) ->
         val e = z[0]
         if (e.kachelPreis != null || e.kachelPnlPct != null) KachelPreis(e.kachelPreis, e.kachelPnlPct, e.kachelQuelle)
@@ -30,7 +30,7 @@ internal fun kachelPreise(zeilen: List<PnlSetZeile>): Map<String, KachelPreis> =
  * Liefert ein neuer Server beide Felder als null (kein Preis), ergibt sie
  * ebenfalls null. Entfällt, sobald kein älterer Server mehr im Einsatz ist.
  */
-private fun kachelPreisVorServer(z: List<PnlSetZeile>): KachelPreis {
+private fun kachelPreisVorServer(z: List<GewinnZeileAnsicht>): KachelPreis {
     if (z.size == 1) {
         val e = z[0]
         return KachelPreis(e.currentPrice, (e.baselinePnlPct ?: e.pnlPct)?.toDoubleOrNull())

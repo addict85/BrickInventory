@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.vertrag.abbildung
 
+import ch.brickinventoryapp.model.ui.model.WertverlaufAnsicht
+import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
+
 import ch.brickinventoryapp.vertrag.DashboardStats
 import ch.brickinventoryapp.vertrag.FigsValuationResponse
 import ch.brickinventoryapp.vertrag.PartsValuationResponse
@@ -117,4 +120,12 @@ fun Totals.alsAnsicht() = SummenAnsicht(
     min = min,
     avg = avg,
     max = max,
+)
+
+fun PortfolioHistoryResponse.alsAnsicht() = WertverlaufAnsicht(
+    waehrung = currency,
+    veraenderungProzent = periodChangePct,
+    punkte = points.map { it.alsAnsicht() },
+    yAchse = yAxis.map { it.alsAnsicht() },
+    tage = chart?.x.orEmpty(),
 )

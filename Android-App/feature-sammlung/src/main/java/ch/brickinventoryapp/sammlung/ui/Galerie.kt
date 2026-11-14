@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sammlung.ui
 
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.vertrag.StatsResponse
+import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
@@ -36,7 +36,7 @@ internal class Galerie(
     private val quelle: (GalleryUiState) -> Flow<Lokal<SetItem>>,
     /** Füllt die Quelle des Zustands; die Antwort selbst zeigt niemand. */
     private val aktualisiere: suspend (GalleryUiState) -> Ergebnis<Unit>,
-    private val holeKennzahlen: suspend () -> Ergebnis<StatsResponse>,
+    private val holeKennzahlen: suspend () -> Ergebnis<KennzahlenAnsicht?>,
     private val meldeFehler: (Ergebnis.Error) -> Unit,
     /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
     private val vergissScroll: () -> Unit,
@@ -111,7 +111,7 @@ internal class Galerie(
     fun ladeKennzahlen() {
         scope.launch {
             val r = holeKennzahlen()
-            if (r is Ergebnis.Success) _state.update { it.copy(stats = r.data.stats?.alsAnsicht()) }
+            if (r is Ergebnis.Success) _state.update { it.copy(stats = r.data) }
         }
     }
 

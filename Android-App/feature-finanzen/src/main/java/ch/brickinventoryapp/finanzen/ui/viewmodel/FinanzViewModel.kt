@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -77,7 +76,7 @@ class FinanzViewModel @Inject constructor(
             val konto = filter.kontoFuer(ScopeFilter.View.FINANCE)
             when (val r = finanzen.getValuation(konto)) {
                 is Ergebnis.Success -> {
-                    _financeState.update { it.copy(valuation = r.data.alsAnsicht(), valuationLoading = false) }
+                    _financeState.update { it.copy(valuation = r.data, valuationLoading = false) }
                     // Die Währung des Kontos kommt mit der Bewertung; das
                     // AppViewModel merkt sie sich für den nächsten Start.
                     sitzung.waehrungUebernommen(r.data.currency)
@@ -89,11 +88,11 @@ class FinanzViewModel @Inject constructor(
                 }
             }
             (finanzen.getPartsValuation(konto) as? Ergebnis.Success)
-                ?.let { r -> _financeState.update { it.copy(partsValuation = r.data.alsAnsicht()) } }
+                ?.let { r -> _financeState.update { it.copy(partsValuation = r.data) } }
             (finanzen.getMinifigsValuation(konto) as? Ergebnis.Success)
-                ?.let { r -> _financeState.update { it.copy(figsValuation = r.data.alsAnsicht()) } }
+                ?.let { r -> _financeState.update { it.copy(figsValuation = r.data) } }
             (finanzen.getPnl(konto) as? Ergebnis.Success)
-                ?.let { r -> _financeState.update { it.copy(pnl = r.data.alsAnsicht()) } }
+                ?.let { r -> _financeState.update { it.copy(pnl = r.data) } }
         }
     }
 
@@ -109,11 +108,11 @@ class FinanzViewModel @Inject constructor(
             when (val r = finanzen.getPortfolioHistory(period, filter.kontoFuer(ScopeFilter.View.FINANCE))) {
                 is Ergebnis.Success -> _financeState.update { it.copy(
                     historyLoading         = false,
-                    historyPeriodChangePct = r.data.periodChangePct,
-                    historyPoints          = r.data.points.map { it.alsAnsicht() },
-                    historyYAxis           = r.data.yAxis.map { it.alsAnsicht() },
-                    historyTage            = r.data.chart?.x.orEmpty(),
-                    historyWaehrung        = r.data.currency) }
+                    historyPeriodChangePct = r.data.veraenderungProzent,
+                    historyPoints          = r.data.punkte,
+                    historyYAxis           = r.data.yAchse,
+                    historyTage            = r.data.tage,
+                    historyWaehrung        = r.data.waehrung) }
                 is Ergebnis.Error -> _financeState.update { it.copy(historyLoading = false) }
             }
         }

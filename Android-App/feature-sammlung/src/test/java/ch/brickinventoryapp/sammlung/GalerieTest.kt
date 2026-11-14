@@ -3,7 +3,6 @@ package ch.brickinventoryapp.sammlung
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.vertrag.StatsResponse
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.sammlung.ui.Galerie
@@ -73,7 +72,7 @@ class GalerieTest {
         scope = vordergrund(),
         quelle = { st -> q.ablage.map { l -> l.copy(liste = l.liste.filter { st.galleryTheme.isBlank() || it.theme == st.galleryTheme }) } },
         aktualisiere = { st -> q.aktualisiert += st.galleryTheme; delay(10); ergebnis() },
-        holeKennzahlen = { Ergebnis.Success(StatsResponse(success = true)) },
+        holeKennzahlen = { Ergebnis.Success(null) },
         meldeFehler = {},
         vergissScroll = {},
     )
@@ -96,7 +95,7 @@ class GalerieTest {
         val alt = MutableStateFlow(Lokal(listOf(set(1)), 1L))
         val neu = MutableStateFlow(Lokal(listOf(set(2, thema = "Star Wars")), 1L))
         val g = Galerie(scope = vordergrund(), quelle = { st -> if (st.galleryTheme.isBlank()) alt else neu },
-            aktualisiere = { Ergebnis.Success(Unit) }, holeKennzahlen = { Ergebnis.Success(StatsResponse(success = true)) },
+            aktualisiere = { Ergebnis.Success(Unit) }, holeKennzahlen = { Ergebnis.Success(null) },
             meldeFehler = {}, vergissScroll = {})
         g.laden(); advanceUntilIdle()
         g.setzeThema("Star Wars"); advanceUntilIdle()

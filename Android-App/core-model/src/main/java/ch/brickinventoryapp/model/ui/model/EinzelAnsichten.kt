@@ -30,6 +30,15 @@ data class DiagrammPunkt(val xLabel: String, val value: Double, val yFrac: Doubl
 
 data class DiagrammAchse(val label: String, val value: Double, val frac: Double)
 
+/** Der Verlauf des Sammlungswerts: je Tag ein Punkt, die Achse und die Veränderung im Zeitraum. */
+data class WertverlaufAnsicht(
+    val waehrung: Waehrung,
+    val veraenderungProzent: Double?,
+    val punkte: List<DiagrammPunkt>,
+    val yAchse: List<DiagrammAchse>,
+    val tage: List<String>,
+)
+
 data class FarbeAnsicht(val id: Int, val name: String, val hex: String?)
 
 /** Ein Gutschein; [pin] null heisst „keine“ oder „offline nicht abgelegt“. */

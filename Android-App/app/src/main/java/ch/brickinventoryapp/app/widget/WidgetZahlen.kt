@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.app.widget
 
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.vertrag.PnlResponse
-import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
+import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
+import ch.brickinventoryapp.model.ui.model.WertverlaufAnsicht
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtProzent
 import kotlinx.serialization.Serializable
@@ -30,13 +30,13 @@ data class WidgetZahlen(
  * pnl_prozent rechnet dort; ältere Server: aktueller Wert minus Kaufpreis. Für „heute“
  * gibt es keinen eigenen Abruf: Der Wochenverlauf hat einen Punkt je Tag.
  */
-fun widgetZahlen(pnl: PnlResponse?, verlauf: PortfolioHistoryResponse?, jetzt: Long): WidgetZahlen? {
+fun widgetZahlen(pnl: GewinnAnsicht?, verlauf: WertverlaufAnsicht?, jetzt: Long): WidgetZahlen? {
     if (pnl == null && verlauf == null) return null
-    val waehrung = pnl?.currency ?: verlauf?.currency ?: Waehrung.EUR
+    val waehrung = pnl?.currency ?: verlauf?.waehrung ?: Waehrung.EUR
     val t = pnl?.totals
     val mitBasis = t?.basisEinstand != null && (t.positionenBewertet ?: 0) > 0
     val wert = (if (mitBasis) t.basisMarktwert else t?.current)?.toDoubleOrNull()
-        ?: verlauf?.points?.lastOrNull()?.value
+        ?: verlauf?.punkte?.lastOrNull()?.value
     val kauf = t?.purchase?.toDoubleOrNull()
     val gesamt = when {
         mitBasis -> t.basisGuvBetrag?.toDoubleOrNull()
@@ -44,7 +44,7 @@ fun widgetZahlen(pnl: PnlResponse?, verlauf: PortfolioHistoryResponse?, jetzt: L
         wert != null && kauf != null -> wert - kauf
         else -> null
     }
-    val punkte = verlauf?.points.orEmpty()
+    val punkte = verlauf?.punkte.orEmpty()
     val (heute, heuteProzent) = if (punkte.size >= 2) {
         val vorher = punkte[punkte.size - 2].value
         val diff = punkte.last().value - vorher

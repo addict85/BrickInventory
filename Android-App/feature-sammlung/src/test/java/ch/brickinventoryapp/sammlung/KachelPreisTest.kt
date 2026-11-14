@@ -2,6 +2,7 @@ package ch.brickinventoryapp.sammlung
 
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.vertrag.PnlSetZeile
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -88,3 +89,6 @@ class KachelPreisTest {
         assertNull(kachelQuelle(set, null))
     }
 }
+
+/** Die Zeilen wie der Server sie schickt, abgebildet wie im FinanzenRepository. */
+private fun kachelPreise(z: List<PnlSetZeile>) = kachelPreise(z.map { it.alsAnsicht() })

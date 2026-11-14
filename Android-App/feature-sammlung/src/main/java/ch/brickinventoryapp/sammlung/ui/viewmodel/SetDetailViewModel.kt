@@ -151,7 +151,7 @@ class SetDetailViewModel @Inject constructor(
     private fun ladePreis() = starte(Abschnitt.PREIS) {
         _setDetailState.update { it.copy(setPriceLoading = true, preisFehler = null) }
         when (val r = finanzen.getSetPrice(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data.alsAnsicht(), setPriceLoading = false) }
+            is Ergebnis.Success -> _setDetailState.update { it.copy(setPrice = r.data, setPriceLoading = false) }
             is Ergebnis.Error -> _setDetailState.update { it.copy(setPriceLoading = false, preisFehler = meldungen.meldung(r),
                 preisFehlerKlasse = fehlerklasse(r)) }
         }
@@ -160,7 +160,7 @@ class SetDetailViewModel @Inject constructor(
     private fun ladeVerlauf() = starte(Abschnitt.VERLAUF) {
         _setDetailState.update { it.copy(priceHistoryLoading = true, verlaufFehler = null) }
         when (val r = finanzen.getSetPriceHistory(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
+            is Ergebnis.Success -> _setDetailState.update { it.copy(priceHistory = r.data, priceHistoryLoading = false) }
             is Ergebnis.Error -> _setDetailState.update { it.copy(priceHistoryLoading = false, verlaufFehler = meldungen.meldung(r)) }
         }
     }

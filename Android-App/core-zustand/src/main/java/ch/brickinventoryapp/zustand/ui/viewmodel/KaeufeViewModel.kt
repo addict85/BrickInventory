@@ -2,7 +2,6 @@ package ch.brickinventoryapp.zustand.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.model.fach.KEINE_FARBE
@@ -98,7 +97,7 @@ class KaeufeViewModel @Inject constructor(
             _manDetailState.update { it.copy(priceHistoryLoading = true) }
             val r = if (type == Postenart.FIG) finanzen.getFigPriceHistory(id) else finanzen.getPartPriceHistory(id, colorId)
             when (r) {
-                is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data.alsAnsicht(), priceHistoryLoading = false) }
+                is Ergebnis.Success -> _manDetailState.update { it.copy(priceHistory = r.data, priceHistoryLoading = false) }
                 is Ergebnis.Error -> _manDetailState.update { it.copy(priceHistoryLoading = false) }
             }
         }

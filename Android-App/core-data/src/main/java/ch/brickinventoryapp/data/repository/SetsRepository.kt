@@ -40,7 +40,6 @@ interface SetsRepository {
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>? = null): Ergebnis<MoveSetResponse>
 
-
     /** Lagerort eines Sets setzen. Leerer Text löscht ihn. */
     suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<LagerortResponse>
 }

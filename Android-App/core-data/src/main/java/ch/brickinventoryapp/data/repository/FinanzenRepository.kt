@@ -1,37 +1,38 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.ui.model.BewertungAnsicht
+import ch.brickinventoryapp.model.ui.model.FigurenBewertungAnsicht
+import ch.brickinventoryapp.model.ui.model.GewinnAnsicht
+import ch.brickinventoryapp.model.ui.model.KennzahlenAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisverlaufAnsicht
+import ch.brickinventoryapp.model.ui.model.SetPreisAnsicht
+import ch.brickinventoryapp.model.ui.model.TeileBewertungAnsicht
+import ch.brickinventoryapp.model.ui.model.WertverlaufAnsicht
+
 import ch.brickinventoryapp.model.fach.Kontoauswahl
-import ch.brickinventoryapp.vertrag.FigsValuationResponse
-import ch.brickinventoryapp.vertrag.PartsValuationResponse
-import ch.brickinventoryapp.vertrag.PnlResponse
-import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
-import ch.brickinventoryapp.vertrag.PriceHistoryResponse
-import ch.brickinventoryapp.vertrag.SetPriceResponse
-import ch.brickinventoryapp.vertrag.StatsResponse
-import ch.brickinventoryapp.vertrag.ValuationResponse
 /**
  * Preise, Bewertung, Verlauf und Gewinn/Verlust.
  * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
  * Retrofit und Ablage hängen (FinanzenRepositoryImpl).
  */
 interface FinanzenRepository {
-    suspend fun getSetPrice(setNumber: String): Ergebnis<SetPriceResponse>
+    suspend fun getSetPrice(setNumber: String): Ergebnis<SetPreisAnsicht>
 
-    suspend fun getSetPriceHistory(setNumber: String): Ergebnis<PriceHistoryResponse>
+    suspend fun getSetPriceHistory(setNumber: String): Ergebnis<PreisverlaufAnsicht>
 
-    suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Ergebnis<PriceHistoryResponse>
+    suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Ergebnis<PreisverlaufAnsicht>
 
-    suspend fun getFigPriceHistory(figNumber: String): Ergebnis<PriceHistoryResponse>
+    suspend fun getFigPriceHistory(figNumber: String): Ergebnis<PreisverlaufAnsicht>
 
-    suspend fun getPartsValuation(konten: Kontoauswahl? = null): Ergebnis<PartsValuationResponse>
+    suspend fun getPartsValuation(konten: Kontoauswahl? = null): Ergebnis<TeileBewertungAnsicht>
 
-    suspend fun getMinifigsValuation(konten: Kontoauswahl? = null): Ergebnis<FigsValuationResponse>
+    suspend fun getMinifigsValuation(konten: Kontoauswahl? = null): Ergebnis<FigurenBewertungAnsicht>
 
-    suspend fun getValuation(konten: Kontoauswahl? = null): Ergebnis<ValuationResponse>
+    suspend fun getValuation(konten: Kontoauswahl? = null): Ergebnis<BewertungAnsicht>
 
-    suspend fun getPnl(konten: Kontoauswahl? = null): Ergebnis<PnlResponse>
+    suspend fun getPnl(konten: Kontoauswahl? = null): Ergebnis<GewinnAnsicht>
 
-    suspend fun getPortfolioHistory(period: String = "week", konten: Kontoauswahl? = null): Ergebnis<PortfolioHistoryResponse>
+    suspend fun getPortfolioHistory(period: String = "week", konten: Kontoauswahl? = null): Ergebnis<WertverlaufAnsicht>
 
-    suspend fun getStats(konten: Kontoauswahl? = null): Ergebnis<StatsResponse>
+    suspend fun getStats(konten: Kontoauswahl? = null): Ergebnis<KennzahlenAnsicht?>
 }
