@@ -251,7 +251,19 @@ function buildAndRequire() {
   // Ein Test stellt Klienten über testQuellen(), auch nach diesem Aufruf.
   _dienstFabrik = () => {
     const kontexte = {};
-    const d = V().baueDienste(testDb(), { nacharbeit: _nacharbeit, bildwerk: _bildwerk, quellen: _quellen, kontexte });
+    // Die Konfiguration, die baueDienste reicht, liest beim Zugriff: Ein Test, der mit
+    // umgebung()/setzeKonfig() einen Wert ändert, sieht ihn auch in k.konfig.
+    const K = require(path.join(ROOT, 'dist', 'src/infra/konfig.js'));
+    const konfig = {};
+    for (const n of Object.keys(K.konfig()))
+      Object.defineProperty(konfig, n, { enumerable: true, get: () => K.konfig()[n] });
+    const d = V().baueDienste(testDb(), {
+      nacharbeit: _nacharbeit,
+      bildwerk: _bildwerk,
+      quellen: _quellen,
+      kontexte,
+      konfig,
+    });
     return { d, kontexte };
   };
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
