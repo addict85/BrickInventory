@@ -44,7 +44,6 @@ export function erzeugeKatalog(
     getLimitForApi: fq.getLimitForApi,
     rebrickableDailyStatus: fq.rebrickableDailyStatus,
     quellen: fq.quellen,
-    /** Die Bilddienste, weitergereicht für die Bereiche darüber. */
     bilder: a.bilder,
     ...bindeZugang(k, blZuordnungDienst, [
       'merkeBlNummer',

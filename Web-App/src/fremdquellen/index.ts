@@ -1,6 +1,5 @@
-/** Die öffentliche Seite des Bereichs: Andere Bereiche importieren nur von hier,
- * damit die Aufteilung der Dateien darunter frei bleibt. Klienten mit Schlüssel und
- * Kontingent gibt es nur über die Dienste (`quellen`), nicht als Import. */
+/** Die öffentliche Seite des Bereichs. Klienten mit Schlüssel und Kontingent gibt es
+ * nur über die Dienste (`quellen`), nicht als Import. */
 export {
   BILD_KOPFZEILEN,
   BILD_KOPFZEILEN_OHNE_REFERER,

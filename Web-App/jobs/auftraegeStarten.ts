@@ -52,24 +52,18 @@ const bearbeiter = (
 // Der Katalog-Import läuft in einem eigenen Prozess, dessen Einstieg neben dieser Datei liegt.
 setzeImportProzess(path.join(__dirname, 'csvImportWorker.js'));
 
-let _worker: ReturnType<typeof erzeugeWorker> | null = null;
-
+/** Der Worker gehört dem, der ihn startet (startup/jobsProzess.ts, Testhilfen): Er hält ihn
+ * und beendet ihn mit stoppe(); ein Speicher im Modul liesse zwei Starts einander sehen. */
 function starteAuftragsWorker(
   d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
   o: WorkerOptionen & { arten?: AuftragsArt[] } = {},
 ) {
-  if (_worker) return _worker;
   const alle = bearbeiter(d);
   const tabelle: Bearbeitertabelle = o.arten ? Object.fromEntries(o.arten.map(a => [a, alle[a]])) : alle;
-  _worker = erzeugeWorker(d.auftraege, tabelle, o);
-  _worker.starte();
-  return _worker;
+  const worker = erzeugeWorker(d.auftraege, tabelle, o);
+  worker.starte();
+  return worker;
 }
 
-async function stoppeAuftragsWorker(): Promise<void> {
-  const w = _worker;
-  _worker = null;
-  if (w) await w.stoppe();
-}
-
-export { bearbeiter, starteAuftragsWorker, stoppeAuftragsWorker };
+export type AuftragsWorker = ReturnType<typeof starteAuftragsWorker>;
+export { bearbeiter, starteAuftragsWorker };

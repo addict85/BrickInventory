@@ -1,6 +1,5 @@
-/** Der eine Weg zu den Klienten (clients/), damit kein Bereich sie direkt kennt.
- * Was ohne Schlüssel, Kontingent und Drossel auskommt, steht hier als Export; was sie
- * braucht, entsteht in baueQuellen() je Zugang und kommt über die Dienste des Bereichs. */
+/** Der eine Weg zu clients/. Was Schlüssel, Kontingent oder Drossel braucht, entsteht in
+ * baueQuellen() je Zugang; der Rest steht hier als Export. */
 import type { KlientenZugang } from '../../clients/zugang';
 import { erzeugeBricklink } from '../../clients/bricklink';
 import { erzeugeBrickset } from '../../clients/brickset';

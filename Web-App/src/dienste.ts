@@ -1,6 +1,5 @@
-/** Der Satz Dienste, den startup/verdrahtung.ts baut. Der Typ steht in src/, damit
- * routes/ und jobs/ ihn kennen, ohne von startup/ abzuhängen, das sie selbst einbindet;
- * jede Routerfabrik verengt ihn mit Pick<> auf die Bereiche, die sie wirklich ruft. */
+/** Der Satz Dienste aus startup/verdrahtung.ts, hier, damit routes/ und jobs/ nicht an
+ * startup/ hängen, das sie einbindet; Routerfabriken verengen ihn mit Pick<>. */
 import type { AuftraegeDienste } from './auftraege';
 import type { BestandDienste } from './bestand';
 import type { BilderDienste } from './bilder';

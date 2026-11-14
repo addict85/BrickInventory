@@ -9,6 +9,7 @@ import { konfig } from '../infra/konfig';
 import { GOOGLE_WURZELN } from './attestation/googleWurzeln';
 import { pruefeKette } from './attestation/schluesselAttestation';
 import type { KontoKontext } from './kontext';
+import { prozessweit } from '../infra/prozessweit';
 
 export type { Familie };
 
@@ -65,8 +66,8 @@ export async function neueNonce(k: KontoKontext, f: Familie, ausQr = false): Pro
 }
 
 /** Je PEM einmal gelesen; der Schlüssel '' steht für die Google-Wurzeln. */
-const wurzelCache = new Map<string, X509Certificate[]>();
 function wurzeln(): X509Certificate[] {
+  const wurzelCache = prozessweit('attestationWurzeln', () => new Map<string, X509Certificate[]>());
   const pem = konfig().attestationWurzeln ?? '';
   let liste = wurzelCache.get(pem);
   if (!liste) {

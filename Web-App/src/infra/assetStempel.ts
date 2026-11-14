@@ -2,13 +2,13 @@
  * Eine vergessene Zahl liess den Browser alte Dateien zeigen. */
 import fs from 'node:fs';
 import path from 'node:path';
+import { prozessweit } from './prozessweit';
 
 /** Ohne Frist ein Dutzend `stat` je Seitenaufruf; zu lang, und ein Deploy ohne
  * Neustart zeigt minutenlang alte Adressen. */
 export const STEMPEL_TTL_MS = 30_000;
 
-let _satz: Map<string, string> | null = null;
-let _satzZeit = 0;
+const Z = prozessweit('assetStempel', () => ({ satz: null as Map<string, string> | null, zeit: 0 }));
 
 /** `null` statt Platzhalter: Eine fehlende Datei darf nicht die Adressen der
  * ANDEREN Assets verwackeln. */
@@ -36,11 +36,11 @@ export function stempleAssets(html: string, wurzel: string): string {
 
 export function stempleAssetsGecacht(html: string, wurzel: string): string {
   const jetzt = Date.now();
-  if (_satz === null || jetzt - _satzZeit > STEMPEL_TTL_MS) {
-    _satz = new Map();
-    _satzZeit = jetzt;
+  if (Z.satz === null || jetzt - Z.zeit > STEMPEL_TTL_MS) {
+    Z.satz = new Map();
+    Z.zeit = jetzt;
   }
-  const satz = _satz;
+  const satz = Z.satz;
   return html.replace(
     /((?:href|src)=")(\/[^"?]+)\?v=[^"]*(")/g,
     (ganz, kopf: string, pfad: string, schwanz: string) => {

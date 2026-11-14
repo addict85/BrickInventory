@@ -3,6 +3,7 @@
  * Die Liste mit Erklärung steht in .env.example. */
 import { proxyVertrauen } from './proxyVertrauen';
 import { readFileSync } from 'node:fs';
+import { prozessweit } from './prozessweit';
 
 type Umgebung = Record<string, string | undefined>;
 
@@ -359,19 +360,19 @@ export function cookieSicher(k: Konfig): boolean {
   return k.cookieSecure ?? (k.betrieb || k.hinterTls);
 }
 
-let _konfig: Readonly<Konfig> | null = null;
+const K = prozessweit('konfig', () => ({ v: null as Readonly<Konfig> | null }));
 
 /** Beim ersten Aufruf gelesen und eingefroren: konfig() steht im heissen Pfad
  * jeder Anfrage, und der Betrieb ändert seine Umgebung nicht zur Laufzeit.
  * Wer es doch tut (Tests), sagt es ausdrücklich mit setzeKonfig/konfigNeuLesen. */
 export function konfig(): Readonly<Konfig> {
-  _konfig ??= Object.freeze(ladeKonfig(process.env));
-  return _konfig;
+  K.v ??= Object.freeze(ladeKonfig(process.env));
+  return K.v;
 }
 
 /** Für Tests: einzelne Werte über die gelesene Konfiguration legen; null hebt das auf. */
 export function setzeKonfig(teil: Partial<Konfig> | null): Readonly<Konfig> {
-  _konfig = teil ? Object.freeze({ ...ladeKonfig(process.env), ...teil }) : null;
+  K.v = teil ? Object.freeze({ ...ladeKonfig(process.env), ...teil }) : null;
   return konfig();
 }
 

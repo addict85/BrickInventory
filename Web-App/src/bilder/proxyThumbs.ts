@@ -60,7 +60,7 @@ const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
 
 export async function mitVorschauSperre<T>(k: BilderKontext, arbeit: () => Promise<T>): Promise<T | false> {
   // NICHT aus dem Pool: Eine dort gehaltene Sperre nahm gewöhnlichen Anfragen
-  // die Verbindung. EINMAL aufgebaut, dann wiederverwendet.
+  // die Verbindung.
   const st = stand(k);
   if (!st.sperrClient) {
     try {

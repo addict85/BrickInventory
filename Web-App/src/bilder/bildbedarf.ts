@@ -56,7 +56,7 @@ export async function schreibePuffer(k: BilderKontext): Promise<void> {
   try {
     await notiereBildbedarf(k, urls, sets);
   } catch (e) {
-    urls.forEach((u, i) => _puffer.set(u, sets[i]!));
+    for (const [i, u] of urls.entries()) _puffer.set(u, sets[i]!);
     throw e;
   }
   await bildbedarfAnstossen(k);

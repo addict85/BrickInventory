@@ -11,20 +11,28 @@ import { stempleAssetsGecacht } from '../infra/assetStempel';
 import { appVersion } from '../infra/appVersion';
 import { versuche } from '../infra/ergebnis';
 import type { KontoKontext } from './kontext';
+import { prozessweit } from '../infra/prozessweit';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
 
-let _stil: { mtime: number; hash: string } | null = null;
+/** index.html und ihr Stil-Hash, zuletzt gelesenes Design: einmal je Prozess. */
+const Z = prozessweit('indexHtml', () => ({
+  stil: null as { mtime: number; hash: string } | null,
+  html: null as string | null,
+  mtime: 0,
+  theme: null as string | null,
+  themeAt: 0,
+}));
 
 /** CSP-Quelle für den einen Inline-Block <style id="startstil"> (Startgerüst), sonst ''. */
 export function startStilHash(): string {
   const mtime =
-    konfig().produktion && _stil ? _stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
-  if (_stil && _stil.mtime === mtime) return _stil.hash;
+    konfig().produktion && Z.stil ? Z.stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
+  if (Z.stil && Z.stil.mtime === mtime) return Z.stil.hash;
   const m = /<style id="startstil">([\s\S]*?)<\/style>/.exec(
     fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf8') : '',
   );
-  _stil = {
+  Z.stil = {
     mtime,
     hash: m
       ? `'sha256-${createHash('sha256')
@@ -32,36 +40,31 @@ export function startStilHash(): string {
           .digest('base64')}'`
       : '',
   };
-  return _stil.hash;
+  return Z.stil.hash;
 }
-
-let _html: string | null = null;
-let _mtime = 0;
-let _theme: string | null = null;
-let _themeAt = 0;
 
 // Prozesslokal; die kurze Lebensdauer deckt eine Änderung von aussen ab —
 // einfacher als LISTEN/NOTIFY für eine Einstellung, die sich selten ändert.
 const THEME_TTL_MS = 30_000;
 
 export function invalidateTheme() {
-  _theme = null;
+  Z.theme = null;
 }
 
 async function readIndex(): Promise<string> {
-  if (_html !== null && konfig().produktion) return _html;
+  if (Z.html !== null && konfig().produktion) return Z.html;
   // Ein Griff für Stand und Inhalt: Beides gehört so sicher zur selben Datei.
   const datei = await fs.promises.open(INDEX_PATH, 'r');
   try {
     const st = await datei.stat();
-    if (_html === null || st.mtimeMs !== _mtime) {
-      _html = ohneKommentare(await datei.readFile('utf8'));
-      _mtime = st.mtimeMs;
+    if (Z.html === null || st.mtimeMs !== Z.mtime) {
+      Z.html = ohneKommentare(await datei.readFile('utf8'));
+      Z.mtime = st.mtimeMs;
     }
   } finally {
     await datei.close();
   }
-  return _html;
+  return Z.html;
 }
 
 /** Die Anmeldemaske nennt den ausgelieferten Stand. Eine feste Zahl in index.html blieb stehen, während
@@ -88,14 +91,14 @@ async function currentTheme(k: KontoKontext, userId?: number): Promise<string> {
     const { eigenes } = await k.einstellungen.designFuer(userId);
     if (eigenes) return eigenes;
   }
-  if (_theme !== null && Date.now() - _themeAt < THEME_TTL_MS) return _theme;
+  if (Z.theme !== null && Date.now() - Z.themeAt < THEME_TTL_MS) return Z.theme;
   // Die Startseite kommt auch bei gestörter Datenbank, dann klassisch und ohne Zwischenspeicher.
   const gelesen = await versuche('index-html:design', k.einstellungen.getGlobalSetting('app_theme'));
   if (!gelesen.ok) return 'classic';
   const gespeichert = gelesen.wert;
   const gewaehlt: string = gespeichert && DESIGNS.includes(gespeichert) ? gespeichert : 'classic';
-  _theme = gewaehlt;
-  _themeAt = Date.now();
+  Z.theme = gewaehlt;
+  Z.themeAt = Date.now();
   return gewaehlt;
 }
 

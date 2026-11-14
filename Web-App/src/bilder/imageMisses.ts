@@ -9,9 +9,8 @@ const ERNEUT_PRUEFEN_MS = 7 * 24 * 60 * 60 * 1000;
  * Routen die Verbindungen. Der Speicher wird im Takt aufgefrischt. */
 const AUFFRISCHEN_MS = 5 * 60 * 1000;
 
-/** Je Satz Dienste: `vorne` getrennt von `gruende`, weil istBekanntFehlend() der heisseste
- * synchrone Pfad ist und der Grund nur die Diagnose interessiert. `zuSchreiben` puffert
- * die Tabelle: Ein Schwung 404er wäre sonst ein Schwung INSERTs. */
+/** Je Satz Dienste. `gruende` getrennt, weil istBekanntFehlend() der heisseste Pfad ist;
+ * `zuSchreiben` puffert die Tabelle, sonst wäre ein Schwung 404er ein Schwung INSERTs. */
 const stand = (k: BilderKontext) =>
   k.faecher.fach('fehlanzeige', () => ({
     vorne: new Map<string, number>(),

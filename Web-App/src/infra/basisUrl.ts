@@ -1,14 +1,15 @@
 import { fachfehler } from './fehlerTexte';
 /** Einmal gelesen statt an drei Stellen mit eigener Schreibweise. */
 import { konfig } from './konfig';
+import { prozessweit } from './prozessweit';
 
 export function basisUrl(): string | null {
   return konfig().appBaseUrl;
 }
 
 // Einmal je Bereich: Aufrufer laufen in Schleifen.
-const _gemeldet = new Set<string>();
 export function hinweisOhneBasisUrl(bereich: string, folge: string): void {
+  const _gemeldet = prozessweit('basisUrlGemeldet', () => new Set<string>());
   if (_gemeldet.has(bereich)) return;
   _gemeldet.add(bereich);
   console.warn(`⚠️  [${bereich}] APP_BASE_URL ist nicht gesetzt — ${folge} Siehe README.md.`);

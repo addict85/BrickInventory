@@ -23,7 +23,6 @@ export interface Bildwerk {
 
 export interface BilderAbhaengigkeiten {
   db: Db;
-  /** Zustand dieses Satzes Dienste: Puffer, Warteschlangen, Zähler (src/infra/zwischenspeicher.ts). */
   faecher: Faecher;
   bildwerk: Bildwerk;
   fremdquellen: FremdquellenDienste;

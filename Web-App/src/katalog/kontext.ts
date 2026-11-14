@@ -25,7 +25,6 @@ export interface KatalogAbhaengigkeiten {
   fremdquellen: FremdquellenDienste;
   /** Höchstens zwei Bildabrufe beim CDN zugleich, je Satz Dienste einer. */
   cdnDrossel: ConcurrentRateLimiter;
-  /** Bilder dieses Satzes Dienste (src/bilder). */
   bilder: BilderDienste;
   einstellungen: EinstellungenDienste;
   auftraege: AuftraegeDienste;

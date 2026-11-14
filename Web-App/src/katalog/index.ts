@@ -25,8 +25,7 @@ export { KEINE_FARBE } from './farben';
 export { anleitungenZusammenlegen } from './instructions';
 export { fuerSet } from './preisvergleich';
 export { setnummerKandidaten } from './produkttitel';
-// Was ohne Schlüssel auskommt, weitergereicht; Klienten mit Schlüssel und Kontingent
-// kommen über die Dienste (`katalog.quellen`).
+// Ohne Schlüssel; Klienten mit Schlüssel und Kontingent über `katalog.quellen`.
 export {
   BricklinkNichtErreichbar,
   ERLAUBTE_GUTHABEN_HOSTS,

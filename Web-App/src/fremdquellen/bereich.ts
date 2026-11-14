@@ -1,6 +1,5 @@
-/** Die Fabrik der Fremdquellen: Aus einem Zugang entstehen Kontingent, Drosseln und die
- * Klienten, die genau diese bekommen. Zwei Sätze Dienste in einem Prozess (Tests,
- * Werkzeuge) teilen deshalb weder Schlüssel noch Zwischenstände der Klienten. */
+/** Aus einem Zugang entstehen Kontingent, Drosseln und die Klienten, die genau diese bekommen:
+ * Zwei Sätze Dienste in einem Prozess teilen weder Schlüssel noch Zwischenstände. */
 import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import { BRICKSET_HOECHSTENS } from '../auftraege';
 import * as apiKontingentDienst from './apiKontingent';
@@ -44,9 +43,7 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
   return {
     /** Die Klienten dieses Zugangs; ein Test ersetzt einzelne über `ersatz`. */
     quellen: mitErsatz(baueQuellen(klienten), a.ersatz),
-    /** Was die Klienten bekommen, für Werkzeuge, die einen Klienten selbst bauen. */
     klienten,
-    /** Rebrickable-Drosseln: Klienten und Hintergrundläufe teilen denselben Takt. */
     drossel,
     ...kontingent,
     ...bindeZugang(k, rateLimiter, ['rebrickableDailyStatus', 'consumeRebrickableDaily']),

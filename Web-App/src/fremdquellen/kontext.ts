@@ -1,6 +1,5 @@
-/** Was die Fremdquellen bekommen: Zugang (Kontingent, Takt), Einstellungen für die
- * Schlüssel und die Aufträge für die Brickset-Wiedervorlage. Getrennt von bereich.ts,
- * damit ein Dienst seinen Typ ohne Importzyklus kennt. */
+/** Einstellungen für die Schlüssel, Aufträge für die Brickset-Wiedervorlage. Getrennt von
+ * bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
 import { bindeZugang, type Kontext } from '../infra/bereich';
 import type { Db } from '../../db/database';
 import type { AuftraegeDienste } from '../auftraege';

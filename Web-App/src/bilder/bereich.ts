@@ -1,6 +1,5 @@
-/** Die Fabrik der Bilder: Set-Bilder, Vorschauen, Bild-Proxy samt Cache, Bildbedarf und
- * Fehlanzeigen. Ihr Zustand (Puffer, Warteschlangen, Zähler) liegt in den Fächern dieses
- * Satzes Dienste, nicht im Modul; der Katalog darüber ruft sie über `k.bilder`. */
+/** Die Fabrik der Bilder. Ihr Zustand (Puffer, Warteschlangen, Zähler) liegt in den Fächern
+ * dieses Satzes Dienste, nicht im Modul: Zwei Sätze in einem Prozess teilen nichts. */
 import { baueKontext, bindeZugang, type Einblick } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as bildlageDienst from './bildlage';
