@@ -200,7 +200,7 @@ internal fun GalleryScreen(
                 onFilter = { zeigeFilter = true }, erfassen = erfassenText to { showAddDialog = true },
             )
 
-            OfflineHinweis(galerie.offlineStand)
+            OfflineHinweis(galerie.offlineStand, onErneut = ereignisse.aktualisieren)
             // Der Kringel des Ziehens nur über einer Liste: Beim ersten Laden zeigt das
             // Skelett schon, dass etwas kommt, zwei Ladeanzeigen übereinander wirkten unruhig.
             PullToRefreshBox(isRefreshing = galerie.galleryLoading && anzeige == GalerieAnzeige.LISTE,

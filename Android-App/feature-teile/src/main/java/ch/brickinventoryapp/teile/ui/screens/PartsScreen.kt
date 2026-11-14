@@ -197,7 +197,7 @@ internal fun PartsScreen(
             erfassen = erfassenText to { showAddDialog = true },
         )
 
-        OfflineHinweis(partsState.teileOfflineStand)
+        OfflineHinweis(partsState.teileOfflineStand, onErneut = onRefresh)
         if (anzeige == Ladeanzeige.LAEDT) {
             SkelettRaster(LesbareSpalten(120.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {

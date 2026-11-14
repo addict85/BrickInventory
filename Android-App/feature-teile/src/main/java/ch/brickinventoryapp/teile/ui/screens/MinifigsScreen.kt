@@ -130,7 +130,7 @@ internal fun MinifigsScreen(
             erfassen = erfassenText to { showAddDialog = true },
         )
 
-        OfflineHinweis(partsState.figurenOfflineStand)
+        OfflineHinweis(partsState.figurenOfflineStand, onErneut = onRefresh)
         when (anzeige) {
             Ladeanzeige.LAEDT ->
                 SkelettRaster(LesbareSpalten(140.dp), kachelHoehe = 196.dp)
