@@ -1,32 +1,31 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.vertrag.GenericResponse
-import ch.brickinventoryapp.vertrag.GuthabenAntwort
-import ch.brickinventoryapp.vertrag.GutscheinAntwort
-import ch.brickinventoryapp.vertrag.GutscheinKlartext
-import ch.brickinventoryapp.vertrag.GutscheinListe
-import ch.brickinventoryapp.vertrag.GutscheinPdfFreigabe
-import ch.brickinventoryapp.vertrag.GutscheinRequest
-import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.model.fach.Bestaetigung
+import ch.brickinventoryapp.model.fach.Guthabenauskunft
+import ch.brickinventoryapp.model.fach.Gutscheinangabe
+import ch.brickinventoryapp.model.fach.Gutscheinspeicherung
+import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
+import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
+
 /**
  * Gutscheine samt PDF und Guthabenabfrage.
  * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
  * Retrofit und Ablage hängen (GutscheineRepositoryImpl).
  */
 interface GutscheineRepository {
-    suspend fun liste(): Ergebnis<GutscheinListe>
+    suspend fun liste(): Ergebnis<List<GutscheinAnsicht>>
 
-    suspend fun anlegen(request: GutscheinRequest): Ergebnis<GutscheinAntwort>
+    suspend fun anlegen(angabe: Gutscheinangabe): Ergebnis<Gutscheinspeicherung>
 
-    suspend fun aendern(id: Int, request: GutscheinRequest): Ergebnis<GutscheinAntwort>
+    suspend fun aendern(id: Int, angabe: Gutscheinangabe): Ergebnis<Gutscheinspeicherung>
 
-    suspend fun loeschen(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GenericResponse>
+    suspend fun loeschen(id: Int, bestaetigung: Bestaetigung): Ergebnis<Unit>
 
-    suspend fun klartext(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinKlartext>
+    suspend fun klartext(id: Int, bestaetigung: Bestaetigung): Ergebnis<KlartextAnsicht>
 
-    suspend fun pdfFreigabe(id: Int?, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinPdfFreigabe>
+    suspend fun pdfFreigabe(id: Int?, bestaetigung: Bestaetigung): Ergebnis<String>
 
-    suspend fun guthaben(id: Int): Ergebnis<GuthabenAntwort>
+    suspend fun guthaben(id: Int): Ergebnis<Guthabenauskunft>
 
     suspend fun ausPdf(
         dateiname: String,
@@ -36,5 +35,5 @@ interface GutscheineRepository {
         pin: String? = null,
         betrag: String? = null,
         waehrung: String? = null,
-    ): Ergebnis<GutscheinAntwort>
+    ): Ergebnis<Gutscheinspeicherung>
 }

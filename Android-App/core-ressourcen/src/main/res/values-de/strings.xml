@@ -923,7 +923,6 @@
     <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>
     <string name="vouchers_saved">Gutschein gespeichert</string>
     <string name="vouchers_deleted">Gutschein gelöscht</string>
-    <string name="vouchers_save_error">Gutschein konnte nicht gespeichert werden</string>
     <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
     <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>

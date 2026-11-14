@@ -1,7 +1,8 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.vertrag.GutscheinRequest
-import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.model.fach.Gutscheinangabe
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.fach.Bestaetigung
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -84,8 +85,8 @@ class GutscheineContractTest {
      */
     @Test
     fun `die App ruft dieselben Adressen wie die Webapp`() = mitServer { pfade, repo, _ ->
-        val g = GutscheinRequest(number = "1234-5678", pin = "9876", amount = 50.0)
-        val b = ZweiterFaktorAnfrage(password = "geheim")
+        val g = Gutscheinangabe(nummer = "1234-5678", pin = "9876", betrag = 50.0, waehrung = Waehrung.CHF)
+        val b = Bestaetigung(passwort = "geheim")
         runBlocking {
             repo.liste()
             repo.anlegen(g)
@@ -104,7 +105,7 @@ class GutscheineContractTest {
     /** Ohne Rumpf antwortet der Server mit 400: Löschen und Klartext verlangen die Bestätigung. */
     @Test
     fun `Loeschen, Klartext und PDF-Freigabe tragen Passwort und Code`() = mitServer { pfade, repo, _ ->
-        val b = ZweiterFaktorAnfrage(password = "geheim", code = "123456")
+        val b = Bestaetigung(passwort = "geheim", code = "123456")
         runBlocking {
             repo.loeschen(5, b)
             repo.klartext(5, b)
@@ -123,7 +124,7 @@ class GutscheineContractTest {
     fun `der Klartext wird nicht zwischengespeichert`() = mitServer { pfade, repo, ordner ->
         pfade.antworten["/api/v1/vouchers/5/klartext"] =
             """{"success":true,"id":5,"number":"6000111122223333","pin":"9876"}"""
-        val r = runBlocking { repo.liste(); repo.klartext(5, ZweiterFaktorAnfrage(password = "geheim")) }
+        val r = runBlocking { repo.liste(); repo.klartext(5, Bestaetigung(passwort = "geheim")) }
         assertEquals("6000111122223333", (r as Ergebnis.Success).data.number)
         val abgelegt = ordner.walkTopDown().filter { it.isFile }
             .filter { it.readText().let { t -> "6000111122223333" in t || "9876" in t } }.toList()

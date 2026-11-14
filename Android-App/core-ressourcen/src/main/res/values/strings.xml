@@ -937,7 +937,6 @@
     <string name="vouchers_delete_confirm">Really delete voucher %1$s? The stored PDF goes with it.</string>
     <string name="vouchers_saved">Voucher saved</string>
     <string name="vouchers_deleted">Voucher deleted</string>
-    <string name="vouchers_save_error">The voucher could not be saved</string>
     <string name="vouchers_amount_invalid">Please enter a valid amount</string>
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>

@@ -66,7 +66,7 @@ class SchichtregelnTest {
     fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format immer seltener`() {
         val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
         assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api (M2):\n  " + f.joinToString("\n  ") }
-        val SCHRANKE = 27
+        val SCHRANKE = 24
         val n = dateien.filter { it.modul.startsWith("feature-") }.sumOf { d ->
             d.importe.count { it.startsWith("ch.brickinventoryapp.vertrag.") && !it.startsWith("ch.brickinventoryapp.vertrag.abbildung.") }
         }

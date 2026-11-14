@@ -1,16 +1,20 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.GutscheineApi
+import ch.brickinventoryapp.model.fach.Bestaetigung
+import ch.brickinventoryapp.model.fach.Guthabenauskunft
+import ch.brickinventoryapp.model.fach.Gutscheinangabe
+import ch.brickinventoryapp.model.fach.Gutscheinspeicherung
+import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
+import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.fach.Fehlercode
-import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.GuthabenAntwort
 import ch.brickinventoryapp.vertrag.Gutschein
 import ch.brickinventoryapp.vertrag.GutscheinAntwort
-import ch.brickinventoryapp.vertrag.GutscheinKlartext
 import ch.brickinventoryapp.vertrag.GutscheinListe
-import ch.brickinventoryapp.vertrag.GutscheinPdfFreigabe
 import ch.brickinventoryapp.vertrag.GutscheinRequest
 import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
@@ -34,41 +38,45 @@ class GutscheineRepositoryImpl @Inject constructor(
     private val json: Json = BrickJson,
 ) : GutscheineRepository {
 
-    override suspend fun liste(): Ergebnis<GutscheinListe> =
+    override suspend fun liste(): Ergebnis<List<GutscheinAnsicht>> =
         ablage.abgeglichen(Faecher.GUTSCHEINE, { l -> l.vouchers.map { ohneGeheimnis(it) } },
             { GutscheinListe(success = true, vouchers = it) }) { sicherAufrufen { api.getGutscheine() } }
+            .abgebildet { l -> l.vouchers.map { it.alsAnsicht() } }
 
-    override suspend fun anlegen(request: GutscheinRequest): Ergebnis<GutscheinAntwort> =
-        sicherAufrufen { api.legeGutscheinAn(request) }
+    override suspend fun anlegen(angabe: Gutscheinangabe): Ergebnis<Gutscheinspeicherung> =
+        sicherAufrufen { api.legeGutscheinAn(angabe.alsAnfrage()) }.gespeichert()
 
-    override suspend fun aendern(id: Int, request: GutscheinRequest): Ergebnis<GutscheinAntwort> =
-        sicherAufrufen { api.aendereGutschein(id, request) }
+    override suspend fun aendern(id: Int, angabe: Gutscheinangabe): Ergebnis<Gutscheinspeicherung> =
+        sicherAufrufen { api.aendereGutschein(id, angabe.alsAnfrage()) }.gespeichert()
 
     /**
      * Löschen mit Passwort und Code. Bewusst ohne Ausgang: Ein gepuffertes Löschen
      * müsste das Passwort bis zum nächsten Netz aufbewahren.
      */
-    override suspend fun loeschen(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GenericResponse> =
-        sicherAufrufen { api.loescheGutschein(id, bestaetigung) }
+    override suspend fun loeschen(id: Int, bestaetigung: Bestaetigung): Ergebnis<Unit> =
+        sicherAufrufen { api.loescheGutschein(id, bestaetigung.alsAnfrage()) }.erledigt()
 
     /** Nummer und PIN im Klartext; nie in Cache oder Ablage. */
-    override suspend fun klartext(id: Int, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinKlartext> =
-        sicherAufrufen { api.gutscheinKlartext(id, bestaetigung) }
+    override suspend fun klartext(id: Int, bestaetigung: Bestaetigung): Ergebnis<KlartextAnsicht> =
+        sicherAufrufen { api.gutscheinKlartext(id, bestaetigung.alsAnfrage()) }.abgebildet { it.alsAnsicht() }
 
     /**
      * Ein einmaliges Ticket für das PDF eines Gutscheins, ohne [id] für das PDF
      * aller. Die eine Stelle für den Freigabe-Vertrag; die Adresse dazu baut
      * gutscheinPdfAdresse() in GutscheinAdressen.kt.
      */
-    override suspend fun pdfFreigabe(id: Int?, bestaetigung: ZweiterFaktorAnfrage): Ergebnis<GutscheinPdfFreigabe> =
-        sicherAufrufen { if (id == null) api.gutscheinExportFreigabe(bestaetigung) else api.gutscheinPdfFreigabe(id, bestaetigung) }
+    override suspend fun pdfFreigabe(id: Int?, bestaetigung: Bestaetigung): Ergebnis<String> {
+        val anfrage = bestaetigung.alsAnfrage()
+        return sicherAufrufen { if (id == null) api.gutscheinExportFreigabe(anfrage) else api.gutscheinPdfFreigabe(id, anfrage) }
+            .abgebildet { it.ticket }
+    }
 
     /**
      * Das Guthaben bei LEGO abfragen. Eine gesperrte Abfrage wird zu success=false,
      * weil der Durchgang über alle Karten `grund` und `wartenSek` aus dem Rumpf
      * braucht; andere Fehler bleiben Fehler.
      */
-    override suspend fun guthaben(id: Int): Ergebnis<GuthabenAntwort> = sicherAufrufen {
+    override suspend fun guthaben(id: Int): Ergebnis<Guthabenauskunft> = sicherAufrufen {
         val antwort = api.frageGuthabenAb(id)
         if (antwort.isSuccessful) return@sicherAufrufen antwort
         val roh = antwort.errorBody()?.string()
@@ -82,6 +90,9 @@ class GutscheineRepositoryImpl @Inject constructor(
         }
         if (geparst != null) retrofit2.Response.success(geparst)
         else retrofit2.Response.error(antwort.code(), (roh ?: "").toResponseBody("application/json".toMediaType()))
+    }.abgebildet {
+        Guthabenauskunft(erfolg = it.success && it.voucher != null, gutschein = it.voucher?.alsAnsicht(), angezeigt = it.angezeigt,
+            waehrungGeaendert = it.waehrungGeaendert, grund = it.grund, wartenSek = it.wartenSek, fehler = it.error)
     }
 
     /**
@@ -99,7 +110,7 @@ class GutscheineRepositoryImpl @Inject constructor(
         pin: String?,
         betrag: String?,
         waehrung: String?,
-    ): Ergebnis<GutscheinAntwort> {
+    ): Ergebnis<Gutscheinspeicherung> {
         val koerper = inhalt.toRequestBody(typ.toMediaType())
         val teil = okhttp3.MultipartBody.Part.createFormData("file", dateiname, koerper)
         return sicherAufrufen {
@@ -124,6 +135,9 @@ class GutscheineRepositoryImpl @Inject constructor(
                     else -> antwort
                 }
             } else antwort
+        }.abgebildet { a ->
+            if (a.success) Gutscheinspeicherung.Gespeichert(a.mehrere?.added, a.mehrere?.updated)
+            else a.gelesen.let { g -> Gutscheinspeicherung.Unvollstaendig(g?.number, g?.pin, g?.amount, g?.currency) }
         }
     }
 
@@ -151,3 +165,11 @@ class GutscheineRepositoryImpl @Inject constructor(
     private fun alsTeil(wert: String?): okhttp3.RequestBody? =
         wert?.trim()?.takeIf { it.isNotEmpty() }?.toRequestBody("text/plain".toMediaType())
 }
+
+/** Eine Absage beim Anlegen oder Ändern ist ein Fehler mit dem Satz des Servers. */
+private fun Ergebnis<GutscheinAntwort>.gespeichert(): Ergebnis<Gutscheinspeicherung> =
+    zugesagt({ it.success }, { it.error }) { Gutscheinspeicherung.Gespeichert(it.mehrere?.added, it.mehrere?.updated) }
+
+private fun Gutscheinangabe.alsAnfrage() = GutscheinRequest(number = nummer, pin = pin, amount = betrag, currency = waehrung)
+
+private fun Bestaetigung.alsAnfrage() = ZweiterFaktorAnfrage(password = passwort, code = code)
