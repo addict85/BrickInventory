@@ -874,6 +874,8 @@
   .ovl :is(.modal, .modal *){scrollbar-width:thin;scrollbar-color:var(--s500) transparent}
 }
 @media (forced-colors: active){#app-scrollbar{display:none !important}}
+/* Der Hauptknopf hat nur eine Füllfarbe; im Kontrastmodus fiele sie weg und mit ihr jede Knopfgrenze. */
+@media (forced-colors: active){.btn.bp{border:1px solid ButtonText}}
 /* Fokus nie unter Kopf oder unterer Leiste (WCAG 2.4.11); die Höhen misst js/mobile.js. */
 html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bottom:calc(var(--leiste-unten,0px) + .5rem)}
 
