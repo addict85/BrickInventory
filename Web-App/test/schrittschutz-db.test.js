@@ -27,6 +27,9 @@
  *      statt `requireAdmin`, für Import und Anleitungen ohne freigegeben()
  *   J  in /settings/raw `istVerwalter(req)` statt alsVerwalter() → rot:
  *      „ohne Freigabe zeigt /settings/raw nur Kontowerte“
+ *   K  (14.11.2026) in hinterlegeSchluessel() `if (!widerrufen) return …` gestrichen und
+ *      `widerrufen ?? new Set()` übergeben → rot: „ohne frische Widerrufsliste …“;
+ *      `widerrufen: new Set()` (Liste nie geprüft) → rot im selben Test
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -36,6 +39,7 @@ const assert = require('node:assert/strict');
 const net = require('node:net');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { X509Certificate } = require('node:crypto');
 
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
@@ -149,6 +153,27 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     const c = await ruf('/geraet/schritt/challenge', { method: 'POST', token, body: { aktion: 'gutschein' } });
     assert.deepEqual([c.status, c.body.code], [403, 'geraeteschluessel_fehlt']);
   });
+
+  await t.test(
+    'ohne frische Widerrufsliste oder mit widerrufener Kette nimmt der Server keinen Schlüssel an',
+    async () => {
+      const versuch = async grund => {
+        const h = await hinterlege(ruf, (await anmelden(NAME)).body.token);
+        assert.deepEqual([h.antwort.status, h.antwort.body.code], [400, 'geraeteschluessel_attestation'], grund);
+        await bis(() => log.includes(`abgewiesen: ${grund}`), 5000);
+        assert.match(log, new RegExp(`abgewiesen: ${grund}`));
+        log = '';
+      };
+      await db.run("DELETE FROM laufzustand WHERE schluessel = 'attestation_widerruf'");
+      await versuch('widerrufsliste_fehlt');
+      await attestation.widerrufslisteAblegen(db, [], new Date(Date.now() - 8 * 86_400_000));
+      await versuch('widerrufsliste_fehlt');
+      const wurzel = new X509Certificate(attestation.WURZEL.der);
+      await attestation.widerrufslisteAblegen(db, ['1', wurzel.serialNumber.toLowerCase().replace(/^0+/, '')]);
+      await versuch('widerrufen');
+      await attestation.widerrufslisteAblegen(db, ['1']);
+    },
+  );
 
   await t.test('der Schlüssel gilt einmal je Zugang; ein anderer wird nicht nachgeschoben', async () => {
     const h = await hinterlege(ruf, token);

@@ -62,7 +62,7 @@ class TeilelisteTest {
             }}""",
         )
         t = TestDienste(pfade.server)
-        liste = Teileliste(SetKatalogRepository(t.api, t.cache), TeileRepository(t.api, t.cache))
+        liste = Teileliste(SetKatalogRepository(t.api), TeileRepository(t.api))
     }
 
     @After

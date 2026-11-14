@@ -249,8 +249,8 @@ class FeinschliffRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.galerie().also { it.loadSets() }
-            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
-                KatalogRepository(welt.t.api, welt.t.cache),
+            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+                KatalogRepository(welt.t.api),
                 object : SetAnleger {
                     override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                          ownerUserId: Int?, storage: String?) =

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.model.data.model.TokenRotation
+import ch.brickinventoryapp.vertrag.TokenRotation
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi

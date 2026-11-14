@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data.lokal
 import ch.brickinventoryapp.data.api.FigurenApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.TeileApi
-import ch.brickinventoryapp.model.data.model.UpdateQuantityRequest
+import ch.brickinventoryapp.vertrag.UpdateQuantityRequest
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.sicherAufrufen
 import kotlinx.coroutines.flow.Flow

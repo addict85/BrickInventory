@@ -5,6 +5,7 @@ package ch.brickinventoryapp.model.ui.theme
  * hell bleibt, obwohl das Telefon dunkel ist, wirkt kaputt. Wer früher
  * ausdrücklich „Design des Servers" gewählt hat, behält das.
  */
+
 fun dunkelNachSystemGilt(gespeichert: Boolean?): Boolean = gespeichert ?: true
 
 /** Hell, dunkel oder wie das System — je Gerät, in den Einstellungen unter „Darstellung“. */

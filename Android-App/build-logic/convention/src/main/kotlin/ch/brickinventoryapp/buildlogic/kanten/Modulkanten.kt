@@ -14,12 +14,14 @@ data class Modulkante(val von: String, val konfiguration: String, val nach: Stri
 object Modulkanten {
     val kerne: Map<String, Set<String>> = mapOf(
         "core-model" to emptySet(),
+        // Das Wire-Format kennt Fach- und Anzeigetypen, nicht umgekehrt.
+        "core-vertrag" to setOf("core-model"),
         "core-ressourcen" to emptySet(),
-        "core-netz" to setOf("core-model"),
+        "core-netz" to setOf("core-model", "core-vertrag"),
         // Tresor und TLS-Vertrauen liegen unter Room und Offlineablage.
         "core-sicherheit" to setOf("core-model", "core-netz"),
-        "core-offline" to setOf("core-model", "core-sicherheit"),
-        "core-data" to setOf("core-model", "core-ressourcen", "core-netz", "core-sicherheit", "core-offline"),
+        "core-offline" to setOf("core-model", "core-vertrag", "core-sicherheit"),
+        "core-data" to setOf("core-model", "core-vertrag", "core-ressourcen", "core-netz", "core-sicherheit", "core-offline"),
         // Sie hängen an core-data, nie umgekehrt und nie aneinander.
         "core-update" to setOf("core-ressourcen", "core-data"),
         "core-dienste" to setOf("core-ressourcen", "core-data"),
@@ -50,7 +52,7 @@ object Modulkanten {
      * Oberfläche unter den Zustand, und über ihn erreichte ein Bereich, was er nicht kennen soll.
      */
     val ohneOberflaeche: Set<String> = setOf(
-        "core-model", "core-netz", "core-sicherheit", "core-offline", "core-data", "core-update", "core-dienste",
+        "core-model", "core-vertrag", "core-netz", "core-sicherheit", "core-offline", "core-data", "core-update", "core-dienste",
         "core-sitzung", "core-zustand",
     )
 
@@ -84,8 +86,8 @@ object Modulkanten {
     fun verstoesse(kanten: Collection<Modulkante>): List<String> = kanten.mapNotNull { k ->
         when {
             // api reicht ein Modul an jeden weiter, der dieses kennt; nur die Modelle sind gemeinsame Sprache.
-            k.konfiguration == "api" && k.nach != "core-model" ->
-                "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
+            k.konfiguration == "api" && k.nach !in setOf("core-model", "core-vertrag") ->
+                "Modulkanten per api nur zu core-model und core-vertrag: ${k.von} → ${k.nach}"
             k.nurTest -> null
             k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
             k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"

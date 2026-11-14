@@ -49,6 +49,10 @@ import java.util.Base64
  *       (gegenproben/abschrift-zu-kurz-wie-falsch.patch)
  *   (g) schliessbar() mit `dismissOnClickOutside = true` → rot „daneben tippen schliesst
  *       den Dialog nie …“ (gegenproben/zertifikat-daneben-verworfen.patch)
+ *   (h) `abschreiben` auch für SCHLUESSEL_NEU → rot „ein neuer Serverschluessel steht
+ *       ganz da …“ (gegenproben/schluessel-neu-abtippen.patch)
+ *   (i) der Knopf „stattdessen abtippen“ entfernt → rot „beim Erstkontakt laesst sich
+ *       stattdessen abtippen …“ (gegenproben/erstkontakt-ohne-abtippen.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class ZertifikatDialogTest {
@@ -174,5 +178,31 @@ class ZertifikatDialogTest {
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsNotEnabled()
         compose.onNode(hasSetTextAction()).performTextInput(hex.takeLast(35))
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled()
+    }
+
+    @Test
+    fun `ein neuer Serverschluessel steht ganz da und gilt ohne Abtippen`() {
+        val bisher = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        var angenommen: String? = "nie"
+        zeige(ZertifikatUngeklaert.Art.SCHLUESSEL_NEU, erwartet = bisher) { angenommen = it; true }
+        compose.onNodeWithText(ctx.getString(R.string.zert_titel_schluessel_neu)).assertExists()
+        assertEquals("Der neue Schlüssel steht ganz da", 1, gezeigt(hex))
+        assertEquals("Der bisherige auch", 1, gezeigt(fingerabdruckLesbar(bisher)))
+        assertEquals("Kein Feld zum Abtippen", 0, compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size)
+        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen_neu)).assertIsEnabled().performClick()
+        assertEquals(null, angenommen)
+    }
+
+    @Test
+    fun `beim Erstkontakt laesst sich stattdessen abtippen, dann steht nur der Anfang da`() {
+        var angenommen: String? = null
+        zeige(ZertifikatUngeklaert.Art.ERSTKONTAKT) { angenommen = it; true }
+        compose.onNodeWithText(ctx.getString(R.string.zert_erstkontakt_abtippen)).performClick()
+        compose.waitForIdle()
+        assertEquals("Das Abzutippende steht nicht mehr da", 0, gezeigt(hex.takeLast(35)))
+        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsNotEnabled()
+        feld().performTextInput(hex.replace(":", "").takeLast(24))
+        compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled().performClick()
+        assertEquals(hex.replace(":", "").takeLast(24), angenommen?.replace(":", ""))
     }
 }

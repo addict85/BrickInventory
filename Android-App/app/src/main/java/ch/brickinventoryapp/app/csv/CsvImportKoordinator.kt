@@ -4,7 +4,7 @@ import ch.brickinventoryapp.data.CsvImportRepository
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
 import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

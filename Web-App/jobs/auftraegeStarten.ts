@@ -12,9 +12,7 @@ const IMPORT_PROZESS = path.join(__dirname, 'csvImportWorker.js');
 const bearbeiter = (
   d: Pick<Dienste, 'auftraege' | 'katalog' | 'bilder' | 'finanzen' | 'sets' | 'sammlung' | 'verwaltung'>,
 ): Bearbeitertabelle => ({
-  nacharbeit: {
-    ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k),
-  },
+  nacharbeit: { ausfuehren: (n, k) => d.sets.zieheNach(n.set_number, n.user_id, n.art ?? 'neu', k) },
   bilder: {
     ausfuehren: async (n, k) => {
       if (n.nur_bilder) await d.katalog.downloadSetImages(n.set_number);
@@ -50,6 +48,7 @@ const bearbeiter = (
   aufraeumen_taeglich: { ausfuehren: (_n, k) => d.verwaltung.aufraeumenTaeglich(k), exklusiv: true },
   preise_nachladen: { ausfuehren: (n, k) => d.finanzen.preiseNachladen(n, k), exklusiv: true },
   konto_dateien: { ausfuehren: n => loescheKontoDateien(n.user_id) },
+  widerrufsliste: { ausfuehren: (_n, k) => d.katalog.ladeWiderrufsliste(k) },
 });
 
 /** Der Worker gehört dem, der ihn startet (startup/jobsProzess.ts, Testhilfen): Er hält ihn

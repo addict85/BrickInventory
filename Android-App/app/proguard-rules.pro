@@ -1,9 +1,9 @@
 -keepattributes *Annotation*
 # Die API-Modelle werden umbenannt wie jede Klasse (sec17 B-N10): Die Feldnamen im JSON
-# stehen im erzeugten Serializer, Companion und serializer() hält die Regel der Bibliothek.
+# stehen im erzeugten Serializer; Companion, serializer() und INSTANCE hält die Regel, die
+# kotlinx-serialization-core mitbringt (META-INF/com.android.tools/r8). Die Bibliothek lädt
+# selbst nichts über Namen, darum bleibt sie nicht mehr ganz stehen.
 # tools/apk-pruefen.py prüft am fertigen APK, dass ein Modell umbenannt ist.
--keepnames class kotlinx.serialization.** { *; }
--keepclassmembers class kotlinx.serialization.** { *; }
 
 # Navigation lädt den Typ eines Enum-Felds einer Route über seinen Namen (Class.forName);
 # umbenannt fände es ihn nicht. core-model ist reines Kotlin und kennt kein @Keep.

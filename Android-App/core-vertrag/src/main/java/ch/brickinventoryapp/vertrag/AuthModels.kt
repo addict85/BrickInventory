@@ -1,0 +1,417 @@
+package ch.brickinventoryapp.vertrag
+
+import ch.brickinventoryapp.model.fach.Waehrung
+import ch.brickinventoryapp.model.ui.theme.DesignOderNichts
+import ch.brickinventoryapp.model.ui.theme.Design
+import ch.brickinventoryapp.model.fach.Zustand
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/**
+ * Anmeldung, Konto und Sitzung. Die Modelle liegen je Sachgebiet in einer Datei,
+ * alle im Paket vertrag.
+ */
+
+/**
+ * Anmeldung mit Zugangsdaten. `neverExpires`: Über https bekommt die App einen
+ * Token ohne Ablaufdatum, weil er ihr einziger Ausweis ist; ungenutzt verfällt er
+ * trotzdem (TOKEN_IDLE_DAYS). Über http nie (KontoRepository.login).
+ */
+@Serializable
+data class LoginRequest(
+    val username: String,
+    val password: String,
+    val label: String = "Android App",
+    @SerialName("never_expires") val neverExpires: Boolean = false,
+    /** Code des zweiten Faktors — nur, wenn der Server danach gefragt hat. */
+    val code: String? = null,
+    /**
+     * "app" ohne Verwalterrechte, "voll" mit. Immer ausdrücklich: Volle Rechte
+     * auf einem Telefon sind eine Entscheidung, keine Vorgabe (LoginScreen).
+     */
+    val scope: String = TOKEN_SCOPE_APP,
+)
+
+const val TOKEN_SCOPE_APP = "app"
+const val TOKEN_SCOPE_VOLL = "voll"
+
+/** Was ein Token darf und wie lange — Teil von Anmeldung, /auth/me und Rotation. */
+@Serializable
+data class TokenInfo(
+    val scope: String,
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("hard_expires_at") val hardExpiresAt: String? = null,
+    @SerialName("never_expires") val neverExpires: Boolean,
+    @SerialName("rotiert_am") val rotiertAm: String? = null,
+    /** Nur in /auth/me und der Rotation; die Anmeldung liefert einen frischen Token. */
+    @SerialName("rotation_faellig") val rotationFaellig: Boolean = false,
+)
+
+/** Antwort auf POST /api/v1/auth/token-rotieren. Der alte Token gilt noch [ueberlappungSek]. */
+@Serializable
+data class TokenRotation(
+    val success: Boolean,
+    val token: String? = null,
+    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+    @SerialName("alt_gueltig_bis") val altGueltigBis: String? = null,
+    @SerialName("ueberlappung_sek") val ueberlappungSek: Int? = null,
+)
+
+/** Der Scan meldet das Gerät unter [label] an; den Zugang gibt es erst nach der Bestätigung im Browser. */
+@Serializable
+data class QrLoginRequest(val token: String, val label: String = "Android App")
+
+/**
+ * Antwort auf den Scan: noch kein Token. [code] zeigt die App, eingetippt wird er im
+ * Browser; mit [abholung] fragt die App, bis der Zugang bereitliegt.
+ */
+@Serializable
+data class QrMeldung(
+    val success: Boolean,
+    val wartet: Boolean = false,
+    val abholung: String? = null,
+    val code: String? = null,
+    @SerialName("expires_in") val expiresIn: Int = 300,
+    val error: String? = null,
+)
+
+/** [vorschau]: nach der Bestätigung im Browser erst nur das Konto, den Token holt das Ja der App. */
+@Serializable
+data class QrAbholRequest(val abholung: String, val vorschau: Boolean = false)
+
+@Serializable
+data class QrVerwerfen(val abholung: String)
+
+/**
+ * Bis zur Bestätigung im Browser nur [wartet]; mit [vorschau] dann nur [username],
+ * sonst wie eine Anmeldung, immer mit Scope "app".
+ */
+@Serializable
+data class QrAbholung(
+    val success: Boolean,
+    val wartet: Boolean = false,
+    val vorschau: Boolean = false,
+    val username: String? = null,
+    val token: String? = null,
+    val user: User? = null,
+    val error: String? = null,
+    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+    @SerialName("schluessel_nonce") val schluesselNonce: String? = null,
+)
+
+@Serializable
+data class LoginResponse(
+    val success: Boolean,
+    val token: String? = null,
+    val user: User? = null,
+    val error: String? = null,
+    /** Passwort stimmt, der Server verlangt den Code aus der Authenticator-App. */
+    @SerialName("zweiter_faktor") val zweiterFaktor: Boolean = false,
+    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+) {
+    /**
+     * Das wirksame Verwalterrecht: Kontorecht UND ein Token mit vollem Scope.
+     * Mit Scope "app" antwortet der Server auf Verwalteradressen mit 403.
+     */
+    val verwalter: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_VOLL
+}
+
+@Serializable
+data class User(
+    val id: Int,
+    val username: String,
+    @SerialName("is_admin") val isAdmin: Boolean = false,
+    /**
+     * Anmeldung und /auth/me: Verwalterrechte ohne zweiten Faktor. Bis er eingerichtet
+     * ist, beantwortet der Server nur /auth/me und die Einrichtung (ZweiterFaktorPflicht).
+     */
+    val zweiterFaktorPflicht: Boolean = false,
+)
+
+@Serializable
+data class UserSettings(
+    val currency: Waehrung = Waehrung.EUR,
+    @SerialName("price_condition") val priceCondition: Zustand = Zustand.NEU,
+    @SerialName("price_cache_ttl") val priceCacheTtl: String = "24",
+    @SerialName("default_price_condition") val defaultPriceCondition: Zustand = Zustand.NEU,
+    @SerialName("user_default_condition") val userDefaultCondition: Zustand? = null,
+    @SerialName("effective_condition") val effectiveCondition: Zustand = Zustand.NEU,
+    @Serializable(with = DesignOderNichts::class) @SerialName("app_theme") val appTheme: Design? = null // Vorgabe des Verwalters; das des Kontos: /settings/theme
+)
+
+/**
+ * Startzustand des Servers — GET /api/v1/startup-status, ohne Anmeldung. Der erste
+ * Start einer Neuinstallation kann viele Minuten dauern; statt „keine Verbindung“
+ * zeigt die App dann den Fortschritt wie die Webapp.
+ *
+ * @param ready    Server ist durch; ab hier ist alles wie immer.
+ * @param step     Was gerade läuft, vom Server übersetzt.
+ * @param progress Erledigte Schritte samt Anteil des laufenden, `total` insgesamt; 0/0 = unbekannt.
+ * @param sub      Feinfortschritt innerhalb eines Schritts, z. B. „40%“.
+ */
+@Serializable
+data class StartupStatus(
+    val ready: Boolean = false,
+    val step: String? = null,
+    val progress: Double = 0.0,
+    val total: Int = 0,
+    val sub: String? = null,
+)
+
+/**
+ * GET /api/v1/settings/theme (auch ohne Anmeldung) und POST …/user/theme. Mit
+ * Token ist [theme] das wirksame Design des Kontos: [eigenes], sonst die
+ * [vorgabe] des Verwalters. Ältere Server kennen nur [theme].
+ */
+@Serializable
+data class AppThemeResponse(
+    val success: Boolean = false,
+    @Serializable(with = DesignOderNichts::class) val theme: Design? = null,
+    @Serializable(with = DesignOderNichts::class) val vorgabe: Design? = null,
+    @Serializable(with = DesignOderNichts::class) val eigenes: Design? = null,
+    val error: String? = null,
+)
+
+@Serializable
+data class SettingsResponse(
+    val success: Boolean,
+    val settings: UserSettings = UserSettings(),
+    val error: String? = null
+)
+
+/**
+ * Ein ausgestellter Zugang (GET /api/v1/settings/tokens). `tokenId` sind 16
+ * Zeichen des SHA-256-Hashes; den Klartext hat der Server nie gespeichert.
+ * `aktuell` markiert den Zugang dieser Anfrage, damit man sich nicht unbemerkt
+ * selbst aussperrt.
+ */
+@Serializable
+data class AppToken(
+    @SerialName("token_id") val tokenId: String,
+    val label: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("last_used") val lastUsed: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("never_expires") val neverExpires: Boolean = false,
+    val aktuell: Boolean = false,
+    @SerialName("token_prefix") val tokenPrefix: String? = null,
+    @SerialName("hard_expires_at") val hardExpiresAt: String? = null,
+    /** "app" oder "voll" — in der Geräteliste sichtbar, damit ein voller Zugang auffällt. */
+    val scope: String? = null,
+    @SerialName("ip_bereich") val ipBereich: String? = null,
+    @SerialName("rotiert_am") val rotiertAm: String? = null,
+)
+
+@Serializable
+data class TokensResponse(
+    val success: Boolean,
+    val tokens: List<AppToken> = emptyList(),
+    val error: String? = null,
+)
+
+@Serializable
+data class MeResponse(
+    val success: Boolean,
+    /** user.isAdmin ist hier das wirksame Recht DIESES Tokens (Scope "app" → false). */
+    val user: User? = null,
+    @SerialName("token_expires") val tokenExpires: String? = null,
+    @SerialName("token_last_used") val tokenLastUsed: String? = null,
+    @SerialName("token_info") val tokenInfo: TokenInfo? = null,
+)
+
+/** Antwort auf DELETE /api/v1/settings/tokens/:id — wie viele Zugänge entwertet wurden. */
+@Serializable
+data class TokenWiderruf(val success: Boolean, val deleted: Int = 0)
+
+/** POST /api/v1/settings/sessions/andere-beenden mit den App-Zugängen (`zugaenge`). */
+@Serializable
+data class AndereBeendenAnfrage(
+    val password: String? = null,
+    val code: String? = null,
+    val zugaenge: Boolean = true,
+)
+
+/** `deleted` zählt die Browser-Sitzungen, `zugaenge` die App-Zugänge. */
+@Serializable
+data class AndereBeendet(val success: Boolean, val deleted: Int = 0, val zugaenge: Int = 0)
+
+// ── Konto anlegen und Passwort vergessen ────────────────────────────────────
+//
+// Die Webapp konnte das von Anfang an, die App nicht: Wer die App als Erstes
+// installierte, brauchte zwingend einen Browser, um ueberhaupt ein Konto zu
+// bekommen. Dieselben Adressen, dieselben Felder wie in public/js/01-core.js.
+
+/**
+ * Registrierung — POST /api/v1/auth/register. `language` steuert
+ * Bestätigungs-E-Mail und Kontoeinstellung; die App schickt ihre Anzeigesprache
+ * mit, statt den Server auf 'de' zurückfallen zu lassen.
+ */
+@Serializable
+data class RegisterRequest(
+    val username: String,
+    val email: String,
+    @SerialName("first_name") val firstName: String? = null,
+    @SerialName("last_name") val lastName: String? = null,
+    val password: String,
+    val language: String = "de",
+)
+
+/**
+ * Die Antwort auf eine Registrierung. `consoleMode`: Ohne Mailversand steht der
+ * Bestätigungslink in der Konsole des Servers — ohne Hinweis wartete man auf eine
+ * E-Mail, die nie kommt.
+ */
+@Serializable
+data class RegisterResponse(
+    val success: Boolean,
+    val message: String? = null,
+    @SerialName("email_sent") val emailSent: Boolean = false,
+    @SerialName("console_mode") val consoleMode: Boolean = false,
+    val error: String? = null,
+)
+
+@Serializable
+data class ForgotPasswordRequest(val email: String)
+
+/**
+ * Die Antwort auf „Passwort vergessen“ ist absichtlich immer dieselbe, damit das
+ * Formular nicht verrät, wer ein Konto hat. Die App zeigt den Satz des Servers und
+ * leitet nichts daraus ab.
+ */
+@Serializable
+data class ForgotPasswordResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val error: String? = null,
+)
+
+/**
+ * Ist die Registrierung offen? GET /api/v1/auth/registration-status, ohne
+ * Anmeldung. Ist sie abgeschaltet, fehlt der Link — ein Knopf, der immer zu einem
+ * 403 führt, ist schlimmer als keiner.
+ */
+@Serializable
+data class RegistrationStatusResponse(val enabled: Boolean = false)
+
+// ── Profil und Passwort ──
+
+/** Das eigene Konto — GET /api/v1/auth/profile. */
+@Serializable
+data class Profil(
+    val id: Int,
+    val username: String,
+    val email: String? = null,
+    @SerialName("first_name") val firstName: String? = null,
+    @SerialName("last_name") val lastName: String? = null,
+    /** Ist die E-Mail-Adresse bestätigt? Seit API-Fassung 2 ein Wahrheitswert. */
+    @SerialName("email_verified") val emailVerified: Boolean = false,
+    /** Beantragt, aber noch nicht über den Link bestätigt; bis dahin gilt [email]. */
+    @SerialName("email_neu") val emailNeu: String? = null,
+)
+
+/**
+ * Antwort auf PUT /api/v1/auth/profile. Eine neue Adresse gilt erst nach dem Link;
+ * [emailSent] sagt, ob die Mail dafür hinausging — ohne sie wartet die Änderung umsonst.
+ */
+@Serializable
+data class ProfilGespeichert(
+    val success: Boolean,
+    val error: String? = null,
+    val emailChanged: Boolean? = null,
+    val emailSent: Boolean? = null,
+)
+
+@Serializable
+data class ProfilResponse(
+    val success: Boolean,
+    val user: Profil? = null,
+    val error: String? = null,
+)
+
+/**
+ * Profil ändern — PUT /api/v1/auth/profile. Das Passwort ändert nur
+ * /change-password; jede Änderung verlangt `passwordCurrent`.
+ */
+@Serializable
+data class ProfilAenderung(
+    val username: String,
+    val email: String,
+    @SerialName("first_name") val firstName: String? = null,
+    @SerialName("last_name") val lastName: String? = null,
+    /** Das aktuelle Passwort: Der Server bestätigt damit jede Profiländerung. */
+    @SerialName("password_current") val passwordCurrent: String? = null,
+    /** Bei aktivem zweitem Faktor: TOTP- oder Wiederherstellungscode. */
+    val code: String? = null,
+)
+
+/**
+ * Passwort ändern — POST /api/v1/auth/change-password. Der Server verwirft danach
+ * alle Bearer-Token des Kontos, auch den dieser Anfrage; die App ist abgemeldet,
+ * und die Oberfläche sagt es vorher. Eine Ausnahme für den gerade benutzten wäre
+ * genau die Lücke.
+ */
+@Serializable
+data class PasswortAenderung(
+    val current: String,
+    @SerialName("newPassword") val neuesPasswort: String,
+    /** Bei aktivem zweitem Faktor: TOTP- oder Wiederherstellungscode. */
+    val code: String? = null,
+)
+
+// ── Server-Protokoll (nur für Verwalter) ──
+//
+// Die Nutzerverwaltung gehört an den Rechner, ihre Modelle stehen deshalb nicht
+// hier.
+
+/**
+ * Eine Zeile aus dem Server-Protokoll — GET /api/v1/admin/logs?minutes=15. Der
+ * Server begrenzt selbst auf 2880 Minuten und 5000 Zeilen.
+ */
+@Serializable
+data class ProtokollZeile(
+    val id: Int? = null,
+    val level: String? = null,
+    val message: String? = null,
+    @SerialName("logged_at") val loggedAt: String? = null,
+)
+
+@Serializable
+data class ProtokollResponse(
+    val success: Boolean,
+    val minutes: Int = 0,
+    val count: Int = 0,
+    val logs: List<ProtokollZeile> = emptyList(),
+    val error: String? = null,
+)
+
+// ── Zweiter Faktor (Server: utils/zweiterFaktor.ts) ──────────────────────────
+@Serializable
+data class ZweiterFaktorStand(
+    val success: Boolean,
+    val aktiv: Boolean = false,
+    @SerialName("codes_uebrig") val codesUebrig: Int = 0,
+    val error: String? = null,
+)
+
+@Serializable
+data class ZweiterFaktorEinrichtung(
+    val success: Boolean,
+    /** Base32-Schlüssel zum Abtippen. */
+    val geheimnis: String? = null,
+    /** otpauth://-Adresse; öffnet auf dem Telefon direkt die Authenticator-App. */
+    val otpauth: String? = null,
+    val error: String? = null,
+)
+
+@Serializable
+data class ZweiterFaktorCodes(
+    val success: Boolean,
+    val codes: List<String> = emptyList(),
+    val error: String? = null,
+)
+
+@Serializable
+data class ZweiterFaktorAnfrage(
+    val password: String? = null,
+    val code: String? = null,
+)

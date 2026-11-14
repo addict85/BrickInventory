@@ -38,7 +38,7 @@ Code weg war. Er hatte recht — die Ursache lag eine Stufe davor.
    beschrieben steht.
 
 4. Die API-Modelle sind umbenannt (sec17 B-N10): Eine Keep-Regel für ganz
-   data.model legte die API-Oberfläche im Klartext offen. Stichprobe: SetItem.
+   vertrag (früher data.model) legte die API-Oberfläche im Klartext offen. Stichprobe: SetItem.
 
 Aufruf: apk-pruefen.py <app.apk> <quellverzeichnis> [<quellverzeichnis> …]
 """
@@ -64,7 +64,7 @@ UEBER_NAMEN = {
 
 # Stichprobe für das Umbenennen der API-Modelle: Steht sie mit ihrem Namen im APK,
 # hält eine Regel wieder das ganze Paket.
-MODELL_STICHPROBE = "Lch/brickinventoryapp/model/data/model/SetItem;"
+MODELL_STICHPROBE = "Lch/brickinventoryapp/vertrag/SetItem;"
 
 
 class Dex:
@@ -194,11 +194,11 @@ def main() -> int:
     for eintrag in z.namelist():
         if re.fullmatch(r'classes\d*\.dex', eintrag):
             namen.update(name for name, _o, _m in Dex(z.read(eintrag)).klassen())
-    modelle = sorted(n for n in namen if n.startswith('Lch/brickinventoryapp/model/data/model/'))
+    modelle = sorted(n for n in namen if n.startswith('Lch/brickinventoryapp/vertrag/'))
     if MODELL_STICHPROBE in namen:
         schlimm.append(
             f'{MODELL_STICHPROBE} steht mit seinem Namen im APK: Eine Keep-Regel hält die '
-            f'API-Modelle wieder im Klartext ({len(modelle)} Klassen unter model/data/model).')
+            f'API-Modelle wieder im Klartext ({len(modelle)} Klassen unter vertrag).')
     else:
         print(f'  OK   API-Modelle umbenannt ({len(modelle)} Klassen behielten ihren Namen)')
 

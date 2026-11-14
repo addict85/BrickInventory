@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.dienste.service
 
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
 import android.content.Context
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.service.ExportErgebnis

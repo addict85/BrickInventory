@@ -4,15 +4,14 @@ Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
 Rot: ein Code mit eigener CA bricht bei einer fremden oeffentlichen Kette ab
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-index f097adc..2769bbd 100644
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -230,7 +230,7 @@ class PinVertrauen(
+@@ -251,7 +251,7 @@
          if (!oeffentlicherPin && passtZumPin(chain, pin)) return
          val lage = lage(chain, mit)
-         if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return
+         if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return if (oeffentlicherPin) pruefeBlatt(chain[0], schluessel, ausCode) else Unit
 -        val art = if (ausCode) ZertifikatUngeklaert.Art.CODE_ABWEICHUNG else ZertifikatUngeklaert.Art.GEAENDERT
 +        val art = ZertifikatUngeklaert.Art.GEAENDERT
-         throw gemeldet(ZertifikatUngeklaert(schluessel, lage.fingerabdruck, art, erwartet = pin))
+         throw gemeldet(ZertifikatUngeklaert(schluessel, lage.fingerabdruck, art, erwartet = pin, blatt = spkiFingerabdruck(chain[0])))
      }
  

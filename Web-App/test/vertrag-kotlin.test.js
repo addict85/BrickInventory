@@ -21,6 +21,8 @@
  *      → rot: „jeder Abfrageparameter der App steht im Vertrag“
  *   H  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") →
  *      rot: „jeder Fehlercode der App steht im Vertrag“ nennt barcode_kein_satz
+ *   I  (14.11.2026) in kotlinModelle() die erzeugten Typen (vertrag/erzeugt) mitgelesen →
+ *      rot: „die Kotlin-Modelle passen zum Vertrag“ ($.theme fehlt in AppThemeResponse)
  */
 // Abgleich Web↔App: läuft in web-ci auch bei Änderungen unter Android-App/ (paths-Filter).
 const test = require('node:test');
@@ -170,15 +172,13 @@ test('der Vergleich schlägt an, wo die App nicht lesen kann', () => {
 test('jeder Fehlercode der App steht im Vertrag', () => {
   const datei = path.join(
     ANDROID,
-    'core-model',
+    'core-vertrag',
     'src',
     'main',
     'java',
     'ch',
     'brickinventoryapp',
-    'model',
-    'data',
-    'model',
+    'vertrag',
     'Fehlercode.kt',
   );
   const kennungen = kotlinFehlercodes(datei);

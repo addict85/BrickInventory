@@ -16,6 +16,21 @@
  *   F  in FINGERABDRUECKE eine Ziffer geändert → rot: „die Google-Wurzeln …“
  *   G  in liesTlv() die Längenprüfung `p + laenge > b.length` gestrichen → rot:
  *      „abgeschnittene Bytes …“
+ *
+ * Gegenproben zu Widerrufsliste, RootOfTrust und Patchstand (14.11.2026 gemessen):
+ *   H  in pruefeKette() die Zeile mit `e.widerrufen.has(…)` gestrichen → rot:
+ *      „eine Kette mit widerrufener Seriennummer …“
+ *   I  in seriennummer() `.replace(/^0+(?=.)/, '')` gestrichen → rot: „… auch mit
+ *      führender Null …“
+ *   J  in pruefeBoot() die Prüfung auf BOOT_VERIFIZIERT gestrichen → rot:
+ *      „ein Gerät mit unverifiziertem Boot …“
+ *   K  in pruefeBoot() `if (!gesperrt[0]) return 'bootloader_offen'` gestrichen →
+ *      rot: „ein offener Bootloader …“
+ *   L  in pruefeBeschreibung() die Patchstand-Zeile gestrichen → rot: „ein
+ *      Patchstand unter der Mindeststufe …“
+ *   M  in leseWiderrufsliste() die Prüfung des Schlüssels (Hex) gestrichen → rot:
+ *      „eine Liste in anderer Form …“
+ *   N  in geltendeListe() die Altersgrenze gestrichen → rot: „eine zu alte Liste …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,13 +39,17 @@ const _req = require('./helpers/sources').buildAndRequire();
 const A = _req('src/konto/attestation/schluesselAttestation.js');
 const der = _req('src/konto/attestation/der.js');
 const G = _req('src/konto/attestation/googleWurzeln.js');
+const W = _req('src/konto/attestation/widerrufsliste.js');
 const T = require('./helpers/attestation');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const NONCE = Buffer.from('nonce-des-servers-32-bytes-lang!');
 const erwartung = (o = {}) => ({
   wurzeln: [new X509Certificate(T.WURZEL.pem)],
   paket: T.PAKET,
   digests: [T.DIGEST_HEX],
+  widerrufen: new Set(),
   ...o,
 });
 const pruefe = (k, e = erwartung()) => A.pruefeKette(k.kette, e);
@@ -116,4 +135,65 @@ test('die Google-Wurzeln stimmen mit ihren Fingerabdrücken überein', () => {
     [...G.FINGERABDRUECKE],
   );
   for (const p of G.GOOGLE_WURZELN) assert.equal(new X509Certificate(p).ca, true);
+});
+
+const serie = b64 => A.seriennummer(new X509Certificate(Buffer.from(b64, 'base64')));
+
+test('eine Kette mit widerrufener Seriennummer wird abgewiesen, gleich an welchem Glied', () => {
+  const k = T.kette({ challenge: NONCE });
+  assert.equal(grund(k), 'angenommen');
+  for (const glied of k.kette) assert.equal(grund(k, erwartung({ widerrufen: new Set([serie(glied)]) })), 'widerrufen');
+  assert.equal(grund(k, erwartung({ widerrufen: new Set(['abc', '1']) })), 'angenommen');
+});
+
+test('die Seriennummer steht wie in Googles Liste: Hex klein, auch mit führender Null ohne sie', () => {
+  const c = { serialNumber: '00A1B2' };
+  assert.equal(A.seriennummer(c), 'a1b2');
+  assert.equal(A.seriennummer({ serialNumber: '00' }), '0');
+  const liste = W.leseWiderrufsliste(JSON.stringify({ entries: { '00A1B2': { status: 'REVOKED' } } }));
+  assert.deepEqual(liste, ['a1b2']);
+});
+
+test('ein Gerät mit unverifiziertem Boot, offenem Bootloader oder ohne RootOfTrust wird abgewiesen', () => {
+  assert.equal(grund(T.kette({ challenge: NONCE, bootZustand: 2 })), 'boot_unverifiziert');
+  assert.equal(grund(T.kette({ challenge: NONCE, bootZustand: 1 })), 'boot_unverifiziert', 'SelfSigned');
+  assert.equal(grund(T.kette({ challenge: NONCE, bootZustand: 3 })), 'boot_unverifiziert', 'Failed');
+  assert.equal(grund(T.kette({ challenge: NONCE, bootloaderOffen: true })), 'bootloader_offen');
+  assert.equal(grund(T.kette({ challenge: NONCE, ohneRootOfTrust: true })), 'ohne_root_of_trust');
+});
+
+test('ein Patchstand unter der Mindeststufe wird abgewiesen, ohne Mindeststufe jeder', () => {
+  const k = T.kette({ challenge: NONCE, patch: 202608 });
+  assert.equal(grund(k), 'angenommen');
+  assert.equal(grund(k, erwartung({ patchMindestens: 202608 })), 'angenommen');
+  assert.equal(grund(k, erwartung({ patchMindestens: 202609 })), 'patchstand_alt');
+});
+
+test('Googles Liste wird gelesen; eine Liste in anderer Form wirft, statt halb zu gelten', () => {
+  const roh = fs.readFileSync(path.join(__dirname, 'fixtures', 'attestation-status-auszug.json'));
+  const nummern = W.leseWiderrufsliste(roh);
+  assert.equal(nummern.length, 5);
+  assert.ok(nummern.includes('c35747a084470c3135aeefe2b8d40cd6'));
+  assert.ok(nummern.includes('17471682139930361099'), 'auch SOFTWARE_FLAW zählt');
+  for (const kaputt of [
+    '',
+    '[]',
+    '{"entries": []}',
+    '{"eintraege": {}}',
+    '{"entries": {"xyz": {"status": "REVOKED"}}}',
+    '{"entries": {"ab": {}}}',
+  ])
+    assert.throws(() => W.leseWiderrufsliste(kaputt), kaputt);
+});
+
+test('eine zu alte, fehlende oder beschädigte gespeicherte Liste gilt nicht', () => {
+  const jetzt = new Date('2026-11-14T12:00:00Z');
+  const wert = tage =>
+    JSON.stringify({ stand: new Date(jetzt.getTime() - tage * 86_400_000).toISOString(), nummern: ['ab'] });
+  assert.deepEqual([...W.geltendeListe(wert(6.9), 7, jetzt)], ['ab']);
+  assert.equal(W.geltendeListe(wert(7.1), 7, jetzt), null);
+  assert.equal(W.geltendeListe(wert(-1), 7, jetzt), null, 'aus der Zukunft');
+  assert.equal(W.geltendeListe(null, 7, jetzt), null);
+  assert.equal(W.geltendeListe('{kaputt', 7, jetzt), null);
+  assert.equal(W.geltendeListe(JSON.stringify({ stand: jetzt.toISOString() }), 7, jetzt), null);
 });

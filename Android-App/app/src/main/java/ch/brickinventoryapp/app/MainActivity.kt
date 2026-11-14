@@ -3,6 +3,8 @@ package ch.brickinventoryapp.app
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.os.Bundle
 import android.widget.Toast
+import androidx.glance.appwidget.updateAll
+import ch.brickinventoryapp.app.widget.SammlungsWidget
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -134,6 +136,7 @@ class MainActivity : NurLauncherStart() {
     override fun onStart() {
         super.onStart()
         appSperre.imVordergrund()
+        widgetNeuZeichnen()
         lifecycleScope.launch {
             fangeAusserAbbruch { preisalarme.durchgang() }
                 .onFailure { Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
@@ -149,6 +152,16 @@ class MainActivity : NurLauncherStart() {
         super.onStop()
         schrittschutz.vergiss()
         appSperre.imHintergrund()
+        widgetNeuZeichnen()
+    }
+
+    /** Das Widget verdeckt seine Beträge je nach App-Sperre (AppSperre.verdecktWidget); es zeichnet nur auf Anstoss neu. */
+    private fun widgetNeuZeichnen() {
+        val ctx = applicationContext
+        lifecycleScope.launch {
+            fangeAusserAbbruch { SammlungsWidget().updateAll(ctx) }
+                .onFailure { Protokoll.warnung("Widget", "Neuzeichnen fehlgeschlagen", it) }
+        }
     }
 
     /** Ein abgelaufenes Geheimnis lässt sich ab Android 10 erst mit Fokus aus der Zwischenablage nehmen. */
@@ -248,7 +261,7 @@ class MainActivity : NurLauncherStart() {
                     if (gesperrt) AppSperreSchirm {
                         val texte = LanguageManager.localizedContext(this@MainActivity)
                         entsperreMitGeraetesperre(this@MainActivity, texte.getString(R.string.app_sperre_gesperrt),
-                            texte.getString(R.string.schritt_untertitel)) { appSperre.entsperrt() }
+                            texte.getString(R.string.schritt_untertitel)) { appSperre.entsperrt(); widgetNeuZeichnen() }
                     }
                 } }
             }

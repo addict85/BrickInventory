@@ -2,10 +2,10 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.model.data.model.PendingAlertsResponse
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.model.data.model.PreisalarmRequest
-import ch.brickinventoryapp.model.data.model.PreisalarmResponse
+import ch.brickinventoryapp.vertrag.PendingAlertsResponse
+import ch.brickinventoryapp.vertrag.Preisalarm
+import ch.brickinventoryapp.vertrag.PreisalarmRequest
+import ch.brickinventoryapp.vertrag.PreisalarmResponse
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal

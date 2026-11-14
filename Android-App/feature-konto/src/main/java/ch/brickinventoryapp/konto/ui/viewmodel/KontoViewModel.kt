@@ -2,20 +2,20 @@ package ch.brickinventoryapp.konto.ui.viewmodel
 
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.data.model.Fehlercode
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.Fehlercode
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.model.data.model.ProfilAenderung
+import ch.brickinventoryapp.vertrag.ProfilAenderung
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.ui.model.alsGeraet
+import ch.brickinventoryapp.vertrag.abbildung.alsGeraet
 import ch.brickinventoryapp.konto.ui.DesignWahl
 import ch.brickinventoryapp.konto.ui.GeraeteRueckfrage
 import ch.brickinventoryapp.konto.ui.GeraeteUiState
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.konto.ui.KontoUiState
 import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.sitzung.SitzungsRepository
@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.data.model.AppThemeResponse
+import ch.brickinventoryapp.vertrag.AppThemeResponse
 import ch.brickinventoryapp.model.util.otpauthAdresse
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten

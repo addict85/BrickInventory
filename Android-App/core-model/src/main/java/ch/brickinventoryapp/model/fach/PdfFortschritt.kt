@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.model.fach
 
 /** Was ein laufender PDF-Export gerade tut. */
+
 enum class PdfSchritt { STARTET, BILDER_LADEN, ERSTELLT, ABSCHLUSS, HERUNTERLADEN }
 
 /**

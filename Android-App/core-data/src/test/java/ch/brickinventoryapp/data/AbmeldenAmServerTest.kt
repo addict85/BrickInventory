@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.KontoApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.netz.di.ServerWaechter
 import ch.brickinventoryapp.netz.di.Zugangslage
@@ -23,7 +22,6 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.KontoRepository
-import ch.brickinventoryapp.testing.ResponseCache
 
 /**
  * Abmelden entwertet den Token am Server (POST /auth/logout mit dem Token), und
@@ -50,7 +48,7 @@ class AbmeldenAmServerTest {
         .readTimeout(2, TimeUnit.SECONDS).build()
     private val konto = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(client)
         .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
-        .build().create(KontoApi::class.java), ResponseCache { dir })
+        .build().create(KontoApi::class.java))
 
     @After
     fun zu() {

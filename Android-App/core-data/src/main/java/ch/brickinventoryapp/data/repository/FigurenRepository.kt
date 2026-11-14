@@ -3,13 +3,13 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.data.model.AddMinifigResponse
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.GenericResponse
-import ch.brickinventoryapp.model.data.model.LagerortResponse
-import ch.brickinventoryapp.model.data.model.Minifig
-import ch.brickinventoryapp.model.data.model.VerwendendeSetsResponse
-import ch.brickinventoryapp.model.data.model.MinifigStatsResponse
+import ch.brickinventoryapp.vertrag.AddMinifigResponse
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.GenericResponse
+import ch.brickinventoryapp.vertrag.LagerortResponse
+import ch.brickinventoryapp.vertrag.Minifig
+import ch.brickinventoryapp.vertrag.VerwendendeSetsResponse
+import ch.brickinventoryapp.vertrag.MinifigStatsResponse
 import kotlinx.coroutines.flow.Flow
 
 /**

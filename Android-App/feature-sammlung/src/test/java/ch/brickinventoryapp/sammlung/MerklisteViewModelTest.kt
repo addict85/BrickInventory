@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.model.data.model.MerkpostenRequest
+import ch.brickinventoryapp.vertrag.MerkpostenRequest
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.offline.Bearbeitung
 import androidx.lifecycle.SavedStateHandle
@@ -59,7 +59,7 @@ class MerklisteViewModelTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
-        KatalogRepository(t.api, t.cache), FinanzenRepository(t.api, t.cache), gemerkt))
+        KatalogRepository(t.api), FinanzenRepository(t.api), gemerkt))
 
     @Before
     fun auf() {

@@ -4,8 +4,8 @@ import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.dienste.alarm.Alarmabholung
-import ch.brickinventoryapp.model.data.model.PendingAlertsResponse
-import ch.brickinventoryapp.model.data.model.Preisalarm
+import ch.brickinventoryapp.vertrag.PendingAlertsResponse
+import ch.brickinventoryapp.vertrag.Preisalarm
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import org.junit.Test

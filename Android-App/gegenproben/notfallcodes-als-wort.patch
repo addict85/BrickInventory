@@ -6,12 +6,12 @@ Rot: N5 Notfallcodes werden Zeichen fuer Zeichen vorgelesen
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -120,7 +120,7 @@
+@@ -117,7 +117,7 @@
                          AnmeldeTitel(stringResource(R.string.zf_pflicht_codes_titel))
                          Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodyMedium)
                          Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace,
 -                            modifier = Modifier.vorgelesenAls(zustand.codes.joinToString(", ") { zeichenweise(it) }))
 +                            modifier = Modifier)
-                         OutlinedButton(
-                             onClick = { teileCodes(kontext, teilenTitel, zustand.codes) },
-                             modifier = Modifier.fillMaxWidth(),
+                         val sichern = rememberCodesSichern(zustand.codes) { gesichert = true }
+                         OutlinedButton(onClick = sichern, modifier = Modifier.fillMaxWidth()) {
+                             Text(stringResource(R.string.zf_codes_speichern))

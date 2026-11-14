@@ -3,10 +3,10 @@ package ch.brickinventoryapp.anmeldung.ui.viewmodel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.Anmeldeablage
-import ch.brickinventoryapp.model.data.model.RegisterRequest
+import ch.brickinventoryapp.vertrag.RegisterRequest
 import ch.brickinventoryapp.data.repository.KontoRepository
-import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_APP
-import ch.brickinventoryapp.model.data.model.TOKEN_SCOPE_VOLL
+import ch.brickinventoryapp.vertrag.TOKEN_SCOPE_APP
+import ch.brickinventoryapp.vertrag.TOKEN_SCOPE_VOLL
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeUiState
@@ -20,9 +20,9 @@ import ch.brickinventoryapp.sicherheit.RpIdBefund
 import ch.brickinventoryapp.sicherheit.hostVon
 import ch.brickinventoryapp.sicherheit.pruefeRpId
 import kotlinx.serialization.json.Json
-import ch.brickinventoryapp.model.data.model.LoginResponse
-import ch.brickinventoryapp.model.data.model.PASSKEY_ANMELDEN
-import ch.brickinventoryapp.model.data.model.PASSKEY_ZWEITER_FAKTOR
+import ch.brickinventoryapp.vertrag.LoginResponse
+import ch.brickinventoryapp.vertrag.PASSKEY_ANMELDEN
+import ch.brickinventoryapp.vertrag.PASSKEY_ZWEITER_FAKTOR
 import ch.brickinventoryapp.anmeldung.ui.PasskeyAbfrage
 import ch.brickinventoryapp.anmeldung.ui.PasskeyErgebnis
 import kotlinx.serialization.json.JsonObject
@@ -36,8 +36,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.model.data.model.QrAbholung
-import ch.brickinventoryapp.model.data.model.QrMeldung
+import ch.brickinventoryapp.vertrag.QrAbholung
+import ch.brickinventoryapp.vertrag.QrMeldung
 import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState

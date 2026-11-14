@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.dienste.service
 
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
+import ch.brickinventoryapp.vertrag.CsvImportStatus
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.takeWhile

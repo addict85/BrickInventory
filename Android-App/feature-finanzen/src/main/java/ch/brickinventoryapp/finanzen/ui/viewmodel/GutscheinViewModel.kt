@@ -2,17 +2,17 @@ package ch.brickinventoryapp.finanzen.ui.viewmodel
 
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.vertrag.Fehlercode
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.model.data.model.GutscheinAntwort
+import ch.brickinventoryapp.vertrag.GutscheinAntwort
 import ch.brickinventoryapp.model.ui.model.KlartextAnsicht
 import ch.brickinventoryapp.model.ui.model.GutscheinAnsicht
-import ch.brickinventoryapp.model.data.model.ZweiterFaktorAnfrage
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.model.data.model.GutscheinRequest
+import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.vertrag.GutscheinRequest
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.finanzen.ui.GuthabenLauf

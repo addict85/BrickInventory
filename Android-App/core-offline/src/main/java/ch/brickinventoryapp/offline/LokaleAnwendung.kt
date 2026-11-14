@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.model.data.model.FigValuationItem
+import ch.brickinventoryapp.vertrag.FigValuationItem
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.offline.Offlineablage.Wirkung
-import ch.brickinventoryapp.model.data.model.KontoName
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.Preisalarm
-import ch.brickinventoryapp.model.data.model.VorratsOrt
-import ch.brickinventoryapp.model.data.model.SetItem
-import ch.brickinventoryapp.model.data.model.UpdateManualItemRequest
+import ch.brickinventoryapp.vertrag.KontoName
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.PartValuationItem
+import ch.brickinventoryapp.vertrag.Preisalarm
+import ch.brickinventoryapp.vertrag.VorratsOrt
+import ch.brickinventoryapp.vertrag.SetItem
+import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
 
 /**
  * Wie eine Bearbeitung die lokale Liste ändert, bevor der Server sie gesehen

@@ -61,7 +61,7 @@ class DesignJeKontoTest {
         pfade.server.shutdown()
     }
 
-    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api, t.cache), NummernTexte, t.meldungen, t.sitzung, SitzungsAttrappe()))
+    private fun vm() = t.merke(KontoViewModel(KontoRepository(t.api), NummernTexte, t.meldungen, t.sitzung, SitzungsAttrappe()))
 
     @Test
     fun `das Konto zeigt Vorgabe und eigenes Design`() {
@@ -104,7 +104,7 @@ class DesignJeKontoTest {
     fun `die Einstellungen ueberschreiben das Design des Kontos nicht`() {
         pfade.antworten["/api/v1/settings"] = """{"success":true,"settings":{"currency":"CHF","app_theme":"classic"}}"""
         t.sitzung.setzeDesign(Design.NOPPE)
-        runBlocking { t.sitzung.ladeEinstellungen(KontoRepository(t.api, t.cache)) }
+        runBlocking { t.sitzung.ladeEinstellungen(KontoRepository(t.api)) }
         assertEquals(Waehrung.CHF, t.sitzung.state.value.currency)
         assertEquals(Design.NOPPE, t.sitzung.state.value.appTheme)
     }

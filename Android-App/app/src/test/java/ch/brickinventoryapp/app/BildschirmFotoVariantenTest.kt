@@ -271,8 +271,8 @@ class BildschirmFotoVariantenTest {
     private fun foto(name: String, design: String = "classic", dunkel: Boolean = false, geraet: String = "telefon") =
         compose.onRoot().captureRoboImage(pfad(name, design, dunkel, geraet))
 
-    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api, welt.t.cache), welt.t.setKatalog(), welt.t.merkliste(),
-        KatalogRepository(welt.t.api, welt.t.cache),
+    private fun erfassung() = welt.t.merke(ErfassungViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, SetsRepository(welt.t.api), welt.t.setKatalog(), welt.t.merkliste(),
+        KatalogRepository(welt.t.api),
         object : SetAnleger {
             override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?,
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
@@ -483,7 +483,7 @@ class BildschirmFotoVariantenTest {
     @Test fun geruestTelefon() = geruestFoto("telefon")
     @Test fun geruestTablet() = geruestFoto("tablet")
 
-    /** Der Umschalter Sets | Teile | Minifiguren bei 200 %: als Chips, kein Wort gebrochen. */
+    /** Der Umschalter Sets | Teile | Minifiguren bei 200 %: Segmente, seitlich rollbar, kein Wort gebrochen. */
     @Test
     fun geruestSchrift200() {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
@@ -657,8 +657,8 @@ class BildschirmFotoVariantenTest {
     // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-        KontoRepository(welt.t.api, welt.t.cache, welt.t.io), VerwaltungRepository(welt.t.api, welt.t.cache),
-        welt.t.alarme(), TeileRepository(welt.t.api, welt.t.cache),
+        KontoRepository(welt.t.api, welt.t.io), VerwaltungRepository(welt.t.api),
+        welt.t.alarme(), TeileRepository(welt.t.api),
         object : DateiLeser {
             override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
         }))
@@ -694,7 +694,7 @@ class BildschirmFotoVariantenTest {
         welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache, welt.t.io))).also { it.ladeHaushalt() }
+            HaushaltRepository(welt.t.api), KontoRepository(welt.t.api, welt.t.io))).also { it.ladeHaushalt() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
@@ -867,7 +867,7 @@ class BildschirmFotoVariantenTest {
             {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
         val konto = welt.t.merke(KontoViewModel(
-            KontoRepository(welt.t.api, welt.t.cache, welt.t.io), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.io), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))
         zeige(name, dunkel = dunkel, geraet = geraet) {
             KontoRoute(snackbarHostState = remember { SnackbarHostState() },
@@ -1242,9 +1242,9 @@ class BildschirmFotoVariantenTest {
     @Test fun dialogBarcodeErgebnisDunkel() = barcodeFoto(true)
 
     private fun kaeufe() = welt.t.merke(KaeufeViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.aenderungen,
-        HaushaltRepository(welt.t.api, welt.t.cache), welt.t.sets(),
-        FinanzenRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
-        FigurenRepository(welt.t.api, welt.t.cache)))
+        HaushaltRepository(welt.t.api), welt.t.sets(),
+        FinanzenRepository(welt.t.api), TeileRepository(welt.t.api),
+        FigurenRepository(welt.t.api)))
 
     private fun kaufpreiseFoto(dunkel: Boolean, geraet: String) {
         val vm = kaeufe()
@@ -1295,8 +1295,7 @@ class BildschirmFotoVariantenTest {
             "bildbedarf":7,
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
         val api = welt.t.api
-        val cache = welt.t.cache
-        val vm = MonitoringViewModel(VerwaltungRepository(api, cache), KontoRepository(api, cache), KontextTexte(), welt.t.meldungen)
+        val vm = MonitoringViewModel(VerwaltungRepository(api), KontoRepository(api), KontextTexte(), welt.t.meldungen)
         runBlocking { vm.ladeHintergrund() }
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         zeige("hintergrundarbeiten", dunkel = dunkel, geraet = geraet, warten = false) {
@@ -1313,7 +1312,7 @@ class BildschirmFotoVariantenTest {
     @Test
     fun gutscheinFormular() {
         welt.pfade.antworten["/api/v1/vouchers"] = """{"success":true,"vouchers":[]}"""
-        val vm = welt.t.merke(GutscheinViewModel(GutscheineRepository(welt.t.api, welt.t.cache), KontextTexte(),
+        val vm = welt.t.merke(GutscheinViewModel(GutscheineRepository(welt.t.api), KontextTexte(),
             object : DateiLeser {
                 override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null
             }, welt.t.meldungen))
@@ -1335,7 +1334,7 @@ class BildschirmFotoVariantenTest {
             "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
         welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
         val vm = welt.t.merke(HaushaltViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
-            HaushaltRepository(welt.t.api, welt.t.cache), KontoRepository(welt.t.api, welt.t.cache))).also { it.jetzt = { FESTE_ZEIT }; it.ladeHaushalt() }
+            HaushaltRepository(welt.t.api), KontoRepository(welt.t.api))).also { it.jetzt = { FESTE_ZEIT }; it.ladeHaushalt() }
         zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }

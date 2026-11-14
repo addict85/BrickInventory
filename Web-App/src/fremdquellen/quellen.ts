@@ -5,6 +5,7 @@ import { erzeugeBricklink } from '../../clients/bricklink';
 import { erzeugeBrickset } from '../../clients/brickset';
 import { erzeugeRebrickable } from '../../clients/rebrickable';
 import { produktTitel } from '../../clients/upcitemdb';
+import { widerrufslisteAbruf } from '../../clients/googleAttestation';
 
 export { alsAbrufFehler } from '../../clients/abrufFehler';
 export { BricklinkNichtErreichbar } from '../../clients/bricklink';
@@ -52,6 +53,7 @@ export function baueQuellen(z: KlientenZugang) {
     ladeKatalogCsv,
     /** Ohne Schlüssel; hier, damit ein Test ihn je Satz Dienste ersetzt (testQuellen). */
     legoAbruf,
+    widerrufslisteAbruf,
   };
 }
 
