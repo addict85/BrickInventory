@@ -231,3 +231,16 @@ export function loescheTeilzeile(tx: DbSchnittstelle, id: number) {
 export function faerbeTeilzeileUm(tx: DbSchnittstelle, colorId: number, id: number) {
   return tx.run('UPDATE parts SET color_id = $1 WHERE id = $2', [colorId, id]);
 }
+
+export function manuelleTeileDesKontos(db: DbSchnittstelle, uid: number) {
+  return db.all<{ part_number: string; color_id: number }>(
+    "SELECT part_number, color_id FROM parts WHERE user_id = $1 AND source = 'manual'",
+    [uid],
+  );
+}
+
+export function manuelleFigurenDesKontos(db: DbSchnittstelle, uid: number) {
+  return db.all<{ fig_number: string }>("SELECT fig_number FROM minifigs WHERE user_id = $1 AND source = 'manual'", [
+    uid,
+  ]);
+}

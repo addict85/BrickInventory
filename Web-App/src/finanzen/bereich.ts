@@ -34,6 +34,9 @@ export function erzeugeFinanzen(a: Omit<FinanzenAbhaengigkeiten, 'faecher'>, ein
         setzeAlarm: mit(k)(preisalarm.setzeAlarm),
       },
       getCurrentMarketPrice: mit(k)(marketPrice.getCurrentMarketPrice),
+      // Gespeicherter Set-Marktpreis in einer Währung (Cache, sonst Verlauf); ohne Abruf bei BrickLink.
+      marktpreisAusCache: k.preisCache.marktpreisAusCache,
+      marktpreisAusVerlauf: k.preisCache.marktpreisAusVerlauf,
       resolvePartCondition: mit(k)(marketPrice.resolvePartCondition),
       marktpreiseAusCacheFuerFiguren: mit(k)(marketPrice.marktpreiseAusCacheFuerFiguren),
       marktpreiseAusCacheFuerTeile: mit(k)(marketPrice.marktpreiseAusCacheFuerTeile),

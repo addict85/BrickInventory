@@ -13,6 +13,7 @@ import * as preise from './preise';
 import * as anleitungen from './anleitungen';
 import * as csvImport from './csvImport';
 import * as nachErfassung from './nachErfassung';
+import * as setsRepo from './repository/sets';
 import * as csvImportLauf from './csvImportLauf';
 
 export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKontext>) {
@@ -22,6 +23,7 @@ export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKont
     (sk: SetsKontext) => ({
       erfassungBuchen: mit(sk)(erfassen.erfassungBuchen),
       findSetInScope: mit(sk)(erfassen.findSetInScope),
+      setsDesKontos: mit(sk.db, setsRepo.setsDesKontos),
       setErfassen: mit(sk)(erfassen.setErfassen),
       setErgaenzen: mit(sk)(erfassen.setErgaenzen),
       updateSet: mit(sk)(setService.updateSet),

@@ -22,8 +22,18 @@
  *      „jede schreibende Stelle auf eine Katalogtabelle …“)
  *   F  merkeKatalogCache zurück nach src/sets/repository/setDetail.ts → rot: dieselbe
  *      Prüfung (und „jede schreibende Stelle auf eine Katalogtabelle …“)
- *   G  die Zeile 'src/sammlung/repository/loeschen.ts → part_acquisitions' aus
- *      FREMDSCHREIBER gestrichen → rot: dieselbe Prüfung
+ *   G  die Zeile 'db/schemaStart.ts → global_settings' aus FREMDSCHREIBER gestrichen
+ *      → rot: dieselbe Prüfung
+ *
+ * Die Besitzer stehen in docs/architektur.md („Tabellen und Besitzer“), je Tabelle genau einer.
+ * Fremde Bereiche lesen über Lesebausteine in db/ oder den Dienst des Besitzers; die direkten
+ * Lesestellen zählt eine Ratsche. Gegenproben (14.11.2026 gemessen):
+ *   H  `SELECT 1 FROM price_cache` in src/sets/repository/sets.ts → rot: „fremde Bereiche lesen
+ *      weniger Tabellen direkt“ (99 von 98)
+ *   I  `DELETE FROM user_settings` in src/konto/repository/konten.ts → rot: „jede Tabelle hat
+ *      einen Besitzer, nur er schreibt hinein“
+ *   J  die Zeile von src/drossel in docs/architektur.md gestrichen → rot: dieselbe Prüfung
+ *      (rate_limit_attempts ohne Besitzer)
  *
  * Die Eingaben macht jedes Konto in seinem Namen (alsKonto) als Laufzeitrolle, wie im
  * Betrieb; Testdaten und die Suche danach laufen über die Eigentümerin.
@@ -168,88 +178,46 @@ const DYNAMISCH = {
   'src/sets/repository/verschieben.ts': 'Bestand und Erfassungen (user_id)',
 };
 
-/** Je Bereich die Tabellen, in die nur er schreibt (INSERT, UPDATE, DELETE). */
-const BESITZER = {
-  db: ['schema_migrations'],
-  'src/drossel': ['rate_limit_attempts'],
-  'src/auftraege': ['auftraege', 'auftrag_exklusiv', 'auftrag_pausen', 'auftrags_arten', 'import_stand', 'laufzustand'],
-  'src/bestand': ['minifigs', 'papierkorb', 'parts', 'storage_locations'],
-  'src/einstellungen': ['global_settings', 'user_settings'],
-  'src/figuren': ['minifig_acquisitions'],
-  'src/finanzen': [
-    'minifig_price_cache',
-    'minifig_price_history',
-    'part_price_cache',
-    'part_price_history',
-    'price_alerts',
-    'price_cache',
-    'price_history',
-    'wechselkurse',
-  ],
-  'src/gutscheine': ['gutschein_guthaben_schranke', 'vouchers'],
-  'src/haushalt': ['account_link_invites', 'account_links', 'household_former_links'],
-  'src/bilder': ['image_misses', 'image_wanted'],
-  'src/fremdquellen': ['api_aufrufe', 'api_takt'],
-  'src/idempotenz': ['idempotenz'],
-  'src/infra': ['app_logs'],
-  'src/katalog': [
-    'bl_zuordnung',
-    'bl_zuordnung_eigen',
-    'catalog_cache',
-    'figur_eigen',
-    'minifig_parts_cache',
-    'minifigs_catalog',
-    'part_catalog',
-    'part_color_catalog',
-    'rb_colors',
-    'rb_inventories',
-    'rb_inventory_minifigs',
-    'rb_inventory_parts',
-    'rb_part_categories',
-    'rb_parts',
-    'rb_sets',
-    'rb_themes',
-    'set_catalog',
-    'set_figuren',
-    'set_teile',
-    'shared_instructions',
-    'subsets_cache',
-    'teil_eigen',
-    'teil_farbe_eigen',
-  ],
-  'src/konto': [
-    'api_tokens',
-    'api_tokens_verbraucht',
-    'geraete_nonces',
-    'geraete_schluessel',
-    'passkeys',
-    'qr_login_tokens',
-    'schritt_challenges',
-    'schritt_freigaben',
-    'user_sessions',
-    'users',
-    'verwalter_uebernahmen',
-    'verwaltungsprotokoll',
-    'webauthn_challenges',
-    'zweiter_faktor',
-    'zweiter_faktor_codes',
-  ],
-  'src/merkliste': ['wanted'],
-  'src/sets': ['instructions', 'set_acquisitions', 'sets'],
-  'src/teile': [
-    'part_acquisitions',
-    'parts_katalog_offen',
-    'parts_summary',
-    'parts_summary_state',
-    'parts_version_user',
-  ],
-};
+/** Je Bereich die Tabellen, in die nur er schreibt: die Tabelle in docs/architektur.md. */
+function besitzerAusDoku() {
+  const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
+  const abschnitt = doc.slice(doc.indexOf('## Tabellen und Besitzer'), doc.indexOf('## API-Vertrag'));
+  return Object.fromEntries(
+    [...abschnitt.matchAll(/^\| `([^`]+)` \| (.+) \|$/gm)].map(m => [
+      m[1],
+      [...m[2].matchAll(/`([^`]+)`/g)].map(x => x[1]),
+    ]),
+  );
+}
+const BESITZER = besitzerAusDoku();
 
-/** Wer heute noch in eine fremde Tabelle schreibt — eine Ratsche: nur streichen, nie ergänzen. */
+/** Ausnahmen von „nur der Besitzer schreibt“; eine Ratsche: nur streichen, nie ergänzen. */
 const FREMDSCHREIBER = [
   // Der Schemastart schreibt die Zeitzone, bevor es Dienste gibt.
   'db/schemaStart.ts → global_settings',
 ];
+
+/** Lesen fremde Bereiche eine Tabelle direkt (FROM, JOIN, USING), statt über einen Lesebaustein
+ * in db/ oder den Dienst des Besitzers? Paare „Bereich → Tabelle“; db/ selbst ist der Lesebaustein. */
+const FREMDE_LESER_HOECHSTENS = 98;
+
+function fremdeLeser(besitzer) {
+  const paare = new Set();
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) lauf(p);
+      else if (n.endsWith('.ts')) {
+        const datei = path.relative(ROOT, p).split(path.sep).join('/');
+        const b = bereichVon(datei);
+        const s = ohneKommentare(fs.readFileSync(p, 'utf8'));
+        for (const m of s.matchAll(/\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b/g))
+          if (besitzer.has(m[1]) && besitzer.get(m[1]) !== b) paare.add(`${b} → ${m[1]}`);
+      }
+    }
+  })(path.join(ROOT, 'src'));
+  return [...paare].sort();
+}
 
 const bereichVon = datei => (datei.startsWith('src/') ? datei.split('/').slice(0, 2).join('/') : datei.split('/')[0]);
 
@@ -339,6 +307,10 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public' WHERE c.relkind IN ('r', 'p')`)
     ).map(z => z.t);
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
+    const doppelt = Object.values(BESITZER)
+      .flat()
+      .filter((x, i, a) => a.indexOf(x) !== i);
+    assert.deepEqual(doppelt, [], 'Eine Tabelle hat genau einen Besitzer');
     assert.ok(alle.length > 60, `nur ${alle.length} Tabellen gefunden — greift die Abfrage noch?`);
     assert.deepEqual(alle.filter(x => !besitzer.has(x)).sort(), [], 'Tabelle ohne Besitzer: in BESITZER eintragen');
     assert.deepEqual(
@@ -356,6 +328,21 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       [...FREMDSCHREIBER].sort(),
       'Schreib-SQL gehört in den Besitzer-Bereich der Tabelle; andere Bereiche rufen dessen Dienst.',
     );
+  });
+
+  await t.test('fremde Bereiche lesen weniger Tabellen direkt, nie mehr', () => {
+    const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
+    assert.ok(besitzer.size > 60, `nur ${besitzer.size} Tabellen in docs/architektur.md — greift die Suche noch?`);
+    const paare = fremdeLeser(besitzer);
+    assert.ok(paare.includes('src/verwaltung → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
+    assert.ok(
+      paare.length <= FREMDE_LESER_HOECHSTENS,
+      `${paare.length} direkte Lesestellen fremder Bereiche, erlaubt sind ${FREMDE_LESER_HOECHSTENS}. ` +
+        'Über einen Lesebaustein in db/ oder den Dienst des Besitzers lesen.\n' +
+        paare.join('\n'),
+    );
+    if (paare.length < FREMDE_LESER_HOECHSTENS)
+      console.log(`  ℹ fremde Leser: ${paare.length} (Schranke ${FREMDE_LESER_HOECHSTENS}) — Schranke nachziehen`);
   });
 
   await t.test('Eingaben eines Kontos landen in keiner gemeinsamen Tabelle', async () => {

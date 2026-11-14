@@ -138,7 +138,11 @@ export async function preisProbe(k: VerwaltungKontext, uid: number, setNumber: s
     k.verwaltung.probeErfassungen(uid, setNumber),
     k.verwaltung.probePreisCache(setNumber),
     k.verwaltung.probePreisVerlauf(setNumber),
-    ab.oder('waehrung', k.verwaltung.probeWaehrung(uid), null),
+    ab.oder(
+      'waehrung',
+      k.einstellungen.fremderNutzerWert(uid, 'currency').then(value => (value === null ? undefined : { value })),
+      null,
+    ),
     k.einstellungen.getGlobalSetting('price_cache_ttl'),
   ]);
 

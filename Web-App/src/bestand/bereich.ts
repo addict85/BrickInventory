@@ -34,6 +34,8 @@ export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<Be
       entferneSetInhalt: mit(k.db, gemeinsamRepo.entferneSetInhalt),
       kopiereSetInhalt: mit(k.db, gemeinsamRepo.kopiereSetInhalt),
       legeManuellAn: mit(k.db, gemeinsamRepo.legeManuellAn),
+      manuelleTeileDesKontos: mit(k.db, gemeinsamRepo.manuelleTeileDesKontos),
+      manuelleFigurenDesKontos: mit(k.db, gemeinsamRepo.manuelleFigurenDesKontos),
       legeTeilManuellAn: mit(k.db, gemeinsamRepo.legeTeilManuellAn),
       legeFigurManuellAn: mit(k.db, gemeinsamRepo.legeFigurManuellAn),
       setzeTeilLagerort: mit(k.db, gemeinsamRepo.setzeTeilLagerort),

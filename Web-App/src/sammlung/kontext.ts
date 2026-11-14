@@ -2,7 +2,6 @@
 import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
 import * as erfassungen from './repository/erfassungen';
-import * as loeschen from './repository/loeschen';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste } from '../auftraege';
 import type { KatalogDienste } from '../katalog';
@@ -31,11 +30,6 @@ export const zugang = (db: Db) => ({
     kontoDerErfassung: mit(db)(erfassungen.kontoDerErfassung),
     setErfassungenImBlickfeld: mit(db)(erfassungen.setErfassungenImBlickfeld),
     zustandDerErfassung: mit(db)(erfassungen.zustandDerErfassung),
-  },
-  loeschen: {
-    manuelleFigurenDesKontos: mit(db)(loeschen.manuelleFigurenDesKontos),
-    manuelleTeileDesKontos: mit(db)(loeschen.manuelleTeileDesKontos),
-    setsDesKontos: mit(db)(loeschen.setsDesKontos),
   },
 });
 export type SammlungKontext = Kontext<SammlungAbhaengigkeiten, ReturnType<typeof zugang>>;

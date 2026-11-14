@@ -24,6 +24,8 @@ export const zugang = (db: Db) => ({
     schreibeNutzerWert: mit(db)(repository.schreibeNutzerWert),
     loescheNutzerWert: mit(db)(repository.loescheNutzerWert),
     nutzerWerte: mit(db)(repository.nutzerWerte),
+    ersterWertIn: mit(db)(repository.ersterWertIn),
+    fremderNutzerWert: imSystem(db, 'Verwaltung: liest den Wert eines anderen Kontos', repository.nutzerWert),
     schreibeGlobalenWert: imSystem(db, GLOBAL, repository.schreibeGlobalenWert),
     loescheGlobaleWerte: imSystem(db, GLOBAL, repository.loescheGlobaleWerte),
     globaleWerte: mit(db)(repository.globaleWerte),

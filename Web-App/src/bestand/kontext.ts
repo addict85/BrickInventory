@@ -42,8 +42,6 @@ export const zugang = (db: Db) => ({
     teileImBestand: mit(db)(kennzahlen.teileImBestand),
     teileEinzeln: mit(db)(kennzahlen.teileEinzeln),
     figurenImBestand: mit(db)(kennzahlen.figurenImBestand),
-    waehrungImBlickfeld: mit(db)(kennzahlen.waehrungImBlickfeld),
-    vorgabeZustandImBlickfeld: mit(db)(kennzahlen.vorgabeZustandImBlickfeld),
   },
   lagerort: {
     andererOrtGleichenNamens: mit(db)(lagerort.andererOrtGleichenNamens),
@@ -56,7 +54,6 @@ export const zugang = (db: Db) => ({
     orteDerKonten: mit(db)(lagerort.orteDerKonten),
     orteMitBestand: mit(db)(lagerort.orteMitBestand),
     schreibeOrtNamen: mit(db)(lagerort.schreibeOrtNamen),
-    vorgabeOrt: mit(db)(lagerort.vorgabeOrt),
   },
   manuelleMengen: {
     summeDerErfassungen: mit(db)(manuelleMengen.summeDerErfassungen),

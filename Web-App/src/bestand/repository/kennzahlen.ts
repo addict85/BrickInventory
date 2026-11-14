@@ -50,16 +50,3 @@ export function figurenImBestand(db: DbSchnittstelle, uids: number[]) {
     [uids],
   );
 }
-
-export function waehrungImBlickfeld(db: DbSchnittstelle, uids: number[]) {
-  return db.get<{ value: string }>("SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = 'currency'", [
-    uids,
-  ]);
-}
-
-export function vorgabeZustandImBlickfeld(db: DbSchnittstelle, uids: number[]) {
-  return db.get<{ value: string }>(
-    "SELECT value FROM user_settings WHERE user_id = ANY($1) AND key='user_default_condition'",
-    [uids],
-  );
-}

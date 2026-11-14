@@ -94,6 +94,8 @@ const preiszugang = (db: Db) => ({
     merkeSetVerlauf: mit(db)(preisCache.merkeSetVerlauf),
     blFarben: mit(db)(preisCache.blFarben),
     teilepreiseFrisch: mit(db)(preisCache.teilepreiseFrisch),
+    marktpreisAusCache: mit(db)(preisCache.marktpreisAusCache),
+    marktpreisAusVerlauf: mit(db)(preisCache.marktpreisAusVerlauf),
     figurenpreiseFrisch: mit(db)(preisCache.figurenpreiseFrisch),
     teilpreisFrisch: mit(db)(preisCache.teilpreisFrisch),
     figurpreisFrisch: mit(db)(preisCache.figurpreisFrisch),

@@ -13,13 +13,12 @@ export async function getStats(k: BestandKontext, userIdWahl: Sicht | number | n
     // `fehlt = 1` in einer Multiplikation: Ein manuelles Teil ohne Set zählt einfach.
     k.kennzahlen.teileImBestand(uids),
     k.kennzahlen.figurenImBestand(uids),
-    k.kennzahlen.waehrungImBlickfeld(uids),
+    k.einstellungen.wertImBlickfeld(uids, 'currency').then(value => (value === null ? undefined : { value })),
     k.kennzahlen.teileEinzeln(uids),
   ]);
-  const userCondRow = await k.kennzahlen.vorgabeZustandImBlickfeld(uids);
+  const eigenerZustand = await k.einstellungen.wertImBlickfeld(uids, 'user_default_condition');
   const globalCond = await k.einstellungen.getGlobalSetting('default_price_condition');
-  const effectiveCondition =
-    userCondRow?.value && ['N', 'U'].includes(userCondRow.value) ? userCondRow.value : globalCond || 'N';
+  const effectiveCondition = eigenerZustand && ['N', 'U'].includes(eigenerZustand) ? eigenerZustand : globalCond || 'N';
   const pieces = Number(partsRow?.t ?? 0);
   const einzeln = Number(einzelnRow?.t ?? 0);
   return {
@@ -33,7 +32,7 @@ export async function getStats(k: BestandKontext, userIdWahl: Sicht | number | n
     total_minifigs: Number(minifigsRow?.t ?? 0),
     total_instructions: Number(instrRow?.total_instructions ?? 0),
     currency: cur?.value || 'EUR',
-    user_default_condition: userCondRow?.value || null,
+    user_default_condition: eigenerZustand || null,
     default_condition: effectiveCondition,
   };
 }

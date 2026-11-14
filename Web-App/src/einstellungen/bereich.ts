@@ -25,6 +25,8 @@ export function erzeugeEinstellungen(
       nutzerEinstellungLoeschen: mit(k)(nutzerEinstellung.nutzerEinstellungLoeschen),
       setzeEigenesDesign: mit(k)(nutzerEinstellung.setzeEigenesDesign),
       nutzerEinstellungen: mit(k)(settings.nutzerEinstellungen),
+      wertImBlickfeld: (uids: number[], key: string) => k.repository.ersterWertIn(uids, key),
+      fremderNutzerWert: (uid: number, key: string) => k.repository.fremderNutzerWert(uid, key),
       readSettings: mit(k)(settings.readSettings),
       globaleWerteOhneGeheimnisse: mit(k)(settings.globaleWerteOhneGeheimnisse),
       designFuer: mit(k)(settings.designFuer),

@@ -21,7 +21,7 @@ async function priceForNewAcquisition(sk: SetsKontext, userId: number, setNumber
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
   const currency = String(await einstellungMitZugang(sk.db, userId, 'currency', 'EUR'));
   const cached = wertOder(
-    await versuche('set-service:cached', repo.marktpreisAusCache(sk.db, setNumber, currency, cond)),
+    await versuche('set-service:cached', sk.finanzen.marktpreisAusCache(setNumber, currency, cond)),
     null,
   );
   let pp = Number(cached?.marktpreis ?? 0) || null;
@@ -34,7 +34,7 @@ async function priceForNewAcquisition(sk: SetsKontext, userId: number, setNumber
     // Der Verlauf füllt die Lücke, wenn Cache und BrickLink-Kontingent beim CSV-Import leer ausgehen; sonst
     // entstünde die Erfassung ohne Kaufpreis.
     const hist = wertOder(
-      await versuche('set-service:hist', repo.marktpreisAusVerlauf(sk.db, setNumber, currency, cond)),
+      await versuche('set-service:hist', sk.finanzen.marktpreisAusVerlauf(setNumber, currency, cond)),
       null,
     );
     pp = Number(hist?.marktpreis ?? 0) || null;
