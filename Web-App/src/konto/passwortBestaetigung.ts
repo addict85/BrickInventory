@@ -1,4 +1,5 @@
-import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
+import { BcryptUeberlast } from './bcryptSchranke';
+import { passwortPasst } from './passwortHash';
 import {
   bestaetigungGesperrt,
   bestaetigungFehlgeschlagen,

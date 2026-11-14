@@ -10,7 +10,6 @@ export interface Konto {
   email: string | null;
   first_name: string | null;
   last_name: string | null;
-  password_hash: string;
   is_admin: boolean;
   is_active: boolean;
   email_verified: boolean;
@@ -30,8 +29,12 @@ export function kontoKurz(db: DbSchnittstelle, id: number): Promise<KontoKurz | 
   return db.get('SELECT id, username, is_admin, must_change_password FROM users WHERE id = $1', [id]);
 }
 
+/** Alles ausser dem Passwort-Hash: Den liest die Laufzeitrolle nicht (Migration 0115). */
+const KONTO_SPALTEN = `id, username, email, first_name, last_name, is_admin, is_active, email_verified,
+  must_change_password, created_at, sitzungs_version, registrierung_offen, email_neu`;
+
 export function kontoVoll(db: DbSchnittstelle, id: number): Promise<Konto | undefined> {
-  return db.get<Konto>('SELECT * FROM users WHERE id=$1', [id]);
+  return db.get<Konto>(`SELECT ${KONTO_SPALTEN} FROM users WHERE id=$1`, [id]);
 }
 
 export function profilZeile(db: DbSchnittstelle, id: number): Promise<Profil | undefined> {
@@ -375,7 +378,10 @@ export async function registriereKonto(
 }
 
 export function aktivesKontoNachEmail(db: DbSchnittstelle, email: string): Promise<Konto | undefined> {
-  return db.get<Konto>('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active AND email_verified', [email]);
+  return db.get<Konto>(
+    `SELECT ${KONTO_SPALTEN} FROM users WHERE LOWER(email) = LOWER($1) AND is_active AND email_verified`,
+    [email],
+  );
 }
 
 /** Der Zeitpunkt des letzten Links ergibt sich aus seinem Ablauf; die Bedingung

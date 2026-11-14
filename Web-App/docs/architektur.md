@@ -161,7 +161,9 @@ Der Zeilenschutz (Migrationen 0111, 0112) fängt einen **vergessenen Filter** au
 `user_id`: In 34 Tabellen mit Kontodaten (Bestand, Käufe, Merkliste, Einstellungen
 je Konto, Zugangsdaten wie `api_tokens`, `passkeys`, `zweiter_faktor`, Aufträge)
 sieht und ändert die Laufzeitrolle nur Zeilen von `app.konto` und dessen direkten
-Unterkonten, ohne Konto keine. Die Datenbankschicht setzt `app.konto` je
+Unterkonten, ohne Konto keine. Zugangsdaten (Passkeys, zweiter Faktor, Tokens,
+Geräteschlüssel, Schrittfreigaben) sieht nur das Konto selbst, kein Hauptkonto
+(Migration 0114). Die Datenbankschicht setzt `app.konto` je
 Transaktion (`set_config(…, true)`) aus dem Konto der Anfrage. Den Systemrahmen
 trägt die Systemrolle (`BYPASSRLS`), keine Einstellung.
 
@@ -171,15 +173,19 @@ Er ist **keine Grenze gegen eingeschleustes SQL**:
   Rolle aufrufen; wer SQL über die Laufzeitrolle ausführen kann, setzt sich jedes
   Konto und sieht dessen Zeilen. Dagegen schützen nur Parameter statt
   zusammengesetzter Abfragen.
-- Ohne Zeilenschutz sind Tabellen ohne `user_id` je Konto oder mit Zeilen mehrerer
-  Konten: `users`, `user_sessions`, `account_links`, `account_link_invites`,
-  `household_former_links`, `verwaltungsprotokoll`, `rate_limit_attempts`,
+- Der Haushalt (Migration 0115): `account_links` liest jedes Konto, anlegen darf
+  nur der Systemrahmen, lösen nur ein beteiligtes Konto; `account_link_invites`
+  und `household_former_links` sieht nur ein beteiligtes Konto.
+- Ohne Zeilenschutz sind `users`, `verwaltungsprotokoll`, `rate_limit_attempts`,
   `global_settings`, Kataloge, Preis- und Bildzwischenspeicher, Laufzustände.
   Hier schützt allein der Filter im Repository.
 - Die Systemrolle sieht alles. Was im Systemrahmen läuft (Anmeldung vor dem Konto,
   Aufträge, Verwaltung über Konten, Haushaltswährung), prüft die Berechtigung selbst.
 - Die Laufzeitrolle hat `SELECT, INSERT, UPDATE, DELETE` auf alle Tabellen
-  (`postgres/app-rolle.sh`); Spalten- oder Tabellenrechte trennen nichts weiter.
+  (`postgres/app-rolle.sh`) mit zwei Ausnahmen: `users.password_hash` liest sie
+  nicht, `user_sessions` gar nicht; Anmeldung und Sitzungsspeicher laufen über die
+  Systemrolle. Kopien vor Migrationen (`vor_migration_*`) haben RLS ohne Policy und
+  sind damit nur für die Systemrolle und die Eigentümerin lesbar.
 
 ## Rangfolge der Bereiche
 

@@ -10,17 +10,15 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('node:path');
 
-const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire, testDaten } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const db = testDaten();
-const { pruefeAnmeldedaten, BCRYPT_ROUNDS } = _req('src/konto/anmeldepruefung.js');
-const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
+const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
+const { hashePasswort } = _req('src/konto/passwortHash.js');
 
 /** Minimaler Request: pruefeAnmeldedaten braucht davon nur die IP (Zähler). */
 const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
@@ -35,12 +33,12 @@ async function dauer(fn) {
 test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort', { concurrency: 1 }, async t => {
   if (!(await datenOderSkip(t, _req))) return;
 
-  // Die Kosten müssen denen echter Passwörter entsprechen — mit weniger Runden
-  // wäre der BEKANNTE Fall der schnellere und der Vergleich stünde auf dem
-  // Kopf. Deshalb BCRYPT_ROUNDS, derselbe Wert, mit dem der Dummy-Hash entsteht.
+  // Die Kosten müssen denen echter Passwörter entsprechen — mit geringeren wäre
+  // der BEKANNTE Fall der schnellere und der Vergleich stünde auf dem Kopf.
+  // Deshalb hashePasswort(), dieselben Kosten, mit denen der Dummy-Hash entsteht.
   // Drei Paare, abwechselnd gemessen, je mit eigenem Namen und eigener IP: …
   const namen = [0, 1, 2].map(i => `zeit_bekannt_${i}`);
-  const hash = await bcrypt.hash('richtigesPasswort1', BCRYPT_ROUNDS);
+  const hash = await hashePasswort('richtigesPasswort1');
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   for (const name of namen)
     await db.run(
@@ -77,8 +75,8 @@ test('unbekannter Anmeldename kostet dieselbe Zeit wie ein falsches Passwort', {
     // Und die Messung selbst muss überhaupt etwas gekostet haben — ohne das
     // wäre „0 ms ≥ 0 ms" grün, ganz ohne Passwortprüfung.
     assert.ok(
-      bekannt.ms > 20,
-      `Der bekannte Fall dauerte nur ${bekannt.ms.toFixed(1)} ms — hier wurde kein bcrypt gerechnet`,
+      bekannt.ms > 5,
+      `Der bekannte Fall dauerte nur ${bekannt.ms.toFixed(1)} ms — hier wurde kein Hash gerechnet`,
     );
 
     assert.ok(

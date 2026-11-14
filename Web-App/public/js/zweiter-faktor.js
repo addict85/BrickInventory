@@ -6,6 +6,7 @@ import { formularFehler } from './formular.js';
 import { toast } from './meldungen.js';
 import { loadUsers } from './nutzerverwaltung.js';
 import { html, ungeprueft } from './escapen.js';
+import { fmtDatum } from './format.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
@@ -224,7 +225,10 @@ export async function zfZuruecksetzen(uid, name) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  toast(tRaw('zf.disabled'), 'success');
+  toast(
+    d.wirksam_ab ? tRaw('users.uebernahme_spaeter', { zeit: fmtDatum(d.wirksam_ab, 'tagzeit') }) : tRaw('zf.disabled'),
+    'success',
+  );
   loadUsers();
 }
 

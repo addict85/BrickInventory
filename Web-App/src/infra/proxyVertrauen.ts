@@ -1,29 +1,45 @@
 import net from 'node:net';
 
-/** Nur ausdrücklich genannte Adressen: Jeder vertraute Absender kann seine
- * Client-Adresse frei angeben und so die Anmeldesperre umgehen. Hop-Zahlen,
- * „true" und ganze Netze werden abgelehnt. */
-export function proxyVertrauen(wert?: string): false | string[] | ((adresse: string) => boolean) {
+/** Nur ausdrücklich genannte Adressen: Jeder vertraute Absender kann seine Client-Adresse frei
+ * angeben und so die Anmeldesperre umgehen. Ein Netz über acht Adressen nur mit `netzBestaetigt`
+ * (PROXY_NETZ_BESTAETIGT=1): Darin stehen meist auch Clients. */
+export function proxyVertrauen(
+  wert?: string,
+  netzBestaetigt = false,
+): false | string[] | ((adresse: string) => boolean) {
   const v = (wert ?? '').trim();
   if (!v) return nurLoopback;
   if (/^(false|nein|no|off)$/i.test(v)) return false;
   const eintraege = v.split(/[\s,]+/).filter(Boolean);
-  const falsch = eintraege.filter(e => !proxyEintragGueltig(e));
-  if (falsch.length) throw new Error(proxyFehlertext(falsch));
+  const falsch = eintraege.filter(e => !proxyEintragGueltig(e, netzBestaetigt));
+  if (falsch.length)
+    throw new Error(
+      proxyFehlertext(
+        falsch,
+        falsch.every(e => proxyEintragGueltig(e, true)),
+      ),
+    );
   return eintraege;
 }
 
-function proxyFehlertext(falsch: string[]): string {
+function proxyFehlertext(falsch: string[], nurZuWeit: boolean): string {
+  const liste = falsch.map(f => `„${f}"`).join(', ');
+  if (nurZuWeit)
+    return (
+      `TRUST_PROXY enthält ${liste}: ein Netz mit mehr als 8 Adressen (IPv4 weiter als /29, IPv6 weiter als /120). ` +
+      'Besser nur die feste Adresse des Proxys; wer das Netz wirklich braucht, setzt PROXY_NETZ_BESTAETIGT=1 ' +
+      '(UPGRADE.md#runde-24).'
+    );
   return (
-    `TRUST_PROXY enthält ${falsch.map(f => `„${f}"`).join(', ')}. Erlaubt sind nur die feste Adresse ` +
-    'des eigenen Reverse-Proxys (z. B. 172.28.73.10) oder ein kleines Netz (IPv4 ab /16, IPv6 ab /64), ' +
-    'mehrere durch Komma getrennt, oder „false" ohne Proxy. „docker", „true" und Hop-Zahlen gibt es nicht mehr — ' +
-    'siehe README.md und docs/SICHERHEIT.md.'
+    `TRUST_PROXY enthält ${liste}. Erlaubt sind nur die feste Adresse ` +
+    'des eigenen Reverse-Proxys (z. B. 172.28.73.10) oder ein kleines Netz (IPv4 ab /29, IPv6 ab /120; ' +
+    'bis /16 bzw. /64 nur mit PROXY_NETZ_BESTAETIGT=1), mehrere durch Komma getrennt, oder „false" ohne Proxy. ' +
+    '„docker", „true" und Hop-Zahlen gibt es nicht mehr — siehe README.md und docs/SICHERHEIT.md.'
   );
 }
 
-/** Höchstens ein kleiner Bereich. */
-export function proxyEintragGueltig(eintrag: string): boolean {
+/** Ohne Bestätigung höchstens acht Adressen, mit ihr höchstens /16 bzw. /64. */
+export function proxyEintragGueltig(eintrag: string, netzBestaetigt = false): boolean {
   const [adresse, praefix, rest] = eintrag.split('/');
   if (rest !== undefined || !adresse) return false;
   const art = net.isIP(adresse);
@@ -31,7 +47,8 @@ export function proxyEintragGueltig(eintrag: string): boolean {
   if (praefix === undefined) return true;
   if (!/^\d{1,3}$/.test(praefix)) return false;
   const p = Number(praefix);
-  return art === 4 ? p >= 16 && p <= 32 : p >= 64 && p <= 128;
+  const [eng, weit, max] = art === 4 ? [29, 16, 32] : [120, 64, 128];
+  return p <= max && p >= (netzBestaetigt ? weit : eng);
 }
 
 export const ohneV4Huelle = (adresse: string) => adresse.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, '');

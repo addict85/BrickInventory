@@ -21,6 +21,8 @@
  *      → rot: dieselbe Prüfung (eine Warnung erwartet, keine gesehen)
  *   G  (12.11.2026) in sichereNutzerdaten wieder `lock_timeout = 0` → rot:
  *      „auch die Sicherung wartet nicht ewig“ (Zeitüberschreitung)
+ *   H  (14.11.2026) in sichereNutzerdaten das `ENABLE ROW LEVEL SECURITY` gestrichen
+ *      → rot: „offene Migration …“ (Kopien ohne Zeilenschutz: users, api_tokens, …)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -108,6 +110,12 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
       await db.get(`SELECT 1 FROM ${neu[0]}.account_links WHERE main_user_id = $1 AND sub_user_id = $2`, [haupt, kind]),
       'Die Haushaltsverknüpfung fehlt in der Sicherung',
     );
+    // Die Kopie trägt keine Policy: Ohne RLS läse die Laufzeitrolle Hashes und Tokens aller Konten.
+    const offen = await db.all(
+      `SELECT relname FROM pg_class WHERE relnamespace = $1::regnamespace AND relkind = 'r' AND NOT relrowsecurity`,
+      [neu[0]],
+    );
+    assert.deepEqual(offen, [], 'Kopien ohne Zeilenschutz');
   });
 
   const KURZ = { fristMs: 200, versuche: 2 };

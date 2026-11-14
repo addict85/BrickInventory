@@ -69,7 +69,7 @@ test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t 
 
   await t.test('die App legt ihren Hinweisgeber dort ab, wo die Verwaltung liest', () => {
     const echt = _req('startup/app.js').baueApp({
-      pool: db.pool,
+      pool: db.systemPool,
       konfig: _req('src/infra/konfig.js').konfig(),
       sitzungsGeheimnis: 'p'.repeat(48),
       dienste: require('./helpers/sources').testDienste(),
