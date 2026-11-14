@@ -1427,7 +1427,7 @@ p.mon-leise{margin:0 0 .35rem}
 .mon-tabelle td{vertical-align:top}
 .mon-tabelle .zahl{text-align:right;font-variant-numeric:tabular-nums}
 .mon-name{display:inline-flex;align-items:center;gap:.5rem;font-weight:600}
-.mon-sinnbild{flex:none;width:16px;height:16px}
+.mon-sinnbild{flex:none;width:1.1em;height:1.1em;color:var(--b600)}
 .mon-zustand{display:inline-flex;align-items:center;gap:.35rem;font-weight:600}
 .mon-zustand .ico{width:1em;height:1em}
 .mon-ziffer{font-variant-numeric:tabular-nums;color:var(--mut)}

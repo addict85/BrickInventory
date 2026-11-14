@@ -225,7 +225,7 @@ test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in
     await reiter(w, 'monitor');
     await warte(() => d.querySelector('#auftraege-karte table') && d.querySelector('#monitor-content table'));
     const koepfe = [...d.querySelectorAll('#auftraege-karte .mon-arten th')].map(text);
-    assert.deepEqual(koepfe, ['Art', 'Offen', 'Läuft', 'Fehlgeschlagen', 'Nächster Lauf', 'Aktionen']);
+    assert.deepEqual(koepfe, ['Art', 'Offen', 'Läuft', 'Aufgegeben', 'Nächster Lauf', 'Aktionen']);
     assert.ok(d.querySelector('#auftraege-karte tbody tr .fehler-kasten'), 'Fehler nicht in der Zeile seines Auftrags');
     assert.equal(d.querySelectorAll('#tab-monitor h1, #tab-monitor h2').length, 5);
     assert.match(text(d.querySelector('#monitor-content .mon-plan')), /03:00/);

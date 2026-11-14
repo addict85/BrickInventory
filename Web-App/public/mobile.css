@@ -736,18 +736,18 @@
   .bstat.bstat-erklaert .bstat-s { display: block; flex: 1 1 100%; order: 1; font-size: var(--fs-0); color: var(--mut); }
 }
 
-/* Hintergrundarbeiten am Telefon: Beschriftung und Wert in einer Zeile, leere
-   Felder weg. Jede Zelle stand vorher zweizeilig; die Seite war 7300 px lang. */
+/* Hintergrundarbeiten am Telefon: Beschriftung links, die Werte untereinander in der zweiten Spalte, die
+   umbrechen darf. In einer Flexzeile ohne Umbruch drückten Name, Etikett und Hinweis die Karte breiter als das Fenster. */
 @media (max-width: 640px) {
   .mon-einzeln > summary { min-height: 44px; }
-  .mon-tabelle td::before { flex: 0 0 6.5rem; }
-  .mon-tabelle td { flex-wrap: nowrap; align-items: baseline; }
-  .mon-tabelle td > * { min-width: 0; }
+  .mon-tabelle td { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: baseline; justify-items: start; }
+  .mon-tabelle td > * { grid-column: 2; max-width: 100%; min-width: 0; }
+  .mon-rolle { white-space: normal; }
   .mon-tabelle td:empty, .mon-tabelle td:has(> .mon-knoepfe:empty) { display: none; }
 }
 @container haupt (max-width: 20.5em) {
-  .mon-tabelle td { flex-wrap: wrap; }
-  .mon-tabelle td::before { flex-basis: 100%; }
+  .mon-tabelle td { grid-template-columns: minmax(0, 1fr); }
+  .mon-tabelle td > * { grid-column: 1; }
 }
 
 /* Auftragsarten am Telefon als kompakte Zeile: Name, nur Zahlen ungleich null,
