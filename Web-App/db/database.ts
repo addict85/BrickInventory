@@ -110,11 +110,8 @@ export interface Db extends DbSchnittstelle {
 
 // SQL geht unverändert an PostgreSQL.
 
-/** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
- * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
-export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
-  // Erst mit einem Zugang gibt es Transaktionen; ein Import allein ändert infra/ nicht.
-  setzeTransaktionsWaechter(TRANSAKTIONS_WAECHTER);
+/** Pool der Laufzeitrolle und, wenn konfiguriert, der Systemrolle. */
+function erzeugePools(k: DbKonfig): { pool: Pool; systemPool: Pool } {
   // Pipeline: abfrage() schickt BEGIN mit Kontext, Abfrage und COMMIT zugleich, ein Roundtrip statt drei.
   const pool = new Pool({ ...k.verbindung, ...k.pool, pipeline: true });
   // Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
@@ -128,132 +125,148 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     const schliesse = pool.end.bind(pool);
     pool.end = (() => Promise.all([schliesse(), systemPool.end()]).then(() => undefined)) as Pool['end'];
   }
-  const ich = {};
-  let sicherungspunkte = 0;
-  const poolDesRahmens = (): Pool => (zeilenKontext().system ? systemPool : pool);
-  /** Eine Transaktion auf der Verbindung der anderen Rolle gilt nicht; wer mitten in
-   * ihr den Rahmen wechselt, fragte über eine zweite Verbindung neben ihr (ohne ihren
-   * Stand, womöglich gegen ihre Sperren). Das ist ein Fehler: Rahmen vor der Transaktion wählen. */
-  const offeneTx = (): TxStand | null => {
-    const t = laufendeTx.getStore();
-    return t?.offen && t.db === ich ? t : null;
-  };
-  const txStand = (): TxStand | null => {
-    const t = offeneTx();
-    if (t && t.pool !== poolDesRahmens()) throw new NebenDerTransaktion(t.pool === systemPool);
-    return t;
-  };
+  return { pool, systemPool };
+}
 
-  /** Ausserhalb einer Transaktion: ohne Konto und Systemrahmen direkt über den
-   * Pool, sonst in einer kurzen eigenen, damit set_config(…, true) gilt. Die drei
-   * Teile gehen in der Pipeline zugleich hinaus; scheitert die Abfrage, beendet das
-   * COMMIT die abgebrochene Transaktion als ROLLBACK. Zurück in den Pool geht die
-   * Verbindung nur im Leerlauf, also ohne Kontext. */
-  async function abfrage(sql: string, params?: unknown[]): Promise<QueryResult> {
-    const stand = txStand();
-    if (stand) {
-      await kontextAbgleich(stand);
-      return stand.client.query(sql, params);
-    }
-    const kontext = kontextSql();
-    const p = poolDesRahmens();
-    if (!kontext) return p.query(sql, params);
-    const client = await p.connect();
-    let kaputt: Error | undefined;
-    const abriss = (e: Error) => {
-      kaputt = e;
-    };
-    client.on('error', abriss);
+/** Was abfrage() und einmaligeTransaktion() über ihren Zugang wissen müssen. */
+interface Rahmen {
+  ich: object;
+  pool: Pool;
+  systemPool: Pool;
+}
+
+const poolDesRahmens = (r: Rahmen): Pool => (zeilenKontext().system ? r.systemPool : r.pool);
+
+/** Eine Transaktion auf der Verbindung der anderen Rolle gilt nicht; wer mitten in
+ * ihr den Rahmen wechselt, fragte über eine zweite Verbindung neben ihr (ohne ihren
+ * Stand, womöglich gegen ihre Sperren). Das ist ein Fehler: Rahmen vor der Transaktion wählen. */
+function offeneTx(r: Rahmen): TxStand | null {
+  const t = laufendeTx.getStore();
+  return t?.offen && t.db === r.ich ? t : null;
+}
+function txStand(r: Rahmen): TxStand | null {
+  const t = offeneTx(r);
+  if (t && t.pool !== poolDesRahmens(r)) throw new NebenDerTransaktion(t.pool === r.systemPool);
+  return t;
+}
+
+/** Ausserhalb einer Transaktion: ohne Konto und Systemrahmen direkt über den
+ * Pool, sonst in einer kurzen eigenen, damit set_config(…, true) gilt. Die drei
+ * Teile gehen in der Pipeline zugleich hinaus; scheitert die Abfrage, beendet das
+ * COMMIT die abgebrochene Transaktion als ROLLBACK. Zurück in den Pool geht die
+ * Verbindung nur im Leerlauf, also ohne Kontext. */
+async function abfrage(r: Rahmen, sql: string, params?: unknown[]): Promise<QueryResult> {
+  const stand = txStand(r);
+  if (stand) {
+    await kontextAbgleich(stand);
+    return stand.client.query(sql, params);
+  }
+  const kontext = kontextSql();
+  const p = poolDesRahmens(r);
+  if (!kontext) return p.query(sql, params);
+  const client = await p.connect();
+  let kaputt: Error | undefined;
+  const abriss = (e: Error) => {
+    kaputt = e;
+  };
+  client.on('error', abriss);
+  try {
+    const [anfang, ergebnis, ende] = await Promise.allSettled([
+      client.query(`BEGIN; ${kontext}`),
+      client.query(sql, params),
+      client.query('COMMIT'),
+    ]);
+    if (client.getTransactionStatus() !== 'I') kaputt ??= new Error('Verbindung nach COMMIT nicht im Leerlauf');
+    for (const x of [anfang, ergebnis, ende]) if (x.status === 'rejected') throw x.reason;
+    return (ergebnis as PromiseFulfilledResult<QueryResult>).value;
+  } finally {
+    client.off('error', abriss);
+    client.release(kaputt);
+  }
+}
+
+async function einmaligeTransaktion<T>(r: Rahmen, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+  const p = poolDesRahmens(r);
+  const client = await p.connect();
+  const stand: TxStand = { client, offen: true, db: r.ich, pool: p, innerster: null, kontext: '' };
+  let kaputt: Error | undefined;
+  // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
+  // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
+  const abriss = (e: Error) => {
+    kaputt = e;
+  };
+  client.on('error', abriss);
+  try {
+    // Der Kontext im selben Roundtrip wie BEGIN; kontextAbgleich() folgt danach Wechseln.
+    stand.kontext = kontextSql();
+    await client.query(stand.kontext ? `BEGIN; ${stand.kontext}` : 'BEGIN');
+    const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(stand)));
+    await commitBegleiter.getStore()?.(txSchnittstelle(stand));
+    stand.offen = false;
+    await client.query('COMMIT');
+    return result;
+  } catch (e) {
+    stand.offen = false;
+    // Scheitert auch das ROLLBACK, ist die Verbindung kaputt: Sie darf nicht
+    // in den Pool zurück, und gemeldet wird der Fehler, der es ausgelöst hat.
     try {
-      const [anfang, r, ende] = await Promise.allSettled([
-        client.query(`BEGIN; ${kontext}`),
-        client.query(sql, params),
-        client.query('COMMIT'),
-      ]);
-      if (client.getTransactionStatus() !== 'I') kaputt ??= new Error('Verbindung nach COMMIT nicht im Leerlauf');
-      for (const x of [anfang, r, ende]) if (x.status === 'rejected') throw x.reason;
-      return (r as PromiseFulfilledResult<QueryResult>).value;
-    } finally {
-      client.off('error', abriss);
-      client.release(kaputt);
+      await client.query('ROLLBACK');
+    } catch (rb) {
+      kaputt = rb instanceof Error ? rb : new Error(String(rb));
+    }
+    throw e;
+  } finally {
+    client.off('error', abriss);
+    client.release(kaputt);
+  }
+}
+
+async function mitWiederholung<T>(einmal: () => Promise<T>, o: TxOptionen): Promise<T> {
+  for (let versuch = 0; ; versuch++) {
+    try {
+      return await einmal();
+    } catch (e) {
+      if (!o.wiederholeBeiKonflikt || versuch >= TX_NEUVERSUCHE || !TX_KONFLIKT.has(fehlerCode(e) ?? '')) throw e;
+      // Versetzt, damit die Gegenspieler nicht im Gleichschritt wieder aufeinandertreffen.
+      await new Promise(res => setTimeout(res, 25 * (versuch + 1) + Math.random() * 50));
     }
   }
+}
+
+/** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
+ * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
+export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
+  // Erst mit einem Zugang gibt es Transaktionen; ein Import allein ändert infra/ nicht.
+  setzeTransaktionsWaechter(TRANSAKTIONS_WAECHTER);
+  const { pool, systemPool } = erzeugePools(k);
+  const r: Rahmen = { ich: {}, pool, systemPool };
+  let sicherungspunkte = 0;
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
    * Spalten sein SQL liefert; ohne Angabe bleibt es `unknown`. */
   async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
-    if (txStand()) return (await abfrage(sql, params)).rows as T[];
-    return queryWithRetry(async () => (await abfrage(sql, params)).rows, istLesend(sql));
+    if (txStand(r)) return (await abfrage(r, sql, params)).rows as T[];
+    return queryWithRetry(async () => (await abfrage(r, sql, params)).rows, istLesend(sql));
   }
   async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
     return (await all<T>(sql, params))[0];
   }
   /** Wer die neue id braucht, schreibt RETURNING und liest mit get(). */
   async function run(sql: string, params: unknown[] = []): Promise<{ changes: number }> {
-    if (txStand()) return { changes: (await abfrage(sql, params)).rowCount || 0 };
-    return queryWithRetry(async () => ({ changes: (await abfrage(sql, params)).rowCount || 0 }), false);
+    if (txStand(r)) return { changes: (await abfrage(r, sql, params)).rowCount || 0 };
+    return queryWithRetry(async () => ({ changes: (await abfrage(r, sql, params)).rowCount || 0 }), false);
   }
-  async function exec(sql: string): Promise<void> {
-    await abfrage(sql);
-  }
-
-  async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, o: TxOptionen = {}): Promise<T> {
-    const aussen = txStand();
+  async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>, opt: TxOptionen = {}): Promise<T> {
+    const aussen = txStand(r);
     if (aussen) return innereTransaktion(aussen, ++sicherungspunkte, fn);
-    for (let versuch = 0; ; versuch++) {
-      try {
-        return await einmaligeTransaktion(fn);
-      } catch (e) {
-        if (!o.wiederholeBeiKonflikt || versuch >= TX_NEUVERSUCHE || !TX_KONFLIKT.has(fehlerCode(e) ?? '')) throw e;
-        // Versetzt, damit die Gegenspieler nicht im Gleichschritt wieder aufeinandertreffen.
-        await new Promise(r => setTimeout(r, 25 * (versuch + 1) + Math.random() * 50));
-      }
-    }
+    return mitWiederholung(() => einmaligeTransaktion(r, fn), opt);
   }
-
-  async function einmaligeTransaktion<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
-    const p = poolDesRahmens();
-    const client = await p.connect();
-    const stand: TxStand = { client, offen: true, db: ich, pool: p, innerster: null, kontext: '' };
-    let kaputt: Error | undefined;
-    // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
-    // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
-    const abriss = (e: Error) => {
-      kaputt = e;
-    };
-    client.on('error', abriss);
-    try {
-      // Der Kontext im selben Roundtrip wie BEGIN; kontextAbgleich() folgt danach Wechseln.
-      stand.kontext = kontextSql();
-      await client.query(stand.kontext ? `BEGIN; ${stand.kontext}` : 'BEGIN');
-      const result = await laufendeTx.run(stand, () => fn(txSchnittstelle(stand)));
-      await commitBegleiter.getStore()?.(txSchnittstelle(stand));
-      stand.offen = false;
-      await client.query('COMMIT');
-      return result;
-    } catch (e) {
-      stand.offen = false;
-      // Scheitert auch das ROLLBACK, ist die Verbindung kaputt: Sie darf nicht
-      // in den Pool zurück, und gemeldet wird der Fehler, der es ausgelöst hat.
-      try {
-        await client.query('ROLLBACK');
-      } catch (r) {
-        kaputt = r instanceof Error ? r : new Error(String(r));
-      }
-      throw e;
-    } finally {
-      client.off('error', abriss);
-      client.release(kaputt);
-    }
-  }
-
   /** Eine EIGENE Verbindung, die NICHT aus dem Pool kommt. */
   async function eigeneVerbindung() {
     const c = new Client({ ...k.verbindung });
     await c.connect();
     return c;
   }
-
   const dieBasis = () => initSchema(eigeneVerbindung, o.erststart);
 
   return {
@@ -269,7 +282,9 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     all,
     get,
     run,
-    exec,
+    exec: async (sql: string) => {
+      await abfrage(r, sql);
+    },
     transaction,
     initSchema: dieBasis,
     initSchemaOnce: () => initSchemaOnce(pool, dieBasis),
@@ -277,7 +292,7 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     mitCommitBegleiter,
     benachrichtigung: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
     darfSchemaAendern: async () => (await get<{ d: boolean }>(DARF_SCHEMA_AENDERN))?.d === true,
-    inTransaktion: () => offeneTx() !== null,
+    inTransaktion: () => offeneTx(r) !== null,
     getPoolStats: () => ({
       total: pool.totalCount,
       idle: pool.idleCount,
