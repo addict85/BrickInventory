@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.data.api
 
-import ch.brickinventoryapp.model.data.model.FigsValuationResponse
-import ch.brickinventoryapp.model.data.model.PartsValuationResponse
-import ch.brickinventoryapp.model.data.model.PnlResponse
-import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
-import ch.brickinventoryapp.model.data.model.PriceHistoryResponse
-import ch.brickinventoryapp.model.data.model.SetPriceResponse
-import ch.brickinventoryapp.model.data.model.StatsResponse
-import ch.brickinventoryapp.model.data.model.ValuationResponse
+import ch.brickinventoryapp.vertrag.FigsValuationResponse
+import ch.brickinventoryapp.vertrag.PartsValuationResponse
+import ch.brickinventoryapp.vertrag.PnlResponse
+import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
+import ch.brickinventoryapp.vertrag.PriceHistoryResponse
+import ch.brickinventoryapp.vertrag.SetPriceResponse
+import ch.brickinventoryapp.vertrag.StatsResponse
+import ch.brickinventoryapp.vertrag.ValuationResponse
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path

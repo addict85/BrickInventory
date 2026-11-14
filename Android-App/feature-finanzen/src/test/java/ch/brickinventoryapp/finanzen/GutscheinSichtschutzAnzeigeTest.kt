@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.finanzen
 
 import ch.brickinventoryapp.testing.GutscheineRepository
-import ch.brickinventoryapp.testing.ResponseCache
 import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -9,7 +8,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheinPdfSchutz
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheineRoute
@@ -52,7 +50,7 @@ class GutscheinSichtschutzAnzeigeTest {
     fun `die Gutscheinseite ist geschuetzt, solange sie steht`() {
         val pfade = PfadServer()
         val vm = GutscheinViewModel(
-            repo = GutscheineRepository(pfade.imTakt(), ResponseCache { File(compose.activity.cacheDir, "g") }),
+            repo = GutscheineRepository(pfade.imTakt()),
             texte = NummernTexte,
             leser = object : DateiLeser { override suspend fun lies(datei: DateiRef): Pair<String?, ByteArray>? = null },
             meldungen = MeldungsKanal(),

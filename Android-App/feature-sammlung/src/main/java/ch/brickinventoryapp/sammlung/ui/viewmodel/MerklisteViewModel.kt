@@ -8,11 +8,11 @@ import ch.brickinventoryapp.model.fach.Merksortierung
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.model.data.model.Merkposten
+import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.sitzung.abgeleitet
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.alarm.Alarmeingabe

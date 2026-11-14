@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.app
 
 import org.junit.Assert.assertEquals
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.model.data.model.CatalogSetItem
-import ch.brickinventoryapp.model.data.model.CatalogSetDetail
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.vertrag.CatalogSetItem
+import ch.brickinventoryapp.vertrag.CatalogSetDetail
 import ch.brickinventoryapp.model.json.BrickJson
 import org.junit.Test
 import java.io.File

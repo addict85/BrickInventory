@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository

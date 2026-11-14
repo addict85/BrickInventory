@@ -8,8 +8,8 @@ import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.model.CsvImportArt
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
-import ch.brickinventoryapp.model.ui.model.alsDaten
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsDaten
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -27,10 +27,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.data.model.LagerortEintragResponse
-import ch.brickinventoryapp.model.data.model.LagerortResponse
-import ch.brickinventoryapp.model.data.model.LagerortVorgabeResponse
-import ch.brickinventoryapp.model.data.model.PreisalarmResponse
+import ch.brickinventoryapp.vertrag.LagerortEintragResponse
+import ch.brickinventoryapp.vertrag.LagerortResponse
+import ch.brickinventoryapp.vertrag.LagerortVorgabeResponse
+import ch.brickinventoryapp.vertrag.PreisalarmResponse
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sitzung.Sitzung

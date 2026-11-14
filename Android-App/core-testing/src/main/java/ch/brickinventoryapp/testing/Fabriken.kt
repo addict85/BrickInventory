@@ -11,7 +11,6 @@ import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.api.TeileApi
 import ch.brickinventoryapp.data.api.VerwaltungApi
-import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.AusgangPlaner
 import ch.brickinventoryapp.offline.Offlineablage
@@ -46,62 +45,59 @@ import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
-import ch.brickinventoryapp.sicherheit.AblageChiffre
 import ch.brickinventoryapp.sicherheit.Vertrauenschiffre
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import java.io.File
 import ch.brickinventoryapp.sitzung.SitzungsRepository
 import kotlinx.coroutines.Job
 
 // Testvorgaben gehören nicht in die @Inject-Konstruktoren: Dort bekäme, wer ohne Hilt
-// baut, still eine flüchtige Ablage. Die Fabriken heissen wie die Schnittstellen und
-// nehmen alle (api, cache), damit `mitRepo(::SetsRepository)` für jede passt — auch
-// wo das Repository den Cache nicht braucht.
+// baut, still eine flüchtige Ablage. Die Fabriken heissen wie die Schnittstellen; wer
+// eine Ablage braucht, bekommt ohne Angabe eine eigene im Speicher.
 
 /** Listen und Ausgang im Speicher, mit festem Bereich; [ausgang] behält der Test, um nachzusehen. */
 fun Testablage(bereich: String? = "test", ausgang: Ausgang = SpeicherAusgang(), planer: AusgangPlaner = AusgangPlaner {}) =
     Offlineablage(SpeicherBestand(), ausgang, { bereich }, planer)
 
-fun SetsRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): SetsRepository =
+fun SetsRepository(api: SetsApi, ablage: Offlineablage = Testablage()): SetsRepository =
     SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun MerklisteRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): MerklisteRepository =
+fun MerklisteRepository(api: SetsApi, ablage: Offlineablage = Testablage()): MerklisteRepository =
     MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun AlarmRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): AlarmRepository =
+fun AlarmRepository(api: SetsApi, ablage: Offlineablage = Testablage()): AlarmRepository =
     AlarmRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun SetKatalogRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): SetKatalogRepository =
+fun SetKatalogRepository(api: SetsApi): SetKatalogRepository =
     SetKatalogRepositoryImpl(api)
 
-fun SetDateienRepository(api: SetsApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): SetDateienRepository =
+fun SetDateienRepository(api: SetsApi): SetDateienRepository =
     SetDateienRepositoryImpl(api)
 
-fun TeileRepository(api: TeileApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): TeileRepository =
+fun TeileRepository(api: TeileApi, ablage: Offlineablage = Testablage()): TeileRepository =
     TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun FigurenRepository(api: FigurenApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache, ablage: Offlineablage = Testablage()): FigurenRepository =
+fun FigurenRepository(api: FigurenApi, ablage: Offlineablage = Testablage()): FigurenRepository =
     FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun GutscheineRepository(api: GutscheineApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): GutscheineRepository =
+fun GutscheineRepository(api: GutscheineApi): GutscheineRepository =
     GutscheineRepositoryImpl(api, Testablage())
 
 fun KontoRepository(
     api: KontoApi,
-    @Suppress("UNUSED_PARAMETER") cache: ResponseCache,
     io: CoroutineDispatcher = Dispatchers.IO,
 ): KontoRepository = KontoRepositoryImpl(api, io)
 
-fun FinanzenRepository(api: FinanzenApi, cache: ResponseCache): FinanzenRepository = FinanzenRepositoryImpl(api, cache)
+fun FinanzenRepository(api: FinanzenApi, ablage: Offlineablage = Testablage()): FinanzenRepository = FinanzenRepositoryImpl(api, ablage)
 
-fun HaushaltRepository(api: HaushaltApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): HaushaltRepository =
+fun HaushaltRepository(api: HaushaltApi): HaushaltRepository =
     HaushaltRepositoryImpl(api)
 
-fun VerwaltungRepository(api: VerwaltungApi, @Suppress("UNUSED_PARAMETER") cache: ResponseCache): VerwaltungRepository =
+fun VerwaltungRepository(api: VerwaltungApi): VerwaltungRepository =
     VerwaltungRepositoryImpl(api)
 
-fun KatalogRepository(api: KatalogApi, cache: ResponseCache): KatalogRepository = KatalogRepositoryImpl(api, cache, Wiederholung.EINMAL)
+fun KatalogRepository(api: KatalogApi, ablage: Offlineablage = Testablage()): KatalogRepository =
+    KatalogRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
 /** Die Sicht über gewählte Konten; mit derselben [ablage] wie die Repositories, damit Schreiben sie neu fragt. */
 fun Kontosicht(api: BrickApiService, ablage: Offlineablage = Testablage()): Kontosicht =
@@ -112,15 +108,6 @@ fun Bestandsabgleich(api: BrickApiService, ablage: Offlineablage): Bestandsabgle
     Bestandsabgleich(SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL), MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL),
         TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL),
         FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL), ablage)
-
-/** Der Antwort-Cache im Wegwerf-Ordner; ohne [io] auf Dispatchers.IO wie im Gerät. */
-fun ResponseCache(
-    bereichQuelle: suspend () -> String? = { "test" },
-    altlast: () -> File? = { null },
-    chiffre: AblageChiffre? = null,
-    io: CoroutineDispatcher = Dispatchers.IO,
-    ordnerQuelle: () -> File,
-) = ResponseCache(bereichQuelle, altlast, chiffre, io, ordnerQuelle = ordnerQuelle)
 
 /** Die Vertrauenschiffre der Geräteablage mit festem Schlüssel: Robolectric hat keinen Keystore. */
 fun testVertrauenschiffre(schluessel: Byte = 7): Vertrauenschiffre = Vertrauenschiffre { ByteArray(32) { schluessel } }

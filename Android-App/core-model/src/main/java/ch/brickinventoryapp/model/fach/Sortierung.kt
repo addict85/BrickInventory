@@ -6,6 +6,7 @@ package ch.brickinventoryapp.model.fach
  * Auf der Leitung und in der Ablage steht die [Setsortierung.kennung]; Unbekanntes
  * liest sich als Vorgabe, wie der Server einen unbekannten Wert behandelt.
  */
+
 enum class Setsortierung(val kennung: String) {
     NEUESTE("added_desc"),
     AELTESTE("added_asc"),

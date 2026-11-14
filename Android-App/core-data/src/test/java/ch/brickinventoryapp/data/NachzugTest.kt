@@ -5,11 +5,11 @@ import ch.brickinventoryapp.data.repository.MerklisteRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
-import ch.brickinventoryapp.model.data.model.FigValuationItem
-import ch.brickinventoryapp.model.data.model.KontoName
-import ch.brickinventoryapp.model.data.model.Merkposten
-import ch.brickinventoryapp.model.data.model.PartValuationItem
-import ch.brickinventoryapp.model.data.model.SetItem
+import ch.brickinventoryapp.vertrag.FigValuationItem
+import ch.brickinventoryapp.vertrag.KontoName
+import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.vertrag.PartValuationItem
+import ch.brickinventoryapp.vertrag.SetItem
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage

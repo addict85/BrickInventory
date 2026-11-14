@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.teile.ui.viewmodel
 
-import ch.brickinventoryapp.model.data.model.PdfAuftragTeil
-import ch.brickinventoryapp.model.data.model.PdfAuftragSet
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
+import ch.brickinventoryapp.vertrag.PdfAuftragTeil
+import ch.brickinventoryapp.vertrag.PdfAuftragSet
+import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R

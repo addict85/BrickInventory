@@ -2,7 +2,7 @@ package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.data.model.LoginResponse
+import ch.brickinventoryapp.vertrag.LoginResponse
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.testing.KontoRepository
 import ch.brickinventoryapp.sitzung.kontoUebernehmen
@@ -31,7 +31,7 @@ class ZweiterFaktorUebernahmeTest {
 
     private val pfade = PfadServer()
     private val t = TestDienste(pfade.server)
-    private val konto = KontoRepository(t.api, t.cache)
+    private val konto = KontoRepository(t.api)
 
     @After
     fun zu() { t.aufraeumen(); pfade.server.shutdown() }

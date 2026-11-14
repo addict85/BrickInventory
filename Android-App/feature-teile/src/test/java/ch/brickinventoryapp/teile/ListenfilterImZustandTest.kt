@@ -107,8 +107,8 @@ class ListenfilterImZustandTest {
             "/api/v1/parts/manual" to """{"success":true,"parts":[{"part_number":"3002"}]}""")
         val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
-            val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api, t.cache),
-                FigurenRepository(t.api, t.cache), t.kontosicht,
+            val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, TeileRepository(t.api),
+                FigurenRepository(t.api), t.kontosicht,
                 SavedStateHandle(mapOf("teile_suche" to "Stein"))))
             vm.setScope(ScopeFilter.View.PARTS, "own")
             // Seite 1 zieht die manuellen Teile nach; erst danach blättern, sonst

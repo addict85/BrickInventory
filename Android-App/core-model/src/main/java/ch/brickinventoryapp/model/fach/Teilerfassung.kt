@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.model.fach
 
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 
 /**
  * Ein Teil, wie es der Erfassungsdialog einsammelt. Benannte Felder statt neun Werten

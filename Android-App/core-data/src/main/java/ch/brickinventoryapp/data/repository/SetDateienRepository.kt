@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
-import ch.brickinventoryapp.model.data.model.GenericAdminResponse
-import ch.brickinventoryapp.model.data.model.GenericResponse
-import ch.brickinventoryapp.model.data.model.PdfAuftragAnfrage
-import ch.brickinventoryapp.model.data.model.PdfAuftragStand
+import ch.brickinventoryapp.vertrag.CsvImportStatus
+import ch.brickinventoryapp.vertrag.GenericAdminResponse
+import ch.brickinventoryapp.vertrag.GenericResponse
+import ch.brickinventoryapp.vertrag.PdfAuftragAnfrage
+import ch.brickinventoryapp.vertrag.PdfAuftragStand
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody

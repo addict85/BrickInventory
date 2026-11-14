@@ -2,11 +2,11 @@ package ch.brickinventoryapp.zustand.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
-import ch.brickinventoryapp.model.data.model.UpdateAcquisitionRequest
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
+import ch.brickinventoryapp.vertrag.UpdateAcquisitionRequest
 import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.model.data.model.SetAggregate
+import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState

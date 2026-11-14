@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
-import ch.brickinventoryapp.model.data.model.CsvImportStatus
+import ch.brickinventoryapp.vertrag.CsvImportStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow

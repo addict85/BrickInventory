@@ -3,10 +3,11 @@ Modul: core-data
 Test: ch.brickinventoryapp.data.ServerStartTest
 Rot: ein Fortschritt mit Anteil wird gelesen
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/data/model/AuthModels.kt
-@@ -110,7 +110,7 @@ data class UserSettings(
+diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/AuthModels.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/AuthModels.kt
+index f66b10b..779bc97 100644
+--- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/AuthModels.kt
++++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/AuthModels.kt
+@@ -153,7 +153,7 @@ data class UserSettings(
  data class StartupStatus(
      val ready: Boolean = false,
      val step: String? = null,
@@ -15,15 +16,16 @@ diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/dat
      val total: Int = 0,
      val sub: String? = null,
  )
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/model/EinzelAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/model/EinzelAnsichten.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/model/EinzelAnsichten.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/model/EinzelAnsichten.kt
-@@ -40,7 +40,7 @@ data class StartzustandAnsicht(
- }
+diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt
+index 17a5ac2..cd78688 100644
+--- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt
++++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt
+@@ -26,7 +26,7 @@ fun CsvImportArt.alsDaten(): CsvArt = when (this) {
+ fun CsvArt.alsAnsicht(): CsvImportArt = CsvImportArt.valueOf(name)
  
  fun StartupStatus.alsAnsicht() = StartzustandAnsicht(bereit = ready, schritt = step, unterschritt = sub,
 -    fortschritt = progress, gesamt = total)
 +    fortschritt = progress.toDouble(), gesamt = total)
  
- /** Ein Punkt der Wertentwicklung; [yFrac] ist die Höhe 0..1, wie sie der Server schon gerechnet hat. */
- data class DiagrammPunkt(val xLabel: String, val value: Double, val yFrac: Double)
+ fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value, yFrac)
+ 

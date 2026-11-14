@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui
 
-import ch.brickinventoryapp.model.data.model.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Scannerherkunft

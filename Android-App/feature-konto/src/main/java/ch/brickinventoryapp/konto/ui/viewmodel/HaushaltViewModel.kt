@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
-import ch.brickinventoryapp.model.ui.model.alsAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.data.model.Fehlercode
+import ch.brickinventoryapp.vertrag.Fehlercode
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.konto.ui.HouseholdUiState
 import dagger.hilt.android.lifecycle.HiltViewModel

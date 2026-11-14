@@ -2,8 +2,8 @@ package ch.brickinventoryapp.app
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.model.data.model.PnlResponse
-import ch.brickinventoryapp.model.data.model.PortfolioHistoryResponse
+import ch.brickinventoryapp.vertrag.PnlResponse
+import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
 import ch.brickinventoryapp.app.widget.OhneToken
 import ch.brickinventoryapp.app.widget.WIDGET_VERDECKT
 import ch.brickinventoryapp.app.widget.ohneToken

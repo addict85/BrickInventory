@@ -7,6 +7,7 @@ package ch.brickinventoryapp.model.data
  * Kontos; übersetzt nur auf dem Server (scopeIds in utils/household.ts). Eine
  * fremde ID weist er ab — der Filter ist eine Ansichtshilfe, kein Zugriffsweg.
  */
+
 object ScopeFilter {
 
     /**
