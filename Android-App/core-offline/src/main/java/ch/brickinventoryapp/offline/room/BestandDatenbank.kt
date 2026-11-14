@@ -146,9 +146,6 @@ internal interface AusgangDao {
     @Query("SELECT * FROM ausgang WHERE bereich = :bereich ORDER BY id")
     suspend fun alle(bereich: String): List<AusgangZeile>
 
-    @Query("SELECT * FROM ausgang WHERE bereich = :bereich ORDER BY id LIMIT 1")
-    suspend fun erster(bereich: String): AusgangZeile?
-
     @Query("DELETE FROM ausgang WHERE id = :id")
     suspend fun entferne(id: Long)
 

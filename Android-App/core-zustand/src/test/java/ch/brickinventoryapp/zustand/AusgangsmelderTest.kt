@@ -35,6 +35,8 @@ import org.junit.Test
  *      Mal wartet, wird beim Start eingeplant“
  *   E  in AusgangsBeobachter.starte die Prüfung `gestartet` entfernt → rot „ein zweiter
  *      Start folgt dem Ausgang nicht doppelt“ (2 statt 1)
+ *   F  in meldeVerworfen die Abfrage `v.unlesbar` gestrichen → rot „ein nach dem Update
+ *      unlesbarer Posten wird als solcher gemeldet“ (nur in der CI messbar)
  *   (B, D und E lokal mit kotlinc gemessen)
  *   gegenproben/verworfen-sofort-quittiert.patch (meldeVerworfen quittiert gleich nach
  *      zeige) → rot „ein Verworfenes bleibt, bis sein Hinweis weggeräumt ist“
@@ -98,6 +100,18 @@ class AusgangsmelderTest {
         runCurrent()
         assertEquals(Meldung.Ressource(R.string.offline_verworfen, listOf("10002-1", "gibt es auch nicht")), kanal.meldung.value)
         assertEquals(listOf(zweites), lage.verworfen.value)
+    }
+
+    @Test
+    fun `ein nach dem Update unlesbarer Posten wird als solcher gemeldet`() = runTest {
+        val lage = Lage()
+        val kanal = MeldungsKanal()
+        lage.verworfen.value = listOf(VerworfeneAenderung("k1", "10001-1", "", null, unlesbar = true))
+        Ausgangsmelder(lage, Bestandsabgleich(FakeApi().api, Testablage()), kanal).starte(backgroundScope)
+        runCurrent()
+        assertEquals("ein nach dem Update unlesbarer Posten wird als solcher gemeldet",
+            Meldung.Ressource(R.string.offline_verworfen, listOf("10001-1", Meldung.Ressource(R.string.offline_verworfen_unlesbar))),
+            kanal.meldung.value)
     }
 
     @Test

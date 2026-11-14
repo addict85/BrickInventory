@@ -148,6 +148,7 @@
     <string name="offline_stand">Offline – data as of %1$s</string>
     <string name="offline_verworfen">Not applied: %1$s – %2$s</string>
     <string name="offline_verworfen_ohne_grund">the server did not accept the change</string>
+    <string name="offline_verworfen_unlesbar">after an update it could no longer be read and was not sent</string>
     <plurals name="offline_ausgang">
         <item quantity="one">Saved offline – %1$d change will be sent on the next connection</item>
         <item quantity="other">Saved offline – %1$d changes will be sent on the next connection</item>

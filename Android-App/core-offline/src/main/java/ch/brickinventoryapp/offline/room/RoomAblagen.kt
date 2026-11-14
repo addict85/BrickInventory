@@ -3,6 +3,7 @@ package ch.brickinventoryapp.offline.room
 import ch.brickinventoryapp.offline.AblageJson
 import ch.brickinventoryapp.offline.Ausgang
 import ch.brickinventoryapp.offline.Ausgangsposten
+import ch.brickinventoryapp.offline.Ausgangsform
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.offline.Filterspalten
@@ -69,8 +70,8 @@ internal fun enthaeltMuster(suche: String): String =
     "%" + suche.lowercase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
 /**
- * [Ausgang] über Room. Ein Posten, der sich nicht mehr lesen lässt (Format einer
- * älteren App), wird beim Lesen entfernt — er blockierte sonst alles dahinter.
+ * [Ausgang] über Room; jeder Posten liegt in der [Ausgangsform]. Lesen schreibt nie:
+ * Ein unlesbarer Posten bleibt liegen, bis [raeumeUnlesbare] ihn als verworfen meldet.
  */
 internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank) : Ausgang {
     private val dao get() = db.ausgang()
@@ -78,19 +79,22 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
     override fun anzahl(bereich: String) = dao.anzahl(bereich)
 
     override suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long, schluessel: String) =
-        dao.fuegeEin(AusgangZeile(bereich = bereich,
-            bearbeitung = AblageJson.encodeToString(Bearbeitung.serializer(), bearbeitung), erstellt = jetzt,
-            schluessel = schluessel))
+        dao.fuegeEin(AusgangZeile(bereich = bereich, bearbeitung = Ausgangsform.kodiere(AblageJson, bearbeitung),
+            erstellt = jetzt, schluessel = schluessel))
 
     override suspend fun alle(bereich: String) = dao.alle(bereich).mapNotNull { lies(it) }
 
-    override suspend fun erster(bereich: String): Ausgangsposten? {
-        var z = dao.erster(bereich)
-        while (z != null) {
-            lies(z)?.let { return it }
-            z = dao.erster(bereich)
+    override suspend fun erster(bereich: String): Ausgangsposten? = dao.alle(bereich).firstNotNullOfOrNull { lies(it) }
+
+    override suspend fun raeumeUnlesbare(bereich: String): Int {
+        val unlesbar = dao.alle(bereich).filter { lies(it) == null }
+        for (z in unlesbar) {
+            // Erst den Hinweis festhalten, dann entfernen: Stirbt der Prozess dazwischen, bleibt der Hinweis.
+            val ziel = Ausgangsform.zielAus(AblageJson, z.bearbeitung) ?: "?"
+            merkeVerworfen(bereich, VerworfenerPosten(z.schluessel.ifBlank { "posten-${z.id}" }, ziel, "", null, unlesbar = true))
+            dao.entferne(z.id)
         }
-        return null
+        return unlesbar.size
     }
 
     override suspend fun entferne(id: Long) = dao.entferne(id)
@@ -103,7 +107,7 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
 
     override suspend fun merkeVerworfen(bereich: String, v: VerworfenerPosten) {
         val position = bestand.lies(bereich, VERWORFEN).maxOfOrNull { it.position }?.plus(1) ?: 0
-        val inhalt = AblageJson.encodeToString(VerworfenZeile.serializer(), VerworfenZeile(v.ziel, v.meldung, v.httpCode))
+        val inhalt = AblageJson.encodeToString(VerworfenZeile.serializer(), VerworfenZeile(v.ziel, v.meldung, v.httpCode, v.unlesbar))
         bestand.loesche(bereich, VERWORFEN, listOf(v.id))
         bestand.fuegeEin(listOf(BestandZeile(bereich, VERWORFEN, v.id, position, inhalt)))
     }
@@ -112,20 +116,19 @@ internal class RoomAusgang @Inject constructor(private val db: BestandDatenbank)
         bestand.beobachte(bereich, VERWORFEN).map { zeilen ->
             zeilen.mapNotNull { z ->
                 runCatching { AblageJson.decodeFromString(VerworfenZeile.serializer(), z.inhalt) }.getOrNull()
-                    ?.let { VerworfenerPosten(z.schluessel, it.ziel, it.meldung, it.httpCode) }
+                    ?.let { VerworfenerPosten(z.schluessel, it.ziel, it.meldung, it.httpCode, it.unlesbar) }
             }
         }
 
     override suspend fun quittiereVerworfen(bereich: String, id: String) = bestand.loesche(bereich, VERWORFEN, listOf(id))
 
-    private suspend fun lies(z: AusgangZeile): Ausgangsposten? =
-        runCatching { AblageJson.decodeFromString(Bearbeitung.serializer(), z.bearbeitung) }.getOrNull()
+    private fun lies(z: AusgangZeile): Ausgangsposten? =
+        runCatching { Ausgangsform.dekodiere(AblageJson, z.bearbeitung) }.getOrNull()
             ?.let { Ausgangsposten(z.id, it, z.erstellt, z.versuche, z.schluessel) }
-            ?: run { dao.entferne(z.id); null }
 }
 
 /** Die Art, unter der verworfene Posten in `bestand` liegen; keine [Bestandsart] heisst so. */
 internal const val VERWORFEN = "AUSGANG_VERWORFEN"
 
 @Serializable
-internal data class VerworfenZeile(val ziel: String, val meldung: String, val httpCode: Int? = null)
+internal data class VerworfenZeile(val ziel: String, val meldung: String, val httpCode: Int? = null, val unlesbar: Boolean = false)

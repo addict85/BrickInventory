@@ -125,13 +125,6 @@ class Offlineablage(
     }
 
     /**
-     * Eine Änderung, die ohne Verbindung im Ausgang wartet. Sie trägt genau die
-     * Anfrage, die online gegangen wäre — beim Senden entsteht nichts Neues, und
-     * der Server entscheidet wie sonst auch. Mengen von Sets gehen als Schritt,
-     * damit zwei Geräte, die offline je +1 tippen, zusammen +2 ergeben.
-     */
-
-    /**
      * Das Ergebnis eines Schreibvorgangs, der nur online geht, für die lokale Liste.
      * Ohne Ausgang: Was der Server dazu rechnet, bringt der nächste Abgleich.
      */
