@@ -4,7 +4,8 @@
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  Set-Formular ohne data-submit → rot: „Enter aus jedem Feld“ (add-qty schickt nicht ab)
- *   B  schliesseErfassen() ohne form.reset() → rot: „Esc verwirft den Entwurf“ (Preis „12“)
+ *   B  schliesseErfassen() ohne form.reset() → rot: „Esc verwirft den Entwurf“ (Preis „12“) und
+ *      „Enter aus jedem Feld“ (der Hinweis „schon da“ bleibt stehen, Enter öffnet das Set)
  *   C  loadFinance zeigt den Fehler wieder in #fin-tbl → rot: „Finanzen bei Serverfehler“ (kein Fehler oben)
  *   D  Katalog wieder ohne .filterleiste → rot: „Filter hinter dem Knopf“ (Katalog: Suche und vier Felder)
  *   E  ohne das Etikett .delbtn[data-taste]::before → rot: „Entf löscht“; hover:none-Regel wieder ohne
@@ -19,7 +20,7 @@
  *   L  ohne @container ovl → rot: „Grosse Schrift: Set-Detail“ (250 px Inhalt)
  *   M  rb-hinweis offline wieder sichtbar → rot: „Offline-Band allein“
  *   N  --chart-wert wieder var(--chart-new) → rot: „Wertlinie in der Farbe der Beträge“ (Hochglanz blau)
- *   O  Rückgängig ohne Fokusziel → rot: „Fokus nach Rückgängig“
+ *   O  fokusWennDa() ohne el.focus() → rot: „Fokus nach Rückgängig“ (bleibt auf der Überschrift)
  *   P  #tab-monitor .mon-knoepfe .btn ohne hyphens:manual → rot: „Abbrechen in einer Zeile“ (42 > 33 px)
  *   Q  Telefontext wieder „neben dem Titel“ → rot: „Leere Sammlung am Telefon“
  *

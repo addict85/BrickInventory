@@ -103,16 +103,19 @@ export async function papierkorbLeeren() {
 }
 
 /**
- * Der Fokus geht auf den zurückgeholten Eintrag, sobald die neu geladene Liste ihn zeigt; bis dahin stand er
- * auf der Überschrift, und wer weiterarbeiten wollte, suchte die Karte von vorn.
+ * Der Fokus geht auf den zurückgeholten Eintrag, sobald die neu geladene Liste ihn zeigt, statt auf die
+ * Überschrift. Die Liste zeichnet sich danach noch einmal (Preise, zweites Laden): Bis zur Frist holt er den
+ * Fokus zurück, solange er nur auf Seite oder Überschrift gefallen ist, nicht wenn jemand weitergegangen ist.
  * @param {string} sel
  */
 function fokusWennDa(sel) {
   const ende = Date.now() + 5000;
   const versuch = () => {
     const el = /** @type {HTMLElement | null} */ (document.querySelector(`#app .tab.active :is(${sel})`));
-    if (el) el.focus();
-    else if (Date.now() < ende) setTimeout(versuch, 100);
+    const aktiv = document.activeElement;
+    const verloren = !aktiv || aktiv === document.body || aktiv.matches('#app .tab.active h1, #toasts *');
+    if (el && aktiv !== el && verloren) el.focus();
+    if (Date.now() < ende && (verloren || aktiv === el)) setTimeout(versuch, 100);
   };
   versuch();
 }
