@@ -16,6 +16,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.camera.core.*
@@ -74,11 +77,13 @@ internal fun QrVorschlagDialog(
     // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
     var eingabe by remember(vorschlag) { mutableStateOf("") }
     var befund by remember(vorschlag) { mutableStateOf<Abschrift?>(null) }
+    val titel = stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)
     AlertDialog(
         onDismissRequest = onAbbrechen,
+        modifier = Modifier.semantics { paneTitle = titel },
         // Wie ZertifikatDialog: Daneben tippen verwirft nichts Abgetipptes, Zurück nur ein leeres Feld.
         properties = DialogProperties(dismissOnBackPress = eingabe.isEmpty(), dismissOnClickOutside = false),
-        title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
+        title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
             // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
             Ueberdeckungsschutz()

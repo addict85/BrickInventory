@@ -506,6 +506,36 @@ class QuelltextRatscheTest {
         assertEquals("String.format ohne Locale in $stellen", emptyList<String>(), stellen)
     }
 
+    /** Die Argumente eines Aufrufs bis zur passenden Klammer; [auf] zeigt auf die öffnende. */
+    private fun argumente(text: String, auf: Int): String {
+        var tiefe = 0
+        var i = auf
+        while (i < text.length) {
+            if (text[i] == '(') tiefe++ else if (text[i] == ')' && --tiefe == 0) break
+            i++
+        }
+        return text.substring(auf, minOf(i + 1, text.length))
+    }
+
+    @Test
+    fun `kein AlertDialog ohne Fenstername und Ueberschrift`() {
+        // Ohne paneTitle sagt TalkBack beim Öffnen nur „Dialog“, ohne heading() findet die
+        // Überschriften-Navigation den Titel nicht. Rueckfrage und ErfassenDialog setzen beides.
+        val aufruf = Regex("""\bAlertDialog\(""")
+        var gesehen = 0
+        val ohne = hauptcode().flatMap { (f, text) ->
+            aufruf.findAll(text).mapNotNull { m ->
+                gesehen++
+                val args = argumente(text, m.range.last)
+                val fehlt = listOf("paneTitle", "heading()").filter { it !in args }
+                val zeile = text.substring(0, m.range.first).count { it == '\n' } + 1
+                if (fehlt.isEmpty()) null else "${f.name}:$zeile ohne ${fehlt.joinToString()}"
+            }.toList()
+        }
+        assertTrue("Nur $gesehen AlertDialogs gefunden — greift die Suche noch?", gesehen >= 8)
+        assertEquals("AlertDialogs ohne Fenstername oder Überschrift", emptyList<String>(), ohne)
+    }
+
     @Test
     fun `die Activity haelt nicht mehr ViewModels`() {
         // Activity-weit nur, was über jedem Ziel liegt (AktivitaetsZustand) und die Pflichtmasken;

@@ -1,0 +1,16 @@
+Gegenprobe: Der Update-Dialog verliert seinen Fenstername
+Modul: app
+Test: ch.brickinventoryapp.app.QuelltextRatscheTest
+Rot: kein AlertDialog ohne Fenstername
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/dialogs/UpdateDialog.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/dialogs/UpdateDialog.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/dialogs/UpdateDialog.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/dialogs/UpdateDialog.kt
+@@ -45,7 +45,6 @@
+ 
+     val titel = stringResource(R.string.update_dialog_title)
+     AlertDialog(
+-        modifier = Modifier.semantics { paneTitle = titel },
+         // Waehrend des Ladens nicht wegtippbar — siehe der Kopf dieser Datei.
+         onDismissRequest = { if (!laedt) schliessen() },
+         title = { Text(titel, Modifier.semantics { heading() }) },

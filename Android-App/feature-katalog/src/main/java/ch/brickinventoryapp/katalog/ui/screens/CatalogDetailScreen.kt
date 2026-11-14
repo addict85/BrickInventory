@@ -353,61 +353,56 @@ private fun CatalogAddDialog(
     // Vorgabe danach nicht mehr aendert.
     var lagerort      by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
     // Vorbelegt mit dem eigenen Konto, genau wie im Galerie-Dialog.
-    var owner         by remember(householdMembers) {
-        mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
-    }
+    val eigenes = householdMembers.firstOrNull { it.isSelf }?.id
+    var owner         by remember(householdMembers) { mutableStateOf(eigenes) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.catalog_add_to_gallery), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(setName, fontWeight = FontWeight.SemiBold)
-                // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
-                OwnerPicker(householdMembers, owner, { owner = it })
-                // Menge und Preis wie im Erfassen-Dialog der Galerie: gefiltert
-                // UND mit der passenden Tastatur. Hier fehlte beides — derselbe
-                // Dialog, zwei Bildschirme weiter, hatte es laengst.
-                OutlinedTextField(
-                    shape = Formen.feld,
-                    value = quantity,
-                    onValueChange = { quantity = NumericInput.quantity(it) },
-                    label = { Text(stringResource(R.string.common_quantity)) },
-                    isError = NumericInput.mengeUngueltig(quantity),
-                    supportingText = { if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
-                )
-                OutlinedTextField(
-                    shape = Formen.feld,
-                    value = purchasePrice,
-                    onValueChange = { purchasePrice = NumericInput.price(it) },
-                    label = { Text(stringResource(R.string.gallery_purchase_price)) },
-                    isError = NumericInput.preisUngueltig(purchasePrice),
-                    supportingText = { if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = NumericInput.preisTastatur()
-                )
-                Zustandszeile(zustand = condition, onZustand = { condition = it })
-                LagerortErfassung(lagerort, lagerorte, { lagerort = it })
-            }
-        },
-        confirmButton = {
-            Button(onClick = { if (!erfassungUngueltig(quantity, purchasePrice)) onAdd(Erfassungswunsch(
-                setNumber = "",
-                menge = quantity.toIntOrNull() ?: 1,
-                kaufpreis = NumericInput.leseBetrag(purchasePrice),
-                zustand = condition,
-                // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
-                // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).
-                besitzer = if (householdMembers.size > 1) owner else null,
-                lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
-            )) }) {
-                Text(stringResource(R.string.catalog_add_confirm))
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
-    )
+    // Der gemeinsame Rahmen (ErfassenDialog): Titel als Überschrift und Fenstername, rollbar
+    // und bei grosser Schrift Vollbild; vorher fehlte beides.
+    ErfassenDialog(
+        titel = stringResource(R.string.catalog_add_to_gallery),
+        bestaetigen = stringResource(R.string.catalog_add_confirm),
+        onBestaetigen = { onAdd(Erfassungswunsch(
+            setNumber = "",
+            menge = quantity.toIntOrNull() ?: 1,
+            kaufpreis = NumericInput.leseBetrag(purchasePrice),
+            zustand = condition,
+            // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
+            // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).
+            besitzer = if (householdMembers.size > 1) owner else null,
+            lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
+        )) },
+        onAbbrechen = onDismiss,
+        bestaetigenAn = !erfassungUngueltig(quantity, purchasePrice),
+        geaendert = quantity != "1" || purchasePrice.isNotEmpty() || condition != defaultCondition ||
+            lagerort != lagerortVorgabe || owner != eigenes,
+    ) {
+        Text(setName, fontWeight = FontWeight.SemiBold)
+        // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
+        OwnerPicker(householdMembers, owner, { owner = it })
+        // Menge und Preis wie im Erfassen-Dialog der Galerie: gefiltert und mit der passenden Tastatur.
+        OutlinedTextField(
+            shape = Formen.feld,
+            value = quantity,
+            onValueChange = { quantity = NumericInput.quantity(it) },
+            label = { Text(stringResource(R.string.common_quantity)) },
+            isError = NumericInput.mengeUngueltig(quantity),
+            supportingText = { if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
+            singleLine = true, modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = NumericInput.ganzzahlTastatur()
+        )
+        OutlinedTextField(
+            shape = Formen.feld,
+            value = purchasePrice,
+            onValueChange = { purchasePrice = NumericInput.price(it) },
+            label = { Text(stringResource(R.string.gallery_purchase_price)) },
+            isError = NumericInput.preisUngueltig(purchasePrice),
+            supportingText = { if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
+            singleLine = true, modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = NumericInput.preisTastatur()
+        )
+        Zustandszeile(zustand = condition, onZustand = { condition = it })
+        LagerortErfassung(lagerort, lagerorte, { lagerort = it })
+    }
 }
 
 /**
@@ -442,6 +437,7 @@ private fun MerkpostenDialog(
             // beim eigenen Konto (gleiche Regel wie im Erfassungsdialog).
             if (householdMembers.size > 1) konto else null) },
         onAbbrechen = onDismiss,
+        geaendert = schwelle.isNotEmpty() || zustand != defaultCondition || richtung != Alarmrichtung.UNTER,
     ) {
                 Text(setName, style = MaterialTheme.typography.bodyMedium)
                 // Zielkonto wie beim Erfassen; blendet sich bei weniger als
