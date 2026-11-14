@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.vertrag.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.model.ui.model.HintergrundAnsicht
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 

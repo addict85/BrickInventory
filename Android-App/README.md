@@ -368,8 +368,8 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
-| `core-model` | `ch.brickinventoryapp.model` | Fach- und Anzeigetypen (Ansichten), reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
-| `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/vertrag-kotlin-zuordnung.js`), abgeleitete Werte in `Ergaenzungen.kt`, `Fehlercode`, unter `vertrag.abbildung` die Abbildung auf die Ansichten in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt |
+| `core-model` | `ch.brickinventoryapp.model` | Fach- und Anzeigetypen (Ansichten), `Fehlercode` und Anmeldekennungen des Servers, reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
+| `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/vertrag-kotlin-zuordnung.js`), abgeleitete Werte in `Ergaenzungen.kt`, unter `vertrag.abbildung` die Abbildung auf die Ansichten in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt |
 | `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
 | `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
 | `core-sicherheit` | `ch.brickinventoryapp.sicherheit` | Token-Tresor im Keystore, Ablageschlüssel und verschlüsselte Ablagen, TLS-Vertrauen zum eigenen Server (Pins), Passkey-Regeln; kennt weder Room noch Repositories |

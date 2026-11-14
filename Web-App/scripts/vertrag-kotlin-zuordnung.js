@@ -419,6 +419,7 @@ const EIGENSCHAFTEN = {
 /** @type {Record<string, string>} */
 const KONSTANTEN = {
   KEINE_FARBE: 'ch.brickinventoryapp.model.fach.KEINE_FARBE',
+  TOKEN_SCOPE_APP: 'ch.brickinventoryapp.model.fach.TOKEN_SCOPE_APP',
 };
 
 /** Antwortfelder, die fehlen dürfen und dann null statt leer sind. */

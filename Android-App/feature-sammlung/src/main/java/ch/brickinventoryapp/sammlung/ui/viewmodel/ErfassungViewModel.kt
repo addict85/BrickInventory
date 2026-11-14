@@ -5,7 +5,7 @@ import ch.brickinventoryapp.data.repository.SetKatalogRepository
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.vertrag.Fehlercode
+import ch.brickinventoryapp.model.fach.Fehlercode
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger

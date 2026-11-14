@@ -7,7 +7,7 @@ import ch.brickinventoryapp.vertrag.HouseholdStatusResponse
 import ch.brickinventoryapp.vertrag.LoginResponse
 import ch.brickinventoryapp.vertrag.Profil
 import ch.brickinventoryapp.vertrag.ProtokollZeile
-import ch.brickinventoryapp.vertrag.TOKEN_SCOPE_VOLL
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_VOLL
 import ch.brickinventoryapp.vertrag.elternkonten
 import ch.brickinventoryapp.vertrag.neuAngelegt
 import ch.brickinventoryapp.model.ui.model.CsvErgebnisAnsicht
