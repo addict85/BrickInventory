@@ -41,7 +41,7 @@ internal class Teileliste @Inject constructor(
             // Der Name kommt aus dem Katalog (/sets/info), nicht aus dem eigenen
             // Bestand: In die Teileliste trägt man gerade Sets ein, die man nicht hat.
             val setName = (katalog.getSetInfo(setNumber) as? Ergebnis.Success)
-                ?.data?.name?.takeIf { it.isNotBlank() } ?: setNumber
+                ?.data?.takeIf { it.isNotBlank() } ?: setNumber
             // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand
             // (mitBestand) danach gefragt wird. Mehrere Rebrickable-Teile teilen sich
             // oft eine BrickLink-Nummer; nach ihr zusammengefasst galt ein vorhandenes

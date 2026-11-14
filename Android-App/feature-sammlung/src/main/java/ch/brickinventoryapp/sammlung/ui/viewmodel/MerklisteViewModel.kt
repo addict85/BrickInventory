@@ -8,7 +8,7 @@ import ch.brickinventoryapp.model.fach.Merksortierung
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.vertrag.Merkposten
+import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.sitzung.abgeleitet
 import androidx.lifecycle.SavedStateHandle
@@ -100,10 +100,10 @@ class MerklisteViewModel @Inject constructor(
     val vorgemerkt: StateFlow<VorgemerkterMerkposten?> = _vorgemerkt.asStateFlow()
 
     /** Die Quelle der Liste für die eingestellten Filter; [ladeMerkliste] wählt sie. */
-    private val quelle = MutableStateFlow<Flow<Lokal<Merkposten>>>(flowOf(Lokal(emptyList(), null)))
+    private val quelle = MutableStateFlow<Flow<Lokal<MerkpostenAnsicht>>>(flowOf(Lokal(emptyList(), null)))
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val liste: StateFlow<Lokal<Merkposten>?> =
+    private val liste: StateFlow<Lokal<MerkpostenAnsicht>?> =
         quelle.flatMapLatest { it }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /**
@@ -112,7 +112,7 @@ class MerklisteViewModel @Inject constructor(
      */
     val merklisteState: StateFlow<MerklisteUiState> = _merklisteState
         .abgeleitet(liste) { st, l ->
-            if (l?.stand != null) st.copy(merkposten = l.liste.map { m -> m.alsAnsicht() }) else st
+            if (l?.stand != null) st.copy(merkposten = l.liste) else st
         }
         .abgeleitet(_vorgemerkt) { st, v ->
             if (v == null) st else st.copy(merkposten = st.merkposten.filterNot { it.setNumber == v.setNumber && it.condition == v.zustand })
@@ -191,9 +191,8 @@ class MerklisteViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = merkliste.verschiebeMerkposten(setNumber, zustand, vonId, zuId)) {
                 is Ergebnis.Success -> {
-                    if (!r.data.success) { meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_unknown)); return@launch }
                     meldungen.zeige(meldungen.text(
-                        if (r.data.zusammengefuehrt) R.string.wanted_already else R.string.vm_saved))
+                        if (r.data) R.string.wanted_already else R.string.vm_saved))
                 }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
@@ -246,7 +245,7 @@ class MerklisteViewModel @Inject constructor(
                                                    lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Ergebnis.Success -> {
                     meldungen.zeige(meldungen.text(
-                        if (r.data.action == "exists") R.string.wanted_taken_existing
+                        if (r.data) R.string.wanted_taken_existing
                         else R.string.wanted_taken))
                 }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
@@ -260,12 +259,10 @@ class MerklisteViewModel @Inject constructor(
             _merkpostenDetailState.value = MerkpostenDetailUiState(setNumber = setNumber, laedt = true)
             if (merklisteState.value.merkposten.isEmpty()) ladeMerkliste()
             loadPreisalarme(setNumber)
-            val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Success)
-                ?.data?.takeIf { it.success }?.set
-            _merkpostenDetailState.update { it.copy(katalog = katalog?.alsAnsicht()) }
-            val preise = (merkliste.getMerkpostenPreise(setNumber) as? Ergebnis.Success)
-                ?.data?.takeIf { it.success }
-            _merkpostenDetailState.update { it.copy(preise = preise?.alsAnsicht()) }
+            val katalog = (katalogRepo.getCatalogSetDetail(setNumber) as? Ergebnis.Success)?.data
+            _merkpostenDetailState.update { it.copy(katalog = katalog) }
+            val preise = (merkliste.getMerkpostenPreise(setNumber) as? Ergebnis.Success)?.data
+            _merkpostenDetailState.update { it.copy(preise = preise) }
             val historie = (finanzen.getSetPriceHistory(setNumber) as? Ergebnis.Success)?.data
             _merkpostenDetailState.update { it.copy(historie = historie, laedt = false) }
         }
@@ -308,6 +305,6 @@ class MerklisteViewModel @Inject constructor(
 internal suspend fun merkpostenAnlegen(
     merkliste: MerklisteRepository, texte: Texte, setNumber: String, zustand: Zustand, besitzer: Int?,
 ): String? = when (val r = merkliste.legeMerkpostenAn(setNumber, zustand, besitzer)) {
-    is Ergebnis.Success -> texte.text(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already)
+    is Ergebnis.Success -> texte.text(if (r.data) R.string.wanted_added else R.string.wanted_already)
     is Ergebnis.Error -> texte.meldungFuerSnackbar(r)?.let { texte.text(R.string.vm_error, it) }
 }

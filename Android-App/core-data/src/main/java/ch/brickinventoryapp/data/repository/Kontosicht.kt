@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.FigurenApi
@@ -9,7 +12,6 @@ import ch.brickinventoryapp.data.api.alsAbfrage
 import ch.brickinventoryapp.data.api.mitSetsAlsAbfrage
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.vertrag.FigValuationItem
-import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.vertrag.Minifig
 import ch.brickinventoryapp.vertrag.Part
 import ch.brickinventoryapp.vertrag.PartValuationItem
@@ -104,10 +106,10 @@ class Kontosicht @Inject constructor(
         }
     }
 
-    val merkliste = Serversicht<MerkAbfrage, Merkposten>(ablage, arrayOf(Faecher.MERKLISTE)) { a ->
+    val merkliste = Serversicht<MerkAbfrage, MerkpostenAnsicht>(ablage, arrayOf(Faecher.MERKLISTE)) { a ->
         wiederholung.wiederhole {
             sicherAufrufen { sets.getMerkliste(a.suche, a.zustand?.kennung, a.sort?.kennung, a.konten.anfrage) }
-        }.abgebildet { it.merkposten }
+        }.abgebildet { r -> r.merkposten.map { it.alsAnsicht() } }
     }
 
     val teileliste = Serversicht<TeileAbfrage, Part>(ablage, arrayOf(Faecher.TEILE)) { a ->

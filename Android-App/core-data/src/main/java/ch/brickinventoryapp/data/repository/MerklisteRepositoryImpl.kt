@@ -1,17 +1,18 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.ui.model.MerkpostenAnsicht
+import ch.brickinventoryapp.model.ui.model.MerkpostenPreiseAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.vertrag.AddSetRequest
 import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.vertrag.MerkpostenAntwort
-import ch.brickinventoryapp.vertrag.MerkpostenInhaberAntwort
 import ch.brickinventoryapp.vertrag.MerkpostenInhaberRequest
-import ch.brickinventoryapp.vertrag.MerkpostenPreiseResponse
 import ch.brickinventoryapp.vertrag.MerkpostenRequest
 import ch.brickinventoryapp.vertrag.MerkpostenUebernahmeRequest
-import ch.brickinventoryapp.vertrag.MerkpostenUebernahmeResponse
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
@@ -33,9 +34,9 @@ class MerklisteRepositoryImpl @Inject constructor(
     private val wiederholung: Wiederholung,
 ) : MerklisteRepository {
 
-    override fun beobachteMerkliste(suche: String?, zustand: Zustand?, sort: Merksortierung?): Flow<Lokal<Merkposten>> =
+    override fun beobachteMerkliste(suche: String?, zustand: Zustand?, sort: Merksortierung?): Flow<Lokal<MerkpostenAnsicht>> =
         ablage.beobachte(Faecher.MERKLISTE, Filterspalten(suchtext = suche?.ifBlank { null }, zustand = zustand?.kennung))
-            .map { l -> l.copy(liste = l.liste.sortiert(merkOrdnung(sort))) }
+            .map { l -> l.copy(liste = l.liste.sortiert(merkOrdnung(sort))) }.abgebildet { it.alsAnsicht() }
 
     /** Die Merkliste kommt ganz, ohne Seiten: Die Gesamtzahl ist die Länge der Antwort. */
     override suspend fun aktualisiereMerkliste(): Ergebnis<Unit> =
@@ -44,37 +45,37 @@ class MerklisteRepositoryImpl @Inject constructor(
         }
 
     override suspend fun legeMerkpostenAn(setNumber: String, condition: Zustand,
-                                          ownerUserId: Int?): Ergebnis<MerkpostenAntwort> {
+                                          ownerUserId: Int?): Ergebnis<Boolean> {
         val anfrage = MerkpostenRequest(setNumber = setNumber, condition = condition, ownerUserId = ownerUserId)
         return ablage.schreibe(Bearbeitung.MerkpostenAnlegen(anfrage), {
             MerkpostenAntwort(success = true, warNeu = true,
                 merkposten = Merkposten(setNumber = setNumber, condition = condition, userId = ownerUserId ?: 0))
-        }) { schluessel -> sicherAufrufen { api.legeMerkpostenAn(anfrage, schluessel) } }
+        }) { schluessel -> sicherAufrufen { api.legeMerkpostenAn(anfrage, schluessel) } }.abgebildet { it.warNeu }
     }
 
     override suspend fun verschiebeMerkposten(setNumber: String, condition: Zustand,
-                                              vonId: Int, zuId: Int): Ergebnis<MerkpostenInhaberAntwort> =
+                                              vonId: Int, zuId: Int): Ergebnis<Boolean> =
         ablage.nachgezogen({ r -> Nachzug.MerkpostenVerschoben(setNumber, condition, vonId, zuId).takeIf { r.success } }) {
             sicherAufrufen { api.verschiebeMerkposten(setNumber, condition.kennung, MerkpostenInhaberRequest(ownerUserId = vonId, neuerInhaber = zuId)) }
-        }
+        }.zugesagt({ it.success }, { it.error }) { it.zusammengefuehrt }
 
     override suspend fun loescheMerkposten(setNumber: String, condition: Zustand,
-                                           ownerUserId: Int?): Ergebnis<GenericResponse> =
+                                           ownerUserId: Int?): Ergebnis<Unit> =
         ablage.schreibe(Bearbeitung.MerkpostenLoeschen(setNumber, condition, ownerUserId), { GenericResponse(success = true) }) { schluessel ->
             sicherAufrufen { api.loescheMerkposten(setNumber, condition.kennung, ownerUserId, schluessel) }
-        }
+        }.ohneInhalt()
 
-    override suspend fun getMerkpostenPreise(setNumber: String): Ergebnis<MerkpostenPreiseResponse> =
-        sicherAufrufen { api.getMerkpostenPreise(setNumber) }
+    override suspend fun getMerkpostenPreise(setNumber: String): Ergebnis<MerkpostenPreiseAnsicht> =
+        sicherAufrufen { api.getMerkpostenPreise(setNumber) }.zugesagt({ it.success }, { null }) { it.alsAnsicht() }
 
     override suspend fun uebernimmMerkposten(setNumber: String, condition: Zustand, quantity: Int,
                                              purchasePrice: Double?, erfasstAls: Zustand?,
                                              ownerUserId: Int?,
-                                             storage: String?): Ergebnis<MerkpostenUebernahmeResponse> {
+                                             storage: String?): Ergebnis<Boolean> {
         val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice, condition = erfasstAls ?: condition, ownerUserId = ownerUserId, storage = storage)
         return ablage.nachgezogen({ r -> Nachzug.MerkpostenUebernommen(setNumber, condition, ownerUserId, anfrage).takeIf { r.success } }) {
             sicherAufrufen { api.uebernimmMerkposten(setNumber, condition.kennung,
                 MerkpostenUebernahmeRequest(quantity = quantity, purchasePrice = purchasePrice, condition = erfasstAls, ownerUserId = ownerUserId, storage = storage)) }
-        }
+        }.abgebildet { it.action == "exists" }
     }
 }

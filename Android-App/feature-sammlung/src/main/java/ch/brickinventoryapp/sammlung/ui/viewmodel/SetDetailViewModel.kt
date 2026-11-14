@@ -142,7 +142,7 @@ class SetDetailViewModel @Inject constructor(
     private fun ladeDetail() = starte(Abschnitt.DETAIL) {
         _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
         when (val r = katalog.getSetDetail(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
+            is Ergebnis.Success -> _setDetailState.update { it.copy(setDetail = r.data, setDetailLoading = false) }
             is Ergebnis.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldungen.meldung(r),
                 setDetailFehlerKlasse = fehlerklasse(r)) }
         }

@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.lokal.Lokal
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
@@ -215,3 +218,7 @@ internal fun Ergebnis<*>.ohneInhalt(): Ergebnis<Unit> = abgebildet { }
 
 /** Die übliche Antwort einer Änderung: zugesagt oder abgesagt, sonst nichts zu lesen. */
 internal fun Ergebnis<GenericResponse>.erledigt(): Ergebnis<Unit> = zugesagt({ it.success }, { it.error }) { }
+
+/** Die Zeilen eines Flusses aus der Ablage abbilden; Stand und verworfene Zeilen bleiben. */
+internal fun <T, R> Flow<Lokal<T>>.abgebildet(f: (T) -> R): Flow<Lokal<R>> =
+    map { l -> Lokal(l.liste.map(f), l.stand, l.verworfen) }

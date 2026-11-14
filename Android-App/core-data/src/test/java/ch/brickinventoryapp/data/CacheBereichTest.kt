@@ -83,7 +83,7 @@ class CacheBereichTest {
     private suspend fun offlineJahr(r: KatalogRepository): Int? {
         runCatching { server.shutdown() }
         return when (val x = r.getCatalogMeta()) {
-            is Ergebnis.Success -> x.data.yearMin
+            is Ergebnis.Success -> x.data.jahrMin
             is Ergebnis.Error -> null
         }
     }

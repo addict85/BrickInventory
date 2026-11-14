@@ -5,7 +5,6 @@ import ch.brickinventoryapp.zustand.ui.fehlerklasse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.katalog.ui.CatalogUiState
@@ -80,10 +79,8 @@ class CatalogViewModel @Inject constructor(
     override fun loadCatalogMeta() {
         viewModelScope.launch {
             when (val r = katalog.getCatalogMeta()) {
-                is Ergebnis.Success -> if (r.data.success) _catalogState.update {
-                    it.copy(
-                        themes = r.data.themes.map { t -> t.alsAnsicht() }, yearMin = r.data.yearMin, yearMax = r.data.yearMax
-                    )
+                is Ergebnis.Success -> _catalogState.update {
+                    it.copy(themes = r.data.themen, yearMin = r.data.jahrMin, yearMax = r.data.jahrMax)
                 }
                 is Ergebnis.Error -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
             }
@@ -116,10 +113,9 @@ class CatalogViewModel @Inject constructor(
             if (gen != catalogGeneration) return@launch   // inzwischen neuer Filter
             when (r) {
                 is Ergebnis.Success -> {
-                    if (r.data.success) _catalogState.update {
-                        it.copy(isLoading = false, loadedPages = mapOf(1 to r.data.sets.map { s -> s.alsAnsicht() }),
-                                total = r.data.total)
-                    } else _catalogState.update { it.copy(isLoading = false, error = r.data.error) }
+                    _catalogState.update {
+                        it.copy(isLoading = false, loadedPages = mapOf(1 to r.data.sets), total = r.data.gesamt)
+                    }
                 }
                 is Ergebnis.Error -> {
                     _catalogState.update { it.copy(isLoading = false, error = texte.meldung(r), fehlerKlasse = fehlerklasse(r)) }
@@ -157,10 +153,8 @@ class CatalogViewModel @Inject constructor(
                 val ohne = st.loadingPages - seite
                 when (r) {
                     is Ergebnis.Success ->
-                        if (r.data.success) st.copy(loadingPages = ohne,
-                            loadedPages = st.loadedPages + (seite to r.data.sets.map { s -> s.alsAnsicht() }),
-                            total = if (r.data.total > 0) r.data.total else st.total)
-                        else st.copy(loadingPages = ohne)
+                        st.copy(loadingPages = ohne, loadedPages = st.loadedPages + (seite to r.data.sets),
+                            total = if (r.data.gesamt > 0) r.data.gesamt else st.total)
                     is Ergebnis.Error -> st.copy(loadingPages = ohne)
                 }
             }
@@ -178,11 +172,11 @@ class CatalogViewModel @Inject constructor(
             val r = katalog.getCatalogYearVerteilung(
                 q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
             if (gen != catalogGeneration) return@launch
-            if (r is Ergebnis.Success && r.data.success) {
+            if (r is Ergebnis.Success) {
                 // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.
                 // Ihre Zahl bleibt in `total` enthalten; siehe
                 // CatalogYearMath.jahrAnPosition.
-                _catalogState.update { it.copy(jahrVerteilung = r.data.years.filter { j -> j.year != null }.map { j -> j.alsAnsicht() }) }
+                _catalogState.update { it.copy(jahrVerteilung = r.data.filter { j -> j.year != null }) }
             }
         }
     }
@@ -228,7 +222,7 @@ class CatalogViewModel @Inject constructor(
     // ── Detail ────────────────────────────────────────────────────────────────────
     /** Der Merkposten zu [setNumber] aus der Ablage der Merkliste; null, solange das Set nicht darauf steht. */
     fun gemerkt(setNumber: String): Flow<MerkpostenAnsicht?> =
-        merkliste.beobachteMerkliste().map { l -> l.liste.firstOrNull { it.setNumber == setNumber }?.alsAnsicht() }
+        merkliste.beobachteMerkliste().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
 
     /** Merken und, wenn eine Schwelle dasteht, den Preisalarm gleich mit. */
     fun merke(w: Merkwunsch) {
@@ -238,7 +232,7 @@ class CatalogViewModel @Inject constructor(
                     meldungen.zeige(texte.meldungFuerSnackbar(r)?.let { Meldung.Ressource(R.string.vm_error, listOf(it)) })
                 is Ergebnis.Success -> {
                     Alarmeingabe.zahl(w.schwelleRoh)?.let { alarme.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
-                    meldungen.zeige(Meldung.Ressource(if (r.data.warNeu) R.string.wanted_added else R.string.wanted_already))
+                    meldungen.zeige(Meldung.Ressource(if (r.data) R.string.wanted_added else R.string.wanted_already))
                 }
             }
         }
@@ -254,11 +248,9 @@ class CatalogViewModel @Inject constructor(
             // ohne Detail nichts zu zeigen und braucht einen Grund und „Erneut versuchen“.
             when (val r = katalog.getCatalogSetDetail(setNumber)) {
                 is Ergebnis.Success -> {
-                    if (r.data.success && r.data.set != null)
-                        _catalogState.update { it.copy(detailLoading = false, detail = r.data.set?.alsAnsicht()) }
-                    else _catalogState.update {
-                        it.copy(detailLoading = false, detailFehler = r.data.error ?: texte.text(R.string.err_set_not_found))
-                    }
+                    val detail = r.data
+                    if (detail != null) _catalogState.update { it.copy(detailLoading = false, detail = detail) }
+                    else _catalogState.update { it.copy(detailLoading = false, detailFehler = texte.text(R.string.err_set_not_found)) }
                 }
                 is Ergebnis.Error -> _catalogState.update {
                     it.copy(detailLoading = false, detailFehler = texte.meldung(r), detailFehlerKlasse = fehlerklasse(r))

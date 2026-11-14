@@ -1,16 +1,18 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.model.ui.model.JahrAnzahlAnsicht
+import ch.brickinventoryapp.model.ui.model.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.ui.model.KatalogMetaAnsicht
+import ch.brickinventoryapp.model.ui.model.KatalogSeiteAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.data.api.KatalogApi
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.vertrag.CatalogMetaResponse
-import ch.brickinventoryapp.vertrag.CatalogSetDetailResponse
-import ch.brickinventoryapp.vertrag.CatalogSetsResponse
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.vertrag.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
@@ -24,16 +26,19 @@ class KatalogRepositoryImpl @Inject constructor(
     /** Beim Blättern im Katalog: wenige Versuche, sonst stünde die nächste Seite lange aus. */
     private val knapp = wiederholung.hoechstens(KATALOG_VERSUCHE)
 
-    override suspend fun getCatalogMeta(): Ergebnis<CatalogMetaResponse> =
+    override suspend fun getCatalogMeta(): Ergebnis<KatalogMetaAnsicht> =
         wiederholung.wiederhole { ablage.abgeglichenEinzeln(Faecher.KATALOG_META) { sicherAufrufen { api.getCatalogMeta() } } }
+            .zugesagt({ it.success }, { it.error }) { m -> KatalogMetaAnsicht(m.themes.map { it.alsAnsicht() }, m.yearMin, m.yearMax) }
 
     override suspend fun getCatalogSets(
         q: String?, themeId: Int?, yearFrom: Int?, yearTo: Int?,
         sort: Katalogsortierung, page: Int, limit: Int
-    ): Ergebnis<CatalogSetsResponse> = knapp.wiederhole { sicherAufrufen { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort.kennung, page, limit) } }
+    ): Ergebnis<KatalogSeiteAnsicht> = knapp.wiederhole { sicherAufrufen { api.getCatalogSets(q, themeId, yearFrom, yearTo, sort.kennung, page, limit) } }
+        .zugesagt({ it.success }, { it.error }) { r -> KatalogSeiteAnsicht(r.sets.map { it.alsAnsicht() }, r.total) }
 
-    override suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<CatalogSetDetailResponse> =
+    override suspend fun getCatalogSetDetail(setNumber: String): Ergebnis<KatalogDetailAnsicht?> =
         knapp.wiederhole { sicherAufrufen { api.getCatalogSetDetail(setNumber) } }
+            .abgebildet { r -> r.set?.takeIf { r.success }?.alsAnsicht() }
 
     /**
      * Jahresverteilung zu den aktuellen Filtern — die Zahlen, aus denen die
@@ -41,8 +46,9 @@ class KatalogRepositoryImpl @Inject constructor(
      */
     override suspend fun getCatalogYearVerteilung(
         q: String?, themeId: Int?, sort: Katalogsortierung
-    ): Ergebnis<CatalogYearVerteilungResponse> =
+    ): Ergebnis<List<JahrAnzahlAnsicht>> =
         sicherAufrufen { api.getCatalogYearVerteilung(q, themeId, sort.kennung) }
+            .zugesagt({ it.success }, { null }) { r -> r.years.map { it.alsAnsicht() } }
 }
 
 private const val KATALOG_VERSUCHE = 2

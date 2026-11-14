@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.vertrag.CatalogMetaResponse
+import ch.brickinventoryapp.model.ui.model.KatalogMetaAnsicht
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
@@ -74,7 +74,7 @@ class RepoCacheRueckfallTest {
         server.shutdown()   // Verbindung verweigert: ein echter Netzfehler
 
         val r = erfolg(repo.getCatalogMeta())
-        assert((r.data as CatalogMetaResponse).yearMin == 1999) { "Nicht die gespeicherten Daten: $r" }
+        assert((r.data as KatalogMetaAnsicht).jahrMin == 1999) { "Nicht die gespeicherten Daten: $r" }
         val stand = r.stand
         assert(stand != null && r.veraltet) {
             "Der Rückfall trägt keinen Stand — die Liste sähe frisch aus: $r"
@@ -118,7 +118,7 @@ class RepoCacheRueckfallTest {
         cacheFuellen(1999)
         server.enqueue(TestApi.antwort(antwort(2024)))
         val neu = erfolg(repo.getCatalogMeta())
-        assert((neu.data as CatalogMetaResponse).yearMin == 2024 && neu.stand == null) {
+        assert((neu.data as KatalogMetaAnsicht).jahrMin == 2024 && neu.stand == null) {
             "Erst Netz, dann Platte — bekommen: $neu"
         }
     }

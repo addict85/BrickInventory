@@ -99,7 +99,7 @@ class ErfassungViewModel @Inject constructor(
                         meldungen.quittiere()
                         _barcodeState.update { it.copy(
                             result = setNum, setName = r.data.name ?: setNum,
-                            imageUrl = r.data.imageUrl, imageLocal = r.data.imageLocal,
+                            imageUrl = r.data.bildUrl, imageLocal = r.data.bildLokal,
                             year = r.data.year, pieces = r.data.pieces, theme = r.data.theme,
                             minifigs = r.data.minifigs, unsicher = r.data.unsicher, adding = false,
                             besitzMenge = 0,
@@ -108,7 +108,7 @@ class ErfassungViewModel @Inject constructor(
                         // eigener Auftrag, damit die Prüfanzeige nicht auf ihn wartet.
                         viewModelScope.launch {
                             val antwort = katalog.getCatalogSetDetail(setNum)
-                            val besitz = if (antwort is Ergebnis.Success) antwort.data.set else null
+                            val besitz = if (antwort is Ergebnis.Success) antwort.data else null
                             if (besitz?.owned == true && _barcodeState.value.result == setNum)
                                 _barcodeState.update { it.copy(besitzMenge = besitz.ownedQuantity.coerceAtLeast(1)) }
                         }
@@ -143,7 +143,7 @@ class ErfassungViewModel @Inject constructor(
                 if (!ausListe && zeigeVorhandenes(setNum)) return@launch
                 when (val r = katalog.getCatalogSetDetail(setNum)) {
                     is Ergebnis.Success -> {
-                        val d = r.data.set
+                        val d = r.data
                         if (d == null) {
                             meldungen.zeige(meldungen.text(R.string.vm_barcode_not_found, setNum))
                             _barcodeState.update { it.copy(manuelleErfassungAnfordern = true) }
@@ -177,11 +177,12 @@ class ErfassungViewModel @Inject constructor(
         erfassung.zeige(setNum, Pruefphase.BESTAND)
         return when (val vorhanden = setKatalog.getSetExists(setNum)) {
             is Ergebnis.Success -> {
-                if (vorhanden.data.exists) {
+                val gefunden = vorhanden.data
+                if (gefunden != null) {
                     meldungen.quittiere()
-                    _barcodeState.update { it.copy(gefundenesSet = vorhanden.data.setNumber) }
+                    _barcodeState.update { it.copy(gefundenesSet = gefunden) }
                 }
-                vorhanden.data.exists
+                gefunden != null
             }
             is Ergebnis.Error -> {
                 meldungen.zeige(meldungen.meldungFuerSnackbar(vorhanden))

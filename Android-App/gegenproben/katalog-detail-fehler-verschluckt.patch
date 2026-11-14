@@ -6,9 +6,9 @@ Rot: scheitert das Detail, steht der Grund im Zustand und ein zweiter Versuch la
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 +++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
-@@ -260,8 +260,9 @@
-                         it.copy(detailLoading = false, detailFehler = r.data.error ?: texte.text(R.string.err_set_not_found))
-                     }
+@@ -252,8 +252,9 @@
+                     if (detail != null) _catalogState.update { it.copy(detailLoading = false, detail = detail) }
+                     else _catalogState.update { it.copy(detailLoading = false, detailFehler = texte.text(R.string.err_set_not_found)) }
                  }
 -                is Ergebnis.Error -> _catalogState.update {
 -                    it.copy(detailLoading = false, detailFehler = texte.meldung(r), detailFehlerKlasse = fehlerklasse(r))
