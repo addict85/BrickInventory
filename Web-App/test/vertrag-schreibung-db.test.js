@@ -1,8 +1,8 @@
 /**
  * Jede Route aus dem API-Vertrag, anders geschrieben: ganz in Grossbuchstaben,
- * mit grossem Anfangsbuchstaben nach /api/v1 und mit angehängtem „/“. Am
- * echten Server mit Idempotency-Key. Eine andere Schreibung ist eine andere
- * Route (404) und hinterlässt nichts in `idempotenz`; der Schrägstrich am Ende …
+ * mit grossem Anfangsbuchstaben nach /api/v1 und mit angehängtem „/“, „//“
+ * oder „%2F“. Am echten Server mit Idempotency-Key. Eine andere Schreibung ist
+ * eine andere Route (404) und hinterlässt nichts in `idempotenz`.
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
  *   A  server.ts ohne `case sensitive routing` und vertragsRouter() ohne
@@ -12,8 +12,10 @@
  *   B  nur in der Idempotenz-Middleware `if (!route) return next();`
  *      gestrichen → rot: „Grossschreibung …“ (die 404 liegt unter dem Schlüssel)
  *   C  routeFuerAnfrage() ohne das Abschneiden des Schrägstrichs → rot nur
- *      „ein Schrägstrich am Ende …“: Ohne Vertragseintrag speichert die
- *      Middleware nichts, darum bleibt die Tabelle leer
+ *      „routeFuerAnfrage ordnet …“
+ *   D  (15.11.2026) in startup/app.ts die Absage für `/` am Ende gestrichen → rot:
+ *      „ein Schrägstrich am Ende ist eine andere Route“ (u. a. household/invite/
+ *      200, vouchers/1/klartext/ 403 aus der zweiten Linie statt 404)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -128,7 +130,8 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
     assert.deepEqual(await gespeichert(schluessel), [], 'eine anders geschriebene Route hat in idempotenz geschrieben');
   });
 
-  await t.test('ein Schrägstrich am Ende findet denselben Vertragseintrag', () => {
+  await t.test('routeFuerAnfrage ordnet einen Schrägstrich am Ende derselben Route zu', () => {
+    // Drossel, Schrittschutz und Idempotenz fragen so; die Absage am Eingang ist die erste Linie.
     const anders = ROUTEN.filter(
       ({ m, url }) =>
         routeFuerAnfrage(m, url + '/') !== routeFuerAnfrage(m, url) ||
@@ -140,29 +143,27 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
     );
   });
 
-  await t.test('… und eine geheime oder bestätigte Antwort wird auch dann nicht gespeichert', async () => {
-    // token-rotieren zuletzt: Es ersetzt den Token dieses Tests.
-    const geheim = ROUTEN.filter(({ m, url }) => SCHREIBEND.has(m) && antwortIstGeheim(m, url)).sort(
-      (a, b) => Number(a.p.endsWith('token-rotieren')) - Number(b.p.endsWith('token-rotieren')),
-    );
-    assert.ok(geheim.length > 20, `nur ${geheim.length} geheime oder bestätigte Routen`);
-    const gelungen = [],
-      wiederholt = [],
+  await t.test('ein Schrägstrich am Ende ist eine andere Route', async () => {
+    const falsch = [],
       schluessel = [];
+    for (const { m, url } of ROUTEN)
+      for (const anders of [url + '/', url + '//']) {
+        const r = await rufe(m, anders);
+        schluessel.push(r.schluessel);
+        if (r.status !== 404 || r.replay) falsch.push(`${m} ${anders} → ${r.status}`);
+      }
+    assert.deepEqual(falsch, []);
+    assert.deepEqual(await gespeichert(schluessel), []);
+  });
+
+  await t.test('… und ein %2F am Ende kommt an keine geheime oder bestätigte Antwort', async () => {
+    const geheim = ROUTEN.filter(({ m, url }) => SCHREIBEND.has(m) && antwortIstGeheim(m, url));
+    assert.ok(geheim.length > 20, `nur ${geheim.length} geheime oder bestätigte Routen`);
+    const gelungen = [];
     for (const { m, url } of geheim) {
-      const erst = await rufe(m, url + '/');
-      schluessel.push(erst.schluessel);
-      if (erst.status < 300) gelungen.push(url);
-      if (url.endsWith('token-rotieren')) continue;
-      const zweit = await rufe(m, url + '/', erst.schluessel);
-      if (zweit.replay) wiederholt.push(`${m} ${url}/`);
+      const r = await rufe(m, url + '%2F');
+      if (r.status < 400) gelungen.push(`${m} ${url}%2F → ${r.status}`);
     }
-    // Mindestens eine geheime Antwort entsteht wirklich, sonst prüfte die Tabelle nur Fehler.
-    assert.ok(gelungen.includes('/api/v1/settings/household/invite'), `household/invite/ gelang nicht: ${gelungen}`);
-    assert.deepEqual(wiederholt, []);
-    assert.deepEqual(
-      (await gespeichert(schluessel)).filter(z => z.mit_antwort).map(z => z.schluessel),
-      [],
-    );
+    assert.deepEqual(gelungen, []);
   });
 });

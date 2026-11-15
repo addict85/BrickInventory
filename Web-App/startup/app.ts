@@ -250,6 +250,11 @@ function dateienUndBilder(app: express.Express, d: Dienste, konfig: Konfig): voi
 function apiRouten(app: express.Express, d: Dienste): void {
   const pruefung = vertragPruefen();
   if (pruefung) app.use('/api/v1', pruefung);
+  // Express fände `/vouchers/1/klartext/` unter `/vouchers/:id/klartext`, alles davor (Drossel,
+  // Schrittschutz, Caddy) sieht einen anderen Pfad. Der Vertrag kennt keinen Pfad mit `/` am Ende.
+  app.use('/api', (req, res, next) =>
+    req.path.length > 1 && req.path.endsWith('/') ? unbekannterApiPfad(req, res) : next(),
+  );
   // Vor dem Eingang: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
   app.use('/api/v1', baueGesundheitRouter(d));
   apiEingang(app, d);

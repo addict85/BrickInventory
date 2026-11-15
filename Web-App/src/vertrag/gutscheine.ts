@@ -89,7 +89,7 @@ export const routen = {
     }),
     antwort: GutscheinAntwort,
   },
-  'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse, ...bestaetigt() },
+  'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse, ...bestaetigt(), schritt: 'gutschein' },
   'POST /api/v1/vouchers/pdf': {
     formular: true,
     antwort: GutscheinAntwort,
@@ -101,9 +101,24 @@ export const routen = {
     }),
   },
   'POST /api/v1/vouchers/:id/guthaben': { eingabe: OHNE_RUMPF, antwort: GuthabenAntwort },
-  'POST /api/v1/vouchers/:id/klartext': { antwort: GutscheinKlartext, ...bestaetigt(), geheim: true },
-  'POST /api/v1/vouchers/:id/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt(), geheim: true },
-  'POST /api/v1/vouchers/export/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt(), geheim: true },
+  'POST /api/v1/vouchers/:id/klartext': {
+    antwort: GutscheinKlartext,
+    ...bestaetigt(),
+    geheim: true,
+    schritt: 'gutschein',
+  },
+  'POST /api/v1/vouchers/:id/pdf-freigabe': {
+    antwort: PdfFreigabe,
+    ...bestaetigt(),
+    geheim: true,
+    schritt: 'gutschein',
+  },
+  'POST /api/v1/vouchers/export/pdf-freigabe': {
+    antwort: PdfFreigabe,
+    ...bestaetigt(),
+    geheim: true,
+    schritt: 'gutschein',
+  },
   'GET /api/v1/vouchers/:id/pdf': { art: 'pdf', abfrage: abfrage({ ticket: Q.text(200), download: Q.schalter }) },
   'GET /api/v1/vouchers/export/pdf': { art: 'pdf', abfrage: abfrage({ ticket: Q.text(200) }) },
 } satisfies Record<string, Route>;

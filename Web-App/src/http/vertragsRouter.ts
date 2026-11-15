@@ -241,6 +241,10 @@ export function vertragsRouter<P extends string>(praefix: P, o: { grosseIds?: bo
         (req: Request, res: Response, next: NextFunction) => {
           if (req.baseUrl.toLowerCase() !== praefix.toLowerCase()) throw new FalschEingehaengt(praefix, req.baseUrl);
           res.locals.vertragsSchluessel = schluessel;
+          // Hat der Schrittschutz am Eingang (res.locals.schritt gesetzt) diese Route einer anderen
+          // Marke zugeordnet als Express, gilt seine Freigabe nicht: zu statt offen.
+          if (route.schritt && res.locals.schritt !== undefined && res.locals.schritt !== route.schritt)
+            return sendeFehler(req, res, 'verboten', 'schritt_freigabe_noetig');
           eingabePruefen(route, req, res, next);
         },
         async (req: Request, res: Response) => {
