@@ -1260,7 +1260,7 @@ test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner'
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
   // Gegenprobe (09.11.2026): an finanzen.js Leerzeilen gehängt → rot.
   const SCHRANKE_GROESSTE = 761,
-    SCHRANKE_UEBER_600 = 12;
+    SCHRANKE_UEBER_600 = 11;
   const laengen = oberflaeche().map(f => ({
     f: path.relative(WEB, f),
     n: fs.readFileSync(f, 'utf8').split('\n').length,
@@ -1364,7 +1364,7 @@ test('Funktionen im Server (über 80/150 Zeilen, englische Exportnamen) werden w
 test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
   // Je Ordner eine Schranke, im Biome-Format.
   // Gegenprobe: 40 Kommentarzeilen an clients/ezb.ts gehängt → rot (clients).
-  const SCHRANKE = { db: 20.6, clients: 13.9, scripts: 22.2 };
+  const SCHRANKE = { db: 15, clients: 12.3, scripts: 19.2 };
   const zuViel = [];
   for (const [ordner, schranke] of Object.entries(SCHRANKE)) {
     let zeilen = 0,

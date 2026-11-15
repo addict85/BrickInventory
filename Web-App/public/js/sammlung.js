@@ -7,7 +7,6 @@ import {
   condBadges,
   ownerBadges,
   pnlBadge,
-  teileAufschluesselung,
   geschaetztKauf,
   kachelName,
   kontoAnzeige,
@@ -31,7 +30,7 @@ import {
   telefonBreite,
   beiTelefonWechsel,
 } from './dom.js';
-import { fmtDatum, fmtBig, fmtGeld, fmtN, istGeschenk } from './format.js';
+import { fmtDatum, fmtGeld, fmtN, istGeschenk } from './format.js';
 import { toast } from './meldungen.js';
 import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './kontofilter.js';
 import { geloeschtMitRueckgaengig } from './papierkorb.js';
@@ -46,6 +45,7 @@ import {
 } from './zustand.js';
 import { confirmDelete, loeschenMitWahl } from './rueckfrage.js';
 import { SPALTEN_SORT, setsTabelle, tableRow, wertZelle } from './sets-tabelle.js';
+import { loadStats } from './kennzahlen.js';
 /** @typedef {import('./zustand.js').Kachel} Kachel */
 
 /**
@@ -61,32 +61,6 @@ function faecherTon(s) {
   let h = 0;
   for (const z of name) h = (h * 31 + (z.codePointAt(0) ?? 0)) >>> 0;
   return html` data-faecher="${h % 12}"`;
-}
-
-// ── STATS ─────────────────────────────────────────────
-export async function loadStats() {
-  // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe des
-  // ganzen Haushalts.
-  const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);
-  if (d.success && d.stats) {
-    // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung. Stück wie Teile und Figuren
-    // daneben; die Zahl der verschiedenen Sets steht darunter.
-    const stueck = d.stats.total_quantity || d.stats.total_sets;
-    G('bstat-sets').textContent = fmtBig(stueck);
-    const verschieden = G('bstat-sets').parentElement?.querySelector('.bstat-s');
-    if (verschieden)
-      verschieden.textContent =
-        stueck !== d.stats.total_sets ? tRaw('gallery.stat.verschieden', { n: fmtBig(d.stats.total_sets) }) : '';
-    G('bstat-parts').textContent = fmtBig(d.stats.total_parts || 0);
-    // 0 Teile trotz Sets heisst: Die Teilelisten fehlen noch. Ohne den Satz sähe es nach einem Fehler aus.
-    const ohneListen = !d.stats.total_parts && d.stats.total_sets > 0;
-    G('bstat-parts-sub').textContent = ohneListen
-      ? tRaw('parts.stat.ohne_listen', { n: d.stats.total_sets })
-      : teileAufschluesselung(d.stats.set_parts ?? 0, d.stats.manual_parts ?? 0);
-    G('bstat-parts').closest('.bstat')?.classList.toggle('bstat-erklaert', ohneListen);
-    G('bstat-minifigs').textContent = fmtBig(d.stats.total_minifigs || 0);
-    G('bstat-instr').textContent = String(d.stats.total_instructions);
-  }
 }
 
 // ── GALLERY ───────────────────────────────────────────

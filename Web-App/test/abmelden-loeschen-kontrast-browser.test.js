@@ -210,7 +210,8 @@ async function leisten(_t, a) {
         .sort((x, y) => x.getBoundingClientRect().left - y.getBoundingClientRect().left).map(e => e.matches('.filter-knopf') ? 'Filter' + Math.round(e.getBoundingClientRect().width) : e.matches('.suchfeld') ? 'Suche' : e.className)`);
     }
     assert.deepEqual(reihe.gallery, ['Filter44', 'Suche']);
-    assert.deepEqual(reihe.parts, reihe.gallery, 'Werkzeugleisten uneinheitlich');
+    // Teile haben zusätzlich Karten/Liste (UX-Prüfung 28, N8); Filter und Suche stehen gleich.
+    assert.deepEqual(reihe.parts, [...reihe.gallery, 'vtgl'], 'Werkzeugleisten uneinheitlich');
   } finally {
     await groesse(b, 1280, false);
   }

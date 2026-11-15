@@ -229,7 +229,8 @@ function setsTabelle(rows, einstand, setsQtyAvg, cur) {
   return html`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${t('finance.filter.sets')}"><h2 class="ctitle fin-abschnitt">${ico('set')} ${tRaw('finance.filter.sets')}</h2><table class="dt dt-fin" aria-label="${tRaw('finance.filter.sets')}"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${tRaw('col.image')}</span></th><th>${tRaw('col.nr')}</th><th${sortStand('name', true)}>${sortKnopf('name', true, tRaw('col.name'))}</th><th class="zahl">${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>${preisKoepfe(true)}<th title="${t('finance.price_status')}"><span aria-hidden="true">${tRaw('finance.price_status_kurz')}</span><span class="vh">${t('finance.price_status')}</span></th></tr></thead><tbody>${ungeprueft(rows)}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${tRaw('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur)}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
 }
 
-/** Gesamtübersicht: Einstand und Wert je Bereich und zusammen.
+/** Gesamtsumme unter allen Abschnitten. Die Summe je Bereich steht schon unter seiner Tabelle; hier noch
+ * einmal je Bereich verlängerte die Seite am Telefon um drei Kästen mit denselben Zahlen.
  * @param {{ sets: number, parts: number, figs: number, alle: number }} einstand
  * @param {{ sets: number, parts: number, figs: number, alle: number }} wert @param {string} cur
  * @param {{ ohneMarkt: number }} basis */
@@ -240,11 +241,6 @@ function summenTabelle(einstand, wert, cur, basis) {
     <div class="tw abstand-o-125">
       <table class="dt dt-summe" aria-label="${tRaw('finance.sum')}">
         <thead><tr><th><span class="vh">${tRaw('finance.bereich')}</span></th><th>${tRaw('finance.col.purchase')}</th><th>${tRaw('finance.grand.value')}</th></tr></thead>
-        <tbody>
-          ${zeile(tRaw('finance.filter.sets'), einstand.sets, wert.sets)}
-          ${zeile(tRaw('finance.grand.parts'), einstand.parts, wert.parts)}
-          ${zeile(tRaw('finance.figs_section'), einstand.figs, wert.figs)}
-        </tbody>
         <tfoot>${zeile(tRaw('finance.grand.total'), einstand.alle, wert.alle, basis.ohneMarkt > 0 ? tRaw('finance.ohne_n', { n: basis.ohneMarkt }) : '')}</tfoot>
       </table>
       ${basis.ohneMarkt > 0 ? html`<p class="fin-fussnote">${tRaw('finance.summe_ohne_markt', { n: basis.ohneMarkt })}</p>` : ''}

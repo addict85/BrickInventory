@@ -32,6 +32,7 @@ import './diagramme.js';
 import './detailfelder.js';
 import './konten-orte.js';
 import './sets-tabelle.js';
+import './kennzahlen.js';
 import './sammlung.js';
 import './set-erfassen.js';
 import './set-csv-import.js';

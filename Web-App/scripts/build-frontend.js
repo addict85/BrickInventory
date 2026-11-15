@@ -78,6 +78,7 @@ const BAUSTEINE = [
   'detailfelder.js',
   'konten-orte.js',
   'papierkorb.js',
+  'kennzahlen.js',
 ];
 
 /** Ausserhalb der App-Module: Einstieg, Bündel und die eigenständigen Skripte ohne Bündelbezug. */

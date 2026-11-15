@@ -113,7 +113,7 @@ test('N1 Hinweis ohne HTTPS schon auf der Anmeldeseite', async t => {
         await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
         const h = d.getElementById('login-ohne-https');
         assert.equal(!h.hidden, sichtbar);
-        if (sichtbar) assert.match(text(h), /ohne HTTPS.*COOKIE_SECURE=0/);
+        if (sichtbar) assert.match(text(h), /Verbindung unverschlüsselt/);
       } finally {
         w.close();
       }

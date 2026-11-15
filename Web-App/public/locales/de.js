@@ -169,7 +169,6 @@ window.I18N_DE = {
   'finance.filter.minifigs': 'Minifiguren',
   'finance.total_pnl': 'Gewinn/Verlust',
   'finance.bereich': 'Bereich',
-  'finance.grand.parts': 'Manuell erfasste Teile',
   'finance.grand.total': 'Gesamt',
   'finance.gift': 'Geschenk',
 
@@ -186,8 +185,7 @@ window.I18N_DE = {
   'api.unreachable': 'Keine Verbindung zum Server — bitte später erneut versuchen.',
   'auth.cookie_fehlt':
     'Anmeldung erfolgreich, aber der Browser hat das Sitzungs-Cookie nicht gespeichert. Die App braucht HTTPS – oder auf dem Server COOKIE_SECURE=0 (siehe README, „Ohne HTTPS“).',
-  'auth.ohne_https':
-    'Diese Seite läuft ohne HTTPS: Passwort und Sitzung gehen unverschlüsselt durchs Netz, und die Anmeldung hält nur mit COOKIE_SECURE=0 auf dem Server (siehe README, „Ohne HTTPS“).',
+  'auth.ohne_https': 'Verbindung unverschlüsselt: Passwort und Sitzung gehen ungeschützt durchs Netz.',
   'auth.session_expired': 'Sitzung abgelaufen — bitte erneut anmelden.',
   'api.server_error': 'Der Server hat mit einem Fehler geantwortet ({status}).',
   'api.unexpected': 'Unerwarteter Fehler — Einzelheiten in der Browser-Konsole.',
@@ -1366,6 +1364,8 @@ window.I18N_DE = {
   'vouchers.deleted': 'Gutschein gelöscht',
   'login.user_leer': 'Bitte Benutzername oder E-Mail eingeben.',
   'login.passwort_leer': 'Bitte Passwort eingeben.',
+  'login.code_leer': 'Bitte Code eingeben.',
+  'login.code_jetzt': 'Passwort stimmt – jetzt den Code eingeben.',
   'login.code': 'Code aus der Authenticator-App',
   'login.code_hint': 'Oder einer deiner Wiederherstellungscodes.',
   'zf.title': 'Zweiter Faktor',
@@ -1633,6 +1633,14 @@ window.I18N_DE = {
   'zeit.morgen': 'morgen {zeit}',
   'zeit.gestern': 'gestern {zeit}',
   'gallery.stat.verschieden': '{n} verschiedene',
+  'gallery.stat.sets': 'Sets',
+  'gallery.stat.sets_one': 'Set',
+  'gallery.stat.teile': 'Teile',
+  'gallery.stat.teile_one': 'Teil',
+  'gallery.stat.figuren': 'Minifiguren',
+  'gallery.stat.figuren_one': 'Minifigur',
+  'gallery.stat.anleitungen': 'Anleitungen',
+  'gallery.stat.anleitungen_one': 'Anleitung',
   'csv.vorhanden_titel': 'Sets schon in der Sammlung',
   'csv.vorhanden_text':
     '{n} Sets aus der Datei sind schon in der Sammlung ({nummern}). Der Import erhöht dort die Menge. Trotzdem übernehmen?',
