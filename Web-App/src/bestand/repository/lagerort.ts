@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { setBestand } from '../../../db/bestandSicht';
 
 const TABELLEN = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
 export type LagerTabelle = keyof typeof TABELLEN;
@@ -95,7 +96,7 @@ export function schreibeOrtNamen(db: DbSchnittstelle, id: number, userId: number
 
 export function ortBelegung(db: DbSchnittstelle, userId: number, id: number) {
   return db.get<{ n: string }>(
-    `SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage_id = $2)
+    `SELECT (SELECT COUNT(*) FROM ${setBestand('= $1')} s WHERE storage_id = $2)
           + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage_id = $2)
           + (SELECT COUNT(*) FROM minifigs WHERE user_id = $1 AND storage_id = $2) AS n`,
     [userId, id],
@@ -114,7 +115,7 @@ export function orteMitBestand(db: DbSchnittstelle, uids: number[]) {
             SUM(figuren)::int AS figuren
        FROM (
          SELECT l.name AS ort, COUNT(*)::int AS sets, 0 AS teile, 0 AS figuren
-           FROM sets s JOIN storage_locations l ON l.id = s.storage_id
+           FROM ${setBestand('= ANY($1)')} s JOIN storage_locations l ON l.id = s.storage_id
           WHERE s.user_id = ANY($1)
           GROUP BY l.name
          UNION ALL

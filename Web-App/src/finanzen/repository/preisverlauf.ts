@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { setBestand, setErfassungen } from '../../../db/bestandSicht';
 import { kaufpreisIn, marktpreisSql, mittelUeber } from '../../../db/geldSql';
 
 export function tagespreiseDesSets(db: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
@@ -39,9 +40,9 @@ export function ersterKaufDesSets(db: DbSchnittstelle, uids: number[], setNumber
   return db.get<{ purchase_price: number | null; added_day: string }>(
     `SELECT a.purchase_price AS purchase_price,
             to_char(COALESCE(a.created_at, s.added_at), 'YYYY-MM-DD') AS added_day
-       FROM sets s
+       FROM ${setBestand('= ANY($1)')} s
        LEFT JOIN LATERAL (
-         SELECT ${kaufpreisIn('purchase_price', '$3')} AS purchase_price, created_at FROM set_acquisitions
+         SELECT ${kaufpreisIn('purchase_price', '$3')} AS purchase_price, created_at FROM ${setErfassungen()} e
           WHERE user_id = s.user_id AND set_number = s.set_number
           ORDER BY created_at ASC, id ASC LIMIT 1
        ) a ON true
@@ -57,7 +58,7 @@ export function kaufschnittDesSets(db: DbSchnittstelle, uids: number[], setNumbe
   return db.all<{ condition: string; avg_purchase: number | null; qty: string }>(
     `SELECT condition, ${mittelUeber('k')} AS avg_purchase, SUM(quantity) AS qty
        FROM (SELECT condition, quantity, ${kaufpreisIn('purchase_price', '$3')} AS k
-               FROM set_acquisitions
+               FROM ${setErfassungen('= ANY($1)')} x
               -- Über ALLE Haushalts-Besitzer verdichtet — dieselbe Mengengewichtung,
               -- die auch die Bewertung im Haushalt anwendet.
               WHERE user_id = ANY($1) AND set_number = $2) e

@@ -1,6 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 import { mengeJoin, mengeAus } from '../../../db/bestandsmenge';
+import { setBestand } from '../../../db/bestandSicht';
 import { ausTabelle } from '../../infra/validate';
 
 export type Thema = { id: number; name: string; parent_id: number | null };
@@ -93,8 +94,7 @@ const SET_SPALTEN = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb
 const BILD_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
 /** Besitz über das Blickfeld ($1) wie in Merkliste und Sammlung; eine Zeile je Set, Mengen summiert. */
 const BESITZ_JOIN = `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::int AS menge
-                    FROM sets s ${mengeJoin('s', 'sm', '= ANY($1)')}
-                   WHERE s.user_id = ANY($1)
+                    FROM ${setBestand('= ANY($1)')} s ${mengeJoin('s', 'sm', '= ANY($1)')}
                    GROUP BY s.set_number) b ON b.set_number = rb.set_num`;
 
 export async function katalogAnzahl(db: DbSchnittstelle, f: KatalogWahl): Promise<number> {

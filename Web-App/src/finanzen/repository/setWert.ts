@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { setErfassungen } from '../../../db/bestandSicht';
 import { marktpreisSql } from '../../../db/geldSql';
 
 export function cachePreiseFuerSets(db: DbSchnittstelle, werte: (string[] | string | number)[], ttlClause: string) {
@@ -12,7 +13,7 @@ export function cachePreiseFuerSets(db: DbSchnittstelle, werte: (string[] | stri
 
 export function setErfassungenZumWert(db: DbSchnittstelle, userId: number, setNumber: string) {
   return db.all<{ quantity: number; condition: string | null }>(
-    'SELECT quantity, condition FROM set_acquisitions WHERE user_id=$1 AND set_number=$2',
+    `SELECT quantity, condition FROM ${setErfassungen('= $1')} e WHERE set_number=$2`,
     [userId, setNumber],
   );
 }

@@ -1,4 +1,5 @@
 import type { DbSchnittstelle } from '../../../db/database';
+import { teilBestand } from '../../../db/bestandSicht';
 
 export function figurenDesSetkatalogs(db: DbSchnittstelle, setNumber: string) {
   return db.all<{ fig_number: string; fig_name: string | null; quantity: number | null; image_url: string | null }>(
@@ -10,7 +11,7 @@ export function figurenDesSetkatalogs(db: DbSchnittstelle, setNumber: string) {
 }
 
 export function teileOhneBlZuordnung(db: DbSchnittstelle) {
-  return db.all<{ part_number: string }>(`SELECT DISTINCT p.part_number FROM parts p
+  return db.all<{ part_number: string }>(`SELECT DISTINCT p.part_number FROM ${teilBestand()} p
        LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
        WHERE m.rb_id IS NULL
          AND p.part_number IS NOT NULL

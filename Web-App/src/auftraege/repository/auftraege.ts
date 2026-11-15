@@ -1,4 +1,5 @@
 import type { DbSchnittstelle, Treffer } from '../../../db/database';
+import { KONTEN } from '../../../db/kontoSicht';
 import { randomUUID } from 'node:crypto';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { versucheSchluesselSperre, gibSchluesselSperreFrei } from '../../../db/txLock';
@@ -349,7 +350,7 @@ export function statusZahlen(db: DbSchnittstelle, art: AuftragsArt) {
 }
 /** Die Rolle, wie sie jetzt ist, nicht wie beim Einstellen. */
 export function kontoRolle(db: DbSchnittstelle, uid: number) {
-  return db.get<{ is_admin: boolean }>('SELECT is_admin FROM users WHERE id = $1', [uid]);
+  return db.get<{ is_admin: boolean }>(`SELECT is_admin FROM ${KONTEN} k WHERE id = $1`, [uid]);
 }
 export const AUFTRAG_KANAL = 'auftraege';
 export const AUFTRAG_STAND_KANAL = 'auftrag_stand';

@@ -260,8 +260,12 @@ neue Migration.
 Jede Tabelle hat genau einen Besitzer: Nur sein Bereich schreibt hinein (INSERT, UPDATE,
 DELETE). Andere Bereiche rufen dessen Dienst, in einer Transaktion über den Kontext `t`.
 Fremde Bereiche lesen über Lesebausteine in `db/` (`katalogSicht.ts`, `haushaltSicht.ts`,
-`zugangSicht.ts`) oder über den Dienst des Besitzers; was noch direkt liest, zählt
-`test/gemeinsame-tabellen-db.test.js` und darf nur weniger werden. Einzige schreibende
+`zugangSicht.ts`, `bestandSicht.ts`, `kontoSicht.ts`, `bestandsmenge.ts`) oder über den Dienst
+des Besitzers. `test/gemeinsame-tabellen-db.test.js` teilt die direkten Lesestellen ein:
+Aufwärts (die Tabelle gehört einem Bereich höherer Stufe) gibt es keine; Lesen des Katalogs
+und abwärts zählen je eine Ratsche, die nur sinken darf. Ein Trigger schreibt nur in Tabellen
+seines Besitzers; die Ausnahmen (Teilezähler, Vormerkung für die Teile-Zusammenfassung) stehen
+begründet in `TRIGGER_FREMDZIELE` desselben Tests. Einzige schreibende
 Ausnahme: Der Schemastart (`db/schemaStart.ts`) setzt die Zeitzone in `global_settings`,
 bevor es Dienste gibt. Die Tabelle hier ist die Quelle für den Test.
 

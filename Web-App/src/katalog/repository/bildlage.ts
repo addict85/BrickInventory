@@ -1,5 +1,6 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import type { Spalten } from '../../../db/zeilen';
+import { figurBestand, setBestand, setZaehlt, teilBestand } from '../../../db/bestandSicht';
 
 export async function setsMitFehlendenKatalogbildern(db: DbSchnittstelle): Promise<string[]> {
   const rows = await db.all<{ set_number: string }>(
@@ -19,7 +20,7 @@ export async function manuelleTeileOhneBild(
   return db.all(
     `SELECT DISTINCT pcc.part_number, pcc.color_id, pcc.image_url
        FROM part_color_catalog pcc
-       JOIN parts p ON p.part_number = pcc.part_number
+       JOIN ${teilBestand()} p ON p.part_number = pcc.part_number
                    AND p.color_id    = pcc.color_id
                    AND p.source      = 'manual'
       WHERE pcc.image_url IS NOT NULL AND pcc.image_local IS NULL`,
@@ -30,7 +31,7 @@ export async function figurenOhneBild(db: DbSchnittstelle): Promise<{ fig_number
   return db.all(
     `SELECT mc.fig_number, mc.image_url FROM minifigs_catalog mc
       WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
-        AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)
+        AND EXISTS (SELECT 1 FROM ${figurBestand()} m WHERE m.fig_number = mc.fig_number)
       ORDER BY mc.fig_number`,
   );
 }
@@ -45,9 +46,7 @@ export async function setBilderOhneDatei(
   return db.all(
     `SELECT c.set_number, c.image_url FROM set_catalog c
       WHERE c.image_local IS NULL AND c.image_url IS NOT NULL
-        AND (EXISTS (SELECT 1 FROM sets s WHERE s.set_number = c.set_number)
-             OR EXISTS (SELECT 1 FROM wanted w WHERE w.set_number = c.set_number)
-             OR EXISTS (SELECT 1 FROM price_alerts a WHERE a.set_number = c.set_number))
+        AND ${setZaehlt('c.set_number')}
         AND NOT EXISTS (SELECT 1 FROM image_misses m WHERE m.cache_key = 'set:' || c.set_number
                           AND m.checked_at > NOW() - INTERVAL '7 days')
       ORDER BY c.set_number LIMIT $1`,
@@ -139,7 +138,7 @@ export async function fuelleSetLuecken(
 
 export async function setsOhneAnleitungsabruf(db: DbSchnittstelle): Promise<string[]> {
   const rows = await db.all<{ set_number: string }>(
-    `SELECT DISTINCT s.set_number FROM sets s
+    `SELECT DISTINCT s.set_number FROM ${setBestand()} s
      WHERE NOT EXISTS (SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number)
        AND NOT EXISTS (SELECT 1 FROM auftraege a WHERE a.schluessel = 'anleitung:' || s.set_number
                          AND a.status IN ('offen', 'laeuft', 'erledigt'))`,
