@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.vertrag.AddSetRequest
-import ch.brickinventoryapp.vertrag.AddSetResponse
+import ch.brickinventoryapp.model.fach.SetErfasst
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Offlineablage
 import kotlinx.coroutines.flow.Flow
@@ -21,13 +21,13 @@ interface SetAnleger {
     ): Flow<SetAnlegenSchritt>
 }
 
-/** Was der Server beim Anlegen meldet; der letzte Schritt ist Fertig oder Fehler. */
+/** Was der Server beim Anlegen meldet; der letzte Schritt ist Fertig, Fehler oder KeineVerbindung. */
 sealed class SetAnlegenSchritt {
     data class Stammdaten(val name: String?) : SetAnlegenSchritt()
     object Bild : SetAnlegenSchritt()
     object FastFertig : SetAnlegenSchritt()
-    data class Fertig(val ergebnis: AddSetResponse) : SetAnlegenSchritt()
-    /** Leere Meldung: Die Verbindung brach ab — ein Netzfehler, kein Satz des Servers. */
+    data class Fertig(val ergebnis: SetErfasst) : SetAnlegenSchritt()
+    /** Der Satz des Servers; leer: Der Strom brach ab, ob das Set angelegt wurde, ist offen. */
     data class Fehler(val meldung: String) : SetAnlegenSchritt()
     /** Keine Verbindung zustande gekommen — die Anfrage hat den Server nie erreicht. */
     object KeineVerbindung : SetAnlegenSchritt()
@@ -48,8 +48,8 @@ internal class AnlegenMitAblage @Inject constructor(
         val vorher = ablage.bereich()
         strom.anlegen(setNumber, quantity, purchasePrice, condition, ownerUserId, storage).collect { s ->
             val e = (s as? SetAnlegenSchritt.Fertig)?.ergebnis
-            if (e != null && e.success && e.action != "exists" && vorher != null && ablage.bereich() == vorher) {
-                val nummer = e.setNumber ?: setNumber
+            if (e != null && !e.vorhanden && vorher != null && ablage.bereich() == vorher) {
+                val nummer = e.nummer ?: setNumber
                 ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest(setNumber = nummer, quantity = quantity, purchasePrice = purchasePrice, condition = condition, ownerUserId = ownerUserId, storage = storage)), vorher)
             }
             emit(s)

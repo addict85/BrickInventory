@@ -1,17 +1,16 @@
 package ch.brickinventoryapp.teile.ui
 
 import ch.brickinventoryapp.model.lokal.Lokal
-import ch.brickinventoryapp.vertrag.BrickColorsResponse
-import ch.brickinventoryapp.vertrag.FigValuationItem
-import ch.brickinventoryapp.vertrag.Minifig
-import ch.brickinventoryapp.vertrag.MinifigStatsResponse
-import ch.brickinventoryapp.vertrag.Part
-import ch.brickinventoryapp.vertrag.PartValuationItem
-import ch.brickinventoryapp.vertrag.PartsCategoriesResponse
-import ch.brickinventoryapp.vertrag.PartsFilterColorsResponse
-import ch.brickinventoryapp.vertrag.PartsStatsResponse
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.model.ui.model.FarbeAnsicht
+import ch.brickinventoryapp.model.ui.model.FigurAnsicht
+import ch.brickinventoryapp.model.ui.model.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.ui.model.FilterFarbeAnsicht
+import ch.brickinventoryapp.model.ui.model.KategorieAnsicht
+import ch.brickinventoryapp.model.ui.model.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.ui.model.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.ui.model.TeilAnsicht
+import ch.brickinventoryapp.model.ui.model.TeileKennzahlenAnsicht
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -28,11 +27,11 @@ import ch.brickinventoryapp.model.ui.Listenansicht
 
 /** Die Abrufe neben den Listen: Kennzahlen und Filterwerte; Blickfeld setzt der Aufrufer. */
 internal interface TeileQuelle {
-    suspend fun teileKennzahlen(): Ergebnis<PartsStatsResponse>
-    suspend fun filterFarben(): Ergebnis<PartsFilterColorsResponse>
-    suspend fun kategorien(): Ergebnis<PartsCategoriesResponse>
-    suspend fun alleFarben(): Ergebnis<BrickColorsResponse>
-    suspend fun figurKennzahlen(): Ergebnis<MinifigStatsResponse>
+    suspend fun teileKennzahlen(): Ergebnis<TeileKennzahlenAnsicht?>
+    suspend fun filterFarben(): Ergebnis<List<FilterFarbeAnsicht>>
+    suspend fun kategorien(): Ergebnis<List<KategorieAnsicht>>
+    suspend fun alleFarben(): Ergebnis<List<FarbeAnsicht>>
+    suspend fun figurKennzahlen(): Ergebnis<FigurenKennzahlenAnsicht>
 }
 
 /**
@@ -41,10 +40,10 @@ internal interface TeileQuelle {
  * oder „In Sets“ es verlangen die Kontosicht. Der Abruf füllt nur die Quelle.
  */
 internal class TeileLokal(
-    val teile: (PartsUiState) -> Flow<Lokal<Part>>,
-    val manuelleTeile: (PartsUiState) -> Flow<Lokal<PartValuationItem>>,
-    val figuren: (PartsUiState) -> Flow<Lokal<Minifig>>,
-    val manuelleFiguren: (PartsUiState) -> Flow<Lokal<FigValuationItem>>,
+    val teile: (PartsUiState) -> Flow<Lokal<TeilAnsicht>>,
+    val manuelleTeile: (PartsUiState) -> Flow<Lokal<ManuellesTeilAnsicht>>,
+    val figuren: (PartsUiState) -> Flow<Lokal<FigurAnsicht>>,
+    val manuelleFiguren: (PartsUiState) -> Flow<Lokal<ManuelleFigurAnsicht>>,
     val aktualisiereTeile: suspend (PartsUiState) -> Ergebnis<Unit>,
     val aktualisiereFiguren: suspend (PartsUiState) -> Ergebnis<Unit>,
 )
@@ -113,9 +112,9 @@ internal class Teile(
         val st = _state.value
         teileFolgen = listOf(
             folge(ablage.teile(st)) { s, l ->
-                s.copy(parts = sortiert(l.map { it.alsAnsicht() }, s.partsOrdnung), partsTotal = l.size, partsPage = 1)
+                s.copy(parts = sortiert(l, s.partsOrdnung), partsTotal = l.size, partsPage = 1)
             },
-            folge(ablage.manuelleTeile(st)) { s, l -> s.copy(manualParts = l.map { it.alsAnsicht() }) },
+            folge(ablage.manuelleTeile(st)) { s, l -> s.copy(manualParts = l) },
         )
         _state.update { it.copy(partsLoading = true, partsFehler = null) }
         val r = ablage.aktualisiereTeile(st)
@@ -128,12 +127,12 @@ internal class Teile(
     /** Kennzahlen sind Beiwerk: Ein Fehlschlag lässt die Liste stehen. */
     suspend fun ladeKennzahlen() {
         (quelle.teileKennzahlen() as? Ergebnis.Success)
-            ?.let { s -> _state.update { it.copy(partsStats = s.data.stats?.alsAnsicht()) } }
+            ?.let { s -> _state.update { it.copy(partsStats = s.data) } }
     }
 
     suspend fun ladeFigurKennzahlen() {
         (quelle.figurKennzahlen() as? Ergebnis.Success)
-            ?.let { r -> _state.update { it.copy(minifigStats = r.data.stats.alsAnsicht()) } }
+            ?.let { r -> _state.update { it.copy(minifigStats = r.data) } }
     }
 
     fun setzeSuche(q: String) {
@@ -183,18 +182,18 @@ internal class Teile(
      */
     fun ladeFilter() {
         scope.launch {
-            (quelle.filterFarben() as? Ergebnis.Success)?.data?.takeIf { it.success }
-                ?.let { d -> _state.update { it.copy(partsFilterColors = d.colors.map { c -> c.alsAnsicht() }) } }
-            (quelle.kategorien() as? Ergebnis.Success)?.data?.takeIf { it.success }
-                ?.let { d -> _state.update { it.copy(partsCategories = d.categories.map { c -> c.alsAnsicht() }) } }
+            (quelle.filterFarben() as? Ergebnis.Success)?.data
+                ?.let { d -> _state.update { it.copy(partsFilterColors = d) } }
+            (quelle.kategorien() as? Ergebnis.Success)?.data
+                ?.let { d -> _state.update { it.copy(partsCategories = d) } }
         }
     }
 
     /** Farbauswahl im Erfassungsdialog; fehlt sie, tippt man die Farb-ID. */
     fun ladeFarben() {
         scope.launch {
-            (quelle.alleFarben() as? Ergebnis.Success)?.data?.takeIf { it.success }
-                ?.let { d -> _state.update { it.copy(partsColors = d.colors.map { c -> c.alsAnsicht() }) } }
+            (quelle.alleFarben() as? Ergebnis.Success)?.data
+                ?.let { d -> _state.update { it.copy(partsColors = d) } }
         }
     }
 
@@ -219,8 +218,8 @@ internal class Teile(
     private suspend fun folgeFiguren(ablage: TeileLokal) {
         val st = _state.value
         figurenFolgen = listOf(
-            folge(ablage.figuren(st)) { s, l -> s.copy(minifigs = l.map { it.alsAnsicht() }) },
-            folge(ablage.manuelleFiguren(st)) { s, l -> s.copy(manualFigs = l.map { it.alsAnsicht() }) },
+            folge(ablage.figuren(st)) { s, l -> s.copy(minifigs = l) },
+            folge(ablage.manuelleFiguren(st)) { s, l -> s.copy(manualFigs = l) },
         )
         _state.update { it.copy(minifigsLoading = true, minifigsFehler = null) }
         val r = ablage.aktualisiereFiguren(st)

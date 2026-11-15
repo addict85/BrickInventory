@@ -5,6 +5,8 @@ import ch.brickinventoryapp.data.di.SseClient
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.sseStrom
 import ch.brickinventoryapp.vertrag.PdfAuftragStand
+import ch.brickinventoryapp.model.fach.PdfAuftragsstand
+import ch.brickinventoryapp.data.repository.alsStand
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
 import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
 import ch.brickinventoryapp.netz.util.Protokoll
@@ -27,7 +29,7 @@ class PdfAuftragsStrom @Inject internal constructor(
     private val json: Json,
 ) {
     sealed interface Ereignis {
-        data class Stand(val stand: PdfAuftragStand) : Ereignis
+        data class Stand(val stand: PdfAuftragsstand) : Ereignis
 
         /** Kein Strom: alter Server (404), Abriss, Ende oder ein unlesbares Ereignis. */
         data object Weg : Ereignis
@@ -43,7 +45,7 @@ class PdfAuftragsStrom @Inject internal constructor(
             .build()
         return sseStrom(client, anfrage) { json.decodeFromString(PdfAuftragStand.serializer(), it) }.map { e ->
             when (e) {
-                is SseEreignis.Daten -> Ereignis.Stand(e.wert)
+                is SseEreignis.Daten -> Ereignis.Stand(e.wert.alsStand())
                 is SseEreignis.Unlesbar -> {
                     Protokoll.warnung("PdfExport", "Unlesbares SSE-Ereignis: ${e.technisch}")
                     Ereignis.Weg

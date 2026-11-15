@@ -7,7 +7,7 @@ import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
-import ch.brickinventoryapp.vertrag.AddSetResponse
+import ch.brickinventoryapp.model.fach.SetErfasst
 import ch.brickinventoryapp.testing.testKatalogRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -159,7 +159,7 @@ class ErfassungViewModelTest {
     fun `das Anlegen zeigt die Schritte des Servers und meldet das neue Set`() {
         val anleger = Anleger(listOf(
             SetAnlegenSchritt.Stammdaten("Falke"), SetAnlegenSchritt.Bild, SetAnlegenSchritt.FastFertig,
-            SetAnlegenSchritt.Fertig(AddSetResponse(action = "added", setNumber = "75192-1")),
+            SetAnlegenSchritt.Fertig(SetErfasst(nummer = "75192-1", angelegt = true)),
         ))
         val vm = vm(anleger)
         vm.addSet(Erfassungswunsch("75192"))
@@ -178,7 +178,7 @@ class ErfassungViewModelTest {
     @Test
     fun `ohne Katalog meldet das Anlegen gespeichert, nicht hinzugefuegt`() {
         val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(
-            AddSetResponse(action = "added", setNumber = "99999-1", katalogOffen = true)))))
+            SetErfasst(nummer = "99999-1", angelegt = true, katalogOffen = true)))))
         vm.addSet(Erfassungswunsch("99999"))
         bis("Meldung") { t.meldungen.text != null }
         assertEquals("t${R.string.vm_set_added_no_catalog}|99999-1", t.meldungen.text)
@@ -186,7 +186,7 @@ class ErfassungViewModelTest {
 
     @Test
     fun `ein vorhandenes Set beim Anlegen oeffnet die Detailansicht und meldet nichts`() {
-        val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(AddSetResponse(action = "exists", setNumber = "75192-1")))))
+        val vm = vm(Anleger(listOf(SetAnlegenSchritt.Fertig(SetErfasst(nummer = "75192-1", vorhanden = true)))))
         vm.addSet(Erfassungswunsch("75192-1"))
         bis("gefunden") { vm.barcodeState.value.gefundenesSet == "75192-1" }
         assertTrue("nichts angelegt, nichts nachzuziehen", pfade.anfragenAn("GET /api/v1/sets?").isEmpty())

@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.vertrag.AddSetResponse
+import ch.brickinventoryapp.model.fach.SetErfasst
 import ch.brickinventoryapp.model.ui.model.SetAnsicht
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.Flow
 interface SetsRepository {
     suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Double? = null,
                        condition: Zustand? = null, ownerUserId: Int? = null,
-                       storage: String? = null): Ergebnis<AddSetResponse>
+                       storage: String? = null): Ergebnis<SetErfasst>
 
     suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null): Ergebnis<Int?>
 

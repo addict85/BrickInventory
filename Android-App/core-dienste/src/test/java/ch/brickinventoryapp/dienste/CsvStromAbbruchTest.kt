@@ -2,7 +2,7 @@ package ch.brickinventoryapp.dienste
 
 import ch.brickinventoryapp.model.fach.Laufstatus
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.vertrag.CsvImportStatus
+import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
 import ch.brickinventoryapp.dienste.service.folgeStrom
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.flow
@@ -31,7 +31,7 @@ class CsvStromAbbruchTest {
             brichtAb { folgeStrom(flow { throw CancellationException("weg") }) { true } })
         assertFalse(folgeStrom(flow { throw IOException("weg") }) { true })
         assertFalse(folgeStrom(flowOf(CsvImportSseClient.Event.Failed("zu"))) { true })
-        val fertig = CsvImportStatus(status = Laufstatus.FERTIG)
+        val fertig = CsvImportStandAnsicht(status = Laufstatus.FERTIG)
         assertTrue(folgeStrom(flowOf(CsvImportSseClient.Event.Status(fertig))) { false })
     }
 }

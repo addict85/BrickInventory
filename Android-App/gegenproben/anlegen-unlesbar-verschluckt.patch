@@ -1,4 +1,4 @@
-Gegenprobe: verarbeite() verschluckt eine unlesbare Nutzlast wieder still
+Gegenprobe: ein unlesbares Ereignis endet wieder still statt als Fehler
 Modul: core-data
 Test: ch.brickinventoryapp.data.SetAnlegenUnlesbarTest
 Rot: ein unlesbares Ereignis endet als Fehler
@@ -6,13 +6,13 @@ Rot: ein unlesbares Ereignis endet als Fehler
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt
-@@ -140,8 +140,7 @@ internal class SetAnlegenSseClient @Inject constructor(
-         val obj = try {
-             json.parseToJsonElement(nutzlast).jsonObject
-         } catch (_: IllegalArgumentException) {
--            sende(SetAnlegenSchritt.Fehler(""))
--            return true
-+            return false
-         }
-         // Dieselben Schrittnamen wie in der Webapp (public/js/gallery.js →
-         // handleSseEvent). Sie stehen hier ein zweites Mal, weil es ein
+@@ -56,7 +56,8 @@
+                 is SseEreignis.Daten -> schritt(e.wert)
+                 // Ein unlesbares Ereignis könnte das „done“ sein; ein Ende ohne es lässt offen,
+                 // ob das Set angelegt wurde. Beides ist ein Abbruch, kein Satz des Servers.
+-                is SseEreignis.Unlesbar, SseEreignis.Beendet -> SetAnlegenSchritt.Fehler("")
++                is SseEreignis.Unlesbar -> null
++                SseEreignis.Beendet -> SetAnlegenSchritt.Fehler("")
+                 is SseEreignis.Gescheitert -> ohneStrom(e)
+             }
+             if (schritt != null) emit(schritt)

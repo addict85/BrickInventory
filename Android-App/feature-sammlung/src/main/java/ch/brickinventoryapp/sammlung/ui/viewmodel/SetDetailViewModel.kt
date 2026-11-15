@@ -6,7 +6,6 @@ import ch.brickinventoryapp.data.repository.SetDateienRepository
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.data.repository.SetKatalogRepository
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
@@ -177,7 +176,7 @@ class SetDetailViewModel @Inject constructor(
 
     private fun ladePreisalarme() = starte(Abschnitt.ALARME) {
         alarme.aktualisiereAlarme()
-        val liste = alarme.beobachteAlarme(setNumber).first().liste.map { it.alsAnsicht() }
+        val liste = alarme.beobachteAlarme(setNumber).first().liste
         _setDetailState.update { it.copy(preisalarme = liste) }
     }
 
@@ -242,11 +241,10 @@ class SetDetailViewModel @Inject constructor(
             val bytes = gelesen.bytes
             val name = leser.name(datei) ?: "anleitung"
             when (val r = dateien.uploadAnleitung(setNumber, name, typ, bytes, name)) {
-                is Ergebnis.Success ->
-                    if (r.data.success) {
-                        meldungen.zeige(meldungen.text(R.string.instr_upload_done))
-                        ladeDetail()
-                    } else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_generic))
+                is Ergebnis.Success -> {
+                    meldungen.zeige(meldungen.text(R.string.instr_upload_done))
+                    ladeDetail()
+                }
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
@@ -255,9 +253,7 @@ class SetDetailViewModel @Inject constructor(
     override fun loescheAnleitung(setNumber: String, instrId: Int) {
         viewModelScope.launch {
             when (val r = dateien.deleteAnleitung(setNumber, instrId)) {
-                is Ergebnis.Success ->
-                    if (r.data.success) ladeDetail()
-                    else meldungen.zeige(r.data.error ?: meldungen.text(R.string.err_generic))
+                is Ergebnis.Success -> ladeDetail()
                 is Ergebnis.Error -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }

@@ -7,7 +7,6 @@ import ch.brickinventoryapp.data.ScopeFilterSpeicher
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.TeileRepository
-import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.ui.model.kontoOptionen
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,15 +121,15 @@ class BlickfeldDienst @Inject constructor(
     /** Die belegten Orte im Blickfeld der Galerie — sie speisen den Lagerfilter. */
     override suspend fun ladeLagerorte() {
         val r = teile.getLagerorte(kontoFuer(ScopeFilter.View.GALLERY))
-        val orte = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.orte ?: return
-        _lager.update { it.copy(orte = orte.map { o -> o.alsAnsicht() }) }
+        val orte = (r as? Ergebnis.Success)?.data ?: return
+        _lager.update { it.copy(orte = orte) }
     }
 
     /** Der Vorrat der Besitzer eines Sets — Vorschläge im Lagerortfeld. */
     override suspend fun ladeVorrat(besitzer: List<Int>) {
         val r = teile.getLagerortVorrat(besitzer)
-        val orte = (r as? Ergebnis.Success)?.data?.takeIf { it.success }?.orte ?: return
-        _lager.update { it.copy(vorrat = orte.map { o -> o.alsAnsicht() }) }
+        val orte = (r as? Ergebnis.Success)?.data ?: return
+        _lager.update { it.copy(vorrat = orte) }
     }
 
     /** Die eigenen Orte samt Vorgabe — für Erfassen und Verwaltung; gezeigt wird, was die Ablage danach hat. */
@@ -138,7 +137,7 @@ class BlickfeldDienst @Inject constructor(
         teile.aktualisiereLagerortVorrat()
         val vorrat = teile.beobachteLagerortVorrat().first().liste
         _lager.update {
-            it.copy(eigene = vorrat.map { v -> v.ort.alsAnsicht() }, vorgabe = vorrat.firstOrNull { v -> v.vorgabe }?.ort?.alsAnsicht())
+            it.copy(eigene = vorrat.map { v -> v.ort }, vorgabe = vorrat.firstOrNull { v -> v.vorgabe }?.ort)
         }
     }
 

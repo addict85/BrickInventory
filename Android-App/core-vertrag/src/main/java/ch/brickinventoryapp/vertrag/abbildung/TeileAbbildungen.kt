@@ -11,6 +11,10 @@ import ch.brickinventoryapp.vertrag.PartsFilterColor
 import ch.brickinventoryapp.vertrag.PartsStats
 import ch.brickinventoryapp.vertrag.ValuationAcquisition
 import ch.brickinventoryapp.vertrag.VerwendendesSet
+import ch.brickinventoryapp.vertrag.VerwendendeSetsResponse
+import ch.brickinventoryapp.vertrag.VorratsOrt
+import ch.brickinventoryapp.model.ui.model.VerwendungAnsicht
+import ch.brickinventoryapp.model.ui.model.VorratsOrtAnsicht
 import ch.brickinventoryapp.model.ui.model.BestandteilKopfAnsicht
 import ch.brickinventoryapp.model.ui.model.BewertungsKaufAnsicht
 import ch.brickinventoryapp.model.ui.model.FigurAnsicht
@@ -176,3 +180,7 @@ fun ValuationAcquisition.alsAnsicht() = BewertungsKaufAnsicht(
     createdAt = createdAt,
     ownerUserId = ownerUserId,
 )
+
+fun VerwendendeSetsResponse.alsAnsicht() = VerwendungAnsicht(kopf = item?.alsAnsicht(), sets = sets.map { it.alsAnsicht() })
+
+fun VorratsOrt.alsAnsicht() = VorratsOrtAnsicht(ort = ort.alsAnsicht(), vorgabe = vorgabe)

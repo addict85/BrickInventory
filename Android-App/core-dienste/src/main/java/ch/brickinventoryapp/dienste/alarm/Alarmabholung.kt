@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.dienste.alarm
 
 import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.vertrag.PendingAlertsResponse
-import ch.brickinventoryapp.vertrag.Preisalarm
+import ch.brickinventoryapp.model.ui.model.AlarmabrufAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
 import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
 import java.text.NumberFormat
 import java.util.Currency
@@ -12,7 +12,7 @@ import java.util.Locale
  * Die Abfrage selbst — ein Typalias, damit die Signatur von [Alarmabholung.hole]
  * lesbar bleibt. Top-Level, weil Kotlin Typalias nur dort erlaubt.
  */
-typealias Frage = suspend (String?) -> Abrufergebnis<PendingAlertsResponse>
+typealias Frage = suspend (String?) -> Abrufergebnis<AlarmabrufAnsicht>
 
 /**
  * Was beim Abholen der ausgelösten Preisalarme entschieden wird — ausserhalb des
@@ -28,7 +28,7 @@ internal object Alarmabholung {
          * immer zu speichern, auch ohne Meldung: Sonst fragte der nächste Durchgang ab dem
          * alten Zeitpunkt und brächte dieselbe Meldung ein zweites Mal.
          */
-        data class Geholt(val meldungen: List<Preisalarm>, val neueMarke: String) : Ergebnis
+        data class Geholt(val meldungen: List<PreisalarmAnsicht>, val neueMarke: String) : Ergebnis
 
         /**
          * Erster Durchgang — es gab noch keine Marke. Bewusst ohne Meldung: Eine frisch
@@ -54,14 +54,13 @@ internal object Alarmabholung {
      */
     suspend fun hole(marke: String?, frage: Frage): Ergebnis {
         val r = frage(marke?.takeIf { it.isNotBlank() })
-        val antwort = (r as? Abrufergebnis.Success)?.data?.takeIf { it.success }
-            ?: return Ergebnis.Fehlgeschlagen
+        val antwort = (r as? Abrufergebnis.Success)?.data ?: return Ergebnis.Fehlgeschlagen
         // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts
         // speichern, als eine falsche. Ein Server, der das Feld nicht kennt,
         // ist eine aeltere Fassung; dann bleibt es beim Mailversand.
-        val neueMarke = antwort.now?.takeIf { it.isNotBlank() } ?: return Ergebnis.Fehlgeschlagen
+        val neueMarke = antwort.marke?.takeIf { it.isNotBlank() } ?: return Ergebnis.Fehlgeschlagen
         if (marke.isNullOrBlank()) return Ergebnis.Markiert(neueMarke)
-        return Ergebnis.Geholt(antwort.alerts, neueMarke)
+        return Ergebnis.Geholt(antwort.alarme, neueMarke)
     }
 
     /**
@@ -71,7 +70,7 @@ internal object Alarmabholung {
      * sind nicht 200 EUR. Der Betrag in der Form von [zahlen] („199,50 CHF“), wie überall
      * in der App und in der Web-Oberfläche.
      */
-    fun text(a: Preisalarm, unter: String, ueber: String, zahlen: Locale): String {
+    fun text(a: PreisalarmAnsicht, unter: String, ueber: String, zahlen: Locale): String {
         val richtung = if (a.richtung == Alarmrichtung.UNTER) unter else ueber
         val format = NumberFormat.getCurrencyInstance(zahlen).apply {
             runCatching { currency = Currency.getInstance(a.currencyCode.code) }

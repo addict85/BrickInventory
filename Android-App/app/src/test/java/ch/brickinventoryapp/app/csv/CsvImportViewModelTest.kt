@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.CsvImportStrom
 import ch.brickinventoryapp.vertrag.CsvImportStatus
+import ch.brickinventoryapp.model.ui.model.CsvImportStandAnsicht
 import ch.brickinventoryapp.vertrag.GenericAdminResponse
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
@@ -92,7 +93,7 @@ class CsvImportViewModelTest {
     }
 
     private fun status(s: String, done: Int = 0) =
-        CsvImportSseClient.Event.Status(CsvImportStatus(success = true, status = Laufstatus.aus(s), total = 3, done = done))
+        CsvImportSseClient.Event.Status(CsvImportStandAnsicht(status = Laufstatus.aus(s), total = 3, done = done))
 
     private lateinit var koordinator: CsvImportKoordinator
 

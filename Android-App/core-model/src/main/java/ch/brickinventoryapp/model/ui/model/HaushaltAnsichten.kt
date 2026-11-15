@@ -68,3 +68,9 @@ data class LagerortEintragAnsicht(
     val userId: Int = 0,
     val name: String = "",
 )
+
+/** Ein Ort des eigenen Vorrats; [vorgabe] ist der Stern, den das Erfassen vorauswählt. */
+data class VorratsOrtAnsicht(
+    val ort: LagerortEintragAnsicht,
+    val vorgabe: Boolean = false,
+)

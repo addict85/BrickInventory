@@ -20,8 +20,16 @@ internal sealed interface SseEreignis<out T> {
     /** Der Server hat den Strom geschlossen. */
     data object Beendet : SseEreignis<Nothing>
 
-    /** [code] ist der HTTP-Status, falls es eine Antwort gab; [rumpf] ihre ersten 4 KB. */
-    data class Gescheitert(val code: Int?, val rumpf: String?, val technisch: String?) : SseEreignis<Nothing>
+    /**
+     * [code] ist der HTTP-Status, falls es eine Antwort gab; [rumpf] ihre ersten 4 KB.
+     * [keineVerbindung]: Die Anfrage erreichte den Server nie (Host unbekannt, Verbindung abgelehnt).
+     */
+    data class Gescheitert(
+        val code: Int?,
+        val rumpf: String?,
+        val technisch: String?,
+        val keineVerbindung: Boolean = false,
+    ) : SseEreignis<Nothing>
 }
 
 /**
@@ -58,7 +66,8 @@ internal fun <T> sseStrom(
         override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
             // Der Rumpf muss hier gelesen werden: Nach der Rückkehr ist die Antwort zu.
             val rumpf = response?.let { runCatching { it.peekBody(4096).string() }.getOrNull() }
-            trySend(SseEreignis.Gescheitert(response?.code, rumpf, t?.message))
+            val nieAngekommen = t is java.net.UnknownHostException || t is java.net.ConnectException
+            trySend(SseEreignis.Gescheitert(response?.code, rumpf, t?.message, nieAngekommen))
             close()
         }
     }

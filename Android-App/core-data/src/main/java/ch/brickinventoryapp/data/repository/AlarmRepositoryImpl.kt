@@ -2,10 +2,10 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.vertrag.PendingAlertsResponse
-import ch.brickinventoryapp.vertrag.Preisalarm
 import ch.brickinventoryapp.vertrag.PreisalarmRequest
-import ch.brickinventoryapp.vertrag.PreisalarmResponse
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
+import ch.brickinventoryapp.model.ui.model.AlarmabrufAnsicht
+import ch.brickinventoryapp.model.ui.model.PreisalarmAnsicht
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.lokal.Lokal
@@ -25,12 +25,13 @@ class AlarmRepositoryImpl @Inject constructor(
     private val wiederholung: Wiederholung,
 ) : AlarmRepository {
 
-    override suspend fun getPendingAlerts(since: String?): Ergebnis<PendingAlertsResponse> =
+    override suspend fun getPendingAlerts(since: String?): Ergebnis<AlarmabrufAnsicht> =
         sicherAufrufen { api.getPendingAlerts(since) }
+            .zugesagt({ it.success }, { it.error }) { r -> AlarmabrufAnsicht(r.alerts.map { it.alsAnsicht() }, r.now) }
 
-    override fun beobachteAlarme(setNumber: String?): Flow<Lokal<Preisalarm>> =
-        if (setNumber == null) ablage.beobachte(Faecher.PREISALARME)
-        else ablage.beobachte(Faecher.PREISALARME).map { l -> l.copy(liste = l.liste.filter { it.setNumber == setNumber }) }
+    override fun beobachteAlarme(setNumber: String?): Flow<Lokal<PreisalarmAnsicht>> =
+        ablage.beobachte(Faecher.PREISALARME).map { l -> l.copy(liste = l.liste.filter { setNumber == null || it.setNumber == setNumber }) }
+            .abgebildet { it.alsAnsicht() }
 
     /** Die Übersicht kommt ganz, ohne Seiten. */
     override suspend fun aktualisiereAlarme(): Ergebnis<Unit> =
@@ -39,13 +40,13 @@ class AlarmRepositoryImpl @Inject constructor(
         }
 
     override suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Double,
-                                       condition: Zustand): Ergebnis<PreisalarmResponse> =
+                                       condition: Zustand): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { Nachzug.AlarmGesetzt(it) } }) {
             sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle, condition = condition)) }
-        }
+        }.zugesagt({ it.success }, { it.error }) { }
 
-    override suspend fun deletePreisalarm(setNumber: String, condition: Zustand): Ergebnis<PreisalarmResponse> =
+    override suspend fun deletePreisalarm(setNumber: String, condition: Zustand): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> Nachzug.AlarmEntfernt(setNumber, condition).takeIf { r.success } }) {
             sicherAufrufen { api.deletePreisalarm(setNumber, condition.kennung) }
-        }
+        }.zugesagt({ it.success }, { it.error }) { }
 }

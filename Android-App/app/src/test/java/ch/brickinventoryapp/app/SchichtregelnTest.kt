@@ -18,8 +18,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.KontoApi` in AppTexte → dasselbe rot
  *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
  *                               „core-zustand und core-sitzung kennen keinen Context“
- *   bereich-mehr-wireformat     ein weiterer Import eines Antworttyps in CatalogViewModel → rot
- *                               „ein Bereich kennt … das Wire-Format immer seltener“
+ *   bereich-mehr-wireformat     ein Import eines Antworttyps in CatalogViewModel → rot
+ *                               „ein Bereich kennt … das Wire-Format nur core-data und core-offline“
  */
 class SchichtregelnTest {
 
@@ -40,6 +40,8 @@ class SchichtregelnTest {
         return geprueft.flatMap { d -> d.importe.filter(verboten).map { "${d.modul}/${d.name}: $it" } }
     }
 
+    private val WIRE_KENNER = setOf("core-vertrag", "core-data", "core-offline", "core-testing")
+
     private fun praesentation(d: Datei) = d.modul in setOf("core-zustand", "core-sitzung") || d.modul.startsWith("feature-")
 
     @Test
@@ -59,19 +61,15 @@ class SchichtregelnTest {
 
     /**
      * Auch der Zustand nicht: Er sieht Repositories und Ergebnis, nicht den Retrofit-Weg dahinter.
-     * Das Wire-Format (core-vertrag) sehen Bereiche nur, wo ein Aufruf es noch verlangt: Die Zahl
-     * der Importe darf sinken, nie steigen; die Abbildungen (vertrag.abbildung) zählen nicht.
+     * Das Wire-Format übersetzen nur core-data und core-offline (Abbildungen in core-vertrag);
+     * jedes andere Modul nimmt Fach- und Ansichtstypen. Die Kante dazu prüft Modulkanten.
      */
     @Test
-    fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format immer seltener`() {
+    fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format nur core-data und core-offline`() {
         val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
         assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api (M2):\n  " + f.joinToString("\n  ") }
-        val SCHRANKE = 21
-        val n = dateien.filter { it.modul.startsWith("feature-") }.sumOf { d ->
-            d.importe.count { it.startsWith("ch.brickinventoryapp.vertrag.") && !it.startsWith("ch.brickinventoryapp.vertrag.abbildung.") }
-        }
-        assert(n <= SCHRANKE) { "$n Importe aus core-vertrag in den Bereichen, erlaubt $SCHRANKE: Ansicht statt Antworttyp nehmen." }
-        assert(n == SCHRANKE) { "Nur noch $n Importe aus core-vertrag: SCHRANKE auf $n senken." }
+        val wire = verstoesse({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.vertrag.") }
+        assert(wire.isEmpty()) { "Importe aus core-vertrag ausserhalb von core-data/core-offline (H2):\n  " + wire.joinToString("\n  ") }
     }
 
     /** AppTexte.kt ist die bewusste Ausnahme: Texte und Dateien gehen über Context, bis M7 sie verlegt. */
