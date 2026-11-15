@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import ch.brickinventoryapp.model.ui.fehlerArt
 import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.laedt
@@ -125,7 +127,7 @@ internal fun MerkpostenDetailRoute(
     val appState by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val liste by vm.merklisteState.collectAsStateWithLifecycle()
-    val detail by vm.merkpostenDetailState.collectAsStateWithLifecycle()
+    val detail by remember(setNumber) { vm.merkpostenDetailVon(setNumber) }.collectAsStateWithLifecycle()
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
     MerkpostenDetailScreen(ansicht, vm, setNumber, condition, imageLoader, onBack)
@@ -155,8 +157,6 @@ internal fun MerklisteScreen(
     // Übernommen wird über das Detail (MerkpostenDetailScreen), wo Anzahl, Kaufpreis
     // und Zustand zur Wahl stehen; die Zeile zeigt dafür den Marktpreis.
     var maskeOffen by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) { aktionen.ladeMerkliste() }
 
     // ── Der Filter ──
     //
@@ -317,7 +317,8 @@ internal fun MerklisteUndDetail(
             detail = {
                 // key: Ein anderer Merkposten ist ein anderes Detail (Dialoge, Zoom zu).
                 androidx.compose.runtime.key(auswahl) {
-                    MerkpostenDetailScreen(ansicht = ansicht, aktionen = aktionen, setNumber = auswahl.first, condition = auswahl.second,
+                    val detail by remember { aktionen.merkpostenDetailVon(auswahl.first) }.collectAsStateWithLifecycle()
+                    MerkpostenDetailScreen(ansicht = ansicht.copy(detail = detail), aktionen = aktionen, setNumber = auswahl.first, condition = auswahl.second,
                         imageLoader = imageLoader, onBack = { offen = null })
                 }
             },

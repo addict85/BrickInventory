@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.foundation.layout.*
@@ -162,7 +163,7 @@ internal fun GutscheinFormularBlatt(
                 }
             },
             onAbbrechen = onSchliessen,
-            laeuft = zustand.speichert,
+            laeuft = zustand.speichern.laeuft,
             modifier = Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
         )
       }

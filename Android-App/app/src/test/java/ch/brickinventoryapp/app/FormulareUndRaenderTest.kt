@@ -119,35 +119,35 @@ import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
 import org.robolectric.RuntimeEnvironment
 
 /**
- * Befunde der zweiten UX-Prüfung (Note 2), ausgeführt: was die Fotos zeigten, als Verhalten
- * geprüft — Telefon 411 dp, de-CH.
+ * Formulare, Ränder und Leisten, als Verhalten geprüft — Telefon 411 dp, de-CH: Feldbeschriftungen,
+ * Hilfezeilen, Abstände zum Fensterrand, Tablet nebeneinander.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   kaufpreise-spaltenkoepfe        Spaltenkopf „Zustand“ wieder über den Zeilen → rot „M2 …“
- *   barcode-felder-ohne-hinweis     Barcode-Dialog ohne Hilfezeile unter der Anzahl → rot „M3 Barcode …“
+ *   kaufpreise-spaltenkoepfe        Spaltenkopf „Zustand“ wieder über den Zeilen → rot „die Kaufpreise tragen Feldbeschriftungen …“
+ *   barcode-felder-ohne-hinweis     Barcode-Dialog ohne Hilfezeile unter der Anzahl → rot „Barcode nennt die Nummer …“
  *   barcode-plakette-vor-nummer     „Schon in deiner Sammlung“ wieder zwischen Name und Nummer
- *                                   → rot „M3 Barcode …“
- *   preisspeicher-eingerueckt       Preisspeicher wieder mit eigenem Seitenrand → rot „M4 …“ (Einzug)
- *   hintergrund-titel-doppelt       Karte wieder mit dem Seitennamen → rot „M4 …“ (zweimal)
- *   netze-ohne-schalter             Netze ohne Schalterrolle → rot „M4 …“
- *   gutscheine-anlegen-oben         „Gutschein hinzufügen“ wieder über der Liste → rot „M5 …“ (schwebt nicht)
- *   bauliste-zahl-im-text           „(2 Sets)“ wieder als zweiter Text im Knopf → rot „N1 …“
- *   alarm-feld-nennt-richtung       Schwellenfeld wieder mit „Fällt unter“ beschriftet → rot „N2 …“
- *   alarm-feld-schmal               Felder auch auf dem Telefon höchstens 320 dp breit → rot „N2 …“ (Rand)
+ *                                   → rot „Barcode nennt die Nummer …“
+ *   preisspeicher-eingerueckt       Preisspeicher wieder mit eigenem Seitenrand → rot „Hintergrundarbeiten mit einem Titel, …“ (Einzug)
+ *   hintergrund-titel-doppelt       Karte wieder mit dem Seitennamen → rot „Hintergrundarbeiten mit einem Titel, …“ (zweimal)
+ *   netze-ohne-schalter             Netze ohne Schalterrolle → rot „Hintergrundarbeiten mit einem Titel, …“
+ *   gutscheine-anlegen-oben         „Gutschein hinzufügen“ wieder über der Liste → rot „Gutscheine anlegen schwebt, Guthaben …“ (schwebt nicht)
+ *   bauliste-zahl-im-text           „(2 Sets)“ wieder als zweiter Text im Knopf → rot „Bauliste erstellen bleibt bei …“
+ *   alarm-feld-nennt-richtung       Schwellenfeld wieder mit „Fällt unter“ beschriftet → rot „Preisalarme nennen die Richtung …“
+ *   alarm-feld-schmal               Felder auch auf dem Telefon höchstens 320 dp breit → rot „Preisalarme nennen die Richtung …“ (Rand)
  *   gutschein-anlegen-ohne-text     Knopf wieder mit text/icon (Text aus der Semantik genommen)
- *                                   → rot „M5 …“
- *   bildflaeche-hell-im-dunkeln     Bildgrund auch im Dunkeln Weiss → rot „N3 …“
- *   leiste-ohne-rand                Leiste wieder ohne Rand → rot „N4 die Leiste …“
- *   scanner-schliessen-rechts       Schliessen wieder oben rechts → rot „N4 der Scanner …“
- *   dialog-ohne-rand                Rückfrage und Erfassen ohne eigenen Rand → rot „N6 …“ (randlos)
- *   sprache-uebersetzt              auf Deutsch wieder „Englisch“ → rot „M7 …“
- *   portfolio-im-titel              „Wertentwicklung Portfolio“ zurück → rot „N5 …“
- *   galerie-ohne-detailflaeche      neben einem offenen Set nur das Detail → rot „M6 auf dem Tablet stehen …“
+ *                                   → rot „Gutscheine anlegen schwebt, Guthaben …“
+ *   bildflaeche-hell-im-dunkeln     Bildgrund auch im Dunkeln Weiss → rot „im Dunkeln liegt das …“
+ *   leiste-ohne-rand                Leiste wieder ohne Rand → rot „die Leiste haelt bei 200 Prozent …“
+ *   scanner-schliessen-rechts       Schliessen wieder oben rechts → rot „der Scanner schliesst oben links …“
+ *   dialog-ohne-rand                Rückfrage und Erfassen ohne eigenen Rand → rot „Rueckfrage und Erfassen halten …“ (randlos)
+ *   sprache-uebersetzt              auf Deutsch wieder „Englisch“ → rot „die Sprachen heissen in …“
+ *   portfolio-im-titel              „Wertentwicklung Portfolio“ zurück → rot „die Wertentwicklung heisst nach …“
+ *   galerie-ohne-detailflaeche      neben einem offenen Set nur das Detail → rot „auf dem Tablet stehen Galerie …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
-class UxPruefungZweiTest {
+class FormulareUndRaenderTest {
 
     @get:Rule
     val compose = createComposeRule()
@@ -226,10 +226,10 @@ class UxPruefungZweiTest {
                                  ownerUserId: Int?, storage: String?): Flow<SetAnlegenSchritt> = emptyFlow()
         }))
 
-    // ── M2: Kaufpreise ──
+    // ── Kaufpreise ──
 
     @Test
-    fun `M2 die Kaufpreise tragen Feldbeschriftungen statt Spaltenkoepfen`() {
+    fun `die Kaufpreise tragen Feldbeschriftungen statt Spaltenkoepfen`() {
         val vm = welt.t.merke(KaeufeViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.aenderungen,
             testHaushaltRepository(welt.t.api), welt.t.sets(), testFinanzenRepository(welt.t.api), testTeileRepository(welt.t.api),
             testFigurenRepository(welt.t.api)))
@@ -246,7 +246,7 @@ class UxPruefungZweiTest {
             compose.onAllNodesWithText(text(R.string.common_condition)).fetchSemanticsNodes().size)
     }
 
-    // ── M3: Erfassen-Formulare ──
+    // ── Erfassen-Formulare ──
 
     /** Was jedes Formular unter Anzahl, Preis und Lagerort sagt; die Anzahl je Gegenstand. */
     private fun pruefeHinweise(name: String, texte: List<String>, anzahlHinweis: Int) {
@@ -255,13 +255,13 @@ class UxPruefungZweiTest {
     }
 
     @Test
-    fun `M3 Set-Erfassen nennt Anzahl, Preis und Lagerort mit Hilfezeile`() {
+    fun `Set-Erfassen nennt Anzahl, Preis und Lagerort mit Hilfezeile`() {
         val wurzel = oeffneDialog { AddSetDialog(onDismiss = {}, onAdd = {}, lagerorte = listOf("Keller"), sofortFokus = false) }
         pruefeHinweise("Set", texte(wurzel).map { it.first }, R.string.gallery_quantity_hint)
     }
 
     @Test
-    fun `M3 Teile-Erfassen nennt Anzahl, Preis je Stueck und Lagerort mit Hilfezeile`() {
+    fun `Teile-Erfassen nennt Anzahl, Preis je Stueck und Lagerort mit Hilfezeile`() {
         zeige {
             Column {
                 ErfassungsFelder(anzahl = "1", onAnzahl = {}, anzahlHinweis = text(R.string.parts_quantity_hint),
@@ -274,7 +274,7 @@ class UxPruefungZweiTest {
     }
 
     @Test
-    fun `M3 Barcode nennt die Nummer beim Namen und hat dieselben Hilfezeilen`() {
+    fun `Barcode nennt die Nummer beim Namen und hat dieselben Hilfezeilen`() {
         val zustand = BarcodeDialogZustand(AppUiState(), BlickfeldUiState(),
             BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", besitzMenge = 1), LagerUiState())
         val wurzel = oeffneDialog { BarcodeResultDialog(zustand, erfassung(), Beispielbilder.loader(ctx)) }
@@ -283,14 +283,14 @@ class UxPruefungZweiTest {
         val name = lage(alle, "Millennium Falcon")
         val nummer = lage(alle, "75192-1")
         val plakette = lage(alle, text(R.string.barcode_schon_besessen, 1))
-        assertTrue("M3 Barcode: Nummer gleich unter dem Namen ($name / $nummer / $plakette)",
+        assertTrue("Barcode: Nummer gleich unter dem Namen ($name / $nummer / $plakette)",
             name.bottom <= nummer.top && nummer.bottom <= plakette.top)
     }
 
-    // ── M4: Hintergrundarbeiten ──
+    // ── Hintergrundarbeiten ──
 
     @Test
-    fun `M4 Hintergrundarbeiten mit einem Titel, buendigen Karten, eigener Darstellung und Schaltern`() {
+    fun `Hintergrundarbeiten mit einem Titel, buendigen Karten, eigener Darstellung und Schaltern`() {
         welt.pfade.antworten["/api/v1/admin/auftraege"] = """{"success":true,
             "auftraege":[{"id":"17","art":"bilder","status":"laeuft","versuche":1,"max_versuche":5,
                "faellig_ab":"2026-10-30T10:00:00Z","frist_bis":null,"gestartet":null,"erstellt":"2026-10-30T09:59:00Z",
@@ -304,37 +304,37 @@ class UxPruefungZweiTest {
             MonitoringScreen(MonitoringZustand(MonitoringUiState(), vm.hintergrund.value, VerwaltungUiState(),
                 netze, Design.CLASSIC, 0L), vm, CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> }))
         }
-        assertEquals("M4: „Hintergrundarbeiten“ zweimal", 1,
+        assertEquals("„Hintergrundarbeiten“ zweimal", 1,
             compose.onAllNodesWithText(text(R.string.monitoring_title)).fetchSemanticsNodes().size)
         fun links(id: Int) = compose.onNode(hasText(text(id)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.left
         val auftraege = links(R.string.hintergrund_auftraege)
         for (id in listOf(R.string.monitoring_price_cache, R.string.monitoring_darstellung_vorgabe))
-            assertEquals("M4: Einzug von „${text(id)}“", auftraege, links(id), 1f)
+            assertEquals("Einzug von „${text(id)}“", auftraege, links(id), 1f)
         for ((netz, an) in listOf(R.string.monitoring_vorwaermen_wlan to ToggleableState.On,
                                   R.string.monitoring_vorwaermen_mobil to ToggleableState.Off)) {
             val knoten = compose.onNode(hasText(text(netz))).fetchSemanticsNode()
-            assertEquals("M4: ${text(netz)} ist kein Schalter", Role.Switch, knoten.config.getOrNull(SemanticsProperties.Role))
-            assertEquals("M4: ${text(netz)} zeigt nicht, ob an", an, knoten.config.getOrNull(SemanticsProperties.ToggleableState))
+            assertEquals("${text(netz)} ist kein Schalter", Role.Switch, knoten.config.getOrNull(SemanticsProperties.Role))
+            assertEquals("${text(netz)} zeigt nicht, ob an", an, knoten.config.getOrNull(SemanticsProperties.ToggleableState))
         }
     }
 
-    // ── M5: Gutscheine ──
+    // ── Gutscheine ──
 
     @Test
-    fun `M5 Gutscheine anlegen schwebt, Guthaben und PDF stehen im Menue der Leiste`() {
+    fun `Gutscheine anlegen schwebt, Guthaben und PDF stehen im Menue der Leiste`() {
         zeige { Gutscheine() }
         for (id in listOf(R.string.vouchers_balance_all, R.string.vouchers_export))
-            assertEquals("M5: „${text(id)}“ steht ohne Menü da", 0, compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().size)
+            assertEquals("„${text(id)}“ steht ohne Menü da", 0, compose.onAllNodesWithText(text(id)).fetchSemanticsNodes().size)
         val anlegen = compose.onNode(hasText(text(R.string.vouchers_add)) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         val hoehe = ctx.resources.displayMetrics.heightPixels
-        assertTrue("M5: Anlegen schwebt nicht unten (${anlegen.bottom} von $hoehe)", anlegen.bottom > hoehe * 0.8f)
+        assertTrue("Anlegen schwebt nicht unten (${anlegen.bottom} von $hoehe)", anlegen.bottom > hoehe * 0.8f)
         compose.onNodeWithContentDescription(text(R.string.vouchers_menu_cd)).performClick()
         compose.waitForIdle()
         for (id in listOf(R.string.vouchers_balance_all, R.string.vouchers_export))
-            compose.onNodeWithText(text(id)).fetchSemanticsNode("M5: „${text(id)}“ fehlt im Menü")
+            compose.onNodeWithText(text(id)).fetchSemanticsNode("„${text(id)}“ fehlt im Menü")
     }
 
-    // ── M6: Tablet mit Liste und Detail ──
+    // ── Tablet mit Liste und Detail ──
 
     /** Galerie und Set-Detail auf dem Tablet (1280 dp); ohne [offen] steht rechts der Hinweis. */
     private fun galerieUndDetail(offen: String?) {
@@ -354,27 +354,27 @@ class UxPruefungZweiTest {
     }
 
     @Test
-    fun `M6 auf dem Tablet stehen Galerie und Set-Detail gleichzeitig nebeneinander`() {
+    fun `auf dem Tablet stehen Galerie und Set-Detail gleichzeitig nebeneinander`() {
         galerieUndDetail(Beispiele.SET)
         val breite = ctx.resources.displayMetrics.widthPixels
         val kachel = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         val wert = compose.onNode(hasText(text(R.string.detail_pnl_tile)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        assertTrue("M6: Detail nicht rechts der Liste ($kachel / $wert)", kachel.right <= wert.left)
-        assertTrue("M6: Detail ausserhalb des Fensters ($wert / $breite)", wert.right <= breite + 1f && kachel.left >= 0f)
+        assertTrue("Detail nicht rechts der Liste ($kachel / $wert)", kachel.right <= wert.left)
+        assertTrue("Detail ausserhalb des Fensters ($wert / $breite)", wert.right <= breite + 1f && kachel.left >= 0f)
     }
 
     @Test
-    fun `M6 auf dem Tablet steht ohne gewaehltes Set rechts ein Hinweis neben der Galerie`() {
+    fun `auf dem Tablet steht ohne gewaehltes Set rechts ein Hinweis neben der Galerie`() {
         galerieUndDetail(null)
         val kachel = compose.onNode(hasText("Titanic", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
         val hinweis = compose.onNode(hasText(text(R.string.gallery_detail_leer))).fetchSemanticsNode().boundsInRoot
-        assertTrue("M6: Hinweis nicht rechts der Liste ($kachel / $hinweis)", kachel.right <= hinweis.left)
+        assertTrue("Hinweis nicht rechts der Liste ($kachel / $hinweis)", kachel.right <= hinweis.left)
     }
 
-    // ── N1: Bauliste bei 200 % ──
+    // ── Bauliste bei 200 % ──
 
     @Test
-    fun `N1 Bauliste erstellen bleibt bei 200 Prozent einzeilig und nennt die Zahl der Sets`() {
+    fun `Bauliste erstellen bleibt bei 200 Prozent einzeilig und nennt die Zahl der Sets`() {
         val sets = listOf(PlSet("75192-1", "Millennium Falcon"), PlSet("21318-1", "Baumhaus"))
         zeige(schrift = 2f) { PartsListScreen(TeilelisteUiState(sets = sets), serverUrl = "", imageLoader = Beispielbilder.loader(ctx), onScanBarcode = {}) }
         val knopf = compose.onNode(hasText(text(R.string.partslist_generate)) and hasClickAction()).fetchSemanticsNode()
@@ -384,18 +384,18 @@ class UxPruefungZweiTest {
             return layouts.map { it.lineCount } + n.children.flatMap { zeilen(it) }
         }
         val unten = compose.onNode(hasText(text(R.string.partslist_generate)), useUnmergedTree = true).fetchSemanticsNode()
-        assertTrue("N1: „Bauliste erstellen“ bricht um: ${zeilen(unten)}", zeilen(unten).all { it == 1 })
+        assertTrue("„Bauliste erstellen“ bricht um: ${zeilen(unten)}", zeilen(unten).all { it == 1 })
         val anzahl = ctx.resources.getQuantityString(R.plurals.partslist_generate_anzahl, 2, 2)
-        assertTrue("N1: Zahl der Sets fehlt am Knopf",
+        assertTrue("Zahl der Sets fehlt am Knopf",
             compose.onAllNodes(hasContentDescription(anzahl), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
-        assertTrue("N1: Zahl steht als zweiter Text im Knopf",
+        assertTrue("Zahl steht als zweiter Text im Knopf",
             knopf.config.getOrNull(SemanticsProperties.Text).orEmpty().none { it.text == anzahl })
     }
 
-    // ── N2: Preisalarme ──
+    // ── Preisalarme ──
 
     @Test
-    fun `N2 Preisalarme nennen die Richtung einmal und enden am Rand der Karte`() {
+    fun `Preisalarme nennen die Richtung einmal und enden am Rand der Karte`() {
         welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
         val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
@@ -409,7 +409,7 @@ class UxPruefungZweiTest {
         }
         warte("Preisalarme") { vm.alarmUebersicht.value.geladen && vm.alarmUebersicht.value.alarme.isNotEmpty() }
         // Je eine Wahl im Alarm und im Formular zum Anlegen, nicht noch einmal als Feldname.
-        assertEquals("N2: „Fällt unter“ doppelt", 2,
+        assertEquals("„Fällt unter“ doppelt", 2,
             compose.onAllNodes(hasText(text(R.string.detail_alert_chip_below)), useUnmergedTree = true)
                 .fetchSemanticsNodes().count { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null })
         val vorn = text(R.string.alerts_delete_fuer, "§").substringBefore("§")
@@ -421,13 +421,13 @@ class UxPruefungZweiTest {
         // (40 dp, mittig darin) endet 4 dp davor.
         val dichte = ctx.resources.displayMetrics.density
         val rand = loeschen.center.x + 24 * dichte
-        assertEquals("N2: Feld endet nicht am Rand der Karte (${feld.right} / $rand)", rand, feld.right, dichte)
+        assertEquals("Feld endet nicht am Rand der Karte (${feld.right} / $rand)", rand, feld.right, dichte)
     }
 
-    // ── N3: dunkle Designs ──
+    // ── dunkle Designs ──
 
     @Test
-    fun `N3 im Dunkeln liegt das Bild auf einer dunklen Flaeche`() {
+    fun `im Dunkeln liegt das Bild auf einer dunklen Flaeche`() {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC, dunkel = true) {
                 ProduktBild(model = "/beispiel/set1.png", imageLoader = Beispielbilder.loader(ctx), contentDescription = "Bild",
@@ -439,13 +439,13 @@ class UxPruefungZweiTest {
         // Links neben dem Bild, das mit „Fit“ mittig steht: nur die Fläche.
         val punkt = bild.getPixel(2, bild.height / 2)
         val hell = (Farbe.red(punkt) + Farbe.green(punkt) + Farbe.blue(punkt)) / 3
-        assertTrue("N3: Bildfläche im Dunkeln hell (Grauwert $hell)", hell < 80)
+        assertTrue("Bildfläche im Dunkeln hell (Grauwert $hell)", hell < 80)
     }
 
-    // ── N4: Leiste bei 200 %, Scanner ──
+    // ── Leiste bei 200 %, Scanner ──
 
     @Test
-    fun `N4 die Leiste haelt bei 200 Prozent Abstand zum Bildschirmrand`() {
+    fun `die Leiste haelt bei 200 Prozent Abstand zum Bildschirmrand`() {
         zeige(schrift = 2f) {
             val nav = rememberNavController()
             val reiter = remember {
@@ -465,19 +465,19 @@ class UxPruefungZweiTest {
         val breite = ctx.resources.displayMetrics.widthPixels
         val mehr = compose.onNode((hasText("Mehr") or hasContentDescription("Mehr")) and hasClickAction())
             .fetchSemanticsNode().boundsInRoot
-        assertTrue("N4: „Mehr“ endet ${(breite - mehr.right) / dichte} dp vor dem Rand", breite - mehr.right >= 6 * dichte)
+        assertTrue("„Mehr“ endet ${(breite - mehr.right) / dichte} dp vor dem Rand", breite - mehr.right >= 6 * dichte)
     }
 
     @Test
-    fun `N4 der Scanner schliesst oben links und schaltet das Licht ueber einen Knopf`() {
+    fun `der Scanner schliesst oben links und schaltet das Licht ueber einen Knopf`() {
         zeige { BarcodeScannerScreen(onResult = {}, onDismiss = {}, ohneKamera = true) }
         val breite = ctx.resources.displayMetrics.widthPixels
         val zu = compose.onNodeWithContentDescription(text(R.string.scanner_close)).fetchSemanticsNode().boundsInRoot
-        assertTrue("N4: Schliessen nicht links (${zu.left} von $breite)", zu.right < breite / 2f)
-        compose.onNode(hasText(text(R.string.scanner_torch_on)) and hasClickAction()).fetchSemanticsNode("N4: Licht ist kein Knopf")
+        assertTrue("Schliessen nicht links (${zu.left} von $breite)", zu.right < breite / 2f)
+        compose.onNode(hasText(text(R.string.scanner_torch_on)) and hasClickAction()).fetchSemanticsNode("Licht ist kein Knopf")
     }
 
-    // ── N6: Dialoge mit Rand ──
+    // ── Dialoge mit Rand ──
 
     /** Der Rahmen des Dialogs: der Knoten mit seinem Fensternamen. */
     private fun rahmen(n: SemanticsNode, titel: String): Rect? =
@@ -488,12 +488,12 @@ class UxPruefungZweiTest {
         val dichte = ctx.resources.displayMetrics.density
         val breite = ctx.resources.displayMetrics.widthPixels
         val r = checkNotNull(rahmen(wurzel, titel)) { "$name: kein Fenster „$titel“" }
-        assertTrue("N6: $name randlos (${r.left / dichte} / ${(breite - r.right) / dichte} dp)",
+        assertTrue("$name randlos (${r.left / dichte} / ${(breite - r.right) / dichte} dp)",
             r.left >= 23 * dichte && breite - r.right >= 23 * dichte)
     }
 
     @Test
-    fun `N6 Rueckfrage und Erfassen halten Abstand zum Fensterrand`() {
+    fun `Rueckfrage und Erfassen halten Abstand zum Fensterrand`() {
         val wurzel = oeffneDialog {
             Rueckfrage(titel = "Set löschen?", text = "Millennium Falcon wird entfernt.", bestaetigen = "Löschen",
                 onBestaetigen = {}, onAbbrechen = {})
@@ -502,28 +502,28 @@ class UxPruefungZweiTest {
     }
 
     @Test
-    fun `N6 Set-Erfassen haelt Abstand zum Fensterrand`() {
+    fun `Set-Erfassen haelt Abstand zum Fensterrand`() {
         val wurzel = oeffneDialog { AddSetDialog(onDismiss = {}, onAdd = {}, sofortFokus = false) }
         pruefeRand("Set erfassen", wurzel, text(R.string.gallery_add_set_title))
     }
 
-    // ── M7: Sprachauswahl ──
+    // ── Sprachauswahl ──
 
     /** Wer die falsche Sprache eingestellt hat, findet seine an ihrem eigenen Namen. */
     @Test
-    fun `M7 die Sprachen heissen in beiden Sprachen so, wie sie sich selbst nennen`() {
+    fun `die Sprachen heissen in beiden Sprachen so, wie sie sich selbst nennen`() {
         for (sprache in listOf("de-rCH", "en-rGB")) {
             RuntimeEnvironment.setQualifiers(sprache)
-            assertEquals("M7 ($sprache)", listOf("English", "Deutsch"),
+            assertEquals("($sprache)", listOf("English", "Deutsch"),
                 listOf(text(R.string.settings_language_en), text(R.string.settings_language_de)))
         }
     }
 
-    // ── N5: Sammlung statt Portfolio ──
+    // ── Sammlung statt Portfolio ──
 
     @Test
-    fun `N5 die Wertentwicklung heisst nach der Sammlung`() {
+    fun `die Wertentwicklung heisst nach der Sammlung`() {
         for (id in listOf(R.string.chart_portfolio_value, R.string.chart_summary, R.string.chart_summary_no_change))
-            assertTrue("N5: „${text(id)}“", "Sammlung" in text(id) && "Portfolio" !in text(id))
+            assertTrue("„${text(id)}“", "Sammlung" in text(id) && "Portfolio" !in text(id))
     }
 }

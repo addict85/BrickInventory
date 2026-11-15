@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.teile.ui.SetItemUiState
-import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
+import ch.brickinventoryapp.teile.ui.viewmodel.SetItemAktionen
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -52,7 +52,7 @@ import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
 internal fun SetItemDetailDialog(
     zustand: SetItemUiState,
     lagerZustand: LagerUiState,
-    aktionen: TeileAktionen,
+    aktionen: SetItemAktionen,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
@@ -68,7 +68,7 @@ internal fun SetItemDetailDialog(
 internal fun SetItemDetailBereich(
     zustand: SetItemUiState,
     lagerZustand: LagerUiState,
-    aktionen: TeileAktionen,
+    aktionen: SetItemAktionen,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
@@ -81,20 +81,14 @@ internal fun SetItemDetailBereich(
 private fun SetItemDetail(
     zustand: SetItemUiState,
     lagerZustand: LagerUiState,
-    aktionen: TeileAktionen,
+    aktionen: SetItemAktionen,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
     alsDialog: Boolean,
 ) {
     val farbe = farbUebersetzer()
-    // Die Auswahlliste gehoert dem BESITZER des Teils, nicht dem Betrachter —
-    // dieselbe Regel wie beim Set. Ohne `kopf` (Dialog gerade erst geoeffnet)
-    // bleibt die Liste leer, und der Server antwortet mit der eigenen; der
-    // naechste Durchlauf holt die richtige nach.
-    LaunchedEffect(zustand.offen, zustand.kopf?.ownerIds) {
-        if (zustand.offen) aktionen.loadLagerortVorrat(zustand.kopf?.ownerIds ?: emptyList())
-    }
+    // Die Auswahlliste gehört dem Besitzer des Teils; sie kommt mit dem Kopf (TeileViewModel).
     if (!zustand.offen) return
 
     // rememberSaveable, nicht remember: Der geöffnete Zoom ist eine Entscheidung des

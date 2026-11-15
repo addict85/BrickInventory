@@ -1,7 +1,7 @@
 Gegenprobe: Das Kästchen schaltet wieder selbst, die Zeile nicht mehr (Text und Kästchen getrennt)
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
-Rot: H1 Kaestchen der Bauliste tragen Namen und schalten ueber die Zeile
+Test: ch.brickinventoryapp.app.BarrierefreiheitTest
+Rot: Kaestchen der Bauliste tragen Namen und schalten ueber die Zeile
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schaltzeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schaltzeile.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schaltzeile.kt

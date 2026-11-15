@@ -12,6 +12,8 @@ import ch.brickinventoryapp.vertrag.AddPartRequest
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestCoroutineScheduler
@@ -58,7 +60,9 @@ import ch.brickinventoryapp.testing.TestDienste
  *      abgeloesten Loeschens fuehrt das naechste nicht aus“ (DELETE für 75192-1)
  *   L  in ladeWennLeer() die Prüfung auf eine leere Liste entfernt → rot „beim
  *      Zeigen laedt die Galerie nur, wenn sie leer ist“ (zwei Abrufe)
- *   K und L nur in der CI messbar (Android-Klassen im Testlauf).
+ *   galerie-laedt-nicht-beim-zeigen  (gegenproben/) ladeJeServer der Galerie gestrichen → rot
+ *      „wer die Galerie zeigt, stoesst das Laden an …“
+ *   K, L und die letzte nur in der CI messbar (Android-Klassen im Testlauf).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieViewModelTest {
@@ -216,6 +220,18 @@ class GalerieViewModelTest {
         vm.rueckgaengig(zweites)
         assertEquals(null, vm.vorgemerkt.value)
         assertTrue("zweites nie gelöscht", pfade.anfragenAn("DELETE /api/v1/sets/75192-1").isEmpty())
+    }
+
+    @Test
+    fun `wer die Galerie zeigt, stoesst das Laden an, je Server einmal`() {
+        val vm = vm()
+        t.sitzung.anmeldungGeaendert(pfade.server.url("/").toString(), angemeldet = true)
+        assertTrue("ohne Beobachter kein Abruf", abrufe().isEmpty())
+        val seite = CoroutineScope(Dispatchers.Main).launch { vm.galleryState.collect {} }
+        assertEquals("beim Zeigen geladen", 1, abrufe().size)
+        seite.cancel()
+        CoroutineScope(Dispatchers.Main).launch { vm.galleryState.collect {} }.cancel()
+        assertEquals("schon da: beim Wiederkommen nicht noch einmal", 1, abrufe().size)
     }
 
     @Test

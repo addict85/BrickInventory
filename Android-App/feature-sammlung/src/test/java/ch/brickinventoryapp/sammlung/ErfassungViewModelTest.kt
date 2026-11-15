@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.sammlung
 
 import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
@@ -48,10 +49,10 @@ import ch.brickinventoryapp.testing.text
  *      zeigt die Schritte des Servers …“
  *   D  einen leeren Fehler als Satz des Servers gewertet → rot „ein
  *      abgebrochener Ereignisstrom ist ein Netzfehler …“
- *   E  in confirmAddBarcode() die Sperre `if (stand.adding) return` entfernt →
+ *   E  in confirmAddBarcode() die Sperre `if (stand.hinzufuegen.laeuft) return` entfernt →
  *      rot „ein zweiter Klick auf Bestätigen …“; ebenso, wenn der Dialog erst
  *      nach der Antwort schliesst oder der Eigentümer nicht mitgeht
- *   F  `adding = false` nach der Antwort entfernt → rot „ein Fehlschlag beim
+ *   F  `hinzufuegen = Vorgang.Fertig` nach der Antwort entfernt → rot „ein Fehlschlag beim
  *      Bestätigen …“ und „ein zweiter Klick …“
  *   G  im Teilelisten-Zweig das `return` entfernt → rot „aus der Teileliste
  *      wird nichts angelegt …“
@@ -233,11 +234,11 @@ class ErfassungViewModelTest {
         vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
         // Der Dialog schliesst sofort, und angelegt wird im Hintergrund — ohne Prüfanzeige.
         assertNull(vm.barcodeState.value.result)
-        assertTrue(vm.barcodeState.value.adding)
+        assertTrue(vm.barcodeState.value.hinzufuegen.laeuft)
         assertNull(vm.erfassungState.value.pruefung)
         vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
         pfade.freigeben()
-        bis("fertig") { !vm.barcodeState.value.adding }
+        bis("fertig") { !vm.barcodeState.value.hinzufuegen.laeuft }
         assertEquals(1, pfade.anfragenAn("POST /api/v1/sets").size)
         val rumpf = pfade.koerper[pfade.anfragen.indexOf("POST /api/v1/sets")]
         assertTrue(rumpf, "\"owner_user_id\":2" in rumpf)
@@ -250,7 +251,7 @@ class ErfassungViewModelTest {
         vm.confirmAddBarcode(Erfassungswunsch("75192-1"))
         bis("gemeldet") { t.meldungen.text?.startsWith("t${R.string.vm_add_failed}") == true }
         assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.text)
-        bis("frei") { !vm.barcodeState.value.adding }
+        bis("frei") { !vm.barcodeState.value.hinzufuegen.laeuft }
     }
 
     @Test

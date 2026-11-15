@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.app
 
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
 import ch.brickinventoryapp.model.fach.Teilelistenauftrag
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.lifecycle.SavedStateHandle
@@ -93,13 +94,14 @@ class BeispieldatenTest {
     @Test
     fun `jeder Hauptbildschirm bekommt Inhalt`() {
         val galerie = welt.galerie().also { it.loadSets() }
-        val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
+        val teile = welt.teile().also { it.loadParts() }
+        val figuren = welt.figuren().also { it.loadMinifigs() }
         val finanzen = welt.finanzen().also { it.loadValuation() }
         val merkliste = welt.merkliste().also { it.ladeMerkliste() }
         val detail = welt.setDetail()
         da("Galerie") { galerie.galleryState.value.sets.size == 3 }
-        da("Teile") { teile.partsState.value.parts.isNotEmpty() }
-        da("Figuren") { teile.partsState.value.minifigs.isNotEmpty() }
+        da("Teile") { teile.teileState.value.parts.isNotEmpty() }
+        da("Figuren") { figuren.figurenZustand.value.minifigs.isNotEmpty() }
         da("Finanzen") { finanzen.financeState.value.valuation != null }
         da("Merkliste") { merkliste.merklisteState.value.merkposten.isNotEmpty() }
         da("Detail") { detail.setDetailState.value.setDetail != null }
@@ -110,13 +112,15 @@ class BeispieldatenTest {
     /** Die Fotos von Teilen und Figuren zeigen Namen und Kennzahlen, nicht „Name unbekannt“. */
     @Test
     fun `Teile und Figuren tragen echte Namen`() {
-        val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
-        da("Teile und Figuren") { teile.partsState.value.let {
-            it.parts.isNotEmpty() && it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
-        val z = teile.partsState.value
+        val teile = welt.teile().also { it.loadParts() }
+        val figuren = welt.figuren().also { it.loadMinifigs() }
+        da("Teile und Figuren") { teile.teileState.value.parts.isNotEmpty() && figuren.figurenZustand.value.let {
+            it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
+        val z = teile.teileState.value
+        val f = figuren.figurenZustand.value
         assertTrue(z.parts.toString(), z.parts.all { !it.partName.isNullOrBlank() })
-        assertTrue(z.minifigs.toString(), z.minifigs.all { !it.figName.isNullOrBlank() })
-        assertTrue("Ein Name ist lang genug zum Kürzen", z.minifigs.any { (it.figName?.length ?: 0) > 30 })
+        assertTrue(f.minifigs.toString(), f.minifigs.all { !it.figName.isNullOrBlank() })
+        assertTrue("Ein Name ist lang genug zum Kürzen", f.minifigs.any { (it.figName?.length ?: 0) > 30 })
     }
 
     /**
@@ -171,17 +175,18 @@ class BeispieldatenTest {
     @Test
     fun `jede Kachel hat ein Beispielbild`() {
         val galerie = welt.galerie().also { it.loadSets() }
-        val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
+        val teile = welt.teile().also { it.loadParts() }
+        val figuren = welt.figuren().also { it.loadMinifigs() }
         val merkliste = welt.merkliste().also { it.ladeMerkliste() }
         val finanzen = welt.finanzen().also { it.loadValuation() }
         da("alles") {
-            galerie.galleryState.value.sets.isNotEmpty() && teile.partsState.value.parts.isNotEmpty() &&
-                teile.partsState.value.minifigs.isNotEmpty() && merkliste.merklisteState.value.merkposten.isNotEmpty() &&
+            galerie.galleryState.value.sets.isNotEmpty() && teile.teileState.value.parts.isNotEmpty() &&
+                figuren.figurenZustand.value.minifigs.isNotEmpty() && merkliste.merklisteState.value.merkposten.isNotEmpty() &&
                 finanzen.financeState.value.valuation != null
         }
         val adressen = galerie.galleryState.value.sets.map { it.setNumber to it.imageLocal } +
-            teile.partsState.value.parts.map { it.partNumber to it.imageLocal } +
-            teile.partsState.value.minifigs.map { it.figNumber to it.imageLocal } +
+            teile.teileState.value.parts.map { it.partNumber to it.imageLocal } +
+            figuren.figurenZustand.value.minifigs.map { it.figNumber to it.imageLocal } +
             merkliste.merklisteState.value.merkposten.map { it.setNumber to it.imageLocal } +
             finanzen.financeState.value.valuation!!.sets.map { it.setNumber to it.imageLocal }
         val ohne = adressen.filter { (_, a) -> a == null || Beispielbilder.ressource(a) == null }
@@ -195,8 +200,8 @@ class BeispieldatenTest {
     @Test
     fun `die Teilekacheln ergeben die Gesamtzahl`() {
         val teile = welt.teile().also { it.loadParts() }
-        da("Teile") { teile.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
-        val z = teile.partsState.value
+        da("Teile") { teile.teileState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
+        val z = teile.teileState.value
         assertEquals(z.partsStats!!.teileGesamt, z.parts.sumOf { it.totalQuantity })
     }
 
@@ -306,7 +311,8 @@ object Beispiele {
 
         fun galerie() = t.merke(GalerieViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testSetsRepository(t.api),
             t.kontosicht, testFinanzenRepository(t.api), SavedStateHandle()))
-        fun teile() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
+        fun teile() = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), t.kontosicht, SavedStateHandle()))
+        fun figuren() = t.merke(FigurenViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
         fun finanzen() = t.merke(FinanzViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, testFinanzenRepository(t.api), SavedStateHandle()))
         fun merkliste() = t.merke(MerklisteViewModel(t.sitzung, t.filter(), t.hinweise, t.merkliste(), t.alarme(), t.kontosicht,
             testKatalogRepository(t.api), testFinanzenRepository(t.api), SavedStateHandle()))

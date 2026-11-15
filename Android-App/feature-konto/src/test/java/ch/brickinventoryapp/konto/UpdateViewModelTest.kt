@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.update.data.UpdateLader
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.Anmeldestand
@@ -297,7 +298,7 @@ class UpdateViewModelTest {
             assertEquals(listOf(UPDATE_VERSION_URL), angefragt)
             assertEquals("Die Prüfung beim Start ist still", 20, eigenes.updateState.value.neuereFassung?.versionCode)
             assertNull(eigenes.updateState.value.fehler)
-            assertFalse("kein Ladebalken", eigenes.updateState.value.laedtPruefung)
+            assertFalse("kein Ladebalken", eigenes.updateState.value.pruefung.laeuft)
         } finally {
             eigenes.viewModelScope.cancel()
         }

@@ -13,7 +13,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import javax.inject.Singleton
-import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
@@ -154,7 +153,7 @@ class MeldungsKanalTest {
             galerie.deleteSet("75192-1")
             assertTrue("Meldung der Galerie", t.meldungen.text != null)
             t.meldungen.quittiere()
-            val teile = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), testFigurenRepository(t.api), t.kontosicht, SavedStateHandle()))
+            val teile = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), t.kontosicht, SavedStateHandle()))
             teile.setzeTeilFarbe("3001", 5, 11)
             assertTrue("Meldung der Teile", t.meldungen.text != null)
         } finally {

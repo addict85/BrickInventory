@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.anmeldung
 
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.data.Anmeldeablage
 import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
 import ch.brickinventoryapp.anmeldung.ui.qrAdresseUngueltig
@@ -147,6 +148,6 @@ class QrAdresseTest {
         assertEquals(emptyList<String>(), ablage.protokoll.toList())
         assertEquals("Nichts abgemeldet", 0, abmelden.abmeldungen)
         assertTrue("kein qr-login", pfade.anfragenAn("qr-login").isEmpty())
-        assertTrue(vm.anmeldeState.value.loginError != null)
+        assertTrue(vm.anmeldeState.value.anmeldung.fehlerMeldung != null)
     }
 }

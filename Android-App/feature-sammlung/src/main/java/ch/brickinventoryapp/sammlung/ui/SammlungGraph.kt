@@ -70,11 +70,10 @@ private fun NavGraphBuilder.galerieZiel(navigation: SammlungNavigation) {
     val navController = navigation.navController
     composable<SammlungZiel.Gallery> { eintrag ->
         val galerieVm: GalerieViewModel = hiltViewModel()
-        val state by galerieVm.state.collectAsStateWithLifecycle()
+        // Die Galerie lädt beim Beobachten ihres Zustands (GalerieViewModel).
         val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
         val erfassung: ErfassungViewModel = hiltViewModel()
         Erfassungsrahmen(eintrag, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
-        LaunchedEffect(state.serverUrl) { galerieVm.ladeWennLeer() }
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory.
         val galleryGridState = remember { LazyGridState() }
         ScrollPositionKeeper(

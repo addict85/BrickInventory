@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.konto.ui.viewmodel.KontoViewModel
@@ -62,6 +63,8 @@ import ch.brickinventoryapp.model.ui.laedt
  *    Fehler wieder auf null): dieselbe Prüfung rot an „übersteht das Neuladen“.
  *  - Patch gegenproben/konto-laedt-nicht-beim-beobachten.patch (ladeBeimBeobachten für
  *    Geräte und zweiten Faktor gestrichen): „Geräte und zweiter Faktor laden, sobald …“ rot.
+ *  - Patch gegenproben/kontoseite-laedt-nicht.patch (ladeBeimBeobachten der Kontoseite
+ *    gestrichen): „Profil und Design laden mit der Kontoseite …“ rot.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KontoViewModelTest {
@@ -115,6 +118,19 @@ class KontoViewModelTest {
         geraeteSeite.cancel()
         faktorSeite.cancel()
         assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `Profil und Design laden mit der Kontoseite, nicht mit der Startpasswort-Maske`() {
+        val maske = CoroutineScope(takt).launch { vm.kontoState.collect {} }
+        uhr.runCurrent()
+        assertEquals("die Maske lädt nichts", 0, server.requestCount)
+        server.enqueue(antwort("""{"success":false,"error":"aus"}""", 500))
+        server.enqueue(antwort("""{"success":false,"error":"aus"}""", 500))
+        val seite = CoroutineScope(takt).launch { vm.kontoSeite.collect {} }
+        bis("Profil und Design geholt") { server.requestCount == 2 }
+        maske.cancel()
+        seite.cancel()
     }
 
     private fun geraete(aktuellDabei: Boolean) = """{"success":true,"tokens":[
@@ -222,18 +238,18 @@ class KontoViewModelTest {
 
         assertTrue(abgemeldet)
         assertEquals("t${R.string.konto_password_changed}", kanal.text)
-        assertFalse(vm.kontoState.value.speichert)
+        assertFalse(vm.kontoState.value.speichern.laeuft)
     }
 
     @Test
     fun `ein abgelehnter Passwortwechsel meldet abzumelden nicht`() {
         server.enqueue(antwort("""{"success":false,"error":"Aktuelles Passwort falsch"}"""))
         vm.aenderePasswort("falsch", "neuNeuNeu123!")
-        bis("Fehler") { vm.kontoState.value.fehler != null }
+        bis("Fehler") { vm.kontoState.value.speichern.fehlerMeldung != null }
 
         assertFalse(abgemeldet)
         // Die Absage kommt als Fehler mit dem Satz des Servers.
-        assertEquals("Aktuelles Passwort falsch", vm.kontoState.value.fehler.text)
+        assertEquals("Aktuelles Passwort falsch", vm.kontoState.value.speichern.fehlerMeldung.text)
         assertNull(kanal.text)
     }
 
@@ -273,7 +289,7 @@ class KontoViewModelTest {
     fun `ohne Code verlangt der zweite Faktor das Codefeld, mit Code geht der Wechsel durch`() {
         server.enqueue(antwort("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
         vm.aenderePasswort("alt", "neuNeuNeu123!")
-        bis("Absage") { vm.kontoState.value.fehler != null }
+        bis("Absage") { vm.kontoState.value.speichern.fehlerMeldung != null }
         assertTrue("Das Codefeld erscheint", vm.kontoState.value.codeNoetig)
         assertFalse(abgemeldet)
         server.takeRequest()
@@ -287,10 +303,10 @@ class KontoViewModelTest {
     @Test
     fun `ohne Passwort fragt das Profil den Server nicht`() {
         vm.speichereProfil("marco2", "marco@example.org", "", "", null)
-        assertEquals("t${R.string.konto_profil_password_needed}", vm.kontoState.value.fehler.text)
+        assertEquals("t${R.string.konto_profil_password_needed}", vm.kontoState.value.speichern.fehlerMeldung.text)
         vm.speichereProfil("marco2", "marco@example.org", "", "", "  ")
         assertEquals(0, server.requestCount)
-        assertFalse(vm.kontoState.value.speichert)
+        assertFalse(vm.kontoState.value.speichern.laeuft)
     }
 
     @Test
@@ -326,7 +342,7 @@ class KontoViewModelTest {
         vm.speichereProfil("marco", " neu@example.org ", "", "", "pw")
         bis("neu geladen") { vm.kontoState.value.profil != null }
         assertEquals(R.string.konto_email_link_gesendet, (vm.kontoState.value.meldung as Meldung.Ressource).id)
-        assertNull(vm.kontoState.value.fehler)
+        assertNull(vm.kontoState.value.speichern.fehlerMeldung)
         assertEquals("Es gilt die alte Adresse", "alt@example.org", vm.kontoState.value.profil?.email)
         assertEquals("neu@example.org", vm.kontoState.value.profil?.emailNeu)
     }
@@ -338,7 +354,7 @@ class KontoViewModelTest {
             "email_verified":true,"email_neu":"neu@example.org"}}"""))
         vm.speichereProfil("marco", "neu@example.org", "", "", "pw")
         bis("neu geladen") { vm.kontoState.value.profil != null }
-        assertEquals("Der Fehler übersteht das Neuladen", "t${R.string.konto_email_nicht_gesendet}", vm.kontoState.value.fehler.text)
+        assertEquals("Der Fehler übersteht das Neuladen", "t${R.string.konto_email_nicht_gesendet}", vm.kontoState.value.speichern.fehlerMeldung.text)
         assertNull("Kein „gespeichert“", vm.kontoState.value.meldung)
     }
 }

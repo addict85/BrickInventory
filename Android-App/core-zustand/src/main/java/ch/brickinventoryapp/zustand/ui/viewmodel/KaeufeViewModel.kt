@@ -62,6 +62,12 @@ class KaeufeViewModel @Inject constructor(
     private val _manDetailState = MutableStateFlow(ManualItemDetailUiState())
     val manDetailState: StateFlow<ManualItemDetailUiState> = _manDetailState.asStateFlow()
 
+    /** Die Käufe eines Eintrags, wie seine Seite sie liest: Wer sie zeigt, lädt sie. */
+    fun kaeufeVon(type: Postenart, id: String, colorId: Int): StateFlow<ManualItemDetailUiState> =
+        Beobachtet(manDetailState) {
+            if (type == Postenart.SET) loadAcquisitions(id) else loadManualAcquisitions(type, id, colorId)
+        }
+
     private var lagerJob: Job? = null
 
     // ── Laden ────────────────────────────────────────────────────────────────

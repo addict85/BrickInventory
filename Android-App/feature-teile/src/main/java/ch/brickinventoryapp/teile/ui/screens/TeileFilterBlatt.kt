@@ -9,7 +9,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.teile.ui.PartsUiState
+import ch.brickinventoryapp.teile.ui.TeileUiState
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.model.data.ScopeFilter
@@ -27,7 +27,7 @@ import ch.brickinventoryapp.model.data.Ersatzteilwahl
 @Composable
 internal fun TeileFilterBlatt(
     aktionen: TeileAktionen,
-    partsState: PartsUiState,
+    partsState: TeileUiState,
     householdMembers: List<MitgliedAnsicht>,
     scopeMode: String,
     onScopeChange: (String) -> Unit,
@@ -38,9 +38,9 @@ internal fun TeileFilterBlatt(
     kategorieEintraege: List<TeileFilterEintrag>,
     onSchliessen: () -> Unit,
 ) {
-    val ersatz = partsState.partsSpare
-    val farbe = partsState.partsColorFilter
-    val kategorie = partsState.partsCategoryFilter
+    val ersatz = partsState.filter.ersatz
+    val farbe = partsState.filter.farbe
+    val kategorie = partsState.filter.kategorie
     // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
     val zuruecksetzen: () -> Unit = {
         if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
@@ -76,6 +76,6 @@ internal fun TeileFilterBlatt(
                 )
             }
         }
-        AnsichtAbschnitt(partsState.partsView) { aktionen.setPartsView(it) }
+        AnsichtAbschnitt(partsState.filter.ansicht) { aktionen.setPartsView(it) }
     }
 }

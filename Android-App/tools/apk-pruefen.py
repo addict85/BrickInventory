@@ -37,7 +37,7 @@ Code weg war. Er hatte recht — die Ursache lag eine Stufe davor.
    die Erklaerung fuer den ungeklaerten Start-Absturz, der im Manifest
    beschrieben steht.
 
-4. Die API-Modelle sind umbenannt (sec17 B-N10): Eine Keep-Regel für ganz
+4. Die API-Modelle sind umbenannt: Eine Keep-Regel für ganz
    vertrag (früher data.model) legte die API-Oberfläche im Klartext offen. Stichprobe: SetItem.
 
 Aufruf: apk-pruefen.py <app.apk> <quellverzeichnis> [<quellverzeichnis> …]

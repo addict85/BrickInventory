@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.testing.text
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.laedt
@@ -181,7 +183,7 @@ class TeilelisteViewModelTest {
         vm.ladeBestand()
         advanceUntilIdle()
         assertEquals(Meldung.Ressource(R.string.partslist_owned_error), vm.zustand.value.status)
-        assertFalse(vm.zustand.value.bestandLaeuft)
+        assertEquals(Vorgang.Fertig, vm.zustand.value.bestand)
     }
 
     @Test
@@ -206,8 +208,9 @@ class TeilelisteViewModelTest {
         ohne.exportiere()
         advanceUntilIdle()
         // Der Abruf spricht wie jeder Abruf (fehlerMeldung), nicht leer.
-        assertTrue(ohne.zustand.value.pdfFehler != null)
-        assertFalse(ohne.zustand.value.isExporting)
+        assertTrue(ohne.zustand.value.pdf is Vorgang.Fehlgeschlagen)
+        ohne.pdfFehlerGesehen()
+        assertEquals(Vorgang.Fertig, ohne.zustand.value.pdf)
     }
 
     @Test
@@ -223,7 +226,7 @@ class TeilelisteViewModelTest {
             advanceUntilIdle()
             vm.exportiere()
             advanceUntilIdle()
-            assertEquals("$grund", erwartet, vm.zustand.value.pdfFehler.text)
+            assertEquals("$grund", erwartet, vm.zustand.value.pdf.fehlerMeldung.text)
         }
     }
 

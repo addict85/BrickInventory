@@ -1,7 +1,7 @@
 Gegenprobe: Das Katalog-Detail kennt den Merkposten nicht
 Modul: app
-Test: ch.brickinventoryapp.app.AblaufBefundeTest
-Rot: M6 das Katalog-Detail zeigt den Merkposten und oeffnet ihn
+Test: ch.brickinventoryapp.app.BereichsablaeufeTest
+Rot: das Katalog-Detail zeigt den Merkposten und oeffnet ihn
 
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt
 --- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/CatalogDetailScreen.kt

@@ -1,7 +1,7 @@
 Gegenprobe: die Auftragskarte heisst wieder wie die Seite
 Modul: app
-Test: ch.brickinventoryapp.app.UxPruefungZweiTest
-Rot: M4
+Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Rot: Hintergrundarbeiten mit einem Titel, buendigen Karten, eigener Darstellung und Schaltern
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt
 --- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringHintergrund.kt

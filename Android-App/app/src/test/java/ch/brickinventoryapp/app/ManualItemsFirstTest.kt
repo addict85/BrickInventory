@@ -103,7 +103,7 @@ class ManualItemsFirstTest {
         welt.pfade.antworten["/api/v1/parts/manual"] =
             """{"success":true,"parts":[{"id":7,"part_number":"3005","part_name":"Brick 1 x 1 manuell","color_id":1,"quantity":4}]}"""
         val vm = welt.teile().also { it.loadParts() }
-        warte("Teile") { vm.partsState.value.let { it.parts.isNotEmpty() && !it.manualParts.isNullOrEmpty() } }
+        warte("Teile") { vm.teileState.value.let { it.parts.isNotEmpty() && !it.manualParts.isNullOrEmpty() } }
         zeige { PartsRoute(vm = vm, imageLoader = bilder) }
         val kopf = oben(ctx.getString(R.string.parts_manual_section))
         val kachel = oben("Brick 1 x 1 manuell")
@@ -116,8 +116,8 @@ class ManualItemsFirstTest {
     fun `Figuren - die manuell erfassten stehen vor denen aus Sets`() {
         welt.pfade.antworten["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia manuell","quantity":1}]}"""
-        val vm = welt.teile().also { it.loadMinifigs() }
-        warte("Figuren") { vm.partsState.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }
+        val vm = welt.figuren().also { it.loadMinifigs() }
+        warte("Figuren") { vm.figurenZustand.value.let { it.minifigs.isNotEmpty() && !it.manualFigs.isNullOrEmpty() } }
         zeige { MinifigsRoute(vm = vm, imageLoader = bilder) }
         val kopf = oben(ctx.getString(R.string.minifigs_manual_section))
         val kachel = oben("Prinzessin Leia manuell")

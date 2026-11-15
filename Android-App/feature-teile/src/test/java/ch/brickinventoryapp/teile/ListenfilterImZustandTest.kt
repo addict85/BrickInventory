@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.teile.ui.Teilefilter
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.Assert.assertTrue
 import kotlinx.coroutines.test.setMain
@@ -10,7 +11,6 @@ import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.model.data.ScopeFilter
 import androidx.lifecycle.SavedStateHandle
 import org.junit.Test
-import ch.brickinventoryapp.testing.testFigurenRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.testTeileRepository
@@ -105,13 +105,12 @@ class ListenfilterImZustandTest {
             "/api/v1/parts/manual" to """{"success":true,"parts":[{"part_number":"3002"}]}""")
         val t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
         try {
-            val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api),
-                testFigurenRepository(t.api), t.kontosicht,
-                SavedStateHandle(mapOf("teile_suche" to "Stein"))))
+            val vm = t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, testTeileRepository(t.api), t.kontosicht,
+                SavedStateHandle(mapOf("teile_filter" to Teilefilter(suche = "Stein")))))
             vm.setScope(ScopeFilter.View.PARTS, "own")
             // Seite 1 zieht die manuellen Teile nach; erst danach blättern, sonst
             // bricht das Nachladen diesen Abruf ab.
-            assertTrue("manuelle Teile", vm.partsState.value.manualParts != null)
+            assertTrue("manuelle Teile", vm.teileState.value.manualParts != null)
             vm.loadParts(page = 2)
             assertTrue("zweite Seite", pfade.anfragenAn("page=2").isNotEmpty())
             val abrufe = pfade.anfragenAn("GET /api/v1/parts?") + pfade.anfragenAn("GET /api/v1/parts/manual")

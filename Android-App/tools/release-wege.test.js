@@ -229,7 +229,7 @@ test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
   assert.match(vorschlag, /gh pr create --base "\$GITHUB_REF_NAME" --head "\$ZWEIG"/);
   assert.doesNotMatch(vorschlag, /HEAD:\$GITHUB_REF_NAME/, 'nie auf den Zweig des Laufs');
   assert.doesNotMatch(vorschlag, /python|gradlew/, 'mit Schreibrecht läuft kein Werkzeug aus dem Repository');
-  // Seit sec17 B-N2 ohne Schreibrecht UND ohne Gradle, in einem eigenen Job.
+  // Ohne Schreibrecht UND ohne Gradle, in einem eigenen Job.
   assert.match(
     job('pruefsummen-zusammenfassen'),
     /tools\/pruefsummen-vergleich\.py/,

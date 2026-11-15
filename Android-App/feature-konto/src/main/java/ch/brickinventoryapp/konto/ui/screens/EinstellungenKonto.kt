@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.fehlerMeldung
@@ -101,7 +102,7 @@ internal fun KontoCard(
             // Dialog fokussiert und hält Tastatur und Cursor, obwohl nur der Dialog
             // Eingaben annimmt.
             val fokus = LocalFocusManager.current
-            ProfilSpeichernKnopf(nichtsGeaendert = profilGeprueft && !geaendert, speichert = kontoZustand.speichert) {
+            ProfilSpeichernKnopf(nichtsGeaendert = profilGeprueft && !geaendert, speichert = kontoZustand.speichern.laeuft) {
                 profilGeprueft = true
                 val erstes = profilFehler(benutzername, email).firstOrNull()
                 if (erstes != null) profilFokus.getValue(erstes).requestFocus()
@@ -117,7 +118,7 @@ internal fun KontoCard(
             pwAktuell = pwAktuell, onPwAktuell = { pwAktuell = it },
             pwNeu = pwNeu, onPwNeu = { pwNeu = it },
             pwWiederholt = pwWiederholt, onPwWiederholt = { pwWiederholt = it },
-            speichert = kontoZustand.speichert,
+            speichert = kontoZustand.speichern.laeuft,
             pruefung = passwortPruefung,
             onAendern = { onPasswort(pwAktuell, pwNeu, code) },
         )
@@ -129,7 +130,7 @@ internal fun KontoCard(
         titel = stringResource(R.string.konto_save),
         text = stringResource(R.string.konto_profil_password_needed),
         bestaetigen = stringResource(R.string.konto_save),
-        codeNoetig = false, fehler = null, laeuft = kontoZustand.speichert,
+        codeNoetig = false, fehler = null, laeuft = kontoZustand.speichern.laeuft,
         onBestaetigen = { pw, _ -> fragtPasswort = false; onSpeichern(benutzername, email, vorname, nachname, pw, code) },
         onAbbrechen = { fragtPasswort = false },
     )
@@ -148,7 +149,7 @@ private fun KontoMeldungen(kontoZustand: KontoUiState) {
         Text(meldung.satz(), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary, modifier = Modifier.ansagen())
     }
-    (kontoZustand.fehler ?: kontoZustand.abruf.fehlerMeldung)?.let { FehlerZeile(it) }
+    (kontoZustand.speichern.fehlerMeldung ?: kontoZustand.abruf.fehlerMeldung)?.let { FehlerZeile(it) }
 }
 
 /** „Profil speichern“, antippbar auch ohne Änderung; dann sagt die Zeile darüber, warum nichts geschieht. */

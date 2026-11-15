@@ -40,7 +40,7 @@ class CameraFocusConfigTest {
             "$anzahl Touch-Listener auf previewView. setOnTouchListener ERSETZT — " +
                 "der zuletzt gesetzte gewinnt, und welcher das ist, hängt davon ab, " +
                 "wann der Kamera-Rückruf eintrifft. Genau daran ist der Autofokus " +
-                "in Nachtrag 112 gescheitert."
+                "gescheitert."
         }
     }
 
@@ -91,7 +91,7 @@ class CameraFocusConfigTest {
             }
             assert(!c.contains("setAutoCancelDuration")) {
                 "${datei.name}: setAutoCancelDuration ist da. Das ist das Gegenteil " +
-                    "von disableAutoCancel() und war die Ursache in Nachtrag 112."
+                    "von disableAutoCancel() und war schon einmal die Ursache."
             }
         }
     }

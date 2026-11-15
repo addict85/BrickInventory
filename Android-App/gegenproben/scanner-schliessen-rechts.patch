@@ -1,7 +1,7 @@
 Gegenprobe: der Scanner schliesst wieder oben rechts
 Modul: app
-Test: ch.brickinventoryapp.app.UxPruefungZweiTest
-Rot: N4 der Scanner
+Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Rot: der Scanner schliesst oben links und schaltet das Licht ueber einen Knopf
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/BarcodeScannerScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/BarcodeScannerScreen.kt
 index ab99f57..66fd260 100644

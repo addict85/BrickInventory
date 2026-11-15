@@ -1,6 +1,6 @@
 Gegenprobe: Zustand-Beschriftung bei jeder Schrift in der festen Spalte
 Modul: app
-Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
 Rot: Zustandszeile
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/TabellenZeile.kt

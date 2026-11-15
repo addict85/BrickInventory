@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.finanzen
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
@@ -102,7 +105,7 @@ class GutscheinKlartextTest {
 
         server.enqueue(antwort("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
         vm.bestaetige("geheim", null)
-        warteBis("Codefeld") { vm.state.value.bestaetigung?.let { it.codeNoetig && !it.laeuft } == true }
+        warteBis("Codefeld") { vm.state.value.bestaetigung?.let { it.codeNoetig && !it.vorgang.laeuft } == true }
         assertTrue(vm.state.value.pinSichtbar.isEmpty())
         val erste = server.takeRequest()
         assertEquals("POST /api/v1/vouchers/1/klartext", "${erste.method} ${erste.path}")
@@ -152,8 +155,8 @@ class GutscheinKlartextTest {
         vm.loescheGutschein(1)
         server.shutdown()
         vm.bestaetige("geheim", null)
-        warteBis("Absage") { vm.state.value.bestaetigung?.let { !it.laeuft && it.fehler != null } == true }
-        assertEquals("t${R.string.vouchers_delete_offline}", vm.state.value.bestaetigung?.fehler.text)
+        warteBis("Absage") { vm.state.value.bestaetigung?.let { it.vorgang is Vorgang.Fehlgeschlagen } == true }
+        assertEquals("t${R.string.vouchers_delete_offline}", vm.state.value.bestaetigung?.vorgang?.fehlerMeldung.text)
         assertEquals("Der Gutschein steht noch da", 1, vm.state.value.gutscheine.size)
     }
 
@@ -190,7 +193,7 @@ class GutscheinKlartextTest {
         server.enqueue(antwort("""{"success":true,"voucher":{"id":1,"number":"…3333","pin":"•••","amount":60,"currency":"CHF","hat_pdf":true}}"""))
         server.enqueue(antwort(maskiert))
         vm.speichere(null)
-        warteBis("gespeichert") { server.requestCount >= 3 && !vm.state.value.speichert }
+        warteBis("gespeichert") { server.requestCount >= 3 && !vm.state.value.speichern.laeuft }
         val r = server.takeRequest()
         assertEquals("PUT /api/v1/vouchers/1", "${r.method} ${r.path}")
         val rumpf = JSONObject(r.body.readUtf8())

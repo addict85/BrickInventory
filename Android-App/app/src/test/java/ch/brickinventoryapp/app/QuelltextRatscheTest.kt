@@ -20,6 +20,7 @@ import ch.brickinventoryapp.testing.Quellen
  *                              eines Werkzeugs …“ und „Testfunktionen, die Quelltext lesen …“
  *   geschichte-im-testkopf     Nachtragsnummer und Melder im Kopf von TabOpensAtTopTest → rot „lange
  *                              Kommentare im Workflow und in Tests …“
+ *   kuerzel-im-bau             ein Prüfkürzel wieder im Kommentar von settings.gradle.kts → rot, derselbe Test
  *   kommentar-zu-lang          sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
  *   bau-kommentar-zu-lang      sechs Zeilen in gradle.properties → rot „kein Kommentar in Build …“
  *   verweis-aufs-archiv        ein „Ausführlich: docs/begruendungen/…“ in TokenTresor.kt → rot „kein Verweis
@@ -51,6 +52,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   merkliste-laedt-wieder     MerklisteUiState wieder mit einem Feld `nochLaedt: Boolean` → rot
  *                              „Bildschirme stossen das Laden nicht …, Zustaende tragen Laden …“
  *   merkliste-fehler-als-text  MerklisteUiState mit `fehlerText: String?` → rot, derselbe Test
+ *   konto-speichert-wieder     KontoUiState wieder mit `speichert: Boolean` → rot, derselbe Test
  *   galerie-fehler-als-text    GalleryUiState mit `galleryFehlerSatz: String?` → rot, derselbe Test
  *   englischer-bezeichner      `fun loadMerklisteNeu()` in MerklisteViewModel → rot „… englische Bezeichner auch“
  *   fachtyp-preis-als-double   `val betragAlt: Double?` in KaufSummenAnsicht → rot „Beträge als Double …“
@@ -265,6 +267,13 @@ class QuelltextRatscheTest {
             geschichte.take(20).joinToString("\n  "))
         ratsche("Geschichte (Nachtrag, Melder, Herkunft) in Testkommentaren", GESCHICHTE, erzaehlt.size,
             erzaehlt.take(20).joinToString("\n  "))
+        // Im Code und in Build-Dateien nennt ein Kommentar das Warum, nicht die Prüfung, die es fand.
+        val kuerzel = Regex("""\((?:sec|arch|ux|perf)[0-9]+[^)]*\)|\((?:[HMN][0-9]{1,2})\)|\bNachtrag [0-9]+""")
+        val gekuerzt = (produktivDateien() + baudateien()).flatMap { f ->
+            f.readLines().filter { z -> z.trim().let { istKommentar(it) || it.startsWith("#") } && kuerzel.containsMatchIn(z) }
+                .map { "${f.name}: ${it.trim()}" }
+        }
+        ratsche("Prüfungskürzel in Kommentaren von Code und Bau", 0, gekuerzt.size, gekuerzt.take(20).joinToString("\n  "))
     }
 
     /** Zeilennummern der Kommentar-Absätze über fünf Prosazeilen, die nicht mit „Gegenprobe“ beginnen. */
@@ -654,7 +663,7 @@ class QuelltextRatscheTest {
         // Die Fachsprache des Projekts ist Deutsch. Gezählt werden Deklarationen, deren Name ein
         // englisches Wort trägt; ausgenommen sind Überschreibungen (Android, Compose, Room) und
         // core-vertrag, dessen Namen dem Wire-Format folgen.
-        val GRENZE = 971
+        val GRENZE = 965
         val dekl = Regex("""^\s*(?:@[A-Za-z0-9_.]+(?:\([^)]*\))?\s+)*(?:(?:private|internal|public|protected|data|sealed|abstract|open|enum|inline|value|const|suspend|lateinit|operator|infix|tailrec|annotation)\s+)*(?:fun|val|var|class|interface|object)\s+(?:<[^>]*>\s*)?(?:[A-Za-z0-9_.<>?, ]+\.)?([A-Za-z_][A-Za-z0-9_]*)""")
         val teil = Regex("""[A-Z]?[a-z]+|[A-Z]+(?![a-z])""")
         val englisch = setOf("get", "load", "loading", "update", "delete", "remove", "add", "show", "hide", "click", "fetch",
@@ -674,7 +683,7 @@ class QuelltextRatscheTest {
     fun `Bildschirme stossen das Laden nicht per LaunchedEffect an, Zustaende tragen Laden und Meldung`() {
         // Ziel 0: Das ViewModel lädt selbst (init, ladeBeimBeobachten); der Bildschirm ruft
         // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
-        val LADEND = 12
+        val LADEND = 0
         val effekt = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
         val lader = Regex("""\b(?:lade|load)[A-Z]\w*\s*\(""")
         val funde = produktivDateien().flatMap { f ->
@@ -683,12 +692,12 @@ class QuelltextRatscheTest {
         assertTrue("Kein LaunchedEffect gefunden — greift das Muster noch?",
             produktivDateien().any { "LaunchedEffect(" in it.readText() })
         ratsche("LaunchedEffect, die laden", LADEND, funde.size, funde.joinToString())
-        // Ein Bildschirmzustand trägt Laden<T> (model/ui/Laden.kt) statt eines Paars aus
-        // `laedt: Boolean` und `fehler: String?`, und Meldung oder Fehlerklasse statt eines
+        // Ein Bildschirmzustand trägt Laden<T> (Abruf) oder Vorgang (Handlung) statt eines Paars
+        // aus `laeuft: Boolean` und `fehler: String?`, und Meldung oder Fehlerklasse statt eines
         // übersetzten Satzes: Der Satz entsteht beim Zeichnen, in der Sprache von dann.
         val ALT = 0
         val TEXT = 0
-        val laden = Regex("""(?i)^(laedt|laden|.*loading|.*laedt)$""")
+        val laden = Regex("""(?i)^(laedt\w*|laden|\w*loading|\w*laedt|\w*laeuft|speichert|sendet|prueft|\w*ing)$""")
         val text = Regex("""(?i)(fehler|error|meldung|message|hinweis)""")
         val zustand = Regex("""data class [A-Za-z0-9_]*(UiState|Zustand)\b""")
         var alt = 0
@@ -706,10 +715,12 @@ class QuelltextRatscheTest {
             }
         }
         // Beide Zahlen stehen auf 0; dass das Muster noch greift, zeigt eine alte Form.
-        val probe = eigenschaft.find("    val galleryLoading: Boolean = false,")?.destructured?.component1()
-        assertTrue("Das Muster erkennt keine alte Ladeform mehr", probe != null && laden.matches(probe))
+        val unerkannt = listOf("galleryLoading", "bestandLaeuft", "isExporting", "speichert", "laedtPruefung")
+            .filterNot { erkannt(laden, it) }
+        assertTrue("Das Muster erkennt $unerkannt nicht mehr", unerkannt.isEmpty())
         assertTrue("Nur $zustaende Zustandsdateien — greift die Suche noch?", zustaende >= 10)
-        ratsche("alte Ladeformen (Boolean laedt/…Loading)", ALT, alt, "Laden<T> aus model/ui/Laden.kt nehmen.")
+        ratsche("alte Ladeformen (Boolean laedt/…laeuft/speichert/…ing)", ALT, alt,
+            "Laden<T> (model/ui/Laden.kt) für Abrufe, Vorgang (model/ui/Vorgang.kt) für Handlungen nehmen.")
         ratsche("fertige Texte im Zustand (String fehler/meldung/…)", TEXT, texte,
             "Meldung (model/ui/Meldung.kt) oder Fehlerklasse ablegen, den Satz bildet der Bildschirm.")
     }
@@ -735,6 +746,9 @@ class QuelltextRatscheTest {
         ratsche("Beträge als Double in core-model", BETRAEGE, geld.size, "Geld nehmen (model/fach/Geld.kt): $geld")
         ratsche("Daten als String in core-model", DATEN, tage.size, "Instant nehmen, gelesen mit zeitpunkt(): $tage")
     }
+    /** Ob [muster] eine Boolean-Eigenschaft dieses Namens als alte Ladeform zählt. */
+    private fun erkannt(muster: Regex, name: String): Boolean =
+        eigenschaft.find("    val $name: Boolean = false,")?.destructured?.component1()?.let(muster::matches) == true
 
     /** Die Hauptquellen eines Moduls, Zeile für Zeile; die Regeln unten lesen nur Zeilenanfänge. */
     private fun zeilenJeModul(): List<Pair<String, List<String>>> = Quellen.module.flatMap { m ->

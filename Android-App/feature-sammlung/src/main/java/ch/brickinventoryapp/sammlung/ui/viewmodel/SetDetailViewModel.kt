@@ -141,7 +141,11 @@ class SetDetailViewModel @Inject constructor(
     private fun ladeDetail() = starte(Abschnitt.DETAIL) {
         _setDetailState.update { it.copy(detailAbruf = Laden.Laedt) }
         when (val r = katalog.getSetDetail(setNumber)) {
-            is Ergebnis.Success -> _setDetailState.update { it.copy(setDetail = r.data, detailAbruf = Laden.Daten(Unit)) }
+            is Ergebnis.Success -> {
+                _setDetailState.update { it.copy(setDetail = r.data, detailAbruf = Laden.Daten(Unit)) }
+                // Die Vorschläge fürs Lagerortfeld gehören dem Besitzer des Sets, nicht dem Betrachter.
+                filter.loadLagerortVorrat(r.data?.owners.orEmpty().map { it.id })
+            }
             is Ergebnis.Error -> _setDetailState.update { it.copy(detailAbruf = ladefehler(r)) }
         }
     }

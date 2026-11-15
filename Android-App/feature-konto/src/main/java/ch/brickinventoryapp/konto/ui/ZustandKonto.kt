@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui
 
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
@@ -22,10 +23,10 @@ data class KontoUiState(
     /** Der Abruf des Profils; das Profil selbst bleibt stehen, während neu geholt wird. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
     val profil: ProfilAnsicht? = null,
-    val speichert: Boolean = false,
-    /** Was das Speichern bewirkt hat, und warum es scheiterte. */
+    /** Profil, Passwort oder Design speichern; scheitert es, steht der Grund hier. */
+    val speichern: Vorgang = Vorgang.Fertig,
+    /** Was das Speichern bewirkt hat. */
     val meldung: Meldung? = null,
-    val fehler: Meldung? = null,
     /** Der Server verlangt den zweiten Faktor (zweiter_faktor_noetig): Codefeld zeigen. */
     val codeNoetig: Boolean = false,
     /** Null, solange nicht geladen oder der Server kein Design je Konto kennt. */
@@ -54,7 +55,7 @@ data class ZweiterFaktorUiState(
  * nur in den Einstellungen gebraucht, mit eigenen Zwischenständen, die sonst jeden
  * Reiter neu zeichnen liessen.
  */
-data class GeraeteUiState(
+internal data class GeraeteUiState(
     /** Der Abruf der Liste; ein Fehler steht statt der Liste. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
     val geraete: List<GeraetAnsicht> = emptyList(),
@@ -67,11 +68,10 @@ data class GeraeteUiState(
  * erbeuteter Zugang soll den Inhaber nicht aussperren. [tokenId] null heisst
  * „alle anderen“.
  */
-data class GeraeteRueckfrage(
+internal data class GeraeteRueckfrage(
     val tokenId: String?,
     val codeNoetig: Boolean = false,
-    val fehler: Meldung? = null,
-    val laeuft: Boolean = false,
+    val vorgang: Vorgang = Vorgang.Fertig,
 )
 
 /** Zustand der Haushalts-Karte in den Einstellungen. */
@@ -100,11 +100,10 @@ data class HouseholdUiState(
  * verschiedener Lebensdauer teilen keinen Fortschritt.
  */
 data class CsvHochladenUiState(
-    val laeuft: Boolean = false,
+    val hochladen: Vorgang = Vorgang.Fertig,
     /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */
     val art: CsvImportArt? = null,
     val ergebnis: CsvErgebnisAnsicht? = null,
-    val fehler: Meldung? = null,
 )
 
 /**
@@ -114,7 +113,7 @@ data class CsvHochladenUiState(
  * Neues“, damit der Knopf eine Rückmeldung gibt.
  */
 data class UpdateUiState(
-    val laedtPruefung: Boolean = false,
+    val pruefung: Vorgang = Vorgang.Fertig,
     /** Wurde in dieser Sitzung schon nachgesehen? */
     val geprueft: Boolean = false,
     /** Die neuere Fassung, oder null: es gibt keine. */

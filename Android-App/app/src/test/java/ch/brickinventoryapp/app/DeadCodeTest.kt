@@ -115,7 +115,7 @@ class DeadCodeTest {
         assert(tot.isEmpty()) {
             "Diese Funktionen haben keinen Aufrufer (${tot.size}):\n  " + tot.joinToString("\n  ") +
                 "\nEntfernen — oder es fehlt die Stelle, die sie benutzen sollte. " +
-                "Genau das war bei saveUserDefaultCondition der Fall (Nachtrag 115)."
+                "Genau das war bei saveUserDefaultCondition der Fall."
         }
     }
 }

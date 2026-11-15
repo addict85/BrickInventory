@@ -86,7 +86,7 @@ class UpdateFrischeTest {
         val ablage = Ablage()
         assertEquals("Nach gueltigBis", UpdateFrische.ABGELAUFEN,
             pruefe(ablage, beschreibung(120, ausgestellt = jetzt - 31 * tag)))
-        assertEquals("Ohne Frist (Beschreibung vor sec10)", UpdateFrische.ABGELAUFEN,
+        assertEquals("Ohne Frist (ältere Beschreibung)", UpdateFrische.ABGELAUFEN,
             pruefe(ablage, beschreibung(120, ausgestellt = 0)))
         assertNull("Eine abgelaufene setzt keine Messlatte", ablage.stand)
         assertTrue(quelleVeraltet(UpdateFrische.ABGELAUFEN))

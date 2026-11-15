@@ -4,6 +4,7 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.konto.ui.UpdateUiState
 import ch.brickinventoryapp.update.util.gepruefteBeschreibung
 import ch.brickinventoryapp.update.util.pruefsummePasst
@@ -97,7 +98,7 @@ class UpdateViewModel @Inject constructor(
 
     override fun pruefeAufUpdate(still: Boolean) {
         viewModelScope.launch {
-            _state.update { it.copy(laedtPruefung = !still, fehler = null) }
+            _state.update { it.copy(pruefung = if (still) Vorgang.Fertig else Vorgang.Laeuft, fehler = null) }
             fangeAusserAbbruch {
                 val roh = repo.holeBeschreibung()
                 // Nur eine signierte Beschreibung zählt: Schreibrecht am Repository allein
@@ -108,7 +109,7 @@ class UpdateViewModel @Inject constructor(
                 }
                 if (beschreibung == null || !istErlaubteApkAdresse(beschreibung.apkUrl)) {
                     _state.update {
-                        it.copy(laedtPruefung = false, geprueft = true, neuereFassung = null,
+                        it.copy(pruefung = Vorgang.Fertig, geprueft = true, neuereFassung = null,
                             fehler = if (still) null else Meldung.Ressource(
                                 if (beschreibung == null) R.string.update_beschreibung_unsigniert else R.string.update_fremde_adresse))
                     }
@@ -118,12 +119,12 @@ class UpdateViewModel @Inject constructor(
                 // eines mit Hinweis; die Einstellungen sagen, warum (anzubietendeFassung).
                 val frische = pruefeFrische(updateStand, beschreibung, repo.laufendeFassung.code, System.currentTimeMillis() / 1000)
                 _state.update {
-                    it.copy(laedtPruefung = false, geprueft = true,
+                    it.copy(pruefung = Vorgang.Fertig, geprueft = true,
                         neuereFassung = anzubietendeFassung(beschreibung, frische, repo.laufendeFassung.code), fehler = null, frische = frische)
                 }
             }.onFailure { _ ->
                 _state.update {
-                    it.copy(laedtPruefung = false, geprueft = true,
+                    it.copy(pruefung = Vorgang.Fertig, geprueft = true,
                         fehler = if (still) null else Meldung.Ressource(R.string.update_pruefung_fehlgeschlagen))
                 }
             }

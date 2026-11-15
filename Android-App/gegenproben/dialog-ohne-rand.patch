@@ -1,7 +1,7 @@
 Gegenprobe: Rückfrage und Erfassen ohne eigenen Rand zum Fenster
 Modul: app
-Test: ch.brickinventoryapp.app.UxPruefungZweiTest
-Rot: N6
+Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Rot: Rueckfrage und Erfassen halten Abstand zum Fensterrand
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 index 148a98a..121078c 100644

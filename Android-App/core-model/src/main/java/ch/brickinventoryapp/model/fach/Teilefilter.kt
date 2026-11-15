@@ -1,10 +1,13 @@
 package ch.brickinventoryapp.model.fach
 
+import java.io.Serializable
+
 /**
  * Die Farbwahl des Teilefilters. Der Server filtert nach dem Farbnamen (`color=`), deshalb
- * trägt die Wahl den Namen; „alle“ ist eine eigene Wahl statt eines leeren Textes.
+ * trägt die Wahl den Namen; „alle“ ist eine eigene Wahl statt eines leeren Textes. Serializable,
+ * weil der Teilefilter im SavedStateHandle liegt.
  */
-sealed interface Farbwahl {
+sealed interface Farbwahl : Serializable {
     data object Alle : Farbwahl
 
     data class Farbe(val name: String) : Farbwahl
@@ -18,7 +21,7 @@ sealed interface Farbwahl {
 }
 
 /** Die Kategoriewahl; gewählt wird der Wert des Servers (`category_name`), nicht die Beschriftung. */
-sealed interface Kategoriewahl {
+sealed interface Kategoriewahl : Serializable {
     data object Alle : Kategoriewahl
 
     data class Kategorie(val name: String) : Kategoriewahl

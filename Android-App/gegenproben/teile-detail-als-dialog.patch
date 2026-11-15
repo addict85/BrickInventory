@@ -1,17 +1,18 @@
 Gegenprobe: Teile-Detail auch auf dem Tablet als Dialog statt neben der Liste
 Modul: app
-Test: ch.brickinventoryapp.app.FeinschliffRegelnTest
+Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
 Rot: Tablet zeigt Teil
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
+index ed487ef..1672ebe 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
-@@ -217,7 +217,7 @@ fun TeileListeUndDetailRoute(
+@@ -226,7 +226,7 @@ internal fun ListeUndDetailRoute(
      liste: @Composable (oeffneManuell: (Postenart, String, Int, String) -> Unit) -> Unit,
  ) {
      BoxWithConstraints(Modifier.fillMaxSize()) {
 -        val nebeneinander = listeUndDetail(maxWidth.value)
 +        val nebeneinander = maxWidth.value < 0f
-         val setItem by teileVm.setItemState.collectAsStateWithLifecycle()
-         val lager by teileVm.lagerState.collectAsStateWithLifecycle()
+         val setItem by detailVm.setItemState.collectAsStateWithLifecycle()
+         val lager by detailVm.lagerState.collectAsStateWithLifecycle()
          // Typ, Nummer, Farbe, Titel des offenen manuellen Eintrags; Liste, weil sie sich speichern lässt.

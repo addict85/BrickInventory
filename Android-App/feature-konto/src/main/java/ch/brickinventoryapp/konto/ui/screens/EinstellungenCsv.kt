@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.ui.satz
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -80,13 +82,13 @@ internal fun CsvImportCard(
                 },
                 leadingContent = { Icon(Icons.Default.UploadFile, null, tint = MaterialTheme.colorScheme.primary) },
                 // Der Kreisel steht an der Zeile, deren Import läuft — die anderen bleiben ruhig.
-                trailingContent = if (csvZustand.laeuft && csvZustand.art == art) {
+                trailingContent = if (csvZustand.hochladen.laeuft && csvZustand.art == art) {
                     { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) }
                 } else null,
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable(enabled = !csvZustand.laeuft, role = Role.Button) {
+                modifier = Modifier.clickable(enabled = !csvZustand.hochladen.laeuft, role = Role.Button) {
                     gewaehlteArt = art; auswahl.launch(typen)
-                }.alpha(if (csvZustand.laeuft && csvZustand.art != art) 0.6f else 1f),
+                }.alpha(if (csvZustand.hochladen.laeuft && csvZustand.art != art) 0.6f else 1f),
             )
         }
     }
@@ -112,7 +114,7 @@ private fun CsvRueckmeldung(csvZustand: CsvHochladenUiState, onSchliessen: () ->
             color = MaterialTheme.colorScheme.primary)
         TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
     }
-    csvZustand.fehler?.let { fehler ->
+    csvZustand.hochladen.fehlerMeldung?.let { fehler ->
         Text(fehler.satz(), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error)
         TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }

@@ -1,13 +1,17 @@
 package ch.brickinventoryapp.teile.ui.screens
 
 import ch.brickinventoryapp.model.fach.Geld
+import androidx.compose.runtime.remember
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
-import ch.brickinventoryapp.teile.ui.PartsUiState
+import ch.brickinventoryapp.teile.ui.TeileUiState
+import ch.brickinventoryapp.teile.ui.FigurenUiState
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenAktionen
+import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeAktionen
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
@@ -65,6 +69,7 @@ import ch.brickinventoryapp.gemeinsam.ui.WertKacheln
 fun ManualItemDetailRoute(
     vm: KaeufeViewModel,
     teile: TeileViewModel,
+    figuren: FigurenViewModel,
     type: Postenart,
     id: String,
     colorId: Int = OHNE_FARBE,
@@ -75,12 +80,14 @@ fun ManualItemDetailRoute(
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val partsState by teile.partsState.collectAsStateWithLifecycle()
-    val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
+    // Nur die Liste des Eintrags beobachten: Sie lädt beim Beobachten, die andere bliebe ungenutzt.
+    val teileZustand = if (type == Postenart.FIG) TeileUiState() else teile.teileState.collectAsStateWithLifecycle().value
+    val figurenZustand = if (type == Postenart.FIG) figuren.figurenZustand.collectAsStateWithLifecycle().value else FigurenUiState()
+    val manDetailState by remember(type, id, colorId) { vm.kaeufeVon(type, id, colorId) }.collectAsStateWithLifecycle()
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     ManualItemDetailScreen(
-        zustand = EinzelstueckZustand(state, partsState, manDetailState, lagerZustand),
-        kaeufe = vm, teile = teile, type = type, id = id, colorId = colorId,
+        zustand = EinzelstueckZustand(state, teileZustand, figurenZustand, manDetailState, lagerZustand),
+        kaeufe = vm, teile = teile, figuren = figuren, type = type, id = id, colorId = colorId,
         fallbackTitle = fallbackTitle, imageLoader = imageLoader, onBack = onBack,
         onNavigateToAcqMgmt = onNavigateToAcqMgmt, onFarbeGeaendert = onFarbeGeaendert,
     )
@@ -89,7 +96,8 @@ fun ManualItemDetailRoute(
 /** Was die Detailansicht eines manuellen Eintrags zeigt. */
 internal data class EinzelstueckZustand(
     val state: AppUiState,
-    val partsState: PartsUiState,
+    val teile: TeileUiState,
+    val figuren: FigurenUiState,
     val manDetailState: ManualItemDetailUiState,
     val lagerZustand: LagerUiState,
 )
@@ -101,6 +109,7 @@ internal fun ManualItemDetailScreen(
     kaeufe: KaeufeAktionen,
     /** Die Zeile des Eintrags und das Ändern, Löschen, Umfärben. */
     teile: TeileAktionen,
+    figuren: FigurenAktionen,
     type: Postenart,
     id: String,            // partNumber / figNumber
     colorId: Int = OHNE_FARBE,
@@ -119,31 +128,20 @@ internal fun ManualItemDetailScreen(
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
     val state = zustand.state
-    val partsState = zustand.partsState
+    val teileZustand = zustand.teile
+    val figurenZustand = zustand.figuren
     val manDetailState = zustand.manDetailState
     val lagerZustand = zustand.lagerZustand
 
     val isFig = type == Postenart.FIG
     val currency = state.currency
 
-    LaunchedEffect(type, id, colorId) {
-        kaeufe.loadManualAcquisitions(type, id, colorId)
-        // Die Liste kann fehlen, wenn der Screen aus einem Tiefenlink oder nach einem
-        // Prozessneustart kommt — ohne sie gäbe es weder Name noch Bild. Aus derselben
-        // Quelle wie die Liste (/parts/manual bzw. /minifigs/manual), damit es für
-        // dieselbe Zeile nur eine Quelle gibt und keine Marktpreise für den ganzen Bestand
-        // geholt werden.
-        if (partsState.manualParts == null && partsState.manualFigs == null) {
-            if (isFig) teile.loadMinifigs() else teile.loadParts()
-        }
-        // Die Farbliste fuer die Auswahl weiter unten. Dieselbe Quelle wie im
-        // Erfassungsdialog (/parts/brick-colors) — und nur fuer Teile: Eine
-        // Figur hat keine Farbe.
-        if (!isFig && partsState.partsColors.isEmpty()) teile.loadPartsColors()
-    }
+    // Name und Bild kommen aus derselben Liste wie im Reiter (/parts/manual bzw.
+    // /minifigs/manual); sie, die Farbauswahl und die Käufe laden die ViewModels beim
+    // Beobachten, auch nach einem Tiefenlink oder Prozessneustart.
 
-    val fig  = if (isFig) partsState.manualFigs?.find { it.figNumber == id } else null
-    val part = if (!isFig) partsState.manualParts?.find {
+    val fig  = if (isFig) figurenZustand.manualFigs?.find { it.figNumber == id } else null
+    val part = if (!isFig) teileZustand.manualParts?.find {
         it.partNumber == id && it.colorId == colorId
     } else null
 
@@ -237,13 +235,13 @@ internal fun ManualItemDetailScreen(
                                 // der manuelle Bereich die Eintraege aller
                                 // Konten; ohne die Angabe schreibt der Server
                                 // in die Zeile des Aufrufers.
-                                if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice?.alsDouble(), fig?.blFigNumber, owner = fig?.userId)
+                                if (isFig) figuren.updateMinifig(id, qty, fig?.unitPrice?.alsDouble(), fig?.blFigNumber, owner = fig?.userId)
                                 else teile.updatePart(id, colorId, qty, part?.unitPrice?.alsDouble(), part?.condition, owner = part?.userId)
                             }
                         },
                         onMehr = {
                             qty++
-                            if (isFig) teile.updateMinifig(id, qty, fig?.unitPrice?.alsDouble(), fig?.blFigNumber, owner = fig?.userId)
+                            if (isFig) figuren.updateMinifig(id, qty, fig?.unitPrice?.alsDouble(), fig?.blFigNumber, owner = fig?.userId)
                             else teile.updatePart(id, colorId, qty, part?.unitPrice?.alsDouble(), part?.condition, owner = part?.userId)
                         },
                     )
@@ -262,7 +260,7 @@ internal fun ManualItemDetailScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             FarbWahlFeld(
-                                farben = partsState.partsColors,
+                                farben = teileZustand.partsColors,
                                 aktuell = colorId,
                                 aktuellerName = part?.colorName,
                                 aktuellerHex = part?.colorHex,
@@ -350,7 +348,7 @@ internal fun ManualItemDetailScreen(
                     showDeleteConfirm = false
                     // Auch hier der Besitzer der Karte — sonst loescht der
                     // Server die Zeile des Aufrufers statt der angezeigten.
-                    if (isFig) teile.deleteMinifig(id, fig?.userId)
+                    if (isFig) figuren.deleteMinifig(id, fig?.userId)
                     else teile.deletePart(id, colorId, part?.userId)
                     // Der Eintrag ist weg — dieser Screen zeigte sonst eine
                     // Karteileiche mit Mengenwahl und Kaufpreisen.

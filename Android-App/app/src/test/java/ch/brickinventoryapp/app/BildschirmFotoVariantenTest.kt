@@ -230,7 +230,7 @@ class BildschirmFotoVariantenTest {
         }
         RuntimeEnvironment.setQualifiers(if (sprache != null) "$sprache-$maske" else maske)
         // Die Schrift auch in der Konfiguration: Ein Dialog hat sein eigenes Fenster und
-        // nimmt die Dichte von dort, LocalDensity unten reicht nicht hinein (M2).
+        // nimmt die Dichte von dort, LocalDensity unten reicht nicht hinein.
         if (schrift != 1f) RuntimeEnvironment.setFontScale(schrift)
         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
         if (warten) bereitstellen(name, bereit, zustand)
@@ -395,25 +395,25 @@ class BildschirmFotoVariantenTest {
     @Test
     fun teileEnglisch() {
         val vm = welt.teile().also { it.loadParts() }
-        zeige("teile-en", sprache = ENGLISCH, bereit = { vm.partsState.value.parts.isNotEmpty() },
-            zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
+        zeige("teile-en", sprache = ENGLISCH, bereit = { vm.teileState.value.parts.isNotEmpty() },
+            zustand = { vm.teileState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
         foto("teile-en")
     }
 
     @Test
     fun teileSchrift200() {
         val vm = welt.teile().also { it.loadParts() }
-        zeige("teile-schrift200", schrift = 2.0f, bereit = { vm.partsState.value.parts.isNotEmpty() },
-            zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
+        zeige("teile-schrift200", schrift = 2.0f, bereit = { vm.teileState.value.parts.isNotEmpty() },
+            zustand = { vm.teileState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
         foto("teile-schrift200")
     }
 
     /** Das Figurenraster wächst mit der Schrift (LesbareSpalten): lange Namen ganz lesbar. */
     @Test
     fun figurenSchrift200() {
-        val vm = welt.teile().also { it.loadMinifigs() }
-        zeige("figuren-schrift200", schrift = 2.0f, bereit = { vm.partsState.value.minifigs.isNotEmpty() },
-            zustand = { vm.partsState.value }) { MinifigsRoute(vm = vm, imageLoader = bilder) }
+        val vm = welt.figuren().also { it.loadMinifigs() }
+        zeige("figuren-schrift200", schrift = 2.0f, bereit = { vm.figurenZustand.value.minifigs.isNotEmpty() },
+            zustand = { vm.figurenZustand.value }) { MinifigsRoute(vm = vm, imageLoader = bilder) }
         foto("figuren-schrift200")
     }
 
@@ -742,11 +742,12 @@ class BildschirmFotoVariantenTest {
      * Erfassen-Knopf. Danach die Uhr anhalten: Ein Dialog mit Textfeld kommt sonst nie zur Ruhe.
      */
     private fun erfassenFoto(name: String, figur: Boolean, schrift: Float) {
-        val vm = welt.teile().also { if (figur) it.loadMinifigs() else it.loadParts() }
+        val teile = if (figur) null else welt.teile().also { it.loadParts() }
+        val figuren = if (figur) welt.figuren().also { it.loadMinifigs() } else null
         zeige(name, schrift = schrift,
-            bereit = { vm.partsState.value.let { if (figur) it.minifigs.isNotEmpty() else it.parts.isNotEmpty() } },
-            zustand = { vm.partsState.value }) {
-            if (figur) MinifigsRoute(vm = vm, imageLoader = bilder) else PartsRoute(vm = vm, imageLoader = bilder)
+            bereit = { figuren?.figurenZustand?.value?.minifigs?.isNotEmpty() ?: teile!!.teileState.value.parts.isNotEmpty() },
+            zustand = { figuren?.figurenZustand?.value ?: teile!!.teileState.value }) {
+            if (figuren != null) MinifigsRoute(vm = figuren, imageLoader = bilder) else PartsRoute(vm = teile!!, imageLoader = bilder)
         }
         val knopf = ApplicationProvider.getApplicationContext<Context>()
             .getString(if (figur) R.string.minifigs_add else R.string.parts_add)
@@ -837,7 +838,7 @@ class BildschirmFotoVariantenTest {
         foto("merkliste-leer", dunkel = true)
     }
 
-    // ── Bildschirme, die bisher kein Foto hatten (M6) ──
+    // ── Bildschirme, die bisher kein Foto hatten ──
 
     private val katalogDetail = KatalogDetailAnsicht(
         setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, themeId = 721, themeName = "Icons",
@@ -926,8 +927,8 @@ class BildschirmFotoVariantenTest {
             "sets":[{"set_number":"75192-1","set_name":"Millennium Falcon","quantity":8,"image_local":"/beispiel/set1.png","owner_user_id":1},
                     {"set_number":"21318-1","set_name":"Baumhaus","quantity":4,"image_local":"/beispiel/set3.png","owner_user_id":1}]}"""
         val vm = welt.teile().also { it.loadParts() }
-        zeige("teil-detail", dunkel = dunkel, geraet = geraet, bereit = { vm.partsState.value.parts.isNotEmpty() },
-            zustand = { vm.partsState.value }) {
+        zeige("teil-detail", dunkel = dunkel, geraet = geraet, bereit = { vm.teileState.value.parts.isNotEmpty() },
+            zustand = { vm.teileState.value }) {
             TeileListeUndDetailRoute(vm, bilder, "", { _, _, _, _ -> }, {}, { _, _, _, _ -> }) { _ ->
                 PartsRoute(vm = vm, imageLoader = bilder)
             }
@@ -1040,7 +1041,7 @@ class BildschirmFotoVariantenTest {
     @Test fun snackbarTelefon() = snackbarFoto("telefon", false)
     @Test fun snackbarTabletDunkel() = snackbarFoto("tablet", true)
 
-    // ── Lücken der Prüfung (N17): Katalog, leer und Fehler je Reiter, Tablet 200 %, quer ──
+    // ── Katalog, leer und Fehler je Reiter, Tablet 200 %, quer ──
 
     private val katalogSets = (1..6).map { i ->
         KatalogSetAnsicht(setNumber = "1030$i-1", name = "Beispielset $i",
@@ -1097,8 +1098,8 @@ class BildschirmFotoVariantenTest {
     fun teileLeer() {
         welt.pfade.antworten["/api/v1/parts"] = """{"success":true,"total":0,"parts":[]}"""
         val vm = welt.teile().also { it.loadParts() }
-        zeige("teile-leer", bereit = { vm.partsState.value.let { it.teileAbruf is Laden.Daten } },
-            zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
+        zeige("teile-leer", bereit = { vm.teileState.value.let { it.teileAbruf is Laden.Daten } },
+            zustand = { vm.teileState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
         anhalten()
         foto("teile-leer")
     }
@@ -1108,8 +1109,8 @@ class BildschirmFotoVariantenTest {
         deutschVorDemLaden()
         welt.pfade.codes["/api/v1/parts"] = 500
         val vm = welt.teile().also { it.loadParts() }
-        zeige("teile-fehler", dunkel = true, bereit = { vm.partsState.value.let { it.teileAbruf is Laden.Fehler } },
-            zustand = { vm.partsState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
+        zeige("teile-fehler", dunkel = true, bereit = { vm.teileState.value.let { it.teileAbruf is Laden.Fehler } },
+            zustand = { vm.teileState.value }) { PartsRoute(vm = vm, imageLoader = bilder) }
         anhalten()
         foto("teile-fehler", dunkel = true)
     }
@@ -1287,7 +1288,7 @@ class BildschirmFotoVariantenTest {
         val vm = kaeufe()
         val teile = welt.teile()
         zeige("einzelteil-detail", dunkel = dunkel, geraet = geraet) {
-            ManualItemDetailRoute(vm, teile, type = Postenart.PART, id = "3001", colorId = 5, fallbackTitle = "Brick 2 x 4",
+            ManualItemDetailRoute(vm, teile, welt.figuren(), type = Postenart.PART, id = "3001", colorId = 5, fallbackTitle = "Brick 2 x 4",
                 imageLoader = bilder, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
         }
         anhalten()

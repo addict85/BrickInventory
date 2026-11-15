@@ -1,7 +1,7 @@
 Gegenprobe: „Schon in deiner Sammlung“ wieder zwischen Name und Nummer
 Modul: app
-Test: ch.brickinventoryapp.app.UxPruefungZweiTest
-Rot: M3 Barcode
+Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Rot: Barcode nennt die Nummer beim Namen und hat dieselben Hilfezeilen
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/dialogs/BarcodeResultDialog.kt
 index 88c576a..794a239 100644

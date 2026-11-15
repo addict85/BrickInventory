@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.teile.ui.normalisiert
@@ -289,7 +291,7 @@ fun PartsListScreen(
                     }
                 }
                 if (generated && parts.isNotEmpty()) {
-                    PdfKnopf(zustand.isExporting, zustand.pdfFehler?.satz(), onExportPdf, onPdfFehlerGesehen)
+                    PdfKnopf(zustand.pdf.laeuft, zustand.pdf.fehlerMeldung?.satz(), onExportPdf, onPdfFehlerGesehen)
                 }
 
                 // ── Eigener Bestand: eine Zeile für sich ──
@@ -299,7 +301,7 @@ fun PartsListScreen(
                 // weil die Wahl von Frage zu Frage wechselt.
                 if (generated && parts.isNotEmpty()) {
                     // Läuft im ViewModel: Eine Drehung bricht den Abgleich nicht ab.
-                    val bestandLaeuft = zustand.bestandLaeuft
+                    val bestandLaeuft = zustand.bestand.laeuft
                     // Untereinander: Die Beschriftung der Wahl ist lang und passt auf einem
                     // 360-dp-Telefon nicht neben den Knopf.
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {

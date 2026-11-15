@@ -49,7 +49,7 @@ object ZustandModule {
     @Provides
     fun provideFilterAblage(a: ScopeFilterAblage): FilterAblage = a
 
-    // Die ViewModels sehen nur Schnittstellen (M4); die Umsetzungen sind Singletons.
+    // Die ViewModels sehen nur Schnittstellen, damit Tests sie ohne Hilt ersetzen; die Umsetzungen sind Singletons.
     @Provides fun provideBlickfeld(b: BlickfeldDienst): Blickfeld = b
     // Die Sitzung (core-sitzung) lädt nach der Anmeldung über diese Schritte des Blickfelds.
     @Provides fun provideFilterquelle(b: BlickfeldDienst): Filterquelle = b

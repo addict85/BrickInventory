@@ -156,13 +156,13 @@ class TippzielUndNameTest {
     @Test
     fun teile() {
         val vm = welt.teile().also { it.loadParts() }
-        pruefe("Teile", { vm.partsState.value.parts.isNotEmpty() }) { PartsRoute(vm = vm, imageLoader = bilder) }
+        pruefe("Teile", { vm.teileState.value.parts.isNotEmpty() }) { PartsRoute(vm = vm, imageLoader = bilder) }
     }
 
     @Test
     fun figuren() {
-        val vm = welt.teile().also { it.loadMinifigs() }
-        pruefe("Figuren", { vm.partsState.value.minifigs.isNotEmpty() }) { MinifigsRoute(vm = vm, imageLoader = bilder) }
+        val vm = welt.figuren().also { it.loadMinifigs() }
+        pruefe("Figuren", { vm.figurenZustand.value.minifigs.isNotEmpty() }) { MinifigsRoute(vm = vm, imageLoader = bilder) }
     }
 
     @Test

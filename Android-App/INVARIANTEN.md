@@ -25,7 +25,7 @@ ML-Kit-Client), braucht `DisposableEffect { onDispose { … } }`. Test: `Resourc
 
 ## Barcode und Erfassung
 
-**Doppelklick-Sperre.** `confirmAddBarcode()` prüft `adding` zuerst und setzt es synchron
+**Doppelklick-Sperre.** `confirmAddBarcode()` prüft `hinzufuegen` zuerst und setzt es synchron
 **vor** `viewModelScope.launch`; jeder Ausgang und `cancelBarcode()` setzt es zurück. Der
 gesperrte Knopf ist nur Rückmeldung, kein Schutz.
 Dateien: `sammlung/ui/viewmodel/ErfassungViewModel.kt`, `sammlung/ui/ZustandErfassung.kt`,
@@ -69,9 +69,11 @@ Dateien: `ui/components/Schluesselbindung.kt`, `data/repository/SchrittbindungIm
 `ui/components/StrongBoxZuerst.kt` · Tests: `SchluesselbindungTest`, `SchrittbindungTest`,
 `StrongBoxZuerstTest`
 
-**Ein OkHttp-Stack.** Kein eigener `OkHttpClient.Builder()`: Er liefe am Wächter vorbei
-(Token, Klartext-Verbot, 401). Abweichende Zeiten über `newBuilder()` des injizierten
-Clients. Datei: `finanzen/ui/pdf/AnleitungsLader.kt` · Test: `AnleitungsDownloadTest`
+**Ein OkHttp-Stack.** Ausserhalb von core-data kein eigener `OkHttpClient.Builder()`: Er
+liefe am Wächter vorbei (Token, Klartext-Verbot, 401). Abweichende Zeiten über `newBuilder()`
+des injizierten Clients. core-data baut drei Grundlagen: Server (mit Wächter), Update (nur
+GitHub), Entwertung (ohne Wächter, mit dem Token des Auftrags).
+Dateien: `finanzen/ui/pdf/AnleitungsLader.kt`, `data/di/ServerClient.kt` · Test: `AnleitungsDownloadTest`
 
 **Ergebnis hat zwei Varianten.** Kein `else` in einem `when` über `Ergebnis`: Eine neue
 Variante soll den Bau dort brechen, wo sie behandelt werden muss.
@@ -79,9 +81,10 @@ Datei: `data/repository/Ergebnis.kt` · Test: `MediaAuthTest`
 
 **Fehlermeldungen an einer Stelle.** Die Datenschicht meldet die Art des Fehlers, keinen
 Satz; den Satz bildet `AppTexte.meldung()`, die Meldung des Servers hat Vorrang.
-`technisch` gehört ins Log, nie in die Anzeige. Ein Bildschirmzustand trägt `Laden<T>` und eine
-`Meldung` (`fehlerMeldung()`), keinen fertigen Satz; alte Formen zählt `QuelltextRatscheTest`.
-Tests: `ErrorMessageLayerTest`, `AppTexteTest`, `LadenTest`, `QuelltextRatscheTest`
+`technisch` gehört ins Log, nie in die Anzeige. Ein Bildschirmzustand trägt `Laden<T>` für Abrufe,
+`Vorgang` für Handlungen (läuft, fertig, gescheitert mit `Meldung`), keinen fertigen Satz und
+kein `laeuft: Boolean`; alte Formen zählt `QuelltextRatscheTest`.
+Tests: `ErrorMessageLayerTest`, `AppTexteTest`, `LadenTest`, `VorgangTest`, `QuelltextRatscheTest`
 
 **Eine Json-Konfiguration.** Server, Ablage und Cache lesen und schreiben mit `BrickJson`
 (per DI als `Json`); keine zweite `Json { }`.
@@ -129,7 +132,8 @@ Datei: `navigation/Bereichsumgebung.kt` · Tests: `ModulgrenzenTest`, `Schichtre
 
 **Bildschirme sind zustandslos.** Nur ein Composable `…Route` nimmt ein ViewModel und reicht
 Zustand und eine `…Aktionen`-Schnittstelle weiter; so lässt sich jeder Bildschirm ohne Hilt
-zeigen und prüfen. Dialoge stehen in `ui/dialogs/`, ihr Aufruf samt Bedingung im
+zeigen und prüfen. Geladen wird im ViewModel, sobald jemand den Zustand beobachtet
+(`ladeBeimBeobachten`, `ladeJeServer`, `Beobachtet`), nie per `LaunchedEffect` (`QuelltextRatscheTest`). Dialoge stehen in `ui/dialogs/`, ihr Aufruf samt Bedingung im
 Navigationsaufbau; grosse Bildschirme teilen sich in `*Sections.kt` (detekt `LongMethod`).
 
 **Delegierte Zustands-Properties** (`val state by …collectAsStateWithLifecycle()`) erlauben
@@ -189,7 +193,9 @@ Datei: `data/SitzungsBereinigung.kt` · Test: `ResourceAndCacheTest`
 **Ein ImageLoader**, im DI-Modul, nie in `onCreate()`. Dateien: `app/di/AppModule.kt`,
 `MainActivity.kt` · Test: `SessionAndLifecycleTest`
 
-**Polling am Lifecycle.** Jede getaktete Schleife in `repeatOnLifecycle(STARTED)`.
+**Polling am Lifecycle.** Jede getaktete Schleife eines Bildschirms in
+`repeatOnLifecycle(STARTED)`. Dienste (CSV-Import, PDF-Export) und das Warten auf den
+Serverstart takten nur, solange ihr Auftrag läuft, und enden mit ihm.
 Datei: `verwaltung/ui/screens/MonitoringScreen.kt` · Test: `SessionAndLifecycleTest`
 
 ## Bedienung
@@ -285,5 +291,8 @@ Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
   Arbeitsspeicher, den das System mit einem Kill zurückholte.
 - **Endmarker im verschlüsselten Dateisystem:** Eine Kürzung genau auf einen früheren flush
   bleibt unentdeckt; sie setzt nur ein Journal zurück.
-- **Kein `SavedStateHandle`:** Nach Prozesstod sind Filter und Rollposition weg; alles lädt
-  vom Server nach.
+- **Nach dem Prozesstod nur Filter und Ansicht:** Suche, Filter und Ansicht der Listen liegen
+  im `SavedStateHandle` (Teile als ein `Teilefilter`, Figuren, Galerie, Merkliste, Finanzen,
+  die Setnummern der Teileliste); Daten und Rollposition nicht, sie laden beim Beobachten
+  nach. Konto- und Lagerortfilter bleiben nur im Speicher (vertraulich, siehe oben)
+  (`TeileViewModelTest`).

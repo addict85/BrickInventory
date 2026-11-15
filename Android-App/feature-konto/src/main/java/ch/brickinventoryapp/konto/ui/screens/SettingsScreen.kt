@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.ui.theme.Design
@@ -444,8 +445,8 @@ private fun UpdateCard(
         Spacer(Modifier.height(Abstaende.mittel))
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onPruefen, enabled = !updateZustand.laedtPruefung && updateZustand.fortschritt == null, colors = nebenKnopfFarben(), border = nebenKnopfRand(!updateZustand.laedtPruefung && updateZustand.fortschritt == null)) {
-                if (updateZustand.laedtPruefung) {
+            OutlinedButton(onClick = onPruefen, enabled = !updateZustand.pruefung.laeuft && updateZustand.fortschritt == null, colors = nebenKnopfFarben(), border = nebenKnopfRand(!updateZustand.pruefung.laeuft && updateZustand.fortschritt == null)) {
+                if (updateZustand.pruefung.laeuft) {
                     CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(Abstaende.klein))
                 }

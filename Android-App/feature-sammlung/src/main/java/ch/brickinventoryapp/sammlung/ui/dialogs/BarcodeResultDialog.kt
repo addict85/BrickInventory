@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.dialogs
 
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
@@ -101,7 +102,7 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
         bestaetigen = stringResource(R.string.barcode_add),
         // Die Sperre gegen die Doppelerfassung sitzt in confirmAddBarcode(); hier sieht man,
         // dass das Tippen angekommen ist.
-        bestaetigenAn = !barcodeState.adding,
+        bestaetigenAn = !barcodeState.hinzufuegen.laeuft,
         onBestaetigen = {
             if (fuerTeileliste) {
                 // Nur die Nummer: Aus der Teileliste entsteht kein Bestand.
@@ -120,7 +121,7 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
             }
         },
         // Während des Hinzufügens nicht schliessbar — der Aufruf läuft noch.
-        onAbbrechen = { if (!barcodeState.adding) aktionen.cancelBarcode() },
+        onAbbrechen = { if (!barcodeState.hinzufuegen.laeuft) aktionen.cancelBarcode() },
     ) {
                 // ── Hinweis bei geratener Nummer ──
                 //

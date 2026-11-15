@@ -1,6 +1,11 @@
 package ch.brickinventoryapp.konto.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.zustand.ui.viewmodel.Beobachtet
+import ch.brickinventoryapp.zustand.ui.viewmodel.ladeJeServer
+import ch.brickinventoryapp.zustand.ui.LagerUiState
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.zustand.ui.gescheitert
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.model.fach.Alarmrichtung
@@ -35,7 +40,6 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.DateiRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.model.ui.Meldung
-import ch.brickinventoryapp.zustand.ui.fehlerMeldung
 import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
 import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
 
@@ -66,10 +70,18 @@ class EinstellungenViewModel @Inject constructor(
     private val leser: DateiLeser,
 ) : ViewModel(), Filterwahl by filter, EinstellungenAktionen {
 
-    val state: StateFlow<AppUiState> = sitzung.state
+    private val sitzungBeobachtet = Beobachtet(sitzung.state)
+    val state: StateFlow<AppUiState> = sitzungBeobachtet
+
+    /** Die Lagerorte-Seite liest ihn; wer sie öffnet, bekommt die eigenen Orte frisch. */
+    private val lagerBeobachtet = Beobachtet(filter.lagerState)
+    override val lagerState: StateFlow<LagerUiState> = lagerBeobachtet
 
     init {
         folgeAbmeldung(sitzung) { zuruecksetzen() }
+        // Beim Öffnen der Einstellungen, nicht als Dauerabo: Der Zustand ändert sich ausserhalb kaum.
+        ladeJeServer(sitzung, sitzungBeobachtet) { viewModelScope.launch { sitzung.ladeEinstellungen(konto) } }
+        ladeBeimBeobachten(lagerBeobachtet) { ladeEigeneLagerorte() }
     }
 
     private val _csvHochladenState = MutableStateFlow(CsvHochladenUiState())
@@ -116,15 +128,15 @@ class EinstellungenViewModel @Inject constructor(
 
     fun ladeCsvHoch(art: CsvImportArt, datei: DateiRef) {
         viewModelScope.launch {
-            _csvHochladenState.value = CsvHochladenUiState(laeuft = true, art = art)
+            _csvHochladenState.value = CsvHochladenUiState(hochladen = Vorgang.Laeuft, art = art)
             val bytes = when (val g = leser.liesHoechstens(datei, CSV_MAX_BYTES)) {
                 null -> {
-                    _csvHochladenState.value = CsvHochladenUiState(fehler = Meldung.Ressource(R.string.csv_upload_unreadable))
+                    _csvHochladenState.value = CsvHochladenUiState(hochladen = Vorgang.Fehlgeschlagen(Meldung.Ressource(R.string.csv_upload_unreadable)))
                     return@launch
                 }
                 Gelesen.ZuGross -> {
-                    _csvHochladenState.value = CsvHochladenUiState(
-                        fehler = Meldung.Ressource(R.string.csv_upload_too_big, listOf(CSV_MAX_BYTES / 1024 / 1024)))
+                    _csvHochladenState.value = CsvHochladenUiState(hochladen = Vorgang.Fehlgeschlagen(
+                        Meldung.Ressource(R.string.csv_upload_too_big, listOf(CSV_MAX_BYTES / 1024 / 1024))))
                     return@launch
                 }
                 is Gelesen.Inhalt -> g.bytes
@@ -141,7 +153,7 @@ class EinstellungenViewModel @Inject constructor(
                         CsvImportArt.SETS -> abgleich.sets()
                     }
                 }
-                is Ergebnis.Error -> _csvHochladenState.value = CsvHochladenUiState(fehler = fehlerMeldung(r))
+                is Ergebnis.Error -> _csvHochladenState.value = CsvHochladenUiState(hochladen = gescheitert(r))
             }
         }
     }

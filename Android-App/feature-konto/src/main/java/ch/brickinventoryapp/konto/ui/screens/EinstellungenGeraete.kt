@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
@@ -90,7 +92,7 @@ internal fun GeraeteCard(
                    else stringResource(R.string.tokens_revoke_text,
                        zustand.geraete.firstOrNull { it.tokenId == frage.tokenId }?.bezeichnung ?: "—"),
             bestaetigen = stringResource(R.string.tokens_revoke_confirm),
-            codeNoetig = frage.codeNoetig, fehler = frage.fehler?.satz(), laeuft = frage.laeuft,
+            codeNoetig = frage.codeNoetig, fehler = frage.vorgang.fehlerMeldung?.satz(), laeuft = frage.vorgang.laeuft,
             onBestaetigen = onBestaetigen,
             onAbbrechen = onAbbrechen,
         )

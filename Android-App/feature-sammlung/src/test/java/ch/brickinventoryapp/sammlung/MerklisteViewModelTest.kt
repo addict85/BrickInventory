@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.sammlung
 
 import ch.brickinventoryapp.model.fach.Geld
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
@@ -50,6 +52,8 @@ import ch.brickinventoryapp.testing.TestDienste
  *   H  loescheMerkposten() liest den Namen aus der rohen Liste statt aus der gezeigten
  *      (gegenproben/merkposten-name-ohne-ablage.patch) → rot „ein geloeschter Merkposten …“
  *      (Titanic erwartet, 10294-1 bekommen; nur in der CI messbar)
+ *   merkliste-laedt-nicht-beim-zeigen  (gegenproben/) ladeBeimBeobachten der Liste gestrichen
+ *      → rot „Liste und Detail laden, sobald jemand sie zeigt“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MerklisteViewModelTest {
@@ -151,6 +155,20 @@ class MerklisteViewModelTest {
         assertEquals("in der Galerie", listOf("10294-1"), galerie.map { it.setNumber })
         val uebernahme = pfade.anfragenAn("/uebernehmen").single()
         assertTrue(uebernahme, uebernahme.startsWith("POST"))
+    }
+
+    @Test
+    fun `Liste und Detail laden, sobald jemand sie zeigt`() {
+        val vm = vm()
+        assertTrue("ohne Beobachter kein Abruf", pfade.anfragenAn("GET /api/v1/wanted").isEmpty())
+        val liste = CoroutineScope(Dispatchers.Main).launch { vm.merklisteState.collect {} }
+        assertEquals(listOf("10294-1"), vm.merklisteState.value.merkposten.map { it.setNumber })
+        liste.cancel()
+        val detail = vm.merkpostenDetailVon("10294-1")
+        val seite = CoroutineScope(Dispatchers.Main).launch { detail.collect {} }
+        assertEquals("10294-1", detail.value.setNumber)
+        assertTrue("Alarme des Postens geholt", pfade.anfragenAn("GET /api/v1/alerts").isNotEmpty())
+        seite.cancel()
     }
 
     @Test

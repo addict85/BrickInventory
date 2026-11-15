@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.finanzen.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.zustand.ui.fehlerMeldung
 import ch.brickinventoryapp.zustand.ui.ladefehler
 import ch.brickinventoryapp.model.ui.Laden
@@ -122,18 +124,17 @@ class GutscheinViewModel @Inject constructor(
      */
     fun bestaetige(passwort: String, code: String?) {
         val b = _state.value.bestaetigung ?: return
-        if (b.laeuft) return
-        _state.update { it.copy(bestaetigung = b.copy(laeuft = true, fehler = null)) }
+        if (b.vorgang.laeuft) return
+        _state.update { it.copy(bestaetigung = b.copy(vorgang = Vorgang.Laeuft)) }
         val anfrage = Bestaetigung(passwort = passwort, code = code?.trim()?.ifEmpty { null })
         viewModelScope.launch {
             val fehler = fuehreSchrittAus(b, anfrage)
             if (fehler != null) _state.update {
                 it.copy(bestaetigung = it.bestaetigung?.copy(
-                    laeuft = false,
                     codeNoetig = it.bestaetigung.codeNoetig || fehler.code in FAKTOR_CODES,
                     // Offline gibt es kein Löschen auf Vorrat: Das Passwort bliebe sonst liegen.
-                    fehler = if (fehler.transient && b.schritt == GutscheinSchritt.LOESCHEN)
-                        Meldung.Ressource(R.string.vouchers_delete_offline) else fehlerMeldung(fehler)))
+                    vorgang = Vorgang.Fehlgeschlagen(if (fehler.transient && b.schritt == GutscheinSchritt.LOESCHEN)
+                        Meldung.Ressource(R.string.vouchers_delete_offline) else fehlerMeldung(fehler))))
             }
         }
     }
@@ -239,7 +240,7 @@ class GutscheinViewModel @Inject constructor(
     internal fun speichere(datei: (suspend () -> Pair<String?, ByteArray>?)?) {
         viewModelScope.launch {
             val s = _state.value
-            _state.update { it.copy(speichert = true) }
+            _state.update { it.copy(speichern = Vorgang.Laeuft) }
             try {
                 val bearbeitet = s.bearbeitet
                 if (bearbeitet != null) {
@@ -287,7 +288,7 @@ class GutscheinViewModel @Inject constructor(
                     nummer = s.nummer.trim(), pin = s.pin.trim().ifEmpty { null },
                     betrag = betrag, waehrung = Waehrung(s.waehrung.trim()))))
             } finally {
-                _state.update { it.copy(speichert = false) }
+                _state.update { it.copy(speichern = Vorgang.Fertig) }
             }
         }
     }

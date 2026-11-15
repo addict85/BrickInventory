@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.finanzen.ui
 
+import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.KlartextAnsicht
 import ch.brickinventoryapp.model.fach.BewertungAnsicht
@@ -10,7 +11,6 @@ import ch.brickinventoryapp.model.fach.GewinnAnsicht
 import ch.brickinventoryapp.model.fach.GutscheinAnsicht
 import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.Meldung
 
 /**
  * Finanzen: Bewertung, Gewinn/Verlust und Portfolio-Verlauf — eigener Fluss, weil
@@ -100,7 +100,7 @@ data class GutscheinUiState(
     val klartext: Map<Int, KlartextAnsicht> = emptyMap(),
     /** Was die Oberfläche in die Zwischenablage legen soll; sie quittiert. */
     val zuKopieren: Kopierauftrag? = null,
-    val speichert: Boolean = false,
+    val speichern: Vorgang = Vorgang.Fertig,
     /**
      * Die id der Karte, deren Guthaben gerade abgefragt wird, oder null. Eine id statt
      * eines Booleans, damit sich nur der gedrückte Knopf rührt — es läuft immer nur
@@ -156,8 +156,7 @@ data class GutscheinBestaetigung(
     val id: Int?,
     /** Der Server hat den Code des zweiten Faktors verlangt. */
     val codeNoetig: Boolean = false,
-    val fehler: Meldung? = null,
-    val laeuft: Boolean = false,
+    val vorgang: Vorgang = Vorgang.Fertig,
 )
 
 data class Kopierauftrag(val wert: String, val istNummer: Boolean)

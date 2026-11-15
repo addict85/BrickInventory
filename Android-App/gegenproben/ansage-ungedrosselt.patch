@@ -1,7 +1,7 @@
 Gegenprobe: GedrosselteAnsage gibt jeden Wortlaut sofort weiter
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitBefundeTest
-Rot: M7 Statusmeldungen sind Live-Regionen und Fortschritt wird gedrosselt angesagt
+Test: ch.brickinventoryapp.app.BarrierefreiheitTest
+Rot: Statusmeldungen sind Live-Regionen und Fortschritt wird gedrosselt angesagt
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt

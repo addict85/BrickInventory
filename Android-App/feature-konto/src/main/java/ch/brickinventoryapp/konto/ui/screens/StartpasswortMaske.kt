@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.konto.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -74,7 +76,7 @@ fun StartpasswortMaske(
                 Text(stringResource(R.string.startpasswort_text), style = MaterialTheme.typography.bodyMedium)
                 PasswortWechselFelder(pwAktuell, { pwAktuell = it }, pwNeu, { pwNeu = it },
                     pwWiederholt, { pwWiederholt = it }, pruefung, weiter)
-                kontoZustand.fehler?.let { FehlerZeile(it) }
+                kontoZustand.speichern.fehlerMeldung?.let { FehlerZeile(it) }
                 if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
                 Button(
                     onClick = {
@@ -82,7 +84,7 @@ fun StartpasswortMaske(
                             onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() })
                         }
                     },
-                    enabled = !kontoZustand.speichert,
+                    enabled = !kontoZustand.speichern.laeuft,
                     colors = hauptKnopfFarben(),
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.konto_password_button)) }

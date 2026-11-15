@@ -79,7 +79,6 @@ fun LagerorteRoute(
     onZurueck: () -> Unit,
 ) {
     val lager by vm.lagerState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { vm.ladeEigeneLagerorte() }
     Unterseite(stringResource(R.string.storage_manage), snackbarHostState, onZurueck) {
         LagerorteCard(lager, vm)
     }
@@ -116,11 +115,10 @@ fun KontoRoute(
     konto: KontoViewModel = hiltViewModel(),
     onZurueck: () -> Unit,
 ) {
-    val kontoZustand by konto.kontoState.collectAsStateWithLifecycle()
+    val kontoZustand by konto.kontoSeite.collectAsStateWithLifecycle()
     val geraeteZustand by konto.geraeteState.collectAsStateWithLifecycle()
     val zfZustand by konto.zweiterFaktorState.collectAsStateWithLifecycle()
-    // Geräte und zweiter Faktor laden beim Beobachten ihres Zustands (KontoViewModel).
-    LaunchedEffect(Unit) { konto.ladeProfil(); konto.ladeDesign() }
+    // Profil, Design, Geräte und zweiter Faktor laden beim Beobachten ihres Zustands (KontoViewModel).
     // Passwort, zweiter Faktor, Geräte: Ein untergeschobener Tipp schaltete hier Schutz ab.
     Ueberdeckungsschutz()
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck,

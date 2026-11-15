@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
+import ch.brickinventoryapp.model.ui.Vorgang
+import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.data.repository.MerklisteRepository
 import ch.brickinventoryapp.data.repository.SetKatalogRepository
 import ch.brickinventoryapp.model.ui.Scannerherkunft
@@ -101,7 +103,7 @@ class ErfassungViewModel @Inject constructor(
                             result = setNum, setName = r.data.name ?: setNum,
                             imageUrl = r.data.bildUrl, imageLocal = r.data.bildLokal,
                             year = r.data.year, pieces = r.data.pieces, theme = r.data.theme,
-                            minifigs = r.data.minifigs, unsicher = r.data.unsicher, adding = false,
+                            minifigs = r.data.minifigs, unsicher = r.data.unsicher, hinzufuegen = Vorgang.Fertig,
                             besitzMenge = 0,
                         ) }
                         // „Schon in deiner Sammlung (×N)“: Der Katalog kennt den eigenen Bestand;
@@ -154,7 +156,7 @@ class ErfassungViewModel @Inject constructor(
                             result = d.setNumber, setName = d.name ?: d.setNumber,
                             imageUrl = d.imageUrl, imageLocal = d.imageLocal,
                             year = d.year, pieces = d.numParts, theme = d.themeName,
-                            minifigs = d.minifigs, unsicher = true, adding = false,
+                            minifigs = d.minifigs, unsicher = true, hinzufuegen = Vorgang.Fertig,
                             besitzMenge = if (d.owned) d.ownedQuantity.coerceAtLeast(1) else 0,
                         ) }
                     }
@@ -200,7 +202,7 @@ class ErfassungViewModel @Inject constructor(
     override fun confirmAddBarcode(wunsch: Erfassungswunsch) {
         val setNum = wunsch.setNumber
         val stand = _barcodeState.value
-        if (stand.adding) return
+        if (stand.hinzufuegen.laeuft) return
         when (stand.source) {
             Scannerherkunft.MERKLISTE -> {
                 viewModelScope.launch {
@@ -216,7 +218,7 @@ class ErfassungViewModel @Inject constructor(
             }
             Scannerherkunft.GALERIE, Scannerherkunft.GALERIE_SUCHE -> Unit
         }
-        _barcodeState.update { ohneErgebnis(it).copy(adding = true) }
+        _barcodeState.update { ohneErgebnis(it).copy(hinzufuegen = Vorgang.Laeuft) }
         viewModelScope.launch {
             when (val r = sets.addSet(setNum, wunsch.menge.coerceAtLeast(1), wunsch.kaufpreis, wunsch.zustand,
                                       wunsch.besitzer, wunsch.lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
@@ -229,7 +231,7 @@ class ErfassungViewModel @Inject constructor(
                 }
                 is Ergebnis.Error -> meldeFehlgeschlageneErfassung(setNum, meldungen.meldung(r))
             }
-            _barcodeState.update { it.copy(adding = false) }
+            _barcodeState.update { it.copy(hinzufuegen = Vorgang.Fertig) }
         }
     }
 
@@ -239,7 +241,7 @@ class ErfassungViewModel @Inject constructor(
 
     private fun ohneErgebnis(b: BarcodeUiState) = b.copy(
         result = null, setName = null, imageUrl = null, imageLocal = null, year = null,
-        pieces = null, theme = null, minifigs = null, adding = false, unsicher = false, besitzMenge = 0)
+        pieces = null, theme = null, minifigs = null, hinzufuegen = Vorgang.Fertig, unsicher = false, besitzMenge = 0)
 
     fun manuelleErfassungQuittieren() {
         _barcodeState.update { it.copy(manuelleErfassungAnfordern = false) }

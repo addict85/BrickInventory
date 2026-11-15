@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
+import ch.brickinventoryapp.model.ui.laeuft
+import ch.brickinventoryapp.model.ui.fehlerMeldung
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.ui.Laden
@@ -81,10 +83,10 @@ fun GutscheineCard(
     // solange ein Gutschein bearbeitet wird; nach erfolgreichem Speichern (Felder
     // leer) geht es von selbst zu, bei einer Absage bleibt es mit den Eingaben offen.
     var gesendet by rememberSaveable { mutableStateOf(false) }
-    // An den Feldern festgemacht, nicht nur an `speichert`: Ein schneller Server
+    // An den Feldern festgemacht, nicht nur am Speichern: Ein schneller Server
     // wechselt true → false, ohne dass eine Zusammensetzung dazwischen liegt.
-    LaunchedEffect(gesendet, zustand.speichert, zustand.nummer, zustand.bearbeitet) {
-        if (gesendet && !zustand.speichert) {
+    LaunchedEffect(gesendet, zustand.speichern.laeuft, zustand.nummer, zustand.bearbeitet) {
+        if (gesendet && !zustand.speichern.laeuft) {
             gesendet = false
             if (zustand.nummer.isEmpty() && zustand.bearbeitet == null) onNeu(false)
         }
@@ -234,8 +236,8 @@ private fun GutscheinRueckfrage(
         },
         bestaetigen = stringResource(if (loeschen) R.string.common_delete else R.string.vouchers_confirm_button),
         codeNoetig = frage.codeNoetig,
-        fehler = frage.fehler?.satz(),
-        laeuft = frage.laeuft,
+        fehler = frage.vorgang.fehlerMeldung?.satz(),
+        laeuft = frage.vorgang.laeuft,
         onBestaetigen = onBestaetigen,
         onAbbrechen = onAbbrechen,
     )

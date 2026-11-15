@@ -87,8 +87,6 @@ internal fun MerkpostenDetailScreen(
         it.setNumber == setNumber && it.condition == condition
     }
 
-    LaunchedEffect(setNumber) { aktionen.ladeMerkpostenDetail(setNumber) }
-
     // Der Merkposten ist weg (geloescht oder uebernommen) — dann gehoert dieser
     // Bildschirm ebenfalls weg, statt eine Leiche zu zeigen.
     LaunchedEffect(merkposten == null, liste.abruf.laedt) {

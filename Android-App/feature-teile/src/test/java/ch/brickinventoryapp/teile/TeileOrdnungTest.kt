@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.teile.ui.Teilefilter
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.fach.TeilAnsicht
-import ch.brickinventoryapp.teile.ui.PartsUiState
 import ch.brickinventoryapp.teile.ui.sortiert
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.testing.PfadServer
@@ -45,11 +45,11 @@ class TeileOrdnungTest {
     fun `jede Reihenfolge sortiert wie der Server`() {
         val alle = listOf(weiss, platte, ohneName, tan)
         assertEquals("Farbe, dann Name", listOf(ohneName, platte, tan, weiss),
-            sortiert(alle, PartsUiState.Ordnung.FARBE))
+            sortiert(alle, Teilefilter.Ordnung.FARBE))
         assertEquals("Name, dann Farbe; ohne Namen zuletzt", listOf(tan, weiss, platte, ohneName),
-            sortiert(alle, PartsUiState.Ordnung.NAME))
+            sortiert(alle, Teilefilter.Ordnung.NAME))
         assertEquals("Menge absteigend", listOf(platte, weiss, tan, ohneName),
-            sortiert(alle, PartsUiState.Ordnung.MENGE))
+            sortiert(alle, Teilefilter.Ordnung.MENGE))
     }
 
     // ── Am ViewModel: umsortieren, ohne nachzuladen, und gemerkt ──
@@ -60,7 +60,7 @@ class TeileOrdnungTest {
     private lateinit var t: TestDienste
 
     private fun vm(gemerkt: SavedStateHandle = SavedStateHandle(), t: TestDienste = this.t) =
-        t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, t.teile(), t.figuren(), t.kontosicht, gemerkt))
+        t.merke(TeileViewModel(t.sitzung, t.filter(), t.hinweise, t.aenderungen, t.scrollMemory, t.teile(), t.kontosicht, gemerkt))
 
     @Before
     fun auf() {
@@ -83,7 +83,7 @@ class TeileOrdnungTest {
         pfade.server.shutdown()
     }
 
-    private fun TeileViewModel.reihe() = partsState.value.parts.map { "${it.partNumber}/${it.colorName}" }
+    private fun TeileViewModel.reihe() = teileState.value.parts.map { "${it.partNumber}/${it.colorName}" }
 
     @Test
     fun `die Reihenfolge sortiert die geladene Liste um und uebersteht einen Prozess-Tod`() {
@@ -93,13 +93,13 @@ class TeileOrdnungTest {
         assertEquals(listOf("3020/Blue", "3001/Tan", "3001/White"), vm.reihe())
         val abrufe = pfade.anfragenAn("GET /api/v1/parts?").size
 
-        vm.setPartsOrdnung(PartsUiState.Ordnung.MENGE)
+        vm.setPartsOrdnung(Teilefilter.Ordnung.MENGE)
         assertEquals(listOf("3020/Blue", "3001/White", "3001/Tan"), vm.reihe())
         assertEquals("Umsortieren lädt nicht nach", abrufe, pfade.anfragenAn("GET /api/v1/parts?").size)
 
         pfade.neuerProzess(io = takt) { _, t ->
             val neu = vm(gemerkt, t)
-            assertEquals(PartsUiState.Ordnung.MENGE, neu.partsState.value.partsOrdnung)
+            assertEquals(Teilefilter.Ordnung.MENGE, neu.teileState.value.filter.ordnung)
             neu.loadParts()
             assertEquals(listOf("3020/Blue", "3001/White", "3001/Tan"), neu.reihe())
         }

@@ -110,27 +110,27 @@ import ch.brickinventoryapp.testing.testKontoRepository
 import ch.brickinventoryapp.testing.testTeileRepository
 
 /**
- * Die Befunde der Barrierefreiheitsprüfung 17, als Verhalten: Was TalkBack, Tastatur und
- * grosse Schrift an den zentralen Bausteinen vorfinden. Je Test der Befund im Namen.
+ * Was TalkBack, Tastatur und grosse Schrift an den zentralen Bausteinen vorfinden, als
+ * Verhalten geprüft.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   schalter-ohne-namen          Kästchen der Bauliste wieder mit eigenem Rückruf → rot „H1 …“
- *   suchfeld-ohne-namen          Suchfeld ohne contentDescription → rot „M5 …“
- *   filterwahl-als-kaestchen     FilterWahl wieder als AuswahlChip → rot „M6 …“
- *   ansage-ungedrosselt          GedrosselteAnsage gibt jeden Wortlaut weiter → rot „M7 …“
- *   bildzoom-nur-geste           Zoomleiste im Bilddialog entfernt → rot „M8 …“
- *   fokus-ohne-rahmen            fokusRahmen zeichnet nichts → rot „M9 …“
- *   csv-aufklapper-stumm         Zustand und Aufklappen am CSV-Balken entfernt → rot „M11 …“
- *   themenzeile-ohne-rolle       ThemeRow ohne Optionsfeld-Rolle → rot „M12 …“
- *   setkachel-name-hinten        Name der Setkachel wieder unter Nummer und Zustand → rot „M13 …“
- *   unterseite-einzeilig         Unterseite wieder mit einzeiligem Titel → rot „M14 …“
- *   rueckfrage-ohne-ueberschrift Titel der Rückfrage ohne heading → rot „N2 …“
- *   notfallcodes-als-wort        Notfallcodes ohne vorgelesenAls → rot „N5 …“
+ *   schalter-ohne-namen          Kästchen der Bauliste wieder mit eigenem Rückruf → rot „Kaestchen der Bauliste tragen …“
+ *   suchfeld-ohne-namen          Suchfeld ohne contentDescription → rot „Suchfeld behaelt seinen Namen …“
+ *   filterwahl-als-kaestchen     FilterWahl wieder als AuswahlChip → rot „Filterwahl ist eine Einfachwahl …“
+ *   ansage-ungedrosselt          GedrosselteAnsage gibt jeden Wortlaut weiter → rot „Statusmeldungen sind Live-Regionen und …“
+ *   bildzoom-nur-geste           Zoomleiste im Bilddialog entfernt → rot „Bildzoom geht mit Knoepfen …“
+ *   fokus-ohne-rahmen            fokusRahmen zeichnet nichts → rot „Tastaturfokus zeigt einen Rahmen …“
+ *   csv-aufklapper-stumm         Zustand und Aufklappen am CSV-Balken entfernt → rot „CSV-Balken nennt Zustand, Aufklappen …“
+ *   themenzeile-ohne-rolle       ThemeRow ohne Optionsfeld-Rolle → rot „Themen- und Jahreswahl melden …“
+ *   setkachel-name-hinten        Name der Setkachel wieder unter Nummer und Zustand → rot „Set- und Katalogkachel lesen …“
+ *   unterseite-einzeilig         Unterseite wieder mit einzeiligem Titel → rot „lange Titel brechen bei …“
+ *   rueckfrage-ohne-ueberschrift Titel der Rückfrage ohne heading → rot „die Rueckfrage nennt ihren …“
+ *   notfallcodes-als-wort        Notfallcodes ohne vorgelesenAls → rot „Notfallcodes werden Zeichen fuer …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
-class BarrierefreiheitBefundeTest {
+class BarrierefreiheitTest {
 
     @get:Rule
     val compose = createComposeRule()
@@ -183,7 +183,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `H1 Kaestchen der Bauliste tragen Namen und schalten ueber die Zeile`() {
+    fun `Kaestchen der Bauliste tragen Namen und schalten ueber die Zeile`() {
         var lose: Boolean? = null
         var unter: Boolean? = null
         val teil = PlPart(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", colorHex = "C91A09",
@@ -205,7 +205,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `H1 Schalter fuer Preisalarm-Meldungen und Nutzer-Zertifikate tragen Namen`() {
+    fun `Schalter fuer Preisalarm-Meldungen und Nutzer-Zertifikate tragen Namen`() {
         var ca: Boolean? = null
         val update = object : UpdateAktionen {
             override fun pruefeAufUpdate(still: Boolean) = Unit
@@ -255,7 +255,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `M5 Suchfeld behaelt seinen Namen nach der Eingabe und bricht bei 200 Prozent um`() {
+    fun `Suchfeld behaelt seinen Namen nach der Eingabe und bricht bei 200 Prozent um`() {
         val platzhalter = "Nummer oder Name eines Sets im Katalog"
         zeige(schrift = 2f) {
             var wert by remember { mutableStateOf("") }
@@ -272,7 +272,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `M6 Filterwahl ist eine Einfachwahl mit Ueberschrift und bricht um`() {
+    fun `Filterwahl ist eine Einfachwahl mit Ueberschrift und bricht um`() {
         val lang = "Regal Wohnzimmer hinten links · 1 Set"
         zeige(schrift = 2f) {
             Column(Modifier.width(360.dp)) {
@@ -296,7 +296,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `M7 Statusmeldungen sind Live-Regionen und Fortschritt wird gedrosselt angesagt`() {
+    fun `Statusmeldungen sind Live-Regionen und Fortschritt wird gedrosselt angesagt`() {
         var fortschritt by mutableStateOf("Noch 30 s")
         zeige {
             Column {
@@ -321,7 +321,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `M8 Bildzoom geht mit Knoepfen und Doppeltipp`() {
+    fun `Bildzoom geht mit Knoepfen und Doppeltipp`() {
         zeige { ZoomableImageDialog(imageUrl = "", contentDescription = "Millennium Falcon", imageLoader = bilder, onDismiss = {}) }
         val gross = ctx.getString(R.string.pdfview_zoom_in)
         val knopf = compose.onNodeWithContentDescription(gross).fetchSemanticsNode()
@@ -340,7 +340,7 @@ class BarrierefreiheitBefundeTest {
 
     @OptIn(ExperimentalComposeUiApi::class)
     @Test
-    fun `M9 Tastaturfokus zeigt einen Rahmen in der Hauptfarbe`() {
+    fun `Tastaturfokus zeigt einen Rahmen in der Hauptfarbe`() {
         var hauptfarbe = 0
         val ablage = FocusRequester()
         compose.setContent {
@@ -376,7 +376,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `M11 CSV-Balken nennt Zustand, Aufklappen und Fortschritt`() {
+    fun `CSV-Balken nennt Zustand, Aufklappen und Fortschritt`() {
         zeige {
             CsvImportBanner(done = 3, total = 10, current = "10294-1", ok = 2, warn = 1, err = 0, running = true, onAbbrechen = {})
         }
@@ -391,7 +391,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `M12 Themen- und Jahreswahl melden Rolle und Wahl`() {
+    fun `Themen- und Jahreswahl melden Rolle und Wahl`() {
         zeige {
             Column(Modifier.then(Modifier)) {
                 ThemeRow("Alle Themen", false) {}
@@ -406,7 +406,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `M13 Set- und Katalogkachel lesen zuerst den Namen und sind Knoepfe mit Ziel`() {
+    fun `Set- und Katalogkachel lesen zuerst den Namen und sind Knoepfe mit Ziel`() {
         val set = SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars", quantity = 2,
             conditions = listOf(Zustand.NEU))
         val katalog = KatalogSetAnsicht(setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022,
@@ -431,7 +431,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `M14 lange Titel brechen bei 200 Prozent um und sind Ueberschriften`() {
+    fun `lange Titel brechen bei 200 Prozent um und sind Ueberschriften`() {
         val titel = "Slope 45 2 x 2 with Bottom Pin"
         zeige(schrift = 2f) {
             Column(Modifier.width(360.dp)) {
@@ -444,7 +444,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `N2 die Rueckfrage nennt ihren Titel als Ueberschrift und Fenstername`() {
+    fun `die Rueckfrage nennt ihren Titel als Ueberschrift und Fenstername`() {
         zeige { Rueckfrage("Abmelden?", "Auf diesem Gerät abmelden.", "Abmelden", {}, {}) }
         compose.onNode(hasText("Abmelden?") and isHeading()).fetchSemanticsNode("Titel ist keine Überschrift")
         compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Abmelden?"))
@@ -452,7 +452,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `N3 Mehr erfahren hat je Thema einen eigenen Namen und sagt den Text an`() {
+    fun `Mehr erfahren hat je Thema einen eigenen Namen und sagt den Text an`() {
         zeige {
             Column {
                 ErklaerText("Kurz eins.", "Mehr eins.", thema = "Preisalarme")
@@ -468,7 +468,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `N4 Katalognamen sind als Englisch ausgezeichnet`() {
+    fun `Katalognamen sind als Englisch ausgezeichnet`() {
         var name: AnnotatedString? = null
         zeige { name = katalogName("Brick 2 x 4") }
         val sprachen = name?.spanStyles?.mapNotNull { it.item.localeList?.firstOrNull()?.language }.orEmpty()
@@ -476,7 +476,7 @@ class BarrierefreiheitBefundeTest {
     }
 
     @Test
-    fun `N5 Notfallcodes werden Zeichen fuer Zeichen vorgelesen`() {
+    fun `Notfallcodes werden Zeichen fuer Zeichen vorgelesen`() {
         zeige {
             ZweiterFaktorPflichtMaske(ZweiterFaktorUiState(aktiv = true, codes = listOf("i9j0-k1l2")), {}, {}, {}, {})
         }
