@@ -3,7 +3,7 @@
  * Schliessen, und die Vorschau eines durchsichtigen PNG bleibt durchsichtig (Dunkelmodus).
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  die ausstehende Speicherung wieder mit `if (!curSet) return` (Stand vor dem Nachtrag) → rot: „Menge
+ *   A  die ausstehende Speicherung wieder mit `if (!offenesSet) return` (Stand vor dem Nachtrag) → rot: „Menge
  *      beim sofortigen Schliessen gespeichert“ (mQtyInc verloren). Ohne den Beobachter allein bleibt es grün:
  *      Die Speicherung kommt dann 400 ms später, er macht sie nur sofort.
  *   B  liefereBild() ohne den Typ aus vorschauTyp() → rot: „Vorschau eines durchsichtigen PNG …“ (image/jpeg)

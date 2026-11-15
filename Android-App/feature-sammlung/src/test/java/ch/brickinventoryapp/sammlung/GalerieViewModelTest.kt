@@ -2,6 +2,7 @@ package ch.brickinventoryapp.sammlung
 
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.fach.Setsortierung
+import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.vertrag.SetAggregate
@@ -239,7 +240,7 @@ class GalerieViewModelTest {
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
         // So schreibt HaushaltRepository die Antwort des Servers in die Ablage.
-        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1))) }
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "75192-1", condition = Zustand.GEBRAUCHT, acqCount = 1, usedCount = 1, conditions = listOf(Zustand.GEBRAUCHT)))) }
         assertTrue("Kennzahlen neu", pfade.anfragenAn("GET /api/v1/stats").size > zahlenVorher)
         assertTrue("Kachel geändert", vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1)
         assertEquals("Die Liste darf nicht neu geholt werden", vorher, abrufe().size)

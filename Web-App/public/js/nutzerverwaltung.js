@@ -5,7 +5,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { feldFehler, passwortRegelText } from './formular.js';
 import { toast } from './meldungen.js';
-import { ME } from './zustand.js';
+import { angemeldetesKonto } from './zustand.js';
 import { html, ungeprueft } from './escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
 // Einstellungen, Abschnitt Verwaltung: Konten anlegen, sperren, freischalten, Rechte. Nur Verwalter sehen
@@ -72,7 +72,8 @@ async function ladeProtokoll() {
  * @param {Konto} u
  */
 function nutzerAktionen(u) {
-  if (ME && u.id === ME.id) return html`<span class="text-klein">${tRaw('users.selbst')}</span>`;
+  if (angemeldetesKonto && u.id === angemeldetesKonto.id)
+    return html`<span class="text-klein">${tRaw('users.selbst')}</span>`;
   const selten = [
     nutzerKnopf(
       u,

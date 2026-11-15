@@ -4,29 +4,29 @@ import { GenericResponse } from './gemeinsam';
 import { eingabe } from '../infra/validate';
 
 export const GelesenerGutschein = z.looseObject({
-  number: z.string().nullable().optional(),
-  pin: z.string().nullable().optional(),
+  number: z.string().nullable(),
+  pin: z.string().nullable(),
   amount: z.number().optional(),
-  currency: z.string().nullable().optional(),
+  currency: z.string().nullable(),
 });
 
 export const Gutschein = z.looseObject({
   id: z.number().int(),
   number: z.string(),
-  pin: z.string().nullable().optional(),
+  pin: z.string().nullable(),
   amount: z.number(),
   currency: z.string(),
   hat_pdf: z.boolean(),
-  created_at: zeit.nullable().optional(),
-  updated_at: zeit.nullable().optional(),
-  guthaben_geprueft_am: zeit.nullable().optional(),
+  created_at: zeit,
+  updated_at: zeit,
+  guthaben_geprueft_am: zeit.nullable(),
 });
 
 export const GuthabenAntwort = z.looseObject({
-  success: z.boolean().optional(),
-  voucher: Gutschein.nullable().optional(),
-  angezeigt: z.string().nullable().optional(),
-  waehrung_geaendert: z.boolean().optional(),
+  success: z.boolean(),
+  voucher: Gutschein.nullable(),
+  angezeigt: z.string().nullable(),
+  waehrung_geaendert: z.boolean(),
   grund: z.string().nullable().optional(),
   wartenSek: z.number().int().nullable().optional(),
   error: z.string().nullable().optional(),
@@ -34,15 +34,15 @@ export const GuthabenAntwort = z.looseObject({
 });
 
 export const GutscheinStapel = z.looseObject({
-  results: z.array(z.unknown()).optional(),
-  added: z.number().int().optional(),
-  updated: z.number().int().optional(),
-  errors: z.number().int().optional(),
-  total: z.number().int().optional(),
+  results: z.array(z.unknown()),
+  added: z.number().int(),
+  updated: z.number().int(),
+  errors: z.number().int(),
+  total: z.number().int(),
 });
 
 export const GutscheinAntwort = z.looseObject({
-  success: z.boolean().optional(),
+  success: z.boolean(),
   voucher: Gutschein.nullable().optional(),
   mehrere: GutscheinStapel.nullable().optional(),
   gelesen: GelesenerGutschein.nullable().optional(),

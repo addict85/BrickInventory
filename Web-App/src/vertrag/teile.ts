@@ -13,28 +13,28 @@ import {
 
 export const AddPartResponse = z.looseObject({
   success: z.boolean(),
-  action: z.string().nullable().optional(),
-  part_number: z.string().nullable().optional(),
+  action: z.string(),
+  part_number: z.string(),
   part_name: z.string().nullable().optional(),
   price_from_condition: z.string().nullable().optional(),
   error: z.string().nullable().optional(),
 });
 
 export const BestandEintrag = z.looseObject({
-  gesamt: z.number().int().optional(),
-  lose: z.number().int().optional(),
+  gesamt: z.number().int(),
+  lose: z.number().int(),
 });
 
 export const BestandResponse = z.looseObject({
-  success: z.boolean().optional(),
-  bestand: z.record(z.string(), BestandEintrag).optional(),
+  success: z.boolean(),
+  bestand: z.record(z.string(), BestandEintrag),
   error: z.string().nullable().optional(),
 });
 
 export const BrickColor = z.looseObject({
   id: z.number().int(),
   name: z.string(),
-  hex: z.string().nullable().optional(),
+  hex: z.string().nullable(),
 });
 
 export const BrickColorsResponse = z.looseObject({
@@ -53,8 +53,8 @@ export const ManualPartsResponse = z.looseObject({
 });
 
 export const PartsCategory = z.looseObject({
-  category_name: z.string().nullable().optional(),
-  label: z.string().nullable().optional(),
+  category_name: z.string().nullable(),
+  label: z.string().nullable(),
   unique_parts: z.number().int(),
   total_quantity: z.number().int(),
 });
@@ -65,8 +65,8 @@ export const PartsCategoriesResponse = z.looseObject({
 });
 
 export const PartsFilterColor = z.looseObject({
-  color_name: z.string().nullable().optional(),
-  color_hex: z.string().nullable().optional(),
+  color_name: z.string().nullable(),
+  color_hex: z.string().nullable(),
   unique_parts: z.number().int(),
   total_quantity: z.number().int(),
 });
@@ -85,15 +85,15 @@ export const PartsStats = z.looseObject({
 
 export const PartsStatsResponse = z.looseObject({
   success: z.boolean(),
-  stats: PartsStats.nullable().optional(),
+  stats: PartsStats.nullable(),
 });
 
 export const TeilFarbeResponse = z.looseObject({
-  bild: z.string().nullable().optional(),
-  success: z.boolean().optional(),
-  zusammengelegt: z.boolean().optional(),
-  verschoben: z.number().int().optional(),
-  vereint: z.number().int().optional(),
+  bild: z.string().nullable(),
+  success: z.boolean(),
+  zusammengelegt: z.boolean(),
+  verschoben: z.number().int(),
+  vereint: z.number().int(),
   error: z.string().nullable().optional(),
 });
 

@@ -1,7 +1,7 @@
 /**
  * Wer Geld formatiert, sagt auch WELCHES.
  *
- * Gegenprobe (08.11.2026 gemessen): in fmtN `cur||CURRENCY||'EUR'` →
+ * Gegenprobe (08.11.2026 gemessen): in fmtN `cur||kontoWaehrung||'EUR'` →
  * `cur||'EUR'` → rot: „der Rückfall von fmtN ist die eingestellte Währung“.
  */
 const test = require('node:test');
@@ -22,7 +22,7 @@ const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche')
  * Hat dieser Aufruf ein ZWEITES Argument?
  *
  * Ein Muster wie /fmtN\([^)]*,/ reicht nicht: Die Argumente enthalten selbst
- * Klammern (`fmtN(v.total_value, v.currency || CURRENCY)`) und Aufrufe. Deshalb
+ * Klammern (`fmtN(v.total_value, v.currency || kontoWaehrung)`) und Aufrufe. Deshalb
  * wird die Klammertiefe mitgezählt und nur ein Komma auf Ebene 1 gewertet.
  */
 function hatZweitesArgument(src, ab) {

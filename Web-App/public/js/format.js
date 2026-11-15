@@ -1,5 +1,5 @@
 import { LANG, locale, tRaw } from '../i18n.js';
-import { CURRENCY } from './zustand.js';
+import { kontoWaehrung } from './zustand.js';
 
 // Zahlen, Beträge und Daten in der Schreibweise der Oberflächensprache, eine Fassung für alle Ansichten.
 
@@ -13,7 +13,7 @@ export function fmtN(v, cur) {
   if (!v || Number(v) === 0) return '—';
   return new Intl.NumberFormat(locale(), {
     style: 'currency',
-    currency: cur || CURRENCY || 'EUR',
+    currency: cur || kontoWaehrung || 'EUR',
     minimumFractionDigits: 2,
   }).format(Number(v));
 }
@@ -50,7 +50,7 @@ export function fmtGeld(v, cur) {
   return Number(v) === 0
     ? new Intl.NumberFormat(locale(), {
         style: 'currency',
-        currency: cur || CURRENCY || 'EUR',
+        currency: cur || kontoWaehrung || 'EUR',
         minimumFractionDigits: 2,
       }).format(0)
     : fmtN(v, cur);

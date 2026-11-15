@@ -1,5 +1,5 @@
 import { LANG, applyLang, tRaw } from '../i18n.js';
-import { _settingsCache, ME } from './zustand.js';
+import { einstellungsStand, angemeldetesKonto } from './zustand.js';
 import { abonniere } from './ereignisse.js';
 import { registerActions } from './registry.js';
 import { G, eins } from './dom.js';
@@ -11,14 +11,14 @@ import { api } from './api.js';
 // ── Hinweis „Rebrickable-Schlüssel fehlt“ ───────────────────────────────────
 /** Weggeklickt bleibt das Band weg, je Konto und Gerät: Am Telefon kostete es den ersten Bildschirm ein
  * Sechzehntel, und der fehlende Schlüssel steht ohnehin in den Einstellungen und im Einrichtungsassistenten. */
-const rbHinweisSchluessel = () => `bim_rb_hinweis_weg:${ME?.id ?? ''}`;
+const rbHinweisSchluessel = () => `bim_rb_hinweis_weg:${angemeldetesKonto?.id ?? ''}`;
 
 /** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab.
  * Schliesst man ihn mit „Später“, kommt das Band (einrichtung.js). */
 export function rbHinweisZeigen() {
   const band = G('rb-hinweis');
-  if (!band || !ME?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
-  let zeigen = !String(_settingsCache?.rebrickable_api_key || '').trim();
+  if (!band || !angemeldetesKonto?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
+  let zeigen = !String(einstellungsStand?.rebrickable_api_key || '').trim();
   try {
     zeigen &&= !localStorage.getItem(rbHinweisSchluessel());
     if (zeigen) localStorage.setItem('bim_rb_band', '1');
@@ -97,10 +97,13 @@ export async function initDefaultCondition() {
  */
 export function zeigeBenutzernamen() {
   const el = G('ubadge');
-  if (!el || !ME) return;
+  if (!el || !angemeldetesKonto) return;
   // „admin (Admin)“ sagte dasselbe zweimal.
-  const doppelt = ME.username.toLocaleLowerCase() === tRaw('users.admin_badge').toLocaleLowerCase();
-  el.textContent = ME.isAdmin && !doppelt ? `${ME.username} (${tRaw('users.admin_badge')})` : ME.username;
+  const doppelt = angemeldetesKonto.username.toLocaleLowerCase() === tRaw('users.admin_badge').toLocaleLowerCase();
+  el.textContent =
+    angemeldetesKonto.isAdmin && !doppelt
+      ? `${angemeldetesKonto.username} (${tRaw('users.admin_badge')})`
+      : angemeldetesKonto.username;
 }
 
 /**
@@ -125,6 +128,6 @@ registerActions({
 // Die gewählte Sprache am Konto speichern (i18n.js meldet den Wechsel). Was der Code zur Laufzeit schreibt
 // (Kontoschild „Name (Verwalter)“), zieht nach.
 abonniere('spracheGewechselt', ({ sprache, speichern }) => {
-  if (ME) zeigeBenutzernamen();
+  if (angemeldetesKonto) zeigeBenutzernamen();
   if (speichern) api('POST', '/v1/settings', { language: sprache });
 });

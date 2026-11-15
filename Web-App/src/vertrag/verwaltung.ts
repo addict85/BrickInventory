@@ -85,12 +85,12 @@ export const AuftragsArtStart = z.looseObject({
 });
 
 export const BricksetQueueEntry = z.looseObject({
-  created_at: zeit.nullable().optional(),
+  created_at: zeit.nullable(),
   set_number: z.string(),
-  name: z.string().nullable().optional(),
+  name: z.string().nullable(),
   attempts: z.number().int(),
-  retry_after: z.string().nullable().optional(),
-  last_error: z.string().nullable().optional(),
+  retry_after: z.string().nullable(),
+  last_error: z.string().nullable(),
 });
 
 export const BricksetQueueResponse = z.looseObject({
@@ -114,13 +114,13 @@ export const RateLimits = z.looseObject({
 });
 
 export const CacheStatsResponse = z.looseObject({
-  db_pool: z.record(z.string(), z.unknown()).optional(),
+  db_pool: z.record(z.string(), z.unknown()),
   success: z.boolean(),
   prices: z.number().int(),
   subsets: z.number().int(),
   catalog: z.number().int(),
   price_stale: z.number().int(),
-  rate_limits: RateLimits.nullable().optional(),
+  rate_limits: RateLimits.nullable(),
   /** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen. */
   degradiert: z.array(z.string()).optional(),
 });
@@ -134,14 +134,14 @@ export const CsvImportStatus = z.looseObject({
   code: z.string().nullable().optional(),
   results: z.array(ImportZeile).optional(),
   success: z.boolean(),
-  status: z.string().nullable().optional(),
-  total: z.number().int().nullable().optional(),
-  done: z.number().int().nullable().optional(),
+  status: z.string().optional(),
+  total: z.number().int().optional(),
+  done: z.number().int().optional(),
   current: z.string().nullable().optional(),
-  ok: z.number().int().nullable().optional(),
-  warn: z.number().int().nullable().optional(),
-  err: z.number().int().nullable().optional(),
-  error: z.string().nullable().optional(),
+  ok: z.number().int().optional(),
+  warn: z.number().int().optional(),
+  err: z.number().int().optional(),
+  error: z.string().nullable(),
   beendet_am: zeit.optional(),
 });
 
@@ -173,7 +173,7 @@ export const JobStatus = z.looseObject({
 });
 
 export const JobsResponse = z.looseObject({
-  db: z.record(z.string(), z.unknown()).optional(),
+  db: z.record(z.string(), z.unknown()),
   success: z.boolean(),
   jobs: z.record(z.string(), JobStatus),
   schedules: z.record(z.string(), JobSchedule),

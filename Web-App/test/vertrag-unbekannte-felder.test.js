@@ -73,7 +73,7 @@ test('die Route antwortet 500, wenn ein Feld fehlt im Vertrag', async () => {
     },
   };
   pruefer(req, res, () => {});
-  res.json({ success: true, set_number: '1-1', name: 'x', geheim: 1 });
+  res.json({ success: true, set_number: '1-1', name: 'x', im_katalog: true, geheim: 1 });
   assert.equal(status, 500);
   assert.match(String(gesendet.abweichungen), /nicht im Vertrag: geheim/);
 
@@ -88,6 +88,6 @@ test('die Route antwortet 500, wenn ein Feld fehlt im Vertrag', async () => {
   };
   status = 200;
   pruefer(req, res2, () => {});
-  res2.json({ success: true, set_number: '1-1', name: 'x' });
+  res2.json({ success: true, set_number: '1-1', name: 'x', im_katalog: true });
   assert.equal(status, 200);
 });

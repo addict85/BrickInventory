@@ -1,6 +1,7 @@
 // Der Katalog: Sets suchen, Details zeigen und in die Sammlung übernehmen.
 import { detailZeile, kachelName, ladeAnzeige, listeLadefehler } from './bausteine.js';
 import { registerActions } from './registry.js';
+import { generationen } from './lader.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fehlerMeldung, api } from './api.js';
 import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild, PLATZHALTER_SET } from './bilder.js';
@@ -9,7 +10,7 @@ import { betragAusFeld, mengeAusFeld } from './formular.js';
 import { toast } from './meldungen.js';
 import { setScrollLabel } from './scrollbar.js';
 import { loadGallery, loadStats } from './gallery.js';
-import { set_lastImportAt, ME, _settingsCache } from './zustand.js';
+import { setzeLetztenImport, angemeldetesKonto, einstellungsStand } from './zustand.js';
 import { esc, html, verbinde } from './escapen.js';
 import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
@@ -18,10 +19,8 @@ import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte
 // paginiert, da der Katalog ~25k Sets umfasst.
 
 const _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'year_desc' };
-// Infinite Scroll: Generationszähler verwirft späte Antworten nach einem Filterwechsel (gleiches Muster wie
-// in der Android-App), _catItems hält die geladenen Sets für In-Place-Updates (owned-Badge nach
-// Galerie-Aufnahme).
-let _catGen = 0;
+// _catItems hält die geladenen Sets für In-Place-Updates (owned-Badge nach Galerie-Aufnahme).
+const katalogLaden = generationen();
 // Fensterladen statt Endlos-Scroll: Die Jahresleiste springt mitten in die Liste, und eine angehängte Liste
 // hätte darüber und darunter nichts. Ein Block je Seite; geladen wird, was ins Bild kommt, Platzhalter halten
 // die Höhe frei.
@@ -193,14 +192,14 @@ function _catQuery(page) {
  * filtern.
  */
 async function loadCatalogSets() {
-  const gen = ++_catGen;
+  katalogLaden.neu();
   _catLoadedPages = new Set();
   _catLoadingPages = new Set();
   const grid = G('catalog-grid');
   setzeHtml(grid, ladeAnzeige(tRaw('catalog.loading')));
   _catState.page = 1;
-  const d = await api('GET', `/v1/catalog/sets?${_catQuery(1)}`);
-  if (gen !== _catGen) return; // inzwischen neuer Filter — Antwort verwerfen
+  const d = await katalogLaden.aktuell(api('GET', `/v1/catalog/sets?${_catQuery(1)}`));
+  if (d === undefined) return;
   if (listeLadefehler(grid, d, { erneut: 'loadCatalogSets' })) return;
 
   _catTotal = d.total || 0;
@@ -216,17 +215,17 @@ async function loadCatalogSets() {
   if (!_catItems.length) {
     // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
     const gefiltert = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
-    const ohneSchluessel = !gefiltert && !String(_settingsCache?.rebrickable_api_key || '').trim();
+    const ohneSchluessel = !gefiltert && !String(einstellungsStand?.rebrickable_api_key || '').trim();
     const leerText = gefiltert
       ? 'catalog.no_results_hint'
-      : !ME?.isAdmin
+      : !angemeldetesKonto?.isAdmin
         ? 'catalog.empty_hint_konto'
         : ohneSchluessel
           ? 'catalog.empty_ohne_schluessel'
           : 'catalog.empty_hint';
     const leerKnopf = gefiltert
       ? zuruecksetzenKnopf('catalog')
-      : !ME?.isAdmin
+      : !angemeldetesKonto?.isAdmin
         ? undefined
         : ohneSchluessel
           ? { text: tRaw('rb_key.banner_link'), click: 'rbHinweisOeffnen', ico: 'schluessel' }
@@ -374,10 +373,9 @@ export async function ladeSeite(seite) {
   if (seite < 1 || seite > _catPageCount) return;
   if (_catLoadedPages.has(seite) || _catLoadingPages.has(seite)) return;
   _catLoadingPages.add(seite);
-  const gen = _catGen;
   try {
-    const d = await api('GET', `/v1/catalog/sets?${_catQuery(seite)}`);
-    if (gen !== _catGen) return; // Filter hat inzwischen gewechselt
+    const d = await katalogLaden.aktuell(api('GET', `/v1/catalog/sets?${_catQuery(seite)}`));
+    if (d === undefined) return;
     if (!d.success || !d.sets?.length) return;
     const block = eins(`#catalog-grid .cat-page[data-page="${seite}"]`);
     if (!block) return;
@@ -527,7 +525,7 @@ async function addCatalogSetToGallery() {
               }),
               'success',
             );
-            set_lastImportAt(Date.now());
+            setzeLetztenImport(Date.now());
             _patchCatalogOwned(num, qty); // owned-Badge in-place (kein Reload: Scroll-Position bleibt)
             loadGallery();
             loadStats(); // Galerie-Daten im Hintergrund auffrischen
@@ -619,9 +617,8 @@ async function _ladeJahrVerteilung() {
   if (p.toString() === _jahrVerteilungFuer && _catJahrVerteilung.length) return;
   _jahrVerteilungFuer = p.toString();
   _catJahrVerteilung = [];
-  const gen = _catGen;
-  const d = await api('GET', `/v1/catalog/year-verteilung?${p.toString()}`);
-  if (gen !== _catGen) return; // Filter hat inzwischen gewechselt
+  const d = await katalogLaden.aktuell(api('GET', `/v1/catalog/year-verteilung?${p.toString()}`));
+  if (d === undefined) return;
   if (d?.success) _catJahrVerteilung = (d.years || []).filter(y => y.year);
   else _jahrVerteilungFuer = '';
 }

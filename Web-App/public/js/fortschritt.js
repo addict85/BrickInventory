@@ -8,7 +8,7 @@ import { fmtPct } from './format.js';
 import { toast } from './meldungen.js';
 import { melde } from './ereignisse.js';
 import { LANG, tRaw } from '../i18n.js';
-import { ME } from './zustand.js';
+import { angemeldetesKonto } from './zustand.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
 /** @type {ReturnType<typeof setInterval> | null} */
@@ -131,7 +131,7 @@ async function gibPoll() {
 }
 
 function gibToggle() {
-  if (!ME) return;
+  if (!angemeldetesKonto) return;
   const overlay = G('progress-overlay');
   if (overlay?.classList.contains('open')) {
     // Already open — minimize back to header bar
@@ -277,7 +277,7 @@ export async function gibCheckOnLoad() {
       return;
     }
     // Ohne Anmeldung gibt es nichts zu prüfen; im verborgenen Tab zählte jede Abfrage gegen das Budget.
-    if (!ME || document.hidden) return;
+    if (!angemeldetesKonto || document.hidden) return;
     try {
       const r = await apiRoh('GET', '/v1/sets/import/csv/status');
 
@@ -408,7 +408,7 @@ export function hideProgress() {
   G('progress-overlay').classList.remove('open');
   G('prog-steps').style.display = '';
   // Beim Minimieren die Kopfleiste zeigen, wenn ein Import läuft
-  if ((_gibTimer || _gibSse) && ME) {
+  if ((_gibTimer || _gibSse) && angemeldetesKonto) {
     G('global-import-bar').style.display = 'flex';
   }
 }

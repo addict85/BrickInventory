@@ -10,7 +10,7 @@ import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
 import { toast } from './meldungen.js';
 import { loadFinance } from './finance.js';
 import { deleteManualFig, loadManualFigsTable, manuelleFiguren, updateManualFig } from './minifigs.js';
-import { ME } from './zustand.js';
+import { angemeldetesKonto } from './zustand.js';
 import { lagerortBlock, ladeOrtAuswahl } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { acqSummary, renderManAcqSummary, kurzfassungMan } from './kaufpreis-anzeige.js';
@@ -402,7 +402,7 @@ async function loadManAcqModal(type, id, colorId) {
     const hm = await api('GET', '/v1/sets/household-members');
     erfassung.mitglieder = hm?.members || [];
   }
-  erfassung.besitzer = ad?.owner_user_id ?? ME?.id ?? null;
+  erfassung.besitzer = ad?.owner_user_id ?? angemeldetesKonto?.id ?? null;
   renderManAcqBody(type, id, colorId, ad?.acquisitions || [], ad?.totals);
 }
 

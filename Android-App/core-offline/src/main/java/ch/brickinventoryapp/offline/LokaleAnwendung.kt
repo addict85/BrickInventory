@@ -47,12 +47,12 @@ internal object LokaleAnwendung {
         return liste.map { if (it.setNumber == a.setNumber) it.copy(quantity = it.quantity + a.quantity) else it }
     }
 
-    /** Was die Zusammenfassung nicht kennt, bleibt wie abgelegt. */
+    /** Die Zusammenfassung ist vollständig (Vertrag SetAggregate): Ein Preis null heisst „keiner erfasst“,
+     * nicht „unbekannt“; der abgelegte gälte sonst nach dem Löschen des letzten Kaufs weiter. */
     private fun zusammengefasst(s: SetItem, b: Nachzug.SetZusammenfassung): SetItem {
         val agg = b.agg
-        return s.copy(condition = agg.condition ?: s.condition, conditions = agg.conditions.ifEmpty { s.conditions },
-            usedCount = agg.usedCount ?: s.usedCount, maxPurchasePrice = agg.maxPurchasePrice ?: s.maxPurchasePrice,
-            avgPurchasePrice = agg.avgPurchasePrice ?: s.avgPurchasePrice)
+        return s.copy(condition = agg.condition, conditions = agg.conditions, acqCount = agg.acqCount,
+            usedCount = agg.usedCount, maxPurchasePrice = agg.maxPurchasePrice, avgPurchasePrice = agg.avgPurchasePrice)
     }
 
     /** Den Namen des neuen Besitzers kennt erst der nächste Abgleich; bis dahin die Nummer ohne Namen. */

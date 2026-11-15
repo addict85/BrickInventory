@@ -315,15 +315,15 @@ internal object Ablagezeilen {
 
     fun set(z: SetZeile) = SetItem(setNumber = z.setNumber, name = z.name, year = z.year, theme = z.theme, pieces = z.pieces, minifigs = z.minifigs, quantity = z.quantity, imageUrl = z.imageUrl,
         imageLocal = z.imageLocal, addedAt = z.addedAt, condition = z.condition, storage = z.storage, conditions = z.conditions, owners = z.owners.map { KontoName(id = it.id, username = it.username) },
-        maxPurchasePrice = z.maxPurchasePrice, avgPurchasePrice = z.avgPurchasePrice, usedCount = z.usedCount,
-        instructions = z.instructions.map { Instruction(id = it.id, url = it.url, description = it.description, localPath = it.localPath, isManual = it.isManual) },
+        maxPurchasePrice = z.maxPurchasePrice, avgPurchasePrice = z.avgPurchasePrice, usedCount = z.usedCount ?: 0,
+        instructions = z.instructions.map { Instruction(id = it.id ?: 0, url = it.url, description = it.description, localPath = it.localPath, isManual = it.isManual) },
         bricklink = z.bricklink?.let { BrickLinkRef(type = it.type, number = it.number, url = it.url, exact = it.exact, resolved = it.resolved) }, preisvergleichUrl = z.preisvergleichUrl)
 
     fun merk(m: Merkposten) = MerkZeile(m.setNumber, m.condition, m.createdAt, m.userId, m.name, m.year, m.numParts,
         m.imageUrl, m.imageLocal, m.marktpreis, m.waehrung, m.owned,
         m.alarm?.let { MerkAlarmZeile(it.richtung, it.schwelle, it.ausgeloest) }, m.preisvergleichUrl)
 
-    fun merk(z: MerkZeile) = Merkposten(setNumber = z.setNumber, condition = z.condition, createdAt = z.createdAt, userId = z.userId, name = z.name, year = z.year, numParts = z.numParts,
+    fun merk(z: MerkZeile) = Merkposten(setNumber = z.setNumber, condition = z.condition, createdAt = z.createdAt.orEmpty(), userId = z.userId, name = z.name, year = z.year, numParts = z.numParts,
         imageUrl = z.imageUrl, imageLocal = z.imageLocal, marktpreis = z.marktpreis, waehrung = z.waehrung, owned = z.owned,
         alarm = z.alarm?.let { MerkpostenAlarm(richtung = it.richtung, schwelle = it.schwelle, ausgeloest = it.ausgeloest) }, preisvergleichUrl = z.preisvergleichUrl)
 
@@ -386,7 +386,7 @@ internal object Ablagezeilen {
     fun gutschein(g: Gutschein) = GutscheinZeile(g.id, g.number, g.amount, g.currency, g.hatPdf, g.createdAt, g.updatedAt, g.guthabenGeprueftAm)
 
     fun gutschein(z: GutscheinZeile) = Gutschein(id = z.id, number = z.number, amount = z.amount, currency = z.currency, hatPdf = z.hatPdf,
-        createdAt = z.createdAt, updatedAt = z.updatedAt, guthabenGeprueftAm = z.guthabenGeprueftAm)
+        createdAt = z.createdAt.orEmpty(), updatedAt = z.updatedAt.orEmpty(), guthabenGeprueftAm = z.guthabenGeprueftAm)
 
     fun alarm(a: Preisalarm) = AlarmZeile(a.setNumber, a.condition, a.richtung, a.schwelle, a.currencyCode, a.ausgeloest, a.zuletztAm,
         a.zuletztPreis, a.name, a.imageLocal, a.imageUrl, a.setImgUrl, a.besitzt)
@@ -401,7 +401,7 @@ internal object Ablagezeilen {
     })
 
     fun kennzahlen(z: KennzahlenZeile) = StatsResponse(success = z.success, stats = z.stats?.let { d ->
-        DashboardStats(currency = d.currency, defaultCondition = d.defaultCondition, userDefaultCondition = d.kontoVorgabeZustand,
+        DashboardStats(currency = d.currency.orEmpty(), defaultCondition = d.defaultCondition.orEmpty(), userDefaultCondition = d.kontoVorgabeZustand,
             totalSets = d.totalSets, totalQuantity = d.totalQuantity, totalPieces = d.totalPieces, totalInstructions = d.totalInstructions,
             totalParts = d.totalParts, setParts = d.setParts, manualParts = d.manualParts, totalMinifigs = d.totalMinifigs)
     })

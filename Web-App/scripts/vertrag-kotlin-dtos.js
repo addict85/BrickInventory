@@ -352,6 +352,8 @@ function antworttyp(klasse, f) {
 
 /** Antwortformen mit Pflichtfeldern: Sie haben keinen Leerwert `Form()`. */
 let STRENG = new Set();
+/** Ein Pflichtfeld einer solchen Form bekommt keine Vorgabe; der Aufrufer nennt es. @param {Typ} t */
+const ohneLeerwert = t => t.art === 'klasse' && !t.nullbar && STRENG.has(t.name);
 
 /** @param {Form} f @returns {string} */
 function klasse(f) {
@@ -367,7 +369,7 @@ function klasse(f) {
     const t = antworttyp(f.name, x);
     const decl = f.anfrage
       ? rumpffeld(name, schluessel, x, vorgabe)
-      : x.pflicht && vorgabe === undefined && Z.STRENG.has(schluessel)
+      : x.pflicht && vorgabe === undefined && (Z.STRENG.has(schluessel) || ohneLeerwert(t))
         ? `val ${name}: ${kotlin(t)}`
         : `val ${name}: ${kotlin(t)} = ${vorgabe ?? leerwert(t)}`;
     const ser = x.typ.art === 'grund' ? Z.FACHTYPEN[x.typ.name]?.serializer : undefined;

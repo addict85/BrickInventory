@@ -11,8 +11,8 @@ index 904a4bd..512b372 100644
  
      fun set(z: SetZeile) = SetItem(setNumber = z.setNumber, name = z.name, year = z.year, theme = z.theme, pieces = z.pieces, minifigs = z.minifigs, quantity = z.quantity, imageUrl = z.imageUrl,
          imageLocal = z.imageLocal, addedAt = z.addedAt, condition = z.condition, storage = z.storage, conditions = z.conditions, owners = z.owners.map { KontoName(id = it.id, username = it.username) },
--        maxPurchasePrice = z.maxPurchasePrice, avgPurchasePrice = z.avgPurchasePrice, usedCount = z.usedCount,
-+        maxPurchasePrice = z.avgPurchasePrice, avgPurchasePrice = z.maxPurchasePrice, usedCount = z.usedCount,
-         instructions = z.instructions.map { Instruction(id = it.id, url = it.url, description = it.description, localPath = it.localPath, isManual = it.isManual) },
+-        maxPurchasePrice = z.maxPurchasePrice, avgPurchasePrice = z.avgPurchasePrice, usedCount = z.usedCount ?: 0,
++        maxPurchasePrice = z.avgPurchasePrice, avgPurchasePrice = z.maxPurchasePrice, usedCount = z.usedCount ?: 0,
+         instructions = z.instructions.map { Instruction(id = it.id ?: 0, url = it.url, description = it.description, localPath = it.localPath, isManual = it.isManual) },
          bricklink = z.bricklink?.let { BrickLinkRef(type = it.type, number = it.number, url = it.url, exact = it.exact, resolved = it.resolved) }, preisvergleichUrl = z.preisvergleichUrl)
  

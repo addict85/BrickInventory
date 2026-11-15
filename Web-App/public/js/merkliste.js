@@ -19,7 +19,7 @@ import { toast } from './meldungen.js';
 import { detailZeile, kachelName, listeLadefehler, skelettZeilen, csvHochladen } from './bausteine.js';
 import { loadGallery, loadStats } from './gallery.js';
 import { addScopeParam } from './scope.js';
-import { CURRENCY } from './zustand.js';
+import { kontoWaehrung } from './zustand.js';
 import { alarmBlock, ladeAlarm, setzeAlarmFeld } from './detailfelder.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten } from './konten-orte.js';
@@ -80,7 +80,7 @@ function zeile(w) {
     ? html`<span class="mk-etikett">
          ${ico(w.alarm.ausgeloest ? 'alarm' : 'uhr')}
          ${tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below')}
-         ${fmtN(Number(w.alarm.schwelle), CURRENCY)}
+         ${fmtN(Number(w.alarm.schwelle), kontoWaehrung)}
        </span>`
     : '';
 
@@ -92,7 +92,7 @@ function zeile(w) {
   // Anzahl, Preis und Zustand ohnehin abgefragt werden.
   const preis =
     w.marktpreis != null
-      ? html`<span title="${tRaw('detail.market_price')}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
+      ? html`<span title="${tRaw('detail.market_price')}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || kontoWaehrung)}</span>`
       : html`<span class="mk-preis text-mut mk-preis-offen" title="${tRaw('wanted.preis_offen_hint')}">${tRaw('wanted.preis_offen')}</span>`;
 
   const arg = `${w.set_number}|${w.condition}|${w.user_id}`;

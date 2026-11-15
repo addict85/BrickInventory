@@ -146,10 +146,10 @@ class SetDetailViewModelTest {
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size
 
         // So schreibt HaushaltRepository die Zusammenfassung des Servers in die Ablage.
-        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "10294-1", usedCount = 1))) }
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "10294-1", condition = Zustand.GEBRAUCHT, acqCount = 1, usedCount = 1, conditions = listOf(Zustand.GEBRAUCHT)))) }
         assertEquals(vorher, pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size)
 
-        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "75192-1", usedCount = 1))) }
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "75192-1", condition = Zustand.GEBRAUCHT, acqCount = 1, usedCount = 1, conditions = listOf(Zustand.GEBRAUCHT)))) }
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher)
     }
 
