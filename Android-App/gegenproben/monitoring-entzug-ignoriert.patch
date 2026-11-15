@@ -8,7 +8,7 @@ diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/v
 +++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
 @@ -198,7 +198,7 @@
          _state.update {
-             if (r is Ergebnis.Success)
+             if (r is Ergebnis.Erfolg)
                  it.copy(jobs = r.data.jobs, jobSchedules = r.data.zeitplaene, aktualisiert = false)
 -            else it.copy(aktualisiert = false, zugriffEntzogen = it.zugriffEntzogen || entzogen(r))
 +            else it.copy(aktualisiert = false, zugriffEntzogen = it.zugriffEntzogen)

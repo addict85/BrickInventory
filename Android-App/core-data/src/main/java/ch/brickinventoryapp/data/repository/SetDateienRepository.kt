@@ -43,8 +43,8 @@ class SetDateienRepositoryImpl @Inject constructor(private val api: SetsApi) : S
 
     override suspend fun startPdfJob(auftrag: Teilelistenauftrag): Ergebnis<String> =
         when (val r = sicherAufrufen { api.startPdfJob(auftrag.alsAnfrage()) }) {
-            is Ergebnis.Success -> if (r.data.jobId.isNotBlank()) Ergebnis.Success(r.data.jobId) else Ergebnis.Error.LeereAntwort()
-            is Ergebnis.Error -> r
+            is Ergebnis.Erfolg -> if (r.data.jobId.isNotBlank()) Ergebnis.Erfolg(r.data.jobId) else Ergebnis.Fehler.LeereAntwort()
+            is Ergebnis.Fehler -> r
         }
 
     override suspend fun getPdfJobStatus(jobId: String): Ergebnis<PdfAuftragsstand> =
@@ -52,16 +52,16 @@ class SetDateienRepositoryImpl @Inject constructor(private val api: SetsApi) : S
 
     override suspend fun downloadPdf(jobId: String): Ergebnis<ByteArray> {
         val r = when (val a = sicherAufrufen { api.downloadPdf(jobId) }) {
-            is Ergebnis.Success -> a
-            is Ergebnis.Error -> return a
+            is Ergebnis.Erfolg -> a
+            is Ergebnis.Fehler -> return a
         }
         // Ohne @Streaming liegt der Rumpf schon im Speicher; ein Lesefehler ist trotzdem Transport.
         val bytes = try { r.data.use { it.bytes() } } catch (e: java.io.IOException) {
-            return Ergebnis.Error.Netz(technisch = e.message)
+            return Ergebnis.Fehler.Netz(technisch = e.message)
         }
-        return if (bytes.size > PDF_MINDESTGROESSE) Ergebnis.Success(bytes)
+        return if (bytes.size > PDF_MINDESTGROESSE) Ergebnis.Erfolg(bytes)
         // Die Grösse gehört ins Log, nicht in die Meldung.
-        else Ergebnis.Error.LeereAntwort(technisch = "PDF ${bytes.size} bytes")
+        else Ergebnis.Fehler.LeereAntwort(technisch = "PDF ${bytes.size} bytes")
     }
 
     // Über den api-Client wie jeder Abruf: Adresse und Token setzt der Wächter.

@@ -46,7 +46,7 @@ class Netzlage internal constructor(private val messen: () -> Art) {
             var pause = erstePause
             repeat(versuche - 1) {
                 val r = call()
-                if (r !is Ergebnis.Error || !r.transient || netz() == Art.KEIN_NETZ) return r
+                if (r !is Ergebnis.Fehler || !r.transient || netz() == Art.KEIN_NETZ) return r
                 warte(pause)
                 pause = (pause * 2).coerceAtMost(HOECHSTE_PAUSE_MS)
             }

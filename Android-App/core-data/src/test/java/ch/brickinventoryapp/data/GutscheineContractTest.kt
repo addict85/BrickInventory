@@ -126,7 +126,7 @@ class GutscheineContractTest {
         pfade.antworten["/api/v1/vouchers/5/klartext"] =
             """{"success":true,"id":5,"number":"6000111122223333","pin":"9876"}"""
         val r = runBlocking { repo.liste(); repo.klartext(5, Bestaetigung(passwort = "geheim")) }
-        assertEquals("6000111122223333", (r as Ergebnis.Success).data.number)
+        assertEquals("6000111122223333", (r as Ergebnis.Erfolg).data.number)
         val abgelegt = ordner.walkTopDown().filter { it.isFile }
             .filter { it.readText().let { t -> "6000111122223333" in t || "9876" in t } }.toList()
         assertTrue("Klartext liegt auf der Platte: $abgelegt", abgelegt.isEmpty())

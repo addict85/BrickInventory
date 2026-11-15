@@ -43,23 +43,23 @@ fun interface Bearbeitungssender {
  * ohne Rumpf ist angekommen.
  */
 fun einordnen(r: Ergebnis<*>): Sendeergebnis = when (r) {
-    is Ergebnis.Success -> Sendeergebnis.Angenommen
-    is Ergebnis.Error -> einordnenFehler(r)
+    is Ergebnis.Erfolg -> Sendeergebnis.Angenommen
+    is Ergebnis.Fehler -> einordnenFehler(r)
 }
 
 /** Beim Löschen ist „gibt es nicht (mehr)“ das Ziel: Ein 404 ist angekommen, nicht abgelehnt. */
 fun einordnenLoeschen(r: Ergebnis<*>): Sendeergebnis =
-    if (r is Ergebnis.Error.Server && r.status == 404) Sendeergebnis.Angenommen else einordnen(r)
+    if (r is Ergebnis.Fehler.Server && r.status == 404) Sendeergebnis.Angenommen else einordnen(r)
 
 // Ohne HTTP-Status hat der Server nicht geurteilt (Netz, Abriss, Ausnahme): später noch einmal.
-private fun einordnenFehler(r: Ergebnis.Error): Sendeergebnis = when (r) {
-    is Ergebnis.Error.LeereAntwort -> Sendeergebnis.Angenommen
-    is Ergebnis.Error.Server ->
+private fun einordnenFehler(r: Ergebnis.Fehler): Sendeergebnis = when (r) {
+    is Ergebnis.Fehler.LeereAntwort -> Sendeergebnis.Angenommen
+    is Ergebnis.Fehler.Server ->
         if (r.status in 400..499 && r.status !in setOf(401, 408, 429)) Sendeergebnis.Abgelehnt(r.message, r.status)
         else Sendeergebnis.Spaeter
-    is Ergebnis.Error.Absage -> Sendeergebnis.Abgelehnt(r.message, null)
-    is Ergebnis.Error.Abgewiesen, is Ergebnis.Error.Netz, Ergebnis.Error.Zeitueberschreitung,
-    Ergebnis.Error.Abgebrochen, Ergebnis.Error.Klartext, is Ergebnis.Error.Unbekannt -> Sendeergebnis.Spaeter
+    is Ergebnis.Fehler.Absage -> Sendeergebnis.Abgelehnt(r.message, null)
+    is Ergebnis.Fehler.Abgewiesen, is Ergebnis.Fehler.Netz, Ergebnis.Fehler.Zeitueberschreitung,
+    Ergebnis.Fehler.Abgebrochen, Ergebnis.Fehler.Klartext, is Ergebnis.Fehler.Unbekannt -> Sendeergebnis.Spaeter
 }
 
 enum class Abgleichsergebnis {

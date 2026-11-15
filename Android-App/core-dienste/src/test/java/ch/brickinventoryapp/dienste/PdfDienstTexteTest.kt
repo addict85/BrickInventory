@@ -26,14 +26,14 @@ class PdfDienstTexteTest {
     @Test
     fun `jeder Fehler hat einen Satz, ohne Satz des Servers aus Code oder Art`() {
         val ohneSatz = listOf(
-            Ergebnis.Error.Netz(), Ergebnis.Error.Zeitueberschreitung, Ergebnis.Error.Abgebrochen,
-            Ergebnis.Error.LeereAntwort(), Ergebnis.Error.Abgewiesen(), Ergebnis.Error.Server(503),
-            Ergebnis.Error.Klartext, Ergebnis.Error.Unbekannt("socket closed"),
+            Ergebnis.Fehler.Netz(), Ergebnis.Fehler.Zeitueberschreitung, Ergebnis.Fehler.Abgebrochen,
+            Ergebnis.Fehler.LeereAntwort(), Ergebnis.Fehler.Abgewiesen(), Ergebnis.Fehler.Server(503),
+            Ergebnis.Fehler.Klartext, Ergebnis.Fehler.Unbekannt("socket closed"),
         )
         for (f in ohneSatz) assertTrue("$f ohne Satz", fehlerText(PdfFehlschlag.Abruf(f), satz).isNotBlank())
-        assertEquals("t${R.string.err_network}", fehlerText(PdfFehlschlag.Abruf(Ergebnis.Error.Netz()), satz))
-        assertEquals("t${R.string.pdfexp_http_error}:503", fehlerText(PdfFehlschlag.Abruf(Ergebnis.Error.Server(503)), satz))
-        assertEquals("zu viele", fehlerText(PdfFehlschlag.Abruf(Ergebnis.Error.Server(429, "zu viele")), satz))
+        assertEquals("t${R.string.err_network}", fehlerText(PdfFehlschlag.Abruf(Ergebnis.Fehler.Netz()), satz))
+        assertEquals("t${R.string.pdfexp_http_error}:503", fehlerText(PdfFehlschlag.Abruf(Ergebnis.Fehler.Server(503)), satz))
+        assertEquals("zu viele", fehlerText(PdfFehlschlag.Abruf(Ergebnis.Fehler.Server(429, "zu viele")), satz))
         assertEquals("t${R.string.pdfexp_server_error}", fehlerText(PdfFehlschlag.Auftrag(null), satz))
         assertEquals("Bild fehlt", fehlerText(PdfFehlschlag.Auftrag("Bild fehlt"), satz))
     }

@@ -647,7 +647,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger, englische Bezeichner auch`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 188
+        val HAUPT = 187
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->
@@ -663,7 +663,7 @@ class QuelltextRatscheTest {
         // Die Fachsprache des Projekts ist Deutsch. Gezählt werden Deklarationen, deren Name ein
         // englisches Wort trägt; ausgenommen sind Überschreibungen (Android, Compose, Room) und
         // core-vertrag, dessen Namen dem Wire-Format folgen.
-        val GRENZE = 965
+        val GRENZE = 962
         val dekl = Regex("""^\s*(?:@[A-Za-z0-9_.]+(?:\([^)]*\))?\s+)*(?:(?:private|internal|public|protected|data|sealed|abstract|open|enum|inline|value|const|suspend|lateinit|operator|infix|tailrec|annotation)\s+)*(?:fun|val|var|class|interface|object)\s+(?:<[^>]*>\s*)?(?:[A-Za-z0-9_.<>?, ]+\.)?([A-Za-z_][A-Za-z0-9_]*)""")
         val teil = Regex("""[A-Z]?[a-z]+|[A-Z]+(?![a-z])""")
         val englisch = setOf("get", "load", "loading", "update", "delete", "remove", "add", "show", "hide", "click", "fetch",

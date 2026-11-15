@@ -8,10 +8,10 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/HaushaltRepositoryImpl.kt
 @@ -106,7 +106,7 @@
              when (r) {
-                 is Ergebnis.Error -> r
-                 is Ergebnis.Success -> {
+                 is Ergebnis.Fehler -> r
+                 is Ergebnis.Erfolg -> {
 -                    val agg = r.data.set?.takeIf { it.setNumber.isNotBlank() }
 +                    val agg = r.data.set?.takeIf { false }
                      agg?.let { ablage.wendeAn(Nachzug.SetZusammenfassung(it.alsZusammenfassung())) }
-                     Ergebnis.Success(Kaufaenderung(agg != null, r.data.parts, r.data.minifigs))
+                     Ergebnis.Erfolg(Kaufaenderung(agg != null, r.data.parts, r.data.minifigs))
                  }

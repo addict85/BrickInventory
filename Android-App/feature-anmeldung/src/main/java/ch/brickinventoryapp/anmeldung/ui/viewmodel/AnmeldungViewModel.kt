@@ -119,8 +119,8 @@ class AnmeldungViewModel @Inject constructor(
             _anmeldeState.update { it.copy(anmeldung = Vorgang.Laeuft) }
             val antwort = holePasskey(PASSKEY_ANMELDEN, abfrage) ?: return@launch
             when (val r = konto.passkeyAnmelden(ablage.serverUrlJetzt(), antwort, scope())) {
-                is Ergebnis.Success -> nachAntwort(r.data, "", mitCode = false)
-                is Ergebnis.Error -> _anmeldeState.update { it.copy(anmeldung = gescheitert(r)) }
+                is Ergebnis.Erfolg -> nachAntwort(r.data, "", mitCode = false)
+                is Ergebnis.Fehler -> _anmeldeState.update { it.copy(anmeldung = gescheitert(r)) }
             }
         }
     }
@@ -133,12 +133,12 @@ class AnmeldungViewModel @Inject constructor(
         val antwort = passkey?.let { it() ?: return }
         val mitCode = !code.isNullOrBlank() || antwort != null
         when (val r = konto.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() }, scope(), antwort)) {
-            is Ergebnis.Success -> {
+            is Ergebnis.Erfolg -> {
                 if (r.data.antwort.zweiterFaktor)
                     _anmeldeState.update { it.copy(passkeyStattCode = r.data.passkeyStattCode) }
                 nachAntwort(r.data.antwort, username, mitCode)
             }
-            is Ergebnis.Error -> _anmeldeState.update { it.copy(anmeldung = gescheitert(r)) }
+            is Ergebnis.Fehler -> _anmeldeState.update { it.copy(anmeldung = gescheitert(r)) }
         }
     }
 
@@ -170,8 +170,8 @@ class AnmeldungViewModel @Inject constructor(
         _anmeldeState.update { it.copy(anmeldung = Vorgang.Laeuft) }
         val adresse = ablage.serverUrlJetzt()
         val optionen = when (val o = konto.passkeyOptionen(zweck)) {
-            is Ergebnis.Success -> o.data.takeIf { it.isNotEmpty() } ?: return passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_fehler))
-            is Ergebnis.Error -> return passkeyGescheitert(fehlerMeldung(o))
+            is Ergebnis.Erfolg -> o.data.takeIf { it.isNotEmpty() } ?: return passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_fehler))
+            is Ergebnis.Fehler -> return passkeyGescheitert(fehlerMeldung(o))
         }
         if (ablage.serverUrlJetzt() != adresse) return passkeyGescheitert(Meldung.Ressource(R.string.login_passkey_fehler))
         when (pruefeRpId(optionen, adresse)) {
@@ -225,10 +225,10 @@ class AnmeldungViewModel @Inject constructor(
             try {
                 if (wechsel) ablage.kopplungsziel(neu) else ablage.saveServerUrl(neu)
                 when (val r = nachZertifikatsfrage(neu) { konto.qrLogin(token, geraet) }) {
-                    is Ergebnis.Success -> koppleQr(r.data, QrZiel(neu, schluessel, fingerabdruck, wechsel))
+                    is Ergebnis.Erfolg -> koppleQr(r.data, QrZiel(neu, schluessel, fingerabdruck, wechsel))
                     // Eine Absage ohne Satz heisst hier: Der Code gilt nicht.
-                    is Ergebnis.Error -> qrGescheitert(
-                        if (r is Ergebnis.Error.Absage) Meldung.Ressource(R.string.err_qr_login_failed) else fehlerMeldung(r))
+                    is Ergebnis.Fehler -> qrGescheitert(
+                        if (r is Ergebnis.Fehler.Absage) Meldung.Ressource(R.string.err_qr_login_failed) else fehlerMeldung(r))
                 }
             } finally {
                 kopplungMitWechsel = false
@@ -253,7 +253,7 @@ class AnmeldungViewModel @Inject constructor(
     private suspend fun <T> nachZertifikatsfrage(adresse: String, abruf: suspend () -> Ergebnis<T>): Ergebnis<T> {
         val r = abruf()
         val schluessel = pinSchluessel(adresse) ?: return r
-        if (r !is Ergebnis.Error || frage.offen.value?.schluessel != schluessel) return r
+        if (r !is Ergebnis.Fehler || frage.offen.value?.schluessel != schluessel) return r
         frage.offen.first { it == null }
         return if (ablage.gemerkterPin(schluessel) != null) abruf() else r
     }
@@ -318,8 +318,8 @@ class AnmeldungViewModel @Inject constructor(
 
     private suspend fun holeQrToken(abholung: String): String? {
         val satz = when (val r = konto.qrAbholen(abholung)) {
-            is Ergebnis.Success -> r.data.token?.let { return it } ?: r.data.fehler?.let(Meldung::Text) ?: Meldung.Ressource(R.string.err_qr_login_failed)
-            is Ergebnis.Error -> fehlerMeldung(r)
+            is Ergebnis.Erfolg -> r.data.token?.let { return it } ?: r.data.fehler?.let(Meldung::Text) ?: Meldung.Ressource(R.string.err_qr_login_failed)
+            is Ergebnis.Fehler -> fehlerMeldung(r)
         }
         qrGescheitert(satz)
         return null
@@ -372,9 +372,9 @@ class AnmeldungViewModel @Inject constructor(
         val ende = System.currentTimeMillis() + sekunden * 1000L
         while (System.currentTimeMillis() < ende) {
             when (val r = konto.qrAbholen(abholung, vorschau = true)) {
-                is Ergebnis.Success -> if (r.data.vorschau || r.data.token != null) return r.data
+                is Ergebnis.Erfolg -> if (r.data.vorschau || r.data.token != null) return r.data
                     else if (!r.data.wartet) return qrGescheitert(r.data.fehler?.let(Meldung::Text) ?: Meldung.Ressource(R.string.err_qr_login_failed))
-                is Ergebnis.Error -> return qrGescheitert(fehlerMeldung(r))
+                is Ergebnis.Fehler -> return qrGescheitert(fehlerMeldung(r))
             }
             delay(QR_ABFRAGE_MS)
         }
@@ -404,8 +404,8 @@ class AnmeldungViewModel @Inject constructor(
     fun pruefeRegistrierungOffen() {
         viewModelScope.launch {
             when (val r = konto.getRegistrationStatus()) {
-                is Ergebnis.Success -> _anmeldeState.update { it.copy(registrierungOffen = r.data.offen) }
-                is Ergebnis.Error -> Unit
+                is Ergebnis.Erfolg -> _anmeldeState.update { it.copy(registrierungOffen = r.data.offen) }
+                is Ergebnis.Fehler -> Unit
             }
         }
     }
@@ -429,13 +429,13 @@ class AnmeldungViewModel @Inject constructor(
                 sprache = meldungen.text(R.string.lang_code),
             )
             when (val r = konto.register(anfrage)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     // Ohne Mailversand wartet man sonst auf eine E-Mail, die nie kommt.
                     _anmeldeState.update { it.copy(konto = Vorgang.Fertig,
                         meldung = r.data.meldung?.let(Meldung::Text) ?: Meldung.Ressource(R.string.register_done),
                         hinweis = if (r.data.ohneMailversand) Meldung.Ressource(R.string.register_console_hint) else null) }
                 }
-                is Ergebnis.Error -> _anmeldeState.update { it.copy(konto = gescheitert(r)) }
+                is Ergebnis.Fehler -> _anmeldeState.update { it.copy(konto = gescheitert(r)) }
             }
         }
     }
@@ -448,10 +448,10 @@ class AnmeldungViewModel @Inject constructor(
         viewModelScope.launch {
             _anmeldeState.update { it.copy(konto = Vorgang.Laeuft, meldung = null, hinweis = null) }
             when (val r = konto.forgotPassword(email.trim())) {
-                is Ergebnis.Success -> _anmeldeState.update {
+                is Ergebnis.Erfolg -> _anmeldeState.update {
                     it.copy(konto = Vorgang.Fertig, meldung = r.data?.let(Meldung::Text) ?: Meldung.Ressource(R.string.forgot_done))
                 }
-                is Ergebnis.Error -> _anmeldeState.update { it.copy(konto = gescheitert(r)) }
+                is Ergebnis.Fehler -> _anmeldeState.update { it.copy(konto = gescheitert(r)) }
             }
         }
     }

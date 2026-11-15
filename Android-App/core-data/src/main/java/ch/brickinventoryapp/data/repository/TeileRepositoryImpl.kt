@@ -67,7 +67,7 @@ class TeileRepositoryImpl @Inject constructor(
         val teile = ablage.aktualisiereSeitenweise(Faecher.TEILE, { r -> r.parts.map { it.alsAnsicht() } }, { it.total }, wiederholung) { seite ->
             sicherAufrufen { api.getParts(null, null, null, seite, pageSize = 500, excludeManual = "1") }
         }
-        if (teile is Ergebnis.Error) return teile
+        if (teile is Ergebnis.Fehler) return teile
         return aktualisiereManuelleTeile()
     }
 

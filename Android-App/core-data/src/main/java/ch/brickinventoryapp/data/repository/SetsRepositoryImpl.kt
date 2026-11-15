@@ -48,7 +48,7 @@ class SetsRepositoryImpl @Inject constructor(
         }.zugesagt({ it.success }) { it.alsErfasst() }
     }
 
-    override suspend fun updateQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<Int?> =
+    override suspend fun setzeMenge(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<Int?> =
         // Der Server kann deckeln (fremde Exemplare bleiben): Es gilt seine Zahl.
         ablage.nachgezogen({ r -> Nachzug.SetMengeGesetzt(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity = quantity, quantityDelta = null, purchasePrice = purchasePrice, condition = condition)) }

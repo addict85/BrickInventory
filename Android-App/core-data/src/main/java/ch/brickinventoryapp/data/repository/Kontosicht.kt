@@ -83,13 +83,13 @@ class Kontosicht @Inject constructor(
         }
 
         suspend fun aktualisiere(abfrage: A): Ergebnis<Unit> {
-            val vorher = ablage.bereich() ?: return Ergebnis.Success(Unit)
+            val vorher = ablage.bereich() ?: return Ergebnis.Erfolg(Unit)
             return when (val r = hole(abfrage)) {
-                is Ergebnis.Success -> {
+                is Ergebnis.Erfolg -> {
                     if (ablage.bereich() == vorher) zuletzt.value = Eintrag(vorher, abfrage, Lokal(r.data, uhr()))
-                    Ergebnis.Success(Unit)
+                    Ergebnis.Erfolg(Unit)
                 }
-                is Ergebnis.Error -> r
+                is Ergebnis.Fehler -> r
             }
         }
     }

@@ -50,7 +50,7 @@ class FigurenRepositoryImpl @Inject constructor(
         val figuren = ablage.aktualisiereSeitenweise(Faecher.FIGUREN, { r -> r.figs.map { it.alsAnsicht() } }, { it.figs.size }, wiederholung) { _ ->
             sicherAufrufen { api.getMinifigs(source = "set") }
         }
-        if (figuren is Ergebnis.Error) return figuren
+        if (figuren is Ergebnis.Fehler) return figuren
         return ablage.aktualisiereSeitenweise(Faecher.MANUELLE_FIGUREN, { r -> r.figs.map { it.alsAnsicht() } }, { it.figs.size }, wiederholung) { _ ->
             sicherAufrufen { api.getManualMinifigs(null, null) }
         }

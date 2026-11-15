@@ -104,11 +104,11 @@ class HaushaltRepositoryImpl @Inject constructor(
     private suspend fun mitZusammenfassung(call: suspend () -> retrofit2.Response<GenericResponse>): Ergebnis<Kaufaenderung> =
         sicherAufrufen(call).zugesagt({ it.success }) { it }.let { r ->
             when (r) {
-                is Ergebnis.Error -> r
-                is Ergebnis.Success -> {
+                is Ergebnis.Fehler -> r
+                is Ergebnis.Erfolg -> {
                     val agg = r.data.set?.takeIf { it.setNumber.isNotBlank() }
                     agg?.let { ablage.wendeAn(Nachzug.SetZusammenfassung(it.alsZusammenfassung())) }
-                    Ergebnis.Success(Kaufaenderung(agg != null, r.data.parts, r.data.minifigs))
+                    Ergebnis.Erfolg(Kaufaenderung(agg != null, r.data.parts, r.data.minifigs))
                 }
             }
         }
