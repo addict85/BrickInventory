@@ -18,9 +18,11 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.SetAnlegenSchritt
@@ -67,7 +69,7 @@ import kotlinx.coroutines.runBlocking
  * Kein Text bricht Zeichen für Zeichen oder im Wort um, keiner ragt über seinen Platz,
  * kein Knopf und keine Überschrift wird gekürzt: Preisalarme, Sammlung, Set-Detail,
  * Katalog-Detail und Anmeldung auf dem Telefon (411 dp) bei 100 und 200 % Schrift, dazu
- * die Hintergrundarbeiten (100 %) und das Set-Detail mit vierstelligen Beträgen (360 dp).
+ * die Hintergrundarbeiten (100 %, 360 dp) und das Set-Detail mit fünfstelligen Beträgen (360 dp).
  *
  * Gemessen am Textlayout jedes Textknotens: schmaler als etwa drei Zeichen, mehr Zeilen
  * als Wörter, ein Zeilenende zwischen zwei Buchstaben, eine Zeile breiter als der Text.
@@ -80,10 +82,11 @@ import kotlinx.coroutines.runBlocking
  *                                    Auslassung → rot „Katalog-Detail bei 100 Prozent“
  *                                    („Zur Sammlung hinzufügen“ gekürzt)
  *   standard-zustand-in-der-zeile    „Standard-Zustand“ wieder neben der Wahl → rot
- *                                    „Hintergrundarbeiten bei 100 Prozent“ (das gewählte „Gebraucht“
+ *                                    „Hintergrundarbeiten bei 100 Prozent“ (auf 360 dp „Gebraucht“
  *                                    im Wort gebrochen)
  *   gewinn-in-einer-zeile            Gewinn/Verlust wieder stets einzeilig → rot „Set-Detail schmal
- *                                    bei 200 Prozent“ („+CHF 20’200.90 · +19.2%“ ragt hinaus)
+ *                                    bei 200 Prozent“ („+CHF 20’200.90 · +19.2%“ ragt über die Kachel,
+ *                                    gemessen an der natürlichen Breite)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -107,7 +110,8 @@ class UmbruchWaechterTest {
         treibeBis(name, anfragen = { welt.pfade.anfragen.size }, bereit = bereit)
 
     private fun pruefe(name: String, schrift: Float, bereit: () -> Boolean = { true },
-                       geraet: String = "w411dp-h891dp-port-xxhdpi", inhalt: @Composable () -> Unit) {
+                       geraet: String = "w411dp-h891dp-port-xxhdpi", ganzeZeile: Boolean = false,
+                       inhalt: @Composable () -> Unit) {
         RuntimeEnvironment.setQualifiers("de-rCH-$geraet")
         if (schrift != 1f) RuntimeEnvironment.setFontScale(schrift)
         Locale.setDefault(Locale.forLanguageTag("de-CH"))
@@ -128,7 +132,7 @@ class UmbruchWaechterTest {
             compose.mainClock.advanceTimeBy(100)
             shadowOf(Looper.getMainLooper()).idle()
         }
-        val (texte, befunde) = sammle(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode())
+        val (texte, befunde) = sammle(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(), ganzeZeile)
         // Leere Bildschirme prüfen nichts.
         assertTrue("$name: nur $texte Textknoten — sind die Daten da?", texte >= 5)
         assertTrue("$name: ${befunde.joinToString("; ")}", befunde.isEmpty())
@@ -149,7 +153,7 @@ class UmbruchWaechterTest {
      * Schaltfläche und höchstens zwei Texten darunter: Eine anklickbare Kachel trägt
      * die Rolle auch, darf ihren Namen aber nach zwei Zeilen kürzen.
      */
-    private fun sammle(wurzel: SemanticsNode): Pair<Int, List<String>> {
+    private fun sammle(wurzel: SemanticsNode, ganzeZeile: Boolean): Pair<Int, List<String>> {
         val befunde = mutableListOf<String>()
         var texte = 0
         fun lauf(n: SemanticsNode, imKnopf: Boolean, inUeberschrift: Boolean) {
@@ -158,7 +162,7 @@ class UmbruchWaechterTest {
             val l = layout(n)
             if (l != null && n.layoutInfo.isPlaced) {
                 texte++
-                befunde += auffaelligkeiten(l, knopf, kopf)
+                befunde += auffaelligkeiten(l, knopf, kopf, ganzeZeile)
             }
             n.children.forEach { lauf(it, knopf, kopf) }
         }
@@ -167,7 +171,7 @@ class UmbruchWaechterTest {
     }
 
     /** Was an einem gesetzten Text auffällt: zu schmal, Buchstabe je Zeile, gekürzt in Knopf oder Überschrift. */
-    private fun auffaelligkeiten(l: TextLayoutResult, knopf: Boolean, kopf: Boolean): List<String> {
+    private fun auffaelligkeiten(l: TextLayoutResult, knopf: Boolean, kopf: Boolean, ganzeZeile: Boolean): List<String> {
         val befunde = mutableListOf<String>()
         val text = l.layoutInput.text.text
         val wo = "„${text.take(40)}“"
@@ -179,7 +183,7 @@ class UmbruchWaechterTest {
             befunde += "$wo nur ${l.size.width} px breit (Schrift ${em.toInt()} px)"
         if (l.lineCount >= 3 && l.lineCount > 2 * woerter)
             befunde += "$wo in ${l.lineCount} Zeilen bei $woerter Wörtern"
-        befunde += imWortOderUeberDenRand(l, wo, em)
+        befunde += imWortOderUeberDenRand(l, wo, em, ganzeZeile)
         // Nur die Auslassung zählt: Breite, Höhe und maxLines melden unter
         // Robolectric auch bei ungekürzten Texten einen Überlauf (Schriftmetrik).
         val gekuerzt = (0 until l.lineCount).any { l.isLineEllipsized(it) }
@@ -194,14 +198,21 @@ class UmbruchWaechterTest {
      * selbst. Und eine Zeile, breiter als ihr Platz: Der Rest ist abgeschnitten. Gemessen
      * wird die Breite der Zeile, nicht ihr rechtes Ende: Das Textlayout der Semantik liegt
      * auf der ganzen Platzgrenze, eine zentrierte Zeile endet dort rechts der Anzeige.
+     *
+     * [ganzeZeile]: Einen Text ohne Umbruch (softWrap = false) setzt die Semantik neu in
+     * die Platzbreite und bricht ihn dort um; abgeschnitten sieht man ihn nur an seiner
+     * natürlichen Breite. Nur wo verlangt: Die übrigen Bildschirme sind so nicht gemessen.
      */
-    private fun imWortOderUeberDenRand(l: TextLayoutResult, wo: String, em: Float): List<String> {
+    private fun imWortOderUeberDenRand(l: TextLayoutResult, wo: String, em: Float, ganzeZeile: Boolean): List<String> {
         val text = l.layoutInput.text.text
         val befunde = mutableListOf<String>()
         val imWort = (0 until l.lineCount - 1).map { l.getLineEnd(it) }
             .firstOrNull { e -> e in 1 until text.length && text[e - 1].isLetterOrDigit() && text[e].isLetterOrDigit() }
         if (imWort != null) befunde += "$wo im Wort gebrochen nach „${text.take(imWort).takeLast(12)}“"
-        val ueberstand = (0 until l.lineCount).maxOf { l.getLineRight(it) - l.getLineLeft(it) } - l.size.width
+        val zeilen = (0 until l.lineCount).maxOf { l.getLineRight(it) - l.getLineLeft(it) }
+        val natuerlich = if (ganzeZeile && !l.layoutInput.softWrap && l.layoutInput.overflow != TextOverflow.Ellipsis)
+            l.multiParagraph.intrinsics.maxIntrinsicWidth else 0f
+        val ueberstand = maxOf(zeilen, natuerlich) - l.size.width
         if (em > 0f && ueberstand > em * UEBERSTAND_EM) befunde += "$wo ragt ${ueberstand.toInt()} px über den Rand"
         return befunde
     }
@@ -266,8 +277,9 @@ class UmbruchWaechterTest {
     }
 
     /**
-     * Fünfstellige Beträge auf 360 dp: „+CHF 20’200.90 · +19.2%“ ist breiter als die Kachel.
-     * Fünfstellig, weil ein dreistelliger Gewinn bei 200 % gerade noch hineinpasst.
+     * Fünfstellige Beträge auf 360 dp: „+CHF 20’200.90 · +19.2%“ ist bei 200 % breiter als
+     * die Kachel (ein dreistelliger Gewinn passt gerade noch). Der Betrag steht ohne Umbruch,
+     * deshalb misst [pruefe] hier die natürliche Breite.
      */
     private fun setDetailSchmal(schrift: Float) {
         welt.pfade.antworten["/api/v1/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
@@ -286,14 +298,16 @@ class UmbruchWaechterTest {
         pruefe("Set-Detail schmal $schrift", schrift, { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
                 !s.detailAbruf.laedt && !s.preisAbruf.laedt && !s.verlaufAbruf.laedt && !s.kaeufeAbruf.laedt } },
-            geraet = "w360dp-h740dp-port-xxhdpi") {
+            geraet = "w360dp-h740dp-port-xxhdpi", ganzeZeile = true) {
             SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
         }
+        imBild("Set-Detail schmal $schrift", "200.90")
     }
 
     /**
      * Wie das Foto der Hintergrundarbeiten: ein laufender Auftrag, darunter der Preisspeicher.
-     * „Gebraucht“ ist gewählt: Mit dem Häkchen ist es das breiteste Segment der Zustandswahl.
+     * Auf 360 dp: Das Segment misst seine Beschriftung ohne das Häkchen, auf 411 dp passt
+     * „Gebraucht“ deshalb auch neben „Standard-Zustand“.
      */
     private fun hintergrundarbeiten(schrift: Float) {
         welt.pfade.antworten["/api/v1/admin/auftraege"] = """{"success":true,
@@ -306,11 +320,16 @@ class UmbruchWaechterTest {
         val vm = MonitoringViewModel(testVerwaltungRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io), welt.t.meldungen)
         runBlocking { vm.ladeHintergrund() }
         val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
-        pruefe("Hintergrundarbeiten $schrift", schrift) {
+        pruefe("Hintergrundarbeiten $schrift", schrift, geraet = "w360dp-h891dp-port-xxhdpi") {
             MonitoringScreen(MonitoringZustand(MonitoringUiState(vorgabeZustand = Zustand.GEBRAUCHT), vm.hintergrund.value, VerwaltungUiState(),
                 emptyMap(), Design.CLASSIC, 0L), vm, ereignisse)
         }
+        imBild("Hintergrundarbeiten $schrift", "Gebraucht")
     }
+
+    /** Die Stelle, die eine Gegenprobe kaputt macht, muss geprüft worden sein: Ein fehlender Knoten meldet nichts. */
+    private fun imBild(name: String, text: String) = assertTrue("$name: kein Text mit „$text“ — die Stelle lag nicht im Bild",
+        compose.onAllNodes(hasText(text, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
 
     private fun anmeldung(schrift: Float) {
         pruefe("Anmeldung $schrift", schrift) {
