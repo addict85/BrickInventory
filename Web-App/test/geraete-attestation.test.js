@@ -31,10 +31,16 @@
  *   M  in leseWiderrufsliste() die Prüfung des Schlüssels (Hex) gestrichen → rot:
  *      „eine Liste in anderer Form …“
  *   N  in geltendeListe() die Altersgrenze gestrichen → rot: „eine zu alte Liste …“
+ *
+ * Gegenproben zu den Ausstellern (15.11.2026 gemessen):
+ *   O  in pruefeGlieder() `|| attestationErweiterung(roh[i])` gestrichen → rot: „ein
+ *      attestierter Schlüssel als Aussteller …“ (der Fall mit CA-Bit)
+ *   P  in pruefeGlieder() `!c.ca ||` gestrichen → rot: „ein Aussteller ohne CA-Bit oder
+ *      ohne keyCertSign …“ (ca von node:crypto prüft keyUsage mit)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { X509Certificate } = require('node:crypto');
+const { X509Certificate, generateKeyPairSync } = require('node:crypto');
 const _req = require('./helpers/sources').buildAndRequire();
 const A = _req('src/geraete/attestation/schluesselAttestation.js');
 const der = _req('src/geraete/attestation/der.js');
@@ -196,4 +202,56 @@ test('eine zu alte, fehlende oder beschädigte gespeicherte Liste gilt nicht', (
   assert.equal(W.geltendeListe(null, 7, jetzt), null);
   assert.equal(W.geltendeListe('{kaputt', 7, jetzt), null);
   assert.equal(W.geltendeListe(JSON.stringify({ stand: jetzt.toISOString() }), 7, jetzt), null);
+});
+
+/** Wurzel → Zwischenstufe → Mittelglied → Blatt; das Blatt trägt eine erfundene
+ * KeyDescription (StrongBox), das Mittelglied ist wahlweise selbst ein attestierter Schlüssel. */
+function ketteMitMittelglied({ attestiert = false, ca = false, keyUsage } = {}) {
+  const neu = () => generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  const [zw, mittel, blatt] = [neu(), neu(), neu()];
+  const att = sicherheit =>
+    T.seq(T.oid('1.3.6.1.4.1.11129.2.1.17'), T.oktette(T.beschreibung({ challenge: NONCE, sicherheit })));
+  const zDer = T.zertifikat({
+    subjekt: 'Test-Zwischenstufe',
+    aussteller: T.WURZEL.cn,
+    oeffentlich: zw.publicKey,
+    signierer: T.WURZEL.privateKey,
+    ca: true,
+  });
+  const mDer = T.zertifikat({
+    subjekt: 'Android Keystore Key',
+    aussteller: 'Test-Zwischenstufe',
+    oeffentlich: mittel.publicKey,
+    signierer: zw.privateKey,
+    ca,
+    erweiterungen: [
+      ...(attestiert ? [att(0)] : []),
+      ...(keyUsage ? [T.seq(T.oid('2.5.29.15'), T.oktette(T.tlv([0x03], keyUsage)))] : []),
+    ],
+  });
+  const bDer = T.zertifikat({
+    subjekt: 'Gefälschter Schlüssel',
+    aussteller: 'Android Keystore Key',
+    oeffentlich: blatt.publicKey,
+    signierer: mittel.privateKey,
+    erweiterungen: [att(2)],
+  });
+  return { kette: [bDer, mDer, zDer, T.WURZEL.der].map(d => d.toString('base64')) };
+}
+
+test('ein attestierter Schlüssel als Aussteller eines Blatts wird abgewiesen, auch mit CA-Bit', () => {
+  assert.equal(grund(ketteMitMittelglied({ attestiert: true })), 'glied_1_kein_aussteller');
+  assert.equal(grund(ketteMitMittelglied({ attestiert: true, ca: true })), 'glied_1_kein_aussteller');
+});
+
+test('ein Aussteller ohne CA-Bit oder ohne keyCertSign wird abgewiesen, mit beidem angenommen', () => {
+  assert.equal(grund(ketteMitMittelglied()), 'glied_1_kein_aussteller');
+  // keyUsage nur digitalSignature: 7 ungenutzte Bits, Bit 0 gesetzt.
+  assert.equal(
+    grund(ketteMitMittelglied({ ca: true, keyUsage: Buffer.from([0x07, 0x80]) })),
+    'glied_1_kein_aussteller',
+  );
+  // keyCertSign (Bit 5): die Kontrolle, dass die Prüfung nicht jede Kette verwirft.
+  assert.equal(grund(ketteMitMittelglied({ ca: true, keyUsage: Buffer.from([0x02, 0x04]) })), 'angenommen');
+  assert.equal(grund(ketteMitMittelglied({ ca: true })), 'angenommen');
 });

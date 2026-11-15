@@ -137,10 +137,13 @@ export type Pruefung =
 
 const spki = (c: X509Certificate) => c.publicKey.export({ format: 'der', type: 'spki' }) as Buffer;
 
-function pruefeGlieder(z: X509Certificate[], e: Erwartung): string | null {
+function pruefeGlieder(z: X509Certificate[], roh: Buffer[], e: Erwartung): string | null {
   const jetzt = e.jetzt ?? new Date();
   for (let i = 0; i < z.length; i++) {
     const c = z[i] as X509Certificate;
+    // Aussteller nur mit CA-Bit (ca prüft auch keyCertSign) und ohne KeyDescription: Sonst
+    // signiert ein gewöhnlicher Keystore-Schlüssel ein Blatt mit erfundener Beschreibung.
+    if (i > 0 && (!c.ca || attestationErweiterung(roh[i] as Buffer))) return `glied_${i}_kein_aussteller`;
     // Das Blatt trägt die Gültigkeit, die der Keystore einsetzt (oft 1970–2048), keine echte.
     if (i > 0 && (new Date(c.validFrom) > jetzt || new Date(c.validTo) < jetzt)) return `glied_${i}_abgelaufen`;
     const aussteller = z[i + 1];
@@ -188,7 +191,7 @@ export function pruefeKette(ketteB64: readonly string[], e: Erwartung): Pruefung
   try {
     const roh = ketteB64.map(s => Buffer.from(s, 'base64'));
     const z = roh.map(d => new X509Certificate(d));
-    const fehler = pruefeGlieder(z, e);
+    const fehler = pruefeGlieder(z, roh, e);
     if (fehler) return { ok: false, grund: fehler };
     if (z.some(c => e.widerrufen.has(seriennummer(c)))) return { ok: false, grund: 'widerrufen' };
     const ext = attestationErweiterung(roh[0] as Buffer);
