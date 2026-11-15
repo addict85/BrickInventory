@@ -31,7 +31,7 @@ import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenAktionen
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateAktionen
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.ui.model.KatalogSetAnsicht
+import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
 import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.sammlung.ui.screens.GalleryRoute
 import ch.brickinventoryapp.sammlung.ui.screens.MerklisteRoute

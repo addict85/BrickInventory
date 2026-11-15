@@ -6,12 +6,12 @@ Rot: der Kontofilter der Teile reist mit
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-@@ -92,7 +92,7 @@
+@@ -94,7 +94,7 @@
       * rechnet nur der Server (Kontosicht). Sonst gilt die Ablage.
       */
      private fun teileAbfrage(st: PartsUiState): Kontosicht.TeileAbfrage? =
 -        if (teileKonto == null && teileLager == null && st.partsView != Listenansicht.TABELLE) null
 +        if (st.partsView != Listenansicht.TABELLE) null
-         else Kontosicht.TeileAbfrage(teileKonto, st.partsQuery.ifBlank { null }, st.partsColorFilter.ifBlank { null },
-             st.partsCategoryFilter.ifBlank { null }, st.partsSpare, st.partsView == Listenansicht.TABELLE, teileLager)
+         else Kontosicht.TeileAbfrage(teileKonto, st.partsQuery.ifBlank { null }, st.partsColorFilter,
+             st.partsCategoryFilter, st.partsSpare, st.partsView == Listenansicht.TABELLE, teileLager)
  
