@@ -1,36 +1,39 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.vertrag.BrickLinkRef
-import ch.brickinventoryapp.vertrag.CatalogMetaResponse
-import ch.brickinventoryapp.vertrag.CatalogTheme
-import ch.brickinventoryapp.vertrag.CatalogYearCount
-import ch.brickinventoryapp.vertrag.DashboardStats
-import ch.brickinventoryapp.vertrag.FigValuationItem
-import ch.brickinventoryapp.vertrag.Gutschein
-import ch.brickinventoryapp.vertrag.Minifig
-import ch.brickinventoryapp.vertrag.PartValuationItem
-import ch.brickinventoryapp.vertrag.Preisalarm
-import ch.brickinventoryapp.vertrag.StatsResponse
-import ch.brickinventoryapp.vertrag.ValuationAcquisition
-import ch.brickinventoryapp.vertrag.Instruction
-import ch.brickinventoryapp.model.fach.KEINE_FARBE
-import ch.brickinventoryapp.vertrag.KontoName
-import ch.brickinventoryapp.vertrag.LagerortEintrag
-import ch.brickinventoryapp.vertrag.Merkposten
-import ch.brickinventoryapp.vertrag.MerkpostenAlarm
-import ch.brickinventoryapp.vertrag.Part
-import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.vertrag.VorratsOrt
 import ch.brickinventoryapp.model.fach.Alarmrichtung
+import ch.brickinventoryapp.model.fach.AnleitungAnsicht
+import ch.brickinventoryapp.model.fach.BewertungsKaufAnsicht
+import ch.brickinventoryapp.model.fach.BrickLinkAnsicht
+import ch.brickinventoryapp.model.fach.FigurAnsicht
+import ch.brickinventoryapp.model.fach.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.Herkunft
+import ch.brickinventoryapp.model.fach.KEINE_FARBE
+import ch.brickinventoryapp.model.fach.KatalogMetaAnsicht
+import ch.brickinventoryapp.model.fach.KatalogThemaAnsicht
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.KontoAnsicht
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
+import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAlarmAnsicht
+import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.SetAnsicht
+import ch.brickinventoryapp.model.fach.TeilAnsicht
+import ch.brickinventoryapp.model.fach.VorratsOrtAnsicht
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.alsGeldPflicht
+import ch.brickinventoryapp.model.util.zeitpunkt
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 /*
  * Die Ablageform jedes Fachs, Fassung 1. Die Feldnamen sind eingefroren auf das, was
  * früher als Servermodell abgelegt wurde: Ältere Zeilen bleiben lesbar, und eine
- * Änderung am Netzmodell ändert nur die Abbildung hier, nicht die Platte.
+ * Änderung am Fachtyp ändert nur die Abbildung hier, nicht die Platte.
  */
 
 @Serializable
@@ -306,114 +309,128 @@ internal data class KatalogThemaZeile(val id: Int = 0, val name: String = "", @S
 @Serializable
 internal data class KatalogJahrZeile(val year: Int = 0, val n: Int = 0)
 
+/*
+ * Zeile ↔ Fachtyp. Beträge liegen als Zahl, Zeitpunkte als ISO-Text wie früher; was nur die
+ * Antwort des Servers trug (Preisspanne, Zwischenspeicher-Merker), bleibt beim Schreiben leer.
+ */
 internal object Ablagezeilen {
-    fun set(s: SetItem) = SetZeile(s.setNumber, s.name, s.year, s.theme, s.pieces, s.minifigs, s.quantity, s.imageUrl,
-        s.imageLocal, s.addedAt, s.condition, s.storage, s.conditions, s.owners.map { KontoZeile(it.id, it.username) },
-        s.maxPurchasePrice, s.avgPurchasePrice, s.usedCount,
+    private fun zeit(t: Instant?) = t?.toString()
+
+    fun set(s: SetAnsicht) = SetZeile(s.setNumber, s.name, s.year, s.theme, s.pieces, s.minifigs, s.quantity, s.imageUrl,
+        s.imageLocal, zeit(s.addedAt), s.condition, s.storage, s.conditions, s.owners.map(::konto),
+        s.maxPurchasePrice?.alsDouble(), s.avgPurchasePrice?.alsDouble(), s.usedCount,
         s.instructions.map { AnleitungZeile(it.id, it.url, it.description, it.localPath, it.isManual) },
         s.bricklink?.let { BrickLinkZeile(it.type, it.number, it.url, it.exact, it.resolved) }, s.preisvergleichUrl)
 
-    fun set(z: SetZeile) = SetItem(setNumber = z.setNumber, name = z.name, year = z.year, theme = z.theme, pieces = z.pieces, minifigs = z.minifigs, quantity = z.quantity, imageUrl = z.imageUrl,
-        imageLocal = z.imageLocal, addedAt = z.addedAt, condition = z.condition, storage = z.storage, conditions = z.conditions, owners = z.owners.map { KontoName(id = it.id, username = it.username) },
-        maxPurchasePrice = z.maxPurchasePrice, avgPurchasePrice = z.avgPurchasePrice, usedCount = z.usedCount ?: 0,
-        instructions = z.instructions.map { Instruction(id = it.id ?: 0, url = it.url, description = it.description, localPath = it.localPath, isManual = it.isManual) },
-        bricklink = z.bricklink?.let { BrickLinkRef(type = it.type, number = it.number, url = it.url, exact = it.exact, resolved = it.resolved) }, preisvergleichUrl = z.preisvergleichUrl)
+    fun set(z: SetZeile) = SetAnsicht(setNumber = z.setNumber, name = z.name, year = z.year, theme = z.theme, pieces = z.pieces,
+        minifigs = z.minifigs, quantity = z.quantity, imageUrl = z.imageUrl, imageLocal = z.imageLocal, addedAt = zeitpunkt(z.addedAt),
+        condition = z.condition, storage = z.storage, conditions = z.conditions, owners = z.owners.map(::konto),
+        maxPurchasePrice = z.maxPurchasePrice.alsGeld(), avgPurchasePrice = z.avgPurchasePrice.alsGeld(), usedCount = z.usedCount ?: 0,
+        instructions = z.instructions.map { AnleitungAnsicht(id = it.id ?: 0, url = it.url, description = it.description, localPath = it.localPath, isManual = it.isManual) },
+        bricklink = z.bricklink?.let { BrickLinkAnsicht(type = it.type, number = it.number, url = it.url, exact = it.exact, resolved = it.resolved) },
+        preisvergleichUrl = z.preisvergleichUrl)
 
-    fun merk(m: Merkposten) = MerkZeile(m.setNumber, m.condition, m.createdAt, m.userId, m.name, m.year, m.numParts,
-        m.imageUrl, m.imageLocal, m.marktpreis, m.waehrung, m.owned,
-        m.alarm?.let { MerkAlarmZeile(it.richtung, it.schwelle, it.ausgeloest) }, m.preisvergleichUrl)
+    fun merk(m: MerkpostenAnsicht) = MerkZeile(m.setNumber, m.condition, zeit(m.createdAt), m.userId, m.name, m.year, m.numParts,
+        m.imageUrl, m.imageLocal, m.marktpreis?.alsDouble(), m.waehrung, m.owned,
+        m.alarm?.let { MerkAlarmZeile(it.richtung, it.schwelle.alsDouble(), it.ausgeloest) }, m.preisvergleichUrl)
 
-    fun merk(z: MerkZeile) = Merkposten(setNumber = z.setNumber, condition = z.condition, createdAt = z.createdAt.orEmpty(), userId = z.userId, name = z.name, year = z.year, numParts = z.numParts,
-        imageUrl = z.imageUrl, imageLocal = z.imageLocal, marktpreis = z.marktpreis, waehrung = z.waehrung, owned = z.owned,
-        alarm = z.alarm?.let { MerkpostenAlarm(richtung = it.richtung, schwelle = it.schwelle, ausgeloest = it.ausgeloest) }, preisvergleichUrl = z.preisvergleichUrl)
+    fun merk(z: MerkZeile) = MerkpostenAnsicht(setNumber = z.setNumber, condition = z.condition, createdAt = zeitpunkt(z.createdAt),
+        userId = z.userId, name = z.name, year = z.year, numParts = z.numParts, imageUrl = z.imageUrl, imageLocal = z.imageLocal,
+        marktpreis = z.marktpreis.alsGeld(), waehrung = z.waehrung, owned = z.owned,
+        alarm = z.alarm?.let { MerkpostenAlarmAnsicht(richtung = it.richtung, schwelle = it.schwelle.alsGeldPflicht(), ausgeloest = it.ausgeloest) },
+        preisvergleichUrl = z.preisvergleichUrl)
 
-    fun teil(p: Part) = TeilZeile(p.partNumber, p.blPartNumber, p.partName, p.colorId, p.blColorId, p.colorName,
+    fun teil(p: TeilAnsicht) = TeilZeile(p.partNumber, p.blPartNumber, p.partName, p.colorId, p.blColorId, p.colorName,
         p.colorHex, p.categoryName, p.imageUrl, p.imageLocal, p.totalQuantity, p.inSets, p.isSpare)
 
-    fun teil(z: TeilZeile) = Part(partNumber = z.partNumber, blPartNumber = z.blPartNumber, partName = z.partName, colorId = z.colorId, blColorId = z.blColorId, colorName = z.colorName,
-        colorHex = z.colorHex, categoryName = z.categoryName, imageUrl = z.imageUrl, imageLocal = z.imageLocal, totalQuantity = z.totalQuantity, inSets = z.inSets, isSpare = z.isSpare)
+    fun teil(z: TeilZeile) = TeilAnsicht(partNumber = z.partNumber, blPartNumber = z.blPartNumber, partName = z.partName, colorId = z.colorId,
+        blColorId = z.blColorId, colorName = z.colorName, colorHex = z.colorHex, categoryName = z.categoryName, imageUrl = z.imageUrl,
+        imageLocal = z.imageLocal, totalQuantity = z.totalQuantity, inSets = z.inSets, isSpare = z.isSpare)
 
-    private fun konto(k: KontoName) = KontoZeile(k.id, k.username)
-    private fun konto(z: KontoZeile) = KontoName(id = z.id, username = z.username)
+    private fun konto(k: KontoAnsicht) = KontoZeile(k.id, k.username)
+    private fun konto(z: KontoZeile) = KontoAnsicht(id = z.id, username = z.username)
 
-    fun figur(m: Minifig) = FigurZeile(m.id, m.inSets, m.ownerIds, m.setNumber, m.storage, m.unitPrice, m.figNumber, m.condition,
-        m.conditions, m.owners.map(::konto), m.avgPurchasePrice, m.figName, m.quantity, m.totalQuantity, m.imageUrl, m.imageLocal,
-        m.source, m.setAddedAt)
+    fun figur(m: FigurAnsicht) = FigurZeile(figNumber = m.figNumber, condition = m.condition, conditions = m.conditions,
+        besitzer = m.owners.map(::konto), kaufpreisSchnitt = m.avgPurchasePrice?.alsDouble(), figName = m.figName, quantity = m.quantity,
+        totalQuantity = m.totalQuantity, bildUrl = m.imageUrl, bildLokal = m.imageLocal, source = m.source.kennung, setAddedAt = zeit(m.setAddedAt))
 
-    fun figur(z: FigurZeile) = Minifig(id = z.id, inSets = z.inSets, ownerIds = z.besitzerIds, setNumber = z.setNumber, storage = z.storage,
-        unitPrice = z.stueckpreis, figNumber = z.figNumber, condition = z.condition, conditions = z.conditions, owners = z.besitzer.map(::konto),
-        avgPurchasePrice = z.kaufpreisSchnitt, figName = z.figName, quantity = z.quantity, totalQuantity = z.totalQuantity,
-        imageUrl = z.bildUrl, imageLocal = z.bildLokal, source = z.source, setAddedAt = z.setAddedAt)
+    fun figur(z: FigurZeile) = FigurAnsicht(figNumber = z.figNumber, condition = z.condition, conditions = z.conditions,
+        owners = z.besitzer.map(::konto), avgPurchasePrice = z.kaufpreisSchnitt.alsGeld(), figName = z.figName, quantity = z.quantity,
+        totalQuantity = z.totalQuantity, imageUrl = z.bildUrl, imageLocal = z.bildLokal, source = Herkunft.aus(z.source),
+        setAddedAt = zeitpunkt(z.setAddedAt))
 
-    private fun kauf(a: ValuationAcquisition) = BewertungsKaufZeile(a.id, a.condition, a.quantity, a.purchasePrice, a.avgPrice, a.totalAvg,
-        a.wertGesamt, a.pnlPct, a.pnlProzent, a.createdAt, a.ownerUserId, a.kaufpreisOriginal, a.kaufpreisWaehrung, a.priceEstimated)
+    private fun kauf(a: BewertungsKaufAnsicht) = BewertungsKaufZeile(id = a.id, condition = a.condition, quantity = a.quantity,
+        kaufpreis = a.purchasePrice?.alsDouble(), preisSchnitt = a.avgPrice?.alsDouble(), totalAvg = a.totalAvg,
+        wertGesamt = a.wertGesamt?.alsDouble(), pnlPct = a.pnlPct, pnlProzent = a.pnlProzent, createdAt = zeit(a.createdAt),
+        besitzerId = a.ownerUserId)
 
-    private fun kauf(z: BewertungsKaufZeile) = ValuationAcquisition(id = z.id, condition = z.condition, quantity = z.quantity,
-        purchasePrice = z.kaufpreis, avgPrice = z.preisSchnitt, totalAvg = z.totalAvg, wertGesamt = z.wertGesamt, pnlPct = z.pnlPct,
-        pnlProzent = z.pnlProzent, createdAt = z.createdAt, ownerUserId = z.besitzerId, kaufpreisOriginal = z.kaufpreisOriginal,
-        kaufpreisWaehrung = z.kaufpreisWaehrung, priceEstimated = z.preisGeschaetzt)
+    private fun kauf(z: BewertungsKaufZeile) = BewertungsKaufAnsicht(id = z.id, condition = z.condition, quantity = z.quantity,
+        purchasePrice = z.kaufpreis.alsGeld(), avgPrice = z.preisSchnitt.alsGeld(), totalAvg = z.totalAvg, wertGesamt = z.wertGesamt.alsGeld(),
+        pnlPct = z.pnlPct, pnlProzent = z.pnlProzent, createdAt = zeitpunkt(z.createdAt), ownerUserId = z.besitzerId)
 
-    fun manuellesTeil(p: PartValuationItem) = ManuellesTeilZeile(p.ausstehend, p.fromCache, p.maxPrice, p.minPrice, p.acqCount, p.usedCount,
-        p.categoryName, p.createdAt, p.source, p.id, p.partNumber, p.blPartNumber, p.partName, p.colorId, p.colorName, p.colorHex,
-        p.quantity, p.imageUrl, p.imageLocal, p.unitPrice, p.purchasePrice, p.avgPurchasePrice, p.qtyAvgPrice, p.avgPrice, p.pnlPct,
-        p.pnlProzent, p.displayValue, p.totalValue, p.wertGesamt, p.condition, p.conditions, p.userId, p.owners.map(::konto),
-        p.acquisitions.map(::kauf), p.storage)
+    fun manuellesTeil(p: ManuellesTeilAnsicht) = ManuellesTeilZeile(id = p.id, partNumber = p.partNumber, blPartNumber = p.blPartNumber,
+        partName = p.partName, farbId = p.colorId, farbname = p.colorName, farbHex = p.colorHex, quantity = p.quantity, bildUrl = p.imageUrl,
+        bildLokal = p.imageLocal, stueckpreis = p.unitPrice?.alsDouble(), kaufpreis = p.purchasePrice?.alsDouble(),
+        kaufpreisSchnitt = p.avgPurchasePrice?.alsDouble(), mengenSchnittpreis = p.qtyAvgPrice?.alsDouble(), preisSchnitt = p.avgPrice?.alsDouble(),
+        pnlPct = p.pnlPct, pnlProzent = p.pnlProzent, anzeigeWert = p.displayValue, wertGesamt = p.wertGesamt?.alsDouble(),
+        condition = p.condition, conditions = p.conditions, kontoId = p.userId, besitzer = p.owners.map(::konto),
+        acquisitions = p.acquisitions.map(::kauf), storage = p.storage)
 
-    fun manuellesTeil(z: ManuellesTeilZeile) = PartValuationItem(ausstehend = z.ausstehend, fromCache = z.ausZwischenspeicher, maxPrice = z.preisMax,
-        minPrice = z.preisMin, acqCount = z.kaufAnzahl, usedCount = z.gebrauchtAnzahl, categoryName = z.categoryName, createdAt = z.createdAt,
-        source = z.source, id = z.id, partNumber = z.partNumber, blPartNumber = z.blPartNumber, partName = z.partName, colorId = z.farbId,
-        colorName = z.farbname, colorHex = z.farbHex, quantity = z.quantity, imageUrl = z.bildUrl, imageLocal = z.bildLokal,
-        unitPrice = z.stueckpreis, purchasePrice = z.kaufpreis, avgPurchasePrice = z.kaufpreisSchnitt, qtyAvgPrice = z.mengenSchnittpreis,
-        avgPrice = z.preisSchnitt, pnlPct = z.pnlPct, pnlProzent = z.pnlProzent, displayValue = z.anzeigeWert, totalValue = z.gesamtWert,
-        wertGesamt = z.wertGesamt, condition = z.condition, conditions = z.conditions, userId = z.kontoId, owners = z.besitzer.map(::konto),
-        acquisitions = z.acquisitions.map(::kauf), storage = z.storage)
-
-    fun manuelleFigur(f: FigValuationItem) = ManuelleFigurZeile(f.ausstehend, f.fromCache, f.maxPrice, f.minPrice, f.setNumber, f.source,
-        f.storageId, f.acqCount, f.usedCount, f.id, f.figNumber, f.blFigNumber, f.figName, f.quantity, f.imageUrl, f.imageLocal,
-        f.unitPrice, f.purchasePrice, f.avgPurchasePrice, f.qtyAvgPrice, f.avgPrice, f.pnlPct, f.pnlProzent, f.displayValue,
-        f.totalValue, f.wertGesamt, f.condition, f.conditions, f.userId, f.owners.map(::konto), f.acquisitions.map(::kauf), f.storage)
-
-    fun manuelleFigur(z: ManuelleFigurZeile) = FigValuationItem(ausstehend = z.ausstehend, fromCache = z.ausZwischenspeicher, maxPrice = z.preisMax,
-        minPrice = z.preisMin, setNumber = z.setNumber, source = z.source, storageId = z.storageId, acqCount = z.kaufAnzahl,
-        usedCount = z.gebrauchtAnzahl, id = z.id, figNumber = z.figNumber, blFigNumber = z.blFigNumber, figName = z.figName,
-        quantity = z.quantity, imageUrl = z.bildUrl, imageLocal = z.bildLokal, unitPrice = z.stueckpreis, purchasePrice = z.kaufpreis,
-        avgPurchasePrice = z.kaufpreisSchnitt, qtyAvgPrice = z.mengenSchnittpreis, avgPrice = z.preisSchnitt, pnlPct = z.pnlPct,
-        pnlProzent = z.pnlProzent, displayValue = z.anzeigeWert, totalValue = z.gesamtWert, wertGesamt = z.wertGesamt,
+    fun manuellesTeil(z: ManuellesTeilZeile) = ManuellesTeilAnsicht(id = z.id, partNumber = z.partNumber, blPartNumber = z.blPartNumber,
+        partName = z.partName, colorId = z.farbId, colorName = z.farbname, colorHex = z.farbHex, quantity = z.quantity, imageUrl = z.bildUrl,
+        imageLocal = z.bildLokal, unitPrice = z.stueckpreis.alsGeld(), purchasePrice = z.kaufpreis.alsGeld(),
+        avgPurchasePrice = z.kaufpreisSchnitt.alsGeld(), qtyAvgPrice = z.mengenSchnittpreis.alsGeld(), avgPrice = z.preisSchnitt.alsGeld(),
+        pnlPct = z.pnlPct, pnlProzent = z.pnlProzent, displayValue = z.anzeigeWert, wertGesamt = z.wertGesamt.alsGeld(),
         condition = z.condition, conditions = z.conditions, userId = z.kontoId, owners = z.besitzer.map(::konto),
         acquisitions = z.acquisitions.map(::kauf), storage = z.storage)
 
+    fun manuelleFigur(f: ManuelleFigurAnsicht) = ManuelleFigurZeile(id = f.id, figNumber = f.figNumber, blFigNumber = f.blFigNumber,
+        figName = f.figName, quantity = f.quantity, bildUrl = f.imageUrl, bildLokal = f.imageLocal, stueckpreis = f.unitPrice?.alsDouble(),
+        kaufpreis = f.purchasePrice?.alsDouble(), kaufpreisSchnitt = f.avgPurchasePrice?.alsDouble(),
+        mengenSchnittpreis = f.qtyAvgPrice?.alsDouble(), preisSchnitt = f.avgPrice?.alsDouble(), pnlPct = f.pnlPct, pnlProzent = f.pnlProzent,
+        anzeigeWert = f.displayValue, wertGesamt = f.wertGesamt?.alsDouble(), condition = f.condition, conditions = f.conditions,
+        kontoId = f.userId, besitzer = f.owners.map(::konto), acquisitions = f.acquisitions.map(::kauf), storage = f.storage)
+
+    fun manuelleFigur(z: ManuelleFigurZeile) = ManuelleFigurAnsicht(id = z.id, figNumber = z.figNumber, blFigNumber = z.blFigNumber,
+        figName = z.figName, quantity = z.quantity, imageUrl = z.bildUrl, imageLocal = z.bildLokal, unitPrice = z.stueckpreis.alsGeld(),
+        purchasePrice = z.kaufpreis.alsGeld(), avgPurchasePrice = z.kaufpreisSchnitt.alsGeld(), qtyAvgPrice = z.mengenSchnittpreis.alsGeld(),
+        avgPrice = z.preisSchnitt.alsGeld(), pnlPct = z.pnlPct, pnlProzent = z.pnlProzent, displayValue = z.anzeigeWert,
+        wertGesamt = z.wertGesamt.alsGeld(), condition = z.condition, conditions = z.conditions, userId = z.kontoId,
+        owners = z.besitzer.map(::konto), acquisitions = z.acquisitions.map(::kauf), storage = z.storage)
+
     /** Die PIN fällt hier weg: Sie gehört nie auf die Platte. */
-    fun gutschein(g: Gutschein) = GutscheinZeile(g.id, g.number, g.amount, g.currency, g.hatPdf, g.createdAt, g.updatedAt, g.guthabenGeprueftAm)
+    fun gutschein(g: GutscheinAnsicht) = GutscheinZeile(g.id, g.number, g.amount.alsDouble(), g.currency, g.hatPdf, zeit(g.createdAt),
+        null, zeit(g.guthabenGeprueftAm))
 
-    fun gutschein(z: GutscheinZeile) = Gutschein(id = z.id, number = z.number, amount = z.amount, currency = z.currency, hatPdf = z.hatPdf,
-        createdAt = z.createdAt.orEmpty(), updatedAt = z.updatedAt.orEmpty(), guthabenGeprueftAm = z.guthabenGeprueftAm)
+    fun gutschein(z: GutscheinZeile) = GutscheinAnsicht(id = z.id, number = z.number, pin = null, amount = z.amount.alsGeldPflicht(),
+        currency = z.currency, hatPdf = z.hatPdf, createdAt = zeitpunkt(z.createdAt), guthabenGeprueftAm = zeitpunkt(z.guthabenGeprueftAm))
 
-    fun alarm(a: Preisalarm) = AlarmZeile(a.setNumber, a.condition, a.richtung, a.schwelle, a.currencyCode, a.ausgeloest, a.zuletztAm,
-        a.zuletztPreis, a.name, a.imageLocal, a.imageUrl, a.setImgUrl, a.besitzt)
+    fun alarm(a: PreisalarmAnsicht) = AlarmZeile(a.setNumber, a.condition, a.richtung, a.schwelle.alsDouble(), a.currencyCode, a.ausgeloest,
+        zeit(a.zuletztAm), a.zuletztPreis?.alsDouble(), a.name, a.imageLocal, a.imageUrl, a.setImgUrl, a.besitzt)
 
-    fun alarm(z: AlarmZeile) = Preisalarm(setNumber = z.setNumber, condition = z.condition, richtung = z.richtung, schwelle = z.schwelle,
-        currencyCode = z.currencyCode, ausgeloest = z.ausgeloest, zuletztAm = z.zuletztAm, zuletztPreis = z.zuletztPreis, name = z.name,
-        imageLocal = z.bildLokal, imageUrl = z.bildUrl, setImgUrl = z.setImgUrl, besitzt = z.besitzt)
+    fun alarm(z: AlarmZeile) = PreisalarmAnsicht(setNumber = z.setNumber, condition = z.condition, richtung = z.richtung,
+        schwelle = z.schwelle.alsGeldPflicht(), currencyCode = z.currencyCode, ausgeloest = z.ausgeloest, zuletztAm = zeitpunkt(z.zuletztAm),
+        zuletztPreis = z.zuletztPreis.alsGeld(), name = z.name, imageLocal = z.bildLokal, imageUrl = z.bildUrl, setImgUrl = z.setImgUrl,
+        besitzt = z.besitzt)
 
-    fun kennzahlen(s: StatsResponse) = KennzahlenZeile(s.success, s.stats?.let { d ->
-        KennzahlenWerteZeile(d.currency, d.defaultCondition, d.userDefaultCondition, d.totalSets, d.totalQuantity, d.totalPieces,
-            d.totalInstructions, d.totalParts, d.setParts, d.manualParts, d.totalMinifigs)
-    })
+    fun kennzahlen(k: KennzahlenAnsicht) = KennzahlenZeile(true, KennzahlenWerteZeile(totalSets = k.totalSets,
+        totalQuantity = k.totalQuantity, totalInstructions = k.totalInstructions, totalParts = k.totalParts, setParts = k.teileAusSets,
+        manualParts = k.teileEinzeln, totalMinifigs = k.totalMinifigs))
 
-    fun kennzahlen(z: KennzahlenZeile) = StatsResponse(success = z.success, stats = z.stats?.let { d ->
-        DashboardStats(currency = d.currency.orEmpty(), defaultCondition = d.defaultCondition.orEmpty(), userDefaultCondition = d.kontoVorgabeZustand,
-            totalSets = d.totalSets, totalQuantity = d.totalQuantity, totalPieces = d.totalPieces, totalInstructions = d.totalInstructions,
-            totalParts = d.totalParts, setParts = d.setParts, manualParts = d.manualParts, totalMinifigs = d.totalMinifigs)
-    })
+    /** Eine Zeile ohne Werte (ältere Fassung, Server ohne stats) ist keine Kennzahl, sondern unlesbar. */
+    fun kennzahlen(z: KennzahlenZeile) = checkNotNull(z.stats) { "Kennzahlen ohne Werte" }.let { d ->
+        KennzahlenAnsicht(totalSets = d.totalSets, totalQuantity = d.totalQuantity, totalInstructions = d.totalInstructions,
+            totalParts = d.totalParts, totalMinifigs = d.totalMinifigs, teileAusSets = d.setParts ?: d.manualParts?.let { d.totalParts - it },
+            teileEinzeln = d.manualParts)
+    }
 
-    fun katalogMeta(m: CatalogMetaResponse) = KatalogMetaZeile(m.success, m.themes.map { KatalogThemaZeile(it.id, it.name, it.setCount) },
-        m.yearMin, m.yearMax, m.yearCounts.map { KatalogJahrZeile(it.year, it.n) })
+    fun katalogMeta(m: KatalogMetaAnsicht) = KatalogMetaZeile(true, m.themen.map { KatalogThemaZeile(it.id, it.name, it.setCount) },
+        m.jahrMin, m.jahrMax)
 
-    fun katalogMeta(z: KatalogMetaZeile) = CatalogMetaResponse(success = z.success,
-        themes = z.themes.map { CatalogTheme(id = it.id, name = it.name, setCount = it.anzahlSets) }, yearMin = z.yearMin, yearMax = z.yearMax,
-        yearCounts = z.yearCounts.map { CatalogYearCount(year = it.year, n = it.n) })
+    fun katalogMeta(z: KatalogMetaZeile) = KatalogMetaAnsicht(z.themes.map { KatalogThemaAnsicht(id = it.id, name = it.name, setCount = it.anzahlSets) },
+        z.yearMin, z.yearMax)
 
-    fun vorrat(v: VorratsOrt) = VorratZeile(v.ort.id, v.ort.userId, v.ort.name, v.vorgabe)
+    fun vorrat(v: VorratsOrtAnsicht) = VorratZeile(v.ort.id, v.ort.userId, v.ort.name, v.vorgabe)
 
-    fun vorrat(z: VorratZeile) = VorratsOrt(ort = LagerortEintrag(id = z.id, userId = z.userId, name = z.name), vorgabe = z.vorgabe)
+    fun vorrat(z: VorratZeile) = VorratsOrtAnsicht(ort = LagerortEintragAnsicht(id = z.id, userId = z.userId, name = z.name), vorgabe = z.vorgabe)
 }

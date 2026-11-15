@@ -20,7 +20,7 @@ object Modulkanten {
         "core-netz" to setOf("core-model"),
         // Tresor und TLS-Vertrauen liegen unter Room und Offlineablage.
         "core-sicherheit" to setOf("core-model", "core-netz"),
-        "core-offline" to setOf("core-model", "core-vertrag", "core-sicherheit"),
+        "core-offline" to setOf("core-model", "core-sicherheit"),
         "core-data" to setOf("core-model", "core-vertrag", "core-ressourcen", "core-netz", "core-sicherheit", "core-offline"),
         // Sie hängen an core-data, nie umgekehrt und nie aneinander.
         "core-update" to setOf("core-ressourcen", "core-data"),
@@ -56,8 +56,8 @@ object Modulkanten {
         "core-sitzung", "core-zustand",
     )
 
-    /** Wer core-vertrag einbindet: Die Repositories übersetzen, die Ablage legt noch Antworten ab. */
-    val wireKenner: Set<String> = setOf("core-data", "core-offline")
+    /** Wer core-vertrag einbindet: Nur die Repositories übersetzen; die Ablage hält Fachtypen. */
+    val wireKenner: Set<String> = setOf("core-data")
 
     private val oberflaechenPlugins = setOf("brickinventory.android.compose", "brickinventory.android.feature", "kotlin.compose")
 
@@ -93,7 +93,7 @@ object Modulkanten {
                 "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
             k.nurTest -> null
             k.nach == "core-vertrag" && k.von !in wireKenner ->
-                "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bilden es ab"
+                "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bildet es ab"
             k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
             k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
             k.von.startsWith("feature-") && k.nach in tiefeKerne && k.von !in tiefeKerne.getValue(k.nach) ->

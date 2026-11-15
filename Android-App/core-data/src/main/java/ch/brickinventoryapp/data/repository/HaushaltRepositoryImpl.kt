@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.data.lokal.alsZusammenfassung
 import ch.brickinventoryapp.model.fach.Kaufaenderung
 import ch.brickinventoryapp.model.fach.Kaufkorrektur
 import ch.brickinventoryapp.model.fach.EinladungAnsicht
@@ -106,7 +107,7 @@ class HaushaltRepositoryImpl @Inject constructor(
                 is Ergebnis.Error -> r
                 is Ergebnis.Success -> {
                     val agg = r.data.set?.takeIf { it.setNumber.isNotBlank() }
-                    agg?.let { ablage.wendeAn(Nachzug.SetZusammenfassung(it)) }
+                    agg?.let { ablage.wendeAn(Nachzug.SetZusammenfassung(it.alsZusammenfassung())) }
                     Ergebnis.Success(Kaufaenderung(agg != null, r.data.parts ?: 0, r.data.minifigs ?: 0))
                 }
             }

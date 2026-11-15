@@ -155,7 +155,7 @@ class Abgleich @Inject constructor(
     }
 }
 
-/** Sendet eine Bearbeitung mit genau der Anfrage, die online gegangen wäre, samt ihrem Schlüssel. */
+/** Sendet eine Bearbeitung mit der Anfrage, die online gegangen wäre (dieselbe Abbildung), samt ihrem Schlüssel. */
 class ServerSender @Inject constructor(
     private val sets: SetsApi,
     private val teile: TeileApi,
@@ -165,21 +165,21 @@ class ServerSender @Inject constructor(
         is Bearbeitung.SetMenge -> einordnen(sicherAufrufen {
             sets.updateSetQuantity(b.setNumber, UpdateQuantityRequest(quantityDelta = b.schritt), schluessel)
         })
-        is Bearbeitung.SetErfassen -> einordnen(sicherAufrufen { sets.addSet(b.anfrage, schluessel) })
-        is Bearbeitung.MerkpostenAnlegen -> einordnen(sicherAufrufen { sets.legeMerkpostenAn(b.anfrage, schluessel) })
+        is Bearbeitung.SetErfassen -> einordnen(sicherAufrufen { sets.addSet(b.wunsch.alsAnfrage(), schluessel) })
+        is Bearbeitung.MerkpostenAnlegen -> einordnen(sicherAufrufen { sets.legeMerkpostenAn(b.wunsch.alsAnfrage(), schluessel) })
         is Bearbeitung.MerkpostenLoeschen -> einordnenLoeschen(sicherAufrufen {
             sets.loescheMerkposten(b.setNumber, b.zustand.kennung, b.besitzer, schluessel)
         })
-        is Bearbeitung.TeilErfassen -> einordnen(sicherAufrufen { teile.addPart(b.anfrage, schluessel) })
+        is Bearbeitung.TeilErfassen -> einordnen(sicherAufrufen { teile.addPart(b.erfassung.alsAnfrage(), schluessel) })
         is Bearbeitung.TeilAendern -> einordnen(sicherAufrufen {
-            teile.updatePart(b.partNumber, b.colorId, b.anfrage, b.besitzer, schluessel)
+            teile.updatePart(b.partNumber, b.colorId, b.aenderung.alsAnfrage(), b.besitzer, schluessel)
         })
         is Bearbeitung.TeilLoeschen -> einordnenLoeschen(sicherAufrufen {
             teile.deletePart(b.partNumber, b.colorId, b.besitzer, schluessel)
         })
-        is Bearbeitung.FigurErfassen -> einordnen(sicherAufrufen { figuren.addMinifig(b.anfrage, schluessel) })
+        is Bearbeitung.FigurErfassen -> einordnen(sicherAufrufen { figuren.addMinifig(b.erfassung.alsAnfrage(), schluessel) })
         is Bearbeitung.FigurAendern -> einordnen(sicherAufrufen {
-            figuren.updateMinifig(b.figNumber, b.anfrage, b.besitzer, schluessel)
+            figuren.updateMinifig(b.figNumber, b.aenderung.alsAnfrage(), b.besitzer, schluessel)
         })
         is Bearbeitung.FigurLoeschen -> einordnenLoeschen(sicherAufrufen {
             figuren.deleteMinifig(b.figNumber, b.besitzer, schluessel)

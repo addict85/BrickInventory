@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Merkwunsch
 import ch.brickinventoryapp.model.fach.Geld
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
@@ -8,7 +9,6 @@ import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.runBlocking
-import ch.brickinventoryapp.vertrag.MerkpostenRequest
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.offline.Bearbeitung
 import androidx.lifecycle.SavedStateHandle
@@ -207,8 +207,8 @@ class MerklisteViewModelTest {
         vm.setzeMerklisteSuche("10294")
         uhr.advanceTimeBy(400)
         assertTrue("Suche geladen", vm.merklisteState.value.merkposten.isNotEmpty())
-        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest(setNumber = "99999-1", condition = Zustand.NEU, ownerUserId = 1))) }
-        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest(setNumber = "10294-1", condition = Zustand.GEBRAUCHT, ownerUserId = 1))) }
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(Merkwunsch("99999-1", Zustand.NEU, 1))) }
+        runBlocking { ablage.wendeAn(Bearbeitung.MerkpostenAnlegen(Merkwunsch("10294-1", Zustand.GEBRAUCHT, 1))) }
         uhr.advanceTimeBy(100)
         assertEquals("die Suche filtert auch offline Angelegtes", listOf("10294-1|U", "10294-1|N"),
             vm.merklisteState.value.merkposten.map { "${it.setNumber}|${it.condition.kennung}" })

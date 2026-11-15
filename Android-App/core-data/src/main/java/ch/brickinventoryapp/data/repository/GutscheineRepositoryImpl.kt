@@ -12,9 +12,7 @@ import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.model.fach.Fehlercode
 import ch.brickinventoryapp.vertrag.GuthabenAntwort
-import ch.brickinventoryapp.vertrag.Gutschein
 import ch.brickinventoryapp.vertrag.GutscheinAntwort
-import ch.brickinventoryapp.vertrag.GutscheinListe
 import ch.brickinventoryapp.vertrag.GutscheinRequest
 import ch.brickinventoryapp.vertrag.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.netz.data.api.Fehlerrumpf
@@ -40,9 +38,9 @@ class GutscheineRepositoryImpl @Inject constructor(
 ) : GutscheineRepository {
 
     override suspend fun liste(): Ergebnis<List<GutscheinAnsicht>> =
-        ablage.abgeglichen(Faecher.GUTSCHEINE, { l -> l.vouchers.map { ohneGeheimnis(it) } },
-            { GutscheinListe(success = true, vouchers = it) }) { sicherAufrufen { api.getGutscheine() } }
-            .abgebildet { l -> l.vouchers.map { it.alsAnsicht() } }
+        ablage.abgeglichen(Faecher.GUTSCHEINE, { l -> l.map { ohneGeheimnis(it) } }, { it }) {
+            sicherAufrufen { api.getGutscheine() }.abgebildet { l -> l.vouchers.map { it.alsAnsicht() } }
+        }
 
     override suspend fun anlegen(angabe: Gutscheinangabe): Ergebnis<Gutscheinspeicherung> =
         sicherAufrufen { api.legeGutscheinAn(angabe.alsAnfrage()) }.gespeichert()
@@ -149,7 +147,7 @@ class GutscheineRepositoryImpl @Inject constructor(
 
     companion object {
         /** Was offline von einem Gutschein bleibt: keine PIN, von der Nummer die letzten vier Ziffern. */
-        fun ohneGeheimnis(g: Gutschein): Gutschein =
+        fun ohneGeheimnis(g: GutscheinAnsicht): GutscheinAnsicht =
             g.copy(number = if (g.number.length > 4) "…" + g.number.takeLast(4) else g.number, pin = null)
 
         /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */

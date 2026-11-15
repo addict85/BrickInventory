@@ -6,12 +6,12 @@ Rot: Farbe, Kategorie, Ersatzteile und Suche
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
-@@ -56,7 +56,7 @@
+@@ -57,7 +57,7 @@
  
      /** Die lokalen Listen nach den Filtern der Anzeige; sie ändern sich auch durch offline Bearbeitetes. */
      override fun beobachteTeile(suche: String?, farbe: Farbwahl, kategorie: Kategoriewahl, ersatzteile: Ersatzteilwahl): Flow<Lokal<TeilAnsicht>> =
 -        ablage.beobachte(Faecher.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = farbe.wert,
 +        ablage.beobachte(Faecher.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = null,
-             kategorie = kategorie.wert, ersatzteil = ersatzteile.alsMerkmal())).abgebildet { it.alsAnsicht() }
+             kategorie = kategorie.wert, ersatzteil = ersatzteile.alsMerkmal()))
  
      override fun beobachteManuelleTeile(suche: String?): Flow<Lokal<ManuellesTeilAnsicht>> =

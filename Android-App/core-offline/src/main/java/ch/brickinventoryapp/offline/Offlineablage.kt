@@ -6,10 +6,10 @@ import kotlinx.serialization.json.Json
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
-import ch.brickinventoryapp.vertrag.LagerortEintrag
-import ch.brickinventoryapp.vertrag.Preisalarm
-import ch.brickinventoryapp.vertrag.AddSetRequest
-import ch.brickinventoryapp.vertrag.SetAggregate
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.Setzusammenfassung
 import ch.brickinventoryapp.model.fach.Zustand
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -161,7 +161,7 @@ class Offlineablage(
         }
 
         /** Ein geänderter Kauf: Der Server schickt die neue Zusammenfassung des Sets mit. */
-        data class SetZusammenfassung(val agg: SetAggregate) : Nachzug {
+        data class SetZusammenfassung(val agg: Setzusammenfassung) : Nachzug {
             override val arten get() = setOf(Bestandsart.SETS)
         }
 
@@ -171,7 +171,7 @@ class Offlineablage(
 
         /** Der Merkposten geht in die Sammlung: weg aus der Merkliste, dazu in der Galerie. */
         data class MerkpostenUebernommen(val setNumber: String, val zustand: Zustand, val besitzer: Int?,
-                                         val anfrage: AddSetRequest) : Nachzug {
+                                         val wunsch: Erfassungswunsch) : Nachzug {
             override val arten get() = setOf(Bestandsart.MERKLISTE, Bestandsart.SETS)
         }
 
@@ -190,12 +190,12 @@ class Offlineablage(
         }
 
         /** Ein umbenannter Ort heisst überall neu, wo er stand, auch im Vorrat. */
-        data class LagerortUmbenannt(val alt: String, val neu: LagerortEintrag) : Nachzug {
+        data class LagerortUmbenannt(val alt: String, val neu: LagerortEintragAnsicht) : Nachzug {
             override val arten get() = setOf(Bestandsart.SETS, Bestandsart.MANUELLE_TEILE, Bestandsart.MANUELLE_FIGUREN,
                 Bestandsart.LAGERORTE)
         }
 
-        data class LagerortAngelegt(val ort: LagerortEintrag) : Nachzug {
+        data class LagerortAngelegt(val ort: LagerortEintragAnsicht) : Nachzug {
             override val arten get() = setOf(Bestandsart.LAGERORTE)
         }
 
@@ -209,7 +209,7 @@ class Offlineablage(
         }
 
         /** Der Server schickt den gespeicherten Alarm zurück; er ersetzt den des Sets im selben Zustand. */
-        data class AlarmGesetzt(val alarm: Preisalarm) : Nachzug {
+        data class AlarmGesetzt(val alarm: PreisalarmAnsicht) : Nachzug {
             override val arten get() = setOf(Bestandsart.PREISALARME)
         }
 

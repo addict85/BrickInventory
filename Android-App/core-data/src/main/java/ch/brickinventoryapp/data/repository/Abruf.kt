@@ -138,18 +138,20 @@ private suspend fun Offlineablage.wendeImSelbenBereichAn(w: Wirkung, vorher: Str
  * eine Zeile je Bereich. Die Ablage springt nur ein, wenn der Server nicht erreichbar war;
  * eine Antwort von ihm (401, 404, 500) ist seine Auskunft und wird nicht überdeckt.
  */
-internal suspend fun <T : Any> Offlineablage.abgeglichenEinzeln(fach: Fach<T>, call: suspend () -> Ergebnis<T>): Ergebnis<T> {
+@Suppress("UNCHECKED_CAST") // E ist T oder T?: Was in der Ablage liegt, ist immer ein E.
+internal suspend fun <T : Any, E : T?> Offlineablage.abgeglichenEinzeln(fach: Fach<T>, call: suspend () -> Ergebnis<E>): Ergebnis<E> {
     val vorher = bereich()
     val frisch = call()
     val bereich = bereich()?.takeIf { it == vorher } ?: return frisch
     if (frisch is Ergebnis.Success) {
-        uebernimm(fach, listOf(frisch.data), bereich)
+        // Ohne Wert (eine Antwort ohne stats) bleibt die Ablage, wie sie ist.
+        frisch.data?.let { uebernimm(fach, listOf(it as T), bereich) }
         return frisch
     }
     if (frisch !is Ergebnis.Error || !frisch.transient) return frisch
     val lokal = lies(fach) ?: return frisch
     val wert = lokal.liste.firstOrNull() ?: return frisch
-    return Ergebnis.Success(wert, stand = lokal.stand ?: return frisch)
+    return Ergebnis.Success(wert as E, stand = lokal.stand ?: return frisch)
 }
 
 /**

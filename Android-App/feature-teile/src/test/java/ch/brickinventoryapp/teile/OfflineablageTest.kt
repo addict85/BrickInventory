@@ -1,5 +1,11 @@
 package ch.brickinventoryapp.teile
 
+import ch.brickinventoryapp.model.fach.Geld
+import ch.brickinventoryapp.model.fach.Teilerfassung
+import ch.brickinventoryapp.model.fach.Stueckaenderung
+import ch.brickinventoryapp.model.fach.Merkwunsch
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
 import ch.brickinventoryapp.offline.Bearbeitung
@@ -7,14 +13,10 @@ import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.SpeicherAusgang
 import ch.brickinventoryapp.offline.SpeicherBestand
-import ch.brickinventoryapp.vertrag.AddPartRequest
-import ch.brickinventoryapp.vertrag.AddSetRequest
 import ch.brickinventoryapp.vertrag.Gutschein
-import ch.brickinventoryapp.vertrag.MerkpostenRequest
 import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.vertrag.PartValuationItem
 import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -47,9 +49,9 @@ class OfflineablageTest {
 
     @Test
     fun `offline Bearbeitetes steht sofort in der Liste`() = runBlocking {
-        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1), set("10002-1", 3)))
+        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1), set("10002-1", 3)).map { it.alsAnsicht() })
         ablage.puffere(Bearbeitung.SetMenge("10001-1", 2))
-        ablage.puffere(Bearbeitung.SetErfassen(AddSetRequest(setNumber = "10003-1", quantity = 1, condition = Zustand.NEU)))
+        ablage.puffere(Bearbeitung.SetErfassen(Erfassungswunsch(setNumber = "10003-1", menge = 1, zustand = Zustand.NEU)))
         val l = ablage.beobachte(Faecher.SETS).first().liste
         assertEquals(listOf("10003-1" to 1, "10001-1" to 3, "10002-1" to 3), l.map { it.setNumber to it.quantity })
         assertEquals(2, ablage.offene().first())
@@ -57,17 +59,17 @@ class OfflineablageTest {
 
     @Test
     fun `eine Menge auf null nimmt das Set aus der Liste`() = runBlocking {
-        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1)).map { it.alsAnsicht() })
         ablage.puffere(Bearbeitung.SetMenge("10001-1", -1))
         assertEquals(emptyList<SetItem>(), ablage.lies(Faecher.SETS)!!.liste)
     }
 
     @Test
     fun `eine Serverantwort verschluckt keine wartende Änderung`() = runBlocking {
-        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1)).map { it.alsAnsicht() })
         ablage.puffere(Bearbeitung.SetMenge("10001-1", 1))
         // Der Server kennt die Änderung noch nicht und liefert den alten Stand.
-        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1).copy(name = "Neu vom Server")))
+        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1).copy(name = "Neu vom Server")).map { it.alsAnsicht() })
         val s = ablage.lies(Faecher.SETS)!!.liste.single()
         assertEquals(2, s.quantity)
         assertEquals("Neu vom Server", s.name)
@@ -76,35 +78,35 @@ class OfflineablageTest {
 
     @Test
     fun `Merkposten und manuelle Teile werden lokal angelegt und geändert`() = runBlocking {
-        ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = Zustand.NEU, userId = 7)))
-        ablage.puffere(Bearbeitung.MerkpostenAnlegen(MerkpostenRequest(setNumber = "20002-1", condition = Zustand.GEBRAUCHT, ownerUserId = 7)))
+        ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = Zustand.NEU, userId = 7)).map { it.alsAnsicht() })
+        ablage.puffere(Bearbeitung.MerkpostenAnlegen(Merkwunsch("20002-1", Zustand.GEBRAUCHT, 7)))
         ablage.puffere(Bearbeitung.MerkpostenLoeschen("20001-1", Zustand.NEU, 7))
         assertEquals(listOf("20002-1|U|7"),
             ablage.lies(Faecher.MERKLISTE)!!.liste.map { "${it.setNumber}|${it.condition.kennung}|${it.userId}" })
 
-        ablage.uebernimm(Faecher.MANUELLE_TEILE, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 4, userId = 7)))
-        ablage.puffere(Bearbeitung.TeilAendern("3001", 5, UpdateManualItemRequest(quantity = 9), 7))
-        ablage.puffere(Bearbeitung.TeilErfassen(AddPartRequest(partNumber = "3002", colorId = 1, quantity = 2)))
+        ablage.uebernimm(Faecher.MANUELLE_TEILE, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 4, userId = 7)).map { it.alsAnsicht() })
+        ablage.puffere(Bearbeitung.TeilAendern("3001", 5, Stueckaenderung(menge = 9), 7))
+        ablage.puffere(Bearbeitung.TeilErfassen(Teilerfassung(nummer = "3002", farbId = 1, menge = 2)))
         assertEquals(listOf("3002" to 2, "3001" to 9),
             ablage.lies(Faecher.MANUELLE_TEILE)!!.liste.map { it.partNumber to it.quantity })
     }
 
     @Test
     fun `ein anderes Konto sieht nichts davon`() = runBlocking {
-        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1)).map { it.alsAnsicht() })
         ablage.puffere(Bearbeitung.SetMenge("10001-1", 1))
         konto = "b"
         assertEquals(emptyList<SetItem>(), ablage.lies(Faecher.SETS)!!.liste)
         assertEquals(0, ablage.offene().first())
         // Sobald Konto b etwas vom Server bekommt, ist die Liste von a weg.
-        ablage.uebernimm(Faecher.SETS, listOf(set("30001-1", 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(set("30001-1", 1)).map { it.alsAnsicht() })
         konto = "a"
         assertEquals(emptyList<SetItem>(), ablage.lies(Faecher.SETS)!!.liste)
     }
 
     @Test
     fun `Abmelden leert Listen und Ausgang`() = runBlocking {
-        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(set("10001-1", 1)).map { it.alsAnsicht() })
         ablage.puffere(Bearbeitung.SetMenge("10001-1", 1))
         ablage.leere()
         assertEquals(emptyList<SetItem>(), ablage.lies(Faecher.SETS)!!.liste)
@@ -113,9 +115,9 @@ class OfflineablageTest {
 
     @Test
     fun `ein Gutschein liegt ohne PIN und volle Nummer`() {
-        val g = GutscheineRepositoryImpl.ohneGeheimnis(Gutschein(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0))
+        val g = GutscheineRepositoryImpl.ohneGeheimnis(Gutschein(id = 1, number = "1234567890123456", pin = "4711", amount = 50.0).alsAnsicht())
         assertEquals("…3456", g.number)
         assertNull(g.pin)
-        assertEquals(50.0, g.amount, 0.0)
+        assertEquals(Geld.aus(50.0), g.amount)
     }
 }

@@ -56,8 +56,8 @@ class FinanzenRepositoryImpl @Inject constructor(
 
     override suspend fun getStats(konten: Kontoauswahl?): Ergebnis<KennzahlenAnsicht?> =
         (if (konten == null)
-            ablage.abgeglichenEinzeln(Faecher.KENNZAHLEN) { sicherAufrufen { api.getStats() } }
-        else sicherAufrufen { api.getStats(konten.anfrage) }).abgebildet { it.stats?.alsAnsicht() }
+            ablage.abgeglichenEinzeln(Faecher.KENNZAHLEN) { sicherAufrufen { api.getStats() }.abgebildet { it.stats?.alsAnsicht() } }
+        else sicherAufrufen { api.getStats(konten.anfrage) }.abgebildet { it.stats?.alsAnsicht() })
 }
 
 /** Ein Verlauf mit success: false hat keine Punkte, die etwas sagten. */

@@ -1,18 +1,17 @@
 package ch.brickinventoryapp.offline
 
 import ch.brickinventoryapp.model.lokal.Bestandsart
-import ch.brickinventoryapp.vertrag.AddMinifigRequest
-import ch.brickinventoryapp.vertrag.AddPartRequest
-import ch.brickinventoryapp.vertrag.AddSetRequest
-import ch.brickinventoryapp.vertrag.MerkpostenRequest
-import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Figurenerfassung
+import ch.brickinventoryapp.model.fach.Merkwunsch
+import ch.brickinventoryapp.model.fach.Stueckaenderung
+import ch.brickinventoryapp.model.fach.Teilerfassung
 import ch.brickinventoryapp.model.fach.Zustand
 
 /**
- * Eine Änderung, die ohne Verbindung im Ausgang wartet, mit genau der Anfrage, die
- * online gegangen wäre; Mengen von Sets gehen als Schritt, damit zwei Geräte zusammen
- * +2 ergeben. Auf der Platte liegt sie als [Ausgangsform]: Die Server-Anfragen hier
- * ändern sich mit dem Server, wartende Posten nicht.
+ * Eine Änderung, die ohne Verbindung im Ausgang wartet, in Fachwerten; die Anfrage daraus
+ * baut erst core-data beim Senden. Mengen von Sets gehen als Schritt, damit zwei Geräte
+ * zusammen +2 ergeben. Auf der Platte liegt sie als [Ausgangsform].
  */
 sealed class Bearbeitung : Offlineablage.Wirkung {
     /** Welche lokale Liste die Änderung betrifft. */
@@ -28,14 +27,14 @@ sealed class Bearbeitung : Offlineablage.Wirkung {
         override val ziel get() = setNumber
     }
 
-    data class SetErfassen(val anfrage: AddSetRequest) : Bearbeitung() {
+    data class SetErfassen(val wunsch: Erfassungswunsch) : Bearbeitung() {
         override val art get() = Bestandsart.SETS
-        override val ziel get() = anfrage.setNumber
+        override val ziel get() = wunsch.setNumber
     }
 
-    data class MerkpostenAnlegen(val anfrage: MerkpostenRequest) : Bearbeitung() {
+    data class MerkpostenAnlegen(val wunsch: Merkwunsch) : Bearbeitung() {
         override val art get() = Bestandsart.MERKLISTE
-        override val ziel get() = anfrage.setNumber
+        override val ziel get() = wunsch.setNumber
     }
 
     data class MerkpostenLoeschen(val setNumber: String, val zustand: Zustand, val besitzer: Int?) : Bearbeitung() {
@@ -43,17 +42,13 @@ sealed class Bearbeitung : Offlineablage.Wirkung {
         override val ziel get() = setNumber
     }
 
-    data class TeilErfassen(val anfrage: AddPartRequest) : Bearbeitung() {
+    data class TeilErfassen(val erfassung: Teilerfassung) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_TEILE
-        override val ziel get() = anfrage.partNumber
+        override val ziel get() = erfassung.nummer
     }
 
-    /**
-     * Die Anfrage trägt die neue Menge und, wenn die bisherige bekannt war, den
-     * Schritt dorthin: Ein Server mit quantity_delta zählt zwei Geräte zusammen,
-     * einer ohne nimmt die Menge — dann gewinnt wie früher der Letzte.
-     */
-    data class TeilAendern(val partNumber: String, val colorId: Int, val anfrage: UpdateManualItemRequest,
+    /** Die Änderung trägt die neue Menge und, wenn die bisherige bekannt war, den Schritt dorthin. */
+    data class TeilAendern(val partNumber: String, val colorId: Int, val aenderung: Stueckaenderung,
                            val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_TEILE
         override val ziel get() = partNumber
@@ -65,12 +60,12 @@ sealed class Bearbeitung : Offlineablage.Wirkung {
         override val ziel get() = partNumber
     }
 
-    data class FigurErfassen(val anfrage: AddMinifigRequest) : Bearbeitung() {
+    data class FigurErfassen(val erfassung: Figurenerfassung) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_FIGUREN
-        override val ziel get() = anfrage.figNumber
+        override val ziel get() = erfassung.nummer
     }
 
-    data class FigurAendern(val figNumber: String, val anfrage: UpdateManualItemRequest,
+    data class FigurAendern(val figNumber: String, val aenderung: Stueckaenderung,
                             val besitzer: Int?) : Bearbeitung() {
         override val art get() = Bestandsart.MANUELLE_FIGUREN
         override val ziel get() = figNumber

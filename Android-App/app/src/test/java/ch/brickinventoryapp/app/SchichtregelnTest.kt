@@ -19,7 +19,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
  *                               „core-zustand und core-sitzung kennen keinen Context“
  *   bereich-mehr-wireformat     ein Import eines Antworttyps in CatalogViewModel → rot
- *                               „ein Bereich kennt … das Wire-Format nur core-data und core-offline“
+ *                               „ein Bereich kennt … das Wire-Format nur core-data“
  */
 class SchichtregelnTest {
 
@@ -40,7 +40,7 @@ class SchichtregelnTest {
         return geprueft.flatMap { d -> d.importe.filter(verboten).map { "${d.modul}/${d.name}: $it" } }
     }
 
-    private val WIRE_KENNER = setOf("core-vertrag", "core-data", "core-offline", "core-testing")
+    private val WIRE_KENNER = setOf("core-vertrag", "core-data", "core-testing")
 
     private fun praesentation(d: Datei) = d.modul in setOf("core-zustand", "core-sitzung") || d.modul.startsWith("feature-")
 
@@ -61,15 +61,15 @@ class SchichtregelnTest {
 
     /**
      * Auch der Zustand nicht: Er sieht Repositories und Ergebnis, nicht den Retrofit-Weg dahinter.
-     * Das Wire-Format übersetzen nur core-data und core-offline (Abbildungen in core-vertrag);
-     * jedes andere Modul nimmt Fach- und Ansichtstypen. Die Kante dazu prüft Modulkanten.
+     * Das Wire-Format übersetzt nur core-data (Abbildungen in core-vertrag); jedes andere
+     * Modul, auch die Ablage, nimmt Fachtypen. Die Kante dazu prüft Modulkanten.
      */
     @Test
-    fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format nur core-data und core-offline`() {
+    fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format nur core-data`() {
         val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
         assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api:\n  " + f.joinToString("\n  ") }
         val wire = verstoesse({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.vertrag.") }
-        assert(wire.isEmpty()) { "Importe aus core-vertrag ausserhalb von core-data/core-offline:\n  " + wire.joinToString("\n  ") }
+        assert(wire.isEmpty()) { "Importe aus core-vertrag ausserhalb von core-data:\n  " + wire.joinToString("\n  ") }
     }
 
     /** AppTexte.kt ist die bewusste Ausnahme: Texte und Dateien gehen über Context, bis M7 sie verlegt. */

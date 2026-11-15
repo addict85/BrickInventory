@@ -32,17 +32,16 @@ class AlarmRepositoryImpl @Inject constructor(
 
     override fun beobachteAlarme(setNumber: String?): Flow<Lokal<PreisalarmAnsicht>> =
         ablage.beobachte(Faecher.PREISALARME).map { l -> l.copy(liste = l.liste.filter { setNumber == null || it.setNumber == setNumber }) }
-            .abgebildet { it.alsAnsicht() }
 
     /** Die Übersicht kommt ganz, ohne Seiten. */
     override suspend fun aktualisiereAlarme(): Ergebnis<Unit> =
-        ablage.aktualisiereSeitenweise(Faecher.PREISALARME, { it.alerts }, { it.alerts.size }, wiederholung) { _ ->
+        ablage.aktualisiereSeitenweise(Faecher.PREISALARME, { r -> r.alerts.map { it.alsAnsicht() } }, { it.alerts.size }, wiederholung) { _ ->
             sicherAufrufen { api.getAlleAlarme() }
         }
 
     override suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Geld,
                                        condition: Zustand): Ergebnis<Unit> =
-        ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { Nachzug.AlarmGesetzt(it) } }) {
+        ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { Nachzug.AlarmGesetzt(it.alsAnsicht()) } }) {
             sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.alsDouble(), condition = condition)) }
         }.zugesagt({ it.success }, { it.error }) { }
 

@@ -1,7 +1,7 @@
 Gegenprobe: ein Bereich importiert wieder einen Antworttyp
 Modul: app
 Test: ch.brickinventoryapp.app.SchichtregelnTest
-Rot: das Wire-Format nur core-data und core-offline
+Rot: das Wire-Format nur core-data
 
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 --- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt

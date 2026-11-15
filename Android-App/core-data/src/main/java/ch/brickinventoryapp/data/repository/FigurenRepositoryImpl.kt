@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.data.lokal.alsAnfrage
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.Stueckaenderung
+import ch.brickinventoryapp.model.fach.Figurenerfassung
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
@@ -11,11 +15,9 @@ import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.vertrag.AddMinifigRequest
 import ch.brickinventoryapp.vertrag.AddMinifigResponse
 import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.LagerortRequest
-import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.fach.Erfasst
 import ch.brickinventoryapp.model.fach.FigurAnsicht
@@ -38,18 +40,18 @@ class FigurenRepositoryImpl @Inject constructor(
 
     /** Die lokalen Listen nach dem Suchtext, wie TeileRepository.beobachteTeile. */
     override fun beobachteFiguren(suche: String?): Flow<Lokal<FigurAnsicht>> =
-        ablage.beobachte(Faecher.FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null })).abgebildet { it.alsAnsicht() }
+        ablage.beobachte(Faecher.FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null }))
 
     override fun beobachteManuelleFiguren(suche: String?): Flow<Lokal<ManuelleFigurAnsicht>> =
-        ablage.beobachte(Faecher.MANUELLE_FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null })).abgebildet { it.alsAnsicht() }
+        ablage.beobachte(Faecher.MANUELLE_FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null }))
 
     override suspend fun aktualisiereFiguren(): Ergebnis<Unit> {
         // Beide Listen kommen ganz, ohne Seiten: Die Gesamtzahl ist die Länge der Antwort.
-        val figuren = ablage.aktualisiereSeitenweise(Faecher.FIGUREN, { it.figs }, { it.figs.size }, wiederholung) { _ ->
+        val figuren = ablage.aktualisiereSeitenweise(Faecher.FIGUREN, { r -> r.figs.map { it.alsAnsicht() } }, { it.figs.size }, wiederholung) { _ ->
             sicherAufrufen { api.getMinifigs(source = "set") }
         }
         if (figuren is Ergebnis.Error) return figuren
-        return ablage.aktualisiereSeitenweise(Faecher.MANUELLE_FIGUREN, { it.figs }, { it.figs.size }, wiederholung) { _ ->
+        return ablage.aktualisiereSeitenweise(Faecher.MANUELLE_FIGUREN, { r -> r.figs.map { it.alsAnsicht() } }, { it.figs.size }, wiederholung) { _ ->
             sicherAufrufen { api.getManualMinifigs(null, null) }
         }
     }
@@ -64,8 +66,10 @@ class FigurenRepositoryImpl @Inject constructor(
                            unitPrice: Geld?, condition: Zustand?,
                            ownerUserId: Int?,
                            storage: String?): Ergebnis<Erfasst> =
-        AddMinifigRequest(figNumber = figNumber, blFigNumber = blFigNumber, quantity = quantity, unitPrice = unitPrice?.alsDouble(), condition = condition, ownerUserId = ownerUserId, storage = storage).let { anfrage ->
-            ablage.schreibe(Bearbeitung.FigurErfassen(anfrage),
+        Figurenerfassung(nummer = figNumber, blNummer = blFigNumber, menge = quantity, stueckpreis = unitPrice, zustand = condition,
+            besitzer = ownerUserId, lagerort = storage).let { erfassung ->
+            val anfrage = erfassung.alsAnfrage()
+            ablage.schreibe(Bearbeitung.FigurErfassen(erfassung),
                 { AddMinifigResponse(success = true, action = "gepuffert", figNumber = figNumber) }) { schluessel ->
                 sicherAufrufen { api.addMinifig(anfrage, schluessel) }
             }.zugesagt({ it.success }, { it.error }) { Erfasst(it.action == "added", it.figNumber, it.priceFromCondition) }
@@ -79,9 +83,10 @@ class FigurenRepositoryImpl @Inject constructor(
     override suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?, condition: Zustand?, owner: Int?): Ergebnis<Unit> {
         val bisher = ablage.lies(Faecher.MANUELLE_FIGUREN)?.liste
             ?.firstOrNull { it.figNumber == figNumber && (owner == null || it.userId == owner) }?.quantity
-        val anfrage = UpdateManualItemRequest(quantity = quantity, unitPrice = unitPrice, blFigNumber = blFigNumber, condition = condition, quantityDelta = bisher?.let { quantity - it })
-        return ablage.schreibe(Bearbeitung.FigurAendern(figNumber, anfrage, owner), { GenericResponse(success = true) }) { schluessel ->
-            sicherAufrufen { api.updateMinifig(figNumber, anfrage, owner, schluessel) }
+        val aenderung = Stueckaenderung(menge = quantity, schritt = bisher?.let { quantity - it }, stueckpreis = unitPrice.alsGeld(),
+            zustand = condition, blNummer = blFigNumber)
+        return ablage.schreibe(Bearbeitung.FigurAendern(figNumber, aenderung, owner), { GenericResponse(success = true) }) { schluessel ->
+            sicherAufrufen { api.updateMinifig(figNumber, aenderung.alsAnfrage(), owner, schluessel) }
         }.erledigt()
     }
 

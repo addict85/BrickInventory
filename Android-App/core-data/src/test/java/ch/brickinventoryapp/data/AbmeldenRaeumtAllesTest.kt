@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import android.Manifest
@@ -14,7 +16,6 @@ import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.testing.Testablage
 import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.vertrag.StatsResponse
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.data.repository.KontoDatenLoeschung
 import ch.brickinventoryapp.zustand.ui.Abmeldehaken
@@ -128,8 +129,8 @@ class AbmeldenRaeumtAllesTest {
         val geheim = AblageChiffre { ablage.fuer("x") }.verschluessle("Sammlung von marco".toByteArray(), "x/1")
         val api = TestApi.fuer(server)
         val offline = Testablage()
-        offline.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10294-1")))
-        offline.uebernimm(Faecher.KENNZAHLEN, listOf(StatsResponse(success = true)))
+        offline.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10294-1")).map { it.alsAnsicht() })
+        offline.uebernimm(Faecher.KENNZAHLEN, listOf(KennzahlenAnsicht(totalSets = 1, totalQuantity = 1, totalInstructions = 0, totalParts = 0, totalMinifigs = 0)))
         offline.puffere(Bearbeitung.MerkpostenLoeschen("10294-1", Zustand.NEU, 1))
         val vorschau = VorschauSpeicher({ File(ctx.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") }) { ablage.fuer("namen") }
         vorschau.schreibe("$adresse/images/sets/10294-1_thumb.jpg", "vorschaubild".toByteArray())

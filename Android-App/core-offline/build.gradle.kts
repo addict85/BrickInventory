@@ -23,8 +23,6 @@ android {
 
 dependencies {
     api(project(":core-model"))
-    // Die Listen tragen noch Servermodelle (SetItem, Part …); gelesen werden sie nur in core-data.
-    implementation(project(":core-vertrag"))
     // Der Schlüssel der Datenbank kommt aus dem Ablageschlüssel.
     implementation(project(":core-sicherheit"))
     implementation(libs.androidx.core.ktx)
@@ -35,6 +33,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     testImplementation(project(":core-testing"))
+    // Die Tests bauen Antworten des Servers, wie core-data sie abbildet; die Ablage selbst kennt sie nicht.
+    testImplementation(project(":core-vertrag"))
     // Abgleich und Repositories gegen die echte Room-Ablage (BestandDatenbankTest, OhneNetzFilterTest).
     testImplementation(project(":core-data"))
     // Room-Tests laufen unter Robolectric (BestandMigrationTest).

@@ -6,11 +6,11 @@ Rot: ein geaendertes Teil steht in der Ablage
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
-@@ -82,7 +82,7 @@
+@@ -93,7 +93,7 @@
          is Bearbeitung.TeilErfassen -> teilErfasst(liste, b)
          is Bearbeitung.TeilAendern -> liste.map {
              if (it.partNumber == b.partNumber && it.colorId == b.colorId && (b.besitzer == null || it.userId == b.besitzer))
--                it.copy(quantity = neueMenge(it.quantity, b.anfrage), unitPrice = b.anfrage.unitPrice ?: it.unitPrice)
+-                it.copy(quantity = neueMenge(it.quantity, b.aenderung), unitPrice = b.aenderung.stueckpreis ?: it.unitPrice)
 +                it
              else it
          }

@@ -27,8 +27,12 @@ class KatalogRepositoryImpl @Inject constructor(
     private val knapp = wiederholung.hoechstens(KATALOG_VERSUCHE)
 
     override suspend fun getCatalogMeta(): Ergebnis<KatalogMetaAnsicht> =
-        wiederholung.wiederhole { ablage.abgeglichenEinzeln(Faecher.KATALOG_META) { sicherAufrufen { api.getCatalogMeta() } } }
-            .zugesagt({ it.success }, { it.error }) { m -> KatalogMetaAnsicht(m.themes.map { it.alsAnsicht() }, m.yearMin, m.yearMax) }
+        wiederholung.wiederhole {
+            ablage.abgeglichenEinzeln(Faecher.KATALOG_META) {
+                sicherAufrufen { api.getCatalogMeta() }
+                    .zugesagt({ it.success }, { it.error }) { m -> KatalogMetaAnsicht(m.themes.map { it.alsAnsicht() }, m.yearMin, m.yearMax) }
+            }
+        }
 
     override suspend fun getCatalogSets(
         q: String?, themeId: Int?, yearFrom: Int?, yearTo: Int?,

@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.vertrag.AddSetRequest
 import ch.brickinventoryapp.model.fach.SetErfasst
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.offline.Offlineablage
@@ -51,7 +51,8 @@ internal class AnlegenMitAblage @Inject constructor(
             val e = (s as? SetAnlegenSchritt.Fertig)?.ergebnis
             if (e != null && !e.vorhanden && vorher != null && ablage.bereich() == vorher) {
                 val nummer = e.nummer ?: setNumber
-                ablage.wendeAn(Bearbeitung.SetErfassen(AddSetRequest(setNumber = nummer, quantity = quantity, purchasePrice = purchasePrice?.alsDouble(), condition = condition, ownerUserId = ownerUserId, storage = storage)), vorher)
+                ablage.wendeAn(Bearbeitung.SetErfassen(Erfassungswunsch(setNumber = nummer, menge = quantity, kaufpreis = purchasePrice,
+                    zustand = condition, besitzer = ownerUserId, lagerort = storage)), vorher)
             }
             emit(s)
         }

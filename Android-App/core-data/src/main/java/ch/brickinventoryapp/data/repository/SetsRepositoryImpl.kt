@@ -1,12 +1,13 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.data.lokal.alsAnfrage
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.vertrag.AddSetRequest
 import ch.brickinventoryapp.vertrag.AddSetResponse
 import ch.brickinventoryapp.model.fach.SetErfasst
 import ch.brickinventoryapp.data.alsErfasst
@@ -38,8 +39,10 @@ class SetsRepositoryImpl @Inject constructor(
     override suspend fun addSet(setNumber: String, quantity: Int, purchasePrice: Geld?,
                        condition: Zustand?, ownerUserId: Int?,
                        storage: String?): Ergebnis<SetErfasst> {
-        val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice?.alsDouble(), condition = condition, ownerUserId = ownerUserId, storage = storage)
-        return ablage.schreibe(Bearbeitung.SetErfassen(anfrage),
+        val wunsch = Erfassungswunsch(setNumber = setNumber, menge = quantity, kaufpreis = purchasePrice, zustand = condition,
+            besitzer = ownerUserId, lagerort = storage)
+        val anfrage = wunsch.alsAnfrage()
+        return ablage.schreibe(Bearbeitung.SetErfassen(wunsch),
             { AddSetResponse(success = true, action = "gepuffert", setNumber = setNumber) }) { schluessel ->
             sicherAufrufen { api.addSet(anfrage, schluessel) }
         }.zugesagt({ it.success }, { it.error }) { it.alsErfasst() }
@@ -64,10 +67,10 @@ class SetsRepositoryImpl @Inject constructor(
     /** Die Galerie aus der Ablage, nach den Filtern der Anzeige; ändert sich auch durch offline Bearbeitetes. */
     override fun beobachteSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Lokal<SetAnsicht>> =
         ablage.beobachte(Faecher.SETS, Filterspalten(suchtext = suche?.ifBlank { null }, thema = thema?.ifBlank { null },
-            lagerort = lagerort?.ifBlank { null })).map { l -> l.copy(liste = l.liste.sortiert(setOrdnung(sort))) }.abgebildet { it.alsAnsicht() }
+            lagerort = lagerort?.ifBlank { null })).map { l -> l.copy(liste = l.liste.sortiert(setOrdnung(sort))) }
 
     override suspend fun aktualisiereSets(): Ergebnis<Unit> =
-        ablage.aktualisiereSeitenweise(Faecher.SETS, { it.sets }, { it.total }, wiederholung) { seite ->
+        ablage.aktualisiereSeitenweise(Faecher.SETS, { r -> r.sets.map { it.alsAnsicht() } }, { it.total }, wiederholung) { seite ->
             sicherAufrufen { api.getSets(null, null, null, null, seite, GALLERY_PAGE_SIZE) }
         }
 

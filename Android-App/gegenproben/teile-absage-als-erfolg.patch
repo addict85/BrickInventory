@@ -6,12 +6,12 @@ Rot: ein success false ist eine Absage
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
-@@ -136,7 +136,7 @@
+@@ -140,7 +140,7 @@
      override suspend fun legeLagerortAn(name: String): Ergebnis<Unit> =
-         ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortAngelegt(it) } }) {
+         ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortAngelegt(it.alsAnsicht()) } }) {
              sicherAufrufen { api.legeLagerortAn(LagerortNameRequest(name = name)) }
 -        }.zugesagt({ it.success }, { it.error }) { }
 +        }.abgebildet { }
  
      override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<Unit> =
-         ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it) } }) {
+         ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it.alsAnsicht()) } }) {

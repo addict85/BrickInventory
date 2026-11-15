@@ -53,7 +53,8 @@ import ch.brickinventoryapp.testing.TestApi
  *   F  in TeileRepository.deletePart wieder direkt `sicherAufrufen` statt `schreibe` →
  *      rot „offline gelöscht …“ (Ergebnis.Error statt gepuffert)
  *   G  in LokaleAnwendung bei TeilLoeschen `filterNot` → `filter` → rot „… verschwindet sofort“
- *   H  in TeileRepository.updatePart `quantityDelta = null` → rot „… als Menge und Schritt“
+ *   H  in TeileRepository.updatePart kein Schritt → rot „… als Menge und Schritt“
+ *   J  gegenproben/ausgang-schritt-verloren.patch: Stueckaenderung.alsAnfrage ohne quantity_delta → rot, derselbe Test
  *   I  in ServerSender beim Löschen `einordnen` statt `einordnenLoeschen` → rot
  *      „ein schon gelöschtes Teil …“ (404 verworfen und gemeldet)
  */

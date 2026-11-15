@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Setzusammenfassung
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.fehlerMeldung
@@ -10,7 +12,6 @@ import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import androidx.lifecycle.SavedStateHandle
-import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.testing.testFinanzenRepository
 import ch.brickinventoryapp.testing.testHaushaltRepository
 import ch.brickinventoryapp.vertrag.SetItem
@@ -112,7 +113,7 @@ class SetDetailViewModelTest {
 
     @Test
     fun `eine geaenderte Menge steht sofort da und in der Ablage`() {
-        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1", quantity = 1))) }
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1", quantity = 1)).map { it.alsAnsicht() }) }
         val vm = vm()
         geladen(vm)
         serverHatDanachDrei()
@@ -141,16 +142,18 @@ class SetDetailViewModelTest {
 
     @Test
     fun `ein geaenderter Kauf eines anderen Sets laedt hier nichts, einer dieses Sets schon`() {
-        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1"), SetItem(setNumber = "10294-1"))) }
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1"), SetItem(setNumber = "10294-1")).map { it.alsAnsicht() }) }
         val vm = vm()
         geladen(vm)
         val vorher = pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size
 
         // So schreibt HaushaltRepository die Zusammenfassung des Servers in die Ablage.
-        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "10294-1", condition = Zustand.GEBRAUCHT, acqCount = 1, usedCount = 1, conditions = listOf(Zustand.GEBRAUCHT)))) }
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(Setzusammenfassung(setNumber = "10294-1", zustand = Zustand.GEBRAUCHT, zustaende = listOf(Zustand.GEBRAUCHT), gebraucht = 1,
+            hoechsterKaufpreis = null, kaufpreisSchnitt = null))) }
         assertEquals(vorher, pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size)
 
-        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "75192-1", condition = Zustand.GEBRAUCHT, acqCount = 1, usedCount = 1, conditions = listOf(Zustand.GEBRAUCHT)))) }
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(Setzusammenfassung(setNumber = "75192-1", zustand = Zustand.GEBRAUCHT, zustaende = listOf(Zustand.GEBRAUCHT), gebraucht = 1,
+            hoechsterKaufpreis = null, kaufpreisSchnitt = null))) }
         assertTrue("neu geladen", pfade.anfragenAn("GET /api/v1/sets/75192-1/acquisitions").size > vorher)
     }
 

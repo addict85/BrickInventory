@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.lokal.Bestandsart
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -69,7 +70,7 @@ class BestandDatenbankTest {
     @Test
     fun `sendet der Reihe nach und zählt Versuche`() = runBlocking {
         val ablage = Offlineablage(bestand, ausgang, { "a" })
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1)).map { it.alsAnsicht() })
         for (n in 1..3) ablage.puffere(Bearbeitung.SetMenge("1-1", n))
         assertEquals(3, ausgang.anzahl("a").first())
         assertEquals(7, ablage.lies(Faecher.SETS)!!.liste.single().quantity)
@@ -108,7 +109,7 @@ class BestandDatenbankTest {
     @Test
     fun `eine lokale Bearbeitung schreibt nur die betroffene Zeile`() = runBlocking {
         val ablage = Offlineablage(bestand, ausgang, { "a" })
-        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1), SetItem(setNumber = "2-1", quantity = 1), SetItem(setNumber = "3-1", quantity = 1)))
+        ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "1-1", quantity = 1), SetItem(setNumber = "2-1", quantity = 1), SetItem(setNumber = "3-1", quantity = 1)).map { it.alsAnsicht() })
         val geschrieben = protokolliereSchreiben()
         ablage.puffere(Bearbeitung.SetMenge("2-1", 1))
         assertEquals(listOf("UPDATE 2-1"), geschrieben())

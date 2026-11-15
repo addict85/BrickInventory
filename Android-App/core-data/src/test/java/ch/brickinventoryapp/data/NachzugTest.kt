@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data
 
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
 import ch.brickinventoryapp.data.repository.MerklisteRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
@@ -65,12 +66,12 @@ class NachzugTest {
     @Before
     fun auf() = runBlocking {
         ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1, storage = "Kiste 1",
-            owners = listOf(KontoName(id = 1, username = "anna"), KontoName(id = 2, username = "ben")))))
+            owners = listOf(KontoName(id = 1, username = "anna"), KontoName(id = 2, username = "ben")))).map { it.alsAnsicht() })
         ablage.uebernimm(Faecher.MERKLISTE, listOf(Merkposten(setNumber = "20001-1", condition = Zustand.NEU, userId = 1),
-            Merkposten(setNumber = "20002-1", condition = Zustand.NEU, userId = 1)))
+            Merkposten(setNumber = "20002-1", condition = Zustand.NEU, userId = 1)).map { it.alsAnsicht() })
         ablage.uebernimm(Faecher.MANUELLE_TEILE, listOf(PartValuationItem(partNumber = "3001", colorId = 5, quantity = 2, storage = "Kiste 1"),
-            PartValuationItem(partNumber = "3001", colorId = 7, quantity = 4)))
-        ablage.uebernimm(Faecher.MANUELLE_FIGUREN, listOf(FigValuationItem(figNumber = "sw0001", storage = "Kiste 1")))
+            PartValuationItem(partNumber = "3001", colorId = 7, quantity = 4)).map { it.alsAnsicht() })
+        ablage.uebernimm(Faecher.MANUELLE_FIGUREN, listOf(FigValuationItem(figNumber = "sw0001", storage = "Kiste 1")).map { it.alsAnsicht() })
     }
 
     @After
@@ -123,7 +124,7 @@ class NachzugTest {
         // Das Gerät hält nur ein Konto; das neue lädt sein Set, während die alte Antwort unterwegs ist.
         pfade.vorrang = { _, _ ->
             bereich = "b"
-            runBlocking { ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1))) }
+            runBlocking { ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() }) }
             null
         }
         sets.updateQuantity("10001-1", 5)

@@ -14,4 +14,4 @@ diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventor
 +        "core-sitzung",
      )
  
-     /** Wer core-vertrag einbindet: Die Repositories übersetzen, die Ablage legt noch Antworten ab. */
+     /** Wer core-vertrag einbindet: Nur die Repositories übersetzen; die Ablage hält Fachtypen. */

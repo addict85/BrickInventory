@@ -3,6 +3,7 @@ package ch.brickinventoryapp.zustand
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.testing.testFigurenRepository
@@ -90,7 +91,7 @@ class KaeufeViewModelTest {
 
     @Test
     fun `ein geaenderter Kauf eines Sets schreibt seine Zusammenfassung in die Ablage und laedt die Liste neu`() {
-        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1", usedCount = 0))) }
+        runBlocking { t.ablage.uebernimm(Faecher.SETS, listOf(SetItem(setNumber = "75192-1", usedCount = 0)).map { it.alsAnsicht() }) }
         val vm = vm()
         vm.loadAcquisitions("75192-1")
         assertTrue("Liste geladen", vm.manDetailState.value.acquisitions.isNotEmpty())

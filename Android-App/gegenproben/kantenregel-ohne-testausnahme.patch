@@ -13,5 +13,5 @@ diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventor
 -            k.nurTest -> null
 +            false -> null
              k.nach == "core-vertrag" && k.von !in wireKenner ->
-                 "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bilden es ab"
+                 "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bildet es ab"
              k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"

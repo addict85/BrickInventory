@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.data.lokal.alsAnfrage
+import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.Stueckaenderung
+import ch.brickinventoryapp.model.fach.Teilerfassung
 import ch.brickinventoryapp.model.fach.Kategoriewahl
 import ch.brickinventoryapp.model.fach.Farbwahl
 import ch.brickinventoryapp.model.fach.Geld
@@ -13,8 +17,6 @@ import ch.brickinventoryapp.offline.Faecher
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.lokal.Lokal
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.vertrag.VorratsOrt
-import ch.brickinventoryapp.vertrag.AddPartRequest
 import ch.brickinventoryapp.vertrag.BestandRequest
 import ch.brickinventoryapp.vertrag.BestandTeil
 import ch.brickinventoryapp.model.fach.Erfasst
@@ -23,7 +25,6 @@ import ch.brickinventoryapp.vertrag.LagerortNameRequest
 import ch.brickinventoryapp.vertrag.LagerortRequest
 import ch.brickinventoryapp.vertrag.LagerortVorgabeRequest
 import ch.brickinventoryapp.vertrag.TeilFarbeRequest
-import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.fach.FarbeAnsicht
 import ch.brickinventoryapp.model.fach.FilterFarbeAnsicht
@@ -57,13 +58,13 @@ class TeileRepositoryImpl @Inject constructor(
     /** Die lokalen Listen nach den Filtern der Anzeige; sie ändern sich auch durch offline Bearbeitetes. */
     override fun beobachteTeile(suche: String?, farbe: Farbwahl, kategorie: Kategoriewahl, ersatzteile: Ersatzteilwahl): Flow<Lokal<TeilAnsicht>> =
         ablage.beobachte(Faecher.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = farbe.wert,
-            kategorie = kategorie.wert, ersatzteil = ersatzteile.alsMerkmal())).abgebildet { it.alsAnsicht() }
+            kategorie = kategorie.wert, ersatzteil = ersatzteile.alsMerkmal()))
 
     override fun beobachteManuelleTeile(suche: String?): Flow<Lokal<ManuellesTeilAnsicht>> =
-        ablage.beobachte(Faecher.MANUELLE_TEILE, Filterspalten(suchtext = suche?.ifBlank { null })).abgebildet { it.alsAnsicht() }
+        ablage.beobachte(Faecher.MANUELLE_TEILE, Filterspalten(suchtext = suche?.ifBlank { null }))
 
     override suspend fun aktualisiereTeile(): Ergebnis<Unit> {
-        val teile = ablage.aktualisiereSeitenweise(Faecher.TEILE, { it.parts }, { it.total }, wiederholung) { seite ->
+        val teile = ablage.aktualisiereSeitenweise(Faecher.TEILE, { r -> r.parts.map { it.alsAnsicht() } }, { it.total }, wiederholung) { seite ->
             sicherAufrufen { api.getParts(null, null, null, seite, pageSize = 500, excludeManual = "1") }
         }
         if (teile is Ergebnis.Error) return teile
@@ -72,7 +73,7 @@ class TeileRepositoryImpl @Inject constructor(
 
     /** Eine Liste ohne Seiten: Die Gesamtzahl ist die Länge der Antwort. */
     override suspend fun aktualisiereManuelleTeile(): Ergebnis<Unit> =
-        ablage.aktualisiereSeitenweise(Faecher.MANUELLE_TEILE, { it.parts }, { it.parts.size }, wiederholung) { _ ->
+        ablage.aktualisiereSeitenweise(Faecher.MANUELLE_TEILE, { r -> r.parts.map { it.alsAnsicht() } }, { it.parts.size }, wiederholung) { _ ->
             sicherAufrufen { api.getManualParts(null, null, null) }
         }
 
@@ -125,11 +126,11 @@ class TeileRepositoryImpl @Inject constructor(
     // jemand hier etwas einträgt.
 
     override fun beobachteLagerortVorrat(): Flow<Lokal<VorratsOrtAnsicht>> =
-        ablage.beobachte(Faecher.LAGERORTE).abgebildet { it.alsAnsicht() }
+        ablage.beobachte(Faecher.LAGERORTE)
 
     /** Die Vorgabe kommt neben der Liste; in der Ablage trägt sie der Ort selbst. */
     override suspend fun aktualisiereLagerortVorrat(): Ergebnis<Unit> =
-        ablage.aktualisiereSeitenweise(Faecher.LAGERORTE, { r -> r.orte.map { VorratsOrt(ort = it, vorgabe = it.id == r.vorgabe?.id) } },
+        ablage.aktualisiereSeitenweise(Faecher.LAGERORTE, { r -> r.orte.map { VorratsOrtAnsicht(ort = it.alsAnsicht(), vorgabe = it.id == r.vorgabe?.id) } },
             { it.orte.size }, wiederholung) { _ -> sicherAufrufen { api.getLagerortVorrat(null) } }
 
     override suspend fun getLagerortVorrat(besitzer: List<Int>): Ergebnis<List<LagerortEintragAnsicht>> =
@@ -137,12 +138,12 @@ class TeileRepositoryImpl @Inject constructor(
             .zugesagt({ it.success }, { it.error }) { r -> r.orte.map { it.alsAnsicht() } }
 
     override suspend fun legeLagerortAn(name: String): Ergebnis<Unit> =
-        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortAngelegt(it) } }) {
+        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortAngelegt(it.alsAnsicht()) } }) {
             sicherAufrufen { api.legeLagerortAn(LagerortNameRequest(name = name)) }
         }.zugesagt({ it.success }, { it.error }) { }
 
     override suspend fun benenneLagerortUm(id: Int, alt: String, name: String): Ergebnis<Unit> =
-        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it) } }) {
+        ablage.nachgezogen({ r -> r.ort?.takeIf { r.success }?.let { Nachzug.LagerortUmbenannt(alt, it.alsAnsicht()) } }) {
             sicherAufrufen { api.benenneLagerortUm(id, LagerortNameRequest(name = name)) }
         }.zugesagt({ it.success }, { it.error }) { }
 
@@ -174,9 +175,11 @@ class TeileRepositoryImpl @Inject constructor(
                          condition: Zustand?, ownerUserId: Int?,
                          storage: String?): Ergebnis<Erfasst> {
         val ohne = colorId == KEINE_FARBE
-        val anfrage = AddPartRequest(partNumber = partNumber, colorId = colorId, colorName = colorName.takeUnless { ohne },
-            colorHex = colorHex.takeUnless { ohne }, quantity = quantity, unitPrice = unitPrice?.alsDouble(), condition = condition, ownerUserId = ownerUserId, storage = storage)
-        return ablage.schreibe(Bearbeitung.TeilErfassen(anfrage),
+        val erfassung = Teilerfassung(nummer = partNumber, farbId = colorId, farbname = colorName.takeUnless { ohne },
+            farbHex = colorHex.takeUnless { ohne }, menge = quantity, stueckpreis = unitPrice, zustand = condition, besitzer = ownerUserId,
+            lagerort = storage)
+        val anfrage = erfassung.alsAnfrage()
+        return ablage.schreibe(Bearbeitung.TeilErfassen(erfassung),
             { AddPartResponse(success = true, action = "gepuffert", partNumber = partNumber) }) { schluessel ->
             sicherAufrufen { api.addPart(anfrage, schluessel) }
         }.zugesagt({ it.success }, { it.error }) { Erfasst(it.action == "added", it.partNumber, it.priceFromCondition) }
@@ -191,9 +194,10 @@ class TeileRepositoryImpl @Inject constructor(
     override suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: Zustand?, owner: Int?): Ergebnis<Unit> {
         val bisher = ablage.lies(Faecher.MANUELLE_TEILE)?.liste
             ?.firstOrNull { it.partNumber == partNumber && it.colorId == colorId && (owner == null || it.userId == owner) }?.quantity
-        val anfrage = UpdateManualItemRequest(quantity = quantity, unitPrice = unitPrice, condition = condition, quantityDelta = bisher?.let { quantity - it })
-        return ablage.schreibe(Bearbeitung.TeilAendern(partNumber, colorId, anfrage, owner), { GenericResponse(success = true) }) { schluessel ->
-            sicherAufrufen { api.updatePart(partNumber, colorId, anfrage, owner, schluessel) }
+        val aenderung = Stueckaenderung(menge = quantity, schritt = bisher?.let { quantity - it }, stueckpreis = unitPrice.alsGeld(),
+            zustand = condition)
+        return ablage.schreibe(Bearbeitung.TeilAendern(partNumber, colorId, aenderung, owner), { GenericResponse(success = true) }) { schluessel ->
+            sicherAufrufen { api.updatePart(partNumber, colorId, aenderung.alsAnfrage(), owner, schluessel) }
         }.erledigt()
     }
 

@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.data.lokal.alsAnfrage
+import ch.brickinventoryapp.model.fach.Erfassungswunsch
+import ch.brickinventoryapp.model.fach.Merkwunsch
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
 import ch.brickinventoryapp.model.fach.MerkpostenPreiseAnsicht
@@ -7,12 +10,10 @@ import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
 import ch.brickinventoryapp.data.Netzlage.Wiederholung
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.vertrag.AddSetRequest
 import ch.brickinventoryapp.vertrag.GenericResponse
 import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.vertrag.MerkpostenAntwort
 import ch.brickinventoryapp.vertrag.MerkpostenInhaberRequest
-import ch.brickinventoryapp.vertrag.MerkpostenRequest
 import ch.brickinventoryapp.vertrag.MerkpostenUebernahmeRequest
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -37,18 +38,19 @@ class MerklisteRepositoryImpl @Inject constructor(
 
     override fun beobachteMerkliste(suche: String?, zustand: Zustand?, sort: Merksortierung?): Flow<Lokal<MerkpostenAnsicht>> =
         ablage.beobachte(Faecher.MERKLISTE, Filterspalten(suchtext = suche?.ifBlank { null }, zustand = zustand?.kennung))
-            .map { l -> l.copy(liste = l.liste.sortiert(merkOrdnung(sort))) }.abgebildet { it.alsAnsicht() }
+            .map { l -> l.copy(liste = l.liste.sortiert(merkOrdnung(sort))) }
 
     /** Die Merkliste kommt ganz, ohne Seiten: Die Gesamtzahl ist die Länge der Antwort. */
     override suspend fun aktualisiereMerkliste(): Ergebnis<Unit> =
-        ablage.aktualisiereSeitenweise(Faecher.MERKLISTE, { it.merkposten }, { it.merkposten.size }, wiederholung) { _ ->
+        ablage.aktualisiereSeitenweise(Faecher.MERKLISTE, { r -> r.merkposten.map { it.alsAnsicht() } }, { it.merkposten.size }, wiederholung) { _ ->
             sicherAufrufen { api.getMerkliste(null, null, null, null) }
         }
 
     override suspend fun legeMerkpostenAn(setNumber: String, condition: Zustand,
                                           ownerUserId: Int?): Ergebnis<Boolean> {
-        val anfrage = MerkpostenRequest(setNumber = setNumber, condition = condition, ownerUserId = ownerUserId)
-        return ablage.schreibe(Bearbeitung.MerkpostenAnlegen(anfrage), {
+        val wunsch = Merkwunsch(setNumber, condition, ownerUserId)
+        val anfrage = wunsch.alsAnfrage()
+        return ablage.schreibe(Bearbeitung.MerkpostenAnlegen(wunsch), {
             MerkpostenAntwort(success = true, warNeu = true,
                 merkposten = Merkposten(setNumber = setNumber, condition = condition, userId = ownerUserId ?: 0))
         }) { schluessel -> sicherAufrufen { api.legeMerkpostenAn(anfrage, schluessel) } }.abgebildet { it.warNeu }
@@ -73,8 +75,9 @@ class MerklisteRepositoryImpl @Inject constructor(
                                              purchasePrice: Geld?, erfasstAls: Zustand?,
                                              ownerUserId: Int?,
                                              storage: String?): Ergebnis<Boolean> {
-        val anfrage = AddSetRequest(setNumber = setNumber, quantity = quantity, purchasePrice = purchasePrice?.alsDouble(), condition = erfasstAls ?: condition, ownerUserId = ownerUserId, storage = storage)
-        return ablage.nachgezogen({ r -> Nachzug.MerkpostenUebernommen(setNumber, condition, ownerUserId, anfrage).takeIf { r.success } }) {
+        val wunsch = Erfassungswunsch(setNumber = setNumber, menge = quantity, kaufpreis = purchasePrice, zustand = erfasstAls ?: condition,
+            besitzer = ownerUserId, lagerort = storage)
+        return ablage.nachgezogen({ r -> Nachzug.MerkpostenUebernommen(setNumber, condition, ownerUserId, wunsch).takeIf { r.success } }) {
             sicherAufrufen { api.uebernimmMerkposten(setNumber, condition.kennung,
                 MerkpostenUebernahmeRequest(quantity = quantity, purchasePrice = purchasePrice?.alsDouble(), condition = erfasstAls, ownerUserId = ownerUserId, storage = storage)) }
         }.abgebildet { it.action == "exists" }

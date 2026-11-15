@@ -55,6 +55,8 @@ import ch.brickinventoryapp.testing.Quellen
  *   U  gegenproben/offline-haengt-an-daten.patch: core-offline bindet core-ui ein →
  *      rot „Schichtung der Kernmodule: core-offline hängt an [core-ui]“ (core-data
  *      ginge nicht: Den Zyklus bricht schon Gradle ab, ohne Testbericht)
+ *   W  gegenproben/ablage-kennt-wireformat.patch: core-offline bindet core-vertrag wieder ein →
+ *      rot „core-offline kennt das Wire-Format“ (Schichtung der Kernmodule)
  *   T  gegenproben/bereich-kennt-bereich.patch: feature-teile bindet feature-katalog ein →
  *      rot „feature-teile hängt an feature-katalog“
  *   R  gegenproben/ui-kennt-ansicht.patch: eine core-ui-Datei importiert eine Ansicht aus
@@ -241,11 +243,12 @@ class ModulgrenzenTest {
         assertEquals(listOf("Schichtung der Kernmodule: core-zustand hängt an core-ui"), pruefe("core-zustand", "implementation", "core-ui"))
         assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-netz"), pruefe("core-data", "api", "core-netz"))
         assertEquals(listOf("Modulkanten per api nur zu core-model: core-data → core-vertrag"), pruefe("core-data", "api", "core-vertrag"))
-        assertEquals(listOf("feature-teile kennt das Wire-Format: Nur core-data und core-offline bilden es ab"),
+        assertEquals(listOf("feature-teile kennt das Wire-Format: Nur core-data bildet es ab"),
             pruefe("feature-teile", "implementation", "core-vertrag"))
-        assertEquals(listOf("app kennt das Wire-Format: Nur core-data und core-offline bilden es ab"), pruefe("app", "implementation", "core-vertrag"))
+        assertEquals(listOf("app kennt das Wire-Format: Nur core-data bildet es ab"), pruefe("app", "implementation", "core-vertrag"))
         assertEquals(emptyList<String>(), pruefe("feature-teile", "testImplementation", "core-vertrag"))
         assertEquals(emptyList<String>(), pruefe("core-data", "implementation", "core-vertrag"))
+        assertEquals(listOf("core-offline kennt das Wire-Format: Nur core-data bildet es ab"), pruefe("core-offline", "implementation", "core-vertrag"))
         assertEquals(listOf("feature-konto bindet core-testing nicht nur für Tests ein"), pruefe("feature-konto", "implementation", "core-testing"))
         assertEquals(listOf("feature-konto hängt an core-sicherheit, das unter dem Zustand liegt"),
             pruefe("feature-konto", "implementation", "core-sicherheit"))

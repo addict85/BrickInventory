@@ -1,15 +1,16 @@
 package ch.brickinventoryapp.offline
 
+import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.VorratsOrtAnsicht
+import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.vertrag.BrickLinkRef
 import ch.brickinventoryapp.vertrag.Instruction
 import ch.brickinventoryapp.vertrag.KontoName
-import ch.brickinventoryapp.vertrag.LagerortEintrag
 import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.vertrag.MerkpostenAlarm
 import ch.brickinventoryapp.vertrag.Part
 import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.vertrag.VorratsOrt
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -43,10 +44,10 @@ class AblageformTest {
 
     @Test
     fun `jedes Feld von Set, Merkposten und Teil uebersteht die Ablage`() {
-        assertEquals(set, rund(Faecher.SETS, set))
-        assertEquals(merk, rund(Faecher.MERKLISTE, merk))
-        assertEquals(teil, rund(Faecher.TEILE, teil))
-        val ort = VorratsOrt(ort = LagerortEintrag(id = 3, userId = 1, name = "Keller"), vorgabe = true)
+        assertEquals(set.alsAnsicht(), rund(Faecher.SETS, set.alsAnsicht()))
+        assertEquals(merk.alsAnsicht(), rund(Faecher.MERKLISTE, merk.alsAnsicht()))
+        assertEquals(teil.alsAnsicht(), rund(Faecher.TEILE, teil.alsAnsicht()))
+        val ort = VorratsOrtAnsicht(ort = LagerortEintragAnsicht(id = 3, userId = 1, name = "Keller"), vorgabe = true)
         assertEquals(ort, rund(Faecher.LAGERORTE, ort))
     }
 
@@ -54,9 +55,9 @@ class AblageformTest {
     fun `eine Zeile im frueheren Format bleibt lesbar`() {
         // Das Servermodell selbst als JSON: so liegen Zeilen, die vor der eigenen Ablageform geschrieben wurden.
         val alt = BrickJson.encodeToString(SetItem.serializer(), set)
-        assertEquals(set, Faecher.SETS.form.dekodiere(BrickJson, alt))
-        assertEquals(merk, Faecher.MERKLISTE.form.dekodiere(BrickJson, BrickJson.encodeToString(Merkposten.serializer(), merk)))
-        assertEquals(teil, Faecher.TEILE.form.dekodiere(BrickJson, BrickJson.encodeToString(Part.serializer(), teil)))
+        assertEquals(set.alsAnsicht(), Faecher.SETS.form.dekodiere(BrickJson, alt))
+        assertEquals(merk.alsAnsicht(), Faecher.MERKLISTE.form.dekodiere(BrickJson, BrickJson.encodeToString(Merkposten.serializer(), merk)))
+        assertEquals(teil.alsAnsicht(), Faecher.TEILE.form.dekodiere(BrickJson, BrickJson.encodeToString(Part.serializer(), teil)))
     }
 
     @Test
@@ -64,7 +65,7 @@ class AblageformTest {
         val bestand = SpeicherBestand()
         val meldungen = mutableListOf<String>()
         val ablage = Offlineablage(bestand, SpeicherAusgang(), { "a" }, protokoll = { meldungen += it })
-        ablage.uebernimm(Faecher.SETS, listOf(set))
+        ablage.uebernimm(Faecher.SETS, listOf(set.alsAnsicht()))
         val heil = bestand.lies("a", Bestandsart.SETS).liste
         bestand.ersetze("a", Bestandsart.SETS, heil + LokaleZeile("kaputt", """{"quantity":"viele"}"""), 1L)
         val lokal = ablage.beobachte(Faecher.SETS).first()

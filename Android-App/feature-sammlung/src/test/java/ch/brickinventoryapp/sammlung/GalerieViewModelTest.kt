@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.sammlung
 
+import ch.brickinventoryapp.model.fach.Teilerfassung
+import ch.brickinventoryapp.model.fach.Setzusammenfassung
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.offline.Offlineablage.Nachzug
 import ch.brickinventoryapp.model.fach.Setsortierung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.vertrag.SetAggregate
 import ch.brickinventoryapp.testing.testFinanzenRepository
-import ch.brickinventoryapp.vertrag.AddPartRequest
 import ch.brickinventoryapp.offline.Bearbeitung
 import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
 import kotlinx.coroutines.Dispatchers
@@ -257,7 +257,8 @@ class GalerieViewModelTest {
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
         // So schreibt HaushaltRepository die Antwort des Servers in die Ablage.
-        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(SetAggregate(setNumber = "75192-1", condition = Zustand.GEBRAUCHT, acqCount = 1, usedCount = 1, conditions = listOf(Zustand.GEBRAUCHT)))) }
+        runBlocking { t.ablage.wendeAn(Nachzug.SetZusammenfassung(Setzusammenfassung(setNumber = "75192-1", zustand = Zustand.GEBRAUCHT, zustaende = listOf(Zustand.GEBRAUCHT), gebraucht = 1,
+            hoechsterKaufpreis = null, kaufpreisSchnitt = null))) }
         assertTrue("Kennzahlen neu", pfade.anfragenAn("GET /api/v1/stats").size > zahlenVorher)
         assertTrue("Kachel geändert", vm.galleryState.value.sets.first { it.setNumber == "75192-1" }.usedCount == 1)
         assertEquals("Die Liste darf nicht neu geholt werden", vorher, abrufe().size)
@@ -274,7 +275,7 @@ class GalerieViewModelTest {
         val zahlenVorher = pfade.anfragenAn("GET /api/v1/stats").size
 
         // So wendet TeileRepository ein erfasstes Teil in der Ablage an.
-        runBlocking { t.ablage.wendeAn(Bearbeitung.TeilErfassen(AddPartRequest(partNumber = "3001", colorId = 5, quantity = 2))) }
+        runBlocking { t.ablage.wendeAn(Bearbeitung.TeilErfassen(Teilerfassung(nummer = "3001", farbId = 5, menge = 2))) }
         assertEquals("Kennzahlen nach Teilen", zahlenVorher + 1, pfade.anfragenAn("GET /api/v1/stats").size)
         assertEquals("Ein Teil ändert die Set-Liste nicht", listeVorher, abrufe().size)
     }
